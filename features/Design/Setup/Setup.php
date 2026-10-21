@@ -18,14 +18,13 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
-	 *										One model for the seven tabs of the panel that choose
-	 *										something (the eighth, Typefaces, installs families and
-	 *										keeps nothing here): the five templates (header and footer
-	 *										bring markup, content, buttons and components are one
-	 *										stylesheet each), the root size, the width and the
-	 *										whitespace of the page and its animation, a position for
-	 *										every named knob of the three template tabs, the five font
-	 *										roles and the palette -
+	 *										One model for the seven tabs of the panel (the Install
+	 *										screen of Fonts installs families and keeps nothing here):
+	 *										the five templates (header and footer bring markup,
+	 *										content, buttons and components are one stylesheet each),
+	 *										the root size, the width and the whitespace of the page
+	 *										and its animation, a position for every named knob of the
+	 *										three template tabs, the five font roles and the palette -
 	 *										and, for the Theme tab, the slug of the theme these choices
 	 *										were taken from and the custom css that goes with them (see
 	 *										Themes: a theme is this whole setup kept under a name).

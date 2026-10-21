@@ -8,9 +8,10 @@
  *													two strips of Global stand in, the row per knob and per
  *													colour with the icon before its name, the table of the
  *													five font roles, the two cards of the typeface loader, the
- *													three cards of the Theme tab (the list of the themes, the
- *													active one, its css), and the two columns the screen is -
- *													the controls on one side
+ *													cards of the Theme tab's three screens (the list of the
+ *													themes, the loaded one with the row that makes another, the
+ *													css), the strip of the screens of a tab, and the two
+ *													columns the screen is - the controls on one side
  *													(a third of the width, 24rem at the least), a sticky
  *													preview pane on the other (two thirds) - a head of one
  *													row with the heading and the bar of the frame's controls,
@@ -42,11 +43,11 @@
 
 @layer nino.tool {
 
-/*	The eight tabs. In the pane's head the strip stands beside the panel's name
+/*	The seven tabs. In the pane's head the strip stands beside the panel's name
 	and the head lays it out; this is the column it opens where there is no
 	head (see _head() in admin.js). A margin below rather than a
 	border: the card under it already draws one, and two lines a row apart
-	read as a box nobody meant to draw. Eight tabs side by side are wider than a
+	read as a box nobody meant to draw. Seven tabs side by side are wider than a
 	phone: the strip scrolls in its own box, and the page does not scroll with it */
 .nino-admin .design-tabs {
 	margin: 0 0 1rem;
@@ -54,16 +55,21 @@
 	scrollbar-width: none;
 }
 
-/*	The groups of the knobs of a tab: the same strip, in the card between the select
-	of the template and the rows of the group that is open. Four short words are one
-	line of the column - with a little less air round each than the eight tabs have,
-	so that the German ones are too at the width of a phone; where they are not, the
-	strip scrolls in its own box like the eight tabs do, and the card does not scroll
-	with it */
+/*	The groups of the knobs of a tab, and the screens of Theme and Fonts: the same
+	strip. The groups stand in the card between the select of the template and the
+	rows of the group that is open; the screens stand in the column itself, over the
+	cards of the one that is open, and have the room of a card's gap under them.
+	Four short words are one line of the column - with a little less air round each
+	than the seven tabs have, so that the German ones are too at the width of a
+	phone; where they are not, the strip scrolls in its own box like the seven tabs
+	do, and the card does not scroll with it */
 .nino-admin .design-groups {
 	margin: .55rem 0 .3rem;
 	overflow-x: auto;
 	scrollbar-width: none;
+}
+.nino-admin #design-body > .design-groups {
+	margin: 0 0 .75rem;
 }
 .nino-admin .design-groups .nino-admin-tab {
 	padding-left: 1rem;
@@ -503,18 +509,18 @@
 
 /* ---- the themes ----
 
-   The Theme tab: three cards. The first is a list in the manner of the loader's - a row is
-   the name, bold, with its chips behind it, over the description, small and muted, and at
-   its far end the buttons that can be pressed on it - and under the list the row that makes
-   a theme out of the screen and the field that takes one in. The chips are the workbench's
-   own (.nino-admin-badge), whose colour the state it is given decides. The second card is
-   the active theme: its head says its name and, while the screen differs from it, the chip;
-   under it its two fields and its buttons. The third is the field of the css, in the face
-   of the code editors of the workbench. The words of a row have 16rem to start from and the
-   buttons are as wide as they are: where the card has room for both they stand at the far
-   end, and where it has not - in the third of the screen that holds the column beside the
-   preview, for every row alike - they stand under the words. From 768px down a row is a
-   column in any case */
+   The Theme tab: three screens. The first has a card with a list in the manner of the
+   loader's - a row is the name, bold, with its chips behind it, over the description, small
+   and muted, and at its far end the buttons that can be pressed on it - and under the list
+   the field that takes a theme in. The chips are the workbench's own (.nino-admin-badge),
+   whose colour the state it is given decides. The second has two cards: the loaded theme,
+   whose head says its name and, while the screen differs from it, the chip, and under it
+   its two fields and its buttons - and the row that makes a theme out of the screen. The
+   third is the field of the css, in the face of the code editors of the workbench. The
+   words of a row have 16rem to start from and the buttons are as wide as they are: where
+   the card has room for both they stand at the far end, and where it has not - in the third
+   of the screen that holds the column beside the preview, for every row alike - they stand
+   under the words. From 768px down a row is a column in any case */
 .nino-admin .design-theme-list {
 	margin: 0 0 .35rem;
 	padding: 0;
@@ -577,14 +583,13 @@
 		flex: none;
 	}
 }
-/*	A name, a button: on one line, the button at the foot of the field it belongs to. The field
-	of the workbench has a margin below, which is a gap between two fields and not wanted here */
+/*	A name, a button: on one line, the button at the foot of the field it belongs to, in a card
+	of its own under the loaded theme. The field of the workbench has a margin below, which is
+	a gap between two fields and not wanted here */
 .nino-admin .design-theme-new {
 	display: flex;
 	align-items: flex-end;
 	gap: .5rem;
-	padding: .65rem 0;
-	border-top: 1px solid var(--editor-separator);
 }
 .nino-admin .design-theme-new > .nino-admin-field {
 	flex: 1 1 auto;

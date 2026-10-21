@@ -12,17 +12,23 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Vorversion wiederherstellen',
 	'[[/_admin/design/label/state]]'								=> 'Angewendete Datei',
 
-	// Die acht Tabs
+	// Die sieben Tabs
 	'[[/_admin/design/tab/theme]]'								=> 'Theme',
 	'[[/_admin/design/tab/global]]'								=> 'Global',
 	'[[/_admin/design/tab/fonts]]'								=> 'Schriften',
-	'[[/_admin/design/tab/typefaces]]'							=> 'Schriftarten',
 	'[[/_admin/design/tab/content]]'								=> 'Inhalte',
 	'[[/_admin/design/tab/buttons]]'								=> 'Buttons',
 	'[[/_admin/design/tab/components]]'							=> 'Komponenten',
 	'[[/_admin/design/tab/colours]]'								=> 'Farben',
 
-	// Der Theme-Tab: die Liste der Themes, das aktive mit Name und Beschreibung, das eigene CSS - und was ein Theme von sich sagt
+	// Die Bildschirme der Tabs Theme und Schriften: eine Leiste von Tabs unter der Leiste der Tabs, und darunter der Bildschirm, der offen ist
+	'[[/_admin/design/group/theme/load/label]]'					=> 'Laden',
+	'[[/_admin/design/group/theme/properties/label]]'			=> 'Eigenschaften',
+	'[[/_admin/design/group/theme/css/label]]'					=> 'Eigenes CSS',
+	'[[/_admin/design/group/fonts/roles/label]]'				=> 'Zuweisungen',
+	'[[/_admin/design/group/fonts/install/label]]'				=> 'Installieren',
+
+	// Der Theme-Tab in drei Bildschirmen: die Liste der Themes mit dem Import, das geladene mit Name und Beschreibung und die Zeile, die ein weiteres macht, das eigene CSS - und was ein Theme von sich sagt
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'mitgeliefert',
 	'[[/_admin/design/theme/active]]'				=> 'aktiv',
@@ -97,7 +103,7 @@ return [
 	'[[/_admin/design/motion/speed/medium]]'						=> 'Mittel',
 	'[[/_admin/design/motion/speed/slow]]'						=> 'Langsam',
 
-	// Schriften: die fünf Rollen von Nino.css als Tabelle
+	// Schriften, der Bildschirm Zuweisungen: die fünf Rollen von Nino.css als Tabelle
 	'[[/_admin/design/label/fonts]]'								=> 'Schriften',
 	'[[/_admin/design/font/role/title]]'							=> 'Titel',
 	'[[/_admin/design/font/role/subtitle]]'						=> 'Untertitel',
@@ -118,7 +124,7 @@ return [
 	'[[/_admin/design/weight/bold]]'								=> 'Fett',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Schriftarten: die Familien, die das Projekt installiert hat, und die signierte Liste derer, die es installieren kann – der Loader. Installieren und Löschen melden sich in der Zeile der Aktionsleiste
+	// Schriften, der Bildschirm Installieren: die Familien, die das Projekt installiert hat, und die signierte Liste derer, die es installieren kann – der Loader. Installieren und Löschen melden sich in der Zeile der Aktionsleiste
 	'[[/_admin/design/typefaces/installed/title]]'				=> 'Installiert',
 	'[[/_admin/design/typefaces/installed/empty]]'				=> 'Noch keine Schriftart installiert. Lade unten die verfügbaren Schriftarten und installiere eine: Sie landet mit ihrer Lizenz in assets/fonts/ Deines Projekts.',
 	'[[/_admin/design/typefaces/installed/used]]'				=> 'genutzt von %s',

@@ -12,17 +12,23 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The eight tabs
+	// The seven tabs
 	'[[/_admin/design/tab/theme]]'								=> 'Theme',
 	'[[/_admin/design/tab/global]]'								=> 'Global',
 	'[[/_admin/design/tab/fonts]]'								=> 'Fonts',
-	'[[/_admin/design/tab/typefaces]]'							=> 'Typefaces',
 	'[[/_admin/design/tab/content]]'								=> 'Content',
 	'[[/_admin/design/tab/buttons]]'								=> 'Buttons',
 	'[[/_admin/design/tab/components]]'							=> 'Components',
 	'[[/_admin/design/tab/colours]]'								=> 'Colours',
 
-	// The Theme tab: the list of themes, the active one with its name and description, the css of its own - and what a theme says of itself
+	// The screens of the Theme and Fonts tabs: a strip of tabs under the strip of the tabs, and under it the screen that is open
+	'[[/_admin/design/group/theme/load/label]]'					=> 'Load',
+	'[[/_admin/design/group/theme/properties/label]]'			=> 'Properties',
+	'[[/_admin/design/group/theme/css/label]]'					=> 'Custom CSS',
+	'[[/_admin/design/group/fonts/roles/label]]'				=> 'Assignments',
+	'[[/_admin/design/group/fonts/install/label]]'				=> 'Install',
+
+	// The Theme tab, in three screens: the list of themes with the import, the loaded one with its name and description and the row that makes another, the css of its own - and what a theme says of itself
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'shipped',
 	'[[/_admin/design/theme/active]]'				=> 'active',
@@ -42,7 +48,7 @@ return [
 	'[[/_admin/design/theme/current/shipped]]'		=> 'Shipped - duplicate it to change it.',
 	'[[/_admin/design/theme/field/name]]'			=> 'Name',
 	'[[/_admin/design/theme/field/description]]'	=> 'Description',
-	'[[/_admin/design/theme/css/title]]'			=> 'Custom css',
+	'[[/_admin/design/theme/css/title]]'			=> 'Custom CSS',
 	'[[/_admin/design/theme/css/hint]]'				=> 'Last section of the css file. Overrides the css of the templates. The text fill for publicly reachable files: [[/nino/public]].',
 	'[[/_admin/design/theme/copy]]'					=> '%s copy',
 	'[[/_admin/design/theme/confirm/delete]]'		=> 'Delete the theme "%s"?',
@@ -97,7 +103,7 @@ return [
 	'[[/_admin/design/motion/speed/medium]]'						=> 'Medium',
 	'[[/_admin/design/motion/speed/slow]]'						=> 'Slow',
 
-	// Fonts: the five roles of Nino.css, as a table
+	// Fonts, the Assignments screen: the five roles of Nino.css, as a table
 	'[[/_admin/design/label/fonts]]'								=> 'Fonts',
 	'[[/_admin/design/font/role/title]]'							=> 'Title',
 	'[[/_admin/design/font/role/subtitle]]'						=> 'Subtitle',
@@ -118,7 +124,7 @@ return [
 	'[[/_admin/design/weight/bold]]'								=> 'Bold',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Typefaces: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
+	// Fonts, the Install screen: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
 	'[[/_admin/design/typefaces/installed/title]]'				=> 'Installed',
 	'[[/_admin/design/typefaces/installed/empty]]'				=> 'No typeface is installed yet. Load the available typefaces below and install one: it lands in assets/fonts/ of your project, with its licence.',
 	'[[/_admin/design/typefaces/installed/used]]'				=> 'used by %s',

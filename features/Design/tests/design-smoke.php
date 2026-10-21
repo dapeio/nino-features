@@ -695,6 +695,20 @@ $panelTabs = array_values( array_map(
 	array_filter( array_keys( (array) include __DIR__. '/../text/en_US.php' ), static fn( string $key ): bool => preg_match( '~^\[\[/_admin/design/tab/[a-z0-9-]+\]\]$~', $key ) === 1 )
 ) );
 
+/*	The tabs the script draws, and the tabs it cuts into screens with the keys of their screens in the order the strip under the tabs shows them,
+	read out of the script itself - which is where the panel has them: a test that typed them again would hold the script to nothing (the chips of
+	the loader are read the same way, further down)	*/
+$panelScript = (string) file_get_contents( __DIR__. '/../assets/admin.js' );
+preg_match( '/^\s*TABS\s*:\s*\[([^\]]*)\]/m', $panelScript, $scriptTabsFound );
+preg_match( '/^\s*SCREENS\s*:\s*\{(.*)\}\s*,\s*$/m', $panelScript, $scriptScreensFound );
+preg_match_all( '/([a-z]+)\s*:\s*\[([^\]]*)\]/', $scriptScreensFound[1] ?? '', $scriptScreenPairs, PREG_SET_ORDER );
+$scriptWords = static fn( string $list ): array => array_values( array_filter( array_map( static fn( string $word ): string => trim( $word, " '\t" ), explode( ',', $list ) ), static fn( string $word ): bool => $word !== '' ) );
+$scriptTabs = $scriptWords( $scriptTabsFound[1] ?? '' );
+$scriptScreens = [];
+
+foreach( $scriptScreenPairs as $pair )
+	$scriptScreens[$pair[1]] = $scriptWords( $pair[2] );
+
 /*	The manual is the feature's only documentation, and what is held of it is its shape and not
 	its words: that every tab of the panel and every part of the Theme tab has an entry, in both
 	languages, and that an entry is a line - what a sentence of it says is for whoever writes it.
@@ -705,9 +719,28 @@ $handled = static fn( string $word ): bool => $word !== '' && array_filter( $han
 $themeParts = array_map( static fn( string $key ): string => strtok( $panelWord( $key, 'en_US' ), ' ' ), [ 'theme/load', 'theme/create', 'theme/duplicate', 'theme/save', 'theme/delete', 'theme/export', 'theme/css/title' ] );
 $themeParts[] = 'import';
 
-check( 'the manual has an entry for each tab of the panel - the tabs its text files name, found in the handles of the manual by the word the panel draws them with',
-	count( $panelTabs ) >= 8 && array_filter( $panelTabs, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab, 'en_US' ) ) === false ) === []
+check( 'the panel has seven tabs - the ones the script draws are the ones its text files name - and the manual has an entry for each, found in the handles of the manual by the word the panel draws them with',
+	count( $panelTabs ) === 7 && array_diff( $scriptTabs, $panelTabs ) === [] && array_diff( $panelTabs, $scriptTabs ) === []
+	&& array_filter( $panelTabs, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab, 'en_US' ) ) === false ) === []
 	&& $handled( 'Design' ) === true );
+check( '...two of them are cut into screens - the Theme tab into load, properties and css, the Fonts tab into roles and install, which is the loader of the typefaces',
+	$scriptScreens === [ 'theme' => [ 'load', 'properties', 'css' ], 'fonts' => [ 'roles', 'install' ] ] && array_diff( array_keys( $scriptScreens ), $scriptTabs ) === [] );
+
+// A screen is named by a word of its own, the pattern of the groups of the Content: group/<tab>/<screen>/label - and the manual names it by that word, the screens of the Theme in the entry of the Theme tab and the others in the overview
+$screenGaps = [];
+
+foreach( $scriptScreens as $screenTab => $screenKeys )
+	foreach( $screenKeys as $screenKey )
+		foreach( [ 'en_US', 'de_DE' ] as $screenLocale ) {
+
+			$screenWord = $panelWord( 'group/'. $screenTab. '/'. $screenKey. '/label', $screenLocale );
+
+			if( $screenWord === '' || str_contains( $says( $screenTab === 'theme' ? 'Theme' : 'Design', $screenLocale ), $screenWord ) === false )
+				$screenGaps[] = $screenLocale. ' '. $screenTab. '/'. $screenKey;
+		}
+
+check( '...every screen has its word in both languages and is named by it in the manual'. ( $screenGaps === [] ? '' : ' - missing: '. implode( ', ', $screenGaps ) ),
+	$screenGaps === [] && $scriptScreens !== [] );
 check( '...and one for each part of the Theme tab - what its buttons do (load, create, duplicate, save, delete, export), the import and the css of a theme',
 	count( $themeParts ) === 8 && array_filter( $themeParts, static fn( string $part ): bool => $handled( $part ) === false ) === [] );
 check( '...every entry in both languages',
@@ -1854,7 +1887,7 @@ check( 'a repository switched off is not asked, and the refusal is about that',
 
 // --- The workbench's policy: the previews of the list ------------------------------------
 
-/*	The Typefaces tab sets each name of the list in the preview its family publishes, loaded by the browser from the
+/*	The Install screen of Fonts sets each name of the list in the preview its family publishes, loaded by the browser from the
 	repository - and the policy the workbench is sent has no font-src, so default-src 'self' refuses it. The feature
 	widens font-src by the origin of the list's address, in the output phase, for the workbench's own responses	*/
 $workbench = [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/_admin' ];
@@ -5446,7 +5479,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	@unlink( \Nino\Filesystem::path( $appData, Webfonts::CACHE ) );
 	unset( $appData['./nino/filesystem/cache'][Webfonts::CACHE] );
 
-	check( '...and with the list of the Typefaces tab cached, the entry says that the list has the family and under what name - the one of the list',
+	check( '...and with the list of the Install screen cached, the entry says that the list has the family and under what name - the one of the list',
 		$inkyListed['missing'] === [ [ 'slug' => 'inter', 'name' => $entryInter['family'], 'inList' => true ], [ 'slug' => 'nowhere-sans', 'name' => 'nowhere-sans', 'inList' => false ] ] && $entryInter['family'] !== 'inter' );
 
 	/*	The record of the list for a theme that names typefaces the project lacks: a family the screen takes over as '' on a
@@ -5823,7 +5856,7 @@ check( '...and every text the script names literally is one of them'. ( $unwritt
 	and not as a blank row on a screen - and a word that no longer belongs to anything
 	fails as well	*/
 $wanted = [];
-foreach( [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ] as $tab )
+foreach( $scriptTabs as $tab )
 	$wanted[] = 'tab/'. $tab;
 foreach( array_keys( Setup::PARTS ) as $part )
 	$wanted[] = 'part/'. $part;
@@ -5850,7 +5883,7 @@ array_push( $wanted, 'family/default', 'family/default-code', 'fontsize/unit' );
 foreach( Fonts::WEIGHTS as $weight )
 	$wanted[] = 'weight/'. $weight;
 
-/*	The Typefaces tab names a category chip after each category the list accepts and an All, a step of the pager and
+/*	The Install screen names a category chip after each category the list accepts and an All, a step of the pager and
 	a sentence for each thing a refusal of the list can be about (see Webfonts::REFUSALS); the sentences of an install,
 	an update and a removal are the server's (see Admin::apiWebfontsInstall())	*/
 foreach( array_merge( [ 'all' ], Webfonts::CATEGORIES ) as $category )
@@ -5878,7 +5911,7 @@ foreach( [ 'missing', 'ours', 'edited', 'foreign', 'same' ] as $state )
 	$wanted[] = 'confirm/state/'. $state;
 
 preg_match( '/FACE_CATEGORIES\s*:\s*\[([^\]]*)\]/', (string) file_get_contents( __DIR__. '/../assets/admin.js' ), $chips );
-check( 'the chips of the Typefaces tab are an All and the categories the list accepts, in the order the list names them',
+check( 'the chips of the Install screen are an All and the categories the list accepts, in the order the list names them',
 	array_map( static fn( string $chip ): string => trim( $chip, " '" ), explode( ',', $chips[1] ?? '' ) ) === array_merge( [ 'all' ], Webfonts::CATEGORIES ) );
 
 $choiceKnobs = [];
@@ -5899,6 +5932,11 @@ foreach( Setup::KNOBS as $tab => $kinds )
 foreach( Setup::GROUPS as $tab => $groups )
 	foreach( array_keys( $groups ) as $group )
 		$wanted[] = 'group/'. $tab. '/'. $group. '/label';
+
+// ...and the screens of a tab that is cut into screens are named the same way, by the panel's own list and not by the model's
+foreach( $scriptScreens as $tab => $screens )
+	foreach( $screens as $screen )
+		$wanted[] = 'group/'. $tab. '/'. $screen. '/label';
 
 foreach( Colours::choices() as $knob => $meta ) {
 	// A scale or a choice has a note under its name; the mode is a select under a heading, which has none
@@ -6277,8 +6315,8 @@ check( 'the list of the themes is rows, one to a theme: the words and the button
 check( '...from 768px down a row is a column and the buttons stand under the words - the rule is inside that media query and nowhere else',
 	$onNarrow !== '' && str_contains( $onNarrow, '.nino-admin .design-theme-row { flex-direction: column; align-items: stretch; }' ) === true
 	&& str_contains( str_replace( $narrowRules[0] ?? "\0", '', $panelCss ), 'flex-direction: column' ) === false );
-check( '...the row that makes a theme is the field of the name and its button on one line, the button at the foot of the field and the field taking the rest; the field that takes a file in has a rule above it as the row has',
-	$cssHas( '.nino-admin .design-theme-new', [ 'display: flex;', 'align-items: flex-end;', 'border-top: 1px solid var(--editor-separator);' ] ) === true
+check( '...the row that makes a theme, in a card of its own on Properties, is the field of the name and its button on one line, the button at the foot of the field and the field taking the rest; the field that takes a file in, under the list, has a rule above it as the rows have',
+	$cssHas( '.nino-admin .design-theme-new', [ 'display: flex;', 'align-items: flex-end;' ] ) === true
 	&& $cssHas( '.nino-admin .design-theme-new > .nino-admin-field', [ 'flex: 1 1 auto;', 'min-width: 0;', 'margin: 0;' ] ) === true
 	&& $cssHas( '.nino-admin .design-theme-import', [ 'margin: 0;', 'border-top: 1px solid var(--editor-separator);' ] ) === true );
 check( '...the css is a block in the monospace face of the workbench - its width, its resizing and its colours the workbench\'s own for a textarea - and its label is out of sight but there: not display none, which a screen reader skips',

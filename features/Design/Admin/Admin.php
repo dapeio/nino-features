@@ -12,21 +12,22 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: eight tabs, seven of them over one setup -
-	 *										Theme, the list of themes and the css of its own, where the
+	 *	Design\Admin			The "Design" panel: seven tabs over one setup - Theme, in
+	 *										three screens - the list of themes, the loaded theme with the
+	 *										row that makes another, and the css of its own - where the
 	 *										whole setup is kept under a name (see Themes); Global, with
 	 *										the two frames, the root size, the width and the animation
-	 *										of the page; Fonts, with the five font roles; Content,
-	 *										Buttons and Components, each with the choice of its template
-	 *										and one named knob for each thing the template lets go of;
-	 *										and Colours, with the two colours, the five knobs and the
-	 *										mode the palette is solved from - compiled together into
-	 *										assets/theme.css. The eighth, Typefaces, is the loader: the
-	 *										typefaces a project has installed and the signed list of
-	 *										those it can install (see Webfonts), which belongs to the
-	 *										setup only as far as the selects of Fonts list what is
-	 *										installed. Installing and removing happen when they are
-	 *										pressed - they are not a draft.
+	 *										of the page; Fonts, in two screens - the five font roles and
+	 *										the loader; Content, Buttons and Components, each with the
+	 *										choice of its template and one named knob for each thing the
+	 *										template lets go of; and Colours, with the two colours, the
+	 *										five knobs and the mode the palette is solved from - compiled
+	 *										together into assets/theme.css. The loader, the Install screen
+	 *										of Fonts, shows the typefaces a project has installed and the
+	 *										signed list of those it can install (see Webfonts), which
+	 *										belongs to the setup only as far as the selects of the roles
+	 *										list what is installed. Installing and removing happen when
+	 *										they are pressed - they are not a draft.
 	 *
 	 *										A theme is a draft too, until it is saved: design/theme/load
 	 *										answers what the screen takes over and writes nothing, and
@@ -1129,7 +1130,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What the tab of the typefaces is drawn from, the same after every action
+		 *	What the Install screen of Fonts is drawn from, the same after every action
 		 *	of it: the list as far as there is one, and the families the project has
 		 *	installed - with what each is set in its own face from, who uses it, and
 		 *	the directories that are none. The slugs of the families the feature brings
@@ -1300,7 +1301,7 @@ namespace Nino\Modules\Design {
 		 *	family (Webfonts::SLUG), so that the screen can offer to install it before it
 		 *	takes the theme over. The families that stay unoffered are told in $missing,
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
-		 *	has none) and whether the list of the Typefaces tab has it at all.
+		 *	has none) and whether the list of the Install screen has it at all.
 		 *
 		 *	And except for the colours: a file that names none - every theme the feature
 		 *	ships - chooses no brand colour, so the setup has none either, and what takes

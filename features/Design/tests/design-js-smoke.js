@@ -1,21 +1,25 @@
 /**
  *	Nino
  *	design-js-smoke.js		What the Design panel's screen is, over a dom
- *												stand-in: the strip of eight tabs in the head of the
- *												pane, and under it the controls of the tab that is open
- *												- the three cards of the Theme tab: the list of the
- *												themes, with its row for a new one and its field for
- *												an import, the active theme with its name, its
- *												description and the chip that says the screen differs
- *												from it, and the css of the theme, which every input
- *												mirrors into the preview - with a load (and the
+ *												stand-in: the strip of seven tabs in the head of the
+ *												pane, and under it the controls of the tab that is open,
+ *												for the two tabs that are cut into screens a strip of
+ *												them first - the screen that is open is remembered for
+ *												its tab and drawn afresh when it is opened
+ *												- the Theme tab: Load, the list of the themes with its
+ *												field for an import; Properties, the loaded theme with
+ *												its name, its description and the chip that says the
+ *												screen differs from it, and under it the row for a new
+ *												one; and Custom CSS, the css of the theme, which every
+ *												input mirrors into the preview - with a load (and the
  *												typefaces it offers to install), a create, a save, a
  *												duplicate, a delete, an export and an import made at
  *												once, and the sentence a refusal is told in; the two
  *												frames, the root size and the width of the
  *												page as two strips of five, and the animation; the five
- *												font roles, with a size that is typed; the two cards
- *												of the Typefaces tab - the families that are installed
+ *												font roles, with a size that is typed - the Assignments
+ *												screen of Fonts; and its Install screen, the two cards
+ *												of the loader - the families that are installed
  *												and the list of those on offer, searched, told apart
  *												by category in one row and paged - the rows in a box
  *												as tall as the window has room for, the pager after
@@ -151,7 +155,7 @@ function element( tag ) {
 		querySelector		: function( selector ) {
 			if( selector.indexOf( ':scope > .' ) === 0 )
 				return this.children.filter( function( child ) { return hasClass( child, selector.slice( 10 ) ) } )[0] || null;
-			// A row of the Typefaces tab is asked for the element its name is in
+			// A row of the loader is asked for the element its name is in
 			if( selector.charAt(0) === '.' )
 				return byClass( this, selector.slice(1) )[0] || null;
 			return byTag( this, selector )[0] || null;
@@ -295,7 +299,13 @@ function threw( fn ) {
 	}
 }
 
-const TABS = [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ];
+const TABS = [ 'theme', 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ];
+
+/** The tabs that are drawn in screens, and the screens of each in the order the strip under the tab strip shows them: the keys, not the words on them */
+const SCREENS = { theme : [ 'load', 'properties', 'css' ], fonts : [ 'roles', 'install' ] };
+
+/** Everything a person can open, in the order of the tabs: 'tab' for a tab with no screens, 'tab/screen' for each screen of one that has them */
+const OPENABLE = [].concat.apply( [], TABS.map( function( tab ) { return ( SCREENS[tab] || [ '' ] ).map( function( screen ) { return screen === '' ? tab : tab+ '/'+ screen } ) } ) );
 
 /** The kind of every knob, by tab, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1 */
 const KINDS = {
@@ -436,7 +446,7 @@ function listing( over ) {
 			depth				: { kind : 'scale', 'default' : 3, steps : 5 },
 			mode				: { kind : 'choice', 'default' : 'auto', steps : [ 'auto', 'light', 'dark' ] },
 		},
-		// The repository of typefaces has an address and a key, so that the Available half of the Typefaces tab is offered
+		// The repository of typefaces has an address and a key, so that the Available half of the Install screen is offered
 		webfonts: { url : true, key : true },
 		brand		: { light : { safe : true, ratio : 5.4, target : 4.5 } },
 		accent	: '#8ad0f5',
@@ -631,7 +641,7 @@ function panel( over, shell ) {
 	const urls = { made : [], revoked : [] };
 	const readers = [];
 
-	/*	The fonts of the document the panel is in, and what the Typefaces tab sets names in them with: a FontFace is kept
+	/*	The fonts of the document the panel is in, and what the Install screen sets names in them with: a FontFace is kept
 		as it was made and as often as it was asked to load, the FontFaceSet as it was added to and taken from, and an
 		observer as it was told what to watch. A test says how a load ends (fails) and lets the observer see a row	*/
 	const typeset = { made : [], set : [], fails : false, observers : [] };
@@ -1040,6 +1050,17 @@ function panel( over, shell ) {
 				return button.textContent === label;
 			} ).forEach( function( button ) { button.fire('click') } );
 		},
+		/** Open a tab by its key and, where it has screens, one of them by its key: the keys of TABS and of SCREENS, not the words on the buttons */
+		show : function( tab, screen ) {
+			byTag( byClass( pane, 'design-tabs' )[0], 'button' ).filter( function( button ) {
+				return button.dataset.tab === tab;
+			} ).forEach( function( button ) { button.fire('click') } );
+
+			if( screen !== undefined )
+				byTag( byClass( form, 'design-groups' )[0] || element('div'), 'button' ).filter( function( button ) {
+					return button.dataset.group === screen;
+				} ).forEach( function( button ) { button.fire('click') } );
+		},
 		/** Open another group of the knobs of the open tab, by the word on its tab - the strip is in the column, under the select of the template */
 		group : function( label ) {
 			byTag( byClass( form, 'design-groups' )[0] || element('div'), 'button' ).filter( function( button ) {
@@ -1084,25 +1105,39 @@ function say( key ) {
 	return out;
 }
 
+/** The cards of the screens of the Theme tab, by the screen they are drawn on */
+const THEME_CARDS = { load : [ 'design-themes' ], properties : [ 'design-theme-current', 'design-theme-make' ], css : [ 'design-theme-css-card' ] };
+
 /** Which tab the controls are those of, read off what is drawn rather than off the panel's own idea of it */
 function tabOf( screen ) {
 
-	if( screen.byId('design-themes') !== null )
+	if( Object.keys( THEME_CARDS ).some( function( key ) { return THEME_CARDS[key].some( function( id ) { return screen.byId( id ) !== null } ) } ) )
 		return 'theme';
 
 	if( screen.byId('design-colours') !== null )
 		return 'colours';
 
-	if( screen.byId('design-faces-installed') !== null )
-		return 'typefaces';
-
-	if( byTag( screen.form, 'table' ).length === 1 )
+	if( screen.byId('design-faces-installed') !== null || byTag( screen.form, 'table' ).length === 1 )
 		return 'fonts';
 
 	if( screen.byId('design-set-header') !== null )
 		return 'global';
 
 	return [ 'content', 'buttons', 'components' ].filter( function( tab ) { return screen.byId('design-set-'+ tab) !== null } )[0] || null;
+}
+
+/** Which screen of its tab the controls are those of, read off what is drawn too: the screens whose cards are there, as one string - so that one is the screen, and two are a screen that did not leave the other; the tab's own key where it has no screens */
+function screenOf( screen ) {
+
+	const tab = tabOf( screen );
+
+	if( tab === 'theme' )
+		return Object.keys( THEME_CARDS ).filter( function( key ) { return THEME_CARDS[key].some( function( id ) { return screen.byId( id ) !== null } ) } ).join();
+
+	if( tab === 'fonts' )
+		return screen.byId('design-faces-installed') !== null ? 'install' : 'roles';
+
+	return tab;
 }
 
 /** A key pressed on a tab, the way the kernel's tabKeys() hears it */
@@ -1117,7 +1152,7 @@ check( 'the stand-in reads the panel\'s words out of text/en_US.php', Object.key
 // --- The pane's head -------------------------------------------------------------
 //
 // The panel's name is the head's - the row the shell renders over every pane -
-// so the screen under it draws no heading of its own. The strip of the eight tabs
+// so the screen under it draws no heading of its own. The strip of the seven tabs
 // stands in that row beside the name, where the Features panel's does: it
 // switches the column of controls and nothing else, and the frame beside the
 // column stays on every tab
@@ -1128,12 +1163,14 @@ const headed = panel();
 const strip = headed.headStrips()[0] || null;
 const tabs = strip === null ? [] : byTag( strip, 'button' );
 
-check( 'the strip has eight tabs - Theme, Global, Fonts, Typefaces, Content, Buttons, Components and Colours, in that order: the theme is the whole of the setup and stands first, the loader after the Fonts it lists its families in',
-	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Theme,Global,Fonts,Typefaces,Content,Buttons,Components,Colours'
-	&& TEXT['/_admin/design/tab/theme'] === 'Theme' );
+check( 'the strip has seven tabs - Theme, Global, Fonts, Content, Buttons, Components and Colours, in that order, each named by the text of its own key: the theme is the whole of the setup and stands first, and the loader of the typefaces is no tab of its own but a screen of Fonts',
+	headed.design.TABS.join() === TABS.join() && tabs.length === 7 && tabs.map( function( tab ) { return tab.dataset.tab } ).join() === TABS.join()
+	&& tabs.map( function( tab ) { return tab.textContent } ).join() === TABS.map( function( key ) { return TEXT['/_admin/design/tab/'+ key] } ).join() );
+check( '...and the texts name those tabs and no other: the key of a tab that is gone is one nobody reads',
+	Object.keys( TEXT ).filter( function( key ) { return key.indexOf('/_admin/design/tab/') === 0 } ).map( function( key ) { return key.slice( '/_admin/design/tab/'.length ) } ).sort().join() === TABS.slice().sort().join() );
 check( '...a tablist of tabs, the open one selected and the others not - the frame goes to the top of the page for the Theme tab as it does for Global',
 	strip !== null && strip.getAttribute('role') === 'tablist' && tabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' } )
-	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false,false,false,false,false'
+	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === TABS.map( function( key ) { return String( key === 'global' ) } ).join()
 	&& headed.design._tab === 'global' && headed.design.ANCHORS.theme === 'global' && headed.design.ANCHORS.theme === headed.design.ANCHORS.global );
 
 /*	Left to itself the panel opens on the Theme tab: the first thing a person does is pick a theme. Every other screen of this test is drawn on Global, which
@@ -1141,9 +1178,9 @@ check( '...a tablist of tabs, the open one selected and the others not - the fra
 const defaulted = panel( {}, { tab : 'default' } );
 const defaultedStrip = defaulted.headStrips()[0];
 
-check( 'the panel opens on the Theme tab - the one selected in the strip and the one drawn in the column: its cards, and none of the frames the Global tab has',
-	defaulted.design._tab === 'theme' && byTag( defaultedStrip, 'button' ).map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false,false,false'
-	&& defaulted.byId('design-themes') !== null && defaulted.byId('design-theme-current') !== null && defaulted.byId('design-set-header') === null );
+check( 'the panel opens on the Theme tab - the one selected in the strip and the one drawn in the column: its first screen, the list of the themes, and none of the frames the Global tab has',
+	defaulted.design._tab === 'theme' && byTag( defaultedStrip, 'button' ).map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === TABS.map( function( key ) { return String( key === 'theme' ) } ).join()
+	&& tabOf( defaulted ) === 'theme' && screenOf( defaulted ) === SCREENS.theme[0] && defaulted.byId('design-set-header') === null );
 check( 'the screen draws no heading of its own - the head names the panel',
 	byTag( headed.form, 'h1' ).concat( byTag( headed.form, 'h2' ), byTag( headed.form, 'h3' ) ).length === 0 );
 check( 'the strip is handed to the pane\'s head and stands right after the name, not over the column',
@@ -1162,7 +1199,7 @@ headed.tab('Colours');
 
 check( 'another tab redraws the column under the head and leaves the strip standing - the same element, its tab lit',
 	shownStrip !== null && headed.headStrips()[0] === shownStrip && headed.headStrips().length === 1
-	&& byTag( shownStrip, 'button' )[7].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[1].getAttribute('aria-selected') === 'false'
+	&& byTag( shownStrip, 'button' )[TABS.length - 1].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[1].getAttribute('aria-selected') === 'false'
 	&& tabOf( headed ) === 'colours' && headed.byId('design-frame') !== null );
 
 /*	The keyboard is the reason the strip is not drawn again on a switch. An
@@ -1173,34 +1210,34 @@ const keyed = panel();
 const keyTabs = byTag( keyed.headStrips()[0] || element('div'), 'button' );
 
 focused = null;
-if( keyTabs.length === 8 )
+if( keyTabs.length === TABS.length )
 	press( keyTabs[1], 'ArrowRight' );
 
 check( 'an arrow key on the strip opens the next tab and the focus stays on the tab it moved to, in the head',
-	keyTabs.length === 8 && focused === keyTabs[2] && keyTabs[2].parent === keyed.headStrips()[0]
+	keyTabs.length === TABS.length && focused === keyTabs[2] && keyTabs[2].parent === keyed.headStrips()[0]
 	&& keyTabs[2].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'fonts' );
 
-if( keyTabs.length === 8 )
+if( keyTabs.length === TABS.length )
 	press( keyTabs[2], 'ArrowLeft' );
 
 check( '...so the next one has a tab to start from, and walks back',
-	keyTabs.length === 8 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
+	keyTabs.length === TABS.length && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
 	&& keyTabs[1].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'global' );
 
-if( keyTabs.length === 8 )
+if( keyTabs.length === TABS.length )
 	press( keyTabs[1], 'ArrowLeft' );
 
-check( '...to the first tab, which is the Theme, with the list of the themes in the column', keyTabs.length === 8 && focused === keyTabs[0] && tabOf( keyed ) === 'theme' );
+check( '...to the first tab, which is the Theme, with the list of the themes in the column', keyTabs.length === TABS.length && focused === keyTabs[0] && tabOf( keyed ) === 'theme' );
 
-if( keyTabs.length === 8 )
+if( keyTabs.length === TABS.length )
 	press( keyTabs[0], 'ArrowLeft' );
 
-check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 8 && focused === keyTabs[7] && tabOf( keyed ) === 'colours' );
+check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === TABS.length && focused === keyTabs[TABS.length - 1] && tabOf( keyed ) === 'colours' );
 
-if( keyTabs.length === 8 )
-	press( keyTabs[7], 'ArrowRight' );
+if( keyTabs.length === TABS.length )
+	press( keyTabs[TABS.length - 1], 'ArrowRight' );
 
-check( '...and from the last it wraps round to the first', keyTabs.length === 8 && focused === keyTabs[0] && tabOf( keyed ) === 'theme' );
+check( '...and from the last it wraps round to the first', keyTabs.length === TABS.length && focused === keyTabs[0] && tabOf( keyed ) === 'theme' );
 
 /*	The script drawn outside its pane: the strip has nowhere else to go, so it
 	opens the column the way it did - and the heading stays gone there as well	*/
@@ -1734,7 +1771,7 @@ console.log('');
 //
 // The Content has fourteen knobs, which a column does not show at once, and design/list gives
 // them in four groups (Setup::GROUPS). The tab draws a strip of tabs under the select of the
-// template - a strip of the same make as the eight tabs of the head, built by the same helper -
+// template - a strip of the same make as the seven tabs of the head, built by the same helper -
 // and under it the rows of the group that is open and of no other. A group is the screen's
 // and no part of the selection: another group changes the rows and the fit of the stage and
 // nothing else - no request, no timer, nothing unsaved, no jump of the frame - and the group is
@@ -1759,16 +1796,16 @@ check( 'the strip of the groups is a tablist of the same make as the main strip 
 	&& grpTabs.map( function( tab ) { return tab.textContent } ).join() === 'Hero,Section,Card,Variants'
 	&& grpOpen() === 'true,false,false,false' && grpStrip.getAttribute('aria-label') === TEXT['/_admin/design/tab/content']
 	&& grp.byId('design-knobs').children.length === 3 && grp.byId('design-knobs').children[1] === grpStrip && grp.byId('design-knobs').children[2] === grpBox );
-check( '...and it is not the head\'s: the head keeps its one strip of eight tabs with the Content selected, and the strip of the groups stands in the column',
-	grp.headStrips().length === 1 && byTag( grp.headStrips()[0], 'button' ).length === 8 && byTag( grp.headStrips()[0], 'button' )[4].getAttribute('aria-selected') === 'true'
+check( '...and it is not the head\'s: the head keeps its one strip of seven tabs with the Content selected, and the strip of the groups stands in the column',
+	grp.headStrips().length === 1 && byTag( grp.headStrips()[0], 'button' ).length === TABS.length && byTag( grp.headStrips()[0], 'button' )[TABS.indexOf('content')].getAttribute('aria-selected') === 'true'
 	&& byClass( grp.head, 'design-groups' ).length === 0 && hasClass( grpStrip, 'admin-panel-tabs' ) === false && descendants( grp.body() ).indexOf( grpStrip ) !== -1 );
 
 const grpOthers = panel();
-const grpWith = [ 'Global', 'Fonts', 'Buttons', 'Components', 'Colours' ].filter( function( name ) { grpOthers.tab( name ); return grpOthers.groups() !== null } );
+const grpWith = [ 'Global', 'Buttons', 'Components', 'Colours' ].filter( function( name ) { grpOthers.tab( name ); return grpOthers.groups() !== null } );
 grpOthers.tab('Buttons');
 const grpButtons = grpOthers.byId('design-knobs');
 
-check( 'only the Content has groups: Global, Fonts, Buttons, Components and Colours draw no strip of them, and the rows of Buttons stand in the card itself, under the select, as they did',
+check( 'only the Content has groups of knobs: Global, Buttons, Components and Colours draw no strip at all, and the rows of Buttons stand in the card itself, under the select, as they did - the screens of Theme and Fonts are another strip (see below)',
 	grpWith.length === 0 && grpOthers.byId('design-knob-rows') === null && byClass( grpButtons, 'design-knob-row' ).length === 4 && byClass( grpButtons, 'design-knob-row' ).every( function( row ) { return row.parent === grpButtons } )
 	&& byClass( grpOthers.pane, 'design-groups' ).length === 0 );
 
@@ -1885,6 +1922,124 @@ check( '...and from the last to the first', focused === grpKeys[0] && grpOpen() 
 console.log('');
 
 
+// --- The screens of a tab ------------------------------------------------------------
+//
+// Two tabs are more than one column of controls. The Theme tab is three screens - the list of the
+// themes with the file that takes one in, the loaded theme with the row that makes another, and the
+// css of its own - and the Fonts tab is two: the roles, and the loader of the typefaces. A strip of
+// them stands in the column under the strip of the tabs, the one the groups of the Content's knobs
+// have, named by the tab; the one screen that is open is drawn under it, drawn afresh each time it
+// is opened, and remembered for its tab while the panel lives
+
+console.log( 'The screens of a tab' );
+
+const scr = panel( {}, { tab : 'default' } );
+const scrStrip = scr.groups();
+const scrTabs = scrStrip === null ? [] : byTag( scrStrip, 'button' );
+const scrOpen = function( screen ) { return byTag( screen.groups(), 'button' ).map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() };
+const scrCards = function( screen ) { return screen.byId('design-screen').children.map( function( card ) { return card.id } ).join() };
+const scrLabels = function( tab ) { return SCREENS[tab].map( function( key ) { return TEXT['/_admin/design/group/'+ tab+ '/'+ key+ '/label'] } ).join() };
+
+check( 'the Theme tab draws a strip of its screens - a tablist of the workbench\'s make, the one the groups have: a button for each screen in the order load, properties, css, named by the text of the screen\'s own key, the first selected, the strip named for the tab',
+	scrStrip !== null && scrStrip.getAttribute('role') === 'tablist' && hasClass( scrStrip, 'nino-admin-tabs' ) && hasClass( scrStrip, 'nino-admin-tabs--bar' ) && hasClass( scrStrip, 'design-groups' )
+	&& scrTabs.length === SCREENS.theme.length && scrTabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' && hasClass( tab, 'nino-admin-tab' ) && tab.type === 'button' } )
+	&& scrTabs.map( function( tab ) { return tab.dataset.group } ).join() === SCREENS.theme.join() && scrTabs.map( function( tab ) { return tab.textContent } ).join() === scrLabels('theme')
+	&& scrOpen( scr ) === 'true,false,false' && scrStrip.getAttribute('aria-label') === TEXT['/_admin/design/tab/theme'] && scr.design._groupOf('theme') === 'load' );
+check( '...in the column and not in the head: the first thing in the box of the tab, with the box the screen is drawn into after it - the head keeps its one strip of the tabs, and the strip of the screens is no part of it',
+	scr.body().children.length === 2 && scr.body().children[0] === scrStrip && scr.body().children[1] === scr.byId('design-screen')
+	&& scr.headStrips().length === 1 && byClass( scr.head, 'design-groups' ).length === 0 && hasClass( scrStrip, 'admin-panel-tabs' ) === false );
+check( '...and the screen that is open is the only one drawn: Load is the card of the list of the themes, Properties the box of the loaded theme with the card that makes another under it, Custom CSS the card of the css - every one a card of the workbench - and the cards of the screen that was left are out of the document',
+	SCREENS.theme.every( function( key ) {
+		scr.show( 'theme', key );
+		return screenOf( scr ) === key && scrCards( scr ) === THEME_CARDS[key].join() && scrOpen( scr ) === SCREENS.theme.map( function( other ) { return String( other === key ) } ).join()
+			&& scr.byId('design-screen').children.every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-block' ) } );
+	} ) );
+
+scr.show( 'theme', 'load' );
+const scrList = scr.byId('design-themes');
+scr.show( 'theme', 'properties' );
+
+check( 'a screen is drawn afresh when it is opened: the card of the one that was left is out of the document, and the one that is opened again has a card made anew',
+	scr.byId('design-themes') === null && descendants( scr.pane ).indexOf( scrList ) === -1
+	&& ( scr.show( 'theme', 'load' ), scr.byId('design-themes') !== null && scr.byId('design-themes') !== scrList && scr.byId('design-theme-current') === null ) );
+
+// A screen is the screen's and no part of the selection
+const scrEdit = JSON.stringify( scr.design._edit );
+const scrRequests = scr.requests.length;
+const scrTimers = scr.timers.length;
+const scrFits = scr.fitted.length;
+const scrScrolls = scr.stage.scrolls.length;
+const scrAsked = scr.stage.asked.length;
+
+scrTabs[2].fire('click');
+
+check( 'pressing the tab of another screen shows that screen and no other, the tab selected; the strip is not drawn again - it is the element the press was made on, its tabs the same, the one the focus is on in the document',
+	screenOf( scr ) === 'css' && scrOpen( scr ) === 'false,false,true' && scr.design._groupOf('theme') === 'css' && scr.groups() === scrStrip
+	&& byTag( scr.groups(), 'button' ).every( function( tab, at ) { return tab === scrTabs[at] } ) && descendants( scr.pane ).indexOf( scrTabs[2] ) !== -1 );
+check( '...a screen belongs to what is on show and no part of the selection: the selection is as it was, nothing is marked as unsaved, no request is made and no timer set - the frame does not jump, and the stage is fitted, once',
+	JSON.stringify( scr.design._edit ) === scrEdit && scr.design._isDirty() === false && scr.byId('design-reset').hidden === true && scr.requests.length === scrRequests && scr.timers.length === scrTimers
+	&& scr.stage.scrolls.length === scrScrolls && scr.stage.asked.length === scrAsked && scr.fitted.length === scrFits + 1 );
+
+const scrSame = scr.byId('design-theme-css-card');
+scrTabs[2].fire('click');
+
+check( 'the screen that is open is not opened again: the same card stands and the stage is not fitted for it', scr.byId('design-theme-css-card') === scrSame && scr.fitted.length === scrFits + 1 );
+
+// The keyboard: the arrow keys of a tablist
+focused = null;
+press( scrTabs[2], 'ArrowRight' );
+
+check( 'an arrow key on the strip of the screens opens the next one and the focus stays on the tab it moved to - from the last it wraps round to the first - a tab of the strip that stands',
+	focused === scrTabs[0] && scrTabs[0].parent === scr.groups() && screenOf( scr ) === 'load' && scrOpen( scr ) === 'true,false,false' );
+
+press( scrTabs[0], 'ArrowLeft' );
+
+check( '...and from the first it walks back to the last', focused === scrTabs[2] && screenOf( scr ) === 'css' );
+
+// The screen is remembered for its tab, each tab keeping its own
+scr.show( 'theme', 'properties' );
+scr.show( 'fonts', 'install' );
+scr.show( 'global' );
+scr.show( 'theme' );
+
+check( 'the screen that is open is remembered for its tab while the panel is: another tab and back, and Properties is open again under a strip that has its tab selected - the Fonts tab has its own, Install, which the Theme tab\'s did not change',
+	screenOf( scr ) === 'properties' && scrOpen( scr ) === 'false,true,false' && scr.design._groupOf('theme') === 'properties' && scr.groups() !== scrStrip
+	&& ( scr.show( 'fonts' ), screenOf( scr ) === 'install' && scrOpen( scr ) === 'false,true' && scr.design._groupOf('fonts') === 'install' )
+	&& ( scr.show( 'theme' ), screenOf( scr ) === 'properties' ) );
+
+scr.design._group.theme = 'nowhere';
+scr.design.showCurrent();
+
+check( 'a screen the panel does not have is no screen: the tab opens the first, as a tab with none chosen does', scr.design._groupOf('theme') === 'load' && screenOf( scr ) === 'load' && scrOpen( scr ) === 'true,false,false' );
+
+// The Fonts tab
+const scrFonts = panel( {}, { tab : 'default' } );
+scrFonts.show( 'fonts' );
+const scrFontsStrip = scrFonts.groups();
+
+check( 'the Fonts tab draws a strip of two screens, assignments first - the roles, named by the texts of their keys, the strip named for the tab - and opens on the table of the five roles, with none of the loader\'s cards',
+	scrFontsStrip !== null && byTag( scrFontsStrip, 'button' ).map( function( tab ) { return tab.dataset.group } ).join() === SCREENS.fonts.join()
+	&& byTag( scrFontsStrip, 'button' ).map( function( tab ) { return tab.textContent } ).join() === scrLabels('fonts') && scrOpen( scrFonts ) === 'true,false'
+	&& scrFontsStrip.getAttribute('aria-label') === TEXT['/_admin/design/tab/fonts'] && scrFonts.body().children[0] === scrFontsStrip
+	&& screenOf( scrFonts ) === 'roles' && byTag( scrFonts.form, 'table' ).length === 1 && scrFonts.byId('design-faces-installed') === null && scrFonts.byId('design-faces-available') === null );
+
+scrFonts.show( 'fonts', 'install' );
+
+check( '...and Install is the loader: the two cards of the typefaces - those that are installed and those on offer - under the strip that stands, and the table is out of the document',
+	screenOf( scrFonts ) === 'install' && scrCards( scrFonts ) === 'design-faces-installed,design-faces-available' && scrFonts.groups() === scrFontsStrip && scrOpen( scrFonts ) === 'false,true'
+	&& byTag( scrFonts.form, 'table' ).length === 0 );
+check( '...the loader is no view of the setup: opening it changes nothing of the selection, asks for nothing but the list the server kept, and leaves the bar as it is - the way back is not shown',
+	scrFonts.design._isDirty() === false && scrFonts.byId('design-reset').hidden === true && scrFonts.requests.map( function( request ) { return request.endpoint } ).join() === 'webfonts/list' );
+
+// A tab with no screens, and the tabs with groups of knobs, draw the strip they have and no other
+check( 'Global and Colours have no strip, Buttons and Components none either, and the Content has its groups in its card - a strip of the column is the screens\' alone',
+	[ 'global', 'colours', 'buttons', 'components' ].every( function( key ) { scr.show( key ); return scr.groups() === null } )
+	&& ( scr.show( 'content' ), scr.groups() !== null && scr.groups().parent === scr.byId('design-knobs') && scr.body().children[0] === scr.byId('design-knobs') )
+	&& Object.keys( SCREENS ).join() === 'theme,fonts' && Object.keys( SCREENS ).every( function( key ) { return TABS.indexOf( key ) !== -1 } ) );
+
+console.log('');
+
+
 // --- Fonts: the five roles in a table ------------------------------------------------
 //
 // Five rows and four columns - the family, the weight, the case and the size.
@@ -1925,7 +2080,7 @@ check( 'a size is typed and not picked: a number field in each row, stepping by 
 		return input !== null && input.tagName === 'INPUT' && input.type === 'number' && input.getAttribute('step') === '.1' && input.getAttribute('inputmode') === 'decimal'
 			&& input.dataset.role === row.dataset.role && input.dataset.key === 'size';
 	} )
-	&& fonts.design.TABS.length === 8
+	&& fonts.design.TABS.length === TABS.length
 	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('min')+ '-'+ size( role ).getAttribute('max') } ).join() === '1-4,0.8-2.5,0.8-1.5,0.6-1.5,0.6-1.3'
 	&& byTag( table, 'select' ).filter( function( select ) { return select.dataset.key === 'size' } ).length === 0 );
 check( '...and its value is the size that is in force: the one the listing says is in force while none is chosen - 1.6, 1.125, 1, 1 and 0.875 - as the value and not as a placeholder, so that the spinner has a number to count from; the model keeps the empty size it had',
@@ -2181,14 +2336,14 @@ const faceActions = function( screen ) {
 };
 
 const shelves = panel();
-shelves.tab('Typefaces');
+shelves.show( 'fonts', 'install' );
 
-check( 'the Typefaces tab stands after Fonts and is two cards in the box under the strip: the families that are installed and those that are on offer, each a block with its title and nothing under it',
-	shelves.design.TABS.indexOf('typefaces') === shelves.design.TABS.indexOf('fonts') + 1 && tabOf( shelves ) === 'typefaces' && shelves.design._tab === 'typefaces'
-	&& shelves.body().children.length === 2 && shelves.body().children[0] === installedCard( shelves ) && shelves.body().children[1] === availableCard( shelves )
+check( 'the loader is the Install screen of the Fonts tab, no tab of its own: two cards in the box under the strip of the screens - the families that are installed and those that are on offer, each a block with its title and nothing under it',
+	shelves.design.TABS.indexOf('typefaces') === -1 && tabOf( shelves ) === 'fonts' && shelves.design._tab === 'fonts' && screenOf( shelves ) === 'install'
+	&& shelves.byId('design-screen').children.length === 2 && shelves.byId('design-screen').children[0] === installedCard( shelves ) && shelves.byId('design-screen').children[1] === availableCard( shelves )
 	&& [ installedCard( shelves ), availableCard( shelves ) ].every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-block' ) && byTag( card, 'small' ).length === 0 } )
-	&& byTag( installedCard( shelves ), 'strong' )[0].textContent === 'Installed' && byTag( availableCard( shelves ), 'strong' )[0].textContent === 'Available' );
-check( 'opening the tab asks for the list the server kept and not for the repository: one request, design/webfonts/list with refresh off - nothing leaves the server on its own',
+	&& byTag( installedCard( shelves ), 'strong' )[0].textContent === TEXT['/_admin/design/typefaces/installed/title'] && byTag( availableCard( shelves ), 'strong' )[0].textContent === TEXT['/_admin/design/typefaces/available/title'] );
+check( 'opening the screen asks for the list the server kept and not for the repository: one request, design/webfonts/list with refresh off - nothing leaves the server on its own',
 	shelves.requests.length === 1 && shelves.requests[0].endpoint === 'webfonts/list' && JSON.stringify( shelves.requests[0].payload ) === '{"refresh":false}' );
 check( '...and until it is answered the first card is its title and the second its title and the button that loads the list - no search field, no row',
 	installedCard( shelves ).children.length === 1 && availableCard( shelves ).children.length === 2
@@ -2205,11 +2360,11 @@ check( 'nothing installed and nothing loaded: the first card says how a typeface
 // ---- Without an address, and without a key
 
 const switchedOff = panel( { webfonts : { url : false, key : false } } );
-switchedOff.tab('Typefaces');
+switchedOff.show( 'fonts', 'install' );
 switchedOff.answer( 200, shelfOf( { url : '', key : false, installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) } } ) );
 
 const noKey = panel( { webfonts : { url : true, key : false } } );
-noKey.tab('Typefaces');
+noKey.show( 'fonts', 'install' );
 noKey.answer( 200, shelfOf( { key : false, installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) } } ) );
 
 check( 'with no address the second card is one sentence - the repository is switched off - and has no button, and the families that are installed stay where they are',
@@ -2222,18 +2377,18 @@ check( 'with an address and no key it is one sentence as well - the list cannot 
 // ---- The settings of the repository are another panel's: the tab follows what the server says now, not what design/list said when the panel was opened
 
 const changed = panel();
-changed.tab('Typefaces');
+changed.show( 'fonts', 'install' );
 changed.answer( 200, shelfOf( { url : '', key : true } ) );
 
 const changedBack = panel( { webfonts : { url : false, key : false } } );
-changedBack.tab('Typefaces');
+changedBack.show( 'fonts', 'install' );
 changedBack.answer( 200, shelfOf( { url : 'https://webfonts.test/webfonts.json', key : true } ) );
 
 const keyLost = panel();
-keyLost.tab('Typefaces');
+keyLost.show( 'fonts', 'install' );
 keyLost.answer( 200, shelfOf( { key : false } ) );
 
-check( 'the repository was switched off after the panel was opened: the second card says so as soon as the tab has its answer, and the button is gone',
+check( 'the repository was switched off after the panel was opened: the second card says so as soon as the screen has its answer, and the button is gone',
 	JSON.stringify( hints( availableCard( changed ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/off'] ] ) && changed.byId('design-faces-load') === null );
 check( '...and the key that was lost says that, with no button either',
 	JSON.stringify( hints( availableCard( keyLost ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/nokey'] ] ) && keyLost.byId('design-faces-load') === null );
@@ -2279,7 +2434,7 @@ Object.keys( REFUSED ).forEach( function( kind ) {
 	const sentence = TEXT['/_admin/design/typefaces/available/'+ kind];
 	const reason = REFUSED[kind][0];
 
-	refused.tab('Typefaces');
+	refused.show( 'fonts', 'install' );
 	refused.answer( 200, shelfOf() );
 	refused.byId('design-faces-load').fire('click');
 	refused.answer( 200, shelfOf( Object.assign( { refusal : reason, refusalKind : kind }, REFUSED[kind][1] ) ) );
@@ -2455,7 +2610,7 @@ field.fire('input');
 // ---- What a row says of a family that is installed
 
 const offering = panel();
-offering.tab('Typefaces');
+offering.show( 'fonts', 'install' );
 offering.answer( 200, shelfOf( {
 	families 	: [
 		offerOf( 'inter', 'Inter', 'sans', { version : '4.0' } ),
@@ -2488,7 +2643,7 @@ check( '...a family the feature brings itself is installed in a way, and has no 
 // ---- The families that are installed
 
 const owning = panel();
-owning.tab('Typefaces');
+owning.show( 'fonts', 'install' );
 owning.answer( 200, shelfOf( {
 	installed : {
 		inter 	: installedOf( 'inter', 'Inter', '4.0' ),
@@ -2545,7 +2700,7 @@ check( 'a directory that is no family is listed greyed, under its own name, with
 			&& hasClass( faceRowOf( installedCard( owning ), 'lora' ), 'design-face-row--off' ) === false;
 	} )() );
 
-check( 'the tab asked for the list that was kept when it was opened, and for nothing more: no row, no search and no chip asks the server anything',
+check( 'the screen asked for the list that was kept when it was opened, and for nothing more: no row, no search and no chip asks the server anything',
 	askedOf( owning ) === '' && askedOf( offering ) === '' && askedOf( shelves ) === '' );
 
 faceButton( faceRowOf( installedCard( owning ), 'odd-one' ) ).fire('click');
@@ -2556,7 +2711,7 @@ check( 'the Remove of a directory that is no family asks for that name, as it is
 // ---- An install, a refusal, a removal
 
 const doing = panel();
-doing.tab('Typefaces');
+doing.show( 'fonts', 'install' );
 
 const listed = [ offerOf( 'inter', 'Inter', 'sans', { version : '4.0' } ), offerOf( 'lora', 'Lora', 'serif', { version : '2.0' } ), offerOf( 'fresh', 'Fresh', 'display' ) ];
 const listedAnswer = function( over ) { return shelfOf( Object.assign( { families : listed, fetched : LOADED_AT }, over || {} ) ) };
@@ -2570,7 +2725,7 @@ const enabledBefore = faceActions( doing ).filter( function( button ) { return b
 
 faceButton( faceRowOf( availableCard( doing ), 'fresh' ) ).fire('click');
 
-check( 'Install asks the server for that family and for nothing else: design/webfonts/install with the slug - and the buttons of the tab are off while it is on its way, the line of the bar empty',
+check( 'Install asks the server for that family and for nothing else: design/webfonts/install with the slug - and the buttons of the screen are off while it is on its way, the line of the bar empty',
 	doing.requests.length === 1 && doing.requests[0].endpoint === 'webfonts/install' && JSON.stringify( doing.requests[0].payload ) === '{"slug":"fresh"}'
 	&& enabledBefore === 4 && faceActions( doing ).length === 5 && faceActions( doing ).every( function( button ) { return button.disabled === true } ) && doing.line().textContent === '' );
 
@@ -2599,16 +2754,16 @@ check( 'an install that went through is the new state of both cards, from the on
 	faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' && byClass( faceRowOf( availableCard( doing ), 'fresh' ), 'design-face-state' ).length === 1
 	&& byTag( faceRowOf( availableCard( doing ), 'fresh' ), 'button' ).length === 0
 	&& doing.line().textContent === 'Fresh 1.0 is installed.' && doing.line().className === '' );
-check( '...then design/list is asked again, for the selects of the Fonts tab: and nothing else is sent, no save and no preview - the draft is the one it was',
+check( '...then design/list is asked again, for the selects of the Assignments screen: and nothing else is sent, no save and no preview - the draft is the one it was',
 	askedOf( doing ) === 'list' && JSON.stringify( doing.requests[0].payload ) === '{}' && JSON.stringify( doing.design._edit ) === draftBefore && doing.design._isDirty() === false );
 
 doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora', fresh : 'Fresh' } ) );
-doing.tab('Fonts');
+doing.show( 'fonts', 'roles' );
 
-check( '...and the family is offered in the select of the Fonts tab, under the name it has',
+check( '...and the family is offered in the select of the Assignments screen, which is drawn afresh when it is opened, under the name it has',
 	offered( doing.byId('design-font-title-family') ).some( function( option ) { return option[0] === 'fresh' && option[1] === 'Fresh' } ) );
 
-doing.tab('Typefaces');
+doing.show( 'fonts', 'install' );
 doing.answer( 200, listedAnswer( { installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
 
 faceButton( faceRowOf( availableCard( doing ), 'lora' ) ).fire('click');
@@ -2653,10 +2808,10 @@ check( 'a removal that went through takes the family out of the first card; the 
 
 // The families the feature brings are named by the answer of the tab, and by nothing else: design/list has them, and has the installed ones too
 const owned = panel();
-owned.tab('Typefaces');
+owned.show( 'fonts', 'install' );
 owned.answer( 200, shelfOf( { families : [ offerOf( 'open-sans', 'Open Sans', 'sans' ) ], fetched : LOADED_AT, builtin : [] } ) );
 
-check( 'a row of the list for a family the feature brings says "installed" because the answer of the tab names it, and not because design/list has it among its families: with the answer naming none, the row offers to install',
+check( 'a row of the list for a family the feature brings says "installed" because the answer of the screen names it, and not because design/list has it among its families: with the answer naming none, the row offers to install',
 	owned.design._data.families['open-sans'] !== undefined && byClass( faceRowOf( availableCard( owned ), 'open-sans' ), 'design-face-state' ).length === 0
 	&& faceWord( faceRowOf( availableCard( owned ), 'open-sans' ) ) === 'Install'
 	&& doing.design._faces.builtin.join() === BROUGHT.join() );
@@ -2671,14 +2826,14 @@ const rowBefore = faceRowOf( availableCard( doing ), 'fresh' );
 doing.design._relist();
 doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora' } ) );
 
-check( '...and when it is read again the open tab is drawn again, from what it knows, and the row of the list offers to install it still: the selects of the Fonts tab have lost the family and the tab has not been told twice',
+check( '...and when it is read again the open screen is drawn again, from what it knows, and the row of the list offers to install it still: the selects of the Assignments screen have lost the family and the screen has not been told twice',
 	faceRowOf( availableCard( doing ), 'fresh' ) !== rowBefore && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install'
 	&& doing.design._data.families.fresh === undefined && faceSlugs( installedCard( doing ) ) === 'inter,lora' && doing.line().textContent === 'Fresh is removed.' && askedOf( doing ) === '' );
 
 // ---- Only the last answer is the state, and an action that is on its way answers for the tab
 
 const racing = panel();
-racing.tab('Typefaces');
+racing.show( 'fonts', 'install' );
 racing.byId('design-faces-load').fire('click');
 
 check( 'the list that was kept and the list loaded were asked for in turn',
@@ -2691,37 +2846,45 @@ check( 'an answer that comes after a later one is not the state: the older reque
 	racing.design._faces.families.length === 3 && faceRows( availableCard( racing ) ).length === 3 );
 
 const busy = panel();
-busy.tab('Typefaces');
+busy.show( 'fonts', 'install' );
 busy.answer( 200, listedAnswer( { installed : plain, uses : { inter : [ 'text' ], lora : [] } } ) );
 faceButton( faceRowOf( availableCard( busy ), 'fresh' ) ).fire('click');
-busy.tab('Fonts');
-busy.tab('Typefaces');
+busy.show( 'fonts', 'roles' );
+busy.show( 'fonts', 'install' );
 
-check( 'a tab that is opened while an action is on its way does not ask for the list: the answer of the action is the state, and the buttons are off until it comes',
+check( 'a screen that is opened while an action is on its way does not ask for the list: the answer of the action is the state, and the buttons are off until it comes',
 	askedOf( busy ) === 'webfonts/install' && faceActions( busy ).length === 5 && faceActions( busy ).every( function( button ) { return button.disabled === true } ) );
 
 busy.answer( 200, listedAnswer( { msg : 'Fresh 1.0 is installed.', installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
 
-check( '...and it draws the tab it finds',
+check( '...and it draws the screen it finds',
 	faceSlugs( installedCard( busy ) ) === 'inter,lora,fresh' && busy.line().textContent === 'Fresh 1.0 is installed.' && askedOf( busy ) === 'list' );
 
 const leaving = panel();
-leaving.tab('Typefaces');
+leaving.show( 'fonts', 'install' );
 leaving.tab('Global');
 
-check( 'the answer of a request that outlived the tab is kept and draws nothing, and does not fail',
+check( 'the answer of a request that outlived the screen is kept and draws nothing, and does not fail - the tab was left',
 	threw( function() { leaving.answer( 200, shelfOf( { installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) }, uses : { inter : [] } } ) ) } ) === false
 	&& leaving.design._faces !== null && leaving.byId('design-faces-installed') === null );
 
-leaving.tab('Typefaces');
+leaving.show( 'fonts', 'install' );
 
-check( '...the next time the tab is opened it is drawn from what is known at once, and the server is asked again',
+check( '...the next time the screen is opened it is drawn from what is known at once, and the server is asked again',
 	faceSlugs( installedCard( leaving ) ) === 'inter' && askedOf( leaving ) === 'webfonts/list' );
+
+const leavingBy = panel();
+leavingBy.show( 'fonts', 'install' );
+leavingBy.show( 'fonts', 'roles' );
+
+check( 'the loader is left by the strip of the screens as it is by a tab: the answer of a request that outlived the screen is kept and draws nothing, and does not fail - the table of the roles stands',
+	threw( function() { leavingBy.answer( 200, shelfOf( { installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) }, uses : { inter : [] } } ) ) } ) === false
+	&& leavingBy.design._faces !== null && leavingBy.byId('design-faces-installed') === null && screenOf( leavingBy ) === 'roles' );
 
 // ---- The names are set in their own faces
 
 const painted = panel();
-painted.tab('Typefaces');
+painted.show( 'fonts', 'install' );
 
 const paintedAnswer = shelfOf( {
 	installed 	: { inter : installedOf( 'inter', 'Inter', '4.0' ), quote : installedOf( 'quote', 'Quote', '1.0', { face : '/public/assets/fonts/quote/a"b\\c.woff2' } ) },
@@ -2775,19 +2938,25 @@ check( 'a file that cannot be loaded leaves nothing undone: the load is given a 
 
 painted.tab('Global');
 
-check( 'leaving the tab lets go of what it held: the faces are out of the fonts of the document, the observer has stopped watching and is let go - a face is a file the browser keeps',
+check( 'leaving the screen for another tab lets go of what it held: the faces are out of the fonts of the document, the observer has stopped watching and is let go - a face is a file the browser keeps',
 	painted.typeset.set.length === 0 && observer.watched.length === 0 && observer.ended >= 1 && painted.design._facesObserver === null && Object.keys( painted.design._facesLoaded ).length === 0 );
 
-painted.tab('Typefaces');
+painted.show( 'fonts', 'install' );
 
-check( 'coming back to the tab draws it from what is known and sets the installed names again, with faces made again - and a new observer watches the rows for the visit',
+check( 'coming back to the screen draws it from what is known and sets the installed names again, with faces made again - and a new observer watches the rows for the visit',
 	painted.typeset.made.length === 6 && painted.typeset.made[4].family === 'design-installed-inter' && painted.typeset.made[5].family === 'design-installed-quote'
 	&& painted.typeset.set.length === 2 && painted.typeset.observers.length === 2 && painted.typeset.observers[1].watched.length === 24 );
 
 painted.answer( 200, paintedAnswer );
 
-check( 'the answer to the second visit draws the same rows again and makes no face twice; every load the tab asked of a face was given its catch',
+check( 'the answer to the second visit draws the same rows again and makes no face twice; every load the screen asked of a face was given its catch',
 	painted.typeset.made.length === 6 && painted.typeset.set.length === 2 && painted.typeset.made.every( function( face ) { return face.caught === face.loads } ) );
+
+painted.show( 'fonts', 'roles' );
+
+check( 'leaving the loader by the strip of the screens lets go of what it held as leaving for another tab does: the faces are out of the fonts of the document, the observer has stopped watching and is let go - the table of the roles stands in its place',
+	painted.typeset.set.length === 0 && painted.typeset.observers[1].watched.length === 0 && painted.typeset.observers[1].ended >= 1 && painted.design._facesObserver === null
+	&& Object.keys( painted.design._facesLoaded ).length === 0 && screenOf( painted ) === 'roles' );
 
 console.log('');
 
@@ -2795,7 +2964,7 @@ console.log('');
 // ---- The screen drawn again over the open tab: Reset puts the stored selection back and draws everything, the tab included
 
 const redrawn = panel();
-redrawn.tab('Typefaces');
+redrawn.show( 'fonts', 'install' );
 redrawn.answer( 200, shelfOf( { installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) }, uses : { inter : [] }, families : thirty, fetched : LOADED_AT } ) );
 redrawn.design._edit.fonts.title.family = 'inter';
 
@@ -2803,8 +2972,8 @@ const redrawnNote = faceNotes( faceRowOf( installedCard( redrawn ), 'inter' ) ).
 
 redrawn.design._revert();
 
-check( 'Reset over the open Typefaces tab draws the screen again, the tab with it: the two cards stand from what is known, the list that was kept is asked for again, the selection is the stored one - and no face is made twice, one observer watches the rows',
-	threw( function() { redrawn.design._revert() } ) === false && redrawn.design._tab === 'typefaces' && redrawn.design._isDirty() === false && redrawnNote === 1
+check( 'Reset over the open Install screen draws the screen again, the loader with it: the two cards stand from what is known, the list that was kept is asked for again, the selection is the stored one - and no face is made twice, one observer watches the rows',
+	threw( function() { redrawn.design._revert() } ) === false && redrawn.design._tab === 'fonts' && screenOf( redrawn ) === 'install' && redrawn.design._isDirty() === false && redrawnNote === 1
 	&& faceSlugs( installedCard( redrawn ) ) === 'inter' && faceRows( availableCard( redrawn ) ).length === 24 && askedOf( redrawn ) === 'webfonts/list,webfonts/list'
 	&& redrawn.typeset.made.filter( function( face ) { return face.family === 'design-installed-inter' } ).length === 1
 	&& redrawn.typeset.observers.length === 1 && redrawn.typeset.observers[0].watched.length === 24 );
@@ -2900,14 +3069,19 @@ const heads = panel();
 const headings = {};
 
 TABS.forEach( function( name ) {
-	heads.tab( TEXT['/_admin/design/tab/'+ name] );
-	headings[name] = byClass( heads.form, 'design-section-label' ).map( function( label ) {
-		return byTag( label, 'strong' )[0].textContent+ ':'+ label.children.length+ ':'+ byTag( label, 'small' ).length;
-	} ).join();
+	( SCREENS[name] || [ undefined ] ).forEach( function( screen ) {
+		heads.show( name, screen );
+		headings[screen === undefined ? name : name+ '/'+ screen] = byClass( heads.form, 'design-section-label' ).map( function( label ) {
+			return byTag( label, 'strong' )[0].textContent+ ':'+ label.children.length+ ':'+ byTag( label, 'small' ).length;
+		} ).join();
+	} );
 } );
 
-check( 'a block of rows has its title and nothing under it, on every tab: the three cards of the theme, the animation of Global, the table of the fonts, the two cards of the typefaces, the tuning and the mode of the palette carry a heading of one title each - no small under it',
-	JSON.stringify( headings ) === JSON.stringify( { theme : 'Themes:1:0,Theme:1:0,Custom css:1:0', global : 'Animation:1:0', fonts : 'Fonts:1:0', typefaces : 'Installed:1:0,Available:1:0', content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
+check( 'a block of rows has its title and nothing under it, on every screen of every tab: the cards of the theme, the animation of Global, the table of the fonts, the two cards of the loader, the tuning and the mode of the palette carry a heading of one title each - no small under it',
+	JSON.stringify( headings ) === JSON.stringify( {
+		'theme/load' : TEXT['/_admin/design/theme/list/title']+ ':1:0', 'theme/properties' : TEXT['/_admin/design/theme/current/title']+ ':1:0', 'theme/css' : TEXT['/_admin/design/theme/css/title']+ ':1:0',
+		global : 'Animation:1:0', 'fonts/roles' : 'Fonts:1:0', 'fonts/install' : TEXT['/_admin/design/typefaces/installed/title']+ ':1:0,'+ TEXT['/_admin/design/typefaces/available/title']+ ':1:0',
+		content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
 
 const titled = heads.design._sectionLabel( 'A title' );
 const iconed = heads.design._sectionLabel( 'Another', heads.design._icon('colours/mode') );
@@ -2965,7 +3139,7 @@ const LUCIDE = {
 /** Which icon each button of the viewport switch takes */
 const VIEWPORT_ICON = { phone : 'smartphone', tablet : 'tablet', desktop : 'monitor' };
 
-/** Which icon each row takes: the two strips of Global, the rows of the Typefaces tab, the knobs of the three tabs, and the rows of the Colours tab */
+/** Which icon each row takes: the two strips of Global, the rows of the Install screen, the knobs of the three tabs, and the rows of the Colours tab */
 const ICON_OF = {
 	'global/size' : 'a-large-small', 'global/width' : 'move-horizontal', 'global/whitespace' : 'move-vertical',
 	'typefaces/family' : 'a-large-small',
@@ -3623,7 +3797,7 @@ console.log('');
 
 // --- The room of the list of typefaces -----------------------------------------------------
 //
-// The box the rows of a page of the Typefaces tab stand in is fitted to the window as the stage is: as tall as
+// The box the rows of a page of the Install screen stand in is fitted to the window as the stage is: as tall as
 // the window has left under it - its height less the top of the box with the page scrolled to the top, less the action
 // bar, the pager that stands after the box and the gap the stack of the preview keeps from the bar - so that the pager
 // ends that gap above the bar. Five rows at the least; where the room is less than that the box is made for the window
@@ -3634,7 +3808,7 @@ console.log('');
 console.log( 'The room of the list of typefaces' );
 
 const lf = panel();
-lf.tab('Typefaces');
+lf.show( 'fonts', 'install' );
 lf.answer( 200, shelfOf( { families : thirty, fetched : LOADED_AT } ) );
 
 lf.byId('design-frame').parent.parent.computed = { rowGap : '11.2px' };
@@ -3795,7 +3969,7 @@ check( 'the rows that come back are fitted as they are drawn, with the pager aft
 const lfOld = lfBox();
 
 lf.tab('Global');
-lf.tab('Typefaces');
+lf.show( 'fonts', 'install' );
 
 check( 'leaving the tab and coming back draws the card again, and the box that stands in the new column is fitted once the column is in the document, with no answer to wait for: 800 - 350 - 68 - 40 - 11.2',
 	lfBox() !== null && lfBox() !== lfOld && faceRows( lfBox() ).length === 24 && near( parseFloat( lfBox().style.height ), 800 - 350 - 68 - 40 - 11.2 ) );
@@ -3813,8 +3987,9 @@ console.log( 'The anchors' );
 
 const anchors = panel();
 
-check( 'each tab has the id of an element on the specimen: global, global, type, type, content, buttons, components and colours - the Theme is all of the page and goes to its top as Global does, Fonts and Typefaces are the typography block, Colours the grounds',
-	JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { theme : 'global', global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
+check( 'each tab has the id of an element on the specimen, and no other has one: global, global, type, content, buttons, components and colours - the Theme is all of the page and goes to its top as Global does, Fonts is the typography block in both its screens - the loader is one of them -, Colours the grounds',
+	Object.keys( anchors.design.ANCHORS ).join() === TABS.join()
+	&& JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { theme : 'global', global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
 
 const last = function() { return anchors.stage.scrolls[anchors.stage.scrolls.length - 1] };
 
@@ -4259,8 +4434,8 @@ const specimenIds = {};
 const jumpedTo = Object.keys( jp.design.ANCHORS ).map( function( tab ) { return jp.design.ANCHORS[tab] } )
 	.concat( Object.keys( jp.design.KNOB_ANCHORS ).reduce( function( ids, tab ) { return ids.concat( Object.keys( jp.design.KNOB_ANCHORS[tab] ).map( function( knob ) { return jp.design.KNOB_ANCHORS[tab][knob] } ) ) }, [] ) );
 
-check( 'every id the script jumps to is on the specimen exactly once: the eight of the tabs - the Theme goes where Global does, to the top of the page -, the hero, the plain section and the cards - sixteen places, of which the ids of the five new knobs are three',
-	jumpedTo.length === 16 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
+check( 'every id the script jumps to is on the specimen exactly once: the seven of the tabs - the Theme goes where Global does, to the top of the page -, the hero, the plain section and the cards - fifteen places, of which the ids of the five new knobs are three',
+	jumpedTo.length === 15 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
 check( '...and the footer, which no tab has, is looked at in an element of its own: the id footer, once, an empty block at the end of the specimen - after the last section, where the footer of the frame starts',
 	specimenIds.footer === 1 && /<\/section>\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') && Object.keys( jp.design.ANCHORS ).every( function( tab ) { return jp.design.ANCHORS[tab] !== 'footer' } ) );
 check( '...and the Cards section is the element that has the id: the second section of the page, after the hero and before the grounds',
@@ -4654,11 +4829,11 @@ check( '...while a discard draws the stored selection again, so a leave that doe
 
 // --- The Theme tab ---------------------------------------------------------------------------
 //
-// The whole setup under a name. The tab is three cards: the list of the themes, with the row
-// that makes one out of the screen and the field that takes a file in; the active theme, with
-// its name and its description, the chip that says the screen differs from it and the buttons
-// that keep the screen in it and take it out as a file; and the css of the theme, which every
-// input mirrors into the preview. What a button does is read off the requests it posts and the
+// The whole setup under a name. The tab is three screens: Load, the list of the themes with the
+// field that takes a file in; Properties, the loaded theme - its name and its description, the chip
+// that says the screen differs from it and the buttons that keep the screen in it and take it out
+// as a file - and under it the row that makes a theme out of the screen; and Custom CSS, the css of
+// the theme, which every input mirrors into the preview. What a button does is read off the requests it posts and the
 // answers it is given: the working copy a load makes of a theme, the typefaces the theme names
 // that the project has not installed - asked for before anything is drawn -, the browser's
 // download and file reader the export and the import go through, and the sentence a refusal is
@@ -4711,9 +4886,11 @@ function textsOf( root, className ) {
 	return byClass( root, className ).map( function( el ) { return el.textContent } ).join();
 }
 
-/** Every button of the first two cards of the tab, and the field of the file: what is switched off while a request of the tab is on its way */
+/** Every button of the cards of the screen that is open, and the field of the file where that is the list's: what is switched off while a request of the tab is on its way */
 function themeControls( screen ) {
-	return byTag( screen.byId('design-themes'), 'button' ).concat( byTag( screen.byId('design-theme-current'), 'button' ), [ screen.byId('design-theme-import') ] );
+	return Object.keys( THEME_CARDS ).reduce( function( controls, key ) {
+		return THEME_CARDS[key].reduce( function( all, id ) { return screen.byId( id ) === null ? all : all.concat( byTag( screen.byId( id ), 'button' ) ) }, controls );
+	}, [] ).concat( [ screen.byId('design-theme-import') ].filter( function( field ) { return field !== null } ) );
 }
 
 /** The setup of a theme the way a file holds it: the stand-in's own, with the templates, the knob, the size and the fonts that are given in place */
@@ -4745,23 +4922,22 @@ function previewed( css, document ) {
 const ownCss = ".typed { margin: 0 }\n";
 const own = activeOf( 'mein-theme', 'My theme', 'The theme of this project', false, ownCss );
 
-/** A screen on the Theme tab, the project's own theme the active one - the one the website runs as well, unless a test says another */
-function themed( over ) {
+/** A screen on the Theme tab, the project's own theme the active one - the one the website runs as well, unless a test says another - on the screen of the tab that is asked for, the list of the themes where none is */
+function themed( over, screenKey ) {
 	const screen = panel( Object.assign( { theme : 'mein-theme', running : 'mein-theme', css : ownCss, active : own }, over || {} ) );
-	screen.tab('Theme');
+	screen.show( 'theme', screenKey );
 	return screen;
 }
 
-// The three cards ------------------------------------------------------------------------------
+// The list of the themes, on the Load screen ------------------------------------------------------
 
 const drawn = themed();
-const cards = drawn.body().children;
+const cards = drawn.byId('design-screen').children;
 const slugs = byClass( drawn.form, 'design-theme-row' ).map( function( row ) { return row.dataset.slug } );
 
-check( 'the Theme tab is three cards in the column - the themes, the active theme and its css - each a card of the workbench with a title of its own, and no strip of groups',
-	cards.map( function( card ) { return card.id } ).join() === 'design-themes,design-theme-current,design-theme-css-card'
-	&& cards.every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-block' ) } )
-	&& cards.map( function( card ) { return byTag( card, 'strong' )[0].textContent } ).join() === 'Themes,Theme,Custom css' && drawn.groups() === null );
+check( 'the Load screen is one card of the workbench with a title of its own - the list of the themes, with the field that takes a file in - under the strip of the screens, which is the only strip: the loaded theme and the css are on the screens that follow',
+	cards.map( function( card ) { return card.id } ).join() === 'design-themes' && hasClass( cards[0], 'nino-admin-card' ) && hasClass( cards[0], 'design-block' )
+	&& byTag( cards[0], 'strong' )[0].textContent === TEXT['/_admin/design/theme/list/title'] && byClass( drawn.form, 'design-groups' ).length === 1 && drawn.groups().parent === drawn.body() );
 check( '...the list is a row for each theme in the order design/list gives them - the six the feature ships, then the one of the project - with its name, and under the name its description',
 	slugs.join() === 'nino,magazine,poster,statement,product,office,mein-theme' && drawn.byId('design-theme-list').tagName === 'UL'
 	&& slugs.every( function( slug, at ) {
@@ -4784,17 +4960,25 @@ check( '...each row has Load and Duplicate, and a theme of the project has Delet
 	} )
 	&& hasClass( drawn.byId('design-theme-delete-mein-theme'), 'nino-admin-btn-danger' ) && drawn.byId('design-theme-delete-nino') === null );
 
-const makerRow = byClass( drawn.form, 'design-theme-new' )[0];
-const newField = drawn.byId('design-theme-new');
 const importField = drawn.byId('design-theme-import');
 
-check( '...under the list the row that makes a theme of the screen: a text field for the name and the button Create, on one line',
-	makerRow !== undefined && makerRow.parent === drawn.byId('design-themes') && newField.tagName === 'INPUT' && newField.parent.parent === makerRow && hasClass( newField.parent, 'nino-admin-field' )
-	&& newField.parent.children[0].textContent === 'New theme from the current state' && newField.placeholder === 'Name' && newField.maxLength === 80
-	&& makerRow.children.indexOf( drawn.byId('design-theme-create') ) === 1 && drawn.byId('design-theme-create').textContent === 'Create' && hasClass( drawn.byId('design-theme-create'), 'nino-admin-btn-primary' ) );
-check( '...and the field that takes a file in: a labelled file input that asks for json',
+check( '...and under the list the field that takes a file in: a labelled file input that asks for json - and no row that makes a theme, which stands on Properties',
 	importField.tagName === 'INPUT' && importField.type === 'file' && importField.accept === '.json,application/json' && importField.parent.tagName === 'LABEL' && hasClass( importField.parent, 'nino-admin-field' )
-	&& importField.parent.children[0].textContent === 'Import a theme file' && importField.parent.parent === drawn.byId('design-themes') );
+	&& importField.parent.children[0].textContent === TEXT['/_admin/design/theme/import/label'] && importField.parent.parent === drawn.byId('design-themes')
+	&& drawn.byId('design-theme-new') === null && drawn.byId('design-theme-create') === null );
+
+drawn.show( 'theme', 'properties' );
+
+const makerRow = byClass( drawn.form, 'design-theme-new' )[0];
+const newField = drawn.byId('design-theme-new');
+
+check( 'the Properties screen is the box of the loaded theme and, under it, a card of its own: the row that makes a theme of the screen - a text field for the name and the button Create, on one line',
+	drawn.byId('design-screen').children.map( function( card ) { return card.id } ).join() === 'design-theme-current,design-theme-make'
+	&& drawn.byId('design-screen').children.every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-block' ) } )
+	&& makerRow !== undefined && makerRow.parent === drawn.byId('design-theme-make') && newField.tagName === 'INPUT' && newField.parent.parent === makerRow && hasClass( newField.parent, 'nino-admin-field' )
+	&& newField.parent.children[0].textContent === TEXT['/_admin/design/theme/new/label'] && newField.placeholder === TEXT['/_admin/design/theme/new/placeholder'] && newField.maxLength === 80
+	&& makerRow.children.indexOf( drawn.byId('design-theme-create') ) === 1 && drawn.byId('design-theme-create').textContent === TEXT['/_admin/design/theme/create'] && hasClass( drawn.byId('design-theme-create'), 'nino-admin-btn-primary' )
+	&& drawn.byId('design-themes') === null && drawn.byId('design-theme-import') === null && byTag( drawn.byId('design-theme-current'), 'strong' )[0].textContent.indexOf( TEXT['/_admin/design/theme/current/title'] ) === 0 );
 
 // The active theme ------------------------------------------------------------------------------
 
@@ -4808,28 +4992,31 @@ check( 'the active theme is a head with its name, under it its two fields - the 
 	&& byTag( drawn.byId('design-theme-name').parent, 'small' ).length === 0
 	&& drawn.byId('design-theme-save').textContent === 'Save theme' && hasClass( drawn.byId('design-theme-save'), 'nino-admin-btn-primary' ) && drawn.byId('design-theme-export').textContent === 'Export' );
 
-const shippedActive = themed( { theme : 'magazine', running : 'magazine', active : activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, '' ) } );
+const shippedActive = themed( { theme : 'magazine', running : 'magazine', active : activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, '' ) }, 'properties' );
 
 check( '...a shipped theme is shown as it is and cannot be saved into: its name and description are read-only with the sentence that says why under the name, there is no button to save it - it can still be taken out as a file',
 	shippedActive.byId('design-theme-name').disabled === true && shippedActive.byId('design-theme-description').disabled === true
 	&& textsOf( shippedActive.byId('design-theme-name').parent, 'nino-admin-hint' ) === 'Shipped - duplicate it to change it.' && shippedActive.byId('design-theme-save') === null
-	&& shippedActive.byId('design-theme-export') !== null && textsOf( shippedActive.byId('design-theme-list'), 'design-theme-active' ) === 'active' );
+	&& shippedActive.byId('design-theme-export') !== null && ( shippedActive.show( 'theme', 'load' ), textsOf( shippedActive.byId('design-theme-list'), 'design-theme-active' ) === 'active' ) );
 
 const unthemed = panel();
-unthemed.tab('Theme');
+unthemed.show( 'theme', 'properties' );
 
 check( '...with no theme the card says so and has nothing else - no name, no description, no button: the state of the screen belongs to none',
 	textsOf( unthemed.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && unthemed.byId('design-theme-name') === null && unthemed.byId('design-theme-description') === null
 	&& unthemed.byId('design-theme-save') === null && unthemed.byId('design-theme-export') === null && byTag( unthemed.byId('design-theme-current'), 'button' ).length === 0
-	&& unthemed.byId('design-theme-current-head') === null && byClass( unthemed.form, 'design-theme-active' ).length === 0 && byClass( unthemed.form, 'design-theme-row--active' ).length === 0
-	&& slugsOf( unthemed ) === 'nino,magazine,poster,statement,product,office,mein-theme' );
+	&& unthemed.byId('design-theme-current-head') === null
+	&& ( unthemed.show( 'theme', 'load' ), byClass( unthemed.form, 'design-theme-active' ).length === 0 && byClass( unthemed.form, 'design-theme-row--active' ).length === 0
+		&& slugsOf( unthemed ) === 'nino,magazine,poster,statement,product,office,mein-theme' ) );
 
-// The css ---------------------------------------------------------------------------------------
+// The css, on the Custom CSS screen ---------------------------------------------------------------
 
-const box = drawn.byId('design-theme-css');
+drawn.show( 'theme', 'css' );
+
+let box = drawn.byId('design-theme-css');
 
 check( 'the css of the theme is a textarea in a labelled field of its own - the label is the title of the card, kept for whoever hears the field and drawn out of sight - sized for code: fourteen rows, no spell check, no capital, no wrapping of a line',
-	box.tagName === 'TEXTAREA' && box.parent.tagName === 'LABEL' && hasClass( box.parent, 'nino-admin-field' ) && box.parent.children[0].textContent === 'Custom css' && hasClass( box.parent.children[0], 'design-theme-css-name' )
+	box.tagName === 'TEXTAREA' && box.parent.tagName === 'LABEL' && hasClass( box.parent, 'nino-admin-field' ) && box.parent.children[0].textContent === TEXT['/_admin/design/theme/css/title'] && hasClass( box.parent.children[0], 'design-theme-css-name' )
 	&& hasClass( box, 'design-theme-css' ) && box.rows === 14 && box.spellcheck === false && box.getAttribute('autocapitalize') === 'off' && box.getAttribute('wrap') === 'off'
 	&& box.value === ownCss && box.parent.parent === drawn.byId('design-theme-css-card') );
 check( '...with the hint under it: what the section does, what is refused, and the path of the project written as the shortcode it is, as it is',
@@ -4844,9 +5031,11 @@ box.fire('input');
 
 check( 'an input in the field sets the css of the working copy and asks for a preview - after the debounce every control has - and the screen is no longer the stored one: the way back is shown',
 	drawn.design._edit.css === ".typed { margin: 1px }\n" && drawn.waiting( 350 ).length === 1 && drawn.design._isDirty() === true && drawn.byId('design-reset').hidden === false );
-check( '...nor the theme it was taken from, which the chip in the head of the card says at once, in the colour of a thing to look at',
-	drawn.byId('design-theme-changed') !== null && drawn.byId('design-theme-changed').textContent === 'changed' && drawn.byId('design-theme-changed').dataset.state === 'warn'
-	&& hasClass( drawn.byId('design-theme-changed'), 'nino-admin-badge' ) && drawn.byId('design-theme-changed').parent === byTag( drawn.byId('design-theme-current-head'), 'strong' )[0] );
+check( '...nor the theme it was taken from, which the chip in the head of the box of the loaded theme says as soon as that screen is open - the field is on another screen, so nothing is drawn for it while it is typed in - in the colour of a thing to look at',
+	drawn.design._themeChanged() === true && drawn.byId('design-theme-changed') === null
+	&& ( drawn.show( 'theme', 'properties' ), drawn.byId('design-theme-changed') !== null ) && drawn.byId('design-theme-changed').textContent === TEXT['/_admin/design/theme/current/changed'] && drawn.byId('design-theme-changed').dataset.state === 'warn'
+	&& hasClass( drawn.byId('design-theme-changed'), 'nino-admin-badge' ) && drawn.byId('design-theme-changed').parent === byTag( drawn.byId('design-theme-current-head'), 'strong' )[0]
+	&& ( drawn.show( 'theme', 'css' ), box = drawn.byId('design-theme-css'), box.value === ".typed { margin: 1px }\n" ) );
 
 drawn.design._previewNow();
 
@@ -4872,8 +5061,9 @@ check( '...and one it takes is swapped into the page that stands in the frame, t
 box.value = ownCss;
 box.fire('input');
 
-check( '...and the css put back as the theme has it, the chip goes with the difference; the way back goes with it',
-	drawn.byId('design-theme-changed') === null && drawn.design._isDirty() === false && drawn.byId('design-reset').hidden === true );
+check( '...and the css put back as the theme has it, the chip goes with the difference - it is not in the box when that screen is opened again - and the way back goes with it',
+	drawn.design._themeChanged() === false && drawn.design._isDirty() === false && drawn.byId('design-reset').hidden === true
+	&& ( drawn.show( 'theme', 'properties' ), drawn.byId('design-theme-changed') === null ) );
 
 drawn.design._edit.css = 'a{}';
 check( '...a changed css is unsaved, and so is another theme with the same setup, and put back neither is',
@@ -4883,7 +5073,7 @@ check( '...a changed css is unsaved, and so is another theme with the same setup
 
 // What is typed stays while the panel lives ---------------------------------------------------------
 
-const typing = themed();
+const typing = themed( {}, 'properties' );
 const typedName = typing.byId('design-theme-name');
 typedName.value = 'Typed name';
 typedName.fire('input');
@@ -4893,8 +5083,10 @@ typing.byId('design-theme-new').value = 'A new one';
 typing.byId('design-theme-new').fire('input');
 typing.tab('Fonts');
 typing.tab('Theme');
+typing.show( 'theme', 'css' );
+typing.show( 'theme', 'properties' );
 
-check( 'the name and the description typed for the active theme, and the name typed for a new one, are kept when another tab is opened and this one comes back: they are no part of the draft',
+check( 'the name and the description typed for the active theme, and the name typed for a new one, are kept when another tab is opened and this one comes back, and when another screen is opened and this one comes back: they are no part of the draft',
 	typing.byId('design-theme-name').value === 'Typed name' && typing.byId('design-theme-description').value === 'Typed description' && typing.byId('design-theme-new').value === 'A new one'
 	&& typing.design._themeText.name === 'Typed name' && typing.design._themeNew === 'A new one' && typing.design._isDirty() === false );
 
@@ -4904,7 +5096,7 @@ console.log('');
 //
 // A theme becomes the working copy and a draft: nothing is stored, the way back is shown. A
 // typeface it names that the project has not installed is offered for install first, the ones the
-// list of the Typefaces tab has by name, in one question
+// list of the Install screen has by name, in one question
 
 console.log( 'Load' );
 
@@ -4912,19 +5104,23 @@ const withFonts = themeSetup( { title : 'inter', text : 'nowhere-sans' } );
 const loading = themed();
 loading.byId('design-theme-load-magazine').fire('click');
 
-check( 'Load posts design/theme/load with the slug and nothing else, and switches the buttons and the file field of the tab off until it is answered - a second action over the first would answer over a state the screen does not have',
+check( 'Load posts design/theme/load with the slug and nothing else, and switches the buttons and the file field of the screen off until it is answered - a second action over the first would answer over a state the screen does not have',
 	JSON.stringify( loading.requests.map( function( request ) { return [ request.endpoint, request.payload ] } ) ) === JSON.stringify( [ [ 'theme/load', { slug : 'magazine' } ] ] )
-	&& themeControls( loading ).length === 19 && themeControls( loading ).every( function( control ) { return control.disabled === true } ) && loading.design._themeBusy === true && loading.line().textContent === '' );
+	&& themeControls( loading ).length === 16 && themeControls( loading ).every( function( control ) { return control.disabled === true } ) && loading.design._themeBusy === true && loading.line().textContent === '' );
 
-loading.byId('design-theme-export').fire('click');
 loading.byId('design-theme-load-poster').fire('click');
+loading.show( 'theme', 'properties' );
+loading.byId('design-theme-export').fire('click');
 loading.byId('design-theme-create').fire('click');
 
-check( '...and a press on another button meanwhile posts nothing', loading.requests.length === 1 );
+check( '...and a press on another button meanwhile posts nothing - on the list, and on the Properties screen opened meanwhile, which is drawn with its buttons off', loading.requests.length === 1
+	&& themeControls( loading ).length === 3 && themeControls( loading ).every( function( control ) { return control.disabled === true } ) );
+
+loading.show( 'theme', 'load' );
 
 loading.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
 
-check( 'an answer that names typefaces the project has not installed asks once, naming those the list of the Typefaces tab has - one it has not is not offered - and installs the first; nothing is drawn yet',
+check( 'an answer that names typefaces the project has not installed asks once, naming those the list of the Install screen has - one it has not is not offered - and installs the first; nothing is drawn yet',
 	loading.confirms.length === 1 && loading.confirms[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter' )
 	&& loading.requests.length === 1 && loading.requests[0].endpoint === 'webfonts/install' && JSON.stringify( loading.requests[0].payload ) === JSON.stringify( { slug : 'inter' } )
 	&& loading.design._edit.theme === 'mein-theme' && loading.design._themeBusy === true );
@@ -4940,16 +5136,25 @@ check( 'the theme is then the working copy - its templates, its knobs, its size,
 	loading.design._edit.theme === 'magazine' && loading.design._edit.css === ".nino-section-title { border-bottom-color: red; }\n" && loading.design._edit.parts.header === 'second' && loading.design._edit.parts.content === 'third'
 	&& loading.design._edit.parts.buttons === 'first' && loading.design._edit.knobs.content['card-space'] === 1 && loading.design._edit.size === -1
 	&& loading.design._edit.fonts.title.family === 'inter' && loading.design._edit.fonts.text.family === '' && loading.design._edit.fonts.subtitle.family === 'open-sans' );
-check( '...and the active theme: its record is the theme as it was taken over, the name and description fields are its own, and the screen is the theme, so there is no chip',
+check( '...and the active theme: its record is the theme as it was taken over, and the list - the screen is Load still, none switched by itself - marks the row of the draft and no other',
 	loading.design._active.slug === 'magazine' && loading.design._active.shipped === true && loading.design._active.css === loading.design._edit.css
 	&& JSON.stringify( loading.design._active.setup ) === JSON.stringify( loading.design._snapshotOf( loading.design._edit ) )
-	&& loading.design._themeText.name === 'Magazine' && loading.byId('design-theme-name').value === 'Magazine' && loading.byId('design-theme-name').disabled === true
-	&& textsOf( loading.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Magazine' && loading.byId('design-theme-changed') === null
-	&& loading.byId('design-theme-css').value === loading.design._edit.css && hasClass( themeRow( loading, 'magazine' ), 'design-theme-row--active' ) && hasClass( themeRow( loading, 'mein-theme' ), 'design-theme-row--active' ) === false );
+	&& loading.design._themeText.name === 'Magazine' && loading.design._themeChanged() === false
+	&& screenOf( loading ) === 'load' && hasClass( themeRow( loading, 'magazine' ), 'design-theme-row--active' ) && hasClass( themeRow( loading, 'mein-theme' ), 'design-theme-row--active' ) === false );
 check( '...nothing is stored: the way back is shown and the shell would ask before it lost the draft; the buttons are on again, and the bar says what was installed, that the theme is loaded and which typeface the project lacks - in the colour of a note',
 	loading.design._isDirty() === true && loading.byId('design-reset').hidden === false && loading.design._themeBusy === false && themeControls( loading ).every( function( control ) { return control.disabled === false } )
 	&& loading.line().textContent === [ 'Inter 4.0 is installed.', say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'nowhere-sans' ) ].join(' ')
 	&& loading.line().className === 'nino-admin-hint' && loading.requests.length === 0 );
+
+loading.show( 'theme', 'properties' );
+
+check( '...no screen switched by itself - the list was where it was, and the box of the loaded theme, opened after it, is the theme as it was taken over: its name and description are its own, read-only for a shipped theme, and the screen is the theme, so there is no chip',
+	loading.byId('design-theme-name').value === 'Magazine' && loading.byId('design-theme-name').disabled === true
+	&& textsOf( loading.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Magazine' && loading.byId('design-theme-changed') === null );
+
+loading.show( 'theme', 'css' );
+
+check( '...and the field of the css on Custom CSS holds the css of the theme', loading.byId('design-theme-css').value === loading.design._edit.css );
 
 loading.tab('Global');
 const loadedHeader = loading.byId('design-set-header');
@@ -5029,7 +5234,7 @@ plainLoad.answer( 200, themeLoad( 'nino', snapshotOf( listing() ), [] ) );
 
 check( 'a theme that names nothing the project lacks is taken over without a question, the bar saying only that it is loaded - and quietly',
 	plainLoad.confirms.length === 0 && plainLoad.requests.length === 0 && plainLoad.design._edit.theme === 'nino' && plainLoad.line().textContent === say( '/_admin/design/theme/msg/loaded', 'Nino' ) && plainLoad.line().className === ''
-	&& plainLoad.design._isDirty() === true && plainLoad.byId('design-theme-changed') === null );
+	&& plainLoad.design._isDirty() === true && plainLoad.design._themeChanged() === false && ( plainLoad.show( 'theme', 'properties' ), plainLoad.byId('design-theme-changed') === null ) );
 
 /*	A brand colour is the project's. A theme that names no colours - every theme the feature ships - is taken over with the colours the screen has, and the
 	compare of the chip "changed" leaves the palette out where the theme has none: the colours of the screen are no change of a theme that says nothing of them	*/
@@ -5047,7 +5252,7 @@ check( 'a theme that names no colours is taken over with the colours the screen 
 	brandOf( keeping ) === '#b5562a' && keeping.design._edit.colours.mode === listing().colours.mode && keeping.design._edit.theme === 'magazine'
 	&& keeping.design._edit.parts.header === 'second' && keeping.design._edit.parts.content === 'third' && keeping.design._edit.size === -1 && keeping.design._edit.knobs.content['card-space'] === 1 );
 check( '...the record of the theme the chip compares with has no colours either, so the screen is the theme: no chip "changed" - a colour moved afterwards is no change of it, and a knob moved is',
-	Object.prototype.hasOwnProperty.call( keeping.design._active.setup, 'colours' ) === false && keeping.byId('design-theme-changed') === null && keeping.design._themeChanged() === false
+	Object.prototype.hasOwnProperty.call( keeping.design._active.setup, 'colours' ) === false && ( keeping.show( 'theme', 'properties' ), keeping.byId('design-theme-changed') === null ) && keeping.design._themeChanged() === false
 	&& ( keeping.design._edit.colours.primary = '#112233', keeping.design._themeChanged() ) === false
 	&& ( keeping.design._edit.size = 1, keeping.design._themeChanged() ) === true );
 
@@ -5144,7 +5349,7 @@ console.log('');
 console.log( 'Create, save, duplicate, delete' );
 
 const making = panel();
-making.tab('Theme');
+making.show( 'theme', 'properties' );
 making.byId('design-theme-new').value = 'Mein Name';
 making.byId('design-theme-new').fire('input');
 making.byId('design-theme-create').fire('click');
@@ -5160,19 +5365,23 @@ making.answer( 200, { slug : 'mein-name', themes : withTheme( 'mein-name', 'Mein
 
 check( 'the answer makes the draft name the theme - the way back is shown, for nothing is stored - and the card of the active theme shows its name, with its fields: the name it was given and no description; no chip, the screen is the theme',
 	making.design._edit.theme === 'mein-name' && making.design._active.slug === 'mein-name' && making.design._data.theme === '' && making.design._isDirty() === true && making.byId('design-reset').hidden === false
-	&& textsOf( making.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Mein Name' && making.byId('design-theme-name').value === 'Mein Name' && making.byId('design-theme-description').value === ''
+	&& screenOf( making ) === 'properties' && textsOf( making.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Mein Name' && making.byId('design-theme-name').value === 'Mein Name' && making.byId('design-theme-description').value === ''
 	&& making.byId('design-theme-changed') === null && making.byId('design-theme-save') !== null );
-check( '...the list is drawn again with the new theme, last, active; the field of the new name is empty again and the buttons are on',
-	slugsOf( making ) === 'nino,magazine,poster,statement,product,office,mein-theme,mein-name' && hasClass( themeRow( making, 'mein-name' ), 'design-theme-row--active' ) && byClass( making.form, 'design-theme-row--active' ).length === 1
-	&& making.byId('design-theme-new').value === '' && making.design._themeNew === '' && themeControls( making ).every( function( control ) { return control.disabled === false } )
+check( '...the field of the new name is empty again and the buttons are on, and the bar says it was created - the screen stays where it was: no screen switches by itself',
+	screenOf( making ) === 'properties' && making.byId('design-theme-new').value === '' && making.design._themeNew === '' && themeControls( making ).every( function( control ) { return control.disabled === false } )
 	&& making.line().textContent === say( '/_admin/design/theme/msg/created', 'Mein Name' ) && making.line().className === '' );
+
+making.show( 'theme', 'load' );
+
+check( '...and the list, when its screen is opened, has the new theme, last, active - the one row of the draft',
+	slugsOf( making ) === 'nino,magazine,poster,statement,product,office,mein-theme,mein-name' && hasClass( themeRow( making, 'mein-name' ), 'design-theme-row--active' ) && byClass( making.form, 'design-theme-row--active' ).length === 1 );
 
 making.tab('Content');
 making.moveIn( 'Hero', 'Title (Hero), text size', 1 );
-making.tab('Theme');
+making.show( 'theme', 'properties' );
 
-check( 'a knob moved afterwards shows the chip "changed" in the head of the card when the tab comes back: the screen is no longer the theme',
-	making.byId('design-theme-changed') !== null && making.byId('design-theme-changed').textContent === 'changed' );
+check( 'a knob moved afterwards shows the chip "changed" in the head of the box when its screen is opened: the screen is no longer the theme',
+	making.byId('design-theme-changed') !== null && making.byId('design-theme-changed').textContent === TEXT['/_admin/design/theme/current/changed'] );
 
 making.byId('design-theme-name').value = 'Neuer Name';
 making.byId('design-theme-name').fire('input');
@@ -5190,14 +5399,15 @@ making.answer( 200, {
 	active : activeOf( 'mein-name', 'Neuer Name', 'Neue Beschreibung', false, '', JSON.parse( JSON.stringify( making.design._snapshotOf( making.design._edit ) ) ) ),
 } );
 
-check( 'the answer is the theme as the server holds it: the chip goes, the list and the card say the new name and description, the bar says it was saved',
-	making.byId('design-theme-changed') === null && textsOf( making.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Neuer Name' && textsOf( themeRow( making, 'mein-name' ), 'design-theme-name' ) === 'Neuer Name'
-	&& textsOf( themeRow( making, 'mein-name' ), 'design-theme-description' ) === 'Neue Beschreibung' && making.design._themeText.name === 'Neuer Name' && making.design._themeText.description === 'Neue Beschreibung'
-	&& making.design._active.name === 'Neuer Name' && making.line().textContent === say( '/_admin/design/theme/msg/saved', 'Neuer Name' ) && making.design._data.theme === '' );
+check( 'the answer is the theme as the server holds it: the chip goes, the box and - when its screen is opened - the list say the new name and description, the bar says it was saved',
+	making.byId('design-theme-changed') === null && textsOf( making.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Neuer Name'
+	&& making.design._themeText.name === 'Neuer Name' && making.design._themeText.description === 'Neue Beschreibung'
+	&& making.design._active.name === 'Neuer Name' && making.line().textContent === say( '/_admin/design/theme/msg/saved', 'Neuer Name' ) && making.design._data.theme === ''
+	&& ( making.show( 'theme', 'load' ), textsOf( themeRow( making, 'mein-name' ), 'design-theme-name' ) === 'Neuer Name' && textsOf( themeRow( making, 'mein-name' ), 'design-theme-description' ) === 'Neue Beschreibung' ) );
 
 // Enter in the field of the new name
 const entering = panel();
-entering.tab('Theme');
+entering.show( 'theme', 'properties' );
 entering.byId('design-theme-new').value = 'By enter';
 entering.byId('design-theme-new').fire('input');
 press( entering.byId('design-theme-new'), 'Enter' );
@@ -5205,7 +5415,7 @@ press( entering.byId('design-theme-new'), 'Enter' );
 check( 'Enter in the field of the new name creates, the way the button does', entering.requests.length === 1 && entering.requests[0].endpoint === 'theme/create' && entering.requests[0].payload.name === 'By enter' );
 
 // Saving the theme that is stored changes what the way back goes back to
-const stored = themed();
+const stored = themed( {}, 'properties' );
 stored.byId('design-theme-name').value = 'Renamed';
 stored.byId('design-theme-name').fire('input');
 stored.byId('design-theme-save').fire('click');
@@ -5245,10 +5455,15 @@ check( '...a yes posts design/theme/delete with the slug', deleting.requests.len
 
 deleting.answer( 200, { themes : THEMES.filter( function( theme ) { return theme.shipped === true } ), theme : '' } );
 
-check( 'the answer takes the theme out of the list; it was the active one, so the screen has none now: the card says so, and the stored setup names none either, so the screen is still the stored selection',
+check( 'the answer takes the theme out of the list; it was the active one, so the screen has none now, and the stored setup names none either, so the screen is still the stored selection',
 	slugsOf( deleting ) === 'nino,magazine,poster,statement,product,office' && deleting.design._edit.theme === '' && deleting.design._active === null && deleting.design._data.theme === '' && deleting.design._data.active === null
-	&& textsOf( deleting.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && deleting.byId('design-theme-name') === null && byClass( deleting.form, 'design-theme-active' ).length === 0
+	&& byClass( deleting.form, 'design-theme-active' ).length === 0
 	&& deleting.design._themeText.name === '' && deleting.design._isDirty() === false && deleting.line().textContent === say( '/_admin/design/theme/msg/deleted', 'My theme' ) );
+
+deleting.show( 'theme', 'properties' );
+
+check( '...and the box of the loaded theme on Properties says so, with no name, no description and no button',
+	textsOf( deleting.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && deleting.byId('design-theme-name') === null && byTag( deleting.byId('design-theme-current'), 'button' ).length === 0 );
 
 // Deleting a theme that is not the active one leaves the screen alone
 const deletingOther = themed( { themes : withTheme( 'other', 'Other', '' ) } );
@@ -5257,7 +5472,7 @@ deletingOther.answer( 200, { themes : THEMES.map( function( theme ) { return Obj
 
 check( '...a theme that is not the active one is taken out of the list and the screen stays as it is, the stored setup still naming its theme',
 	slugsOf( deletingOther ) === 'nino,magazine,poster,statement,product,office,mein-theme' && deletingOther.design._edit.theme === 'mein-theme' && deletingOther.design._active.slug === 'mein-theme'
-	&& deletingOther.design._data.theme === 'mein-theme' && deletingOther.design._data.active.slug === 'mein-theme' && deletingOther.byId('design-theme-name').value === 'My theme' );
+	&& deletingOther.design._data.theme === 'mein-theme' && deletingOther.design._data.active.slug === 'mein-theme' && ( deletingOther.show( 'theme', 'properties' ), deletingOther.byId('design-theme-name').value === 'My theme' ) );
 
 // A delete that comes after the screen was reverted
 const lateDelete = themed();
@@ -5277,7 +5492,7 @@ console.log('');
 
 console.log( 'Export and import' );
 
-const exporting = themed();
+const exporting = themed( {}, 'properties' );
 exporting.byId('design-theme-export').fire('click');
 
 check( 'Export posts design/theme/export with the slug of the active theme', exporting.requests.length === 1 && exporting.requests[0].endpoint === 'theme/export'
@@ -5370,6 +5585,9 @@ const actions = {
 	},
 };
 
+/** The screen each action is made on: the list of the themes has Load, Duplicate, Delete and the file, Properties has Save, Export and Create */
+const actionScreens = { load : 'load', create : 'properties', save : 'properties', duplicate : 'load', 'delete' : 'load', 'export' : 'properties', 'import' : 'load' };
+
 let said = [];
 let spokenFailures = [];
 let coded = [];
@@ -5377,21 +5595,21 @@ let unchanged = [];
 
 Object.keys( actions ).forEach( function( action ) {
 
-	const bare = themed();
+	const bare = themed( {}, actionScreens[action] );
 	actions[action]( bare );
 	bare.answer( 500, {} );
 
 	if( bare.line().textContent !== '(500) '+ TEXT['/_admin/design/theme/error/'+ action] || bare.line().className !== 'nino-admin-error' || bare.line().title !== bare.line().textContent )
 		said.push( action+ ': '+ bare.line().textContent );
 
-	const spoken = themed();
+	const spoken = themed( {}, actionScreens[action] );
 	actions[action]( spoken );
 	spoken.answer( 500, { error : 'could not write /data/themes/mein-theme.php' } );
 
 	if( spoken.line().textContent !== '(500) could not write /data/themes/mein-theme.php' || spoken.line().className !== 'nino-admin-error' )
 		spokenFailures.push( action+ ': '+ spoken.line().textContent );
 
-	const refusedBy = themed();
+	const refusedBy = themed( {}, actionScreens[action] );
 	actions[action]( refusedBy );
 	refusedBy.answer( 400, { error : 'the name has no letter or digit in it', code : 'design_name' } );
 
@@ -5452,23 +5670,28 @@ else {
 	let blank = [];
 	let unsaid = [];
 
-	TABS.forEach( function( tab ) {
+	/** Whether what the open screen draws has something in it: the box of a screen, or the column of a tab that has none */
+	const filled = function( screen ) { return ( screen.byId('design-screen') || screen.body() ).children.length > 0 };
 
-		if( threw( function() { whole.tab( TEXT['/_admin/design/tab/'+ tab] ) } ) === true ) {
-			failed.push( tab );
+	OPENABLE.forEach( function( name ) {
+
+		const at = name.split('/');
+
+		if( threw( function() { whole.show( at[0], at[1] ) } ) === true ) {
+			failed.push( name );
 			return;
 		}
 
-		drawn.push( tab );
+		drawn.push( name );
 
-		if( whole.body().children.length === 0 || whole.chip() === null || whole.chip().textContent === '' )
-			blank.push( tab );
+		if( filled( whole ) === false || whole.chip() === null || whole.chip().textContent === '' )
+			blank.push( name );
 
 		unsaid = unsaid.concat( unwritten( whole ) );
 	} );
 
-	check( 'the server\'s answer draws all eight tabs, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
-		drawn.join() === TABS.join() && failed.length === 0 && blank.length === 0 );
+	check( 'the server\'s answer draws all seven tabs and every screen of them, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
+		drawn.join() === OPENABLE.join() && failed.length === 0 && blank.length === 0 );
 	check( '...and every word the screen shows for it is one the panel\'s texts carry - the effects, the families, the knobs, the modes'+ ( unsaid.length === 0 ? '' : ' - missing: '+ unsaid.slice( 0, 4 ).join() ), unsaid.length === 0 );
 
 	whole.tab('Global');
@@ -5491,7 +5714,7 @@ else {
 		&& offered( whole.byId('design-motion-effect') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.effects ).join()
 		&& whole.byId('design-motion-strength').disabled === ( real.motion.effect === '' ) );
 
-	whole.tab('Fonts');
+	whole.show( 'fonts', 'roles' );
 
 	check( 'Fonts is drawn from the roles, the families each role is offered, the bounds of a size and the fonts that are stored: a row for each role, every control on the stored value',
 		byTag( whole.form, 'tr' ).filter( function( row ) { return row.dataset.role !== undefined } ).map( function( row ) { return row.dataset.role } ).join() === real.roles.join()
@@ -5579,25 +5802,25 @@ else {
 		&& JSON.stringify( sent.payload.colours ) === JSON.stringify( real.colours ) );
 	check( '...and a screen drawn from the answer holds nothing unsaved', whole.design._isDirty() === false );
 
-	check( 'design/list says what the Typefaces tab needs to know before it asks for anything: whether the repository has an address and whether it has a key, two booleans and nothing else',
+	check( 'design/list says what the Install screen needs to know before it asks for anything: whether the repository has an address and whether it has a key, two booleans and nothing else',
 		Object.keys( real.webfonts || {} ).join() === 'url,key' && typeof real.webfonts.url === 'boolean' && typeof real.webfonts.key === 'boolean' );
 
 	const webfontsFile = process.env.DESIGN_WEBFONTS || '';
 
 	if( webfontsFile === '' || fs.existsSync( webfontsFile ) === false )
-		console.log( '  --  no answer of design/webfonts/list was handed to this run (DESIGN_WEBFONTS), so the Typefaces tab is not drawn from the real one' );
+		console.log( '  --  no answer of design/webfonts/list was handed to this run (DESIGN_WEBFONTS), so the Install screen is not drawn from the real one' );
 	else {
 
 		const shelved = JSON.parse( fs.readFileSync( webfontsFile, 'utf8' ) );
 		const typed = panel( Object.assign( {}, real, { webfonts : { url : true, key : true } } ), { whole : true } );
 
-		typed.tab('Typefaces');
+		typed.show( 'fonts', 'install' );
 		typed.answer( 200, shelved );
 
 		const slugs = Object.keys( shelved.installed );
 		const installedNow = faceRows( installedCard( typed ) );
 
-		check( 'the answer of design/webfonts/list is in the shape the Typefaces tab draws: the halves of the tab are keyed as the stand-in has them, and the families, the installed ones and the directories that are none are what the server gave',
+		check( 'the answer of design/webfonts/list is in the shape the Install screen draws: the halves of the screen are keyed as the stand-in has them, and the families, the installed ones and the directories that are none are what the server gave',
 			Object.keys( shelved ).join() === Object.keys( shelfOf() ).join() && slugs.length > 0 && Object.keys( shelved.broken ).length > 0 && shelved.families.length > 0 && shelved.fetched > 0 && shelved.refusal === ''
 			&& slugs.every( function( slug ) { return Object.keys( shelved.installed[slug] ).join() === Object.keys( installedOf( slug, 'x', '1' ) ).join() } )
 			&& shelved.families.every( function( entry ) { return Object.keys( entry ).join() === Object.keys( offerOf( 'x', 'X', 'sans' ) ).join() } ) );
@@ -5635,9 +5858,9 @@ else {
 	const answered = JSON.parse( fs.readFileSync( themesFile, 'utf8' ) );
 	const none = answered.none;
 	const activeList = answered.active;
-	const wholeTab = function( list ) {
+	const wholeTab = function( list, screenKey ) {
 		const screen = panel( list, { whole : true } );
-		screen.tab('Theme');
+		screen.show( 'theme', screenKey );
 		return screen;
 	};
 	const listed = function( themes ) { return themes.map( function( theme ) { return theme.slug } ).join() };
@@ -5662,7 +5885,8 @@ else {
 			const row = themeRow( noneTab, theme.slug );
 			return textsOf( row, 'design-theme-name' ) === theme.name && textsOf( row, 'design-theme-description' ) === theme.description && byClass( row, 'design-theme-shipped' ).length === 1 && themeButtons( noneTab, theme.slug ).length === 2;
 		} )
-		&& byClass( noneTab.form, 'design-theme-active' ).length === 0 && textsOf( noneTab.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] );
+		&& byClass( noneTab.form, 'design-theme-active' ).length === 0
+		&& ( noneTab.show( 'theme', 'properties' ), textsOf( noneTab.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] ) );
 
 	// The list with a theme of the project active - the one the website runs as well, which the list says by the theme of the last apply
 	const activeTab = wholeTab( Object.assign( {}, activeList, { running : activeList.active.slug } ) );
@@ -5676,10 +5900,11 @@ else {
 		} )()
 		&& hasClass( themeRow( activeTab, activeSlug ), 'design-theme-row--active' ) && byClass( activeTab.form, 'design-theme-row--active' ).length === 1 && textsOf( themeRow( activeTab, activeSlug ), 'design-theme-active' ) === 'active'
 		&& activeList.themes.every( function( theme ) { return ( activeTab.byId('design-theme-delete-'+ theme.slug) !== null ) === ( theme.shipped === false ) } )
-		&& textsOf( activeTab.byId('design-theme-current-head'), 'design-theme-current-name' ) === activeList.active.name
+		&& ( activeTab.show( 'theme', 'properties' ), textsOf( activeTab.byId('design-theme-current-head'), 'design-theme-current-name' ) === activeList.active.name )
 		&& activeTab.byId('design-theme-name').value === activeList.active.name && activeTab.byId('design-theme-description').value === activeList.active.description && activeTab.byId('design-theme-name').disabled === false );
-	check( '...the css field holds the css the setup carries, which is not the theme\'s: the chip says the screen differs from the theme; the css of the theme in its place and the chip goes - the setup the list gives and the setup of the theme\'s file are the same, to the last key',
-		activeTab.byId('design-theme-css').value === activeList.css && activeList.css !== activeList.active.css && activeTab.byId('design-theme-changed') !== null && activeTab.design._themeChanged() === true
+	check( '...the css field on Custom CSS holds the css the setup carries, which is not the theme\'s: the chip on Properties says the screen differs from the theme; the css of the theme in its place and the chip goes - the setup the list gives and the setup of the theme\'s file are the same, to the last key',
+		( activeTab.show( 'theme', 'css' ), activeTab.byId('design-theme-css').value === activeList.css ) && activeList.css !== activeList.active.css
+		&& ( activeTab.show( 'theme', 'properties' ), activeTab.byId('design-theme-changed') !== null ) && activeTab.design._themeChanged() === true
 		&& ( activeTab.design._edit.css = activeList.active.css, activeTab.design._themeChanged() ) === false
 		&& JSON.stringify( activeTab.design._canonical( activeTab.design._snapshotOf( activeTab.design._edit ) ) ) === JSON.stringify( activeTab.design._canonical( activeList.active.setup ) ) );
 
@@ -5697,9 +5922,10 @@ else {
 		&& Object.prototype.hasOwnProperty.call( answered.load.setup, 'colours' ) === false && JSON.stringify( loaded.design._edit.colours ) === JSON.stringify( none.colours )
 		&& Object.keys( answered.load.setup.fonts ).every( function( role ) { return loaded.design._edit.fonts[role].family === ( offered( loaded, role ).indexOf( answered.load.setup.fonts[role].family ) !== -1 ? answered.load.setup.fonts[role].family : '' ) } ) );
 	check( '...it is the active theme - shipped, so its name and description are read-only - as it was taken over, so the screen is the theme and there is no chip; the way back is shown, the bar says it was loaded and the shortcodes of the css were not touched',
-		loaded.design._active.slug === answered.load.slug && loaded.design._active.shipped === true && loaded.byId('design-theme-name').disabled === true && loaded.byId('design-theme-name').value === answered.load.name
-		&& loaded.byId('design-theme-changed') === null && loaded.design._themeChanged() === false && loaded.design._isDirty() === true && loaded.byId('design-reset').hidden === false
-		&& loaded.line().textContent.indexOf( say( '/_admin/design/theme/msg/loaded', answered.load.name ) ) === 0 && loaded.byId('design-theme-css').value === answered.load.css );
+		loaded.design._active.slug === answered.load.slug && loaded.design._active.shipped === true && loaded.design._themeChanged() === false && loaded.design._isDirty() === true && loaded.byId('design-reset').hidden === false
+		&& loaded.line().textContent.indexOf( say( '/_admin/design/theme/msg/loaded', answered.load.name ) ) === 0
+		&& ( loaded.show( 'theme', 'properties' ), loaded.byId('design-theme-name').disabled === true && loaded.byId('design-theme-name').value === answered.load.name && loaded.byId('design-theme-changed') === null )
+		&& ( loaded.show( 'theme', 'css' ), loaded.byId('design-theme-css').value === answered.load.css ) );
 
 	loaded.tab('Content');
 	check( '...and the other tabs show it: the template of the Content is the theme\'s',
@@ -5716,24 +5942,26 @@ else {
 		&& withMissing.requests.length === 1 && withMissing.requests[0].endpoint === 'webfonts/install' && withMissing.requests[0].payload.slug === askable[0].slug );
 
 	// Create, save, duplicate, delete, export and import
-	const created = wholeTab( none );
+	const created = wholeTab( none, 'properties' );
 	created.byId('design-theme-new').value = answered.created.active.name;
 	created.byId('design-theme-new').fire('input');
 	created.byId('design-theme-create').fire('click');
 	created.answer( 200, answered.created );
 
-	check( 'the answer of a create is the list with the theme in it and the theme as the server holds it: the rows are the list, the draft names the new theme and the card shows its name',
-		slugsOf( created ) === listed( answered.created.themes ) && created.design._edit.theme === answered.created.slug && created.design._active.slug === answered.created.slug
+	check( 'the answer of a create is the list with the theme in it and the theme as the server holds it: the draft names the new theme and the box shows its name - and the rows, when the list is opened, are the list',
+		created.design._edit.theme === answered.created.slug && created.design._active.slug === answered.created.slug
 		&& textsOf( created.byId('design-theme-current-head'), 'design-theme-current-name' ) === answered.created.active.name && created.byId('design-theme-name').value === answered.created.active.name
-		&& created.byId('design-theme-description').value === answered.created.active.description && hasClass( themeRow( created, answered.created.slug ), 'design-theme-row--active' ) );
+		&& created.byId('design-theme-description').value === answered.created.active.description
+		&& ( created.show( 'theme', 'load' ), slugsOf( created ) === listed( answered.created.themes ) && hasClass( themeRow( created, answered.created.slug ), 'design-theme-row--active' ) ) );
 
-	const saved = wholeTab( activeList );
+	const saved = wholeTab( activeList, 'properties' );
 	saved.byId('design-theme-save').fire('click');
 	saved.answer( 200, answered.saved );
 
 	check( 'the answer of a save: the list, and the theme as it is now - the name and the description the fields have, the chip as the setup of the file against the screen says',
-		slugsOf( saved ) === listed( answered.saved.themes ) && saved.design._active.slug === answered.saved.active.slug && saved.design._themeText.name === answered.saved.active.name
-		&& saved.byId('design-theme-description').value === answered.saved.active.description && saved.line().textContent === say( '/_admin/design/theme/msg/saved', answered.saved.active.name ) );
+		saved.design._active.slug === answered.saved.active.slug && saved.design._themeText.name === answered.saved.active.name
+		&& saved.byId('design-theme-description').value === answered.saved.active.description && saved.line().textContent === say( '/_admin/design/theme/msg/saved', answered.saved.active.name )
+		&& ( saved.show( 'theme', 'load' ), slugsOf( saved ) === listed( answered.saved.themes ) ) );
 
 	const copied = wholeTab( answered.created.themes.length > 0 ? Object.assign( {}, none, { themes : answered.created.themes } ) : none );
 	copied.byId('design-theme-duplicate-'+ none.themes[0].slug).fire('click');
@@ -5750,9 +5978,9 @@ else {
 
 	check( 'the answer of a delete: the list as the server has it, and the theme the setup names now - none, since it was the one deleted: the screen has no active theme and the card says so',
 		slugsOf( deleted ) === listed( answered.deleted.themes ) && answered.deleted.theme === '' && deleted.design._edit.theme === '' && deleted.design._data.theme === '' && deleted.design._active === null
-		&& textsOf( deleted.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && deleted.byId('design-theme-name') === null );
+		&& ( deleted.show( 'theme', 'properties' ), textsOf( deleted.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && deleted.byId('design-theme-name') === null ) );
 
-	const exported = wholeTab( none );
+	const exported = wholeTab( none, 'properties' );
 	exported.design._edit.theme = answered.load.slug;
 	exported.design._active = Object.assign( {}, answered.load, { setup : exported.design._snapshotOf( exported.design._edit ) } );
 	exported.design._paintTheme();
@@ -5772,10 +6000,13 @@ else {
 	check( 'the text of an export is posted as it is, whole, and the answer of the import is the list with the theme in it - not loaded',
 		imported.requests.length === 0 && slugsOf( imported ) === listed( answered.imported.themes ) && imported.design._edit.theme === '' && themeButtons( imported, answered.imported.slug ).length === 3 );
 
-	check( 'every word the tab shows is one the panel\'s texts carry',
+	check( 'every word the tab shows, on each of its screens, is one the panel\'s texts carry',
 		[ noneTab, activeTab, loaded, created, deleted ].every( function( screen ) {
-			return descendants( screen.pane ).every( function( el ) {
-				return [ el.textContent, el.getAttribute('title'), el.getAttribute('aria-label') ].every( function( text ) { return typeof text !== 'string' || text.indexOf('/_admin/') !== 0 } );
+			return SCREENS.theme.every( function( key ) {
+				screen.show( 'theme', key );
+				return descendants( screen.pane ).every( function( el ) {
+					return [ el.textContent, el.getAttribute('title'), el.getAttribute('aria-label') ].every( function( text ) { return typeof text !== 'string' || text.indexOf('/_admin/') !== 0 } );
+				} );
 			} );
 		} ) );
 }

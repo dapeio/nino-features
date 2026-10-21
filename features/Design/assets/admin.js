@@ -1,37 +1,42 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": eight tabs, seven of
- *													them over one setup - Theme, the first, which keeps the
- *													whole setup under a name with a css of its own: the list
- *													of the themes to load, duplicate, delete, create, export
- *													and import, the active one saved from the screen, and the
- *													field of the css, which every input mirrors into the
- *													preview; Global, with the header and footer
- *													templates, the root size, the width and the whitespace,
- *													a strip of five positions each, and the animation of the
- *													page; Fonts,
- *													with the five font roles; Content, Buttons and Components,
- *													each with the choice of its template and one named knob
- *													for each thing the template lets go of, a strip of five
- *													positions or of three words - the Content in four groups,
- *													a strip of tabs over the rows of one; and Colours, with
- *													the two colours, the five knobs and the mode the palette is
- *													solved from - and the compile that turns all of it into
- *													assets/theme.css (see Modules\Design\Admin beside this
- *													file). The eighth, Typefaces, is the loader: the
- *													families the project has installed, and the signed list
- *													of those it can install, which is read when its button is
- *													pressed - an install or a removal happens when it is
- *													pressed, and is no part of the draft. Beside the
- *													controls is one specimen page of the selection, under a
- *													head with the viewport switch, the switch that lets the
- *													frame follow and the reload; the frame fills the window
- *													down to the action bar and scrolls to the open tab's
- *													anchor, or to where a change of a knob shows. The bar
- *													holds what the panel says - what a save or an apply did,
- *													or why not - and the state of the files in a word.
- *													Ships with the feature and is loaded exactly while it
- *													is active.
+ *	Modules\Design					The feature's /_admin panel, "Design": seven tabs over one
+ *													setup - Theme, the first, which keeps the whole setup
+ *													under a name with a css of its own, in three screens:
+ *													Load, the list of the themes to load, duplicate and
+ *													delete, with the field that takes a theme file in;
+ *													Properties, the loaded theme with its name and its
+ *													description, saved and exported from the screen, and under
+ *													it the row that creates a theme out of the screen; and
+ *													Custom CSS, the field of the css, which every input
+ *													mirrors into the preview; Global, with the header and
+ *													footer templates, the root size, the width and the
+ *													whitespace, a strip of five positions each, and the
+ *													animation of the page; Fonts, in two screens: Assignments,
+ *													the five font roles, and Install, the loader, which keeps
+ *													nothing in the setup - the families the project has
+ *													installed, and the signed list of those it can install,
+ *													which is read when its button is pressed: an install or a
+ *													removal happens when it is pressed, and is no part of the
+ *													draft; Content, Buttons and Components, each with the
+ *													choice of its template and one named knob for each thing
+ *													the template lets go of, a strip of five positions or of
+ *													three words - the Content in four groups, a strip of tabs
+ *													over the rows of one; and Colours, with the two colours,
+ *													the five knobs and the mode the palette is solved from -
+ *													and the compile that turns all of it into assets/theme.css
+ *													(see Modules\Design\Admin beside this file). A tab with
+ *													screens draws their strip, the one the groups of a knob
+ *													tab have, under the strip of the tabs, and the screen that
+ *													is open under it. Beside the controls is one specimen page
+ *													of the selection, under a head with the viewport switch,
+ *													the switch that lets the frame follow and the reload; the
+ *													frame fills the window down to the action bar and scrolls
+ *													to the open tab's anchor, or to where a change of a knob
+ *													shows. The bar holds what the panel says - what a save or
+ *													an apply did, or why not - and the state of the files in a
+ *													word. Ships with the feature and is loaded exactly while
+ *													it is active.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -59,18 +64,24 @@
 			server describes it - slug, name, description, shipped, setup, css - against
 			which the chip "changed" compares the screen, and null where it has none. The
 			name and the description as they are typed on the tab, which a switch of the tab
-			keeps and which belong to no draft: the button of the theme saves them. The name
-			typed into the field of the list for a theme to be made, and whether an action
+			or of the screen keeps and which belong to no draft: the button of the theme saves
+			them. The name typed into the field of the row that makes a theme, and whether an action
 			of the tab is on its way with the count that tells which one is the latest, the
-			way the Typefaces tab holds its own	*/
+			way the loader holds its own	*/
 		_active		: null,
 		_themeText	: { name : '', description : '' },
 		_themeNew		: '',
 		_themeBusy	: false,
 		_themeStamp	: 0,
 
-		// The eight tabs, in the order they are shown in
-		TABS		: [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ],
+		// The seven tabs, in the order they are shown in
+		TABS		: [ 'theme', 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ],
+
+		/*	The tabs that are cut into screens, and the screens of each in the order they are shown in: a strip of
+			them under the strip of the tabs - the one the groups of a knob tab have - and under it the screen that
+			is open, one at a time, drawn again whenever it is opened (see _renderScreens()). The screens are the
+			panel's own, where the groups of a knob tab are the model's (see Setup::GROUPS)	*/
+		SCREENS	: { theme : [ 'load', 'properties', 'css' ], fonts : [ 'roles', 'install' ] },
 
 		// The tabs that have named knobs, and the part each of them is the
 		// template of: a knob belongs to the tab, the tab to one template
@@ -79,11 +90,11 @@
 		/*	The id of the element on the specimen page each tab scrolls the frame
 			to. The page is templates/preview-specimen.tpl, which carries the
 			same six ids; Theme and Global are the top of the page - a theme is
-			all of it -, Fonts and Typefaces the typography block - a typeface
+			all of it -, Fonts, in both its screens, the typography block - a typeface
 			shows where the type is -, Colours the grounds. The page has a seventh id,
 			footer, at its end, which no tab has: a footer that is chosen is looked
 			at there (see _setPart())	*/
-		ANCHORS	: { theme : 'global', global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
+		ANCHORS	: { theme : 'global', global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
 
 		/*	Where a change of one knob is looked at, by the tab: the id of the element
 			on the specimen the frame jumps to in place of the tab's anchor, which is
@@ -231,7 +242,7 @@
 			width and the whitespace of the page, and the rows of the palette - the brand colour, the
 			second colour, which is the row of Harmony, temperature, saturation,
 			contrast, depth and the mode: all of them have one, so that every name of
-			the Colours tab starts at the same left edge. A row of the Typefaces tab,
+			the Colours tab starts at the same left edge. A row of the loader,
 			an installed family and an available one, opens with the text size as
 			well. A row with no entry has no icon, and no stand-in shape takes its
 			place	*/
@@ -297,9 +308,9 @@
 		_target	: null,
 		// The tab that is open - the Theme tab at the start of a visit: the first thing a person does is pick a theme
 		_tab		: 'theme',
-		// The group of its knobs that a tab with groups shows, by the tab; a tab with no entry shows its
-		// first. Kept while the panel lives and no part of the selection: another group changes nothing but
-		// the rows on screen
+		// The group of its knobs, or the screen, that a tab with groups or screens shows, by the tab; a tab
+		// with no entry shows its first. Kept while the panel lives and no part of the selection: another
+		// group changes nothing but the rows on screen, another screen nothing but the screen
 		_group	: {},
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
@@ -316,11 +327,11 @@
 		FACE_CATEGORIES	: [ 'all', 'sans', 'serif', 'display', 'handwriting', 'mono', 'other' ],
 		FACES_PER_PAGE	: 24,
 
-		/*	The Typefaces tab. The last answer of design/webfonts/* - families (the list),
+		/*	The loader, the Install screen of the Fonts tab. The last answer of design/webfonts/* - families (the list),
 			fetched, url, key, builtin, installed, broken, uses, refusal, refusalKind - from
 			which both halves are drawn; null until the first has come. Beside it what the
 			Available half looks at, the counter that tells which of the requests asked is
-			the latest, whether an action of the tab is on its way, and the faces the names
+			the latest, whether an action of the screen is on its way, and the faces the names
 			have been set in: the FontFace of every family by the font-family it was added to
 			the document under, and the observer that loads those of the rows that come into
 			view	*/
@@ -837,7 +848,7 @@
 		 *	The whole screen: the open tab in one column, a preview of the lot in
 		 *	the other.
 		 *
-		 *	A tab at a time rather than eight blocks at once, because eight blocks is
+		 *	A tab at a time rather than seven blocks at once, because seven blocks is
 		 *	a list to read and one tab is a decision to make. The strip in the
 		 *	pane's head says which one is open; the preview beside it is the
 		 *	whole page either way, scrolled to where the open tab is
@@ -1009,17 +1020,11 @@
 
 			const tab = Nino.admin.design._tab;
 
-			if( tab === 'theme' )
-				return Nino.admin.design._renderTheme( body );
+			if( Nino.admin.design.SCREENS[tab] !== undefined )
+				return Nino.admin.design._renderScreens( tab, body );
 
 			if( tab === 'global' )
 				return Nino.admin.design._renderGlobal( body );
-
-			if( tab === 'fonts' )
-				return body.appendChild( Nino.admin.design._renderFonts() );
-
-			if( tab === 'typefaces' )
-				return Nino.admin.design._renderTypefaces( body );
 
 			if( tab === 'colours' )
 				return body.appendChild( Nino.admin.design._renderColours() );
@@ -1028,8 +1033,8 @@
 		},
 
 		/**
-		 *	The eight tabs. A tablist rather than a button group, because these
-		 *	really are eight panels: aria-selected, not aria-pressed.
+		 *	The seven tabs. A tablist rather than a button group, because these
+		 *	really are seven panels: aria-selected, not aria-pressed.
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -1045,8 +1050,9 @@
 
 		/**
 		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
-		 *	keeps that, with the arrow keys and the one tab stop of a strip. The eight tabs of the
+		 *	keeps that, with the arrow keys and the one tab stop of a strip. The seven tabs of the
 		 *	panel are drawn with it, and so are the groups of the knobs of a tab (see _renderKnobs())
+		 *	and the screens of Theme and Fonts (see _renderScreens())
 		 *
 		 *	@param		{string}		name				What the strip is called by assistive technology
 		 *	@param		{string}		className		The class the strip has beside the workbench's own
@@ -1109,8 +1115,8 @@
 			if( key === Nino.admin.design._tab )
 				return;
 
-			// The faces the names of the typefaces were set in are the tab's: gone with it
-			if( Nino.admin.design._tab === 'typefaces' )
+			// The faces the names of the typefaces were set in are the loader's: gone with it
+			if( Nino.admin.design._onInstall() === true )
 				Nino.admin.design._dropFaces();
 
 			Nino.admin.design._tab = key;
@@ -1141,7 +1147,7 @@
 		 *	height the stage was just fitted to.
 		 *
 		 *	In one column the stage stands under the controls, so a column of another
-		 *	height moves it - another tab, another group of the knobs, the brand warning
+		 *	height moves it - another tab, another group of the knobs or screen, the brand warning
 		 *	of the colours - and the fit gives the frame another height. The page in it
 		 *	lays itself out again only after its window has heard the resize: the covers
 		 *	take their height from the window's, in an animation frame that follows it
@@ -1154,7 +1160,7 @@
 		 *	height as it was, or the frame cannot be reached, the jump is made at once
 		 *
 		 *	Asked for by whatever fits the stage and then jumps: a tab that is opened
-		 *	(_switchTab()), another group of the knobs (_switchGroup(), which asks only
+		 *	(_switchTab()), another group of the knobs or another screen (_switchGroup(), which asks only
 		 *	where the fit changed the height: the page is the same under every group, and
 		 *	a stage as tall as it was leaves nothing to put back) and the answer of a
 		 *	preview whose stylesheet was swapped in (_previewNow())
@@ -1200,45 +1206,66 @@
 		},
 
 		/**
-		 *	The Theme tab: three cards - the list of themes, with the row that makes one out of
-		 *	the screen and the file field that takes one in; the active theme, with its name
-		 *	and description, the chip that says the screen differs from it and the buttons that
-		 *	keep the screen in it and take it out as a file; and the css of its own, which every
-		 *	input mirrors into the preview. The first two are drawn again by what the tab does
-		 *	(see _paintTheme()), the third once per visit: it holds what is being typed
+		 *	The Theme tab, the screen that is open of its three: Load, with the card of the list of
+		 *	themes and the file field that takes one in; Properties, with the card of the loaded
+		 *	theme - its name and description, the chip that says the screen differs from it and the
+		 *	buttons that keep the screen in it and take it out as a file - and the card of the row
+		 *	that makes a theme out of the screen; and Custom CSS, with the card of the css of its own,
+		 *	which every input mirrors into the preview. The cards of the first two are drawn again
+		 *	by what the tab does (see _paintTheme()), the css once each time its screen is opened:
+		 *	it holds what is being typed
 		 *
-		 *	@param		{Element}	body		The box the column keeps for the open tab
+		 *	@param		{Element}	body		The box the screen is drawn into
 		 *
 		 *	@return		void
 		 */
 		_renderTheme : function( body ) {
 
 			const design = Nino.admin.design;
-
-			const themes = dc.createElement('div');
-			themes.id = 'design-themes';
-			themes.className = 'nino-admin-card design-block';
-
-			const current = dc.createElement('div');
-			current.id = 'design-theme-current';
-			current.className = 'nino-admin-card design-block';
-
-			const css = dc.createElement('div');
-			css.id = 'design-theme-css-card';
-			css.className = 'nino-admin-card design-block';
-
-			body.appendChild( themes );
-			body.appendChild( current );
-			body.appendChild( css );
+			const screen = design._groupOf('theme');
 
 			// By the node, not by its id: this column is not in the document yet on the first render
-			design._paintThemes( themes );
-			design._paintCurrent( current );
+			if( screen === 'load' ) {
+				const themes = design._card('design-themes');
+				body.appendChild( themes );
+				design._paintThemes( themes );
+				return;
+			}
+
+			if( screen === 'properties' ) {
+				const current = design._card('design-theme-current');
+				const make = design._card('design-theme-make');
+				body.appendChild( current );
+				body.appendChild( make );
+				design._paintCurrent( current );
+				design._paintMake( make );
+				return;
+			}
+
+			const css = design._card('design-theme-css-card');
+			body.appendChild( css );
 			design._paintCustomCss( css );
 		},
 
 		/**
-		 *	Draw the two cards the actions of the tab change again, where the tab is on screen,
+		 *	A card of the column, the workbench's in the measures of this panel, under the id the actions of a
+		 *	tab find it by
+		 *
+		 *	@param		{string}	id
+		 *
+		 *	@return		{Element}
+		 */
+		_card : function( id ) {
+
+			const card = dc.createElement('div');
+			card.id = id;
+			card.className = 'nino-admin-card design-block';
+
+			return card;
+		},
+
+		/**
+		 *	Draw the cards the actions of the tab change again - those of the screen that is open -
 		 *	and put the css of the working copy into its field in place: a load changes it, and
 		 *	the field is left alone otherwise, so that the caret of what is being typed stays
 		 *
@@ -1249,6 +1276,7 @@
 			const design = Nino.admin.design;
 			const themes = dc.getElementById('design-themes');
 			const current = dc.getElementById('design-theme-current');
+			const make = dc.getElementById('design-theme-make');
 			const css = dc.getElementById('design-theme-css');
 
 			if( themes !== null )
@@ -1256,6 +1284,9 @@
 
 			if( current !== null )
 				design._paintCurrent( current );
+
+			if( make !== null )
+				design._paintMake( make );
 
 			if( css !== null && design._edit !== null && css.value !== design._edit.css )
 				css.value = design._edit.css;
@@ -1283,8 +1314,8 @@
 		},
 
 		/**
-		 *	The first card: the themes there are, one row each, and under them the two ways to
-		 *	get another - a name, to make one out of the screen, and a file, to take one in
+		 *	The card of the Load screen: the themes there are, one row each, and under them the
+		 *	file that takes another one in
 		 *
 		 *	@param		{Element}	card
 		 *
@@ -1306,6 +1337,36 @@
 			} );
 
 			card.appendChild( list );
+
+			const file = ui.el( 'label', 'nino-admin-field design-theme-import' );
+			file.appendChild( ui.el( 'span', '', Nino.content.getText('/_admin/design/theme/import/label') ) );
+
+			const input = ui.el( 'input', 'nino-admin-input' );
+			input.type = 'file';
+			input.id = 'design-theme-import';
+			input.accept = '.json,application/json';
+			input.disabled = design._themeBusy;
+			input.addEventListener( 'change', function() { design._readTheme( input ) } );
+
+			file.appendChild( input );
+			card.appendChild( file );
+		},
+
+		/**
+		 *	The card of the Properties screen under the box of the loaded theme: the row that makes a
+		 *	theme out of the screen - a name, and the button that keeps the current state under it, as
+		 *	Save theme keeps it in the loaded theme. It stands whether or not a theme is loaded
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintMake : function( card ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+
+			card.innerHTML = '';
 
 			const make = ui.el( 'div', 'design-theme-new' );
 
@@ -1329,19 +1390,6 @@
 			make.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/create'), function() { design._createTheme() },
 				{ id : 'design-theme-create', className : 'nino-admin-btn-primary', disabled : design._themeBusy } ) );
 			card.appendChild( make );
-
-			const file = ui.el( 'label', 'nino-admin-field design-theme-import' );
-			file.appendChild( ui.el( 'span', '', Nino.content.getText('/_admin/design/theme/import/label') ) );
-
-			const input = ui.el( 'input', 'nino-admin-input' );
-			input.type = 'file';
-			input.id = 'design-theme-import';
-			input.accept = '.json,application/json';
-			input.disabled = design._themeBusy;
-			input.addEventListener( 'change', function() { design._readTheme( input ) } );
-
-			file.appendChild( input );
-			card.appendChild( file );
 		},
 
 		/**
@@ -1412,12 +1460,12 @@
 		},
 
 		/**
-		 *	The second card: the active theme - the one the working copy was taken from or kept
-		 *	in. With none there is a sentence and nothing else. With one, its head says its name
-		 *	and, while the screen differs from it, the chip (see _refreshThemeChip()); under it
-		 *	stand its name and its description as they are typed - those of a shipped theme are
-		 *	read-only and say why - and the buttons that put the screen into it and take it out as
-		 *	a file. A shipped theme is a file of the feature: there is no way to save into it
+		 *	The box of the Properties screen: the loaded theme - the one the working copy was taken
+		 *	from or kept in. With none there is a sentence and nothing else. With one, its head
+		 *	says its name and, while the screen differs from it, the chip (see _refreshThemeChip());
+		 *	under it stand its name and its description as they are typed - those of a shipped theme
+		 *	are read-only and say why - and the buttons that put the screen into it and take it out
+		 *	as a file. A shipped theme is a file of the feature: there is no way to save into it
 		 *
 		 *	@param		{Element}	card
 		 *
@@ -1486,10 +1534,10 @@
 		},
 
 		/**
-		 *	The third card: the css of the theme, in a field of its own. Every input sets it in the
-		 *	working copy and asks for a preview - the debounce of 350 ms every control has - which
-		 *	compiles it as the last section of the sheet. The label is the card's title again, for
-		 *	whoever hears the field and not the heading
+		 *	The card of the Custom CSS screen: the css of the theme, in a field of its own. Every
+		 *	input sets it in the working copy and asks for a preview - the debounce of 350 ms every
+		 *	control has - which compiles it as the last section of the sheet. The label is the
+		 *	card's title again, for whoever hears the field and not the heading
 		 *
 		 *	@param		{Element}	card
 		 *
@@ -1619,7 +1667,7 @@
 
 			Nino.admin.design._themeBusy = on;
 
-			[ 'design-themes', 'design-theme-current' ].forEach( function( id ) {
+			[ 'design-themes', 'design-theme-current', 'design-theme-make' ].forEach( function( id ) {
 
 				const card = dc.getElementById( id );
 
@@ -1646,7 +1694,7 @@
 
 		/**
 		 *	Put a theme on the screen as a draft. The server answers what the screen takes over and which of
-		 *	the typefaces the theme names the project has not installed. Those the list of the Typefaces tab
+		 *	the typefaces the theme names the project has not installed. Those the list of Fonts > Install
 		 *	has are named in one question - with a yes they are installed, one after the other, and the list of
 		 *	design/list is read again, for the selects of the Fonts tab, before anything is drawn. Nothing is
 		 *	stored: the Reset button appears, the shell asks before it loses the draft and Save draft keeps it
@@ -1689,7 +1737,7 @@
 		},
 
 		/**
-		 *	Install the typefaces a theme names, one after the other, as the Typefaces tab installs one: a
+		 *	Install the typefaces a theme names, one after the other, as the loader installs one: a
 		 *	failure stops the chain and is said, and what is installed stays
 		 *
 		 *	@param		{Array}			list				design/theme/load's `missing` that the list has: slug, name
@@ -1791,9 +1839,10 @@
 		},
 
 		/**
-		 *	Keep the screen as a theme of the project under the name in the field of the list. The draft
-		 *	then names it - unsaved, so that the way back takes it away again, which is right - and the
-		 *	name and description fields are the theme's, the chip none
+		 *	Keep the screen as a theme of the project under the name in the field of the row that makes
+		 *	one, in the card under the loaded theme on Properties. The draft then names it - unsaved,
+		 *	so that the way back takes it away again, which is right - and the name and description
+		 *	fields are the theme's, the chip none
 		 *
 		 *	@return		void
 		 */
@@ -2306,7 +2355,7 @@
 		},
 
 		/**
-		 *	The Fonts tab: the five roles of Nino.css in a table of five rows and
+		 *	The Assignments screen of the Fonts tab: the five roles of Nino.css in a table of five rows and
 		 *	four columns - the family, the weight, the case and the size. The
 		 *	controls stand bare in the cells and the words are in the column heads,
 		 *	which is what keeps the table readable in a third of the screen; each
@@ -2574,21 +2623,21 @@
 		},
 
 		/**
-		 *	The Typefaces tab, the loader: two cards. The first holds the families the
+		 *	The Install screen of the Fonts tab, the loader: two cards. The first holds the families the
 		 *	project has installed, each with its name set in its own face, its weights, its
 		 *	version and licence, and the button that removes it; the second the list of those
 		 *	the repository offers, read when its button is pressed, with a search field, the
 		 *	categories as a strip and pages of FACES_PER_PAGE.
 		 *
 		 *	Both halves are drawn from the answer the server gives after each action of the
-		 *	tab, kept in _faces. The cached list is asked for whenever the tab is opened -
+		 *	screen, kept in _faces. The cached list is asked for whenever the screen is opened -
 		 *	design/webfonts/list answers from data/ without a request of its own, and not
 		 *	while an action is on its way, whose answer is the state - and the repository
 		 *	only by the button. An install and a removal are made when their button is
 		 *	pressed, and are no part of the draft: the line of the action bar says what they
 		 *	did, and Reset has nothing to bring back.
 		 *
-		 *	@param		{Element}	body		The box the column keeps for the open tab
+		 *	@param		{Element}	body		The box the screen is drawn into
 		 *
 		 *	@return		void
 		 */
@@ -2609,13 +2658,13 @@
 			Nino.admin.design._paintInstalled( installed );
 			Nino.admin.design._paintAvailable( available );
 
-			// An action that is on its way answers with the state it leaves, and that answer draws the tab: a list read now could be older than it
+			// An action that is on its way answers with the state it leaves, and that answer draws the screen: a list read now could be older than it
 			if( Nino.admin.design._facesBusy === false )
 				Nino.admin.design._loadFaces( false );
 		},
 
 		/**
-		 *	Draw both halves of the tab again, where the tab is on screen
+		 *	Draw both halves of the screen again, where the screen is open
 		 *
 		 *	@return		void
 		 */
@@ -2633,7 +2682,7 @@
 
 		/**
 		 *	Ask for the list. Without `refresh` the server answers with the list it kept, which is what
-		 *	opening the tab does; with it the repository is asked, which only the button does
+		 *	opening the screen does; with it the repository is asked, which only the button does
 		 *
 		 *	@param		{boolean}	refresh
 		 *
@@ -2707,7 +2756,7 @@
 		},
 
 		/**
-		 *	One action of the tab on one family. The buttons are switched off while it is on
+		 *	One action of the screen on one family. The buttons are switched off while it is on
 		 *	its way, and the server's answer - the same as the list gives, after the change -
 		 *	draws both halves again; the line of the action bar says what happened, or why not.
 		 *	The selects of the Fonts tab list the families too, so design/list is asked again
@@ -2764,7 +2813,7 @@
 		 *	Take over what design/list says now of the families - after an install or a removal
 		 *	the selects of the Fonts tab have one more or one less, and the state of the files
 		 *	may be another one, since a family a role uses can have been updated. The selection
-		 *	being edited is not touched; the tab of the typefaces, where it is open, is drawn
+		 *	being edited is not touched; the Install screen, where it is open, is drawn
 		 *	again, since the roles and the settings of the repository it reads are what
 		 *	design/list says
 		 *
@@ -2930,7 +2979,7 @@
 		},
 
 		/**
-		 *	A row of the tab: the label a knob row has - the icon, and a box with the name over its
+		 *	A row of the screen: the label a knob row has - the icon, and a box with the name over its
 		 *	notes - and, on its far side, whatever button the caller puts there
 		 *
 		 *	@param		{string}	slug
@@ -3019,7 +3068,7 @@
 			const design = Nino.admin.design;
 			const faces = design._faces;
 
-			/*	What design/list said when the panel was opened, until the tab has an answer of its own: the settings
+			/*	What design/list said when the panel was opened, until the screen has an answer of its own: the settings
 				of the repository are changed in another panel of the same page, and the answer is read on every visit	*/
 			const web = faces === null ? ( ( design._data || {} ).webfonts || {} ) : { url : faces.url !== '', key : faces.key === true };
 
@@ -3353,7 +3402,7 @@
 		},
 
 		/**
-		 *	Let go of the faces the names were set in, and of what watched the rows: the tab is left, and
+		 *	Let go of the faces the names were set in, and of what watched the rows: the screen is left, and
 		 *	a face is a file the browser holds
 		 *
 		 *	@return		void
@@ -3372,6 +3421,63 @@
 			} );
 
 			design._facesLoaded = {};
+		},
+
+		/**
+		 *	Whether the loader is the screen that is on show: the Install screen of the Fonts tab,
+		 *	while that tab is open
+		 *
+		 *	@return		{boolean}
+		 */
+		_onInstall : function() {
+			return Nino.admin.design._tab === 'fonts' && Nino.admin.design._groupOf('fonts') === 'install';
+		},
+
+		/**
+		 *	A tab with screens (see SCREENS): the strip of them - the one the knob tabs draw for their
+		 *	groups - and under it the box the screen that is open is drawn into. The strip is the element
+		 *	a switch is made on, and it stays where it is while the screen under it is drawn again (see
+		 *	_switchGroup())
+		 *
+		 *	@param		{string}	tab				A key of SCREENS
+		 *	@param		{Element}	body			The box the column keeps for the open tab
+		 *
+		 *	@return		void
+		 */
+		_renderScreens : function( tab, body ) {
+
+			const design = Nino.admin.design;
+
+			body.appendChild( design._groupStrip( tab, design.SCREENS[tab] ) );
+
+			const screen = dc.createElement('div');
+			screen.id = 'design-screen';
+			body.appendChild( screen );
+
+			design._fillScreen( screen, tab );
+		},
+
+		/**
+		 *	The screen that is open of a tab with screens, into the box that is kept for it. A screen is
+		 *	drawn again whenever it is opened, from what is known then: the families an install has just
+		 *	added are in the selects of the roles, and the theme a create has just made is in the list
+		 *
+		 *	@param		{Element}	box
+		 *	@param		{string}	tab				A key of SCREENS
+		 *
+		 *	@return		void
+		 */
+		_fillScreen : function( box, tab ) {
+
+			const design = Nino.admin.design;
+
+			if( tab === 'theme' )
+				return design._renderTheme( box );
+
+			if( design._groupOf( tab ) === 'roles' )
+				return box.appendChild( design._renderFonts() );
+
+			design._renderTypefaces( box );
 		},
 
 		/**
@@ -3415,13 +3521,7 @@
 				return box;
 			}
 
-			// Named by the tab it belongs to, as the strip in the head is by the panel
-			box.appendChild( Nino.admin.design._tabs( Nino.content.getText('/_admin/design/tab/'+ tab), 'design-groups', 'group',
-				Object.keys( groups ).map( function( key ) {
-					return { key : key, label : Nino.content.getText('/_admin/design/group/'+ tab+ '/'+ key+ '/label') };
-				} ), Nino.admin.design._groupOf( tab ), function( key ) {
-					Nino.admin.design._switchGroup( tab, key );
-				} ) );
+			box.appendChild( Nino.admin.design._groupStrip( tab, Object.keys( groups ) ) );
 
 			const rows = dc.createElement('div');
 			rows.id = 'design-knob-rows';
@@ -3451,56 +3551,101 @@
 		},
 
 		/**
-		 *	The group of the knobs of a tab that is shown: the one chosen since the panel was
-		 *	opened, else the first of the tab's groups - the order design/list gives them in
+		 *	The strip of the groups of the knobs of a tab, or of the screens of a tab that has some: a
+		 *	tablist of the workbench's make, one tab for each, the open one selected, named by the tab it
+		 *	belongs to as the strip in the head is by the panel. A press on one switches to it (see
+		 *	_switchGroup())
 		 *
-		 *	@param		{string}	tab				A key of KNOB_TABS
+		 *	@param		{string}	tab				A key of KNOB_TABS or of SCREENS
+		 *	@param		{Array}		keys			The groups or the screens, in the order they stand in
 		 *
-		 *	@return		{string}						'' for a tab that has no groups
+		 *	@return		{HTMLElement}
+		 */
+		_groupStrip : function( tab, keys ) {
+
+			return Nino.admin.design._tabs( Nino.content.getText('/_admin/design/tab/'+ tab), 'design-groups', 'group',
+				keys.map( function( key ) {
+					return { key : key, label : Nino.content.getText('/_admin/design/group/'+ tab+ '/'+ key+ '/label') };
+				} ), Nino.admin.design._groupOf( tab ), function( key ) {
+					Nino.admin.design._switchGroup( tab, key );
+				} );
+		},
+
+		/**
+		 *	The groups of the knobs of a tab, the order design/list gives them in, or the screens of a tab
+		 *	that has some, the order of SCREENS
+		 *
+		 *	@param		{string}	tab
+		 *
+		 *	@return		{Array}						Empty for a tab that has neither
+		 */
+		_groupKeys : function( tab ) {
+			return Nino.admin.design.SCREENS[tab] || Object.keys( ( ( Nino.admin.design._data || {} ).groups || {} )[tab] || {} );
+		},
+
+		/**
+		 *	The group of the knobs of a tab, or the screen of a tab that has some, that is shown: the one
+		 *	chosen since the panel was opened, else the first
+		 *
+		 *	@param		{string}	tab				A key of KNOB_TABS or of SCREENS
+		 *
+		 *	@return		{string}						'' for a tab that has none
 		 */
 		_groupOf : function( tab ) {
 
-			const keys = Object.keys( ( ( Nino.admin.design._data || {} ).groups || {} )[tab] || {} );
+			const keys = Nino.admin.design._groupKeys( tab );
 			const chosen = Nino.admin.design._group[tab];
 
 			return keys.indexOf( chosen ) !== -1 ? chosen : ( keys[0] || '' );
 		},
 
 		/**
-		 *	Show another group of the knobs of a tab. Only the rows under the strip are drawn
-		 *	again: the strip is the element the switch was made on, and the focus an arrow
-		 *	key put on a tab of it stays there (see _switchTab() for the strip in the head).
+		 *	Show another group of the knobs of a tab, or another screen of a tab that has some. Only
+		 *	what stands under the strip is drawn again - the rows of the group, or the screen, made afresh
+		 *	from what is known (see _fillScreen()): the strip is the element the switch was made on, and
+		 *	the focus an arrow key put on a tab of it stays there (see _switchTab() for the strip in the head).
 		 *
-		 *	A group belongs to the screen and not to the selection, so nothing is marked as
-		 *	changed and no preview is asked for - the page in the frame is the same under
+		 *	A group or a screen belongs to what is on screen and not to the selection, so nothing is marked
+		 *	as changed and no preview is asked for - the page in the frame is the same under
 		 *	every group, and the frame stays on the place it showed. The rows are another height, which in
 		 *	one column moves the stage that stands under them: the stage is fitted again.
 		 *	Where that gave the frame another height the page in it lays itself out again
 		 *	and the place it showed moves, so it is put back there - the place of the last
 		 *	change, else the anchor of the tab - once the page has heard the resize, as it
 		 *	is after a tab (see _jumpFitted()). A group that leaves the stage as tall as it
-		 *	was has nothing to put back and scrolls nothing. The group that is open already
-		 *	is not opened again, as the tab that is open is not (see _switchTab())
+		 *	was has nothing to put back and scrolls nothing. The group or the screen that is open
+		 *	already is not opened again, as the tab that is open is not (see _switchTab())
 		 *
-		 *	@param		{string}	tab				A key of KNOB_TABS
-		 *	@param		{string}	group			A key of the groups of that tab
+		 *	@param		{string}	tab				A key of KNOB_TABS or of SCREENS
+		 *	@param		{string}	group			A key of the groups or the screens of that tab
 		 *
 		 *	@return		void
 		 */
 		_switchGroup : function( tab, group ) {
 
-			if( group === Nino.admin.design._groupOf( tab ) )
+			const design = Nino.admin.design;
+
+			if( group === design._groupOf( tab ) )
 				return;
 
-			Nino.admin.design._group[tab] = group;
+			// The loader holds the faces its names are set in and what watches its rows: they go with it
+			if( design._onInstall() === true )
+				design._dropFaces();
 
-			const rows = dc.getElementById('design-knob-rows');
+			design._group[tab] = group;
+
+			const screens = design.SCREENS[tab] !== undefined;
+			const rows = dc.getElementById( screens === true ? 'design-screen' : 'design-knob-rows' );
 
 			if( rows === null )
 				return;
 
 			rows.innerHTML = '';
-			Nino.admin.design._fillKnobs( rows, tab, Nino.admin.design._data.groups[tab][group] );
+
+			if( screens === true )
+				design._fillScreen( rows, tab );
+			else
+				design._fillKnobs( rows, tab, design._data.groups[tab][group] );
 
 			// The stage stands under the rows in one column, so rows of another height move it: fitted
 			// again, and the page in the frame is put back once it has laid itself out at the height
@@ -3508,10 +3653,10 @@
 			const frame = dc.getElementById('design-frame');
 			const was = frame === null ? '' : frame.parentNode.style.height;
 
-			Nino.admin.design._fit();
+			design._fit();
 
 			if( frame !== null && frame.parentNode !== null && frame.parentNode.style.height !== was )
-				Nino.admin.design._jumpFitted( frame, was );
+				design._jumpFitted( frame, was );
 		},
 
 		/**
@@ -4615,15 +4760,15 @@
 		 *
 		 *	The list of the typefaces on offer is fitted after the stage, for the same
 		 *	reasons (see _fitFaces()): a screen that is drawn, a window that is resized
-		 *	and a tab that is opened give it the room the window has left under it, as
+		 *	and a tab, or a screen of a tab, that is opened give it the room the window has left under it, as
 		 *	they give the stage its own
 		 *
 		 *	It is asked for wherever the stage may have moved or the window changed: as
 		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
-		 *	viewport is chosen, when a tab is opened, when another group of the knobs is
-		 *	shown and when a preview has come back. The last three are for one column,
+		 *	viewport is chosen, when a tab is opened, when another group of the knobs or
+		 *	another screen is shown and when a preview has come back. The last three are for one column,
 		 *	where the controls stand over the stage and a column of another height -
-		 *	another tab, another group of the knobs, the brand warning of the colours -
+		 *	another tab, another group of the knobs or screen, the brand warning of the colours -
 		 *	moves it; beside the controls the pane sticks, and the stage stays where it is
 		 *
 		 *	The frame is the last thing on the page, and the page clears its foot for
@@ -4682,8 +4827,8 @@
 		 *	_room() has for the stage, with the card for the pane.
 		 *
 		 *	A box that holds the sentence of no match has no rows to fit the window to: its height
-		 *	is cleared, and the least the stylesheet gives it is what it has. A tab that is not on
-		 *	screen has no box to give room to. Asked for wherever the box has new rows
+		 *	is cleared, and the least the stylesheet gives it is what it has. A screen that is not
+		 *	open has no box to give room to. Asked for wherever the box has new rows
 		 *	(_paintResults()) and by _fit(), so that a box that was drawn before the column was in
 		 *	the document is fitted once it is
 		 *
