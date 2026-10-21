@@ -21,10 +21,13 @@ return [
 	'[[/_admin/design/tab/components]]'							=> 'Komponenten',
 	'[[/_admin/design/tab/colours]]'								=> 'Farben',
 
-	// Die Bildschirme der Tabs Theme und Schriften: eine Leiste von Tabs unter der Leiste der Tabs, und darunter der Bildschirm, der offen ist
+	// Die Bildschirme der Tabs Theme, Global und Schriften: eine Leiste von Tabs unter der Leiste der Tabs, und darunter der Bildschirm, der offen ist
 	'[[/_admin/design/group/theme/load/label]]'					=> 'Laden',
 	'[[/_admin/design/group/theme/properties/label]]'			=> 'Eigenschaften',
 	'[[/_admin/design/group/theme/css/label]]'					=> 'Eigenes CSS',
+	'[[/_admin/design/group/global/base/label]]'				=> 'Seitenbasis',
+	'[[/_admin/design/group/global/corners/label]]'				=> 'Ecken',
+	'[[/_admin/design/group/global/motion/label]]'				=> 'Animationen',
 	'[[/_admin/design/group/fonts/roles/label]]'				=> 'Zuweisungen',
 	'[[/_admin/design/group/fonts/install/label]]'				=> 'Installieren',
 
@@ -82,9 +85,9 @@ return [
 	'[[/_admin/design/label/whitespace]]'						=> 'Seite, Weißraum',
 	'[[/_admin/design/hint/whitespace]]'						=> '75 % ↔ 200 % der Abstände',
 	'[[/_admin/design/label/radius]]'							=> 'Radius, standard',
-	'[[/_admin/design/hint/radius]]'							=> 'eckig ↔ rund',
+	'[[/_admin/design/hint/radius]]'							=> '0 ↔ 1 rem',
 	'[[/_admin/design/label/radius-alt]]'						=> 'Radius, alternativ',
-	'[[/_admin/design/hint/radius-alt]]'						=> 'eckig ↔ rund',
+	'[[/_admin/design/hint/radius-alt]]'						=> '0 ↔ 1 rem',
 	'[[/_admin/design/label/radii]]'							=> 'Vorgabe je Fläche',
 	'[[/_admin/design/radii/cover]]'							=> 'Cover mit Rand',
 	'[[/_admin/design/radii/row]]'								=> 'Grid-Zeile innen',
@@ -185,6 +188,7 @@ return [
 	'[[/_admin/design/group/content/hero/label]]'				=> 'Hero',
 	'[[/_admin/design/group/content/section/label]]'			=> 'Sektion',
 	'[[/_admin/design/group/content/card/label]]'				=> 'Karte',
+	// ...und die Überschrift der Karte unter der Tabelle der Rollen bei Schriften, in der die beiden Regler der Varianten stehen
 	'[[/_admin/design/group/content/variants/label]]'			=> 'Varianten',
 
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Titel (Hero), Textgröße',

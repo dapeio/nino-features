@@ -126,7 +126,9 @@ namespace Nino\Modules\Design {
 			the rows of the group that is chosen. The groups and the knobs of each are in
 			the order they are shown in. Only the content has groups - the buttons and the
 			components are one list of rows and have no entry here - and every knob of
-			such a tab stands in exactly one of them. A group belongs to the screen and
+			such a tab stands in one of them but quiet and loud, which the Fonts tab draws
+			under the table of the roles: they are knobs of the content all the same, with
+			their ladders and their positions. A group belongs to the screen and
 			nothing is stored under it: a setup keeps the position of a knob by its tab
 			and its name, as before. The panel's words for a group are
 			/_admin/design/group/<tab>/<group>/label	*/
@@ -135,7 +137,6 @@ namespace Nino\Modules\Design {
 				'hero' 		=> [ 'hero-title', 'hero-text' ],
 				'section' 	=> [ 'section-title', 'section-subtitle', 'section-space', 'section-line' ],
 				'card' 		=> [ 'card-title', 'card-subtitle', 'card-space', 'border', 'shadow' ],
-				'variants' 	=> [ 'quiet', 'loud' ],
 			],
 		];
 

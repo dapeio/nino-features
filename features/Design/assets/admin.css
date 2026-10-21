@@ -55,11 +55,11 @@
 	scrollbar-width: none;
 }
 
-/*	The groups of the knobs of a tab, and the screens of Theme and Fonts: the same
-	strip. The groups stand in the card between the select of the template and the
+/*	The groups of the knobs of a tab, and the screens of Theme, Global and Fonts: the
+	same strip. The groups stand in the card between the select of the template and the
 	rows of the group that is open; the screens stand in the column itself, over the
 	cards of the one that is open, and have the room of a card's gap under them.
-	Four short words are one line of the column - with a little less air round each
+	Three short words are one line of the column - with a little less air round each
 	than the seven tabs have, so that the German ones are too at the width of a
 	phone; where they are not, the strip scrolls in its own box like the seven tabs
 	do, and the card does not scroll with it */
@@ -74,6 +74,13 @@
 .nino-admin .design-groups .nino-admin-tab {
 	padding-left: 1rem;
 	padding-right: 1rem;
+}
+
+/*	The chip on the label of the Theme tab: the workbench's pill, a little away from the word it
+	follows. It says the screen differs from the loaded theme, as the one in the head of that
+	theme's box does (see _refreshThemeChip() in admin.js) */
+.nino-admin .design-tab-changed {
+	margin-left: .45rem;
 }
 
 /*	The word over the title of the preview. The workbench owns the type
@@ -606,6 +613,14 @@
 }
 .nino-admin .design-theme-import > input {
 	font-size: .76rem;
+}
+/*	The badge of the theme the website runs is solid: the green of the workbench, with the ink it puts on
+	its active things - tokens of the workbench, which hold in both colour schemes. The other chips of
+	a row stay outlined */
+.nino-admin .design-theme-active {
+	border-color: transparent;
+	background: var(--editor-green);
+	color: var(--nino-admin-active-text);
 }
 /*	The head of the active theme: its title, the name of the theme and the chip, on one line
 	that wraps rather than runs off the card */

@@ -233,7 +233,7 @@ namespace Nino\Modules\Design {
 				'knobs' 	=> $setup['knobs'],
 				'tabs' 		=> Setup::KNOBS,
 				// How a tab shows its rows where it shows them in groups: a strip of tabs
-				// with the rows of the chosen group under it - the content has four
+				// with the rows of the chosen group under it - the content has three
 				'groups' 	=> Setup::GROUPS,
 				'steps' 	=> Setup::STEPS,
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),

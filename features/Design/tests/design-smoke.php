@@ -723,8 +723,8 @@ check( 'the panel has seven tabs - the ones the script draws are the ones its te
 	count( $panelTabs ) === 7 && array_diff( $scriptTabs, $panelTabs ) === [] && array_diff( $panelTabs, $scriptTabs ) === []
 	&& array_filter( $panelTabs, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab, 'en_US' ) ) === false ) === []
 	&& $handled( 'Design' ) === true );
-check( '...two of them are cut into screens - the Theme tab into load, properties and css, the Fonts tab into roles and install, which is the loader of the typefaces',
-	$scriptScreens === [ 'theme' => [ 'load', 'properties', 'css' ], 'fonts' => [ 'roles', 'install' ] ] && array_diff( array_keys( $scriptScreens ), $scriptTabs ) === [] );
+check( '...three of them are cut into screens - the Theme tab into load, properties and css, the Global tab into base, corners and motion, the Fonts tab into roles and install, which is the loader of the typefaces',
+	$scriptScreens === [ 'theme' => [ 'load', 'properties', 'css' ], 'global' => [ 'base', 'corners', 'motion' ], 'fonts' => [ 'roles', 'install' ] ] && array_diff( array_keys( $scriptScreens ), $scriptTabs ) === [] );
 
 // A screen is named by a word of its own, the pattern of the groups of the Content: group/<tab>/<screen>/label - and the manual names it by that word, the screens of the Theme in the entry of the Theme tab and the others in the overview
 $screenGaps = [];
@@ -1316,41 +1316,48 @@ check( 'the three tabs and their knobs, in the order of the model, each a scale 
 	&& Setup::KNOBS['components']['zebra'] === 'choice' && Setup::KNOBS['components']['labels'] === 'choice' && $scales === 21
 	&& array_sum( array_map( 'count', Setup::KNOBS ) ) === 23 );
 
-/*	The content shows its thirteen knobs in groups - a strip of tabs, and the rows of the one that is open: the two of the hero, the four of a
-	section, the five of a card and the two variants, in the order they are shown in. Only the content has groups; the buttons and the components are
-	a list of rows. A group is of the screen and nothing of it is stored, so the one rule it is held to is that every knob of its tab stands in exactly
-	one of them and every name in one is a knob of the tab	*/
+/*	The content has thirteen knobs and shows eleven of them in groups - a strip of tabs, and the rows of the one that is open: the two of the hero, the
+	four of a section and the five of a card, in the order they are shown in. The two variants, quiet and loud, are knobs of the content all the same - their
+	ladders, the setup, the compile and the preview are the content's - and stand in no group: the Fonts tab draws them under the table of its roles, where the
+	script names them (read out of the script itself, as the tabs and the screens are). Only the content has groups; the buttons and the components are a list
+	of rows. A group is of the screen and nothing of it is stored, so the one rule it is held to is that every knob of its tab is drawn in exactly one place - a
+	group, or the list the script names for the Fonts tab - and every name in either is a knob of the tab	*/
+preg_match( "/_fillKnobs\(\s*\w+\s*,\s*'content'\s*,\s*\[([^\]]*)\]/", $panelScript, $variantsFound );
+$onFonts = [ 'content' => $scriptWords( $variantsFound[1] ?? '' ) ];
 $groupProblems = [];
 
 foreach( Setup::GROUPS as $tab => $groups ) {
 
 	$grouped = array_merge( [], ...array_values( $groups ) );
+	$drawn = array_merge( $grouped, $onFonts[$tab] ?? [] );
 
 	if( isset( Setup::KNOBS[$tab] ) === false )
 		$groupProblems[] = $tab. ' is no tab with knobs';
 
-	foreach( array_count_values( $grouped ) as $name => $times )
+	foreach( array_count_values( $drawn ) as $name => $times )
 		if( $times !== 1 )
-			$groupProblems[] = $tab. '/'. $name. ' stands in '. $times. ' groups';
+			$groupProblems[] = $tab. '/'. $name. ' is drawn in '. $times. ' places';
 
-	foreach( array_diff( $grouped, array_keys( Setup::KNOBS[$tab] ?? [] ) ) as $name )
+	foreach( array_diff( $drawn, array_keys( Setup::KNOBS[$tab] ?? [] ) ) as $name )
 		$groupProblems[] = $tab. '/'. $name. ' is no knob of the tab';
 
-	foreach( array_diff( array_keys( Setup::KNOBS[$tab] ?? [] ), $grouped ) as $name )
-		$groupProblems[] = $tab. '/'. $name. ' stands in no group';
+	foreach( array_diff( array_keys( Setup::KNOBS[$tab] ?? [] ), $drawn ) as $name )
+		$groupProblems[] = $tab. '/'. $name. ' is drawn nowhere';
 }
 
-check( 'the content shows its knobs in four groups - hero, section, card and variants, in that order, the knobs of each in the order they are shown in - and the buttons and the components in none',
-	array_keys( Setup::GROUPS ) === [ 'content' ] && array_keys( Setup::GROUPS['content'] ) === [ 'hero', 'section', 'card', 'variants' ]
+check( 'the content shows its knobs in three groups - hero, section and card, in that order, the knobs of each in the order they are shown in - and the buttons and the components in none',
+	array_keys( Setup::GROUPS ) === [ 'content' ] && array_keys( Setup::GROUPS['content'] ) === [ 'hero', 'section', 'card' ]
 	&& Setup::GROUPS['content'] === [
 		'hero' => [ 'hero-title', 'hero-text' ],
 		'section' => [ 'section-title', 'section-subtitle', 'section-space', 'section-line' ],
 		'card' => [ 'card-title', 'card-subtitle', 'card-space', 'border', 'shadow' ],
-		'variants' => [ 'quiet', 'loud' ],
 	]
 	&& isset( Setup::GROUPS['buttons'] ) === false && isset( Setup::GROUPS['components'] ) === false );
-check( '...every knob of a tab with groups stands in exactly one of them, and every name in a group is a knob of its tab'
-	. ( $groupProblems === [] ? '' : ' - '. implode( ', ', array_slice( $groupProblems, 0, 4 ) ) ), $groupProblems === [] && count( array_merge( ...array_values( Setup::GROUPS['content'] ) ) ) === 13 );
+check( '...the quiet and the loud variant are knobs of the content, a scale each, that stand in no group: the Fonts tab is where the script draws them, and the knobs of no group are the ones it names',
+	Setup::kind( 'content', 'quiet' ) === 'scale' && Setup::kind( 'content', 'loud' ) === 'scale'
+	&& array_values( array_diff( array_keys( Setup::KNOBS['content'] ), ...array_values( Setup::GROUPS['content'] ) ) ) === $onFonts['content'] && $onFonts['content'] === [ 'quiet', 'loud' ] );
+check( '...every knob of a tab with groups is drawn in exactly one place - a group, or the list of the Fonts tab - and every name in either is a knob of its tab'
+	. ( $groupProblems === [] ? '' : ' - '. implode( ', ', array_slice( $groupProblems, 0, 4 ) ) ), $groupProblems === [] && count( array_merge( ...array_values( Setup::GROUPS['content'] ), ...array_values( $onFonts ) ) ) === 13 );
 check( '...kind() says which, and a knob there is none of is of no kind; range() says how far a kind reaches, and words() the words it is declared under - all five for a scale, the inner three for a choice',
 	Setup::kind( 'buttons', 'corners' ) === 'scale' && Setup::kind( 'buttons', 'size' ) === 'scale' && Setup::kind( 'components', 'zebra' ) === 'choice'
 	&& Setup::kind( 'content', 'corners' ) === '' && Setup::kind( 'content', 'nonsense' ) === '' && Setup::kind( 'nowhere', 'corners' ) === ''
@@ -6248,9 +6255,9 @@ check( '...the five knobs of the groups as the owner worded them: the title and 
 	&& $panelWord( 'knob/content/card-title/label', 'en_US' ) === 'Title (Card), text size' && $panelWord( 'knob/content/card-subtitle/label', 'en_US' ) === 'Subtitle (Card), text size'
 	&& array_filter( [ 'section-title', 'section-subtitle', 'card-title', 'card-subtitle' ], static fn( string $knob ): bool => $panelWord( 'knob/content/'. $knob. '/note', 'de_DE' ) !== 'kleiner '. $arrow. ' größer' || $panelWord( 'knob/content/'. $knob. '/note', 'en_US' ) !== 'smaller '. $arrow. ' larger' ) === []
 	&& $panelWord( 'knob/content/section-line/note', 'de_DE' ) === 'keine '. $arrow. ' kräftig' && $panelWord( 'knob/content/section-line/note', 'en_US' ) === 'none '. $arrow. ' strong' );
-check( '...and the four groups of the Content: Hero, Sektion, Karte, Varianten and Hero, Section, Card, Variants',
-	array_map( static fn( string $group ): string => $panelWord( 'group/content/'. $group. '/label', 'de_DE' ), array_keys( Setup::GROUPS['content'] ) ) === [ 'Hero', 'Sektion', 'Karte', 'Varianten' ]
-	&& array_map( static fn( string $group ): string => $panelWord( 'group/content/'. $group. '/label', 'en_US' ), array_keys( Setup::GROUPS['content'] ) ) === [ 'Hero', 'Section', 'Card', 'Variants' ] );
+check( '...and the three groups of the Content: Hero, Sektion, Karte and Hero, Section, Card',
+	array_map( static fn( string $group ): string => $panelWord( 'group/content/'. $group. '/label', 'de_DE' ), array_keys( Setup::GROUPS['content'] ) ) === [ 'Hero', 'Sektion', 'Karte' ]
+	&& array_map( static fn( string $group ): string => $panelWord( 'group/content/'. $group. '/label', 'en_US' ), array_keys( Setup::GROUPS['content'] ) ) === [ 'Hero', 'Section', 'Card' ] );
 check( '...and the four texts of the strips of Global are the owner\'s as well: Page, root size - 85 % ↔ 145 % of the browser\'s own size, never a fixed number of pixels - and Page, width - 48 rem ↔ to the edge; and in German Seite, Grundgröße - 85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl - and Seite, Breite - 48 rem ↔ bis an den Rand',
 	$panelWord( 'label/size', 'en_US' ) === 'Page, root size' && $panelWord( 'hint/size', 'en_US' ) === '85 % '. $arrow. ' 145 % of the browser\'s own size, never a fixed number of pixels'
 	&& $panelWord( 'label/pagewidth', 'en_US' ) === 'Page, width' && $panelWord( 'hint/pagewidth', 'en_US' ) === '48 rem '. $arrow. ' to the edge'

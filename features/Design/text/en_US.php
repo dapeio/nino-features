@@ -21,10 +21,13 @@ return [
 	'[[/_admin/design/tab/components]]'							=> 'Components',
 	'[[/_admin/design/tab/colours]]'								=> 'Colours',
 
-	// The screens of the Theme and Fonts tabs: a strip of tabs under the strip of the tabs, and under it the screen that is open
+	// The screens of the Theme, Global and Fonts tabs: a strip of tabs under the strip of the tabs, and under it the screen that is open
 	'[[/_admin/design/group/theme/load/label]]'					=> 'Load',
 	'[[/_admin/design/group/theme/properties/label]]'			=> 'Properties',
 	'[[/_admin/design/group/theme/css/label]]'					=> 'Custom CSS',
+	'[[/_admin/design/group/global/base/label]]'				=> 'Page base',
+	'[[/_admin/design/group/global/corners/label]]'				=> 'Corners',
+	'[[/_admin/design/group/global/motion/label]]'				=> 'Animations',
 	'[[/_admin/design/group/fonts/roles/label]]'				=> 'Assignments',
 	'[[/_admin/design/group/fonts/install/label]]'				=> 'Install',
 
@@ -82,9 +85,9 @@ return [
 	'[[/_admin/design/label/whitespace]]'						=> 'Page, whitespace',
 	'[[/_admin/design/hint/whitespace]]'						=> '75 % ↔ 200 % of the distances',
 	'[[/_admin/design/label/radius]]'							=> 'Radius, standard',
-	'[[/_admin/design/hint/radius]]'							=> 'sharp ↔ round',
+	'[[/_admin/design/hint/radius]]'							=> '0 ↔ 1 rem',
 	'[[/_admin/design/label/radius-alt]]'						=> 'Radius, alternative',
-	'[[/_admin/design/hint/radius-alt]]'						=> 'sharp ↔ round',
+	'[[/_admin/design/hint/radius-alt]]'						=> '0 ↔ 1 rem',
 	'[[/_admin/design/label/radii]]'							=> 'Default per surface',
 	'[[/_admin/design/radii/cover]]'							=> 'Padded cover',
 	'[[/_admin/design/radii/row]]'								=> 'Grid row, inside',
@@ -185,6 +188,7 @@ return [
 	'[[/_admin/design/group/content/hero/label]]'				=> 'Hero',
 	'[[/_admin/design/group/content/section/label]]'			=> 'Section',
 	'[[/_admin/design/group/content/card/label]]'				=> 'Card',
+	// ...and the heading of the card under the roles table of Fonts, where the two knobs of the variants stand
 	'[[/_admin/design/group/content/variants/label]]'			=> 'Variants',
 
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Title (Hero), text size',

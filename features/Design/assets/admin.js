@@ -9,36 +9,39 @@
  *													description, saved and exported from the screen, and under
  *													it the row that creates a theme out of the screen; and
  *													Custom CSS, the field of the css, which every input
- *													mirrors into the preview; Global, with the header and
- *													footer templates, the root size, the width, the
- *													whitespace and the two radii of the surfaces, a strip of
- *													five positions each, for each of five kinds of surface
- *													the choice of the strength it takes by default, and the
- *													animation of the page; Fonts, in two screens: Assignments,
- *													the five font roles, and Install, the loader, which keeps
- *													nothing in the setup - the families the project has
- *													installed, and the signed list of those it can install,
- *													which is read when its button is pressed: an install or a
- *													removal happens when it is pressed, and is no part of the
- *													draft; Content, Buttons and Components, each with the
- *													choice of its template and one named knob for each thing
- *													the template lets go of, a strip of five positions or of
- *													three words - the Content in four groups, a strip of tabs
- *													over the rows of one; and Colours, with the two colours,
- *													the five knobs and the mode the palette is solved from -
- *													and the compile that turns all of it into assets/theme.css
- *													(see Modules\Design\Admin beside this file). A tab with
- *													screens draws their strip, the one the groups of a knob
- *													tab have, under the strip of the tabs, and the screen that
- *													is open under it. Beside the controls is one specimen page
- *													of the selection, under a head with the viewport switch,
- *													the switch that lets the frame follow and the reload; the
- *													frame fills the window down to the action bar and scrolls
- *													to the open tab's anchor, or to where a change of a knob
- *													shows. The bar holds what the panel says - what a save or
- *													an apply did, or why not - and the state of the files in a
- *													word. Ships with the feature and is loaded exactly while
- *													it is active.
+ *													mirrors into the preview; Global, in three screens: Page
+ *													base, with the header and footer templates and the root
+ *													size, the width and the whitespace, a strip of five
+ *													positions each; Corners, with the two radii of the
+ *													surfaces, a strip of five positions each, and for each of
+ *													five kinds of surface the choice of the strength it takes
+ *													by default; and Animations, the animation of the page;
+ *													Fonts, in two screens: Assignments, the five font roles
+ *													and under them the text sizes of the quiet and the loud
+ *													variants, and Install, the loader, which keeps nothing in
+ *													the setup - the families the project has installed, and
+ *													the signed list of those it can install, which is read
+ *													when its button is pressed: an install or a removal
+ *													happens when it is pressed, and is no part of the draft;
+ *													Content, Buttons and Components, each with the choice of
+ *													its template and one named knob for each thing the
+ *													template lets go of, a strip of five positions or of
+ *													three words - the Content in three groups, a strip of
+ *													tabs over the rows of one; and Colours, with the two
+ *													colours, the five knobs and the mode the palette is solved
+ *													from - and the compile that turns all of it into
+ *													assets/theme.css (see Modules\Design\Admin beside this
+ *													file). A tab with screens draws their strip, the one the
+ *													groups of a knob tab have, under the strip of the tabs, and
+ *													the screen that is open under it. Beside the controls is one
+ *													specimen page of the selection, under a head with the
+ *													viewport switch, the switch that lets the frame follow and
+ *													the reload; the frame fills the window down to the action
+ *													bar and scrolls to the open tab's anchor, or to where a
+ *													change of a knob shows. The bar holds what the panel says -
+ *													what a save or an apply did, or why not - and the state of
+ *													the files in a word. Ships with the feature and is loaded
+ *													exactly while it is active.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -83,7 +86,7 @@
 			them under the strip of the tabs - the one the groups of a knob tab have - and under it the screen that
 			is open, one at a time, drawn again whenever it is opened (see _renderScreens()). The screens are the
 			panel's own, where the groups of a knob tab are the model's (see Setup::GROUPS)	*/
-		SCREENS	: { theme : [ 'load', 'properties', 'css' ], fonts : [ 'roles', 'install' ] },
+		SCREENS	: { theme : [ 'load', 'properties', 'css' ], global : [ 'base', 'corners', 'motion' ], fonts : [ 'roles', 'install' ] },
 
 		// The tabs that have named knobs, and the part each of them is the
 		// template of: a knob belongs to the tab, the tab to one template
@@ -107,11 +110,13 @@
 			subtitle is in view wherever the frame stands, while the one under that first
 			title is a quiet one, small and easy to miss. The title and the subtitle of
 			a card go to the cards, which the specimen's Cards section carries the id of
-			(#cards), as does every other knob of the tab ('*'). The five are named so
-			that none of them is left to the '*'. A tab with no entry and a knob with
-			neither its own nor a '*' use the tab's anchor. The two maps are told
-			together in the docblock of _jump()	*/
-		KNOB_ANCHORS	: { content : { 'hero-title' : 'content', 'hero-text' : 'content', 'section-title' : 'content', 'section-subtitle' : 'colours', 'section-line' : 'content', 'card-title' : 'cards', 'card-subtitle' : 'cards', '*' : 'cards' } },
+			(#cards), as does every other knob of the tab ('*'). They are named so
+			that none of them is left to the '*'. The two variants, quiet and loud, are
+			drawn on the Fonts tab and are looked at where the specimen sets every title
+			three times, in the typography block (#type), which is that tab's anchor as
+			well. A tab with no entry and a knob with neither its own nor a '*' use the
+			tab's anchor. The two maps are told together in the docblock of _jump()	*/
+		KNOB_ANCHORS	: { content : { 'hero-title' : 'content', 'hero-text' : 'content', 'section-title' : 'content', 'section-subtitle' : 'colours', 'section-line' : 'content', 'card-title' : 'cards', 'card-subtitle' : 'cards', quiet : 'type', loud : 'type', '*' : 'cards' } },
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
 			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
@@ -1036,9 +1041,6 @@
 			if( Nino.admin.design.SCREENS[tab] !== undefined )
 				return Nino.admin.design._renderScreens( tab, body );
 
-			if( tab === 'global' )
-				return Nino.admin.design._renderGlobal( body );
-
 			if( tab === 'colours' )
 				return body.appendChild( Nino.admin.design._renderColours() );
 
@@ -1047,25 +1049,35 @@
 
 		/**
 		 *	The seven tabs. A tablist rather than a button group, because these
-		 *	really are seven panels: aria-selected, not aria-pressed.
+		 *	really are seven panels: aria-selected, not aria-pressed. The label of
+		 *	the Theme tab carries the chip "changed" while the screen differs from its
+		 *	theme, so a strip that is drawn anew is drawn with it (see _refreshThemeChip())
 		 *
 		 *	@return		{HTMLElement}
 		 */
 		_renderTabs : function() {
 
-			return Nino.admin.design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-tabs', 'tab',
-				Nino.admin.design.TABS.map( function( key ) {
+			const design = Nino.admin.design;
+
+			const strip = design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-tabs', 'tab',
+				design.TABS.map( function( key ) {
 					return { key : key, label : Nino.content.getText('/_admin/design/tab/'+ key) };
-				} ), Nino.admin.design._tab, function( key ) {
-					Nino.admin.design._switchTab( key );
+				} ), design._tab, function( key ) {
+					design._switchTab( key );
 				} );
+
+			// Found again by its id when a change asks for the chip (the strip is mounted by then)
+			strip.id = 'design-tabs';
+			design._refreshThemeChip( null, strip );
+
+			return strip;
 		},
 
 		/**
 		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
 		 *	keeps that, with the arrow keys and the one tab stop of a strip. The seven tabs of the
 		 *	panel are drawn with it, and so are the groups of the knobs of a tab (see _renderKnobs())
-		 *	and the screens of Theme and Fonts (see _renderScreens())
+		 *	and the screens of Theme, Global and Fonts (see _renderScreens())
 		 *
 		 *	@param		{string}		name				What the strip is called by assistive technology
 		 *	@param		{string}		className		The class the strip has beside the workbench's own
@@ -1303,6 +1315,9 @@
 
 			if( css !== null && design._edit !== null && css.value !== design._edit.css )
 				css.value = design._edit.css;
+
+			// The label of the tab says what an action did to the theme whichever screen is open
+			design._refreshThemeChip();
 		},
 
 		/**
@@ -1627,30 +1642,50 @@
 		},
 
 		/**
-		 *	Draw the chip "changed" in the head of the active theme, or take it away: it is there
-		 *	while the screen differs from the theme (see _themeChanged()). Asked for after every
-		 *	change of a control, beside the way back, and by everything that draws the card
+		 *	Draw the chip "changed" in the head of the active theme and on the label of the Theme tab, or take
+		 *	it away: it is there while the screen differs from the theme (see _themeChanged()), in both places
+		 *	or in neither, whichever tab and screen are open. Asked for after every change of a control, beside
+		 *	the way back, by everything that draws the card of the theme and by the strip of the tabs when it is drawn
 		 *
 		 *	@param		{?Element}	[head]		The head, for one that is built and not mounted yet
+		 *	@param		{?Element}	[strip]		The strip of the tabs, for one that is built and not mounted yet
 		 *
 		 *	@return		void
 		 */
-		_refreshThemeChip : function( head ) {
+		_refreshThemeChip : function( head, strip ) {
 
 			const design = Nino.admin.design;
-
-			head = head || dc.getElementById('design-theme-current-head');
-
-			if( head === null )
-				return;
-
-			const chip = head.querySelector('.design-theme-changed');
 			const changed = design._themeChanged();
 
-			if( changed === true && chip === null )
-				head.firstChild.appendChild( design._chip( 'design-theme-changed', Nino.content.getText('/_admin/design/theme/current/changed'), 'warn', 'design-theme-changed' ) );
+			head = head || dc.getElementById('design-theme-current-head');
+			strip = strip || dc.getElementById('design-tabs');
 
-			if( changed === false && chip !== null )
+			if( head !== null )
+				design._flagChanged( head.firstChild, 'design-theme-changed', changed, 'design-theme-changed' );
+
+			if( strip !== null )
+				design._flagChanged( strip.children[ design.TABS.indexOf('theme') ], 'design-tab-changed', changed );
+		},
+
+		/**
+		 *	The chip "changed" in a place: drawn there while `on` and it is not, taken away while not `on` and it
+		 *	is, and left as it is otherwise - one chip at most, found by its class
+		 *
+		 *	@param		{Element}		host			What the chip stands in: the title of the box of the theme, or the label of the tab
+		 *	@param		{string}		className	The class the chip has beside the workbench's own
+		 *	@param		{boolean}		on
+		 *	@param		{string}		[id]
+		 *
+		 *	@return		void
+		 */
+		_flagChanged : function( host, className, on, id ) {
+
+			const chip = host.querySelector('.'+ className );
+
+			if( on === true && chip === null )
+				host.appendChild( Nino.admin.design._chip( className, Nino.content.getText('/_admin/design/theme/current/changed'), 'warn', id ) );
+
+			if( on === false && chip !== null )
 				chip.remove();
 		},
 
@@ -2140,22 +2175,46 @@
 		},
 
 		/**
-		 *	The Global tab: the two frames, the root size, the width, the whitespace and the
-		 *	two radii of the page - five strips of five positions, in a card of their own the
-		 *	way the knob rows of a tab stand in theirs, with the strength each kind of surface
-		 *	takes by default under them, a strip of two words for each - and the animation.
+		 *	The Global tab, the screen that is open of its three: Page base, with the two frames and, in a
+		 *	card of their own the way the knob rows of a tab stand in theirs, the root size, the width and the
+		 *	whitespace of the page - three strips of five positions; Corners, with the two radii of the
+		 *	surfaces, the same strips, and under them the strength each kind of surface takes by default, a
+		 *	strip of two words for each; and Animations, the animation of the page.
 		 *
-		 *	Drawn once per visit of the tab and changed in place after that: a
+		 *	Drawn once each time its screen is opened and changed in place after that: a
 		 *	select that redrew its card when it was used would take the focus
 		 *	away from the control that was just operated. The other three
 		 *	templates are chosen on the tabs they belong to (see _renderKnobs()),
 		 *	where the choice does redraw the tab - and gives the focus back
 		 *
-		 *	@param		{Element}	body		The box the column keeps for the open tab
+		 *	@param		{Element}	body		The box the screen is drawn into
 		 *
 		 *	@return		void
 		 */
 		_renderGlobal : function( body ) {
+
+			const screen = Nino.admin.design._groupOf('global');
+
+			if( screen === 'base' )
+				return Nino.admin.design._renderBase( body );
+
+			if( screen === 'corners' )
+				return Nino.admin.design._renderCorners( body );
+
+			// The animation of the page
+			body.appendChild( Nino.admin.design._renderMotion() );
+		},
+
+		/**
+		 *	The Page base screen: the header and the footer, and under them the root size, the width and the
+		 *	whitespace of the page, the same five positions each. What the ends of a strip are is the line under
+		 *	its name
+		 *
+		 *	@param		{Element}	body		The box the screen is drawn into
+		 *
+		 *	@return		void
+		 */
+		_renderBase : function( body ) {
 
 			const data = Nino.admin.design._data;
 			const edit = Nino.admin.design._edit;
@@ -2170,10 +2229,7 @@
 
 			body.appendChild( templates );
 
-			/*	The page: its root size, its width, its whitespace and its two radii, the same
-				five positions each. What the ends of a strip are is the line under its name	*/
-			const page = dc.createElement('div');
-			page.className = 'nino-admin-card design-block';
+			const page = Nino.admin.design._card('design-page');
 
 			const numbers = Nino.admin.design._numbered( Nino.admin.design._positions('scale'), 0 );
 
@@ -2189,6 +2245,28 @@
 				'global/whitespace', Nino.content.getText('/_admin/design/label/whitespace'), Nino.content.getText('/_admin/design/hint/whitespace'),
 				numbers, edit.whitespace, function( position ) { edit.whitespace = position; Nino.admin.design._preview() } ) );
 
+			body.appendChild( page );
+		},
+
+		/**
+		 *	The Corners screen: the two radii of the page, the same five positions each, and under them
+		 *	the strength each kind of surface takes where nothing chooses it - the default the toggle of a
+		 *	surface in the Builder starts from: one of the two words the radius has, a strip of two for each
+		 *	kind design/list names
+		 *
+		 *	@param		{Element}	body		The box the screen is drawn into
+		 *
+		 *	@return		void
+		 */
+		_renderCorners : function( body ) {
+
+			const data = Nino.admin.design._data;
+			const edit = Nino.admin.design._edit;
+
+			const page = Nino.admin.design._card('design-page');
+
+			const numbers = Nino.admin.design._numbered( Nino.admin.design._positions('scale'), 0 );
+
 			page.appendChild( Nino.admin.design._stripRow(
 				'global/radius', Nino.content.getText('/_admin/design/label/radius'), Nino.content.getText('/_admin/design/hint/radius'),
 				numbers, edit.radius, function( position ) { edit.radius = position; Nino.admin.design._preview() } ) );
@@ -2197,9 +2275,6 @@
 				'global/radius-alt', Nino.content.getText('/_admin/design/label/radius-alt'), Nino.content.getText('/_admin/design/hint/radius-alt'),
 				numbers, edit['radius-alt'], function( position ) { edit['radius-alt'] = position; Nino.admin.design._preview() } ) );
 
-			/*	The strength each kind of surface takes where nothing chooses it - the default the
-				toggle of a surface in the Builder starts from: one of the two words the radius
-				has, a strip of two for each kind design/list names	*/
 			page.appendChild( Nino.admin.design._sectionLabel( Nino.content.getText('/_admin/design/label/radii') ) );
 
 			const words = ( data.radiusWords || [] ).map( function( word ) {
@@ -2214,9 +2289,6 @@
 			} );
 
 			body.appendChild( page );
-
-			// The animation of the page
-			body.appendChild( Nino.admin.design._renderMotion() );
 		},
 
 		/**
@@ -2395,7 +2467,7 @@
 		},
 
 		/**
-		 *	The Assignments screen of the Fonts tab: the five roles of Nino.css in a table of five rows and
+		 *	The table of the Assignments screen of the Fonts tab: the five roles of Nino.css in a table of five rows and
 		 *	four columns - the family, the weight, the case and the size. The
 		 *	controls stand bare in the cells and the words are in the column heads,
 		 *	which is what keeps the table readable in a third of the screen; each
@@ -2444,6 +2516,25 @@
 
 			table.appendChild( tbody );
 			card.appendChild( table );
+
+			return card;
+		},
+
+		/**
+		 *	The card under the table of the roles: the size of the text of a quiet and of a loud title, which are
+		 *	knobs of the Content (see Setup::KNOBS) and stand here because they are sizes of type. It is headed
+		 *	with the words of the group they stood in on the Content tab, and has a strip for each, read and written
+		 *	in the setup as every knob is: a change goes to the preview, and the strips are greyed out where the
+		 *	template of the Content declares no ladder for them (see _fillKnobs())
+		 *
+		 *	@return		{Element}
+		 */
+		_renderVariants : function() {
+
+			const card = Nino.admin.design._card('design-variants');
+
+			card.appendChild( Nino.admin.design._sectionLabel( Nino.content.getText('/_admin/design/group/content/variants/label') ) );
+			Nino.admin.design._fillKnobs( card, 'content', [ 'quiet', 'loud' ] );
 
 			return card;
 		},
@@ -3514,8 +3605,13 @@
 			if( tab === 'theme' )
 				return design._renderTheme( box );
 
-			if( design._groupOf( tab ) === 'roles' )
-				return box.appendChild( design._renderFonts() );
+			if( tab === 'global' )
+				return design._renderGlobal( box );
+
+			if( design._groupOf( tab ) === 'roles' ) {
+				box.appendChild( design._renderFonts() );
+				return box.appendChild( design._renderVariants() );
+			}
 
 			design._renderTypefaces( box );
 		},
@@ -3530,7 +3626,7 @@
 		 *
 		 *	A tab with groups (design/list says which, see Setup::GROUPS) puts a strip of
 		 *	tabs under the select, one for each group, and under it the rows of the group
-		 *	that is chosen and of no other: the Content has thirteen knobs, which are
+		 *	that is chosen and of no other: the Content shows eleven of its thirteen knobs, which are
 		 *	more than a column shows at once. The group is kept for the tab while the
 		 *	panel lives (see _groupOf()) and changes the rows only (see _switchGroup())
 		 *
@@ -4693,8 +4789,9 @@
 		 *	rule of a section to the hero, which is also the anchor of the tab
 		 *	(#content), the subtitle of a section to the plain section (#colours) and
 		 *	every other knob, the title and the subtitle of a card among them, to the
-		 *	Cards section (#cards); a tab or a knob with no entry there keeps the
-		 *	anchor of the tab. The place of a change is _target, one for each
+		 *	Cards section (#cards) - but for the quiet and the loud variants, which the Fonts
+		 *	tab draws, to the typography block (#type); a tab or a knob with no entry there
+		 *	keeps the anchor of the tab. The place of a change is _target, one for each
 		 *	change - it is put back to the tab's own when a tab is opened and when a
 		 *	template is chosen, and it is what is jumped to until then.
 		 *
