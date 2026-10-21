@@ -757,7 +757,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowCustom : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: [ builder._newCol() ],
@@ -770,7 +770,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function() {
-			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, background : null, text : '', stackAlign : '', stackGap : '', p : '', mt : '', mb : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', p : '', mt : '', mb : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
 		},
 
 		/**
@@ -1180,7 +1180,7 @@
 		 *	each language and none in the others: the component's label is no text
 		 *	of its key, the field and the preview show it where nothing is typed.
 		 *	A component that holds components has none of its own: it starts with no
-		 *	children
+		 *	children. A component that is a surface starts with no radius of its own
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
@@ -1198,6 +1198,10 @@
 			const kind = builder._sourceKind( registry, name );
 			const section = model.blocks[at[0]];
 			const component = { name : name, source : '', text : null, attributes : builder._clone( schema.defaults || {} ) };
+
+			// A component that is a surface has a radius of its own, which is none until the editor sets it: it follows the default of its kind
+			if( builder._surfaceOf( schema ) !== '' )
+				component.radius = '';
 
 			// What stands between the tags of a component that holds components is its children; of any other it is a content
 			if( kind === 'content' && builder._holds( registry, name ) !== '' )
@@ -5062,6 +5066,83 @@
 			return builder._selectField( label, hint, builder._options( field.group, field.values ), String( target[field.key] ), write );
 		},
 
+		// ---------------------------------------------------------- The radius of a surface
+
+		/**
+		 *	The kind of surface a component is, as the registry says it (surface): card, image, or none for a component that has no surface of its own
+		 *	with a radius. The panel knows no component by name: what is a surface, and of which kind, is the registry's word
+		 *
+		 *	@param		{Object}		schema						One entry of the registry's components
+		 *
+		 *	@return		{string}									The kind, '' where there is none
+		 */
+		_surfaceOf : function( schema ) {
+			return typeof schema.surface === 'string' ? schema.surface : '';
+		},
+
+		/**
+		 *	The strength the page gives a kind of surface where an element says nothing: the registry's radii (the markers --radius-<kind>-default of the
+		 *	page's style sheets, read by the server; the kernel's own where no Design sets them, all of them standard)
+		 *
+		 *	@param		{string}		kind							cover, row, column, card or image
+		 *
+		 *	@return		{string}									standard or alternative
+		 */
+		_radiusDefault : function( kind ) {
+			return ( Nino.admin.builder._registry.radii || {} )[kind] === 'alternative' ? 'alternative' : 'standard';
+		},
+
+		/**
+		 *	The strength in force on an element: the one it says - the setting, which is the class nino-radius or nino-radius-alt - or, where it says none,
+		 *	the default of its kind
+		 *
+		 *	@param		{string}		setting						'', standard or alternative
+		 *	@param		{string}		kind
+		 *
+		 *	@return		{string}									standard or alternative
+		 */
+		_radiusIn : function( setting, kind ) {
+			return setting === 'standard' || setting === 'alternative' ? setting : Nino.admin.builder._radiusDefault( kind );
+		},
+
+		/**
+		 *	The toggle "alternative radius" of a surface - the picture of a cover that keeps the room of the page around it, what the row of a section paints,
+		 *	what a column paints, a card, a picture - the same switch in all of them. The page has two strengths of radius, the standard and the alternative, and a
+		 *	default of its own for each kind of surface; the toggle is on where the strength in force is the alternative one. That is the strength the element
+		 *	says with its class, or - where it has none - the default of its kind (registry.radii). Switching it writes the class that deviates from the default of
+		 *	the kind, nino-radius-alt where the default is the standard strength and nino-radius where it is the alternative one, and removes the class where the
+		 *	strength asked for is the default itself: so an element the editor never touched, or one that was switched back, follows a later change of the default in
+		 *	the Design, and an element the editor set keeps what was set. The toggle sleeps where the class would mean nothing - where the element paints no ground
+		 *	and no picture - and keeps what it holds: the setting waits in the model, as the setting of any form that sleeps
+		 *
+		 *	@param		{Object}		holder						Where the setting is kept: the settings of a section, a column, a component
+		 *	@param		{string}		key								radius, or rowRadius for the row of a section
+		 *	@param		{string}		kind							cover, row, column, card or image: the kind of surface, which has its default
+		 *	@param		{Function}	awake							Whether the element paints a surface now
+		 *
+		 *	@return		{Element}									The switch, with syncRadius(): draws its state and its sleep again, for the form that changes what the element paints
+		 */
+		_radiusToggle : function( holder, key, kind, awake ) {
+
+			const builder = Nino.admin.builder;
+			const field = builder._switchField( Nino.content.getText('/_admin/builder/common/radius-alt'), Nino.content.getText('/_admin/builder/hint/radius-alt'), builder._radiusIn( holder[key], kind ) === 'alternative', function( on ) {
+
+				const asked = on === true ? 'alternative' : 'standard';
+
+				holder[key] = asked === builder._radiusDefault( kind ) ? '' : asked;
+				builder._changed();
+			} );
+			const box = builder._one( field, 'input' );
+
+			field.syncRadius = function() {
+				box.checked = builder._radiusIn( holder[key], kind ) === 'alternative';
+				box.disabled = awake() === false;
+			};
+			field.syncRadius();
+
+			return field;
+		},
+
 		// ---------------------------------------------------------- The settings
 
 		/**
@@ -5197,9 +5278,10 @@
 
 		/**
 		 *	The form of a section, in six tabs: the section itself (its whitespace, the spacing above and below it,
-		 *	whether it is a cover, how high that is, whether it keeps the room of the page around it and where its
-		 *	content stands in it), its grid row (how wide it may be, where it stands when it is narrower than the
-		 *	page, its padding on four sides, where its columns and its text are put), its background (the colour,
+		 *	whether it is a cover, how high that is, whether it keeps the room of the page around it - and the radius
+		 *	of what a cover paints with it - and where its content stands in it), its grid row (how wide it may be,
+		 *	where it stands when it is narrower than the page, its padding on four sides, where its columns and its
+		 *	text are put, and the radius of what the row paints), its background (the colour,
 		 *	the border - a strength, and a switch for the brand colour that waits for one -, the picture, whether
 		 *	it is a parallax, whether it is dimmed and whether the background stands inside, on the row), the loop
 		 *	that makes a section of every element of a type, its animation and the classes of its own. The name of
@@ -5258,8 +5340,11 @@
 
 						// The room of the page around a cover or a parallax: there is none to keep around a section that is neither. A switch that is on can be switched off
 						const sleeps = function() { return section.settings.cover === null && section.settings.parallax !== true && section.settings.padded !== true };
+						// What a cover paints with the room around it - its picture, the box of a parallax, the scrim of a dimmed cover - has a radius, which is the cover's to take: it sleeps where there is none
+						const radius = builder._radiusToggle( section.settings, 'radius', 'cover', function() { return section.settings.padded === true && ( section.settings.cover !== null || section.settings.parallax === true ) } );
 						const padded = builder._setting( section.settings, { key : 'padded', type : 'bool', label : '/_admin/builder/section/padded', hint : '/_admin/builder/hint/padded' }, function() {
 							builder._one( padded, 'input' ).disabled = sleeps();
+							radius.syncRadius();
 						} );
 
 						builder._one( padded, 'input' ).disabled = sleeps();
@@ -5282,12 +5367,14 @@
 								}
 
 								builder._changed();
-								// The height and the place wake or sleep, and so does what is in the other tab
+								// The height and the place wake or sleep, and so does what is in the other tabs
 								builder._refreshTab('section');
+								builder._refreshTab('row');
 								builder._refreshTab('background');
 							} ),
 							height,
 							padded,
+							radius,
 							place,
 						] );
 						builderCoverLine.id = 'builder-cover-line';
@@ -5318,6 +5405,8 @@
 							setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ),
 							setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
 						] ) );
+						// A row paints where the background stands inside, on it: its colour and its picture have the radius of the row, which sleeps where the row has none to paint
+						pane.appendChild( builder._radiusToggle( section.settings, 'rowRadius', 'row', function() { return section.settings.inner === true } ) );
 					} },
 					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
 
@@ -5333,7 +5422,10 @@
 						const background = builder._backgroundField( path );
 
 						// With neither a colour nor a picture there is nothing of the background to put inside: the switch goes with the last of them
-						pane.appendChild( builder._setting( section.settings, { key : 'color', type : 'color', label : '/_admin/builder/section/color' }, function() { background.syncInner() } ) );
+						pane.appendChild( builder._setting( section.settings, { key : 'color', type : 'color', label : '/_admin/builder/section/color' }, function() {
+							background.syncInner();
+							builder._refreshTab('row');
+						} ) );
 						pane.appendChild( background );
 					} },
 					{ id : 'loop', label : Nino.content.getText('/_admin/builder/tab/loop'), build : function( pane ) { builder._stackForm( pane, path ) } },
@@ -5731,8 +5823,8 @@
 		 *	The form of a column, in five tabs: its layout (its width and visibility in the
 		 *	viewport or in each of them, where its components and its text are put on a line, the
 		 *	gap below, and the spacing: inside, above and below it), its background (the colour it
-		 *	paints, the picture behind it, whether the picture is dimmed), the loop it runs, its
-		 *	animation, and the classes of its own
+		 *	paints, the picture behind it, whether the picture is dimmed, and the radius of what it
+		 *	paints), the loop it runs, its animation, and the classes of its own
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{string}		tab						The tab to start on: layout or loop
@@ -5768,14 +5860,17 @@
 					} },
 					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/column-background'), build : function( pane ) {
 
-						pane.appendChild( builder._setting( col, { key : 'color', type : 'color', label : '/_admin/builder/section/color', around : section.settings.color } ) );
+						// A column that paints - a colour, a picture - has a radius, which is the column's to take; one that paints nothing has none, and the toggle sleeps
+						const radius = builder._radiusToggle( col, 'radius', 'column', function() { return ( col.color !== '' && col.color !== undefined ) || ( col.background !== null && col.background !== undefined ) } );
+
+						pane.appendChild( builder._setting( col, { key : 'color', type : 'color', label : '/_admin/builder/section/color', around : section.settings.color }, function() { radius.syncRadius() } ) );
 						pane.appendChild( builder._backgroundField( path ) );
 
 						// There is a picture to darken, or there is none
 						const dim = builder._setting( col, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
 
 						builder._one( dim, 'input' ).disabled = col.background === null || col.background === undefined;
-						pane.appendChild( dim );
+						pane.appendChild( builder._line( [ dim, radius ] ) );
 					} },
 					{ id : 'loop', label : Nino.content.getText('/_admin/builder/tab/loop'), build : function( pane ) { builder._stackForm( pane, path ) } },
 					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._animationFields( pane, col, { none : true, times : false } ) } },
@@ -6119,9 +6214,10 @@
 
 		/**
 		 *	The form of a component that holds components, in tabs: its properties, which are the attributes its
-		 *	schema declares - a field each, by the type and the input, in the order of the schema (see _attributeFields()) -,
-		 *	its variants and its link where it has them (see _attributeTabs()), and the classes of its own. Its children
-		 *	are edited where they stand, each in the form every component has
+		 *	schema declares - a field each, by the type and the input, in the order of the schema (see _attributeFields()) -
+		 *	and the toggle of its radius, which it has as a surface, its variants and its link where it has them (see
+		 *	_attributeTabs()), and the classes of its own. Its children are edited where they stand, each in the form every
+		 *	component has
 		 *
 		 *	@param		{Array}			path							The component, in a column
 		 *
@@ -6166,8 +6262,9 @@
 
 		/**
 		 *	The tabs of the attributes of a component: its properties - the attributes that are no variants, a field each by the type and the
-		 *	input its schema gives -, its variants - a row of buttons for each, one to a line -, and, for a component that is a link, the
-		 *	address and the window it opens in. A tab is left out for what the component does not have
+		 *	input its schema gives, and for a component that is a surface the toggle of its radius (see _radiusToggle()), which it has always -, its
+		 *	variants - a row of buttons for each, one to a line -, and, for a component that is a link, the address and the window it opens in. A tab
+		 *	is left out for what the component does not have
 		 *
 		 *	@param		{Object}		component
 		 *	@param		{Object}		schema						Its entry of the registry
@@ -6181,6 +6278,7 @@
 			const builder = Nino.admin.builder;
 			const parts = builder._split( builder._declared( schema ) );
 			const tabs = [];
+			const surface = builder._surfaceOf( schema );
 			const fill = function( id, declared ) {
 				return function( pane ) {
 					builder._attributeFields( pane, declared, component.attributes, Object.assign( {}, context, {
@@ -6191,8 +6289,15 @@
 				};
 			};
 
-			if( Object.keys( parts.properties ).length > 0 )
-				tabs.push( { id : 'properties', label : Nino.content.getText('/_admin/builder/tab/properties'), build : fill( 'properties', parts.properties ) } );
+			// A component that is a surface has a radius of its own, which is no attribute of its call: it has a tab for it where it has no property
+			if( Object.keys( parts.properties ).length > 0 || surface !== '' )
+				tabs.push( { id : 'properties', label : Nino.content.getText('/_admin/builder/tab/properties'), build : function( pane ) {
+
+					fill( 'properties', parts.properties )( pane );
+
+					if( surface !== '' )
+						pane.appendChild( builder._radiusToggle( component, 'radius', surface, function() { return true } ) );
+				} } );
 
 			if( Object.keys( parts.variants ).length > 0 )
 				tabs.push( { id : 'variants', label : Nino.content.getText('/_admin/builder/tab/variants'), build : fill( 'variants', parts.variants ) } );
@@ -6227,8 +6332,8 @@
 		 *	picture and, under it, the text of the key in the language the editor works in or
 		 *	the picture of the slot with its alt text; for [html] the editor of the blocks
 		 *	profile instead -, its properties, which are the attributes its schema declares, in
-		 *	the order of the schema and drawn by their type and input, its variants, its link -
-		 *	the address and the window - and the classes of its own. A component without a source,
+		 *	the order of the schema and drawn by their type and input, and the toggle of its radius where it is
+		 *	a surface, its variants, its link - the address and the window - and the classes of its own. A component without a source,
 		 *	without attributes, without variants and not a link has no tab for what it does not have. A child of a component that
 		 *	holds components has this form; what holds them has another (see _containerDialog())
 		 *
@@ -7178,12 +7283,14 @@
 					}
 
 					builder._changed();
-					// The scrim and the switch inside wake or sleep, and so does the place of the content in the other tab
+					// The scrim and the switch inside wake or sleep, and so does what is in the other tabs: the place of the content and the radius of the row
 					builder._refreshTab('background');
 					builder._refreshTab('section');
+					builder._refreshTab('row');
 				} );
 				const dim = builder._setting( section.settings, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
-				const inner = builder._setting( section.settings, { key : 'inner', type : 'bool', label : '/_admin/builder/section/inner-background', hint : '/_admin/builder/hint/inner-background' } );
+				// The row paints once the background stands inside, and the toggle of its radius in the other tab wakes with it
+				const inner = builder._setting( section.settings, { key : 'inner', type : 'bool', label : '/_admin/builder/section/inner-background', hint : '/_admin/builder/hint/inner-background' }, function() { builder._refreshTab('row') } );
 				const box = builder._one( inner, 'input' );
 
 				// A switch that is on can be switched off whatever the picture: a parallax a template wrote without one, or that lost its picture, must not be stuck.
@@ -7241,9 +7348,11 @@
 				builder._changed();
 				builder._refreshTab('background');
 
-				// A section that was a parallax is none now: the place of its content is the Section tab's
-				if( column === false )
+				// A section that was a parallax is none now: the place of its content is the Section tab's - and a row that had the background inside has none now
+				if( column === false ) {
 					builder._refreshTab('section');
+					builder._refreshTab('row');
+				}
 			} );
 			wrap.appendChild( remove );
 

@@ -239,6 +239,13 @@ namespace Nino\Modules\Design {
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),
 				'whitespace' => (int) ( $setup['whitespace'] ?? 0 ),
+				/*	The radius of the surfaces: the position of each of the two strengths, the strength each
+					kind of surface takes, and the kinds there are and the two words a kind is set to	*/
+				'radius' 	=> (int) ( $setup['radius'] ?? 0 ),
+				'radius-alt' => (int) ( $setup['radius-alt'] ?? 1 ),
+				'radii' 	=> (array) ( $setup['radii'] ?? [] ),
+				'surfaces' => Setup::SURFACES,
+				'radiusWords' => Setup::RADIUS_WORDS,
 				/*	The Theme tab: the slug of the theme the stored setup was taken from and
 					its own css, the list of the themes there are - the shipped ones first -
 					and the active one as its file holds it, normalised against the library
@@ -1060,10 +1067,12 @@ namespace Nino\Modules\Design {
 				'size' 		=> $posted['size'] ?? 0,
 				'width' 	=> $posted['width'] ?? 0,
 				'whitespace' => $posted['whitespace'] ?? 0,
+				'radius' 	=> $posted['radius'] ?? 0,
+				'radius-alt' => $posted['radius-alt'] ?? 1,
 				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 
-			foreach( [ 'motion', 'parts', 'knobs', 'fonts', 'colours' ] as $key )
+			foreach( [ 'radii', 'motion', 'parts', 'knobs', 'fonts', 'colours' ] as $key )
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );

@@ -15,10 +15,12 @@ namespace Nino\Modules\Design {
 	 *	Nino							A compact filesystembased php framework
 	 *	Themes						A theme is the face of a site: the whole setup of the panel -
 	 *										the five templates, the position of every knob, the root
-	 *										size, the width, the whitespace, the animation, the five font
-	 *										roles and the palette - kept under a name with a description and a
-	 *										stylesheet of its own, the custom css. Loading one puts it
-	 *										on the screen as a draft; saving puts the screen into it.
+	 *										size, the width, the whitespace, the radius of the surfaces
+	 *										(the two strengths and the one each kind of surface takes),
+	 *										the animation, the five font roles and the palette - kept
+	 *										under a name with a description and a stylesheet of its
+	 *										own, the custom css. Loading one puts it on the screen as
+	 *										a draft; saving puts the screen into it.
 	 *
 	 *										The palette is the one part a theme may leave out. A brand
 	 *										colour is the project's, so the themes the feature ships name
@@ -351,7 +353,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	A setup cut down to the keys that choose something - the size, the
-		 *	width, the whitespace, the animation, the parts, the knobs, the fonts and the palette - in
+		 *	width, the whitespace, the two strengths of the radius and the radii, the
+		 *	animation, the parts, the knobs, the fonts and the palette - in
 		 *	the order of Setup::KEYS, and only those the setup has: a theme that names no
 		 *	colours (see the class) has none. The format, the theme, the css and the record of
 		 *	what was compiled are not a theme's setup: the css stands beside it in the

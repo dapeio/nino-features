@@ -10,8 +10,10 @@
  *													it the row that creates a theme out of the screen; and
  *													Custom CSS, the field of the css, which every input
  *													mirrors into the preview; Global, with the header and
- *													footer templates, the root size, the width and the
- *													whitespace, a strip of five positions each, and the
+ *													footer templates, the root size, the width, the
+ *													whitespace and the two radii of the surfaces, a strip of
+ *													five positions each, for each of five kinds of surface
+ *													the choice of the strength it takes by default, and the
  *													animation of the page; Fonts, in two screens: Assignments,
  *													the five font roles, and Install, the loader, which keeps
  *													nothing in the setup - the families the project has
@@ -113,7 +115,7 @@
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
 			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
-			Setup::range()). The root size, the width and the whitespace of the page are scales	*/
+			Setup::range()). The root size, the width, the whitespace and the two radii of the page are scales	*/
 		RANGE		: { scale : 2, choice : 1 },
 
 		// The namespace the elements of an icon are made in
@@ -238,8 +240,9 @@
 		/*	Which icon a row opens with, by the tab and the knob it sets - so that what
 			is being set is felt before it is read: the size of a text, of a surface, a
 			space, the corners, a line, a shadow. The knobs are the feature's own (see
-			Setup::KNOBS), and so are the three rows of Global, the root size, the
-			width and the whitespace of the page, and the rows of the palette - the brand colour, the
+			Setup::KNOBS), and so are the rows of Global, the root size, the width, the
+			whitespace and the radius of the page, with the five kinds of surface a
+			strength is chosen for, and the rows of the palette - the brand colour, the
 			second colour, which is the row of Harmony, temperature, saturation,
 			contrast, depth and the mode: all of them have one, so that every name of
 			the Colours tab starts at the same left edge. A row of the loader,
@@ -250,6 +253,13 @@
 			'global/size' : 'a-large-small',
 			'global/width' : 'move-horizontal',
 			'global/whitespace' : 'move-vertical',
+			'global/radius' : 'square-round-corner',
+			'global/radius-alt' : 'square-round-corner',
+			'global/radii-cover' : 'square-round-corner',
+			'global/radii-row' : 'square-round-corner',
+			'global/radii-column' : 'square-round-corner',
+			'global/radii-card' : 'square-round-corner',
+			'global/radii-image' : 'square-round-corner',
 			'typefaces/family' : 'a-large-small',
 			'content/hero-title' : 'a-large-small',
 			'content/hero-text' : 'a-large-small',
@@ -262,7 +272,6 @@
 			'content/card-title' : 'a-large-small',
 			'content/card-subtitle' : 'a-large-small',
 			'content/card-space' : 'align-vertical-space-around',
-			'content/corners' : 'square-round-corner',
 			'content/border' : 'square',
 			'content/shadow' : 'square-stack',
 			'buttons/size' : 'a-large-small',
@@ -414,7 +423,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, size, width, whitespace, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, knobs, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -437,6 +446,9 @@
 				size 		: data.size,
 				width 	: data.width,
 				whitespace : data.whitespace,
+				radius 	: data.radius,
+				'radius-alt' : data['radius-alt'],
+				radii 	: Object.assign( {}, data.radii || {} ),
 				motion 	: Object.assign( {}, data.motion || {} ),
 				fonts 	: fonts,
 				colours	: Object.assign( {}, data.colours || {} ),
@@ -707,9 +719,10 @@
 
 		/**
 		 *	One strip: the row of a setting that is chosen by pressing one of a few
-		 *	buttons - a knob of the three tabs, the root size, the width and the whitespace of the page,
-		 *	a knob of the palette. The label with the icon of the key, the name and the
-		 *	note under it (see _labelContent()), and the workbench's own segmented
+		 *	buttons - a knob of the three tabs, a setting of the page - the root size, the width, the
+		 *	whitespace, the two radii and the strength of each kind of surface -, a knob of the
+		 *	palette. The label with the icon of the key, the name and the note under it (see
+		 *	_labelContent()), and the workbench's own segmented
 		 *	control for the options: filled where it is, flat where it is not, the
 		 *	active one lit by Nino.adminUi.buttonRow().
 		 *
@@ -1585,7 +1598,8 @@
 		 */
 		_snapshotOf : function( edit, theme ) {
 
-			const snapshot = { size : edit.size, width : edit.width, whitespace : edit.whitespace, motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts };
+			const snapshot = { size : edit.size, width : edit.width, whitespace : edit.whitespace, radius : edit.radius, 'radius-alt' : edit['radius-alt'], radii : edit.radii,
+				motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts };
 
 			if( theme === undefined || theme.colours !== undefined )
 				snapshot.colours = edit.colours;
@@ -1817,7 +1831,8 @@
 				return ( response.missing || [] ).filter( function( entry ) { return entry.slug === family } ).map( function( entry ) { return entry.name } )[0] || family;
 			} );
 
-			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace, motion : setup.motion, fonts : setup.fonts,
+			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace,
+				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
 				colours : setup.colours === undefined ? design._edit.colours : setup.colours, theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
@@ -2125,9 +2140,10 @@
 		},
 
 		/**
-		 *	The Global tab: the two frames, the root size, the width and the whitespace
-		 *	of the page - three strips of five positions, in a card of their own the way
-		 *	the knob rows of a tab stand in theirs - and the animation.
+		 *	The Global tab: the two frames, the root size, the width, the whitespace and the
+		 *	two radii of the page - five strips of five positions, in a card of their own the
+		 *	way the knob rows of a tab stand in theirs, with the strength each kind of surface
+		 *	takes by default under them, a strip of two words for each - and the animation.
 		 *
 		 *	Drawn once per visit of the tab and changed in place after that: a
 		 *	select that redrew its card when it was used would take the focus
@@ -2154,8 +2170,8 @@
 
 			body.appendChild( templates );
 
-			/*	The page: its root size, its width and its whitespace, the same five positions
-				each. What the ends of a strip are is the line under its name	*/
+			/*	The page: its root size, its width, its whitespace and its two radii, the same
+				five positions each. What the ends of a strip are is the line under its name	*/
 			const page = dc.createElement('div');
 			page.className = 'nino-admin-card design-block';
 
@@ -2172,6 +2188,30 @@
 			page.appendChild( Nino.admin.design._stripRow(
 				'global/whitespace', Nino.content.getText('/_admin/design/label/whitespace'), Nino.content.getText('/_admin/design/hint/whitespace'),
 				numbers, edit.whitespace, function( position ) { edit.whitespace = position; Nino.admin.design._preview() } ) );
+
+			page.appendChild( Nino.admin.design._stripRow(
+				'global/radius', Nino.content.getText('/_admin/design/label/radius'), Nino.content.getText('/_admin/design/hint/radius'),
+				numbers, edit.radius, function( position ) { edit.radius = position; Nino.admin.design._preview() } ) );
+
+			page.appendChild( Nino.admin.design._stripRow(
+				'global/radius-alt', Nino.content.getText('/_admin/design/label/radius-alt'), Nino.content.getText('/_admin/design/hint/radius-alt'),
+				numbers, edit['radius-alt'], function( position ) { edit['radius-alt'] = position; Nino.admin.design._preview() } ) );
+
+			/*	The strength each kind of surface takes where nothing chooses it - the default the
+				toggle of a surface in the Builder starts from: one of the two words the radius
+				has, a strip of two for each kind design/list names	*/
+			page.appendChild( Nino.admin.design._sectionLabel( Nino.content.getText('/_admin/design/label/radii') ) );
+
+			const words = ( data.radiusWords || [] ).map( function( word ) {
+				const label = Nino.content.getText('/_admin/design/radii/'+ word );
+				return { value : word, label : label, title : label };
+			} );
+
+			( data.surfaces || [] ).forEach( function( kind ) {
+				page.appendChild( Nino.admin.design._stripRow(
+					'global/radii-'+ kind, Nino.content.getText('/_admin/design/radii/'+ kind ), '',
+					words, edit.radii[kind], function( word ) { edit.radii[kind] = word; Nino.admin.design._preview() } ) );
+			} );
 
 			body.appendChild( page );
 
@@ -3490,7 +3530,7 @@
 		 *
 		 *	A tab with groups (design/list says which, see Setup::GROUPS) puts a strip of
 		 *	tabs under the select, one for each group, and under it the rows of the group
-		 *	that is chosen and of no other: the Content has fourteen knobs, which are
+		 *	that is chosen and of no other: the Content has thirteen knobs, which are
 		 *	more than a column shows at once. The group is kept for the tab while the
 		 *	panel lives (see _groupOf()) and changes the rows only (see _switchGroup())
 		 *

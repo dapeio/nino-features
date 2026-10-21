@@ -116,6 +116,8 @@ namespace Nino\Modules\Builder {
 	 *											    rowPl rowPr rowPt rowPb  ''|0..6  nino-pl-<n> nino-pr-<n> nino-pt-<n> nino-pb-<n>: the padding of the row on each side, a step
 	 *											                                      of the space scale; '' writes none - the gutter at the sides, no padding above and below,
 	 *											                                      or what the background inside gives the row
+	 *											    rowRadius   ''|standard|alternative   nino-radius, nino-radius-alt on the row: the radius of its ground and of its picture, the page's own
+	 *											                                      for ''. Read where the background stands inside (inner); on a row that paints nothing the two classes are idle and stay custom ones
 	 *											    rowCustom   string                classes of the row that are none of these
 	 *											    color       ''|alt|tint|dark|black|primary|brand-alt
 	 *											    border      ''|1|2|3              nino-section--border-<n>
@@ -131,6 +133,8 @@ namespace Nino\Modules\Builder {
 	 *											    padded      bool                  nino-cover--padded: the cover or the parallax keeps the room of
 	 *											                                      the page around it; on a section that is neither the class
 	 *											                                      is idle and stays a custom one
+	 *											    radius      ''|standard|alternative   nino-radius, nino-radius-alt: the radius of the picture of a padded cover, the page's own
+	 *											                                      for ''; on a section that is not a padded cover the two classes are idle and stay custom ones
 	 *											    contentPos  ''|top|bottom         nino-cover-<x>: where the row stands in a cover or a parallax,
 	 *											                                      the middle for ''; on a section that is neither the class
 	 *											                                      is idle and stays a custom one
@@ -182,6 +186,8 @@ namespace Nino\Modules\Builder {
 	 *											                    column off from the section it is in
 	 *											  dim       bool    nino-grid--dim, written only while the column has a
 	 *											                    background: there is no picture to darken without one
+	 *											  radius    ''|standard|alternative   nino-radius, nino-radius-alt: the radius of the ground and of the picture of the column, the page's own
+	 *											                    for ''; on a column that paints neither the two classes are idle and stay custom ones
 	 *											  background null|map  as that of a section: slot, focus, create; the
 	 *											            div.nino-grid-bg, the first thing in the column - before its
 	 *											            stack or its components
@@ -209,6 +215,10 @@ namespace Nino\Modules\Builder {
 	 *											  text      null|string   the fixed value, text="..."
 	 *											  attributes map    every attribute of the schema, a string each - the
 	 *											                    default where the call does not set it
+	 *											  radius    ''|standard|alternative   only for a component that is a surface (see surface()): the class nino-radius or nino-radius-alt of its call,
+	 *											                    the page's own for ''. The Reader takes the first of the two out of the class attribute - and from a picture what an earlier builder
+	 *											                    gave it, the class nino-image--rounded or the style Rounded, as the alternative where the call names no strength of its own -, the
+	 *											                    Writer puts it back as the first class of the call and writes neither of the earlier two
 	 *											  content   string  only for a component whose source is 'content' and whose
 	 *											                    schema does not say 'holds'
 	 *											  components list  only for a component whose schema says 'holds' (a container):
@@ -264,6 +274,15 @@ namespace Nino\Modules\Builder {
 		public const array STEPS = [ '0', '1', '2', '3', '4', '5', '6' ];
 		// How much room a section keeps, the four rungs of the page's whitespace around the middle: nino-whitespace--<x>
 		public const array WHITESPACE = [ 'least', 'less', 'more', 'most' ];
+		/*	The radius of a surface: the two strengths the page has - the Design writes both, Nino.css has them as well -, the class that puts one
+			element on either, and the five kinds of surface the page has a default strength for (see surface() for the components)	*/
+		public const array RADIUS = [ 'standard', 'alternative' ];
+		public const array RADIUS_CLASS = [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ];
+		public const array SURFACES = [ 'cover', 'row', 'column', 'card', 'image' ];
+		// What an earlier builder gave a picture, before the page had its two strengths: the class nino-image--rounded, and the style Rounded, an attribute of the
+		// image component that is gone. Both are read as the alternative strength, and neither is written again
+		public const string EARLIER_IMAGE_CLASS = 'nino-image--rounded';
+		public const string EARLIER_IMAGE_STYLE = 'rounded';
 		// Where a component that is a link opens: the target that every component with 'link' has, the second of its two implicit attributes
 		public const array TARGETS = [ '', '_blank' ];
 		public const array TEXT = [ 'left', 'center', 'right' ];
@@ -344,8 +363,8 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowCustom' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
-				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'contentPos' => '', 'inner' => false, 'whitespace' => '',
+				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
+				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'whitespace' => '',
 				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
@@ -357,7 +376,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', 'p' => '', 'mt' => '', 'mb' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', 'p' => '', 'mt' => '', 'mb' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -410,6 +429,86 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function holds( array $schema ): bool {
 			return is_string( $schema['holds'] ?? null ) === true && $schema['holds'] !== '';
+		}
+
+		/**
+		 *	The kind of surface a component is, by what the registry says of it and not by its name. A component that holds components is a
+		 *	card - the container of a page is the box that has corners; a component whose source is an image and which no container claims
+		 *	(its 'in' names no place a container holds) is the frame of a picture. Any other, the picture of a card among them, is none: it
+		 *	follows the surface it stands in. A component that is a surface has the setting radius, and the panel offers it the toggle
+		 *	against the page's default for its kind
+		 *
+		 *	@param		array			$schema				One entry of the registry
+		 *	@param		array			$components		All the components of the registry, name => schema
+		 *
+		 *	@return 	string										A value of SURFACES - 'card' or 'image' - or '' for none
+		 */
+		public static function surface( array $schema, array $components ): string {
+
+			if( isset( $schema['source'] ) === false )
+				return '';
+
+			if( self::holds( $schema ) === true )
+				return 'card';
+
+			if( $schema['source'] !== 'image' )
+				return '';
+
+			foreach( $components as $other )
+				if( is_array( $other ) === true && self::holds( $other ) === true && in_array( $other['holds'], (array) ( $schema['in'] ?? [] ), true ) === true )
+					return '';
+
+			return 'image';
+		}
+
+		/**
+		 *	Whether a source still carries what an earlier builder gave a picture: the class nino-image--rounded or the style Rounded. The page
+		 *	draws no rule for either any more and the Reader reads both as the alternative strength, so a save has to write the file anew even where
+		 *	the model says that nothing changed (see Document::save()). It looks at the text and not at the model, and a call that is none of a
+		 *	picture's may make it say yes: the file is then written as the Writer writes it, as it is by any other save
+		 *
+		 *	@param		string		$source				The file
+		 *
+		 *	@return 	bool
+		 */
+		public static function earlierImage( string $source ): bool {
+			return str_contains( $source, self::EARLIER_IMAGE_CLASS ) === true || str_contains( $source, 'style="'. self::EARLIER_IMAGE_STYLE. '"' ) === true;
+		}
+
+		/**
+		 *	The radius out of the class attribute of a call: the first of the two classes of the page, and the rest of the classes as they were.
+		 *	What an earlier builder gave a picture counts as the alternative strength, where the component is a picture and the call names no
+		 *	strength of its own: the class nino-image--rounded, which is not among the classes that are left, and the style Rounded, which
+		 *	_call() has taken out of the attributes. A second class of the kind is a class of its own and stays. A call with none of these
+		 *	keeps its class attribute byte for byte
+		 *
+		 *	@param		string		$class				The class attribute of the call
+		 *	@param		bool			$picture			Whether the component is a picture, whose earlier class is read
+		 *	@param		bool			$rounded			Whether the call had the earlier style of a picture
+		 *
+		 *	@return 	array											[ '' or a value of RADIUS, the classes that are left ]
+		 */
+		private static function _radius( string $class, bool $picture, bool $rounded = false ): array {
+
+			$word		= '';
+			$rest		= [];
+
+			foreach( preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token ) {
+
+				$read = array_search( $token, self::RADIUS_CLASS, true );
+
+				if( $read !== false && $word === '' )
+					$word = (string) $read;
+				elseif( $picture === true && $token === self::EARLIER_IMAGE_CLASS )
+					$rounded = true;
+				else
+					$rest[] = $token;
+			}
+
+			if( $word === '' && $rounded === true )
+				$word = self::RADIUS[1];
+
+			return $word === '' ? [ '', $class ] : [ $word, implode( ' ', $rest ) ];
 		}
 
 		/**
@@ -999,6 +1098,7 @@ namespace Nino\Modules\Builder {
 			$custom		= [];
 			$dim			= [];
 			$padded		= [];
+			$radii		= [];
 			$places	= [];
 			$earlier	= [];
 			$default	= $s;
@@ -1036,6 +1136,11 @@ namespace Nino\Modules\Builder {
 					$dim[] = $token;
 				elseif( $token === 'nino-cover--padded' )
 					$padded[] = $token;
+				// The radius is decided below, with the padded cover it belongs to: it stands among the custom classes until then
+				elseif( in_array( $token, self::RADIUS_CLASS, true ) === true ) {
+					$radii[] = $token;
+					$custom[] = $token;
+				}
 				elseif( preg_match( '/^nino-whitespace--('. implode( '|', self::WHITESPACE ). ')$/D', $token, $m ) === 1 )
 					$set( 'whitespace', $m[1], $token );
 				elseif( preg_match( '/^nino-cover-('. implode( '|', self::CONTENT_POS ). ')$/D', $token, $m ) === 1 )
@@ -1080,6 +1185,13 @@ namespace Nino\Modules\Builder {
 					$set( 'padded', true, $token );
 				else
 					$custom[] = $token;
+
+			// The radius is the padded cover's: the first of the two classes is the setting, a second is a class of its own as in any kind, and on a section
+			// that is no padded cover both are idle and stay where they stood among the custom classes
+			if( $s['padded'] === true && $radii !== [] ) {
+				$s['radius']	= (string) array_search( $radii[0], self::RADIUS_CLASS, true );
+				$custom				= array_values( array_diff( $custom, [ $radii[0] ] ) );
+			}
 
 			// The scrim is the cover's where the section is one, else the parallax's, else - where a picture of its own stands behind it - the section's:
 			// any other dim class is a custom one
@@ -1130,6 +1242,7 @@ namespace Nino\Modules\Builder {
 
 			$s				= &$section['settings'];
 			$custom		= [];
+			$radii		= [];
 			$free			= $s['cover'] === null && $s['parallax'] === false && $s['color'] === '' && $section['background'] === null;
 
 			if( $picture !== null ) {
@@ -1161,8 +1274,19 @@ namespace Nino\Modules\Builder {
 				}
 				elseif( $token === 'nino-grid-row--dim' && $picture !== null )
 					$s['dim'] = true;
+				elseif( in_array( $token, self::RADIUS_CLASS, true ) === true ) {
+					$radii[] = $token;
+					$custom[] = $token;
+				}
 				else
 					$custom[] = $token;
+			}
+
+			// The radius is the radius of what the row paints, which the background inside gives it: the first of the two classes is the setting then, and on a row that
+			// paints nothing both are idle and stay custom classes
+			if( $s['inner'] === true && $radii !== [] ) {
+				$s['rowRadius']	= (string) array_search( $radii[0], self::RADIUS_CLASS, true );
+				$custom					= array_values( array_diff( $custom, [ $radii[0] ] ) );
 			}
 
 			$s['rowCustom'] = implode( ' ', $custom );
@@ -1405,7 +1529,7 @@ namespace Nino\Modules\Builder {
 			[ $call, $pos ] = self::_call( $body, $pos, 0, $registry );
 
 			if( $call['stack'] === true || $call['node']['name'] !== 'image' || $call['node']['source'] === '' || $call['node']['source'][0] !== '/'
-				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' )
+				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' || ( $call['node']['radius'] ?? '' ) !== '' )
 				throw self::_fail( 'background-image', '', $pos );
 
 			// Only the slot and the empty alt: any other attribute set would be lost in writing
@@ -1447,6 +1571,7 @@ namespace Nino\Modules\Builder {
 			$col = [ 'width' => [], 'hidden' => [] ] + self::colDefaults() + [ 'stack' => null, 'components' => [] ];
 			$custom = [];
 			$dim = false;
+			$radii = [];
 
 			// Nino.css is mobile-first: nino-grid-100 holds in every viewport, a
 			// prefixed width from its viewport up until a larger one takes over.
@@ -1477,6 +1602,11 @@ namespace Nino\Modules\Builder {
 				elseif( $token === 'nino-grid--dim' ) {
 
 					$dim = true;
+					$custom[] = $token;
+				}
+				elseif( in_array( $token, self::RADIUS_CLASS, true ) === true ) {
+
+					$radii[] = $token;
 					$custom[] = $token;
 				}
 				elseif( preg_match( '/^nino-stack-('. implode( '|', self::STACK_ALIGN ). ')$/D', $token, $m ) === 1 && $col['stackAlign'] === '' )
@@ -1513,6 +1643,13 @@ namespace Nino\Modules\Builder {
 
 				$col['dim'] = true;
 				$custom = array_values( array_diff( $custom, [ 'nino-grid--dim' ] ) );
+			}
+
+			// The radius is the radius of what the column paints - a ground or a picture: the first of the two classes is the setting then, and on a column that
+			// paints neither both are idle and stay custom classes
+			if( $radii !== [] && ( $col['color'] !== '' || $col['background'] !== null ) ) {
+				$col['radius']	= (string) array_search( $radii[0], self::RADIUS_CLASS, true );
+				$custom					= array_values( array_diff( $custom, [ $radii[0] ] ) );
 			}
 
 			$col['custom'] = implode( ' ', $custom );
@@ -1659,12 +1796,25 @@ namespace Nino\Modules\Builder {
 				unset( $named['text'] );
 			}
 
+			// A component that is a surface has its radius apart from the rest of its classes
+			$components = (array) ( $registry['components'] ?? [] );
+			$surface = $isStack === true ? '' : self::surface( $schema, $components );
+
+			// The style an earlier builder gave a picture is an attribute the schema has no more: it is the radius, and no attribute of the node
+			$rounded = $surface === 'image' && ( $named['style'] ?? null ) === self::EARLIER_IMAGE_STYLE && array_key_exists( 'style', self::defaults( $schema ) ) === false;
+
+			if( $rounded === true )
+				unset( $named['style'] );
+
 			$node = [
 				'name'				=> $name,
 				'source'			=> $positional[0] ?? '',
 				'text'				=> $fixed,
 				'attributes'	=> self::_attributes( $named, $schema, $base + $pos, $whole ),
 			];
+
+			if( $surface !== '' )
+				[ $node['radius'], $node['attributes']['class'] ] = self::_radius( (string) ( $node['attributes']['class'] ?? '' ), $surface === 'image', $rounded );
 
 			if( $isStack === true ) {
 
@@ -1678,7 +1828,7 @@ namespace Nino\Modules\Builder {
 				$node['components'] = self::_sequence( (string) $content, $base + $contentAt, $registry, $name );
 			elseif( $kind === 'content' ) {
 
-				$names = array_merge( array_keys( (array) ( $registry['components'] ?? [] ) ), array_keys( (array) ( $registry['stacks'] ?? [] ) ) );
+				$names = array_merge( array_keys( $components ), array_keys( (array) ( $registry['stacks'] ?? [] ) ) );
 
 				if( $names !== [] && preg_match( '~\[(?:'. implode( '|', array_map( static fn( string $n ): string => preg_quote( $n, '~' ), $names ) ). ')(?: [^\]]*)?\]~', (string) $content ) === 1 )
 					throw self::_fail( 'nested-call', $name, $base + $contentAt );

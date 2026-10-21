@@ -1948,11 +1948,12 @@ const sectionTab = paneOf('section');
 const coverLabel = word('section/cover');
 const heightLabel = word('section/cover-height');
 const paddedLabel = word('section/padded');
+const radiusLabel = word('common/radius-alt');
 const placeLabel = word('section/content-pos');
 const cellLabel = function( side, kind ) { return word('section/spacing-cell').replace( '%s', word('section/'+ side) ).replace( '%s', word('section/'+ kind) ) };
-check( 'Section: the whitespace, the spacing as a table - margin and padding above and below - and the cover with its height, whether it is padded and the place of its content, in this order and nothing else: the width and the alignments are in the tab of the row',
-	JSON.stringify( labelList( sectionTab ) ) === JSON.stringify( [ word('section/whitespace'), cellLabel( 'above', 'outer' ), cellLabel( 'above', 'inner' ), cellLabel( 'below', 'outer' ), cellLabel( 'below', 'inner' ), coverLabel, heightLabel, paddedLabel, placeLabel ] )
-	&& JSON.stringify( controlsIn( sectionTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'select', 'select', 'select', 'select', 'switch', 'number', 'switch', 'select' ] ) );
+check( 'Section: the whitespace, the spacing as a table - margin and padding above and below - and the cover with its height, whether it is padded, the toggle of its radius and the place of its content, in this order and nothing else: the width and the alignments are in the tab of the row',
+	JSON.stringify( labelList( sectionTab ) ) === JSON.stringify( [ word('section/whitespace'), cellLabel( 'above', 'outer' ), cellLabel( 'above', 'inner' ), cellLabel( 'below', 'outer' ), cellLabel( 'below', 'inner' ), coverLabel, heightLabel, paddedLabel, radiusLabel, placeLabel ] )
+	&& JSON.stringify( controlsIn( sectionTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'select', 'select', 'select', 'select', 'switch', 'number', 'switch', 'switch', 'select' ] ) );
 check( '...the spacing is a table: Margin and Padding over the columns, Above and Below at the head of the rows, a select of 0 to 6 in each cell - with the word of the cell for its label', ( function() {
 	const table = sectionTab.querySelector('table');
 	const heads = table.querySelectorAll('thead th');
@@ -1971,7 +1972,7 @@ check( '...and each cell writes its own setting: above the margin and the paddin
 		&& [ settingsOf().rowPt, settingsOf().rowPb ].join() === ',';
 } )() );
 
-check( 'the cover is one line of four fields: a switch, its height in percent of the window\'s beside it, whether it keeps the room of the page around it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', screen.getElementById('builder-cover-line').children.length === 4
+check( 'the cover is one line of five fields: a switch, its height in percent of the window\'s beside it, whether it keeps the room of the page around it, the toggle of its radius, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', screen.getElementById('builder-cover-line').children.length === 5
 	&& controlOf( sectionTab, coverLabel ).kind === 'switch' && controlOf( sectionTab, heightLabel ).kind === 'number' && controlOf( sectionTab, placeLabel ).kind === 'select'
 	&& valueAt( sectionTab, coverLabel ) === true && String( valueAt( sectionTab, heightLabel ) ) === '100' && controlOf( sectionTab, heightLabel ).el.disabled === false && valueAt( sectionTab, placeLabel ) === '' && controlOf( sectionTab, placeLabel ).el.disabled === false );
 check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch says what it is for under its name, the number and the place do not', controlOf( sectionTab, placeLabel ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
@@ -1982,9 +1983,9 @@ check( '...the place of the content is the middle, the top or the bottom, with t
 const rowTab = paneOf('row');
 const rowLines = function() { return rowTab.children.filter( function( child ) { return child.classList.contains('builder-line') } ) };
 const space = '='+ word('option/space-default')+ ',0=0,1=1,2=2,3=3,4=4,5=5,6=6';
-check( 'Grid row: the maximum width and the place of the row on one line, the padding on the sides and the padding above and below on the next - two pairs of two selects -, the alignment of its columns and of its text on the last: three lines, eight controls',
-	JSON.stringify( labelList( rowTab ) ) === JSON.stringify( [ word('section/row'), word('section/row-place'), word('section/left'), word('section/right'), word('section/above'), word('section/below'), word('section/row-align'), word('section/text') ] )
-	&& JSON.stringify( controlsIn( rowTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'group', 'select', 'select', 'select', 'select', 'group', 'group' ] )
+check( 'Grid row: the maximum width and the place of the row on one line, the padding on the sides and the padding above and below on the next - two pairs of two selects -, the alignment of its columns and of its text on the last, and under the lines the toggle of the radius of what the row paints: three lines, nine controls',
+	JSON.stringify( labelList( rowTab ) ) === JSON.stringify( [ word('section/row'), word('section/row-place'), word('section/left'), word('section/right'), word('section/above'), word('section/below'), word('section/row-align'), word('section/text'), radiusLabel ] )
+	&& JSON.stringify( controlsIn( rowTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'group', 'select', 'select', 'select', 'select', 'group', 'group', 'switch' ] )
 	&& rowLines().length === 3 && rowLines().map( function( line ) { return line.children.length } ).join() === '2,2,2' && rowLines()[0].contains( controlOf( rowTab, word('section/row') ).el ) && rowLines()[0].contains( controlOf( rowTab, word('section/row-place') ).el )
 	&& rowLines()[0].classList.contains('builder-line-top') );
 check( '...the maximum width is a select of four: the grid\'s own, which is the default, narrow, wide and none at all - and it opens on what the section says', controlOf( rowTab, word('section/row') ).el.children.length === 4
@@ -2643,7 +2644,7 @@ builder._openSettings( [ 1, 0 ] );
 buttonOf( stripOf(), 'Background' ).click();
 const colGround = function() { return paneOf('background') };
 const groundOf = function() { return builder._doc.model.blocks[1].cols[0] };
-check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Automatic focus', 'Manual focus', 'Dim the picture' ] )
+check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end, with the toggle of the radius beside it; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Automatic focus', 'Manual focus', 'Dim the picture', radiusLabel ] )
 	&& colGround().children[0].className === 'builder-with-swatch' && colGround().children[0].contains( controlOf( colGround(), 'Background colour' ).el ) && colGround().children[0].querySelector('.builder-swatch') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
 check( '...the colour is none of its own - which is the surroundings the column is in -, counter, and the colours of a section, in the words the section has for them', controlOf( colGround(), 'Background colour' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
 	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && valueAt( colGround(), 'Background colour' ) === '' );
@@ -2927,7 +2928,7 @@ check( '...a choice of a few the schema says is a segment is a row of buttons - 
 	&& valueAt( paneOf('properties'), 'Size' ) === '' && ( change( paneOf('properties'), 'Width', 'full' ), componentAt( [ 0, 0, 2 ] ).attributes.width === 'full' ) && valueAt( paneOf('properties'), 'Width' ) === 'full'
 	&& ( change( paneOf('properties'), 'Size', 'big' ), componentAt( [ 0, 0, 2 ] ).attributes.size === 'big' ) && ( change( paneOf('properties'), 'Size', '' ), componentAt( [ 0, 0, 2 ] ).attributes.size === '' ) );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...the properties of the image are drawn as the schema pairs them, in the order of the schema, the variant left out - it has its tab: a line of two is a line, an attribute alone is a field, and the focus - the switch for none and the nine places - is a grid with a line to itself', ( function() {
+check( '...the properties of the image are drawn as the schema pairs them, in the order of the schema, the variant left out - it has its tab: a line of two is a line, an attribute alone is a field, and the focus - the switch for none and the nine places - is a grid with a line to itself, and the toggle of the radius - the image is a surface - comes last', ( function() {
 
 	const attributes = builder._split( registry().components.image.attributes ).properties;
 	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
@@ -2936,9 +2937,9 @@ check( '...the properties of the image are drawn as the schema pairs them, in th
 	const kinds = { select : 'select', string : 'text', bool : 'switch' };
 
 	return dialogText('builder-dialog-kind') === 'Component "Image"' && focus( 'focus' ) === true && lines.length > 1
-		&& classes( paneOf('properties').children ) === lines.map( function( line ) { return line.length === 2 ? 'builder-line' : ( focus( line[0] ) === true ? 'builder-focus' : 'nino-admin-field' ) } ).join()
-		&& JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [].concat.apply( [], Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? [ 'Automatic focus', 'Focus' ] : [ attributes[name].label ] } ) ) )
-		&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? 'switch,group' : kinds[attributes[name].type] } ).join();
+		&& classes( paneOf('properties').children ) === lines.map( function( line ) { return line.length === 2 ? 'builder-line' : ( focus( line[0] ) === true ? 'builder-focus' : 'nino-admin-field' ) } ).concat( [ 'nino-admin-switch' ] ).join()
+		&& JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [].concat.apply( [], Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? [ 'Automatic focus', 'Focus' ] : [ attributes[name].label ] } ) ).concat( [ radiusLabel ] ) )
+		&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? 'switch,group' : kinds[attributes[name].type] } ).concat( [ 'switch' ] ).join();
 } )() );
 
 check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture, a key or the focus of a picture - a select over none and the nine places - has a line to itself', ( function() {
@@ -5215,11 +5216,11 @@ const holderNow = function() { return cardIn( builder._doc.model ) };
 
 check( 'the form of a card has the label of the component for its title and two tabs: Properties and CSS classes - the attributes the schema declares, and the classes of its own; the form of a column or a plain component is not it, and the card has no tab for a content', dialogText('builder-dialog-kind') === 'Card'
 	&& JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'properties' && screen.getElementById('builder-dialog-name').hidden === true && paneOf('content') === null );
-check( '...Properties: a field for each attribute in the order of the schema - the full height, the padding, the vertical and the horizontal alignment, the ground, the border, the picture with its focus and its dimming - by the type the schema gives', JSON.stringify( labelList( holderPane() ) )
-	=== JSON.stringify( [ 'Full height', 'Padding', 'Vertical element alignment', 'Horizontal text alignment', 'Background colour', 'Without border', 'Upload a picture', 'Automatic focus', 'Focus', 'Dim the picture' ] ) && controlOf( holderPane(), 'Full height' ).kind === 'switch' && controlOf( holderPane(), 'Dim the picture' ).kind === 'switch'
+check( '...Properties: a field for each attribute in the order of the schema - the full height, the padding, the vertical and the horizontal alignment, the ground, the border, the picture with its focus and its dimming, and last the toggle of the radius - by the type the schema gives', JSON.stringify( labelList( holderPane() ) )
+	=== JSON.stringify( [ 'Full height', 'Padding', 'Vertical element alignment', 'Horizontal text alignment', 'Background colour', 'Without border', 'Upload a picture', 'Automatic focus', 'Focus', 'Dim the picture', radiusLabel ] ) && controlOf( holderPane(), 'Full height' ).kind === 'switch' && controlOf( holderPane(), 'Dim the picture' ).kind === 'switch'
 	&& controlOf( holderPane(), 'Without border' ).kind === 'switch' && controlOf( holderPane(), 'Focus' ).kind === 'group' );
-check( '...two to a line where both are short, a line of its own for the picture and for the focus: the full height and the padding, the vertical and the horizontal alignment, the ground and the border, then the picture, the focus, and the dimming alone', classes( holderPane().children )
-	=== 'builder-line,builder-line,builder-line,builder-background,builder-focus,nino-admin-switch' && holderPane().children.map( function( el ) { return labelList( el ).join('|') } ).join('~') === 'Full height|Padding~Vertical element alignment|Horizontal text alignment~Background colour|Without border~Upload a picture~Automatic focus|Focus~Dim the picture' );
+check( '...two to a line where both are short, a line of its own for the picture and for the focus: the full height and the padding, the vertical and the horizontal alignment, the ground and the border, then the picture, the focus, the dimming alone and the radius alone', classes( holderPane().children )
+	=== 'builder-line,builder-line,builder-line,builder-background,builder-focus,nino-admin-switch,nino-admin-switch' && holderPane().children.map( function( el ) { return labelList( el ).join('|') } ).join('~') === 'Full height|Padding~Vertical element alignment|Horizontal text alignment~Background colour|Without border~Upload a picture~Automatic focus|Focus~Dim the picture~'+ radiusLabel );
 check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), 'Background colour' )
 	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Background colour' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
 	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Background colour' ) === 'counter' );
@@ -5386,6 +5387,195 @@ check( 'the focus of a component that is a picture itself - [image], whose pictu
 	&& controlOf( paneOf('properties'), 'Automatic focus' ).el.disabled === false && valueAt( paneOf('properties'), 'Automatic focus' ) === true && radiosOf( controlOf( paneOf('properties'), 'Focus' ).el ).every( function( radio ) { return radio.disabled === true } )
 	&& ( change( paneOf('properties'), 'Automatic focus', false ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '5' ) && ( change( paneOf('properties'), 'Focus', '3' ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '3' )
 	&& ( change( paneOf('properties'), 'Automatic focus', true ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '' ) );
+builder._closeDialog();
+
+console.log( '\nThe radius of a surface' );
+
+// What the page says is the default of a kind of surface - the markers --radius-<kind>-default of its style sheets - reaches the panel as the radii of the registry: the server reads them,
+// where the panel has no style sheet of the site. A stub stands for them here, set after the editor was opened, as the registry of the panel is made when it is
+const surfaceKinds = [ 'cover', 'row', 'column', 'card', 'image' ];
+const markersAre = function( word, over ) {
+
+	const radii = {};
+
+	surfaceKinds.forEach( function( kind ) { radii[kind] = word } );
+	builder._registry.radii = Object.assign( radii, over || {} );
+};
+
+check( 'a component is a surface where the registry says so - the script names no component: the schema has the key surface, the card and the picture of the kernel say theirs, one that says none is none, and so is a value that is no word', builder._surfaceOf( registry().components.card ) === 'card'
+	&& builder._surfaceOf( registry().components.image ) === 'image' && builder._surfaceOf( registry().components.title ) === '' && builder._surfaceOf( { surface : 'tile' } ) === 'tile' && builder._surfaceOf( { surface : 5 } ) === '' && builder._surfaceOf( {} ) === ''
+	&& Object.keys( registry().components ).filter( function( name ) { return builder._surfaceOf( registry().components[name] ) !== '' } ).every( function( name ) { return surfaceKinds.indexOf( registry().components[name].surface ) !== -1 } ) );
+
+check( 'the default of a kind of surface is the marker of the page, standard or alternative, from the registry: a kind with no marker, a marker that is no word of the two and a registry with none at all say the standard one, which is what the kernel says where no Design sets any', ( function() {
+
+	open();
+	markersAre( 'standard', { card : 'alternative', image : 'sideways', column : undefined } );
+
+	const said = [ builder._radiusDefault('card'), builder._radiusDefault('image'), builder._radiusDefault('column'), builder._radiusDefault('cover'), builder._radiusDefault('nothing') ].join();
+
+	delete builder._registry.radii;
+
+	return said === 'alternative,standard,standard,standard,standard' && builder._radiusDefault('card') === 'standard';
+} )() );
+
+check( '...the strength in force on an element is the one it says - the setting is its class - or, where it says none, the default of its kind; an element that says the standard strength keeps it where the page\'s default is the alternative one', ( function() {
+
+	open();
+
+	const forced = function( marker ) {
+		markersAre( marker );
+		return [ builder._radiusIn( '', 'card' ), builder._radiusIn( 'standard', 'card' ), builder._radiusIn( 'alternative', 'card' ) ].join();
+	};
+
+	return forced('alternative') === 'alternative,standard,alternative' && forced('standard') === 'standard,standard,alternative';
+} )() );
+
+// A component that is a surface, opened with the marker said: what the toggle shows, what the model holds, and what it holds after each switch of the toggle in turn
+const switched = function( at, marker, held, steps, over ) {
+
+	openCard();
+	markersAre( marker, over );
+	builder._get( builder._doc.model, at ).radius = held;
+	builder._renderEditor();
+	builder._openSettings( at );
+
+	const trail = [ valueAt( paneOf('properties'), radiusLabel ), builder._get( builder._doc.model, at ).radius ];
+
+	steps.forEach( function( on ) {
+		change( paneOf('properties'), radiusLabel, on );
+		trail.push( builder._get( builder._doc.model, at ).radius );
+	} );
+	builder._closeDialog();
+
+	return JSON.stringify( trail );
+};
+const shownPictureAt = [ 0, 0, 0 ];
+
+check( 'the toggle of a card shows the strength in force: with the page\'s default standard it is off for a card with no class of its own and for one that says standard, on for one that says alternative - switched on it writes the alternative strength, switched off again it writes nothing, and a card that said alternative loses its class off',
+	switched( cardAt, 'standard', '', [ true, false ] ) === '[false,"","alternative",""]' && switched( cardAt, 'standard', 'standard', [ true, false ] ) === '[false,"standard","alternative",""]'
+	&& switched( cardAt, 'standard', 'alternative', [ false, true ] ) === '[true,"alternative","","alternative"]' );
+check( '...and the mirror image with the alternative as the page\'s default: on for a card with no class of its own and for one that says alternative, off for one that says standard - switched off it writes the standard strength, switched on again it writes nothing',
+	switched( cardAt, 'alternative', '', [ false, true ] ) === '[true,"","standard",""]' && switched( cardAt, 'alternative', 'alternative', [ false, true ] ) === '[true,"alternative","standard",""]' && switched( cardAt, 'alternative', 'standard', [ true ] ) === '[false,"standard",""]' );
+check( '...a card the editor never touched follows a later change of the default - it shows what the page says now, and the model still holds nothing - and one the editor set keeps what was set; the default is the kind\'s own: the card\'s, not the picture\'s',
+	switched( cardAt, 'standard', '', [] ) === '[false,""]' && switched( cardAt, 'alternative', '', [] ) === '[true,""]' && switched( cardAt, 'alternative', 'standard', [] ) === '[false,"standard"]'
+	&& switched( cardAt, 'standard', '', [], { image : 'alternative' } ) === '[false,""]' && switched( cardAt, 'standard', 'alternative', [], { card : 'alternative' } ) === '[true,"alternative"]' );
+check( '...a picture has the toggle as well, with the default of its own kind, and writes the same: the page\'s default for the picture is the alternative one here and the card\'s the standard one',
+	switched( shownPictureAt, 'standard', '', [ false, true ], { image : 'alternative' } ) === '[true,"","standard",""]' && switched( shownPictureAt, 'standard', '', [ true, false ] ) === '[false,"","alternative",""]'
+	&& switched( shownPictureAt, 'standard', 'alternative', [], { card : 'alternative' } ) === '[true,"alternative"]' );
+
+// The toggle is the last field of the properties of a surface, in reach always: the card and the picture paint a surface of their own
+check( '...it is in reach on a card and on a picture whatever they hold - they are a surface of their own - and a component that is none has no such toggle, and no radius of its own in the model', ( function() {
+
+	openCard();
+	builder._renderEditor();
+	builder._openSettings( cardAt );
+
+	const card = controlOf( paneOf('properties'), radiusLabel ).el.disabled === false && labelList( paneOf('properties') ).pop() === radiusLabel;
+
+	builder._closeDialog();
+	builder._openSettings( shownPictureAt );
+
+	const image = controlOf( paneOf('properties'), radiusLabel ).el.disabled === false && labelList( paneOf('properties') ).pop() === radiusLabel;
+
+	builder._closeDialog();
+	builder._openSettings( [ 0, 1, 0, 0 ] );
+
+	const child = labelList( paneOf('properties') ).indexOf( radiusLabel ) === -1 && 'radius' in builder._get( builder._doc.model, [ 0, 1, 0, 0 ] ) === false;
+
+	builder._closeDialog();
+
+	return card === true && image === true && child === true;
+} )() );
+
+check( '...and a component the registry calls a surface by a name the script has never seen is one: the toggle is in its properties - which it has for no other reason - and writes its radius, whatever the component is called', ( function() {
+
+	open();
+	builder._registry.components.stub = { label : 'Stub', source : 'content', preview : 'block', surface : 'tile' };
+	builder._doc.model.blocks[0].cols[0].components.push( { name : 'stub', source : '', text : null, attributes : { 'class' : '' }, radius : '', content : '' } );
+	markersAre( 'standard', { tile : 'alternative' } );
+	builder._renderEditor();
+	builder._openSettings( [ 0, 0, 3 ] );
+
+	const tabbed = paneOf('properties') !== null && dialogTabs().map( function( tab ) { return tab[0] } ).indexOf('properties') !== -1;
+	const shown = tabbed === true && valueAt( paneOf('properties'), radiusLabel ) === true;
+
+	if( tabbed === true )
+		change( paneOf('properties'), radiusLabel, false );
+
+	const written = builder._get( builder._doc.model, [ 0, 0, 3 ] ).radius;
+
+	builder._closeDialog();
+
+	return shown === true && written === 'standard';
+} )() );
+
+check( 'what the editor makes new has the setting where it means something: a section has the radius of its cover and of its row, a column its own - none of them says anything yet -, and a component the registry calls a surface has one too, which a component that is none does not', ( function() {
+
+	const model = page();
+	const section = builder._newSection( model );
+	const column = builder._newCol();
+	const made = function( name ) { return builder._newComponent( model, registry(), 'page-home', [ 0, 0 ], name, [] ) };
+	const own = registry();
+
+	own.components.stub = { label : 'Stub', source : 'text', preview : 'block', surface : 'tile' };
+
+	return section.settings.radius === '' && section.settings.rowRadius === '' && column.radius === '' && made('card').radius === '' && made('image').radius === '' && 'radius' in made('title') === false
+		&& builder._newComponent( model, own, 'page-home', [ 0, 0 ], 'stub', [] ).radius === '';
+} )() );
+
+// The toggle of a padded cover: the room of the page around a cover or a parallax is what it takes
+doc = open();
+markersAre('standard');
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+check( 'the toggle of a cover sleeps unless the cover keeps the room of the page around it - Padded: the hero is a cover that does not, so it sleeps - and wakes with the switch; what it writes is the radius of the section',
+	controlOf( paneOf('section'), radiusLabel ).el.disabled === true && valueAt( paneOf('section'), radiusLabel ) === false && ( change( paneOf('section'), 'Padded', true ), controlOf( paneOf('section'), radiusLabel ).el.disabled === false )
+	&& ( change( paneOf('section'), radiusLabel, true ), settingsAt( 0 ).radius === 'alternative' ) && ( change( paneOf('section'), radiusLabel, false ), settingsAt( 0 ).radius === '' ) && settingsOf().rowRadius === '' );
+change( paneOf('section'), radiusLabel, true );
+change( paneOf('section'), 'Padded', false );
+check( '...it sleeps again with the switch and keeps what it holds - the setting waits in the model, and the toggle shows it - and a parallax, which keeps the room as a cover does, wakes it', controlOf( paneOf('section'), radiusLabel ).el.disabled === true && valueAt( paneOf('section'), radiusLabel ) === true && settingsAt( 0 ).radius === 'alternative'
+	&& ( change( paneOf('section'), 'Cover', false ), change( paneOf('background'), 'Parallax effect', true ), change( paneOf('section'), 'Padded', true ), controlOf( paneOf('section'), radiusLabel ).el.disabled === false ) );
+builder._closeDialog();
+
+// The toggle of a row: what the row paints is its colour and its picture, which it has where the background stands inside
+doc = open();
+markersAre('standard');
+builder._renderEditor();
+builder._openSettings( [ 1 ] );
+check( 'the toggle of the row sleeps where the row paints nothing - the background does not stand inside - and wakes when it does: the switch Background inside is in the other tab, and the toggle follows it there; it writes the radius of the row',
+	controlOf( paneOf('row'), radiusLabel ).el.disabled === true && ( change( paneOf('background'), 'Background colour', 'alt' ), controlOf( paneOf('row'), radiusLabel ).el.disabled === true )
+	&& ( change( paneOf('background'), 'Background inside', true ), controlOf( paneOf('row'), radiusLabel ).el.disabled === false ) && ( change( paneOf('row'), radiusLabel, true ), settingsAt( 1 ).rowRadius === 'alternative' && settingsAt( 1 ).radius === '' )
+	&& valueAt( paneOf('row'), radiusLabel ) === true );
+check( '...it sleeps again with the colour that takes the background inside with it, or with a cover that does, and keeps what it holds', ( function() {
+
+	change( paneOf('background'), 'Background colour', '' );
+
+	const colour = controlOf( paneOf('row'), radiusLabel ).el.disabled === true && valueAt( paneOf('row'), radiusLabel ) === true && settingsAt( 1 ).rowRadius === 'alternative';
+
+	change( paneOf('background'), 'Background colour', 'alt' );
+	change( paneOf('background'), 'Background inside', true );
+
+	const woken = controlOf( paneOf('row'), radiusLabel ).el.disabled === false;
+
+	change( paneOf('section'), 'Cover', true );
+
+	return colour === true && woken === true && controlOf( paneOf('row'), radiusLabel ).el.disabled === true && settingsAt( 1 ).inner === false && settingsAt( 1 ).rowRadius === 'alternative';
+} )() );
+builder._closeDialog();
+
+// The toggle of a column: the ground it paints and the picture behind it
+doc = open();
+markersAre('standard');
+builder._renderEditor();
+builder._openSettings( [ 1, 0 ] );
+buttonOf( stripOf(), 'Background' ).click();
+check( 'the toggle of a column sleeps where the column paints nothing - no ground, no picture - and wakes with either; it writes the radius of the column and keeps it while it sleeps',
+	controlOf( paneOf('background'), radiusLabel ).el.disabled === true && ( change( paneOf('background'), 'Background colour', 'counter' ), controlOf( paneOf('background'), radiusLabel ).el.disabled === false )
+	&& ( change( paneOf('background'), radiusLabel, true ), builder._doc.model.blocks[1].cols[0].radius === 'alternative' ) && ( change( paneOf('background'), 'Background colour', '' ), controlOf( paneOf('background'), radiusLabel ).el.disabled === true )
+	&& valueAt( paneOf('background'), radiusLabel ) === true && builder._doc.model.blocks[1].cols[0].radius === 'alternative' );
+builder._doc.model.blocks[1].cols[0].background = { slot : '/template/page-home/services/background', focus : 5 };
+builder._refreshTab('background');
+check( '...a picture behind the column wakes it as a ground does', controlOf( paneOf('background'), radiusLabel ).el.disabled === false );
 builder._closeDialog();
 
 console.log( '\nThe picture behind a card' );

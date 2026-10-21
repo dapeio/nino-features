@@ -309,6 +309,8 @@ return [
 	'[[/_admin/builder/picture/stored]]'					=> 'Das Bild ist gespeichert.',
 	'[[/_admin/builder/picture/small]]'					=> 'Das Bild ist kleiner als der Bildplatz (%s) und wird vergrößert.',
 
+	'[[/_admin/builder/common/radius-alt]]'				=> 'Radius alternativ',
+
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'Eine Zeile. Der Dateiname wird beim Anlegen daraus gebildet und bleibt danach.',
 	'[[/_admin/builder/hint/file]]'							=> 'Der Slug ist „%s“. Der Name der Datei ist die Kategorie der Textschlüssel der Seite (/template/%s/…), darum ändert er sich nicht.',
@@ -321,6 +323,7 @@ return [
 	'[[/_admin/builder/hint/padded]]'	=> 'Das Cover oder der Parallax lässt den Platz der Seite um sich.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'Wie viel Platz die Sektion lässt. Den Weißraum der Seite stellst Du im Design ein.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'Farbe, Bild und Abdunkeln liegen auf der Row innerhalb der Sektion, nicht auf der Sektion selbst.',
+	'[[/_admin/builder/hint/radius-alt]]'	=> 'Standard und Alternativ sind die zwei Radien, die das Design für die Seite festlegt. Ein Element behält die Vorgabe seiner Art, bis Du es umschaltest.',
 	'[[/_admin/builder/hint/dim-text]]'	=> 'Text auf einem Bild liest sich besser mit abgedunkeltem Bild.',
 	'[[/_admin/builder/hint/link]]'	=> 'Wohin die Komponente führt. Ohne Ziel ist sie kein Link.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'Ein Textschlüssel, eine Adresse oder - in einem Loop - ein Feld des Elements.',
@@ -427,7 +430,6 @@ return [
 	'[[/_admin/builder/option/variant-default]]'	=> 'Standard',
 	'[[/_admin/builder/option/variant-loud]]'	=> 'Laut',
 	'[[/_admin/builder/option/variant-quiet]]'	=> 'Leise',
-	'[[/_admin/builder/option/variant-rounded]]'	=> 'Abgerundet',
 	'[[/_admin/builder/option/variant-inline]]'	=> 'In eigener Größe',
 	'[[/_admin/builder/option/variant-muted]]'	=> 'Gedämpft',
 	'[[/_admin/builder/option/variant-accent]]'	=> 'Akzent',

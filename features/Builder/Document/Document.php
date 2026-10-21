@@ -99,7 +99,9 @@ namespace Nino\Modules\Builder {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	array										[ 'components' => name => schema, 'stacks' => name => schema ]; the stack
-		 *																	that makes whole sections says 'cell' => 'section' besides
+		 *																	that makes whole sections says 'cell' => 'section' besides, and a component that is
+		 *																	a surface says 'surface' => its kind (see Reader::surface()), which the panel offers
+		 *																	the radius of the page for
 		 */
 		public static function schemas( array &$appData ): array {
 
@@ -107,6 +109,15 @@ namespace Nino\Modules\Builder {
 
 			foreach( array_keys( $schemas['components'] ) as $name )
 				$schemas['components'][$name]['defaults'] = \Nino\Modules\Components::defaults( $appData, (string) $name );
+
+			// The kind of surface is read from what the registry says of a component, and told to the panel, which knows no component by name
+			foreach( array_keys( $schemas['components'] ) as $name ) {
+
+				$surface = Reader::surface( $schemas['components'][$name], $schemas['components'] );
+
+				if( $surface !== '' )
+					$schemas['components'][$name]['surface'] = $surface;
+			}
 
 			foreach( array_keys( $schemas['stacks'] ) as $name ) {
 
@@ -140,7 +151,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'groups', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native' ]
+		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'groups', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native', 'radii' => kind => strength ]
 		 */
 		public static function registry( array &$appData ): array {
 
@@ -232,7 +243,42 @@ namespace Nino\Modules\Builder {
 				'footers'			=> self::_frames( $appData, 'html-footer' ),
 				'locales'			=> $locales,
 				'native'			=> \Nino\Locales::getNativeLocale( $appData ),
+				'radii'				=> self::radii( $appData ),
 			];
+		}
+
+		/**
+		 *	The strength each kind of surface takes where an element names none: the plain word of the marker --radius-<kind>-default that the
+		 *	stylesheets of the site declare, in the order of the style bundle so that the last declaration is the one in force - Nino.css has
+		 *	them, all standard, and the Design writes them with its setup. The workbench loads none of the site's stylesheets, so the panel
+		 *	cannot ask a computed style for the marker: this is its answer, and it reads the same files the visitor's browser does. A kind no
+		 *	stylesheet says anything of takes the standard strength. The files are read as text and not as a cascade: the last declaration of
+		 *	a marker anywhere in the bundle counts, as if it stood at :root, whatever its selector, its media query or its importance.
+		 *	Nino.css and the Design declare the markers at :root and nowhere else; a stylesheet of a project that sets one elsewhere would
+		 *	mislead the toggle
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										kind => 'standard' or 'alternative', a value of Reader::SURFACES each, in that order
+		 */
+		public static function radii( array &$appData ): array {
+
+			$radii = array_fill_keys( Reader::SURFACES, Reader::RADIUS[0] );
+
+			foreach( \Nino\Html::getAssets( $appData, '/.cache/style.css' ) as $file ) {
+
+				// A marker named in a comment is no declaration
+				$css = (string) preg_replace( '~/\*.*?\*/~s', '', (string) \Nino\Filesystem::getFileContent( $appData, (string) $file, '' ) );
+
+				if( preg_match_all( '/--radius-([a-z]+)-default\s*:\s*([a-z]+)\s*[;}]/', $css, $found, PREG_SET_ORDER ) < 1 )
+					continue;
+
+				foreach( $found as $declaration )
+					if( isset( $radii[$declaration[1]] ) === true && in_array( $declaration[2], Reader::RADIUS, true ) === true )
+						$radii[$declaration[1]] = $declaration[2];
+			}
+
+			return $radii;
 		}
 
 		/**
@@ -334,7 +380,9 @@ namespace Nino\Modules\Builder {
 		 *	section that does not read back is a problem the panel is told of
 		 *	with the Reader's reason, and nothing is written. A model that is
 		 *	what the file reads as already is not written at all - the file is
-		 *	not rewritten into the canonical form where nobody changed it. A
+		 *	not rewritten into the canonical form where nobody changed it - but
+		 *	for a file that still says what an earlier builder gave a picture
+		 *	(see Reader::earlierImage()), which a save writes anew. A
 		 *	block that came back from an edit (edited: true) is read as a
 		 *	section again first; a section that carries renamedFrom has the
 		 *	keys of its old id moved to the new one - the sources, the text
@@ -423,11 +471,12 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
 
-			// Nothing to write: the model is the file, and has no text to go to a key
+			// Nothing to write: the model is the file, and has no text to go to a key - and the file does not say what an earlier builder gave a picture, which the page
+			// draws no rule for any more and the model shows as the alternative radius: a file that does is written anew by every save, even where nothing else changed
 			$disk = Reader::read( $current, $schemas );
 			$disk['file'] = $file;
 
-			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk );
+			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk ) === true && Reader::earlierImage( $current ) === false;
 
 			if( $same === true && $texts === [] )
 				return [ 'status' => 200, 'model' => $disk, 'hash' => hash( 'sha256', $current ) ];
@@ -2256,7 +2305,7 @@ namespace Nino\Modules\Builder {
 					$problems[] = 'the cover of '. $at. ' is neither none nor a height in percent';
 
 				// The width of the row, where it stands and where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
-				foreach( [ 'row' => Reader::ROW, 'rowPlace' => Reader::ROW_PLACE, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT ] as $key => $words )
+				foreach( [ 'row' => Reader::ROW, 'rowPlace' => Reader::ROW_PLACE, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT, 'radius' => Reader::RADIUS, 'rowRadius' => Reader::RADIUS ] as $key => $words )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
 
@@ -2307,7 +2356,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the color of '. $of. ' is none that Nino.css has';
 
 					// How the text of the column and the components of its stack are aligned: a word of Nino.css or none
-					foreach( [ 'text' => Reader::TEXT, 'stackAlign' => Reader::STACK_ALIGN ] as $key => $words )
+					foreach( [ 'text' => Reader::TEXT, 'stackAlign' => Reader::STACK_ALIGN, 'radius' => Reader::RADIUS ] as $key => $words )
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none that Nino.css has';
 
@@ -2347,7 +2396,7 @@ namespace Nino\Modules\Builder {
 
 					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
 					foreach( $col['components'] ?? [] as $component )
-						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ) );
+						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ) );
 
 					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
 					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )
@@ -2376,6 +2425,37 @@ namespace Nino\Modules\Builder {
 				return 'a call that is none';
 
 			return self::_texted( $call ) === false ? 'a text that is none' : '';
+		}
+
+		/**
+		 *	What is wrong with the radius of a component and of the children it holds: a word that is none of the two strengths of the page, or a radius on a
+		 *	component that is no surface (see Reader::surface()) - which the Writer would write as a class of nothing, and the Reader read back as a custom one
+		 *
+		 *	@param		mixed			$call					A component of a column, or a child of one
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeRadius( mixed $call, array $schemas, string $at ): array {
+
+			// A call that is none has been told already
+			if( is_array( $call ) === false || self::_callWrong( $call ) !== '' )
+				return [];
+
+			$name				= (string) ( $call['name'] ?? '' );
+			$radius			= $call['radius'] ?? '';
+			$problems		= [];
+
+			if( in_array( $radius, array_merge( [ '' ], Reader::RADIUS ), true ) === false )
+				$problems[] = $at. ' has the component "'. $name. '" with a radius that is none of the two strengths';
+			elseif( $radius !== '' && Reader::surface( (array) ( $schemas['components'][$name] ?? [] ), (array) ( $schemas['components'] ?? [] ) ) === '' )
+				$problems[] = $at. ' has the component "'. $name. '" with a radius, and it is no surface';
+
+			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
+				$problems = array_merge( $problems, self::_shapeRadius( $child, $schemas, $at ) );
+
+			return $problems;
 		}
 
 		/**

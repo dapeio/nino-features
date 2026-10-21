@@ -37,6 +37,15 @@ namespace Nino\Modules\Builder {
 	 *											background that is the row's (inner) is the first thing in
 	 *											the row, two tabs in, as the one of a column is in its column.
 	 *
+	 *											The radius of a surface is a class of the page, nino-radius or
+	 *											nino-radius-alt, and a setting of the model: it stands after the
+	 *											spacing of a section, after the paddings of a row, after the spacing
+	 *											of a column and first in the class of a call, and is written only where
+	 *											the element paints a surface of its own. Whether it deviates from the
+	 *											default the page has for the kind is the panel's to say: the model holds
+	 *											no setting where the radius asked for is that default, and the Writer
+	 *											writes what the model holds.
+	 *
 	 *											The blocks stand in the wrap: the line that opens it
 	 *											follows the name and the frame above, the line that closes
 	 *											it comes before the frame below, and nothing inside is
@@ -324,6 +333,10 @@ namespace Nino\Modules\Builder {
 				if( (string) $s[$space] !== '' )
 					$class[] = 'nino-'. $space. '-'. $s[$space];
 
+			// The radius of the picture of a padded cover - after the spacing, and written for a section that is one and for no other
+			if( isset( Reader::RADIUS_CLASS[(string) $s['radius']] ) === true && $s['padded'] === true && ( $s['cover'] !== null || $s['parallax'] === true ) )
+				$class[] = Reader::RADIUS_CLASS[$s['radius']];
+
 			if( (string) $s['text'] !== '' )
 				$class[] = 'nino-text-'. $s['text'];
 
@@ -365,6 +378,10 @@ namespace Nino\Modules\Builder {
 			foreach( Reader::ROW_SPACING as $side => $key )
 				if( (string) $s[$key] !== '' )
 					$class[] = 'nino-'. $side. '-'. $s[$key];
+
+			// The radius of what the row paints - its ground or its picture, which it has with the background inside - after the paddings
+			if( isset( Reader::RADIUS_CLASS[(string) $s['rowRadius']] ) === true && self::_inner( $s ) === true && ( (string) $s['color'] !== '' || $pictured === true ) )
+				$class[] = Reader::RADIUS_CLASS[$s['rowRadius']];
 
 			return array_merge( $class, self::_custom( (string) $s['rowCustom'] ) );
 		}
@@ -412,6 +429,10 @@ namespace Nino\Modules\Builder {
 			foreach( Reader::COL_SPACING as $space )
 				if( (string) $col[$space] !== '' )
 					$class[] = 'nino-'. $space. '-'. $col[$space];
+
+			// The radius of what the column paints - a ground or a picture - after the spacing
+			if( isset( Reader::RADIUS_CLASS[(string) $col['radius']] ) === true && ( (string) $col['color'] !== '' || self::_pictured( $col ) === true ) )
+				$class[] = Reader::RADIUS_CLASS[$col['radius']];
 
 			return array_merge( $class, self::_animationClasses( $col ), self::_custom( (string) $col['custom'] ) );
 		}
@@ -591,6 +612,10 @@ namespace Nino\Modules\Builder {
 			$defaults		= Reader::defaults( $schema );
 			$attributes	= (array) ( $node['attributes'] ?? [] );
 			$call				= '['. $name;
+
+			// The radius of a surface is the first class of its call, before the classes the editor wrote (the model refuses one on a component that is none: see Document)
+			if( isset( Reader::RADIUS_CLASS[(string) ( $node['radius'] ?? '' )] ) === true )
+				$attributes['class'] = trim( Reader::RADIUS_CLASS[$node['radius']]. ' '. self::_string( $attributes['class'] ?? '' ) );
 
 			if( (string) ( $node['source'] ?? '' ) !== '' )
 				$call .= ' '. self::_safe( (string) $node['source'], $name, 'source' );

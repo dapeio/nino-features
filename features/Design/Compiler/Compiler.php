@@ -16,10 +16,11 @@ namespace Nino\Modules\Design {
 	 *	Compiler					Turns a setup into the one stylesheet a project's look is,
 	 *										in the order the cascade needs it: the tokens, the solved
 	 *										palette over them, the type, the roles those tokens are
-	 *										assigned to, the root size, the width, the whitespace and
-	 *										the animation of the page, the chosen frames, the three chosen sets, the
-	 *										block that says which step of every ladder is live, and
-	 *										last the css of the theme, as it was typed.
+	 *										assigned to, the root size, the width, the whitespace, the
+	 *										radius of its surfaces and the animation of the page, the
+	 *										chosen frames, the three chosen sets, the block that says
+	 *										which step of every ladder is live, and last the css of the
+	 *										theme, as it was typed.
 	 *
 	 *										A set declares what the steps of a knob *are* - the five
 	 *										values of a scale, the three of a choice - rather than a
@@ -80,7 +81,7 @@ namespace Nino\Modules\Design {
 		 *	  3 the type            @font-face and the five font roles
 		 *	  4 the roles           base.css, which token goes in which role
 		 *	  5 the root size
-		 *	  6 the page            the width, the whitespace, and the animation as a rule on main
+		 *	  6 the page            the width, the whitespace, the radius of its surfaces, and the animation as a rule on main
 		 *	  7 header, 8 footer    the chosen frames
 		 *	  9 content, 10 buttons, 11 components    the chosen sets
 		 *	  12 the knob positions
@@ -231,7 +232,7 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	What the page asks of Nino.css as a whole: how wide it is, how much air
-		 *	it has, and how its sections arrive.
+		 *	it has, how its surfaces are cut and how its sections arrive.
 		 *
 		 *	A width of 0 is the kernel's own and writes nothing; the four around it
 		 *	write the maximum width of a row and the space between the viewport
@@ -240,7 +241,12 @@ namespace Nino\Modules\Design {
 		 *	is the same: 0 is the kernel's own and writes nothing, the four around
 		 *	it write the number --whitespace-scale is set to (see Setup::WHITESPACE),
 		 *	from which Nino.css derives what it scales whole and what it scales
-		 *	damped. An animation
+		 *	damped. The radius is one rule on :root and is always written, at the
+		 *	kernel's own values as well: the length of the standard strength and of
+		 *	the alternative one (see Setup::RADIUS) and, for each of the five kinds of
+		 *	surface, its token pointing at the strength the setup gives it with its
+		 *	marker, the word that says which - so that a tool reading the marker
+		 *	finds what the setup says and not what the kernel assumed. An animation
 		 *	writes one rule on main with the custom properties the kernel sets for
 		 *	the effect, its strength and its speed, which every viewport animation
 		 *	below main inherits - and which the Builder overrides per template at
@@ -250,7 +256,7 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@param		array 		$setup				A normalised setup
 		 *
-		 *	@return 	string								The rules, or a comment saying there are none
+		 *	@return 	string								The rules
 		 */
 		public static function page( array $setup ): string {
 
@@ -268,6 +274,21 @@ namespace Nino\Modules\Design {
 			if( $air !== '1' )
 				$rules[] = ":root { --whitespace-scale: ". $air. "; }";
 
+			$lines = [
+				"\t--radius-surface: ". ( Setup::RADIUS[ (int) ( $setup['radius'] ?? 0 ) ] ?? Setup::RADIUS[0] ). ";",
+				"\t--radius-surface-alt: ". ( Setup::RADIUS[ (int) ( $setup['radius-alt'] ?? 1 ) ] ?? Setup::RADIUS[1] ). ";",
+			];
+
+			foreach( Setup::SURFACES as $kind ) {
+
+				$word = Setup::radiusOf( $setup, $kind );
+
+				$lines[] = "\t--radius-". $kind. ": var(--radius-surface". ( $word === Setup::RADIUS_WORDS[1] ? "-alt" : "" ). ");";
+				$lines[] = "\t--radius-". $kind. "-default: ". $word. ";";
+			}
+
+			$rules[] = ":root {\n". implode( "\n", $lines ). "\n}";
+
 			if( isset( Setup::EFFECTS[$effect] ) === true ) {
 
 				$declarations = Setup::EFFECTS[$effect][ (string) ( $motion['strength'] ?? '' ) ] ?? Setup::EFFECTS[$effect]['medium'];
@@ -284,7 +305,7 @@ namespace Nino\Modules\Design {
 				$rules[] = "main {\n". implode( "\n", $lines ). "\n}";
 			}
 
-			return $rules === [] ? '/* a row of the width Nino.css gives it, the air it has, and the animation Nino.css has */' : implode( "\n", $rules );
+			return implode( "\n", $rules );
 		}
 
 		/**
@@ -502,6 +523,11 @@ namespace Nino\Modules\Design {
 
 			$width 		= (int) ( $setup['width'] ?? 0 );
 			$air 			= (int) ( $setup['whitespace'] ?? 0 );
+			$kinds 		= [];
+
+			foreach( Setup::SURFACES as $kind )
+				$kinds[] = $kind. ' '. Setup::radiusOf( $setup, $kind );
+
 			$motion 	= (array) ( $setup['motion'] ?? [] );
 			$effect 	= (string) ( $motion['effect'] ?? '' );
 			// A slug only: the header is a comment, and a name that closed it would end the header early
@@ -519,6 +545,9 @@ namespace Nino\Modules\Design {
 				. " *\troot size  ". Setup::word( (int) ( $setup['size'] ?? 0 ) ). "\n"
 				. " *\twidth      ". Setup::word( $width ). "\n"
 				. " *\twhitespace ". Setup::word( $air ). "\n"
+				. " *\tradius     ". Setup::word( (int) ( $setup['radius'] ?? 0 ) ). "\n"
+				. " *\tradius alt ". Setup::word( (int) ( $setup['radius-alt'] ?? 1 ) ). "\n"
+				. " *\tradii      ". implode( ', ', $kinds ). "\n"
 				. " *\tanimation  ". ( isset( Setup::EFFECTS[$effect] ) === true
 					? $effect. ', '. ( (string) ( $motion['strength'] ?? '' ) ?: 'medium' ). ( (string) ( $motion['speed'] ?? '' ) === '' ? '' : ', '. $motion['speed'] )
 					: 'as Nino.css has it' ). "\n"

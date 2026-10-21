@@ -175,6 +175,21 @@ check( 'the components and the stacks of the kernel are in it, each with the def
 	&& $registry['stacks']['stack']['defaults']['gap'] === '2' );
 check( '...the card says what it holds, and is the one that does: a component whose schema has holds is a container, and nothing else is - the Builder asks the schema and names none', \Nino\Modules\Builder\Reader::holds( $registry['components']['card'] ) === true && $registry['components']['card']['holds'] === 'card'
 	&& array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::holds( $schema ) === true ) === [ 'card' => $registry['components']['card'] ] && \Nino\Modules\Builder\Reader::holds( [ 'holds' => '' ] ) === false && \Nino\Modules\Builder\Reader::holds( [] ) === false );
+$reader = \Nino\Modules\Builder\Reader::class;
+$marked = array_filter( $registry['components'], static fn( array $schema ): bool => array_key_exists( 'surface', $schema ) === true );
+check( '...the registry marks the components that are a surface by what their schemas say and by no name: a container is a card, a picture that no container claims is an image, and the picture of a card is none - it follows the card',
+	$marked !== [] && array_values( array_unique( array_column( $marked, 'surface' ) ) ) === [ 'card', 'image' ] && array_filter( $marked, static fn( array $schema ): bool => $schema['surface'] !== $reader::surface( $schema, $registry['components'] ) ) === []
+	&& array_filter( $registry['components'], static fn( array $schema ): bool => array_key_exists( 'surface', $schema ) === false && $reader::surface( $schema, $registry['components'] ) !== '' ) === []
+	&& array_filter( $marked, static fn( array $schema ): bool => ( $schema['surface'] === 'card' ) !== $reader::holds( $schema ) ) === []
+	&& array_filter( $marked, static fn( array $schema ): bool => $schema['surface'] === 'image' && ( $schema['source'] !== 'image' || array_filter( $registry['components'], static fn( array $other ): bool => $reader::holds( $other ) === true && in_array( $other['holds'], (array) ( $schema['in'] ?? [] ), true ) === true ) !== [] ) ) === [] );
+// The coupling to the kernel the radius needs (Nino.css with the radius of a surface): it took the style from the picture, whose corners are the page's now
+check( '...none of them has a variant that makes the class an earlier builder gave a picture - the radius of a surface is the page\'s, and the kernel this runs against has taken the style from the picture: against a kernel that has not, this is red',
+	$marked !== [] && array_filter( $marked, static fn( array $schema ): bool => array_filter( (array) ( $schema['attributes'] ?? [] ), static fn( array $attribute ): bool => ( $attribute['type'] ?? '' ) === 'variant'
+		&& array_filter( (array) ( $attribute['options'] ?? [] ), static fn( mixed $option ): bool => (string) ( $attribute['prefix'] ?? '' ). (string) $option === $reader::EARLIER_IMAGE_CLASS ) !== [] ) !== [] ) === [] );
+check( '...and the rule is the registry\'s: a component that holds a place is a card whatever it is called, a picture standing in a place that a container holds is none and one in any other is an image, a text and a loop are none',
+	$reader::surface( [ 'source' => 'content', 'holds' => 'things' ], [] ) === 'card' && $reader::surface( [ 'source' => 'image', 'in' => [ 'things' ] ], [ [ 'source' => 'content', 'holds' => 'things' ] ] ) === ''
+	&& $reader::surface( [ 'source' => 'image', 'in' => [ 'section' ] ], [ [ 'source' => 'content', 'holds' => 'things' ] ] ) === 'image' && $reader::surface( [ 'source' => 'image' ], [] ) === 'image'
+	&& $reader::surface( [ 'source' => 'text' ], [] ) === '' && $reader::surface( [ 'source' => 'none' ], [] ) === '' && $reader::surface( [ 'grid' => true ], [] ) === '' );
 check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'card', $schema['defaults'] ) === true ) === [] );
 check( '...the six titles name their tag and no level: one select of the tags their place takes, the default among them, then the style and the colour, which are variants - a hero is an h2, a section an h3, a card an h4, and the subtitles a p, a div and a p', array_filter(
 	[ 'hero-title' => 'h2', 'hero-subtitle' => 'p', 'title' => 'h3', 'subtitle' => 'div', 'card-title' => 'h4', 'card-subtitle' => 'p' ],
@@ -446,7 +461,7 @@ $cell					= $cardModel['blocks'][1]['cols'][0];
 
 check( 'the page with a card is read as it is written: a picture beside a card in one section, a loop in the next', array_column( $cardModel['blocks'], 'kind' ) === [ 'section', 'section' ] && [ $cardModel['blocks'][0]['id'], $cardModel['blocks'][1]['id'] ] === [ 'story', 'services' ]
 	&& array_column( $story['cols'][0]['components'], 'name' ) === [ 'image' ] && array_column( $story['cols'][1]['components'], 'name' ) === [ 'card' ] && $cell['stack']['name'] === 'stack' && array_column( $cell['components'], 'name' ) === [ 'card' ] );
-check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column', array_keys( $cardNode ) === [ 'name', 'source', 'text', 'attributes', 'components' ]
+check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column - and its radius, as a surface has one', array_keys( $cardNode ) === [ 'name', 'source', 'text', 'attributes', 'radius', 'components' ] && $cardNode['radius'] === ''
 	&& $cardNode['source'] === '' && $cardNode['text'] === null && array_column( $cardNode['components'], 'name' ) === [ 'card-title', 'text', 'button' ]
 	&& array_column( $cardNode['components'], 'source' ) === [ '/template/page-home-card/story/title', '/template/page-home-card/story/text', '/template/page-home-card/story/button' ] && array_key_exists( 'content', $cardNode ) === false );
 check( '...it has every attribute of its schema, in the order of the schema, the default where the call is silent - the ground and the padding are the two the file sets - and its children theirs', $cardNode['attributes'] === [ 'fill' => '0', 'padding' => '3', 'vertical' => '', 'align' => '', 'ground' => 'counter', 'borderless' => '0', 'background' => '', 'focus' => '', 'dim' => '0', 'class' => '' ]
@@ -948,14 +963,14 @@ check( 'the row of a section has a width - narrow, wide or full -, a place - lef
 	$rowWrong === [] && \Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide', 'full' ] && \Nino\Modules\Builder\Reader::ROW_PLACE === [ 'left', 'right' ]
 	&& \Nino\Modules\Builder\Reader::ROW_SPACING === [ 'pl' => 'rowPl', 'pr' => 'rowPr', 'pt' => 'rowPt', 'pb' => 'rowPb' ] && \Nino\Modules\Builder\Reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 
-$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowCustom' => 'my-row' ];
+$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row' ];
 $rowOrdered	= 'nino-grid-row nino-grid-row--wide nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row';
 $rowMade		= $blank;
 $rowMade['settings'] = $rowAll + $blank['settings'];
 
 check( 'the classes of the row stand in one order: the width, the place, the alignment of its columns, the padding on the left, on the right, above and below, then the custom ones - written from the settings, and read back as they were set',
 	$write( [ 'blocks' => [ $rowMade ] ] ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) && $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0] === $rowMade
-	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 8 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowCustom' ] );
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 9 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ] );
 
 $rowShuffled = 'nino-grid-row nino-pb-5 my-row nino-grid-bottom nino-pt-4 nino-grid-row--right nino-pr-2 nino-grid-row--wide nino-pl-1';
 check( '...whatever order the file has them in: it is the same row, written in that one order, and what is written reads as it was', $fileRead( 'nino-section', $rowShuffled ) === $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0]
@@ -1251,7 +1266,7 @@ check( 'a column with none of the three is written as it always was: a model wit
 	&& $write( $wrapModel ) === $wrapFixture && $write( $vpaModel ) === $wrapFixture && $write( $read( $concept ) ) === $wrapped( $fixture ) );
 
 // A card as the Writer writes it: every attribute, in the order of the schema and only where it differs from the default
-$allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'fill' => '1', 'padding' => '0', 'vertical' => 'last-bottom', 'align' => 'center', 'ground' => 'dark', 'borderless' => '1', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'class' => 'my-card' ],
+$allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'fill' => '1', 'padding' => '0', 'vertical' => 'last-bottom', 'align' => 'center', 'ground' => 'dark', 'borderless' => '1', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'class' => 'my-card' ], 'radius' => '',
 	'components' => [
 		[ 'name' => 'card-title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => array_replace( $registry['components']['card-title']['defaults'], [ 'tag' => 'h3', 'style' => 'quiet' ] ) ],
 		[ 'name' => 'button', 'source' => '', 'text' => 'Go', 'attributes' => array_replace( $registry['components']['button']['defaults'], [ 'href' => '#top' ] ) ],
@@ -1267,7 +1282,7 @@ check( '...and what is written reads back as what was meant: the card with its a
 // In the content of a loop the card is one level deeper, and so are its children
 $looped = $blank;
 $looped['cols'][0]['stack'] = [ 'name' => 'stack', 'source' => '/services', 'attributes' => $registry['stacks']['stack']['defaults'] ];
-$looped['cols'][0]['components'] = [ [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['card']['defaults'], [ 'fill' => '1' ] ),
+$looped['cols'][0]['components'] = [ [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['card']['defaults'], [ 'fill' => '1' ] ), 'radius' => '',
 	'components' => [ [ 'name' => 'card-title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'] ] ] ] ];
 check( '...in the content of a loop the call of the card stands one tab deeper, its children one more and its closing tag with its call - and it reads back as the loop and the card it was', str_contains( $write( [ 'blocks' => [ $looped ] ] ),
 	"\t\t\t[stack /services]\n\t\t\t\t[card fill=\"1\"]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/stack]\n" ) === true && $read( $write( [ 'blocks' => [ $looped ] ] ) )['blocks'][0] === $looped );
@@ -1286,6 +1301,155 @@ check( 'a card whose model has no list of children, or an empty one, is written 
 $plain = [ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'tag' => 'h3' ], 'components' => [ [ 'name' => 'text', 'source' => '/template/page-x/a/text', 'text' => null, 'attributes' => [] ] ] ];
 $plainBlock = $blank;
 $plainBlock['cols'][0]['components'] = [ $plain ];
+// --- The radius of a surface -----------------------------------------------------------------------------------------------------------------
+//
+// The page has two strengths of radius, standard and alternative, and a default per kind of surface (the Design's, or the kernel's); an element takes the other strength with a
+// class of its own, nino-radius or nino-radius-alt. The model keeps it as a setting where the class means something - the picture of a padded cover, what the row paints with the
+// background inside, the ground or the picture of a column - and on a component that is a surface; anywhere else the class is a custom one: kept, not lost
+
+check( 'the radius of a surface has two strengths - standard and alternative - a class for each, nino-radius and nino-radius-alt, and five kinds of surface the page has a default for: the cover, the row, the column, the card and the image - and no section, row or column has a radius until it is said',
+	$reader::RADIUS === [ 'standard', 'alternative' ] && $reader::RADIUS_CLASS === [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ] && $reader::SURFACES === [ 'cover', 'row', 'column', 'card', 'image' ]
+	&& $reader::sectionDefaults()['radius'] === '' && $reader::sectionDefaults()['rowRadius'] === '' && $reader::colDefaults()['radius'] === '' && $blank['settings']['radius'] === '' && $blank['settings']['rowRadius'] === '' && $blank['cols'][0]['radius'] === '' );
+
+// The picture of a padded cover
+$coverOf = static function( array $over = [] ) use ( $blank ): array {
+	$model = $blank;
+	$model['settings'] = array_replace( $blank['settings'], [ 'cover' => 60, 'padded' => true ], $over );
+	return $model;
+};
+$radiusWrong = [];
+
+foreach( $reader::RADIUS as $word ) {
+
+	$made = $coverOf( [ 'radius' => $word ] );
+	$text = $write( [ 'blocks' => [ $made ] ] );
+
+	if( str_contains( $text, '<section id="a" class="nino-section nino-cover nino-cover--padded '. $reader::RADIUS_CLASS[$word]. '" data-cover-height="60">' ) === false || $read( $text )['blocks'][0] !== $made || $write( $read( $text ) ) !== $text )
+		$radiusWrong[] = 'the padded cover '. $word;
+}
+
+$radiusOrdered = $coverOf( [ 'whitespace' => 'more', 'mt' => '1', 'pb' => '2', 'radius' => 'standard', 'text' => 'center', 'custom' => 'my-cover' ] );
+$radiusText = $write( [ 'blocks' => [ $radiusOrdered ] ] );
+check( 'a padded cover has a radius of its own - the picture, the box of a parallax and the scrim of a dimmed cover take it - read from nino-radius or nino-radius-alt and written back after the spacing, before the text and the custom classes: both words'
+	. ( $radiusWrong === [] ? '' : ' - '. implode( ', ', $radiusWrong ) ),
+	$radiusWrong === [] && str_contains( $radiusText, 'class="nino-section nino-cover nino-cover--padded nino-whitespace--more nino-mt-1 nino-pb-2 nino-radius nino-text-center my-cover"' ) === true && $read( $radiusText )['blocks'][0] === $radiusOrdered );
+
+$twiceRadius = $fileRead( 'nino-section nino-cover nino-cover--padded nino-radius nino-radius-alt' );
+$idleSection = $fileRead( 'nino-section nino-radius-alt' );
+$idleCover = $fileRead( 'nino-section nino-cover nino-radius' );
+check( '...a second class of the kind is a class of its own, kept - and on a section that is no padded cover, a cover that is not padded among them, both are idle and stay custom classes',
+	$twiceRadius['settings']['radius'] === 'standard' && $twiceRadius['settings']['custom'] === 'nino-radius-alt' && $fileSame( 'nino-section nino-cover nino-cover--padded nino-radius nino-radius-alt' ) === false
+	&& $idleSection['settings']['radius'] === '' && $idleSection['settings']['custom'] === 'nino-radius-alt' && $fileSame( 'nino-section nino-radius-alt' ) === true
+	&& $idleCover['settings']['radius'] === '' && $idleCover['settings']['cover'] === 90 && $idleCover['settings']['custom'] === 'nino-radius' );
+
+check( '...and the Writer writes none for a section that is not a padded cover - the setting waits in the model, and no class of nothing reaches the file',
+	str_contains( $write( [ 'blocks' => [ $coverOf( [ 'padded' => false, 'radius' => 'alternative' ] ) ] ] ), 'nino-radius' ) === false
+	&& str_contains( $write( [ 'blocks' => [ $coverOf( [ 'cover' => null, 'padded' => false, 'radius' => 'standard' ] ) ] ] ), 'nino-radius' ) === false
+	&& str_contains( $write( [ 'blocks' => [ $coverOf( [ 'cover' => null, 'parallax' => true, 'radius' => 'standard' ] ) ] ] ), 'nino-cover--padded nino-radius"' ) === true );
+
+// What the row paints with the background inside
+$rowRadiusWrong = [];
+
+foreach( $reader::RADIUS as $word ) {
+
+	$rowClass = 'nino-grid-row nino-grid-row--narrow nino-grid-row--left nino-grid-row--tint nino-grid-middle nino-pl-1 nino-pr-2 nino-pt-3 nino-pb-4 '. $reader::RADIUS_CLASS[$word]. ' my-row';
+	$rowSet = $fileRead( 'nino-section', $rowClass )['settings'];
+
+	if( $rowSet['inner'] !== true || $rowSet['rowRadius'] !== $word || $rowSet['color'] !== 'tint' || $rowSet['rowPb'] !== '4' || $rowSet['rowCustom'] !== 'my-row' || $fileSame( 'nino-section', $rowClass ) === false )
+		$rowRadiusWrong[] = 'the row '. $word;
+}
+
+$rowPicture = $fileRead( 'nino-section', 'nino-grid-row nino-radius', false, true );
+$rowIdle = $fileRead( 'nino-section', 'nino-grid-row nino-radius-alt' );
+$rowIdleSet = $blank;
+$rowIdleSet['settings'] = [ 'inner' => true, 'rowRadius' => 'alternative' ] + $blank['settings'];
+$rowSectionGround = $blank;
+$rowSectionGround['settings'] = [ 'color' => 'tint', 'rowRadius' => 'alternative' ] + $blank['settings'];
+check( 'the row has a radius of its own where it paints - a ground or a picture, which it has with the background inside - read from the class after its padding, before its custom classes, and written back byte for byte: both words'
+	. ( $rowRadiusWrong === [] ? '' : ' - '. implode( ', ', $rowRadiusWrong ) ),
+	$rowRadiusWrong === [] && $rowPicture['settings']['inner'] === true && $rowPicture['settings']['rowRadius'] === 'standard' && $rowPicture['settings']['rowCustom'] === '' && $rowPicture['background'] !== null && $fileSame( 'nino-section', 'nino-grid-row nino-radius', false, true ) === true );
+check( '...on a row that paints nothing both classes are idle and stay custom ones - and the Writer writes none for a row that has no ground and no picture, nor where the colour is the section\'s',
+	$rowIdle['settings']['rowRadius'] === '' && $rowIdle['settings']['rowCustom'] === 'nino-radius-alt' && $fileSame( 'nino-section', 'nino-grid-row nino-radius-alt' ) === true
+	&& str_contains( $write( [ 'blocks' => [ $rowIdleSet ] ] ), 'nino-radius' ) === false && str_contains( $write( [ 'blocks' => [ $rowSectionGround ] ] ), 'nino-radius' ) === false );
+
+// The ground or the picture of a column
+$colRadiusWrong = [];
+
+foreach( $reader::RADIUS as $word ) {
+
+	$colSource = $groundOf( 'nino-grid-100 nino-grid--tint nino-p-2 '. $reader::RADIUS_CLASS[$word]. ' nino-vpa' );
+	$colSet = $columnOf( $colSource );
+
+	if( $colSet['radius'] !== $word || $colSet['color'] !== 'tint' || $colSet['p'] !== '2' || $colSet['vpa'] !== '' || $colSet['custom'] !== '' || $write( $read( $colSource ) ) !== $inWrap( $colSource ) )
+		$colRadiusWrong[] = 'the column '. $word;
+}
+
+$colPicture = $columnOf( $groundOf( 'nino-grid-100 nino-radius-alt', $photo. "\n\t\t\t[title /template/page-x/a/title]" ) );
+$colIdle = $columnOf( $groundOf( 'nino-grid-100 nino-radius-alt' ) );
+$colIdleSet = $blank;
+$colIdleSet['cols'][0]['radius'] = 'standard';
+check( 'a column has a radius of its own where it paints - a ground or a picture - read from the class after its spacing, before its animation, and written back byte for byte: both words'
+	. ( $colRadiusWrong === [] ? '' : ' - '. implode( ', ', $colRadiusWrong ) ),
+	$colRadiusWrong === [] && $colPicture['radius'] === 'alternative' && $colPicture['color'] === '' && $colPicture['background'] !== null && $colPicture['custom'] === '' );
+check( '...on a column that paints nothing both classes are idle and stay custom ones - and the Writer writes none for it',
+	$colIdle['radius'] === '' && $colIdle['custom'] === 'nino-radius-alt' && $write( $read( $groundOf( 'nino-grid-100 nino-radius-alt' ) ) ) === $inWrap( $groundOf( 'nino-grid-100 nino-radius-alt' ) )
+	&& str_contains( $write( [ 'blocks' => [ $colIdleSet ] ] ), 'nino-radius' ) === false );
+
+// A component that is a surface: its radius is apart from its classes, and the first class of its call
+$cardCall = static fn( string $class ): string => $section( "[card". $class. "]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t[/card]" );
+$pictureCall = static fn( string $class ): string => $section( '[image /template/page-x/a/photo'. $class. ']' );
+$nodeOf = static fn( string $source ): array => $read( $page( $source ) )['blocks'][0]['cols'][0]['components'][0];
+$surfaceWrong = [];
+
+foreach( [ 'card' => $cardCall, 'image' => $pictureCall ] as $kind => $call )
+	foreach( $reader::RADIUS as $word ) {
+
+		$bare = $call( ' class="'. $reader::RADIUS_CLASS[$word]. '"' );
+		$both = $call( ' class="'. $reader::RADIUS_CLASS[$word]. ' my-class"' );
+
+		if( $nodeOf( $bare )['radius'] !== $word || $nodeOf( $bare )['attributes']['class'] !== '' || $nodeOf( $both )['radius'] !== $word || $nodeOf( $both )['attributes']['class'] !== 'my-class'
+			|| $write( $read( $page( $bare ) ) ) !== $inWrap( $page( $bare ) ) || $write( $read( $page( $both ) ) ) !== $inWrap( $page( $both ) ) )
+			$surfaceWrong[] = $kind. ' '. $word;
+	}
+
+$cardNone = $nodeOf( $cardCall( '' ) );
+check( 'a card and a picture have a radius of their own: the class of the call, nino-radius or nino-radius-alt, is taken out of the class attribute into the setting radius of the component and put back as the first class, before the editor\'s own, byte for byte - both words of each'
+	. ( $surfaceWrong === [] ? '' : ' - '. implode( ', ', $surfaceWrong ) ),
+	$surfaceWrong === [] && $cardNone['radius'] === '' && $cardNone['attributes']['class'] === '' && array_key_exists( 'radius', $cardNone['components'][0] ) === false
+	&& $write( $read( $page( $cardCall( ' class="my-class nino-radius-alt"' ) ) ) ) === $inWrap( $page( $cardCall( ' class="nino-radius-alt my-class"' ) ) ) );
+
+$earlierPicture = $nodeOf( $pictureCall( ' class="nino-image--rounded my-image"' ) );
+$earlierWritten = $write( $read( $page( $pictureCall( ' class="nino-image--rounded my-image"' ) ) ) );
+$earlierCard = $nodeOf( $cardCall( ' class="nino-image--rounded"' ) );
+$twoPicture = $nodeOf( $pictureCall( ' class="nino-radius nino-radius-alt"' ) );
+$plainTitle = $nodeOf( $section( '[title /template/page-x/a/title class="nino-radius-alt"]' ) );
+check( '...the class an earlier builder gave a picture is read as the alternative strength and never written again - the file says nino-radius-alt after the next save - while on a card it is a class like any other; a second class of the kind is a class of its own, and a component that is no surface has none of this: its class stays a class',
+	$earlierPicture['radius'] === 'alternative' && $earlierPicture['attributes']['class'] === 'my-image' && str_contains( $earlierWritten, '[image /template/page-x/a/photo class="nino-radius-alt my-image"]' ) === true && str_contains( $earlierWritten, 'nino-image--rounded' ) === false
+	&& $earlierCard['radius'] === '' && $earlierCard['attributes']['class'] === 'nino-image--rounded' && $twoPicture['radius'] === 'standard' && $twoPicture['attributes']['class'] === 'nino-radius-alt'
+	&& array_key_exists( 'radius', $plainTitle ) === false && $plainTitle['attributes']['class'] === 'nino-radius-alt' && $write( $read( $page( $section( '[title /template/page-x/a/title class="nino-radius-alt"]' ) ) ) ) === $inWrap( $page( $section( '[title /template/page-x/a/title class="nino-radius-alt"]' ) ) ) );
+
+// The style Rounded, which an earlier builder gave a picture, was an attribute of the image component, and the schema has none now
+$styleArguments = ' style="'. $reader::EARLIER_IMAGE_STYLE. '"';
+$styledOf = static fn( string $arguments ): array => (array) ( $read( $page( $pictureCall( $arguments ) ) )['blocks'][0]['cols'][0]['components'][0] ?? [] );
+$styledBare = $styledOf( $styleArguments );
+$styledMore = $styledOf( ' ratio="16-9"'. $styleArguments. ' class="my-image"' );
+$strengthWrong = array_filter( [ ' class="nino-radius nino-image--rounded"', ' class="nino-image--rounded nino-radius"', $styleArguments. ' class="nino-radius"' ],
+	static fn( string $arguments ): bool => ( $styledOf( $arguments )['radius'] ?? '' ) !== 'standard' || ( $styledOf( $arguments )['attributes']['class'] ?? null ) !== ''
+		|| $write( $read( $page( $pictureCall( $arguments ) ) ) ) !== $inWrap( $page( $pictureCall( ' class="nino-radius"' ) ) ) );
+check( '...so is the style Rounded, which an earlier builder gave a picture and the image component has no more: the call is a section and no foreign block, its radius is the alternative strength, its other attributes and its classes stay, and the next save writes nino-radius-alt and no style - and a strength the call names itself wins over both earlier forms, which are not written either way',
+	$read( $page( $pictureCall( $styleArguments ) ) )['blocks'][0]['kind'] === 'section' && ( $styledBare['radius'] ?? '' ) === 'alternative' && ( $styledBare['attributes']['class'] ?? null ) === '' && isset( $styledBare['attributes']['style'] ) === false
+	&& ( $styledMore['radius'] ?? '' ) === 'alternative' && ( $styledMore['attributes']['ratio'] ?? '' ) === '16-9' && ( $styledMore['attributes']['class'] ?? null ) === 'my-image'
+	&& $write( $read( $page( $pictureCall( ' ratio="16-9"'. $styleArguments. ' class="my-image"' ) ) ) ) === $inWrap( $page( $pictureCall( ' ratio="16-9" class="nino-radius-alt my-image"' ) ) ) && $strengthWrong === [] );
+
+$notPictures = [ $read( $page( $cardCall( $styleArguments ) ) ), $read( $page( $section( '[spacer'. $styleArguments. ']' ) ) ), $read( $page( $pictureCall( ' style="other"' ) ) ) ];
+check( '...on a picture only, and only that style: the same style on a card or on a component that has none, or another style on a picture, is an attribute no schema declares - the section is a foreign block with that reason, as it always was',
+	array_filter( $notPictures, static fn( array $model ): bool => $model['blocks'][0]['kind'] !== 'html' || ( $model['blocks'][0]['reason']['code'] ?? '' ) !== 'unknown-attribute' || ( $model['blocks'][0]['reason']['detail'] ?? '' ) !== 'style' ) === [] );
+
+// The picture behind a section or a column is its background, and has no radius of its own: the section is not read as one
+$backgroundRadius = $read( $page( $groundOf( 'nino-grid-100', "<div class=\"nino-grid-bg\">[image /template/page-x/a/photo alt=\"\" class=\"nino-radius\"]</div>" ) ) );
+check( '...the picture behind a column is a background and has no radius: the section that gives it one is not read as a section, it is a foreign block with its reason',
+	$backgroundRadius['blocks'][0]['kind'] === 'html' && ( $backgroundRadius['blocks'][0]['reason']['code'] ?? '' ) === 'background-image' );
+
 check( 'a component whose schema does not say that it holds components is one line, a list of children or not: the Writer does not make a container of what is none', str_contains( $write( [ 'blocks' => [ $plainBlock ] ] ), "\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n" ) === true && str_contains( $write( [ 'blocks' => [ $plainBlock ] ] ), '[/title]' ) === false );
 
 echo "\n";
@@ -1370,10 +1534,27 @@ check( '...and it names every component in every language of the site (labels): 
 	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'labels', $schema ) === true ) === [] );
 check( '...the answer lists the groups a tool offers the kernel\'s and a project\'s components in, in the order the kernel declares them - the words of its own list, which the script reads from the answer and types nowhere',
 	$registryAnswer['groups'] === \Nino\Modules\Components::GROUPS && $registryAnswer['groups'] !== [] && array_is_list( $registryAnswer['groups'] ) === true && array_filter( $registryAnswer['groups'], static fn( mixed $word ): bool => is_string( $word ) === false || preg_match( '/^[a-z]+$/', $word ) !== 1 ) === [] );
-check( '...the components, the stacks and the groups the panel\'s script test reads (fixtures/registry.json) are written from what the registry says: the file is there, is json, and holds the three keys, each with every component, every stack and every group the registry has',
-	$fixtureWritten( 'registry.json', [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'], 'groups' => $registryAnswer['groups'] ] ) === true && array_keys( $fixtureRead( 'registry.json' ) ?? [] ) === [ 'components', 'stacks', 'groups' ]
+check( '...the components, the stacks, the groups and the strength each kind of surface takes the panel\'s script test reads (fixtures/registry.json) are written from what the registry says: the file is there, is json, and holds the four keys, each with every component, every stack and every group the registry has',
+	$fixtureWritten( 'registry.json', [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'], 'groups' => $registryAnswer['groups'], 'radii' => $registryAnswer['radii'] ] ) === true && array_keys( $fixtureRead( 'registry.json' ) ?? [] ) === [ 'components', 'stacks', 'groups', 'radii' ]
 	&& array_keys( $fixtureRead( 'registry.json' )['components'] ) === array_keys( $registryAnswer['components'] ) && array_keys( $fixtureRead( 'registry.json' )['stacks'] ) === array_keys( $registryAnswer['stacks'] )
-	&& $fixtureRead( 'registry.json' ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'], 'groups' => $registryAnswer['groups'] ] ), true ) );
+	&& $fixtureRead( 'registry.json' ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'], 'groups' => $registryAnswer['groups'], 'radii' => $registryAnswer['radii'] ] ), true ) );
+
+/*	The strength each kind of surface takes where an element names none is the site's stylesheets' to say, by a marker at their :root - the workbench loads none of them, so the
+	registry reads the bundle's sources and tells the panel: the kernel's own say standard for every kind, and the last declaration in the bundle is the one in force	*/
+$radiiSheet = '/assets/radius-test.css';
+check( 'the registry tells the panel the strength each kind of surface takes by default: the five kinds, in order, each one of the two strengths - the kernel\'s own stylesheet says standard for all of them',
+	array_keys( $registryAnswer['radii'] ) === $reader::SURFACES && array_values( array_unique( array_values( $registryAnswer['radii'] ) ) ) === [ 'standard' ]
+	&& \Nino\Modules\Builder\Document::radii( $appData ) === $registryAnswer['radii'] );
+
+\Nino\Filesystem::putFileContent( $appData, $radiiSheet, "/* --radius-image-default: alternative; */\n:root {\n\t--radius-card-default: standard;\n\t--radius-row-default: alternative;\n\t--radius-column-default: sideways;\n\t--radius-nothing-default: alternative;\n}\n:root { --radius-card-default: alternative }\n" );
+\Nino\Html::addAsset( $appData, '/.cache/style.css', $radiiSheet );
+$radiiProject = \Nino\Modules\Builder\Document::radii( $appData );
+$appData['/nino/html/assets']['/.cache/style.css'] = array_values( array_diff( $appData['/nino/html/assets']['/.cache/style.css'], [ $radiiSheet ] ) );
+@unlink( \Nino\Filesystem::path( $appData, $radiiSheet ) );
+
+check( '...a stylesheet of the project that declares the markers is heard, and the last declaration in the bundle is the one in force: a marker in a comment is none, a word that is none of the two and a kind the page does not have are ignored',
+	$radiiProject === [ 'cover' => 'standard', 'row' => 'alternative', 'column' => 'standard', 'card' => 'alternative', 'image' => 'standard' ]
+	&& \Nino\Modules\Builder\Document::radii( $appData ) === $registryAnswer['radii'] );
 check( '...the components stand in the order the kernel registers them, which is the order a column offers them, and the answer keeps it the way the panel reads it: through json, as the kernel has them',
 	array_keys( (array) json_decode( (string) json_encode( $registryAnswer['components'] ), true ) ) === array_keys( $kernelComponents ) );
 $featured = $appData;
@@ -1480,6 +1661,30 @@ check( '...a save with a change writes every section of the file as the settings
 	&& str_contains( $earlierText, "<section id=\"b\" class=\"nino-section nino-section--alt\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0 nino-pt-2\">\n" ) === true
 	&& $earlierSaved['model']['blocks'] === \Nino\Modules\Builder\Document::load( $appData, 'page-earlier' )['model']['blocks'] && $earlierSaved['model']['blocks'][1]['settings']['rowPt'] === '2' );
 unlink( $earlierPath );
+
+// A template that still says what an earlier builder gave a picture - the class nino-image--rounded, the style Rounded - opens with the alternative radius, which the page draws only once the file says it:
+// a save writes the file anew even where nothing else changed, and a second one finds nothing to write
+$pictureRadiusPath	= \Nino\Filesystem::path( $appData, '/templates/page-picture.tpl' );
+$pictureRadiusOf		= static fn( array $loaded ): string => (string) ( $loaded['model']['blocks'][0]['cols'][0]['components'][0]['radius'] ?? '?' );
+$pictureRadiusWrong	= [];
+
+foreach( [ 'the class' => [ ' class="nino-image--rounded my-image"', ' class="nino-radius-alt my-image"' ], 'the style' => [ ' style="rounded"', ' class="nino-radius-alt"' ] ] as $form => [ $earlier, $written ] ) {
+
+	\Nino\Filesystem::putFileContent( $appData, '/templates/page-picture.tpl', $page( $section( '[image /template/page-picture/a/photo'. $earlier. ']', 'a' ), $section( '[image /template/page-picture/b/photo]', 'b' ) ) );
+	$pictureLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-picture' );
+	$pictureKept	= \Nino\Modules\Builder\Document::save( $appData, 'page-picture', $pictureLoad['model'], $pictureLoad['hash'] );
+	$pictureText	= (string) file_get_contents( $pictureRadiusPath );
+	$pictureAgain	= \Nino\Modules\Builder\Document::save( $appData, 'page-picture', $pictureKept['model'], $pictureKept['hash'] );
+
+	if( $pictureRadiusOf( $pictureLoad ) !== 'alternative' || $pictureKept['status'] !== 200 || $pictureKept['hash'] !== hash( 'sha256', $pictureText ) || $pictureRadiusOf( $pictureKept ) !== 'alternative'
+		|| $pictureText !== $inWrap( $page( $section( '[image /template/page-picture/a/photo'. $written. ']', 'a' ), $section( '[image /template/page-picture/b/photo]', 'b' ) ) )
+		|| $pictureAgain['status'] !== 200 || $pictureAgain['hash'] !== $pictureKept['hash'] || (string) file_get_contents( $pictureRadiusPath ) !== $pictureText )
+		$pictureRadiusWrong[] = $form;
+}
+
+check( 'a template that says what an earlier builder gave a picture, the class or the style, is read with the alternative radius, and a save that changes nothing else writes it anew - nino-radius-alt in its place, the picture that had none untouched - and a save of that changes nothing'
+	. ( $pictureRadiusWrong === [] ? '' : ' - not so for '. implode( ', ', $pictureRadiusWrong ) ), $pictureRadiusWrong === [] );
+unlink( $pictureRadiusPath );
 
 // A new key and a new slot, a new section, a block of html
 $edit = $loaded['model'];
@@ -1850,9 +2055,36 @@ $answers = [
 	'a brand colour of the border that is a text'					=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['borderPrimary'] = 'true'; } ),
 	'a padding of the row that is a number'							=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowPl'] = 1; } ),
 	'a column that is a string'												=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0] = 'x'; } ),
+	'a radius of a section that is a list'							=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['radius'] = [ 'standard' ]; } ),
+	'a radius of the row that is none of the two strengths'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowRadius'] = 'sideways'; } ),
+	'a radius of a column that is a number'						=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['radius'] = 1; } ),
+	'a radius on a component that is no surface'			=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['radius'] = 'alternative'; } ),
+	'a radius of a card that is a list'								=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => [ 'alternative' ], 'components' => [] ];
+	} ),
+	'a radius on the child of a card'									=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'components' => [
+			[ 'name' => 'card-title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'], 'radius' => 'standard' ],
+		] ];
+	} ),
 ];
 $typed = array_filter( $answers, static fn( array $answer ): bool => $answer['status'] !== 400 || $answer['code'] !== 'invalid' );
 check( 'a model of the wrong shape is refused with 400 and a problem, none of '. count( $answers ). ' ends in an error: '. implode( ', ', array_keys( $answers ) ), $typed === [] && ninoWarnings() === [] );
+
+// The radius is one of the two strengths or none, in a section, its row, a column and a component that is a surface - and a component that is none has no radius to give
+$radiusSaid = static fn( string $what ): string => implode( ' | ', $answers[$what]['problems'] ?? [] );
+$radiusModel = $shaped['model'];
+$radiusModel['blocks'][0]['settings']['radius'] = 'alternative';
+$radiusModel['blocks'][0]['settings']['rowRadius'] = 'standard';
+$radiusModel['blocks'][0]['cols'][0]['radius'] = 'alternative';
+$radiusModel['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => 'alternative', 'components' => [] ];
+check( '...the radius is named where it is wrong: the setting of the section, of its row, of a column and of a component - a radius on a component that is no surface too, where it stands in the children of a card as well - and where it is one of the two strengths or none in all four places, nothing is said of it',
+	str_contains( $radiusSaid('a radius of a section that is a list'), 'the radius of block 1' ) === true && str_contains( $radiusSaid('a radius of the row that is none of the two strengths'), 'the rowRadius of block 1' ) === true
+	&& str_contains( $radiusSaid('a radius of a column that is a number'), 'the radius of column 1 of block 1' ) === true
+	&& str_contains( $radiusSaid('a radius on a component that is no surface'), 'block 1 has the component "title" with a radius, and it is no surface' ) === true
+	&& str_contains( $radiusSaid('a radius of a card that is a list'), 'block 1 has the component "card" with a radius that is none of the two strengths' ) === true
+	&& str_contains( $radiusSaid('a radius on the child of a card'), 'block 1 has the component "card-title" with a radius, and it is no surface' ) === true
+	&& array_filter( \Nino\Modules\Builder\Document::problems( $appData, $radiusModel, $registry ), static fn( string $sentence ): bool => str_contains( $sentence, 'radius' ) === true ) === [] && ninoWarnings() === [] );
 
 // A switch of a section is on or off - the brand colour of its border is one: anything else would be left out of the classes and read back as off, so it is refused before anything is made
 $switchBad			= [ 'a text' => 'true', 'the old choice' => 'fullwidth', 'an empty text' => '', 'a number' => 1, 'zero' => 0, 'a list' => [ true ], 'an empty list' => [] ];

@@ -22,12 +22,14 @@ namespace Nino\Modules\Design {
 	 *										screen of Fonts installs families and keeps nothing here):
 	 *										the five templates (header and footer bring markup,
 	 *										content, buttons and components are one stylesheet each),
-	 *										the root size, the width and the whitespace of the page
-	 *										and its animation, a position for every named knob of the
-	 *										three template tabs, the five font roles and the palette -
-	 *										and, for the Theme tab, the slug of the theme these choices
-	 *										were taken from and the custom css that goes with them (see
-	 *										Themes: a theme is this whole setup kept under a name).
+	 *										the root size, the width and the whitespace of the page,
+	 *										the radius of its surfaces - two strengths and, for each
+	 *										kind of surface, the one it takes - and its animation, a
+	 *										position for every named knob of the three template tabs,
+	 *										the five font roles and the palette - and, for the Theme
+	 *										tab, the slug of the theme these choices were taken from
+	 *										and the custom css that goes with them (see Themes: a
+	 *										theme is this whole setup kept under a name).
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
@@ -54,8 +56,10 @@ namespace Nino\Modules\Design {
 		/*	The keys of the file, in the order they are written. `theme` and `css` came
 			with the Theme tab and need no new format: a file without them reads as no
 			theme and no css, which is what every project had before. So does
-			`whitespace`: a file without it stands at the middle, the air Nino.css has	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
+			`whitespace`: a file without it stands at the middle, the air Nino.css has.
+			And so do `radius`, `radius-alt` and `radii`: a file without them stands at
+			the two strengths Nino.css has and every kind of surface on the standard one	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
 			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
@@ -104,7 +108,7 @@ namespace Nino\Modules\Design {
 							card-title				the size of the title of a card
 							card-subtitle			the size of the subtitle of a card
 							card-space				the space inside and between the parts of a card
-							corners, border, shadow	the corners, the line and the shadow of a card
+							border, shadow			the line and the shadow of a card
 				buttons		size					the size of .nino-btn
 							spread					how far .nino-btn--small and --big stand from it
 							space, corners			the padding and the radius
@@ -113,7 +117,7 @@ namespace Nino\Modules\Design {
 							zebra					the stripes of a table (a choice)
 							labels					where the label of a field stands (a choice)	*/
 		public const array KNOBS = [
-			'content' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'section-title' => 'scale', 'section-subtitle' => 'scale', 'section-space' => 'scale', 'section-line' => 'scale', 'card-title' => 'scale', 'card-subtitle' => 'scale', 'card-space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'shadow' => 'scale' ],
+			'content' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'section-title' => 'scale', 'section-subtitle' => 'scale', 'section-space' => 'scale', 'section-line' => 'scale', 'card-title' => 'scale', 'card-subtitle' => 'scale', 'card-space' => 'scale', 'border' => 'scale', 'shadow' => 'scale' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale' ],
 			'components' 	=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'labels' => 'choice' ],
 		];
@@ -130,7 +134,7 @@ namespace Nino\Modules\Design {
 			'content' => [
 				'hero' 		=> [ 'hero-title', 'hero-text' ],
 				'section' 	=> [ 'section-title', 'section-subtitle', 'section-space', 'section-line' ],
-				'card' 		=> [ 'card-title', 'card-subtitle', 'card-space', 'corners', 'border', 'shadow' ],
+				'card' 		=> [ 'card-title', 'card-subtitle', 'card-space', 'border', 'shadow' ],
 				'variants' 	=> [ 'quiet', 'loud' ],
 			],
 		];
@@ -228,6 +232,22 @@ namespace Nino\Modules\Design {
 			the utility classes - Nino.css says as well	*/
 		public const array WHITESPACE = [ -2 => '.75', -1 => '.9', 0 => '1', 1 => '1.5', 2 => '2' ];
 
+		/*	The radius of a surface, the way Nino.css has it at its :root: two strengths for the whole page, the
+			standard one --radius-surface and the alternative one --radius-surface-alt, and five kinds of surface
+			- the picture of a padded cover, a row, a column, a card and the frame of a picture -, each with the
+			token --radius-<kind> that points at one of the two and the marker --radius-<kind>-default, a plain
+			word that says which, for a tool that wants the default of a kind without resolving a length. The
+			setup holds a position for each strength (`radius` and `radius-alt`) and a word for each kind (`radii`).
+			The positions are five, -2 to +2, and one table says the length of both: the middle is the kernel's
+			small radius, .1rem, and +1 its large one, .4rem, so that a setup without the keys stands at 0 for
+			the standard strength and at +1 for the alternative one, which is Nino.css as it is	*/
+		public const array RADIUS = [ -2 => '0rem', -1 => '.05rem', 0 => '.1rem', 1 => '.4rem', 2 => '1rem' ];
+
+		// The kinds of surface in the order Nino.css names them, and the two words a kind is set to: the strength it takes
+		public const array SURFACES = [ 'cover', 'row', 'column', 'card', 'image' ];
+
+		public const array RADIUS_WORDS = [ 'standard', 'alternative' ];
+
 		/*	The animation of the page: what Nino.css sets for nino-vpa--<effect>-<strength>
 			and nino-vpa--speed-<speed>, as the properties of a rule on main. Held in
 			code, because the compiler writes them and does not read a stylesheet it
@@ -287,9 +307,9 @@ namespace Nino\Modules\Design {
 		 *	Everything a fresh install starts from: the five sets of the first
 		 *	theme the feature ships (see Themes::SHIPPED - the theme that is the
 		 *	framework as it is), every knob in the middle, the delivered root
-		 *	size, the width, the whitespace and the animation of Nino.css, the
-		 *	face the base unit delivers, the framework's own colours, no theme
-		 *	and no css of its own
+		 *	size, the width, the whitespace, the radius and the animation of
+		 *	Nino.css, the face the base unit delivers, the framework's own
+		 *	colours, no theme and no css of its own
 		 *
 		 *	The five sets are read out of that theme's file, which is a php array
 		 *	and is included the way Themes::read() includes a shipped file - only
@@ -323,6 +343,10 @@ namespace Nino\Modules\Design {
 				'size' 		=> 0,
 				'width' 	=> 0,
 				'whitespace' => 0,
+				// The standard strength at the kernel's small radius, the alternative at its large one, and every kind of surface on the standard one
+				'radius' 	=> 0,
+				'radius-alt' => 1,
+				'radii' 	=> array_fill_keys( self::SURFACES, self::RADIUS_WORDS[0] ),
 				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is
 				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
 				'parts' 	=> $parts,
@@ -350,6 +374,19 @@ namespace Nino\Modules\Design {
 		 */
 		public static function word( int $position ): string {
 			return self::STEPS[ max( 0, min( count( self::STEPS ) - 1, $position + 2 ) ) ];
+		}
+
+		/**
+		 *	The strength a kind of surface takes in a setup: the word it is set to, and the
+		 *	standard one for a kind with none or with a word that is none of the two
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		string		$kind					A value of SURFACES
+		 *
+		 *	@return 	string								A value of RADIUS_WORDS
+		 */
+		public static function radiusOf( array $setup, string $kind ): string {
+			return ( $setup['radii'][$kind] ?? null ) === self::RADIUS_WORDS[1] ? self::RADIUS_WORDS[1] : self::RADIUS_WORDS[0];
 		}
 
 		/**
@@ -571,6 +608,20 @@ namespace Nino\Modules\Design {
 			$setup['width'] = self::position( $raw['width'] ?? 0 );
 			$setup['whitespace'] = self::position( $raw['whitespace'] ?? 0 );
 
+			// The two strengths of the radius are positions as well; what is none of them is the kernel's own, which is not the middle of the alternative one
+			$setup['radius'] = self::position( $raw['radius'] ?? 0 );
+			$setup['radius-alt'] = self::position( $raw['radius-alt'] ?? 1, 'scale', 1 );
+
+			// A kind of surface takes one of the two strengths: a kind that is none of Nino.css's is dropped and named, a word that is none of the two is the standard one
+			$radii = is_array( $raw['radii'] ?? null ) === true ? $raw['radii'] : [];
+
+			foreach( array_keys( $radii ) as $kind )
+				if( in_array( $kind, self::SURFACES, true ) === false )
+					$notes[] = 'there is no kind of surface "'. self::shown( $kind ). '" - dropped';
+
+			foreach( self::SURFACES as $kind )
+				$setup['radii'][$kind] = in_array( $radii[$kind] ?? null, self::RADIUS_WORDS, true ) === true ? $radii[$kind] : self::RADIUS_WORDS[0];
+
 			$motion = is_array( $raw['motion'] ?? null ) === true ? $raw['motion'] : [];
 
 			foreach( array_keys( $motion ) as $key )
@@ -680,28 +731,30 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	One position, as a number inside the range of its kind: -2 to 2 for a scale
-		 *	(the default kind - the root size, the width and the whitespace are scales
-		 *	as well), -1 to 1
+		 *	(the default kind - the root size, the width, the whitespace and the two
+		 *	strengths of the radius are scales as well), -1 to 1
 		 *	for a choice. Anything else - a word, an array, and a number past the ends -
-		 *	is the middle, which is the template as it is
+		 *	is the middle, which is the template as it is, or the position the caller
+		 *	says is the one to stand at where there is no choice made
 		 *
 		 *	@param		mixed			$value				Straight off the wire
 		 *	@param		string		$kind					'scale' or 'choice'
+		 *	@param		int				$fallback			What anything else is
 		 *
 		 *	@return 	int
 		 */
-		public static function position( mixed $value, string $kind = 'scale' ): int {
+		public static function position( mixed $value, string $kind = 'scale', int $fallback = 0 ): int {
 
 			if( is_string( $value ) === true )
 				$value = is_numeric( $value ) === true ? (float) $value : null;
 
 			if( is_int( $value ) === false && is_float( $value ) === false )
-				return 0;
+				return $fallback;
 
 			$position = (int) round( (float) $value );
 			$range = self::range( $kind );
 
-			return $position >= -$range && $position <= $range ? $position : 0;
+			return $position >= -$range && $position <= $range ? $position : $fallback;
 		}
 
 		/**

@@ -13,22 +13,21 @@
  *	@knob	card-title			Size of the title of a row
  *	@knob	card-subtitle		Size of the subtitle of a row
  *	@knob	card-space			Space inside a row and between its parts
- *	@knob	corners				Corners of a band and of a picture
  *	@knob	border				Line under a row
  *	@knob	shadow				Shadow of a band
  *
  *	A band is a panel here rather than a stripe across the page, which is what
  *	makes a run of them read as a stack of things instead of one long scroll:
- *	inset by the gutter, rounded, padded on all four sides, and casting the
- *	shadow the knob gives it. Two plain bands in a row are a stack instead: the
- *	second has the hairline as its top edge and neither rounding nor shadow of
- *	its own, as the continuation of the first. The opening is the first
- *	article rather than a poster: text left, a rule down its left edge, nothing
- *	centred. And a hundred entries is not a grid but a list, so above the phone a
- *	card is turned on its side and the page scrolls through them - below it the
- *	row stacks again, because a thumbnail beside two lines of text on a narrow
- *	screen leaves room for neither. A row is bounded by its line, which is the
- *	border knob.
+ *	inset by the gutter, cut at the standard radius of the page, padded on all
+ *	four sides, and casting the shadow the knob gives it. Two plain bands in a
+ *	row are a stack instead: the second has the hairline as its top edge and
+ *	neither rounding nor shadow of its own, as the continuation of the first.
+ *	The opening is the first article rather than a poster: text left, a rule
+ *	down its left edge, nothing centred. And a hundred entries is not a grid
+ *	but a list, so above the phone a card is turned on its side and the page
+ *	scrolls through them - below it the row stacks again, because a thumbnail
+ *	beside two lines of text on a narrow screen leaves room for neither. A row
+ *	is bounded by its line, which is the border knob.
  *
  *	Every ladder is Nino's, value for value. What the construction reads of
  *	them is its own: a row has the card-space above and below it and none inside
@@ -103,12 +102,6 @@
 	--content-card-space--default: var(--space-2);
 	--content-card-space--more: 		var(--space-3);
 	--content-card-space--most: 		var(--space-4);
-
-	--content-corners--least: 				0rem;
-	--content-corners--less: 					0rem;
-	--content-corners--default: 			var(--radius-small);
-	--content-corners--more: 					var(--radius-large);
-	--content-corners--most: 					1rem;
 
 	--content-border--least: 					0px;
 	--content-border--less: 					.5px;
@@ -193,17 +186,19 @@
 
 /* ---- bands ---- */
 
-/*	A band that is a panel: inset by the gutter, rounded, and padded on all
-	four sides. The opening, a band that runs the full width on purpose - an
-	earlier builder's switch, or a full row that stands at both edges, which is
-	what the Builder writes for it - and one at full height - the switch, or no
-	padding above and below - are left as the page has them	*/
+/*	A band that is a panel: inset by the gutter, cut at the standard radius of
+	the page - a band is none of the five kinds of surface, so it has no default
+	of its own and no toggle - and padded on all four sides. The opening, a band
+	that runs the full width on purpose - an earlier builder's switch, or a full
+	row that stands at both edges, which is what the Builder writes for it - and
+	one at full height - the switch, or no padding above and below - are left as
+	the page has them	*/
 .nino-section:where(:not(.nino-hero, .nino-cover, .nino-section--fullwidth, .nino-section--fullheight, .nino-pt-0.nino-pb-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0))) {
 	width: calc( 100% - 2 * var(--grid-gutter) );
 	max-width: var(--grid-max-width);
 	margin-right: auto;
 	margin-left: auto;
-	border-radius: var(--content-corners);
+	border-radius: var(--radius-surface);
 	box-shadow: var(--content-shadow);
 }
 /*	The padding of a panel is times the whitespace of the page, as in regular	*/
@@ -243,18 +238,8 @@
 .nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
 	margin-bottom: calc( var(--content-card-space) / 3 * var(--whitespace-text, 1) );
 }
-.nino-card-img {
-	border-radius: var(--content-corners);
-}
 .nino-card-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
 	margin-bottom: calc( var(--content-card-space) * var(--whitespace-text, 1) );
-}
-
-/*	A picture that asks to be rounded (nino-image--rounded) takes the corners of a
-	card twice, where Nino.css gives it --radius-large: the corners knob rounds it
-	further	*/
-.nino-image--rounded {
-	border-radius: calc( var(--content-corners) * 2 );
 }
 
 /*	Only a card that has a picture is turned on its side: the cell of a stack

@@ -13,7 +13,6 @@
  *	@knob	card-title			Size of the title of a card
  *	@knob	card-subtitle		Size of the subtitle of a card
  *	@knob	card-space			Space inside a card and between its parts
- *	@knob	corners				Corners of the picture of a card
  *	@knob	border				Line round the picture of a card
  *	@knob	shadow				Shadow of the picture of a card
  *
@@ -24,8 +23,8 @@
  *	card is the same idea in small: every picture is cropped to one ratio, so a
  *	row of unprepared photographs lines up, and the words come first, because in
  *	a list of articles the headline is what is being scanned. Nothing is boxed,
- *	so the picture is what has corners, a line and a shadow here - and those
- *	three knobs are the picture's.
+ *	so the picture is what has a line and a shadow here - and those two knobs
+ *	are the picture's.
  *
  *	Every ladder is Nino's, value for value, and declared as Nino's: how large a
  *	display line is, is a position of the hero knob and no part of this
@@ -111,12 +110,6 @@
 	--content-card-space--default: var(--space-2);
 	--content-card-space--more: 		var(--space-3);
 	--content-card-space--most: 		var(--space-4);
-
-	--content-corners--least: 				0rem;
-	--content-corners--less: 					0rem;
-	--content-corners--default: 			var(--radius-small);
-	--content-corners--more: 					var(--radius-large);
-	--content-corners--most: 					1rem;
 
 	--content-border--least: 					0px;
 	--content-border--less: 					.5px;
@@ -260,17 +253,10 @@
 	aspect-ratio: 3 / 2;
 	object-fit: cover;
 	border: var(--content-border-picture) solid var(--color-border);
-	border-radius: var(--content-corners);
 	box-shadow: var(--content-shadow);
 }
 .nino-card-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
 	margin: 0;
-}
-/*	A picture that asks to be rounded (nino-image--rounded) takes the corners of a
-	card twice, where Nino.css gives it --radius-large: the corners knob rounds it
-	further	*/
-.nino-image--rounded {
-	border-radius: calc( var(--content-corners) * 2 );
 }
 .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: 0;

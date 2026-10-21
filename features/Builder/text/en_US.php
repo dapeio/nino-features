@@ -20,6 +20,8 @@ declare(strict_types=1);
 //   /_admin/builder/col/...       the fields of the column form
 //   /_admin/builder/stack/...     the fields of the loop form (the model and the kernel call it a stack)
 //   /_admin/builder/component/... the title and the content of the component form
+//   /_admin/builder/common/...    what the forms of a section, a column and a component have in common: the toggle of
+//                                 the radius of a surface
 //   /_admin/builder/source/...    the dialog of a source: its tabs, the search, a new key or slot - and the focus of a picture
 //   /_admin/builder/value/...     the text of a key, in the language the editor works in
 //   /_admin/builder/picture/...   the picture of a slot and its alt text, and what is said of the upload
@@ -343,6 +345,8 @@ return [
 	'[[/_admin/builder/picture/stored]]'					=> 'The picture is stored.',
 	'[[/_admin/builder/picture/small]]'					=> 'The picture is smaller than the slot (%s) and is scaled up.',
 
+	'[[/_admin/builder/common/radius-alt]]'				=> 'Alternative radius',
+
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'One line. The file name is made of it when the template is created and stays as it is.',
 	'[[/_admin/builder/hint/file]]'							=> 'The slug is "%s". The name of the file is the category of the text keys of the page (/template/%s/...), so it does not change.',
@@ -355,6 +359,7 @@ return [
 	'[[/_admin/builder/hint/padded]]'	=> 'The cover or the parallax keeps the room of the page around it.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'How much room the section keeps. The whitespace of the page is set in the Design.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'The colour, the picture and the dimming stand on the row inside the section, not on the section itself.',
+	'[[/_admin/builder/hint/radius-alt]]'	=> 'Standard and alternative are the two radii the Design sets for the page. An element keeps the default of its kind until you switch it.',
 	'[[/_admin/builder/hint/dim-text]]'	=> 'Text on a picture reads better with the picture dimmed.',
 	'[[/_admin/builder/hint/link]]'	=> 'Where the component leads. Without a link it is none.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'A text key, an address or - in a loop - a field of the element.',
@@ -461,7 +466,6 @@ return [
 	'[[/_admin/builder/option/variant-default]]'	=> 'Default',
 	'[[/_admin/builder/option/variant-loud]]'	=> 'Loud',
 	'[[/_admin/builder/option/variant-quiet]]'	=> 'Quiet',
-	'[[/_admin/builder/option/variant-rounded]]'	=> 'Rounded',
 	'[[/_admin/builder/option/variant-inline]]'	=> 'Own size',
 	'[[/_admin/builder/option/variant-muted]]'	=> 'Muted',
 	'[[/_admin/builder/option/variant-accent]]'	=> 'Accent',

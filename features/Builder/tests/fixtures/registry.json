@@ -904,6 +904,7 @@
                 "dim": "0",
                 "class": ""
             },
+            "surface": "card",
             "labels": {
                 "de_DE": "Karte",
                 "en_US": "Card"
@@ -1051,17 +1052,6 @@
                 ]
             ],
             "attributes": {
-                "style": {
-                    "type": "variant",
-                    "label": "Style",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "rounded"
-                    ],
-                    "prefix": "nino-image--",
-                    "default": ""
-                },
                 "alt": {
                     "type": "string",
                     "label": "Alternative text",
@@ -1105,7 +1095,6 @@
             "by": "nino",
             "group": "global",
             "defaults": {
-                "style": "",
                 "alt": "",
                 "focus": "",
                 "ratio": "",
@@ -1113,6 +1102,7 @@
                 "target": "",
                 "class": ""
             },
+            "surface": "image",
             "labels": {
                 "de_DE": "Bild",
                 "en_US": "Image"
@@ -1379,5 +1369,12 @@
         "hero",
         "card",
         "global"
-    ]
+    ],
+    "radii": {
+        "cover": "standard",
+        "row": "standard",
+        "column": "standard",
+        "card": "standard",
+        "image": "standard"
+    }
 }

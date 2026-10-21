@@ -19,6 +19,7 @@
                 "rowPr": "",
                 "rowPt": "",
                 "rowPb": "",
+                "rowRadius": "",
                 "rowCustom": "",
                 "color": "",
                 "border": "",
@@ -27,6 +28,7 @@
                 "parallax": false,
                 "dim": false,
                 "padded": false,
+                "radius": "",
                 "contentPos": "",
                 "inner": false,
                 "whitespace": "",
@@ -54,6 +56,7 @@
                     "hidden": [],
                     "color": "",
                     "dim": false,
+                    "radius": "",
                     "background": null,
                     "text": "",
                     "stackAlign": "",
@@ -74,14 +77,14 @@
                             "source": "/template/page-home-card/story/photo",
                             "text": null,
                             "attributes": {
-                                "style": "",
                                 "alt": "",
                                 "focus": "",
                                 "ratio": "4-3",
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "radius": ""
                         }
                     ]
                 },
@@ -94,6 +97,7 @@
                     "hidden": [],
                     "color": "",
                     "dim": false,
+                    "radius": "",
                     "background": null,
                     "text": "",
                     "stackAlign": "",
@@ -125,6 +129,7 @@
                                 "dim": "0",
                                 "class": ""
                             },
+                            "radius": "",
                             "components": [
                                 {
                                     "name": "card-title",
@@ -182,6 +187,7 @@
                 "rowPr": "",
                 "rowPt": "",
                 "rowPb": "",
+                "rowRadius": "",
                 "rowCustom": "",
                 "color": "alt",
                 "border": "",
@@ -190,6 +196,7 @@
                 "parallax": false,
                 "dim": false,
                 "padded": false,
+                "radius": "",
                 "contentPos": "",
                 "inner": false,
                 "whitespace": "",
@@ -217,6 +224,7 @@
                     "hidden": [],
                     "color": "",
                     "dim": false,
+                    "radius": "",
                     "background": null,
                     "text": "",
                     "stackAlign": "",
@@ -264,6 +272,7 @@
                                 "dim": "1",
                                 "class": ""
                             },
+                            "radius": "",
                             "components": [
                                 {
                                     "name": "card-title",
