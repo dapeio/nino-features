@@ -194,9 +194,11 @@
 /* ---- bands ---- */
 
 /*	A band that is a panel: inset by the gutter, rounded, and padded on all
-	four sides. The opening, a band that runs the full width on purpose and one
-	at full height are left as the page has them	*/
-.nino-section:where(:not(.nino-hero, .nino-cover, .nino-section--fullwidth, .nino-section--fullheight)) {
+	four sides. The opening, a band that runs the full width on purpose - an
+	earlier builder's switch, or a full row that stands at both edges, which is
+	what the Builder writes for it - and one at full height - the switch, or no
+	padding above and below - are left as the page has them	*/
+.nino-section:where(:not(.nino-hero, .nino-cover, .nino-section--fullwidth, .nino-section--fullheight, .nino-pt-0.nino-pb-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0))) {
 	width: calc( 100% - 2 * var(--grid-gutter) );
 	max-width: var(--grid-max-width);
 	margin-right: auto;

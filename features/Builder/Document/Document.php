@@ -2168,20 +2168,21 @@ namespace Nino\Modules\Builder {
 		 *	What is wrong with the shape of a model before anything in it is
 		 *	read: a name that is no text, a block that is no block, a switch
 		 *	that is neither on nor off (the animation of the template, the
-		 *	full width, the full height, the brand colour of the border, the
-		 *	parallax, the dimming, the padding of a cover and the background
-		 *	inside of a section, the dimming of a column -
-		 *	one left out is off), a border that is no strength, a cover that
-		 *	is neither none nor a whole number from 1 to 9999, the ground of
-		 *	a column that is none of Nino.css's, the width and the alignment
-		 *	of a row, the place of the content, the whitespace and the alignment
-		 *	of a text or of a stack that are none of its words, a loop of
+		 *	brand colour of the border, the parallax, the dimming, the padding
+		 *	of a cover and the background inside of a section, the dimming of
+		 *	a column - one left out is off), a border that is no strength, a
+		 *	cover that is neither none nor a whole number from 1 to 9999, the
+		 *	ground of a column that is none of Nino.css's, the width, the place
+		 *	and the alignment of a row, the place of the content, the whitespace
+		 *	and the alignment of a text or of a stack that are none of its words,
+		 *	a loop of
 		 *	sections that is no such loop or has a cover with a height, a
 		 *	delay or a duration of an animation - which its call cannot carry - or a
 		 *	loop in one of its columns, a background that is no
 		 *	slot or whose focus is none of the nine places, a call that is no
-		 *	call, texts that are no text for each language, the padding and
-		 *	the margins of a column that are none of the steps 0 to 6, a
+		 *	call, texts that are no text for each language, the padding of a
+		 *	row and the padding and the margins of a column that are none of the
+		 *	steps 0 to 6, a
 		 *	component that holds components with a content or with children
 		 *	that are no calls - or inside another -, and children of a
 		 *	component that holds none or of a loop - what the Writer would
@@ -2243,7 +2244,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
 
 				// What is no switch would be left out of the classes, and read back as off
-				foreach( array_merge( Reader::SECTION_SIZE, [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner' ] ) as $key )
+				foreach( [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner' ] as $key )
 					if( is_bool( $block['settings'][$key] ?? false ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
 
@@ -2254,10 +2255,15 @@ namespace Nino\Modules\Builder {
 				if( $height( $block['settings']['cover'] ?? null ) === false )
 					$problems[] = 'the cover of '. $at. ' is neither none nor a height in percent';
 
-				// The width of the row, where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
-				foreach( [ 'row' => Reader::ROW, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT ] as $key => $words )
+				// The width of the row, where it stands and where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
+				foreach( [ 'row' => Reader::ROW, 'rowPlace' => Reader::ROW_PLACE, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT ] as $key => $words )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
+
+				// The padding of the row on each side is a step of the space scale: what is none of them would be a class of nothing
+				foreach( Reader::ROW_SPACING as $key )
+					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
+						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 6';
 
 				// A loop of sections: the call of the stack that makes them - which has no attribute of a tag for what a section has one for
 				if( ( $block['stack'] ?? null ) !== null ) {

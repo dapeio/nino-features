@@ -1169,14 +1169,15 @@ check( 'a section is made like the template, off or its own: like is the bare cl
 		&& state() === off && builder._animationMode( false, settings ) === 'like';
 } )() );
 
-check( 'a new section is made with the animation of the template: the bare class where it animates its sections, none where it does not - and it is like the template either way, two switches off, the settings in the order the Reader reads them', ( function() {
+check( 'a new section is made with the animation of the template: the bare class where it animates its sections, none where it does not - and it is like the template either way, with nothing said of the width, the place and the padding of its row, the settings in the order the Reader reads them', ( function() {
 	const off = page();
 	const on = page();
 	on.animate = true;
 	const first = builder._newSection( on );
 	const second = builder._newSection( off );
 	return first.settings.vpa === '' && second.settings.vpa === null && builder._animationMode( true, first.settings ) === 'like' && builder._animationMode( false, second.settings ) === 'like'
-		&& first.settings.fullwidth === false && first.settings.fullheight === false && first.settings.vpaSpeed === '' && first.settings.vpaDelay === ''
+		&& [ 'row', 'rowPlace', 'rowPl', 'rowPr', 'rowPt', 'rowPb' ].every( function( key ) { return first.settings[key] === '' && second.settings[key] === '' } )
+		&& first.settings.vpaSpeed === '' && first.settings.vpaDelay === ''
 		&& Object.keys( first.settings ).join() === Object.keys( fixture('page-home.json').blocks[0].settings ).join();
 } )() );
 
@@ -1927,27 +1928,115 @@ builder._renderEditor();
 builder._openSettings( [ 0 ] );
 const settingsOf = function() { return builder._doc.model.blocks[0].settings };
 const stripOf = function() { return screen.getElementById('builder-dialog-tabs') };
-check( 'the dialog of a section has five tabs: Layout, Border / Background, Loop, Viewport animation and CSS classes', JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Border / Background"],["loop","Loop"],["animation","Viewport animation"],["custom","CSS classes"]]' && stripOf().hidden === false );
+const tabIds = function() { return dialogTabs().map( function( tab ) { return tab[0] } ) };
+check( 'the dialog of a section has six tabs, by their ids in this order: the section, its grid row, its background, its loop, its animation and its classes - each named by the words of its own key', JSON.stringify( tabIds() ) === '["section","row","background","loop","animation","custom"]'
+	&& dialogTabs().every( function( tab ) { return tab[1] === words['/_admin/builder/tab/'+ tab[0]] && tab[1] !== '' } ) && stripOf().hidden === false );
 check( '...the tabs are tabs of a tab list and the panes are tab panels they name: a tab controls its pane, a pane is labelled by its tab, and the first is chosen and shown', stripOf().getAttribute('role') === 'tablist' && stripOf().querySelectorAll('[role="tab"]').every( function( tab ) {
 	const pane = screen.getElementById( tab.getAttribute('aria-controls') );
 	return pane !== null && pane.getAttribute('role') === 'tabpanel' && pane.getAttribute('aria-labelledby') === tab.id && dialogContent().contains( pane );
-} ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false' && shownTab( stripOf(), 'builder' ) === 'layout'
-	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1,-1' );
-buttonOf( stripOf(), 'Border / Background' ).click();
-check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false,false'
-	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,0,-1,-1,-1' );
-buttonOf( stripOf(), 'Layout' ).click();
+} ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false' && shownTab( stripOf(), 'builder' ) === 'section'
+	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1,-1,-1' );
+buttonOf( stripOf(), words['/_admin/builder/tab/background'] ).click();
+check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,false,true,false,false,false'
+	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,-1,0,-1,-1,-1' );
+buttonOf( stripOf(), words['/_admin/builder/tab/row'] ).click();
+check( '...the Grid row is a tab of its own: pressed, it shows its pane and hides the section\'s', shownTab( stripOf(), 'builder' ) === 'row' && paneOf('row').hidden === false && paneOf('section').hidden === true );
+buttonOf( stripOf(), words['/_admin/builder/tab/section'] ).click();
 
-const layout = paneOf('layout');
-check( 'Layout: the two switches, the cover with its height, whether it is padded and the vertical alignment of its content, the two alignments as icons, the width of the grid row, the whitespace, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Full width', 'Full height', 'Cover', 'Height (%)', 'Padded', 'Vertical alignment', 'Vertical content alignment', 'Horizontal text alignment', 'Width of the grid row', 'Whitespace', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
-	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'switch', 'switch', 'switch', 'number', 'switch', 'select', 'group', 'group', 'select', 'select', 'select', 'select', 'select', 'select' ] ) );
-check( '...the width of the row is a select of the three it knows', controlOf( layout, 'Width of the grid row' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Normal,narrow=Narrow,wide=Wide' && valueAt( layout, 'Width of the grid row' ) === 'wide' );
-check( '...full width and full height are two switches in one line, both on at once if you like', layout.querySelectorAll('.builder-line')[0].children.length === 2 && layout.querySelectorAll('.builder-line')[0].querySelectorAll('.nino-admin-switch').length === 2
-	&& valueAt( layout, 'Full width' ) === true && valueAt( layout, 'Full height' ) === false && ( change( layout, 'Full height', true ), settingsOf().fullheight === true && settingsOf().fullwidth === true && valueAt( layout, 'Full width' ) === true )
-	&& ( change( layout, 'Full width', false ), settingsOf().fullwidth === false && settingsOf().fullheight === true ) );
-check( '...the alignments are two lines of icons in one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', layout.querySelectorAll('.builder-line')[2].children.length === 2 && ( function() {
-	const vertical = controlOf( layout, 'Vertical content alignment' ).el;
-	const horizontal = controlOf( layout, 'Horizontal text alignment' ).el;
+const word = function( key ) { return words['/_admin/builder/'+ key] };
+const sectionTab = paneOf('section');
+const coverLabel = word('section/cover');
+const heightLabel = word('section/cover-height');
+const paddedLabel = word('section/padded');
+const placeLabel = word('section/content-pos');
+const cellLabel = function( side, kind ) { return word('section/spacing-cell').replace( '%s', word('section/'+ side) ).replace( '%s', word('section/'+ kind) ) };
+check( 'Section: the whitespace, the spacing as a table - margin and padding above and below - and the cover with its height, whether it is padded and the place of its content, in this order and nothing else: the width and the alignments are in the tab of the row',
+	JSON.stringify( labelList( sectionTab ) ) === JSON.stringify( [ word('section/whitespace'), cellLabel( 'above', 'outer' ), cellLabel( 'above', 'inner' ), cellLabel( 'below', 'outer' ), cellLabel( 'below', 'inner' ), coverLabel, heightLabel, paddedLabel, placeLabel ] )
+	&& JSON.stringify( controlsIn( sectionTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'select', 'select', 'select', 'select', 'switch', 'number', 'switch', 'select' ] ) );
+check( '...the spacing is a table: Margin and Padding over the columns, Above and Below at the head of the rows, a select of 0 to 6 in each cell - with the word of the cell for its label', ( function() {
+	const table = sectionTab.querySelector('table');
+	const heads = table.querySelectorAll('thead th');
+	const rows = table.querySelectorAll('tbody tr');
+	return texts( heads ) === 'Spacing,Margin,Padding' && heads.every( function( head ) { return head.getAttribute('scope') === 'col' } ) && rows.length === 2 && rows.map( function( row ) { return row.querySelector('th').textContent } ).join() === 'Above,Below'
+		&& rows.every( function( row ) { return row.querySelector('th').getAttribute('scope') === 'row' && row.querySelectorAll('select').length === 2 } )
+		&& texts( table.querySelector('select').children ) === 'Default,0,1,2,3,4,5,6' && table.querySelector('select').children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6';
+} )() );
+check( '...and each cell writes its own setting: above the margin and the padding, below the margin and the padding - the section\'s own, the row\'s are in the other tab', ( function() {
+	const before = changes;
+	change( sectionTab, cellLabel( 'above', 'outer' ), '3' );
+	change( sectionTab, cellLabel( 'above', 'inner' ), '1' );
+	change( sectionTab, cellLabel( 'below', 'outer' ), '5' );
+	change( sectionTab, cellLabel( 'below', 'inner' ), '2' );
+	return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() === '3,1,5,2' && valueAt( sectionTab, cellLabel( 'below', 'outer' ) ) === '5' && changes === before + 4
+		&& [ settingsOf().rowPt, settingsOf().rowPb ].join() === ',';
+} )() );
+
+check( 'the cover is one line of four fields: a switch, its height in percent of the window\'s beside it, whether it keeps the room of the page around it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', screen.getElementById('builder-cover-line').children.length === 4
+	&& controlOf( sectionTab, coverLabel ).kind === 'switch' && controlOf( sectionTab, heightLabel ).kind === 'number' && controlOf( sectionTab, placeLabel ).kind === 'select'
+	&& valueAt( sectionTab, coverLabel ) === true && String( valueAt( sectionTab, heightLabel ) ) === '100' && controlOf( sectionTab, heightLabel ).el.disabled === false && valueAt( sectionTab, placeLabel ) === '' && controlOf( sectionTab, placeLabel ).el.disabled === false );
+check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch says what it is for under its name, the number and the place do not', controlOf( sectionTab, placeLabel ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
+	&& controlOf( sectionTab, coverLabel ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( sectionTab, placeLabel ).el.closest('label').querySelector('.nino-admin-hint') === null
+	&& controlOf( sectionTab, heightLabel ).el.closest('label').querySelector('small') === null && controlOf( sectionTab, paddedLabel ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/padded'] );
+
+// The grid row: what it says of itself, by the words of the panel - the controls are found by their labels, and the labels are the texts of their keys
+const rowTab = paneOf('row');
+const rowLines = function() { return rowTab.children.filter( function( child ) { return child.classList.contains('builder-line') } ) };
+const space = '='+ word('option/space-default')+ ',0=0,1=1,2=2,3=3,4=4,5=5,6=6';
+check( 'Grid row: the maximum width and the place of the row on one line, the padding on the sides and the padding above and below on the next - two pairs of two selects -, the alignment of its columns and of its text on the last: three lines, eight controls',
+	JSON.stringify( labelList( rowTab ) ) === JSON.stringify( [ word('section/row'), word('section/row-place'), word('section/left'), word('section/right'), word('section/above'), word('section/below'), word('section/row-align'), word('section/text') ] )
+	&& JSON.stringify( controlsIn( rowTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'group', 'select', 'select', 'select', 'select', 'group', 'group' ] )
+	&& rowLines().length === 3 && rowLines().map( function( line ) { return line.children.length } ).join() === '2,2,2' && rowLines()[0].contains( controlOf( rowTab, word('section/row') ).el ) && rowLines()[0].contains( controlOf( rowTab, word('section/row-place') ).el )
+	&& rowLines()[0].classList.contains('builder-line-top') );
+check( '...the maximum width is a select of four: the grid\'s own, which is the default, narrow, wide and none at all - and it opens on what the section says', controlOf( rowTab, word('section/row') ).el.children.length === 4
+	&& optionsOf( rowTab, word('section/row') ) === '='+ word('option/row-default')+ ',narrow='+ word('option/row-narrow')+ ',wide='+ word('option/row-wide')+ ',full='+ word('option/row-full') && valueAt( rowTab, word('section/row') ) === 'wide' );
+check( '...the place of the row is a row of three buttons, the left, the middle - which is none - and the right, in the order they are seen, with the words of the panel, and it opens on the middle',
+	rowOf( rowTab, word('section/row-place') ) === 'left:'+ word('option/row-place-left')+ ':,:'+ word('option/row-place-default')+ ':,right:'+ word('option/row-place-right')+ ':' && valueAt( rowTab, word('section/row-place') ) === ''
+	&& controlOf( rowTab, word('section/row-place') ).el.closest('.builder-segment-field').querySelector('.nino-admin-hint').textContent === word('hint/row-place') );
+check( '...the width and the place are written as they are chosen, and the place sleeps while the width is none at all - the buttons are out of reach, and the model keeps the place it holds - and wakes with any other width', ( function() {
+	const place = function() { return radiosOf( controlOf( rowTab, word('section/row-place') ).el ) };
+	const states = function() { return place().map( function( radio ) { return radio.disabled } ).join() };
+	change( rowTab, word('section/row-place'), 'right' );
+	const placed = settingsOf().rowPlace === 'right' && states() === 'false,false,false';
+	change( rowTab, word('section/row'), 'full' );
+	const asleep = settingsOf().row === 'full' && states() === 'true,true,true' && change( rowTab, word('section/row-place'), 'left' ) === false && settingsOf().rowPlace === 'right' && valueAt( rowTab, word('section/row-place') ) === 'right';
+	change( rowTab, word('section/row'), 'narrow' );
+	const awake = settingsOf().row === 'narrow' && states() === 'false,false,false' && ( change( rowTab, word('section/row-place'), 'left' ), settingsOf().rowPlace === 'left' );
+	change( rowTab, word('section/row'), '' );
+	change( rowTab, word('section/row-place'), '' );
+	return placed && asleep && awake && settingsOf().row === '' && settingsOf().rowPlace === '' && valueAt( rowTab, word('section/row') ) === '';
+} )() );
+check( '...a row that is none at all opens with the place asleep, and a dialog that is drawn again wakes it with any other width', ( function() {
+	settingsOf().row = 'full';
+	builder._refreshTab('row');
+	const asleep = radiosOf( controlOf( rowTab, word('section/row-place') ).el ).every( function( radio ) { return radio.disabled === true } ) && valueAt( rowTab, word('section/row') ) === 'full';
+	settingsOf().row = 'wide';
+	builder._refreshTab('row');
+	return asleep && radiosOf( controlOf( rowTab, word('section/row-place') ).el ).every( function( radio ) { return radio.disabled === false } ) && valueAt( rowTab, word('section/row') ) === 'wide';
+} )() );
+check( '...the padding is two pairs of selects, each a group under its name and with a hint under it for both - on the sides, the left and the right, and above and below -, the steps of the space scale and the default in every one', ( function() {
+	const pairs = rowTab.querySelectorAll('.builder-pair');
+	return pairs.length === 2 && pairs.map( function( pair ) { return pair.getAttribute('role')+ ':'+ pair.getAttribute('aria-label') } ).join() === 'group:'+ word('section/row-padding-horizontal')+ ',group:'+ word('section/row-padding-vertical')
+		&& pairs.every( function( pair ) { return pair.querySelectorAll('select').length === 2 } ) && pairs.map( function( pair ) { return pair.querySelector('.nino-admin-hint').textContent } ).join() === word('hint/row-padding-horizontal')+ ','+ word('hint/row-padding-vertical')
+		&& rowLines()[1].children.length === 2 && rowLines()[1].children.every( function( child ) { return pairs.indexOf( child ) !== -1 } ) && rowLines()[1].classList.contains('builder-line-pairs')
+		&& [ 'section/left', 'section/right', 'section/above', 'section/below' ].every( function( key ) { return optionsOf( rowTab, word( key ) ) === space } );
+} )() );
+check( '...and each select writes its own setting - the left, the right, above and below of the row, and none of the section\'s own padding - and the default is none', ( function() {
+	const own = function() { return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() };
+	const before = [ own(), changes ];
+	change( rowTab, word('section/left'), '0' );
+	change( rowTab, word('section/right'), '2' );
+	change( rowTab, word('section/above'), '4' );
+	change( rowTab, word('section/below'), '6' );
+	const written = [ settingsOf().rowPl, settingsOf().rowPr, settingsOf().rowPt, settingsOf().rowPb ].join() === '0,2,4,6' && valueAt( rowTab, word('section/right') ) === '2' && own() === before[0] && changes === before[1] + 4;
+	change( rowTab, word('section/left'), '' );
+	change( rowTab, word('section/right'), '' );
+	change( rowTab, word('section/above'), '' );
+	change( rowTab, word('section/below'), '' );
+	return written && [ settingsOf().rowPl, settingsOf().rowPr, settingsOf().rowPt, settingsOf().rowPb ].join() === ',,,';
+} )() );
+check( '...the alignments are two rows of icons on one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', rowLines()[2].children.length === 2 && ( function() {
+	const vertical = controlOf( rowTab, word('section/row-align') ).el;
+	const horizontal = controlOf( rowTab, word('section/text') ).el;
 	const options = function( group ) { return group.querySelectorAll('.builder-segment-option').map( function( option ) { return [ option.querySelector('input').value, option.title, option.querySelector('input').getAttribute('aria-label'), iconOf( option ) ].join(':') } ).join() };
 	return vertical.getAttribute('role') === 'radiogroup' && horizontal.getAttribute('role') === 'radiogroup'
 		&& options( vertical ) === ':Top:Top:align-top,middle:Middle:Middle:align-middle,bottom:Bottom:Bottom:align-bottom'
@@ -1955,31 +2044,8 @@ check( '...the alignments are two lines of icons in one line: radio buttons, eac
 		&& horizontal.querySelector('.builder-segment-face').textContent === 'Inherited'
 		&& radiosOf( vertical ).every( function( radio ) { return radio.type === 'radio' && radio.name === radiosOf( vertical )[0].name } ) && radiosOf( vertical )[0].name !== radiosOf( horizontal )[0].name;
 } )() );
-check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( layout, 'Vertical content alignment' ) === 'middle' && ( change( layout, 'Vertical content alignment', 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( layout, 'Vertical content alignment', '' ), settingsOf().rowAlign === '' )
-	&& valueAt( layout, 'Horizontal text alignment' ) === '' && ( change( layout, 'Horizontal text alignment', 'center' ), settingsOf().text === 'center' ) && valueAt( layout, 'Horizontal text alignment' ) === 'center' );
-check( '...the spacing is a table: Margin and Padding over the columns, Above and Below at the head of the rows, a select of 0 to 6 in each cell - with the word of the cell for its label', ( function() {
-	const table = layout.querySelector('table');
-	const heads = table.querySelectorAll('thead th');
-	const rows = table.querySelectorAll('tbody tr');
-	return texts( heads ) === 'Spacing,Margin,Padding' && heads.every( function( head ) { return head.getAttribute('scope') === 'col' } ) && rows.length === 2 && rows.map( function( row ) { return row.querySelector('th').textContent } ).join() === 'Above,Below'
-		&& rows.every( function( row ) { return row.querySelector('th').getAttribute('scope') === 'row' && row.querySelectorAll('select').length === 2 } )
-		&& texts( table.querySelector('select').children ) === 'Default,0,1,2,3,4,5,6' && table.querySelector('select').children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6';
-} )() );
-check( '...and each cell writes its own setting: above the margin and the padding, below the margin and the padding', ( function() {
-	change( layout, 'Above, Margin', '3' );
-	change( layout, 'Above, Padding', '1' );
-	change( layout, 'Below, Margin', '5' );
-	change( layout, 'Below, Padding', '2' );
-	return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() === '3,1,5,2' && valueAt( layout, 'Below, Margin' ) === '5' && changes === 9;
-} )() );
-
-const heightLabel = 'Height (%)';
-check( 'the cover is one line of four fields: a switch, its height in percent of the window\'s beside it, whether it keeps the room of the page around it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', layout.querySelectorAll('.builder-line')[1].children.length === 4
-	&& controlOf( layout, 'Cover' ).kind === 'switch' && controlOf( layout, heightLabel ).kind === 'number' && controlOf( layout, 'Vertical alignment' ).kind === 'select'
-	&& valueAt( layout, 'Cover' ) === true && String( valueAt( layout, heightLabel ) ) === '100' && controlOf( layout, heightLabel ).el.disabled === false && valueAt( layout, 'Vertical alignment' ) === '' && controlOf( layout, 'Vertical alignment' ).el.disabled === false );
-check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch says what it is for under its name, the number and the place do not', controlOf( layout, 'Vertical alignment' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
-	&& controlOf( layout, 'Cover' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( layout, 'Vertical alignment' ).el.closest('label').querySelector('.nino-admin-hint') === null
-	&& controlOf( layout, heightLabel ).el.closest('label').querySelector('small') === null && controlOf( layout, 'Padded' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/padded'] );
+check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( rowTab, word('section/row-align') ) === 'middle' && ( change( rowTab, word('section/row-align'), 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( rowTab, word('section/row-align'), '' ), settingsOf().rowAlign === '' )
+	&& valueAt( rowTab, word('section/text') ) === '' && ( change( rowTab, word('section/text'), 'center' ), settingsOf().text === 'center' ) && valueAt( rowTab, word('section/text') ) === 'center' );
 
 const ground = paneOf('background');
 check( 'Background: the border with the switch for the brand colour beside it, the colour, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, whether the background stands inside, the focus - and the lines hold two fields each, the switch inside one', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Border', 'In the brand colour', 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Parallax effect', 'Dim the picture', 'Background inside', 'Automatic focus', 'Manual focus' ] )
@@ -2109,26 +2175,26 @@ builder._openSettings( [ 1 ] );
 const sectionOne = function() { return builder._doc.model.blocks[1].settings };
 check( '...so is a section that has none to begin with, and so are its parallax and its dimming', controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true
 	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
-check( 'a section that is no cover has the switch off, a number that is empty and takes no input, and the place of its content out of reach - a parallax has the place as a cover has, and a section that is neither stands in the flow of the page', valueAt( paneOf('layout'), 'Cover' ) === false && valueAt( paneOf('layout'), heightLabel ) === ''
-	&& controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
-change( paneOf('layout'), 'Cover', true );
-check( '...the cover switched on is 90 high, what Nino.ui.js makes of a cover that names no height: the model has it, the number shows it and takes input, and the place of the content wakes', sectionOne().cover === 90 && valueAt( paneOf('layout'), 'Cover' ) === true
-	&& String( valueAt( paneOf('layout'), heightLabel ) ) === '90' && controlOf( paneOf('layout'), heightLabel ).el.disabled === false && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false );
-change( paneOf('layout'), heightLabel, 60 );
-check( '...a height typed is written', sectionOne().cover === 60 && valueAt( paneOf('layout'), 'Cover' ) === true );
-check( '...and a field on its way to a number does not take the cover away: one emptied, or one out of bounds, leaves the height as it is - and once the typing is over the field says the height in force', [ '', 0, 101, -5 ].every( function( typed ) { change( paneOf('layout'), heightLabel, typed ); return sectionOne().cover === 60 } ) && String( valueAt( paneOf('layout'), heightLabel ) ) === '60' );
-change( paneOf('layout'), 'Vertical alignment', 'bottom' );
-change( paneOf('layout'), heightLabel, 150 );
-check( '...and once the typing is over a value out of bounds goes back to the height in force: 150 typed, 60 read', String( valueAt( paneOf('layout'), heightLabel ) ) === '60' && sectionOne().cover === 60 );
+check( 'a section that is no cover has the switch off, a number that is empty and takes no input, and the place of its content out of reach - a parallax has the place as a cover has, and a section that is neither stands in the flow of the page', valueAt( paneOf('section'), 'Cover' ) === false && valueAt( paneOf('section'), heightLabel ) === ''
+	&& controlOf( paneOf('section'), heightLabel ).el.disabled === true && controlOf( paneOf('section'), placeLabel ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
+change( paneOf('section'), 'Cover', true );
+check( '...the cover switched on is 90 high, what Nino.ui.js makes of a cover that names no height: the model has it, the number shows it and takes input, and the place of the content wakes', sectionOne().cover === 90 && valueAt( paneOf('section'), 'Cover' ) === true
+	&& String( valueAt( paneOf('section'), heightLabel ) ) === '90' && controlOf( paneOf('section'), heightLabel ).el.disabled === false && controlOf( paneOf('section'), placeLabel ).el.disabled === false );
+change( paneOf('section'), heightLabel, 60 );
+check( '...a height typed is written', sectionOne().cover === 60 && valueAt( paneOf('section'), 'Cover' ) === true );
+check( '...and a field on its way to a number does not take the cover away: one emptied, or one out of bounds, leaves the height as it is - and once the typing is over the field says the height in force', [ '', 0, 101, -5 ].every( function( typed ) { change( paneOf('section'), heightLabel, typed ); return sectionOne().cover === 60 } ) && String( valueAt( paneOf('section'), heightLabel ) ) === '60' );
+change( paneOf('section'), placeLabel, 'bottom' );
+change( paneOf('section'), heightLabel, 150 );
+check( '...and once the typing is over a value out of bounds goes back to the height in force: 150 typed, 60 read', String( valueAt( paneOf('section'), heightLabel ) ) === '60' && sectionOne().cover === 60 );
 const bottom = sectionOne().contentPos;
-change( paneOf('layout'), 'Vertical alignment', 'top' );
+change( paneOf('section'), placeLabel, 'top' );
 const top = sectionOne().contentPos;
-change( paneOf('layout'), 'Vertical alignment', '' );
-check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( paneOf('layout'), 'Vertical alignment' ) === '' );
+change( paneOf('section'), placeLabel, '' );
+check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( paneOf('section'), placeLabel ) === '' );
 sectionOne().dim = true;
-change( paneOf('layout'), 'Cover', false );
-check( 'the cover switched off is none in the model, the number is empty and out of reach, the place of the content sleeps again - and the scrim goes with the cover, as there is nothing left to dim', sectionOne().cover === null && valueAt( paneOf('layout'), 'Cover' ) === false
-	&& valueAt( paneOf('layout'), heightLabel ) === '' && controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true && sectionOne().dim === false );
+change( paneOf('section'), 'Cover', false );
+check( 'the cover switched off is none in the model, the number is empty and out of reach, the place of the content sleeps again - and the scrim goes with the cover, as there is nothing left to dim', sectionOne().cover === null && valueAt( paneOf('section'), 'Cover' ) === false
+	&& valueAt( paneOf('section'), heightLabel ) === '' && controlOf( paneOf('section'), heightLabel ).el.disabled === true && controlOf( paneOf('section'), placeLabel ).el.disabled === true && sectionOne().dim === false );
 sectionOne().parallax = true;
 sectionOne().dim = true;
 builder._refreshTab('background');
@@ -2140,24 +2206,24 @@ builder._refreshTab('background');
 check( 'with a picture the parallax and the dimming are both in reach, whatever the section is: the scrim is for the picture, and a plain section has one of its own as a cover and a parallax have', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
 change( paneOf('background'), 'Parallax effect', true );
 check( '...a parallax wakes the place of the content in the Layout tab, where the cover stays off, and leaves the dimming in reach', sectionOne().parallax === true && sectionOne().cover === null && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
-	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false && valueAt( paneOf('layout'), 'Cover' ) === false );
+	&& controlOf( paneOf('section'), placeLabel ).el.disabled === false && valueAt( paneOf('section'), 'Cover' ) === false );
 change( paneOf('background'), 'Dim the picture', true );
 change( paneOf('background'), 'Parallax effect', false );
 check( '...and switched off in a section that is no cover the scrim stays - it is the section\'s own over its picture now - while the place of the content sleeps again, in the Layout tab', sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true
-	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true );
-change( paneOf('layout'), 'Cover', true );
+	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false && controlOf( paneOf('section'), placeLabel ).el.disabled === true );
+change( paneOf('section'), 'Cover', true );
 check( '...a cover leaves the dimming in reach and the scrim as it was', sectionOne().cover === 90 && sectionOne().dim === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
 change( paneOf('background'), 'Dim the picture', true );
 change( paneOf('background'), 'Parallax effect', true );
 change( paneOf('background'), 'Parallax effect', false );
 check( '...the parallax switched off in a cover keeps the scrim, which is the cover\'s', sectionOne().cover === 90 && sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true );
 change( paneOf('background'), 'Parallax effect', true );
-change( paneOf('layout'), 'Cover', false );
+change( paneOf('section'), 'Cover', false );
 check( '...and so is the cover switched off in a parallax: the scrim stays, and so does the place of the content', sectionOne().cover === null && sectionOne().parallax === true && sectionOne().dim === true
-	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false && valueAt( paneOf('background'), 'Dim the picture' ) === true );
-change( paneOf('layout'), 'Cover', true );
-change( paneOf('layout'), heightLabel, 60 );
-change( paneOf('layout'), 'Vertical alignment', 'bottom' );
+	&& controlOf( paneOf('section'), placeLabel ).el.disabled === false && valueAt( paneOf('background'), 'Dim the picture' ) === true );
+change( paneOf('section'), 'Cover', true );
+change( paneOf('section'), heightLabel, 60 );
+change( paneOf('section'), placeLabel, 'bottom' );
 change( paneOf('background'), 'Border', '3' );
 change( paneOf('background'), 'In the brand colour', true );
 check( '...the other fields of the picture and of the cover write their settings: the parallax and the dimming in the Background tab, the cover, its height and the place of the content in the Layout tab', ( function() {
@@ -2166,15 +2232,15 @@ check( '...the other fields of the picture and of the cover write their settings
 } )() );
 buttonOf( paneOf('background'), 'Remove the picture' ).click();
 check( '...and the picture taken away takes the parallax and the dimming with it, and nothing of the cover: its height and the place of its content stay', sectionOne().parallax === false && sectionOne().dim === false && sectionOne().cover === 60 && sectionOne().contentPos === 'bottom'
-	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('layout'), heightLabel ).el.disabled === false );
-change( paneOf('layout'), 'Cover', false );
+	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('section'), heightLabel ).el.disabled === false );
+change( paneOf('section'), 'Cover', false );
 builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
 builder._refreshTab('background');
 change( paneOf('background'), 'Parallax effect', true );
-const reach = controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false;
+const reach = controlOf( paneOf('section'), placeLabel ).el.disabled === false;
 buttonOf( paneOf('background'), 'Remove the picture' ).click();
 check( '...and from a parallax that is no cover the picture taken away takes the reach of the place of the content with it, in the Layout tab: the parallax was all that gave it', reach === true && sectionOne().parallax === false && sectionOne().cover === null
-	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true );
+	&& controlOf( paneOf('section'), placeLabel ).el.disabled === true );
 
 doc = open();
 builder._openSettings( [ 0 ] );
@@ -2234,13 +2300,13 @@ check( 'CSS classes: the class of the section and the class of the row on a line
 doc = open();
 builder._problems = [ 'the section "services": the source "x" means nothing here', 'the section "hero": the name is bad' ];
 builder._openSettings( [ 1 ] );
-check( 'what a refused save said of a section stands over its first tab', paneOf('layout').children[0].className === 'nino-admin-error' && paneOf('layout').children[0].textContent === 'the section "services": the source "x" means nothing here' && paneOf('background').children[0].className !== 'nino-admin-error' );
+check( 'what a refused save said of a section stands over its first tab', paneOf('section').children[0].className === 'nino-admin-error' && paneOf('section').children[0].textContent === 'the section "services": the source "x" means nothing here' && paneOf('background').children[0].className !== 'nino-admin-error' );
 
 doc = open();
 settingsOf().rowAlign = 'center';
 builder._openSettings( [ 0 ] );
-check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('layout'), 'Vertical content alignment' ) === null && settingsOf().rowAlign === 'center'
-	&& ( change( paneOf('layout'), 'Vertical content alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
+check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('row'), 'Vertical content alignment' ) === null && settingsOf().rowAlign === 'center'
+	&& ( change( paneOf('row'), 'Vertical content alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
 console.log( '\nPadded, whitespace, the background inside, the dimming of a plain section and the loop of a section' );
 
 doc = open();
@@ -2249,25 +2315,25 @@ builder._openSettings( [ 0 ] );
 const settingsAt = function( b ) { return builder._doc.model.blocks[b].settings };
 const blockAt = function( b ) { return builder._doc.model.blocks[b] };
 const reachOf = function( pane, label ) { return controlOf( pane, label ).el.disabled === false };
-check( 'Padded is a switch of the cover and the parallax, which keep the room of the page around them: in reach where the section is one of the two - the hero is a cover - and writes the setting', reachOf( paneOf('layout'), 'Padded' ) === true && valueAt( paneOf('layout'), 'Padded' ) === false
-	&& ( change( paneOf('layout'), 'Padded', true ), settingsAt( 0 ).padded === true ) && valueAt( paneOf('layout'), 'Padded' ) === true );
-change( paneOf('layout'), 'Cover', false );
-check( '...with the cover gone - and no parallax to be one - the room around it goes too, and the switch sleeps: there is no cover to keep it around', settingsAt( 0 ).cover === null && settingsAt( 0 ).padded === false && reachOf( paneOf('layout'), 'Padded' ) === false && valueAt( paneOf('layout'), 'Padded' ) === false );
+check( 'Padded is a switch of the cover and the parallax, which keep the room of the page around them: in reach where the section is one of the two - the hero is a cover - and writes the setting', reachOf( paneOf('section'), 'Padded' ) === true && valueAt( paneOf('section'), 'Padded' ) === false
+	&& ( change( paneOf('section'), 'Padded', true ), settingsAt( 0 ).padded === true ) && valueAt( paneOf('section'), 'Padded' ) === true );
+change( paneOf('section'), 'Cover', false );
+check( '...with the cover gone - and no parallax to be one - the room around it goes too, and the switch sleeps: there is no cover to keep it around', settingsAt( 0 ).cover === null && settingsAt( 0 ).padded === false && reachOf( paneOf('section'), 'Padded' ) === false && valueAt( paneOf('section'), 'Padded' ) === false );
 change( paneOf('background'), 'Parallax effect', true );
-check( '...a parallax is a picture that fills the section as a cover does: it wakes the switch again, and the cover that is switched on after it keeps what was set', reachOf( paneOf('layout'), 'Padded' ) === true && ( change( paneOf('layout'), 'Padded', true ), change( paneOf('layout'), 'Cover', true ), settingsAt( 0 ).padded === true ) );
+check( '...a parallax is a picture that fills the section as a cover does: it wakes the switch again, and the cover that is switched on after it keeps what was set', reachOf( paneOf('section'), 'Padded' ) === true && ( change( paneOf('section'), 'Padded', true ), change( paneOf('section'), 'Cover', true ), settingsAt( 0 ).padded === true ) );
 change( paneOf('background'), 'Parallax effect', false );
-check( '...and a parallax switched off in a section that is a cover keeps it too; a section that is neither - and was padded by a hand-written file - can still switch it off, which is all it can do', settingsAt( 0 ).padded === true && ( change( paneOf('layout'), 'Cover', false ), settingsAt( 0 ).padded === false ) && ( function() {
+check( '...and a parallax switched off in a section that is a cover keeps it too; a section that is neither - and was padded by a hand-written file - can still switch it off, which is all it can do', settingsAt( 0 ).padded === true && ( change( paneOf('section'), 'Cover', false ), settingsAt( 0 ).padded === false ) && ( function() {
 	builder._closeDialog();
 	settingsAt( 3 ).padded = true;
 	builder._openSettings( [ 3 ] );
-	const asleep = reachOf( paneOf('layout'), 'Padded' ) === true && valueAt( paneOf('layout'), 'Padded' ) === true;
-	change( paneOf('layout'), 'Padded', false );
-	return asleep && settingsAt( 3 ).padded === false && reachOf( paneOf('layout'), 'Padded' ) === false;
+	const asleep = reachOf( paneOf('section'), 'Padded' ) === true && valueAt( paneOf('section'), 'Padded' ) === true;
+	change( paneOf('section'), 'Padded', false );
+	return asleep && settingsAt( 3 ).padded === false && reachOf( paneOf('section'), 'Padded' ) === false;
 } )() );
 
-check( 'Whitespace is a select of the four rungs around the middle, with the words of the panel - the empty one is the page\'s own, which the Design sets - and it writes the word of the one chosen', optionsOf( paneOf('layout'), 'Whitespace' ) === '=As the page,least=Much narrower,less=Narrower,more=Wider,most=Much wider'
-	&& valueAt( paneOf('layout'), 'Whitespace' ) === '' && ( change( paneOf('layout'), 'Whitespace', 'most' ), settingsAt( 3 ).whitespace === 'most' ) && ( change( paneOf('layout'), 'Whitespace', '' ), settingsAt( 3 ).whitespace === '' )
-	&& controlOf( paneOf('layout'), 'Whitespace' ).el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/whitespace'] );
+check( 'Whitespace is a select of the four rungs around the middle, with the words of the panel - the empty one is the page\'s own, which the Design sets - and it writes the word of the one chosen', optionsOf( paneOf('section'), 'Whitespace' ) === '=As the page,least=Much narrower,less=Narrower,more=Wider,most=Much wider'
+	&& valueAt( paneOf('section'), 'Whitespace' ) === '' && ( change( paneOf('section'), 'Whitespace', 'most' ), settingsAt( 3 ).whitespace === 'most' ) && ( change( paneOf('section'), 'Whitespace', '' ), settingsAt( 3 ).whitespace === '' )
+	&& controlOf( paneOf('section'), 'Whitespace' ).el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/whitespace'] );
 builder._closeDialog();
 
 // The background inside: colour, picture and scrim stand on the row of the section, not on the section
@@ -2284,8 +2350,8 @@ check( '...the colour that goes while no picture is there takes the switch with 
 blockAt( 1 ).background = { slot : '/template/page-home/services/background', focus : 5 };
 builder._refreshTab('background');
 check( '...a picture of the section is a thing to put inside as well, with no colour; and a cover or a parallax - the picture the section stands on - is not: the switch is asleep there, and switching either of them on takes the background out of the row again', insideOf().el.disabled === false
-	&& ( change( paneOf('background'), 'Background inside', true ), settingsAt( 1 ).inner === true ) && ( change( paneOf('layout'), 'Cover', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true )
-	&& ( change( paneOf('layout'), 'Cover', false ), insideOf().el.disabled === false ) && ( change( paneOf('background'), 'Background inside', true ), change( paneOf('background'), 'Parallax effect', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true ) );
+	&& ( change( paneOf('background'), 'Background inside', true ), settingsAt( 1 ).inner === true ) && ( change( paneOf('section'), 'Cover', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true )
+	&& ( change( paneOf('section'), 'Cover', false ), insideOf().el.disabled === false ) && ( change( paneOf('background'), 'Background inside', true ), change( paneOf('background'), 'Parallax effect', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true ) );
 change( paneOf('background'), 'Parallax effect', false );
 check( '...with the picture taken away - and the colour of the section none - the background is not inside any more; with a colour left it stays where it was', ( function() {
 	change( paneOf('background'), 'Background colour', 'tint' );
@@ -2313,7 +2379,7 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 3 ] );
 const loopTab = function() { return paneOf('loop') };
-check( 'a section has a Loop tab of its own, between the border and the animation, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["layout","background","loop","animation","custom"]'
+check( 'a section has a Loop tab of its own, between the border and the animation, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["section","row","background","loop","animation","custom"]'
 	&& JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && valueAt( loopTab(), 'Loop' ) === '' && optionsOf( loopTab(), 'Loop' ) === '=Static,sections=Element loop' && loopTab().querySelectorAll('.builder-group').length === 0
 	&& builder._sectionLoop( builder._registry ) === 'sections' && builder._sectionLoop( { stacks : { stack : { grid : true } } } ) === '' );
 change( loopTab(), 'Loop', 'sections' );
@@ -2348,14 +2414,14 @@ check( '...what the loop of a section takes of the other tabs is its own: the co
 		change( paneOf('animation'), 'Animation', 'own' );
 
 	const before = labelList( paneOf('animation') );
-	const height = controlOf( paneOf('layout'), 'Height (%)' );
+	const height = controlOf( paneOf('section'), heightLabel );
 	const free = height.el.disabled === false && String( height.el.value ) === '100';
 
 	change( paneOf('loop'), 'Loop', 'sections' );
 
 	const after = labelList( paneOf('animation') );
 
-	return free === true && controlOf( paneOf('layout'), 'Height (%)' ).el.disabled === true && String( controlOf( paneOf('layout'), 'Height (%)' ).el.value ) === '90' && settingsAt( 0 ).cover === 90
+	return free === true && controlOf( paneOf('section'), heightLabel ).el.disabled === true && String( controlOf( paneOf('section'), heightLabel ).el.value ) === '90' && settingsAt( 0 ).cover === 90
 		&& before.filter( function( label ) { return after.indexOf( label ) === -1 } ).length === 2 && after.length === before.length - 2 && settingsAt( 0 ).vpaDelay === '' && settingsAt( 0 ).vpaDuration === '';
 } )() );
 check( '...a column of such a section may not run a loop of its own, and the loop of the section is not put in a loop: the one that would be the loop in a loop is held back, in the tab of the section as in the tab of a column, with the reason', ( function() {
@@ -2380,7 +2446,7 @@ check( '...and the picker of a column of such a section holds back what a loop d
 builder._closeDialog();
 builder._openSettings( [ 0 ] );
 change( paneOf('loop'), 'Loop', '' );
-check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( paneOf('loop') ) ) === '["Loop"]' && settingsAt( 0 ).cover === 90 && controlOf( paneOf('layout'), 'Height (%)' ).el.disabled === false );
+check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( paneOf('loop') ) ) === '["Loop"]' && settingsAt( 0 ).cover === 90 && controlOf( paneOf('section'), heightLabel ).el.disabled === false );
 builder._closeDialog();
 
 console.log( '\nWhat the preview says of a section and of a link, and where a click leaves the page' );
@@ -4951,7 +5017,7 @@ dialogBox().close();
 check( 'a lightbox that is closed with no choice leaves the preview as it was - no component was added, so the button that opened it is where it was - and the focus is on that button: the browser gives it back',
 	dialogBox().open === false && left.isConnected === true && screen.activeElement === left && builder._doc.model.blocks[3].cols[0].components.length === 2 && changes === 0 );
 
-[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'layout', 'Width, Desktop', '33' ], [ 'a section', '3', 'layout', 'Cover', true ] ].forEach( function( kind ) {
+[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'layout', 'Width, Desktop', '33' ], [ 'a section', '3', 'section', 'Cover', true ] ].forEach( function( kind ) {
 
 	doc = open();
 	builder._renderEditor();

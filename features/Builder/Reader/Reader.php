@@ -110,11 +110,13 @@ namespace Nino\Modules\Builder {
 	 *											  renamedFrom string only ever sent by the panel: the id it had, so a
 	 *											                    save moves the keys of the section
 	 *											  settings  map     of the section and its row, defaults in sectionDefaults()
-	 *											    row         ''|narrow|wide        nino-grid-row--<x>
+	 *											    row         ''|narrow|wide|full   nino-grid-row--<x>: the maximum width of the row, the grid's own for ''
+	 *											    rowPlace    ''|left|right         nino-grid-row--<x>: where a row narrower than the page stands, the middle for ''
 	 *											    rowAlign    ''|center|middle|bottom   nino-grid-<x>
+	 *											    rowPl rowPr rowPt rowPb  ''|0..6  nino-pl-<n> nino-pr-<n> nino-pt-<n> nino-pb-<n>: the padding of the row on each side, a step
+	 *											                                      of the space scale; '' writes none - the gutter at the sides, no padding above and below,
+	 *											                                      or what the background inside gives the row
 	 *											    rowCustom   string                classes of the row that are none of these
-	 *											    fullwidth   bool                  nino-section--fullwidth
-	 *											    fullheight  bool                  nino-section--fullheight, both may be on at once
 	 *											    color       ''|alt|tint|dark|black|primary|brand-alt
 	 *											    border      ''|1|2|3              nino-section--border-<n>
 	 *											    borderPrimary bool                nino-section--border-primary, with or without a strength
@@ -149,7 +151,12 @@ namespace Nino\Modules\Builder {
 	 *											    vpaMode     ''|repeat|visible|visible-once
 	 *											    vpaDelay    string                data-vpa-delay, a css time
 	 *											    vpaDuration string                data-vpa-duration
-	 *											    custom      string                every other class of the section
+	 *											    custom      string                every other class of the section - but for the two switches of an earlier builder, which are
+	 *											                                      read as the settings they were and are not written again: nino-section--fullwidth as a full
+	 *											                                      row with no padding at its sides (row, rowPl and rowPr), nino-section--fullheight as no
+	 *											                                      padding above and below the section (pt and pb, where it names no step of its own). The
+	 *											                                      picture of a padded cover goes to the edge with them, as it did with the switches - from
+	 *											                                      768px for the full height
 	 *											  background null|map  slot (string, a text key grammar uri), focus
 	 *											            (int 1..9|null); an image call with alt=""; create (map,
 	 *											            only ever sent by the panel) as that of a component. It stands
@@ -238,11 +245,12 @@ namespace Nino\Modules\Builder {
 
 		// The vocabulary of Nino.css the model keeps in settings of their own,
 		// the order the Writer writes them in - everything else is 'custom'.
-		// SECTION_SIZE is two switches, not one choice: each is a setting of its
-		// own (bool) named like the end of its class, and both may be on
-		public const array ROW = [ 'narrow', 'wide' ];
+		// The maximum width of the row, the grid's own being none, and where a row narrower than the page stands, the middle being none
+		public const array ROW = [ 'narrow', 'wide', 'full' ];
+		public const array ROW_PLACE = [ 'left', 'right' ];
 		public const array ROW_ALIGN = [ 'center', 'middle', 'bottom' ];
-		public const array SECTION_SIZE = [ 'fullwidth', 'fullheight' ];
+		// The padding of the row, one step of the space scale a side: the word of the class and the setting that holds it
+		public const array ROW_SPACING = [ 'pl' => 'rowPl', 'pr' => 'rowPr', 'pt' => 'rowPt', 'pb' => 'rowPb' ];
 		public const array COLOR = [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ];
 		// A column paints the same grounds, and the one that sets it off from its section
 		public const array COL_COLOR = [ 'counter', ...self::COLOR ];
@@ -336,7 +344,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'fullwidth' => false, 'fullheight' => false, 'color' => '', 'border' => '', 'borderPrimary' => false,
+				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowCustom' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'contentPos' => '', 'inner' => false, 'whitespace' => '',
 				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
 			] + self::animationDefaults() + [ 'custom' => '' ];
@@ -992,6 +1000,7 @@ namespace Nino\Modules\Builder {
 			$dim			= [];
 			$padded		= [];
 			$places	= [];
+			$earlier	= [];
 			$default	= $s;
 
 			// A second modifier of a kind that has one place is a class of its
@@ -1009,9 +1018,9 @@ namespace Nino\Modules\Builder {
 				if( $token === 'nino-section' )
 					continue;
 
-				// Full width and full height are two switches, not two of a kind: both may stand side by side
+				// The two switches of an earlier builder, read below as the settings they were
 				if( preg_match( '/^nino-section--(fullwidth|fullheight)$/D', $token, $m ) === 1 )
-					$s[$m[1]] = true;
+					$earlier[$m[1]] = true;
 				elseif( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 )
 					$set( 'color', $m[1], $token );
 				elseif( preg_match( '/^nino-section--border-(1|2|3)$/D', $token, $m ) === 1 )
@@ -1038,6 +1047,24 @@ namespace Nino\Modules\Builder {
 				elseif( self::_animation( $token, $s ) === false )
 					$custom[] = $token;
 			}
+
+			// Full width did what a row without a maximum width and without padding at its sides does, and its rules of Nino.css beat the width
+			// and the sides the row names itself: the row is full, with no padding there. A width the row names as well is a custom class of it
+			// that --full outranks by its place in Nino.css, as the switch did; a step of a side it names as well is one too and outranks the 0
+			// by its place, where the switch beat it - a file that says both was written by hand. A padded cover has its picture at the edge
+			// with such a row, as with the switch: Nino.css takes the frame away with a row at both edges
+			// Full height was the section's own padding above and below, 0: where the section names a step of its own the step stands, as the
+			// utility that came after the switch in Nino.css did. A padded cover has its picture at the edge with a section that has none, from
+			// 768px, as with the switch. Neither class is written again; a file that is never saved again keeps them
+			if( isset( $earlier['fullwidth'] ) === true ) {
+				$s['row']		= 'full';
+				$s['rowPl']	= '0';
+				$s['rowPr']	= '0';
+			}
+
+			foreach( isset( $earlier['fullheight'] ) === true ? [ 'pt', 'pb' ] : [] as $side )
+				if( $s[$side] === '' )
+					$s[$side] = '0';
 
 			// The place of the content is the row's in a cover or a parallax: on a section that is neither the Builder writes none,
 			// and one that is there is kept as a custom class (the kernel reads it on a section with a background picture too)
@@ -1084,7 +1111,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The classes of the row: its width, the alignment of its columns, its ground, the scrim over its
+		 *	The classes of the row: its width and its place, the alignment of its columns, its padding, its ground, the scrim over its
 		 *	picture, and the rest. The ground and the picture are the row's where nothing of the kind is the
 		 *	section's - no colour, no picture, no cover, no parallax: then the colour, the picture and the
 		 *	scrim are the section's keys all the same, and inner says where they stand. A ground or a
@@ -1121,8 +1148,13 @@ namespace Nino\Modules\Builder {
 
 				if( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW ). ')$/D', $token, $m ) === 1 && $s['row'] === '' )
 					$s['row'] = $m[1];
+				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW_PLACE ). ')$/D', $token, $m ) === 1 && $s['rowPlace'] === '' )
+					$s['rowPlace'] = $m[1];
 				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
 					$s['rowAlign'] = $m[1];
+				// The padding of a side is the first class of its kind, a second is a class of its own as on a section
+				elseif( preg_match( '/^nino-('. implode( '|', array_keys( self::ROW_SPACING ) ). ')-([0-6])$/D', $token, $m ) === 1 && $s[self::ROW_SPACING[$m[1]]] === '' )
+					$s[self::ROW_SPACING[$m[1]]] = $m[2];
 				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::COLOR ). ')$/D', $token, $m ) === 1 && $free === true && $s['color'] === '' ) {
 					$s['color']	= $m[1];
 					$s['inner']	= true;

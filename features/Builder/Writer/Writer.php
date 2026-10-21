@@ -25,7 +25,7 @@ namespace Nino\Modules\Builder {
 	 *											each of its children one tab deeper on a line of its own, and
 	 *											its closing tag on a line of its own at its own depth),
 	 *											one call per line, the classes of every tag in a fixed
-	 *											order (see sectionClasses() and colClasses()) with the
+	 *											order (see sectionClasses(), rowClasses() and colClasses()) with the
 	 *											custom ones last, an attribute of a call only where it is
 	 *											not what the schema says it is without it, a blank line
 	 *											between the blocks, one line feed at the end. The columns
@@ -279,11 +279,6 @@ namespace Nino\Modules\Builder {
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-section' ];
 
-			// The full width, then the full height: two switches, either or both
-			foreach( Reader::SECTION_SIZE as $size )
-				if( $s[$size] === true )
-					$class[] = 'nino-section--'. $size;
-
 			// The colour is the row's where the background stands inside
 			if( (string) $s['color'] !== '' && self::_inner( $s ) === false )
 				$class[] = 'nino-section--'. $s['color'];
@@ -336,8 +331,8 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The classes of the row: its width, then - where the section's background stands inside, on the
-		 *	row - its ground and the scrim over its picture, then the alignment of its columns
+		 *	The classes of the row: its width and its place, then - where the section's background stands inside, on the
+		 *	row - its ground and the scrim over its picture, then the alignment of its columns and its padding on each side
 		 *
 		 *	@param		array			$s						The section's settings
 		 *	@param		bool			$pictured			Whether the section has a picture, which is the row's where inner: a scrim over none is not written
@@ -352,6 +347,9 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['row'] !== '' )
 				$class[] = 'nino-grid-row--'. $s['row'];
 
+			if( (string) $s['rowPlace'] !== '' )
+				$class[] = 'nino-grid-row--'. $s['rowPlace'];
+
 			if( self::_inner( $s ) === true ) {
 
 				if( (string) $s['color'] !== '' )
@@ -363,6 +361,10 @@ namespace Nino\Modules\Builder {
 
 			if( (string) $s['rowAlign'] !== '' )
 				$class[] = 'nino-grid-'. $s['rowAlign'];
+
+			foreach( Reader::ROW_SPACING as $side => $key )
+				if( (string) $s[$key] !== '' )
+					$class[] = 'nino-'. $side. '-'. $s[$key];
 
 			return array_merge( $class, self::_custom( (string) $s['rowCustom'] ) );
 		}

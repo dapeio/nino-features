@@ -109,7 +109,10 @@
 		// The ground counter is on each ground, the pairs of Nino.css: default and alt, tint to default, dark and black, primary and brand-alt
 		COUNTERS	: { '' : 'alt', alt : '', tint : '', dark : 'black', black : 'dark', primary : 'brand-alt', 'brand-alt' : 'primary' },
 		BORDERS		: [ '', '1', '2', '3' ],
-		ROWS			: [ '', 'narrow', 'wide' ],
+		// The maximum width of a row: the grid's own, which is none, two narrower ones, and none at all - full
+		ROWS			: [ '', 'narrow', 'wide', 'full' ],
+		// Where a row narrower than the page stands, in the order it is seen: at the left, in the middle - none - and at the right
+		ROW_PLACES	: [ 'left', '', 'right' ],
 		// Where a row puts its columns, up and down: at the top, which is none, in the middle,
 		// at the bottom. nino-grid-center puts them in the middle across, and is for a file
 		// written by hand: the form leaves it as it is and has no icon for it
@@ -754,7 +757,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowAlign : '', rowCustom : '', fullwidth : false, fullheight : false, color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowCustom : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: [ builder._newCol() ],
@@ -4461,6 +4464,37 @@
 			return table.table;
 		},
 
+		/**
+		 *	The padding of a row on two sides: a pair of selects under the name of the pair, and under them what the
+		 *	hint says of both - the steps of the space scale, and the default, which is the gutter of the grid at the sides
+		 *	and none above and below. The pair is a group of its own for whoever does not see it
+		 *
+		 *	@param		{Object}		target						The settings of a section
+		 *	@param		{string}		label							The key of the words that name the pair
+		 *	@param		{string}		hint								The key of the words under it
+		 *	@param		{Array}			cells							[ { key, label } ] - the setting each select writes, and the key of its words
+		 *
+		 *	@return		{Element}
+		 */
+		_paddingPair : function( target, label, hint, cells ) {
+
+			const builder = Nino.admin.builder;
+			const pair = builder._el( 'div', 'builder-pair' );
+			const name = Nino.content.getText( label );
+			const shown = builder._el( 'span', 'builder-pair-label', name );
+
+			pair.setAttribute( 'role', 'group' );
+			pair.setAttribute( 'aria-label', name );
+			shown.setAttribute( 'aria-hidden', 'true' );
+			pair.appendChild( shown );
+			pair.appendChild( builder._line( cells.map( function( cell ) {
+				return builder._setting( target, { key : cell.key, type : 'select', label : cell.label, group : 'space', values : builder.SPACES } );
+			} ) ) );
+			pair.appendChild( builder._el( 'small', 'nino-admin-hint', Nino.content.getText( hint ) ) );
+
+			return pair;
+		},
+
 		// ---------------------------------------------------------------- Fields
 
 		/**
@@ -5162,17 +5196,17 @@
 		},
 
 		/**
-		 *	The form of a section, in five tabs: how it is laid out (the width of its row, whether
-		 *	it is full width and full height, whether it is a cover, how high that is, whether it keeps the
-		 *	room of the page around it and where its content stands in it, where its columns and its text
-		 *	are put, its whitespace, the spacing), its background (the colour, the border - a strength, and
-		 *	a switch for the brand colour that waits for one -, the picture, whether it is a parallax,
-		 *	whether it is dimmed and whether the background stands inside, on the row), the loop that makes
-		 *	a section of every element of a type, its animation and the classes of its own. The name of the
-		 *	section is part of the title, where it is changed. Each field writes into the model at once
+		 *	The form of a section, in six tabs: the section itself (its whitespace, the spacing above and below it,
+		 *	whether it is a cover, how high that is, whether it keeps the room of the page around it and where its
+		 *	content stands in it), its grid row (how wide it may be, where it stands when it is narrower than the
+		 *	page, its padding on four sides, where its columns and its text are put), its background (the colour,
+		 *	the border - a strength, and a switch for the brand colour that waits for one -, the picture, whether
+		 *	it is a parallax, whether it is dimmed and whether the background stands inside, on the row), the loop
+		 *	that makes a section of every element of a type, its animation and the classes of its own. The name of
+		 *	the section is part of the title, where it is changed. Each field writes into the model at once
 		 *
 		 *	@param		{Array}			path
-		 *	@param		{string}		[tab]							The tab to start on: layout by default
+		 *	@param		{string}		[tab]							The tab to start on: section by default
 		 *
 		 *	@return		void
 		 */
@@ -5191,11 +5225,9 @@
 				returnTo	: path,
 				tab		: tab,
 				tabs	: [
-					{ id : 'layout', label : Nino.content.getText('/_admin/builder/tab/layout'), build : function( pane ) {
-						pane.appendChild( builder._line( [
-							setting( { key : 'fullwidth', type : 'bool', label : '/_admin/builder/section/fullwidth', hint : '/_admin/builder/hint/fullwidth' } ),
-							setting( { key : 'fullheight', type : 'bool', label : '/_admin/builder/section/fullheight', hint : '/_admin/builder/hint/fullheight' } ),
-						] ) );
+					{ id : 'section', label : Nino.content.getText('/_admin/builder/tab/section'), build : function( pane ) {
+						pane.appendChild( setting( { key : 'whitespace', type : 'select', label : '/_admin/builder/section/whitespace', hint : '/_admin/builder/hint/whitespace', group : 'whitespace', values : builder.WHITESPACE } ) );
+						pane.appendChild( builder._spacingTable( section.settings ) );
 
 						// A cover is a switch, its height in percent of the window's beside it, and where its content stands in it - which a parallax has to say as well
 						const height = builder._numberField( Nino.content.getText('/_admin/builder/section/cover-height'), '', section.settings.cover, 1, 100, function( percent ) {
@@ -5251,7 +5283,7 @@
 
 								builder._changed();
 								// The height and the place wake or sleep, and so does what is in the other tab
-								builder._refreshTab('layout');
+								builder._refreshTab('section');
 								builder._refreshTab('background');
 							} ),
 							height,
@@ -5260,13 +5292,32 @@
 						] );
 						builderCoverLine.id = 'builder-cover-line';
 						pane.appendChild( builderCoverLine );
+					} },
+					{ id : 'row', label : Nino.content.getText('/_admin/builder/tab/row'), build : function( pane ) {
+
+						// Where a row stands is for a row that is narrower than the page: with no maximum width it has no room to stand anywhere else, and the place sleeps - the model keeps what it holds
+						const place = setting( { key : 'rowPlace', type : 'segment', label : '/_admin/builder/section/row-place', hint : '/_admin/builder/hint/row-place', items : builder._options( 'row-place', builder.ROW_PLACES ) } );
+						const width = builder._setting( section.settings, { key : 'row', type : 'select', label : '/_admin/builder/section/row', group : 'row', values : builder.ROWS }, function( value ) { place.setDisabled( value === 'full' ) } );
+
+						place.setDisabled( section.settings.row === 'full' );
+
+						const size = builder._line( [ width, place ] );
+
+						size.classList.add('builder-line-top');
+						pane.appendChild( size );
+
+						// The padding of the row on four sides, a pair of selects each - at the sides and above and below -, every one of the steps of the space scale or the default
+						const padding = builder._line( [
+							builder._paddingPair( section.settings, '/_admin/builder/section/row-padding-horizontal', '/_admin/builder/hint/row-padding-horizontal', [ { key : 'rowPl', label : '/_admin/builder/section/left' }, { key : 'rowPr', label : '/_admin/builder/section/right' } ] ),
+							builder._paddingPair( section.settings, '/_admin/builder/section/row-padding-vertical', '/_admin/builder/hint/row-padding-vertical', [ { key : 'rowPt', label : '/_admin/builder/section/above' }, { key : 'rowPb', label : '/_admin/builder/section/below' } ] ),
+						] );
+
+						padding.classList.add('builder-line-pairs');
+						pane.appendChild( padding );
 						pane.appendChild( builder._line( [
 							setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ),
 							setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
 						] ) );
-						pane.appendChild( setting( { key : 'row', type : 'select', label : '/_admin/builder/section/row', group : 'row', values : builder.ROWS } ) );
-						pane.appendChild( setting( { key : 'whitespace', type : 'select', label : '/_admin/builder/section/whitespace', hint : '/_admin/builder/hint/whitespace', group : 'whitespace', values : builder.WHITESPACE } ) );
-						pane.appendChild( builder._spacingTable( section.settings ) );
 					} },
 					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
 
@@ -5843,7 +5894,7 @@
 				builder._refreshTab('loop');
 
 				if( whole === true ) {
-					builder._refreshTab('layout');
+					builder._refreshTab('section');
 					builder._refreshTab('animation');
 				}
 			} );
@@ -7129,7 +7180,7 @@
 					builder._changed();
 					// The scrim and the switch inside wake or sleep, and so does the place of the content in the other tab
 					builder._refreshTab('background');
-					builder._refreshTab('layout');
+					builder._refreshTab('section');
 				} );
 				const dim = builder._setting( section.settings, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
 				const inner = builder._setting( section.settings, { key : 'inner', type : 'bool', label : '/_admin/builder/section/inner-background', hint : '/_admin/builder/hint/inner-background' } );
@@ -7190,9 +7241,9 @@
 				builder._changed();
 				builder._refreshTab('background');
 
-				// A section that was a parallax is none now: the place of its content is the Layout tab's
+				// A section that was a parallax is none now: the place of its content is the Section tab's
 				if( column === false )
-					builder._refreshTab('layout');
+					builder._refreshTab('section');
 			} );
 			wrap.appendChild( remove );
 

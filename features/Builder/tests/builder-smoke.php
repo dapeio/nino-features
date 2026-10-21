@@ -261,7 +261,7 @@ check( 'four blocks in the order of the file: a section, a section, a block of h
 	&& [ $model['blocks'][0]['id'], $model['blocks'][1]['id'], $model['blocks'][3]['id'] ] === [ 'hero', 'services', 'contact' ] );
 
 $hero = $model['blocks'][0];
-check( 'the hero: its classes are settings', $hero['settings']['fullwidth'] === true && $hero['settings']['fullheight'] === false && $hero['settings']['color'] === 'black' && $hero['settings']['cover'] === 100
+check( 'the hero: its classes are settings', $hero['settings']['color'] === 'black' && $hero['settings']['cover'] === 100
 	&& $hero['settings']['parallax'] === false && $hero['settings']['dim'] === true && $hero['settings']['contentPos'] === '' && $hero['settings']['vpa'] === '' && $hero['settings']['row'] === 'wide' && $hero['settings']['rowAlign'] === 'middle'
 	&& $hero['settings']['custom'] === '' );
 check( '...its background is a slot with a focus', $hero['background'] === [ 'slot' => '/template/page-home/hero/background', 'focus' => 5 ] );
@@ -716,7 +716,7 @@ check( '...and what is written reads back as what was meant', ( static function(
 
 $styled = $blank;
 $styled['settings'] = [
-	'row' => 'narrow', 'rowAlign' => 'bottom', 'fullwidth' => true, 'fullheight' => true, 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'cover' => 60, 'parallax' => true, 'dim' => true, 'padded' => true, 'contentPos' => 'bottom', 'whitespace' => 'less',
+	'row' => 'narrow', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'cover' => 60, 'parallax' => true, 'dim' => true, 'padded' => true, 'contentPos' => 'bottom', 'whitespace' => 'less',
 	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'text' => 'right', 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
@@ -725,9 +725,10 @@ $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden'
 $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
-check( 'a section\'s settings are its classes, in one order: the full width, the full height, the colour, the border and its brand colour, the cover and its scrim, the parallax, the room around a cover, the place of the content, the whitespace, the spacing, the text, the animation, the custom ones - and its attributes the height of the cover, then the animation\'s',
-	str_contains( $once, '<section id="a" class="nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-cover-height="60" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
-check( '...and the row\'s and the column\'s: the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones', str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-bottom my-row">' ) === true
+check( 'a section\'s settings are its classes, in one order: the colour, the border and its brand colour, the cover and its scrim, the parallax, the room around a cover, the place of the content, the whitespace, the spacing, the text, the animation, the custom ones - and its attributes the height of the cover, then the animation\'s',
+	str_contains( $once, '<section id="a" class="nino-section nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-cover-height="60" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
+check( '...and the row\'s and the column\'s: the width and the place of the row, the alignment of its columns, its padding on each side and its custom classes; of a column the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
+	str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row">' ) === true
 	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
 check( '...the picture behind the column is the first thing in it, a block of its own with the focus and the image of its slot with an empty alt', str_contains( $once, "my-col\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--8\">[image /template/page-x/a/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
 check( '...a background without a focus is the block and the image, with an empty alt', str_contains( $once, "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" ) === true );
@@ -867,48 +868,137 @@ check( '...the two classes are read in either order and written in one: the stre
 check( '...a second strength is a class of its own, kept: it cannot be said in a setting that has one place', $borderOf( 'nino-section nino-section--border-1 nino-section--border-3' )['border'] === '1' && $borderOf( 'nino-section nino-section--border-1 nino-section--border-3' )['custom'] === 'nino-section--border-3'
 	&& $borderOf( 'nino-section nino-section--border-4' )['border'] === '' && $borderOf( 'nino-section nino-section--border-4' )['custom'] === 'nino-section--border-4' );
 
-// Full width and full height are two switches of a section, not one choice: a class each, side by side, and neither is a custom class
-$fullOf			= static fn( array $block ): array => [ $block['settings']['fullwidth'], $block['settings']['fullheight'], $block['settings']['custom'] ];
-$fullBoth		= $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint' ) );
-$fullModel		= $read( $fullBoth )['blocks'][0];
+// A section as a file has it: its classes, and the row's - the picture behind the section before the row, the one behind the row first in it
+$fileOf				= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): string => $page( '<section id="a" class="'. $sectionClass. "\">\n"
+	. ( $behind === true ? "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t<div class=\"". $rowClass. "\">\n"
+	. ( $inRow === true ? "\t\t<div class=\"nino-grid-row-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>" );
+$fileRead		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): array => $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) )['blocks'][0];
+$fileSame		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): bool => $write( $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) ) ) === $inWrap( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) );
 
-check( 'a section with nino-section--fullwidth and nino-section--fullheight reads with both switches on, and neither class falls into the custom ones - the width of the model is gone', $fullOf( $fullModel ) === [ true, true, '' ]
-	&& $fullModel['settings']['color'] === 'tint' && array_key_exists( 'width', $fullModel['settings'] ) === false
-	&& array_slice( array_keys( $fullModel['settings'] ), 0, 6 ) === [ 'row', 'rowAlign', 'rowCustom', 'fullwidth', 'fullheight', 'color' ] );
-check( '...and is written back byte for byte: the full width, then the full height, in the place the width had - behind nino-section, before the colour', $write( $read( $fullBoth ) ) === $inWrap( $fullBoth ) );
+// The two switches of an earlier builder are no settings of the model: nino-section--fullwidth is read as what Nino.css made of the class - a row with no maximum width and no padding at its sides -
+// and nino-section--fullheight as a section with no padding above and below, and neither class is written again
+$earlierSet		= static fn( array $block ): array => [ $block['settings']['row'], $block['settings']['rowPl'], $block['settings']['rowPr'], $block['settings']['pt'], $block['settings']['pb'], $block['settings']['custom'], $block['settings']['rowCustom'] ];
+$earlierBoth	= 'nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint';
+$earlier			= $fileRead( $earlierBoth );
 
-$fullSwapped = $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--tint nino-section--fullheight nino-section--fullwidth' ) );
-check( '...whatever order the file has them in: it is the same section, written in the one order of the Writer, and what is written reads as it was', $read( $fullSwapped )['blocks'][0] === $fullModel
-	&& $write( $read( $fullSwapped ) ) === $inWrap( $fullBoth ) && $read( $write( $read( $fullSwapped ) ) ) === $read( $fullSwapped ) );
+check( 'a section with nino-section--fullwidth and nino-section--fullheight is read as the settings they were - a full row with no padding at its sides, and no padding above and below the section - and neither class falls into the custom ones',
+	$earlierSet( $earlier ) === [ 'full', '0', '0', '0', '0', '', '' ] && $earlier['settings']['color'] === 'tint' );
 
-$fullCases = [
-	'neither'				=> [ false, false, 'nino-section nino-section--tint' ],
-	'the full width alone'	=> [ true, false, 'nino-section nino-section--fullwidth nino-section--tint' ],
-	'the full height alone'	=> [ false, true, 'nino-section nino-section--fullheight nino-section--tint' ],
-	'both'					=> [ true, true, 'nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint' ],
+$earlierWritten = $write( $read( $fileOf( $earlierBoth ) ) );
+check( '...and it is written without either class: the section says its padding above and below, the row its width and its padding at the sides - and what is written reads as what was read, and is the same file again',
+	str_contains( $earlierWritten, '<section id="a" class="nino-section nino-section--tint nino-pt-0 nino-pb-0">' ) === true && str_contains( $earlierWritten, "\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0\">\n" ) === true
+	&& str_contains( $earlierWritten, 'nino-section--full' ) === false && $read( $earlierWritten )['blocks'][0] === $earlier && $write( $read( $earlierWritten ) ) === $earlierWritten );
+
+$earlierCases = [
+	'neither'														=> [ 'nino-section nino-section--tint', [ '', '', '', '', '' ] ],
+	'the full width alone'								=> [ 'nino-section nino-section--fullwidth nino-section--tint', [ 'full', '0', '0', '', '' ] ],
+	'the full height alone'								=> [ 'nino-section nino-section--fullheight nino-section--tint', [ '', '', '', '0', '0' ] ],
+	'both'															=> [ $earlierBoth, [ 'full', '0', '0', '0', '0' ] ],
+	'both, among other classes and the other way round'	=> [ 'nino-section--fullheight my-own nino-section nino-section--tint nino-section--fullwidth', [ 'full', '0', '0', '0', '0' ] ],
+	// A padded cover is no exception: Nino.css takes the frame of its picture away with the classes the switches are read as
+	'the full width alone on a padded cover'			=> [ 'nino-section nino-section--fullwidth nino-cover nino-cover--padded', [ 'full', '0', '0', '', '' ] ],
+	'the full height alone on a padded cover'			=> [ 'nino-section nino-section--fullheight nino-cover nino-cover--padded', [ '', '', '', '0', '0' ] ],
+	'both on a padded cover'								=> [ 'nino-section nino-section--fullwidth nino-section--fullheight nino-cover nino-cover--padded', [ 'full', '0', '0', '0', '0' ] ],
 ];
-$fullWrong = [];
+$earlierWrong = [];
 
-foreach( $fullCases as $label => [ $fullwidth, $fullheight, $classes ] ) {
+foreach( $earlierCases as $label => [ $classes, $set ] ) {
 
-	$source		= $page( $section( '[title /template/page-x/a/title]', 'a', $classes ) );
-	$fullMade	= $blank;
-	$fullMade['settings']['fullwidth']	= $fullwidth;
-	$fullMade['settings']['fullheight']	= $fullheight;
-	$fullMade['settings']['color']		= 'tint';
+	$block		= $fileRead( $classes );
+	$written	= $write( $read( $fileOf( $classes ) ) );
 
-	// Read from the classes, and written back as they were; written from the switches, and read back as they were set
-	if( $fullOf( $read( $source )['blocks'][0] ) !== [ $fullwidth, $fullheight, '' ] || $write( $read( $source ) ) !== $inWrap( $source )
-		|| $write( [ 'blocks' => [ $fullMade ] ] ) !== $inWrap( $source ) || $read( $write( [ 'blocks' => [ $fullMade ] ] ) )['blocks'][0] !== $fullMade )
-		$fullWrong[] = $label;
+	if( array_slice( $earlierSet( $block ), 0, 5 ) !== $set || str_contains( $written, 'nino-section--full' ) === true || $read( $written )['blocks'][0] !== $block || $write( $read( $written ) ) !== $written )
+		$earlierWrong[] = $label;
 }
 
-check( 'each switch alone, neither and both: '. count( $fullCases ). ' combinations are read from their classes, written back byte for byte, and written from the switches and read back as set'. ( $fullWrong === [] ? '' : ' - '. implode( ', ', $fullWrong ) ), $fullWrong === [] );
+check( 'each switch alone, neither and both, in any order among the classes, on a padded cover as well: '. count( $earlierCases ). ' files are read as the settings the classes were, written without them, and read back as they were read'. ( $earlierWrong === [] ? '' : ' - '. implode( ', ', $earlierWrong ) ), $earlierWrong === [] );
 
-$fullLeft = $blank;
-unset( $fullLeft['settings']['fullwidth'], $fullLeft['settings']['fullheight'] );
-check( 'a switch the model leaves out is off: the Writer takes its default and writes neither class', str_contains( $write( [ 'blocks' => [ $fullLeft ] ] ), '<section id="a" class="nino-section">' ) === true
-	&& $blank['settings']['fullwidth'] === false && $blank['settings']['fullheight'] === false && \Nino\Modules\Builder\Reader::sectionDefaults()['fullwidth'] === false && \Nino\Modules\Builder\Reader::sectionDefaults()['fullheight'] === false );
+// Nino.css drew the switch over the width and the sides the row named itself, and a step of the section's own padding over the switch
+$beside = $fileRead( 'nino-section nino-section--fullwidth nino-section--fullheight nino-pt-2', 'nino-grid-row nino-grid-row--narrow nino-grid-middle' );
+check( '...beside what the row and the section say themselves they read as Nino.css drew them: the switch beat the width of the row, which stays a class of its own, and a step of the section\'s own padding stood over the switch',
+	$earlierSet( $beside ) === [ 'full', '0', '0', '2', '0', '', 'nino-grid-row--narrow' ] && $beside['settings']['rowAlign'] === 'middle'
+	&& str_contains( $write( $read( $fileOf( 'nino-section nino-section--fullwidth nino-section--fullheight nino-pt-2', 'nino-grid-row nino-grid-row--narrow nino-grid-middle' ) ) ), "<section id=\"a\" class=\"nino-section nino-pt-2 nino-pb-0\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-grid-middle nino-pl-0 nino-pr-0 nino-grid-row--narrow\">" ) === true );
+
+// The row of a section: its width and its place are words of Nino.css and its padding a step of the space scale on each side - a class of the row apiece, read in any order and written in one
+$rowWrong = [];
+
+foreach( [
+	[ 'row', \Nino\Modules\Builder\Reader::ROW, 'nino-grid-row--%s' ],
+	[ 'rowPlace', \Nino\Modules\Builder\Reader::ROW_PLACE, 'nino-grid-row--%s' ],
+	[ 'rowPl', \Nino\Modules\Builder\Reader::STEPS, 'nino-pl-%s' ],
+	[ 'rowPr', \Nino\Modules\Builder\Reader::STEPS, 'nino-pr-%s' ],
+	[ 'rowPt', \Nino\Modules\Builder\Reader::STEPS, 'nino-pt-%s' ],
+	[ 'rowPb', \Nino\Modules\Builder\Reader::STEPS, 'nino-pb-%s' ],
+] as [ $key, $words, $class ] )
+	foreach( $words as $word ) {
+
+		$classes	= 'nino-grid-row '. sprintf( $class, $word );
+		$block		= $fileRead( 'nino-section', $classes );
+		$made			= $blank;
+		$made['settings'][$key] = $word;
+
+		// Read from the class, written back as it was, and written from the setting and read back as set
+		if( $block['settings'][$key] !== $word || $block['settings']['rowCustom'] !== '' || $fileSame( 'nino-section', $classes ) === false
+			|| $write( [ 'blocks' => [ $made ] ] ) !== $inWrap( $fileOf( 'nino-section', $classes ) ) || $read( $write( [ 'blocks' => [ $made ] ] ) )['blocks'][0] !== $made )
+			$rowWrong[] = $key. ' '. $word;
+	}
+
+check( 'the row of a section has a width - narrow, wide or full -, a place - left or right, the middle being none -, and a padding on each side - a step of the space scale from 0 to 6 -, each read from its class and written back byte for byte, and read back as set: '
+	. ( count( \Nino\Modules\Builder\Reader::ROW ) + count( \Nino\Modules\Builder\Reader::ROW_PLACE ) + 4 * count( \Nino\Modules\Builder\Reader::STEPS ) ). ' classes'. ( $rowWrong === [] ? '' : ' - '. implode( ', ', $rowWrong ) ),
+	$rowWrong === [] && \Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide', 'full' ] && \Nino\Modules\Builder\Reader::ROW_PLACE === [ 'left', 'right' ]
+	&& \Nino\Modules\Builder\Reader::ROW_SPACING === [ 'pl' => 'rowPl', 'pr' => 'rowPr', 'pt' => 'rowPt', 'pb' => 'rowPb' ] && \Nino\Modules\Builder\Reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
+
+$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowCustom' => 'my-row' ];
+$rowOrdered	= 'nino-grid-row nino-grid-row--wide nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row';
+$rowMade		= $blank;
+$rowMade['settings'] = $rowAll + $blank['settings'];
+
+check( 'the classes of the row stand in one order: the width, the place, the alignment of its columns, the padding on the left, on the right, above and below, then the custom ones - written from the settings, and read back as they were set',
+	$write( [ 'blocks' => [ $rowMade ] ] ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) && $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0] === $rowMade
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 8 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowCustom' ] );
+
+$rowShuffled = 'nino-grid-row nino-pb-5 my-row nino-grid-bottom nino-pt-4 nino-grid-row--right nino-pr-2 nino-grid-row--wide nino-pl-1';
+check( '...whatever order the file has them in: it is the same row, written in that one order, and what is written reads as it was', $fileRead( 'nino-section', $rowShuffled ) === $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0]
+	&& $write( $read( $fileOf( 'nino-section', $rowShuffled ) ) ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) );
+
+// With the background inside the colour and the scrim are the row's, and stand after its place - before the alignment and the padding, which win over what the background gives the row
+$rowInner		= 'nino-grid-row nino-grid-row--narrow nino-grid-row--left nino-grid-row--tint nino-grid-row--dim nino-grid-middle nino-pl-0 nino-pr-0 nino-pt-4 nino-pb-4';
+$rowInnerSet	= $fileRead( 'nino-section', $rowInner, false, true )['settings'];
+check( '...with the background inside the colour and the scrim of the row stand after its place and before its alignment and its padding, and the row is read and written as it is',
+	[ $rowInnerSet['inner'], $rowInnerSet['color'], $rowInnerSet['dim'], $rowInnerSet['row'], $rowInnerSet['rowPlace'], $rowInnerSet['rowAlign'], $rowInnerSet['rowPl'], $rowInnerSet['rowPr'], $rowInnerSet['rowPt'], $rowInnerSet['rowPb'], $rowInnerSet['rowCustom'] ] === [ true, 'tint', true, 'narrow', 'left', 'middle', '0', '0', '4', '4', '' ]
+	&& $fileSame( 'nino-section', $rowInner, false, true ) === true );
+
+// The first class of a kind is the setting, a second one is a class of its own, kept - as it is on a section; so is a step the scale has not and a class of another utility
+$rowSecond = [
+	'two widths'												=> [ 'nino-grid-row nino-grid-row--narrow nino-grid-row--wide', [ 'row' => 'narrow', 'rowCustom' => 'nino-grid-row--wide' ] ],
+	'two places'												=> [ 'nino-grid-row nino-grid-row--left nino-grid-row--right', [ 'rowPlace' => 'left', 'rowCustom' => 'nino-grid-row--right' ] ],
+	'two steps of one side'							=> [ 'nino-grid-row nino-pl-1 nino-pl-2', [ 'rowPl' => '1', 'rowCustom' => 'nino-pl-2' ] ],
+	'a step the scale has not'					=> [ 'nino-grid-row nino-pt-7', [ 'rowPt' => '', 'rowCustom' => 'nino-pt-7' ] ],
+	'a step that is a word'							=> [ 'nino-grid-row nino-pb-x', [ 'rowPb' => '', 'rowCustom' => 'nino-pb-x' ] ],
+	'the margin, which the row has no setting for'	=> [ 'nino-grid-row nino-ml-1 nino-mr-2', [ 'rowPl' => '', 'rowPr' => '', 'rowCustom' => 'nino-ml-1 nino-mr-2' ] ],
+	'a place of the alignment of the columns'		=> [ 'nino-grid-row nino-grid-row--middle', [ 'rowPlace' => '', 'rowAlign' => '', 'rowCustom' => 'nino-grid-row--middle' ] ],
+];
+$rowSecondWrong = [];
+
+foreach( $rowSecond as $label => [ $classes, $expected ] ) {
+
+	$settings = $fileRead( 'nino-section', $classes )['settings'];
+
+	if( array_intersect_key( $settings, $expected ) !== $expected || $fileSame( 'nino-section', $classes ) === false )
+		$rowSecondWrong[] = $label;
+}
+
+check( '...a second of a kind - two widths, two places, two steps of a side -, a step the scale has not and the margins, which the row has no setting for, are custom classes of the row, kept and written back as they were: '. count( $rowSecond ). ' cases'
+	. ( $rowSecondWrong === [] ? '' : ' - '. implode( ', ', $rowSecondWrong ) ), $rowSecondWrong === [] );
+
+$padded = $fileRead( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' )['settings'];
+check( '...the padding of the section and the padding of its row are two settings: the classes of the section are the section\'s, those of the row the row\'s, whatever they say', [ $padded['pt'], $padded['pb'], $padded['rowPt'], $padded['rowPb'], $padded['custom'], $padded['rowCustom'] ] === [ '3', '6', '1', '2', '', '' ]
+	&& $fileSame( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' ) === true );
+
+$rowLeft = $blank;
+unset( $rowLeft['settings']['rowPlace'], $rowLeft['settings']['rowPl'], $rowLeft['settings']['rowPr'], $rowLeft['settings']['rowPt'], $rowLeft['settings']['rowPb'] );
+check( 'a row the model says nothing of has no place and no padding: the Writer takes the defaults, which are none, and writes the row as it always was', str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n" ) === true
+	&& array_diff( [ $blank['settings']['rowPlace'], $blank['settings']['rowPl'], $blank['settings']['rowPr'], $blank['settings']['rowPt'], $blank['settings']['rowPb'] ], [ '' ] ) === [] );
 
 $custom = $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--black my-own nino-section--alt nino-cover--dim', 'nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 u-pad' ) ) )['blocks'][0];
 check( 'a class the builder does not know is a custom one, and so are a second colour and a scrim on a section that is neither a cover nor a parallax - nothing is lost',
@@ -945,12 +1035,6 @@ $picture			= [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $pictured			= static fn( array $set, ?array $background = [ 'slot' => '/template/page-x/a/background', 'focus' => null ] ): array => array_replace( $blank, [ 'settings' => array_replace( $blank['settings'], $set ), 'background' => $background ] );
 $pictureText	= static fn( array $set, ?array $background = [ 'slot' => '/template/page-x/a/background', 'focus' => null ] ): string => $write( [ 'blocks' => [ $pictured( $set, $background ) ] ] );
 $pictureBack	= static fn( array $set, ?array $background = [ 'slot' => '/template/page-x/a/background', 'focus' => null ] ): bool => $read( $pictureText( $set, $background ) )['blocks'][0] === $pictured( $set, $background );
-// A section as a file has it: its classes, and the row's - the picture behind the section before the row, the one behind the row first in it
-$fileOf				= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): string => $page( '<section id="a" class="'. $sectionClass. "\">\n"
-	. ( $behind === true ? "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t<div class=\"". $rowClass. "\">\n"
-	. ( $inRow === true ? "\t\t<div class=\"nino-grid-row-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>" );
-$fileRead		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): array => $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) )['blocks'][0];
-$fileSame		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): bool => $write( $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) ) ) === $inWrap( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) );
 
 check( 'a cover or a parallax that keeps the room of the page around it is nino-cover--padded - after the scrim, before the place of the content - and reads back as it was set',
 	str_contains( $coverWritten( [ 'cover' => 90, 'padded' => true ] ), '<section id="a" class="nino-section nino-cover nino-cover--padded" data-cover-height="90">' ) === true
@@ -1069,7 +1153,8 @@ check( '...and it is written back byte for byte: the call at the margin with the
 check( '...a call with no class of the section\'s has none: the classes are the section\'s settings in the order of a section\'s - the animation among them -, and read back as set',
 	str_contains( $loopText(), "\n[sections /services sort=\"title\" limit=\"3\" id=\"news\"]\n" ) === true && $loopBack() === true
 	&& str_contains( $loopText( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'vpa' => '', 'vpaMode' => 'visible', 'custom' => 'my-own' ] ), ' id="news" class="nino-section--black nino-section--border-2 nino-mt-1 nino-text-center nino-vpa nino-vpa--visible my-own"]' ) === true
-	&& $loopBack( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'vpa' => '', 'vpaMode' => 'visible', 'custom' => 'my-own', 'whitespace' => 'more', 'fullwidth' => true ] ) === true );
+	&& $loopBack( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'vpa' => '', 'vpaMode' => 'visible', 'custom' => 'my-own', 'whitespace' => 'more', 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ) === true
+	&& str_contains( $loopText( [ 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ), "\n\t<div class=\"nino-grid-row nino-grid-row--full nino-grid-row--left nino-pl-0 nino-pr-0\">\n" ) === true );
 check( '...a cover has no height to write in a call: it is the 90 of Nino.ui.js, nino-cover with the padding and the place of the content, and no data-cover-height - and the delay and the duration of an animation have no attribute to stand in either',
 	str_contains( $loopText( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ), ' id="news" class="nino-cover nino-cover--padded nino-cover-top"]' ) === true && str_contains( $loopText( [ 'cover' => 90 ] ), 'data-cover-height' ) === false
 	&& $loopBack( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ) === true && $loopBack( [ 'parallax' => true, 'dim' => true ] ) === true
@@ -1370,6 +1455,31 @@ echo "Document - save\n";
 $saved = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $loaded['model'], $loaded['hash'] );
 check( 'a save without a change writes the same file, byte for byte, and answers the model it reads back', $saved['status'] === 200
 	&& file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $fixture && $saved['model'] === $loaded['model'] && $saved['hash'] === $loaded['hash'] );
+
+// A template that carries the two switches of an earlier builder opens with the settings they were, and keeps its classes until it is saved with a change: no migration is written, and the one save writes the whole file in the form of today
+$earlierPath	= \Nino\Filesystem::path( $appData, '/templates/page-earlier.tpl' );
+$earlierFile	= $page( $section( '[spacer]', 'a', 'nino-section nino-section--fullwidth nino-section--fullheight' ), $section( '[spacer]', 'b', 'nino-section nino-section--fullwidth nino-section--alt' ) );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-earlier.tpl', $earlierFile );
+$earlierLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-earlier' );
+$earlierKept	= \Nino\Modules\Builder\Document::save( $appData, 'page-earlier', $earlierLoad['model'], $earlierLoad['hash'] );
+
+$earlierOf		= static fn( int $block ): array => array_map( static fn( string $key ): string => $earlierLoad['model']['blocks'][$block]['settings'][$key], [ 'row', 'rowPl', 'rowPr', 'pt', 'pb' ] );
+
+check( 'a template with nino-section--fullwidth and nino-section--fullheight is loaded with a full row that has no padding at its sides, and with no padding above and below the section - the classes are the settings',
+	$earlierLoad['status'] === 200 && $earlierOf( 0 ) === [ 'full', '0', '0', '0', '0' ] && $earlierOf( 1 ) === [ 'full', '0', '0', '', '' ] && $earlierLoad['model']['blocks'][1]['settings']['color'] === 'alt' );
+check( '...a save that changes nothing leaves the file as it is, the two classes in it - no migration is written, and nothing is rewritten for being opened', $earlierKept['status'] === 200 && file_get_contents( $earlierPath ) === $earlierFile && $earlierKept['hash'] === $earlierLoad['hash'] );
+
+$earlierEdit = $earlierLoad['model'];
+$earlierEdit['blocks'][1]['settings']['rowPt'] = '2';
+$earlierSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-earlier', $earlierEdit, $earlierLoad['hash'] );
+$earlierText = (string) file_get_contents( $earlierPath );
+
+check( '...a save with a change writes every section of the file as the settings say - the row and the section carry the classes of today and the two old ones are gone from the file, in the section that changed and in the other - and reads back as it was saved',
+	$earlierSaved['status'] === 200 && str_contains( $earlierText, 'nino-section--full' ) === false
+	&& str_contains( $earlierText, "<section id=\"a\" class=\"nino-section nino-pt-0 nino-pb-0\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0\">\n" ) === true
+	&& str_contains( $earlierText, "<section id=\"b\" class=\"nino-section nino-section--alt\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0 nino-pt-2\">\n" ) === true
+	&& $earlierSaved['model']['blocks'] === \Nino\Modules\Builder\Document::load( $appData, 'page-earlier' )['model']['blocks'] && $earlierSaved['model']['blocks'][1]['settings']['rowPt'] === '2' );
+unlink( $earlierPath );
 
 // A new key and a new slot, a new section, a block of html
 $edit = $loaded['model'];
@@ -1737,19 +1847,19 @@ $answers = [
 	'a section whose id is a list'										=> $shape( static function( array &$model ): void { $model['blocks'][0]['id'] = []; } ),
 	'a call whose name is a list'											=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['name'] = []; } ),
 	'settings that are a text'												=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings'] = 'x'; } ),
-	'a full width that is a text'											=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['fullwidth'] = 'true'; } ),
-	'a full height that is a number'										=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['fullheight'] = 1; } ),
+	'a brand colour of the border that is a text'					=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['borderPrimary'] = 'true'; } ),
+	'a padding of the row that is a number'							=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowPl'] = 1; } ),
 	'a column that is a string'												=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0] = 'x'; } ),
 ];
 $typed = array_filter( $answers, static fn( array $answer ): bool => $answer['status'] !== 400 || $answer['code'] !== 'invalid' );
 check( 'a model of the wrong shape is refused with 400 and a problem, none of '. count( $answers ). ' ends in an error: '. implode( ', ', array_keys( $answers ) ), $typed === [] && ninoWarnings() === [] );
 
-// A switch of a section is on or off: anything else would be left out of the classes and read back as off, so it is refused before anything is made
+// A switch of a section is on or off - the brand colour of its border is one: anything else would be left out of the classes and read back as off, so it is refused before anything is made
 $switchBad			= [ 'a text' => 'true', 'the old choice' => 'fullwidth', 'an empty text' => '', 'a number' => 1, 'zero' => 0, 'a list' => [ true ], 'an empty list' => [] ];
 $switchRefused	= [];
 
 foreach( [ 0, 3 ] as $at )
-	foreach( [ 'fullwidth', 'fullheight' ] as $key )
+	foreach( [ 'borderPrimary' ] as $key )
 		foreach( $switchBad as $what => $value ) {
 
 			$model = $loaded['model'];
@@ -1761,14 +1871,16 @@ foreach( [ 0, 3 ] as $at )
 				$switchRefused[] = $key. ' of block '. ( $at + 1 ). ' as '. $what;
 		}
 
-check( 'a full width or a full height that is no bool - a text, a number, a list - is refused with 400 (code invalid), the switch and the block named, by a save and by the source view alike, and nothing is written: '
-	. count( $switchBad ) * 4 . ' cases'. ( $switchRefused === [] ? '' : ' - '. implode( ', ', $switchRefused ) ), $switchRefused === [] );
+check( 'the brand colour of the border of a section that is no bool - a text, a number, a list - is refused with 400 (code invalid), the switch and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $switchBad ) * 2 . ' cases'. ( $switchRefused === [] ? '' : ' - '. implode( ', ', $switchRefused ) ), $switchRefused === [] );
 
 $switchLeft = $loaded['model'];
-unset( $switchLeft['blocks'][0]['settings']['fullwidth'], $switchLeft['blocks'][0]['settings']['fullheight'] );
+$switchLeft['blocks'][0]['settings']['borderPrimary'] = true;
+$switchWith = \Nino\Modules\Builder\Document::source( $appData, $switchLeft );
+unset( $switchLeft['blocks'][0]['settings']['borderPrimary'] );
 $switchSource = \Nino\Modules\Builder\Document::source( $appData, $switchLeft );
-check( '...and a switch left out is off, no problem: the section is written without either class', $switchSource['status'] === 200 && str_contains( $switchSource['parts'][1]['source'], '<section id="start" class="nino-section nino-section--black ' ) === true
-	&& str_contains( $switchSource['parts'][1]['source'], 'nino-section--full' ) === false );
+check( '...and a switch left out is off, no problem: the section is written without the class, and with it where the switch is on', $switchSource['status'] === 200 && str_contains( $switchSource['parts'][1]['source'], '<section id="start" class="nino-section nino-section--black ' ) === true
+	&& str_contains( $switchSource['parts'][1]['source'], 'nino-section--border-primary' ) === false && $switchWith['status'] === 200 && str_contains( $switchWith['parts'][1]['source'], 'nino-section--border-primary' ) === true );
 
 // The ground of a column, its dimming and the picture behind it, the border of a section and its brand colour: what is none of them is refused before anything is made, as a switch is
 $columnBad = [
@@ -1906,9 +2018,14 @@ unset( $borderLeft['blocks'][0]['settings']['borderPrimary'] );
 check( '...a strength with the brand colour is written, and a switch left out is off: no class', str_contains( \Nino\Modules\Builder\Document::source( $appData, $borderGood )['parts'][1]['source'], ' nino-section--border-1 nino-section--border-primary ' ) === true
 	&& str_contains( \Nino\Modules\Builder\Document::source( $appData, $borderLeft )['parts'][1]['source'], 'nino-section--border-primary' ) === false );
 
-// The width and the alignment of a row, the place of a picture and the alignment of a text or of a stack: a word of Nino.css or none - what is none of them would be a class of nothing
+// The width, the place and the alignment of a row, the place of a picture and the alignment of a text or of a stack: a word of Nino.css or none - what is none of them would be a class of nothing
 $wordBad = [
 	'a row that is no width'										=> [ 'section', 'row', 'narrower', 'the row of block %d is none that Nino.css has' ],
+	'a fifth width, the class of an earlier builder'			=> [ 'section', 'row', 'fullwidth', 'the row of block %d is none that Nino.css has' ],
+	'a place in capitals'											=> [ 'section', 'rowPlace', 'Left', 'the rowPlace of block %d is none that Nino.css has' ],
+	'a fourth place of the row, a word of the alignment'	=> [ 'section', 'rowPlace', 'center', 'the rowPlace of block %d is none that Nino.css has' ],
+	'the middle, which is none and has no word of its own'	=> [ 'section', 'rowPlace', 'middle', 'the rowPlace of block %d is none that Nino.css has' ],
+	'a place of the row that is a number'					=> [ 'section', 'rowPlace', 0, 'the rowPlace of block %d is none that Nino.css has' ],
 	'a row alignment that is none'							=> [ 'section', 'rowAlign', 'top', 'the rowAlign of block %d is none that Nino.css has' ],
 	'a place of the content in capitals'				=> [ 'section', 'contentPos', 'Top', 'the contentPos of block %d is none that Nino.css has' ],
 	'the middle, which has no word of its own'	=> [ 'section', 'contentPos', 'center', 'the contentPos of block %d is none that Nino.css has' ],
@@ -1938,13 +2055,18 @@ foreach( [ 0, 3 ] as $at )
 			$wordRefused[] = $what. ' of block '. ( $at + 1 );
 	}
 
-check( 'a row that is no width, an alignment of a row, a place of the content and an alignment of a text or of a stack that Nino.css has none of are refused the same way, the setting and the block named: '. count( $wordBad ) * 2 . ' cases'. ( $wordRefused === [] ? '' : ' - '. implode( ', ', $wordRefused ) ), $wordRefused === [] );
+check( 'a row that is no width, a place of a row, an alignment of a row, a place of the content and an alignment of a text or of a stack that Nino.css has none of are refused the same way, the setting and the block named: '. count( $wordBad ) * 2 . ' cases'. ( $wordRefused === [] ? '' : ' - '. implode( ', ', $wordRefused ) ), $wordRefused === [] );
 
 $wordWrong = [];
 
 foreach( [
-	[ 'section', 'row', [ 'narrow', 'wide' ], 'nino-grid-row--%s' ],
+	[ 'section', 'row', [ 'narrow', 'wide', 'full' ], 'nino-grid-row--%s' ],
+	[ 'section', 'rowPlace', [ 'left', 'right' ], 'nino-grid-row--%s' ],
 	[ 'section', 'rowAlign', [ 'center', 'middle', 'bottom' ], 'nino-grid-%s' ],
+	[ 'section', 'rowPl', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pl-%s' ],
+	[ 'section', 'rowPr', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pr-%s' ],
+	[ 'section', 'rowPt', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pt-%s' ],
+	[ 'section', 'rowPb', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pb-%s' ],
 	[ 'section', 'contentPos', [ 'top', 'bottom' ], 'nino-cover-%s' ],
 	[ 'section', 'whitespace', [ 'least', 'less', 'more', 'most' ], 'nino-whitespace--%s' ],
 	[ 'section', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
@@ -1966,11 +2088,42 @@ foreach( [
 			$wordWrong[] = $owner. ' '. $key. ' '. $word;
 	}
 
-check( 'the six vocabularies the Reader keeps are the words the Builder writes, no more and no fewer - a word dropped from one of them would become a custom class without a sound',
-	\Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide' ] && \Nino\Modules\Builder\Reader::ROW_ALIGN === [ 'center', 'middle', 'bottom' ]
+check( 'the vocabularies the Reader keeps are the words the Builder writes, no more and no fewer - a word dropped from one of them would become a custom class without a sound',
+	\Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide', 'full' ] && \Nino\Modules\Builder\Reader::ROW_PLACE === [ 'left', 'right' ] && \Nino\Modules\Builder\Reader::ROW_ALIGN === [ 'center', 'middle', 'bottom' ]
 	&& \Nino\Modules\Builder\Reader::CONTENT_POS === [ 'top', 'bottom' ] && \Nino\Modules\Builder\Reader::WHITESPACE === [ 'least', 'less', 'more', 'most' ] && \Nino\Modules\Builder\Reader::TEXT === [ 'left', 'center', 'right' ]
 	&& \Nino\Modules\Builder\Reader::STACK_ALIGN === [ 'start', 'center', 'end' ] );
 check( '...and every word the Reader keeps in a setting of its own is none of that: the source view writes it as the class it is read from'. ( $wordWrong === [] ? '' : ' - '. implode( ', ', $wordWrong ) ), $wordWrong === [] );
+
+// The padding of a row on each side is a step of the space scale or none, as the padding and the margins of a column are: a step too far, a word, a number where the model has the step as text, a switch, a list
+$stepBad		= [ 'a step too far' => '7', 'two digits' => '10', 'a word' => 'big', 'a step with a space' => '1 ', 'a number' => 3, 'a switch' => true, 'a list' => [ '1' ], 'an empty list' => [] ];
+$stepRefused	= [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( \Nino\Modules\Builder\Reader::ROW_SPACING as $key )
+		foreach( $stepBad as $what => $value ) {
+
+			$model = $loaded['model'];
+			$model['blocks'][$at]['settings'][$key] = $value;
+			$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+			if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ 'the '. $key. ' of block '. ( $at + 1 ). ' is none of the steps 0 to 6' ]
+				|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+				$stepRefused[] = $key. ' of block '. ( $at + 1 ). ' as '. $what;
+		}
+
+check( 'a padding of the row that is none of the steps 0 to 6 - a step too far, a word, a number where the model has the step as text, a switch, a list - is refused with 400 (code invalid), the setting and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $stepBad ) * 8 . ' cases'. ( $stepRefused === [] ? '' : ' - '. implode( ', ', $stepRefused ) ), $stepRefused === [] );
+
+$stepRight = $loaded['model'];
+
+foreach( \Nino\Modules\Builder\Reader::ROW_SPACING as $key )
+	$stepRight['blocks'][0]['settings'][$key] = '6';
+
+$stepRightSource = \Nino\Modules\Builder\Document::source( $appData, $stepRight );
+$stepRight['blocks'][0]['settings']['rowPl'] = '0';
+$stepRight['blocks'][0]['settings']['rowPb'] = '';
+check( '...and every step of the eight is let through, the empty one and 0 and 6 among them: the row is written with the classes it says', $stepRightSource['status'] === 200 && str_contains( $stepRightSource['parts'][1]['source'], ' nino-pl-6 nino-pr-6 nino-pt-6 nino-pb-6' ) === true
+	&& \Nino\Modules\Builder\Document::source( $appData, $stepRight )['status'] === 200 && str_contains( \Nino\Modules\Builder\Document::source( $appData, $stepRight )['parts'][1]['source'], ' nino-pl-0 nino-pr-6 nino-pt-6">' ) === true );
 
 // The cover and the picture behind it: two switches that are on or off like the others, and a height in percent of the window's that is a whole number or none
 $pictureSwitchRefused = [];
@@ -1988,7 +2141,7 @@ foreach( [ 0, 3 ] as $at )
 				$pictureSwitchRefused[] = $key. ' of block '. ( $at + 1 ). ' as '. $what;
 		}
 
-check( 'a parallax, a dimming, the room around a cover or a background inside that is no bool - a text, a number, a list - is refused the way a full width is, the switch and the block named, by a save and by the source view alike, and nothing is written: '
+check( 'a parallax, a dimming, the room around a cover or a background inside that is no bool - a text, a number, a list - is refused the way the brand colour of a border is, the switch and the block named, by a save and by the source view alike, and nothing is written: '
 	. count( $switchBad ) * 8 . ' cases'. ( $pictureSwitchRefused === [] ? '' : ' - '. implode( ', ', $pictureSwitchRefused ) ), $pictureSwitchRefused === [] );
 
 $coverBad = [
@@ -2894,7 +3047,7 @@ $wrapEdit = $follow( $own, false );
 $wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
 $wrapText = (string) file_get_contents( $wrapPath );
 check( 'the sections that follow the switch lose their bare nino-vpa where it is turned off, the one with a kind of its own does not - and the wrap loses nino-wrap--vpa, and keeps its kind', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
-	&& str_contains( $wrapText, '<section id="hero" class="nino-section nino-section--fullwidth nino-section--black nino-cover nino-cover--dim" data-cover-height="100">' ) === true && str_contains( $wrapText, '<section id="services" class="nino-section">' ) === true
+	&& str_contains( $wrapText, '<section id="hero" class="nino-section nino-section--black nino-cover nino-cover--dim" data-cover-height="100">' ) === true && str_contains( $wrapText, '<section id="services" class="nino-section">' ) === true
 	&& str_contains( $wrapText, '<section id="contact" class="nino-section nino-section--primary nino-text-center nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast">' ) === true && $wrapSave['model']['animate'] === false && $wrapSave['model']['blocks'][3]['settings']['vpa'] === 'flip-hard' );
 
 $wrapEdit = $follow( $wrapSave['model'], true );
@@ -3196,7 +3349,7 @@ check( '...the tag the builder writes is the tag the kernel draws: a title is an
 check( '...the stack is a loop of the elements, one cell each, in the order it names', preg_match_all( '/nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 nino-autoheight/', $page ) === 2
 	&& strpos( $page, 'App' ) < strpos( $page, 'Web' ) && str_contains( $page, 'Mehr</a>' ) === true );
 check( '...and the sections are what Nino.css knows: the cover with its height, the background block, the row and its columns',
-	str_contains( $page, '<section id="start" class="nino-section nino-section--fullwidth nino-section--black nino-cover nino-cover--dim nino-vpa" data-cover-height="100">' ) === true
+	str_contains( $page, '<section id="start" class="nino-section nino-section--black nino-cover nino-cover--dim nino-vpa" data-cover-height="100">' ) === true
 	&& str_contains( $page, '<div class="nino-section-bg nino-img-focus--5">' ) === true && str_contains( $page, '<div class="nino-grid-row nino-grid-row--wide nino-grid-middle">' ) === true );
 check( '...a block of html written by hand is in the page as it was written', str_contains( $page, '<p>Imprint note</p>' ) === true && str_contains( $page, '<div class="map"></div>' ) === true );
 $loopDrawn = \Nino\Html::renderHtml( $appData, $inWrap( $loopFile ) );
@@ -3328,11 +3481,11 @@ $invalid['blocks'][0]['cols'][0]['components'][0]['name'] = 'nothing';
 check( '...an invalid one: 400, the problems in the params of the answer', $status === 400 && $invalidBody['code'] === 'builder_invalid' && isset( $invalidBody['params'][0] ) === true && str_contains( $invalidBody['params'][0], 'nothing' ) === true );
 
 $notASwitch = $next;
-$notASwitch['blocks'][0]['settings']['fullheight'] = 'yes';
+$notASwitch['blocks'][0]['settings']['parallax'] = 'yes';
 $switchHash = \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'];
 [ $status, $switchBody ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $notASwitch, 'hash' => $switchHash ] );
-check( '...a full height that is no bool: 400, builder_invalid, the switch and its block in the params - and the file is as it was', $status === 400 && $switchBody['code'] === 'builder_invalid'
-	&& $switchBody['params'] === [ 'the fullheight of block 1 is neither on nor off' ] && \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] === $switchHash );
+check( '...a parallax that is no bool: 400, builder_invalid, the switch and its block in the params - and the file is as it was', $status === 400 && $switchBody['code'] === 'builder_invalid'
+	&& $switchBody['params'] === [ 'the parallax of block 1 is neither on nor off' ] && \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] === $switchHash );
 
 // The texts of a save go through the same action, and a language the site does not have is answered in the panel's own code
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-api.tpl', $section( '[title /template/page-api/a/title]', 'a' ). "\n" );

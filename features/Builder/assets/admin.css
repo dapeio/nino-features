@@ -1037,6 +1037,26 @@ button.builder-status-item:hover {
 .builder-line.has-caption {
 	grid-template-columns: 5rem repeat(auto-fit, minmax(8rem, 1fr));
 }
+/* A line whose fields stand at the same top, where one has a hint under it and another has none: the width of a row and its place */
+.builder-line.builder-line-top {
+	align-items: start;
+}
+/* The padding of a row: two selects side by side under the name of the pair and the hint for both, the pairs beside each other where there is room and under each other where there is none */
+.builder-line.builder-line-pairs {
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	align-items: start;
+}
+.builder-pair {
+	display: grid;
+	gap: .22rem;
+	min-width: 0;
+	align-content: start;
+}
+.builder-pair-label {
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 600;
+}
 /* The tables of a form: the viewports of a column and of a loop, the spacing of a section */
 .builder-table {
 	width: 100%;
