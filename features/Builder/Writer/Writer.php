@@ -52,8 +52,7 @@ namespace Nino\Modules\Builder {
 	 *											indented for it - a file the builder had not wrapped is
 	 *											wrapped with two lines and is otherwise what it was. Its
 	 *											classes (see wrapClasses()) are the kind of animation of the
-	 *											template; the head line the builder wrote before the wrap
-	 *											is not written any more.
+	 *											template.
 	 *
 	 *											A foreign block is the one thing written as it came: one
 	 *											the builder made, or that came in its markers, gets the

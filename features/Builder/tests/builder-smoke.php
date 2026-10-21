@@ -11,9 +11,7 @@ declare(strict_types=1);
  *											page-home-concept.tpl, says tag="h3" twice and gap="2"
  *											aloud, which are the defaults the Writer leaves out;
  *											page-home-wrap.tpl is the same in the wrap the builder
- *											writes, with a kind of animation, and page-home-vpa.tpl
- *											the same with the animation line an earlier builder wrote
- *											in the head, which reads as that wrap) and on a sheet of
+ *											writes, with a kind of animation) and on a sheet of
  *											sections that each fail one rule - the picture behind a column
  *											among them -, then on the ground of a column, its dimming and
  *											the picture behind it, the border of a section as a strength and
@@ -182,10 +180,6 @@ check( '...the registry marks the components that are a surface by what their sc
 	&& array_filter( $registry['components'], static fn( array $schema ): bool => array_key_exists( 'surface', $schema ) === false && $reader::surface( $schema, $registry['components'] ) !== '' ) === []
 	&& array_filter( $marked, static fn( array $schema ): bool => ( $schema['surface'] === 'card' ) !== $reader::holds( $schema ) ) === []
 	&& array_filter( $marked, static fn( array $schema ): bool => $schema['surface'] === 'image' && ( $schema['source'] !== 'image' || array_filter( $registry['components'], static fn( array $other ): bool => $reader::holds( $other ) === true && in_array( $other['holds'], (array) ( $schema['in'] ?? [] ), true ) === true ) !== [] ) ) === [] );
-// The coupling to the kernel the radius needs (Nino.css with the radius of a surface): it took the style from the picture, whose corners are the page's now
-check( '...none of them has a variant that makes the class an earlier builder gave a picture - the radius of a surface is the page\'s, and the kernel this runs against has taken the style from the picture: against a kernel that has not, this is red',
-	$marked !== [] && array_filter( $marked, static fn( array $schema ): bool => array_filter( (array) ( $schema['attributes'] ?? [] ), static fn( array $attribute ): bool => ( $attribute['type'] ?? '' ) === 'variant'
-		&& array_filter( (array) ( $attribute['options'] ?? [] ), static fn( mixed $option ): bool => (string) ( $attribute['prefix'] ?? '' ). (string) $option === $reader::EARLIER_IMAGE_CLASS ) !== [] ) !== [] ) === [] );
 check( '...and the rule is the registry\'s: a component that holds a place is a card whatever it is called, a picture standing in a place that a container holds is none and one in any other is an image, a text and a loop are none',
 	$reader::surface( [ 'source' => 'content', 'holds' => 'things' ], [] ) === 'card' && $reader::surface( [ 'source' => 'image', 'in' => [ 'things' ] ], [ [ 'source' => 'content', 'holds' => 'things' ] ] ) === ''
 	&& $reader::surface( [ 'source' => 'image', 'in' => [ 'section' ] ], [ [ 'source' => 'content', 'holds' => 'things' ] ] ) === 'image' && $reader::surface( [ 'source' => 'image' ], [] ) === 'image'
@@ -390,39 +384,6 @@ check( 'a line between the head and the opening line that is none of the wrap\'s
 $handWrapped = $read( "[template /templates/html-header]\n\n\n\t<div class=\"nino-wrap  nino-wrap--vpa \">  \n". $section( '[title /template/page-x/a/title]' ). "\n\n\t</div>\n\n[template /templates/html-footer]\n" );
 check( 'the lines of a wrap written by hand may be indented, have blank lines around them and spaces behind them - and a class the builder cannot keep, a quote or an ampersand, makes it no wrap', $handWrapped['animate'] === true && array_column( $handWrapped['blocks'], 'kind' ) === [ 'section' ]
 	&& $read( "<div class=\"nino-wrap a&b\">\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n" )['blocks'][0]['kind'] === 'html' && $read( "<div class=\"nino-wrap\">\r\n". $section( '[title /template/page-x/a/title]' ). "\r\n</div>\r\n" )['blocks'][0]['kind'] === 'section' );
-
-// What an earlier builder wrote in the head of a page: its animation, as a line of classes - read in the place of a wrap, and never written again
-$vpaFixture	= (string) file_get_contents( __DIR__. '/fixtures/page-home-vpa.tpl' );
-$vpaModel		= $read( $vpaFixture );
-
-check( 'the head line of an earlier builder is read as the wrap says it - animated, the effect with its strength, the speed - so the page is the page of the wrap', $vpaModel === $wrapModel && $vpaModel['vpa'] === 'zoom-soft' && $vpaModel['vpaSpeed'] === 'medium' );
-check( '...and it is not written again: the page is written in the wrap that says the same, a head line is not made, and what is written is read as it was', $write( $vpaModel ) === $wrapFixture && str_contains( $write( $vpaModel ), 'nino:template-vpa' ) === false && $read( $write( $vpaModel ) ) === $vpaModel );
-
-$headLine = static fn( string $classes ): array => $read( str_replace( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium', $classes, $vpaFixture ) );
-$cases		= [ 'off' => [ false, '', '', '' ], 'nino-vpa' => [ true, '', '', '' ], 'nino-vpa nino-vpa--blur-hard nino-vpa--repeat' => [ true, 'blur-hard', '', '' ], 'nino-vpa--speed-fast nino-vpa--slide-left-soft' => [ true, 'slide-left-soft', 'fast', '' ],
-	'nino-vpa--visible' => [ true, '', '', '' ], 'nino-vpa--visible-once nino-vpa--zoom-out-hard nino-vpa--speed-slow' => [ true, 'zoom-out-hard', 'slow', '' ], 'nino-vpa nino-vpa--zoom-soft nino-vpa--flip-soft nino-vpa--foo' => [ true, 'zoom-soft', '', 'nino-vpa--flip-soft nino-vpa--foo' ] ];
-$unread		= [];
-
-foreach( $cases as $classes => $expected ) {
-
-	$got = $headLine( $classes );
-
-	if( [ $got['animate'], $got['vpa'], $got['vpaSpeed'], $got['wrapClass'] ] !== $expected || $got['blocks'] !== $model['blocks'] )
-		$unread[] = $classes;
-}
-
-check( 'a head line says off, or names classes: off is no animation, a class is - the effect, the strength and the speed are the wrap\'s, a mode is dropped for it is not inherited, and a class of nino-vpa-- that Nino.css has none of stays among the other classes of the wrap'
-	. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ), $unread === [] );
-check( 'a file that has the line and a wrap is read by its wrap: the line says nothing then, and is gone with the next write', ( static function() use ( $read, $write, $wrapFixture, $wrapped ): bool {
-	$both = $read( str_replace( "<!-- nino:template-name Home -->\n", "<!-- nino:template-name Home -->\n<!-- nino:template-vpa nino-vpa nino-vpa--blur-hard -->\n", $wrapFixture ) );
-	return $both['vpa'] === 'zoom-soft' && $both['vpaSpeed'] === 'medium' && $write( $both ) === $wrapFixture;
-} )() );
-
-$foreignVpa = $read( str_replace( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium', 'zoom-soft', $vpaFixture ) );
-check( 'a line that names no class of the animation is no head line: it is left where it is, in the block that follows, and nothing is lost', $foreignVpa['animate'] === false && $foreignVpa['blocks'][0]['kind'] === 'html'
-	&& str_contains( $foreignVpa['blocks'][0]['source'], '<!-- nino:template-vpa zoom-soft -->' ) === true );
-check( 'the line is read without a name before it, and with the frames after it', $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['vpa'] === 'blur-soft'
-	&& $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['header'] === 'html-header' && $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['animate'] === true );
 
 $thrownVpa = 0;
 foreach( [ 'zoom', 'nino-vpa--zoom-soft', 'zoom-soft nino-vpa', "zoom-soft\n", 'ZOOM-SOFT', 'x" onclick="y', 'repeat' ] as $bad ) {
@@ -890,50 +851,6 @@ $fileOf				= static fn( string $sectionClass, string $rowClass = 'nino-grid-row'
 $fileRead		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): array => $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) )['blocks'][0];
 $fileSame		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): bool => $write( $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) ) ) === $inWrap( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) );
 
-// The two switches of an earlier builder are no settings of the model: nino-section--fullwidth is read as what Nino.css made of the class - a row with no maximum width and no padding at its sides -
-// and nino-section--fullheight as a section with no padding above and below, and neither class is written again
-$earlierSet		= static fn( array $block ): array => [ $block['settings']['row'], $block['settings']['rowPl'], $block['settings']['rowPr'], $block['settings']['pt'], $block['settings']['pb'], $block['settings']['custom'], $block['settings']['rowCustom'] ];
-$earlierBoth	= 'nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint';
-$earlier			= $fileRead( $earlierBoth );
-
-check( 'a section with nino-section--fullwidth and nino-section--fullheight is read as the settings they were - a full row with no padding at its sides, and no padding above and below the section - and neither class falls into the custom ones',
-	$earlierSet( $earlier ) === [ 'full', '0', '0', '0', '0', '', '' ] && $earlier['settings']['color'] === 'tint' );
-
-$earlierWritten = $write( $read( $fileOf( $earlierBoth ) ) );
-check( '...and it is written without either class: the section says its padding above and below, the row its width and its padding at the sides - and what is written reads as what was read, and is the same file again',
-	str_contains( $earlierWritten, '<section id="a" class="nino-section nino-section--tint nino-pt-0 nino-pb-0">' ) === true && str_contains( $earlierWritten, "\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0\">\n" ) === true
-	&& str_contains( $earlierWritten, 'nino-section--full' ) === false && $read( $earlierWritten )['blocks'][0] === $earlier && $write( $read( $earlierWritten ) ) === $earlierWritten );
-
-$earlierCases = [
-	'neither'														=> [ 'nino-section nino-section--tint', [ '', '', '', '', '' ] ],
-	'the full width alone'								=> [ 'nino-section nino-section--fullwidth nino-section--tint', [ 'full', '0', '0', '', '' ] ],
-	'the full height alone'								=> [ 'nino-section nino-section--fullheight nino-section--tint', [ '', '', '', '0', '0' ] ],
-	'both'															=> [ $earlierBoth, [ 'full', '0', '0', '0', '0' ] ],
-	'both, among other classes and the other way round'	=> [ 'nino-section--fullheight my-own nino-section nino-section--tint nino-section--fullwidth', [ 'full', '0', '0', '0', '0' ] ],
-	// A padded cover is no exception: Nino.css takes the frame of its picture away with the classes the switches are read as
-	'the full width alone on a padded cover'			=> [ 'nino-section nino-section--fullwidth nino-cover nino-cover--padded', [ 'full', '0', '0', '', '' ] ],
-	'the full height alone on a padded cover'			=> [ 'nino-section nino-section--fullheight nino-cover nino-cover--padded', [ '', '', '', '0', '0' ] ],
-	'both on a padded cover'								=> [ 'nino-section nino-section--fullwidth nino-section--fullheight nino-cover nino-cover--padded', [ 'full', '0', '0', '0', '0' ] ],
-];
-$earlierWrong = [];
-
-foreach( $earlierCases as $label => [ $classes, $set ] ) {
-
-	$block		= $fileRead( $classes );
-	$written	= $write( $read( $fileOf( $classes ) ) );
-
-	if( array_slice( $earlierSet( $block ), 0, 5 ) !== $set || str_contains( $written, 'nino-section--full' ) === true || $read( $written )['blocks'][0] !== $block || $write( $read( $written ) ) !== $written )
-		$earlierWrong[] = $label;
-}
-
-check( 'each switch alone, neither and both, in any order among the classes, on a padded cover as well: '. count( $earlierCases ). ' files are read as the settings the classes were, written without them, and read back as they were read'. ( $earlierWrong === [] ? '' : ' - '. implode( ', ', $earlierWrong ) ), $earlierWrong === [] );
-
-// Nino.css drew the switch over the width and the sides the row named itself, and a step of the section's own padding over the switch
-$beside = $fileRead( 'nino-section nino-section--fullwidth nino-section--fullheight nino-pt-2', 'nino-grid-row nino-grid-row--narrow nino-grid-middle' );
-check( '...beside what the row and the section say themselves they read as Nino.css drew them: the switch beat the width of the row, which stays a class of its own, and a step of the section\'s own padding stood over the switch',
-	$earlierSet( $beside ) === [ 'full', '0', '0', '2', '0', '', 'nino-grid-row--narrow' ] && $beside['settings']['rowAlign'] === 'middle'
-	&& str_contains( $write( $read( $fileOf( 'nino-section nino-section--fullwidth nino-section--fullheight nino-pt-2', 'nino-grid-row nino-grid-row--narrow nino-grid-middle' ) ) ), "<section id=\"a\" class=\"nino-section nino-pt-2 nino-pb-0\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-grid-middle nino-pl-0 nino-pr-0 nino-grid-row--narrow\">" ) === true );
-
 // The row of a section: its width and its place are words of Nino.css and its padding a step of the space scale on each side - a class of the row apiece, read in any order and written in one
 $rowWrong = [];
 
@@ -1263,7 +1180,7 @@ foreach( $unspaced as $b => $block )
 		unset( $unspaced[$b]['cols'][$c]['p'], $unspaced[$b]['cols'][$c]['mt'], $unspaced[$b]['cols'][$c]['mb'] );
 check( 'a column with none of the three is written as it always was: a model without them is the example page, byte for byte, and every existing fixture is read and written as it was',
 	$write( [ 'name' => 'Home', 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => $unspaced ] ) === $wrapped( $fixture ) && $model['blocks'][0]['cols'][0]['p'] === '' && $model['blocks'][0]['cols'][0]['mt'] === '' && $model['blocks'][0]['cols'][0]['mb'] === ''
-	&& $write( $wrapModel ) === $wrapFixture && $write( $vpaModel ) === $wrapFixture && $write( $read( $concept ) ) === $wrapped( $fixture ) );
+	&& $write( $wrapModel ) === $wrapFixture && $write( $read( $concept ) ) === $wrapped( $fixture ) );
 
 // A card as the Writer writes it: every attribute, in the order of the schema and only where it differs from the default
 $allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'fill' => '1', 'padding' => '0', 'vertical' => 'last-bottom', 'align' => 'center', 'ground' => 'dark', 'borderless' => '1', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'class' => 'my-card' ], 'radius' => '',
@@ -1418,32 +1335,11 @@ check( 'a card and a picture have a radius of their own: the class of the call, 
 	$surfaceWrong === [] && $cardNone['radius'] === '' && $cardNone['attributes']['class'] === '' && array_key_exists( 'radius', $cardNone['components'][0] ) === false
 	&& $write( $read( $page( $cardCall( ' class="my-class nino-radius-alt"' ) ) ) ) === $inWrap( $page( $cardCall( ' class="nino-radius-alt my-class"' ) ) ) );
 
-$earlierPicture = $nodeOf( $pictureCall( ' class="nino-image--rounded my-image"' ) );
-$earlierWritten = $write( $read( $page( $pictureCall( ' class="nino-image--rounded my-image"' ) ) ) );
-$earlierCard = $nodeOf( $cardCall( ' class="nino-image--rounded"' ) );
 $twoPicture = $nodeOf( $pictureCall( ' class="nino-radius nino-radius-alt"' ) );
 $plainTitle = $nodeOf( $section( '[title /template/page-x/a/title class="nino-radius-alt"]' ) );
-check( '...the class an earlier builder gave a picture is read as the alternative strength and never written again - the file says nino-radius-alt after the next save - while on a card it is a class like any other; a second class of the kind is a class of its own, and a component that is no surface has none of this: its class stays a class',
-	$earlierPicture['radius'] === 'alternative' && $earlierPicture['attributes']['class'] === 'my-image' && str_contains( $earlierWritten, '[image /template/page-x/a/photo class="nino-radius-alt my-image"]' ) === true && str_contains( $earlierWritten, 'nino-image--rounded' ) === false
-	&& $earlierCard['radius'] === '' && $earlierCard['attributes']['class'] === 'nino-image--rounded' && $twoPicture['radius'] === 'standard' && $twoPicture['attributes']['class'] === 'nino-radius-alt'
+check( '...a second class of the kind is a class of its own, and a component that is no surface has none of this: its class stays a class',
+	$twoPicture['radius'] === 'standard' && $twoPicture['attributes']['class'] === 'nino-radius-alt'
 	&& array_key_exists( 'radius', $plainTitle ) === false && $plainTitle['attributes']['class'] === 'nino-radius-alt' && $write( $read( $page( $section( '[title /template/page-x/a/title class="nino-radius-alt"]' ) ) ) ) === $inWrap( $page( $section( '[title /template/page-x/a/title class="nino-radius-alt"]' ) ) ) );
-
-// The style Rounded, which an earlier builder gave a picture, was an attribute of the image component, and the schema has none now
-$styleArguments = ' style="'. $reader::EARLIER_IMAGE_STYLE. '"';
-$styledOf = static fn( string $arguments ): array => (array) ( $read( $page( $pictureCall( $arguments ) ) )['blocks'][0]['cols'][0]['components'][0] ?? [] );
-$styledBare = $styledOf( $styleArguments );
-$styledMore = $styledOf( ' ratio="16-9"'. $styleArguments. ' class="my-image"' );
-$strengthWrong = array_filter( [ ' class="nino-radius nino-image--rounded"', ' class="nino-image--rounded nino-radius"', $styleArguments. ' class="nino-radius"' ],
-	static fn( string $arguments ): bool => ( $styledOf( $arguments )['radius'] ?? '' ) !== 'standard' || ( $styledOf( $arguments )['attributes']['class'] ?? null ) !== ''
-		|| $write( $read( $page( $pictureCall( $arguments ) ) ) ) !== $inWrap( $page( $pictureCall( ' class="nino-radius"' ) ) ) );
-check( '...so is the style Rounded, which an earlier builder gave a picture and the image component has no more: the call is a section and no foreign block, its radius is the alternative strength, its other attributes and its classes stay, and the next save writes nino-radius-alt and no style - and a strength the call names itself wins over both earlier forms, which are not written either way',
-	$read( $page( $pictureCall( $styleArguments ) ) )['blocks'][0]['kind'] === 'section' && ( $styledBare['radius'] ?? '' ) === 'alternative' && ( $styledBare['attributes']['class'] ?? null ) === '' && isset( $styledBare['attributes']['style'] ) === false
-	&& ( $styledMore['radius'] ?? '' ) === 'alternative' && ( $styledMore['attributes']['ratio'] ?? '' ) === '16-9' && ( $styledMore['attributes']['class'] ?? null ) === 'my-image'
-	&& $write( $read( $page( $pictureCall( ' ratio="16-9"'. $styleArguments. ' class="my-image"' ) ) ) ) === $inWrap( $page( $pictureCall( ' ratio="16-9" class="nino-radius-alt my-image"' ) ) ) && $strengthWrong === [] );
-
-$notPictures = [ $read( $page( $cardCall( $styleArguments ) ) ), $read( $page( $section( '[spacer'. $styleArguments. ']' ) ) ), $read( $page( $pictureCall( ' style="other"' ) ) ) ];
-check( '...on a picture only, and only that style: the same style on a card or on a component that has none, or another style on a picture, is an attribute no schema declares - the section is a foreign block with that reason, as it always was',
-	array_filter( $notPictures, static fn( array $model ): bool => $model['blocks'][0]['kind'] !== 'html' || ( $model['blocks'][0]['reason']['code'] ?? '' ) !== 'unknown-attribute' || ( $model['blocks'][0]['reason']['detail'] ?? '' ) !== 'style' ) === [] );
 
 // The picture behind a section or a column is its background, and has no radius of its own: the section is not read as one
 $backgroundRadius = $read( $page( $groundOf( 'nino-grid-100', "<div class=\"nino-grid-bg\">[image /template/page-x/a/photo alt=\"\" class=\"nino-radius\"]</div>" ) ) );
@@ -1636,55 +1532,6 @@ echo "Document - save\n";
 $saved = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $loaded['model'], $loaded['hash'] );
 check( 'a save without a change writes the same file, byte for byte, and answers the model it reads back', $saved['status'] === 200
 	&& file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $fixture && $saved['model'] === $loaded['model'] && $saved['hash'] === $loaded['hash'] );
-
-// A template that carries the two switches of an earlier builder opens with the settings they were, and keeps its classes until it is saved with a change: no migration is written, and the one save writes the whole file in the form of today
-$earlierPath	= \Nino\Filesystem::path( $appData, '/templates/page-earlier.tpl' );
-$earlierFile	= $page( $section( '[spacer]', 'a', 'nino-section nino-section--fullwidth nino-section--fullheight' ), $section( '[spacer]', 'b', 'nino-section nino-section--fullwidth nino-section--alt' ) );
-\Nino\Filesystem::putFileContent( $appData, '/templates/page-earlier.tpl', $earlierFile );
-$earlierLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-earlier' );
-$earlierKept	= \Nino\Modules\Builder\Document::save( $appData, 'page-earlier', $earlierLoad['model'], $earlierLoad['hash'] );
-
-$earlierOf		= static fn( int $block ): array => array_map( static fn( string $key ): string => $earlierLoad['model']['blocks'][$block]['settings'][$key], [ 'row', 'rowPl', 'rowPr', 'pt', 'pb' ] );
-
-check( 'a template with nino-section--fullwidth and nino-section--fullheight is loaded with a full row that has no padding at its sides, and with no padding above and below the section - the classes are the settings',
-	$earlierLoad['status'] === 200 && $earlierOf( 0 ) === [ 'full', '0', '0', '0', '0' ] && $earlierOf( 1 ) === [ 'full', '0', '0', '', '' ] && $earlierLoad['model']['blocks'][1]['settings']['color'] === 'alt' );
-check( '...a save that changes nothing leaves the file as it is, the two classes in it - no migration is written, and nothing is rewritten for being opened', $earlierKept['status'] === 200 && file_get_contents( $earlierPath ) === $earlierFile && $earlierKept['hash'] === $earlierLoad['hash'] );
-
-$earlierEdit = $earlierLoad['model'];
-$earlierEdit['blocks'][1]['settings']['rowPt'] = '2';
-$earlierSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-earlier', $earlierEdit, $earlierLoad['hash'] );
-$earlierText = (string) file_get_contents( $earlierPath );
-
-check( '...a save with a change writes every section of the file as the settings say - the row and the section carry the classes of today and the two old ones are gone from the file, in the section that changed and in the other - and reads back as it was saved',
-	$earlierSaved['status'] === 200 && str_contains( $earlierText, 'nino-section--full' ) === false
-	&& str_contains( $earlierText, "<section id=\"a\" class=\"nino-section nino-pt-0 nino-pb-0\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0\">\n" ) === true
-	&& str_contains( $earlierText, "<section id=\"b\" class=\"nino-section nino-section--alt\">\n\t<div class=\"nino-grid-row nino-grid-row--full nino-pl-0 nino-pr-0 nino-pt-2\">\n" ) === true
-	&& $earlierSaved['model']['blocks'] === \Nino\Modules\Builder\Document::load( $appData, 'page-earlier' )['model']['blocks'] && $earlierSaved['model']['blocks'][1]['settings']['rowPt'] === '2' );
-unlink( $earlierPath );
-
-// A template that still says what an earlier builder gave a picture - the class nino-image--rounded, the style Rounded - opens with the alternative radius, which the page draws only once the file says it:
-// a save writes the file anew even where nothing else changed, and a second one finds nothing to write
-$pictureRadiusPath	= \Nino\Filesystem::path( $appData, '/templates/page-picture.tpl' );
-$pictureRadiusOf		= static fn( array $loaded ): string => (string) ( $loaded['model']['blocks'][0]['cols'][0]['components'][0]['radius'] ?? '?' );
-$pictureRadiusWrong	= [];
-
-foreach( [ 'the class' => [ ' class="nino-image--rounded my-image"', ' class="nino-radius-alt my-image"' ], 'the style' => [ ' style="rounded"', ' class="nino-radius-alt"' ] ] as $form => [ $earlier, $written ] ) {
-
-	\Nino\Filesystem::putFileContent( $appData, '/templates/page-picture.tpl', $page( $section( '[image /template/page-picture/a/photo'. $earlier. ']', 'a' ), $section( '[image /template/page-picture/b/photo]', 'b' ) ) );
-	$pictureLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-picture' );
-	$pictureKept	= \Nino\Modules\Builder\Document::save( $appData, 'page-picture', $pictureLoad['model'], $pictureLoad['hash'] );
-	$pictureText	= (string) file_get_contents( $pictureRadiusPath );
-	$pictureAgain	= \Nino\Modules\Builder\Document::save( $appData, 'page-picture', $pictureKept['model'], $pictureKept['hash'] );
-
-	if( $pictureRadiusOf( $pictureLoad ) !== 'alternative' || $pictureKept['status'] !== 200 || $pictureKept['hash'] !== hash( 'sha256', $pictureText ) || $pictureRadiusOf( $pictureKept ) !== 'alternative'
-		|| $pictureText !== $inWrap( $page( $section( '[image /template/page-picture/a/photo'. $written. ']', 'a' ), $section( '[image /template/page-picture/b/photo]', 'b' ) ) )
-		|| $pictureAgain['status'] !== 200 || $pictureAgain['hash'] !== $pictureKept['hash'] || (string) file_get_contents( $pictureRadiusPath ) !== $pictureText )
-		$pictureRadiusWrong[] = $form;
-}
-
-check( 'a template that says what an earlier builder gave a picture, the class or the style, is read with the alternative radius, and a save that changes nothing else writes it anew - nino-radius-alt in its place, the picture that had none untouched - and a save of that changes nothing'
-	. ( $pictureRadiusWrong === [] ? '' : ' - not so for '. implode( ', ', $pictureRadiusWrong ) ), $pictureRadiusWrong === [] );
-unlink( $pictureRadiusPath );
 
 // A new key and a new slot, a new section, a block of html
 $edit = $loaded['model'];
@@ -2087,7 +1934,7 @@ check( '...the radius is named where it is wrong: the setting of the section, of
 	&& array_filter( \Nino\Modules\Builder\Document::problems( $appData, $radiusModel, $registry ), static fn( string $sentence ): bool => str_contains( $sentence, 'radius' ) === true ) === [] && ninoWarnings() === [] );
 
 // A switch of a section is on or off - the brand colour of its border is one: anything else would be left out of the classes and read back as off, so it is refused before anything is made
-$switchBad			= [ 'a text' => 'true', 'the old choice' => 'fullwidth', 'an empty text' => '', 'a number' => 1, 'zero' => 0, 'a list' => [ true ], 'an empty list' => [] ];
+$switchBad			= [ 'a text' => 'true', 'an empty text' => '', 'a number' => 1, 'zero' => 0, 'a list' => [ true ], 'an empty list' => [] ];
 $switchRefused	= [];
 
 foreach( [ 0, 3 ] as $at )
@@ -2253,7 +2100,6 @@ check( '...a strength with the brand colour is written, and a switch left out is
 // The width, the place and the alignment of a row, the place of a picture and the alignment of a text or of a stack: a word of Nino.css or none - what is none of them would be a class of nothing
 $wordBad = [
 	'a row that is no width'										=> [ 'section', 'row', 'narrower', 'the row of block %d is none that Nino.css has' ],
-	'a fifth width, the class of an earlier builder'			=> [ 'section', 'row', 'fullwidth', 'the row of block %d is none that Nino.css has' ],
 	'a place in capitals'											=> [ 'section', 'rowPlace', 'Left', 'the rowPlace of block %d is none that Nino.css has' ],
 	'a fourth place of the row, a word of the alignment'	=> [ 'section', 'rowPlace', 'center', 'the rowPlace of block %d is none that Nino.css has' ],
 	'the middle, which is none and has no word of its own'	=> [ 'section', 'rowPlace', 'middle', 'the rowPlace of block %d is none that Nino.css has' ],
@@ -3348,27 +3194,6 @@ check( 'the source view has the wrap in the head and in the foot, and the parts 
 check( '...and a page with no frame has the wrap alone in its head and its foot', \Nino\Modules\Builder\Document::source( $appData, [ 'blocks' => [] ] )['parts'] === [ [ 'kind' => 'head', 'source' => '<div class="nino-wrap">', 'block' => null ], [ 'kind' => 'foot', 'source' => '</div>', 'block' => null ] ] );
 
 unlink( $wrapPath );
-
-// A page that has the head line an earlier builder wrote has no wrap: it is read as the wrap says it, kept as it is until it is changed, and then written in the wrap
-$vpaPath = \Nino\Filesystem::path( $appData, '/templates/page-vpa.tpl' );
-\Nino\Filesystem::putFileContent( $appData, '/templates/page-vpa.tpl', $vpaFixture );
-$vpaLoad = \Nino\Modules\Builder\Document::load( $appData, 'page-vpa' );
-$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaLoad['model'], $vpaLoad['hash'] );
-check( 'a template with the head line is loaded and saved without a change byte for byte: it is not wrapped by being opened', $vpaLoad['model']['animate'] === true && $vpaLoad['model']['vpa'] === 'zoom-soft' && $vpaLoad['model']['vpaSpeed'] === 'medium'
-	&& $vpaSave['status'] === 200 && file_get_contents( $vpaPath ) === $vpaFixture && $vpaSave['hash'] === $vpaLoad['hash'] );
-
-$vpaEdit = $vpaLoad['model'];
-$vpaEdit['vpaSpeed'] = 'fast';
-$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaLoad['hash'] );
-check( '...and a change writes it in the wrap, with the kind the line said and the change, and no head line: the line is gone', $vpaSave['status'] === 200 && file_get_contents( $vpaPath ) === str_replace( 'speed-medium', 'speed-fast', $wrapFixture )
-	&& str_contains( (string) file_get_contents( $vpaPath ), 'nino:template-vpa' ) === false && $vpaSave['model']['vpaSpeed'] === 'fast' );
-
-$vpaEdit = $vpaLoad['model'];
-$vpaEdit['vpa'] = 'nino-vpa nino-vpa--blur-hard';
-$vpaAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] );
-check( 'the animation as the head line had it is no animation of the model any more: the classes of it are refused where the effect is looked for', $vpaAnswer['status'] === 400 && str_contains( implode( ' ', $vpaAnswer['problems'] ), 'effect of the animation' ) === true );
-
-unlink( $vpaPath );
 
 // A template with texts in two languages, a global one, a limit, a slot with a picture and alt texts, a block of html that names a key
 $srcFile = "<!-- nino:template-name Dup -->\n[template /templates/html-header]\n<div class=\"nino-wrap nino-wrap--vpa nino-vpa--blur-soft\">\n\n"

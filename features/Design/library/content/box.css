@@ -172,10 +172,10 @@
 /* ---- bands ---- */
 
 /*	The space of a band is times the whitespace of the page, as in regular	*/
-.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
+.nino-section:where(:not([class*="nino-pt-"], [class*="nino-p-"])) {
 	padding-top: calc( var(--content-section-space) * var(--whitespace-scale, 1) );
 }
-.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pb-"], [class*="nino-p-"])) {
+.nino-section:where(:not([class*="nino-pb-"], [class*="nino-p-"])) {
 	padding-bottom: calc( var(--content-section-space) * var(--whitespace-scale, 1) );
 }
 

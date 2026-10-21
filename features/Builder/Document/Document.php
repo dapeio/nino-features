@@ -380,9 +380,7 @@ namespace Nino\Modules\Builder {
 		 *	section that does not read back is a problem the panel is told of
 		 *	with the Reader's reason, and nothing is written. A model that is
 		 *	what the file reads as already is not written at all - the file is
-		 *	not rewritten into the canonical form where nobody changed it - but
-		 *	for a file that still says what an earlier builder gave a picture
-		 *	(see Reader::earlierImage()), which a save writes anew. A
+		 *	not rewritten into the canonical form where nobody changed it. A
 		 *	block that came back from an edit (edited: true) is read as a
 		 *	section again first; a section that carries renamedFrom has the
 		 *	keys of its old id moved to the new one - the sources, the text
@@ -471,12 +469,11 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
 
-			// Nothing to write: the model is the file, and has no text to go to a key - and the file does not say what an earlier builder gave a picture, which the page
-			// draws no rule for any more and the model shows as the alternative radius: a file that does is written anew by every save, even where nothing else changed
+			// Nothing to write: the model is the file, and has no text to go to a key
 			$disk = Reader::read( $current, $schemas );
 			$disk['file'] = $file;
 
-			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk ) === true && Reader::earlierImage( $current ) === false;
+			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk );
 
 			if( $same === true && $texts === [] )
 				return [ 'status' => 200, 'model' => $disk, 'hash' => hash( 'sha256', $current ) ];
@@ -703,7 +700,7 @@ namespace Nino\Modules\Builder {
 		 *	its picture, so that taking one of the two away leaves the other
 		 *	as it is. The file is read as text and written as text: nothing the
 		 *	Reader does not read is touched, and what it does read stays what it
-		 *	was - the wrap and the head line of the animation of an earlier builder included.
+		 *	was - the wrap included.
 		 *
 		 *	It is made like a save: what is refused is refused before the first
 		 *	change - a name, a file that is there, a key or a slot of the copy

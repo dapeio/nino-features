@@ -61,9 +61,7 @@ namespace Nino\Modules\Builder {
 	 *											say how, through the custom properties of Nino.css that
 	 *											every .nino-vpa below it inherits; every other class is kept
 	 *											as it is. The kernel reads none of it but the classes of the
-	 *											sections. The head line <!-- nino:template-vpa ... -->, which
-	 *											the builder wrote before it had a wrap, is read in its place
-	 *											where the file has no wrap, and is not written any more.
+	 *											sections.
 	 *
 	 *											The shortcode calls are read the way \Nino\Html reads them:
 	 *											the same expression for the call and its content, the same
@@ -155,12 +153,7 @@ namespace Nino\Modules\Builder {
 	 *											    vpaMode     ''|repeat|visible|visible-once
 	 *											    vpaDelay    string                data-vpa-delay, a css time
 	 *											    vpaDuration string                data-vpa-duration
-	 *											    custom      string                every other class of the section - but for the two switches of an earlier builder, which are
-	 *											                                      read as the settings they were and are not written again: nino-section--fullwidth as a full
-	 *											                                      row with no padding at its sides (row, rowPl and rowPr), nino-section--fullheight as no
-	 *											                                      padding above and below the section (pt and pb, where it names no step of its own). The
-	 *											                                      picture of a padded cover goes to the edge with them, as it did with the switches - from
-	 *											                                      768px for the full height
+	 *											    custom      string                every other class of the section
 	 *											  background null|map  slot (string, a text key grammar uri), focus
 	 *											            (int 1..9|null); an image call with alt=""; create (map,
 	 *											            only ever sent by the panel) as that of a component. It stands
@@ -216,9 +209,8 @@ namespace Nino\Modules\Builder {
 	 *											  attributes map    every attribute of the schema, a string each - the
 	 *											                    default where the call does not set it
 	 *											  radius    ''|standard|alternative   only for a component that is a surface (see surface()): the class nino-radius or nino-radius-alt of its call,
-	 *											                    the page's own for ''. The Reader takes the first of the two out of the class attribute - and from a picture what an earlier builder
-	 *											                    gave it, the class nino-image--rounded or the style Rounded, as the alternative where the call names no strength of its own -, the
-	 *											                    Writer puts it back as the first class of the call and writes neither of the earlier two
+	 *											                    the page's own for ''. The Reader takes the first of the two out of the class attribute, the Writer puts it back as the first class
+	 *											                    of the call
 	 *											  content   string  only for a component whose source is 'content' and whose
 	 *											                    schema does not say 'holds'
 	 *											  components list  only for a component whose schema says 'holds' (a container):
@@ -279,10 +271,6 @@ namespace Nino\Modules\Builder {
 		public const array RADIUS = [ 'standard', 'alternative' ];
 		public const array RADIUS_CLASS = [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ];
 		public const array SURFACES = [ 'cover', 'row', 'column', 'card', 'image' ];
-		// What an earlier builder gave a picture, before the page had its two strengths: the class nino-image--rounded, and the style Rounded, an attribute of the
-		// image component that is gone. Both are read as the alternative strength, and neither is written again
-		public const string EARLIER_IMAGE_CLASS = 'nino-image--rounded';
-		public const string EARLIER_IMAGE_STYLE = 'rounded';
 		// Where a component that is a link opens: the target that every component with 'link' has, the second of its two implicit attributes
 		public const array TARGETS = [ '', '_blank' ];
 		public const array TEXT = [ 'left', 'center', 'right' ];
@@ -298,9 +286,6 @@ namespace Nino\Modules\Builder {
 		public const array WIDTHS = [ '25', '33', '50', '66', '75', '100' ];
 		public const array VIEWPORTS = [ 's', 'm', 'l' ];
 		public const array STACK_ALIGN = [ 'start', 'center', 'end' ];
-
-		// One class of the animation the head line of an earlier builder may name: nino-vpa, or nino-vpa-- and what follows
-		private const string VPA_CLASS = '/^nino-vpa(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/D';
 
 		// The class of the wrap that makes it one, and the one that says its sections are animated
 		public const string WRAP = 'nino-wrap';
@@ -462,33 +447,14 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Whether a source still carries what an earlier builder gave a picture: the class nino-image--rounded or the style Rounded. The page
-		 *	draws no rule for either any more and the Reader reads both as the alternative strength, so a save has to write the file anew even where
-		 *	the model says that nothing changed (see Document::save()). It looks at the text and not at the model, and a call that is none of a
-		 *	picture's may make it say yes: the file is then written as the Writer writes it, as it is by any other save
-		 *
-		 *	@param		string		$source				The file
-		 *
-		 *	@return 	bool
-		 */
-		public static function earlierImage( string $source ): bool {
-			return str_contains( $source, self::EARLIER_IMAGE_CLASS ) === true || str_contains( $source, 'style="'. self::EARLIER_IMAGE_STYLE. '"' ) === true;
-		}
-
-		/**
-		 *	The radius out of the class attribute of a call: the first of the two classes of the page, and the rest of the classes as they were.
-		 *	What an earlier builder gave a picture counts as the alternative strength, where the component is a picture and the call names no
-		 *	strength of its own: the class nino-image--rounded, which is not among the classes that are left, and the style Rounded, which
-		 *	_call() has taken out of the attributes. A second class of the kind is a class of its own and stays. A call with none of these
-		 *	keeps its class attribute byte for byte
+		 *	The radius out of the class attribute of a call: the first of the two classes of the page, and the rest of the classes as they were. A
+		 *	second class of the kind is a class of its own and stays. A call with none of them keeps its class attribute byte for byte
 		 *
 		 *	@param		string		$class				The class attribute of the call
-		 *	@param		bool			$picture			Whether the component is a picture, whose earlier class is read
-		 *	@param		bool			$rounded			Whether the call had the earlier style of a picture
 		 *
 		 *	@return 	array											[ '' or a value of RADIUS, the classes that are left ]
 		 */
-		private static function _radius( string $class, bool $picture, bool $rounded = false ): array {
+		private static function _radius( string $class ): array {
 
 			$word		= '';
 			$rest		= [];
@@ -499,14 +465,9 @@ namespace Nino\Modules\Builder {
 
 				if( $read !== false && $word === '' )
 					$word = (string) $read;
-				elseif( $picture === true && $token === self::EARLIER_IMAGE_CLASS )
-					$rounded = true;
 				else
 					$rest[] = $token;
 			}
-
-			if( $word === '' && $rounded === true )
-				$word = self::RADIUS[1];
 
 			return $word === '' ? [ '', $class ] : [ $word, implode( ' ', $rest ) ];
 		}
@@ -541,21 +502,10 @@ namespace Nino\Modules\Builder {
 
 			$model	= [ 'file' => '', 'name' => '' ] + self::wrapDefaults() + [ 'header' => '', 'footer' => '', 'blocks' => [] ];
 			$pos		= 0;
-			$line		= false;
 
 			if( preg_match( '~\G\s*<!--[\t ]*nino:template-name[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
 				$model['name'] = $match[1];
 				$pos += strlen( $match[0] );
-			}
-
-			// What the animation of a new section was before the wrap, for the builder alone: the kernel reads the classes of the sections
-			if( preg_match( '~\G\s*<!--[\t ]*nino:template-vpa[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
-
-				$line = self::_vpaClasses( $match[1] );
-
-				// A line that says something else is no head line: it stays where it is, with the block that follows
-				if( $line !== false )
-					$pos += strlen( $match[0] );
 			}
 
 			if( preg_match( '~\G\s*\[template /templates/(html-header(?:-[a-z0-9]+)*)\][\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
@@ -570,7 +520,7 @@ namespace Nino\Modules\Builder {
 				$end = $match[0][1];
 			}
 
-			// The wrap says in its classes what the head line said: where the file has one, the line is not looked at
+			// The wrap, where the file has one: its classes are the animation of the template, and the blocks are what stands inside it
 			$wrap = self::_wrap( $source, $pos, $end );
 
 			if( $wrap !== null ) {
@@ -578,8 +528,6 @@ namespace Nino\Modules\Builder {
 				$pos		= $wrap['from'];
 				$end		= $wrap['to'];
 			}
-			elseif( $line !== false )
-				$model = array_replace( $model, self::_headSettings( $line ) );
 
 			$body		= substr( $source, 0, $end );
 			$ids		= [];
@@ -1100,7 +1048,6 @@ namespace Nino\Modules\Builder {
 			$padded		= [];
 			$radii		= [];
 			$places	= [];
-			$earlier	= [];
 			$default	= $s;
 
 			// A second modifier of a kind that has one place is a class of its
@@ -1118,10 +1065,7 @@ namespace Nino\Modules\Builder {
 				if( $token === 'nino-section' )
 					continue;
 
-				// The two switches of an earlier builder, read below as the settings they were
-				if( preg_match( '/^nino-section--(fullwidth|fullheight)$/D', $token, $m ) === 1 )
-					$earlier[$m[1]] = true;
-				elseif( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 )
+				if( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 )
 					$set( 'color', $m[1], $token );
 				elseif( preg_match( '/^nino-section--border-(1|2|3)$/D', $token, $m ) === 1 )
 					$set( 'border', $m[1], $token );
@@ -1152,24 +1096,6 @@ namespace Nino\Modules\Builder {
 				elseif( self::_animation( $token, $s ) === false )
 					$custom[] = $token;
 			}
-
-			// Full width did what a row without a maximum width and without padding at its sides does, and its rules of Nino.css beat the width
-			// and the sides the row names itself: the row is full, with no padding there. A width the row names as well is a custom class of it
-			// that --full outranks by its place in Nino.css, as the switch did; a step of a side it names as well is one too and outranks the 0
-			// by its place, where the switch beat it - a file that says both was written by hand. A padded cover has its picture at the edge
-			// with such a row, as with the switch: Nino.css takes the frame away with a row at both edges
-			// Full height was the section's own padding above and below, 0: where the section names a step of its own the step stands, as the
-			// utility that came after the switch in Nino.css did. A padded cover has its picture at the edge with a section that has none, from
-			// 768px, as with the switch. Neither class is written again; a file that is never saved again keeps them
-			if( isset( $earlier['fullwidth'] ) === true ) {
-				$s['row']		= 'full';
-				$s['rowPl']	= '0';
-				$s['rowPr']	= '0';
-			}
-
-			foreach( isset( $earlier['fullheight'] ) === true ? [ 'pt', 'pb' ] : [] as $side )
-				if( $s[$side] === '' )
-					$s[$side] = '0';
 
 			// The place of the content is the row's in a cover or a parallax: on a section that is neither the Builder writes none,
 			// and one that is there is kept as a custom class (the kernel reads it on a section with a background picture too)
@@ -1424,70 +1350,6 @@ namespace Nino\Modules\Builder {
 				elseif( preg_match( '/^nino-vpa--speed-(fast|medium|slow)$/D', $token, $m ) === 1 && $s['vpaSpeed'] === '' )
 					$s['vpaSpeed'] = $m[1];
 				else
-					$custom[] = $token;
-			}
-
-			$s['wrapClass'] = implode( ' ', $custom );
-
-			return $s;
-		}
-
-		/**
-		 *	What the animation line of the head says, the one a builder that had no
-		 *	wrap yet wrote: off, or the classes of the animation a new section was given
-		 *
-		 *	@param		string		$value				The line without its comment markers and the spaces around
-		 *
-		 *	@return 	string|false|null					null for off, the classes as they are written, false for a line that says neither
-		 */
-		private static function _vpaClasses( string $value ): string|false|null {
-
-			if( $value === 'off' )
-				return null;
-
-			if( $value !== trim( $value, "\t " ) )
-				return false;
-
-			$classes = preg_split( '/[\t ]+/', $value, -1, PREG_SPLIT_NO_EMPTY ) ?: [];
-
-			foreach( $classes as $class )
-				if( preg_match( self::VPA_CLASS, $class ) !== 1 )
-					return false;
-
-			return $classes === [] ? false : $value;
-		}
-
-		/**
-		 *	What the head line of an earlier builder says as the wrap says it: off is
-		 *	no animation, any class of it is one - the effect, the strength and the
-		 *	speed are the wrap's, the mode is dropped, since a mode is no property
-		 *	that is inherited, and a class of nino-vpa-- the builder does not know
-		 *	stays as a class of the wrap
-		 *
-		 *	@param		string|null	$classes			What _vpaClasses() read, null for off
-		 *
-		 *	@return 	array										animate, vpa, vpaSpeed, wrapClass
-		 */
-		private static function _headSettings( ?string $classes ): array {
-
-			$s = self::wrapDefaults();
-
-			if( $classes === null )
-				return $s;
-
-			$s['animate']	= true;
-			$custom				= [];
-
-			foreach( preg_split( '/[\t ]+/', $classes, -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token ) {
-
-				if( $token === 'nino-vpa' || preg_match( '/^nino-vpa--(.+)$/D', $token, $m ) !== 1 )
-					continue;
-
-				if( in_array( $m[1], self::EFFECTS, true ) === true && $s['vpa'] === '' )
-					$s['vpa'] = $m[1];
-				elseif( preg_match( '/^speed-(fast|medium|slow)$/D', $m[1], $speed ) === 1 && $s['vpaSpeed'] === '' )
-					$s['vpaSpeed'] = $speed[1];
-				elseif( in_array( $m[1], self::MODES, true ) === false )
 					$custom[] = $token;
 			}
 
@@ -1800,12 +1662,6 @@ namespace Nino\Modules\Builder {
 			$components = (array) ( $registry['components'] ?? [] );
 			$surface = $isStack === true ? '' : self::surface( $schema, $components );
 
-			// The style an earlier builder gave a picture is an attribute the schema has no more: it is the radius, and no attribute of the node
-			$rounded = $surface === 'image' && ( $named['style'] ?? null ) === self::EARLIER_IMAGE_STYLE && array_key_exists( 'style', self::defaults( $schema ) ) === false;
-
-			if( $rounded === true )
-				unset( $named['style'] );
-
 			$node = [
 				'name'				=> $name,
 				'source'			=> $positional[0] ?? '',
@@ -1814,7 +1670,7 @@ namespace Nino\Modules\Builder {
 			];
 
 			if( $surface !== '' )
-				[ $node['radius'], $node['attributes']['class'] ] = self::_radius( (string) ( $node['attributes']['class'] ?? '' ), $surface === 'image', $rounded );
+				[ $node['radius'], $node['attributes']['class'] ] = self::_radius( (string) ( $node['attributes']['class'] ?? '' ) );
 
 			if( $isStack === true ) {
 
