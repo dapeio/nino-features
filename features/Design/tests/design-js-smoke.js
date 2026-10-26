@@ -63,7 +63,11 @@
  *												screen says off the controls that are drawn, after every
  *												kind of change it allows - a knob moved, another template
  *												chosen, a font changed, another tab opened. The words of
- *												the steps are read off the buttons that are drawn.
+ *												the steps are read off the buttons that are drawn, and every
+ *												other word the screen says is compared with the text file's
+ *												own, read by its key: a word the owner changes turns no
+ *												check red, and a literal stands only where the suite itself
+ *												put the word into the stand-in's answer.
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the other feature tests build, so this runs with
@@ -532,9 +536,9 @@ function listing( over ) {
 		fonts 		: fonts,
 		families 	: {
 			'open-sans' 		: { name : 'Open Sans', category : 'sans', system : false },
-			'system-sans' 		: { name : 'System sans-serif', category : 'sans', system : true },
-			'system-serif' 		: { name : 'System serif', category : 'serif', system : true },
-			'system-mono' 		: { name : 'System monospace', category : 'mono', system : true },
+			'system-sans' 		: { name : familyWord('system-sans'), category : 'sans', system : true },
+			'system-serif' 		: { name : familyWord('system-serif'), category : 'serif', system : true },
+			'system-mono' 		: { name : familyWord('system-mono'), category : 'mono', system : true },
 		},
 		options 	: {
 			title 		: [ '', 'open-sans', 'system-sans', 'system-serif', 'system-mono' ],
@@ -548,8 +552,8 @@ function listing( over ) {
 		inherited : { title : '1.6', subtitle : '1.125', text : '1', button : '1', code : '0.875' },
 		colours		: { primary : '#4faae8', secondary : '', mode : 'auto' },
 		palette		: {
-			harmony			: { kind : 'choice', 'default' : 1, steps : [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ] },
-			temperature	: { kind : 'choice', 'default' : 3, steps : [ 'Neutral', 'Cool', 'Brand', 'Warm' ] },
+			harmony			: { kind : 'choice', 'default' : 1, steps : colourStepWords( 'harmony', 4 ) },
+			temperature	: { kind : 'choice', 'default' : 3, steps : colourStepWords( 'temperature', 4 ) },
 			saturation	: { kind : 'scale', 'default' : 3, steps : 5 },
 			contrast		: { kind : 'scale', 'default' : 3, steps : 5 },
 			depth				: { kind : 'scale', 'default' : 3, steps : 5 },
@@ -679,7 +683,7 @@ function panel( over, shell ) {
 	head.className = 'admin-panel-head';
 	const title = element('h2');
 	title.className = 'admin-panel-title';
-	title.textContent = 'Design';
+	title.textContent = TEXT['/_admin/nav/design'];
 	const actions = element('div');
 	actions.className = 'admin-panel-actions';
 	head.appendChild( title );
@@ -1228,6 +1232,27 @@ function objectWord( object ) { return TEXT['/_admin/design/object/'+ object+ '/
 function knobWord( part, knob ) { return TEXT['/_admin/design/knob/'+ part+ '/'+ knob+ '/label'] }
 
 /**
+ *	The words of the rest of what the screen says, read the same way: the chip's word for a state of the files, the name of a font role and of a
+ *	column of the table of the roles, of a family the feature brings and of a weight, and the name of a colour knob with the words of its positions
+ */
+function shortWord( state ) { return TEXT['/_admin/design/state/short/'+ state] }
+function roleWord( role ) { return TEXT['/_admin/design/font/role/'+ role] }
+function columnWord( column ) { return TEXT['/_admin/design/font/head/'+ column] }
+function familyWord( slug ) { return TEXT['/_admin/design/family/'+ slug] }
+function weightWord( weight ) { return TEXT['/_admin/design/weight/'+ weight] }
+function colourWord( knob ) { return TEXT['/_admin/design/colour/'+ knob+ '/label'] }
+function colourStepWords( knob, count ) {
+
+	const words = [];
+
+	for( let position = 1; position <= count; position++ )
+		words.push( TEXT['/_admin/design/colour/'+ knob+ '/'+ position] );
+
+	return words;
+}
+function colourSteps( knob, count ) { return colourStepWords( knob, count ).join() }
+
+/**
  *	What the table gives a tab, as the screen is to draw it, counted from the table design/list handed over and from nothing else: for each
  *	object that has a control on the tab - the templates' none first, then the objects in the order the table names them - the controls of it in
  *	the order of their places, each as the keys that stand at that place, joined by a space
@@ -1389,6 +1414,11 @@ function controlOf( screen, key ) {
 /** Press the button of a strip that holds a value, the strip found by the key the table has the control under - a knob of one object is told from the knob of another that goes by the same name */
 function pressKey( screen, key, value ) {
 	byTag( controlOf( screen, key ), 'button' ).filter( function( button ) { return button.dataset.value === String( value ) } ).forEach( function( button ) { button.fire('click') } );
+}
+
+/** What the buttons of a strip say is pressed, in order, the strip found by the key the table has the control under - where knobs of two objects go by the same label, as the space of a section and of a card do, the label does not tell them apart */
+function pressedKey( screen, key ) {
+	return byTag( controlOf( screen, key ), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join();
 }
 
 /** The smallest change of the selection: the title of the hero a step up, on the Type tab - which is opened for it */
@@ -1568,8 +1598,7 @@ check( 'the column holds the box the open tab fills and nothing over it: no card
 	controls.children.length === 1 && controls.children[0] === column.body()
 	&& column.byId('design-state') === null && byClass( column.form, 'design-state' ).length === 0 && byClass( controls, 'design-eyebrow' ).length === 0 );
 check( '...the one eyebrow the screen has is the preview\'s, over the title of the frame',
-	byClass( column.form, 'design-eyebrow' ).length === 1 && byClass( previewBox, 'design-eyebrow' )[0].textContent === TEXT['/_admin/design/preview/eyebrow']
-	&& byClass( previewBox, 'design-eyebrow' )[0].textContent === 'This selection' );
+	byClass( column.form, 'design-eyebrow' ).length === 1 && byClass( previewBox, 'design-eyebrow' )[0].textContent === TEXT['/_admin/design/preview/eyebrow'] );
 check( 'the frame stands in the preview and nothing stands under it: no summary - not the list of what the tab chose, not a row for the state of the files - anywhere on the screen',
 	column.byId('design-frame') !== null && column.byId('design-summary') === null && byClass( column.form, 'design-summary' ).length === 0
 	&& byClass( column.form, 'design-summary-row' ).length === 0
@@ -1629,14 +1658,14 @@ check( '...and nothing stands under the bar: the line that told what the two but
 const stateWord = function( over ) { const screen = panel( over ); return [ screen.chip().textContent, screen.chip().dataset.state ] };
 const foreignFiles = [ { target : '/assets/theme.css', exists : true, state : 'foreign' }, { target : '/templates/frame-header.tpl', exists : true, state : 'ours' }, { target : '/templates/frame-footer.tpl', exists : true, state : 'ours' } ];
 
-check( 'the chip says the state of the files in one word: up to date while the file answers to the selection',
-	column.chip().textContent === 'Up to date' && column.chip().dataset.state === 'current' && column.design._stateKey() === 'current' );
+check( 'the chip says the state of the files in one word - the word of its key - while the file answers to the selection',
+	column.chip().textContent === shortWord('current') && column.chip().dataset.state === 'current' && column.design._stateKey() === 'current' );
 check( '...saved and not applied once the file does not, a file Design did not write named as such, and a file never applied as that',
-	JSON.stringify( stateWord( { current : false } ) ) === JSON.stringify( [ 'Saved, not applied', 'drifted' ] )
-	&& JSON.stringify( stateWord( { files : foreignFiles } ) ) === JSON.stringify( [ 'Not written by Design', 'foreign' ] )
-	&& JSON.stringify( stateWord( { exists : false, compiled : '', current : false } ) ) === JSON.stringify( [ 'Never applied', 'missing' ] ) );
+	JSON.stringify( stateWord( { current : false } ) ) === JSON.stringify( [ shortWord('drifted'), 'drifted' ] )
+	&& JSON.stringify( stateWord( { files : foreignFiles } ) ) === JSON.stringify( [ shortWord('foreign'), 'foreign' ] )
+	&& JSON.stringify( stateWord( { exists : false, compiled : '', current : false } ) ) === JSON.stringify( [ shortWord('missing'), 'missing' ] ) );
 check( '...and its title says what the word is about, the applied file - the label the last row of the summary had',
-	column.chip().title === TEXT['/_admin/design/label/state']+ ': Up to date' && column.chip().title === 'Applied file: Up to date' );
+	column.chip().title === TEXT['/_admin/design/label/state']+ ': '+ shortWord('current') );
 
 /*	The line is one line: cut where the bar has no more room for it, so the whole of it is its title	*/
 const saying = panel();
@@ -1657,14 +1686,14 @@ check( '...and there is nothing to say it to where the screen has no line',
 const steady = panel();
 const steadyLine = steady.line();
 const steadyChip = steady.chip();
-steady.design._say( steady.line(), 'Draft saved.' );
+steady.design._say( steady.line(), TEXT['/_admin/design/msg/saved'] );
 [ 'type', 'surfaces', 'colours', 'templates' ].forEach( function( key ) { steady.tab( tabWord( key ) ) } );
 steady.tab( tabWord('type') );
-steady.move( knobWord( 'content', 'hero-title' ), 1 );
+pressKey( steady, 'knobs/content/hero-title', 1 );
 
 check( 'a tab that is opened and a knob that is moved change nothing of them: the same line with the same words, the same chip with its word',
-	steady.line() === steadyLine && steady.chip() === steadyChip && steady.line().textContent === 'Draft saved.' && steady.line().title === 'Draft saved.'
-	&& steady.chip().textContent === 'Up to date' && steady.chip().dataset.state === 'current' );
+	steady.line() === steadyLine && steady.chip() === steadyChip && steady.line().textContent === TEXT['/_admin/design/msg/saved'] && steady.line().title === TEXT['/_admin/design/msg/saved']
+	&& steady.chip().textContent === shortWord('current') && steady.chip().dataset.state === 'current' );
 
 const told = panel( { notes : [ 'there is no part "nowhere" - dropped' ] } );
 
@@ -1936,8 +1965,8 @@ check( 'after a change in a block, and the block closed, its head names the cont
 toggle( acCard('card') );
 
 check( '...and an open block says nothing: the line is empty again while the controls themselves stand in view, on the positions they were moved to',
-	acLine('card') === '' && byClass( acCard('card'), 'design-accordion-summary' )[0].title === '' && ac.pressed( knobWord( 'content', 'border' ) ) === 'false,false,false,true,false'
-	&& ac.pressed( knobWord( 'content', 'shadow' ) ) === 'true,false,false,false,false' );
+	acLine('card') === '' && byClass( acCard('card'), 'design-accordion-summary' )[0].title === '' && pressedKey( ac, acBorderKey ) === 'false,false,false,true,false'
+	&& pressedKey( ac, acShadowKey ) === 'true,false,false,false,false' );
 
 // The other kinds of control: a choice - in its words -, a strip of the page, the corners that are one choice for the cover, the row and the column of a section
 pressKey( ac, 'knobs/components/zebra', 1 );
@@ -2014,9 +2043,11 @@ choose( acGrey.byId('design-set-content'), 'first' );
 acGrey.design._edit.knobs.content.shadow = 2;
 acGrey.show( 'surfaces' );
 
-check( 'a knob that is greyed out is never named in a head, whatever position the model holds for it: the card names the border and not the shadow the template does not answer to - which the template that answers to it has named as it should',
-	acGreyOff === true && acGreyLine === acGreyBorder && acGreyLine.indexOf( knobWord( 'content', 'shadow' ) ) === -1
-	&& byClass( acGrey.byId('design-row-surfaces-card'), 'design-accordion-summary' )[0].textContent.indexOf( knobWord( 'content', 'shadow' ) ) !== -1 );
+const acGreyNamedLine = byClass( acGrey.byId('design-row-surfaces-card'), 'design-accordion-summary' )[0].textContent;
+const acGreyShadow = acSays( knobWord( 'content', 'shadow' ), controlOf( acGrey, 'knobs/content/shadow' ), 2 );
+
+check( 'a knob that is greyed out is never named in a head, whatever position the model holds for it: the card names the border and not the shadow the template does not answer to - which the template that answers to it has named as it should, after the border',
+	acGreyOff === true && acGreyLine === acGreyBorder && acGreyNamedLine === acGreyBorder+ acSeparator+ acGreyShadow );
 
 // The block that is open on a tab is kept for it while the panel lives: another tab is shown, and the tab is shown again
 const acKeep = panel();
@@ -2233,7 +2264,7 @@ check( 'a scale is five numbers and a choice the three words of the knob, each c
 	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && choiceRows > 0 && wordProblems.length === 0 );
 check( '...the two choices stand at their middle word to begin with, the second of the three buttons lit',
 	CHOICE_WORDS['components/zebra'].split(',').length === 3 && CHOICE_WORDS['components/labels'].split(',').length === 3
-	&& ( function() { worded.show('surfaces'); return worded.pressed( knobWord( 'components', 'zebra' ) ) === 'false,true,false' && worded.pressed( knobWord( 'components', 'labels' ) ) === 'false,true,false' } )() );
+	&& ( function() { worded.show('surfaces'); return pressedKey( worded, 'knobs/components/zebra' ) === 'false,true,false' && pressedKey( worded, 'knobs/components/labels' ) === 'false,true,false' } )() );
 
 const moved = listing().knobs;
 moved.content.shadow = 1;
@@ -2260,7 +2291,7 @@ check( '...and those of Surfaces the rows of the space, the lines and the shadow
 	&& knobRows( kn ).every( function( row ) { return knLayout.controls[ row.dataset.control ][1] === cardOf( row ).dataset.object } ) );
 
 const knHeroPressed = ( kn.tab( tabWord('type') ), kn.pressed( heroTitle ) );
-const knShadowPressed = ( kn.tab( tabWord('surfaces') ), kn.pressed( knobWord( 'content', 'shadow' ) ) );
+const knShadowPressed = ( kn.tab( tabWord('surfaces') ), pressedKey( kn, 'knobs/content/shadow' ) );
 
 check( '...a group of buttons, not a tablist - the one it stands at is pressed and the others are not: the middle for a knob nobody moved, the +1 the shadow stands at',
 	knobRows( kn ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
@@ -2291,11 +2322,15 @@ const knLit = { type : knobLit( kn ), surfaces : ( kn.tab( tabWord('surfaces') )
 check( 'the rows say, for every knob the template answers to, the number of the position it stands at - read off the button that is lit, row after row in the order of the table, on Type and on Surfaces, with nothing under the frame to say it again',
 	JSON.stringify( knLit.type ) === JSON.stringify( knobWords( knLayout, 'type', kn.design._edit.knobs ) ) && JSON.stringify( knLit.surfaces ) === JSON.stringify( knobWords( knLayout, 'surfaces', kn.design._edit.knobs ) )
 	&& knLit.type.length + knLit.surfaces.length === knobKeys.length && kn.byId('design-summary') === null );
-const knWord = function( label ) { return knLit.type.concat( knLit.surfaces ).filter( function( word ) { return word[0] === label } ).map( function( word ) { return word[1] } ).join() };
+// The lines of knLit are in the order of the table, and a label may stand for two knobs: a word is found by the key of its knob
+const knKeys = [ 'type', 'surfaces' ].reduce( function( keys, tab ) {
+	return keys.concat( [].concat.apply( [], tableRows( knLayout, tab ).map( function( row ) { return row.controls.map( function( control ) { return control.split(' ')[0] } ) } ) ).filter( function( key ) { return key.indexOf('knobs/') === 0 } ) );
+}, [] );
+const knWord = function( key ) { return knLit.type.concat( knLit.surfaces )[ knKeys.indexOf( key ) ][1] };
 
 check( '...in numbers: −2 for the title of the hero, +2 for its text, −1 for the corners of the buttons, +1 for the shadow of a card and 0 for the knobs nobody moved - the middle word for the two choices',
-	knWord( heroTitle ) === '−2' && knWord( heroText ) === '+2' && knWord( knobWord( 'buttons', 'corners' ) ) === '−1' && knWord( knobWord( 'content', 'shadow' ) ) === '+1'
-	&& knLit.type.concat( knLit.surfaces ).filter( function( word ) { return [ heroTitle, heroText, knobWord( 'buttons', 'corners' ), knobWord( 'content', 'shadow' ) ].indexOf( word[0] ) === -1 } )
+	knWord('knobs/content/hero-title') === '−2' && knWord('knobs/content/hero-text') === '+2' && knWord('knobs/buttons/corners') === '−1' && knWord('knobs/content/shadow') === '+1'
+	&& knLit.type.concat( knLit.surfaces ).filter( function( word, at ) { return [ 'knobs/content/hero-title', 'knobs/content/hero-text', 'knobs/buttons/corners', 'knobs/content/shadow' ].indexOf( knKeys[at] ) === -1 } )
 		.every( function( word ) { return word[1] === '0' || word[1] === TEXT['/_admin/design/knob/components/zebra/default'] || word[1] === TEXT['/_admin/design/knob/components/labels/default'] } ) );
 
 /*	Another template brings its own knobs, and the ones the last one had are
@@ -2333,7 +2368,7 @@ check( '...and the line under its name says whose decision that is, in place of 
 	( byTag( knShadowRow, 'small' )[0] || {} ).textContent === say( '/_admin/design/hint/unanswered', knobWord( 'content', 'shadow' ) )
 	&& ( byTag( controlOf( kn, 'knobs/content/border' ), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/border/note'] );
 check( 'a row that is greyed out says no position, since it compiles nothing: every other knob of the tab has a button that is lit, and the shadow is not one of them',
-	knobLit( kn ).length === knobWords( knLayout, 'surfaces', kn.design._edit.knobs ).length - 1 && knobLit( kn ).every( function( row ) { return row[0] !== knobWord( 'content', 'shadow' ) } ) );
+	knobLit( kn ).length === knobWords( knLayout, 'surfaces', kn.design._edit.knobs ).length - 1 && offRows( kn ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/content/shadow' );
 
 kn.tab( tabWord('templates') );
 choose( kn.byId('design-set-content'), 'first' );
@@ -2341,7 +2376,7 @@ kn.tab( tabWord('surfaces') );
 
 check( 'choosing the template that has it again takes the grey away, with the knob in the middle',
 	offRows( kn ).length === 0 && kn.design._edit.knobs.content.shadow === 0
-	&& kn.pressed( knobWord( 'content', 'shadow' ) ) === 'false,false,true,false,false' );
+	&& pressedKey( kn, 'knobs/content/shadow' ) === 'false,false,true,false,false' );
 
 // The buttons' own template leaves the corners to the template: the position the stored setup cannot have had
 check( 'the buttons\' template Square leaves the corners out, which the stored position cannot have been: its row is the one grey row of Surfaces, once that template is chosen',
@@ -2715,10 +2750,10 @@ const fontRows = byTag( table, 'tbody' )[0] ? byTag( byTag( table, 'tbody' )[0],
 
 check( 'the Page card of Type holds one table of the roles, said to be one: a header of four columns over five rows, one for each role of Nino.css',
 	tabOf( fonts ) === 'type' && cardOf( table ).dataset.object === 'page' && cardOf( table ).dataset.tab === 'type' && table.getAttribute('role') === 'table'
-	&& byTag( byTag( table, 'thead' )[0], 'th' ).map( function( th ) { return th.textContent } ).join() === ',Family,Weight,Uppercase,Size'
+	&& byTag( byTag( table, 'thead' )[0], 'th' ).map( function( th ) { return th.textContent } ).join() === ','+ [ 'family', 'weight', 'uppercase', 'size' ].map( columnWord ).join()
 	&& byTag( byTag( table, 'thead' )[0], 'th' ).every( function( th ) { return th.getAttribute('role') === 'columnheader' } )
 	&& fontRows.map( function( row ) { return row.dataset.role } ).join() === 'title,subtitle,text,button,code'
-	&& fontRows.map( function( row ) { return byTag( row, 'th' )[0].textContent } ).join() === 'Title,Subtitle,Text,Buttons,Code'
+	&& fontRows.map( function( row ) { return byTag( row, 'th' )[0].textContent } ).join() === [ 'title', 'subtitle', 'text', 'button', 'code' ].map( roleWord ).join()
 	&& fontRows.every( function( row ) { return row.getAttribute('role') === 'row' && byTag( row, 'th' )[0].getAttribute('role') === 'rowheader' } ) );
 
 const family = function( role ) { return fonts.byId('design-font-'+ role+ '-family') };
@@ -2726,13 +2761,13 @@ const weight = function( role ) { return fonts.byId('design-font-'+ role+ '-weig
 const size = function( role ) { return fonts.byId('design-font-'+ role+ '-size') };
 
 check( 'a family is a select of what the role may be given: the system\'s own first, a webface by its name, a system stack in the words of the panel',
-	JSON.stringify( offered( family('title') ) ) === JSON.stringify( [ [ '', 'System (default)' ], [ 'open-sans', 'Open Sans' ],
-		[ 'system-sans', 'System sans-serif' ], [ 'system-serif', 'System serif' ], [ 'system-mono', 'System monospace' ] ] )
+	JSON.stringify( offered( family('title') ) ) === JSON.stringify( [ [ '', familyWord('default') ], [ 'open-sans', 'Open Sans' ],
+		[ 'system-sans', familyWord('system-sans') ], [ 'system-serif', familyWord('system-serif') ], [ 'system-mono', familyWord('system-mono') ] ] )
 	&& shown( family('title') ) === 'open-sans' && shown( family('text') ) === 'open-sans' );
 check( '...the code is offered the system\'s monospace and nothing else, by its own name',
-	JSON.stringify( offered( family('code') ) ) === JSON.stringify( [ [ '', 'System monospace' ] ] ) && shown( family('code') ) === '' );
+	JSON.stringify( offered( family('code') ) ) === JSON.stringify( [ [ '', familyWord('default-code') ] ] ) && shown( family('code') ) === '' );
 check( 'a weight is one of three words',
-	JSON.stringify( offered( weight('title') ) ) === JSON.stringify( [ [ 'light', 'Light' ], [ 'normal', 'Normal' ], [ 'bold', 'Bold' ] ] ) && shown( weight('title') ) === 'bold' && shown( weight('code') ) === 'normal' );
+	JSON.stringify( offered( weight('title') ) ) === JSON.stringify( [ [ 'light', weightWord('light') ], [ 'normal', weightWord('normal') ], [ 'bold', weightWord('bold') ] ] ) && shown( weight('title') ) === 'bold' && shown( weight('code') ) === 'normal' );
 check( 'a size is typed and not picked: a number field in each row, stepping by a tenth, with the limits of the role',
 	fontRows.every( function( row ) {
 		const input = size( row.dataset.role );
@@ -2749,12 +2784,12 @@ check( '...and the unit stands after it as a small word of its own, in the same 
 	fontRows.every( function( row ) {
 		const cell = size( row.dataset.role ).parent;
 		const unit = byClass( cell, 'design-fonts-unit' )[0];
-		return cell.tagName === 'TD' && hasClass( cell, 'design-fonts-size' ) && unit !== undefined && unit.textContent === 'rem'
+		return cell.tagName === 'TD' && hasClass( cell, 'design-fonts-size' ) && unit !== undefined && unit.textContent === TEXT['/_admin/design/fontsize/unit']
 			&& cell.children.indexOf( unit ) === cell.children.indexOf( size( row.dataset.role ) ) + 1;
 	} ) );
 check( '...every control names itself by its role and its column, since the cells carry no words',
-	weight('title').getAttribute('aria-label') === 'Title - Weight' && family('code').getAttribute('aria-label') === 'Code - Family'
-	&& size('button').getAttribute('aria-label') === 'Buttons - Size' );
+	weight('title').getAttribute('aria-label') === roleWord('title')+ ' - '+ columnWord('weight') && family('code').getAttribute('aria-label') === roleWord('code')+ ' - '+ columnWord('family')
+	&& size('button').getAttribute('aria-label') === roleWord('button')+ ' - '+ columnWord('size') );
 check( 'the case is a switch for the four roles of running text, off to begin with - and the code has none, a dash in its place',
 	[ 'title', 'subtitle', 'text', 'button' ].every( function( role ) { return fonts.byId('design-font-'+ role+ '-uppercase') !== null && fonts.byId('design-font-'+ role+ '-uppercase').checked === false } )
 	&& fonts.byId('design-font-code-uppercase') === null && byClass( fontRows[4], 'design-fonts-none' )[0].textContent === '—' );
@@ -2787,7 +2822,10 @@ check( 'the table drawn again shows each role as it was set, in words: the famil
 		const upperCase = fonts.byId('design-font-'+ role+ '-uppercase');
 		return [ wordOf( family( role ) ), wordOf( weight( role ) ), upperCase === null ? null : upperCase.checked, size( role ).value ].join(', ');
 	} ).join(' | ')
-		=== 'System serif, Light, true, 2.4 | System (default), Normal, false, 1.125 | Open Sans, Normal, false, 1 | Open Sans, Bold, false, 1 | System monospace, Normal, , 0.875'
+		=== [
+			[ familyWord('system-serif'), weightWord('light'), true, '2.4' ], [ familyWord('default'), weightWord('normal'), false, '1.125' ],
+			[ 'Open Sans', weightWord('normal'), false, '1' ], [ 'Open Sans', weightWord('bold'), false, '1' ], [ familyWord('default-code'), weightWord('normal'), null, '0.875' ],
+		].map( function( cells ) { return cells.join(', ') } ).join(' | ')
 	&& fonts.byId('design-summary') === null );
 
 fonts.design._previewNow();
@@ -3060,7 +3098,7 @@ function listingOf( installed ) {
 
 /** When the list of these tests was loaded, and what the panel makes of it */
 const LOADED_AT = 1791806400;
-const LOADED_WORDS = 'loaded 2026-10-12 12:00 UTC';
+const LOADED_WORDS = say( '/_admin/design/typefaces/available/loaded', '2026-10-12 12:00' );
 
 const installedCard = function( screen ) { return screen.byId('design-faces-installed') };
 const availableCard = function( screen ) { return screen.byId('design-faces-available') };
@@ -3075,6 +3113,11 @@ const faceButton = function( row ) { return byTag( row, 'button' )[0] || null };
 // What the button of a row says, and a word that no button says where there is none: a row that lost its button fails a check and does not end the run
 const faceWord = function( row ) { return faceButton( row ) === null ? '(no button)' : faceButton( row ).textContent };
 const faceRowOf = function( card, slug ) { return faceRows( card ).filter( function( row ) { return row.dataset.slug === slug } )[0] || null };
+
+// What the buttons of a row say - install, which is update where the list has another version, and remove - and the line that names the roles which use a family: the words of the panel
+const INSTALL = TEXT['/_admin/design/typefaces/available/install'];
+const REMOVE = TEXT['/_admin/design/typefaces/installed/remove'];
+const usedBy = function( roles ) { return say( '/_admin/design/typefaces/installed/used', roles.map( roleWord ).join(', ') ) };
 
 /** The buttons of the tab that do something to a family or to the list: install, update, remove and load */
 const faceActions = function( screen ) {
@@ -3095,7 +3138,7 @@ check( 'opening the screen asks for the list the server kept and not for the rep
 	shelves.requests.length === 1 && shelves.requests[0].endpoint === 'webfonts/list' && JSON.stringify( shelves.requests[0].payload ) === '{"refresh":false}' );
 check( '...and until it is answered the first card is its title and the second its title and the button that loads the list - no search field, no row',
 	installedCard( shelves ).children.length === 1 && availableCard( shelves ).children.length === 2
-	&& shelves.byId('design-faces-load') !== null && shelves.byId('design-faces-load').textContent === 'Load available typefaces' && shelves.byId('design-faces-load').disabled === false
+	&& shelves.byId('design-faces-load') !== null && shelves.byId('design-faces-load').textContent === TEXT['/_admin/design/typefaces/available/load'] && shelves.byId('design-faces-load').disabled === false
 	&& shelves.byId('design-faces-search') === null && faceRows( shelves.body() ).length === 0 );
 
 shelves.answer( 200, shelfOf() );
@@ -3217,13 +3260,13 @@ check( 'a list that names no typeface says so, with the time it was loaded besid
 	JSON.stringify( hints( availableCard( shelves ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/none'] ] )
 	&& byClass( availableCard( shelves ), 'design-faces-when' ).map( function( when ) { return when.textContent } ).join() === LOADED_WORDS
 	&& byClass( availableCard( shelves ), 'design-faces-when' )[0].title === 'https://webfonts.test/webfonts.json'
-	&& shelves.line().textContent === 'The list of typefaces is loaded (0 available).' && shelves.line().className === '' && shelves.byId('design-faces-search') === null );
+	&& shelves.line().textContent === say( '/_admin/design/typefaces/msg/loaded', 0 ) && shelves.line().className === '' && shelves.byId('design-faces-search') === null );
 
 shelves.byId('design-faces-load').fire('click');
 shelves.answer( 500, null );
 
 check( 'a request that fails says so in the line of the bar, and the screen stays as it was',
-	shelves.line().textContent === '(500) The list of typefaces could not be loaded.' && shelves.line().className === 'nino-admin-error'
+	shelves.line().textContent === '(500) '+ TEXT['/_admin/design/typefaces/error/list'] && shelves.line().className === 'nino-admin-error'
 	&& shelves.byId('design-faces-load').disabled === false && hints( availableCard( shelves ) ).length === 1 );
 
 // ---- A list of thirty over two pages
@@ -3244,10 +3287,11 @@ const results = function( screen ) { return ( screen || shelves ).byId('design-f
 const pager = function( screen ) { return byClass( availableCard( screen || shelves ), 'design-faces-pager' )[0] || null };
 const pageOf = function( screen ) { return pager( screen ) === null ? null : byClass( pager( screen ), 'design-faces-place' )[0].textContent };
 const pagerButtons = function( screen ) { return pager( screen ) === null ? [] : byTag( pager( screen ), 'button' ) };
+const placeOf = function( at, total ) { return say( '/_admin/design/typefaces/page/of', at, total ) };
 
 check( 'thirty families are a page of 24 and a page of 6: the first twenty-four rows, in the order of the list, and under them Previous - off -, "1 of 2" and Next',
 	faceRows( results() ).length === 24 && faceSlugs( results() ) === thirty.slice( 0, 24 ).map( function( entry ) { return entry.slug } ).join()
-	&& pageOf() === '1 of 2' && pagerButtons().map( function( button ) { return button.textContent+ ':'+ button.disabled } ).join() === 'Previous:true,Next:false'
+	&& pageOf() === placeOf( 1, 2 ) && pagerButtons().map( function( button ) { return button.textContent+ ':'+ button.disabled } ).join() === TEXT['/_admin/design/typefaces/page/previous']+ ':true,'+ TEXT['/_admin/design/typefaces/page/next']+ ':false'
 	&& shelves.design.FACES_PER_PAGE === 24 );
 check( 'the pager stands after the box in the card and not in it, so that it stays where it is while the box scrolls: the box holds the rows of the page and nothing else, and the one pager is what follows it in the card',
 	byClass( results(), 'design-faces-pager' ).length === 0 && results().children.length === 24 && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1
@@ -3256,19 +3300,19 @@ check( 'the pager stands after the box in the card and not in it, so that it sta
 pagerButtons()[1].fire('click');
 
 check( '...Next shows the six that are left, and is off itself',
-	faceSlugs( results() ) === 'face-25,face-26,face-27,face-28,face-29,face-30' && pageOf() === '2 of 2'
+	faceSlugs( results() ) === 'face-25,face-26,face-27,face-28,face-29,face-30' && pageOf() === placeOf( 2, 2 )
 	&& pagerButtons().map( function( button ) { return button.disabled } ).join() === 'false,true' );
 
 pagerButtons()[0].fire('click');
 
 check( '...and Previous the page before',
-	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === '1 of 2' );
+	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === placeOf( 1, 2 ) );
 
 results().scrollTop = 300;
 pagerButtons()[1].fire('click');
 
 check( 'a page turned starts at the top of its box, whatever the page before was scrolled to - and it has one pager, its own: the one of the page before went with its rows',
-	results().scrollTop === 0 && pageOf() === '2 of 2' && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1 && results().children.length === 6 );
+	results().scrollTop === 0 && pageOf() === placeOf( 2, 2 ) && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1 && results().children.length === 6 );
 
 pagerButtons()[0].fire('click');
 
@@ -3278,14 +3322,14 @@ results().scrollTop = 200;
 shelves.design._paintFaces();
 
 check( 'a card that is drawn again - the answer of an install or of a removal, a list that was loaded - has its box scrolled to where the box before it was: a new box, at 200, with the rows of the same page and one pager after it',
-	results() !== boxBefore && results().scrollTop === 200 && faceRows( results() ).length === 24 && pageOf() === '1 of 2' && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1 );
+	results() !== boxBefore && results().scrollTop === 200 && faceRows( results() ).length === 24 && pageOf() === placeOf( 1, 2 ) && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1 );
 
 results().scrollTop = 200;
 shelves.byId('design-faces-load').fire('click');
 shelves.answer( 200, shelfOf( { families : thirty, fetched : LOADED_AT } ) );
 
 check( 'a list loaded again starts at its first page, and that page at the top of its box - what the box before was scrolled to was another list\'s',
-	results().scrollTop === 0 && pageOf() === '1 of 2' && faceRows( results() ).length === 24 );
+	results().scrollTop === 0 && pageOf() === placeOf( 1, 2 ) && faceRows( results() ).length === 24 );
 
 check( 'a row is the icon the other rows of the panel have, the name, and under it the weights and the licence - a link to where the files came from, opened in a tab of its own that knows nothing of this one - and Install',
 	( function() {
@@ -3295,8 +3339,8 @@ check( 'a row is the icon the other rows of the panel have, the name, and under 
 		return faceName( row ).textContent === 'Face 01' && faceNotes( row ).join() === '400, 700 · OFL-1.1'
 			&& label.children[0].tagName === 'SVG' && label.children[0].dataset.icon === 'a-large-small' && hasClass( label, 'design-knob-label' )
 			&& link.textContent === 'OFL-1.1' && link.href === 'https://fonts.test/face-01' && link.target === '_blank' && link.rel === 'noopener noreferrer'
-			&& byTag( row, 'button' ).length === 1 && faceButton( row ).textContent === 'Install' && hasClass( faceButton( row ), 'nino-admin-btn-primary' ) && faceButton( row ).disabled === false
-			&& faceButton( row ).getAttribute('aria-label') === 'Install - Face 01';
+			&& byTag( row, 'button' ).length === 1 && faceButton( row ).textContent === INSTALL && hasClass( faceButton( row ), 'nino-admin-btn-primary' ) && faceButton( row ).disabled === false
+			&& faceButton( row ).getAttribute('aria-label') === INSTALL+ ' - Face 01';
 	} )() );
 
 // ---- The search and the categories
@@ -3304,12 +3348,13 @@ check( 'a row is the icon the other rows of the panel have, the name, and under 
 const search = function() { return shelves.byId('design-faces-search') };
 const chips = function() { return byTag( byClass( availableCard( shelves ), 'design-knob-row' )[0], 'button' ) };
 const chip = function( label ) { return chips().filter( function( button ) { return button.textContent === label } )[0] };
+const categoryWord = function( kind ) { return TEXT['/_admin/design/typefaces/category/'+ kind] };
 const litChips = function() { return chips().map( function( button ) { return button.getAttribute('aria-pressed') } ).join() };
 
 check( 'over the rows are a search field - named by its placeholder - and the categories as a strip of the kind the knobs have: All lit, then Sans, Serif, Display, Handwriting, Mono and Other',
-	search() !== null && search().type === 'search' && search().placeholder === 'Search typefaces' && search().getAttribute('aria-label') === 'Search typefaces'
-	&& byClass( availableCard( shelves ), 'design-knob-row' ).length === 1 && rowName( byClass( availableCard( shelves ), 'design-knob-row' )[0] ) === 'Category'
-	&& chips().map( function( button ) { return button.textContent } ).join() === 'All,Sans,Serif,Display,Handwriting,Mono,Other'
+	search() !== null && search().type === 'search' && search().placeholder === TEXT['/_admin/design/typefaces/available/search'] && search().getAttribute('aria-label') === TEXT['/_admin/design/typefaces/available/search']
+	&& byClass( availableCard( shelves ), 'design-knob-row' ).length === 1 && rowName( byClass( availableCard( shelves ), 'design-knob-row' )[0] ) === TEXT['/_admin/design/typefaces/available/category']
+	&& chips().map( function( button ) { return button.textContent } ).join() === [ 'all', 'sans', 'serif', 'display', 'handwriting', 'mono', 'other' ].map( categoryWord ).join()
 	&& chips().map( function( button ) { return button.dataset.value } ).join() === 'all,sans,serif,display,handwriting,mono,other'
 	&& litChips() === 'true,false,false,false,false,false,false' && shelves.design.FACE_CATEGORIES.join() === 'all,sans,serif,display,handwriting,mono,other' );
 
@@ -3320,7 +3365,7 @@ field.fire('input');
 check( 'a word typed in the search narrows the list by name, whatever its case, to the first page of what is left - and the field is the one that was typed in, so that it keeps the focus',
 	search() === field && faceSlugs( results() ) === 'face-20,face-21,face-22,face-23,face-24,face-25,face-26,face-27,face-28,face-29' && pager() === null );
 
-chip('Serif').fire('click');
+chip( categoryWord('serif') ).fire('click');
 
 check( '...a category narrows it again: the serif families of those, and its chip is the lit one',
 	faceSlugs( results() ) === 'face-20,face-26' && litChips() === 'false,false,true,false,false,false,false' && search() === field );
@@ -3333,24 +3378,24 @@ check( '...and what nothing matches is a sentence, with no pager under it',
 
 field.value = '';
 field.fire('input');
-chip('All').fire('click');
+chip( categoryWord('all') ).fire('click');
 
 check( 'the search emptied and All pressed give the thirty back, from the first page',
-	faceRows( results() ).length === 24 && pageOf() === '1 of 2' && litChips() === 'true,false,false,false,false,false,false' );
+	faceRows( results() ).length === 24 && pageOf() === placeOf( 1, 2 ) && litChips() === 'true,false,false,false,false,false,false' );
 
 pagerButtons()[1].fire('click');
-chip('Mono').fire('click');
+chip( categoryWord('mono') ).fire('click');
 
 check( 'a category chosen while the second page is open starts from the first page of what it lets through',
 	faceSlugs( results() ) === 'face-05,face-11,face-17,face-23,face-29' && pager() === null );
 
-chip('All').fire('click');
+chip( categoryWord('all') ).fire('click');
 pagerButtons()[1].fire('click');
 field.value = 'face';
 field.fire('input');
 
 check( '...and so does a word typed while it is open',
-	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === '1 of 2' );
+	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === placeOf( 1, 2 ) );
 
 field.value = '';
 field.fire('input');
@@ -3377,15 +3422,15 @@ check( 'a family of the list that is installed in the version the list has says 
 		const state = byClass( same, 'design-face-state' )[0];
 		const update = faceButton( faceRowOf( availableCard( offering ), 'lora' ) );
 		const install = faceButton( faceRowOf( availableCard( offering ), 'fresh' ) );
-		return state !== undefined && state.textContent === 'installed' && byTag( same, 'button' ).length === 0
-			&& update.textContent === 'update to 2.0' && hasClass( update, 'nino-admin-btn-primary' ) && install.textContent === 'Install'
-			&& update.getAttribute('aria-label') === 'update to 2.0 - Lora' && install.getAttribute('aria-label') === 'Install - Fresh';
+		return state !== undefined && state.textContent === TEXT['/_admin/design/typefaces/available/installed'] && byTag( same, 'button' ).length === 0
+			&& update.textContent === say( '/_admin/design/typefaces/available/update', '2.0' ) && hasClass( update, 'nino-admin-btn-primary' ) && install.textContent === INSTALL
+			&& update.getAttribute('aria-label') === say( '/_admin/design/typefaces/available/update', '2.0' )+ ' - Lora' && install.getAttribute('aria-label') === INSTALL+ ' - Fresh';
 	} )() );
 check( '...a family the feature brings itself is installed in a way, and has no button; a weight axis is told as one',
 	( function() {
 		const own = faceRowOf( availableCard( offering ), 'open-sans' );
 		return byClass( own, 'design-face-state' ).length === 1 && byTag( own, 'button' ).length === 0
-			&& faceNotes( faceRowOf( availableCard( offering ), 'axis' ) ).join() === 'variable 100-900 · OFL-1.1';
+			&& faceNotes( faceRowOf( availableCard( offering ), 'axis' ) ).join() === say( '/_admin/design/typefaces/weights/variable', '100-900' )+ ' · OFL-1.1';
 	} )() );
 
 // ---- The families that are installed
@@ -3407,35 +3452,35 @@ owning.answer( 200, shelfOf( {
 check( 'each installed family is a row, in the order the server gives them, and after them the directories that are none',
 	faceSlugs( installedCard( owning ) ) === 'inter,lora,roboto,odd-one' && hints( installedCard( owning ) ).length === 0 );
 check( '...with its name, and under it its weights, its version and its licence - "variable 100-900" where the family has an axis -, and the icon the other rows have',
-	faceNotes( faceRowOf( installedCard( owning ), 'inter' ) )[0] === '400, 700 · 4.0 · OFL-1.1' && faceNotes( faceRowOf( installedCard( owning ), 'roboto' ) )[0] === 'variable 100-900 · 3.2 · OFL-1.1'
+	faceNotes( faceRowOf( installedCard( owning ), 'inter' ) )[0] === '400, 700 · 4.0 · OFL-1.1' && faceNotes( faceRowOf( installedCard( owning ), 'roboto' ) )[0] === say( '/_admin/design/typefaces/weights/variable', '100-900' )+ ' · 3.2 · OFL-1.1'
 	&& faceName( faceRowOf( installedCard( owning ), 'roboto' ) ).textContent === 'Roboto Flex'
 	&& faceRows( installedCard( owning ) ).slice( 0, 3 ).every( function( row ) { return byClass( row, 'design-face-label' )[0].children[0].dataset.icon === 'a-large-small' } ) );
 check( 'a family a role of the saved setup uses cannot be removed: its button is off, its title names the roles and so does a second line under the name - in the words of the Type tab',
 	( function() {
 		const row = faceRowOf( installedCard( owning ), 'inter' );
 		const remove = faceButton( row );
-		return remove.disabled === true && remove.title === 'used by Title, Text' && remove.textContent === 'Remove' && hasClass( remove, 'nino-admin-btn-danger' )
-			&& remove.getAttribute('aria-label') === 'Remove - Inter'
-			&& JSON.stringify( faceNotes( row ) ) === JSON.stringify( [ '400, 700 · 4.0 · OFL-1.1', 'used by Title, Text' ] );
+		return remove.disabled === true && remove.title === usedBy( [ 'title', 'text' ] ) && remove.textContent === REMOVE && hasClass( remove, 'nino-admin-btn-danger' )
+			&& remove.getAttribute('aria-label') === REMOVE+ ' - Inter'
+			&& JSON.stringify( faceNotes( row ) ) === JSON.stringify( [ '400, 700 · 4.0 · OFL-1.1', usedBy( [ 'title', 'text' ] ) ] );
 	} )() );
 check( '...and one that no role uses has the button, working, with no second line',
 	( function() {
 		const row = faceRowOf( installedCard( owning ), 'lora' );
-		return faceButton( row ).disabled === false && faceButton( row ).title === 'Remove' && faceNotes( row ).length === 1;
+		return faceButton( row ).disabled === false && faceButton( row ).title === REMOVE && faceNotes( row ).length === 1;
 	} )() );
 
 owning.design._edit.fonts.subtitle.family = 'lora';
 owning.design._paintFaces();
 
 check( 'a family chosen for a role in the selection being edited is as little to be removed as one the saved setup gives it, before anything is saved',
-	faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === true && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).title === 'used by Subtitle'
-	&& faceNotes( faceRowOf( installedCard( owning ), 'lora' ) )[1] === 'used by Subtitle' && faceButton( faceRowOf( installedCard( owning ), 'roboto' ) ).disabled === false );
+	faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === true && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).title === usedBy( [ 'subtitle' ] )
+	&& faceNotes( faceRowOf( installedCard( owning ), 'lora' ) )[1] === usedBy( [ 'subtitle' ] ) && faceButton( faceRowOf( installedCard( owning ), 'roboto' ) ).disabled === false );
 
 owning.design._edit.fonts.subtitle.family = 'inter';
 owning.design._paintFaces();
 
 check( '...and both give a family their roles together, in the order of the roles of the Type tab',
-	faceButton( faceRowOf( installedCard( owning ), 'inter' ) ).title === 'used by Title, Subtitle, Text' && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === false );
+	faceButton( faceRowOf( installedCard( owning ), 'inter' ) ).title === usedBy( [ 'title', 'subtitle', 'text' ] ) && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === false );
 
 owning.design._edit.fonts.subtitle.family = 'open-sans';
 owning.design._paintFaces();
@@ -3443,8 +3488,8 @@ owning.design._paintFaces();
 check( 'a directory that is no family is listed greyed, under its own name, with the reason - and a Remove that works whatever the reason is',
 	( function() {
 		const row = faceRowOf( installedCard( owning ), 'odd-one' );
-		return hasClass( row, 'design-face-row--off' ) && faceName( row ).textContent === 'odd-one' && faceNotes( row ).join() === 'Not a typeface: there is no font.json'
-			&& faceButton( row ).disabled === false && faceButton( row ).textContent === 'Remove' && hasClass( faceButton( row ), 'nino-admin-btn-danger' ) && faceButton( row ).getAttribute('aria-label') === 'Remove - odd-one'
+		return hasClass( row, 'design-face-row--off' ) && faceName( row ).textContent === 'odd-one' && faceNotes( row ).join() === say( '/_admin/design/typefaces/installed/broken', 'there is no font.json' )
+			&& faceButton( row ).disabled === false && faceButton( row ).textContent === REMOVE && hasClass( faceButton( row ), 'nino-admin-btn-danger' ) && faceButton( row ).getAttribute('aria-label') === REMOVE+ ' - odd-one'
 			&& hasClass( faceRowOf( installedCard( owning ), 'lora' ), 'design-face-row--off' ) === false;
 	} )() );
 
@@ -3466,6 +3511,11 @@ const listedAnswer = function( over ) { return shelfOf( Object.assign( { familie
 const plain = { inter : installedOf( 'inter', 'Inter', '4.0' ), lora : installedOf( 'lora', 'Lora', '1.0', { category : 'serif' } ) };
 const withFresh = Object.assign( {}, plain, { fresh : installedOf( 'fresh', 'Fresh', '1.0', { category : 'display' } ) } );
 
+// What the server says in the line of the bar for an install, an update and a removal: the sentences of the texts, with the family filled in
+const FRESH_INSTALLED = say( '/_admin/design/typefaces/msg/installed', 'Fresh', '1.0' );
+const FRESH_REMOVED = say( '/_admin/design/typefaces/msg/removed', 'Fresh' );
+const LORA_UPDATED = say( '/_admin/design/typefaces/msg/updated', 'Lora', '2.0' );
+
 doing.answer( 200, listedAnswer( { installed : plain, uses : { inter : [ 'text' ], lora : [] } } ) );
 
 const draftBefore = JSON.stringify( doing.design._edit );
@@ -3485,7 +3535,7 @@ check( '...and a second action asked for while the first is on its way is not se
 doing.answer( 409, { error : 'the archive does not match its checksum' } );
 
 check( 'a refusal is told in the line of the bar with the reason, as an error, and the buttons work again; nothing is read again and nothing changed on the screen',
-	doing.line().textContent === 'Not installed: the archive does not match its checksum' && doing.line().className === 'nino-admin-error'
+	doing.line().textContent === say( '/_admin/design/typefaces/error/install', 'the archive does not match its checksum' ) && doing.line().className === 'nino-admin-error'
 	&& doing.requests.length === 0 && faceSlugs( installedCard( doing ) ) === 'inter,lora'
 	&& faceActions( doing ).filter( function( button ) { return button.disabled === false } ).length === enabledBefore );
 
@@ -3493,15 +3543,15 @@ faceButton( faceRowOf( availableCard( doing ), 'fresh' ) ).fire('click');
 doing.answer( 500, null );
 
 check( 'a failure that has no words of its own is told the way the workbench tells one, after what failed - and no %s is left in it',
-	doing.line().textContent.indexOf('Not installed: (500)') === 0 && doing.line().textContent.indexOf('%s') === -1 && doing.line().className === 'nino-admin-error' );
+	doing.line().textContent.indexOf( say( '/_admin/design/typefaces/error/install', '(500)' ) ) === 0 && doing.line().textContent.indexOf('%s') === -1 && doing.line().className === 'nino-admin-error' );
 
 faceButton( faceRowOf( availableCard( doing ), 'fresh' ) ).fire('click');
-doing.answer( 200, listedAnswer( { msg : 'Fresh 1.0 is installed.', installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
+doing.answer( 200, listedAnswer( { msg : FRESH_INSTALLED, installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
 
 check( 'an install that went through is the new state of both cards, from the one answer: the family stands among the installed, the row of the list says "installed" - and the line of the bar says it, as the server wrote it',
 	faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' && byClass( faceRowOf( availableCard( doing ), 'fresh' ), 'design-face-state' ).length === 1
 	&& byTag( faceRowOf( availableCard( doing ), 'fresh' ), 'button' ).length === 0
-	&& doing.line().textContent === 'Fresh 1.0 is installed.' && doing.line().className === '' );
+	&& doing.line().textContent === FRESH_INSTALLED && doing.line().className === '' );
 check( '...then design/list is asked again, for the selects of the Assignments screen: and nothing else is sent, no save and no preview - the draft is the one it was',
 	askedOf( doing ) === 'list' && JSON.stringify( doing.requests[0].payload ) === '{}' && JSON.stringify( doing.design._edit ) === draftBefore && doing.design._isDirty() === false );
 
@@ -3516,13 +3566,13 @@ doing.answer( 200, listedAnswer( { installed : withFresh, uses : { inter : [ 'te
 
 faceButton( faceRowOf( availableCard( doing ), 'lora' ) ).fire('click');
 doing.answer( 200, listedAnswer( {
-	msg 			: 'Lora is updated to 2.0.',
+	msg 			: LORA_UPDATED,
 	installed : Object.assign( {}, withFresh, { lora : installedOf( 'lora', 'Lora', '2.0', { category : 'serif' } ) } ),
 	uses 			: { inter : [ 'text' ], lora : [], fresh : [] },
 } ) );
 
 check( 'an update is the same: the family that was there is the new version, and the row of the list says "installed" where the button said "update to 2.0"',
-	doing.line().textContent === 'Lora is updated to 2.0.' && faceNotes( faceRowOf( installedCard( doing ), 'lora' ) )[0] === '400, 700 · 2.0 · OFL-1.1'
+	doing.line().textContent === LORA_UPDATED && faceNotes( faceRowOf( installedCard( doing ), 'lora' ) )[0] === '400, 700 · 2.0 · OFL-1.1'
 	&& byClass( faceRowOf( availableCard( doing ), 'lora' ), 'design-face-state' ).length === 1 && askedOf( doing ) === 'list' );
 
 doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora', fresh : 'Fresh' } ) );
@@ -3534,25 +3584,25 @@ check( 'Remove asks for that family: design/webfonts/remove with the slug',
 doing.answer( 409, { error : 'the typeface "fresh" is used by title' } );
 
 check( 'a removal the server refuses says why in the line of the bar, as an error, and the family stays',
-	doing.line().textContent === 'Not removed: the typeface "fresh" is used by title' && doing.line().className === 'nino-admin-error' && faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' );
+	doing.line().textContent === say( '/_admin/design/typefaces/error/remove', 'the typeface "fresh" is used by title' ) && doing.line().className === 'nino-admin-error' && faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' );
 
 faceButton( faceRowOf( installedCard( doing ), 'fresh' ) ).fire('click');
 doing.answer( 409, { error : 'used by title, text', code : 'used', params : [ 'title', 'text' ] } );
 
 check( 'a family a role still uses is refused with the roles in the words of the workbench, not in the server\'s',
-	doing.line().textContent === 'Not removed: a role of the setup uses it - Title, Text' && doing.line().className === 'nino-admin-error' && faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' );
+	doing.line().textContent === say( '/_admin/design/typefaces/error/used', roleWord('title')+ ', '+ roleWord('text') ) && doing.line().className === 'nino-admin-error' && faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' );
 
 faceButton( faceRowOf( installedCard( doing ), 'fresh' ) ).fire('click');
 doing.answer( 200, listedAnswer( {
-	msg 			: 'Fresh is removed.',
+	msg 			: FRESH_REMOVED,
 	installed : { inter : plain.inter, lora : installedOf( 'lora', 'Lora', '2.0', { category : 'serif' } ) },
 	uses 			: { inter : [ 'text' ], lora : [] },
 } ) );
 
 check( 'a removal that went through takes the family out of the first card; the row of the list offers to install it again, right then - design/list still says what it said before, with the family among its families, as the server\'s does for what is installed; the line of the bar says it, and design/list is read again',
-	faceSlugs( installedCard( doing ) ) === 'inter,lora' && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install'
+	faceSlugs( installedCard( doing ) ) === 'inter,lora' && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === INSTALL
 	&& byClass( faceRowOf( availableCard( doing ), 'fresh' ), 'design-face-state' ).length === 0 && doing.design._data.families.fresh !== undefined
-	&& doing.line().textContent === 'Fresh is removed.' && askedOf( doing ) === 'list' );
+	&& doing.line().textContent === FRESH_REMOVED && askedOf( doing ) === 'list' );
 
 // The families the feature brings are named by the answer of the tab, and by nothing else: design/list has them, and has the installed ones too
 const owned = panel();
@@ -3561,13 +3611,13 @@ owned.answer( 200, shelfOf( { families : [ offerOf( 'open-sans', 'Open Sans', 's
 
 check( 'a row of the list for a family the feature brings says "installed" because the answer of the screen names it, and not because design/list has it among its families: with the answer naming none, the row offers to install',
 	owned.design._data.families['open-sans'] !== undefined && byClass( faceRowOf( availableCard( owned ), 'open-sans' ), 'design-face-state' ).length === 0
-	&& faceWord( faceRowOf( availableCard( owned ), 'open-sans' ) ) === 'Install'
+	&& faceWord( faceRowOf( availableCard( owned ), 'open-sans' ) ) === INSTALL
 	&& doing.design._faces.builtin.join() === BROUGHT.join() );
 
 doing.answer( 500, null );
 
 check( 'when design/list cannot be read again the screen stays as it is: the line of the bar keeps what the action said, and the row of the list still offers to install',
-	doing.line().textContent === 'Fresh is removed.' && faceSlugs( installedCard( doing ) ) === 'inter,lora' && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install' );
+	doing.line().textContent === FRESH_REMOVED && faceSlugs( installedCard( doing ) ) === 'inter,lora' && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === INSTALL );
 
 const rowBefore = faceRowOf( availableCard( doing ), 'fresh' );
 
@@ -3575,8 +3625,8 @@ doing.design._relist();
 doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora' } ) );
 
 check( '...and when it is read again the open screen is drawn again, from what it knows, and the row of the list offers to install it still: the selects of the Assignments screen have lost the family and the screen has not been told twice',
-	faceRowOf( availableCard( doing ), 'fresh' ) !== rowBefore && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install'
-	&& doing.design._data.families.fresh === undefined && faceSlugs( installedCard( doing ) ) === 'inter,lora' && doing.line().textContent === 'Fresh is removed.' && askedOf( doing ) === '' );
+	faceRowOf( availableCard( doing ), 'fresh' ) !== rowBefore && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === INSTALL
+	&& doing.design._data.families.fresh === undefined && faceSlugs( installedCard( doing ) ) === 'inter,lora' && doing.line().textContent === FRESH_REMOVED && askedOf( doing ) === '' );
 
 // ---- Only the last answer is the state, and an action that is on its way answers for the tab
 
@@ -3603,10 +3653,10 @@ busy.show( 'type', 'install' );
 check( 'a screen that is opened while an action is on its way does not ask for the list: the answer of the action is the state, and the buttons are off until it comes',
 	askedOf( busy ) === 'webfonts/install' && faceActions( busy ).length === 5 && faceActions( busy ).every( function( button ) { return button.disabled === true } ) );
 
-busy.answer( 200, listedAnswer( { msg : 'Fresh 1.0 is installed.', installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
+busy.answer( 200, listedAnswer( { msg : FRESH_INSTALLED, installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
 
 check( '...and it draws the screen it finds',
-	faceSlugs( installedCard( busy ) ) === 'inter,lora,fresh' && busy.line().textContent === 'Fresh 1.0 is installed.' && askedOf( busy ) === 'list' );
+	faceSlugs( installedCard( busy ) ) === 'inter,lora,fresh' && busy.line().textContent === FRESH_INSTALLED && askedOf( busy ) === 'list' );
 
 const leaving = panel();
 leaving.show( 'type', 'install' );
@@ -3740,23 +3790,23 @@ check( 'the Colours tab has the brand colour, the five knobs the rest of the pal
 	&& colours.byId('design-colour-secondary') !== null && colours.byId('design-colour-mode') !== null );
 check( '...four positions for Harmony and Temperature, in the words of the panel, and five for the others, numbered from the middle - and the one the knob starts on lit',
 	[ 4, 4, 5, 5, 5 ].join() === byClass( colours.form, 'design-knob-row' ).map( function( row ) { return byTag( row, 'button' ).length } ).filter( function( count, at ) { return at < 5 } ).join()
-	&& byTag( colours.knobRow('Temperature'), 'button' ).map( function( button ) { return button.textContent } ).join() === 'Neutral,Cool,Brand,Warm'
-	&& colours.pressed('Temperature') === 'false,false,true,false' );
+	&& byTag( colours.knobRow( colourWord('temperature') ), 'button' ).map( function( button ) { return button.textContent } ).join() === colourSteps( 'temperature', 4 )
+	&& colours.pressed( colourWord('temperature') ) === 'false,false,true,false' );
 /*	A choice says its names and a scale its numbers: the three scales of the palette are the same five buttons the knobs of the other tabs
 	have, the 0 the framework's own, which is the third position of five, and what they store is the position - 1 to 5 - and not the number
 	on the button. The names of the two choices are what they were, each capitalised, and the words of the three scales are gone	*/
-check( '...the words of the two choices are Monochrome, Analogous, Triadic, Complementary and Neutral, Cool, Brand, Warm; Saturation, Contrast and Depth say \u22122 \u22121 0 +1 +2, the 0 lit at the start, and press the positions 1 to 5',
-	[ [ 'Second colour', 'Monochrome,Analogous,Triadic,Complementary' ], [ 'Temperature', 'Neutral,Cool,Brand,Warm' ] ].every( function( entry ) {
+check( '...the words of the two choices are those the text file has for their positions, in its order; the three scales say \u22122 \u22121 0 +1 +2, the 0 lit at the start, and press the positions 1 to 5',
+	[ [ colourWord('harmony'), colourSteps( 'harmony', 4 ) ], [ colourWord('temperature'), colourSteps( 'temperature', 4 ) ] ].every( function( entry ) {
 		return byTag( colours.knobRow( entry[0] ), 'button' ).map( function( button ) { return button.textContent } ).join() === entry[1];
 	} )
-	&& [ 'Saturation', 'Contrast', 'Depth' ].every( function( name ) {
+	&& [ 'saturation', 'contrast', 'depth' ].map( colourWord ).every( function( name ) {
 		return colours.steps( name ).map( function( button ) { return button.textContent } ).join() === SIGNED.join() && colours.steps( name ).map( function( button ) { return button.title } ).join() === SIGNED.join()
 			&& colours.steps( name ).map( function( button ) { return button.dataset.value } ).join() === '1,2,3,4,5' && colours.pressed( name ) === 'false,false,true,false,false'
 			&& colours.lit().filter( function( row ) { return row[0] === name } )[0][1] === '0';
 	} ) );
-check( 'the mode is a select of three words - automatic, light only, dark only - under a heading of its own, and starts on the first',
-	JSON.stringify( offered( colours.byId('design-colour-mode') ) ) === JSON.stringify( [ [ 'auto', 'automatic' ], [ 'light', 'light only' ], [ 'dark', 'dark only' ] ] )
-	&& shown( colours.byId('design-colour-mode') ) === 'auto' && colours.byId('design-colour-mode').getAttribute('aria-label') === 'Mode'
+check( 'the mode is a select of the three modes the palette has, in the words of the text file, under a heading of its own, and starts on the first',
+	JSON.stringify( offered( colours.byId('design-colour-mode') ) ) === JSON.stringify( [ 'auto', 'light', 'dark' ].map( function( mode ) { return [ mode, TEXT['/_admin/design/colour/mode/'+ mode] ] } ) )
+	&& shown( colours.byId('design-colour-mode') ) === 'auto' && colours.byId('design-colour-mode').getAttribute('aria-label') === TEXT['/_admin/design/colour/mode/label']
 	&& byClass( colours.form, 'design-colour-mode' ).length === 1 );
 check( '...and they stay lower case, as the steps of the knobs over it are capitalised: the Colours tab keeps its select lower case',
 	offered( colours.byId('design-colour-mode') ).every( function( option ) { return option[1].charAt(0) === option[1].charAt(0).toLowerCase() } ) );
@@ -3772,15 +3822,15 @@ brand.fire('change');
 check( 'a new brand colour is the selection, read off the input that was changed, and the rows of the palette are drawn again from it',
 	colours.design._edit.colours.primary === '#8b1d3f' && descendants( colours.byId('design-controls') ).indexOf( brand ) === -1 && colours.byId('design-colour-primary') !== brand && colours.byId('design-colour-primary').value === '#8b1d3f' );
 
-byTag( colours.knobRow('Saturation'), 'button' )[4].fire('click');
-byTag( colours.knobRow('Contrast'), 'button' )[0].fire('click');
+byTag( colours.knobRow( colourWord('saturation') ), 'button' )[4].fire('click');
+byTag( colours.knobRow( colourWord('contrast') ), 'button' )[0].fire('click');
 
 check( 'a position of a knob is a number, 1 to 5: +2 on a scale is the fifth position and \u22122 the first',
 	colours.design._edit.colours.saturation === 5 && colours.design._edit.colours.contrast === 1 && typeof colours.design._edit.colours.saturation === 'number' );
 check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again',
 	colours.byId('design-colour-primary').value === '#8b1d3f'
-	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ 'Second colour', 'Monochrome' ], [ 'Temperature', 'Brand' ], [ 'Saturation', '+2' ], [ 'Contrast', '\u22122' ], [ 'Depth', '0' ] ] )
-	&& wordOf( colours.byId('design-colour-mode') ) === 'dark only' && colours.byId('design-summary') === null );
+	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ colourWord('harmony'), TEXT['/_admin/design/colour/harmony/1'] ], [ colourWord('temperature'), TEXT['/_admin/design/colour/temperature/3'] ], [ colourWord('saturation'), '+2' ], [ colourWord('contrast'), '\u22122' ], [ colourWord('depth'), '0' ] ] )
+	&& wordOf( colours.byId('design-colour-mode') ) === TEXT['/_admin/design/colour/mode/dark'] && colours.byId('design-summary') === null );
 
 // A second colour somebody chose overrides the wheel; choosing a position on the wheel gives it up
 const second = colours.byId('design-colour-secondary');
@@ -3790,12 +3840,12 @@ second.fire('change');
 check( 'a second colour that was chosen is shown as chosen: the swatch has the hex, where the row lit the place on the wheel',
 	colours.design._edit.colours.secondary === '#0f766e' && colours.byId('design-colour-secondary').value === '#0f766e'
 	&& byClass( colours.form, 'design-knob-reset' ).length === 1
-	&& byTag( colours.knobRow('Second colour'), 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).length === 0 );
+	&& byTag( colours.knobRow( colourWord('harmony') ), 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).length === 0 );
 
-byTag( colours.knobRow('Second colour'), 'button' )[2].fire('click');
+byTag( colours.knobRow( colourWord('harmony') ), 'button' )[2].fire('click');
 
 check( '...and a position on the wheel gives it up again', colours.design._edit.colours.secondary === '' && colours.design._edit.colours.harmony === 3
-	&& colours.lit()[0][1] === 'Triadic' && byClass( colours.form, 'design-knob-reset' ).length === 0 );
+	&& colours.lit()[0][1] === TEXT['/_admin/design/colour/harmony/3'] && byClass( colours.form, 'design-knob-reset' ).length === 0 );
 
 // The row that is drawn again is the one the table puts the second colour in, with the Harmony it ends: a table that moves them moves it
 const colourMoved = layoutTable();
@@ -3865,7 +3915,7 @@ check( '...the heading is drawn from its title, and from an icon where the block
 	&& byTag( iconed, 'strong' )[0].children[0].tagName === 'SVG' && byTag( iconed, 'strong' )[0].textContent === 'Another' && byTag( iconed, 'small' ).length === 0 );
 check( '...and the sentences that stood under them - the fonts, the animation, the tuning and the mode - are gone from the panel\'s words, with the hint of the two buttons and the words of the size only the summary used',
 	[ 'hint/fonts', 'hint/motion', 'hint/tuning', 'colour/mode/note', 'hint/actions', 'fontsize/default', 'fontsize/decimal' ].every( function( key ) { return TEXT['/_admin/design/'+ key] === undefined } )
-	&& TEXT['/_admin/design/fontsize/unit'] === 'rem' && TEXT['/_admin/design/hint/size'] !== undefined && TEXT['/_admin/design/hint/pagewidth'] !== undefined );
+	&& TEXT['/_admin/design/fontsize/unit'] !== undefined && TEXT['/_admin/design/hint/size'] !== undefined && TEXT['/_admin/design/hint/pagewidth'] !== undefined );
 
 console.log('');
 
@@ -4009,10 +4059,10 @@ const brandLabel = byClass( icons.form, 'design-colour-label' )[0];
 
 check( 'the rows of the Colours tab that are a colour get theirs by the same mechanism: the brand colour and the second colour - the row of Harmony - the palette',
 	hasClass( brandLabel, 'design-knob-label' ) && brandLabel.getAttribute('for') === 'design-colour-primary' && byTag( brandLabel, 'svg' )[0].dataset.icon === 'palette'
-	&& brandLabel.children[1].textContent === 'Brand colour' && markupOf( byTag( brandLabel, 'svg' )[0] ) === LUCIDE['palette']
-	&& colourIcon( icons.knobRow('Second colour') ) === 'palette' && markupOf( byTag( icons.knobRow('Second colour'), 'svg' )[0] ) === LUCIDE['palette'] );
+	&& brandLabel.children[1].textContent === TEXT['/_admin/design/label/primary'] && markupOf( byTag( brandLabel, 'svg' )[0] ) === LUCIDE['palette']
+	&& colourIcon( icons.knobRow( colourWord('harmony') ) ) === 'palette' && markupOf( byTag( icons.knobRow( colourWord('harmony') ), 'svg' )[0] ) === LUCIDE['palette'] );
 check( '...temperature takes the thermometer, saturation the drop, contrast the circle with one half filled and depth the stack, each with the shape of Lucide\'s that name has, verbatim',
-	[ [ 'Temperature', 'thermometer' ], [ 'Saturation', 'droplet' ], [ 'Contrast', 'contrast' ], [ 'Depth', 'square-stack' ] ].every( function( entry ) {
+	[ [ colourWord('temperature'), 'thermometer' ], [ colourWord('saturation'), 'droplet' ], [ colourWord('contrast'), 'contrast' ], [ colourWord('depth'), 'square-stack' ] ].every( function( entry ) {
 		const svg = byTag( icons.knobRow( entry[0] ), 'svg' );
 		return svg.length === 1 && svg[0].dataset.icon === entry[1] && markupOf( svg[0] ) === LUCIDE[entry[1]];
 	} ) );
@@ -4037,14 +4087,14 @@ icons.design._redrawColours();
 
 check( 'a knob with no entry in the map has no icon, and nothing stands in for it: not a row, not a fallback shape',
 	icons.design._icon('content/nothing') === null && icons.design._icon('') === null && icons.design._icon('constructor') === null
-	&& byTag( icons.knobRow('Temperature'), 'svg' ).length === 0 && byClass( icons.knobRow('Temperature'), 'design-knob-label' )[0].children.length === 1
-	&& hasClass( byClass( icons.knobRow('Temperature'), 'design-knob-label' )[0].children[0], 'design-knob-text' )
-	&& colourIcon( icons.knobRow('Saturation') ) === 'droplet' );
+	&& byTag( icons.knobRow( colourWord('temperature') ), 'svg' ).length === 0 && byClass( icons.knobRow( colourWord('temperature') ), 'design-knob-label' )[0].children.length === 1
+	&& hasClass( byClass( icons.knobRow( colourWord('temperature') ), 'design-knob-label' )[0].children[0], 'design-knob-text' )
+	&& colourIcon( icons.knobRow( colourWord('saturation') ) ) === 'droplet' );
 
 mapped['colours/temperature'] = thermometer;
 icons.design._redrawColours();
 
-check( '...and the row has it again when the entry is back', colourIcon( icons.knobRow('Temperature') ) === 'thermometer' );
+check( '...and the row has it again when the entry is back', colourIcon( icons.knobRow( colourWord('temperature') ) ) === 'thermometer' );
 
 mapped['content/nowhere'] = 'no-such-icon';
 
@@ -4108,7 +4158,7 @@ check( 'the head of the preview is one row: the heading and the bar are its two 
 	&& pvSticky.children.length === 2 && hasClass( pvSticky.children[1], 'design-stage' ) && pv.byId('design-summary') === null
 	&& byClass( pvSticky, 'design-preview-heading' ).length === 1 && byClass( pvSticky, 'design-preview-bar' ).length === 1 );
 check( '...the heading is the eyebrow over the title and nothing else; the bar holds the viewport switch, the switch that lets the frame follow and the reload, in that order',
-	byClass( pvHead.children[0], 'design-eyebrow' ).length === 1 && byTag( pvHead.children[0], 'strong' )[0].textContent === 'Preview'
+	byClass( pvHead.children[0], 'design-eyebrow' ).length === 1 && byTag( pvHead.children[0], 'strong' )[0].textContent === TEXT['/_admin/design/label/preview']
 	&& pvHead.children[0].children.length === 1 && byClass( pvHead.children[0], 'design-eyebrow' )[0].parent === pvHead.children[0].children[0]
 	&& pvHead.children[1].children.length === 3 && hasClass( pvHead.children[1].children[0], 'design-viewports' )
 	&& hasClass( pvHead.children[1].children[1], 'design-preview-follow' ) && pvHead.children[1].children[2] === pv.byId('design-reload') );
@@ -4120,23 +4170,24 @@ check( '...the chip the preview says things in is in the stage, after the frame,
 check( '...the reload is an icon button in the devices\' style with Lucide\'s refresh-cw, its words its title and its aria-label, and no text of its own',
 	hasClass( pv.byId('design-reload'), 'design-viewport' ) && hasClass( pv.byId('design-reload'), 'design-reload' ) && pv.byId('design-reload').children.length === 1
 	&& pv.byId('design-reload').children[0].tagName === 'SVG' && pv.byId('design-reload').children[0].dataset.icon === 'refresh-cw' && markupOf( pv.byId('design-reload').children[0] ) === LUCIDE['refresh-cw']
-	&& pv.byId('design-reload').title === 'Reload preview' && pv.byId('design-reload').getAttribute('aria-label') === 'Reload preview' && pv.byId('design-reload').textContent === '' );
+	&& pv.byId('design-reload').title === TEXT['/_admin/design/label/reload'] && pv.byId('design-reload').getAttribute('aria-label') === TEXT['/_admin/design/label/reload'] && pv.byId('design-reload').textContent === '' );
 
 // The width of the preview is the Builder's switch: three icon buttons in a group
 const pvGroup = pvHead.children[1].children[0];
 const pvButtons = byTag( pvGroup, 'button' );
 const pvWidths = pv.design.WIDTHS;
+const pvWords = pvWidths.map( function( width ) { return TEXT['/_admin/design/width/'+ width.key] } ).join();
 
 check( 'the select of the width and its label are gone: no design-width, no select in the head, no word "Width" over anything - the text of that label is gone from the panel\'s words too',
 	pv.byId('design-width') === null && byTag( pvHead, 'select' ).length === 0 && byTag( pvHead, 'label' ).every( function( label ) { return label.textContent !== 'Width' } )
 	&& TEXT['/_admin/design/label/width'] === undefined );
 check( 'the width is three icon buttons in a group the way the Builder has them: the group is named by what it is, there is a button each for the phone, the tablet and the desktop - and none for all of them',
-	pvGroup.getAttribute('role') === 'group' && pvGroup.getAttribute('aria-label') === 'Viewport of the preview' && pvGroup.getAttribute('aria-label') === TEXT['/_admin/design/label/viewports']
+	pvGroup.getAttribute('role') === 'group' && pvGroup.getAttribute('aria-label') === TEXT['/_admin/design/label/viewports']
 	&& pvButtons.length === 3 && pvButtons.map( function( button ) { return button.id } ).join() === 'design-viewport-phone,design-viewport-tablet,design-viewport-desktop'
 	&& pvWidths.map( function( width ) { return width.key+ ':'+ width.px } ).join() === 'phone:390,tablet:820,desktop:1280'
 	&& pvButtons.every( function( button ) { return button.tagName === 'BUTTON' && button.type === 'button' && hasClass( button, 'design-viewport' ) } ) );
-check( '...each with the name of its width as its title and as its name for a screen reader, since an icon has none: Phone, Tablet and Desktop',
-	pvButtons.map( function( button ) { return button.title } ).join() === 'Phone,Tablet,Desktop' && pvButtons.map( function( button ) { return button.getAttribute('aria-label') } ).join() === 'Phone,Tablet,Desktop'
+check( '...each with the name of its width as its title and as its name for a screen reader, since an icon has none: the three words of the text file',
+	pvButtons.map( function( button ) { return button.title } ).join() === pvWords && pvButtons.map( function( button ) { return button.getAttribute('aria-label') } ).join() === pvWords
 	&& pvButtons.map( function( button ) { return button.textContent } ).join('') === '' );
 check( '...and the icon of its device, Lucide\'s smartphone, tablet and monitor, drawn as the icons of the rows are: an svg.design-icon on a 24 by 24 grid, hidden from assistive technology, the only child of the button',
 	pvButtons.every( function( button, at ) {
@@ -4502,7 +4553,7 @@ rm.show( 'type', 'roles' );
 rm.stage.resize();
 rm.stage.animate();
 elapse( 300 );
-rm.move( knobWord( 'content', 'card-title' ), 1 );
+pressKey( rm, 'knobs/content/card-title', 1 );
 
 const rmPlaced = rm.stage.scrolls.length;
 
@@ -4972,7 +5023,7 @@ check( 'the bar has a switch the workbench draws, between the viewport buttons a
 	fwField.tagName === 'LABEL' && hasClass( fwField, 'nino-admin-switch' ) && hasClass( fwField, 'design-preview-follow' )
 	&& fwBar.children.indexOf( fwField ) === fwBar.children.indexOf( byClass( fwBar, 'design-viewports' )[0] ) + 1 && fwBar.children.indexOf( fwField ) === fwBar.children.indexOf( fw.byId('design-reload') ) - 1
 	&& fwInput.type === 'checkbox' && fwInput.dataset.key === 'design-follow' && fwInput.id === 'design-follow'
-	&& byClass( fwField, 'nino-admin-switch-copy' )[0].textContent === 'Preview follows' && TEXT['/_admin/design/label/follow'] === 'Preview follows' );
+	&& byClass( fwField, 'nino-admin-switch-copy' )[0].textContent === TEXT['/_admin/design/label/follow'] );
 check( '...it is on at the start of the visit: checked, and the panel\'s flag says so - and nothing of it is in the selection',
 	fwInput.checked === true && fw.design._follow === true && fw.design._target === null
 	&& JSON.stringify( fw.design._selection( fw.design._data ) ).indexOf('follow') === -1 && Object.keys( fw.design._edit ).indexOf('follow') === -1 );
@@ -5345,8 +5396,8 @@ check( 'every id the script jumps to is on the specimen exactly once: the top of
 	jumpedTo.length === 8 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
 check( '...and the footer, which no tab has, is looked at in an element of its own: the id footer, once, an empty block at the end of the specimen - after the last section, where the footer of the frame starts',
 	specimenIds.footer === 1 && /<\/section>\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') && Object.keys( jp.design.ANCHORS ).every( function( tab ) { return jp.design.ANCHORS[tab] !== 'footer' } ) );
-check( '...and the Cards section is the element that has the id: the second section of the page, after the hero and before the grounds',
-	specimen.indexOf('<section id="cards" class="nino-section" aria-label="Cards">') !== -1 && specimen.indexOf('id="content"') < specimen.indexOf('id="cards"')
+check( '...and the Cards section is the element that has the id, with an accessible name of its own: the second section of the page, after the hero and before the grounds',
+	/<section id="cards" class="nino-section" aria-label="[^"]+">/.test( specimen ) === true && specimen.indexOf('id="content"') < specimen.indexOf('id="cards"')
 	&& specimen.indexOf('id="cards"') < specimen.indexOf('id="colours"') );
 
 console.log('');
@@ -5425,11 +5476,11 @@ const asking = panel( { files : delivered.map( function( file ) { return Object.
 const buttons = byTag( byClass( asking.form, 'nino-admin-actionbar' )[0], 'button' ).map( function( button ) { return button.textContent } );
 
 check( 'the two buttons say what they do: save a draft, apply to the website - and there is no take-over button, and no way back to a version that is not there',
-	buttons.indexOf('Save draft') !== -1 && buttons.indexOf('Apply to website') !== -1 && buttons.length === 3 && asking.byId('design-restore') === null );
+	buttons.indexOf( TEXT['/_admin/design/label/save'] ) !== -1 && buttons.indexOf( TEXT['/_admin/design/label/apply'] ) !== -1 && buttons.length === 3 && asking.byId('design-restore') === null );
 check( 'no line under the bar says which of the two does what: the hint of the actions is gone from the screen and from the panel\'s words in both languages - nobody read it',
 	asking.byId('design-actions-hint') === null && TEXT['/_admin/design/hint/actions'] === undefined && asking.form.children[asking.form.children.length - 1] === asking.bar() );
 check( 'with files that are not Design\'s the state is foreign, and the chip says so in one word - the files are named where the question is asked, in the confirmation below',
-	asking.design._stateKey() === 'foreign' && asking.chip().textContent === 'Not written by Design' && asking.chip().dataset.state === 'foreign'
+	asking.design._stateKey() === 'foreign' && asking.chip().textContent === shortWord('foreign') && asking.chip().dataset.state === 'foreign'
 	&& byClass( asking.form, 'design-state--warn' ).length === 0 && asking.byId('design-state') === null );
 
 asking.byId('design-apply').fire('click');
@@ -5483,7 +5534,7 @@ check( 'what the screen says afterwards is that it applied, that files were repl
 	( asking.byId('design-msg') || {} ).textContent === [ TEXT['/_admin/design/msg/applied'], TEXT['/_admin/design/msg/takenover'], say( '/_admin/design/msg/lost', '[consent-settings]' ) ].join(' ') );
 check( '...in the line of the bar, the whole of it its title, and the chip is drawn again from what the server then answered: the files are Design\'s now and the state is up to date',
 	asking.line().parent === asking.bar() && asking.line().title === asking.line().textContent && asking.line().className === ''
-	&& asking.chip().parent === asking.bar() && asking.chip().textContent === 'Up to date' && asking.chip().dataset.state === 'current' );
+	&& asking.chip().parent === asking.bar() && asking.chip().textContent === shortWord('current') && asking.chip().dataset.state === 'current' );
 
 // Saying no leaves the draft saved and the website alone
 const declined = panel( {} );
@@ -5582,7 +5633,7 @@ drafting.answer( 200, listing( { current : false } ) );
 
 check( '...it says that the draft is saved in the line of the bar, and the chip is drawn again from the answer: the file does not answer to the selection - saved, not applied',
 	drafting.line().textContent === TEXT['/_admin/design/msg/saved'] && drafting.line().title === TEXT['/_admin/design/msg/saved'] && drafting.line().className === ''
-	&& drafting.chip().textContent === 'Saved, not applied' && drafting.chip().dataset.state === 'drifted' && drafting.chip().parent === drafting.bar() );
+	&& drafting.chip().textContent === shortWord('drifted') && drafting.chip().dataset.state === 'drifted' && drafting.chip().parent === drafting.bar() );
 
 console.log('');
 
@@ -5606,7 +5657,7 @@ kept.design._restore = function( button ) { restoreCalls.push( button ); return 
 
 check( 'with one the action bar has a second quiet button, before Reset: the label of the way back and, for its title, the sentence with the date of that version',
 	restoreButton !== null && restoreButton.tagName === 'BUTTON' && restoreButton.type === 'button' && restoreButton.parent === keptBar
-	&& restoreButton.textContent === 'Restore previous version' && restoreButton.title === 'Previous version from 2026-09-02 08:30'
+	&& restoreButton.textContent === TEXT['/_admin/design/label/restore'] && restoreButton.title === say( '/_admin/design/state/previous', '2026-09-02 08:30' )
 	&& keptBar.children.map( function( button ) { return button.id } ).join() === 'design-msg,design-state-word,design-restore,design-reset,design-save,design-apply'
 	&& restoreButton.hidden === false && kept.byId('design-reset').hidden === true );
 check( '...and the card that used to hold the button, and the line that dated the version, are gone',
@@ -5628,7 +5679,7 @@ kept.answer( 200, {} );
 kept.answer( 200, listing( {} ) );
 
 check( 'and the panel is drawn again from the new state, saying so in the line of the bar', ( kept.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored']
-	&& kept.line().parent === kept.bar() && kept.line().title === TEXT['/_admin/design/msg/restored'] && kept.chip().textContent === 'Up to date' );
+	&& kept.line().parent === kept.bar() && kept.line().title === TEXT['/_admin/design/msg/restored'] && kept.chip().textContent === shortWord('current') );
 
 const noted = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 noted.willConfirm( true );
@@ -5638,7 +5689,7 @@ noted.answer( 200, listing( { current : false } ) );
 
 check( 'a restore that went through with a note says restored, and the note beside it - in the line of the bar with the class of a note - and the chip is the state the restored files are in: saved, not applied',
 	( noted.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored']+ ' restored, but could not keep the version it replaced in data/design-previous.php'
-	&& noted.line().className === 'nino-admin-hint' && noted.chip().textContent === 'Saved, not applied' && noted.chip().dataset.state === 'drifted' );
+	&& noted.line().className === 'nino-admin-hint' && noted.chip().textContent === shortWord('drifted') && noted.chip().dataset.state === 'drifted' );
 
 const failing = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 failing.byId('design-restore').fire('click');
@@ -5693,7 +5744,7 @@ tracked.byId('design-reset').fire('click');
 check( '...and the way back, which draws the stored selection again, makes it not', registered.isDirty() === false && tracked.byId('design-reset').hidden === true );
 check( '...and says so in the line of the bar, on the screen that was drawn again, with the chip beside it as the files stand',
 	tracked.line().textContent === TEXT['/_admin/design/msg/reverted'] && tracked.line().title === TEXT['/_admin/design/msg/reverted'] && tracked.line().className === ''
-	&& tracked.line().parent === tracked.bar() && tracked.chip().textContent === 'Up to date' && tracked.chip().parent === tracked.bar() );
+	&& tracked.line().parent === tracked.bar() && tracked.chip().textContent === shortWord('current') && tracked.chip().parent === tracked.bar() );
 
 nudge( tracked );
 registered.discard();
@@ -5821,6 +5872,10 @@ const INTER = { slug : 'inter', name : 'Inter', inList : true };
 const LORA = { slug : 'lora', name : 'Lora', inList : true };
 const NOWHERE = { slug : 'nowhere-sans', name : 'nowhere-sans', inList : false };
 
+// What the server says in the line of the bar of a typeface that was installed for a theme
+const INTER_INSTALLED = say( '/_admin/design/typefaces/msg/installed', 'Inter', '4.0' );
+const LORA_INSTALLED = say( '/_admin/design/typefaces/msg/installed', 'Lora', '1.0' );
+
 /** A page answer for a preview that worked and has nothing to say */
 function previewed( css, document ) {
 	return { css : css, document : document, style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] };
@@ -5853,8 +5908,8 @@ check( '...the list is a row for each theme in the order design/list gives them 
 	} ) );
 check( '...a chip "shipped" on each of the six the feature ships and on no other, a chip "active" on the theme the working copy names - and the mark of it on its row, to the eye and to whoever hears the list - both the workbench\'s own chip, in the colour of what it says',
 	THEMES.every( function( theme ) { return byClass( themeRow( drawn, theme.slug ), 'design-theme-shipped' ).length === ( theme.shipped === true ? 1 : 0 ) } )
-	&& byClass( drawn.form, 'design-theme-shipped' ).every( function( chip ) { return chip.textContent === 'shipped' && hasClass( chip, 'nino-admin-badge' ) && chip.dataset.state === 'muted' } )
-	&& byClass( drawn.form, 'design-theme-active' ).length === 1 && textsOf( themeRow( drawn, 'mein-theme' ), 'design-theme-active' ) === 'active'
+	&& byClass( drawn.form, 'design-theme-shipped' ).every( function( chip ) { return chip.textContent === TEXT['/_admin/design/theme/shipped'] && hasClass( chip, 'nino-admin-badge' ) && chip.dataset.state === 'muted' } )
+	&& byClass( drawn.form, 'design-theme-active' ).length === 1 && textsOf( themeRow( drawn, 'mein-theme' ), 'design-theme-active' ) === TEXT['/_admin/design/theme/active']
 	&& byClass( drawn.form, 'design-theme-active' )[0].dataset.state === 'ok' && hasClass( byClass( drawn.form, 'design-theme-active' )[0], 'nino-admin-badge' )
 	&& byClass( drawn.form, 'design-theme-row--active' ).length === 1 && hasClass( themeRow( drawn, 'mein-theme' ), 'design-theme-row--active' )
 	&& themeRow( drawn, 'mein-theme' ).getAttribute('aria-current') === 'true' && themeRow( drawn, 'nino' ).getAttribute('aria-current') === null );
@@ -5862,7 +5917,7 @@ check( '...each row has Load and Duplicate, and a theme of the project has Delet
 	THEMES.every( function( theme ) {
 		const buttons = themeButtons( drawn, theme.slug );
 		return buttons.map( function( button ) { return button.id } ).join() === [ 'load', 'duplicate' ].concat( theme.shipped === true ? [] : [ 'delete' ] ).map( function( word ) { return 'design-theme-'+ word+ '-'+ theme.slug } ).join()
-			&& buttons.map( function( button ) { return button.textContent } ).join() === ( theme.shipped === true ? 'Load,Duplicate' : 'Load,Duplicate,Delete' )
+			&& buttons.map( function( button ) { return button.textContent } ).join() === ( theme.shipped === true ? [ 'load', 'duplicate' ] : [ 'load', 'duplicate', 'delete' ] ).map( function( key ) { return TEXT['/_admin/design/theme/'+ key] } ).join()
 			&& buttons.every( function( button ) { return button.type === 'button' && button.getAttribute('aria-label') === button.textContent+ ' - '+ theme.name && button.title === button.getAttribute('aria-label') } );
 	} )
 	&& hasClass( drawn.byId('design-theme-delete-mein-theme'), 'nino-admin-btn-danger' ) && drawn.byId('design-theme-delete-nino') === null );
@@ -5895,16 +5950,16 @@ check( 'the active theme is a head with its name, under it its two fields - the 
 	textsOf( head, 'design-theme-current-name' ) === 'My theme' && drawn.byId('design-theme-changed') === null
 	&& drawn.byId('design-theme-name').value === 'My theme' && drawn.byId('design-theme-name').maxLength === 80 && drawn.byId('design-theme-name').disabled === false
 	&& drawn.byId('design-theme-description').value === 'The theme of this project' && drawn.byId('design-theme-description').maxLength === 400 && drawn.byId('design-theme-description').disabled === false
-	&& drawn.byId('design-theme-name').parent.children[0].textContent === 'Name' && drawn.byId('design-theme-description').parent.children[0].textContent === 'Description'
+	&& drawn.byId('design-theme-name').parent.children[0].textContent === TEXT['/_admin/design/theme/field/name'] && drawn.byId('design-theme-description').parent.children[0].textContent === TEXT['/_admin/design/theme/field/description']
 	&& byTag( drawn.byId('design-theme-name').parent, 'small' ).length === 0
-	&& drawn.byId('design-theme-save').textContent === 'Save theme' && hasClass( drawn.byId('design-theme-save'), 'nino-admin-btn-primary' ) && drawn.byId('design-theme-export').textContent === 'Export' );
+	&& drawn.byId('design-theme-save').textContent === TEXT['/_admin/design/theme/save'] && hasClass( drawn.byId('design-theme-save'), 'nino-admin-btn-primary' ) && drawn.byId('design-theme-export').textContent === TEXT['/_admin/design/theme/export'] );
 
 const shippedActive = themed( { theme : 'magazine', running : 'magazine', active : activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, '' ) }, 'properties' );
 
 check( '...a shipped theme is shown as it is and cannot be saved into: its name and description are read-only with the sentence that says why under the name, there is no button to save it - it can still be taken out as a file',
 	shippedActive.byId('design-theme-name').disabled === true && shippedActive.byId('design-theme-description').disabled === true
-	&& textsOf( shippedActive.byId('design-theme-name').parent, 'nino-admin-hint' ) === 'Shipped - duplicate it to change it.' && shippedActive.byId('design-theme-save') === null
-	&& shippedActive.byId('design-theme-export') !== null && ( shippedActive.show( 'theme', 'load' ), textsOf( shippedActive.byId('design-theme-list'), 'design-theme-active' ) === 'active' ) );
+	&& textsOf( shippedActive.byId('design-theme-name').parent, 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/shipped'] && shippedActive.byId('design-theme-save') === null
+	&& shippedActive.byId('design-theme-export') !== null && ( shippedActive.show( 'theme', 'load' ), textsOf( shippedActive.byId('design-theme-list'), 'design-theme-active' ) === TEXT['/_admin/design/theme/active'] ) );
 
 const unthemed = panel();
 unthemed.show( 'theme', 'properties' );
@@ -6148,7 +6203,7 @@ check( 'an answer that names typefaces the project has not installed asks once, 
 	&& loading.requests.length === 1 && loading.requests[0].endpoint === 'webfonts/install' && JSON.stringify( loading.requests[0].payload ) === JSON.stringify( { slug : 'inter' } )
 	&& loading.design._edit.theme === 'mein-theme' && loading.design._themeBusy === true );
 
-loading.answer( 200, { msg : 'Inter 4.0 is installed.' } );
+loading.answer( 200, { msg : INTER_INSTALLED } );
 
 check( '...and when they are installed it reads design/list again, for the selects of the Type tab, before the screen is drawn',
 	loading.requests.length === 1 && loading.requests[0].endpoint === 'list' && loading.design._edit.theme === 'mein-theme' && loading.design._data.options.title.indexOf('inter') === -1 );
@@ -6166,7 +6221,7 @@ check( '...and the active theme: its record is the theme as it was taken over, a
 	&& screenOf( loading ) === 'load' && hasClass( themeRow( loading, 'magazine' ), 'design-theme-row--active' ) && hasClass( themeRow( loading, 'mein-theme' ), 'design-theme-row--active' ) === false );
 check( '...nothing is stored: the way back is shown and the shell would ask before it lost the draft; the buttons are on again, and the bar says what was installed, that the theme is loaded and which typeface the project lacks - in the colour of a note',
 	loading.design._isDirty() === true && loading.byId('design-reset').hidden === false && loading.design._themeBusy === false && themeControls( loading ).every( function( control ) { return control.disabled === false } )
-	&& loading.line().textContent === [ 'Inter 4.0 is installed.', say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'nowhere-sans' ) ].join(' ')
+	&& loading.line().textContent === [ INTER_INSTALLED, say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'nowhere-sans' ) ].join(' ')
 	&& loading.line().className === 'nino-admin-hint' && loading.requests.length === 0 );
 
 loading.show( 'theme', 'properties' );
@@ -6190,7 +6245,7 @@ check( '...and the other tabs show the loaded values: the frame and the template
 
 loading.tab( tabWord('surfaces') );
 check( '...(Surfaces, the knob of a card)',
-	loading.pressed( knobWord( 'content', 'card-space' ) ) === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
+	pressedKey( loading, 'knobs/content/card-space' ) === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
 
 // A no installs nothing
 const declining = themed();
@@ -6227,27 +6282,27 @@ check( '...(the theme is the working copy; the typefaces that did not come are t
 const unlisted = themed();
 unlisted.byId('design-theme-load-magazine').fire('click');
 unlisted.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter' } ), [ INTER ] ) );
-unlisted.answer( 200, { msg : 'Inter 4.0 is installed.' } );
+unlisted.answer( 200, { msg : INTER_INSTALLED } );
 unlisted.answer( 500, {} );
 
 check( 'a list that cannot be read after the installs does not hold the theme back: it is taken over with the families the selects had before - the typeface that was installed is not among them yet, so the title has the face of Nino and the bar names it',
 	unlisted.requests.length === 0 && unlisted.design._edit.theme === 'magazine' && unlisted.design._edit.fonts.title.family === '' && unlisted.design._themeBusy === false
-	&& unlisted.line().textContent === [ 'Inter 4.0 is installed.', say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'Inter' ) ].join(' ') );
+	&& unlisted.line().textContent === [ INTER_INSTALLED, say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'Inter' ) ].join(' ') );
 
 // Both installed, one after the other
 const installing = themed();
 installing.byId('design-theme-load-magazine').fire('click');
 installing.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter', text : 'lora' } ), [ INTER, LORA ] ) );
-installing.answer( 200, { msg : 'Inter 4.0 is installed.' } );
+installing.answer( 200, { msg : INTER_INSTALLED } );
 
 check( 'a yes installs them one after the other: the second is asked for only when the first is answered',
 	installing.requests.length === 1 && installing.requests[0].endpoint === 'webfonts/install' && installing.requests[0].payload.slug === 'lora' );
 
-installing.answer( 200, { msg : 'Lora 1.0 is installed.' } );
+installing.answer( 200, { msg : LORA_INSTALLED } );
 installing.answer( 200, listing( { options : optionsWith( [ 'inter', 'lora' ] ), active : own, theme : 'mein-theme', css : ownCss } ) );
 
 check( '...the list is read after the last, and what each install said is in the bar before the rest',
-	installing.requests.length === 0 && installing.design._edit.theme === 'magazine' && installing.line().textContent.indexOf( 'Inter 4.0 is installed. Lora 1.0 is installed. ' ) === 0
+	installing.requests.length === 0 && installing.design._edit.theme === 'magazine' && installing.line().textContent.indexOf( INTER_INSTALLED+ ' '+ LORA_INSTALLED+ ' ' ) === 0
 	&& installing.design._edit.fonts.text.family === 'lora' && installing.design._edit.fonts.title.family === 'inter' );
 
 // A theme with nothing missing is taken over without a question
@@ -6783,8 +6838,11 @@ else {
 				const chosen = real.fonts[ path[1] ];
 				const given = real.defaults.fonts[ path[1] ];
 				const label = function( column ) { return TEXT['/_admin/design/font/role/'+ path[1]]+ ' - '+ TEXT['/_admin/design/font/head/'+ column] };
-				if( chosen.family !== given.family )
-					lines.push( label('family')+ ' '+ ( real.families[ chosen.family ] || {} ).name );
+				if( chosen.family !== given.family ) {
+					// A system stack is worded by the panel's text and a typeface by its own name
+					const family = real.families[ chosen.family ] || {};
+					lines.push( label('family')+ ' '+ ( family.system === true ? TEXT['/_admin/design/family/'+ chosen.family] : family.name ) );
+				}
 				if( chosen.weight !== given.weight )
 					lines.push( label('weight')+ ' '+ TEXT['/_admin/design/weight/'+ chosen.weight] );
 				if( chosen.uppercase !== given.uppercase && path[1] !== 'code' )
@@ -7057,7 +7115,7 @@ else {
 			const flags = activeList.themes.map( function( theme ) { return theme.shipped } );
 			return flags.indexOf( false ) === -1 || flags.slice( flags.indexOf( false ) ).every( function( flag ) { return flag === false } );
 		} )()
-		&& hasClass( themeRow( activeTab, activeSlug ), 'design-theme-row--active' ) && byClass( activeTab.form, 'design-theme-row--active' ).length === 1 && textsOf( themeRow( activeTab, activeSlug ), 'design-theme-active' ) === 'active'
+		&& hasClass( themeRow( activeTab, activeSlug ), 'design-theme-row--active' ) && byClass( activeTab.form, 'design-theme-row--active' ).length === 1 && textsOf( themeRow( activeTab, activeSlug ), 'design-theme-active' ) === TEXT['/_admin/design/theme/active']
 		&& activeList.themes.every( function( theme ) { return ( activeTab.byId('design-theme-delete-'+ theme.slug) !== null ) === ( theme.shipped === false ) } )
 		&& ( activeTab.show( 'theme', 'properties' ), textsOf( activeTab.byId('design-theme-current-head'), 'design-theme-current-name' ) === activeList.active.name )
 		&& activeTab.byId('design-theme-name').value === activeList.active.name && activeTab.byId('design-theme-description').value === activeList.active.description && activeTab.byId('design-theme-name').disabled === false );

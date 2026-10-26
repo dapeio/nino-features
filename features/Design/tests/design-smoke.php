@@ -8,7 +8,8 @@ declare(strict_types=1);
  *											library of five parts and what a template must declare
  *											to be one - every set of it held to what a set is, and none
  *											to what it happens to be: the suite names no set of the
- *											library, no theme and no sentence of the manual, and where
+ *											library, no theme, no sentence of the manual and no word of the
+ *											panel - a word is read from the text files by its key -, and where
  *											it needs names it makes a library of its own -, the
  *											setup's normalisation against a library that is really
  *											there, what the compiler puts in the
@@ -690,6 +691,19 @@ $says = static fn( string $entry, string $locale ): string => \Nino\Features::lo
 /*	The words of the panel, taken from the text files themselves: the tabs the manual has to
 	have an entry for are the tabs the model has, by the word the panel draws them with	*/
 $panelWord = static fn( string $key, string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/'. $key. ']]'] ?? '' );
+
+/*	A sentence of the panel's texts with its %s filled in turn, as the panel's own _text() does it: what a check says of a sentence the server answers with
+	is read from its key, and never typed here	*/
+$panelText = static function( string $key, string $locale, string ...$values ) use ( $panelWord ): string {
+
+	$text = $panelWord( $key, $locale );
+
+	foreach( $values as $value )
+		$text = (string) preg_replace_callback( '/%s/', static fn(): string => $value, $text, 1 );
+
+	return $text;
+};
+
 $panelTabs = array_values( array_map(
 	static fn( string $key ): string => (string) preg_replace( '~^\[\[/_admin/design/tab/([a-z0-9-]+)/label\]\]$~', '$1', $key ),
 	array_filter( array_keys( (array) include __DIR__. '/../text/en_US.php' ), static fn( string $key ): bool => preg_match( '~^\[\[/_admin/design/tab/[a-z0-9-]+/label\]\]$~', $key ) === 1 )
@@ -4613,8 +4627,8 @@ check( 'it is one page with an anchor for each of those places: global, type, co
 	$anchored === [ 'buttons' => 1, 'colours' => 1, 'components' => 1, 'content' => 1, 'global' => 1, 'type' => 1 ] );
 /*	...and one more, which no tab has: where a change of a card is looked at (OBJECT_ANCHORS in
 	admin.js, which design-js-smoke.js holds to the ids of this page)	*/
-check( 'the Cards section carries id="cards", once - and it comes after the hero, which is #content, and before the grounds, which are #colours',
-	substr_count( $specimen, ' id="cards"' ) === 1 && str_contains( $specimen, '<section id="cards" class="nino-section" aria-label="Cards">' ) === true
+check( 'the Cards section carries id="cards", once, with an accessible name of its own - and it comes after the hero, which is #content, and before the grounds, which are #colours',
+	substr_count( $specimen, ' id="cards"' ) === 1 && preg_match( '/<section id="cards" class="nino-section" aria-label="[^"]+">/', $specimen ) === 1
 	&& (int) strpos( $specimen, 'id="content"' ) < (int) strpos( $specimen, 'id="cards"' ) && (int) strpos( $specimen, 'id="cards"' ) < (int) strpos( $specimen, 'id="colours"' ) );
 
 /*	...and one at its end, as the first is at its beginning: where the footer starts, which the frame scrolls to when a footer is chosen on Templates (the
@@ -4691,7 +4705,7 @@ foreach( $sections as $section ) {
 check( 'every section of the specimen holds exactly one grid row of its own - a second one under it has no margin and would sit flush',
 	$sections !== [] && array_unique( $rowCounts ) === [ 1 ] );
 check( '...and the second of them is the one with the cards: #cards, the section the hero is followed by, which holds the cards',
-	isset( $sections[1] ) === true && $sections[1]->getAttribute( 'id' ) === 'cards' && $sections[1]->getAttribute( 'aria-label' ) === 'Cards'
+	isset( $sections[1] ) === true && $sections[1]->getAttribute( 'id' ) === 'cards' && $sections[1]->getAttribute( 'aria-label' ) !== ''
 	&& count( $byClass( $xpath, 'nino-card', $sections[1] ) ) > 10 && $sections[0]->getAttribute( 'id' ) === 'content' );
 check( 'and every child of a row is a grid cell, so nothing sits in the row without a width',
 	$strayCells === [] );
@@ -5198,7 +5212,7 @@ callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
 $face = $done['installed']['inter']['face'] ?? '';
 
 check( 'an install answers with the sentence for the bar and the state after it - the same shape the list has, the sentence in front, the families the feature brings among them',
-	$status === 200 && array_keys( $done ) === array_merge( [ 'msg' ], $shelfKeys ) && $done['msg'] === 'Inter 4.1 is installed.' && $done['refusal'] === '' && $done['refusalKind'] === ''
+	$status === 200 && array_keys( $done ) === array_merge( [ 'msg' ], $shelfKeys ) && $done['msg'] === $panelText( 'typefaces/msg/installed', 'en_US', 'Inter', '4.1' ) && $done['refusal'] === '' && $done['refusalKind'] === ''
 	&& $done['builtin'] === array_keys( Fonts::builtin() ) && $done['families'] === [ $entryInter, $entryFlex, $entryFira ] && $done['fetched'] === ( Webfonts::cached( $appData )['fetched'] ?? 0 ) );
 check( '...the family is installed whole, with what the screen draws of it: the name, its category, version, licence and where the files came from, the weights, and the file its name is set in - a url of the project\'s own, the first normal file',
 	is_dir( $fontsDir. '/inter' ) === true && is_file( $fontsDir. '/inter/700-italic.woff2' ) === true
@@ -5217,7 +5231,7 @@ check( 'design/list has it after an install: among the families the Type tab cho
 [ $status, $flexDone ] = callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'roboto-flex' ] );
 
 check( 'a family with a weight axis is told as one: the range, and the file with the axis as the file its name is set in',
-	$status === 200 && $flexDone['msg'] === 'Roboto Flex 3.0 is installed.' && ( $flexDone['installed']['roboto-flex']['axis'] ?? null ) === [ 100, 900 ]
+	$status === 200 && $flexDone['msg'] === $panelText( 'typefaces/msg/installed', 'en_US', 'Roboto Flex', '3.0' ) && ( $flexDone['installed']['roboto-flex']['axis'] ?? null ) === [ 100, 900 ]
 	&& str_ends_with( (string) ( $flexDone['installed']['roboto-flex']['face'] ?? '' ), '/assets/fonts/roboto-flex/100-900.woff2' ) === true
 	&& array_keys( $flexDone['installed'] ) === [ 'inter', 'roboto-flex' ] );
 
@@ -5231,7 +5245,7 @@ callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
 [ $status, $updated ] = callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] );
 
 check( 'an update says so: the family that was there is the version of the list now, with the weights it has, and the sentence is the one for an update',
-	$status === 200 && $updated['msg'] === 'Inter is updated to 4.2.' && ( $updated['installed']['inter']['version'] ?? null ) === '4.2' && ( $updated['installed']['inter']['weights'] ?? null ) === [ 400, 600, 700 ]
+	$status === 200 && $updated['msg'] === $panelText( 'typefaces/msg/updated', 'en_US', 'Inter', '4.2' ) && ( $updated['installed']['inter']['version'] ?? null ) === '4.2' && ( $updated['installed']['inter']['weights'] ?? null ) === [ 400, 600, 700 ]
 	&& is_file( $fontsDir. '/inter/600.woff2' ) === true && is_file( $fontsDir. '/inter/700-italic.woff2' ) === false );
 
 // ...refused, with the reason, and a conflict rather than a failure of the server: the request was understood and the answer is no
@@ -5263,7 +5277,7 @@ $usedBy( [] );
 [ $status, $removed ] = callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] );
 
 check( 'one that nothing uses is removed: the sentence for the bar and the state after it - the family is gone from the installed ones, with its directory, and from what the Type tab chooses from',
-	$status === 200 && array_keys( $removed ) === array_merge( [ 'msg' ], $shelfKeys ) && $removed['msg'] === 'Inter is removed.' && isset( $removed['installed']['inter'] ) === false
+	$status === 200 && array_keys( $removed ) === array_merge( [ 'msg' ], $shelfKeys ) && $removed['msg'] === $panelText( 'typefaces/msg/removed', 'en_US', 'Inter' ) && isset( $removed['installed']['inter'] ) === false
 	&& isset( $removed['installed']['roboto-flex'] ) === true && is_dir( $fontsDir. '/inter' ) === false
 	&& isset( callDesignAction( $appData, 'apiList' )[1]['families']['inter'] ) === false );
 check( '...a second time it is a conflict - there is nothing to remove - and so is a slug that is none',
@@ -5276,7 +5290,7 @@ mkdir( $fontsDir. '/odd-one', 0755, true );
 [ $status, $oddGone ] = callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'odd-one' ] );
 
 check( 'a directory that is no family is listed with the reason, and removed by its name - the sentence has the name it has',
-	$odd['broken'] === [ 'odd-one' => 'there is no font.json' ] && $status === 200 && $oddGone['msg'] === 'odd-one is removed.' && $oddGone['broken'] === [] && is_dir( $fontsDir. '/odd-one' ) === false );
+	$odd['broken'] === [ 'odd-one' => 'there is no font.json' ] && $status === 200 && $oddGone['msg'] === $panelText( 'typefaces/msg/removed', 'en_US', 'odd-one' ) && $oddGone['broken'] === [] && is_dir( $fontsDir. '/odd-one' ) === false );
 
 check( 'the log says what was done to a typeface and by which name - and nothing of what was only read; a name that is none is not written as it came',
 	Admin::log( 'design/webfonts/install', [ 'slug' => 'inter' ] ) === 'Install webfont inter' && Admin::log( 'design/webfonts/remove', [ 'slug' => 'inter' ] ) === 'Remove webfont inter'
@@ -5326,7 +5340,7 @@ check( 'and the sandbox is as it was: no family, no directory for them, no cache
 
 echo "\nThe themes: the whole setup under a name, and the css that goes with it\n";
 
-$themesSection = static function( array &$appData, string $library, array $entryInter ) use ( $richParts, $defaultSets ): string {
+$themesSection = static function( array &$appData, string $library, array $entryInter ) use ( $richParts, $defaultSets, $panelText ): string {
 
 	$themesFile = ninoSandboxDir( $appData ). '/design-themes.json';
 
@@ -5913,12 +5927,14 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		. ( $saveProblems === [] ? '' : ' - '. implode( ', ', $saveProblems ) ), $saveProblems === [] && $files() === $before );
 
 	// Duplicate
-	$copyName = $shippedWords['de_DE'][$shippedFirst][0]. ' Kopie';
+	$copyOf = static fn( string $name, string $locale ): string => $panelText( 'theme/copy', $locale, $name );
+	$copyName = $copyOf( $shippedWords['de_DE'][$shippedFirst][0], 'de_DE' );
+	$ownCopySlug = Themes::slug( $copyOf( 'Neuer Name', 'de_DE' ) );
 	$copySlug = Themes::slug( $copyName );
 	[ $status, $copied ] = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => $shippedFirst ] );
 	$copyFile = Themes::read( $appData, $library, $copySlug ) ?? [];
 
-	check( 'duplicating a shipped theme in a German workbench makes "<name> Kopie" of its name under the slug of that: the description in the language of the workbench, the setup and the css as they are, no lines in other languages and no presets - the answer says the slug and the list',
+	check( 'duplicating a shipped theme in a German workbench makes the copy of its name that the German text words (theme/copy) under the slug of that: the description in the language of the workbench, the setup and the css as they are, no lines in other languages and no presets - the answer says the slug and the list',
 		$status === 200 && array_keys( $copied ) === [ 'slug', 'themes' ] && $copied['slug'] === $copySlug && array_keys( $copyFile ) === [ 'format', 'name', 'description', 'setup', 'css', 'presets' ]
 		&& $copyFile['name'] === $copyName && $copyFile['description'] === $shippedWords['de_DE'][$shippedFirst][1] && $copyFile['setup'] === Themes::setup( $shippedOne ) && $copyFile['css'] === Themes::css( $shippedOne )
 		&& in_array( $copySlug, array_column( $copied['themes'], 'slug' ), true ) === true && Admin::log( 'design/theme/duplicate', [ 'slug' => $shippedFirst ] ) === 'Duplicate Design theme '. $shippedFirst. ' as '. $copySlug );
@@ -5929,16 +5945,16 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	check( '...a second copy takes the next free slug, the copy of a copy is a copy of its name, and one of the project\'s own is copied the same way',
 		$second === $copySlug. '-2' && Themes::read( $appData, $library, $copySlug. '-2' )['name'] === $copyName
-		&& $ofCopy === Themes::slug( $copyName. ' Kopie' ) && Themes::read( $appData, $library, Themes::slug( $copyName. ' Kopie' ) )['name'] === $copyName. ' Kopie'
-		&& $ofOwn === 'neuer-name-kopie' && Themes::read( $appData, $library, 'neuer-name-kopie' )['setup'] === $changedSnapshot );
+		&& $ofCopy === Themes::slug( $copyOf( $copyName, 'de_DE' ) ) && Themes::read( $appData, $library, Themes::slug( $copyOf( $copyName, 'de_DE' ) ) )['name'] === $copyOf( $copyName, 'de_DE' )
+		&& $ofOwn === $ownCopySlug && Themes::read( $appData, $library, $ownCopySlug )['setup'] === $changedSnapshot );
 
 	\Nino\Locales::useLocale( $appData, 'en_US' );
 	$englishCopy = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => $shippedFirst ] )[1];
 	\Nino\Locales::useLocale( $appData, 'de_DE' );
 
-	$englishName = $shippedWords['en_US'][$shippedFirst][0]. ' copy';
+	$englishName = $copyOf( $shippedWords['en_US'][$shippedFirst][0], 'en_US' );
 
-	check( '...and in an English workbench it is "<name> copy", with the English description',
+	check( '...and in an English workbench it is the copy of the English text, with the English description',
 		( $englishCopy['slug'] ?? '' ) === Themes::slug( $englishName ) && Themes::read( $appData, $library, Themes::slug( $englishName ) )['name'] === $englishName
 		&& Themes::read( $appData, $library, Themes::slug( $englishName ) )['description'] === $shippedWords['en_US'][$shippedFirst][1] );
 	check( '...and a theme that is not there cannot be copied',
@@ -5950,16 +5966,16 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	// Delete: the active theme, and one that is not
 	$stored = Setup::read( $appData, $library );
-	$stored['theme'] = 'neuer-name-kopie';
+	$stored['theme'] = $ownCopySlug;
 	$stored['compiled'] = [ 'at' => 'then', 'sha' => 'a', 'input' => 'b', 'setup' => [] ];
 	Setup::write( $appData, $stored );
-	[ $status, $deleted ] = callDesignAction( $appData, 'apiThemeDelete', [ 'slug' => 'neuer-name-kopie' ] );
+	[ $status, $deleted ] = callDesignAction( $appData, 'apiThemeDelete', [ 'slug' => $ownCopySlug ] );
 	$afterDelete = Setup::read( $appData, $library );
 
 	check( 'deleting the active theme removes its file and the slug in the setup - the record of what was compiled stays - and answers the list and the theme the setup has now, which is none',
-		$status === 200 && array_keys( $deleted ) === [ 'themes', 'theme' ] && $deleted['theme'] === '' && is_file( $themesDir. '/neuer-name-kopie.php' ) === false && Themes::exists( $appData, $library, 'neuer-name-kopie' ) === false
+		$status === 200 && array_keys( $deleted ) === [ 'themes', 'theme' ] && $deleted['theme'] === '' && is_file( $themesDir. '/'. $ownCopySlug. '.php' ) === false && Themes::exists( $appData, $library, $ownCopySlug ) === false
 		&& $afterDelete['theme'] === '' && $afterDelete['compiled'] === $stored['compiled'] && ( (array) include $themeSetupFile )['theme'] === ''
-		&& in_array( 'neuer-name-kopie', array_column( $deleted['themes'], 'slug' ), true ) === false && Admin::log( 'design/theme/delete', [ 'slug' => 'neuer-name-kopie' ] ) === 'Delete Design theme neuer-name-kopie' );
+		&& in_array( $ownCopySlug, array_column( $deleted['themes'], 'slug' ), true ) === false && Admin::log( 'design/theme/delete', [ 'slug' => $ownCopySlug ] ) === 'Delete Design theme '. $ownCopySlug );
 
 	$stored['theme'] = $shippedFirst;
 	Setup::write( $appData, $stored );
@@ -6299,78 +6315,30 @@ $leftover = array_filter( $textEn, static fn( string $key ): bool => str_starts_
 check( '...and no word is left over that nothing draws: every key is one of those, a literal the script names, or the page title of the preview'
 	. ( $leftover === [] ? '' : ' - left over: '. implode( ', ', array_slice( $leftover, 0, 6 ) ) ), $leftover === [] );
 
-/*	The convention of the owner (3.13, point 6): the label of a knob names its element first - Title|Subtitle|Text (Section|Card|Hero) -
-	and a comma stands between the element and what of it is set; the note under the label of a scale is the direction, left to right,
-	with U+2194 between the two ends. A choice keeps a note of its own, and Colours keeps its labels	*/
+/*	The convention of the owner (3.13, point 6): the note under the label of a scale is the direction, left to right, with U+2194 between
+	the two ends. A choice keeps a note of its own. What the labels and the words are is the owner's to say, and the checks read them by
+	their keys: they hold a text to its shape - the arrow of a note, the capital of a word - and never to a word	*/
 $arrow				= "\u{2194}";
-$unnamed			= [];
 $undirected		= [];
 
-foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
+foreach( [ 'en_US', 'de_DE' ] as $stepLocale ) {
+
 	foreach( Setup::KNOBS as $part => $kinds )
 		foreach( $kinds as $knob => $kind ) {
 
-			$label	= $panelWord( 'knob/'. $part. '/'. $knob. '/label', $stepLocale );
-			$note		= $panelWord( 'knob/'. $part. '/'. $knob. '/note', $stepLocale );
-
-			if( substr_count( $label, ', ' ) !== 1 )
-				$unnamed[] = $stepLocale. ' '. $part. '/'. $knob. ' "'. $label. '"';
+			$note = $panelWord( 'knob/'. $part. '/'. $knob. '/note', $stepLocale );
 
 			if( substr_count( $note, ' '. $arrow. ' ' ) !== ( $kind === 'scale' ? 1 : 0 ) )
 				$undirected[] = $stepLocale. ' '. $part. '/'. $knob. ' "'. $note. '"';
 		}
-
-foreach( [ 'en_US', 'de_DE' ] as $stepLocale ) {
-
-	foreach( [ 'label/size', 'label/pagewidth', 'label/radius', 'label/radius-alt' ] as $key )
-		if( substr_count( $panelWord( $key, $stepLocale ), ', ' ) !== 1 )
-			$unnamed[] = $stepLocale. ' '. $key;
 
 	foreach( [ 'hint/size', 'hint/pagewidth', 'hint/radius', 'hint/radius-alt', 'colour/saturation/note', 'colour/contrast/note', 'colour/depth/note' ] as $key )
 		if( substr_count( $panelWord( $key, $stepLocale ), ' '. $arrow. ' ' ) !== 1 )
 			$undirected[] = $stepLocale. ' '. $key;
 }
 
-check( 'the label of every knob of the three parts and of the strips of the page names its element first and then what of it is set, after a comma - Title (Hero), text size; Button, corners; Button, padding; Page, width; Radius, standard - in both languages'
-	. ( $unnamed === [] ? '' : ' - not so for '. implode( ', ', array_slice( $unnamed, 0, 4 ) ) ), $unnamed === [] );
-check( '...and the note under a scale says which way it goes, with U+2194 between the two ends: smaller ↔ larger, tighter ↔ wider, sharp ↔ round, none ↔ thick, muted ↔ rich - the strips of the page and the three scales of Colours as well, and a choice has a note without one'
+check( 'the note under a scale says which way it goes, with U+2194 between the two ends - the strips of the page and the three scales of Colours as well, and a choice has a note without one'
 	. ( $undirected === [] ? '' : ' - not so for '. implode( ', ', array_slice( $undirected, 0, 4 ) ) ), $undirected === [] );
-check( '...the labels as the owner wrote them: the hero\'s title and subtitle, the quiet and the loud variant, the section and the card, the button and the components, the fields and the tables, the table and the field',
-	$panelWord( 'knob/content/hero-title/label', 'de_DE' ) === 'Titel (Hero), Textgröße' && $panelWord( 'knob/content/hero-text/label', 'de_DE' ) === 'Untertitel (Hero), Textgröße'
-	&& $panelWord( 'knob/content/quiet/label', 'de_DE' ) === 'Leise Variante, Textgröße' && $panelWord( 'knob/content/loud/label', 'de_DE' ) === 'Laute Variante, Textgröße'
-	&& $panelWord( 'knob/content/section-space/label', 'de_DE' ) === 'Sektion, Abstand' && $panelWord( 'knob/content/card-space/label', 'de_DE' ) === 'Karte, Abstand'
-	&& $panelWord( 'knob/content/border/label', 'de_DE' ) === 'Karte, Linie' && $panelWord( 'knob/content/shadow/label', 'de_DE' ) === 'Karte, Schatten'
-	&& $panelWord( 'knob/buttons/size/label', 'de_DE' ) === 'Button, Größe' && $panelWord( 'knob/buttons/spread/label', 'de_DE' ) === 'Button, Änderung Klein/Groß'
-	&& $panelWord( 'knob/buttons/space/label', 'de_DE' ) === 'Button, Innenabstand' && $panelWord( 'knob/buttons/corners/label', 'de_DE' ) === 'Button, Ecken'
-	&& $panelWord( 'knob/components/scale/label', 'de_DE' ) === 'Felder und Tabellen, Textgröße' && $panelWord( 'knob/components/space/label', 'de_DE' ) === 'Felder und Tabellen, Abstände'
-	&& $panelWord( 'knob/components/corners/label', 'de_DE' ) === 'Komponenten, Ecken' && $panelWord( 'knob/components/border/label', 'de_DE' ) === 'Komponenten, Linien'
-	&& $panelWord( 'knob/components/zebra/label', 'de_DE' ) === 'Tabelle, Streifen' && $panelWord( 'knob/components/labels/label', 'de_DE' ) === 'Feld, Beschriftung'
-	&& $panelWord( 'knob/content/hero-title/label', 'en_US' ) === 'Title (Hero), text size' && $panelWord( 'knob/content/hero-text/label', 'en_US' ) === 'Subtitle (Hero), text size'
-	&& $panelWord( 'knob/content/quiet/label', 'en_US' ) === 'Quiet variant, text size' && $panelWord( 'knob/content/loud/label', 'en_US' ) === 'Loud variant, text size'
-	&& $panelWord( 'knob/content/section-space/label', 'en_US' ) === 'Section, space' && $panelWord( 'knob/content/card-space/label', 'en_US' ) === 'Card, space'
-	&& $panelWord( 'knob/content/border/label', 'en_US' ) === 'Card, line' && $panelWord( 'knob/content/shadow/label', 'en_US' ) === 'Card, shadow'
-	&& $panelWord( 'knob/buttons/size/label', 'en_US' ) === 'Button, size' && $panelWord( 'knob/buttons/spread/label', 'en_US' ) === 'Button, small and big'
-	&& $panelWord( 'knob/buttons/space/label', 'en_US' ) === 'Button, padding' && $panelWord( 'knob/buttons/corners/label', 'en_US' ) === 'Button, corners'
-	&& $panelWord( 'knob/components/scale/label', 'en_US' ) === 'Fields and tables, text size' && $panelWord( 'knob/components/space/label', 'en_US' ) === 'Fields and tables, space'
-	&& $panelWord( 'knob/components/corners/label', 'en_US' ) === 'Components, corners' && $panelWord( 'knob/components/border/label', 'en_US' ) === 'Components, lines'
-	&& $panelWord( 'knob/components/zebra/label', 'en_US' ) === 'Table, stripes' && $panelWord( 'knob/components/labels/label', 'en_US' ) === 'Field, labels'
-	&& $panelWord( 'knob/buttons/spread/note', 'de_DE' ) === 'nah beieinander '. $arrow. ' weit auseinander' && $panelWord( 'knob/buttons/spread/note', 'en_US' ) === 'close together '. $arrow. ' far apart'
-	&& $panelWord( 'knob/content/shadow/note', 'en_US' ) === 'none '. $arrow. ' strong'
-	&& array_filter( array_keys( (array) include __DIR__. '/../text/en_US.php' ), static fn( string $key ): bool => str_contains( $key, '/knob/content/corners/' ) ) === [] );
-check( '...the five knobs of the section and the card as the owner worded them: the title and the subtitle of a section and of a card, a text size each, and the rule under the title of a section - Titel (Sektion), Textgröße; Sektion, Linie; Section, rule - with the notes smaller ↔ larger and none ↔ strong',
-	$panelWord( 'knob/content/section-title/label', 'de_DE' ) === 'Titel (Sektion), Textgröße' && $panelWord( 'knob/content/section-subtitle/label', 'de_DE' ) === 'Untertitel (Sektion), Textgröße'
-	&& $panelWord( 'knob/content/section-line/label', 'de_DE' ) === 'Sektion, Linie'
-	&& $panelWord( 'knob/content/card-title/label', 'de_DE' ) === 'Titel (Karte), Textgröße' && $panelWord( 'knob/content/card-subtitle/label', 'de_DE' ) === 'Untertitel (Karte), Textgröße'
-	&& $panelWord( 'knob/content/section-title/label', 'en_US' ) === 'Title (Section), text size' && $panelWord( 'knob/content/section-subtitle/label', 'en_US' ) === 'Subtitle (Section), text size'
-	&& $panelWord( 'knob/content/section-line/label', 'en_US' ) === 'Section, rule'
-	&& $panelWord( 'knob/content/card-title/label', 'en_US' ) === 'Title (Card), text size' && $panelWord( 'knob/content/card-subtitle/label', 'en_US' ) === 'Subtitle (Card), text size'
-	&& array_filter( [ 'section-title', 'section-subtitle', 'card-title', 'card-subtitle' ], static fn( string $knob ): bool => $panelWord( 'knob/content/'. $knob. '/note', 'de_DE' ) !== 'kleiner '. $arrow. ' größer' || $panelWord( 'knob/content/'. $knob. '/note', 'en_US' ) !== 'smaller '. $arrow. ' larger' ) === []
-	&& $panelWord( 'knob/content/section-line/note', 'de_DE' ) === 'keine '. $arrow. ' kräftig' && $panelWord( 'knob/content/section-line/note', 'en_US' ) === 'none '. $arrow. ' strong' );
-check( '...and the four texts of the strips of the page are the owner\'s as well: Page, root size - 85 % ↔ 145 % of the browser\'s own size, never a fixed number of pixels - and Page, width - 48 rem ↔ to the edge; and in German Seite, Grundgröße - 85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl - and Seite, Breite - 48 rem ↔ bis an den Rand',
-	$panelWord( 'label/size', 'en_US' ) === 'Page, root size' && $panelWord( 'hint/size', 'en_US' ) === '85 % '. $arrow. ' 145 % of the browser\'s own size, never a fixed number of pixels'
-	&& $panelWord( 'label/pagewidth', 'en_US' ) === 'Page, width' && $panelWord( 'hint/pagewidth', 'en_US' ) === '48 rem '. $arrow. ' to the edge'
-	&& $panelWord( 'label/size', 'de_DE' ) === 'Seite, Grundgröße' && $panelWord( 'hint/size', 'de_DE' ) === '85 % '. $arrow. ' 145 % der Browser-Größe, nie eine feste Pixelzahl'
-	&& $panelWord( 'label/pagewidth', 'de_DE' ) === 'Seite, Breite' && $panelWord( 'hint/pagewidth', 'de_DE' ) === '48 rem '. $arrow. ' bis an den Rand' );
 
 /*	The words of the choices. The three words of a choice knob - the keys under /_admin/design/knob/<tab>/<knob>/ that are
 	less, default and more - begin with a capital letter in both languages, as the words of the choices of the Colours tab do
@@ -6384,11 +6352,6 @@ $initialOf	= static fn( string $word ): string => mb_substr( $word, 0, 1 );
 $isCapital	= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtoupper( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtolower( $initialOf( $word ) );
 $isLower		= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtolower( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtoupper( $initialOf( $word ) );
 $stepsOf		= static fn( string $part, string $knob, string $locale ): array => array_map( static fn( string $step ): string => $panelWord( 'knob/'. $part. '/'. $knob. '/'. $step, $locale ), Setup::words( 'choice' ) );
-$distinct		= static function( array $words ): array {
-	$words = array_values( array_unique( $words ) );
-	sort( $words );
-	return $words;
-};
 
 $stepWords		= [ 'en_US' => [], 'de_DE' => [] ];
 $uncapital		= [];
@@ -6406,12 +6369,6 @@ foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
 check( 'every word of a choice begins with a capital letter, in both languages: two knobs of three words, six in each'
 	. ( $uncapital === [] ? '' : ' - not so for '. implode( ', ', array_slice( $uncapital, 0, 4 ) ) ),
 	$uncapital === [] && count( $stepWords['en_US'] ) === 6 && count( $stepWords['de_DE'] ) === 6 );
-check( '...and nothing else of a word changed: the words in use are the German Aus, In der Zeile, Oben, Schwebend, Zeilen and Zeilen mit Linie, and the English Above, Floating, In the row, Off, Rows and Rows with a line',
-	$distinct( $stepWords['de_DE'] ) === $distinct( [ 'Aus', 'In der Zeile', 'Oben', 'Schwebend', 'Zeilen', 'Zeilen mit Linie' ] )
-	&& $distinct( $stepWords['en_US'] ) === $distinct( [ 'Above', 'Floating', 'In the row', 'Off', 'Rows', 'Rows with a line' ] ) );
-check( '...as the owner wrote them: Aus, Zeilen, Zeilen mit Linie for the stripes and In der Zeile, Oben, Schwebend for the labels - and Off, Rows, Rows with a line, In the row, Above, Floating',
-	$stepsOf( 'components', 'zebra', 'de_DE' ) === [ 'Aus', 'Zeilen', 'Zeilen mit Linie' ] && $stepsOf( 'components', 'labels', 'de_DE' ) === [ 'In der Zeile', 'Oben', 'Schwebend' ]
-	&& $stepsOf( 'components', 'zebra', 'en_US' ) === [ 'Off', 'Rows', 'Rows with a line' ] && $stepsOf( 'components', 'labels', 'en_US' ) === [ 'In the row', 'Above', 'Floating' ] );
 
 $scaleWords = [];
 
@@ -6426,18 +6383,15 @@ foreach( Setup::KNOBS as $part => $kinds )
 check( 'a scale has no word for a position in either language: twenty-one knobs with a name and a note, and none of the 63 words of three steps left - a strip of five shows -2 to +2'
 	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 21 );
 
-/*	The Colours tab: the choices say their names, and the three scales say nothing of their positions - a strip of five shows
+/*	The Colours tab: the choices have names, each capitalised, and the three scales say nothing of their positions - a strip of five shows
 	numbers, the 0 the framework's own. The names the server publishes for the choices (Colours::choices(), the last fallback of
 	the panel) are the English words of the text file	*/
-$colourWords = [
-	'en_US' => [ 'harmony' => [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ], 'temperature' => [ 'Neutral', 'Cool', 'Brand', 'Warm' ] ],
-	'de_DE' => [ 'harmony' => [ 'Monochrom', 'Analog', 'Triadisch', 'Komplementär' ], 'temperature' => [ 'Neutral', 'Kühl', 'Marke', 'Warm' ] ],
-];
+$colourChoices = array_filter( array_diff_key( $choices, [ 'mode' => 1 ] ), static fn( array $knob ): bool => $knob['kind'] === 'choice' );
 $colourDrawn = [];
 
-foreach( $colourWords as $stepLocale => $knobs )
-	foreach( $knobs as $knob => $words )
-		$colourDrawn[$stepLocale][$knob] = array_map( static fn( int $position ): string => $panelWord( 'colour/'. $knob. '/'. ( $position + 1 ), $stepLocale ), array_keys( $words ) );
+foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
+	foreach( $colourChoices as $knob => $choice )
+		$colourDrawn[$stepLocale][$knob] = array_map( static fn( int $position ): string => $panelWord( 'colour/'. $knob. '/'. ( $position + 1 ), $stepLocale ), array_keys( $choice['steps'] ) );
 
 $colourScaleWords = [];
 
@@ -6447,11 +6401,12 @@ foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
 			if( $panelWord( 'colour/'. $knob. '/'. $position, $stepLocale ) !== '' )
 				$colourScaleWords[] = $stepLocale. ' '. $knob. '/'. $position;
 
-check( 'the Colours tab keeps the names of its two choices, each capitalised - Neutral, Kühl, Marke, Warm, Monochrom, Analog, Triadisch, Komplementär and the English - and the three scales have none: no Muted, Default, Rich, Gedämpft, Normal, Satt',
-	$colourDrawn === $colourWords && array_filter( [ 'en_US', 'de_DE' ], static fn( string $stepLocale ): bool => array_filter( array_merge( ...array_values( $colourDrawn[$stepLocale] ) ), static fn( string $word ): bool => $isCapital( $word ) === false ) !== [] ) === []
+check( 'the Colours tab names the positions of its two choices, each word capitalised, in both languages - and the three scales have none',
+	array_keys( $colourChoices ) === [ 'harmony', 'temperature' ] && array_keys( $colourDrawn ) === [ 'en_US', 'de_DE' ]
+	&& array_filter( $colourDrawn, static fn( array $knobs ): bool => array_filter( array_merge( ...array_values( $knobs ) ), static fn( string $word ): bool => $isCapital( $word ) === false ) !== [] ) === []
 	&& $colourScaleWords === [] );
-check( '...and the names Colours::choices() publishes for the positions of a choice are the English words: the same, position for position - the last fallback of the panel says what the text says',
-	array_map( static fn( array $knob ): array => $knob['steps'], array_filter( array_diff_key( $choices, [ 'mode' => 1 ] ), static fn( array $knob ): bool => $knob['kind'] === 'choice' ) ) === $colourWords['en_US'] );
+check( '...and the names Colours::choices() publishes for the positions of a choice are the English words of the text: the same, position for position - the last fallback of the panel says what the text says',
+	array_map( static fn( array $knob ): array => $knob['steps'], $colourChoices ) === $colourDrawn['en_US'] );
 
 $selectWords	= [];
 
@@ -6467,9 +6422,6 @@ foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
 
 check( 'the options of a select stay lower case: the mode of the palette on Colours - three words in each language, and the sizes and widths of the page are no select any more'
 	. ( $notLower === [] ? '' : ' - not so for '. implode( ', ', array_slice( $notLower, 0, 4 ) ) ), $notLower === [] && count( $selectWords ) === 3 );
-check( '...the automatic, light only and dark only of the English panel and the automatisch, nur hell and nur dunkel of the German',
-	array_map( static fn( string $mode ): string => $panelWord( 'colour/mode/'. $mode, 'en_US' ), $choices['mode']['steps'] ) === [ 'automatic', 'light only', 'dark only' ]
-	&& array_map( static fn( string $mode ): string => $panelWord( 'colour/mode/'. $mode, 'de_DE' ), $choices['mode']['steps'] ) === [ 'automatisch', 'nur hell', 'nur dunkel' ] );
 
 /*	What the screen stopped drawing took its words with it: the card of the state
 	- how the files stand, and when they were last applied - the note under the
@@ -6588,11 +6540,12 @@ check( '...and the pane it is in is the height of the window less the bar - 100v
 	takes no room of any row - so neither the head nor the frame moves when the line comes and goes, and
 	the heading is the eyebrow and the title alone. The rules are what is held here - where the line
 	breaks is for a browser to measure: at a window of 1280px the pane is 555px and the two stand side by
-	side, in either language, with the reload drawn as an icon like the devices	*/
-check( 'the head of the preview is one row: a flex container that wraps, its two sides at the bottom edge and spread to the ends, .7rem apart - the heading shrinks to its title and the bar keeps its width',
+	side, in either language, with the reload drawn as an icon like the devices - and at a window of 390px, where the bar is wider than the
+	pane in German, the bar takes the room the pane has and wraps its controls: the page is as wide as the window and does not scroll sideways	*/
+check( 'the head of the preview is one row: a flex container that wraps, its two sides at the bottom edge and spread to the ends, .7rem apart - the heading shrinks to its title, and the bar to the room the pane has: it takes the width its controls need and may shrink below it, so that it wraps them where the pane is the narrower',
 	$cssHas( '.nino-admin .design-preview-head', [ 'display: flex;', 'flex-wrap: wrap;', 'align-items: flex-end;', 'justify-content: space-between;', 'gap: .7rem;' ] ) === true
 	&& $cssHas( '.nino-admin .design-preview-heading', [ 'flex: 0 1 auto;', 'min-width: 0;' ] ) === true && str_contains( $cssRule( '.nino-admin .design-preview-heading' ), 'display: flex' ) === false
-	&& $cssHas( '.nino-admin .design-preview-head > .design-preview-bar', [ 'flex: 0 0 auto;' ] ) === true );
+	&& $cssHas( '.nino-admin .design-preview-head > .design-preview-bar', [ 'flex: 0 1 auto;' ] ) === true );
 check( '...and the chip the preview says things in lies over the frame and takes no room: absolute at the top corner of the stage, above the frame, one line cut by an ellipsis where the frame is narrower, letting the pointer through - and gone when empty',
 	$cssHas( '.nino-admin #design-preview-msg', [ 'position: absolute;', 'top: .5rem;', 'right: .5rem;', 'z-index: 2;', 'max-width: calc(100% - 1rem);', 'white-space: nowrap;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'pointer-events: none;', 'border-radius: 999px;' ] ) === true
 	&& $cssHas( '.nino-admin #design-preview-msg:empty', [ 'display: none;' ] ) === true && $cssHas( '.design-stage', [ 'position: relative;' ] ) === true

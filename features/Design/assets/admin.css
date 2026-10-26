@@ -894,7 +894,10 @@
 	pane has no room for both - nothing is fixed here, flex-wrap does it. The
 	heading is the eyebrow and the title alone, so the row is as narrow as the
 	title and the bar: at a window of 1280px the preview's pane is 555px, and
-	the two stand side by side in it */
+	the two stand side by side in it. The bar is as wide as its controls need and
+	no wider than the pane: where the pane is the narrower - the German words of
+	the switch in a window of a phone - it shrinks to the pane and wraps its own
+	controls, so that the page does not scroll sideways with it */
 .nino-admin .design-preview-head {
 	display: flex;
 	flex-wrap: wrap;
@@ -903,7 +906,7 @@
 	gap: .7rem;
 }
 .nino-admin .design-preview-head > .design-preview-bar {
-	flex: 0 0 auto;
+	flex: 0 1 auto;
 }
 
 /* An eyebrow over the title */
