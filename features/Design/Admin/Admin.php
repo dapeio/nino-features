@@ -238,6 +238,9 @@ namespace Nino\Modules\Design {
 				// table that says, for every control of the setup, its tab, its object and its
 				// place in the row - the screen draws a tab from it and from nothing else
 				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::OBJECTS, 'controls' => Setup::LAYOUT ],
+				/*	The setup a fresh install starts from, cut to the keys that choose something (see Themes::snapshot()): what the head of a
+					closed row is compared with, so that it names only the controls that stand elsewhere than there	*/
+				'defaults' 	=> Themes::snapshot( Setup::defaults( $library ) ),
 				'steps' 	=> Setup::STEPS,
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),

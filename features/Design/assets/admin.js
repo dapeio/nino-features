@@ -21,7 +21,10 @@
  *													the whitespace and the two radii under the page and the space,
  *													the corners and the lines under the others, a strip of five
  *													positions or of three words for each knob, greyed out where the
- *													chosen template does not answer to it. Type has a second
+ *													chosen template does not answer to it. The cards are the
+ *													blocks of an accordion, one open: the head of a closed one
+ *													names, small and muted, the controls that stand elsewhere
+ *													than at the defaults. Type has a second
  *													screen, Install, the loader, which keeps nothing in the setup -
  *													the families the project has installed, and the signed list of
  *													those it can install, which is read when its button is pressed:
@@ -237,6 +240,10 @@
 				[ 'path', { d : 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16' } ],
 				[ 'path', { d : 'M8 16H3v5' } ],
 			],
+			// The chevron of the head of a block, which is turned while the block is open: Lucide's chevron-down
+			'chevron-down' : [
+				[ 'path', { d : 'm6 9 6 6 6-6' } ],
+			],
 		},
 
 		/*	Which icon a row opens with, by the part and the knob it sets - so that what
@@ -319,6 +326,10 @@
 		// The screen that a tab with screens shows, by the tab; a tab with no entry shows its first. Kept
 		// while the panel lives and no part of the selection: another screen changes nothing but the screen
 		_group	: {},
+		/*	The row that is open on a tab that draws its rows as an accordion (see _renderRows()), by the tab: the object it is the
+			row of, or null once the person has closed it. A tab with no entry has its first row open. Kept while the panel lives, like
+			the screen of a tab, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
+		_open	: {},
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
 		_frames	: null,
@@ -2218,10 +2229,12 @@
 		},
 
 		/**
-		 *	The rows of a tab into a box, one card each, in the order the table gives them. A card is headed with
-		 *	the word of its object where the tab has several rows - Type and Surfaces - and with nothing where it
-		 *	has one: the templates have no object, and the colours and the motion are the page's alone, so the tab
-		 *	is the row
+		 *	The rows of a tab into a box, one card each, in the order the table gives them. Where the tab has several
+		 *	rows - Type and Surfaces - they are the blocks of an accordion: the head of a block is a button with the word
+		 *	of its object, and the row itself, the body of the block, is drawn while the block is open and not before. One
+		 *	block is open, the one the person left open on the tab and the first where there is none (see _blockOf()).
+		 *	Where it has one - the templates have no object, and the colours and the motion are the page's alone, so the
+		 *	tab is the row - the card is the row and has no head
 		 *
 		 *	@param		{string}	tab				A key of the table's tabs
 		 *	@param		{Element}	box
@@ -2232,10 +2245,31 @@
 
 			const design = Nino.admin.design;
 			const rows = design._rows( tab );
+			const open = design._blockOf( tab, rows );
 
 			rows.forEach( function( row ) {
-				box.appendChild( design._renderRow( tab, row, rows.length > 1 ) );
+				box.appendChild( design._renderRow( tab, row, rows.length > 1, row.object === open ) );
 			} );
+		},
+
+		/**
+		 *	The block of a tab that is open: the one the person left open on it, else - where nothing was chosen on
+		 *	the tab yet - its first
+		 *
+		 *	@param		{string}	tab				A key of the table's tabs
+		 *	@param		{Array}		rows			The rows of the tab, see _rows()
+		 *
+		 *	@return		{?string}						The object of the row that is open; null where the person closed it, and for a tab with no rows
+		 */
+		_blockOf : function( tab, rows ) {
+
+			const chosen = Nino.admin.design._open[tab];
+			const objects = rows.map( function( row ) { return row.object } );
+
+			if( chosen === null || objects.length === 0 )
+				return null;
+
+			return objects.indexOf( chosen ) !== -1 ? chosen : objects[0];
 		},
 
 		/**
@@ -2251,45 +2285,332 @@
 		},
 
 		/**
-		 *	One row: a card of the controls the table gives an object on a tab, headed with the word of the object
-		 *	where there is a heading to give (see _renderRows()). The card says which tab and which object it is
+		 *	One row: a card of the controls the table gives an object on a tab. The card says which tab and which object it is
 		 *	the row of, and every control in it says which keys it is (see _fillRow()), so that what is drawn
-		 *	can be read against the table
+		 *	can be read against the table. Where there is a head to give (see _renderRows()) the card is a block of the
+		 *	accordion: the head and, while the block is open, the body under it (see _setBlock())
 		 *
 		 *	@param		{string}	tab
 		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *	@param		{boolean}	headed		Whether the card opens with the word of its object
+		 *	@param		{boolean}	headed		Whether the card is a block, with a head that opens and closes it
+		 *	@param		{boolean}	[open]		Whether the block is open
 		 *
 		 *	@return		{Element}
 		 */
-		_renderRow : function( tab, row, headed ) {
+		_renderRow : function( tab, row, headed, open ) {
 
 			const design = Nino.admin.design;
 
 			const card = dc.createElement('div');
 			card.id = design._rowId( tab, row.object );
-			card.className = 'nino-admin-card design-form-section';
+			card.className = 'nino-admin-card design-form-section'+ ( headed === true ? ' design-accordion' : '' );
 			card.dataset.tab = tab;
 			card.dataset.object = row.object;
 
-			if( headed === true )
-				card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/object/'+ row.object+ '/label') ) );
+			if( headed !== true ) {
+				design._fillRow( card, row );
+				return card;
+			}
 
-			design._fillRow( card, row );
+			card.appendChild( design._renderHead( tab, row ) );
+			design._setBlock( card, tab, row, open === true );
 
 			return card;
 		},
 
 		/**
-		 *	The controls of a row into its card, in the order of the table. What a control is drawn as follows from the
-		 *	first segment of its key: a template (parts), a knob (knobs), the corners of a kind of surface (radii), a
-		 *	font role (fonts), a part of the animation (motion), a part of the palette (colours) - and a strip of the
-		 *	page for the rest: the root size, the width, the whitespace and the two radii. Every control carries the
-		 *	keys it stands for in data-control, joined by a space. The five roles are the rows of one table under the
-		 *	heading of the fonts, the three parts of the animation the fields of one grid under the heading of the
-		 *	animation, and the palette's knobs follow the brand colour under the heading Tuning
+		 *	The head of a block: a button that opens and closes it, with the word of its object, the line that names what
+		 *	stands elsewhere than at the defaults while the block is closed (see _paintHead()) and a chevron, which is
+		 *	decoration. The word is the button's name and the line its description; aria-expanded says whether the block
+		 *	is open and, while it is, aria-controls which body it is the head of (see _paintHead()) - a closed block has no
+		 *	body in the document, and its head names none
 		 *
-		 *	@param		{Element}	card
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		{Element}
+		 */
+		_renderHead : function( tab, row ) {
+
+			const design = Nino.admin.design;
+			const id = design._rowId( tab, row.object );
+
+			const name = dc.createElement('span');
+			name.id = id+ '-name';
+			name.className = 'design-accordion-name';
+			name.textContent = Nino.content.getText('/_admin/design/object/'+ row.object+ '/label');
+
+			const summary = dc.createElement('span');
+			summary.id = id+ '-summary';
+			summary.className = 'design-accordion-summary';
+
+			const chevron = design._svg('chevron-down');
+			chevron.classList.add('design-accordion-chevron');
+
+			const head = dc.createElement('button');
+			head.type = 'button';
+			head.className = 'design-accordion-head';
+			head.setAttribute( 'aria-labelledby', name.id );
+			head.setAttribute( 'aria-describedby', summary.id );
+			head.addEventListener( 'click', function() { design._toggleBlock( tab, row.object, head ) } );
+
+			head.appendChild( name );
+			head.appendChild( summary );
+			head.appendChild( chevron );
+
+			return head;
+		},
+
+		/**
+		 *	The body of a block: the controls of its row as the tab draws them (see _fillRow()), in the box the head names
+		 *	in aria-controls
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		{Element}
+		 */
+		_renderBody : function( tab, row ) {
+
+			const body = dc.createElement('div');
+			body.id = Nino.admin.design._rowId( tab, row.object )+ '-body';
+			body.className = 'design-accordion-body';
+
+			Nino.admin.design._fillRow( body, row );
+
+			return body;
+		},
+
+		/**
+		 *	Put a block in the state it is to be in, where it stands: the body is drawn when the block is opened and taken away
+		 *	when it is closed - the controls of a closed block are not drawn - and the head is painted for it. Nothing else is
+		 *	drawn again, so that the head that was pressed is still the element the focus is on
+		 *
+		 *	@param		{Element}	card			The card of the row
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{boolean}	open
+		 *
+		 *	@return		void
+		 */
+		_setBlock : function( card, tab, row, open ) {
+
+			const design = Nino.admin.design;
+			const body = card.querySelector('.design-accordion-body');
+
+			if( open === true && body === null )
+				card.appendChild( design._renderBody( tab, row ) );
+
+			if( open === false && body !== null )
+				body.remove();
+
+			design._paintHead( card.querySelector('.design-accordion-head'), row, open );
+		},
+
+		/**
+		 *	The head of a block as the state of the block has it: aria-expanded says whether it is open, and the line says -
+		 *	while it is closed - which of the controls of its row stand elsewhere than at the defaults (see _summary()): nothing
+		 *	where none does, and nothing while the block is open, where the controls themselves are in view. The line is
+		 *	cut with dots where the head is too narrow, so its whole text is its title
+		 *
+		 *	@param		{Element}	head
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{boolean}	open
+		 *
+		 *	@return		void
+		 */
+		_paintHead : function( head, row, open ) {
+
+			const summary = head.querySelector('.design-accordion-summary');
+			const line = open === true ? '' : Nino.admin.design._summary( row );
+
+			head.setAttribute( 'aria-expanded', open === true ? 'true' : 'false' );
+
+			// The body is in the document while the block is open and nowhere while it is closed: the head names it only then
+			if( open === true )
+				head.setAttribute( 'aria-controls', head.parentNode.id+ '-body' );
+			else
+				head.removeAttribute('aria-controls');
+
+			summary.textContent = line;
+			summary.title = line;
+		},
+
+		/**
+		 *	Open a block, or close it where it is the open one. Opening a block closes the one that was open; which of them is
+		 *	open is kept for the tab (see _open). It is a matter of the column and of nothing else: the selection stays as it is, no
+		 *	preview is asked for and the frame is not moved - a change inside a block jumps, as it did, and this does not. The head
+		 *	that was pressed stays where it stood in the window (see _holdHead())
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{string}	object		The object whose head was pressed
+		 *	@param		{Element}	head			That head
+		 *
+		 *	@return		void
+		 */
+		_toggleBlock : function( tab, object, head ) {
+
+			const design = Nino.admin.design;
+			const rows = design._rows( tab );
+			const was = design._blockOf( tab, rows );
+			const top = head.getBoundingClientRect().top;
+
+			design._open[tab] = was === object ? null : object;
+
+			rows.forEach( function( row ) {
+
+				const card = row.object === was || row.object === object ? dc.getElementById( design._rowId( tab, row.object ) ) : null;
+
+				if( card !== null )
+					design._setBlock( card, tab, row, design._open[tab] === row.object );
+			} );
+
+			design._holdHead( head, top );
+		},
+
+		/**
+		 *	Keep the head that was pressed where it stood. The block that was open can stand above it, and its body goes with the
+		 *	press: the head, and with it what the person was looking at, would move up the window by the height of that body - off
+		 *	the top of it where the body is the taller. The page is scrolled by what the head moved, by whatever scrolls the column:
+		 *	the pane in a wide window, the window itself in a narrow one (see _scrolled())
+		 *
+		 *	@param		{Element}	head			The head that was pressed
+		 *	@param		{number}	top				Where its top stood in the window before the blocks were changed
+		 *
+		 *	@return		void
+		 */
+		_holdHead : function( head, top ) {
+
+			const by = head.getBoundingClientRect().top - top;
+
+			if( by === 0 )
+				return;
+
+			let box = head.parentNode;
+
+			while( box !== null && box !== bd && box !== dE && ( box.scrollHeight <= box.clientHeight || [ 'auto', 'scroll' ].indexOf( wn.getComputedStyle( box ).overflowY ) === -1 ) )
+				box = box.parentNode;
+
+			( box === null || box === bd || box === dE ? dc.scrollingElement || dE : box ).scrollTop += by;
+		},
+
+		/**
+		 *	What a closed block says of its row: the controls that stand elsewhere than a fresh setup has them (design/list
+		 *	hands that setup over as `defaults`), each as its label and the word of its position, joined by a middle dot. Nothing
+		 *	for a row that stands at the defaults
+		 *
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		{string}
+		 */
+		_summary : function( row ) {
+
+			const design = Nino.admin.design;
+			let lines = [];
+
+			row.controls.forEach( function( keys ) {
+				lines = lines.concat( design._deviations( keys, row.object ) );
+			} );
+
+			return lines.join(' · ');
+		},
+
+		/**
+		 *	What one control says where it stands elsewhere than at the default: its label and the word of the position it is at,
+		 *	as its strip shows them - made of the very texts and options the strip is drawn from (see _knobStrip(), _radiiStrip()
+		 *	and _pageName()). A font role says it for each of the four cells of its row that differs, by the name of the cell
+		 *	and the word it shows. A knob the chosen template does not answer to is greyed out, and no part of what the design
+		 *	is: it says nothing. The corners of a section - one choice for the cover, the row and the column - count once, and
+		 *	say the word the strip shows, which is the cover's. These are the kinds of control the rows of Type and Surfaces
+		 *	hold; the colours, the motion and the templates stand on tabs that are one row, which have no head to say it in
+		 *
+		 *	@param		{Array}		keys			The keys of the control, as _rows() has them
+		 *	@param		{string}	object		The object the control stands under
+		 *
+		 *	@return		{Array}							The lines, none where the control stands at the default
+		 */
+		_deviations : function( keys, object ) {
+
+			const design = Nino.admin.design;
+			const edit = design._edit;
+			const normal = ( design._data || {} ).defaults || {};
+			const path = keys[0].split('/');
+
+			if( path[0] === 'knobs' ) {
+
+				if( design._answered( path[1] ).indexOf( path[2] ) === -1 )
+					return [];
+
+				const chosen = ( edit.knobs[path[1]] || {} )[path[2]] || 0;
+				const strip = design._knobStrip( path[1], path[2] );
+
+				return chosen === ( ( ( normal.knobs || {} )[path[1]] || {} )[path[2]] || 0 ) ? [] : [ design._said( strip.name, strip.options, chosen ) ];
+			}
+
+			if( path[0] === 'radii' ) {
+
+				const strip = design._radiiStrip( keys, object );
+				const given = normal.radii || {};
+
+				return strip.kinds.some( function( kind ) { return edit.radii[kind] !== given[kind] } ) === true ? [ design._said( strip.name, strip.options, edit.radii[ strip.kinds[0] ] ) ] : [];
+			}
+
+			if( path[0] === 'fonts' ) {
+
+				const role = path[1];
+				const chosen = edit.fonts[role] || {};
+				const given = ( normal.fonts || {} )[role] || {};
+				const lines = [];
+
+				if( ( chosen.family || '' ) !== ( given.family || '' ) )
+					lines.push( design._fontLabel( role, 'family' )+ ' '+ design._familyLabel( role, chosen.family || '' ) );
+
+				if( ( chosen.weight || 'normal' ) !== ( given.weight || 'normal' ) )
+					lines.push( design._fontLabel( role, 'weight' )+ ' '+ Nino.content.getText('/_admin/design/weight/'+ ( chosen.weight || 'normal' ) ) );
+
+				if( ( chosen.uppercase === true ) !== ( given.uppercase === true ) )
+					lines.push( design._fontLabel( role, 'uppercase' )+ ' '+ Nino.content.getText('/_admin/common/label/'+ ( chosen.uppercase === true ? 'on' : 'off' ) ) );
+
+				if( String( chosen.size || '' ) !== String( given.size || '' ) )
+					lines.push( design._fontLabel( role, 'size' )+ ' '+ design._sizeInForce( role )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit') );
+
+				return lines;
+			}
+
+			if( design.PAGE_WORDS[ keys[0] ] === undefined )
+				return [];
+
+			return edit[ keys[0] ] === normal[ keys[0] ] ? [] : [ design._said( design._pageName( keys[0] ), design._numbered( design._positions('scale'), 0 ), edit[ keys[0] ] ) ];
+		},
+
+		/**
+		 *	A label and the word of a position, as a head says them: the label of the strip and the label of the option that
+		 *	holds the value
+		 *
+		 *	@param		{string}	name			The label of the strip
+		 *	@param		{Array}		options		{ value, label, title }, the options of the strip
+		 *	@param		{*}				value			The value the strip stands at
+		 *
+		 *	@return		{string}
+		 */
+		_said : function( name, options, value ) {
+
+			const found = options.filter( function( option ) { return String( option.value ) === String( value ) } )[0];
+
+			return name+ ' '+ ( found === undefined ? String( value ) : found.label );
+		},
+
+		/**
+		 *	The controls of a row into its card - the body of its block, where the card is one - in the order of the
+		 *	table. What a control is drawn as follows from the first segment of its key: a template (parts), a knob
+		 *	(knobs), the corners of a kind of surface (radii), a font role (fonts), a part of the animation (motion), a
+		 *	part of the palette (colours) - and a strip of the page for the rest: the root size, the width, the whitespace
+		 *	and the two radii. Every control carries the keys it stands for in data-control, joined by a space. The five
+		 *	roles are the rows of one table under the heading of the fonts, the three parts of the animation the fields
+		 *	of one grid under the heading of the animation, and the palette's knobs follow the brand colour under the
+		 *	heading Tuning
+		 *
+		 *	@param		{Element}	card			The card of the row, or the body of its block
 		 *	@param		{Object}	row				{ object, controls }, one of _rows()
 		 *
 		 *	@return		void
@@ -2378,6 +2699,17 @@
 		},
 
 		/**
+		 *	The label of one of the strips of the page: what it is called, by the key the table has it under
+		 *
+		 *	@param		{string}	key				size, width, whitespace, radius or radius-alt
+		 *
+		 *	@return		{string}
+		 */
+		_pageName : function( key ) {
+			return Nino.content.getText('/_admin/design/label/'+ Nino.admin.design.PAGE_WORDS[key] );
+		},
+
+		/**
 		 *	One of the strips of the page: the root size, the width, the whitespace or one of the two radii - five
 		 *	positions, -2 to +2. What the ends of a strip are is the line under its name
 		 *
@@ -2392,12 +2724,37 @@
 			const word = design.PAGE_WORDS[key];
 
 			return design._stripRow(
-				'page/'+ key, Nino.content.getText('/_admin/design/label/'+ word ), Nino.content.getText('/_admin/design/hint/'+ word ),
+				'page/'+ key, design._pageName( key ), Nino.content.getText('/_admin/design/hint/'+ word ),
 				design._numbered( design._positions('scale'), 0 ), edit[key], function( position ) {
 					edit[key] = position;
 					design._target = design._anchorOf( key );
 					design._preview();
 				} );
+		},
+
+		/**
+		 *	What a strip of corners is made of: the kinds of surface its keys stand for, the word its label is under - the
+		 *	kind, or the object where the choice is one for several kinds -, its label and its two words
+		 *
+		 *	@param		{Array}		keys			The keys of the control: 'radii/<kind>', one or more
+		 *	@param		{string}	object		The object the control stands under
+		 *
+		 *	@return		{Object}						{ kinds, word, name, options }, the options as { value, label, title }
+		 */
+		_radiiStrip : function( keys, object ) {
+
+			const kinds = keys.map( function( key ) { return key.split('/')[1] } );
+			const word = kinds.length > 1 ? object : kinds[0];
+
+			return {
+				kinds 	: kinds,
+				word 		: word,
+				name 		: Nino.content.getText('/_admin/design/radii/'+ word ),
+				options	: ( Nino.admin.design._data.radiusWords || [] ).map( function( radius ) {
+					const label = Nino.content.getText('/_admin/design/radii/'+ radius );
+					return { value : radius, label : label, title : label };
+				} ),
+			};
 		},
 
 		/**
@@ -2416,18 +2773,13 @@
 
 			const design = Nino.admin.design;
 			const edit = design._edit;
-			const kinds = keys.map( function( key ) { return key.split('/')[1] } );
-			const name = kinds.length > 1 ? object : kinds[0];
+			const strip = design._radiiStrip( keys, object );
+			const kinds = strip.kinds;
 			const differ = kinds.some( function( kind ) { return edit.radii[kind] !== edit.radii[ kinds[0] ] } );
 
-			const words = ( design._data.radiusWords || [] ).map( function( word ) {
-				const label = Nino.content.getText('/_admin/design/radii/'+ word );
-				return { value : word, label : label, title : label };
-			} );
-
 			const field = design._stripRow(
-				'page/radii-'+ name, Nino.content.getText('/_admin/design/radii/'+ name ), differ === true ? Nino.content.getText('/_admin/design/hint/radii') : '',
-				words, edit.radii[ kinds[0] ], function( word ) {
+				'page/radii-'+ strip.word, strip.name, differ === true ? Nino.content.getText('/_admin/design/hint/radii') : '',
+				strip.options, edit.radii[ kinds[0] ], function( word ) {
 
 					kinds.forEach( function( kind ) { edit.radii[kind] = word } );
 
@@ -2606,6 +2958,19 @@
 		},
 
 		/**
+		 *	What a cell of a role is called: the role and the column, "Title - Weight" - the name of its control, and the
+		 *	label of the case switch
+		 *
+		 *	@param		{string}	role			A key of data.roles
+		 *	@param		{string}	column		family, weight, uppercase or size
+		 *
+		 *	@return		{string}
+		 */
+		_fontLabel : function( role, column ) {
+			return Nino.content.getText('/_admin/design/font/role/'+ role )+ ' - '+ Nino.content.getText('/_admin/design/font/head/'+ column );
+		},
+
+		/**
 		 *	One row of the table: a role, and the four things a role is given
 		 *
 		 *	@param		{string}	role			A key of data.roles
@@ -2632,7 +2997,7 @@
 			const cell = function( control, column ) {
 				const td = dc.createElement('td');
 				td.setAttribute( 'role', 'cell' );
-				control.setAttribute( 'aria-label', name+ ' - '+ Nino.content.getText('/_admin/design/font/head/'+ column ) );
+				control.setAttribute( 'aria-label', Nino.admin.design._fontLabel( role, column ) );
 				td.appendChild( control );
 				row.appendChild( td );
 				return td;
@@ -2675,7 +3040,7 @@
 			else {
 				const field = Nino.adminUi.switchField( {
 					key 		: 'design-font-'+ role+ '-uppercase',
-					label 	: name+ ' - '+ Nino.content.getText('/_admin/design/font/head/uppercase'),
+					label 	: Nino.admin.design._fontLabel( role, 'uppercase' ),
 					checked	: chosen.uppercase === true,
 				} );
 				const input = field.querySelector('input');
@@ -3768,6 +4133,33 @@
 		},
 
 		/**
+		 *	What the strip of a knob is made of: its label and its options, from the least to the most - the numbers
+		 *	-2 to +2 of a scale, the three words that knob has for a choice. The kind is what design/list says of the
+		 *	knob in its part
+		 *
+		 *	@param		{string}		part			The part the knob belongs to: content, buttons or components
+		 *	@param		{string}		knob
+		 *
+		 *	@return		{Object}							{ name, options }, the options as { value, label, title }
+		 */
+		_knobStrip : function( part, knob ) {
+
+			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
+			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
+			const positions = Nino.admin.design._positions( kind );
+
+			return {
+				name 		: Nino.content.getText( base+ '/label' ),
+				options	: kind === 'choice'
+					? positions.map( function( position ) {
+						const label = Nino.content.getText( base+ '/'+ Nino.admin.design._word( position ) );
+						return { value : position, label : label, title : label };
+					} )
+					: Nino.admin.design._numbered( positions, 0 ),
+			};
+		},
+
+		/**
 		 *	One knob, as a strip. A scale is five numbers, -2 to +2, and the note under
 		 *	its name says which way they go; a choice is three alternatives, each in the
 		 *	words that knob has for it - "tight, normal, airy" is not the same sentence
@@ -3783,16 +4175,8 @@
 		_knobRow : function( part, knob, answered ) {
 
 			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
-			const name = Nino.content.getText( base+ '/label' );
-			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
-			const positions = Nino.admin.design._positions( kind );
-
-			const options = kind === 'choice'
-				? positions.map( function( position ) {
-					const label = Nino.content.getText( base+ '/'+ Nino.admin.design._word( position ) );
-					return { value : position, label : label, title : label };
-				} )
-				: Nino.admin.design._numbered( positions, 0 );
+			const strip = Nino.admin.design._knobStrip( part, knob );
+			const name = strip.name;
 
 			/*	The knob's own name and the terse note under it, both out of the
 				panel's text files: a knob is one key in every locale. Where the
@@ -3800,7 +4184,7 @@
 				An icon stands before them, for what the knob sets	*/
 			const field = Nino.admin.design._stripRow( part+ '/'+ knob, name,
 				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ),
-				options, ( Nino.admin.design._edit.knobs[part] || {} )[knob] || 0, function( position ) {
+				strip.options, ( Nino.admin.design._edit.knobs[part] || {} )[knob] || 0, function( position ) {
 					Nino.admin.design._setStep( part, knob, position );
 				}, answered === false );
 
@@ -4084,7 +4468,7 @@
 			const old = dc.getElementById( design._rowId( place[0], place[1] ) );
 
 			if( old !== null && row !== undefined )
-				old.replaceWith( design._renderRow( place[0], row, rows.length > 1 ) );
+				old.replaceWith( design._renderRow( place[0], row, rows.length > 1, design._blockOf( place[0], rows ) === row.object ) );
 
 			design._preview();
 		},

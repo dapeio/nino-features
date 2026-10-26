@@ -1442,6 +1442,22 @@ check( '...kind() says which - the quiet and the loud variant of the content are
 	&& Setup::range( 'scale' ) === 2 && Setup::range( 'choice' ) === 1 && Setup::range( 'nothing' ) === 0
 	&& Setup::words( 'scale' ) === [ 'least', 'less', 'default', 'more', 'most' ] && Setup::words( 'choice' ) === [ 'less', 'default', 'more' ] );
 
+/*	A tab that the table draws in several rows is drawn as an accordion - design-js-smoke.js holds the screen to that - and the manual says so where it is drawn: in the
+	entry of each such tab, found by the word the panel draws the tab with, a sentence that the entries of all of them have in common, in both languages. What is held
+	of it is its shape and not its words, as of every entry: a sentence is what stands between two full stops	*/
+$accordionTabs = array_values( array_filter( Setup::TABS, static fn( string $tab ): bool => count( array_filter( array_keys( $laidOut ), static fn( string $row ): bool => str_starts_with( $row, $tab. '/' ) ) ) > 1 ) );
+$sentencesOf = static fn( string $entry, string $locale ): array => array_values( array_filter( array_map( 'trim', (array) preg_split( '/(?<=\.)\s+(?=\p{Lu})/u', $says( $entry, $locale ) ) ) ) );
+$accordionSaid = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $accordionLocale ) {
+
+	$accordionLists = array_map( static fn( string $tab ): array => $sentencesOf( $panelWord( 'tab/'. $tab. '/label', 'en_US' ), $accordionLocale ), $accordionTabs );
+	$accordionSaid[$accordionLocale] = $accordionLists === [] ? [] : array_values( array_intersect( ...$accordionLists ) );
+}
+
+check( 'the tabs the table draws in several rows - Type and Surfaces - are told as an accordion in the manual: the entries of both have a sentence in common, in English and in German',
+	$accordionTabs === [ 'type', 'surfaces' ] && $accordionSaid['en_US'] !== [] && $accordionSaid['de_DE'] !== [] );
+
 /*	A knob is a position of its own part, held to the range of its kind: -2 to +2 for a scale, -1 to +1 for a choice.
 	Whatever else arrives - a word, an array, a number beyond the ends - is the middle, which is the template as it is	*/
 $notes = [];
@@ -3876,6 +3892,12 @@ check( '...and a position for a knob the chosen template does not answer to is n
 [ , $forScreen ] = callDesignAction( $appData, 'apiList' );
 $listingFile = ninoSandboxDir( $appData ). '/design-listing.json';
 file_put_contents( $listingFile, json_encode( $forScreen, JSON_THROW_ON_ERROR ) );
+
+check( 'the answer carries the setup a fresh install starts from, beside the one the project has - what the head of a closed row is compared with - cut to the keys that choose something: it does not follow the project, whose knobs have moved, and holds nothing that is the project\'s own',
+	( $forScreen['defaults'] ?? null ) === Themes::snapshot( Setup::defaults( $library ) ) && ( $forScreen['defaults'] ?? null ) === ( $listed['defaults'] ?? 'x' )
+	&& ( $forScreen['knobs'] ?? null ) !== ( $forScreen['defaults']['knobs'] ?? null ) && ( $forScreen['size'] ?? null ) !== ( $forScreen['defaults']['size'] ?? null )
+	&& array_diff( array_keys( (array) ( $forScreen['defaults'] ?? [] ) ), Setup::KEYS ) === []
+	&& array_intersect( [ 'format', 'theme', 'css', 'compiled' ], array_keys( (array) ( $forScreen['defaults'] ?? [] ) ) ) === [] );
 
 [ $status, $applied ] = callDesignAction( $appData, 'apiApply' );
 $appliedSheet = (string) \Nino\Filesystem::getFileContent( $appData, Compiler::TARGET, '' );
@@ -6606,6 +6628,16 @@ check( 'the controls of the bar over the preview are a hit area of 24px at least
 	$pixels( $cssRule( '.design-viewport' ), 'min-height' ) >= 24 && $pixels( $cssRule( '.design-viewport' ), 'min-width' ) >= 24
 	&& $pixels( $coarseRule( '.design-viewport' ), 'min-height' ) >= 44 && $pixels( $coarseRule( '.design-viewport' ), 'min-width' ) >= 44
 	&& $pixels( $cssRule( '.nino-admin .design-preview-follow' ), 'min-height' ) >= 24 && $pixels( $coarseRule( '.nino-admin .design-preview-follow' ), 'min-height' ) >= 44 );
+
+/*	The blocks of the accordion on Type and Surfaces (see admin.js): the head is a button the width of its card and a hit area of 44px at the least, whatever the
+	pointer is, and what it says of a closed block - the controls that stand off the defaults - is one line that the card cuts with an ellipsis where the head is short of
+	room, never a second line; the chevron is turned over while the block is open	*/
+check( 'the head of a block of the accordion is the width of its card and 44px high at the least and draws the hover of the workbench itself, the line it says of a closed block is cut with an ellipsis and never wraps, and the chevron is turned over while the block is open',
+	$cssHas( '.nino-admin .design-accordion-head', [ 'display: flex;', 'align-items: center;', 'width: 100%;' ] ) === true
+	&& $cssHas( '.nino-admin .design-accordion-head:hover', [ 'background: var(--editor-blue-soft);' ] ) === true
+	&& $pixels( $cssRule( '.nino-admin .design-accordion-head' ), 'min-height' ) >= 44
+	&& $cssHas( '.nino-admin .design-accordion-summary', [ 'flex: 1 1 0;', 'min-width: 0;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;' ] ) === true
+	&& $cssHas( '.nino-admin .design-accordion-head[aria-expanded="true"] .design-accordion-chevron', [ 'transform: rotate(180deg);' ] ) === true );
 
 /*	The Theme tab: the list is rows, each the name over its description and at its far end the buttons that can be pressed on it,
 	which stand under the words where the room is short and always from 768px down; the row that makes a theme is a field and its

@@ -160,10 +160,76 @@
 	font-size: .82rem;
 	font-weight: 650;
 }
-.nino-admin .design-form-section > .design-section-label:first-child {
+.nino-admin :is(.design-form-section, .design-accordion-body) > .design-section-label:first-child {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: 0;
+}
+
+/* ---- the accordion ----
+
+   The rows of Type and Surfaces are the blocks of one (see _renderRows() in admin.js): the card is the block, with a head
+   that is a button as wide as it and, while it is open, a body under it - the controls of the row, which are not drawn
+   before. The head is one line of 48px: the word of the object, the controls that stand elsewhere than at the defaults,
+   small and muted and cut with dots where there is not the room, and the chevron, which is turned over while the block
+   is open. A button has the whole control baseline to give up first - the height, the padding, the surface, the shadow and
+   the blue of its word - as the heading of a group in the rail does, which draws its ring of the keyboard's focus
+   inside, as this does. The workbench's hover of a button (its layer, nino.system) loses to the transparent surface this
+   layer gives the head, so the head draws the same hover itself. The card has no padding of its own: the head and the
+   body have theirs */
+.nino-admin .design-accordion {
+	padding: 0;
+}
+.nino-admin .design-accordion-head {
+	display: flex;
+	align-items: center;
+	gap: .6rem;
+	width: 100%;
+	min-height: 48px;
+	margin: 0;
+	padding: 0 .95rem;
+	border-radius: inherit;
+	background: transparent;
+	box-shadow: none;
+	color: var(--editor-text);
+	font-size: .86rem;
+	font-weight: 650;
+	line-height: 1.3;
+	text-align: left;
+}
+.nino-admin .design-accordion-head:hover {
+	background: var(--editor-blue-soft);
+}
+.nino-admin .design-accordion-head:focus-visible {
+	outline-offset: -2px;
+}
+/*	An open block is the head and the body under it: the head's lower corners are the body's to give up */
+.nino-admin .design-accordion-head[aria-expanded="true"] {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.nino-admin .design-accordion-name {
+	flex: none;
+}
+.nino-admin .design-accordion-summary {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+	font-weight: 450;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nino-admin .design-accordion-chevron {
+	transition: transform .15s ease;
+}
+.nino-admin .design-accordion-head[aria-expanded="true"] .design-accordion-chevron {
+	transform: rotate(180deg);
+}
+.nino-admin .design-accordion-body {
+	padding: .6rem .95rem .95rem;
+	border-top: 1px solid var(--editor-separator);
 }
 
 /* ---- the knob ----
