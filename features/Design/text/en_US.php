@@ -12,24 +12,25 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The seven tabs
-	'[[/_admin/design/tab/theme]]'								=> 'Theme',
-	'[[/_admin/design/tab/global]]'								=> 'Global',
-	'[[/_admin/design/tab/fonts]]'								=> 'Fonts',
-	'[[/_admin/design/tab/content]]'								=> 'Content',
-	'[[/_admin/design/tab/buttons]]'								=> 'Buttons',
-	'[[/_admin/design/tab/components]]'							=> 'Components',
-	'[[/_admin/design/tab/colours]]'								=> 'Colours',
+	// The six tabs - the properties of the design - and the five objects that the rows of Type and Surfaces are headed with
+	'[[/_admin/design/tab/theme/label]]'							=> 'Theme',
+	'[[/_admin/design/tab/templates/label]]'						=> 'Templates',
+	'[[/_admin/design/tab/type/label]]'								=> 'Type',
+	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surfaces',
+	'[[/_admin/design/tab/colours/label]]'							=> 'Colours',
+	'[[/_admin/design/tab/motion/label]]'							=> 'Motion',
+	'[[/_admin/design/object/page/label]]'							=> 'Page',
+	'[[/_admin/design/object/section/label]]'						=> 'Section',
+	'[[/_admin/design/object/card/label]]'							=> 'Card',
+	'[[/_admin/design/object/buttons/label]]'						=> 'Buttons',
+	'[[/_admin/design/object/components/label]]'					=> 'Fields and tables',
 
-	// The screens of the Theme, Global and Fonts tabs: a strip of tabs under the strip of the tabs, and under it the screen that is open
+	// The screens of the Theme and Type tabs: a strip of tabs under the strip of the tabs, and under it the screen that is open
 	'[[/_admin/design/group/theme/load/label]]'					=> 'Load',
 	'[[/_admin/design/group/theme/properties/label]]'			=> 'Properties',
 	'[[/_admin/design/group/theme/css/label]]'					=> 'Custom CSS',
-	'[[/_admin/design/group/global/base/label]]'				=> 'Page base',
-	'[[/_admin/design/group/global/corners/label]]'				=> 'Corners',
-	'[[/_admin/design/group/global/motion/label]]'				=> 'Animations',
-	'[[/_admin/design/group/fonts/roles/label]]'				=> 'Assignments',
-	'[[/_admin/design/group/fonts/install/label]]'				=> 'Install',
+	'[[/_admin/design/group/type/roles/label]]'					=> 'Assignments',
+	'[[/_admin/design/group/type/install/label]]'				=> 'Install',
 
 	// The Theme tab, in three screens: the list of themes with the import, the loaded one with its name and description and the row that makes another, the css of its own - and what a theme says of itself
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
@@ -72,7 +73,7 @@ return [
 	'[[/_admin/design/theme/error/export]]'			=> 'The theme could not be exported.',
 	'[[/_admin/design/theme/error/import]]'			=> 'The file could not be imported.',
 
-	// Global: the two frames are chosen here, the other three templates on their own tabs; and the root size, the width, the whitespace and the animation of the page
+	// Templates: the five choices of a set. Type and Surfaces: the strips of the page - the root size, the width, the whitespace and the two radii - and of its surfaces
 	'[[/_admin/design/part/header]]'								=> 'Header template',
 	'[[/_admin/design/part/footer]]'								=> 'Footer template',
 	'[[/_admin/design/part/content]]'							=> 'Content template',
@@ -88,12 +89,11 @@ return [
 	'[[/_admin/design/hint/radius]]'							=> '0 ↔ 1 rem',
 	'[[/_admin/design/label/radius-alt]]'						=> 'Radius, alternative',
 	'[[/_admin/design/hint/radius-alt]]'						=> '0 ↔ 1 rem',
-	'[[/_admin/design/label/radii]]'							=> 'Default per surface',
-	'[[/_admin/design/radii/cover]]'							=> 'Padded cover',
-	'[[/_admin/design/radii/row]]'								=> 'Grid row, inside',
-	'[[/_admin/design/radii/column]]'							=> 'Column',
-	'[[/_admin/design/radii/card]]'								=> 'Card',
-	'[[/_admin/design/radii/image]]'							=> 'Image',
+	// The corners a kind of surface takes where nothing chooses: one choice for the cover, the row and the column of a section, one for a card, one for the pictures
+	'[[/_admin/design/radii/section]]'							=> 'Corner default',
+	'[[/_admin/design/hint/radii]]'								=> 'Cover, row and column differ until you choose here.',
+	'[[/_admin/design/radii/card]]'								=> 'Corner default',
+	'[[/_admin/design/radii/image]]'							=> 'Images: corners',
 	'[[/_admin/design/radii/standard]]'							=> 'Standard',
 	'[[/_admin/design/radii/alternative]]'						=> 'Alternative',
 
@@ -118,7 +118,7 @@ return [
 	'[[/_admin/design/motion/speed/medium]]'						=> 'Medium',
 	'[[/_admin/design/motion/speed/slow]]'						=> 'Slow',
 
-	// Fonts, the Assignments screen: the five roles of Nino.css, as a table
+	// Type, the Assignments screen: the five roles of Nino.css, as a table
 	'[[/_admin/design/label/fonts]]'								=> 'Fonts',
 	'[[/_admin/design/font/role/title]]'							=> 'Title',
 	'[[/_admin/design/font/role/subtitle]]'						=> 'Subtitle',
@@ -139,7 +139,7 @@ return [
 	'[[/_admin/design/weight/bold]]'								=> 'Bold',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Fonts, the Install screen: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
+	// Type, the Install screen: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
 	'[[/_admin/design/typefaces/installed/title]]'				=> 'Installed',
 	'[[/_admin/design/typefaces/installed/empty]]'				=> 'No typeface is installed yet. Load the available typefaces below and install one: it lands in assets/fonts/ of your project, with its licence.',
 	'[[/_admin/design/typefaces/installed/used]]'				=> 'used by %s',
@@ -181,15 +181,8 @@ return [
 	'[[/_admin/design/typefaces/error/remove]]'					=> 'Not removed: %s',
 	'[[/_admin/design/typefaces/error/used]]'					=> 'Not removed: a role of the setup uses it - %s',
 
-	// Content, Buttons, Components: the template, and one strip for each knob - a label and a note that says which way it goes, and for a choice the words of its three positions
+	// The knobs of the templates: one strip for each - a label and a note that says which way it goes, and for a choice the words of its three positions
 	'[[/_admin/design/hint/unanswered]]'							=> 'This template does not answer to “%s”.',
-
-	// The groups the knobs of the Content stand in: a strip of tabs, and the rows of the one that is open under it
-	'[[/_admin/design/group/content/hero/label]]'				=> 'Hero',
-	'[[/_admin/design/group/content/section/label]]'			=> 'Section',
-	'[[/_admin/design/group/content/card/label]]'				=> 'Card',
-	// ...and the heading of the card under the roles table of Fonts, where the two knobs of the variants stand
-	'[[/_admin/design/group/content/variants/label]]'			=> 'Variants',
 
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Title (Hero), text size',
 	'[[/_admin/design/knob/content/hero-title/note]]'			=> 'smaller ↔ larger',

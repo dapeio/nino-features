@@ -18,18 +18,20 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
-	 *										One model for the seven tabs of the panel (the Install
-	 *										screen of Fonts installs families and keeps nothing here):
-	 *										the five templates (header and footer bring markup,
-	 *										content, buttons and components are one stylesheet each),
-	 *										the root size, the width and the whitespace of the page,
-	 *										the radius of its surfaces - two strengths and, for each
-	 *										kind of surface, the one it takes - and its animation, a
-	 *										position for every named knob of the three template tabs,
-	 *										the five font roles and the palette - and, for the Theme
-	 *										tab, the slug of the theme these choices were taken from
-	 *										and the custom css that goes with them (see Themes: a
-	 *										theme is this whole setup kept under a name).
+	 *										One model for the panel (the Install screen of Type
+	 *										installs families and keeps nothing here): the five
+	 *										templates (header and footer bring markup, content,
+	 *										buttons and components are one stylesheet each), the root
+	 *										size, the width and the whitespace of the page, the radius
+	 *										of its surfaces - two strengths and, for each kind of
+	 *										surface, the one it takes - and its animation, a position
+	 *										for every named knob of the three stylesheet templates, the
+	 *										five font roles and the palette - and, for the Theme tab,
+	 *										the slug of the theme these choices were taken from and
+	 *										the custom css that goes with them (see Themes: a theme is
+	 *										this whole setup kept under a name). Where each of them
+	 *										stands in the panel is LAYOUT's to say, and nothing
+	 *										else's.
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
@@ -87,12 +89,14 @@ namespace Nino\Modules\Design {
 			so that there is one vocabulary and no word of its own	*/
 		public const array STEPS = [ 'least', 'less', 'default', 'more', 'most' ];
 
-		/*	The knobs, per tab, and the kind of each - and nothing else. A knob belongs
-			to one tab and has a name: what it is called and what the terse note beside
-			it says live in the panel's text files, one key each in every locale, and so
-			do the three alternatives of a choice. The meaning of each is fixed here and
-			not per set, so that the templates of a tab stay exchangeable - what a set
-			decides is the values behind a knob, and whether it answers to it at all.
+		/*	The knobs, per part, and the kind of each - and nothing else. A knob belongs
+			to the part whose templates answer to it and has a name: what it is called and
+			what the terse note beside it says live in the panel's text files, one key each
+			in every locale, and so do the three alternatives of a choice. The meaning of
+			each is fixed here and not per set, so that the templates of a part stay
+			exchangeable - what a set decides is the values behind a knob, and whether it
+			answers to it at all. Which tab of the panel a knob stands on, and under which
+			object, is LAYOUT's.
 
 			A scale is a track of five positions, -2 to +2, the middle the template as it
 			is: a size, a space, a corner, a line. A choice is a few alternatives that
@@ -122,26 +126,98 @@ namespace Nino\Modules\Design {
 			'components' 	=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'labels' => 'choice' ],
 		];
 
-		/*	How the screen shows the knobs of a tab: in groups, a strip of tabs and under it
-			the rows of the group that is chosen. The groups and the knobs of each are in
-			the order they are shown in. Only the content has groups - the buttons and the
-			components are one list of rows and have no entry here - and every knob of
-			such a tab stands in one of them but quiet and loud, which the Fonts tab draws
-			under the table of the roles: they are knobs of the content all the same, with
-			their ladders and their positions. A group belongs to the screen and
-			nothing is stored under it: a setup keeps the position of a knob by its tab
-			and its name, as before. The panel's words for a group are
-			/_admin/design/group/<tab>/<group>/label	*/
-		public const array GROUPS = [
-			'content' => [
-				'hero' 		=> [ 'hero-title', 'hero-text' ],
-				'section' 	=> [ 'section-title', 'section-subtitle', 'section-space', 'section-line' ],
-				'card' 		=> [ 'card-title', 'card-subtitle', 'card-space', 'border', 'shadow' ],
-			],
+		/*	The panel in two axes. A tab is a property of the design - the theme it was
+			taken from, the templates, the type, the surfaces, the colours, the motion - and
+			an object is what a property is set on: the page, a section, a card, the buttons,
+			the fields and tables. TABS are the six tabs in the order they are shown in and
+			OBJECTS the five objects in the order their rows follow one another on a tab that
+			draws rows (the type and the surfaces). The panel's words for them are
+			/_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label	*/
+		public const array TABS = [ 'theme', 'templates', 'type', 'surfaces', 'colours', 'motion' ];
+
+		public const array OBJECTS = [ 'page', 'section', 'card', 'buttons', 'components' ];
+
+		/*	Where every control of the panel stands, and the only place that says: one entry for
+			each thing the setup lets a person choose, keyed by where the choice is kept in it -
+			`size`, `radii/card`, `motion/speed`, `fonts/title`, `parts/header`,
+			`knobs/<part>/<knob>`, `colours/primary` - and valued [ tab, object, order ]. The
+			screen draws a tab from the entries that name it and from nothing else: a row for
+			each object that has a control on the tab, in the order of OBJECTS, and in the row
+			its controls in the order of their numbers, which count from 1 in a row. Keys that
+			stand at one place are one control: the cover, the row and the column of a section
+			take the strength of their corners from one choice, and the second colour is the
+			swatch at the end of the row of Harmony. An object with no control on a tab has no
+			row there. The five templates stand under no object ('') - they are what the objects
+			are made of - and the colours and the motion are the page's. The Theme tab has no
+			control in the table: its screens work on `theme` and `css`, which a theme file is
+			kept with and which are no choice of a design. Nothing is stored under a place: a
+			setup, and a theme file, keep every choice by its key, as before	*/
+		public const array LAYOUT = [
+			// The templates: the five choices of a set, in the order they are compiled in
+			'parts/header' 							=> [ 'templates', '', 1 ],
+			'parts/footer' 							=> [ 'templates', '', 2 ],
+			'parts/content' 						=> [ 'templates', '', 3 ],
+			'parts/buttons' 						=> [ 'templates', '', 4 ],
+			'parts/components' 						=> [ 'templates', '', 5 ],
+
+			// The type: the root size and the five roles are the page's; the sizes of the titles are the section's, the card's, the buttons' and the fields' own
+			'size' 									=> [ 'type', 'page', 1 ],
+			'fonts/title' 							=> [ 'type', 'page', 2 ],
+			'fonts/subtitle' 						=> [ 'type', 'page', 3 ],
+			'fonts/text' 							=> [ 'type', 'page', 4 ],
+			'fonts/button' 							=> [ 'type', 'page', 5 ],
+			'fonts/code' 							=> [ 'type', 'page', 6 ],
+			'knobs/content/hero-title' 				=> [ 'type', 'section', 1 ],
+			'knobs/content/hero-text' 				=> [ 'type', 'section', 2 ],
+			'knobs/content/section-title' 			=> [ 'type', 'section', 3 ],
+			'knobs/content/section-subtitle' 		=> [ 'type', 'section', 4 ],
+			'knobs/content/quiet' 					=> [ 'type', 'section', 5 ],
+			'knobs/content/loud' 					=> [ 'type', 'section', 6 ],
+			'knobs/content/card-title' 				=> [ 'type', 'card', 1 ],
+			'knobs/content/card-subtitle' 			=> [ 'type', 'card', 2 ],
+			'knobs/buttons/size' 					=> [ 'type', 'buttons', 1 ],
+			'knobs/buttons/spread' 					=> [ 'type', 'buttons', 2 ],
+			'knobs/components/scale' 				=> [ 'type', 'components', 1 ],
+
+			// The surfaces: the space, the corners, the lines and the shadows of each object. The three kinds of a section share one place: they are one choice
+			'width' 								=> [ 'surfaces', 'page', 1 ],
+			'whitespace' 							=> [ 'surfaces', 'page', 2 ],
+			'radius' 								=> [ 'surfaces', 'page', 3 ],
+			'radius-alt' 							=> [ 'surfaces', 'page', 4 ],
+			'radii/image' 							=> [ 'surfaces', 'page', 5 ],
+			'knobs/content/section-space' 			=> [ 'surfaces', 'section', 1 ],
+			'knobs/content/section-line' 			=> [ 'surfaces', 'section', 2 ],
+			'radii/cover' 							=> [ 'surfaces', 'section', 3 ],
+			'radii/row' 							=> [ 'surfaces', 'section', 3 ],
+			'radii/column' 							=> [ 'surfaces', 'section', 3 ],
+			'knobs/content/card-space' 				=> [ 'surfaces', 'card', 1 ],
+			'knobs/content/border' 					=> [ 'surfaces', 'card', 2 ],
+			'knobs/content/shadow' 					=> [ 'surfaces', 'card', 3 ],
+			'radii/card' 							=> [ 'surfaces', 'card', 4 ],
+			'knobs/buttons/space' 					=> [ 'surfaces', 'buttons', 1 ],
+			'knobs/buttons/corners' 				=> [ 'surfaces', 'buttons', 2 ],
+			'knobs/components/space' 				=> [ 'surfaces', 'components', 1 ],
+			'knobs/components/corners' 				=> [ 'surfaces', 'components', 2 ],
+			'knobs/components/border' 				=> [ 'surfaces', 'components', 3 ],
+			'knobs/components/zebra' 				=> [ 'surfaces', 'components', 4 ],
+			'knobs/components/labels' 				=> [ 'surfaces', 'components', 5 ],
+
+			// The colours and the motion belong to the page. The second colour is the swatch at the end of the row of Harmony: one control
+			'colours/primary' 						=> [ 'colours', 'page', 1 ],
+			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
+			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
+			'colours/temperature' 					=> [ 'colours', 'page', 3 ],
+			'colours/saturation' 					=> [ 'colours', 'page', 4 ],
+			'colours/contrast' 						=> [ 'colours', 'page', 5 ],
+			'colours/depth' 						=> [ 'colours', 'page', 6 ],
+			'colours/mode' 							=> [ 'colours', 'page', 7 ],
+			'motion/effect' 						=> [ 'motion', 'page', 1 ],
+			'motion/strength' 						=> [ 'motion', 'page', 2 ],
+			'motion/speed' 							=> [ 'motion', 'page', 3 ],
 		];
 
 		/*	How a set says which knobs it answers to: one ladder per knob, named
-			after the tab and the knob and nothing else.
+			after the part and the knob and nothing else.
 
 			  --content-section-space--least / --less / --default / --more / --most
 
@@ -162,7 +238,7 @@ namespace Nino\Modules\Design {
 			published nothing, and one with another length than its knob's has not
 			published the knob.
 
-			The name of a rung is KNOB_TOKEN filled with the tab, the name and the
+			The name of a rung is KNOB_TOKEN filled with the part, the name and the
 			word: ladders() reads the declarations with it, and the compiler asks
 			the rung of the position with it */
 		public const string KNOB_TOKEN = '--%s-%s--%s';
@@ -334,8 +410,8 @@ namespace Nino\Modules\Design {
 
 			$knobs = [];
 
-			foreach( self::KNOBS as $tab => $kinds )
-				$knobs[$tab] = array_fill_keys( array_keys( $kinds ), 0 );
+			foreach( self::KNOBS as $part => $kinds )
+				$knobs[$part] = array_fill_keys( array_keys( $kinds ), 0 );
 
 			return [
 				'format' 	=> self::FORMAT,
@@ -393,13 +469,13 @@ namespace Nino\Modules\Design {
 		/**
 		 *	What a knob is: 'scale' or 'choice' (see KNOBS)
 		 *
-		 *	@param		string		$tab					A key of KNOBS
-		 *	@param		string		$knob					A name in KNOBS[$tab]
+		 *	@param		string		$part					A key of KNOBS
+		 *	@param		string		$knob					A name in KNOBS[$part]
 		 *
 		 *	@return 	string								'' for a knob there is none of
 		 */
-		public static function kind( string $tab, string $knob ): string {
-			return self::KNOBS[$tab][$knob] ?? '';
+		public static function kind( string $part, string $knob ): string {
+			return self::KNOBS[$part][$knob] ?? '';
 		}
 
 		/**
@@ -660,28 +736,28 @@ namespace Nino\Modules\Design {
 					$notes[] = self::note( 'design_set_missing', $part, self::shown( $wanted ), $setup['parts'][$part] );
 			}
 
-			/*	Where every knob stands. A knob is a position of its own tab, held to
-				the range of its kind, and a name that is none of the tab's - or a tab that
+			/*	Where every knob stands. A knob is a position of its own part, held to
+				the range of its kind, and a name that is none of the part's - or a part that
 				is none of the three - is dropped with a note rather than carried: a
 				position nothing reads is a position nobody can find again. One that is
 				missing is 0	*/
 			$given = is_array( $raw['knobs'] ?? null ) === true ? $raw['knobs'] : [];
 
-			foreach( $given as $tab => $values ) {
+			foreach( $given as $part => $values ) {
 
-				if( isset( self::KNOBS[$tab] ) === false ) {
-					$notes[] = 'there is no tab "'. self::shown( $tab ). '" with knobs - dropped';
+				if( isset( self::KNOBS[$part] ) === false ) {
+					$notes[] = 'there is no part "'. self::shown( $part ). '" with knobs - dropped';
 					continue;
 				}
 
 				foreach( array_keys( is_array( $values ) === true ? $values : [] ) as $knob )
-					if( isset( self::KNOBS[$tab][$knob] ) === false )
-						$notes[] = 'the tab "'. $tab. '" has no knob "'. self::shown( $knob ). '" - dropped';
+					if( isset( self::KNOBS[$part][$knob] ) === false )
+						$notes[] = 'the part "'. $part. '" has no knob "'. self::shown( $knob ). '" - dropped';
 			}
 
-			foreach( self::KNOBS as $tab => $kinds )
+			foreach( self::KNOBS as $part => $kinds )
 				foreach( $kinds as $knob => $kind )
-					$setup['knobs'][$tab][$knob] = self::position( is_array( $given[$tab] ?? null ) === true ? ( $given[$tab][$knob] ?? 0 ) : 0, $kind );
+					$setup['knobs'][$part][$knob] = self::position( is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? 0 ) : 0, $kind );
 
 			/*	The five font roles. A family has to be one the role's select offers -
 				the code is given the monospace ones only, and the families the project
@@ -763,13 +839,13 @@ namespace Nino\Modules\Design {
 		 *	under
 		 *
 		 *	@param		array 		$setup				A normalised setup
-		 *	@param		string		$tab					A key of KNOBS
-		 *	@param		string		$knob					A name in KNOBS[$tab]
+		 *	@param		string		$part					A key of KNOBS
+		 *	@param		string		$knob					A name in KNOBS[$part]
 		 *
 		 *	@return 	string								One of STEPS
 		 */
-		public static function step( array $setup, string $tab, string $knob ): string {
-			return self::word( self::position( $setup['knobs'][$tab][$knob] ?? 0, self::kind( $tab, $knob ) ) );
+		public static function step( array $setup, string $part, string $knob ): string {
+			return self::word( self::position( $setup['knobs'][$part][$knob] ?? 0, self::kind( $part, $knob ) ) );
 		}
 
 		/**

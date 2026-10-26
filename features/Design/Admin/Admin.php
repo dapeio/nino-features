@@ -12,18 +12,19 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: seven tabs over one setup - Theme, in
-	 *										three screens - the list of themes, the loaded theme with the
-	 *										row that makes another, and the css of its own - where the
-	 *										whole setup is kept under a name (see Themes); Global, with
-	 *										the two frames, the root size, the width and the animation
-	 *										of the page; Fonts, in two screens - the five font roles and
-	 *										the loader; Content, Buttons and Components, each with the
-	 *										choice of its template and one named knob for each thing the
-	 *										template lets go of; and Colours, with the two colours, the
-	 *										five knobs and the mode the palette is solved from - compiled
-	 *										together into assets/theme.css. The loader, the Install screen
-	 *										of Fonts, shows the typefaces a project has installed and the
+	 *	Design\Admin			The "Design" panel: six tabs over one setup, in two axes -
+	 *										Theme, in three screens - the list of themes, the loaded theme
+	 *										with the row that makes another, and the css of its own - where
+	 *										the whole setup is kept under a name (see Themes); Templates,
+	 *										the five choices of a set; Type and Surfaces, each a row for the
+	 *										page, a section, a card, the buttons and the fields and tables,
+	 *										with the controls of that object; Colours, with the two colours,
+	 *										the five knobs and the mode the palette is solved from; and
+	 *										Motion, the animation of the page - compiled together into
+	 *										assets/theme.css. Where a control stands is Setup::LAYOUT's
+	 *										and nobody else's: the list hands the table over and the
+	 *										screen is drawn from it. The loader, the Install screen of
+	 *										Type, shows the typefaces a project has installed and the
 	 *										signed list of those it can install (see Webfonts), which
 	 *										belongs to the setup only as far as the selects of the roles
 	 *										list what is installed. Installing and removing happen when
@@ -56,9 +57,10 @@ namespace Nino\Modules\Design {
 	 *
 	 *										Beside the controls is what they mean: one specimen page
 	 *										of the selection, rendered against this project and never
-	 *										written anywhere, with an anchor for each tab that the
-	 *										frame scrolls to. It is what makes the two-step honest -
-	 *										nobody has to compile a design to find out what it is.
+	 *										written anywhere, with an anchor for each tab and each
+	 *										object that the frame scrolls to. It is what makes the
+	 *										two-step honest - nobody has to compile a design to find
+	 *										out what it is.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -225,26 +227,26 @@ namespace Nino\Modules\Design {
 
 			\Nino\Http::ok( $request, [
 				'parts' 	=> $parts,
-				// Where every knob stands, per tab, and which knobs a tab has and of what
+				// Where every knob stands, per part, and which knobs a part has and of what
 				// kind - a scale of five positions or a choice of three, by name: the
 				// screen draws a row for each of them, and the parts above say which
 				// of the rows its template answers to. The five words are the steps a
 				// choice is named by, and the size and the width are positions as well
 				'knobs' 	=> $setup['knobs'],
-				'tabs' 		=> Setup::KNOBS,
-				// How a tab shows its rows where it shows them in groups: a strip of tabs
-				// with the rows of the chosen group under it - the content has three
-				'groups' 	=> Setup::GROUPS,
+				'kinds' 	=> Setup::KNOBS,
+				// Where the panel puts what it sets: the six tabs, the five objects and the
+				// table that says, for every control of the setup, its tab, its object and its
+				// place in the row - the screen draws a tab from it and from nothing else
+				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::OBJECTS, 'controls' => Setup::LAYOUT ],
 				'steps' 	=> Setup::STEPS,
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),
 				'whitespace' => (int) ( $setup['whitespace'] ?? 0 ),
 				/*	The radius of the surfaces: the position of each of the two strengths, the strength each
-					kind of surface takes, and the kinds there are and the two words a kind is set to	*/
+					kind of surface takes - the keys are the kinds there are - and the two words a kind is set to	*/
 				'radius' 	=> (int) ( $setup['radius'] ?? 0 ),
 				'radius-alt' => (int) ( $setup['radius-alt'] ?? 1 ),
 				'radii' 	=> (array) ( $setup['radii'] ?? [] ),
-				'surfaces' => Setup::SURFACES,
 				'radiusWords' => Setup::RADIUS_WORDS,
 				/*	The Theme tab: the slug of the theme the stored setup was taken from and
 					its own css, the list of the themes there are - the shipped ones first -
@@ -280,9 +282,10 @@ namespace Nino\Modules\Design {
 				/*	The palette half: where it stands, the vocabulary to draw it
 					with, and whether the picked brand colour is one text survives
 					on. The frontend carries no copy of the knob tables - it draws
-					whatever choices() hands it, so a knob added in Colours
-					appears here without this file or the script gaining a line.
-					Its words are the one thing it does need: text keys under
+					whatever choices() hands it, in the places Setup::LAYOUT gives
+					the colours, so a knob added in Colours appears here with a
+					line in that table and none in the script. Its words are the
+					one thing it does need: text keys under
 					'/_admin/design/colour/<knob>/', in every locale */
 				'colours'	=> (array) ( $setup['colours'] ?? [] ),
 				'palette'	=> Colours::choices(),
@@ -615,7 +618,7 @@ namespace Nino\Modules\Design {
 		 *	Install a family of the list, or update it: the whole family, from the
 		 *	archive the signed list names. The answer is the one the list gives, after
 		 *	the change, with the sentence for the action bar. The screen asks design/list
-		 *	again, for the selects of the Fonts tab
+		 *	again, for the selects of the Type tab
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -1077,13 +1080,13 @@ namespace Nino\Modules\Design {
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );
 
-			foreach( Setup::KNOBS as $tab => $kinds ) {
+			foreach( Setup::KNOBS as $part => $kinds ) {
 
-				$answered = Setup::knobs( $library, $tab, (string) ( $setup['parts'][$tab] ?? '' ) );
+				$answered = Setup::knobs( $library, $part, (string) ( $setup['parts'][$part] ?? '' ) );
 
 				foreach( array_keys( $kinds ) as $knob )
 					if( in_array( $knob, $answered, true ) === false )
-						$setup['knobs'][$tab][$knob] = 0;
+						$setup['knobs'][$part][$knob] = 0;
 			}
 
 			return $setup;
@@ -1154,7 +1157,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What the Install screen of Fonts is drawn from, the same after every action
+		 *	What the Install screen of Type is drawn from, the same after every action
 		 *	of it: the list as far as there is one, and the families the project has
 		 *	installed - with what each is set in its own face from, who uses it, and
 		 *	the directories that are none. The slugs of the families the feature brings

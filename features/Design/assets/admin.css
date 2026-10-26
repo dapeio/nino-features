@@ -4,9 +4,9 @@
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					What the feature's /_admin panel needs beyond the design
  *													system in _admin/assets/style.css: the field grid the
- *													animation is chosen in, the blocks the knob rows and the
- *													two strips of Global stand in, the row per knob and per
- *													colour with the icon before its name, the table of the
+ *													animation is chosen in, the cards the rows of the objects
+ *													and the strips of the page stand in, the row per knob and
+ *													per colour with the icon before its name, the table of the
  *													five font roles, the two cards of the typeface loader, the
  *													cards of the Theme tab's three screens (the list of the
  *													themes, the loaded one with the row that makes another, the
@@ -43,11 +43,11 @@
 
 @layer nino.tool {
 
-/*	The seven tabs. In the pane's head the strip stands beside the panel's name
+/*	The six tabs. In the pane's head the strip stands beside the panel's name
 	and the head lays it out; this is the column it opens where there is no
 	head (see _head() in admin.js). A margin below rather than a
 	border: the card under it already draws one, and two lines a row apart
-	read as a box nobody meant to draw. Seven tabs side by side are wider than a
+	read as a box nobody meant to draw. Six tabs side by side are wider than a
 	phone: the strip scrolls in its own box, and the page does not scroll with it */
 .nino-admin .design-tabs {
 	margin: 0 0 1rem;
@@ -55,21 +55,16 @@
 	scrollbar-width: none;
 }
 
-/*	The groups of the knobs of a tab, and the screens of Theme, Global and Fonts: the
-	same strip. The groups stand in the card between the select of the template and the
-	rows of the group that is open; the screens stand in the column itself, over the
-	cards of the one that is open, and have the room of a card's gap under them.
-	Three short words are one line of the column - with a little less air round each
-	than the seven tabs have, so that the German ones are too at the width of a
-	phone; where they are not, the strip scrolls in its own box like the seven tabs
-	do, and the card does not scroll with it */
+/*	The screens of Theme and Type: the same strip as the tabs. It stands in the
+	column itself, over the cards of the screen that is open, and has the room of a
+	card's gap under it. Three short words are one line of the column - with a
+	little less air round each than the six tabs have, so that the German ones are
+	too at the width of a phone; where they are not, the strip scrolls in its own
+	box like the six tabs do, and the card does not scroll with it */
 .nino-admin .design-groups {
-	margin: .55rem 0 .3rem;
+	margin: 0 0 .75rem;
 	overflow-x: auto;
 	scrollbar-width: none;
-}
-.nino-admin #design-body > .design-groups {
-	margin: 0 0 .75rem;
 }
 .nino-admin .design-groups .nino-admin-tab {
 	padding-left: 1rem;
@@ -93,10 +88,11 @@
 
 /* ---- the card, and the field grid in it ----
 
-   One raised surface for both blocks of the column - the form cards and the
-   knob block - because they are one column of the same kind of thing. The
-   surface itself is the design system's .nino-admin-card; only the measures
-   are here, tightened from that card's roomier default */
+   One raised surface for both kinds of card in the column - the cards of the
+   rows of a tab and the cards of the screens of Theme and Type - because they
+   are one column of the same kind of thing. The surface itself is the design
+   system's .nino-admin-card; only the measures are here, tightened from that
+   card's roomier default */
 .nino-admin .design-form-section,
 .nino-admin .design-block {
 	margin: 0 0 .55rem;
@@ -172,8 +168,9 @@
 
 /* ---- the knob ----
 
-   One row per knob the tab has, per setting of the page (the root size and the
-   width) and per knob of the palette: what it is called, and where it stands.
+   One row per knob, per setting of the page (the root size, the width, the
+   whitespace and the radii) and per knob of the palette: what it is called, and
+   where it stands.
    The steps are the workbench's own segmented control (.nino-admin-tabs), five
    buttons with the numbers -2 to +2, or three in the words that knob has for
    them. The name and the note stand over the steps rather than beside them: a
@@ -183,12 +180,6 @@
 	display: grid;
 	gap: .25rem;
 	padding: .35rem 0;
-}
-/*	The template these knobs are the knobs of is chosen at the top of the card:
-	the line a row ends with stands under it as well, with the room a row has */
-.nino-admin .design-block > .design-field {
-	padding-bottom: .35rem;
-	border-bottom: 1px solid var(--editor-separator);
 }
 /*	The label is a row of the icon and a box that holds the name with its note
 	under it, the icon centred on the two lines. The name is set lighter and
@@ -1057,26 +1048,27 @@
 }
 
 /*	Four names or five numbers in a third of the screen: a little less room for
-	each */
-.nino-admin #design-colours .design-knob-steps .nino-admin-tab {
+	each. The rows of the palette are taken by their class and not by the row of
+	the table they stand in: the table is what says where they stand */
+.nino-admin .design-colour-knob .design-knob-steps .nino-admin-tab {
 	padding: .3rem .2rem;
 	font-size: .7rem;
 }
 
 /*	The Harmony row carries the second colour's swatch: on the line of its name,
 	at the far end, where the steps take the whole line under them */
-.nino-admin #design-colours .design-knob-row:has(> .design-colour-second) {
+.nino-admin .design-knob-row:has(> .design-colour-second) {
 	grid-template-columns: minmax(0, 1fr) auto;
 }
-.nino-admin #design-colours .design-knob-row:has(> .design-colour-second) .design-knob-label {
+.nino-admin .design-knob-row:has(> .design-colour-second) .design-knob-label {
 	grid-column: 1;
 	grid-row: 1;
 }
-.nino-admin #design-colours .design-knob-row:has(> .design-colour-second) .design-knob-steps {
+.nino-admin .design-knob-row:has(> .design-colour-second) .design-knob-steps {
 	grid-column: 1 / -1;
 	grid-row: 2;
 }
-.nino-admin #design-colours .design-colour-second {
+.nino-admin .design-knob-row > .design-colour-second {
 	grid-column: 2;
 	grid-row: 1;
 	justify-self: end;

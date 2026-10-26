@@ -15,14 +15,15 @@ namespace Nino\Modules\Design {
 	 *	Nino							A compact filesystembased php framework
 	 *	Preview						What a setup looks like, before it is the site's.
 	 *
-	 *										One page that has something to show for every tab of the
-	 *										panel - the hero and the sections in every ground, the
-	 *										cards, the type, the buttons, the form and the table, the
-	 *										lists and the blocks - in the markup a real page produces,
-	 *										with the chosen header and footer around it and the compiled
-	 *										stylesheet over it. Each tab has an anchor on it, an element
-	 *										with an id the panel scrolls the frame to; the cards have one
-	 *										too, for the knobs of the content that are looked at there.
+	 *										One page that has something to show for every tab and
+	 *										every object of the panel - the hero and the sections in
+	 *										every ground, the cards, the type, the buttons, the form and
+	 *										the table, the lists and the blocks - in the markup a real
+	 *										page produces, with the chosen header and footer around it
+	 *										and the compiled stylesheet over it. Each tab and each
+	 *										object has an anchor on it, an element with an id the panel
+	 *										scrolls the frame to; the cards have one, and the end of the
+	 *										page has one for the footer.
 	 *										Nothing here writes: a preview is a question, and the answer
 	 *										to it must not already be the answer on disk.
 	 *
