@@ -2,11 +2,122 @@
  *	@description	Logo, description and social links beside two columns, with a legal row under them. The classic company foot.
  *	@description-de	Logo, Beschreibung und Social-Media-Links neben zwei Spalten, darunter eine Rechtszeile. Der klassische Firmenfuß.
  *
+ *	@knob	scale		Type size of the footer
+ *	@knob	height		Space above and below the content of the footer
+ *	@knob	space		Space between its columns, lines and links
+ *	@knob	ground		What the footer stands on
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: scale is a factor on the type size of the footer, height
+ *	a factor on the room above and below its content, space a factor on the gaps
+ *	between its columns, lines and links, and ground a choice of three: the ground
+ *	and the ink of the page, this set's own, and the dark pair of the palette. What
+ *	the text, the links and the lines of the footer are read in comes with it, as
+ *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
+ *	and -border), and is put on the footer as the roles Nino.css reads - so the
+ *	footer is legible on each of the three.
+ *
+ *	The legal band has the pair the palette has for it (--footer-ground-legal and
+ *	-legal-ink), which the main band's ground does not reach.
  */
 
+:root {
+	/*	The type size of the footer, as a factor of the one it has: .8em of the text round it, and the sizes this set gives its parts	*/
+	--footer-scale--least:	.85;
+	--footer-scale--less:	.92;
+	--footer-scale--default:	1;
+	--footer-scale--more:	1.1;
+	--footer-scale--most:	1.2;
+
+	/*	The room above and below the content, as a factor of what this set has	*/
+	--footer-height--least:	.5;
+	--footer-height--less:	.75;
+	--footer-height--default:	1;
+	--footer-height--more:	1.5;
+	--footer-height--most:	2;
+
+	/*	The gaps between its columns, lines and links, as a factor of what this set has	*/
+	--footer-space--least:	.5;
+	--footer-space--less:	.75;
+	--footer-space--default:	1;
+	--footer-space--more:	1.5;
+	--footer-space--most:	2;
+
+	/*	What the footer stands on: the ground of the page, this set's own - the pair the palette has for the main band -, the dark pair of the palette	*/
+	--footer-ground--less:	var(--color-background);
+	--footer-ground--default:	var(--color-footer-bg-main);
+	--footer-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--footer-ground-ink--less:	var(--color-text);
+	--footer-ground-ink--default:	var(--color-footer-text-main);
+	--footer-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The subtitle role	*/
+	--footer-ground-subtitle--less:	var(--color-subtitle);
+	--footer-ground-subtitle--default:	var(--color-subtitle);
+	--footer-ground-subtitle--more:	var(--color-section-dark-text);
+
+	/*	The title role	*/
+	--footer-ground-title--less:	var(--color-title);
+	--footer-ground-title--default:	var(--color-title);
+	--footer-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role	*/
+	--footer-ground-accent--less:	var(--color-accent);
+	--footer-ground-accent--default:	var(--color-accent);
+	--footer-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--footer-ground-focus--less:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The lines in it	*/
+	--footer-ground-border--less:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The ground of the legal band, which the palette has a pair of its own for	*/
+	--footer-ground-legal--less:	var(--color-background);
+	--footer-ground-legal--default:	var(--color-footer-bg-legal);
+	--footer-ground-legal--more:	var(--color-section-dark-bg);
+
+	/*	The ink on it	*/
+	--footer-ground-legal-ink--less:	var(--color-text);
+	--footer-ground-legal-ink--default:	var(--color-footer-text-legal);
+	--footer-ground-legal-ink--more:	var(--color-section-dark-text);
+}
+
+footer {
+	font-size: calc( .8em * var(--footer-scale) );
+	--color-subtitle: var(--footer-ground-subtitle);
+	--color-title: var(--footer-ground-title);
+	--color-accent: var(--footer-ground-accent);
+	--color-focus: var(--footer-ground-focus);
+	--color-border: var(--footer-ground-border);
+}
+
 .nino-footer-main {
-	padding-top:var(--space-1);
+	padding-top: calc( var(--space-1) * var(--footer-height) );
+	padding-right: calc( var(--space-3) * var(--footer-space) );
+	padding-left: calc( var(--space-3) * var(--footer-space) );
+	background: var(--footer-ground);
+	color: var(--footer-ground-ink);
+}
+
+.nino-footer-legal {
+	padding-right: calc( var(--space-3) * var(--footer-space) );
+	padding-bottom: calc( var(--space-1) * var(--footer-height) );
+	padding-left: calc( var(--space-3) * var(--footer-space) );
+	background: var(--footer-ground-legal);
+	color: var(--footer-ground-legal-ink);
+}
+
+.nino-footer-getintouch li {
+	padding-bottom: calc( var(--space-1) * var(--footer-space) );
 }

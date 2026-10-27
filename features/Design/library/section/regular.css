@@ -1,0 +1,189 @@
+/*	@name			Regular
+ *	@description	The framework as it is: the middle of every ladder. The hero, the sections, their titles and the covers as Nino.css draws them.
+ *	@description-de	Das Framework, wie es ist: die Mitte jeder Leiter. Hero, Sektionen, ihre Titel und die Cover, wie Nino.css sie zeichnet.
+ *
+ *	@knob	hero-title			Size of the title of a hero
+ *	@knob	hero-text			Size of the text of a hero
+ *	@knob	quiet				Size of a quiet title, subtitle and text
+ *	@knob	loud				Size of a loud title, subtitle and text
+ *	@knob	title				Size of the title of a section
+ *	@knob	subtitle			Size of the subtitle of a section
+ *	@knob	space				Space above and below the content of a section
+ *	@knob	rule				Rule under the title of a section
+ *	@knob	dim					How dark the scrim of a dimmed cover is
+ *
+ *	Regular is the starting point, not a design. Every value it declares is the
+ *	framework's own, so a page under it looks as it does under Nino.css alone -
+ *	and every one of them is a ladder of five, so each knob has something to
+ *	reach. The middle of a ladder is Nino.css, the others are two steps to
+ *	each side. Where Nino.css changes a number at 768px the ladder does the
+ *	same, in a media query of its own.
+ *
+ *	Two rules for a set:
+ *
+ *	  - Only the classes of this template: the hero, the section, the column
+ *	    on a ground and the cover. A set of buttons does not touch a section
+ *	    title, however tempting, and a section set does not touch a card -
+ *	    where it has to read a value of the card family it reads it by its
+ *	    token, and says so in its opening comment.
+ *	  - Colours through the roles, never as literals: var(--color-title),
+ *	    var(--color-primary), var(--color-section-tint-bg). A ground is a
+ *	    class of Nino.css (nino-section--alt, nino-grid--counter ...) that
+ *	    sets the pair and the roles solved against it; a set never paints
+ *	    one, and never compares one ground with another.
+ *
+ *	A value a knob should reach declares its five steps instead of one
+ *	value, named after the part and the knob (--section-space--least,
+ *	--less, --default, --more, --most), and the rule reads the knob
+ *	(var(--section-space)). The knobs of Nino.css itself - the factors
+ *	of the hero, of a section's title and subtitle and of the variants, the
+ *	rule under a section title - need no rule: the set only points them at
+ *	the ladder. The scrim of a dimmed cover is the one thing that does: its
+ *	rule reads the ladder of the dimming, on the two pseudo-elements Nino.css
+ *	draws it with and on the block of a picture behind a section, a row and
+ *	a column, which carry one of their own. The card family has the same four
+ *	names (Regular, Open, Panel, Box) and a theme names a sensible pair.
+ *	Copy this file under a name of your own and start there.
+ */
+
+:root {
+	/*	The factors Nino.css multiplies the size of the title role and of the
+		subtitle role by, in a hero: 1.4 and 1.2, from 768px 1.45 and 10 / 9.
+		A step is the ratio 1.25 to either side of the middle, twice: times .64,
+		.8, 1, 1.25 and 1.5625	*/
+	--section-hero-title--least: 		.896;
+	--section-hero-title--less: 		1.12;
+	--section-hero-title--default: 	1.4;
+	--section-hero-title--more: 		1.75;
+	--section-hero-title--most: 		2.1875;
+
+	--section-hero-text--least: 		.768;
+	--section-hero-text--less: 			.96;
+	--section-hero-text--default: 	1.2;
+	--section-hero-text--more: 			1.5;
+	--section-hero-text--most: 			1.875;
+
+	/*	How much smaller a --quiet variant is than the class it varies, and how
+		much larger a --loud one: .85 and 1.2. The quiet ones stay under 1 and
+		the loud ones over it, whatever the position	*/
+	--section-quiet--least: 				.6;
+	--section-quiet--less: 					.75;
+	--section-quiet--default: 			.85;
+	--section-quiet--more: 					.92;
+	--section-quiet--most: 					.97;
+
+	--section-loud--least: 					1.05;
+	--section-loud--less: 					1.1;
+	--section-loud--default: 				1.2;
+	--section-loud--more: 					1.35;
+	--section-loud--most: 					1.6;
+
+	/*	The factors Nino.css multiplies the size of the title role by in a section
+		title, and the size of the subtitle role by in a section subtitle: 1 and 1.
+		The steps run from .8 to 1.3 for a title and from .85 to 1.2 for a subtitle,
+		each a tenth or so of the size from the next	*/
+	--section-title--least: 	.8;
+	--section-title--less: 		.9;
+	--section-title--default: 	1;
+	--section-title--more: 		1.15;
+	--section-title--most: 		1.3;
+
+	--section-subtitle--least: 		.85;
+	--section-subtitle--less: 		.92;
+	--section-subtitle--default: 	1;
+	--section-subtitle--more: 		1.1;
+	--section-subtitle--most: 		1.2;
+
+	/*	The space above and below what is in a section: --space-4, and --space-5
+		from 768px. Two steps of the scale to either side	*/
+	--section-space--least: 	var(--space-2);
+	--section-space--less: 		var(--space-3);
+	--section-space--default: var(--space-4);
+	--section-space--more: 		var(--space-5);
+	--section-space--most: 		var(--space-6);
+
+	/*	The rule under the title of a section: none, as Nino.css has it, up to the
+		middle, then a hairline and twice that. Nino.css leaves six times its
+		thickness of air between the title and it	*/
+	--section-rule--least: 		0px;
+	--section-rule--less: 		0px;
+	--section-rule--default: 	0px;
+	--section-rule--more: 		1px;
+	--section-rule--most: 		2px;
+
+	/*	The scrim over a dimmed cover, a dimmed parallax and the picture of a dimmed
+		section, row or column. The middle is the one the palette solves for it
+		(--color-background-dim): the lightest scrim that still carries the ink on
+		the lightest picture there could be. The two steps under it let more of the
+		picture through - the scrim at three quarters and at half of its strength,
+		for a picture that is dark already - and the ink on them is no longer
+		held to that; the two over it deepen it toward the black of the palette, by
+		a quarter and by a half	*/
+	--section-dim--least: 		color-mix( in srgb, var(--color-background-dim) 50%, transparent );
+	--section-dim--less: 		color-mix( in srgb, var(--color-background-dim) 75%, transparent );
+	--section-dim--default: 	var(--color-background-dim);
+	--section-dim--more: 		color-mix( in srgb, var(--color-background-dim) 75%, var(--color-section-black-bg) );
+	--section-dim--most: 		color-mix( in srgb, var(--color-background-dim) 50%, var(--color-section-black-bg) );
+}
+
+@media (min-width: 768px) {
+	:root {
+		--section-hero-title--least: 		.928;
+		--section-hero-title--less: 		1.16;
+		--section-hero-title--default: 	1.45;
+		--section-hero-title--more: 		1.8125;
+		--section-hero-title--most: 		2.2656;
+
+		--section-hero-text--least: 		calc(.64 * 10 / 9);
+		--section-hero-text--less: 			calc(.8 * 10 / 9);
+		--section-hero-text--default: 	calc(10 / 9);
+		--section-hero-text--more: 			calc(1.25 * 10 / 9);
+		--section-hero-text--most: 			calc(1.5625 * 10 / 9);
+
+		--section-space--least: 	var(--space-3);
+		--section-space--less: 		var(--space-4);
+		--section-space--default: var(--space-5);
+		--section-space--more: 		var(--space-6);
+		--section-space--most: 		calc( var(--space-6) * 1.25 );
+	}
+}
+
+/*	The six numbers and the rule Nino.css reads by name	*/
+:root {
+	--hero-title-scale: var(--section-hero-title);
+	--hero-text-scale: var(--section-hero-text);
+	--section-title-scale: var(--section-title);
+	--section-subtitle-scale: var(--section-subtitle);
+	--section-line: var(--section-rule);
+	--scale-quiet: var(--section-quiet);
+	--scale-loud: var(--section-loud);
+}
+
+/*	The space of a section, unless the section says its own: the spacing
+	classes of Nino.css (nino-pt-3, nino-p-2 ...) come last in its stylesheet so
+	that they win, and a rule of a design layer that came after them would
+	beat them - so a section that names a padding is left alone.
+	What a set spaces it spaces times the whitespace of the page, as Nino.css
+	does - --whitespace-scale for an area, --whitespace-text for the room under
+	a text, and 1 where the framework says none - since a rule that came after
+	Nino.css and said the space without the factor would stop the whitespace
+	of the page at the set	*/
+.nino-section:where(:not([class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: calc( var(--section-space) * var(--whitespace-scale, 1) );
+}
+.nino-section:where(:not([class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: calc( var(--section-space) * var(--whitespace-scale, 1) );
+}
+
+/*	The scrim, as the ladder of the dimming says it. What Nino.css draws it with:
+	the ::before of a dimmed cover and of a dimmed parallax, and for a section, a
+	row and a column that have a picture behind them - and so no cover to draw one
+	with - the ::after of the block of the picture. A card draws one of its own and
+	is the card family's, the picture of the image component is the component's	*/
+.nino-parallex--dim::before,
+.nino-cover--dim::before,
+.nino-section--dim > .nino-section-bg::after,
+.nino-grid-row--dim > .nino-grid-row-bg::after,
+.nino-grid--dim > .nino-grid-bg::after {
+	background-color: var(--section-dim);
+}

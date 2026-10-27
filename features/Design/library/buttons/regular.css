@@ -6,26 +6,40 @@
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
+ *	@knob	hover		What a button does under the pointer
  *
  *	Regular is the starting point, not a design. Every value it declares is the
  *	framework's own, so a button under it looks as it does under Nino.css
- *	alone, and every one of them is a ladder of five, so each knob has
- *	something to reach: the middle of a ladder is Nino.css, the others are
- *	two steps to each side.
+ *	alone, and every one of them is a ladder, so each knob has something to
+ *	reach: the five values of a scale, the middle of them Nino.css and the
+ *	others two steps to each side, or the three of a choice.
  *
  *	Two rules for a set:
  *
  *	  - Only the classes of this template: the button and its variants. A
  *	    button set does not touch a section title, however tempting.
  *	  - Colours through the roles, never as literals. Nor the font: the face,
- *	    the weight and the case of a button are the button role of the Fonts
+ *	    the weight and the case of a button are the button role of the type
  *	    tab (--font-button-*), and a set that wrote its own would contradict
  *	    the panel.
  *
  *	The size is what the padding, the type and the radius of a button are
  *	multiplied by. The variants are that size times a number, in Nino.css as
  *	here: a small button is the size times 1 less the spread, a big one the
- *	size times 1 plus it. Copy this file under a name of your own and start there.
+ *	size times 1 plus it.
+ *
+ *	The hover is a choice of three: nothing, which is the button as Nino.css
+ *	has it and also what this set does by itself, so the middle is the first
+ *	position; and lifted, a rise of one pixel with a shadow under it, for the
+ *	button a pointer rests on - and only where the visitor has not asked for
+ *	less motion. Nino.css answers the pointer itself, with the ground of the
+ *	outline and of the dark button and the dimming of the two brand buttons,
+ *	and that stays at every position, as does the focus: a button the keyboard
+ *	has does not rise and keeps its ring. A button that is off does not rise,
+ *	and the outline, which has no ground to cast a shadow from, rises without
+ *	one.
+ *
+ *	Copy this file under a name of your own and start there.
  */
 
 :root {
@@ -58,6 +72,20 @@
 	--buttons-corners--default: var(--radius);
 	--buttons-corners--more: 		var(--radius-large);
 	--buttons-corners--most: 		999rem;
+
+	/*	What a button does under the pointer: nothing, as Nino.css has it - and as this
+		set has it, so the middle is the first position -, or lifted: a rise of one pixel
+		(the translate, which lies beside the transform of an animation and does not
+		replace it) with the shadow of a button that stands over the page. The shadow is
+		a second ladder of the knob, as long as its own; the first two positions name the
+		shadow the button has at rest, so that nothing changes under the pointer	*/
+	--buttons-hover--less: 		none;
+	--buttons-hover--default: 	none;
+	--buttons-hover--more: 		0 -1px;
+
+	--buttons-hover-shadow--less: 		none;
+	--buttons-hover-shadow--default: 	none;
+	--buttons-hover-shadow--more: 		0 .25rem .5rem var(--nino-default-shadow);
 }
 
 /*	Not where the button names a padding of its own: the spacing classes of
@@ -82,4 +110,20 @@
 .nino-btn--big {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+
+/*	The hover, as the ladder says it. Only where the visitor has not asked for less
+	motion, and not for a button that is off or that the keyboard has: the ring of the
+	focus is the framework's and is never covered. The transition is the hover's own -
+	the framework's, which it replaces while the pointer is on the button, with the
+	rise and the shadow added - so that the ones a viewport animation or the button's
+	variants have on it at rest are not taken from it. The outline casts no shadow	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
+		translate: var(--buttons-hover);
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease;
+	}
+	.nino-btn:where(:not(.nino-btn--outline, :focus-visible, :disabled, [aria-disabled="true"])):hover {
+		box-shadow: var(--buttons-hover-shadow);
+	}
 }

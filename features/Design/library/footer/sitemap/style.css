@@ -2,22 +2,104 @@
  *	@description	The brand and the address on the left, every page of the site in small columns beside it. For sites with a lot of pages.
  *	@description-de	Die Marke und die Adresse links, jede Seite der Website in kleinen Spalten daneben. Für Websites mit vielen Seiten.
  *
+ *	@knob	scale		Type size of the footer
+ *	@knob	height		Space above and below the content of the footer
+ *	@knob	space		Space between its columns, lines and links
+ *	@knob	ground		What the footer stands on
+ *
  *	The navigation is set in columns that fill themselves rather than in a
  *	fixed grid, so a menu of eight and a menu of thirty both end up as a block
  *	rather than as one long strip or an empty half. column-count is the one
  *	property that can do that without knowing how many links there are.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: scale is a factor on the type size of the footer, height
+ *	a factor on the room above and below its content, space a factor on the gaps
+ *	between its columns, lines and links, and ground a choice of three: the ground
+ *	and the ink of the page, this set's own, and the dark pair of the palette. What
+ *	the text, the links and the lines of the footer are read in comes with it, as
+ *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
+ *	and -border), and is put on the footer as the roles Nino.css reads - so the
+ *	footer is legible on each of the three.
  */
 
+:root {
+	/*	The type size of the footer, as a factor of the one it has: .8em of the text round it, and the sizes this set gives its parts	*/
+	--footer-scale--least:	.85;
+	--footer-scale--less:	.92;
+	--footer-scale--default:	1;
+	--footer-scale--more:	1.1;
+	--footer-scale--most:	1.2;
+
+	/*	The room above and below the content, as a factor of what this set has	*/
+	--footer-height--least:	.5;
+	--footer-height--less:	.75;
+	--footer-height--default:	1;
+	--footer-height--more:	1.5;
+	--footer-height--most:	2;
+
+	/*	The gaps between its columns, lines and links, as a factor of what this set has	*/
+	--footer-space--least:	.5;
+	--footer-space--less:	.75;
+	--footer-space--default:	1;
+	--footer-space--more:	1.5;
+	--footer-space--most:	2;
+
+	/*	What the footer stands on: the ground of the page, this set's own, the dark pair of the palette	*/
+	--footer-ground--less:	var(--color-background);
+	--footer-ground--default:	var(--color-footer-bg-main);
+	--footer-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--footer-ground-ink--less:	var(--color-text);
+	--footer-ground-ink--default:	var(--color-footer-text-main);
+	--footer-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The subtitle role	*/
+	--footer-ground-subtitle--less:	var(--color-subtitle);
+	--footer-ground-subtitle--default:	var(--color-subtitle);
+	--footer-ground-subtitle--more:	var(--color-section-dark-text);
+
+	/*	The title role	*/
+	--footer-ground-title--less:	var(--color-title);
+	--footer-ground-title--default:	var(--color-title);
+	--footer-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role	*/
+	--footer-ground-accent--less:	var(--color-accent);
+	--footer-ground-accent--default:	var(--color-accent);
+	--footer-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--footer-ground-focus--less:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The lines in it	*/
+	--footer-ground-border--less:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--more:	var(--color-border-dark);
+}
+
+footer {
+	font-size: calc( .8em * var(--footer-scale) );
+	color: var(--footer-ground-ink);
+	--color-subtitle: var(--footer-ground-subtitle);
+	--color-title: var(--footer-ground-title);
+	--color-accent: var(--footer-ground-accent);
+	--color-focus: var(--footer-ground-focus);
+	--color-border: var(--footer-ground-border);
+}
+
 .nino-frame-footer {
-	padding: var(--space-4) 0 var(--space-2);
-	background-color: var(--color-footer-bg-main);
-	color: var(--color-footer-text-main);
+	padding: calc( var(--space-4) * var(--footer-height) ) 0 calc( var(--space-2) * var(--footer-height) );
+	background-color: var(--footer-ground);
 }
 
 .nino-frame-footer .nino-footer-logo {
 	width: clamp(6rem, 9vw, 9rem);
 	height: auto;
-	margin: 0 0 var(--space-1);
+	margin: 0 0 calc( var(--space-1) * var(--footer-space) );
 }
 
 /*	Until there is a logo the brand link holds the name of the company, set the way a title of the
@@ -25,9 +107,9 @@
 	mark. With a picture in the link the picture is the mark, and the copy of the name is gone	*/
 .nino-frame-footer .nino-frame-footer-brand > span[aria-hidden="true"] {
 	display: inline-block;
-	margin: 0 0 var(--space-1);
+	margin: 0 0 calc( var(--space-1) * var(--footer-space) );
 	font-family: var(--fontfamily-title);
-	font-size: 1.25rem;
+	font-size: calc( 1.25rem * var(--footer-scale) );
 	font-weight: var(--font-title-weight);
 	line-height: 1.2;
 }
@@ -38,7 +120,7 @@
 
 .nino-frame-footer .nino-frame-footer-description {
 	max-width: 26rem;
-	margin: 0 0 var(--space-2);
+	margin: 0 0 calc( var(--space-2) * var(--footer-space) );
 	font-size: var(--fontsize-small);
 	line-height: 1.6;
 	opacity: .85;
@@ -51,20 +133,20 @@
 }
 
 .nino-frame-footer .nino-frame-footer-contact p {
-	margin: 0 0 var(--space-1);
+	margin: 0 0 calc( var(--space-1) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-nav ul {
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	column-gap: var(--space-3);
+	column-gap: calc( var(--space-3) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-nav li {
 	/*	A link may not be split down the middle by a column break */
 	break-inside: avoid;
-	margin-bottom: .45rem;
+	margin-bottom: calc( .45rem * var(--footer-space) );
 	font-size: var(--fontsize-small);
 }
 
@@ -72,9 +154,9 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--space-1) var(--space-2);
-	margin-top: var(--space-3);
-	padding-top: var(--space-1);
+	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
+	margin-top: calc( var(--space-3) * var(--footer-space) );
+	padding-top: calc( var(--space-1) * var(--footer-space) );
 	border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
 	font-size: var(--fontsize-small);
 }
@@ -87,7 +169,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--space-1) var(--space-2);
+	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
 	margin-left: auto;
 }
 

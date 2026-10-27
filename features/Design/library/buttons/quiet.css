@@ -6,6 +6,7 @@
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
+ *	@knob	hover		What a button does under the pointer
  *
  *	The button as punctuation, for pages where a button is an option and not
  *	the point: a filter row, a table with an action in every line, a form with
@@ -22,6 +23,13 @@
  *	is off has the ink of a thing that is off and no underline. A filter button
  *	stays a box with the radius of the corners knob, since a row of filters in
  *	text has no edges to tell them apart.
+ *
+ *	The hover is a choice of three, as in regular: nothing, which is also the
+ *	middle, since what this set does under the pointer by itself is the underline
+ *	of the text variants - their construction, which stays at every position, as
+ *	the ring of the focus does -, and lifted: a rise of one pixel with a shadow
+ *	under it, where the visitor has not asked for less motion. The text variants
+ *	rise and cast no shadow; there is no box to cast it from.
  */
 
 /*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
@@ -49,6 +57,15 @@
 	--buttons-corners--default: var(--radius);
 	--buttons-corners--more: 		var(--radius-large);
 	--buttons-corners--most: 		999rem;
+
+	/*	The rise and the shadow under it, as regular says; this set casts none at rest	*/
+	--buttons-hover--less: 		none;
+	--buttons-hover--default: 	none;
+	--buttons-hover--more: 		0 -1px;
+
+	--buttons-hover-shadow--less: 		none;
+	--buttons-hover-shadow--default: 	none;
+	--buttons-hover-shadow--more: 		0 .25rem .5rem var(--nino-default-shadow);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
@@ -135,6 +152,18 @@
 	border-color: transparent;
 	color: var(--color-disabled);
 	text-decoration: none;
+}
+
+/*	The hover, as the ladder says it - regular says where it does not apply. The text
+	variants rise and cast no shadow	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
+		translate: var(--buttons-hover);
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease;
+	}
+	.nino-btn:where(:not(.nino-btn--outline, .nino-btn--light, .nino-btn--dark, .nino-btn--brand-alt, :focus-visible, :disabled, [aria-disabled="true"])):hover {
+		box-shadow: var(--buttons-hover-shadow);
+	}
 }
 
 .nino-filter-btn {

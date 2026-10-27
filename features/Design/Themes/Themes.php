@@ -14,7 +14,7 @@ namespace Nino\Modules\Design {
 	/**
 	 *	Nino							A compact filesystembased php framework
 	 *	Themes						A theme is the face of a site: the whole setup of the panel -
-	 *										the five templates, the position of every knob, the root
+	 *										the seven templates, the position of every knob, the root
 	 *										size, the width, the whitespace, the radius of the surfaces
 	 *										(the two strengths and the one each kind of surface takes),
 	 *										the animation, the five font roles and the palette - kept

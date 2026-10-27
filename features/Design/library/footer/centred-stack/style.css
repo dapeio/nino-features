@@ -2,23 +2,105 @@
  *	@description	One column down the middle: mark, navigation, social links (with the Social links feature), copyright. The same on every screen width.
  *	@description-de	Eine Spalte in der Mitte: Zeichen, Navigation, Social-Media-Links (mit dem Feature Social-Media-Links), Copyright. Auf jeder Bildschirmbreite gleich.
  *
+ *	@knob	scale		Type size of the footer
+ *	@knob	height		Space above and below the content of the footer
+ *	@knob	space		Space between its columns, lines and links
+ *	@knob	ground		What the footer stands on
+ *
  *	The footer with nothing to rearrange. Everything is centred and stacked, so
  *	there is no desktop layout that collapses into a phone one - which is the
  *	half of a footer that usually breaks. For sites with few pages, where a
  *	four-column sitemap would be four columns of one link.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: scale is a factor on the type size of the footer, height
+ *	a factor on the room above and below its content, space a factor on the gaps
+ *	between its columns, lines and links, and ground a choice of three: the ground
+ *	and the ink of the page, this set's own, and the dark pair of the palette. What
+ *	the text, the links and the lines of the footer are read in comes with it, as
+ *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
+ *	and -border), and is put on the footer as the roles Nino.css reads - so the
+ *	footer is legible on each of the three.
  */
 
+:root {
+	/*	The type size of the footer, as a factor of the one it has: .8em of the text round it, and the sizes this set gives its parts	*/
+	--footer-scale--least:	.85;
+	--footer-scale--less:	.92;
+	--footer-scale--default:	1;
+	--footer-scale--more:	1.1;
+	--footer-scale--most:	1.2;
+
+	/*	The room above and below the content, as a factor of what this set has	*/
+	--footer-height--least:	.5;
+	--footer-height--less:	.75;
+	--footer-height--default:	1;
+	--footer-height--more:	1.5;
+	--footer-height--most:	2;
+
+	/*	The gaps between its columns, lines and links, as a factor of what this set has	*/
+	--footer-space--least:	.5;
+	--footer-space--less:	.75;
+	--footer-space--default:	1;
+	--footer-space--more:	1.5;
+	--footer-space--most:	2;
+
+	/*	What the footer stands on: the ground of the page, this set's own, the dark pair of the palette	*/
+	--footer-ground--less:	var(--color-background);
+	--footer-ground--default:	var(--color-footer-bg-main);
+	--footer-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--footer-ground-ink--less:	var(--color-text);
+	--footer-ground-ink--default:	var(--color-footer-text-main);
+	--footer-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The subtitle role	*/
+	--footer-ground-subtitle--less:	var(--color-subtitle);
+	--footer-ground-subtitle--default:	var(--color-subtitle);
+	--footer-ground-subtitle--more:	var(--color-section-dark-text);
+
+	/*	The title role	*/
+	--footer-ground-title--less:	var(--color-title);
+	--footer-ground-title--default:	var(--color-title);
+	--footer-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role	*/
+	--footer-ground-accent--less:	var(--color-accent);
+	--footer-ground-accent--default:	var(--color-accent);
+	--footer-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--footer-ground-focus--less:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The lines in it	*/
+	--footer-ground-border--less:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--more:	var(--color-border-dark);
+}
+
+footer {
+	font-size: calc( .8em * var(--footer-scale) );
+	color: var(--footer-ground-ink);
+	--color-subtitle: var(--footer-ground-subtitle);
+	--color-title: var(--footer-ground-title);
+	--color-accent: var(--footer-ground-accent);
+	--color-focus: var(--footer-ground-focus);
+	--color-border: var(--footer-ground-border);
+}
+
 .nino-frame-footer {
-	padding: var(--space-4) 0 var(--space-3);
-	background-color: var(--color-footer-bg-main);
-	color: var(--color-footer-text-main);
+	padding: calc( var(--space-4) * var(--footer-height) ) 0 calc( var(--space-3) * var(--footer-height) );
+	background-color: var(--footer-ground);
 }
 
 .nino-frame-footer .nino-frame-footer-stack {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--space-2);
+	gap: calc( var(--space-2) * var(--footer-space) );
 	text-align: center;
 }
 
@@ -33,7 +115,7 @@
 	mark. With a picture in the link the picture is the mark, and the copy of the name is gone	*/
 .nino-frame-footer .nino-frame-footer-brand > span[aria-hidden="true"] {
 	font-family: var(--fontfamily-title);
-	font-size: 1.25rem;
+	font-size: calc( 1.25rem * var(--footer-scale) );
 	font-weight: var(--font-title-weight);
 	line-height: 1.2;
 }
@@ -46,7 +128,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	gap: var(--space-1) var(--space-3);
+	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-3) * var(--footer-space) );
 	margin: 0;
 	padding: 0;
 	list-style: none;
@@ -63,7 +145,7 @@
 	flex-wrap: wrap;
 	justify-content: center;
 	align-items: center;
-	gap: var(--space-1) var(--space-2);
+	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
 	font-size: var(--fontsize-small);
 }
 

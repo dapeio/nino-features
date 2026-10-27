@@ -351,7 +351,7 @@
 	</div>
 </section>
 
-<section id="components" class="nino-section" aria-label="Form and table">
+<section class="nino-section" aria-label="Form">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
 			<h2 class="nino-section-title nino-text-left">Form</h2>
@@ -375,25 +375,7 @@
 			</form>
 		</div>
 		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
-			<h2 class="nino-section-title nino-text-left">Table</h2>
-			<div class="nino-table-wrap"><table class="nino-table nino-table--striped">
-				<thead><tr><th>Component</th><th>Template</th><th>Position</th></tr></thead>
-				<tbody>
-					<tr><td>Content</td><td>Regular</td><td>as it is</td></tr>
-					<tr><td>Buttons</td><td>Pill</td><td>more</td></tr>
-					<tr><td>Components</td><td>Ruled</td><td>less</td></tr>
-					<tr><td>Header</td><td>Classic, default</td><td>as it is</td></tr>
-					<tr><td>Footer</td><td>One legal row</td><td>as it is</td></tr>
-				</tbody>
-			</table></div>
-			<div class="nino-table-wrap nino-mt-2"><table class="nino-table nino-table--bordered">
-				<thead><tr><th>Bordered</th><th>Left</th><th>Right</th></tr></thead>
-				<tbody>
-					<tr><td>One</td><td>A cell</td><td>Another cell</td></tr>
-					<tr><td>Two</td><td>A cell</td><td>Another cell</td></tr>
-				</tbody>
-			</table></div>
-			<h3 class="nino-section-subtitle nino-text-left nino-mt-2">Messages</h3>
+			<h3 class="nino-section-subtitle nino-text-left">Messages</h3>
 			<form class="nino-form nino-is-error" action="#" onsubmit="return false"><p class="nino-form-message">Something is still missing.</p></form>
 			<form class="nino-form nino-is-success" action="#" onsubmit="return false"><p class="nino-form-message">Thank you, that arrived.</p></form>
 			<h3 class="nino-section-subtitle nino-text-left">In one line</h3>
@@ -405,7 +387,34 @@
 	</div>
 </section>
 
-<section class="nino-section nino-section--alt" aria-label="Lists">
+<section id="tables" class="nino-section" aria-label="Tables">
+	<div class="nino-grid-row">
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Tables</h2></div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<div class="nino-table-wrap"><table class="nino-table nino-table--striped">
+				<thead><tr><th>Component</th><th>Template</th><th>Position</th></tr></thead>
+				<tbody>
+					<tr><td>Section</td><td>Regular</td><td>as it is</td></tr>
+					<tr><td>Buttons</td><td>Pill</td><td>more</td></tr>
+					<tr><td>Tables</td><td>Ruled</td><td>less</td></tr>
+					<tr><td>Header</td><td>Classic, default</td><td>as it is</td></tr>
+					<tr><td>Footer</td><td>One legal row</td><td>as it is</td></tr>
+				</tbody>
+			</table></div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<div class="nino-table-wrap"><table class="nino-table nino-table--bordered">
+				<thead><tr><th>Bordered</th><th>Left</th><th>Right</th></tr></thead>
+				<tbody>
+					<tr><td>One</td><td>A cell</td><td>Another cell</td></tr>
+					<tr><td>Two</td><td>A cell</td><td>Another cell</td></tr>
+				</tbody>
+			</table></div>
+		</div>
+	</div>
+</section>
+
+<section id="lists" class="nino-section nino-section--alt" aria-label="Lists">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Lists</h2></div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><p class="nino-section-subtitle">list</p><ul class="nino-list"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li></ul></div>

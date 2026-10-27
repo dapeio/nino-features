@@ -1,0 +1,104 @@
+/*	@name			Regular
+ *	@description	The framework as it is: the middle of every ladder. Tables, their cells, their lines and the stripes of one that asks for them.
+ *	@description-de	Das Framework, wie es ist: die Mitte jeder Leiter. Tabellen, ihre Zellen, ihre Linien und die Streifen einer, die danach fragt.
+ *
+ *	@knob	scale		Type size of a table
+ *	@knob	space		Space inside a cell
+ *	@knob	border		Weight of the lines of a table
+ *	@knob	zebra		Stripes of a table that asks for them
+ *	@knob	stripes		How strong the stripes are
+ *
+ *	Regular is the starting point, not a design. Every value it declares is the
+ *	framework's own, so a table under it looks as it does under Nino.css alone -
+ *	and every one of them is a ladder, so each knob has something to reach: the
+ *	five values of a scale, the middle of them Nino.css and the others two steps
+ *	to each side, or the three of a choice.
+ *
+ *	Two rules for a set:
+ *
+ *	  - Only the classes of this template: the table, its cells, its head, the
+ *	    one that is bordered and the one that is striped. A set of buttons does
+ *	    not touch a table, however tempting.
+ *	  - Colours through the roles, never as literals. Nor the font: the face,
+ *	    the weight and the case of the text are the roles of the type tab.
+ *
+ *	A knob that is more than one value - the stripes of a table are a
+ *	background and a colour of text - declares one more ladder for each, named
+ *	after the knob and an aspect of it (--tables-zebra-ink--less ...), as long as
+ *	the knob's own. They move together: the compiler selects every ladder of a
+ *	knob where it stands. An aspect at its middle step names the value the
+ *	property has anyway, so a rule that reads it changes nothing there. The
+ *	zebra is a choice of three, declared under less, default and more: no
+ *	stripes, the stripes, and the stripes with a line over them.
+ *
+ *	How strong the stripes are is a scale of its own, and the zebra reads it
+ *	where it names the second ground of the page: the middle is the kernel's
+ *	--color-section-alt-bg, the two steps under it are that ground mixed toward
+ *	the ground of the page, the two over it mixed toward its ink.
+ *
+ *	The spacing classes of Nino.css (nino-p-2, nino-mb-3 ...) come last in its
+ *	stylesheet so that they win. Copy this file under a name of your own and
+ *	start there.
+ */
+
+:root {
+	/*	The type size of a table is the size of the text around it, times this	*/
+	--tables-scale--least: 		.75;
+	--tables-scale--less: 		.87;
+	--tables-scale--default: 	1;
+	--tables-scale--more: 		1.15;
+	--tables-scale--most: 		1.32;
+
+	/*	Half the padding of a cell. A cell's space is finer than a card's, so the
+		steps are fractions of the middle and not steps of the scale	*/
+	--tables-space--least: 		calc( var(--space-1) * .4 );
+	--tables-space--less: 		calc( var(--space-1) * .7 );
+	--tables-space--default: 	var(--space-1);
+	--tables-space--more: 		calc( var(--space-1) * 1.5 );
+	--tables-space--most: 		calc( var(--space-1) * 2.2 );
+
+	/*	The half pixel is a hairline where the screen can draw one, and 1px where it cannot	*/
+	--tables-border--least: 	0px;
+	--tables-border--less: 		.5px;
+	--tables-border--default: 	1px;
+	--tables-border--more: 		2px;
+	--tables-border--most: 		3px;
+
+	/*	The even rows of a table that has the class: none, the stripes, or the stripes
+		with a line over them. The text on them is the ink of the second ground - or,
+		with no stripe, the text round the table	*/
+	--tables-zebra--less: 		transparent;
+	--tables-zebra--default: 	var(--tables-stripes);
+	--tables-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--tables-stripes);
+
+	--tables-zebra-ink--less: 		initial;
+	--tables-zebra-ink--default: 	var(--color-section-alt-text);
+	--tables-zebra-ink--more: 		var(--color-section-alt-text);
+
+	/*	How far the even rows depart from the ground. The middle is the second ground of
+		the page, which is what Nino.css paints them with; under it that ground mixed
+		toward the ground of the page, over it mixed toward the ink it carries - the stripe
+		stays a tint of the pair the palette solved, and the ink on it stays legible	*/
+	--tables-stripes--least: 		color-mix( in srgb, var(--color-section-alt-bg) 35%, var(--color-background) );
+	--tables-stripes--less: 		color-mix( in srgb, var(--color-section-alt-bg) 70%, var(--color-background) );
+	--tables-stripes--default: 		var(--color-section-alt-bg);
+	--tables-stripes--more: 		color-mix( in srgb, var(--color-section-alt-text) 8%, var(--color-section-alt-bg) );
+	--tables-stripes--most: 		color-mix( in srgb, var(--color-section-alt-text) 16%, var(--color-section-alt-bg) );
+}
+
+.nino-table {
+	font-size: calc( 1em * var(--tables-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: var(--tables-space) calc( var(--tables-space) * 2 );
+	border-bottom-width: var(--tables-border);
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: var(--tables-border);
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--tables-zebra);
+	color: var(--tables-zebra-ink, currentcolor);
+}

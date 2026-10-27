@@ -16,21 +16,23 @@ namespace Nino\Modules\Design {
 	 *										Theme, in three screens - the list of themes, the loaded theme
 	 *										with the row that makes another, and the css of its own - where
 	 *										the whole setup is kept under a name (see Themes); Templates,
-	 *										the five choices of a set; Type, Surfaces, Colours and Motion,
+	 *										the seven choices of a set; Type, Surfaces, Colours and Motion,
 	 *										each a block for every object that has a control on the tab -
-	 *										the page, the header, the footer, the content, a section, a
-	 *										card, the buttons and the fields and tables - with the controls
-	 *										of that object: on Colours, the two colours, the five knobs and
-	 *										the mode the palette is solved from, and on Motion the animation
-	 *										of the page, both the page's - compiled together into
-	 *										assets/theme.css. Where a control stands is Setup::LAYOUT's
-	 *										and nobody else's: the list hands the table over and the
-	 *										screen is drawn from it. The loader, the Typefaces tab,
-	 *										shows the typefaces a project has installed and the
-	 *										signed list of those it can install (see Webfonts), which
-	 *										belongs to the setup only as far as the selects of the roles
-	 *										list what is installed. Installing and removing happen when
-	 *										they are pressed - they are not a draft.
+	 *										the page, the header, the footer, a section, a card, the
+	 *										buttons, the lists and the tables - with the controls of that
+	 *										object: on Colours, the two colours, the five knobs and the
+	 *										mode the palette is solved from, which are the page's, and the
+	 *										dimming of a section, the tone of the shadow of a card and the
+	 *										stripes of a table, and on Motion the animation of the page and
+	 *										what a card and a button do under the pointer - compiled
+	 *										together into assets/theme.css. Where a control stands is
+	 *										Setup::LAYOUT's and nobody else's: the list hands the table
+	 *										over and the screen is drawn from it. The loader, the
+	 *										Typefaces tab, shows the typefaces a project has installed
+	 *										and the signed list of those it can install (see Webfonts),
+	 *										which belongs to the setup only as far as the selects of
+	 *										the roles list what is installed. Installing and removing
+	 *										happen when they are pressed - they are not a draft.
 	 *
 	 *										A theme is a draft too, until it is saved: design/theme/load
 	 *										answers what the screen takes over and writes nothing, and
@@ -203,11 +205,10 @@ namespace Nino\Modules\Design {
 					than out of a list here, so declaring a ladder is what publishes a
 					knob. For every template and not only the chosen one: choosing
 					another changes which rows of its tab are greyed out, and the
-					screen does that before anything is asked of the server. A frame has
-					none	*/
-				if( $kind === 'set' )
-					foreach( array_keys( $catalogue ) as $set )
-						$catalogue[$set]['knobs'] = Setup::knobs( $library, $part, $set );
+					screen does that before anything is asked of the server. A frame is
+					asked as a set is: its style.css declares the ladders	*/
+				foreach( array_keys( $catalogue ) as $set )
+					$catalogue[$set]['knobs'] = Setup::knobs( $library, $part, $set );
 
 				$parts[] = [
 					'part' 				=> $part,
@@ -549,7 +550,7 @@ namespace Nino\Modules\Design {
 			$css 			= Preview::css( $appData, $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );
 			$document = '';
 
-			/*	Three of the five parts are a stylesheet and nothing else, and so
+			/*	Five of the seven parts are a stylesheet and nothing else, and so
 				are the knobs, the size, the width, the animation, the fonts and
 				the palette: for those the screen swaps one <style> inside the
 				frame it already has, and neither the markup nor the framework

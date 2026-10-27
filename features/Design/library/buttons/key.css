@@ -6,13 +6,21 @@
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
+ *	@knob	hover		What a button does under the pointer
  *
  *	The one template here that answers :active, because a key that does not move
  *	under the finger is the thing people press twice. The shadow is what makes
  *	the movement visible, so the two are one decision - and the outline variant
- *	and a button that is off cast none. All four ladders are Nino's, value for
- *	value: a small key is the size times 1 less the spread and a big one the size
- *	times 1 plus it, as in regular.
+ *	and a button that is off cast none. The first four ladders are Nino's, value
+ *	for value: a small key is the size times 1 less the spread and a big one the
+ *	size times 1 plus it, as in regular.
+ *
+ *	The hover is a choice of three: nothing - the key with the light shadow it has
+ *	at rest, which is also what this set does under the pointer by itself, so the
+ *	middle is the first position -, and lifted: a rise of one pixel with a deeper
+ *	shadow under it, where the visitor has not asked for less motion. The press
+ *	is the key's own and comes at every position, with the shadow off; Nino.css'
+ *	own answers to the pointer and the ring of the focus stay.
  */
 
 /*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
@@ -40,6 +48,17 @@
 	--buttons-corners--default: var(--radius);
 	--buttons-corners--more: 		var(--radius-large);
 	--buttons-corners--most: 		999rem;
+
+	/*	The rise (a translate, which lies beside the transform of the press and of an
+		animation) and the shadow under it. The first two positions name the shadow the
+		key has at rest, so that nothing changes under the pointer	*/
+	--buttons-hover--less: 		none;
+	--buttons-hover--default: 	none;
+	--buttons-hover--more: 		0 -1px;
+
+	--buttons-hover-shadow--less: 		0 1px 2px var(--nino-default-shadow);
+	--buttons-hover-shadow--default: 	0 1px 2px var(--nino-default-shadow);
+	--buttons-hover-shadow--more: 		0 .25rem .5rem var(--nino-default-shadow);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
@@ -63,6 +82,21 @@
 .nino-btn--big {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+
+/*	The hover, as the ladder says it - before the press, which is as specific and so
+	comes last and has the shadow off. Not for a button that is off or that the keyboard
+	has, whose ring is the framework's; the transition is the hover's own, the
+	framework's with the rise and the shadow added. The outline casts none, here as at
+	rest	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
+		translate: var(--buttons-hover);
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease;
+	}
+	.nino-btn:where(:not(.nino-btn--outline, :focus-visible, :disabled, [aria-disabled="true"])):hover {
+		box-shadow: var(--buttons-hover-shadow);
+	}
 }
 
 .nino-btn:active {

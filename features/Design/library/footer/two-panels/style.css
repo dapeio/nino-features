@@ -2,16 +2,110 @@
  *	@description	The foot split into a brand panel and an info panel that sit against each other, with the legal row below.
  *	@description-de	Der Fuß in ein Markenfeld und ein Infofeld geteilt, die aneinander stehen, darunter die Rechtszeile.
  *
+ *	@knob	scale		Type size of the footer
+ *	@knob	height		Space above and below the content of the footer
+ *	@knob	space		Space between its columns, lines and links
+ *	@knob	ground		What the footer stands on
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: scale is a factor on the type size of the footer, height
+ *	a factor on the room above and below its content, space a factor on the gaps
+ *	between its columns, lines and links, and ground a choice of three: the ground
+ *	and the ink of the page, this set's own, and the dark pair of the palette. What
+ *	the text, the links and the lines of the footer are read in comes with it, as
+ *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
+ *	and -border), and is put on the footer as the roles Nino.css reads - so the
+ *	footer is legible on each of the three.
+ *
+ *	The brand panel is the dark pair of the palette at every setting, the way the set
+ *	draws it; the panel with the contact and the navigation has the ground of its own
+ *	(--footer-ground-panel and -panel-ink), which the ground of the footer does not reach.
  */
 
+:root {
+	/*	The type size of the footer, as a factor of the one it has: .8em of the text round it, and the sizes this set gives its parts	*/
+	--footer-scale--least:	.85;
+	--footer-scale--less:	.92;
+	--footer-scale--default:	1;
+	--footer-scale--more:	1.1;
+	--footer-scale--most:	1.2;
+
+	/*	The room above and below the content, as a factor of what this set has	*/
+	--footer-height--least:	.5;
+	--footer-height--less:	.75;
+	--footer-height--default:	1;
+	--footer-height--more:	1.5;
+	--footer-height--most:	2;
+
+	/*	The gaps between its columns, lines and links, as a factor of what this set has	*/
+	--footer-space--least:	.5;
+	--footer-space--less:	.75;
+	--footer-space--default:	1;
+	--footer-space--more:	1.5;
+	--footer-space--most:	2;
+
+	/*	What the footer stands on: the ground of the page, this set's own - the darkest surface of the palette, under the legal row -, the dark pair of the palette	*/
+	--footer-ground--less:	var(--color-background);
+	--footer-ground--default:	var(--color-section-black-bg);
+	--footer-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--footer-ground-ink--less:	var(--color-text);
+	--footer-ground-ink--default:	var(--color-section-black-text);
+	--footer-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The subtitle role	*/
+	--footer-ground-subtitle--less:	var(--color-subtitle);
+	--footer-ground-subtitle--default:	var(--color-subtitle);
+	--footer-ground-subtitle--more:	var(--color-section-dark-text);
+
+	/*	The title role	*/
+	--footer-ground-title--less:	var(--color-title);
+	--footer-ground-title--default:	var(--color-section-black-text);
+	--footer-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role	*/
+	--footer-ground-accent--less:	var(--color-accent);
+	--footer-ground-accent--default:	var(--color-accent-black);
+	--footer-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--footer-ground-focus--less:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The lines in it	*/
+	--footer-ground-border--less:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The ground of the panel with the contact and the navigation	*/
+	--footer-ground-panel--less:	var(--color-background);
+	--footer-ground-panel--default:	var(--color-footer-bg-main);
+	--footer-ground-panel--more:	var(--color-section-dark-bg);
+
+	/*	The ink on it	*/
+	--footer-ground-panel-ink--less:	var(--color-text);
+	--footer-ground-panel-ink--default:	var(--color-footer-text-main);
+	--footer-ground-panel-ink--more:	var(--color-section-dark-text);
+}
+
+footer {
+	font-size: calc( .8em * var(--footer-scale) );
+	color: var(--footer-ground-ink);
+	--color-subtitle: var(--footer-ground-subtitle);
+	--color-title: var(--footer-ground-title);
+	--color-accent: var(--footer-ground-accent);
+	--color-focus: var(--footer-ground-focus);
+	--color-border: var(--footer-ground-border);
+}
+
 .nino-frame-footer {
-	background-color: var(--color-section-black-bg);
-	color: var(--color-section-black-text);
-	--color-title: var(--color-section-black-text);
-	--color-accent: var(--color-accent-black);
+	background-color: var(--footer-ground);
 }
 
 .nino-frame-footer .nino-frame-footer-split {
@@ -22,7 +116,7 @@
 .nino-frame-footer .nino-frame-footer-panel {
 	min-height: 18rem;
 	max-height: 80vh;
-	padding: clamp(var(--space-4), 7vw, var(--space-6));
+	padding: calc( clamp(var(--space-4), 7vw, var(--space-6)) * var(--footer-height) ) clamp(var(--space-4), 7vw, var(--space-6));
 }
 
 .nino-frame-footer .nino-frame-footer-panel--brand {
@@ -35,13 +129,13 @@
 
 .nino-frame-footer .nino-frame-footer-panel--brand p {
 	max-width: 34rem;
-	font-size: clamp(1.2rem, 2vw, 1.8rem);
+	font-size: calc( clamp(1.2rem, 2vw, 1.8rem) * var(--footer-scale) );
 }
 
 .nino-frame-footer .nino-footer-logo {
 	width: clamp(8rem, 15vw, 13rem);
 	max-width: none;
-	margin-bottom: var(--space-3);
+	margin-bottom: calc( var(--space-3) * var(--footer-space) );
 	opacity: 1;
 }
 
@@ -49,9 +143,9 @@
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	align-content: end;
-	gap: var(--space-4);
-	color: var(--color-footer-text-main);
-	background-color: var(--color-footer-bg-main);
+	gap: calc( var(--space-4) * var(--footer-space) );
+	color: var(--footer-ground-panel-ink);
+	background-color: var(--footer-ground-panel);
 }
 
 .nino-frame-footer .nino-frame-footer-contact {
@@ -59,7 +153,7 @@
 }
 
 .nino-frame-footer .nino-frame-footer-contact p + p {
-	margin-top: var(--space-2);
+	margin-top: calc( var(--space-2) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
@@ -67,16 +161,16 @@
 }
 
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content li + li {
-	margin-top: .55rem;
+	margin-top: calc( .55rem * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-legal {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--space-2);
-	padding-top: var(--space-2);
-	padding-bottom: var(--space-2);
+	gap: calc( var(--space-2) * var(--footer-space) );
+	padding-top: calc( var(--space-2) * var(--footer-space) );
+	padding-bottom: calc( var(--space-2) * var(--footer-height) );
 	color: inherit;
 	opacity: .75;
 }
@@ -88,7 +182,7 @@
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
+	gap: calc( var(--space-2) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-footer-localepicker {
@@ -109,7 +203,7 @@
 
 	.nino-frame-footer .nino-frame-footer-panel {
 		min-height: 0;
-		padding: var(--space-4) var(--space-3);
+		padding: calc( var(--space-4) * var(--footer-height) ) var(--space-3);
 	}
 }
 

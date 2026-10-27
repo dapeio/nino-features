@@ -2,20 +2,102 @@
  *	@description	A bar on the page ground, the logo to the left and the navigation and a button to the right, every link as tall as the bar.
  *	@description-de	Eine Leiste auf dem Grund der Seite, links das Logo, rechts die Navigation und ein Button, jeder Link so hoch wie die Leiste.
  *
+ *	@knob	nav		Size of the links of the navigation
+ *	@knob	height		How tall the bar is
+ *	@knob	space		Space between the logo, the links and the edges
+ *	@knob	ground		What the bar stands on
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: nav is a factor on the size of the links of the
+ *	navigation, height the height of the bar - and of the room main leaves under
+ *	it -, space a factor on the gaps between the logo, the links and the edges,
+ *	and ground a choice of three: the ground and the ink of the page, this set's
+ *	own, and the dark pair of the palette. What the text, the icons, the links and
+ *	the lines of the bar are read in comes with it, as aspects of the ground
+ *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
+ *	header as the roles Nino.css reads - so the bar is legible on each of the
+ *	three. The menu that opens over the page is the page's again, as in Nino.css.
  */
 
+:root {
+	/*	The size of the links of the navigation, as a factor of the size this set sets them in	*/
+	--header-nav--least:	.85;
+	--header-nav--less:	.92;
+	--header-nav--default:	1;
+	--header-nav--more:	1.1;
+	--header-nav--most:	1.2;
+
+	/*	The height of the bar, of every link in it and of the room main leaves under it: --space-5	*/
+	--header-height--least:	calc( var(--space-5) * .7 );
+	--header-height--less:	calc( var(--space-5) * .85 );
+	--header-height--default:	var(--space-5);
+	--header-height--more:	calc( var(--space-5) * 1.25 );
+	--header-height--most:	calc( var(--space-5) * 1.5 );
+
+	/*	The gaps between the logo, the links and the edges, as a factor of what this set has	*/
+	--header-space--least:	.5;
+	--header-space--less:	.75;
+	--header-space--default:	1;
+	--header-space--more:	1.5;
+	--header-space--most:	2;
+
+	/*	What the bar stands on: the ground of the page, this set's own, the dark pair of the palette	*/
+	--header-ground--less:	var(--color-background);
+	--header-ground--default:	var(--color-background);
+	--header-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--header-ground-ink--less:	var(--color-text);
+	--header-ground-ink--default:	var(--color-text);
+	--header-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The title role, which the icon of the menu is drawn in	*/
+	--header-ground-title--less:	var(--color-title);
+	--header-ground-title--default:	var(--color-title);
+	--header-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role: the link that is current	*/
+	--header-ground-accent--less:	var(--color-accent);
+	--header-ground-accent--default:	var(--color-accent);
+	--header-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--header-ground-focus--less:	var(--color-focus);
+	--header-ground-focus--default:	var(--color-focus);
+	--header-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The line under it	*/
+	--header-ground-border--less:	var(--color-border);
+	--header-ground-border--default:	var(--color-border);
+	--header-ground-border--more:	var(--color-border-dark);
+}
+
+.nino-frame-header {
+	--color-title: var(--header-ground-title);
+	--color-accent: var(--header-ground-accent);
+	--color-focus: var(--header-ground-focus);
+	--color-border: var(--header-ground-border);
+}
+
+.nino-frame-header .nino-grid-row {
+	padding-right: calc( var(--grid-gutter) * var(--header-space) );
+	padding-left: calc( var(--grid-gutter) * var(--header-space) );
+}
+
 .nino-frame-header .nino-scroll-header {
-	min-height: var(--space-5);
+	min-height: var(--header-height);
 	opacity: 1;
-	background-color: var(--color-background);
+	color: var(--header-ground-ink);
+	background-color: var(--header-ground);
 	display:flex;
 }
 
 body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
-	background-color: var(--color-background);
+	background-color: var(--header-ground);
 }
 
 .nino-frame-header .nino-logo {
@@ -35,19 +117,23 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	fill: var(--color-title);
 }
 
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
+	fill: var(--color-title-default);
+}
+
 /*	The navigation sits to the right, but at a phone's width the burger stands over the middle of the open list's first
 	line - the list starts at the top of the page, the button above it - so the list starts under the bar. The room is
 	there while the button is shown and not only while the list is open, so that nothing jumps while the kernel folds the
 	list	*/
 @media (max-width: 767px) {
 	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
-		padding-top: var(--space-5);
+		padding-top: var(--header-height);
 	}
 }
 
 
 body main {
-	padding-top: var(--space-5);
+	padding-top: var(--header-height);
 }
 
 body main:has(> .nino-cover:first-child),
@@ -63,11 +149,15 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 		position: relative;
 		display: flex;
     align-items: center;
-		height: var(--space-5);
-		padding: 0 var(--space-2);
-		font-size: var(--fontsize-btn);
+		height: var(--header-height);
+		padding: 0 calc( var(--space-2) * var(--header-space) );
+		font-size: calc( var(--fontsize-btn) * var(--header-nav) );
 		letter-spacing: .04em;
 		transition: color .2s;
+	}
+
+	.nino-frame-header .nino-nav-content ul {
+		gap: calc( var(--space-2) * var(--header-space) );
 	}
 
 	.nino-frame-header .nino-nav-content li a.nino-is-active,
@@ -75,7 +165,7 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 		color: var(--color-accent);
 	}
 	.nino-frame-header .nino-nav-content li a:hover {
-		color: var(--nino-default-link);
+		color: var(--color-accent);
 	}
 }
 

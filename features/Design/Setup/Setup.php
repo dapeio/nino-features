@@ -19,13 +19,13 @@ namespace Nino\Modules\Design {
 	 *										here that cannot be worked out again from what is on disk.
 	 *
 	 *										One model for the panel (the Typefaces tab installs
-	 *										families and keeps nothing here): the five
-	 *										templates (header and footer bring markup, content,
-	 *										buttons and components are one stylesheet each), the root
-	 *										size, the width and the whitespace of the page, the radius
-	 *										of its surfaces - two strengths and, for each kind of
-	 *										surface, the one it takes - and its animation, a position
-	 *										for every named knob of the three stylesheet templates, the
+	 *										families and keeps nothing here): the seven
+	 *										templates (header and footer bring markup and a stylesheet,
+	 *										section, card, buttons, lists and tables are one stylesheet
+	 *										each), the root size, the width and the whitespace of the
+	 *										page, the radius of its surfaces - two strengths and, for
+	 *										each kind of surface, the one it takes - and its animation,
+	 *										a position for every named knob of the seven templates, the
 	 *										five font roles and the palette - and, for the Theme tab,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
@@ -71,15 +71,32 @@ namespace Nino\Modules\Design {
 			'design_set_missing' 		=> '"%s" names the set "%s", which is not in the library - using "%s"',
 		];
 
-		/*	The parts, in the order they are compiled - which is also the order
-			they are shown in. `frame` parts bring a template and are chosen from
-			library/<part>/<set>/; the rest are one stylesheet each, library/<part>/<set>.css	*/
+		/*	The parts, in the order they are compiled - which is also the order they are
+			shown in, and the order of the cascade: what a later part says, it says over an
+			earlier one. Each styles one object of a page (see OBJECTS): the header and the
+			footer the two frames; the section the hero, a section with its title, subtitle and
+			text, the cover and the column on a ground; the card a card and the parts of it; the
+			buttons .nino-btn and its variants; the lists .nino-list and its two markers; the
+			tables .nino-table, its cells, its lines and its stripes. The fields of a form and
+			the blocks - badge, alert, pricing table, accordion and timeline - are no part: the
+			kernel draws them, until the features that bring forms and blocks bring their own.
+
+			A `frame` part brings a template and is chosen from library/<part>/<set>/: a
+			template.tpl, which is the markup, and a style.css, which declares ladders the way
+			a set's stylesheet does, so that a frame has knobs like the rest. The others are one
+			stylesheet each, library/<part>/<set>.css. The section and the card were one part, the
+			content set, until its rules were cut in two: the sets of the two carry the same four
+			names - Regular, Open, Panel and Box -, so that a theme names a sensible pair and a
+			person can still mix them. The tables are what is left of the components set, whose
+			fields and blocks the kernel draws now: its table rules, five sets of them	*/
 		public const array PARTS = [
 			'header' 			=> 'frame',
 			'footer' 			=> 'frame',
-			'content' 		=> 'set',
+			'section' 		=> 'set',
+			'card' 				=> 'set',
 			'buttons' 		=> 'set',
-			'components' 	=> 'set',
+			'lists' 			=> 'set',
+			'tables' 			=> 'set',
 		];
 
 		/*	What a knob can be set to, as the words a stylesheet declares its values
@@ -100,48 +117,67 @@ namespace Nino\Modules\Design {
 
 			A scale is a track of five positions, -2 to +2, the middle the template as it
 			is: a size, a space, a corner, a line. A choice is a few alternatives that
-			are no more or less of anything - the stripes of a table, the place of a
-			label - and has three, which the panel names by words:
+			are no more or less of anything - the stripes of a table, the marker of a
+			list - and has three, which the panel names by words:
 
-				content		hero-title, hero-text	the size of the hero's title and text
-							quiet, loud				the size of the --quiet and --loud variants
-							section-title			the size of the title of a section
-							section-subtitle		the size of the subtitle of a section
-							section-space			the vertical space of a section
-							section-line			the rule under the title of a section
-							card-title				the size of the title of a card
-							card-subtitle			the size of the subtitle of a card
-							card-space				the space inside and between the parts of a card
-							border, shadow			the line and the shadow of a card
-				buttons		size					the size of .nino-btn
-							spread					how far .nino-btn--small and --big stand from it
-							space, corners			the padding and the radius
-				components	scale					the type size of fields and tables
-							space, corners, border	the space, the corners and the lines
-							zebra					the stripes of a table (a choice)
-							labels					where the label of a field stands (a choice)	*/
+				header		nav					the size of the links of the navigation
+							height				how tall the bar is, and how far main starts below a fixed one
+							space				the space between the logo, the links and the edges
+							ground				what the bar stands on (a choice)
+				footer		scale				the type size of the footer
+							height				the space above and below its content
+							space				the space between its columns, its lines and its links
+							ground				what it stands on (a choice)
+				section		hero-title, hero-text	the size of the hero's title and text
+							quiet, loud			the size of the --quiet and --loud variants
+							title, subtitle	the size of the title and of the subtitle of a section
+							space				the vertical space of a section
+							rule				the rule under the title of a section
+							dim					how dark the scrim of a dimmed cover is
+				card		title, subtitle	the size of the title and of the subtitle of a card
+							space				the space inside a card and between its parts
+							border, shadow		the line and the shadow of a card
+							tone				the colour the shadow is drawn in (a choice)
+							hover				what a card does under the pointer (a choice)
+				buttons		size				the size of .nino-btn
+							spread				how far .nino-btn--small and --big stand from it
+							space, corners		the padding and the radius
+							hover				what a button does under the pointer (a choice)
+				lists		scale				the type size of a list
+							space				the space between its items
+							marker				the marker of a check list and of a numbered list (a choice)
+				tables		scale				the type size of a table
+							space				the space in a cell
+							border				the weight of its lines
+							zebra				the stripes of a table that asks for them (a choice)
+							stripes				how strong the stripes are	*/
 		public const array KNOBS = [
-			'content' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'section-title' => 'scale', 'section-subtitle' => 'scale', 'section-space' => 'scale', 'section-line' => 'scale', 'card-title' => 'scale', 'card-subtitle' => 'scale', 'card-space' => 'scale', 'border' => 'scale', 'shadow' => 'scale' ],
-			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale' ],
-			'components' 	=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'labels' => 'choice' ],
+			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
+			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
+			'section' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale' ],
+			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice' ],
+			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice' ],
+			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
+			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
 		];
 
 		/*	The panel in two axes. A tab is a property of the design - the theme it was
 			taken from, the templates, the typefaces, the type, the surfaces, the colours, the
 			motion - and an object is what a property is set on: the page, the header, the
-			footer, the content, a section, a card, the buttons, the fields and tables. TABS
-			are the seven tabs in the order they are shown in and OBJECTS the eight objects in
-			the order their rows follow one another on a tab that draws rows, which is every
-			tab but the theme and the typefaces: the templates, the type, the surfaces, the
-			colours and the motion, each an accordion of one block for each object that has a
-			control on it. The panel's words for them are /_admin/design/tab/<tab>/label and
-			/_admin/design/object/<object>/label.
+			footer, a section, a card, the buttons, the lists and the tables. TABS are the seven
+			tabs in the order they are shown in and OBJECTS the eight objects in the order their
+			rows follow one another on a tab that draws rows, which is every tab but the theme and
+			the typefaces: the templates, the type, the surfaces, the colours and the motion, each
+			an accordion of one block for each object that has a control on it. The panel's words
+			for them are /_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label.
 
-			The content is the object of the content set, which a section and a card are
-			drawn with together: neither has a template of its own	*/
+			Every part but the page has an object of its own, named as the part is: the header and
+			the footer, the section, the card, the buttons, the lists and the tables. The page is
+			the one object that is no part - its controls are the root size, the width, the
+			whitespace, the radius, the five font roles, the palette and the animation	*/
 		public const array TABS = [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ];
 
-		public const array OBJECTS = [ 'page', 'header', 'footer', 'content', 'section', 'card', 'buttons', 'components' ];
+		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ];
 
 		/*	Where every control of the panel stands, and the only place that says: one entry for
 			each thing the setup lets a person choose, keyed by where the choice is kept in it -
@@ -153,65 +189,81 @@ namespace Nino\Modules\Design {
 			stand at one place are one control: the cover, the row and the column of a section
 			take the strength of their corners from one choice, and the second colour is the
 			swatch at the end of the row of Harmony. An object with no control on a tab has no
-			row there. Every entry names one of OBJECTS: the five templates stand under the
-			object each is the template of - the header, the footer, the content, the buttons
-			and the fields and tables - and the colours and the motion are the page's. The
-			Theme tab and the Typefaces tab have no control in the table: the screens of the
+			row there. Every entry names one of OBJECTS: the seven templates stand under the
+			object each is the template of - the header, the footer, the section, the card, the
+			buttons, the lists and the tables -, and the knobs under the object of their part,
+			the frames' among them: a header and a footer have a ladder each for their type, their
+			surfaces and their ground. The colours and the motion are the page's palette and
+			animation, and each object that has a ladder of colour or of motion of its own has a
+			control there: the dimming of a section, the tone of the shadow of a card and the
+			stripes of a table on the colours, the hover of a card and of a button on the motion.
+			The Theme tab and the Typefaces tab have no control in the table: the screens of the
 			first work on `theme` and `css`, which a theme file is kept with and which are no
 			choice of a design, and the second is the loader, which keeps nothing in the setup.
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the choice of a set for each of the five parts, under the object it is the template of
+			// The templates: the choice of a set for each of the seven parts, under the object it is the template of
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
 			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
-			'parts/content' 						=> [ 'templates', 'content', 1 ],
+			'parts/section' 						=> [ 'templates', 'section', 1 ],
+			'parts/card' 							=> [ 'templates', 'card', 1 ],
 			'parts/buttons' 						=> [ 'templates', 'buttons', 1 ],
-			'parts/components' 						=> [ 'templates', 'components', 1 ],
+			'parts/lists' 							=> [ 'templates', 'lists', 1 ],
+			'parts/tables' 						=> [ 'templates', 'tables', 1 ],
 
-			// The type: the root size and the five roles are the page's; the sizes of the titles are the section's, the card's, the buttons' and the fields' own
+			// The type: the root size and the five roles are the page's; the size of the links of the header, the type of the footer, the sizes of the titles and the type of a list and of a table are the object's own
 			'size' 									=> [ 'type', 'page', 1 ],
 			'fonts/title' 							=> [ 'type', 'page', 2 ],
 			'fonts/subtitle' 						=> [ 'type', 'page', 3 ],
 			'fonts/text' 							=> [ 'type', 'page', 4 ],
 			'fonts/button' 							=> [ 'type', 'page', 5 ],
 			'fonts/code' 							=> [ 'type', 'page', 6 ],
-			'knobs/content/hero-title' 				=> [ 'type', 'section', 1 ],
-			'knobs/content/hero-text' 				=> [ 'type', 'section', 2 ],
-			'knobs/content/section-title' 			=> [ 'type', 'section', 3 ],
-			'knobs/content/section-subtitle' 		=> [ 'type', 'section', 4 ],
-			'knobs/content/quiet' 					=> [ 'type', 'section', 5 ],
-			'knobs/content/loud' 					=> [ 'type', 'section', 6 ],
-			'knobs/content/card-title' 				=> [ 'type', 'card', 1 ],
-			'knobs/content/card-subtitle' 			=> [ 'type', 'card', 2 ],
+			'knobs/header/nav' 						=> [ 'type', 'header', 1 ],
+			'knobs/footer/scale' 					=> [ 'type', 'footer', 1 ],
+			'knobs/section/hero-title' 				=> [ 'type', 'section', 1 ],
+			'knobs/section/hero-text' 				=> [ 'type', 'section', 2 ],
+			'knobs/section/title' 					=> [ 'type', 'section', 3 ],
+			'knobs/section/subtitle' 				=> [ 'type', 'section', 4 ],
+			'knobs/section/quiet' 					=> [ 'type', 'section', 5 ],
+			'knobs/section/loud' 					=> [ 'type', 'section', 6 ],
+			'knobs/card/title' 						=> [ 'type', 'card', 1 ],
+			'knobs/card/subtitle' 					=> [ 'type', 'card', 2 ],
 			'knobs/buttons/size' 					=> [ 'type', 'buttons', 1 ],
 			'knobs/buttons/spread' 					=> [ 'type', 'buttons', 2 ],
-			'knobs/components/scale' 				=> [ 'type', 'components', 1 ],
+			'knobs/lists/scale' 					=> [ 'type', 'lists', 1 ],
+			'knobs/tables/scale' 					=> [ 'type', 'tables', 1 ],
 
-			// The surfaces: the space, the corners, the lines and the shadows of each object. The three kinds of a section share one place: they are one choice
+			// The surfaces: the space, the corners, the lines and the shadows of each object, the height and the ground of the frames and the marker of a list. The three kinds of a section share one place: they are one choice
 			'width' 								=> [ 'surfaces', 'page', 1 ],
 			'whitespace' 							=> [ 'surfaces', 'page', 2 ],
 			'radius' 								=> [ 'surfaces', 'page', 3 ],
 			'radius-alt' 							=> [ 'surfaces', 'page', 4 ],
 			'radii/image' 							=> [ 'surfaces', 'page', 5 ],
-			'knobs/content/section-space' 			=> [ 'surfaces', 'section', 1 ],
-			'knobs/content/section-line' 			=> [ 'surfaces', 'section', 2 ],
+			'knobs/header/height' 					=> [ 'surfaces', 'header', 1 ],
+			'knobs/header/space' 					=> [ 'surfaces', 'header', 2 ],
+			'knobs/header/ground' 					=> [ 'surfaces', 'header', 3 ],
+			'knobs/footer/height' 					=> [ 'surfaces', 'footer', 1 ],
+			'knobs/footer/space' 					=> [ 'surfaces', 'footer', 2 ],
+			'knobs/footer/ground' 					=> [ 'surfaces', 'footer', 3 ],
+			'knobs/section/space' 					=> [ 'surfaces', 'section', 1 ],
+			'knobs/section/rule' 					=> [ 'surfaces', 'section', 2 ],
 			'radii/cover' 							=> [ 'surfaces', 'section', 3 ],
 			'radii/row' 							=> [ 'surfaces', 'section', 3 ],
 			'radii/column' 							=> [ 'surfaces', 'section', 3 ],
-			'knobs/content/card-space' 				=> [ 'surfaces', 'card', 1 ],
-			'knobs/content/border' 					=> [ 'surfaces', 'card', 2 ],
-			'knobs/content/shadow' 					=> [ 'surfaces', 'card', 3 ],
+			'knobs/card/space' 						=> [ 'surfaces', 'card', 1 ],
+			'knobs/card/border' 					=> [ 'surfaces', 'card', 2 ],
+			'knobs/card/shadow' 					=> [ 'surfaces', 'card', 3 ],
 			'radii/card' 							=> [ 'surfaces', 'card', 4 ],
 			'knobs/buttons/space' 					=> [ 'surfaces', 'buttons', 1 ],
 			'knobs/buttons/corners' 				=> [ 'surfaces', 'buttons', 2 ],
-			'knobs/components/space' 				=> [ 'surfaces', 'components', 1 ],
-			'knobs/components/corners' 				=> [ 'surfaces', 'components', 2 ],
-			'knobs/components/border' 				=> [ 'surfaces', 'components', 3 ],
-			'knobs/components/zebra' 				=> [ 'surfaces', 'components', 4 ],
-			'knobs/components/labels' 				=> [ 'surfaces', 'components', 5 ],
+			'knobs/lists/space' 					=> [ 'surfaces', 'lists', 1 ],
+			'knobs/lists/marker' 					=> [ 'surfaces', 'lists', 2 ],
+			'knobs/tables/space' 					=> [ 'surfaces', 'tables', 1 ],
+			'knobs/tables/border' 					=> [ 'surfaces', 'tables', 2 ],
+			'knobs/tables/zebra' 					=> [ 'surfaces', 'tables', 3 ],
 
-			// The colours and the motion belong to the page. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -220,15 +272,22 @@ namespace Nino\Modules\Design {
 			'colours/contrast' 						=> [ 'colours', 'page', 5 ],
 			'colours/depth' 						=> [ 'colours', 'page', 6 ],
 			'colours/mode' 							=> [ 'colours', 'page', 7 ],
+			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
+			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
+			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
+
+			// The motion: the animation of the page, and what a card and a button do under the pointer
 			'motion/effect' 						=> [ 'motion', 'page', 1 ],
 			'motion/strength' 						=> [ 'motion', 'page', 2 ],
 			'motion/speed' 							=> [ 'motion', 'page', 3 ],
+			'knobs/card/hover' 						=> [ 'motion', 'card', 1 ],
+			'knobs/buttons/hover' 					=> [ 'motion', 'buttons', 1 ],
 		];
 
 		/*	How a set says which knobs it answers to: one ladder per knob, named
 			after the part and the knob and nothing else.
 
-			  --content-section-space--least / --less / --default / --more / --most
+			  --section-space--least / --less / --default / --more / --most
 
 			A ladder is the five values of a scale, the middle of them the template as it
 			is, or the three of a choice, which are declared under less, default and more.
@@ -241,7 +300,7 @@ namespace Nino\Modules\Design {
 
 			A value that cannot say all a knob means - the stripes of a table are a
 			background and a text colour - may be declared in more ladders, named after
-			the knob and an aspect of it (--components-zebra-ink--less ...). They are the
+			the knob and an aspect of it (--tables-zebra-ink--less ...). They are the
 			knob's too: they are selected where it stands, and are as long as it is. A
 			stylesheet that declares one without the ladder of the knob itself has
 			published nothing, and one with another length than its knob's has not
@@ -390,14 +449,14 @@ namespace Nino\Modules\Design {
 		];
 
 		/**
-		 *	Everything a fresh install starts from: the five sets of the first
+		 *	Everything a fresh install starts from: the seven sets of the first
 		 *	theme the feature ships (see Themes::SHIPPED - the theme that is the
 		 *	framework as it is), every knob in the middle, the delivered root
 		 *	size, the width, the whitespace, the radius and the animation of
 		 *	Nino.css, the face the base unit delivers, the framework's own
 		 *	colours, no theme and no css of its own
 		 *
-		 *	The five sets are read out of that theme's file, which is a php array
+		 *	The seven sets are read out of that theme's file, which is a php array
 		 *	and is included the way Themes::read() includes a shipped file - only
 		 *	the names of the sets are taken from it, as they stand, and not a
 		 *	call into Themes::setup() and the normalisation of a theme, which
@@ -747,7 +806,7 @@ namespace Nino\Modules\Design {
 
 			/*	Where every knob stands. A knob is a position of its own part, held to
 				the range of its kind, and a name that is none of the part's - or a part that
-				is none of the three - is dropped with a note rather than carried: a
+				is none of the seven - is dropped with a note rather than carried: a
 				position nothing reads is a position nobody can find again. One that is
 				missing is 0	*/
 			$given = is_array( $raw['knobs'] ?? null ) === true ? $raw['knobs'] : [];
@@ -863,8 +922,8 @@ namespace Nino\Modules\Design {
 		 *	Read out of the stylesheet itself rather than out of a manifest
 		 *	beside it, the same bargain @name makes: a set is one file, and the
 		 *	person writing sets is going to write a lot of them. A set that
-		 *	declares --content-section-space--least / --less / --default / --more /
-		 *	--most answers to Section space; one that does not, does not, and the
+		 *	declares --section-space--least / --less / --default / --more /
+		 *	--most answers to the space of a section; one that does not, does not, and the
 		 *	panel greys that knob out for it.
 		 *
 		 *	@param		string		$libraryDir		The feature's library

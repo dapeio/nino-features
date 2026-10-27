@@ -2,23 +2,105 @@
  *	@description	Logo, a sentence about the company, contact and navigation, then a meta row. The talkative one.
  *	@description-de	Logo, ein Satz über das Unternehmen, Kontakt und Navigation, dann eine Meta-Zeile. Der Gesprächige.
  *
+ *	@knob	scale		Type size of the footer
+ *	@knob	height		Space above and below the content of the footer
+ *	@knob	space		Space between its columns, lines and links
+ *	@knob	ground		What the footer stands on
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: scale is a factor on the type size of the footer, height
+ *	a factor on the room above and below its content, space a factor on the gaps
+ *	between its columns, lines and links, and ground a choice of three: the ground
+ *	and the ink of the page, this set's own, and the dark pair of the palette. What
+ *	the text, the links and the lines of the footer are read in comes with it, as
+ *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
+ *	and -border), and is put on the footer as the roles Nino.css reads - so the
+ *	footer is legible on each of the three.
  */
 
+:root {
+	/*	The type size of the footer, as a factor of the one it has: .8em of the text round it, and the sizes this set gives its parts	*/
+	--footer-scale--least:	.85;
+	--footer-scale--less:	.92;
+	--footer-scale--default:	1;
+	--footer-scale--more:	1.1;
+	--footer-scale--most:	1.2;
+
+	/*	The room above and below the content, as a factor of what this set has	*/
+	--footer-height--least:	.5;
+	--footer-height--less:	.75;
+	--footer-height--default:	1;
+	--footer-height--more:	1.5;
+	--footer-height--most:	2;
+
+	/*	The gaps between its columns, lines and links, as a factor of what this set has	*/
+	--footer-space--least:	.5;
+	--footer-space--less:	.75;
+	--footer-space--default:	1;
+	--footer-space--more:	1.5;
+	--footer-space--most:	2;
+
+	/*	What the footer stands on: the ground of the page, this set's own, the dark pair of the palette	*/
+	--footer-ground--less:	var(--color-background);
+	--footer-ground--default:	var(--color-background);
+	--footer-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--footer-ground-ink--less:	var(--color-text);
+	--footer-ground-ink--default:	var(--color-text);
+	--footer-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The subtitle role	*/
+	--footer-ground-subtitle--less:	var(--color-subtitle);
+	--footer-ground-subtitle--default:	var(--color-subtitle);
+	--footer-ground-subtitle--more:	var(--color-section-dark-text);
+
+	/*	The title role	*/
+	--footer-ground-title--less:	var(--color-title);
+	--footer-ground-title--default:	var(--color-title);
+	--footer-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role	*/
+	--footer-ground-accent--less:	var(--color-accent);
+	--footer-ground-accent--default:	var(--color-accent);
+	--footer-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--footer-ground-focus--less:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The lines in it	*/
+	--footer-ground-border--less:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--more:	var(--color-border-dark);
+}
+
+footer {
+	font-size: calc( .8em * var(--footer-scale) );
+	color: var(--footer-ground-ink);
+	--color-subtitle: var(--footer-ground-subtitle);
+	--color-title: var(--footer-ground-title);
+	--color-accent: var(--footer-ground-accent);
+	--color-focus: var(--footer-ground-focus);
+	--color-border: var(--footer-ground-border);
+}
+
 .nino-frame-footer {
-	color: var(--color-text);
-	background-color: var(--color-background);
+	background-color: var(--footer-ground);
 	border-top: 1px solid var(--color-border);
 }
 
 .nino-frame-footer .nino-frame-footer-primary {
 	display: grid;
 	grid-template-columns: auto minmax(12rem, 1fr) auto;
-	gap: var(--space-3);
-	padding-top: var(--space-3);
-	padding-bottom: var(--space-3);
+	gap: calc( var(--space-3) * var(--footer-space) );
+	padding-top: calc( var(--space-3) * var(--footer-height) );
+	padding-bottom: calc( var(--space-3) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-brand {
@@ -36,7 +118,7 @@
 	mark. With a picture in the link the picture is the mark, and the copy of the name is gone	*/
 .nino-frame-footer .nino-frame-footer-brand > span[aria-hidden="true"] {
 	font-family: var(--fontfamily-title);
-	font-size: 1.25rem;
+	font-size: calc( 1.25rem * var(--footer-scale) );
 	font-weight: var(--font-title-weight);
 	line-height: 1.2;
 }
@@ -56,17 +138,17 @@
 
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
 	justify-content: flex-end;
-	gap: var(--space-2);
+	gap: calc( var(--space-2) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-meta {
 	display: grid;
 	grid-template-columns: 1fr auto 1fr;
-	gap: var(--space-2);
-	padding-top: var(--space-1);
-	padding-bottom: var(--space-2);
+	gap: calc( var(--space-2) * var(--footer-space) );
+	padding-top: calc( var(--space-1) * var(--footer-space) );
+	padding-bottom: calc( var(--space-2) * var(--footer-height) );
 	color: var(--color-subtitle);
-	font-size: .72rem;
+	font-size: calc( .72rem * var(--footer-scale) );
 	border-top: 1px solid var(--color-border);
 }
 
@@ -82,7 +164,7 @@
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
 	justify-content: flex-end;
-	gap: var(--space-2);
+	gap: calc( var(--space-2) * var(--footer-space) );
 	align-items: center;
 }
 

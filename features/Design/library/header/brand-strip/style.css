@@ -2,22 +2,109 @@
  *	@description	A full-width strip in the darkest surface with the second brand colour as a rule under it. Loud on purpose.
  *	@description-de	Ein Streifen über die ganze Breite in der dunkelsten Fläche, mit der zweiten Markenfarbe als Linie darunter. Mit Absicht laut.
  *
+ *	@knob	nav		Size of the links of the navigation
+ *	@knob	height		How tall the bar is
+ *	@knob	space		Space between the logo, the links and the edges
+ *	@knob	ground		What the bar stands on
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
+ *
+ *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	was before it had any: nav is a factor on the size of the links of the
+ *	navigation, height the height of the bar - and of the room main leaves under
+ *	it -, space a factor on the gaps between the logo, the links and the edges,
+ *	and ground a choice of three: the ground and the ink of the page, this set's
+ *	own, and the dark pair of the palette. What the text, the icons, the links and
+ *	the lines of the bar are read in comes with it, as aspects of the ground
+ *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
+ *	header as the roles Nino.css reads - so the bar is legible on each of the
+ *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	The block that holds the mark has the second brand colour for a ground and the strip the
+ *	rule of it, whatever the ground of the strip is.
  */
+
+:root {
+	/*	The size of the links of the navigation, as a factor of the size this set sets them in	*/
+	--header-nav--least:	.85;
+	--header-nav--less:	.92;
+	--header-nav--default:	1;
+	--header-nav--more:	1.1;
+	--header-nav--most:	1.2;
+
+	/*	The height of the strip, which is the height of the block that holds the mark: 5.25rem, and below 768px 4.75rem	*/
+	--header-height--least:	calc( 5.25rem * .7 );
+	--header-height--less:	calc( 5.25rem * .85 );
+	--header-height--default:	5.25rem;
+	--header-height--more:	calc( 5.25rem * 1.25 );
+	--header-height--most:	calc( 5.25rem * 1.5 );
+
+	/*	The gaps between the logo, the links and the edges, as a factor of what this set has	*/
+	--header-space--least:	.5;
+	--header-space--less:	.75;
+	--header-space--default:	1;
+	--header-space--more:	1.5;
+	--header-space--most:	2;
+
+	/*	What the bar stands on: the ground of the page, this set's own, the dark pair of the palette	*/
+	--header-ground--less:	var(--color-background);
+	--header-ground--default:	var(--color-section-black-bg);
+	--header-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--header-ground-ink--less:	var(--color-text);
+	--header-ground-ink--default:	var(--color-section-black-text);
+	--header-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The title role, which the icon of the menu is drawn in	*/
+	--header-ground-title--less:	var(--color-title);
+	--header-ground-title--default:	var(--color-section-black-text);
+	--header-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role: the link that is current	*/
+	--header-ground-accent--less:	var(--color-accent);
+	--header-ground-accent--default:	var(--color-accent-black);
+	--header-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--header-ground-focus--less:	var(--color-focus);
+	--header-ground-focus--default:	var(--color-focus);
+	--header-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The line under it	*/
+	--header-ground-border--less:	var(--color-border);
+	--header-ground-border--default:	var(--color-border);
+	--header-ground-border--more:	var(--color-border-dark);
+}
+
+@media (max-width: 767px) {
+	:root {
+			--header-height--least:	calc( 4.75rem * .7 );
+			--header-height--less:	calc( 4.75rem * .85 );
+			--header-height--default:	4.75rem;
+			--header-height--more:	calc( 4.75rem * 1.25 );
+			--header-height--most:	calc( 4.75rem * 1.5 );
+	}
+}
+
+.nino-frame-header {
+	--color-title: var(--header-ground-title);
+	--color-accent: var(--header-ground-accent);
+	--color-focus: var(--header-ground-focus);
+	--color-border: var(--header-ground-border);
+}
 
 .nino-frame-header .nino-frame-header-strip {
 	opacity: 1;
-	background-color: var(--color-section-black-bg);
-	color: var(--color-section-black-text);
-	--color-title: var(--color-section-black-text);
-	--color-accent: var(--color-accent-black);
+	color: var(--header-ground-ink);
+	background-color: var(--header-ground);
 	border-bottom: 3px solid var(--color-secondary);
 }
 
 body.nino-scroll-atf .nino-frame-header .nino-frame-header-strip {
-	background-color: var(--color-section-black-bg);
+	background-color: var(--header-ground);
 }
 
 .nino-frame-header .nino-frame-header-inner {
@@ -39,8 +126,8 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-strip {
 	align-items: center;
 	width: fit-content;
 	max-width: 100%;
-	min-height: 5.25rem;
-	padding: var(--space-1) var(--space-3);
+	min-height: var(--header-height);
+	padding: calc( var(--space-1) * var(--header-space) ) calc( var(--space-3) * var(--header-space) );
 	background-color: var(--color-secondary);
 }
 
@@ -67,11 +154,11 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-strip {
 	align-items: center;
 	justify-content: flex-end;
 	min-width: 0;
-	padding: var(--space-1) var(--space-3);
+	padding: calc( var(--space-1) * var(--header-space) ) calc( var(--space-3) * var(--header-space) );
 }
 
 .nino-frame-header .nino-nav-burger > button > svg {
-	fill: var(--color-section-black-text);
+	fill: var(--color-title);
 }
 
 .nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
@@ -79,7 +166,7 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-strip {
 }
 
 body main {
-	padding-top: clamp(5.25rem, var(--space-6), 8rem);
+	padding-top: calc( clamp(5.25rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) );
 }
 
 body main:has(> .nino-cover:first-child),
@@ -94,10 +181,14 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 		justify-content: flex-end;
 	}
 
+	.nino-frame-header .nino-nav-content ul {
+		gap: calc( var(--space-2) * var(--header-space) );
+	}
+
 	.nino-frame-header .nino-nav-content li a {
-		padding: .6rem .35rem;
-		color: var(--color-section-black-text);
-		font-size: .82rem;
+		padding: calc( .6rem * var(--header-space) ) calc( .35rem * var(--header-space) );
+		color: var(--header-ground-ink);
+		font-size: calc( .82rem * var(--header-nav) );
 		font-weight: 700;
 		letter-spacing: .09em;
 		text-transform: uppercase;
@@ -116,18 +207,18 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 	}
 
 	.nino-frame-header .nino-frame-header-brand {
-		min-height: 4.75rem;
-		padding-right: var(--space-2);
-		padding-left: var(--space-2);
+		min-height: var(--header-height);
+		padding-right: calc( var(--space-2) * var(--header-space) );
+		padding-left: calc( var(--space-2) * var(--header-space) );
 	}
 
 	.nino-frame-header .nino-frame-header-nav {
-		padding-right: var(--space-2);
-		padding-left: var(--space-2);
+		padding-right: calc( var(--space-2) * var(--header-space) );
+		padding-left: calc( var(--space-2) * var(--header-space) );
 	}
 
 	body main {
-		padding-top: 4.75rem;
+		padding-top: var(--header-height);
 	}
 
 	body main:has(> .nino-cover.nino-hero:first-child),

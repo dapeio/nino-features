@@ -5,6 +5,7 @@
  *	@knob	size		Size of a button
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
+ *	@knob	hover		What a button does under the pointer
  *
  *	The shape only works when the label has room on both axes, so the padding
  *	is wider than the framework's own: the rule reads the space knob 1.5 times
@@ -19,6 +20,10 @@
  *	Size, spread and space are Nino's ladders, value for value. The size
  *	multiplies the padding and the type, and a small button is the size times 1
  *	less the spread, a big one the size times 1 plus it, as in regular.
+ *
+ *	The hover is a choice of three, as in regular: nothing, which is also what
+ *	this set does under the pointer by itself, and lifted, a rise of one pixel
+ *	with a shadow under it, where the visitor has not asked for less motion.
  */
 
 /*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
@@ -40,6 +45,15 @@
 	--buttons-space--default: var(--space-2);
 	--buttons-space--more: 			var(--space-3);
 	--buttons-space--most: 			var(--space-4);
+
+	/*	The rise and the shadow under it, as regular says; this set casts none at rest	*/
+	--buttons-hover--less: 		none;
+	--buttons-hover--default: 	none;
+	--buttons-hover--more: 		0 -1px;
+
+	--buttons-hover-shadow--less: 		none;
+	--buttons-hover-shadow--default: 	none;
+	--buttons-hover-shadow--more: 		0 .25rem .5rem var(--nino-default-shadow);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
@@ -71,4 +85,16 @@
 
 .nino-filter-btn {
 	border-radius: 999rem;
+}
+
+/*	The hover, as the ladder says it - regular says where it does not apply. The
+	outline casts no shadow	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
+		translate: var(--buttons-hover);
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease;
+	}
+	.nino-btn:where(:not(.nino-btn--outline, :focus-visible, :disabled, [aria-disabled="true"])):hover {
+		box-shadow: var(--buttons-hover-shadow);
+	}
 }

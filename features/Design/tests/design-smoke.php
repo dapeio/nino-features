@@ -5,7 +5,7 @@ declare(strict_types=1);
  *	Nino
  *	design-smoke.php		Contract test for the Design feature (Modules\Design):
  *											the manifest and activation through \Nino\Features, the
- *											library of five parts and what a template must declare
+ *											library of seven parts and what a template must declare
  *											to be one - every set of it held to what a set is, and none
  *											to what it happens to be: the suite names no set of the
  *											library, no theme, no sentence of the manual and no word of the
@@ -33,7 +33,7 @@ declare(strict_types=1);
  *											previews of the list - and the themes: the two keys the
  *											setup gained, the model of a theme file and the css it is
  *											refused for, the themes the feature ships held to what a
- *											theme is (the first of them the defaults), the thirteenth
+ *											theme is (the first of them the defaults), the fifteenth
  *											section of the compile, the seven actions of the Theme tab
  *											with the codes they answer, the manual, which has an entry
  *											for each tab and each part of the Theme tab and is a line
@@ -207,7 +207,7 @@ function designOpening( string $file ): string {
 }
 
 /**
- *	A compiled sheet without the opening comment of the five sets in it: the comment
+ *	A compiled sheet without the opening comment of the seven parts' sets in it: the comment
  *	under the marker of a section of a frame or of a set, which describes the file - its
  *	name, its description in both languages, the knobs it answers to - and is no part of
  *	what a browser draws, and which the owner of a library rewrites as he pleases.
@@ -277,18 +277,20 @@ function designAutoBlocks( string $css ): array {
 }
 
 /**
- *	A stylesheet without the case it sets on a label or on a table head: the
- *	text-transform declarations of the rules whose selectors all end in a label
- *	or a th, which a components template sets as what it is built as and not as
- *	a role of the Type tab. A case written anywhere else stays in it
+ *	A stylesheet without what a template sets as what it is built as and not as a role of the Type
+ *	tab: the declarations of one property in the rules whose selectors all end in one kind of
+ *	element - the case of a table head in a tables template, the weight of the mark before an item
+ *	in a lists template. What is written anywhere else stays in it
  *
  *	@param		string		$css					Without its comments
+ *	@param		string		$ending				A pattern for the last compound of a selector - th, li::before
+ *	@param		string		$property			The property taken out of such a rule - text-transform, font-weight
  *
  *	@return 	string
  */
-function designWithoutLabelCase( string $css ): string {
+function designWithoutConstruction( string $css, string $ending, string $property ): string {
 
-	return (string) preg_replace_callback( '/([^{}]+)\{([^{}]*)\}/', static function( array $rule ): string {
+	return (string) preg_replace_callback( '/([^{}]+)\{([^{}]*)\}/', static function( array $rule ) use ( $ending, $property ): string {
 
 		// The selectors of the rule, cut where a comma stands outside of brackets: :where( :not( a, b ) ) is one
 		$selectors	= [];
@@ -311,17 +313,19 @@ function designWithoutLabelCase( string $css ): string {
 
 		foreach( $selectors as $selector ) {
 
-			// What the selector ends in is the last compound of it, with the brackets of its pseudo-classes taken out
+			// What the selector ends in is the last compound of it, with the brackets of its pseudo-classes taken out - and the names of those that took them
 			while( preg_match( '/\([^()]*\)/', $selector ) === 1 )
 				$selector = (string) preg_replace( '/\([^()]*\)/', '', $selector );
 
+			$selector = (string) preg_replace( '/:(?:where|not|is|has)(?![\w-])/i', '', $selector );
+
 			$compounds = (array) preg_split( '/[\s>+~]+/', trim( $selector ), -1, PREG_SPLIT_NO_EMPTY );
 
-			if( preg_match( '/^(?:label|th)(?![\w-])/i', (string) end( $compounds ) ) !== 1 )
+			if( preg_match( $ending, (string) end( $compounds ) ) !== 1 )
 				return $rule[0];
 		}
 
-		return $rule[1]. '{'. (string) preg_replace( '/text-transform\s*:[^;]*;?/', '', $rule[2] ). '}';
+		return $rule[1]. '{'. (string) preg_replace( '/'. preg_quote( $property, '/' ). '\s*:[^;]*;?/', '', $rule[2] ). '}';
 	}, $css );
 }
 
@@ -331,11 +335,14 @@ function designWithoutLabelCase( string $css ): string {
  *	step or has the length of another kind, a name that is no knob of the part
  *	and no aspect of one, an aspect of another length than its knob, a rule
  *	reading a knob nobody declared, a header that documents other knobs than
- *	the file declares, a face, a weight or a case - but for the case of a label
- *	or of a table head in a components template, which is set in capitals as a
- *	construction and not as a role - or a colour written as a literal, and a
- *	ladder or a knob declared, or a knob or one of its steps read, that belongs
- *	to another part
+ *	the file declares, a set that writes a face, a weight or a case - but for the
+ *	case of a table head in a tables template and the weight of the mark before an
+ *	item in a lists template, which are what those are built as and no role - or a
+ *	colour written as a literal, and a ladder or a knob declared, or a knob or one
+ *	of its steps read, that belongs to another part - but for the one family a
+ *	section set and a card set may read of the other, by a token its opening
+ *	comment names. A frame is held to the ladders and not to the roles: it is the
+ *	construction of a bar or of a footer, with the ink and the type a bar has
  *
  *	@param		string		$library			The feature's library
  *	@param		string		$part					A key of Setup::KNOBS
@@ -354,7 +361,7 @@ function designKnobProblems( string $library, string $part, string $set ): array
 		thing it is checking: Setup::ladders() looks for the token
 		immediately followed by ':' in a stylesheet with its comments taken
 		out. A space before the colon is valid css and invisible to that,
-		so '--content-border--less : 0' declared a step the panel never
+		so '--card-border--less : 0' declared a step the panel never
 		finds - and a knob whose five steps are all written that way is
 		one nobody can turn, with nothing saying so	*/
 	$source		= (string) file_get_contents( $style );
@@ -409,8 +416,8 @@ function designKnobProblems( string $library, string $part, string $set ): array
 	/*	...and what belongs to a part that is not this one's. The parts are
 		compiled in the order they are shown in, so a set that declares the ladder
 		of another part's knob overrides the steps of the template chosen there - a
-		components set declaring --buttons-size--default would replace what the
-		buttons template published, with the panel still showing the components
+		tables set declaring --buttons-size--default would replace what the
+		buttons template published, with the panel still showing the tables
 		answering to their own knobs only. So does one that declares the knob
 		itself, which the compiler selects on :root for the template chosen there:
 		a nested `.nino-form .nino-btn { --buttons-size: 2; }` beats that selection
@@ -443,9 +450,15 @@ function designKnobProblems( string $library, string $part, string $set ): array
 	// A step is read by its name as well as the knob: var(--buttons-size--default) follows the buttons template just as var(--buttons-size) does
 	preg_match_all( '/var\(\s*--('. $others. ')-([a-z0-9]+(?:-[a-z0-9]+)*)(?:--(?:'. $words. '))?\s*[,)]/', $css, $foreign, PREG_SET_ORDER );
 
-	$reads = [];
+	/*	The section family and the card family are one design in two halves - a panel of a section casts the shadow of a card - and where a set of the one has to read
+		a value of the other it reads it by its token and says so in its opening comment: a read that the comment names is no dependency nobody can see. Declaring one never is	*/
+	$family		= [ 'section' => 'card', 'card' => 'section' ];
+	$opening	= designOpening( $style );
+	$reads		= [];
+
 	foreach( $foreign as $hit )
-		$reads[ $hit[1]. '-'. $hit[2] ] = $hit[1];
+		if( ( $family[$part] ?? '' ) !== $hit[1] || str_contains( $opening, '--'. $hit[1]. '-'. $hit[2] ) === false )
+			$reads[ $hit[1]. '-'. $hit[2] ] = $hit[1];
 
 	foreach( $reads as $knob => $other )
 		$problems[] = $set. ': reads --'. $knob. ', a knob of the '. $other. ' part';
@@ -464,10 +477,15 @@ function designKnobProblems( string $library, string $part, string $set ): array
 		$problems[] = $set. ': answers to no knob at all';
 
 	/*	The face, the weight and the case are the roles of the Type tab, and a colour is a role: never a literal. A
-		components template may set the case of a label and of a table head - that is what it is built as, and the roles
-		are the title's and the text's, not these - so the rules whose selectors all end in one are read without it, and a
-		case set anywhere else in it is reported like the others	*/
-	$read = $part === 'components' ? designWithoutLabelCase( $css ) : $css;
+		tables template may set the case of a table head, and a lists template the weight of a mark - that is what they
+		are built as, and the roles are the title's and the text's, not these - so the rules whose selectors all end in
+		one are read without it, and one set anywhere else in it is reported like the others. A frame is no set of
+		the Type tab's: the bar and the footer set the ink and the type a bar has, and are held to their ladders alone	*/
+	if( ( Setup::PARTS[$part] ?? 'set' ) === 'frame' )
+		return $problems;
+
+	$allowed	= [ 'tables' => [ '/^th(?![\w-])/i', 'text-transform' ], 'lists' => [ '/^li::before$/i', 'font-weight' ] ][$part] ?? null;
+	$read			= $allowed === null ? $css : designWithoutConstruction( $css, $allowed[0], $allowed[1] );
 
 	if( preg_match( '/(?:^|[;{\s])(?:font-family|font-weight|text-transform)\s*:/', $read ) === 1 )
 		$problems[] = $set. ': writes the face, the weight or the case of a role';
@@ -802,8 +820,8 @@ check( 'the themes of the project are in the backup: /data/themes is declared un
 
 echo "\nThe library it ships\n";
 
-check( 'five parts: the header and the footer bring markup, the content, the buttons and the components are a stylesheet each',
-	Setup::PARTS === [ 'header' => 'frame', 'footer' => 'frame', 'content' => 'set', 'buttons' => 'set', 'components' => 'set' ] );
+check( 'seven parts, in the order they are compiled in: the header and the footer bring markup, the section, the card, the buttons, the lists and the tables are a stylesheet each',
+	Setup::PARTS === [ 'header' => 'frame', 'footer' => 'frame', 'section' => 'set', 'card' => 'set', 'buttons' => 'set', 'lists' => 'set', 'tables' => 'set' ] );
 check( 'the sets of the model before this one are gone - there is no library/sets', is_dir( $library. '/sets' ) === false );
 
 foreach( Setup::PARTS as $part => $kind ) {
@@ -811,30 +829,41 @@ foreach( Setup::PARTS as $part => $kind ) {
 	check( 'the library offers at least one set for "'. $part. '"', $available !== [] );
 }
 
+/*	The families are the sets of the content and of the components the model before this one had, cut by the object each is a design for: the section and the card
+	are one design for two objects and list the same names, so that a theme names a sensible pair - the four the content had - and the tables are the five the
+	components had. A count and a likeness, and no name typed here	*/
+check( 'the section and the card families list the same names, four of them, as the sets of the content they come from did - and the tables family the five the components sets had: a family is one design for each of its objects',
+	Setup::available( $library, 'section' ) === Setup::available( $library, 'card' ) && count( Setup::available( $library, 'section' ) ) === 4
+	&& count( Setup::available( $library, 'tables' ) ) === 5 && Setup::available( $library, 'lists' ) !== [] );
+
 /*	The set a fresh install has for each part is the one the first shipped theme names (see Setup::defaults()): what
 	the checks below call the default set of a part, whichever set that is	*/
 $defaultSets = Setup::defaults( $library )['parts'];
 
 check( 'a frame offers its template and its stylesheet', Setup::file( $library, 'header', $defaultSets['header'], 'template' ) !== ''
 	&& Setup::file( $library, 'header', $defaultSets['header'] ) !== '' );
-check( 'a set name that is not a set name resolves to nothing', Setup::file( $library, 'content', '../../../etc/passwd' ) === ''
-	&& Setup::file( $library, 'content', $defaultSets['content']. '/../'. $defaultSets['content'] ) === ''
-	&& Setup::file( $library, 'content', '' ) === ''
-	&& Setup::file( $library, 'sets', $defaultSets['content'] ) === '' );
+check( 'a set name that is not a set name resolves to nothing', Setup::file( $library, 'section', '../../../etc/passwd' ) === ''
+	&& Setup::file( $library, 'section', $defaultSets['section']. '/../'. $defaultSets['section'] ) === ''
+	&& Setup::file( $library, 'section', '' ) === ''
+	&& Setup::file( $library, 'sets', $defaultSets['section'] ) === '' );
 
 /*	The library is written by hand and grows by hand, so what is held here is
 	what a new file gets wrong - and gets wrong quietly. A set is named by a
 	slug and carries its name and its description in both languages, a name is
 	not translated, two under one name are two rows nobody can tell apart, a
-	frame has no knobs, a knob outside Setup::KNOBS is a handle the panel
-	will never show, a ladder missing a step is a knob position that compiles
+	knob outside Setup::KNOBS is a handle the panel will never show, a
+	ladder missing a step is a knob position that compiles
 	to nothing - and one of five for a choice, or of three for a scale, is
 	not published at all - a rule reading a token the file never declared is a
 	declaration that silently does not apply, a set that declares a ladder or
 	the selected knob of another part overrides the template chosen there, one
 	that reads a knob or a step of another part follows a position that
 	template may not publish, and a template that writes the face, the weight
-	or the case of the text contradicts the Type tab.
+	or the case of the text contradicts the Type tab. A frame is held to the
+	same but for that last rule - it is the construction of a bar or of a
+	footer, with the ink and the type a bar has - and it answers to every knob
+	of its part and to none of another, since the panel greys nothing in the
+	row of a frame.
 
 	Written against the shipped library rather than a fixture on purpose: a
 	fixture would prove the rule and let the files drift - and over every file
@@ -860,9 +889,6 @@ foreach( Setup::PARTS as $part => $kind ) {
 		if( preg_match( '/@name-de\b/', $opening ) === 1 )
 			$unsaid[] = $set. ': has a @name-de';
 
-		if( $kind === 'frame' && preg_match( '/@knob\b/', $opening ) === 1 )
-			$unsaid[] = $set. ': a frame has no knobs, and has a @knob line';
-
 		if( Setup::describe( $library, $part, $set, 'de_DE' )['name'] !== Setup::describe( $library, $part, $set, 'en_US' )['name'] )
 			$unsaid[] = $set. ': is named differently in the two languages';
 	}
@@ -870,7 +896,7 @@ foreach( Setup::PARTS as $part => $kind ) {
 	check( '"'. $part. '" offers a choice rather than a single template', count( $catalogue ) > 1 );
 	check( '...every one of them a slug - lower-case words joined by hyphens, the pattern a theme\'s slug has', count( $slugs ) === count( $catalogue ) );
 	check( '...every one of them named, and no two the same', count( array_unique( $names ) ) === count( $names ) && array_filter( $names, static fn( string $name ): bool => trim( $name ) === '' ) === [] );
-	check( '...and every one of them saying what it is: its name, its description and its description in German in the opening comment of its file, no name in German - and a frame no @knob line'
+	check( '...and every one of them saying what it is: its name, its description and its description in German in the opening comment of its file, no name in German'
 		. ( $unsaid === [] ? '' : ' - '. implode( ', ', $unsaid ) ), $unsaid === [] );
 
 	$knobProblems	= [];
@@ -885,35 +911,39 @@ foreach( Setup::PARTS as $part => $kind ) {
 			continue;
 		}
 
-		if( $kind !== 'set' )
-			continue;
-
 		$knobProblems = array_merge( $knobProblems, designKnobProblems( $library, $part, $set ) );
 	}
 
 	// Both lists carry the file and what is wrong with it; a failure that does
-	// not say which of five templates it means is a search rather than a report
+	// not say which of the templates it means is a search rather than a report
 	check( '...each resolving to the files its kind is made of'. ( $fileProblems === [] ? '' : ' - '. implode( ', ', $fileProblems ) ), $fileProblems === [] );
 
-	if( $kind === 'set' ) {
+	check( '...every ladder it declares is a ladder of a knob of its part, or an aspect of one, of the length of the kind of the knob - five for a scale, three for a choice - every one it reads is declared, and none it declares or reads is another part\'s'. ( $knobProblems === [] ? '' : ' - '. implode( ' | ', $knobProblems ) ), $knobProblems === [] );
+	check( '...the default set of the part declares every knob of it - it is the framework as it is, with something for each knob to reach',
+		Setup::knobs( $library, $part, $defaultSets[$part] ) === array_keys( Setup::KNOBS[$part] ) );
 
-		check( '...every ladder it declares is a ladder of a knob of its part, or an aspect of one, of the length of the kind of the knob - five for a scale, three for a choice - every one it reads is declared, and none it declares or reads is another part\'s'. ( $knobProblems === [] ? '' : ' - '. implode( ' | ', $knobProblems ) ), $knobProblems === [] );
-		check( '...the default set of the part declares every knob of it - it is the framework as it is, with something for each knob to reach',
-			Setup::knobs( $library, $part, $defaultSets[$part] ) === array_keys( Setup::KNOBS[$part] ) );
+	// A frame has the one construction of its bar or its footer and no template beside it that leaves a knob out: the row of a frame in the panel greys nothing
+	if( $kind === 'frame' ) {
+
+		$short = array_values( array_filter( array_keys( $catalogue ), static fn( string $set ): bool => Setup::knobs( $library, $part, $set ) !== array_keys( Setup::KNOBS[$part] ) ) );
+
+		check( '...and so does every set of it, a frame answering to all of the knobs of its part'. ( $short === [] ? '' : ' - not: '. implode( ', ', $short ) ), $short === [] );
 	}
 }
 
-/*	The ladders are Nino's in every template. A knob is a measure and the template owns its ladder, but it is the
+/*	The ladders are Nino's in every template of a stylesheet. A knob is a measure and the template owns its ladder, but it is the
 	same ladder in every template of a part - the default set's, value for value, below the breakpoint of 768px and from it
 	- so that a switch of template moves no size. What a template keeps is its construction: how a hero is composed, how a
-	band, a card, a field or a button is built. A template that answers to a knob declares the five values of the default
+	band, a card, a table or a button is built. A template that answers to a knob declares the five values of the default
 	set for it, or the three of a choice, and the aspects that stand beside a ladder - the lift of a shadow, the ink of the
-	stripes, the places of a label - are its own, and left out	*/
+	stripes - are its own, and left out. The frames are left out of this one: the middle of a frame's ladder is the bar or the
+	footer as that set has it, so a header of 4.5rem and one of 5rem do not answer to one height, and the ladders of a frame are
+	its own, held to what a set is above	*/
 $ladderProblems	= [];
 $compared				= 0;
 $levels					= [];
 
-foreach( array_keys( Setup::KNOBS ) as $part ) {
+foreach( array_keys( array_filter( Setup::PARTS, static fn( string $kind ): bool => $kind === 'set' ) ) as $part ) {
 
 	$nino = designLadderValues( (string) file_get_contents( Setup::file( $library, $part, $defaultSets[$part] ) ), $part );
 
@@ -952,11 +982,11 @@ preg_match_all( '/--hero-title-scale\s*:\s*([0-9.]+)\s*;/', $ninoCss, $kernelHer
 
 $scaleProblems = [];
 
-foreach( Setup::available( $library, 'content' ) as $set ) {
+foreach( Setup::available( $library, 'section' ) as $set ) {
 
-	$ladder = designLadderValues( (string) file_get_contents( Setup::file( $library, 'content', $set ) ), 'content' );
+	$ladder = designLadderValues( (string) file_get_contents( Setup::file( $library, 'section', $set ) ), 'section' );
 
-	if( in_array( 'hero-title', Setup::knobs( $library, 'content', $set ), true ) === false )
+	if( in_array( 'hero-title', Setup::knobs( $library, 'section', $set ), true ) === false )
 		continue;
 
 	if( (float) ( $ladder['base']['hero-title']['default'] ?? -1 ) !== (float) ( $kernelHero[1][0] ?? -2 ) )
@@ -966,27 +996,25 @@ foreach( Setup::available( $library, 'content' ) as $set ) {
 		$scaleProblems[] = $set. ' from 768px';
 }
 
-check( 'the middle of the hero title\'s ladder is the kernel\'s --hero-title-scale in every content template that has one, below 768px and from it, as Nino.css declares them'
+check( 'the middle of the hero title\'s ladder is the kernel\'s --hero-title-scale in every section template that has one, below 768px and from it, as Nino.css declares them'
 	. ( $scaleProblems === [] ? '' : ' - not: '. implode( ', ', $scaleProblems ) ), count( $kernelHero[1] ) === 2 && $scaleProblems === [] );
 
-/*	The type of a field is never under 1rem: a phone zooms the page where one is typed in that is set smaller. The
-	rule of the three fields reads max( 1rem, 1rem times the scale ) in every components template but the default set,
-	which is the framework as it is and the delivered stylesheet to the byte; the type of a table keeps the scale as it is	*/
-$floorProblems = [];
+/*	The type of a table and of a list keeps the scale as it is: calc( 1em times the scale ), in every template of the two, so
+	that the ladder is a factor on the size the page has, and not a size of its own. The fields of a form are the kernel's and
+	have no rule here, so there is no floor of 1rem to hold them to	*/
+$scaleKept = [];
 
-foreach( array_diff( Setup::available( $library, 'components' ), [ $defaultSets['components'] ] ) as $set ) {
+foreach( [ 'tables' => '.nino-table', 'lists' => '.nino-list' ] as $scalePart => $scaleSelector )
+	foreach( Setup::available( $library, $scalePart ) as $set ) {
 
-	$folded = (string) preg_replace( '/\s+/', ' ', designPlain( (string) file_get_contents( Setup::file( $library, 'components', $set ) ) ) );
+		$folded = (string) preg_replace( '/\s+/', ' ', designPlain( (string) file_get_contents( Setup::file( $library, $scalePart, $set ) ) ) );
 
-	if( preg_match( '/\.nino-form-input, \.nino-form-textarea, \.nino-form-select \{([^}]*)\}/', $folded, $rule ) !== 1 || str_contains( $rule[1], ' font-size: max( 1rem, calc( 1rem * var(--components-scale) ) );' ) === false )
-		$floorProblems[] = $set. ': the field has no floor';
+		if( str_contains( $folded, $scaleSelector. ' { font-size: calc( 1em * var(--'. $scalePart. '-scale) );' ) === false )
+			$scaleKept[] = $scalePart. '/'. $set;
+	}
 
-	if( str_contains( $folded, '.nino-table { font-size: calc( 1em * var(--components-scale) );' ) === false )
-		$floorProblems[] = $set. ': the table does not keep the scale';
-}
-
-check( 'the type of a field is max( 1rem, 1rem times the scale ) in every components template but the default set, so it never falls under 1rem, and the type of a table stays calc( 1em times the scale )'
-	. ( $floorProblems === [] ? '' : ' - '. implode( ', ', $floorProblems ) ), $floorProblems === [] );
+check( 'the type of a table and of a list stays calc( 1em times the scale ) in every template of the two'
+	. ( $scaleKept === [] ? '' : ' - not: '. implode( ', ', $scaleKept ) ), $scaleKept === [] );
 
 /*	The frames the fresh install has are the ones the kernel delivers, to the byte: the header and the footer of the first
 	shipped theme are frame-header.tpl and frame-footer.tpl of the base unit, so that a project that applies the defaults
@@ -1007,37 +1035,37 @@ foreach( [ 'header', 'footer' ] as $frame ) {
 	asked for - the first two letters of the locale - and the English ones where a file has none in that language. Held
 	over a throwaway library, so that the files of the shipped one stay what their owner writes them as	*/
 $bilingual = ninoSandboxDir( $appData ). '/library-names';
-mkdir( $bilingual. '/content', 0755, true );
+mkdir( $bilingual. '/section', 0755, true );
 mkdir( $bilingual. '/header/first', 0755, true );
-file_put_contents( $bilingual. '/content/first.css', "/*\t@name Both\n *\t@description Both languages.\n *\t@name-de Beide\n *\t@description-de Beide Sprachen.\n */\n:root {}\n" );
+file_put_contents( $bilingual. '/section/first.css', "/*\t@name Both\n *\t@description Both languages.\n *\t@name-de Beide\n *\t@description-de Beide Sprachen.\n */\n:root {}\n" );
 // A template somebody else wrote: English lines only - and one with the name in German and the description not
-file_put_contents( $bilingual. '/content/second.css', "/*\t@name English only\n *\t@description Written by somebody else.\n */\n:root {}\n" );
-file_put_contents( $bilingual. '/content/third.css', "/*\t@name Half\n *\t@description Both here.\n *\t@name-de Halb\n */\n:root {}\n" );
+file_put_contents( $bilingual. '/section/second.css', "/*\t@name English only\n *\t@description Written by somebody else.\n */\n:root {}\n" );
+file_put_contents( $bilingual. '/section/third.css', "/*\t@name Half\n *\t@description Both here.\n *\t@name-de Halb\n */\n:root {}\n" );
 // ...and one whose German line stands below the first comment, which is none of the file's
-file_put_contents( $bilingual. '/content/fourth.css', "/*\t@name Opening\n *\t@description The opening comment.\n */\n.nino-card { /* @name-de Darunter */ }\n/*\t@name-de Auch darunter\n *\t@description-de Und das auch.\n */\n" );
+file_put_contents( $bilingual. '/section/fourth.css', "/*\t@name Opening\n *\t@description The opening comment.\n */\n.nino-section { /* @name-de Darunter */ }\n/*\t@name-de Auch darunter\n *\t@description-de Und das auch.\n */\n" );
 file_put_contents( $bilingual. '/header/first/template.tpl', '<header></header>' );
 file_put_contents( $bilingual. '/header/first/style.css', "/*\t@name Frame\n *\t@description A frame with English lines.\n */\n" );
 
 check( 'a file that carries the German lines gives them under de_DE and the English ones under en_US, and under a locale of no language of its own - English has no lines but the plain ones',
-	Setup::describe( $bilingual, 'content', 'first', 'de_DE' ) === [ 'name' => 'Beide', 'description' => 'Beide Sprachen.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', 'en_US' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
-	&& Setup::describe( $bilingual, 'content', 'first' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', 'de' ) === [ 'name' => 'Beide', 'description' => 'Beide Sprachen.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', 'fr_FR' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', 'en_GB' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', '' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ] );
+	Setup::describe( $bilingual, 'section', 'first', 'de_DE' ) === [ 'name' => 'Beide', 'description' => 'Beide Sprachen.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', 'en_US' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
+	&& Setup::describe( $bilingual, 'section', 'first' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', 'de' ) === [ 'name' => 'Beide', 'description' => 'Beide Sprachen.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', 'fr_FR' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', 'en_GB' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', '' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ] );
 check( '...a locale is no pattern: what is not two letters of the alphabet at its start names no line, whatever it holds',
-	Setup::describe( $bilingual, 'content', 'first', 'd.*' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', '../../x' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
-	&& Setup::describe( $bilingual, 'content', 'first', 'DE_de' ) === [ 'name' => 'Beide', 'description' => 'Beide Sprachen.' ] );
+	Setup::describe( $bilingual, 'section', 'first', 'd.*' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', '../../x' ) === [ 'name' => 'Both', 'description' => 'Both languages.' ]
+	&& Setup::describe( $bilingual, 'section', 'first', 'DE_de' ) === [ 'name' => 'Beide', 'description' => 'Beide Sprachen.' ] );
 check( '...a file with no German line gives the English one under de_DE - a template somebody else wrote is listed, in the words it was written in - and a file that has the one of the two gives that one and the English for the other',
-	Setup::describe( $bilingual, 'content', 'second', 'de_DE' ) === [ 'name' => 'English only', 'description' => 'Written by somebody else.' ]
-	&& Setup::describe( $bilingual, 'content', 'third', 'de_DE' ) === [ 'name' => 'Halb', 'description' => 'Both here.' ]
-	&& Setup::describe( $bilingual, 'content', 'fourth', 'de_DE' ) === [ 'name' => 'Opening', 'description' => 'The opening comment.' ]
+	Setup::describe( $bilingual, 'section', 'second', 'de_DE' ) === [ 'name' => 'English only', 'description' => 'Written by somebody else.' ]
+	&& Setup::describe( $bilingual, 'section', 'third', 'de_DE' ) === [ 'name' => 'Halb', 'description' => 'Both here.' ]
+	&& Setup::describe( $bilingual, 'section', 'fourth', 'de_DE' ) === [ 'name' => 'Opening', 'description' => 'The opening comment.' ]
 	&& Setup::describe( $bilingual, 'header', 'first', 'de_DE' ) === Setup::describe( $bilingual, 'header', 'first', 'en_US' ) && Setup::describe( $bilingual, 'header', 'first', 'de_DE' )['name'] === 'Frame' );
 check( '...and catalogue() hands the language through: every set of a part under the name of the language asked for, and English where it is not asked for one',
-	Setup::catalogue( $bilingual, 'content', 'de_DE' )['first']['name'] === 'Beide' && Setup::catalogue( $bilingual, 'content', 'de_DE' )['second']['name'] === 'English only'
-	&& Setup::catalogue( $bilingual, 'content', 'en_US' )['first']['name'] === 'Both' && Setup::catalogue( $bilingual, 'content' )['first']['name'] === 'Both'
+	Setup::catalogue( $bilingual, 'section', 'de_DE' )['first']['name'] === 'Beide' && Setup::catalogue( $bilingual, 'section', 'de_DE' )['second']['name'] === 'English only'
+	&& Setup::catalogue( $bilingual, 'section', 'en_US' )['first']['name'] === 'Both' && Setup::catalogue( $bilingual, 'section' )['first']['name'] === 'Both'
 	&& array_column( Setup::catalogue( $bilingual, 'header', 'de_DE' ), 'name' ) === [ 'Frame' ] );
 
 /*	A page that opens with a hero loses main's top padding - a rule of the
@@ -1097,10 +1125,14 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 	foreach( $rules as $rule ) {
 
-		if( preg_match( '/\.nino-scroll-header\s*$/', trim( $rule[1] ) ) !== 1 )
+		// The bar is the element a rule ending in .nino-scroll-header paints; the roles of its surface stand on it or on the header that holds it, which they reach it from
+		$isBar		= preg_match( '/\.nino-scroll-header\s*$/', trim( $rule[1] ) ) === 1;
+		$isHeader	= preg_match( '/\.nino-frame-header\s*$/', trim( $rule[1] ) ) === 1;
+
+		if( $isBar === false && $isHeader === false )
 			continue;
 
-		if( preg_match( '/background(?:-color)?\s*:[^;]*(?:transparent\)|-dim)/', $rule[2] ) === 1 )
+		if( $isBar === true && preg_match( '/background(?:-color)?\s*:[^;]*(?:transparent\)|-dim)/', $rule[2] ) === 1 )
 			$paints = true;
 
 		if( preg_match( '/--color-focus\s*:/', $rule[2] ) === 1 )
@@ -1111,7 +1143,7 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 		$roleProblems[] = $set. ': a see-through bar with no --color-focus of its own';
 }
 
-check( 'no header colours a text with --nino-default-focus, and a header whose bar is see-through declares the focus role of its own surface'. ( $roleProblems === [] ? '' : ' - '. implode( ', ', $roleProblems ) ), $roleProblems === [] );
+check( 'no header colours a text with --nino-default-focus, and a header whose bar is see-through declares the focus role of its own surface, on the bar or on the header that holds it'. ( $roleProblems === [] ? '' : ' - '. implode( ', ', $roleProblems ) ), $roleProblems === [] );
 
 /*	The burger of the kernel is a button: .nino-nav-burger > button with aria-expanded and aria-controls, the icon in it, the list beside it, the open
 	state on the button (and nino-is-open on the wrapper). A header that styles what the burger was - a label under it, the checkbox in it, input:checked
@@ -1195,21 +1227,23 @@ foreach( Setup::available( $library, 'footer' ) as $set ) {
 check( 'every footer whose logo stands in a link writes the name of the company after it, in the span of the frame of the kernel, and the same name for whoever listens beside it, and its stylesheet takes the span away where the link holds a picture - so that the link has a name to read with no logo in it and a name to hear with or without one'. ( $footerProblems === [] ? '' : ' - '. implode( ', ', $footerProblems ) ), $footerLinks > 0 && $footerProblems === [] );
 
 /*	The whitespace position of the Surfaces tab is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
-	a card by --whitespace-scale, the room under a text by --whitespace-text. A content set says that spacing again, after Nino.css, so it has to
-	say it with the same factors, or the position stops at the set - a section as high at +2 as at -2. Read from the library's own list of
-	content sets, so that a set that is added without them fails here rather than on a site	*/
+	a card by --whitespace-scale, the room under a text by --whitespace-text. A section set and a card set say that spacing again, after Nino.css, so each has to
+	say it with the same factors - a section's padding with the first, a card's padding with the first and the room under its texts with the second -, or the
+	position stops at the set: a section as high at +2 as at -2. Read from the library's own list of the two families, so that a set that is added without them
+	fails here rather than on a site	*/
 $whitespaceProblems = [];
 
-foreach( Setup::available( $library, 'content' ) as $set ) {
+foreach( [ 'section' => [ '--whitespace-scale' ], 'card' => [ '--whitespace-scale', '--whitespace-text' ] ] as $whitespacePart => $whitespaceTokens )
+	foreach( Setup::available( $library, $whitespacePart ) as $set ) {
 
-	$css = designPlain( (string) file_get_contents( Setup::file( $library, 'content', $set ) ) );
+		$css = designPlain( (string) file_get_contents( Setup::file( $library, $whitespacePart, $set ) ) );
 
-	foreach( [ '--whitespace-scale', '--whitespace-text' ] as $token )
-		if( str_contains( $css, 'var('. $token ) === false )
-			$whitespaceProblems[] = $set. ': '. $token;
-}
+		foreach( $whitespaceTokens as $token )
+			if( str_contains( $css, 'var('. $token ) === false )
+				$whitespaceProblems[] = $whitespacePart. '/'. $set. ': '. $token;
+	}
 
-check( 'every content set scales the space of a section and of a card with --whitespace-scale and the room under a text with --whitespace-text, as Nino.css does, so that the whitespace position of the Surfaces tab does not stop at the set'. ( $whitespaceProblems === [] ? '' : ' - '. implode( ', ', $whitespaceProblems ) ), $whitespaceProblems === [] );
+check( 'every section set scales the space of a section with --whitespace-scale, and every card set the space of a card with it and the room under a text with --whitespace-text, as Nino.css does, so that the whitespace position of the Surfaces tab does not stop at the set'. ( $whitespaceProblems === [] ? '' : ' - '. implode( ', ', $whitespaceProblems ) ), $whitespaceProblems === [] );
 
 /*	And the one thing reading the files cannot say: that each of them survives
 	the compiler. Every template of every part, one at a time, because a single
@@ -1305,20 +1339,20 @@ check( 'a setup out of nothing is every part on the set the first shipped theme 
 	&& $setup['size'] === 0 && $setup['width'] === 0 && $setup['whitespace'] === 0
 	&& $setup['radius'] === 0 && $setup['radius-alt'] === 1 && $setup['radii'] === array_fill_keys( Setup::SURFACES, 'standard' )
 	&& $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ] );
-check( '...every named knob of the three parts in the middle, the font roles in the face the wizard delivers and the palette the framework has',
+check( '...every named knob of the seven parts in the middle, the font roles in the face the wizard delivers and the palette the framework has',
 	$setup['knobs'] === array_map( static fn( array $kinds ): array => array_fill_keys( array_keys( $kinds ), 0 ), Setup::KNOBS )
-	&& array_keys( $setup['knobs'] ) === [ 'content', 'buttons', 'components' ]
+	&& array_keys( $setup['knobs'] ) === array_keys( Setup::PARTS )
 	&& $setup['fonts'] === Fonts::DEFAULTS && $setup['colours'] === Colours::normalize( [] ) && $setup['colours']['mode'] === 'auto' );
 
 // A set of a header that is not the default one, whichever it is
 $anotherHeader = array_values( array_diff( Setup::available( $library, 'header' ), [ $defaultSets['header'] ] ) )[0] ?? '';
 $notes = [];
-$setup = Setup::normalize( $appData, [ 'parts' => [ 'content' => 'nothing-like-it', 'header' => $anotherHeader, 'buttons' => [ 'set' => $defaultSets['buttons'] ], 'atf' => 'first' ] ], $library, $notes );
+$setup = Setup::normalize( $appData, [ 'parts' => [ 'section' => 'nothing-like-it', 'header' => $anotherHeader, 'buttons' => [ 'set' => $defaultSets['buttons'] ], 'atf' => 'first' ] ], $library, $notes );
 
 check( 'a part naming a set the library does not have falls back to the set a fresh install has, and says which - in a note that carries a code and its params, as a refused request answers, besides the English sentence for a log',
-	$setup['parts']['content'] === $defaultSets['content'] && $setup['parts']['header'] === $anotherHeader && $anotherHeader !== ''
+	$setup['parts']['section'] === $defaultSets['section'] && $setup['parts']['header'] === $anotherHeader && $anotherHeader !== ''
 	&& count( array_filter( $notes, static fn( string|array $note ): bool => is_array( $note ) === true && array_keys( $note ) === [ 'error', 'code', 'params' ] && $note['code'] === 'design_set_missing'
-		&& $note['params'] === [ 'content', 'nothing-like-it', $defaultSets['content'] ] && str_contains( $note['error'], '"nothing-like-it"' ) && str_contains( $note['error'], 'using "'. $defaultSets['content']. '"' ) ) ) === 1 );
+		&& $note['params'] === [ 'section', 'nothing-like-it', $defaultSets['section'] ] && str_contains( $note['error'], '"nothing-like-it"' ) && str_contains( $note['error'], 'using "'. $defaultSets['section']. '"' ) ) ) === 1 );
 check( '...a part that is none is dropped and named - in a sentence: only the two notes that the screen says in words carry a code - and a set given in the shape of the model before this one is not mapped: it is the default',
 	isset( $setup['parts']['atf'] ) === false && count( array_filter( $notes, static fn( string|array $note ): bool => is_string( $note ) === true && str_contains( $note, 'no part "atf"' ) ) ) === 1
 	&& $setup['parts']['buttons'] === $defaultSets['buttons'] && count( $notes ) === 2 );
@@ -1339,30 +1373,64 @@ $setup = Setup::normalize( $appData, [], $empty, $notes );
 check( 'a library with nothing in it answers every part with none, and says so for each',
 	array_values( $setup['parts'] ) === array_fill( 0, count( Setup::PARTS ), '' ) && count( $notes ) === count( Setup::PARTS ) );
 
-/*	The knobs of the three parts that have them, each a scale - five positions, -2 to +2 - but the stripes of a
-	table and the labels of a form, which are choices of three, -1 to +1. The kind is what says how far a
-	knob reaches and by which words it is declared	*/
-$scales = 0;
-foreach( Setup::KNOBS as $kinds )
+/*	The knobs of the seven parts, each a scale - five positions, -2 to +2 - but the ground of a frame, the tone and the hover of a card, the hover of the buttons, the marker of a
+	list and the zebra of a table, which are choices of three, -1 to +1. The kind is what says how far a knob reaches and by which words it is declared	*/
+$scales		= 0;
+$choices	= [];
+
+foreach( Setup::KNOBS as $knobPart => $kinds ) {
+
 	$scales += count( array_filter( $kinds, static fn( string $kind ): bool => $kind === 'scale' ) );
 
-check( 'the knobs of the three parts, in the order of the model, each a scale but the stripes and the labels, which are choices - twenty-one scales and two choices, the content with no corners: the radius of its surfaces is the page\'s, set under Surfaces',
+	foreach( $kinds as $knobName => $kind )
+		if( $kind === 'choice' )
+			$choices[] = $knobPart. '/'. $knobName;
+}
+
+check( 'the knobs of the seven parts, in the order of the model: thirty-seven, thirty scales and seven choices - the ground of the header and of the footer, the tone and the hover of a card, the hover of the buttons, the marker of a list and the zebra of a table - the line under the title of a section its rule, and no corners but the buttons\': the radius of the other surfaces is the page\'s, set under Surfaces',
 	array_map( 'array_keys', Setup::KNOBS ) === [
-		'content' => [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-title', 'section-subtitle', 'section-space', 'section-line', 'card-title', 'card-subtitle', 'card-space', 'border', 'shadow' ],
-		'buttons' => [ 'size', 'spread', 'space', 'corners' ],
-		'components' => [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ],
+		'header' => [ 'nav', 'height', 'space', 'ground' ],
+		'footer' => [ 'scale', 'height', 'space', 'ground' ],
+		'section' => [ 'hero-title', 'hero-text', 'quiet', 'loud', 'title', 'subtitle', 'space', 'rule', 'dim' ],
+		'card' => [ 'title', 'subtitle', 'space', 'border', 'shadow', 'tone', 'hover' ],
+		'buttons' => [ 'size', 'spread', 'space', 'corners', 'hover' ],
+		'lists' => [ 'scale', 'space', 'marker' ],
+		'tables' => [ 'scale', 'space', 'border', 'zebra', 'stripes' ],
 	]
-	&& isset( Setup::KNOBS['content']['corners'] ) === false && Setup::KNOBS['buttons']['corners'] === 'scale' && Setup::KNOBS['components']['corners'] === 'scale'
-	&& Setup::KNOBS['components']['zebra'] === 'choice' && Setup::KNOBS['components']['labels'] === 'choice' && $scales === 21
-	&& array_sum( array_map( 'count', Setup::KNOBS ) ) === 23 );
+	&& array_keys( Setup::KNOBS ) === array_keys( Setup::PARTS )
+	&& $choices === [ 'header/ground', 'footer/ground', 'card/tone', 'card/hover', 'buttons/hover', 'lists/marker', 'tables/zebra' ]
+	&& $scales === 30 && array_sum( array_map( 'count', Setup::KNOBS ) ) === 37
+	&& Setup::KNOBS['buttons']['corners'] === 'scale' && isset( Setup::KNOBS['section']['corners'], Setup::KNOBS['card']['corners'], Setup::KNOBS['tables']['corners'] ) === false );
+
+/*	A knob is selected on :root by a custom property of its own, --<part>-<knob>, which the rules of the templates read, and the compiler writes one line for each. A custom property
+	that the kernel's Nino.css or the library's base.css declares by the same name would be the same property - a selection line over a value of theirs, or a value of theirs that
+	the line is written under - so none of the thirty-seven selection tokens is a name either of them declares. Read from both stylesheets, for every custom property they declare	*/
+$declaredByTheirs = [];
+
+foreach( [ $ninoCss, designPlain( (string) file_get_contents( $library. '/base.css' ) ) ] as $theirCss ) {
+
+	preg_match_all( '/(?<![\w-])(--[a-z0-9-]+)\s*:/', $theirCss, $theirDeclared );
+
+	$declaredByTheirs += array_flip( $theirDeclared[1] );
+}
+
+$colliding = [];
+
+foreach( Setup::KNOBS as $knobPart => $kinds )
+	foreach( array_keys( $kinds ) as $knobName )
+		if( isset( $declaredByTheirs[ '--'. $knobPart. '-'. $knobName ] ) === true )
+			$colliding[] = '--'. $knobPart. '-'. $knobName;
+
+check( 'no selection token is a custom property that the kernel\'s Nino.css or the library\'s base.css declares - the thirty-seven names --<part>-<knob> are the knobs\' alone ('. count( $declaredByTheirs ). ' declared by the two)'
+	. ( $colliding === [] ? '' : ' - theirs: '. implode( ', ', $colliding ) ), $colliding === [] && count( $declaredByTheirs ) > 100 );
 
 /*	The panel in two axes is drawn from one table. A tab is a property of the design and an object is what the property is set on; Setup::LAYOUT says, for every control of
 	the setup, the tab it stands on, the object it is set on and its place in the row of that object, and the screen takes all it knows of where a control stands from the
 	table - the list hands it over, and design-js-smoke.js holds the screen to what the list answers. Nothing of it is stored: a setup and a theme file keep every choice by
 	its key, as they did. What the table is held to here is the model - it names every key of the setup that a person chooses, once, and no other; each entry names a tab
 	and an object the model has; a row counts from 1 without a gap; and the keys that share a place are the ones that are one control	*/
-check( 'the panel has seven tabs - Theme, Templates, Typefaces, Type, Surfaces, Colours, Motion - and its blocks are of eight objects - the page, the header, the footer, the content, a section, a card, the buttons, the fields and tables - in the order they are shown in',
-	Setup::TABS === [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ] && Setup::OBJECTS === [ 'page', 'header', 'footer', 'content', 'section', 'card', 'buttons', 'components' ] );
+check( 'the panel has seven tabs - Theme, Templates, Typefaces, Type, Surfaces, Colours, Motion - and its blocks are of eight objects - the page, the header, the footer, a section, a card, the buttons, the lists and the tables - in the order they are shown in',
+	Setup::TABS === [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ] && Setup::OBJECTS === [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ] );
 
 // ...and the two text files have a word for each of them: by key, which is what the panel reads, and never by what the word says
 $unworded = [];
@@ -1400,7 +1468,7 @@ foreach( Setup::defaults( $library ) as $key => $value ) {
 $unplaced = array_values( array_diff( $chosen, array_keys( Setup::LAYOUT ) ) );
 $unknown = array_values( array_diff( array_keys( Setup::LAYOUT ), $chosen ) );
 
-check( 'the panel is drawn from a table - Setup::LAYOUT has an entry for every key of the setup that a person chooses, and for no other: the five templates, the root size, the width, the whitespace, the two radii and the corners of each kind of surface, every knob, the five font roles, the colours and the animation'
+check( 'the panel is drawn from a table - Setup::LAYOUT has an entry for every key of the setup that a person chooses, and for no other: the seven templates, the root size, the width, the whitespace, the two radii and the corners of each kind of surface, every knob, the five font roles, the colours and the animation'
 	. ( $unplaced === [] && $unknown === [] ? '' : ' - without an entry: '. implode( ', ', array_slice( $unplaced, 0, 4 ) ). ' - naming no key: '. implode( ', ', array_slice( $unknown, 0, 4 ) ) ),
 	$unplaced === [] && $unknown === [] && $chosen !== [] && count( $chosen ) === count( array_unique( $chosen ) ) );
 
@@ -1459,29 +1527,43 @@ foreach( $rows as $row => $orders )
 check( 'the keys that share a place are the controls that are one: the cover, the row and the column of a section take their corners from one choice, and the second colour is the swatch at the end of the row of the harmony - no other two keys stand together',
 	$shared === [ 'surfaces/section/3' => [ 'radii/cover', 'radii/row', 'radii/column' ], 'colours/page/2' => [ 'colours/secondary', 'colours/harmony' ] ]
 	&& array_slice( Setup::SURFACES, 0, 3 ) === [ 'cover', 'row', 'column' ] );
-check( '...and the table puts every control in the row of its object: each template under the object it is the template of - the header, the footer, the content, the buttons and the fields and tables, in the order of the objects -; the type and the surfaces row by row - page, section, card, buttons, fields and tables - with the sizes of the titles under the object whose titles they are; the colours and the animation with the page',
+check( '...and the table puts every control in the row of its object: each template under the object it is the template of - the header, the footer, the section, the card, the buttons, the lists and the tables, in the order of the objects -; the type and the surfaces row by row - page, header, footer, section, card, buttons, lists and tables - with the sizes of the titles under the object whose titles they are; the colours and the motion with the page, and with the object whose dimming, shadow, stripes or hover they are',
 	$laidOut === [
 		'templates/header' 			=> [ 'parts/header' ],
 		'templates/footer' 			=> [ 'parts/footer' ],
-		'templates/content' 		=> [ 'parts/content' ],
+		'templates/section' 		=> [ 'parts/section' ],
+		'templates/card' 				=> [ 'parts/card' ],
 		'templates/buttons' 		=> [ 'parts/buttons' ],
-		'templates/components' 	=> [ 'parts/components' ],
+		'templates/lists' 			=> [ 'parts/lists' ],
+		'templates/tables' 			=> [ 'parts/tables' ],
 		'type/page' 						=> [ 'size', 'fonts/title', 'fonts/subtitle', 'fonts/text', 'fonts/button', 'fonts/code' ],
-		'type/section' 					=> [ 'knobs/content/hero-title', 'knobs/content/hero-text', 'knobs/content/section-title', 'knobs/content/section-subtitle', 'knobs/content/quiet', 'knobs/content/loud' ],
-		'type/card' 						=> [ 'knobs/content/card-title', 'knobs/content/card-subtitle' ],
+		'type/header' 					=> [ 'knobs/header/nav' ],
+		'type/footer' 					=> [ 'knobs/footer/scale' ],
+		'type/section' 					=> [ 'knobs/section/hero-title', 'knobs/section/hero-text', 'knobs/section/title', 'knobs/section/subtitle', 'knobs/section/quiet', 'knobs/section/loud' ],
+		'type/card' 						=> [ 'knobs/card/title', 'knobs/card/subtitle' ],
 		'type/buttons' 					=> [ 'knobs/buttons/size', 'knobs/buttons/spread' ],
-		'type/components' 			=> [ 'knobs/components/scale' ],
+		'type/lists' 						=> [ 'knobs/lists/scale' ],
+		'type/tables' 					=> [ 'knobs/tables/scale' ],
 		'surfaces/page' 				=> [ 'width', 'whitespace', 'radius', 'radius-alt', 'radii/image' ],
-		'surfaces/section' 			=> [ 'knobs/content/section-space', 'knobs/content/section-line', 'radii/cover radii/row radii/column' ],
-		'surfaces/card' 				=> [ 'knobs/content/card-space', 'knobs/content/border', 'knobs/content/shadow', 'radii/card' ],
+		'surfaces/header' 			=> [ 'knobs/header/height', 'knobs/header/space', 'knobs/header/ground' ],
+		'surfaces/footer' 			=> [ 'knobs/footer/height', 'knobs/footer/space', 'knobs/footer/ground' ],
+		'surfaces/section' 			=> [ 'knobs/section/space', 'knobs/section/rule', 'radii/cover radii/row radii/column' ],
+		'surfaces/card' 				=> [ 'knobs/card/space', 'knobs/card/border', 'knobs/card/shadow', 'radii/card' ],
 		'surfaces/buttons' 			=> [ 'knobs/buttons/space', 'knobs/buttons/corners' ],
-		'surfaces/components' 	=> [ 'knobs/components/space', 'knobs/components/corners', 'knobs/components/border', 'knobs/components/zebra', 'knobs/components/labels' ],
+		'surfaces/lists' 				=> [ 'knobs/lists/space', 'knobs/lists/marker' ],
+		'surfaces/tables' 			=> [ 'knobs/tables/space', 'knobs/tables/border', 'knobs/tables/zebra' ],
 		'colours/page' 					=> [ 'colours/primary', 'colours/secondary colours/harmony', 'colours/temperature', 'colours/saturation', 'colours/contrast', 'colours/depth', 'colours/mode' ],
+		'colours/section' 			=> [ 'knobs/section/dim' ],
+		'colours/card' 					=> [ 'knobs/card/tone' ],
+		'colours/tables' 				=> [ 'knobs/tables/stripes' ],
 		'motion/page' 					=> [ 'motion/effect', 'motion/strength', 'motion/speed' ],
+		'motion/card' 					=> [ 'knobs/card/hover' ],
+		'motion/buttons' 				=> [ 'knobs/buttons/hover' ],
 	] );
-check( '...kind() says which - the quiet and the loud variant of the content are a scale each, as the sizes are -, and a knob there is none of is of no kind; range() says how far a kind reaches, and words() the words it is declared under - all five for a scale, the inner three for a choice',
-	Setup::kind( 'content', 'quiet' ) === 'scale' && Setup::kind( 'content', 'loud' ) === 'scale' && Setup::kind( 'buttons', 'corners' ) === 'scale' && Setup::kind( 'buttons', 'size' ) === 'scale' && Setup::kind( 'components', 'zebra' ) === 'choice'
-	&& Setup::kind( 'content', 'corners' ) === '' && Setup::kind( 'content', 'nonsense' ) === '' && Setup::kind( 'nowhere', 'corners' ) === ''
+check( '...kind() says which - the quiet and the loud variant of a section are a scale each, as the sizes are, and the zebra of a table a choice -, and a knob there is none of is of no kind; range() says how far a kind reaches, and words() the words it is declared under - all five for a scale, the inner three for a choice',
+	Setup::kind( 'section', 'quiet' ) === 'scale' && Setup::kind( 'section', 'loud' ) === 'scale' && Setup::kind( 'buttons', 'corners' ) === 'scale' && Setup::kind( 'buttons', 'size' ) === 'scale' && Setup::kind( 'tables', 'zebra' ) === 'choice'
+	&& Setup::kind( 'header', 'ground' ) === 'choice' && Setup::kind( 'footer', 'height' ) === 'scale'
+	&& Setup::kind( 'section', 'corners' ) === '' && Setup::kind( 'section', 'nonsense' ) === '' && Setup::kind( 'nowhere', 'corners' ) === ''
 	&& Setup::range( 'scale' ) === 2 && Setup::range( 'choice' ) === 1 && Setup::range( 'nothing' ) === 0
 	&& Setup::words( 'scale' ) === [ 'least', 'less', 'default', 'more', 'most' ] && Setup::words( 'choice' ) === [ 'less', 'default', 'more' ] );
 
@@ -1505,31 +1587,37 @@ check( 'every tab the table draws - Templates, Type, Surfaces, Colours and Motio
 	Whatever else arrives - a word, an array, a number beyond the ends - is the middle, which is the template as it is	*/
 $notes = [];
 $setup = Setup::normalize( $appData, [ 'knobs' => [
-	'content' => [ 'hero-title' => -2, 'hero-text' => '1', 'quiet' => 1.4, 'loud' => 2, 'section-space' => 'more', 'card-space' => [ 1 ], 'section-line' => null, 'shadow' => true, 'border' => 3, 'nonsense' => 1 ],
-	'components' => [ 'scale' => -2, 'zebra' => 2, 'labels' => -1 ],
+	'section' => [ 'hero-title' => -2, 'hero-text' => '1', 'quiet' => 1.4, 'loud' => 2, 'space' => 'more', 'rule' => null, 'nonsense' => 1 ],
+	'card' => [ 'space' => [ 1 ], 'shadow' => true, 'border' => 3 ],
+	'tables' => [ 'scale' => -2, 'zebra' => 2, 'stripes' => -1 ],
 	'buttons' => 'more',
 	'nowhere' => [ 'small' => 1 ],
 ] ], $library, $notes );
 
 check( 'a knob position of a scale is -2 to +2 and one of a choice -1 to +1: a string that is a number, or a number that rounds to one, is kept - the ends of a scale included',
-	$setup['knobs']['content']['hero-title'] === -2 && $setup['knobs']['content']['hero-text'] === 1 && $setup['knobs']['content']['quiet'] === 1
-	&& $setup['knobs']['content']['loud'] === 2 && $setup['knobs']['components']['scale'] === -2 && $setup['knobs']['components']['labels'] === -1 );
+	$setup['knobs']['section']['hero-title'] === -2 && $setup['knobs']['section']['hero-text'] === 1 && $setup['knobs']['section']['quiet'] === 1
+	&& $setup['knobs']['section']['loud'] === 2 && $setup['knobs']['tables']['scale'] === -2 && $setup['knobs']['tables']['stripes'] === -1 );
 check( '...and a word, an array, a boolean, nothing and a number past the ends of the kind - 3 for a scale, 2 for a choice - are the middle, not an error',
-	$setup['knobs']['content']['section-space'] === 0 && $setup['knobs']['content']['card-space'] === 0
-	&& $setup['knobs']['content']['section-line'] === 0 && $setup['knobs']['content']['shadow'] === 0 && $setup['knobs']['content']['border'] === 0
-	&& $setup['knobs']['components']['zebra'] === 0 && $setup['knobs']['buttons'] === array_fill_keys( array_keys( Setup::KNOBS['buttons'] ), 0 ) );
-check( '...a knob that is none of its part\'s and a part that is none of the three are dropped and named, never carried',
-	array_keys( $setup['knobs']['content'] ) === array_keys( Setup::KNOBS['content'] ) && isset( $setup['knobs']['nowhere'] ) === false
+	$setup['knobs']['section']['space'] === 0 && $setup['knobs']['card']['space'] === 0
+	&& $setup['knobs']['section']['rule'] === 0 && $setup['knobs']['card']['shadow'] === 0 && $setup['knobs']['card']['border'] === 0
+	&& $setup['knobs']['tables']['zebra'] === 0 && $setup['knobs']['buttons'] === array_fill_keys( array_keys( Setup::KNOBS['buttons'] ), 0 ) );
+check( '...a knob that is none of its part\'s and a part that is none of the seven are dropped and named, never carried',
+	array_keys( $setup['knobs']['section'] ) === array_keys( Setup::KNOBS['section'] ) && isset( $setup['knobs']['nowhere'] ) === false
 	&& count( $notes ) === 2 && str_contains( implode( ' ', $notes ), 'no knob "nonsense"' ) === true && str_contains( implode( ' ', $notes ), 'no part "nowhere"' ) === true );
 
-/*	The corners of the content went to the page (see the radius below). A setup or a theme file written before that still names the knob: it is read as any knob
-	its part has none of - dropped and named, the others of the part kept - so that nothing carries a number that no stylesheet reads	*/
-$notes = [];
-$old = Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'corners' => 2, 'border' => 1 ] ] ], $library, $notes );
+/*	The parts of the model before this one - the content, which is the section and the card now, and the components, which are the tables - are no parts of it, and no
+	setup or theme file that names them is read as naming another: the part is dropped and named, nothing of it is carried to a part that has the knob by the same name, and what the file
+	says of the parts it still has is kept. And the knob of a part it has none of - the corners of a section went to the page, see the radius below - is read the same way	*/
+$gone		= [ 'content', 'components' ];
+$notes	= [];
+$old		= Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'hero-title' => 2, 'border' => 1 ], 'components' => [ 'zebra' => 1 ], 'section' => [ 'corners' => 2, 'title' => 1 ] ] ], $library, $notes );
 
-check( 'a setup that still names the corners of the content is read as it reads any knob a part has none of: the knob is dropped and named, and the other knobs of the part are kept',
-	isset( $old['knobs']['content']['corners'] ) === false && $old['knobs']['content']['border'] === 1
-	&& count( $notes ) === 1 && str_contains( $notes[0], 'the part "content" has no knob "corners"' ) === true );
+check( 'a setup that names a part of the model before this one is read as it reads any part it has none of: the part is dropped and named, no knob of it reaches a part of this one - the border of a card and the zebra of a table stay in the middle - and the knob of a part that it has none of is dropped and named, with the others of the part kept',
+	array_intersect( $gone, array_keys( Setup::PARTS ) ) === [] && isset( $old['knobs'][ $gone[0] ] ) === false && isset( $old['knobs'][ $gone[1] ] ) === false
+	&& $old['knobs']['card']['border'] === 0 && $old['knobs']['tables']['zebra'] === 0 && $old['knobs']['section']['hero-title'] === 0
+	&& isset( $old['knobs']['section']['corners'] ) === false && $old['knobs']['section']['title'] === 1
+	&& count( $notes ) === 3 && str_contains( implode( ' ', $notes ), 'no part "'. $gone[0]. '"' ) === true && str_contains( implode( ' ', $notes ), 'no part "'. $gone[1]. '"' ) === true
+	&& str_contains( implode( ' ', $notes ), 'the part "section" has no knob "corners"' ) === true );
 
 /*	Setup::position( $value, $kind ): a number inside the range of the kind, rounded - and anything else, a number past the
 	ends included, the middle. The default kind is a scale, which is what the root size and the width of the page are as well	*/
@@ -1550,16 +1638,16 @@ check( 'the model keeps numbers and the library keeps words, and word() is the o
 	[ Setup::word( -2 ), Setup::word( -1 ), Setup::word( 0 ), Setup::word( 1 ), Setup::word( 2 ), Setup::word( 7 ), Setup::word( -7 ) ] === [ 'least', 'less', 'default', 'more', 'most', 'most', 'least' ]
 	&& Setup::STEPS === [ 'least', 'less', 'default', 'more', 'most' ] );
 
-$setup = Setup::normalize( $appData, [ 'knobs' => [ 'buttons' => [ 'corners' => 2 ], 'content' => [ 'border' => -2, 'shadow' => 1 ], 'components' => [ 'zebra' => 1, 'labels' => -1 ] ] ], $library );
+$setup = Setup::normalize( $appData, [ 'knobs' => [ 'buttons' => [ 'corners' => 2 ], 'card' => [ 'border' => -2, 'shadow' => 1 ], 'tables' => [ 'zebra' => 1, 'stripes' => -1 ] ] ], $library );
 
 check( 'step() says where a knob stands, as the word its stylesheet declares it under - one of five for a scale, one of the inner three for a choice',
-	Setup::step( $setup, 'buttons', 'corners' ) === 'most' && Setup::step( $setup, 'content', 'border' ) === 'least'
-	&& Setup::step( $setup, 'content', 'shadow' ) === 'more' && Setup::step( $setup, 'content', 'loud' ) === 'default'
-	&& Setup::step( $setup, 'components', 'zebra' ) === 'more' && Setup::step( $setup, 'components', 'labels' ) === 'less'
+	Setup::step( $setup, 'buttons', 'corners' ) === 'most' && Setup::step( $setup, 'card', 'border' ) === 'least'
+	&& Setup::step( $setup, 'card', 'shadow' ) === 'more' && Setup::step( $setup, 'section', 'loud' ) === 'default'
+	&& Setup::step( $setup, 'tables', 'zebra' ) === 'more' && Setup::step( $setup, 'tables', 'stripes' ) === 'less'
 	&& Setup::step( $setup, 'buttons', 'nothing' ) === 'default' && Setup::step( $setup, 'nowhere', 'x' ) === 'default' );
 check( '...and passes the kind of the knob on, so that a choice at 2, which a setup that was not normalised may hold, is the middle and not the fifth word',
-	Setup::step( [ 'knobs' => [ 'components' => [ 'zebra' => 2, 'scale' => 2 ] ] ], 'components', 'zebra' ) === 'default'
-	&& Setup::step( [ 'knobs' => [ 'components' => [ 'zebra' => 2, 'scale' => 2 ] ] ], 'components', 'scale' ) === 'most' );
+	Setup::step( [ 'knobs' => [ 'tables' => [ 'zebra' => 2, 'scale' => 2 ] ] ], 'tables', 'zebra' ) === 'default'
+	&& Setup::step( [ 'knobs' => [ 'tables' => [ 'zebra' => 2, 'scale' => 2 ] ] ], 'tables', 'scale' ) === 'most' );
 
 // The root size, the width, the whitespace and the animation of the page
 $setup = Setup::normalize( $appData, [ 'size' => 1, 'width' => '2', 'whitespace' => '-2', 'motion' => [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] ], $library );
@@ -1795,16 +1883,19 @@ if( preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $css, $sections, PREG
 	foreach( $sections as $section )
 		$order[(int) $section[1]] = trim( $section[2] );
 
-check( 'twelve numbered sections - the tokens, the palette, the type, the roles, the root size, the page', array_keys( $order ) === range( 1, 12 )
-	&& array_slice( $order, 0, 6 ) === [ 'the design tokens', 'the palette', 'the type', 'the roles', 'the root size', 'the page' ] );
+check( 'fourteen numbered sections - the first six the tokens, the palette, the type, the roles, the root size and the page, then one for each of the seven parts and the knob positions', array_keys( $order ) === range( 1, 14 )
+	&& count( Setup::PARTS ) === 7 && array_slice( $order, 0, 6 ) === [ 'the design tokens', 'the palette', 'the type', 'the roles', 'the root size', 'the page' ] );
 /*	Each set saying where the knobs it answers to stand: at the middle, for the default set, which answers to every knob of its part	*/
 $standing = static fn( string $part ): string => $defaultSets[$part]. ' ('. implode( ', ', array_map( static fn( string $knob ): string => $knob. ' default', Setup::knobs( $library, $part, $defaultSets[$part] ) ) ). ')';
 
-check( '...then the frames, then the three sets in the order the parts are declared in, each saying where its knobs stand, and the knob positions last', array_slice( $order, 6 ) === [
-	'header: '. $defaultSets['header'], 'footer: '. $defaultSets['footer'],
-	'content: '. $standing( 'content' ), 'buttons: '. $standing( 'buttons' ), 'components: '. $standing( 'components' ),
-	'the knob positions',
-] );
+$partsInOrder = [];
+
+foreach( Setup::PARTS as $part => $kind )
+	$partsInOrder[] = $part. ': '. $standing( $part );
+
+$partsInOrder[] = 'the knob positions';
+
+check( '...then one section for each part in the order the parts are declared in, each saying which set it is and where the knobs it answers to stand, and the knob positions last', array_slice( $order, 6 ) === $partsInOrder );
 
 $tokensOf	= designPlain( designSection( $css, 1, Compiler::SECTION ) );
 $rolesOf	= designPlain( designSection( $css, 4, Compiler::SECTION ) );
@@ -3013,29 +3104,30 @@ echo "\nThe knob positions, over a library of throwaway sets\n";
 /*	A set declares what its steps are - five words for a scale, the three inner ones for a choice - and the knob picks
 	one. Written into a throwaway library so the assertions do not depend on what the shipped sets happen to declare today	*/
 $sandbox = ninoSandboxDir( $appData ). '/library';
-mkdir( $sandbox. '/content', 0755, true );
+mkdir( $sandbox. '/card', 0755, true );
 mkdir( $sandbox. '/buttons', 0755, true );
 // ...and the theme a library's defaults are taken from: the first of the shipped ones, which names the set of each part it has sets for
 mkdir( $sandbox. '/themes', 0755, true );
-file_put_contents( $sandbox. '/themes/'. Themes::SHIPPED[0]. '.php', "<?php\nreturn [ 'setup' => [ 'parts' => [ 'content' => 'first', 'buttons' => 'first' ] ] ];\n" );
+file_put_contents( $sandbox. '/themes/'. Themes::SHIPPED[0]. '.php', "<?php\nreturn [ 'setup' => [ 'parts' => [ 'card' => 'first', 'buttons' => 'first' ] ] ];\n" );
 file_put_contents( $sandbox. '/base.css', "/* ---- 1. the design tokens ---- */\n:root { --x: 1; }\n/* ---- 2. the roles ---- */\n:root { --y: 2; }\n" );
-file_put_contents( $sandbox. '/content/first.css', "/*\t@name Throwaway\n *\t@description A set that exists for this test.\n *\t@knob border\n *\t@knob shadow\n *\n *\tAn example in a comment is no declaration:\n *\t--content-card-space--least: 0; --content-card-space--less: 0; --content-card-space--default: 1px; --content-card-space--more: 2px; --content-card-space--most: 3px;\n */\n:root {\n\t--content-border--least: 0;\n\t--content-border--less: .1rem;\n\t--content-border--default: .4rem;\n\t--content-border--more: 1rem;\n\t--content-border--most : 2rem;\n\t--content-shadow--least: none;\n\t--content-shadow--less: none;\n\t--content-shadow--default: none;\n\t--content-shadow--more: 0 .1rem .5rem black;\n\t--content-shadow--most: 0 .2rem 1rem black;\n\t--content-shadow-lift--least: 0;\n\t--content-shadow-lift--less: 0;\n\t--content-shadow-lift--default: 0;\n\t--content-shadow-lift--more: -.1rem;\n\t--content-shadow-lift--most: -.2rem;\n}\n.nino-card { border-width: var(--content-border); box-shadow: var(--content-shadow); }\n" );
-file_put_contents( $sandbox. '/content/second.css', ":root {\n\t--content-shadow-lift--least: 0;\n\t--content-shadow-lift--less: 0;\n\t--content-shadow-lift--default: 0;\n\t--content-shadow-lift--more: -.1rem;\n\t--content-shadow-lift--most: -.2rem;\n\t--content-nonsense--least: 0;\n\t--content-nonsense--less: 1;\n\t--content-nonsense--default: 2;\n\t--content-nonsense--more: 3;\n\t--content-nonsense--most: 4;\n}\n" );
+file_put_contents( $sandbox. '/card/first.css', "/*\t@name Throwaway\n *\t@description A set that exists for this test.\n *\t@knob border\n *\t@knob shadow\n *\n *\tAn example in a comment is no declaration:\n *\t--card-card-space--least: 0; --card-card-space--less: 0; --card-card-space--default: 1px; --card-card-space--more: 2px; --card-card-space--most: 3px;\n */\n:root {\n\t--card-border--least: 0;\n\t--card-border--less: .1rem;\n\t--card-border--default: .4rem;\n\t--card-border--more: 1rem;\n\t--card-border--most : 2rem;\n\t--card-shadow--least: none;\n\t--card-shadow--less: none;\n\t--card-shadow--default: none;\n\t--card-shadow--more: 0 .1rem .5rem black;\n\t--card-shadow--most: 0 .2rem 1rem black;\n\t--card-shadow-lift--least: 0;\n\t--card-shadow-lift--less: 0;\n\t--card-shadow-lift--default: 0;\n\t--card-shadow-lift--more: -.1rem;\n\t--card-shadow-lift--most: -.2rem;\n}\n.nino-card { border-width: var(--card-border); box-shadow: var(--card-shadow); }\n" );
+file_put_contents( $sandbox. '/card/second.css', ":root {\n\t--card-shadow-lift--least: 0;\n\t--card-shadow-lift--less: 0;\n\t--card-shadow-lift--default: 0;\n\t--card-shadow-lift--more: -.1rem;\n\t--card-shadow-lift--most: -.2rem;\n\t--card-nonsense--least: 0;\n\t--card-nonsense--less: 1;\n\t--card-nonsense--default: 2;\n\t--card-nonsense--more: 3;\n\t--card-nonsense--most: 4;\n}\n" );
 file_put_contents( $sandbox. '/buttons/first.css', ":root {\n\t--buttons-space--least: .125rem;\n\t--buttons-space--less: .25rem;\n\t--buttons-space--default: .5rem;\n\t--buttons-space--more: 1rem;\n\t--buttons-space--most: 2rem;\n}\n" );
 
 /*	...and one for the other kind, and for what is published by no one: a choice is declared under the three inner
 	words and a scale under all five, and a scale with three of its five, a choice with five, a choice under the outer
 	words and an aspect of another length than its knob publish nothing - the panel greys the knob out	*/
 $kindsLibrary = ninoSandboxDir( $appData ). '/library-kinds';
-mkdir( $kindsLibrary. '/components', 0755, true );
+mkdir( $kindsLibrary. '/tables', 0755, true );
+mkdir( $kindsLibrary. '/lists', 0755, true );
 
-/** A ladder as a stylesheet declares it: one custom property for each of the words, from the values given */
-$ladder = static function( string $name, array $words ): string {
+/** A ladder as a stylesheet declares it: one custom property for each of the words, from the values given - of the part of the tables unless another is named */
+$ladder = static function( string $name, array $words, string $part = 'tables' ): string {
 
 	$lines = '';
 
 	foreach( $words as $at => $word )
-		$lines .= "\t--components-". $name. '--'. $word. ': '. ( $at + 1 ). ";\n";
+		$lines .= "\t--". $part. '-'. $name. '--'. $word. ': '. ( $at + 1 ). ";\n";
 
 	return $lines;
 };
@@ -3044,36 +3136,38 @@ $three	= [ 'less', 'default', 'more' ];
 $head		= static fn( string $knobs ): string => "/*\t@name Kinds\n *\t@description A set that exists for this test.\n". $knobs. " */\n:root {\n";
 
 // scale and zebra, published: five words, and three words with an aspect of three
-file_put_contents( $kindsLibrary. '/components/first.css', $head( " *\t@knob scale\n *\t@knob zebra\n" ). $ladder( 'scale', $five ). $ladder( 'zebra', $three ). $ladder( 'zebra-ink', $three ). "}\n" );
+file_put_contents( $kindsLibrary. '/tables/first.css', $head( " *\t@knob scale\n *\t@knob zebra\n" ). $ladder( 'scale', $five ). $ladder( 'zebra', $three ). $ladder( 'zebra-ink', $three ). "}\n" );
 // a scale with three of its five, a choice with five of its three - and a scale that is whole, which is the one knob published
-file_put_contents( $kindsLibrary. '/components/second.css', $head( " *\t@knob border\n" ). $ladder( 'border', $five ). $ladder( 'corners', $three ). $ladder( 'zebra', $five ). "}\n" );
-// an aspect of another length than its knob: the knob is not published, the other choice is
-file_put_contents( $kindsLibrary. '/components/third.css', $head( " *\t@knob labels\n" ). $ladder( 'zebra', $three ). $ladder( 'zebra-ink', $five ). $ladder( 'labels', $three ). "}\n" );
-// a choice declared under the outer words, and an aspect of the right length under the wrong ones
-file_put_contents( $kindsLibrary. '/components/fourth.css', $head( '' ). $ladder( 'zebra', [ 'least', 'default', 'most' ] ). $ladder( 'labels', $three ). $ladder( 'labels-lift', [ 'least', 'default', 'most' ] ). "}\n" );
+file_put_contents( $kindsLibrary. '/tables/second.css', $head( " *\t@knob border\n" ). $ladder( 'border', $five ). $ladder( 'space', $three ). $ladder( 'zebra', $five ). "}\n" );
+// an aspect of another length than its knob: the knob is not published, the other knob is
+file_put_contents( $kindsLibrary. '/tables/third.css', $head( " *\t@knob stripes\n" ). $ladder( 'zebra', $three ). $ladder( 'zebra-ink', $five ). $ladder( 'stripes', $five ). "}\n" );
+// a choice declared under the outer words
+file_put_contents( $kindsLibrary. '/tables/fourth.css', $head( '' ). $ladder( 'zebra', [ 'least', 'default', 'most' ] ). "}\n" );
+// ...and an aspect of the right length under the wrong words, with the ladder of its choice under the right ones, which publishes nothing either
+file_put_contents( $kindsLibrary. '/lists/first.css', $head( '' ). $ladder( 'marker', $three, 'lists' ). $ladder( 'marker-lift', [ 'least', 'default', 'most' ], 'lists' ). "}\n" );
 
 $every = static fn( int $position ): array => array_map( static fn( array $kinds ): array => array_fill_keys( array_keys( $kinds ), $position ), Setup::KNOBS );
 
-check( 'a library\'s defaults take their sets from the file of its first shipped theme: the parts it names, and an empty part for each it does not - the library of this section has sets for two of the five',
-	Setup::defaults( $sandbox )['parts'] === [ 'header' => '', 'footer' => '', 'content' => 'first', 'buttons' => 'first', 'components' => '' ]
+check( 'a library\'s defaults take their sets from the file of its first shipped theme: the parts it names, and an empty part for each it does not - the library of this section has sets for two of the seven',
+	Setup::defaults( $sandbox )['parts'] === array_replace( array_fill_keys( array_keys( Setup::PARTS ), '' ), [ 'card' => 'first', 'buttons' => 'first' ] )
 	&& Setup::defaults( $kindsLibrary )['parts'] === array_fill_keys( array_keys( Setup::PARTS ), '' ) );
 check( 'a set publishes a knob by declaring its ladder, in the order of its part, and by no other way: not by a comment, not by a name that is none of the part\'s',
-	Setup::knobs( $sandbox, 'content', 'first' ) === [ 'border', 'shadow' ] && Setup::knobs( $sandbox, 'buttons', 'first' ) === [ 'space' ]
-	&& Setup::knobs( $sandbox, 'content', 'second' ) === [] && Setup::knobs( $sandbox, 'components', 'first' ) === [] );
+	Setup::knobs( $sandbox, 'card', 'first' ) === [ 'border', 'shadow' ] && Setup::knobs( $sandbox, 'buttons', 'first' ) === [ 'space' ]
+	&& Setup::knobs( $sandbox, 'card', 'second' ) === [] && Setup::knobs( $kindsLibrary, 'tables', 'fourth' ) === [] );
 check( '...a ladder spelled with a space before the colon is read the way a browser reads it, and an aspect stands beside the knob it is named after',
-	Setup::ladders( $sandbox, 'content', 'first' ) === [ 'border' => [ 'border' ], 'shadow' => [ 'shadow', 'shadow-lift' ] ]
+	Setup::ladders( $sandbox, 'card', 'first' ) === [ 'border' => [ 'border' ], 'shadow' => [ 'shadow', 'shadow-lift' ] ]
 	&& Setup::ladders( $sandbox, 'buttons', 'first' ) === [ 'space' => [ 'space' ] ] );
-check( '...an aspect without the ladder of its knob has published nothing, and a frame or a set that is not there answers to nothing',
-	Setup::ladders( $sandbox, 'content', 'second' ) === [] && Setup::knobs( $library, 'header', 'first' ) === [] && Setup::knobs( $library, 'content', 'nope' ) === []
-	&& Setup::knobs( $library, 'nowhere', 'first' ) === [] );
+check( '...an aspect without the ladder of its knob has published nothing, and a set that is not there answers to nothing - a frame that is there answers to what it declares, as a set does',
+	Setup::ladders( $sandbox, 'card', 'second' ) === [] && Setup::knobs( $library, 'header', 'nope' ) === [] && Setup::knobs( $library, 'card', 'nope' ) === []
+	&& Setup::knobs( $library, 'nowhere', 'first' ) === [] && Setup::knobs( $library, 'header', $defaultSets['header'] ) === array_keys( Setup::KNOBS['header'] ) );
 check( '...a scale is published by all five words and a choice by its three, aspects included: a scale with three of its five, a choice with five, a choice under the outer words and an aspect of another length than its knob publish nothing',
-	Setup::ladders( $kindsLibrary, 'components', 'first' ) === [ 'scale' => [ 'scale' ], 'zebra' => [ 'zebra', 'zebra-ink' ] ]
-	&& Setup::knobs( $kindsLibrary, 'components', 'second' ) === [ 'border' ] && Setup::knobs( $kindsLibrary, 'components', 'third' ) === [ 'labels' ]
-	&& Setup::knobs( $kindsLibrary, 'components', 'fourth' ) === [] );
+	Setup::ladders( $kindsLibrary, 'tables', 'first' ) === [ 'scale' => [ 'scale' ], 'zebra' => [ 'zebra', 'zebra-ink' ] ]
+	&& Setup::knobs( $kindsLibrary, 'tables', 'second' ) === [ 'border' ] && Setup::knobs( $kindsLibrary, 'tables', 'third' ) === [ 'stripes' ]
+	&& Setup::knobs( $kindsLibrary, 'tables', 'fourth' ) === [] && Setup::knobs( $kindsLibrary, 'lists', 'first' ) === [] );
 
 /*	The library check of the top of this file refuses what it names - shown
 	here over sets it can be shown on. The parts are compiled in the order they
-	are shown in, so a components set that declares a ladder of the buttons
+	are shown in, so a tables set that declares a ladder of the buttons
 	would put it in the sheet after the buttons template's own and win, and
 	one that declares the knob itself in a nested selector wins for every
 	element that selector matches; a rule of it reading a buttons knob, or a
@@ -3082,80 +3176,91 @@ check( '...a scale is published by all five words and a choice by its three, asp
 	the report. Each is reported once, however often it is written - and a
 	name whose ladder is reported is not reported as a knob as well	*/
 $stray = ninoSandboxDir( $appData ). '/library-stray';
-mkdir( $stray. '/components', 0755, true );
-$ownScale = "\t--components-scale--least: .8;\n\t--components-scale--less: .9;\n\t--components-scale--default: 1;\n\t--components-scale--more: 1.1;\n\t--components-scale--most: 1.2;\n";
+mkdir( $stray. '/tables', 0755, true );
+$ownScale = "\t--tables-scale--least: .8;\n\t--tables-scale--less: .9;\n\t--tables-scale--default: 1;\n\t--tables-scale--more: 1.1;\n\t--tables-scale--most: 1.2;\n";
 $foreignSize = "\t--buttons-size--least: .8;\n\t--buttons-size--less: .9;\n\t--buttons-size--default: 1;\n\t--buttons-size--more: 1.12;\n\t--buttons-size--most: 1.25;\n";
-file_put_contents( $stray. '/components/first.css', "/*\t@name Stray\n *\t@description A set that reaches into the buttons.\n *\t@knob scale\n */\n:root {\n". $ownScale. $foreignSize. "}\ninput { font-size: calc(1rem * var(--components-scale)); padding: var(--buttons-space); }\n" );
+file_put_contents( $stray. '/tables/first.css', "/*\t@name Stray\n *\t@description A set that reaches into the buttons.\n *\t@knob scale\n */\n:root {\n". $ownScale. $foreignSize. "}\n.nino-table { font-size: calc(1rem * var(--tables-scale)); padding: var(--buttons-space); }\n" );
 // ...a step of a buttons knob read by its name, and never the knob itself - twice, the second time with a fallback
-file_put_contents( $stray. '/components/second.css', "/*\t@name Stray read\n *\t@description A set that reads a step of a buttons knob.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\ninput { padding: var(--buttons-size--default); margin: var(--buttons-size--more, .5rem); }\n" );
+file_put_contents( $stray. '/tables/second.css', "/*\t@name Stray read\n *\t@description A set that reads a step of a buttons knob.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table { padding: var(--buttons-size--default); margin: var(--buttons-size--more, .5rem); }\n" );
 // ...the knob a buttons template is selected under, declared again in a nested selector - twice, once with a space before the colon
-file_put_contents( $stray. '/components/third.css', "/*\t@name Stray knob\n *\t@description A set that declares a buttons knob again.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-form .nino-btn { --buttons-size: 2; }\n.nino-form .nino-btn--big { --buttons-size : 3; }\n" );
+file_put_contents( $stray. '/tables/third.css', "/*\t@name Stray knob\n *\t@description A set that declares a buttons knob again.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table .nino-btn { --buttons-size: 2; }\n.nino-table .nino-btn--big { --buttons-size : 3; }\n" );
 // ...and the same knob with its ladder as well, which is what is reported
-file_put_contents( $stray. '/components/fourth.css', "/*\t@name Stray both\n *\t@description A set that declares a buttons knob and its ladder.\n *\t@knob scale\n */\n:root {\n". $ownScale. $foreignSize. "}\n.nino-form .nino-btn { --buttons-size: 2; }\n" );
+file_put_contents( $stray. '/tables/fourth.css', "/*\t@name Stray both\n *\t@description A set that declares a buttons knob and its ladder.\n *\t@knob scale\n */\n:root {\n". $ownScale. $foreignSize. "}\n.nino-table .nino-btn { --buttons-size: 2; }\n" );
 
-check( 'the library check finds nothing wrong with a set that keeps to its part', designKnobProblems( $sandbox, 'content', 'first' ) === [] && designKnobProblems( $kindsLibrary, 'components', 'first' ) === [] );
+check( 'the library check finds nothing wrong with a set that keeps to its part', designKnobProblems( $sandbox, 'card', 'first' ) === [] && designKnobProblems( $kindsLibrary, 'tables', 'first' ) === [] );
 check( '...and reports a ladder that is not one of its kind: a scale with three of its five, and a choice with five of its three - once each, with the length it should have',
-	designKnobProblems( $kindsLibrary, 'components', 'second' ) === [ 'second: "corners" is not a ladder of five', 'second: "zebra" is not a ladder of three' ] );
+	designKnobProblems( $kindsLibrary, 'tables', 'second' ) === [ 'second: "space" is not a ladder of five', 'second: "zebra" is not a ladder of three' ] );
 check( '...an aspect of another length than its knob, a ladder under the wrong words, and an aspect of the right length under the wrong ones - with a set that publishes nothing saying so',
-	designKnobProblems( $kindsLibrary, 'components', 'third' ) === [ 'third: "zebra-ink" is a ladder of another length than "zebra"' ]
-	&& designKnobProblems( $kindsLibrary, 'components', 'fourth' ) === [ 'fourth: "zebra" is not a ladder of three', 'fourth: "labels-lift" is not a ladder of three', 'fourth: answers to no knob at all' ] );
-check( '...and reports a components set that declares the ladder of a buttons knob and reads another: once each, named with the part it belongs to',
-	designKnobProblems( $stray, 'components', 'first' ) === [
+	designKnobProblems( $kindsLibrary, 'tables', 'third' ) === [ 'third: "zebra-ink" is a ladder of another length than "zebra"' ]
+	&& designKnobProblems( $kindsLibrary, 'tables', 'fourth' ) === [ 'fourth: "zebra" is not a ladder of three', 'fourth: answers to no knob at all' ]
+	&& designKnobProblems( $kindsLibrary, 'lists', 'first' ) === [ 'first: "marker-lift" is not a ladder of three', 'first: answers to no knob at all' ] );
+check( '...and reports a tables set that declares the ladder of a buttons knob and reads another: once each, named with the part it belongs to',
+	designKnobProblems( $stray, 'tables', 'first' ) === [
 		'first: declares --buttons-size, a ladder of the buttons part',
 		'first: reads --buttons-space, a knob of the buttons part',
 	] );
 check( '...and one that reads a step of a buttons knob by name - var(--buttons-size--default) - as reading that knob: once, however often it reads it',
-	designKnobProblems( $stray, 'components', 'second' ) === [ 'second: reads --buttons-size, a knob of the buttons part' ] );
+	designKnobProblems( $stray, 'tables', 'second' ) === [ 'second: reads --buttons-size, a knob of the buttons part' ] );
 check( '...and one that declares a buttons knob again in a nested selector as declaring it, once - and a name whose ladder is reported is not reported a second time as a knob',
-	designKnobProblems( $stray, 'components', 'third' ) === [ 'third: declares --buttons-size, a knob of the buttons part' ]
-	&& designKnobProblems( $stray, 'components', 'fourth' ) === [ 'fourth: declares --buttons-size, a ladder of the buttons part' ] );
-check( '...and a set the library does not have is reported rather than read', designKnobProblems( $stray, 'components', 'absent' ) === [ 'absent: has no stylesheet' ] );
+	designKnobProblems( $stray, 'tables', 'third' ) === [ 'third: declares --buttons-size, a knob of the buttons part' ]
+	&& designKnobProblems( $stray, 'tables', 'fourth' ) === [ 'fourth: declares --buttons-size, a ladder of the buttons part' ] );
+check( '...and a set the library does not have is reported rather than read', designKnobProblems( $stray, 'tables', 'absent' ) === [ 'absent: has no stylesheet' ] );
 
 /*	...and the roles of the Type tab and the colours of the palette: a template that writes a face, a weight or a case of
-	its own is reported, and so is one that writes a colour as a literal - a hex, an rgb() or an hsl(). A components template
-	may set the case of a label and of a table head, which is what it is built as and no role of the type - but of those
-	two and of nothing else	*/
+	its own is reported, and so is one that writes a colour as a literal - a hex, an rgb() or an hsl(). A tables template
+	may set the case of a table head, which is what it is built as and no role of the type - but of that
+	and of nothing else	*/
 $roles = ninoSandboxDir( $appData ). '/library-roles';
 mkdir( $roles. '/buttons', 0755, true );
-mkdir( $roles. '/components', 0755, true );
+mkdir( $roles. '/tables', 0755, true );
+mkdir( $roles. '/lists', 0755, true );
 $ownSize = "\t--buttons-size--least: .8;\n\t--buttons-size--less: .9;\n\t--buttons-size--default: 1;\n\t--buttons-size--more: 1.12;\n\t--buttons-size--most: 1.25;\n";
 file_put_contents( $roles. '/buttons/first.css', "/*\t@name Cased\n *\t@description A buttons template that sets a case and a colour.\n *\t@knob size\n */\n:root {\n". $ownSize. "}\n.nino-btn { text-transform: uppercase; color: #fff; }\n" );
 file_put_contents( $roles. '/buttons/second.css', "/*\t@name Weighed\n *\t@description A buttons template that sets a face, a weight and a colour.\n *\t@knob size\n */\n:root {\n". $ownSize. "}\n.nino-btn { font-family: serif; font-weight: 700; background: rgb(0 0 0 / 50%); }\n" );
-file_put_contents( $roles. '/components/first.css', "/*\t@name Capitals\n *\t@description A components template that sets the case of a table head.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th { text-transform: uppercase; letter-spacing: .08em; background: color-mix( in srgb, var(--color-ink) 7%, var(--color-ground) ); }\n" );
-file_put_contents( $roles. '/components/second.css', "/*\t@name Heavy\n *\t@description A components template that sets a weight and a colour.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th { font-weight: bold; background: hsl(0 0% 0%); }\n" );
-// ...the case of a label in a rule whose selector is full of brackets and commas, of table heads in a list, and in a media query
-file_put_contents( $roles. '/components/third.css', "/*\t@name Labels\n *\t@description A components template that sets the case of a label and of table heads.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > label:where(:not(.nino-forms-check, .nino-sr-only)) { font-size: .8em; text-transform: uppercase; }\n.nino-table th, .nino-table--bordered th { text-transform: uppercase; }\n@media (min-width: 768px) {\n\t.nino-table th { text-transform: uppercase; }\n}\n" );
+file_put_contents( $roles. '/tables/first.css', "/*\t@name Capitals\n *\t@description A tables template that sets the case of a table head.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th { text-transform: uppercase; letter-spacing: .08em; background: color-mix( in srgb, var(--color-ink) 7%, var(--color-ground) ); }\n" );
+file_put_contents( $roles. '/tables/second.css', "/*\t@name Heavy\n *\t@description A tables template that sets a weight and a colour.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th { font-weight: bold; background: hsl(0 0% 0%); }\n" );
+// ...the case of a table head in a rule whose selector is full of brackets and commas, of table heads in a list, and in a media query
+file_put_contents( $roles. '/tables/third.css', "/*\t@name Heads\n *\t@description A tables template that sets the case of table heads.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table:where(:not(.nino-table--bordered, .nino-table--small)) > thead > tr > th:where(:not(.nino-sr-only)) { font-size: .8em; text-transform: uppercase; }\n.nino-table th, .nino-table--bordered th { text-transform: uppercase; }\n@media (min-width: 768px) {\n\t.nino-table th { text-transform: uppercase; }\n}\n" );
 // ...and the case of anything else: a badge, and a button in a rule that names a table head too
-file_put_contents( $roles. '/components/fourth.css', "/*\t@name Badges\n *\t@description A components template that sets the case of a badge.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-badge { text-transform: uppercase; }\n" );
-file_put_contents( $roles. '/components/fifth.css', "/*\t@name Both\n *\t@description A components template that sets the case of a table head and of a button.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th, .nino-btn { text-transform: uppercase; }\n" );
+file_put_contents( $roles. '/tables/fourth.css', "/*\t@name Badges\n *\t@description A tables template that sets the case of a badge.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-badge { text-transform: uppercase; }\n" );
+$ownMarker = "\t--lists-marker--less: normal;\n\t--lists-marker--default: bold;\n\t--lists-marker--more: bold;\n";
+// ...the weight of the mark before an item, which the marker of a list is, and the weight of the item itself
+file_put_contents( $roles. '/lists/first.css', "/*\t@name Marks\n *\t@description A lists template that sets the weight of a mark.\n *\t@knob marker\n */\n:root {\n". $ownMarker. "}\n.nino-list--check li::before, .nino-list--numbered li::before { font-weight: var(--lists-marker); }\n@media (min-width: 768px) {\n\t.nino-list--numbered li:where(:not(.nino-is-last))::before { font-weight: bold; }\n}\n" );
+file_put_contents( $roles. '/lists/second.css', "/*\t@name Items\n *\t@description A lists template that sets the weight of an item and the case of a mark.\n *\t@knob marker\n */\n:root {\n". $ownMarker. "}\n.nino-list li { font-weight: bold; }\n.nino-list li::before { text-transform: uppercase; }\n" );
+file_put_contents( $roles. '/tables/fifth.css', "/*\t@name Both\n *\t@description A tables template that sets the case of a table head and of a button.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th, .nino-btn { text-transform: uppercase; }\n" );
 
 check( 'the library check reports a buttons template that sets a case or a colour of its own, and one that sets a face, a weight or a colour - the roles of the type are the Type tab\'s and the colours the palette\'s',
 	designKnobProblems( $roles, 'buttons', 'first' ) === [ 'first: writes the face, the weight or the case of a role', 'first: writes a colour as a literal' ]
 	&& designKnobProblems( $roles, 'buttons', 'second' ) === [ 'second: writes the face, the weight or the case of a role', 'second: writes a colour as a literal' ] );
-check( '...and a components template that sets the case of a table head, or of a label - in a rule of its own, in a list of selectors that all end in one, or in a media query - is none of them, nor is a colour that is mixed out of the roles, while one that sets a weight or writes an hsl() is',
-	designKnobProblems( $roles, 'components', 'first' ) === [] && designKnobProblems( $roles, 'components', 'third' ) === []
-	&& designKnobProblems( $roles, 'components', 'second' ) === [ 'second: writes the face, the weight or the case of a role', 'second: writes a colour as a literal' ] );
-check( '...and so is one that sets a case on a badge, or on a button in the same rule as a table head - the allowance is for a label and a table head, not for a components template',
-	designKnobProblems( $roles, 'components', 'fourth' ) === [ 'fourth: writes the face, the weight or the case of a role' ]
-	&& designKnobProblems( $roles, 'components', 'fifth' ) === [ 'fifth: writes the face, the weight or the case of a role' ] );
+check( '...and a tables template that sets the case of a table head - in a rule of its own, in a list of selectors that all end in one, in a selector full of brackets, or in a media query - is none of them, nor is a colour that is mixed out of the roles, while one that sets a weight or writes an hsl() is',
+	designKnobProblems( $roles, 'tables', 'first' ) === [] && designKnobProblems( $roles, 'tables', 'third' ) === []
+	&& designKnobProblems( $roles, 'tables', 'second' ) === [ 'second: writes the face, the weight or the case of a role', 'second: writes a colour as a literal' ] );
+check( '...and so is one that sets a case on a badge, or on a button in the same rule as a table head - the allowance is for a table head, not for a tables template',
+	designKnobProblems( $roles, 'tables', 'fourth' ) === [ 'fourth: writes the face, the weight or the case of a role' ]
+	&& designKnobProblems( $roles, 'tables', 'fifth' ) === [ 'fifth: writes the face, the weight or the case of a role' ] );
+check( '...and a lists template may set the weight of the mark before an item, on its own or in a media query - the weight of a mark is its marker\'s - and nothing else: the weight of an item, or the case of a mark, is a role\'s',
+	designKnobProblems( $roles, 'lists', 'first' ) === [] && designKnobProblems( $roles, 'lists', 'second' ) === [ 'second: writes the face, the weight or the case of a role' ] );
+check( '...and a frame is held to its ladders and to what it reads, and not to the roles: a bar that writes a case, a weight or a colour is a bar',
+	designKnobProblems( $library, 'header', $defaultSets['header'] ) === [] && array_filter( Setup::available( $library, 'header' ), static fn( string $set ): bool => in_array( $set. ': writes a colour as a literal', designKnobProblems( $library, 'header', $set ), true ) ) === []
+	&& designKnobProblems( $library, 'footer', $defaultSets['footer'] ) === [] );
 
 $notes	= [];
 $picked	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => $every( 1 ) ], $sandbox, $notes ), $sandbox );
 
-check( 'every knob a set answers to becomes one selection line, the aspects of a knob included', str_contains( $picked, '--content-border: var(--content-border--more);' ) === true
-	&& str_contains( $picked, '--content-shadow: var(--content-shadow--more);' ) === true && str_contains( $picked, '--content-shadow-lift: var(--content-shadow-lift--more);' ) === true
+check( 'every knob a set answers to becomes one selection line, the aspects of a knob included', str_contains( $picked, '--card-border: var(--card-border--more);' ) === true
+	&& str_contains( $picked, '--card-shadow: var(--card-shadow--more);' ) === true && str_contains( $picked, '--card-shadow-lift: var(--card-shadow-lift--more);' ) === true
 	&& str_contains( $picked, '--buttons-space: var(--buttons-space--more);' ) === true );
 check( '...and a knob no set answers to becomes nothing at all, and neither does a name that is no knob',
-	str_contains( $picked, '--content-card-space:' ) === false && str_contains( $picked, '--content-hero-title:' ) === false
-	&& str_contains( $picked, '--buttons-size:' ) === false && str_contains( $picked, '--content-nonsense:' ) === false );
+	str_contains( $picked, '--card-space:' ) === false && str_contains( $picked, '--card-title:' ) === false
+	&& str_contains( $picked, '--buttons-size:' ) === false && str_contains( $picked, '--card-nonsense:' ) === false );
 check( '...gathered into one block at the end, not scattered beside the sets', substr_count( $picked, 'the knob positions' ) === 1
-	&& strpos( $picked, 'the knob positions' ) > strpos( $picked, '--content-border--more' ) && strpos( $picked, 'the knob positions' ) > strpos( $picked, '--buttons-space--more' ) );
+	&& strpos( $picked, 'the knob positions' ) > strpos( $picked, '--card-border--more' ) && strpos( $picked, 'the knob positions' ) > strpos( $picked, '--buttons-space--more' ) );
 check( '...and the five steps themselves are still in the sheet, so a project without the feature can move the knob by hand',
-	str_contains( $picked, '--content-border--least: 0;' ) === true && str_contains( $picked, '--content-border--most : 2rem;' ) === true && str_contains( $picked, '--content-shadow--most: 0 .2rem 1rem black;' ) === true );
+	str_contains( $picked, '--card-border--least: 0;' ) === true && str_contains( $picked, '--card-border--most : 2rem;' ) === true && str_contains( $picked, '--card-shadow--most: 0 .2rem 1rem black;' ) === true );
 
 $blockIn = substr( $picked, (int) strpos( $picked, 'the knob positions' ) );
 
-check( '...one line for each, and no more: three for the content - the border, the shadow and its lift - and one for the buttons',
+check( '...one line for each, and no more: three for the card - the border, the shadow and its lift - and one for the buttons',
 	preg_match_all( '/^\t--[a-z-]+: var\(--[a-z-]+--more\);$/m', $blockIn ) === 4 && preg_match_all( '/^\t--[a-z-]+:/m', $blockIn ) === 4 );
 
 $titles = [];
@@ -3164,49 +3269,49 @@ foreach( $found as $row )
 	$titles[(int) $row[1]] = trim( $row[2] );
 
 check( 'a template the library does not have is left out and the sections after it take the numbers that are free, each saying where the knobs it answers to stand',
-	array_slice( $titles, 6, null, true ) === [ 7 => 'content: first (border more, shadow more)', 8 => 'buttons: first (space more)', 9 => 'the knob positions' ]
+	array_slice( $titles, 6, null, true ) === [ 7 => 'card: first (border more, shadow more)', 8 => 'buttons: first (space more)', 9 => 'the knob positions' ]
 	&& count( array_filter( $notes, static fn( string $note ): bool => str_contains( $note, 'holds no set for "header"' ) ) ) === 1 );
 
-$moved = Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'border' => -1, 'shadow' => -1, 'card-space' => 1 ], 'buttons' => [ 'size' => 1 ] ] ], $sandbox ), $sandbox );
+$moved = Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'card' => [ 'border' => -1, 'shadow' => -1, 'space' => 1 ], 'buttons' => [ 'size' => 1 ] ] ], $sandbox ), $sandbox );
 
-check( 'each knob is asked for its own part: the content\'s position does not reach the buttons, and the aspect of a knob stands where the knob does',
-	str_contains( $moved, '--content-border: var(--content-border--less);' ) === true && str_contains( $moved, '--content-shadow-lift: var(--content-shadow-lift--less);' ) === true
-	&& str_contains( $moved, '--buttons-space: var(--buttons-space--default);' ) === true && str_contains( $moved, '--content-card-space:' ) === false );
+check( 'each knob is asked for its own part: the card\'s position does not reach the buttons, and the aspect of a knob stands where the knob does',
+	str_contains( $moved, '--card-border: var(--card-border--less);' ) === true && str_contains( $moved, '--card-shadow-lift: var(--card-shadow-lift--less);' ) === true
+	&& str_contains( $moved, '--buttons-space: var(--buttons-space--default);' ) === true && str_contains( $moved, '--card-space:' ) === false );
 
 /*	The two outer positions of a scale select the outer words - and a choice, which has three, does not reach them:
 	a position past its ends is the middle, never the fifth word	*/
-$ends = Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'border' => 2, 'shadow' => -2 ], 'buttons' => [ 'space' => -1 ] ] ], $sandbox ), $sandbox );
+$ends = Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'card' => [ 'border' => 2, 'shadow' => -2 ], 'buttons' => [ 'space' => -1 ] ] ], $sandbox ), $sandbox );
 
 check( 'a knob at +2 selects --most and at -2 --least, the aspects of a knob with it, and the positions between them --more and --less',
-	str_contains( $ends, '--content-border: var(--content-border--most);' ) === true && str_contains( $ends, '--content-shadow: var(--content-shadow--least);' ) === true
-	&& str_contains( $ends, '--content-shadow-lift: var(--content-shadow-lift--least);' ) === true && str_contains( $ends, '--buttons-space: var(--buttons-space--less);' ) === true );
+	str_contains( $ends, '--card-border: var(--card-border--most);' ) === true && str_contains( $ends, '--card-shadow: var(--card-shadow--least);' ) === true
+	&& str_contains( $ends, '--card-shadow-lift: var(--card-shadow-lift--least);' ) === true && str_contains( $ends, '--buttons-space: var(--buttons-space--less);' ) === true );
 
-$choiceSheet	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'components' => 'first' ], 'knobs' => [ 'components' => [ 'scale' => 2, 'zebra' => -1 ] ] ], $kindsLibrary ), $kindsLibrary );
-$pastTheEnds	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'components' => 'first' ], 'knobs' => [ 'components' => [ 'scale' => -2, 'zebra' => 2 ] ] ], $kindsLibrary ), $kindsLibrary );
+$choiceSheet	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'tables' => 'first' ], 'knobs' => [ 'tables' => [ 'scale' => 2, 'zebra' => -1 ] ] ], $kindsLibrary ), $kindsLibrary );
+$pastTheEnds	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'tables' => 'first' ], 'knobs' => [ 'tables' => [ 'scale' => -2, 'zebra' => 2 ] ] ], $kindsLibrary ), $kindsLibrary );
 
 check( 'a choice is selected under its three words - -1 is --less, with its aspect - and a position past its ends is the middle, not the fifth word, while the scale beside it goes to the end',
-	str_contains( $choiceSheet, '--components-zebra: var(--components-zebra--less);' ) === true && str_contains( $choiceSheet, '--components-zebra-ink: var(--components-zebra-ink--less);' ) === true
-	&& str_contains( $choiceSheet, '--components-scale: var(--components-scale--most);' ) === true
-	&& str_contains( $pastTheEnds, '--components-zebra: var(--components-zebra--default);' ) === true && str_contains( $pastTheEnds, '--components-zebra-ink: var(--components-zebra-ink--default);' ) === true
-	&& str_contains( $pastTheEnds, '--components-scale: var(--components-scale--least);' ) === true );
+	str_contains( $choiceSheet, '--tables-zebra: var(--tables-zebra--less);' ) === true && str_contains( $choiceSheet, '--tables-zebra-ink: var(--tables-zebra-ink--less);' ) === true
+	&& str_contains( $choiceSheet, '--tables-scale: var(--tables-scale--most);' ) === true
+	&& str_contains( $pastTheEnds, '--tables-zebra: var(--tables-zebra--default);' ) === true && str_contains( $pastTheEnds, '--tables-zebra-ink: var(--tables-zebra-ink--default);' ) === true
+	&& str_contains( $pastTheEnds, '--tables-scale: var(--tables-scale--least);' ) === true );
 
-$withoutKnob = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'content' => 'second' ], 'knobs' => $every( 1 ) ], $sandbox ), $sandbox );
-check( 'an aspect declared without its knob is not selected either - nothing was published', str_contains( $withoutKnob, '--content-shadow-lift:' ) === false
-	&& str_contains( $withoutKnob, '--content-nonsense:' ) === false && str_contains( $withoutKnob, '--buttons-space: var(--buttons-space--more);' ) === true );
+$withoutKnob = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'card' => 'second' ], 'knobs' => $every( 1 ) ], $sandbox ), $sandbox );
+check( 'an aspect declared without its knob is not selected either - nothing was published', str_contains( $withoutKnob, '--card-shadow-lift:' ) === false
+	&& str_contains( $withoutKnob, '--card-nonsense:' ) === false && str_contains( $withoutKnob, '--buttons-space: var(--buttons-space--more);' ) === true );
 
 /*	What the panel compares to say whether the stylesheet still answers to the
 	screen: the setup's own choices AND the bytes of every library file they
 	point at, so a set that changed under a project - a reinstall, an edited
 	library - is visible rather than silent. This is the whole of it	*/
-$sandboxSetup 	= Setup::normalize( $appData, [ 'parts' => [ 'content' => 'first' ] ], $sandbox );
+$sandboxSetup 	= Setup::normalize( $appData, [ 'parts' => [ 'card' => 'first' ] ], $sandbox );
 $beforeSetEdit 	= \Nino\Modules\Design::fingerprint( $appData, $sandboxSetup, $sandbox );
-$contentSet 		= $sandbox. '/content/first.css';
-$contentSource 	= (string) file_get_contents( $contentSet );
-file_put_contents( $contentSet, $contentSource. "\n/* a set the project got from somewhere else */\n" );
+$cardSet 			= $sandbox. '/card/first.css';
+$cardSource 	= (string) file_get_contents( $cardSet );
+file_put_contents( $cardSet, $cardSource. "\n/* a set the project got from somewhere else */\n" );
 
 check( 'the fingerprint follows the bytes of the sets it names, not only the names', \Nino\Modules\Design::fingerprint( $appData, $sandboxSetup, $sandbox ) !== $beforeSetEdit );
 
-file_put_contents( $contentSet, $contentSource );
+file_put_contents( $cardSet, $cardSource );
 
 $recorded = $sandboxSetup;
 $recorded['compiled'] = [ 'at' => 'then', 'sha' => 'a', 'input' => 'b', 'setup' => [ 'size' => 1 ] ];
@@ -3215,8 +3320,8 @@ check( '...and what an earlier apply recorded decides nothing: the record is the
 	\Nino\Modules\Design::fingerprint( $appData, $recorded, $sandbox ) === $beforeSetEdit );
 
 $changes = [
-	'a knob' 				=> [ 'knobs' => [ 'content' => [ 'border' => 1 ] ] ],
-	'a template' 		=> [ 'parts' => [ 'content' => 'second' ] ],
+	'a knob' 				=> [ 'knobs' => [ 'card' => [ 'border' => 1 ] ] ],
+	'a template' 		=> [ 'parts' => [ 'card' => 'second' ] ],
 	'the size' 			=> [ 'size' => 1 ],
 	'the width' 		=> [ 'width' => 1 ],
 	'the radius' 		=> [ 'radius' => 1 ],
@@ -3227,7 +3332,7 @@ $changes = [
 	'a colour' 			=> [ 'colours' => [ 'primary' => '#8b1d3f' ] ],
 	'the mode' 			=> [ 'colours' => [ 'mode' => 'dark' ] ],
 ];
-$unmoved = array_filter( $changes, static fn( array $raw ): bool => \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, $raw + [ 'parts' => [ 'content' => 'first' ] ], $sandbox ), $sandbox ) === $beforeSetEdit );
+$unmoved = array_filter( $changes, static fn( array $raw ): bool => \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, $raw + [ 'parts' => [ 'card' => 'first' ] ], $sandbox ), $sandbox ) === $beforeSetEdit );
 
 check( 'and every choice of the panel moves it, and the radius of the page with them: '. implode( ', ', array_keys( $changes ) ). ( $unmoved === [] ? '' : ' - unmoved: '. implode( ', ', array_keys( $unmoved ) ) ), $unmoved === [] );
 
@@ -3287,8 +3392,8 @@ else {
 
 	/*	The compiler writes a library file whole, and its opening comment with it: the description of the file, which its owner
 		rewrites as he pleases and which is no rule. The kernel regenerates the delivered file from the library with each release, so
-		the opening comment of each of the five sets is left out on both sides - they are not what a browser is given to draw - and the rest
-		of the body, every rule and every ladder, the two frames' selectors and the three sets' declarations, is held to the delivered file
+		the opening comment of each of the seven parts' sets is left out on both sides - they are not what a browser is given to draw - and the rest
+		of the body, every rule and every ladder, the frames' and the sets' alike, is held to the delivered file
 		byte for byte	*/
 	$theirsRaw	= (string) file_get_contents( $deliveredFile );
 	$theirBody	= designWithoutOpenings( designBody( $theirsRaw ) );
@@ -3300,14 +3405,24 @@ else {
 	while( $differAt < $limit && $theirBody[$differAt] === $ownBody[$differAt] )
 		$differAt++;
 
-	check( 'the body of the delivered theme.css - everything after its header - is the body of the sheet this compiler writes at the defaults, byte for byte but for the opening comment of the five sets, which describes the file and is no rule ('. strlen( $ownBody ). ' bytes)'
+	/*	The first six sections are the base's and no part of the library of the seven parts: the tokens, the palette, the type, the roles, the root size and the
+		page of the delivered file are the same bytes as those of the compile - which holds against a delivered file older than the library as well, the
+		one thing that turns the check after it red	*/
+	$firstSix = static function( string $body ): string {
+		return preg_match( '~/\* ==== 7\. ~', $body, $found, PREG_OFFSET_CAPTURE ) === 1 ? substr( $body, 0, $found[0][1] ) : '';
+	};
+
+	check( 'the first six sections of the delivered theme.css - the tokens, the palette, the type, the roles, the root size and the page - are the first six of the compile at the defaults, byte for byte: they do not move with the library of the seven parts ('. strlen( $firstSix( $ownBody ) ). ' bytes)',
+		$firstSix( $ownBody ) !== '' && $firstSix( $theirBody ) === $firstSix( $ownBody ) && preg_match_all( '~/\* ==== [1-6]\. ~', $firstSix( $ownBody ) ) === 6 );
+
+	check( 'the body of the delivered theme.css - everything after its header - is the body of the sheet this compiler writes at the defaults, byte for byte but for the opening comment of the seven sets, which describes the file and is no rule ('. strlen( $ownBody ). ' bytes)'
 		. ( $theirBody === $ownBody ? '' : ' - they part at byte '. $differAt. ', the delivered body has '. strlen( $theirBody ). ' bytes' ), $ownBody !== '' && $theirBody === $ownBody );
 
-	$openingMarker = '~/\* ==== \d+\. (?:header|footer|content|buttons|components): [^\n]*==== \*/\n/\*~';
+	$openingMarker = '~/\* ==== \d+\. (?:'. implode( '|', array_keys( Setup::PARTS ) ). '): [^\n]*==== \*/\n/\*~';
 
-	check( '...and what is cut is the opening comment of those five and nothing of a rule: the compiled sheet has a section for each of the five sets and each opens with its comment, cutting them leaves the sections without one, and the declarations of the default sets are in it',
-		preg_match_all( $openingMarker, $defaultSheet ) === 5 && preg_match_all( $openingMarker, $ownBody ) === 0
-		&& str_contains( $ownBody, '--content-hero-title--default: ' ) === true && str_contains( $ownBody, '--buttons-spread--default: ' ) === true && str_contains( $ownBody, '--components-zebra--more: ' ) === true );
+	check( '...and what is cut is the opening comment of those seven and nothing of a rule: the compiled sheet has a section for each of the seven parts and each opens with its comment, cutting them leaves the sections without one, and the declarations of the default sets are in it - the frames\' included',
+		preg_match_all( $openingMarker, $defaultSheet ) === count( Setup::PARTS ) && preg_match_all( $openingMarker, $ownBody ) === 0
+		&& array_filter( [ '--section-hero-title--default', '--buttons-spread--default', '--tables-zebra--more', '--header-height--default', '--footer-ground--more' ], static fn( string $token ): bool => preg_match( '/'. preg_quote( $token, '/' ). ':\s/', $ownBody ) !== 1 ) === [] );
 
 	/*	The header is the kernel's own, so the file carries no stamp of the
 		compiler's: ownership() calls it foreign, the panel's word for a file
@@ -3825,7 +3940,7 @@ check( 'the panel lists one row per part, in the order the cascade wants them', 
 	&& array_column( (array) ( $listed['parts'] ?? [] ), 'part' ) === array_keys( Setup::PARTS ) );
 check( 'a row carries the catalogue it can be given, and what is chosen',
 	isset( $listed['parts'][0]['catalogue'][ $defaultSets['header'] ] ) === true
-	&& ( $listed['parts'][0]['set'] ?? null ) === $defaultSets['header'] && ( $listed['parts'][2]['set'] ?? null ) === $defaultSets['content']
+	&& ( $listed['parts'][0]['set'] ?? null ) === $defaultSets['header'] && ( $listed['parts'][2]['set'] ?? null ) === $defaultSets['section']
 	&& ( $listed['parts'][0]['kind'] ?? null ) === 'frame' && ( $listed['parts'][2]['kind'] ?? null ) === 'set' );
 // A sandbox is German - its current locale is the one the workbench's texts are chosen by - and the list names a template in it: the name and the
 // description its own file gives in that language, whichever sets the library has - what Setup::describe() says of each of them
@@ -3848,7 +3963,7 @@ $listedWords = static function( array $answer, string $locale ) use ( $library )
 check( 'every variant comes with the name and description its own file carries, in the language of the workbench - here the German one - for every set of every part, as Setup::describe() reads them'
 	. ( $listedWords( $listed, 'de_DE' ) === [] ? '' : ' - not so for '. implode( ', ', $listedWords( $listed, 'de_DE' ) ) ),
 	\Nino\Locales::getCurrentLocale( $appData ) === 'de_DE' && $listedWords( $listed, 'de_DE' ) === []
-	&& array_keys( $listed['parts'][2]['catalogue'] ) === Setup::available( $library, 'content' ) );
+	&& array_keys( $listed['parts'][2]['catalogue'] ) === Setup::available( $library, 'section' ) );
 
 \Nino\Locales::useLocale( $appData, 'en_US' );
 [ , $listedEnglish ] = callDesignAction( $appData, 'apiList' );
@@ -3861,12 +3976,14 @@ $knobProblems = [];
 
 foreach( $listed['parts'] as $row )
 	foreach( $row['catalogue'] as $set => $entry )
-		if( $row['kind'] === 'set' ? ( $entry['knobs'] ?? null ) !== Setup::knobs( $library, $row['part'], (string) $set ) : array_key_exists( 'knobs', $entry ) === true )
+		if( ( $entry['knobs'] ?? null ) !== Setup::knobs( $library, $row['part'], (string) $set ) )
 			$knobProblems[] = $row['part']. '/'. $set;
 
-check( 'a template of the three parts names the knobs it answers to, each of them, as the stylesheet declares them - and a frame names none, it answers to none'
+check( 'a template of any of the seven parts names the knobs it answers to, each of them, as the stylesheet declares them - a frame\'s too, which answers to all four of its part\'s'
 	. ( $knobProblems === [] ? '' : ' - not so for '. implode( ', ', $knobProblems ) ), $knobProblems === []
-	&& ( $listed['parts'][2]['catalogue'][ $defaultSets['content'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['content'] ) );
+	&& ( $listed['parts'][2]['catalogue'][ $defaultSets['section'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['section'] )
+	&& ( $listed['parts'][0]['catalogue'][ $defaultSets['header'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['header'] )
+	&& ( $listed['parts'][1]['catalogue'][ $defaultSets['footer'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['footer'] ) );
 check( 'and the screen is handed the vocabulary it draws: the parts with the kind of each knob, the five steps, the size, the width, the whitespace and the two radii as numbers, the strength of each kind of surface and the two words there are, the effects with their strengths and speeds - and no list of sizes: a strip numbers them, and none of the surfaces: the strengths name the kinds',
 	( $listed['kinds'] ?? null ) === Setup::KNOBS && ( $listed['steps'] ?? null ) === Setup::STEPS && count( $listed['steps'] ) === 5
 	&& array_key_exists( 'sizes', $listed ) === false && ( $listed['size'] ?? null ) === $onFile['size'] && is_int( $listed['size'] ) === true && ( $listed['width'] ?? null ) === 0 && is_int( $listed['width'] ) === true
@@ -3894,7 +4011,7 @@ check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] 
 // Saving is not compiling: the decision lands, the stylesheet does not move
 // Every knob of every part is moved - each to +1, which a scale and a choice both reach - on another set for each part, whichever the library has: what is kept is what the chosen set answers to
 [ $status, $saved ] = callDesignAction( $appData, 'apiSave', [
-	'parts' => [ 'content' => $richParts['content'], 'buttons' => $richParts['buttons'], 'components' => $richParts['components'] ],
+	'parts' => array_intersect_key( $richParts, array_flip( [ 'section', 'card', 'buttons', 'lists', 'tables' ] ) ),
 	'knobs' => $every( 1 ),
 	'size' => 1, 'width' => 2, 'whitespace' => -1, 'radius' => 2, 'radius-alt' => -1, 'radii' => [ 'column' => 'alternative' ],
 	'motion' => [ 'effect' => 'slide-left', 'strength' => 'soft', 'speed' => 'fast' ],
@@ -3904,7 +4021,7 @@ check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] 
 $stored = Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
 
 check( 'saving stores the selection: the templates, the size, the width, the whitespace, the radius, the animation, the fonts and the mode', $status === 200
-	&& $stored['parts']['content'] === $richParts['content'] && $stored['parts']['buttons'] === $richParts['buttons'] && $stored['size'] === 1 && $stored['width'] === 2 && $stored['whitespace'] === -1
+	&& $stored['parts']['section'] === $richParts['section'] && $stored['parts']['card'] === $richParts['card'] && $stored['parts']['tables'] === $richParts['tables'] && $stored['parts']['buttons'] === $richParts['buttons'] && $stored['size'] === 1 && $stored['width'] === 2 && $stored['whitespace'] === -1
 	&& $stored['radius'] === 2 && $stored['radius-alt'] === -1 && $stored['radii'] === array_replace( array_fill_keys( Setup::SURFACES, 'standard' ), [ 'column' => 'alternative' ] )
 	&& $stored['motion'] === [ 'effect' => 'slide-left', 'strength' => 'soft', 'speed' => 'fast' ]
 	&& $stored['fonts']['title'] === [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.4' ]
@@ -3966,13 +4083,13 @@ check( 'forcing it through takes the file over', callDesignAction( $appData, 'ap
 	&& Compiler::stamped( (string) \Nino\Filesystem::getFileContent( $appData, Compiler::TARGET, '' ) ) === true );
 
 // A set that is not in the library is not written, and the answer says why
-[ $status, $refused ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'content' => 'nope' ], 'size' => 0 ] );
+[ $status, $refused ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => 'nope' ], 'size' => 0 ] );
 check( 'a variant that is not in the library falls back and is named - by its code and its params, in the answer a person\'s screen says in words',
 	$status === 200 && count( (array) ( $refused['notes'] ?? [] ) ) === 1
-	&& ( $refused['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $refused['notes'][0]['params'] ?? [] ) === [ 'content', 'nope', $defaultSets['content'] ] );
+	&& ( $refused['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $refused['notes'][0]['params'] ?? [] ) === [ 'section', 'nope', $defaultSets['section'] ] );
 check( 'a set name that could climb out of the library never becomes a path',
-	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'content' => '../../../etc/passwd' ], 'size' => 0 ] )[0] === 200
-	&& Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['content'] === $defaultSets['content'] );
+	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => '../../../etc/passwd' ], 'size' => 0 ] )[0] === 200
+	&& Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['section'] === $defaultSets['section'] );
 
 // ...and neither does a size that is not a string, or any other key of the
 // model posted as the wrong type. Cast, an array raises "Array to string
@@ -4396,10 +4513,10 @@ $knobNames = array_map( 'array_keys', Setup::KNOBS );
 
 check( 'a set publishes a knob by declaring its ladder: the default set of each part answers to every knob of the part, in the order of the part - it is the framework as it is, with something for each knob to reach',
 	array_filter( array_keys( Setup::KNOBS ), static fn( string $part ): bool => Setup::knobs( $library, $part, $defaultSets[$part] ) !== $knobNames[$part] ) === [] );
-check( 'a frame answers to none - a knob is about a set\'s own ladders - and neither does a set that is not there',
-	array_filter( [ 'header', 'footer' ], static fn( string $part ): bool => array_filter( Setup::available( $library, $part ), static fn( string $set ): bool => Setup::knobs( $library, $part, $set ) !== [] ) !== [] ) === []
-	&& Setup::knobs( $library, 'content', 'nope' ) === [] && Setup::knobs( $library, 'nowhere', $defaultSets['content'] ) === [] );
-check( '...and every set of the three parts answers to knobs of its own part, in the order of the part, with the ladder of the knob itself first and the aspects after it, named after the knob',
+check( 'a set that is not there answers to nothing, and every set of a frame answers to the four knobs of its part, in the order of the part - the panel greys nothing in the row of a frame',
+	Setup::knobs( $library, 'section', 'nope' ) === [] && Setup::knobs( $library, 'nowhere', $defaultSets['section'] ) === []
+	&& array_filter( [ 'header', 'footer' ], static fn( string $part ): bool => array_filter( Setup::available( $library, $part ), static fn( string $set ): bool => Setup::knobs( $library, $part, $set ) !== $knobNames[$part] ) !== [] ) === [] );
+check( '...and every set of every part answers to knobs of its own part, in the order of the part, with the ladder of the knob itself first and the aspects after it, named after the knob',
 	array_filter( array_keys( Setup::KNOBS ), static function( string $part ) use ( $library, $knobNames ): bool {
 
 		foreach( Setup::available( $library, $part ) as $set ) {
@@ -4428,9 +4545,6 @@ $compiled = 0;
 
 foreach( Setup::PARTS as $part => $kind ) {
 
-	if( $kind !== 'set' )
-		continue;
-
 	foreach( Setup::available( $library, $part ) as $set )
 		foreach( [ -2, -1, 0, 1, 2 ] as $position ) {
 
@@ -4457,7 +4571,7 @@ foreach( Setup::PARTS as $part => $kind ) {
 		}
 }
 
-check( 'every template at every position of its knobs ('. $compiled. ' sheets) selects the ladders it declares and no others, each a step the sheet declares - a scale from least to most, a choice from less to more'
+check( 'every template at every position of its knobs ('. $compiled. ' sheets, the frames\' among them) selects the ladders it declares and no others, each a step the sheet declares - a scale from least to most, a choice from less to more'
 	. ( $selectProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $selectProblems, 0, 3 ) ) ), $selectProblems === [] && $compiled > 0 );
 
 /*	A ladder that has all the words it should is not yet one that says something: a set declares five values for a
@@ -4467,9 +4581,6 @@ check( 'every template at every position of its knobs ('. $compiled. ' sheets) s
 $flatLadders = [];
 
 foreach( Setup::PARTS as $part => $kind ) {
-
-	if( $kind !== 'set' )
-		continue;
 
 	foreach( Setup::available( $library, $part ) as $set ) {
 
@@ -4492,17 +4603,16 @@ foreach( Setup::PARTS as $part => $kind ) {
 	}
 }
 
-check( 'no scale of a shipped set stands still: the least and the most of every ladder differ'. ( $flatLadders === [] ? '' : ' - '. implode( ', ', array_slice( $flatLadders, 0, 4 ) ) ), $flatLadders === [] );
+check( 'no scale of a shipped template stands still, a frame\'s included: the least and the most of every ladder differ'. ( $flatLadders === [] ? '' : ' - '. implode( ', ', array_slice( $flatLadders, 0, 4 ) ) ), $flatLadders === [] );
 
 /*	The five knobs of the section and the card: the text size of the title and of the subtitle of a section and of a card, and the rule under the title of
-	a section. Every content set declares each as a ladder of five, answers to it, and points the name Nino.css reads at the ladder. The middle
+	a section. Every section and every card set declares its own as a ladder of five, answers to it, and points the name Nino.css reads at the ladder. The middle
 	is what the page was: the number the kernel has, read from its Nino.css here - and the same steps of the number it has from 768px where it
 	changes there, as it does for a card title - and for the rule none. A scale rises from step to step; the rule never falls. The measure of
 	what the page does is the Playwright pass's	*/
 $groupKnobs = [
-	'section-title' => '--section-title-scale', 'section-subtitle' => '--section-subtitle-scale',
-	'card-title' => '--card-title-scale', 'card-subtitle' => '--card-subtitle-scale',
-	'section-line' => '--section-line',
+	'section'	=> [ 'title' => '--section-title-scale', 'subtitle' => '--section-subtitle-scale', 'rule' => '--section-line' ],
+	'card'		=> [ 'title' => '--card-title-scale', 'subtitle' => '--card-subtitle-scale' ],
 ];
 
 // What a value of a ladder comes to: a number, a length, or a factor times a fraction - calc(.8 * 5 / 6)
@@ -4522,63 +4632,73 @@ if( $ninoCss === '' )
 
 $newLadderProblems = [];
 
-foreach( Setup::available( $library, 'content' ) as $set ) {
+foreach( $groupKnobs as $groupPart => $groupNames )
+	foreach( Setup::available( $library, $groupPart ) as $set ) {
 
-	$css 		= designPlain( (string) file_get_contents( Setup::file( $library, 'content', $set ) ) );
-	$ladders = Setup::ladders( $library, 'content', $set );
-	$base 		= designDeclarations( designBlock( $css, ':root {' ) );
-	$wide 		= designDeclarations( designBlock( designBlock( $css, '@media (min-width: 768px) {' ), ':root {' ) );
+		$css 		= designPlain( (string) file_get_contents( Setup::file( $library, $groupPart, $set ) ) );
+		$ladders = Setup::ladders( $library, $groupPart, $set );
+		$base 		= designDeclarations( designBlock( $css, ':root {' ) );
+		$wide 		= designDeclarations( designBlock( designBlock( $css, '@media (min-width: 768px) {' ), ':root {' ) );
 
-	foreach( $groupKnobs as $knob => $name ) {
+		foreach( $groupNames as $knob => $name ) {
 
-		$values = array_map( static fn( string $word ): ?string => $base['--content-'. $knob. '--'. $word] ?? null, Setup::STEPS );
+			$label	= $groupPart. '/'. $set. ': '. $knob;
+			$values = array_map( static fn( string $word ): ?string => $base['--'. $groupPart. '-'. $knob. '--'. $word] ?? null, Setup::STEPS );
 
-		if( ( $ladders[$knob][0] ?? null ) !== $knob || in_array( null, $values, true ) === true ) {
-			$newLadderProblems[] = $set. ': '. $knob. ' is not a ladder of five';
-			continue;
+			if( ( $ladders[$knob][0] ?? null ) !== $knob || in_array( null, $values, true ) === true ) {
+				$newLadderProblems[] = $label. ' is not a ladder of five';
+				continue;
+			}
+
+			$numbers = array_map( $evaluate, $values );
+
+			if( $ninoCss !== '' && abs( $numbers[2] - $kernelNumber( $name, false ) ) > 1e-9 )
+				$newLadderProblems[] = $label. ': the middle is '. $values[2]. ', not the kernel\'s '. ( $ninoRootDecls[$name] ?? '' );
+
+			for( $at = 1; $at < 5; $at++ )
+				if( $numbers[$at] < $numbers[$at - 1] - 1e-9 || ( $knob !== 'rule' && $numbers[$at] < $numbers[$at - 1] + 1e-9 ) )
+					$newLadderProblems[] = $label. ' does not rise at '. Setup::STEPS[$at];
+
+			if( $numbers[4] <= $numbers[0] )
+				$newLadderProblems[] = $label. ' ends where it starts';
+
+			// ...at the ladder of the knob, or at an aspect of it that the set declares beside it and reads in its place
+			if( preg_match( '/'. preg_quote( $name, '/' ). '\s*:\s*var\(--'. $groupPart. '-([a-z0-9-]+)\)\s*;/', $css, $pointed ) !== 1 || in_array( $pointed[1], $ladders[$knob], true ) === false )
+				$newLadderProblems[] = $label. ': '. $name. ' is not pointed at the ladder';
+
+			// Nino.css changes the number at 768px, and so does the ladder: the same steps of the number it has from there
+			if( $ninoCss !== '' && abs( $kernelNumber( $name, true ) - $kernelNumber( $name, false ) ) > 1e-9 )
+				foreach( Setup::STEPS as $at => $word ) {
+
+					$large = $evaluate( (string) ( $wide['--'. $groupPart. '-'. $knob. '--'. $word] ?? '0' ) );
+
+					if( $numbers[$at] <= 0 || abs( $large / $numbers[$at] - $kernelNumber( $name, true ) / $kernelNumber( $name, false ) ) > 1e-9 )
+						$newLadderProblems[] = $label. ' is not the same step of the kernel\'s number from 768px at '. $word;
+				}
 		}
 
-		$numbers = array_map( $evaluate, $values );
-
-		if( $ninoCss !== '' && abs( $numbers[2] - $kernelNumber( $name, false ) ) > 1e-9 )
-			$newLadderProblems[] = $set. ': the middle of '. $knob. ' is '. $values[2]. ', not the kernel\'s '. ( $ninoRootDecls[$name] ?? '' );
-
-		for( $at = 1; $at < 5; $at++ )
-			if( $numbers[$at] < $numbers[$at - 1] - 1e-9 || ( $knob !== 'section-line' && $numbers[$at] < $numbers[$at - 1] + 1e-9 ) )
-				$newLadderProblems[] = $set. ': '. $knob. ' does not rise at '. Setup::STEPS[$at];
-
-		if( $numbers[4] <= $numbers[0] )
-			$newLadderProblems[] = $set. ': '. $knob. ' ends where it starts';
-
-		// ...at the ladder of the knob, or at an aspect of it that the set declares beside it and reads in its place
-		if( preg_match( '/'. preg_quote( $name, '/' ). '\s*:\s*var\(--content-([a-z0-9-]+)\)\s*;/', $css, $pointed ) !== 1 || in_array( $pointed[1], $ladders[$knob], true ) === false )
-			$newLadderProblems[] = $set. ': '. $name. ' is not pointed at the ladder';
-
-		// Nino.css changes the number at 768px, and so does the ladder: the same steps of the number it has from there
-		if( $ninoCss !== '' && abs( $kernelNumber( $name, true ) - $kernelNumber( $name, false ) ) > 1e-9 )
-			foreach( Setup::STEPS as $at => $word ) {
-
-				$large = $evaluate( (string) ( $wide['--content-'. $knob. '--'. $word] ?? '0' ) );
-
-				if( $numbers[$at] <= 0 || abs( $large / $numbers[$at] - $kernelNumber( $name, true ) / $kernelNumber( $name, false ) ) > 1e-9 )
-					$newLadderProblems[] = $set. ': '. $knob. ' is not the same step of the kernel\'s number from 768px at '. $word;
-			}
+		// The rule is drawn by Nino.css as thick as --section-line says and by nothing else: a set that gives the title a border of its own would draw it twice, or hold the thickness to a floor the ladder does not know
+		if( $groupPart === 'section' && preg_match( '/\.nino-section-title\b[^{}]*\{[^}]*border/', $css ) === 1 )
+			$newLadderProblems[] = $groupPart. '/'. $set. ': draws a border on the section title itself';
 	}
 
-	// The rule is drawn by Nino.css as thick as --section-line says and by nothing else: a set that gives the title a border of its own would draw it twice, or hold the thickness to a floor the ladder does not know
-	if( preg_match( '/\.nino-section-title\b[^{}]*\{[^}]*border/', $css ) === 1 )
-		$newLadderProblems[] = $set. ': draws a border on the section title itself';
-}
-
-check( 'every content set declares the five knobs of the section and the card as ladders of five it answers to and points the names Nino.css reads at - the text size of the title and of the subtitle of a section and of a card, the rule under a section title - the middle the number the kernel has, a scale rising, the rule never falling'
+check( 'every section set and every card set declares the five knobs of the two as ladders of five it answers to and points the names Nino.css reads at - the text size of the title and of the subtitle of a section and of a card, the rule under a section title - the middle the number the kernel has, a scale rising, the rule never falling, the same steps of the kernel\'s number from 768px where it changes there, and no border of the title\'s own'
 	. ( $newLadderProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $newLadderProblems, 0, 4 ) ) ), $newLadderProblems === [] );
 
 $defaultSheet 	= Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library );
 $defaultLines 	= designPlain( substr( $defaultSheet, (int) strrpos( $defaultSheet, 'the knob positions' ) ) );
+$ladderCount		= 0;
 
-check( 'at the defaults the sheet selects the middle of the five as it does of the others: a line for each ladder the default content set publishes, the five of the section and the card among them',
-	preg_match_all( '/^\t--content-[a-z-]+: var\(--content-[a-z-]+--default\);$/m', $defaultLines ) === array_sum( array_map( 'count', Setup::ladders( $library, 'content', $defaultSets['content'] ) ) )
-	&& count( array_filter( array_keys( $groupKnobs ), static fn( string $knob ): bool => str_contains( $defaultLines, "\t--content-". $knob. ': var(--content-'. $knob. "--default);\n" ) === true ) ) === count( $groupKnobs ) );
+foreach( Setup::PARTS as $part => $kind )
+	$ladderCount += array_sum( array_map( 'count', Setup::ladders( $library, $part, $defaultSets[$part] ) ) );
+
+$partsPattern = implode( '|', array_keys( Setup::PARTS ) );
+
+check( 'at the defaults the sheet selects the middle of every ladder: a line for each ladder the default sets of the seven parts publish - the thirty-seven knobs and the aspects beside some of them - each pointing at its own default step, the five of the section and the card among them',
+	preg_match_all( '/^\t--((?:'. $partsPattern. ')-[a-z0-9-]+): var\(--\1--default\);$/m', $defaultLines ) === $ladderCount && $ladderCount >= 37
+	&& count( array_filter( $groupKnobs, static function( array $names, string $groupPart ) use ( $defaultLines ): bool {
+		return array_filter( array_keys( $names ), static fn( string $knob ): bool => str_contains( $defaultLines, "\t--". $groupPart. '-'. $knob. ': var(--'. $groupPart. '-'. $knob. "--default);\n" ) === false ) === [];
+	}, ARRAY_FILTER_USE_BOTH ) ) === count( $groupKnobs ) );
 echo "\nThe preview: a selection, before it is one\n";
 
 /*	The framework's own halves are read out of the checkout and bundled, and a
@@ -4644,16 +4764,34 @@ check( 'the specimen brings no frame of its own - render() puts the chosen ones 
 /*	One page, and an anchor on it for each place the panel looks at: an element
 	with an id, which the frame scrolls to when a tab is opened and after every change
 	made in it - the top of the page, the type, the first section, the buttons, the
-	fields and tables, the colours. Which tab or object looks at which is the script's
+	tables, the lists, the colours. Which tab or object looks at which is the script's
 	(ANCHORS and OBJECT_ANCHORS in admin.js, which design-js-smoke.js reads back and
 	holds to the ids of this page)	*/
-preg_match_all( '/\sid="(global|type|content|buttons|components|colours)"/', $specimen, $anchors );
+preg_match_all( '/\sid="(global|type|content|buttons|tables|lists|colours)"/', $specimen, $anchors );
 
 $anchored = array_count_values( $anchors[1] );
 ksort( $anchored );
 
-check( 'it is one page with an anchor for each of those places: global, type, content, buttons, components and colours, each exactly once',
-	$anchored === [ 'buttons' => 1, 'colours' => 1, 'components' => 1, 'content' => 1, 'global' => 1, 'type' => 1 ] );
+check( 'it is one page with an anchor for each of those places: global, type, content, buttons, tables, lists and colours, each exactly once',
+	$anchored === [ 'buttons' => 1, 'colours' => 1, 'content' => 1, 'global' => 1, 'lists' => 1, 'tables' => 1, 'type' => 1 ] );
+
+/*	...and one for every place the script names, whatever table it names it in: the anchor of a tab (ANCHORS), of an object (OBJECT_ANCHORS) and of a control that
+	stands elsewhere than its object (CONTROL_ANCHORS), read out of the script itself - a table that sent the frame to an id the page does not have would scroll nowhere, and say nothing	*/
+$scriptAnchors = [];
+
+foreach( [ 'ANCHORS', 'OBJECT_ANCHORS', 'CONTROL_ANCHORS' ] as $anchorTable )
+	if( preg_match( '/\b'. $anchorTable. '\s*:\s*\{([^}]*)\}/', $panelScript, $tableFound ) === 1 ) {
+
+		preg_match_all( "/:\s*'([a-z]+)'/", $tableFound[1], $tableTargets );
+
+		$scriptAnchors = array_merge( $scriptAnchors, $tableTargets[1] );
+	}
+
+$scriptAnchors	= array_values( array_unique( $scriptAnchors ) );
+$anchorless			= array_values( array_filter( $scriptAnchors, static fn( string $id ): bool => substr_count( $specimen, ' id="'. $id. '"' ) !== 1 ) );
+
+check( 'the specimen has an element for every anchor the script of the panel looks at, once each - the tabs\', the objects\' and the controls\''. ( $anchorless === [] ? '' : ' - none for '. implode( ', ', $anchorless ) ),
+	$anchorless === [] && count( $scriptAnchors ) >= 8 && in_array( 'lists', $scriptAnchors, true ) === true && in_array( 'tables', $scriptAnchors, true ) === true && in_array( 'footer', $scriptAnchors, true ) === true );
 /*	...and one more, which no tab has: where a change of a card is looked at (OBJECT_ANCHORS in
 	admin.js, which design-js-smoke.js holds to the ids of this page)	*/
 check( 'the Cards section carries id="cards", once, with an accessible name of its own - and it comes after the hero, which is #content, and before the grounds, which are #colours',
@@ -5028,11 +5166,11 @@ check( 'previewing writes neither the setup nor the stylesheet',
 
 // Every key of the model travels the way it does in a save, and is shown without being written: the sets stand off the defaults, and a knob of each of two of them - the first one it answers to that is a scale, which has the two ends - at an end
 $endKnob = static fn( string $part ): string => array_values( array_filter( Setup::knobs( $library, $part, $richParts[$part] ), static fn( string $knob ): bool => Setup::kind( $part, $knob ) === 'scale' ) )[0] ?? '';
-$endKnobs = [ 'content' => $endKnob( 'content' ), 'buttons' => $endKnob( 'buttons' ) ];
+$endKnobs = [ 'section' => $endKnob( 'section' ), 'buttons' => $endKnob( 'buttons' ), 'header' => $endKnob( 'header' ) ];
 
 [ $status, $everything ] = callDesignAction( $appData, 'apiPreview', [
-	'parts' => [ 'content' => $richParts['content'], 'buttons' => $richParts['buttons'], 'components' => 'nope' ],
-	'knobs' => [ 'content' => [ $endKnobs['content'] => 2 ], 'buttons' => [ $endKnobs['buttons'] => -2 ] ],
+	'parts' => [ 'section' => $richParts['section'], 'buttons' => $richParts['buttons'], 'header' => $richParts['header'], 'tables' => 'nope' ],
+	'knobs' => [ 'section' => [ $endKnobs['section'] => 2 ], 'buttons' => [ $endKnobs['buttons'] => -2 ], 'header' => [ $endKnobs['header'] => 2 ] ],
 	'size' => 0, 'width' => -2,
 	'motion' => [ 'effect' => 'blur', 'strength' => 'hard', 'speed' => 'fast' ],
 	'fonts' => [ 'text' => [ 'family' => 'system-serif', 'size' => '1.125' ] ],
@@ -5040,17 +5178,18 @@ $endKnobs = [ 'content' => $endKnob( 'content' ), 'buttons' => $endKnob( 'button
 ] );
 $shownCss = (string) ( $everything['css'] ?? '' );
 
-check( 'a preview carries every key of the model the way a save does: the templates, the knobs, the width, the animation, the fonts and the mode', $status === 200
-	&& $endKnobs['content'] !== '' && $endKnobs['buttons'] !== ''
-	&& str_contains( $shownCss, 'content: '. $richParts['content'] ) === true && str_contains( $shownCss, 'buttons: '. $richParts['buttons'] ) === true
-	&& str_contains( $shownCss, '--content-'. $endKnobs['content']. ': var(--content-'. $endKnobs['content']. '--most);' ) === true
+check( 'a preview carries every key of the model the way a save does: the templates, the knobs - a frame\'s among them -, the width, the animation, the fonts and the mode', $status === 200
+	&& $endKnobs['section'] !== '' && $endKnobs['buttons'] !== '' && $endKnobs['header'] !== ''
+	&& str_contains( $shownCss, 'section: '. $richParts['section'] ) === true && str_contains( $shownCss, 'buttons: '. $richParts['buttons'] ) === true && str_contains( $shownCss, 'header: '. $richParts['header'] ) === true
+	&& str_contains( $shownCss, '--section-'. $endKnobs['section']. ': var(--section-'. $endKnobs['section']. '--most);' ) === true
 	&& str_contains( $shownCss, '--buttons-'. $endKnobs['buttons']. ': var(--buttons-'. $endKnobs['buttons']. '--least);' ) === true
+	&& str_contains( $shownCss, '--header-'. $endKnobs['header']. ': var(--header-'. $endKnobs['header']. '--most);' ) === true
 	&& str_contains( $shownCss, '--grid-max-width: '. Setup::WIDTHS[-2][0]. ';' ) === true && str_contains( $shownCss, '--vpa-f-hidden: '. Setup::EFFECTS['blur']['hard']['--vpa-f-hidden']. ';' ) === true
 	&& str_contains( $shownCss, '--vpa-duration: '. Setup::SPEEDS['fast']. ';' ) === true
 	&& str_contains( $shownCss, '--fontfamily-text: ui-serif' ) === true && str_contains( $shownCss, '--font-text-size: 1.125rem;' ) === true
 	&& str_contains( $shownCss, 'color-scheme: dark;' ) === true );
 check( '...a template the library does not have is named in the answer and the first one is shown, and the stored setup and the stylesheet are still what they were',
-	count( (array) ( $everything['notes'] ?? [] ) ) === 1 && ( $everything['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $everything['notes'][0]['params'][1] ?? '' ) === 'nope' && str_contains( $shownCss, 'components: '. $defaultSets['components'] ) === true
+	count( (array) ( $everything['notes'] ?? [] ) ) === 1 && ( $everything['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $everything['notes'][0]['params'][1] ?? '' ) === 'nope' && str_contains( $shownCss, 'tables: '. $defaultSets['tables'] ) === true
 	&& Setup::read( $appData, $library ) === $stored && \Nino\Filesystem::getFileContent( $appData, Compiler::TARGET, '' ) === $sheet );
 
 /*	The palette travels the same three ways the structure does: out in the
@@ -5485,7 +5624,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		&& array_filter( array_keys( $shippedFiles ), static fn( string $slug ): bool => Themes::isShipped( $library, $slug ) === false ) === []
 		&& Themes::isShipped( $library, 'mein-theme' ) === false && Themes::isShipped( $library, '../x' ) === false );
 
-	$own = static fn( string $name, string $description = '', array $css = [] ): array => Themes::record( $name, $description, Setup::normalize( $appData, [ 'parts' => [ 'content' => $richParts['content'] ], 'knobs' => [ 'content' => [ 'corners' => 1 ] ] ], $library ), $css[0] ?? '', $css[1] ?? [] );
+	$own = static fn( string $name, string $description = '', array $css = [] ): array => Themes::record( $name, $description, Setup::normalize( $appData, [ 'parts' => [ 'section' => $richParts['section'] ], 'knobs' => [ 'section' => [ 'title' => 1 ] ] ], $library ), $css[0] ?? '', $css[1] ?? [] );
 
 	\Nino\Filesystem::removeDir( $themesDir );
 	check( 'before the project has one, there is no theme of its own - and no directory for them',
@@ -5581,7 +5720,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		&& Themes::fromJson( '{"format":1,"name":"X","stray":true}' ) === [ 'format' => 1, 'name' => 'X', 'stray' => true ] );
 
 	/*	The themes the feature ships, every file of library/themes/ held to what a theme is and never to what these happen to be: a file of
-		the shape, a name and a description in both languages, the sets of its five parts in the library, every position inside its range
+		the shape, a name and a description in both languages, the sets of its seven parts in the library, every position of every one of the thirty-seven knobs inside its range
 		as the file writes it - not as normalising held it there - a css that is not refused, and a setup that is its own normalisation: it
 		reads without a note and takes the same snapshot back	*/
 	$themeProblems = [];
@@ -5654,7 +5793,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$themeProblems[] = $slug. ' - '. implode( '; ', $problems );
 	}
 
-	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its five parts in the library, every position inside its range as written, a css that is not refused - and its setup is complete and its own normalisation, with no note and no palette: the brand colour is the project\'s'
+	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its seven parts in the library, every position of the thirty-seven knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation, with no note and no palette: the brand colour is the project\'s'
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
 		Themes::setup( $shippedRaw[$shippedFirst] ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
@@ -5663,29 +5802,29 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	$notes = [];
 	$plainSheet = Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library, $notes );
 
-	check( 'compiled with no css, a setup writes no section for it: still twelve, and the sheet is the delivered one - the header says no theme',
-		preg_match_all( '/\/\* ==== (\d+)\. /', $plainSheet, $sections ) === 12 && $sections[1] === array_map( 'strval', range( 1, 12 ) )
+	check( 'compiled with no css, a setup writes no section for it: still fourteen, and the sheet is the delivered one - the header says no theme',
+		preg_match_all( '/\/\* ==== (\d+)\. /', $plainSheet, $sections ) === 14 && $sections[1] === array_map( 'strval', range( 1, 14 ) )
 		&& str_contains( $plainSheet, " *\ttheme      -\n" ) === true && str_contains( $plainSheet, 'the theme ====' ) === false
 		&& Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => "  \n\t\n" ], $library ), $library ) === $plainSheet );
 
 	$customCss = ".a { color: inherit; }\n.b { margin: 0 }\n";
 	$sheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => $customCss. "\n\n" ], $library ), $library );
 
-	check( 'with a css there is a thirteenth section, the last one, after the knob positions - and the css stands in it as it was typed, byte for byte, with one line break at the end',
-		preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $sheet, $sections2, PREG_SET_ORDER ) === 13 && $sections2[11][2] === 'the knob positions' && $sections2[12][1] === '13' && $sections2[12][2] === 'the theme'
-		&& str_ends_with( $sheet, "/* ==== 13. the theme ==== */\n". $customCss ) === true && substr_count( $sheet, '.a { color: inherit; }' ) === 1
-		&& str_ends_with( Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => "\n\n  .x {\n\t}  " ], $library ), $library ), "/* ==== 13. the theme ==== */\n\n\n  .x {\n\t}  \n" ) === true );
+	check( 'with a css there is a fifteenth section, the last one, after the knob positions - and the css stands in it as it was typed, byte for byte, with one line break at the end',
+		preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $sheet, $sections2, PREG_SET_ORDER ) === 15 && $sections2[13][2] === 'the knob positions' && $sections2[14][1] === '15' && $sections2[14][2] === 'the theme'
+		&& str_ends_with( $sheet, "/* ==== 15. the theme ==== */\n". $customCss ) === true && substr_count( $sheet, '.a { color: inherit; }' ) === 1
+		&& str_ends_with( Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => "\n\n  .x {\n\t}  " ], $library ), $library ), "/* ==== 15. the theme ==== */\n\n\n  .x {\n\t}  \n" ) === true );
 	check( '...and nothing before it changed: the body up to it is the body of the sheet with none, byte for byte',
-		str_starts_with( designBody( $sheet ), rtrim( designBody( $plainSheet ), "\n" ). "\n\n/* ==== 13. the theme ==== */\n" ) === true );
+		str_starts_with( designBody( $sheet ), rtrim( designBody( $plainSheet ), "\n" ). "\n\n/* ==== 15. the theme ==== */\n" ) === true );
 	check( 'the header names the theme the setup was taken from by its slug, and a dash for none',
 		str_contains( Compiler::compile( $appData, Setup::normalize( $appData, [ 'theme' => $shippedFirst ], $library ), $library ), " *\ttheme      ". $shippedFirst. "\n" ) === true
 		&& str_contains( $sheet, " *\ttheme      -\n" ) === true && preg_match( '/^ \*\tanimation  .*\n \*\ttheme      /m', $sheet ) === 1 );
 
-	$rung = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'content' => $defaultSets['content'] ], 'knobs' => [ 'content' => [ 'hero-title' => 1 ] ], 'css' => ':root { --content-hero-title--more: 7rem; }' ], $library ), $library );
+	$rung = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'section' => $defaultSets['section'] ], 'knobs' => [ 'section' => [ 'hero-title' => 1 ] ], 'css' => ':root { --section-hero-title--more: 7rem; }' ], $library ), $library );
 
 	check( 'a css that declares a rung of a ladder again stands after the line that selects it, so it wins: the knob keeps choosing, and the rung it chooses is the theme\'s - the one way a theme moves a ladder',
-		( $selecting = (int) strpos( $rung, "\t--content-hero-title: var(--content-hero-title--more);" ) ) > 0 && ( $declared = (int) strrpos( $rung, '--content-hero-title--more: 7rem;' ) ) > $selecting
-		&& $declared > (int) strpos( $rung, 'the knob positions' ) && substr_count( $rung, '--content-hero-title--more:' ) >= 2 );
+		( $selecting = (int) strpos( $rung, "\t--section-hero-title: var(--section-hero-title--more);" ) ) > 0 && ( $declared = (int) strrpos( $rung, '--section-hero-title--more: 7rem;' ) ) > $selecting
+		&& $declared > (int) strpos( $rung, 'the knob positions' ) && substr_count( $rung, '--section-hero-title--more:' ) >= 2 );
 
 	$withNone 	= \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [], $library ), $library );
 	$withCss 		= \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => 'a {}' ], $library ), $library );
@@ -5714,7 +5853,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	$selection = [
 		'parts' 		=> $richParts,
-		'knobs' 		=> [ 'content' => [ 'card-space' => 1 ], 'buttons' => [ 'size' => -1 ] ],
+		'knobs' 		=> [ 'card' => [ 'space' => 1 ], 'buttons' => [ 'size' => -1 ] ],
 		'size' 			=> -1,
 		'width' 		=> 1,
 		'radius' 		=> 1,
@@ -5795,7 +5934,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	[ $status, $previewed ] = callDesignAction( $appData, 'apiPreview', [ 'css' => ".preview-probe { color: inherit; }\r\n", 'full' => false ] + $selection );
 
 	check( 'the preview of a css that is fine has it in the sheet it answers, as the last section after the knob positions - and still writes nothing',
-		$status === 200 && str_ends_with( $previewed['css'], "/* ==== 13. the theme ==== */\n.preview-probe { color: inherit; }\n" ) === true
+		$status === 200 && str_ends_with( $previewed['css'], "/* ==== 15. the theme ==== */\n.preview-probe { color: inherit; }\n" ) === true
 		&& (int) strpos( $previewed['css'], 'the theme ====' ) > (int) strpos( $previewed['css'], 'the knob positions' ) && $setupBytes() === $before );
 	ninoWarnings();
 	check( '...and a css that is no string is no css: the same answer as with none, and no warning',
@@ -5824,7 +5963,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	$inkySetup['fonts']['text']['family'] = 'nowhere-sans';
 	$inkySetup['fonts']['button']['family'] = 'inter';
 	$inkySetup['fonts']['code']['family'] = 'system-mono';
-	$inkySetup['parts']['content'] = 'no-such-set';
+	$inkySetup['parts']['section'] = 'no-such-set';
 	Themes::write( $appData, 'inky', Themes::record( 'Inky', 'Faces to install', $inkySetup, '' ) );
 	[ $status, $inky ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'inky' ] );
 
@@ -5832,7 +5971,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && $inky['setup']['fonts']['title']['family'] === 'inter' && $inky['setup']['fonts']['text']['family'] === 'nowhere-sans' && $inky['setup']['fonts']['button']['family'] === 'inter'
 		&& $inky['setup']['fonts']['subtitle']['family'] === 'open-sans' && $inky['setup']['fonts']['code']['family'] === ''
 		&& $inky['missing'] === [ [ 'slug' => 'inter', 'name' => 'inter', 'inList' => false ], [ 'slug' => 'nowhere-sans', 'name' => 'nowhere-sans', 'inList' => false ] ]
-		&& $inky['setup']['parts']['content'] === $defaultSets['content'] && count( $inky['notes'] ) === 1 && ( $inky['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $inky['notes'][0]['params'][1] ?? '' ) === 'no-such-set' );
+		&& $inky['setup']['parts']['section'] === $defaultSets['section'] && count( $inky['notes'] ) === 1 && ( $inky['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $inky['notes'][0]['params'][1] ?? '' ) === 'no-such-set' );
 
 	\Nino\Filesystem::putFileContent( $appData, Webfonts::CACHE, [ 'fetched' => time(), 'url' => Webfonts::url( $appData ), 'families' => [ $entryInter ] ] );
 	$inkyListed = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'inky' ] )[1];
@@ -5855,7 +5994,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	check( 'design/list\'s record of the active theme has \'\' where a family is not installed here - what the screen takes over on a load that installs nothing - and the face of the role where the file names no slug at all, so that the record and the screen agree once the panel is opened again',
 		( $inkyList['active']['slug'] ?? '' ) === 'inky' && $inkyList['active']['setup']['fonts']['title']['family'] === '' && $inkyList['active']['setup']['fonts']['text']['family'] === ''
 		&& $inkyList['active']['setup']['fonts']['button']['family'] === '' && $inkyList['active']['setup']['fonts']['subtitle']['family'] === 'open-sans' && $inkyList['active']['setup']['fonts']['code']['family'] === ''
-		&& $inkyList['active']['setup']['parts']['content'] === $defaultSets['content'] && $inkyList['theme'] === 'inky' );
+		&& $inkyList['active']['setup']['parts']['section'] === $defaultSets['section'] && $inkyList['theme'] === 'inky' );
 
 	Themes::write( $appData, 'edited', Themes::record( 'Edited by hand', '', Setup::normalize( $appData, [], $library ), '@import "x.css";' ) );
 
@@ -5924,7 +6063,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 500 && $blocked === [ 'error' => 'could not write /data/themes/blocked.php' ] );
 
 	// Save
-	$changed = [ 'knobs' => [ 'content' => [ 'card-space' => 2 ], 'buttons' => [ 'size' => 1 ] ], 'css' => ".changed { margin: 0 }\n" ] + $selection;
+	$changed = [ 'knobs' => [ 'card' => [ 'space' => 2 ], 'buttons' => [ 'size' => 1 ] ], 'css' => ".changed { margin: 0 }\n" ] + $selection;
 	$changedSnapshot = Themes::snapshot( Setup::normalize( $appData, $changed, $library ) );
 	[ $status, $resaved ] = callDesignAction( $appData, 'apiThemeSave', [ 'slug' => 'mein-theme', 'name' => ' Neuer Name ', 'description' => 'Neue Beschreibung' ] + $changed );
 	$mine = Themes::read( $appData, $library, 'mein-theme' ) ?? [];
@@ -6050,7 +6189,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && array_keys( $imported ) === [ 'slug', 'themes' ] && $imported['slug'] === 'eingespielt' && $importedFile['name'] === 'Eingespielt' && $importedFile['name-de'] === 'Eingespielt DE'
 		&& $importedFile['description-de'] === $shippedOne['description-de'] && $importedFile['presets'] === [] && $importedFile['css'] === Themes::css( $shippedOne )
 		&& $importedFile['setup']['parts']['header'] === $defaultSets['header'] && $importedFile['setup']['fonts']['title']['family'] === 'inter' && array_keys( $importedFile['setup'] ) === $choosesShipped
-		&& $importedFile['setup']['parts']['content'] === Themes::setup( $shippedOne )['parts']['content'] && in_array( 'eingespielt', array_column( $imported['themes'], 'slug' ), true ) === true
+		&& $importedFile['setup']['parts']['section'] === Themes::setup( $shippedOne )['parts']['section'] && in_array( 'eingespielt', array_column( $imported['themes'], 'slug' ), true ) === true
 		&& $setupBytes() === $before && Admin::log( 'design/theme/import', [ 'json' => json_encode( $file ) ] ) === 'Import Design theme eingespielt' );
 
 	// A file that names colours keeps them as a theme of the project, normalised; one that names none keeps none - the rule is the file's and not the feature's
@@ -6334,7 +6473,7 @@ foreach( [ 'en_US' => $textEn, 'de_DE' => $textDe ] as $wordLocale => $wordKeys 
 			$missingWords[] = $wordLocale. ' '. $word;
 
 check( 'the texts have a word for everything the model draws by name ('. count( $wanted ). ' of them, in two languages): a label and a note for every knob, the three words of a choice only, and for the palette a label and a note for every knob and one word per position for a choice'
-	. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', array_slice( $missingWords, 0, 6 ) ) ), $missingWords === [] && count( $choiceKnobs ) === 2 );
+	. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', array_slice( $missingWords, 0, 6 ) ) ), $missingWords === [] && count( $choiceKnobs ) === 7 );
 
 // ...and nothing else: a key is either one of those, or a literal the script names, or the one page title the server renders
 $accounted = array_merge( $wanted, array_values( array_unique( $scriptKeys[1] ) ), [ 'preview/page' ] );
@@ -6374,9 +6513,8 @@ check( 'the note under a scale says which way it goes, with U+2194 between the t
 	(/_admin/design/colour/<knob>/<n>). Only the first letter of a word is the point of it: nothing else of the word
 	changed, and the options of a select stay as they are, in lower case - the mode of the palette, as the Colours tab keeps
 	its select lower case and capitalises its choices. The words of a scale are gone: it shows numbers. And the one middle
-	word of the model before - Normal in German and Default in English, for every knob but the stripes of a table and the
-	labels of a form - has nothing left to check: the only knobs that still have words are those two, which have a middle
-	of their own	*/
+	word of the model before - Normal in German and Default in English, for every knob but the choices - has nothing left to
+	check: the only knobs that still have words are the seven choices, each with a middle of its own	*/
 $initialOf	= static fn( string $word ): string => mb_substr( $word, 0, 1 );
 $isCapital	= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtoupper( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtolower( $initialOf( $word ) );
 $isLower		= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtolower( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtoupper( $initialOf( $word ) );
@@ -6395,9 +6533,9 @@ foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
 				$uncapital[] = $stepLocale. ' '. $part. '/'. $knob. '/'. Setup::words( 'choice' )[$at]. ' "'. $word. '"';
 		}
 
-check( 'every word of a choice begins with a capital letter, in both languages: two knobs of three words, six in each'
+check( 'every word of a choice begins with a capital letter, in both languages: seven knobs of three words, twenty-one in each'
 	. ( $uncapital === [] ? '' : ' - not so for '. implode( ', ', array_slice( $uncapital, 0, 4 ) ) ),
-	$uncapital === [] && count( $stepWords['en_US'] ) === 6 && count( $stepWords['de_DE'] ) === 6 );
+	$uncapital === [] && count( $stepWords['en_US'] ) === 21 && count( $stepWords['de_DE'] ) === 21 );
 
 $scaleWords = [];
 
@@ -6409,8 +6547,8 @@ foreach( Setup::KNOBS as $part => $kinds )
 					if( $panelWord( 'knob/'. $part. '/'. $knob. '/'. $step, $stepLocale ) !== '' )
 						$scaleWords[] = $stepLocale. ' '. $part. '/'. $knob. '/'. $step;
 
-check( 'a scale has no word for a position in either language: twenty-one knobs with a name and a note, and none of the 63 words of three steps left - a strip of five shows -2 to +2'
-	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 21 );
+check( 'a scale has no word for a position in either language: thirty knobs with a name and a note, and none of the 150 words of five steps left - a strip of five shows -2 to +2'
+	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 30 );
 
 /*	The Colours tab: the choices have names, each capitalised, and the three scales say nothing of their positions - a strip of five shows
 	numbers, the 0 the framework's own. The names the server publishes for the choices (Colours::choices(), the last fallback of

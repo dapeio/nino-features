@@ -1,0 +1,133 @@
+/*	@name			Box
+ *	@description	Cards as a hairline box with the picture to its edge.
+ *	@description-de	Karten als Haarlinien-Kasten mit dem Bild bis an den Rand.
+ *
+ *	@knob	title		Size of the title of a card
+ *	@knob	subtitle	Size of the subtitle of a card
+ *	@knob	space		Space inside a card and between its parts
+ *	@knob	border		Line round a card
+ *	@knob	shadow		Shadow of a card
+ *	@knob	tone		Colour the shadow is drawn in
+ *	@knob	hover		What a card does under the pointer
+ *
+ *	The card is a box: a hairline round it, the picture running to its edge,
+ *	and between two cards the space that is inside one, so that a grid reads as
+ *	a table of boxes and not as cards floating on a ground.
+ *
+ *	Every ladder is Nino's, value for value, so that a switch of template
+ *	moves no size: how much of a shadow a box casts is a position of a knob and
+ *	no part of this construction. The border knob is the line of the box and the
+ *	shadow knob the shadow it casts, which Nino.css reads by the name
+ *	--shadow-card; the box rises under the pointer with that shadow.
+ *
+ *	What the construction reads of them is its own: the padding of a card is
+ *	the card-space on every side, where Nino's is half of it above and below,
+ *	the space under a title, a subtitle and a text is half of it, and the gap
+ *	between two cards the whole of it. The section half of this set, which is
+ *	the section family's Box, is the reading column of the bands.
+ */
+
+/*	The ladders are Nino's, value for value - card regular says what each of them is	*/
+:root {
+	--card-title--least: 	calc(.8 * 5 / 6);
+	--card-title--less: 	calc(.9 * 5 / 6);
+	--card-title--default: 	calc(5 / 6);
+	--card-title--more: 	calc(1.15 * 5 / 6);
+	--card-title--most: 	calc(1.3 * 5 / 6);
+
+	--card-subtitle--least: 	.85;
+	--card-subtitle--less: 		.92;
+	--card-subtitle--default: 	1;
+	--card-subtitle--more: 		1.1;
+	--card-subtitle--most: 		1.2;
+
+	--card-space--least: 		calc( var(--space-1) * .5 );
+	--card-space--less: 		var(--space-1);
+	--card-space--default: var(--space-2);
+	--card-space--more: 		var(--space-3);
+	--card-space--most: 		var(--space-4);
+
+	--card-border--least: 					0px;
+	--card-border--less: 					.5px;
+	--card-border--default: 				1px;
+	--card-border--more: 					2px;
+	--card-border--most: 					3px;
+
+	--card-shadow--least: 					none;
+	--card-shadow--less: 					none;
+	--card-shadow--default: 				none;
+	--card-shadow--more: 					0 .125rem .75rem var(--card-tone);
+	--card-shadow--most: 					0 .25rem 1.5rem var(--card-tone), 0 .0625rem .25rem var(--card-tone);
+
+	--card-tone--less: 			color-mix( in srgb, var(--color-text) 12%, transparent );
+	--card-tone--default: 	var(--nino-default-shadow);
+	--card-tone--more: 			color-mix( in srgb, var(--color-secondary) 30%, transparent );
+
+	--card-hover--less: 			none;
+	--card-hover--default: 		none;
+	--card-hover--more: 			0 -.25rem;
+
+	--card-hover-shadow--less: 			var(--shadow-card);
+	--card-hover-shadow--default: 	var(--shadow-card);
+	--card-hover-shadow--more: 			0 .25rem 1.5rem var(--card-tone), 0 .0625rem .25rem var(--card-tone);
+}
+
+@media (min-width: 768px) {
+	:root {
+		--card-title--least: 	calc(.8 * 25 / 32);
+		--card-title--less: 	calc(.9 * 25 / 32);
+		--card-title--default: 	calc(25 / 32);
+		--card-title--more: 	calc(1.15 * 25 / 32);
+		--card-title--most: 	calc(1.3 * 25 / 32);
+	}
+}
+
+:root {
+	--card-title-scale: var(--card-title);
+	--card-subtitle-scale: var(--card-subtitle);
+	--shadow-card: var(--card-shadow);
+}
+
+/* ---- cards ---- */
+
+.nino-card:where(:not(.nino-card--borderless)) {
+	border: var(--card-border) solid var(--color-border);
+	overflow: hidden;
+}
+
+/*	The picture runs to the edge of the box: a margin around it would be a
+	second frame inside the first	*/
+.nino-card-img {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border-radius: 0;
+}
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--card-space) * var(--whitespace-scale, 1) );
+}
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--card-space) / 2 * var(--whitespace-text, 1) );
+}
+
+/*	Cards side by side keep the padding of a card between them, so a grid
+	reads as a table of boxes rather than as cards floating on a ground	*/
+.nino-card-cols {
+	gap: calc( var(--card-space) * var(--whitespace-scale, 1) );
+}
+
+/*	The hover, as the ladder says it: the box rises and takes the shadow. Only for the card the pointer
+	can mean as a whole (.nino-card--linked), and only where the visitor has not asked for less motion.
+	The transition is the hover's own, so that the one a viewport animation has on the card is not
+	taken from it while it is at rest. A borderless card has no shadow to lift	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-card--linked:hover {
+		translate: var(--card-hover);
+		transition: translate .2s ease, box-shadow .2s ease;
+	}
+	.nino-card--linked:where(:not(.nino-card--borderless)):hover {
+		box-shadow: var(--card-hover-shadow);
+	}
+}

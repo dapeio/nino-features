@@ -1,0 +1,116 @@
+/*	@name			Ruled
+ *	@description	A hairline between the items, the marks in the ink of the ground, the numbers in a ring.
+ *	@description-de	Eine feine Linie zwischen den Einträgen, die Zeichen in der Tinte des Grundes, die Zahlen im Ring.
+ *
+ *	@knob	scale		Type size of a list
+ *	@knob	space		Space above and below an item
+ *	@knob	marker		The mark before an item of a check list and of a numbered list
+ *
+ *	A list read line by line, like the rows of a table: one hairline under each
+ *	item but the last, and the room round the words above and below them
+ *	instead of between the items. The marks have no colour of their own. The
+ *	glyph of a check list and the number of a numbered one are in the ink of the
+ *	ground the list stands on - so they are legible on every ground - and the
+ *	number stands in a ring of the same ink rather than on a disc. A list in
+ *	columns has no rows to rule and keeps the gaps Nino.css gives it.
+ *
+ *	The three ladders are the ones lists regular declares and say what they
+ *	are: the scale and the space as there, the space now the padding of a row
+ *	and no gap; the marker a choice of three - plain, the middle, which is this
+ *	set's ring and ink, and emphasised, the disc of the primary colour under
+ *	both - with the weight of the mark as its own ladder and for each kind of
+ *	list the ink and the ground as aspects of it. The number's ring is one
+ *	more, and it is this set's.
+ */
+
+:root {
+	--lists-scale--least: 		.8;
+	--lists-scale--less: 		.9;
+	--lists-scale--default: 	1;
+	--lists-scale--more: 		1.15;
+	--lists-scale--most: 		1.3;
+
+	/*	The padding above and below the words of an item: --space-1, as the cell of a table
+		has it, with the steps lists regular gives the gap	*/
+	--lists-space--least: 		calc( var(--space-1) * .4 );
+	--lists-space--less: 		calc( var(--space-1) * .7 );
+	--lists-space--default: 	var(--space-1);
+	--lists-space--more: 		calc( var(--space-1) * 1.5 );
+	--lists-space--most: 		calc( var(--space-1) * 2.2 );
+
+	--lists-marker--less: 		normal;
+	--lists-marker--default: 	bold;
+	--lists-marker--more: 		bold;
+
+	/*	The mark in the ink of the ground the list stands on; the emphasised one on a disc
+		of the primary colour, in the ink solved for it	*/
+	--lists-marker-check-ink--less: 		currentcolor;
+	--lists-marker-check-ink--default: 		var(--color-ink);
+	--lists-marker-check-ink--more: 		var(--color-primary-text);
+
+	--lists-marker-check-ground--less: 		transparent;
+	--lists-marker-check-ground--default: 	transparent;
+	--lists-marker-check-ground--more: 		var(--color-primary);
+
+	--lists-marker-check-box--less: 		auto;
+	--lists-marker-check-box--default: 		auto;
+	--lists-marker-check-box--more: 		1.5em;
+
+	--lists-marker-number-ink--less: 		currentcolor;
+	--lists-marker-number-ink--default: 	var(--color-ink);
+	--lists-marker-number-ink--more: 		var(--color-primary-text);
+
+	--lists-marker-number-ground--less: 	transparent;
+	--lists-marker-number-ground--default: 	transparent;
+	--lists-marker-number-ground--more: 	var(--color-primary);
+
+	/*	The ring round a number: the ink at the middle, none for plain, the colour of the
+		disc for the emphasised one	*/
+	--lists-marker-number-ring--less: 		transparent;
+	--lists-marker-number-ring--default: 	var(--color-ink);
+	--lists-marker-number-ring--more: 		var(--color-primary);
+}
+
+.nino-list {
+	font-size: calc( 1em * var(--lists-scale) );
+}
+
+/*	The rows: no gap, a padding in its place, a hairline under every item but the last	*/
+.nino-list:not(.nino-list--columns) {
+	gap: 0;
+}
+.nino-list:not(.nino-list--columns) > li {
+	padding-top: var(--lists-space);
+	padding-bottom: var(--lists-space);
+	border-bottom: 1px solid var(--color-border);
+}
+.nino-list:not(.nino-list--columns) > li:last-child {
+	border-bottom-width: 0;
+}
+
+.nino-list--check li {
+	padding-left: calc( var(--space-3) * var(--lists-scale) );
+}
+.nino-list--check li::before {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--lists-marker-check-box);
+	height: var(--lists-marker-check-box);
+	border-radius: 50%;
+	background-color: var(--lists-marker-check-ground);
+	color: var(--lists-marker-check-ink);
+	font-weight: var(--lists-marker);
+}
+.nino-list--numbered li {
+	min-height: calc( var(--space-3) * var(--lists-scale) );
+	padding-left: calc( var(--space-4) * var(--lists-scale) );
+}
+.nino-list--numbered li::before {
+	width: calc( var(--space-3) * var(--lists-scale) );
+	height: calc( var(--space-3) * var(--lists-scale) );
+	border: 1px solid var(--lists-marker-number-ring);
+	background-color: var(--lists-marker-number-ground);
+	color: var(--lists-marker-number-ink);
+	font-weight: var(--lists-marker);
+}

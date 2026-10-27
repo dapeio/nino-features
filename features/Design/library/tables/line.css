@@ -1,0 +1,80 @@
+/*	@name			Line
+ *	@description	Cells have room and rows no lines, a rule under the head.
+ *	@description-de	Zellen haben Luft und Zeilen keine Linien, eine Linie unter dem Kopf.
+ *
+ *	@knob	scale		Type size of a table
+ *	@knob	space		Space inside a cell
+ *	@knob	border		Weight of the rule under the head and of the lines of a bordered table
+ *	@knob	zebra		Stripes of a table that asks for them
+ *	@knob	stripes		How strong the stripes are
+ *
+ *	Five rows of prices on a landing page is not a spreadsheet and setting it
+ *	like one makes the page look like an export: the cells get room and the
+ *	lines go, and a table that asks for stripes gets them in the choice of the
+ *	zebra knob. The rule under the head and the lines of a table that asks for
+ *	a border are the construction, so they are never thinner than half a pixel -
+ *	a hairline where the screen can draw one - however far the border knob is
+ *	turned down.
+ *
+ *	Every ladder is Nino's, value for value. The room in a cell is twice the
+ *	space of the ladder, and a position of the knob moves it in the
+ *	proportions it moves Nino's.
+ */
+
+/*	The ladders are Nino's, value for value - tables regular says what each of them is.
+	The zebra is a choice of three and its ink an aspect of it: they move with the knob	*/
+:root {
+	--tables-scale--least: 		.75;
+	--tables-scale--less: 		.87;
+	--tables-scale--default: 	1;
+	--tables-scale--more: 		1.15;
+	--tables-scale--most: 		1.32;
+
+	--tables-space--least: 		calc( var(--space-1) * .4 );
+	--tables-space--less: 		calc( var(--space-1) * .7 );
+	--tables-space--default: 	var(--space-1);
+	--tables-space--more: 		calc( var(--space-1) * 1.5 );
+	--tables-space--most: 		calc( var(--space-1) * 2.2 );
+
+	--tables-border--least: 	0px;
+	--tables-border--less: 		.5px;
+	--tables-border--default: 	1px;
+	--tables-border--more: 		2px;
+	--tables-border--most: 		3px;
+
+	--tables-zebra--less: 		transparent;
+	--tables-zebra--default: 	var(--tables-stripes);
+	--tables-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--tables-stripes);
+
+	--tables-zebra-ink--less: 		initial;
+	--tables-zebra-ink--default: 	var(--color-section-alt-text);
+	--tables-zebra-ink--more: 		var(--color-section-alt-text);
+
+	--tables-stripes--least: 		color-mix( in srgb, var(--color-section-alt-bg) 35%, var(--color-background) );
+	--tables-stripes--less: 		color-mix( in srgb, var(--color-section-alt-bg) 70%, var(--color-background) );
+	--tables-stripes--default: 		var(--color-section-alt-bg);
+	--tables-stripes--more: 		color-mix( in srgb, var(--color-section-alt-text) 8%, var(--color-section-alt-bg) );
+	--tables-stripes--most: 		color-mix( in srgb, var(--color-section-alt-text) 16%, var(--color-section-alt-bg) );
+}
+
+.nino-table {
+	font-size: calc( 1em * var(--tables-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: calc( var(--tables-space) * 2 );
+	border-bottom-width: 0;
+}
+.nino-table th {
+	border-bottom: max( .5px, var(--tables-border) ) solid var(--color-border);
+	letter-spacing: .08em;
+	color: var(--color-subtitle);
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: max( .5px, var(--tables-border) );
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--tables-zebra);
+	color: var(--tables-zebra-ink, currentcolor);
+}

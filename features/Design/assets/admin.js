@@ -12,22 +12,25 @@
  *													field of the css, which every input mirrors into the preview.
  *													Templates, Type, Surfaces, Colours and Motion draw a block for
  *													each object that has a control on the tab, in one fixed order -
- *													the page, the header, the footer, the content, a section, a card,
- *													the buttons, the fields and tables - the blocks of an accordion,
+ *													the page, the header, the footer, a section, a card, the
+ *													buttons, the lists and the tables - the blocks of an accordion,
  *													one open: the head of a closed one names, small and muted, the
  *													controls that stand elsewhere than at the defaults, and on
  *													Templates the template that is chosen. A block of Templates has
  *													the choice of the set of its part - the header, the footer, the
- *													content, the buttons or the components - with its name, its
+ *													section, the card, the buttons, the lists or the tables - with its name, its
  *													description and the word of the one chosen; one of Type the root
  *													size and the five font roles under the page and the sizes of the
  *													titles under the others; one of Surfaces the width, the whitespace
  *													and the two radii under the page and the space, the corners and
  *													the lines under the others, a strip of five positions or of three
  *													words for each knob, greyed out where the chosen template does not
- *													answer to it; Colours has the two colours, the five knobs and the
- *													mode the palette is solved from, and Motion the animation of the
- *													page, each one block of the page. Typefaces, the loader, is a tab
+ *													answer to it - the header and the footer have knobs like the
+ *													others; Colours has the two colours, the five knobs and the mode
+ *													the palette is solved from under the page, and under a section,
+ *													a card and the tables the one knob each has of its own, and Motion the
+ *													animation of the page and the hover of a card and of the buttons.
+ *													Typefaces, the loader, is a tab
  *													of its own and keeps nothing in the setup - the families the
  *													project has installed, and the signed list of those it can
  *													install, which is read when its button is pressed: an install or a
@@ -96,24 +99,24 @@
 			top of the page - a theme is all of it, a header is looked at there, and so are the width and the whitespace of
 			the page and its animation -, Typefaces and Type the typography block - a typeface shows where the type is -,
 			Colours the grounds. The page has an id at its end, footer, which no tab has: a footer that is chosen is looked
-			at there (see CONTROL_ANCHORS)	*/
+			at there (see OBJECT_ANCHORS)	*/
 		ANCHORS	: { theme : 'global', templates : 'global', typefaces : 'type', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global' },
 
 		/*	Where a change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
 			top of it (#global) - the root size and the roles of the fonts as much as the width, the corners and the
-			animation -, a section in the first section of the page, which the hero is (#content), a card in the cards
-			(#cards), the buttons in their block and the fields and tables in the form. A control with an entry of its own
+			animation -, a header at the top of it and a footer at its foot, a section in the first section of the
+			page, which the hero is (#content), a card in the cards (#cards), the buttons in their block and the lists
+			and the tables in theirs (#lists, #tables). A control with an entry of its own
 			(CONTROL_ANCHORS) goes there, and one under an object with no entry to the anchor of its tab. The maps are told
 			together in the docblock of _jump()	*/
-		OBJECT_ANCHORS	: { page : 'global', section : 'content', card : 'cards', buttons : 'buttons', components : 'components' },
+		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' },
 
 		/*	The controls that are looked at elsewhere than their object is, by the key the table has them under: the
 			two variants, quiet and loud, which are sizes of the type of a section and are looked at where the specimen
-			sets every title three times, in the typography block (#type); the five templates - a header at the top, a
-			footer at the foot of the page and the others where their sets are shown -; and the eight controls of the
-			palette, which are the page's and are looked at in the grounds (#colours), where the page's own anchor is the
-			top of the page	*/
-		CONTROL_ANCHORS	: { 'knobs/content/quiet' : 'type', 'knobs/content/loud' : 'type', 'parts/header' : 'global', 'parts/footer' : 'footer', 'parts/content' : 'content', 'parts/buttons' : 'buttons', 'parts/components' : 'components',
+			sets every title three times, in the typography block (#type); and the eight controls of the palette,
+			which are the page's and are looked at in the grounds (#colours), where the page's own anchor is the top of
+			the page. The templates have none: a template is looked at where its object is (OBJECT_ANCHORS)	*/
+		CONTROL_ANCHORS	: { 'knobs/section/quiet' : 'type', 'knobs/section/loud' : 'type',
 			'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours' },
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
@@ -174,12 +177,13 @@
 				[ 'path', { d : 'M21 9H3' } ],
 				[ 'path', { d : 'M21 15H3' } ],
 			],
-			'text-cursor-input' : [
-				[ 'path', { d : 'M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6' } ],
-				[ 'path', { d : 'M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7' } ],
-				[ 'path', { d : 'M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1' } ],
-				[ 'path', { d : 'M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1' } ],
-				[ 'path', { d : 'M9 6v12' } ],
+			'list' : [
+				[ 'path', { d : 'M3 12h.01' } ],
+				[ 'path', { d : 'M3 18h.01' } ],
+				[ 'path', { d : 'M3 6h.01' } ],
+				[ 'path', { d : 'M8 12h13' } ],
+				[ 'path', { d : 'M8 18h13' } ],
+				[ 'path', { d : 'M8 6h13' } ],
 			],
 			'palette' : [
 				[ 'path', { d : 'M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z' } ],
@@ -270,29 +274,43 @@
 			'page/radii-card' : 'square-round-corner',
 			'page/radii-image' : 'square-round-corner',
 			'typefaces/family' : 'a-large-small',
-			'content/hero-title' : 'a-large-small',
-			'content/hero-text' : 'a-large-small',
-			'content/quiet' : 'a-large-small',
-			'content/loud' : 'a-large-small',
-			'content/section-title' : 'a-large-small',
-			'content/section-subtitle' : 'a-large-small',
-			'content/section-space' : 'scaling',
-			'content/section-line' : 'minus',
-			'content/card-title' : 'a-large-small',
-			'content/card-subtitle' : 'a-large-small',
-			'content/card-space' : 'align-vertical-space-around',
-			'content/border' : 'square',
-			'content/shadow' : 'square-stack',
+			'header/nav' : 'a-large-small',
+			'header/height' : 'move-vertical',
+			'header/space' : 'align-vertical-space-around',
+			'header/ground' : 'contrast',
+			'footer/scale' : 'a-large-small',
+			'footer/height' : 'move-vertical',
+			'footer/space' : 'align-vertical-space-around',
+			'footer/ground' : 'contrast',
+			'section/hero-title' : 'a-large-small',
+			'section/hero-text' : 'a-large-small',
+			'section/quiet' : 'a-large-small',
+			'section/loud' : 'a-large-small',
+			'section/title' : 'a-large-small',
+			'section/subtitle' : 'a-large-small',
+			'section/space' : 'scaling',
+			'section/rule' : 'minus',
+			'section/dim' : 'contrast',
+			'card/title' : 'a-large-small',
+			'card/subtitle' : 'a-large-small',
+			'card/space' : 'align-vertical-space-around',
+			'card/border' : 'square',
+			'card/shadow' : 'square-stack',
+			'card/tone' : 'palette',
+			'card/hover' : 'move-vertical',
 			'buttons/size' : 'a-large-small',
 			'buttons/spread' : 'chevrons-left-right',
 			'buttons/space' : 'align-vertical-space-around',
 			'buttons/corners' : 'square-round-corner',
-			'components/scale' : 'a-large-small',
-			'components/space' : 'align-vertical-space-around',
-			'components/corners' : 'square-round-corner',
-			'components/border' : 'square',
-			'components/zebra' : 'rows-3',
-			'components/labels' : 'text-cursor-input',
+			'buttons/hover' : 'move-vertical',
+			'lists/scale' : 'a-large-small',
+			'lists/space' : 'align-vertical-space-around',
+			'lists/marker' : 'list',
+			'tables/scale' : 'a-large-small',
+			'tables/space' : 'align-vertical-space-around',
+			'tables/border' : 'square',
+			'tables/zebra' : 'rows-3',
+			'tables/stripes' : 'contrast',
 			'colours/primary' : 'palette',
 			'colours/harmony' : 'palette',
 			'colours/temperature' : 'thermometer',
@@ -1045,7 +1063,7 @@
 		/**
 		 *	Where a control stands: the entry of the table for the key its choice is kept under
 		 *
-		 *	@param		{string}	key				'size', 'radii/card', 'knobs/content/quiet' ...
+		 *	@param		{string}	key				'size', 'radii/card', 'knobs/section/quiet' ...
 		 *
 		 *	@return		{Array}						[ tab, object, order ]; [] for a key the table does not have
 		 */
@@ -2942,7 +2960,7 @@
 		 *	word of the set that is chosen once the block is closed - which paints
 		 *	it from the selection as it stands then (see _paintHead()), so that no
 		 *	redraw is needed for it. The frame goes to where the template is looked
-		 *	at (CONTROL_ANCHORS) - a header at the top of the page, a footer at its foot
+		 *	at (OBJECT_ANCHORS) - a header at the top of the page, a footer at its foot
 		 *
 		 *	@param		{string}		part
 		 *	@param		{string}		set
@@ -4198,7 +4216,7 @@
 		 *	-2 to +2 of a scale, the three words that knob has for a choice. The kind is what design/list says of the
 		 *	knob in its part
 		 *
-		 *	@param		{string}		part			The part the knob belongs to: content, buttons or components
+		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
 		 *	@param		{string}		knob
 		 *
 		 *	@return		{Object}							{ name, options }, the options as { value, label, title }
@@ -4227,7 +4245,7 @@
 		 *	as "sharp, normal, round". The kind is what design/list says of the knob
 		 *	in its part
 		 *
-		 *	@param		{string}		part			The part the knob belongs to: content, buttons or components
+		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
 		 *	@param		{string}		knob
 		 *	@param		{boolean}		answered		Whether the chosen template declares it
 		 *
@@ -4277,7 +4295,7 @@
 		 *	OBJECT_ANCHORS names for the object it stands under, else the anchor of its tab. Where the control stands is
 		 *	the table's (see _place()); how many rows its tab has is no part of it
 		 *
-		 *	@param		{string}		key				The key the control has in the table: 'size', 'knobs/content/quiet' ...
+		 *	@param		{string}		key				The key the control has in the table: 'size', 'knobs/section/quiet' ...
 		 *
 		 *	@return		{string}							The id of an element of the specimen
 		 */
@@ -5192,7 +5210,7 @@
 		 *	Scroll the page in the frame to where the open tab is looked at, smoothly.
 		 *
 		 *	The specimen is one page with an element for each place the panel looks at (ids global,
-		 *	type, content, cards, buttons, components, colours and, at its end, footer - see ANCHORS), and
+		 *	type, content, cards, buttons, lists, tables, colours and, at its end, footer - see ANCHORS), and
 		 *	the frame is the page of this very origin: the panel scrolls the
 		 *	frame's own window by hand, which needs neither a message to the page
 		 *	nor a hash it would have to read. Done after a tab is opened and after
@@ -5201,11 +5219,11 @@
 		 *	Three maps say where, all of them the panel's and the ids the page's. Opening a tab goes to the
 		 *	anchor of the tab (ANCHORS). A change of a control goes to the place that control is looked at in,
 		 *	which follows from the table (see _anchorOf()): the id CONTROL_ANCHORS names for its key - the quiet
-		 *	and the loud variant to the typography block (#type), a header to the top of the page, a footer to its
-		 *	foot, the others where their sets are shown, the controls of the palette to the grounds (#colours) -,
-		 *	else the id OBJECT_ANCHORS names for the object it stands under - the page's to the top of the page
-		 *	(#global), a section's to the first section (#content), a card's to the cards (#cards), the buttons' and
-		 *	the fields and tables' to their blocks -, else the anchor of its tab. The place of a change is _target,
+		 *	and the loud variant to the typography block (#type), the controls of the palette to the grounds
+		 *	(#colours) -, else the id OBJECT_ANCHORS names for the object it stands under - the page's and the
+		 *	header's to the top of the page (#global), the footer's to its foot, a section's to the first section
+		 *	(#content), a card's to the cards (#cards), the buttons', the lists' and the tables' to their blocks -,
+		 *	else the anchor of its tab. The place of a change is _target,
 		 *	one for each change - it is put back to the tab's own when a tab is opened, and it is what is jumped to
 		 *	until then.
 		 *

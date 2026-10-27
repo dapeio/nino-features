@@ -1,0 +1,78 @@
+/*	@name			Ruled
+ *	@description	One line under each row and a heavier one under the head.
+ *	@description-de	Eine Linie unter jeder Tabellenzeile und eine kräftigere unter dem Kopf.
+ *
+ *	@knob	scale		Type size of a table
+ *	@knob	space		Space inside a cell
+ *	@knob	border		Weight of the lines of a table
+ *	@knob	zebra		Stripes of a table that asks for them
+ *	@knob	stripes		How strong the stripes are
+ *
+ *	A table is read row by row, so one hairline per row and a heavier one under
+ *	the head; a table that asks for stripes gets them too, in the choice of the
+ *	zebra knob. The head's line is twice the weight of the rows', and the last
+ *	row of a table that is not bordered has none under it.
+ *
+ *	Every ladder is Nino's, value for value. The padding of a cell is drawn on
+ *	the middle of the space ladder, as Nino's own, and the room beside the words
+ *	is 1.4 times it.
+ */
+
+/*	The ladders are Nino's, value for value - tables regular says what each of them is.
+	The zebra is a choice of three and its ink an aspect of it: they move with the knob	*/
+:root {
+	--tables-scale--least: 		.75;
+	--tables-scale--less: 		.87;
+	--tables-scale--default: 	1;
+	--tables-scale--more: 		1.15;
+	--tables-scale--most: 		1.32;
+
+	--tables-space--least: 		calc( var(--space-1) * .4 );
+	--tables-space--less: 		calc( var(--space-1) * .7 );
+	--tables-space--default: 	var(--space-1);
+	--tables-space--more: 		calc( var(--space-1) * 1.5 );
+	--tables-space--most: 		calc( var(--space-1) * 2.2 );
+
+	--tables-border--least: 	0px;
+	--tables-border--less: 		.5px;
+	--tables-border--default: 	1px;
+	--tables-border--more: 		2px;
+	--tables-border--most: 		3px;
+
+	--tables-zebra--less: 		transparent;
+	--tables-zebra--default: 	var(--tables-stripes);
+	--tables-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--tables-stripes);
+
+	--tables-zebra-ink--less: 		initial;
+	--tables-zebra-ink--default: 	var(--color-section-alt-text);
+	--tables-zebra-ink--more: 		var(--color-section-alt-text);
+
+	--tables-stripes--least: 		color-mix( in srgb, var(--color-section-alt-bg) 35%, var(--color-background) );
+	--tables-stripes--less: 		color-mix( in srgb, var(--color-section-alt-bg) 70%, var(--color-background) );
+	--tables-stripes--default: 		var(--color-section-alt-bg);
+	--tables-stripes--more: 		color-mix( in srgb, var(--color-section-alt-text) 8%, var(--color-section-alt-bg) );
+	--tables-stripes--most: 		color-mix( in srgb, var(--color-section-alt-text) 16%, var(--color-section-alt-bg) );
+}
+
+.nino-table {
+	font-size: calc( 1em * var(--tables-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: var(--tables-space) calc( var(--tables-space) * 1.4 );
+	border-bottom: var(--tables-border) solid var(--color-border);
+}
+.nino-table th {
+	border-bottom-width: calc( var(--tables-border) * 2 );
+}
+.nino-table:not(.nino-table--bordered) tbody tr:last-child td {
+	border-bottom-width: 0;
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: var(--tables-border);
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--tables-zebra);
+	color: var(--tables-zebra-ink, currentcolor);
+}

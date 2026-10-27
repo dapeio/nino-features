@@ -18,7 +18,7 @@ namespace Nino\Modules\Design {
 	 *										palette over them, the type, the roles those tokens are
 	 *										assigned to, the root size, the width, the whitespace, the
 	 *										radius of its surfaces and the animation of the page, the
-	 *										chosen frames, the three chosen sets, the block that says
+	 *										chosen frames, the five chosen sets, the block that says
 	 *										which step of every ladder is live, and last the css of the
 	 *										theme, as it was typed.
 	 *
@@ -29,7 +29,9 @@ namespace Nino\Modules\Design {
 	 *										linear at all. So the knob never computes: it picks, and
 	 *										what it picks is one selection line per token, gathered
 	 *										into a single block at the end. CSS cannot compose a
-	 *										variable name, which is why that block exists at all.
+	 *										variable name, which is why that block exists at all. A
+	 *										frame declares its ladders in its style.css as a set does
+	 *										in its file, and is compiled and selected the same way.
 	 *
 	 *										write() refuses a file it did not write. The delivered
 	 *										theme.css is explicitly editable by hand, so a project may
@@ -74,7 +76,7 @@ namespace Nino\Modules\Design {
 		private const array HALVES = [ '/* ---- 1. ', '/* ---- 2. ' ];
 
 		/**
-		 *	The stylesheet a setup produces, in thirteen numbered sections:
+		 *	The stylesheet a setup produces, in fifteen numbered sections:
 		 *
 		 *	  1 the tokens          base.css, the --nino-* defaults
 		 *	  2 the palette         solved over them, in the shape the mode asks for
@@ -83,9 +85,9 @@ namespace Nino\Modules\Design {
 		 *	  5 the root size
 		 *	  6 the page            the width, the whitespace, the radius of its surfaces, and the animation as a rule on main
 		 *	  7 header, 8 footer    the chosen frames
-		 *	  9 content, 10 buttons, 11 components    the chosen sets
-		 *	  12 the knob positions
-		 *	  13 the theme          the custom css, as it was typed
+		 *	  9 section, 10 card, 11 buttons, 12 lists, 13 tables    the chosen sets
+		 *	  14 the knob positions
+		 *	  15 the theme          the custom css, as it was typed
 		 *
 		 *	A frame or a set the library does not have is left out and noted, and
 		 *	the sections after it take the numbers that are free. The theme's css
@@ -165,7 +167,7 @@ namespace Nino\Modules\Design {
 
 			$parts[] = sprintf( self::SECTION, 6, 'the page' ). "\n". self::page( $setup );
 
-			// 7. and 8. the frames, then 9. to 11. the sets - both in PARTS
+			// 7. and 8. the frames, then 9. to 13. the sets - both in PARTS
 			// order, which is the order the cascade wants them in
 			$number = 7;
 
@@ -219,7 +221,7 @@ namespace Nino\Modules\Design {
 				$parts[] = sprintf( self::SECTION, $number++, 'the knob positions' ). "\n:root {\n". implode( "\n", $selection ). "\n}";
 			}
 
-			// 13. the theme's own css, the last word of the sheet. The body adds the one line break the file ends in
+			// 15. the theme's own css, the last word of the sheet. The body adds the one line break the file ends in
 			$custom = is_string( $setup['css'] ?? null ) === true ? $setup['css'] : '';
 
 			if( trim( $custom ) !== '' )

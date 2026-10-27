@@ -33,17 +33,22 @@
  *												in their own faces and a sentence of its own for each thing a
  *												refusal of the list can be about. The Templates tab has the
  *												choice of a set in the block of the object each part is the
- *												template of; the Type tab the root size and the five font roles,
- *												with a size that is typed, and the sizes of the titles, each
- *												knob a strip with its icon - five numbers, or the three words of
- *												a choice - greyed out where the chosen template does not answer
- *												to it; the Surfaces tab the same over the space, the corners,
- *												the lines and the shadows - the two radii and the corners of a
- *												kind of surface, one choice of two words for the cover, the row
- *												and the column of a section; the Colours tab the palette and its
- *												mode, and the Motion tab the animation of the page, each one
- *												block of the page - the action bar, with the line the panel says
- *												things in, the chip for the state of the files and the way back
+ *												template of, seven in all; the Type tab the root size and the
+ *												five font roles, with a size that is typed, and the sizes of
+ *												the navigation, the hero and the titles, each knob a strip with
+ *												its icon - five numbers, or the three words of a choice - greyed
+ *												out where the chosen template does not answer to it, a frame's
+ *												knobs as a set's; the Surfaces tab the same over the heights, the
+ *												space, the corners, the lines and the shadows - the two radii and
+ *												the corners of a kind of surface, one choice of two words for the
+ *												cover, the row and the column of a section; the Colours tab the
+ *												palette and its mode in the block of the page, and after it the
+ *												dimming of a section, the tone of the shadow of a card and the
+ *												stripes of a table in the blocks of theirs; the Motion tab the
+ *												animation of the page in the block of the page, and after it what
+ *												a card and a button do under the pointer - the action bar, with
+ *												the line the panel says things in, the chip for the state of the
+ *												files and the way back
  *												to the previous version, the head of the preview - one row, with
  *												the viewport switch of three icon buttons and the switch that
  *												lets the frame follow - the room the frame takes under it, down
@@ -322,7 +327,7 @@ function threw( fn ) {
 const TABS = [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ];
 
 /** The objects the blocks of the tabs are of, in the order the blocks follow one another (Setup::OBJECTS) */
-const OBJECTS = [ 'page', 'header', 'footer', 'content', 'section', 'card', 'buttons', 'components' ];
+const OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ];
 
 /** The tabs that are drawn in screens, and the screens of each in the order the strip under the tab strip shows them: the keys, not the words on them - the Theme tab has three and no other tab has any */
 const SCREENS = { theme : [ 'load', 'properties', 'css' ] };
@@ -332,9 +337,13 @@ const OPENABLE = [].concat.apply( [], TABS.map( function( tab ) { return ( SCREE
 
 /** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1 */
 const KINDS = {
-	content 		: { 'hero-title' : 'scale', 'hero-text' : 'scale', quiet : 'scale', loud : 'scale', 'section-title' : 'scale', 'section-subtitle' : 'scale', 'section-space' : 'scale', 'section-line' : 'scale', 'card-title' : 'scale', 'card-subtitle' : 'scale', 'card-space' : 'scale', border : 'scale', shadow : 'scale' },
-	buttons 		: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale' },
-	components 	: { scale : 'scale', space : 'scale', corners : 'scale', border : 'scale', zebra : 'choice', labels : 'choice' },
+	header 		: { nav : 'scale', height : 'scale', space : 'scale', ground : 'choice' },
+	footer 		: { scale : 'scale', height : 'scale', space : 'scale', ground : 'choice' },
+	section 	: { 'hero-title' : 'scale', 'hero-text' : 'scale', quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', space : 'scale', rule : 'scale', dim : 'scale' },
+	card 			: { title : 'scale', subtitle : 'scale', space : 'scale', border : 'scale', shadow : 'scale', tone : 'choice', hover : 'choice' },
+	buttons 	: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale', hover : 'choice' },
+	lists 		: { scale : 'scale', space : 'scale', marker : 'choice' },
+	tables 		: { scale : 'scale', space : 'scale', border : 'scale', zebra : 'choice', stripes : 'scale' },
 };
 
 /** The names of the knobs of each part, in the order of the part */
@@ -349,9 +358,11 @@ Object.keys( KINDS ).forEach( function( part ) { KNOBS[part] = Object.keys( KIND
 const LAYOUT = {
 	'parts/header'                    : [ 'templates', 'header', 1 ],
 	'parts/footer'                    : [ 'templates', 'footer', 1 ],
-	'parts/content'                   : [ 'templates', 'content', 1 ],
+	'parts/section'                   : [ 'templates', 'section', 1 ],
+	'parts/card'                      : [ 'templates', 'card', 1 ],
 	'parts/buttons'                   : [ 'templates', 'buttons', 1 ],
-	'parts/components'                : [ 'templates', 'components', 1 ],
+	'parts/lists'                     : [ 'templates', 'lists', 1 ],
+	'parts/tables'                    : [ 'templates', 'tables', 1 ],
 
 	'size'                            : [ 'type', 'page', 1 ],
 	'fonts/title'                     : [ 'type', 'page', 2 ],
@@ -359,39 +370,48 @@ const LAYOUT = {
 	'fonts/text'                      : [ 'type', 'page', 4 ],
 	'fonts/button'                    : [ 'type', 'page', 5 ],
 	'fonts/code'                      : [ 'type', 'page', 6 ],
-	'knobs/content/hero-title'        : [ 'type', 'section', 1 ],
-	'knobs/content/hero-text'         : [ 'type', 'section', 2 ],
-	'knobs/content/section-title'     : [ 'type', 'section', 3 ],
-	'knobs/content/section-subtitle'  : [ 'type', 'section', 4 ],
-	'knobs/content/quiet'             : [ 'type', 'section', 5 ],
-	'knobs/content/loud'              : [ 'type', 'section', 6 ],
-	'knobs/content/card-title'        : [ 'type', 'card', 1 ],
-	'knobs/content/card-subtitle'     : [ 'type', 'card', 2 ],
+	'knobs/header/nav'                : [ 'type', 'header', 1 ],
+	'knobs/footer/scale'              : [ 'type', 'footer', 1 ],
+	'knobs/section/hero-title'        : [ 'type', 'section', 1 ],
+	'knobs/section/hero-text'         : [ 'type', 'section', 2 ],
+	'knobs/section/title'             : [ 'type', 'section', 3 ],
+	'knobs/section/subtitle'          : [ 'type', 'section', 4 ],
+	'knobs/section/quiet'             : [ 'type', 'section', 5 ],
+	'knobs/section/loud'              : [ 'type', 'section', 6 ],
+	'knobs/card/title'                : [ 'type', 'card', 1 ],
+	'knobs/card/subtitle'             : [ 'type', 'card', 2 ],
 	'knobs/buttons/size'              : [ 'type', 'buttons', 1 ],
 	'knobs/buttons/spread'            : [ 'type', 'buttons', 2 ],
-	'knobs/components/scale'          : [ 'type', 'components', 1 ],
+	'knobs/lists/scale'               : [ 'type', 'lists', 1 ],
+	'knobs/tables/scale'              : [ 'type', 'tables', 1 ],
 
 	'width'                           : [ 'surfaces', 'page', 1 ],
 	'whitespace'                      : [ 'surfaces', 'page', 2 ],
 	'radius'                          : [ 'surfaces', 'page', 3 ],
 	'radius-alt'                      : [ 'surfaces', 'page', 4 ],
 	'radii/image'                     : [ 'surfaces', 'page', 5 ],
-	'knobs/content/section-space'     : [ 'surfaces', 'section', 1 ],
-	'knobs/content/section-line'      : [ 'surfaces', 'section', 2 ],
+	'knobs/header/height'             : [ 'surfaces', 'header', 1 ],
+	'knobs/header/space'              : [ 'surfaces', 'header', 2 ],
+	'knobs/header/ground'             : [ 'surfaces', 'header', 3 ],
+	'knobs/footer/height'             : [ 'surfaces', 'footer', 1 ],
+	'knobs/footer/space'              : [ 'surfaces', 'footer', 2 ],
+	'knobs/footer/ground'             : [ 'surfaces', 'footer', 3 ],
+	'knobs/section/space'             : [ 'surfaces', 'section', 1 ],
+	'knobs/section/rule'              : [ 'surfaces', 'section', 2 ],
 	'radii/cover'                     : [ 'surfaces', 'section', 3 ],
 	'radii/row'                       : [ 'surfaces', 'section', 3 ],
 	'radii/column'                    : [ 'surfaces', 'section', 3 ],
-	'knobs/content/card-space'        : [ 'surfaces', 'card', 1 ],
-	'knobs/content/border'            : [ 'surfaces', 'card', 2 ],
-	'knobs/content/shadow'            : [ 'surfaces', 'card', 3 ],
+	'knobs/card/space'                : [ 'surfaces', 'card', 1 ],
+	'knobs/card/border'               : [ 'surfaces', 'card', 2 ],
+	'knobs/card/shadow'               : [ 'surfaces', 'card', 3 ],
 	'radii/card'                      : [ 'surfaces', 'card', 4 ],
 	'knobs/buttons/space'             : [ 'surfaces', 'buttons', 1 ],
 	'knobs/buttons/corners'           : [ 'surfaces', 'buttons', 2 ],
-	'knobs/components/space'          : [ 'surfaces', 'components', 1 ],
-	'knobs/components/corners'        : [ 'surfaces', 'components', 2 ],
-	'knobs/components/border'         : [ 'surfaces', 'components', 3 ],
-	'knobs/components/zebra'          : [ 'surfaces', 'components', 4 ],
-	'knobs/components/labels'         : [ 'surfaces', 'components', 5 ],
+	'knobs/lists/space'               : [ 'surfaces', 'lists', 1 ],
+	'knobs/lists/marker'              : [ 'surfaces', 'lists', 2 ],
+	'knobs/tables/space'              : [ 'surfaces', 'tables', 1 ],
+	'knobs/tables/border'             : [ 'surfaces', 'tables', 2 ],
+	'knobs/tables/zebra'              : [ 'surfaces', 'tables', 3 ],
 
 	'colours/primary'                 : [ 'colours', 'page', 1 ],
 	'colours/secondary'               : [ 'colours', 'page', 2 ],
@@ -401,10 +421,15 @@ const LAYOUT = {
 	'colours/contrast'                : [ 'colours', 'page', 5 ],
 	'colours/depth'                   : [ 'colours', 'page', 6 ],
 	'colours/mode'                    : [ 'colours', 'page', 7 ],
+	'knobs/section/dim'               : [ 'colours', 'section', 1 ],
+	'knobs/card/tone'                 : [ 'colours', 'card', 1 ],
+	'knobs/tables/stripes'            : [ 'colours', 'tables', 1 ],
 
 	'motion/effect'                   : [ 'motion', 'page', 1 ],
 	'motion/strength'                 : [ 'motion', 'page', 2 ],
 	'motion/speed'                    : [ 'motion', 'page', 3 ],
+	'knobs/card/hover'                : [ 'motion', 'card', 1 ],
+	'knobs/buttons/hover'             : [ 'motion', 'buttons', 1 ],
 };
 
 /** The table as the answer carries it */
@@ -462,7 +487,7 @@ function listing( over ) {
 
 	/*	What a fresh install starts from, the keys that choose something - what the head of a closed block is compared with: the middle everywhere, the standard
 		corners and the alternative radius at +1, the faces as the roles have them above. As the server hands it over as `defaults`, but for the library's own
-		choice of the five templates, which is not the stand-in's	*/
+		choice of the seven templates, which is not the stand-in's	*/
 	const fresh = {
 		size 				: 0,
 		width 			: 0,
@@ -471,7 +496,7 @@ function listing( over ) {
 		'radius-alt' : 1,
 		radii 			: { cover : 'standard', row : 'standard', column : 'standard', card : 'standard', image : 'standard' },
 		motion 			: { effect : '', strength : '', speed : '' },
-		parts 			: { header : 'first', footer : 'first', content : 'first', buttons : 'first', components : 'first' },
+		parts 			: { header : 'first', footer : 'first', section : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first' },
 		knobs 			: JSON.parse( JSON.stringify( knobs ) ),
 		fonts 			: JSON.parse( JSON.stringify( fonts ) ),
 		colours 		: { primary : '#4faae8', secondary : '', harmony : 1, temperature : 3, saturation : 3, contrast : 3, depth : 3, mode : 'auto' },
@@ -480,28 +505,37 @@ function listing( over ) {
 	return Object.assign( {
 		parts : [
 			part( 'header', 'frame', 'first', {
-				first : { name : 'Plain bar', description : 'A bar with a rule under it' },
-				second : { name : 'Centred', description : 'The logo in the middle' },
+				first : { name : 'Plain bar', description : 'A bar with a rule under it', knobs : KNOBS.header.slice() },
+				second : { name : 'Centred', description : 'The logo in the middle', knobs : KNOBS.header.slice() },
 			} ),
 			part( 'footer', 'frame', 'first', {
-				first : { name : 'Plain footer', description : 'Two columns' },
-				second : { name : 'Dark footer', description : 'On the dark ground' },
+				first : { name : 'Plain footer', description : 'Two columns', knobs : KNOBS.footer.slice() },
+				second : { name : 'Dark footer', description : 'On the dark ground', knobs : KNOBS.footer.slice() },
 			} ),
 			/*	A library made up for this test, with names of its own - the real one is read from the answer of the server, below: most of its
-				templates answer to every knob of their tab, a template of the Buttons leaves the corners out, and the third template of the
-				Content leaves the shadow out - what a library of somebody else's can hold, and what the screen has to draw all the same	*/
-			part( 'content', 'set', 'first', {
-				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.content.slice() },
-				second : { name : 'Box', description : 'A centred opening with tight lines', knobs : KNOBS.content.slice() },
-				third : { name : 'Foreign', description : 'Large type, no shadow', knobs : without( KNOBS.content, [ 'shadow' ] ) },
+				templates answer to every knob of their part, a template of the Buttons leaves the corners out, and the third template of the
+				Cards leaves the shadow out - what a library of somebody else's can hold, and what the screen has to draw all the same	*/
+			part( 'section', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.section.slice() },
+				second : { name : 'Box', description : 'A centred opening with tight lines', knobs : KNOBS.section.slice() },
+				third : { name : 'Foreign', description : 'Large type, no dimming', knobs : without( KNOBS.section, [ 'dim' ] ) },
+			} ),
+			part( 'card', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.card.slice() },
+				second : { name : 'Panel', description : 'A ground and a line', knobs : KNOBS.card.slice() },
+				third : { name : 'Foreign', description : 'Large type, no shadow', knobs : without( KNOBS.card, [ 'shadow' ] ) },
 			} ),
 			part( 'buttons', 'set', 'first', {
 				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.buttons.slice() },
 				third : { name : 'Square', description : 'No radius, spaced letters and a 2px line', knobs : without( KNOBS.buttons, [ 'corners' ] ) },
 			} ),
-			part( 'components', 'set', 'first', {
-				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.components.slice() },
-				fourth : { name : 'Filled', description : 'Tinted fields without a line', knobs : KNOBS.components.slice() },
+			part( 'lists', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.lists.slice() },
+				second : { name : 'Ruled', description : 'A line between the items', knobs : KNOBS.lists.slice() },
+			} ),
+			part( 'tables', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.tables.slice() },
+				fourth : { name : 'Filled', description : 'Tinted cells without a line', knobs : KNOBS.tables.slice() },
 			} ),
 		],
 		kinds 		: JSON.parse( JSON.stringify( KINDS ) ),
@@ -584,7 +618,7 @@ function listing( over ) {
  */
 function frameStage() {
 
-	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450, footer : 4000 } };
+	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, lists : 1400, tables : 1500, colours : 450, footer : 4000 } };
 
 	stage.style = element('style');
 	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
@@ -1420,7 +1454,7 @@ function pressedKey( screen, key ) {
 /** The smallest change of the selection: the title of the hero a step up, on the Type tab - which is opened for it */
 function nudge( screen, position ) {
 	screen.tab( tabWord('type') );
-	pressKey( screen, 'knobs/content/hero-title', position === undefined ? 1 : position );
+	pressKey( screen, 'knobs/section/hero-title', position === undefined ? 1 : position );
 }
 
 /** What the knob rows of the open tab say, in the order the table gives them: [ label, word of the step that is lit ] for each row that is not greyed out */
@@ -1685,7 +1719,7 @@ const steadyChip = steady.chip();
 steady.design._say( steady.line(), TEXT['/_admin/design/msg/saved'] );
 [ 'type', 'surfaces', 'colours', 'templates' ].forEach( function( key ) { steady.tab( tabWord( key ) ) } );
 steady.tab( tabWord('type') );
-pressKey( steady, 'knobs/content/hero-title', 1 );
+pressKey( steady, 'knobs/section/hero-title', 1 );
 
 check( 'a tab that is opened and a knob that is moved change nothing of them: the same line with the same words, the same chip with its word',
 	steady.line() === steadyLine && steady.chip() === steadyChip && steady.line().textContent === TEXT['/_admin/design/msg/saved'] && steady.line().title === TEXT['/_admin/design/msg/saved']
@@ -1708,13 +1742,13 @@ const noteSet = function( part, wanted, used ) {
 const noteLines = function( screen ) {
 	return byClass( screen.byId('design-controls'), 'nino-admin-error' ).filter( function( line ) { return line.parent === screen.byId('design-controls') } ).map( function( line ) { return line.textContent } );
 };
-const codedNotes = panel( { notes : [ NOTE_THEME, noteSet( 'header', 'v9', 'first' ), noteSet( 'content', 'v3', 'second' ), 'there is no part "nowhere" - dropped' ] } );
+const codedNotes = panel( { notes : [ NOTE_THEME, noteSet( 'header', 'v9', 'first' ), noteSet( 'section', 'v3', 'second' ), 'there is no part "nowhere" - dropped' ] } );
 
 check( 'a note that carries a code is said in the words of the panel - the sentence of the code with its params in it, the part and the template that stands in by the names the screen has for them - and a note that is a sentence is the sentence',
 	JSON.stringify( noteLines( codedNotes ) ) === JSON.stringify( [
 		say( '/_admin/error/design_theme_missing', 'magazine' ),
 		say( '/_admin/error/design_set_missing', TEXT['/_admin/design/part/header'], 'v9', 'Plain bar' ),
-		say( '/_admin/error/design_set_missing', TEXT['/_admin/design/part/content'], 'v3', 'Box' ),
+		say( '/_admin/error/design_set_missing', TEXT['/_admin/design/part/section'], 'v3', 'Box' ),
 		'there is no part "nowhere" - dropped',
 	] ) && noteLines( codedNotes ).every( function( line ) { return line.indexOf('%s') === -1 && line.indexOf('design_') === -1 } ) );
 check( '...as many lines as the notes, each over the tab and under the strip, as the one that is a sentence was',
@@ -1724,11 +1758,11 @@ check( '...and a note that is a sentence is said as it is',
 
 console.log('');
 
-// --- The Templates tab: the five choices of a set -------------------------------------------------
+// --- The Templates tab: the seven choices of a set ------------------------------------------------
 //
-// An accordion of five blocks, one for each object that has a template - the header, the footer, the content,
-// the buttons and the fields and tables, in the order of the objects, which is the order the parts are compiled
-// in. A block holds the select of its part: the one word of its label, the catalogue as its options, the
+// An accordion of seven blocks, one for each object that has a template - the header, the footer, a section, a
+// card, the buttons, the lists and the tables, in the order of the objects, which is the order the parts are
+// compiled in. A block holds the select of its part: the one word of its label, the catalogue as its options, the
 // template that is chosen and the description of that template under it. The head of a closed block names the
 // template that is chosen, whichever it is - a template is a choice and no position, so it is told at the
 // defaults too - and a change in the open block is in its head once the block is closed. Nothing else stands on
@@ -1745,11 +1779,11 @@ const tplSaid = function( card ) { return byClass( card, 'design-accordion-summa
 const tplHeads = function() { return tplBlocks().map( tplSaid ) };
 const tplWord = function( part, set ) { return listing().parts.filter( function( row ) { return row.part === part } )[0].catalogue[set].name };
 
-check( 'the Templates tab is an accordion of five blocks, one for each object a part is the template of, in the order the table gives them - the order of the objects: each stands under an object, none under no object, and there is no strip of screens, no heading and no strip of a knob',
-	tabOf( tpl ) === 'templates' && tpl.groups() === null && tplParts.length === 5 && tplRows.length === 5
+check( 'the Templates tab is an accordion of seven blocks, one for each object a part is the template of, in the order the table gives them - the order of the objects: each stands under an object, none under no object, and there is no strip of screens, no heading and no strip of a knob',
+	tabOf( tpl ) === 'templates' && tpl.groups() === null && tplParts.length === 7 && tplRows.length === 7 && tplParts.join() === 'header,footer,section,card,buttons,lists,tables'
 	&& tplRows.map( function( row ) { return row.object } ).join() === OBJECTS.filter( function( object ) { return tplRows.some( function( row ) { return row.object === object } ) } ).join()
 	&& tplRows.every( function( row ) { return row.object !== '' && row.controls.length === 1 } )
-	&& tpl.body().children.length === 5 && tpl.body().children.every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-accordion' ) && card.dataset.tab === 'templates' } )
+	&& tpl.body().children.length === 7 && tpl.body().children.every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-accordion' ) && card.dataset.tab === 'templates' } )
 	&& tplBlocks().map( function( card ) { return card.dataset.object } ).join() === tplRows.map( function( row ) { return row.object } ).join()
 	&& tplBlocks().every( function( card ) { return headButton( card ) !== null && card.children[0] === headButton( card ) } ) );
 check( '...every block drawn from the table: the rows it has are the rows the table gives, each with its one control, and the first of them is open - the object of each is the one the table puts the part under',
@@ -1776,7 +1810,7 @@ check( 'the head of a closed block names the template that is chosen - the word 
 	tplFreshHeads.join() === [ '' ].concat( tplParts.slice(1).map( function( part ) { return tplWord( part, 'first' ) } ) ).join() && tplFreshHeads[0] === ''
 	&& blocksOf( tplFresh.form ).filter( isOpen ).length === 1 && isOpen( blocksOf( tplFresh.form )[0] ) === true
 	&& tplFresh.design._isDirty() === false );
-check( '...closing the block that is open puts the set of its part in its head too: all five say the one that is chosen',
+check( '...closing the block that is open puts the set of its part in its head too: all seven say the one that is chosen',
 	( toggle( blocksOf( tplFresh.form )[0] ), blocksOf( tplFresh.form ).map( function( card ) { return byClass( card, 'design-accordion-summary' )[0].textContent } ).join() === tplParts.map( function( part ) { return tplWord( part, 'first' ) } ).join() ) );
 
 const tplHeaderField = tplSelect('header').parent;
@@ -1799,17 +1833,17 @@ check( '...closing the block shows the new template in its head, without the blo
 	tplSaid( tplHeaderBlock ) === tplWord( 'header', 'second' ) && tplBlocks()[0] === tplHeaderBlock && headButton( tplHeaderBlock ).getAttribute('aria-expanded') === 'false'
 	&& tplHeads().slice(1).join() === tplParts.slice(1).map( function( part ) { return tplWord( part, 'first' ) } ).join() );
 
-// A change in a block that was opened for it: the same with the content, whose knobs a new template may not answer to
-const tplContent = tplSelect('content');
-choose( tplContent, 'third' );
-const tplContentBlock = cardOf( tplContent );
+// A change in a block that was opened for it: the same with the cards, whose knobs a new template may not answer to
+const tplCard = tplSelect('card');
+choose( tplCard, 'third' );
+const tplCardBlock = cardOf( tplCard );
 
 check( '...and the same where the block is another one: the choice is in its head once it is closed, and the head of the one closed before is not touched',
-	tpl.design._edit.parts.content === 'third' && isOpen( tplContentBlock ) === true && isOpen( tplHeaderBlock ) === false
-	&& tplSaid( tplContentBlock ) === '' && ( toggle( tplContentBlock ), tplSaid( tplContentBlock ) === tplWord( 'content', 'third' ) )
+	tpl.design._edit.parts.card === 'third' && isOpen( tplCardBlock ) === true && isOpen( tplHeaderBlock ) === false
+	&& tplSaid( tplCardBlock ) === '' && ( toggle( tplCardBlock ), tplSaid( tplCardBlock ) === tplWord( 'card', 'third' ) )
 	&& tplSaid( tplHeaderBlock ) === tplWord( 'header', 'second' ) );
 check( '...a choice taken back is taken back in the head: the set of the first choice is named again, the same word as before',
-	( openBlock( tplContentBlock ), choose( tplSelect('content'), 'first' ), toggle( tplContentBlock ), tplSaid( tplContentBlock ) === tplWord( 'content', 'first' ) ) );
+	( openBlock( tplCardBlock ), choose( tplSelect('card'), 'first' ), toggle( tplCardBlock ), tplSaid( tplCardBlock ) === tplWord( 'card', 'first' ) ) );
 
 console.log('');
 
@@ -1866,12 +1900,24 @@ check( '...every tab the table draws is an accordion, the colours and the motion
 	&& TABS.filter( function( tab ) { return rwTabs.indexOf( tab ) === -1 } ).join() === 'theme,typefaces'
 	&& [ 'theme', 'typefaces' ].every( function( tab ) { rw.show( tab ); return blocksOf( rw.form ).length === 0 && byClass( rw.form, 'design-accordion-head' ).length === 0 && byClass( rw.form, 'design-form-section' ).length === 0 } ) );
 
+/*	The blocks of each tab are the second round's: seven templates, one for each part, in the order of the objects; the sizes and the spaces of
+	eight objects on Type and on Surfaces, the page and the seven that have a part; what is coloured by an object on Colours - a section, a card, the
+	tables - after the palette of the page; and what a card and a button do on Motion after the animation of it. Counted from the table, the objects
+	are the keys of the table and no word of the panel	*/
+check( 'the tabs draw the blocks of the table in the order of the objects: Templates seven - the header, the footer, a section, a card, the buttons, the lists and the tables -, Type eight, the page first, Surfaces the same eight, Colours four - the page, a section, a card, the tables - and Motion three - the page, a card, the buttons',
+	[ [ 'templates', 'header,footer,section,card,buttons,lists,tables' ], [ 'type', 'page,header,footer,section,card,buttons,lists,tables' ], [ 'surfaces', 'page,header,footer,section,card,buttons,lists,tables' ],
+		[ 'colours', 'page,section,card,tables' ], [ 'motion', 'page,card,buttons' ] ].every( function( entry ) {
+		rw.show( entry[0] );
+		return blocksOf( rw.form ).map( function( card ) { return card.dataset.object } ).join() === entry[1] && tableRows( rwLayout, entry[0] ).map( function( row ) { return row.object } ).join() === entry[1]
+			&& entry[1].split(',').every( function( object ) { return OBJECTS.indexOf( object ) !== -1 } ) && entry[1].split(',').map( function( object ) { return OBJECTS.indexOf( object ) } ).every( function( at, i, all ) { return i === 0 || at > all[i - 1] } );
+	} ) && OBJECTS.join() === 'page,header,footer,section,card,buttons,lists,tables' );
+
 /*	The screen has no other source: a table with the tabs in another order, a control moved to another tab, another object and another place, and an
 	object left with no control on a tab is drawn as that table says - the strip, the rows, their controls - and a row with none is not drawn	*/
 const rwOther = layoutTable();
 rwOther.tabs = [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'motion', 'colours' ];
 rwOther.controls['size'] = [ 'surfaces', 'card', 5 ];
-delete rwOther.controls['knobs/components/scale'];
+delete rwOther.controls['knobs/tables/scale'];
 
 const rwShifted = panel( { layout : rwOther } );
 const rwShiftedTabs = byTag( rwShifted.headStrips()[0], 'button' ).map( function( tab ) { return tab.dataset.tab } );
@@ -1884,8 +1930,8 @@ const rwShiftedSurfaces = drawnRows( rwShifted );
 check( 'the screen follows the table it is handed and nothing else: the tabs in the order it gives, a control that was moved drawn where it was moved to - the root size last in the card of Surfaces - and not where it stood, and an object left with no control on a tab has no row there',
 	rwShiftedTabs.join() === rwOther.tabs.join() && rwShifted.design._tabKeys().join() === rwOther.tabs.join()
 	&& JSON.stringify( rwShiftedType ) === JSON.stringify( tableRows( rwOther, 'type' ) ) && JSON.stringify( rwShiftedSurfaces ) === JSON.stringify( tableRows( rwOther, 'surfaces' ) )
-	&& rwShiftedType.map( function( row ) { return row.object } ).join() === 'page,section,card,buttons' && rwShiftedType[0].controls.indexOf('size') === -1
-	&& rwShiftedSurfaces[2].object === 'card' && rwShiftedSurfaces[2].controls[rwShiftedSurfaces[2].controls.length - 1] === 'size'
+	&& rwShiftedType.map( function( row ) { return row.object } ).join() === 'page,header,footer,section,card,buttons,lists' && rwShiftedType[0].controls.indexOf('size') === -1
+	&& rwShiftedSurfaces.filter( function( row ) { return row.object === 'card' } )[0].controls.slice( -1 )[0] === 'size'
 	&& cardOf( controlOf( rwShifted, 'size' ) ).dataset.object === 'card' );
 
 console.log('');
@@ -1984,22 +2030,22 @@ check( '...pressing the head of the open block closes it, which leaves none open
 	acOpen().length === 0 && acBodies().length === 0 && ( toggle( acSecond ), acOpen().length === 1 && acOpen()[0] === headButton( acSecond ) && acBodies().length === 1 ) );
 
 // A change in a block, and the block closed: the head names the control, by its label and the word of the position as the strip shows it
-const acBorderKey = 'knobs/content/border';
-const acShadowKey = 'knobs/content/shadow';
+const acBorderKey = 'knobs/card/border';
+const acShadowKey = 'knobs/card/shadow';
 
 pressKey( ac, acBorderKey, 1 );
 
-const acBorderSays = acSays( knobWord( 'content', 'border' ), controlOf( ac, acBorderKey ), 1 );
+const acBorderSays = acSays( knobWord( 'card', 'border' ), controlOf( ac, acBorderKey ), 1 );
 
 pressKey( ac, acShadowKey, -2 );
 
-const acShadowSays = acSays( knobWord( 'content', 'shadow' ), controlOf( ac, acShadowKey ), -2 );
+const acShadowSays = acSays( knobWord( 'card', 'shadow' ), controlOf( ac, acShadowKey ), -2 );
 
 toggle( acCard('card') );
 
 check( 'after a change in a block, and the block closed, its head names the controls that were moved - the label of each and the word of its position, from the least row of the table to the last, joined by a middle dot - and a control nobody moved is not named',
 	acOpen().length === 0 && acLine('card') === acBorderSays+ acSeparator+ acShadowSays && acLine('card').split( acSeparator ).length === 2
-	&& acLine('card').indexOf( knobWord( 'content', 'card-space' ) ) === -1 && acLine('page') === '' && acLine('section') === ''
+	&& acLine('card').indexOf( knobWord( 'card', 'space' ) ) === -1 && acLine('page') === '' && acLine('section') === ''
 	&& byClass( acCard('card'), 'design-accordion-summary' )[0].title === acLine('card') );
 
 toggle( acCard('card') );
@@ -2009,9 +2055,9 @@ check( '...and an open block says nothing: the line is empty again while the con
 	&& pressedKey( ac, acShadowKey ) === 'true,false,false,false,false' );
 
 // The other kinds of control: a choice - in its words -, a strip of the page, the corners that are one choice for the cover, the row and the column of a section
-pressKey( ac, 'knobs/components/zebra', 1 );
+pressKey( ac, 'knobs/tables/zebra', 1 );
 
-const acZebraSays = acSays( knobWord( 'components', 'zebra' ), controlOf( ac, 'knobs/components/zebra' ), 1 );
+const acZebraSays = acSays( knobWord( 'tables', 'zebra' ), controlOf( ac, 'knobs/tables/zebra' ), 1 );
 
 pressKey( ac, 'width', 2 );
 
@@ -2024,8 +2070,8 @@ const acCornersSays = acSays( TEXT['/_admin/design/radii/section'], controlOf( a
 toggle( acCard('section') );
 
 check( '...a choice is named with the word it has for its position, as its button says it, and a scale with the number on its button, from \u22122 to +2',
-	acLine('components') === knobWord( 'components', 'zebra' )+ ' '+ TEXT['/_admin/design/knob/components/zebra/more'] && acZebraSays === acLine('components')
-	&& acBorderSays === knobWord( 'content', 'border' )+ ' '+ SIGNED[3] && acShadowSays === knobWord( 'content', 'shadow' )+ ' '+ SIGNED[0] );
+	acLine('tables') === knobWord( 'tables', 'zebra' )+ ' '+ TEXT['/_admin/design/knob/tables/zebra/more'] && acZebraSays === acLine('tables')
+	&& acBorderSays === knobWord( 'card', 'border' )+ ' '+ SIGNED[3] && acShadowSays === knobWord( 'card', 'shadow' )+ ' '+ SIGNED[0] );
 check( '...a strip of the page is named by the label of its key, the width of the page with its +2 - and the heads that were closed in turn kept what they said',
 	acLine('page') === acWidthSays && acWidthSays === TEXT['/_admin/design/label/pagewidth']+ ' '+ SIGNED[4] && acLine('card') === acBorderSays+ acSeparator+ acShadowSays && acOpen().length === 0 );
 check( '...and the corners of a section are one control and are named once, whatever kinds they stand for: the label of the choice and the word of its strip - the cover, the row and the column are all on it',
@@ -2065,29 +2111,44 @@ check( '...the roles that stand at the defaults are not named, nor the cells of 
 // A knob the chosen template does not answer to is greyed out, and no part of what the design is: it is never named
 const acGrey = panel();
 acGrey.show( 'templates' );
-choose( setSelect( acGrey, 'content' ), 'third' );
+choose( setSelect( acGrey, 'card' ), 'third' );
 acGrey.show( 'surfaces' );
-pressKey( acGrey, 'knobs/content/border', 1 );
+pressKey( acGrey, 'knobs/card/border', 1 );
 
-const acGreyBorder = acSays( knobWord( 'content', 'border' ), controlOf( acGrey, 'knobs/content/border' ), 1 );
+const acGreyBorder = acSays( knobWord( 'card', 'border' ), controlOf( acGrey, 'knobs/card/border' ), 1 );
 
 // The position of a knob the template leaves out is the middle: a stored setup that has another one cannot have been made with this template - the model is told so by hand
-acGrey.design._edit.knobs.content.shadow = 2;
+acGrey.design._edit.knobs.card.shadow = 2;
 toggle( acGrey.byId('design-row-surfaces-card') );
 
 const acGreyLine = byClass( acGrey.byId('design-row-surfaces-card'), 'design-accordion-summary' )[0].textContent;
-const acGreyOff = acGrey.design._answered('content').indexOf('shadow') === -1;
+const acGreyOff = acGrey.design._answered('card').indexOf('shadow') === -1;
 
 acGrey.show( 'templates' );
-choose( setSelect( acGrey, 'content' ), 'first' );
-acGrey.design._edit.knobs.content.shadow = 2;
+choose( setSelect( acGrey, 'card' ), 'first' );
+acGrey.design._edit.knobs.card.shadow = 2;
 acGrey.show( 'surfaces' );
 
 const acGreyNamedLine = byClass( acGrey.byId('design-row-surfaces-card'), 'design-accordion-summary' )[0].textContent;
-const acGreyShadow = acSays( knobWord( 'content', 'shadow' ), controlOf( acGrey, 'knobs/content/shadow' ), 2 );
+const acGreyShadow = acSays( knobWord( 'card', 'shadow' ), controlOf( acGrey, 'knobs/card/shadow' ), 2 );
 
 check( 'a knob that is greyed out is never named in a head, whatever position the model holds for it: the card names the border and not the shadow the template does not answer to - which the template that answers to it has named as it should, after the border',
 	acGreyOff === true && acGreyLine === acGreyBorder && acGreyNamedLine === acGreyBorder+ acSeparator+ acGreyShadow );
+
+// A knob of the frames is named as any other: the height of the header, moved, stands in the closed head of the header on Surfaces
+const acFrame = panel();
+acFrame.show( 'surfaces' );
+pressKey( acFrame, 'knobs/header/height', 2 );
+pressKey( acFrame, 'knobs/header/ground', -1 );
+
+const acFrameCard = blocksOf( acFrame.form ).filter( function( card ) { return card.dataset.object === 'header' } )[0];
+
+toggle( acFrameCard );
+
+check( 'a moved height of the header is named in the closed head of the header on Surfaces, by the label of the knob and the number on its button, in the order of the table - and so is the ground of it, a choice, by its word - while the head of the footer, which nobody moved, says nothing',
+	byClass( acFrameCard, 'design-accordion-summary' )[0].textContent === knobWord( 'header', 'height' )+ ' '+ SIGNED[4]+ acSeparator+ knobWord( 'header', 'ground' )+ ' '+ TEXT['/_admin/design/knob/header/ground/less']
+	&& byClass( blocksOf( acFrame.form ).filter( function( card ) { return card.dataset.object === 'footer' } )[0], 'design-accordion-summary' )[0].textContent === ''
+	&& acFrame.design._edit.knobs.header.height === 2 && acFrame.design._edit.knobs.header.ground === -1 );
 
 // The block that is open on a tab is kept for it while the panel lives: another tab is shown, and the tab is shown again
 const acKeep = panel();
@@ -2131,23 +2192,23 @@ const acStill = panel();
 acStill.show( 'surfaces' );
 const acStillBefore = [ JSON.stringify( acStill.design._edit ), acStill.requests.length, acStill.timers.length, acStill.stage.scrolls.length, acStill.design._target, acStill.fitted.length ];
 
-[ 'section', 'card', 'buttons', 'components', 'page', 'page' ].forEach( function( object ) { toggle( blocksOf( acStill.form ).filter( function( card ) { return card.dataset.object === object } )[0] ) } );
+[ 'section', 'card', 'buttons', 'tables', 'page', 'page' ].forEach( function( object ) { toggle( blocksOf( acStill.form ).filter( function( card ) { return card.dataset.object === object } )[0] ) } );
 
 check( 'opening and closing blocks moves nothing of the page: the selection is as it was and not marked as changed, no request was made, no timer set for one, the frame was not asked to scroll or to be fitted again, and the place the frame goes to is the one it had',
 	JSON.stringify( [ JSON.stringify( acStill.design._edit ), acStill.requests.length, acStill.timers.length, acStill.stage.scrolls.length, acStill.design._target, acStill.fitted.length ] ) === JSON.stringify( acStillBefore )
 	&& acStill.byId('design-reset').hidden === true && acStill.design._isDirty() === false );
 
-pressKey( acStill, 'knobs/content/border', 1 );
+pressKey( acStill, 'knobs/card/border', 1 );
 
 check( '...a change inside a block jumps as it did: the frame is asked to go to the place the object is looked at in - the cards for the card - and the way back is shown',
-	acStill.design._target === 'cards' && acStill.byId('design-reset').hidden === false && acStill.design._edit.knobs.content.border === 1 );
+	acStill.design._target === 'cards' && acStill.byId('design-reset').hidden === false && acStill.design._edit.knobs.card.border === 1 );
 
 // What is drawn again is drawn from the model: a reset takes every head back to what is stored, and the block that is open stays open
-const acReset = acStill.design._data.knobs.content.border;
+const acReset = acStill.design._data.knobs.card.border;
 acStill.design._revert();
 
 check( '...a reset draws the screen again from the stored selection: the heads of the blocks name what the stored selection has - nothing, at the defaults - and the block that was open is open still',
-	acStill.design._edit.knobs.content.border === acReset && byClass( acStill.form, 'design-accordion-summary' ).every( function( line ) { return line.textContent === '' } )
+	acStill.design._edit.knobs.card.border === acReset && byClass( acStill.form, 'design-accordion-summary' ).every( function( line ) { return line.textContent === '' } )
 	&& blocksOf( acStill.form ).filter( isOpen ).map( function( card ) { return card.dataset.object } ).join() === 'card' );
 
 // The head that was pressed stays where it stood in the window: the block that was open can stand above it, and its body goes with the press - so the page is
@@ -2190,10 +2251,10 @@ check( '...and neither does the head of the block that is open, which closes it:
 	isOpen( acHoldAt('section') ) === false && blocksOf( acHold.form ).filter( isOpen ).length === 0 && acPane.scrollTop === 600 );
 
 toggle( acHoldAt('buttons') );
-toggle( acHoldAt('components') );
+toggle( acHoldAt('tables') );
 
-check( '...and so it is for every press on a head under the open block: the fifth head under the open fourth is where it was, the pane scrolled up by the 300px that went from above it',
-	isOpen( acHoldAt('components') ) === true && isOpen( acHoldAt('buttons') ) === false && acPane.scrollTop === 300 && acHold.root.scrollTop === 40 );
+check( '...and so it is for every press on a head under the open block: the head of the tables under the open buttons is where it was, the pane scrolled up by the 300px that went from above it',
+	isOpen( acHoldAt('tables') ) === true && isOpen( acHoldAt('buttons') ) === false && acPane.scrollTop === 300 && acHold.root.scrollTop === 40 );
 
 // A window that scrolls itself, as a narrow one does: no pane of the column scrolls, and the window's root element is moved instead
 const acWindow = panel();
@@ -2215,10 +2276,11 @@ console.log('');
 // --- The knobs: a strip each, in the row and on the tab the table gives them ----------------------
 //
 // A strip for every knob of a template: five numbers, -2 to +2, the 0 the template as it is, or for a choice
-// the three words that knob has for them - with the icon of what it sets. The twenty-three of them stand
-// in the rows of Type and Surfaces, each under the object it sets (the table says which): the sizes of the
-// titles on Type, the space, the lines and the shadows on Surfaces. A knob the chosen template does not answer
-// to stands where it always does, greyed out, with the line that says whose decision that is
+// the three words that knob has for them - with the icon of what it sets. The thirty-seven of them stand
+// in the rows of Type, Surfaces, Colours and Motion, each under the object it sets (the table says which): the
+// sizes of the titles on Type, the space, the lines and the shadows on Surfaces, the dimming, the tone and the
+// stripes on Colours, what a card and a button do under the pointer on Motion. A knob the chosen template does
+// not answer to stands where it always does, greyed out, with the line that says whose decision that is
 
 console.log( 'The knobs' );
 
@@ -2248,15 +2310,18 @@ const kindCount = function( kind ) {
 	return Object.keys( KINDS ).reduce( function( sum, part ) { return sum + Object.keys( KINDS[part] ).filter( function( knob ) { return KINDS[part][knob] === kind } ).length }, 0 );
 };
 
-/*	A scale is five numbers and says nothing in words: the note under its name is where the ends are. A choice - the stripes of a table
-	and the labels of a form - is the three words that knob has for its positions, and they begin with a capital letter, as the words of the
-	Colours tab do. Read off the buttons that are drawn - their text and their title - and not off the table they come from, so that a
-	word that goes back to lower case is seen. The kind of a knob is what design/list says of it, and the strip follows: the values on the
-	buttons of a scale are -2 to +2, those of a choice -1 to +1	*/
+/*	A scale is five numbers and says nothing in words: the note under its name is where the ends are. A choice - the ground of a header and
+	of a footer, the tone and the hover of a card, the hover of a button, the marker of a list and the stripes of a table - is the three
+	words that knob has for its positions, and they begin with a capital letter, as the words of the Colours tab do. Read off the buttons
+	that are drawn - their text and their title - and not off the table they come from, so that a word that goes back to lower case is
+	seen. The kind of a knob is what design/list says of it, and the strip follows: the values on the buttons of a scale are -2 to +2,
+	those of a choice -1 to +1	*/
 const CHOICE_WORDS = {};
 
-[ 'components/zebra', 'components/labels' ].forEach( function( at ) {
-	CHOICE_WORDS[at] = [ 'less', 'default', 'more' ].map( function( word ) { return TEXT['/_admin/design/knob/'+ at+ '/'+ word] } ).join();
+Object.keys( KINDS ).forEach( function( part ) {
+	Object.keys( KINDS[part] ).filter( function( knob ) { return KINDS[part][knob] === 'choice' } ).forEach( function( knob ) {
+		CHOICE_WORDS[part+ '/'+ knob] = [ 'less', 'default', 'more' ].map( function( word ) { return TEXT['/_admin/design/knob/'+ part+ '/'+ knob+ '/'+ word] } ).join();
+	} );
 } );
 const wordProblems = [];
 let wordRows = 0;
@@ -2301,24 +2366,27 @@ check( 'a scale is five numbers and a choice the three words of the knob, each c
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
 	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && choiceRows > 0 && wordProblems.length === 0 );
-check( '...the two choices stand at their middle word to begin with, the second of the three buttons lit',
-	CHOICE_WORDS['components/zebra'].split(',').length === 3 && CHOICE_WORDS['components/labels'].split(',').length === 3
-	&& ( function() { worded.show('surfaces'); return pressedKey( worded, 'knobs/components/zebra' ) === 'false,true,false' && pressedKey( worded, 'knobs/components/labels' ) === 'false,true,false' } )() );
+check( '...the seven choices stand at their middle word to begin with, the second of the three buttons lit - on the tab the table puts each on',
+	Object.keys( CHOICE_WORDS ).length === 7 && Object.keys( CHOICE_WORDS ).every( function( at ) {
+		const key = 'knobs/'+ at;
+		worded.show( worded.design._data.layout.controls[key][0] );
+		return CHOICE_WORDS[at].split(',').length === 3 && pressedKey( worded, key ) === 'false,true,false';
+	} ) );
 
 const moved = listing().knobs;
-moved.content.shadow = 1;
+moved.card.shadow = 1;
 moved.buttons.corners = -1;
 
 const kn = panel( { knobs : moved } );
 const knLayout = kn.design._data.layout;
-const heroTitle = knobWord( 'content', 'hero-title' );
-const heroText = knobWord( 'content', 'hero-text' );
+const heroTitle = knobWord( 'section', 'hero-title' );
+const heroText = knobWord( 'section', 'hero-text' );
 
 kn.tab( tabWord('type') );
 
 const knTypeRows = knobRows( kn );
 
-check( 'the knobs of Type are the rows of its objects, in the order the table gives them - the sizes of the titles of a section, of a card, of the buttons and of the fields and tables - and none of the knobs of Surfaces: a row for each, named in the panel\'s words',
+check( 'the knobs of Type are the rows of its objects, in the order the table gives them - the sizes of the navigation of the header, of the footer, of the hero and the titles of a section, of a card, of the buttons, of the lists and of the tables - and none of the knobs of Surfaces: a row for each, named in the panel\'s words',
 	tabOf( kn ) === 'type' && knTypeRows.map( rowName ).join() === knobWords( knLayout, 'type', moved ).map( function( word ) { return word[0] } ).join()
 	&& knTypeRows.length === knobKeys.filter( function( key ) { return knLayout.controls[key][0] === 'type' } ).length );
 
@@ -2329,14 +2397,27 @@ check( '...and those of Surfaces the rows of the space, the lines and the shadow
 	&& knobRows( kn ).length === knobKeys.filter( function( key ) { return knLayout.controls[key][0] === 'surfaces' } ).length
 	&& knobRows( kn ).every( function( row ) { return knLayout.controls[ row.dataset.control ][1] === cardOf( row ).dataset.object } ) );
 
+const knOtherRows = {};
+
+[ 'colours', 'motion' ].forEach( function( tab ) { kn.tab( tabWord( tab ) ); knOtherRows[tab] = knobRows( kn ) } );
+
+check( '...and those of Colours the rows of the dimming of a section, the tone of the shadow of a card and the stripes of a table, and those of Motion what a card and a button do under the pointer - each under the object it sets, after what the page has on the tab',
+	[ 'colours', 'motion' ].every( function( tab ) {
+		return knOtherRows[tab].map( rowName ).join() === knobWords( knLayout, tab, moved ).map( function( word ) { return word[0] } ).join()
+			&& knOtherRows[tab].length === knobKeys.filter( function( key ) { return knLayout.controls[key][0] === tab } ).length
+			&& knOtherRows[tab].every( function( row ) { return knLayout.controls[ row.dataset.control ][1] === cardOf( row ).dataset.object && knLayout.controls[ row.dataset.control ][1] !== 'page' } );
+	} ) && knOtherRows.colours.length === 3 && knOtherRows.motion.length === 2 );
+
+kn.tab( tabWord('surfaces') );
+
 const knHeroPressed = ( kn.tab( tabWord('type') ), kn.pressed( heroTitle ) );
-const knShadowPressed = ( kn.tab( tabWord('surfaces') ), pressedKey( kn, 'knobs/content/shadow' ) );
+const knShadowPressed = ( kn.tab( tabWord('surfaces') ), pressedKey( kn, 'knobs/card/shadow' ) );
 
 check( '...a group of buttons, not a tablist - the one it stands at is pressed and the others are not: the middle for a knob nobody moved, the +1 the shadow stands at',
 	knobRows( kn ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
 	&& knHeroPressed === 'false,false,true,false,false' && knShadowPressed === 'false,false,false,true,false' );
 check( 'a template that answers to every knob greys none of them out, on whichever tab',
-	[ 'type', 'surfaces' ].every( function( tab ) {
+	[ 'type', 'surfaces', 'colours', 'motion' ].every( function( tab ) {
 		kn.show( tab );
 		return offRows( kn ).length === 0 && knobRows( kn ).every( function( row ) { return byTag( row, 'button' ).every( function( button ) { return button.disabled === false } ) } );
 	} ) );
@@ -2345,7 +2426,7 @@ kn.tab( tabWord('type') );
 kn.move( heroTitle, 1 );
 
 check( 'moving a knob is the selection on screen: the position is a number, the button it stands at is lit',
-	kn.design._edit.knobs.content['hero-title'] === 1 && typeof kn.design._edit.knobs.content['hero-title'] === 'number'
+	kn.design._edit.knobs.section['hero-title'] === 1 && typeof kn.design._edit.knobs.section['hero-title'] === 'number'
 	&& kn.pressed( heroTitle ) === 'false,false,false,true,false'
 	&& kn.byId('design-reset').hidden === false );
 
@@ -2353,24 +2434,30 @@ kn.move( heroTitle, -2 );
 kn.move( heroText, 2 );
 
 check( '...to the ends of the scale it is -2 and +2: each stores the number it is labelled with, and each knob keeps its own position',
-	kn.design._edit.knobs.content['hero-title'] === -2 && kn.design._edit.knobs.content['hero-text'] === 2 && kn.design._edit.knobs.content.quiet === 0
+	kn.design._edit.knobs.section['hero-title'] === -2 && kn.design._edit.knobs.section['hero-text'] === 2 && kn.design._edit.knobs.section.quiet === 0
 	&& kn.pressed( heroTitle ) === 'true,false,false,false,false' && kn.pressed( heroText ) === 'false,false,false,false,true' );
 
-const knLit = { type : knobLit( kn ), surfaces : ( kn.tab( tabWord('surfaces') ), knobLit( kn ) ) };
+const knTabs = [ 'type', 'surfaces', 'colours', 'motion' ];
+const knLit = { type : knobLit( kn ) };
 
-check( 'the rows say, for every knob the template answers to, the number of the position it stands at - read off the button that is lit, row after row in the order of the table, on Type and on Surfaces, with nothing under the frame to say it again',
-	JSON.stringify( knLit.type ) === JSON.stringify( knobWords( knLayout, 'type', kn.design._edit.knobs ) ) && JSON.stringify( knLit.surfaces ) === JSON.stringify( knobWords( knLayout, 'surfaces', kn.design._edit.knobs ) )
-	&& knLit.type.length + knLit.surfaces.length === knobKeys.length && kn.byId('design-summary') === null );
+knTabs.slice(1).forEach( function( tab ) { kn.tab( tabWord( tab ) ); knLit[tab] = knobLit( kn ) } );
+
+const knAllLit = function() { return knTabs.reduce( function( words, tab ) { return words.concat( knLit[tab] ) }, [] ) };
+
+check( 'the rows say, for every knob the template answers to, the number of the position it stands at - read off the button that is lit, row after row in the order of the table, on Type, Surfaces, Colours and Motion, with nothing under the frame to say it again',
+	knTabs.every( function( tab ) { return JSON.stringify( knLit[tab] ) === JSON.stringify( knobWords( knLayout, tab, kn.design._edit.knobs ) ) } )
+	&& knAllLit().length === knobKeys.length && kn.byId('design-summary') === null );
 // The lines of knLit are in the order of the table, and a label may stand for two knobs: a word is found by the key of its knob
-const knKeys = [ 'type', 'surfaces' ].reduce( function( keys, tab ) {
+const knKeys = knTabs.reduce( function( keys, tab ) {
 	return keys.concat( [].concat.apply( [], tableRows( knLayout, tab ).map( function( row ) { return row.controls.map( function( control ) { return control.split(' ')[0] } ) } ) ).filter( function( key ) { return key.indexOf('knobs/') === 0 } ) );
 }, [] );
-const knWord = function( key ) { return knLit.type.concat( knLit.surfaces )[ knKeys.indexOf( key ) ][1] };
+const knWord = function( key ) { return knAllLit()[ knKeys.indexOf( key ) ][1] };
+const knMiddles = Object.keys( CHOICE_WORDS ).map( function( at ) { return TEXT['/_admin/design/knob/'+ at+ '/default'] } );
 
-check( '...in numbers: −2 for the title of the hero, +2 for its text, −1 for the corners of the buttons, +1 for the shadow of a card and 0 for the knobs nobody moved - the middle word for the two choices',
-	knWord('knobs/content/hero-title') === '−2' && knWord('knobs/content/hero-text') === '+2' && knWord('knobs/buttons/corners') === '−1' && knWord('knobs/content/shadow') === '+1'
-	&& knLit.type.concat( knLit.surfaces ).filter( function( word, at ) { return [ 'knobs/content/hero-title', 'knobs/content/hero-text', 'knobs/buttons/corners', 'knobs/content/shadow' ].indexOf( knKeys[at] ) === -1 } )
-		.every( function( word ) { return word[1] === '0' || word[1] === TEXT['/_admin/design/knob/components/zebra/default'] || word[1] === TEXT['/_admin/design/knob/components/labels/default'] } ) );
+check( '...in numbers: −2 for the title of the hero, +2 for its text, −1 for the corners of the buttons, +1 for the shadow of a card and 0 for the knobs nobody moved - the middle word for the seven choices',
+	knWord('knobs/section/hero-title') === '−2' && knWord('knobs/section/hero-text') === '+2' && knWord('knobs/buttons/corners') === '−1' && knWord('knobs/card/shadow') === '+1'
+	&& knAllLit().filter( function( word, at ) { return [ 'knobs/section/hero-title', 'knobs/section/hero-text', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) === -1 } )
+		.every( function( word ) { return word[1] === '0' || knMiddles.indexOf( word[1] ) !== -1 } ) && knMiddles.length === 7 );
 
 /*	Another template brings its own knobs, and the ones the last one had are
 	not this one's: a position the new template does not answer to goes back to
@@ -2378,44 +2465,44 @@ check( '...in numbers: −2 for the title of the hero, +2 for its text, −1 for
 	setup the stored one could not be. The rows stand on Type and Surfaces and are
 	drawn when those are opened: the knob the template leaves out is still a row,
 	greyed out	*/
-const knRowsBefore = JSON.stringify( [ 'type', 'surfaces' ].map( function( tab ) { kn.show( tab ); return drawnRows( kn ) } ) );
+const knRowsBefore = JSON.stringify( knTabs.map( function( tab ) { kn.show( tab ); return drawnRows( kn ) } ) );
 
 kn.tab( tabWord('templates') );
-choose( setSelect( kn, 'content' ), 'third' );
+choose( setSelect( kn, 'card' ), 'third' );
 
-check( 'choosing a template that leaves a knob out - one of somebody else\'s library: those the feature ships answer to all thirteen - puts the position of that knob back in the middle, and leaves the others where they were',
-	kn.design._edit.parts.content === 'third' && kn.design._edit.knobs.content.shadow === 0
-	&& kn.design._edit.knobs.content['hero-title'] === -2 && kn.design._edit.knobs.content['hero-text'] === 2 );
+check( 'choosing a template that leaves a knob out - one of somebody else\'s library: those the feature ships answer to every knob of their part - puts the position of that knob back in the middle, and leaves the others where they were',
+	kn.design._edit.parts.card === 'third' && kn.design._edit.knobs.card.shadow === 0
+	&& kn.design._edit.knobs.section['hero-title'] === -2 && kn.design._edit.knobs.section['hero-text'] === 2 );
 
 kn.tab( tabWord('surfaces') );
 
-const knShadow = controlOf( kn, 'knobs/content/shadow' );
+const knShadow = controlOf( kn, 'knobs/card/shadow' );
 
-check( 'on the tab the knob the template does not answer to is still a row, greyed out - not hidden, so the tabs are the same screens for every template: the rows of Type and of Surfaces are the rows they were, and one knob of the lot is grey',
-	JSON.stringify( [ 'type', 'surfaces' ].map( function( tab ) { kn.show( tab ); return drawnRows( kn ) } ) ) === knRowsBefore
-	&& ( kn.tab( tabWord('surfaces') ), offRows( kn ).length === 1 && offRows( kn )[0].dataset.control === 'knobs/content/shadow' )
+check( 'on the tab the knob the template does not answer to is still a row, greyed out - not hidden, so the tabs are the same screens for every template: the rows of every tab are the rows they were, and one knob of the lot is grey',
+	JSON.stringify( knTabs.map( function( tab ) { kn.show( tab ); return drawnRows( kn ) } ) ) === knRowsBefore
+	&& ( kn.tab( tabWord('surfaces') ), offRows( kn ).length === 1 && offRows( kn )[0].dataset.control === 'knobs/card/shadow' )
 	&& ( kn.tab( tabWord('type') ), offRows( kn ).length === 0 ) );
 
 kn.tab( tabWord('surfaces') );
 
-const knShadowRow = controlOf( kn, 'knobs/content/shadow' );
+const knShadowRow = controlOf( kn, 'knobs/card/shadow' );
 
 check( '...its buttons switched off and none of them pressed',
 	knShadow !== null && byTag( knShadowRow, 'button' ).length === 5 && byTag( knShadowRow, 'button' ).every( function( button ) { return button.disabled === true && button.getAttribute('aria-pressed') === 'false' } )
-	&& byTag( controlOf( kn, 'knobs/content/border' ), 'button' ).every( function( button ) { return button.disabled === false } ) );
+	&& byTag( controlOf( kn, 'knobs/card/border' ), 'button' ).every( function( button ) { return button.disabled === false } ) );
 check( '...and the line under its name says whose decision that is, in place of its note',
-	( byTag( knShadowRow, 'small' )[0] || {} ).textContent === say( '/_admin/design/hint/unanswered', knobWord( 'content', 'shadow' ) )
-	&& ( byTag( controlOf( kn, 'knobs/content/border' ), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/border/note'] );
+	( byTag( knShadowRow, 'small' )[0] || {} ).textContent === say( '/_admin/design/hint/unanswered', knobWord( 'card', 'shadow' ) )
+	&& ( byTag( controlOf( kn, 'knobs/card/border' ), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/card/border/note'] );
 check( 'a row that is greyed out says no position, since it compiles nothing: every other knob of the tab has a button that is lit, and the shadow is not one of them',
-	knobLit( kn ).length === knobWords( knLayout, 'surfaces', kn.design._edit.knobs ).length - 1 && offRows( kn ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/content/shadow' );
+	knobLit( kn ).length === knobWords( knLayout, 'surfaces', kn.design._edit.knobs ).length - 1 && offRows( kn ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/card/shadow' );
 
 kn.tab( tabWord('templates') );
-choose( setSelect( kn, 'content' ), 'first' );
+choose( setSelect( kn, 'card' ), 'first' );
 kn.tab( tabWord('surfaces') );
 
 check( 'choosing the template that has it again takes the grey away, with the knob in the middle',
-	offRows( kn ).length === 0 && kn.design._edit.knobs.content.shadow === 0
-	&& pressedKey( kn, 'knobs/content/shadow' ) === 'false,false,true,false,false' );
+	offRows( kn ).length === 0 && kn.design._edit.knobs.card.shadow === 0
+	&& pressedKey( kn, 'knobs/card/shadow' ) === 'false,false,true,false,false' );
 
 // The buttons' own template leaves the corners to the template: the position the stored setup cannot have had
 check( 'the buttons\' template Square leaves the corners out, which the stored position cannot have been: its row is the one grey row of Surfaces, once that template is chosen',
@@ -2424,12 +2511,12 @@ check( 'the buttons\' template Square leaves the corners out, which the stored p
 		&& offRows( kn ).length === 1 && hasClass( controlOf( kn, 'knobs/buttons/corners' ), 'design-knob-row--off' ) ) );
 
 kn.tab( tabWord('templates') );
-choose( setSelect( kn, 'components' ), 'fourth' );
+choose( setSelect( kn, 'tables' ), 'fourth' );
 kn.tab( tabWord('surfaces') );
 
-check( 'Filled, the template of the fields and tables, answers to the line under a field and to where the labels stand as well: none of the rows of its object on Surfaces is grey - the five of them, the sixth, the text size, standing on Type',
-	knobRows( kn ).filter( function( row ) { return cardOf( row ).dataset.object === 'components' } ).length === KNOBS.components.length - 1 && controlOf( kn, 'knobs/components/scale' ) === null
-	&& knobRows( kn ).filter( function( row ) { return cardOf( row ).dataset.object === 'components' && hasClass( row, 'design-knob-row--off' ) } ).length === 0 );
+check( 'Filled, the template of the tables, answers to every knob of its part: none of the rows of its object on Surfaces is grey - the three of them, the text size standing on Type and the stripes on Colours',
+	knobRows( kn ).filter( function( row ) { return cardOf( row ).dataset.object === 'tables' } ).length === KNOBS.tables.length - 2 && controlOf( kn, 'knobs/tables/scale' ) === null
+	&& knobRows( kn ).filter( function( row ) { return cardOf( row ).dataset.object === 'tables' && hasClass( row, 'design-knob-row--off' ) } ).length === 0 );
 
 console.log('');
 
@@ -2599,11 +2686,12 @@ check( 'a corner choice is a change like any other: the selection is marked as n
 console.log('');
 
 
-// --- The Motion tab: the animation of the page -----------------------------------------------------------
+// --- The Motion tab: the animation of the page and the hover --------------------------------------------
 //
-// One block and three selects - the effect, the strength and the speed. The animation belongs to the page: the tab is the
-// one row, a block of its own under the word of the page, open to begin with and closable like every other, and it is drawn
-// afresh from the selection whenever it is opened. Closed, its head names the effect and the strength and the speed that are set
+// Three blocks. The first is the page's, three selects - the effect, the strength and the speed: the animation belongs to the
+// page, a block of its own under the word of the page, open to begin with and closable like every other, drawn afresh from the
+// selection whenever it is opened. Closed, its head names the effect and the strength and the speed that are set. The other two
+// are what a card does under the pointer and what a button does: a strip of three words each, in the block of their object
 
 console.log( 'Motion' );
 
@@ -2619,9 +2707,12 @@ function motionOffer( key, values ) {
 	return [ [ '', TEXT['/_admin/design/motion/default'] ] ].concat( values.map( function( value ) { return [ value, TEXT['/_admin/design/motion/'+ key+ '/'+ value] ] } ) );
 }
 
-check( 'the Motion tab is the animation of the page and nothing else: one block of three selects - the effect, which starts on what Nino.css does by itself, the strength and the speed - the controls the table gives the page there',
-	tabOf( mo ) === 'motion' && mo.body().children.length === 1 && hasClass( mo.body().children[0], 'design-form-section' ) && byTag( mo.body().children[0], 'select' ).length === 3
-	&& JSON.stringify( drawnRows( mo ) ) === JSON.stringify( tableRows( mo.design._data.layout, 'motion' ) )
+const moFresh = panel();
+moFresh.tab( tabWord('motion') );
+
+check( 'the Motion tab is the animation of the page and what a card and a button do under the pointer: three blocks, the first open, with three selects - the effect, which starts on what Nino.css does by itself, the strength and the speed - the controls the table gives the page there',
+	tabOf( mo ) === 'motion' && mo.body().children.length === 3 && mo.body().children.every( function( card ) { return hasClass( card, 'design-form-section' ) } ) && byTag( mo.body().children[0], 'select' ).length === 3
+	&& byTag( mo.body(), 'select' ).length === 3 && JSON.stringify( drawnRows( moFresh ) ) === JSON.stringify( tableRows( mo.design._data.layout, 'motion' ) )
 	&& JSON.stringify( offered( effect ) ) === JSON.stringify( motionOffer( 'effect', mo.design._data.effects ) ) && mo.design._data.effects.length === 8
 	&& JSON.stringify( offered( strength ) ) === JSON.stringify( motionOffer( 'strength', mo.design._data.strengths ) ) && mo.design._data.strengths.length === 3
 	&& JSON.stringify( offered( speed ) ) === JSON.stringify( motionOffer( 'speed', mo.design._data.speeds ) ) && mo.design._data.speeds.length === 3
@@ -2658,9 +2749,11 @@ const mbBlock = function() { return blocksOf( mb.form )[0] };
 const mbSaid = function() { return byClass( mbBlock(), 'design-accordion-summary' )[0].textContent };
 const mbPart = function( key, value ) { return TEXT['/_admin/design/motion/'+ key+ '/label']+ ' '+ TEXT['/_admin/design/motion/'+ key+ '/'+ value] };
 
-check( 'the Motion tab is one block, the page\'s: a head named by the word of the page and the three selects in its body, open to begin with - the card is the block and the tab is an accordion of one',
-	blocksOf( mb.form ).length === 1 && mbBlock().dataset.tab === 'motion' && mbBlock().dataset.object === 'page' && isOpen( mbBlock() ) === true
-	&& byClass( headButton( mbBlock() ), 'design-accordion-name' )[0].textContent === objectWord('page') && byTag( mbBlock(), 'select' ).length === 3 && mb.design._blockOf( 'motion', tableRows( listing().layout, 'motion' ) ) === 'page' );
+check( 'the Motion tab is three blocks, the page\'s first, the card\'s and the buttons\' after it: a head named by the word of its object, the page\'s open to begin with with the three selects in its body, and the other two drawn when they are opened',
+	blocksOf( mb.form ).length === 3 && blocksOf( mb.form ).map( function( card ) { return card.dataset.object } ).join() === 'page,card,buttons' && blocksOf( mb.form ).every( function( card ) { return card.dataset.tab === 'motion' } )
+	&& isOpen( mbBlock() ) === true && blocksOf( mb.form ).filter( isOpen ).length === 1
+	&& blocksOf( mb.form ).every( function( card ) { return byClass( headButton( card ), 'design-accordion-name' )[0].textContent === objectWord( card.dataset.object ) } )
+	&& byTag( mbBlock(), 'select' ).length === 3 && byTag( mb.form, 'select' ).length === 3 && mb.design._blockOf( 'motion', tableRows( listing().layout, 'motion' ) ) === 'page' );
 
 toggle( mbBlock() );
 
@@ -2689,6 +2782,29 @@ toggle( mbBlock() );
 
 check( '...with no effect there is nothing for them to belong to: the head says nothing, though the selection keeps the strength and the speed that were set, which their selects - switched off - do not offer',
 	mbSaid() === '' && mb.design._edit.motion.strength === 'hard' && mb.design._edit.motion.speed === 'slow' );
+
+// What a card and a button do under the pointer: a strip of three words in the block of its object
+const mh = panel();
+mh.show( 'motion' );
+const mhBlock = function( object ) { return blocksOf( mh.form ).filter( function( card ) { return card.dataset.object === object } )[0] };
+const mhSaid = function( object ) { return byClass( mhBlock( object ), 'design-accordion-summary' )[0].textContent };
+
+pressKey( mh, 'knobs/card/hover', 1 );
+
+const mhCardPressed = pressedKey( mh, 'knobs/card/hover' );
+const mhCardWords = byTag( controlOf( mh, 'knobs/card/hover' ), 'button' ).map( function( button ) { return button.textContent } ).join();
+
+pressKey( mh, 'knobs/buttons/hover', -1 );
+
+check( 'the hover of a card and of a button is a strip of three words each, in the block of its object: the middle one lit to begin with, the words those of the knob in the texts, and a press stores the position as a number - the page\'s block closes when theirs opens',
+	mhCardPressed === 'false,false,true' && mhCardWords === [ 'less', 'default', 'more' ].map( function( word ) { return TEXT['/_admin/design/knob/card/hover/'+ word] } ).join()
+	&& mh.design._edit.knobs.card.hover === 1 && mh.design._edit.knobs.buttons.hover === -1 && pressedKey( mh, 'knobs/buttons/hover' ) === 'true,false,false'
+	&& isOpen( mhBlock('buttons') ) === true && isOpen( mhBlock('page') ) === false && isOpen( mhBlock('card') ) === false );
+check( '...and a block that is closed names it in its head - the label of the knob and the word of the position, from the texts of their keys - while the head of the page, which nobody moved, says nothing',
+	mhSaid('card') === knobWord( 'card', 'hover' )+ ' '+ TEXT['/_admin/design/knob/card/hover/more'] && ( toggle( mhBlock('buttons') ), mhSaid('buttons') === knobWord( 'buttons', 'hover' )+ ' '+ TEXT['/_admin/design/knob/buttons/hover/less'] )
+	&& mhSaid('page') === '' );
+check( '...and a change of the hover is looked at in the place of its object: the card for the card and the buttons for the button',
+	( pressKey( mh, 'knobs/card/hover', -1 ), mh.design._target === 'cards' ) && ( pressKey( mh, 'knobs/buttons/hover', 1 ), mh.design._target === 'buttons' ) );
 
 console.log('');
 
@@ -3008,18 +3124,18 @@ console.log('');
 
 // --- Type: the quiet and the loud variant ----------------------------------------------------------
 //
-// Two knobs of the Content set the size of type, the text of a quiet and of a loud title. The table puts them with the other sizes of a
+// Two knobs of the section set the size of type, the text of a quiet and of a loud title. The table puts them with the other sizes of a
 // section: the last two rows of the card of the section on Type, strips like every knob - one function draws them - so they read and write
 // the same values of the setup, preview as the others do, are looked at in the typography block of the page and grey out where the template
-// of the Content declares no ladder for them
+// of the sections declares no ladder for them
 
 console.log( 'The variants' );
 
 const varied = panel();
 varied.tab( tabWord('type') );
 
-const variedName = function( knob ) { return knobWord( 'content', knob ) };
-const variedRows = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf( varied, 'knobs/content/'+ knob ) } );
+const variedName = function( knob ) { return knobWord( 'section', knob ) };
+const variedRows = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf( varied, 'knobs/section/'+ knob ) } );
 const variedBody = variedRows[0] === null ? null : variedRows[0].parent;
 const variedCard = variedBody === null ? null : cardOf( variedBody );
 
@@ -3035,8 +3151,8 @@ check( '...each a strip of five positions signed from −2 to +2 like every scal
 varied.move( variedName('quiet'), 1 );
 varied.move( variedName('loud'), -2 );
 
-check( 'a press stores the number it is labelled with in the setup of the Content, where the other knobs of it are - the quiet variant +1, the loud one −2 - and lights that button alone, the knobs round them where they were',
-	varied.design._edit.knobs.content.quiet === 1 && varied.design._edit.knobs.content.loud === -2 && varied.design._edit.knobs.content['hero-title'] === 0 && varied.design._edit.knobs.content.shadow === 0
+check( 'a press stores the number it is labelled with in the setup of the section, where the other knobs of it are - the quiet variant +1, the loud one −2 - and lights that button alone, the knobs round them where they were',
+	varied.design._edit.knobs.section.quiet === 1 && varied.design._edit.knobs.section.loud === -2 && varied.design._edit.knobs.section['hero-title'] === 0 && varied.design._edit.knobs.card.shadow === 0
 	&& varied.pressed( variedName('quiet') ) === 'false,false,false,true,false' && varied.pressed( variedName('loud') ) === 'true,false,false,false,false' );
 check( '...and it is a change like any other: the way back is shown, a preview is asked for after the debounce, and it is looked at in the typography block of the page, which is where a title is set three times',
 	varied.design._isDirty() === true && varied.byId('design-reset').hidden === false && varied.waiting( 350 ).length === 1 && varied.design._target === 'type' );
@@ -3045,48 +3161,48 @@ varied.design._previewNow();
 const variedPreview = varied.requests[varied.requests.length - 1];
 
 check( '...the preview it asks for carries both, with the rest of the selection beside them',
-	variedPreview.endpoint === 'preview' && variedPreview.payload.knobs.content.quiet === 1 && variedPreview.payload.knobs.content.loud === -2 && variedPreview.payload.knobs.content['hero-title'] === 0 );
+	variedPreview.endpoint === 'preview' && variedPreview.payload.knobs.section.quiet === 1 && variedPreview.payload.knobs.section.loud === -2 && variedPreview.payload.knobs.section['hero-title'] === 0 );
 
 varied.tab( tabWord('surfaces') );
-const variedOnSurfaces = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf( varied, 'knobs/content/'+ knob ) } );
+const variedOnSurfaces = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf( varied, 'knobs/section/'+ knob ) } );
 varied.tab( tabWord('type') );
 
 check( 'the positions are the setup\'s and not the screen\'s: another tab and back, and the rows are drawn anew from the setup - +1 and −2 - while Surfaces has a row for neither',
-	variedOnSurfaces.every( function( row ) { return row === null } ) && controlOf( varied, 'knobs/content/quiet' ) !== variedRows[0]
+	variedOnSurfaces.every( function( row ) { return row === null } ) && controlOf( varied, 'knobs/section/quiet' ) !== variedRows[0]
 	&& varied.pressed( variedName('quiet') ) === 'false,false,false,true,false' && varied.pressed( variedName('loud') ) === 'true,false,false,false,false' );
 
 varied.show( 'typefaces' );
-const variedOnInstall = controlOf( varied, 'knobs/content/quiet' );
+const variedOnInstall = controlOf( varied, 'knobs/section/quiet' );
 varied.show( 'type' );
 
 check( '...the rows belong to the Type tab and to no other: the loader has none of them, and the Type tab has them again, with the positions',
-	variedOnInstall === null && controlOf( varied, 'knobs/content/quiet' ) !== null && varied.pressed( variedName('quiet') ) === 'false,false,false,true,false' );
+	variedOnInstall === null && controlOf( varied, 'knobs/section/quiet' ) !== null && varied.pressed( variedName('quiet') ) === 'false,false,false,true,false' );
 
-/*	A template that declares no ladder for them: the library of somebody else's, whose third template of the Content leaves the two out. Chosen on
+/*	A template that declares no ladder for them: the library of somebody else's, whose third template of the sections leaves the two out. Chosen on
 	the Templates tab, it puts their positions back in the middle (the server holds them there anyway) and the rows on Type are greyed out, not hidden	*/
 const noLadders = listing().parts;
-noLadders.filter( function( one ) { return one.part === 'content' } )[0].catalogue.third.knobs = without( KNOBS.content, [ 'quiet', 'loud' ] );
+noLadders.filter( function( one ) { return one.part === 'section' } )[0].catalogue.third.knobs = without( KNOBS.section, [ 'quiet', 'loud' ] );
 
 const greyed = panel( { parts : noLadders } );
 greyed.tab( tabWord('type') );
 greyed.move( variedName('quiet'), 2 );
-const greyedBefore = [ greyed.design._edit.knobs.content.quiet, offRows( greyed ).length ];
+const greyedBefore = [ greyed.design._edit.knobs.section.quiet, offRows( greyed ).length ];
 
 greyed.tab( tabWord('templates') );
-choose( setSelect( greyed, 'content' ), 'third' );
+choose( setSelect( greyed, 'section' ), 'third' );
 greyed.tab( tabWord('type') );
-const greyedRows = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf( greyed, 'knobs/content/'+ knob ) } );
+const greyedRows = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf( greyed, 'knobs/section/'+ knob ) } );
 
-check( 'where the template of the Content declares no ladder for them the two rows are greyed out and not hidden - the same rows of the same card, every button switched off and none pressed, the line under the name saying whose decision that is',
+check( 'where the template of the sections declares no ladder for them the two rows are greyed out and not hidden - the same rows of the same card, every button switched off and none pressed, the line under the name saying whose decision that is',
 	greyedBefore.join() === '2,0' && greyedRows.every( function( row ) { return row !== null } ) && greyedRows.every( function( row ) {
 		return hasClass( row, 'design-knob-row--off' ) && byTag( row, 'button' ).length === 5 && byTag( row, 'button' ).every( function( button ) { return button.disabled === true && button.getAttribute('aria-pressed') === 'false' }
 			) && ( byTag( row, 'small' )[0] || {} ).textContent === say( '/_admin/design/hint/unanswered', rowName( row ) );
 	} ) && offRows( greyed ).length === 2 );
 check( '...and choosing that template put what was moved back in the middle, the model as the server holds it',
-	greyed.design._edit.knobs.content.quiet === 0 && greyed.design._edit.knobs.content.loud === 0 );
+	greyed.design._edit.knobs.section.quiet === 0 && greyed.design._edit.knobs.section.loud === 0 );
 
 greyed.tab( tabWord('templates') );
-choose( setSelect( greyed, 'content' ), 'first' );
+choose( setSelect( greyed, 'section' ), 'first' );
 greyed.tab( tabWord('type') );
 
 check( '...and a template that has them again takes the grey away, with both in the middle',
@@ -3904,9 +4020,10 @@ byTag( colours.knobRow( colourWord('contrast') ), 'button' )[0].fire('click');
 
 check( 'a position of a knob is a number, 1 to 5: +2 on a scale is the fifth position and \u22122 the first',
 	colours.design._edit.colours.saturation === 5 && colours.design._edit.colours.contrast === 1 && typeof colours.design._edit.colours.saturation === 'number' );
-check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again',
+check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again - and after the page\'s five the dimming of a section, the tone of the shadow of a card and the stripes of a table, in the middle',
 	colours.byId('design-colour-primary').value === '#8b1d3f'
-	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ colourWord('harmony'), TEXT['/_admin/design/colour/harmony/1'] ], [ colourWord('temperature'), TEXT['/_admin/design/colour/temperature/3'] ], [ colourWord('saturation'), '+2' ], [ colourWord('contrast'), '\u22122' ], [ colourWord('depth'), '0' ] ] )
+	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ colourWord('harmony'), TEXT['/_admin/design/colour/harmony/1'] ], [ colourWord('temperature'), TEXT['/_admin/design/colour/temperature/3'] ], [ colourWord('saturation'), '+2' ], [ colourWord('contrast'), '\u22122' ], [ colourWord('depth'), '0' ],
+		[ knobWord( 'section', 'dim' ), '0' ], [ knobWord( 'card', 'tone' ), TEXT['/_admin/design/knob/card/tone/default'] ], [ knobWord( 'tables', 'stripes' ), '0' ] ] )
 	&& wordOf( colours.byId('design-colour-mode') ) === TEXT['/_admin/design/colour/mode/dark'] && colours.byId('design-summary') === null );
 
 // A second colour somebody chose overrides the wheel; choosing a position on the wheel gives it up
@@ -3944,15 +4061,16 @@ check( 'a change of the second colour draws again the row the table puts it in, 
 	&& cm.byId('design-colour-secondary') !== null && cm.byId('design-colour-secondary') !== cmSwatch && cm.byId('design-colour-secondary').value === '#0f766e'
 	&& cm.design._edit.colours.secondary === '#0f766e' && cm.byId('design-row-colours-page') === null && cm.design._target === 'colours' );
 
-// The Colours tab is one block, the page's, open to begin with and closable like every other; closed, its head says what stands off the defaults
+// The Colours tab is four blocks - the page's palette first, open to begin with, then the dimming of a section, the tone of the shadow of a card and the stripes of a table - closable like every other; closed, a head says what stands off the defaults
 const cs = panel();
 cs.tab( tabWord('colours') );
 const csBlock = function() { return blocksOf( cs.form )[0] };
 const csSaid = function() { return byClass( csBlock(), 'design-accordion-summary' )[0].textContent };
 
-check( 'the Colours tab is one block, the page\'s: a head named by the word of the page, and in its body the brand colour, the second colour, the five knobs and the mode - open to begin with',
-	blocksOf( cs.form ).length === 1 && csBlock().dataset.tab === 'colours' && csBlock().dataset.object === 'page' && isOpen( csBlock() ) === true
-	&& byClass( headButton( csBlock() ), 'design-accordion-name' )[0].textContent === objectWord('page') && byClass( csBlock(), 'design-knob-row' ).length === 5
+check( 'the Colours tab is four blocks, the page\'s first and then the section\'s, the card\'s and the tables\': a head named by the word of its object, and in the body of the page\'s the brand colour, the second colour, the five knobs and the mode - open to begin with, the others closed',
+	blocksOf( cs.form ).length === 4 && blocksOf( cs.form ).map( function( card ) { return card.dataset.object } ).join() === 'page,section,card,tables' && csBlock().dataset.tab === 'colours' && csBlock().dataset.object === 'page' && isOpen( csBlock() ) === true
+	&& blocksOf( cs.form ).filter( isOpen ).length === 1 && blocksOf( cs.form ).every( function( card ) { return byClass( headButton( card ), 'design-accordion-name' )[0].textContent === objectWord( card.dataset.object ) } )
+	&& byClass( csBlock(), 'design-knob-row' ).length === 5
 	&& cs.byId('design-colour-primary') !== null && cs.byId('design-colour-secondary') !== null && cs.byId('design-colour-mode') !== null
 	&& JSON.stringify( drawnRows( cs ) ) === JSON.stringify( tableRows( cs.design._data.layout, 'colours' ) ) );
 
@@ -4016,6 +4134,55 @@ unsafe.tab( tabWord('colours') );
 check( 'a brand colour text does not survive on says so under the colour, with the numbers - and says nothing where it does',
 	unsafe.byId('design-brand-warning').hidden === false && unsafe.byId('design-brand-warning').textContent === say( '/_admin/design/msg/brand-unsafe', 3.1, 4.5 )
 	&& colours.byId('design-brand-warning').hidden === true );
+
+// The dimming of a section, the tone of the shadow of a card and the stripes of a table: a strip each, in the block of their object after the page's
+const co = panel();
+co.show( 'colours' );
+const coBlock = function( object ) { return blocksOf( co.form ).filter( function( card ) { return card.dataset.object === object } )[0] };
+const coSaid = function( object ) { return byClass( coBlock( object ), 'design-accordion-summary' )[0].textContent };
+
+pressKey( co, 'knobs/section/dim', 2 );
+pressKey( co, 'knobs/card/tone', 1 );
+pressKey( co, 'knobs/tables/stripes', -1 );
+toggle( coBlock('tables') );
+
+check( 'the dimming of a section, the tone of the shadow of a card and the stripes of a table are a strip each in the block of their object on Colours, after the page\'s, and a head that is closed names a moved one - the label of the knob and the word of its position, a number for a scale and a name for a choice - while the head of the page, which nobody moved, says nothing',
+	blocksOf( co.form ).map( function( card ) { return card.dataset.object } ).join() === 'page,section,card,tables' && blocksOf( co.form ).filter( isOpen ).length === 0
+	&& co.design._edit.knobs.section.dim === 2 && co.design._edit.knobs.card.tone === 1 && co.design._edit.knobs.tables.stripes === -1
+	&& coSaid('section') === knobWord( 'section', 'dim' )+ ' '+ SIGNED[4] && coSaid('card') === knobWord( 'card', 'tone' )+ ' '+ TEXT['/_admin/design/knob/card/tone/more']
+	&& coSaid('tables') === knobWord( 'tables', 'stripes' )+ ' '+ SIGNED[1] && coSaid('page') === '' );
+
+const coGrey = panel();
+coGrey.show( 'templates' );
+choose( setSelect( coGrey, 'section' ), 'third' );
+coGrey.show( 'colours' );
+
+const coGreyRow = controlOf( coGrey, 'knobs/section/dim' );
+
+check( 'a template that leaves the dimming out greys its row out on Colours as it does on any tab: the row is there, in the block of the section, its buttons off and none pressed, with the line that says whose decision that is - and no other row of the tab is grey',
+	coGreyRow !== null && cardOf( coGreyRow ).dataset.object === 'section' && hasClass( coGreyRow, 'design-knob-row--off' ) && byTag( coGreyRow, 'button' ).length === 5
+	&& byTag( coGreyRow, 'button' ).every( function( button ) { return button.disabled === true && button.getAttribute('aria-pressed') === 'false' } )
+	&& ( byTag( coGreyRow, 'small' )[0] || {} ).textContent === say( '/_admin/design/hint/unanswered', knobWord( 'section', 'dim' ) )
+	&& offRows( coGrey ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/section/dim' );
+
+// A frame is asked for its knobs as a set is: the second template of the header leaves the height out
+const frameLess = listing().parts;
+frameLess.filter( function( one ) { return one.part === 'header' } )[0].catalogue.second.knobs = without( KNOBS.header, [ 'height' ] );
+
+const fg = panel( { parts : frameLess } );
+fg.show( 'surfaces' );
+pressKey( fg, 'knobs/header/height', 1 );
+fg.show( 'templates' );
+choose( setSelect( fg, 'header' ), 'second' );
+fg.show( 'surfaces' );
+
+const fgHeight = controlOf( fg, 'knobs/header/height' );
+
+check( 'a frame answers to the knobs its stylesheet declares ladders for, as a set does: a header template that leaves the height out puts the position of it back in the middle and greys its row out on Surfaces, the space and the ground of the header staying on - and its navigation on Type is on',
+	fg.design._edit.parts.header === 'second' && fg.design._edit.knobs.header.height === 0 && hasClass( fgHeight, 'design-knob-row--off' ) && byTag( fgHeight, 'button' ).every( function( button ) { return button.disabled === true } )
+	&& offRows( fg ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/header/height'
+	&& byTag( controlOf( fg, 'knobs/header/space' ), 'button' ).every( function( button ) { return button.disabled === false } ) && byTag( controlOf( fg, 'knobs/header/ground' ), 'button' ).every( function( button ) { return button.disabled === false } )
+	&& ( fg.show( 'type' ), offRows( fg ).length === 0 ) );
 
 console.log('');
 
@@ -4083,7 +4250,7 @@ const LUCIDE = {
 	'square' : '<rect width="18" height="18" x="3" y="3" rx="2"/>',
 	'square-stack' : '<path d="M4 10c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2"/><path d="M10 16c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2"/><rect width="8" height="8" x="14" y="14" rx="2"/>',
 	'rows-3' : '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/>',
-	'text-cursor-input' : '<path d="M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1"/><path d="M9 6v12"/>',
+	'list' : '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
 	'palette' : '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
 	'thermometer' : '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
 	'droplet' : '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
@@ -4114,13 +4281,16 @@ const ICON_OF = {
 	'page/radius' : 'square-round-corner', 'page/radius-alt' : 'square-round-corner',
 	'page/radii-section' : 'square-round-corner', 'page/radii-card' : 'square-round-corner', 'page/radii-image' : 'square-round-corner',
 	'typefaces/family' : 'a-large-small',
-	'content/hero-title' : 'a-large-small', 'content/hero-text' : 'a-large-small', 'content/quiet' : 'a-large-small', 'content/loud' : 'a-large-small',
-	'content/section-title' : 'a-large-small', 'content/section-subtitle' : 'a-large-small', 'content/section-space' : 'scaling', 'content/section-line' : 'minus',
-	'content/card-title' : 'a-large-small', 'content/card-subtitle' : 'a-large-small', 'content/card-space' : 'align-vertical-space-around',
-	'content/border' : 'square', 'content/shadow' : 'square-stack',
+	'header/nav' : 'a-large-small', 'header/height' : 'move-vertical', 'header/space' : 'align-vertical-space-around', 'header/ground' : 'contrast',
+	'footer/scale' : 'a-large-small', 'footer/height' : 'move-vertical', 'footer/space' : 'align-vertical-space-around', 'footer/ground' : 'contrast',
+	'section/hero-title' : 'a-large-small', 'section/hero-text' : 'a-large-small', 'section/quiet' : 'a-large-small', 'section/loud' : 'a-large-small',
+	'section/title' : 'a-large-small', 'section/subtitle' : 'a-large-small', 'section/space' : 'scaling', 'section/rule' : 'minus', 'section/dim' : 'contrast',
+	'card/title' : 'a-large-small', 'card/subtitle' : 'a-large-small', 'card/space' : 'align-vertical-space-around',
+	'card/border' : 'square', 'card/shadow' : 'square-stack', 'card/tone' : 'palette', 'card/hover' : 'move-vertical',
 	'buttons/size' : 'a-large-small', 'buttons/spread' : 'chevrons-left-right', 'buttons/space' : 'align-vertical-space-around', 'buttons/corners' : 'square-round-corner',
-	'components/scale' : 'a-large-small', 'components/space' : 'align-vertical-space-around', 'components/corners' : 'square-round-corner',
-	'components/border' : 'square', 'components/zebra' : 'rows-3', 'components/labels' : 'text-cursor-input',
+	'buttons/hover' : 'move-vertical',
+	'lists/scale' : 'a-large-small', 'lists/space' : 'align-vertical-space-around', 'lists/marker' : 'list',
+	'tables/scale' : 'a-large-small', 'tables/space' : 'align-vertical-space-around', 'tables/border' : 'square', 'tables/zebra' : 'rows-3', 'tables/stripes' : 'contrast',
 	'colours/primary' : 'palette', 'colours/harmony' : 'palette', 'colours/temperature' : 'thermometer', 'colours/saturation' : 'droplet',
 	'colours/contrast' : 'contrast', 'colours/depth' : 'square-stack', 'colours/mode' : 'sun-moon',
 };
@@ -4139,7 +4309,7 @@ let iconRows = 0;
 /** The tab a control stands on, by its key in the table */
 const iconTab = function( key ) { return LAYOUT[key][0] };
 
-[ 'type', 'surfaces' ].forEach( function( tab ) {
+[ 'type', 'surfaces', 'colours', 'motion' ].forEach( function( tab ) {
 
 	icons.show( tab );
 
@@ -4158,11 +4328,11 @@ const iconTab = function( key ) { return LAYOUT[key][0] };
 	} );
 } );
 
-check( 'every knob row of Type and of Surfaces - one for each knob the table has - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim'
+check( 'every knob row of Type, Surfaces, Colours and Motion - one for each knob the table has - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim'
 	+ ( iconProblems.length === 0 ? '' : ' - not so for '+ iconProblems.join() ), iconRows === knobKeys.length && iconRows > 0 && iconProblems.length === 0 );
 
 icons.show( 'type' );
-const iconRow = controlOf( icons, 'knobs/content/hero-title' );
+const iconRow = controlOf( icons, 'knobs/section/hero-title' );
 const iconLabel = byClass( iconRow, 'design-knob-label' )[0];
 const iconSvg = byTag( iconLabel, 'svg' )[0];
 
@@ -4172,17 +4342,17 @@ check( '...the icon is decoration, drawn on a 24 by 24 grid in the svg namespace
 	&& iconSvg.children.length === 4 && iconSvg.children.every( function( part ) { return part.tagName === 'PATH' } ) );
 check( '...and the label is the row of the two: the icon, then a box that holds the name with its note under it - the name is the box\'s own text, the note a small in it',
 	iconLabel.children.length === 2 && iconLabel.children[1].tagName === 'SPAN' && hasClass( iconLabel.children[1], 'design-knob-text' )
-	&& iconLabel.children[1].textContent === knobWord( 'content', 'hero-title' ) && byTag( iconLabel.children[1], 'small' ).length === 1
-	&& byTag( iconLabel.children[1], 'small' )[0].textContent === TEXT['/_admin/design/knob/content/hero-title/note'] && byTag( iconLabel, 'button' ).length === 0 );
+	&& iconLabel.children[1].textContent === knobWord( 'section', 'hero-title' ) && byTag( iconLabel.children[1], 'small' ).length === 1
+	&& byTag( iconLabel.children[1], 'small' )[0].textContent === TEXT['/_admin/design/knob/section/hero-title/note'] && byTag( iconLabel, 'button' ).length === 0 );
 
 // A row the template does not answer to is grey, and keeps its icon: what it sets is not a thing that depends on the template
 icons.tab( tabWord('templates') );
-choose( setSelect( icons, 'content' ), 'third' );
+choose( setSelect( icons, 'card' ), 'third' );
 icons.tab( tabWord('surfaces') );
 
 check( '...a row that is greyed out keeps its icon, with the line that says whose decision that is in the box beside it',
-	hasClass( controlOf( icons, 'knobs/content/shadow' ), 'design-knob-row--off' ) && byTag( controlOf( icons, 'knobs/content/shadow' ), 'svg' )[0].dataset.icon === 'square-stack'
-	&& byTag( controlOf( icons, 'knobs/content/shadow' ), 'small' )[0].textContent === say( '/_admin/design/hint/unanswered', knobWord( 'content', 'shadow' ) ) );
+	hasClass( controlOf( icons, 'knobs/card/shadow' ), 'design-knob-row--off' ) && byTag( controlOf( icons, 'knobs/card/shadow' ), 'svg' )[0].dataset.icon === 'square-stack'
+	&& byTag( controlOf( icons, 'knobs/card/shadow' ), 'small' )[0].textContent === say( '/_admin/design/hint/unanswered', knobWord( 'card', 'shadow' ) ) );
 
 // The strips of the page stand on Type (the root size) and on Surfaces (the rest): the kinds of surface are the choices of two words
 check( 'the strips of the page take theirs by the same mechanism, on the tab they stand on: the root size the letters of two sizes, the width the two arrows that point apart, the whitespace the two that point up and down, and the two radii and the corners of each choice of a kind of surface the square with one round corner - Lucide\'s a-large-small, move-horizontal, move-vertical and square-round-corner, each with the shape of its name, verbatim, in front of the box that holds the name',
@@ -4229,7 +4399,7 @@ delete mapped['colours/temperature'];
 icons.design._redrawColours();
 
 check( 'a knob with no entry in the map has no icon, and nothing stands in for it: not a row, not a fallback shape',
-	icons.design._icon('content/nothing') === null && icons.design._icon('') === null && icons.design._icon('constructor') === null
+	icons.design._icon('section/nothing') === null && icons.design._icon('') === null && icons.design._icon('constructor') === null
 	&& byTag( icons.knobRow( colourWord('temperature') ), 'svg' ).length === 0 && byClass( icons.knobRow( colourWord('temperature') ), 'design-knob-label' )[0].children.length === 1
 	&& hasClass( byClass( icons.knobRow( colourWord('temperature') ), 'design-knob-label' )[0].children[0], 'design-knob-text' )
 	&& colourIcon( icons.knobRow( colourWord('saturation') ) ) === 'droplet' );
@@ -4239,12 +4409,12 @@ icons.design._redrawColours();
 
 check( '...and the row has it again when the entry is back', colourIcon( icons.knobRow( colourWord('temperature') ) ) === 'thermometer' );
 
-mapped['content/nowhere'] = 'no-such-icon';
+mapped['section/nowhere'] = 'no-such-icon';
 
 check( '...nor has a knob whose icon the script has no shape for',
-	icons.design._icon('content/nowhere') === null );
+	icons.design._icon('section/nowhere') === null );
 
-delete mapped['content/nowhere'];
+delete mapped['section/nowhere'];
 
 check( 'the script\'s two maps are the tables above: the same knobs with the same icons, and a shape for each icon that is used - no more, no fewer, verbatim',
 	JSON.stringify( Object.keys( mapped ).sort() ) === JSON.stringify( Object.keys( ICON_OF ).sort() ) && Object.keys( ICON_OF ).every( function( key ) { return mapped[key] === ICON_OF[key] } )
@@ -4947,8 +5117,8 @@ console.log( 'The anchors' );
 
 /** The ids of the specimen the tabs, the objects and a few controls of their own are looked at in (ANCHORS, OBJECT_ANCHORS, CONTROL_ANCHORS) */
 const TAB_AIMS = { theme : 'global', templates : 'global', typefaces : 'type', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global' };
-const OBJECT_AIMS = { page : 'global', section : 'content', card : 'cards', buttons : 'buttons', components : 'components' };
-const CONTROL_AIMS = { 'knobs/content/quiet' : 'type', 'knobs/content/loud' : 'type', 'parts/header' : 'global', 'parts/footer' : 'footer', 'parts/content' : 'content', 'parts/buttons' : 'buttons', 'parts/components' : 'components',
+const OBJECT_AIMS = { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' };
+const CONTROL_AIMS = { 'knobs/section/quiet' : 'type', 'knobs/section/loud' : 'type',
 	'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours' };
 
 /** Where a control is looked at, from the table: the id it has of its own, else that of the object it stands under, else that of its tab - how many rows its tab draws is no part of it */
@@ -4978,8 +5148,8 @@ anchors.tab( tabWord('surfaces') );
 check( 'the top of the page, header and all, is where Surfaces goes, wherever the anchor stands',
 	JSON.stringify( last() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) && anchors.stage.scrolls.length === 3 );
 
-// What a change of a control of the fields and tables is looked at in: the block of the forms
-pressKey( anchors, 'knobs/components/space', 1 );
+// What a change of a control of the tables is looked at in: their block
+pressKey( anchors, 'knobs/tables/space', 1 );
 const before = anchors.stage.scrolls.length;
 
 
@@ -4988,7 +5158,7 @@ const before = anchors.stage.scrolls.length;
 anchors.design._previewNow();
 anchors.answer( 200, { css : ':root{--x:1}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
-check( 'after every change the preview\'s stylesheet is swapped inside the frame that stands, and the page goes to where the change is looked at - the fields and tables, for a control of theirs',
+check( 'after every change the preview\'s stylesheet is swapped inside the frame that stands, and the page goes to where the change is looked at - the tables, for a control of theirs',
 	anchors.stage.style.textContent === ':root{--x:1}' && anchors.stage.scrolls.length === before + 1
 	&& JSON.stringify( last() ) === JSON.stringify( { top : 1600, behavior : 'smooth' } ) );
 
@@ -5018,7 +5188,7 @@ anchors.design._jump();
 check( 'where the page is still loading its webfaces the jump waits for them, and measures when they are in',
 	anchors.stage.scrolls.length === waiting && typeof fontsAreIn === 'function' );
 
-anchors.stage.tops.components = 1560;
+anchors.stage.tops.tables = 1560;
 anchors.stage.fonts = { status : 'loaded', ready : { then : function() {} } };
 fontsAreIn();
 
@@ -5043,7 +5213,7 @@ anchors.design._jump();
 
 check( '...and one who did not is scrolled smoothly', JSON.stringify( last() ) === JSON.stringify( { top : 1660, behavior : 'smooth' } ) );
 delete anchors.stage.document.defaultView.matchMedia;
-anchors.stage.tops.components = 1500;
+anchors.stage.tops.tables = 1500;
 
 /*	The header is fixed, and a page keeps room for it at the top of main - each
 	header template sets how much. An anchor stands that far from the top, where
@@ -5056,7 +5226,7 @@ anchors.design._jump();
 check( 'an anchor stands as far from the top of the frame as main keeps room for the fixed header, and not under the bar', JSON.stringify( last() ) === JSON.stringify( { top : 1456, behavior : 'smooth' } ) );
 
 anchors.stage.tops.content = 20;
-pressKey( anchors, 'knobs/content/section-space', 1 );
+pressKey( anchors, 'knobs/section/space', 1 );
 anchors.design._jump();
 
 check( '...and never above the top of the page: the first section, which stands where main\'s room ends, is the top', JSON.stringify( last() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) );
@@ -5176,13 +5346,13 @@ check( '...nor does another screen of a tab: the screen under the strip is drawn
 	fw.stage.scrolls.length === fwScrolled && fw.stage.asked.length === fwAsked && fw.fitted.length === fwFitted + 5 && fw.requests.length === 0 );
 
 fw.tab( tabWord('surfaces') );
-pressKey( fw, 'knobs/content/card-space', 1 );
+pressKey( fw, 'knobs/card/space', 1 );
 fw.design._previewNow();
 fw.answer( 200, { css : ':root{--x:1}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
 check( '...nor does a change: the preview comes back and its stylesheet is swapped inside the frame that stands, which stays where it is - and the stage is fitted once more with the answer',
 	fw.stage.style.textContent === ':root{--x:1}' && fw.stage.scrolls.length === fwScrolled && fw.stage.asked.indexOf('cards') === -1
-	&& fw.fitted.length === fwFitted + 7 && fw.design._edit.knobs.content['card-space'] === 1 );
+	&& fw.fitted.length === fwFitted + 7 && fw.design._edit.knobs.card.space === 1 );
 
 fw.design._frames = null;
 fw.design._previewNow();
@@ -5242,7 +5412,7 @@ console.log('');
 // which follows from the table: the id it has of its own - the two variants to the typography block, a
 // template to where its set is shown, the controls of the palette to the grounds -, else the id of the
 // object it stands under - the page the top of the page, a section the first section of it, a card the
-// cards, the buttons and the fields and tables their blocks -, else the anchor of its tab. The place of
+// cards, the buttons, the lists and the tables their blocks -, else the anchor of its tab. The place of
 // a change is one target, put back to the tab's own when a tab is opened - a footer that is chosen is the
 // one template that is looked at somewhere else: where the page ends
 
@@ -5259,21 +5429,22 @@ function jpAnswer() {
 	jp.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 }
 
-check( 'the specimen knows where a control is looked at, by the object it stands under and by itself: the page at the top of it, a section in the first section of the page, a card in the cards, the buttons and the fields and tables each in their block - and the two variants in the typography block, the header at the top of the page, the footer at its foot and the other three templates where their sets are shown, and the eight controls of the palette in the grounds, where the page of the colours has its own anchor no more than the page of the other tabs has the top of the page; the maps say no more than that',
+check( 'the specimen knows where a control is looked at, by the object it stands under and by itself: the page and the header at the top of the page, the footer at its foot, a section in the first section of the page, a card in the cards, the buttons, the lists and the tables each in their block - and the two variants in the typography block, and the eight controls of the palette in the grounds, where the page of the colours has its own anchor no more than the page of the other tabs has the top of the page; the maps say no more than that, and a template is looked at where its object is',
 	JSON.stringify( jp.design.OBJECT_ANCHORS ) === JSON.stringify( OBJECT_AIMS ) && JSON.stringify( jp.design.CONTROL_ANCHORS ) === JSON.stringify( CONTROL_AIMS ) && jp.design._target === null );
-check( '...and the place of every control follows from the table of the answer: what is set on the page - the root size and the roles of the fonts as much as the width, the whitespace and the corners - and the animation at the top, the palette at the grounds, a section in its section, a card in the cards, the buttons and the fields and tables in their blocks, the two variants in the typography block - the ids the maps name, counted from the table and not from the names of the controls',
+check( '...and the place of every control follows from the table of the answer: what is set on the page - the root size and the roles of the fonts as much as the width, the whitespace and the corners - and the animation at the top, the palette at the grounds, a section in its section, a card in the cards, the buttons, the lists and the tables in their blocks, the header at the top of the page and the footer at its foot, the two variants in the typography block - the ids the maps name, counted from the table and not from the names of the controls',
 	Object.keys( jpLayout.controls ).every( function( key ) { return jp.design._anchorOf( key ) === aimOf( jpLayout, key ) } )
-	&& [ [ 'width', 'global' ], [ 'radii/image', 'global' ], [ 'motion/effect', 'global' ], [ 'size', 'global' ], [ 'fonts/code', 'global' ], [ 'fonts/title', 'global' ], [ 'knobs/content/loud', 'type' ], [ 'colours/depth', 'colours' ], [ 'colours/primary', 'colours' ], [ 'colours/mode', 'colours' ],
-		[ 'parts/header', 'global' ], [ 'parts/footer', 'footer' ], [ 'parts/content', 'content' ], [ 'parts/buttons', 'buttons' ], [ 'parts/components', 'components' ],
-		[ 'knobs/content/section-space', 'content' ], [ 'radii/cover', 'content' ], [ 'knobs/content/card-space', 'cards' ], [ 'radii/card', 'cards' ],
-		[ 'knobs/buttons/space', 'buttons' ], [ 'knobs/components/zebra', 'components' ] ].every( function( entry ) { return jp.design._anchorOf( entry[0] ) === entry[1] } ) );
+	&& [ [ 'width', 'global' ], [ 'radii/image', 'global' ], [ 'motion/effect', 'global' ], [ 'size', 'global' ], [ 'fonts/code', 'global' ], [ 'fonts/title', 'global' ], [ 'knobs/section/loud', 'type' ], [ 'colours/depth', 'colours' ], [ 'colours/primary', 'colours' ], [ 'colours/mode', 'colours' ],
+		[ 'parts/header', 'global' ], [ 'parts/footer', 'footer' ], [ 'parts/section', 'content' ], [ 'parts/card', 'cards' ], [ 'parts/buttons', 'buttons' ], [ 'parts/lists', 'lists' ], [ 'parts/tables', 'tables' ],
+		[ 'knobs/header/height', 'global' ], [ 'knobs/header/ground', 'global' ], [ 'knobs/footer/space', 'footer' ], [ 'knobs/footer/ground', 'footer' ],
+		[ 'knobs/section/space', 'content' ], [ 'radii/cover', 'content' ], [ 'knobs/section/dim', 'content' ], [ 'knobs/card/space', 'cards' ], [ 'knobs/card/tone', 'cards' ], [ 'knobs/card/hover', 'cards' ], [ 'radii/card', 'cards' ],
+		[ 'knobs/buttons/space', 'buttons' ], [ 'knobs/buttons/hover', 'buttons' ], [ 'knobs/lists/marker', 'lists' ], [ 'knobs/lists/space', 'lists' ], [ 'knobs/tables/zebra', 'tables' ], [ 'knobs/tables/stripes', 'tables' ] ].every( function( entry ) { return jp.design._anchorOf( entry[0] ) === entry[1] } ) );
 
 /*	The place follows the table it is handed: a control moved to another object is looked at where that object is, and a change of it
 	sets that as the target	*/
 const jpOther = layoutTable();
-jpOther.controls['knobs/content/card-space'] = [ 'surfaces', 'buttons', 9 ];
+jpOther.controls['knobs/card/space'] = [ 'surfaces', 'buttons', 9 ];
 jpOther.controls['width'] = [ 'surfaces', 'section', 9 ];
-jpOther.controls['knobs/components/zebra'] = [ 'surfaces', 'card', 9 ];
+jpOther.controls['knobs/tables/zebra'] = [ 'surfaces', 'card', 9 ];
 jpOther.controls['colours/depth'] = [ 'surfaces', 'card', 9 ];
 
 const jpMoved = panel( { layout : jpOther } );
@@ -5283,10 +5454,10 @@ pressKey( jpMoved, 'width', 1 );
 
 const jpMovedTo = jpMoved.design._target;
 
-pressKey( jpMoved, 'knobs/content/card-space', 1 );
+pressKey( jpMoved, 'knobs/card/space', 1 );
 
 check( 'the anchors follow the table: the space of a card moved to the buttons is looked at in their block, the width of the page moved to the section in the first section of the page, the stripes of a table moved to the cards in the cards - while a control of the palette is looked at in the grounds wherever the table puts it, a knob moved to the cards as much as the others, since its anchor is its own - and a change of the control sets that place as the target',
-	jpMoved.design._anchorOf('knobs/content/card-space') === 'buttons' && jpMoved.design._anchorOf('width') === 'content' && jpMoved.design._anchorOf('knobs/components/zebra') === 'cards'
+	jpMoved.design._anchorOf('knobs/card/space') === 'buttons' && jpMoved.design._anchorOf('width') === 'content' && jpMoved.design._anchorOf('knobs/tables/zebra') === 'cards'
 	&& jpMoved.design._anchorOf('colours/depth') === 'colours' && jpMoved.design._anchorOf('colours/saturation') === 'colours'
 	&& jpMovedTo === 'content' && jpMoved.design._target === 'buttons' );
 
@@ -5310,7 +5481,7 @@ const jpOpened = jp.stage.scrolls.length;
 check( 'opening a tab goes to the anchor of the tab and leaves no target: Type is the typography block',
 	jpAsked() === 'type' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 800, behavior : 'smooth' } ) && jp.design._target === null );
 
-pressKey( jp, 'knobs/content/card-title', 1 );
+pressKey( jp, 'knobs/card/title', 1 );
 
 check( 'a control that is not the page\'s sets the target to the place of its object, and nothing scrolls until the preview has answered: the title of a card, the cards',
 	jp.design._target === 'cards' && jp.stage.scrolls.length === jpOpened );
@@ -5330,10 +5501,12 @@ jpKnobs.forEach( function( key ) {
 	jpWhere[key] = jp.design._target;
 } );
 
-check( 'each knob has its place, by the object its row is of: the sizes and the space of a section, its rule, the title and the text of the hero the first section - the two variants, drawn in the same row of Type, the typography block - a card\'s and the sizes of its title the cards, the buttons\' and the fields and tables\' their blocks',
+check( 'each knob has its place, by the object its row is of: the sizes, the space, the rule and the dimming of a section, the title and the text of the hero the first section - the two variants, drawn in the same row of Type, the typography block - a card\'s and the sizes of its title the cards, the buttons\', the lists\' and the tables\' their blocks, the header\'s the top of the page and the footer\'s its foot',
 	jpKnobs.length === kindCount('scale') + kindCount('choice') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
-	&& jpWhere['knobs/content/hero-title'] === 'content' && jpWhere['knobs/content/section-space'] === 'content' && jpWhere['knobs/content/quiet'] === 'type' && jpWhere['knobs/content/loud'] === 'type'
-	&& jpWhere['knobs/content/card-subtitle'] === 'cards' && jpWhere['knobs/buttons/corners'] === 'buttons' && jpWhere['knobs/components/labels'] === 'components' );
+	&& jpWhere['knobs/section/hero-title'] === 'content' && jpWhere['knobs/section/space'] === 'content' && jpWhere['knobs/section/dim'] === 'content' && jpWhere['knobs/section/quiet'] === 'type' && jpWhere['knobs/section/loud'] === 'type'
+	&& jpWhere['knobs/card/subtitle'] === 'cards' && jpWhere['knobs/card/tone'] === 'cards' && jpWhere['knobs/card/hover'] === 'cards' && jpWhere['knobs/buttons/corners'] === 'buttons' && jpWhere['knobs/buttons/hover'] === 'buttons'
+	&& jpWhere['knobs/lists/marker'] === 'lists' && jpWhere['knobs/tables/zebra'] === 'tables' && jpWhere['knobs/tables/stripes'] === 'tables'
+	&& jpWhere['knobs/header/nav'] === 'global' && jpWhere['knobs/header/height'] === 'global' && jpWhere['knobs/footer/scale'] === 'footer' && jpWhere['knobs/footer/ground'] === 'footer' );
 
 /*	One change of every other kind of control: a strip of the page, the corners of a kind of surface, a font role, a part of the
 	animation, a part of the palette and the mode, and a template - each sets the place the table gives it	*/
@@ -5349,11 +5522,14 @@ const jpDriven = [
 	[ 'surfaces', undefined, 'radii/card', function() { pressKey( jp, 'radii/card', 'alternative' ) } ],
 	[ 'colours', undefined, 'colours/saturation', function() { byTag( controlOf( jp, 'colours/saturation' ), 'button' )[0].fire('click') } ],
 	[ 'colours', undefined, 'colours/mode', function() { choose( jp.byId('design-colour-mode'), 'dark' ) } ],
-	[ 'motion', undefined, 'motion/effect', function() { choose( jp.byId('design-motion-effect'), 'flip' ) } ],
+	[ 'motion', undefined, 'motion/effect', function() { controlOf( jp, 'motion/effect' ); choose( jp.byId('design-motion-effect'), 'flip' ) } ],
 	[ 'templates', undefined, 'parts/header', function() { choose( setSelect( jp, 'header' ), 'second' ) } ],
-	[ 'templates', undefined, 'parts/content', function() { choose( setSelect( jp, 'content' ), 'second' ) } ],
-	[ 'templates', undefined, 'parts/buttons', function() { choose( setSelect( jp, 'buttons' ), 'second' ) } ],
-	[ 'templates', undefined, 'parts/components', function() { choose( setSelect( jp, 'components' ), 'second' ) } ],
+	[ 'templates', undefined, 'parts/footer', function() { choose( setSelect( jp, 'footer' ), 'second' ) } ],
+	[ 'templates', undefined, 'parts/section', function() { choose( setSelect( jp, 'section' ), 'second' ) } ],
+	[ 'templates', undefined, 'parts/card', function() { choose( setSelect( jp, 'card' ), 'second' ) } ],
+	[ 'templates', undefined, 'parts/buttons', function() { choose( setSelect( jp, 'buttons' ), 'third' ) } ],
+	[ 'templates', undefined, 'parts/lists', function() { choose( setSelect( jp, 'lists' ), 'second' ) } ],
+	[ 'templates', undefined, 'parts/tables', function() { choose( setSelect( jp, 'tables' ), 'fourth' ) } ],
 ];
 const jpDrivenAt = {};
 
@@ -5367,52 +5543,55 @@ jpDriven.forEach( function( entry ) {
 check( 'a change of any other control sets its place as well - read off the target the change left: a strip of the page, the corners of a kind of surface, a font role, a part of the animation, the palette and its mode, and a template; each where the table has it',
 	jpDriven.every( function( entry ) { return jpDrivenAt[ entry[2] ] === aimOf( jpLayout, entry[2] ) } )
 	&& jpDrivenAt['size'] === 'global' && jpDrivenAt['fonts/title'] === 'global' && jpDrivenAt['width'] === 'global' && jpDrivenAt['radii/cover'] === 'content' && jpDrivenAt['radii/card'] === 'cards'
-	&& jpDrivenAt['colours/saturation'] === 'colours' && jpDrivenAt['motion/effect'] === 'global' && jpDrivenAt['parts/header'] === 'global' && jpDrivenAt['parts/content'] === 'content' );
+	&& jpDrivenAt['colours/saturation'] === 'colours' && jpDrivenAt['motion/effect'] === 'global' && jpDrivenAt['parts/header'] === 'global' && jpDrivenAt['parts/footer'] === 'footer' && jpDrivenAt['parts/section'] === 'content' && jpDrivenAt['parts/card'] === 'cards'
+	&& jpDrivenAt['parts/buttons'] === 'buttons' && jpDrivenAt['parts/lists'] === 'lists' && jpDrivenAt['parts/tables'] === 'tables' );
 
 jp.show( 'type' );
-pressKey( jp, 'knobs/content/hero-title', 1 );
+pressKey( jp, 'knobs/section/hero-title', 1 );
 jpAnswer();
 
 check( 'a change of the title of the hero goes to the first section: #content',
 	jp.design._target === 'content' && jpAsked() === 'content' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 400, behavior : 'smooth' } ) );
 
-pressKey( jp, 'knobs/content/hero-text', 1 );
+pressKey( jp, 'knobs/section/hero-text', 1 );
 jpAnswer();
 
 check( '...and so does one of the text of the hero', jp.design._target === 'content' && jpAsked() === 'content' );
 
-pressKey( jp, 'knobs/content/quiet', 1 );
+pressKey( jp, 'knobs/section/quiet', 1 );
 jpAnswer();
 
 check( 'a change of a variant, which stands in the row of the section on Type, goes to the typography block: #type, which is the anchor of that tab as well',
 	jp.design._target === 'type' && jpAsked() === 'type' && jp.design.ANCHORS.type === 'type' );
 
 jp.tab( tabWord('surfaces') );
-pressKey( jp, 'knobs/content/shadow', 1 );
+pressKey( jp, 'knobs/card/shadow', 1 );
 jpAnswer();
 
 check( 'one of the cards goes to the cards, whichever knob was moved before it', jp.design._target === 'cards' && jpAsked() === 'cards' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1000, behavior : 'smooth' } ) );
 
 // A template is looked at where its set is shown
 jp.tab( tabWord('templates') );
-choose( setSelect( jp, 'content' ), 'second' );
+choose( setSelect( jp, 'section' ), 'second' );
 
-check( 'choosing a template sets the place it is looked at in - the content set, the first section of the page - and the frame goes there when the preview has answered',
+check( 'choosing a template sets the place it is looked at in - the section set, the first section of the page - and the frame goes there when the preview has answered',
 	jp.design._target === 'content' );
 
 jpAnswer();
 
-check( '...the first section, where the content of the page is shown', jpAsked() === 'content' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 400, behavior : 'smooth' } ) );
+check( '...the first section, where the hero and the sections of the page are shown', jpAsked() === 'content' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 400, behavior : 'smooth' } ) );
 
 choose( setSelect( jp, 'buttons' ), 'second' );
 jpAnswer();
 
-check( '...the buttons in their block, the fields and tables in theirs',
+check( '...the buttons in their block, the lists and the tables in theirs, the cards in the cards',
 	jpAsked() === 'buttons' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1300, behavior : 'smooth' } )
-	&& ( choose( setSelect( jp, 'components' ), 'second' ), jpAnswer(), jpAsked() === 'components' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1600, behavior : 'smooth' } ) ) );
+	&& ( choose( setSelect( jp, 'lists' ), 'second' ), jpAnswer(), jpAsked() === 'lists' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1500, behavior : 'smooth' } ) )
+	&& ( choose( setSelect( jp, 'tables' ), 'fourth' ), jpAnswer(), jpAsked() === 'tables' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1600, behavior : 'smooth' } ) )
+	&& ( choose( setSelect( jp, 'card' ), 'second' ), jpAnswer(), jpAsked() === 'cards' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1000, behavior : 'smooth' } ) ) );
 
 jp.tab( tabWord('surfaces') );
-pressKey( jp, 'knobs/content/border', 1 );
+pressKey( jp, 'knobs/card/border', 1 );
 jp.tab( tabWord('type') );
 
 check( 'opening another tab puts the target back, and the frame goes to the anchor of that tab: the place a change was looked at belonged to the tab that was left',
@@ -5446,9 +5625,17 @@ pressKey( jp, 'knobs/buttons/size', 1 );
 check( '...and a knob of the buttons, which stands on Type among the others, has the place of its object: #buttons', jp.design._target === 'buttons' );
 
 jp.tab( tabWord('surfaces') );
-pressKey( jp, 'knobs/components/space', 1 );
+pressKey( jp, 'knobs/tables/space', 1 );
 
-check( '...and so does one of the fields and tables: #components', jp.design._target === 'components' );
+check( '...and so does one of the tables: #tables', jp.design._target === 'tables' );
+
+pressKey( jp, 'knobs/lists/space', 1 );
+
+check( '...and one of the lists: #lists', jp.design._target === 'lists' );
+
+pressKey( jp, 'knobs/header/space', 1 );
+
+check( '...and one of the header the top of the page, one of the footer its foot: #global and #footer', jp.design._target === 'global' && ( pressKey( jp, 'knobs/footer/space', 1 ), jp.design._target === 'footer' ) );
 
 jp.tab( tabWord('type') );
 
@@ -5504,7 +5691,7 @@ check( 'with the follow switch off a footer that is chosen does not scroll the f
 
 // Opening the tab already open changes nothing
 jp.tab( tabWord('type') );
-pressKey( jp, 'knobs/content/card-title', -1 );
+pressKey( jp, 'knobs/card/title', -1 );
 jp.tab( tabWord('type') );
 
 check( 'the tab that is open already is not opened again: its target stays where the last change of a control put it',
@@ -5525,8 +5712,8 @@ const jumpedTo = [ jp.design.ANCHORS, jp.design.OBJECT_ANCHORS, jp.design.CONTRO
 	return ids.concat( Object.keys( map ).map( function( key ) { return map[key] } ) );
 }, [] ).filter( function( id, at, all ) { return all.indexOf( id ) === at } );
 
-check( 'every id the script jumps to is on the specimen exactly once: the top of the page, the first section, the cards, the buttons and the fields and tables, the typography block, the grounds and, at the end, the footer - eight places, those of the tabs, of the objects and of the controls with a place of their own',
-	jumpedTo.length === 8 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
+check( 'every id the script jumps to is on the specimen exactly once: the top of the page, the first section, the cards, the buttons, the lists and the tables, the typography block, the grounds and, at the end, the footer - nine places, those of the tabs, of the objects and of the controls with a place of their own',
+	jumpedTo.length === 9 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 && specimenIds.lists === 1 && specimenIds.tables === 1 );
 check( '...and the footer, which no tab has, is looked at in an element of its own: the id footer, once, an empty block at the end of the specimen - after the last section, where the footer of the frame starts',
 	specimenIds.footer === 1 && /<\/section>\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') && Object.keys( jp.design.ANCHORS ).every( function( tab ) { return jp.design.ANCHORS[tab] !== 'footer' } ) );
 check( '...and the Cards section is the element that has the id, with an accessible name of its own: the second section of the page, after the hero and before the grounds',
@@ -5546,7 +5733,7 @@ const first = asked.requests[asked.requests.length - 1];
 
 check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
 	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
-	&& first.payload.parts.header === 'first' && first.payload.parts.components === 'first' && first.payload.knobs.content['hero-title'] === 0
+	&& first.payload.parts.header === 'first' && first.payload.parts.tables === 'first' && first.payload.knobs.section['hero-title'] === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
 	asked.byId('design-preview-msg').textContent === TEXT['/_admin/design/msg/previewing'] && asked.byId('design-preview-msg').title === TEXT['/_admin/design/msg/previewing']
@@ -5870,7 +6057,7 @@ check( '...a screen drawn from what is stored holds nothing unsaved, and the she
 tracked.tab( tabWord('type') );
 check( '...opening a tab changes nothing that is unsaved', registered.isDirty() === false && tracked.byId('design-reset').hidden === true );
 
-pressKey( tracked, 'knobs/content/hero-title', 1 );
+pressKey( tracked, 'knobs/section/hero-title', 1 );
 check( '...a knob that was moved does - the same answer the way back is shown for', registered.isDirty() === true && tracked.byId('design-reset').hidden === false );
 
 tracked.byId('design-reset').fire('click');
@@ -5985,8 +6172,8 @@ function themeControls( screen ) {
 function themeSetup( fonts ) {
 	const setup = snapshotOf( listing() );
 	setup.parts.header = 'second';
-	setup.parts.content = 'third';
-	setup.knobs.content['card-space'] = 1;
+	setup.parts.card = 'third';
+	setup.knobs.card.space = 1;
 	setup.size = -1;
 	setup.radius = 1;
 	setup['radius-alt'] = 2;
@@ -6346,8 +6533,8 @@ check( '...and when they are installed it reads design/list again, for the selec
 loading.answer( 200, listing( { theme : 'mein-theme', css : ownCss, active : own, options : optionsWith( [ 'inter' ] ) } ) );
 
 check( 'the theme is then the working copy - its templates, its knobs, its size, its css and the name of the theme; of the typefaces the one that was installed is in the title and the one the list does not have is the face of Nino',
-	loading.design._edit.theme === 'magazine' && loading.design._edit.css === ".nino-section-title { border-bottom-color: red; }\n" && loading.design._edit.parts.header === 'second' && loading.design._edit.parts.content === 'third'
-	&& loading.design._edit.parts.buttons === 'first' && loading.design._edit.knobs.content['card-space'] === 1 && loading.design._edit.size === -1
+	loading.design._edit.theme === 'magazine' && loading.design._edit.css === ".nino-section-title { border-bottom-color: red; }\n" && loading.design._edit.parts.header === 'second' && loading.design._edit.parts.card === 'third'
+	&& loading.design._edit.parts.buttons === 'first' && loading.design._edit.knobs.card.space === 1 && loading.design._edit.size === -1
 	&& loading.design._edit.fonts.title.family === 'inter' && loading.design._edit.fonts.text.family === '' && loading.design._edit.fonts.subtitle.family === 'open-sans' );
 check( '...and the active theme: its record is the theme as it was taken over, and the list - the screen is Load still, none switched by itself - marks the row of the draft and no other',
 	loading.design._active.slug === 'magazine' && loading.design._active.shipped === true && loading.design._active.css === loading.design._edit.css
@@ -6371,16 +6558,16 @@ check( '...and the field of the css on Custom CSS holds the css of the theme', l
 
 loading.tab( tabWord('templates') );
 const loadedHeader = shown( setSelect( loading, 'header' ) );
-const loadedContent = shown( setSelect( loading, 'content' ) );
+const loadedCard = shown( setSelect( loading, 'card' ) );
 
 loading.tab( tabWord('type') );
-check( '...and the other tabs show the loaded values: the frame and the template of the content on Templates, the size and the typefaces on Type',
-	loadedHeader === 'second' && loadedContent === 'third' && loading.pressed( TEXT['/_admin/design/label/size'] ) === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === -1 ) } ).join()
+check( '...and the other tabs show the loaded values: the frame and the template of the cards on Templates, the size and the typefaces on Type',
+	loadedHeader === 'second' && loadedCard === 'third' && loading.pressed( TEXT['/_admin/design/label/size'] ) === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === -1 ) } ).join()
 	&& shown( loading.byId('design-font-title-family') ) === 'inter' && shown( loading.byId('design-font-text-family') ) === '' );
 
 loading.tab( tabWord('surfaces') );
 check( '...(Surfaces, the knob of a card)',
-	pressedKey( loading, 'knobs/content/card-space' ) === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
+	pressedKey( loading, 'knobs/card/space' ) === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
 
 // A no installs nothing
 const declining = themed();
@@ -6463,7 +6650,7 @@ keeping.answer( 200, themeLoad( 'magazine', withoutColours( themeSetup() ), [] )
 
 check( 'a theme that names no colours is taken over with the colours the screen has - the brand colour is the project\'s - and with everything else the theme chooses',
 	brandOf( keeping ) === '#b5562a' && keeping.design._edit.colours.mode === listing().colours.mode && keeping.design._edit.theme === 'magazine'
-	&& keeping.design._edit.parts.header === 'second' && keeping.design._edit.parts.content === 'third' && keeping.design._edit.size === -1 && keeping.design._edit.knobs.content['card-space'] === 1
+	&& keeping.design._edit.parts.header === 'second' && keeping.design._edit.parts.card === 'third' && keeping.design._edit.size === -1 && keeping.design._edit.knobs.card.space === 1
 	&& keeping.design._edit.radius === 1 && keeping.design._edit['radius-alt'] === 2 && keeping.design._edit.radii.card === 'alternative' && keeping.design._edit.radii.image === 'standard' );
 check( '...the record of the theme the chip compares with has no colours either, so the screen is the theme: no chip "changed" - a colour moved afterwards is no change of it, and a knob moved is',
 	Object.prototype.hasOwnProperty.call( keeping.design._active.setup, 'colours' ) === false && ( keeping.show( 'theme', 'properties' ), keeping.byId('design-theme-changed') === null ) && keeping.design._themeChanged() === false
@@ -6613,7 +6800,7 @@ making.byId('design-theme-save').fire('click');
 check( 'Save theme posts design/theme/save with the slug, the two fields as they are typed and the working copy - the name does not change the slug',
 	making.requests.length === 1 && making.requests[0].endpoint === 'theme/save' && making.requests[0].payload.slug === 'mein-name'
 	&& making.requests[0].payload.name === 'Neuer Name' && making.requests[0].payload.description === 'Neue Beschreibung' && making.requests[0].payload.theme === 'mein-name'
-	&& making.requests[0].payload.knobs.content['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,radii,radius,radius-alt,size,slug,theme,whitespace,width' );
+	&& making.requests[0].payload.knobs.section['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,radii,radius,radius-alt,size,slug,theme,whitespace,width' );
 
 making.answer( 200, {
 	themes : withTheme( 'mein-name', 'Neuer Name', 'Neue Beschreibung' ),
@@ -6933,7 +7120,7 @@ else {
 	check( 'each tab is drawn from the table the server gave and from nothing else: the rows it names for the tab, in its order, and in each row exactly the controls it names for the object, in the order of their places'
 		+ ( fromTableProblems.length === 0 ? '' : ' - not so for '+ fromTableProblems.join() ), fromTableProblems.length === 0 );
 
-	check( 'the answer carries the setup a fresh install starts from, cut to the keys that choose something - the stand-in\'s defaults, but for the five templates, which are the library\'s - and none of the project\'s own: no theme, no css, no record of a compile',
+	check( 'the answer carries the setup a fresh install starts from, cut to the keys that choose something - the stand-in\'s defaults, but for the seven templates, which are the library\'s - and none of the project\'s own: no theme, no css, no record of a compile',
 		typeof real.defaults === 'object' && real.defaults !== null
 		&& [ 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'knobs', 'fonts', 'colours' ].every( function( key ) { return JSON.stringify( real.defaults[key] ) === JSON.stringify( listing().defaults[key] ) } )
 		&& JSON.stringify( Object.keys( real.defaults.parts ) ) === JSON.stringify( real.parts.map( function( row ) { return row.part } ) )
@@ -7079,8 +7266,8 @@ else {
 	/** What the buttons of a strip say is pressed, the strip found by the key the table has the control under */
 	const litOf = function( key ) { return byTag( controlOf( whole, key ), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() };
 
-	check( 'Templates is drawn from the catalogue and the choices the server gave: a block for each of the five parts, each with a select over what the library has, on the one that is chosen - and nothing else on the tab, no strip of a knob',
-		real.parts.length === 5 && blocksOf( whole.form ).length === 5 && real.parts.every( selectOf ) && knobRows( whole ).length === 0 );
+	check( 'Templates is drawn from the catalogue and the choices the server gave: a block for each of the seven parts, each with a select over what the library has, on the one that is chosen - and nothing else on the tab, no strip of a knob',
+		real.parts.length === 7 && blocksOf( whole.form ).length === 7 && real.parts.every( selectOf ) && knobRows( whole ).length === 0 );
 
 	whole.show( 'type' );
 
@@ -7131,7 +7318,7 @@ else {
 	const tabProblems = [];
 	let knobsDrawn = 0;
 
-	[ 'type', 'surfaces' ].forEach( function( tab ) {
+	[ 'type', 'surfaces', 'colours', 'motion' ].forEach( function( tab ) {
 
 		whole.show( tab );
 
@@ -7169,6 +7356,13 @@ else {
 			} );
 		} )
 		&& real.parts.every( function( row ) { return Object.keys( row.catalogue ).indexOf( row.set ) !== -1 } ) );
+	check( '...a frame is asked as a set is: the catalogue of the header and of the footer carries a list of knobs for every template, and each answers to all the knobs of its part - the panel greys nothing in a frame\'s row',
+		real.parts.length === 7 && real.parts.map( function( row ) { return row.part } ).join() === Object.keys( real.kinds ).join()
+		&& [ 'header', 'footer' ].every( function( part ) {
+			return rowOf( part ).kind === 'frame' && Object.keys( rowOf( part ).catalogue ).length > 0 && Object.keys( rowOf( part ).catalogue ).every( function( set ) {
+				return Array.isArray( rowOf( part ).catalogue[set].knobs ) && rowOf( part ).catalogue[set].knobs.join() === Object.keys( real.kinds[part] ).join();
+			} );
+		} ) );
 
 	whole.tab( tabWord('colours') );
 
@@ -7319,8 +7513,8 @@ else {
 		&& ( loaded.show( 'theme', 'css' ), loaded.byId('design-theme-css').value === answered.load.css ) );
 
 	loaded.tab( tabWord('templates') );
-	check( '...and the other tabs show it: the template of the Content is the theme\'s',
-		shown( setSelect( loaded, 'content' ) ) === answered.load.setup.parts.content );
+	check( '...and the other tabs show it: the template of the cards is the theme\'s',
+		shown( setSelect( loaded, 'card' ) ) === answered.load.setup.parts.card );
 
 	// A theme that names typefaces the project has not installed
 	const withMissing = wholeTab( Object.assign( {}, none, { themes : answered.created.themes } ) );

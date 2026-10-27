@@ -19,10 +19,10 @@ namespace Nino\Modules {
 	 *
 	 *										Nino 1.2 delivers that file fixed, out of the setup
 	 *										wizard's base unit. This feature writes its own over it,
-	 *										from a template per part - Content (the hero, the
-	 *										sections and the cards), Buttons and Components (forms,
-	 *										lists, tables and blocks) - plus a header and a footer,
-	 *										which are the two parts that bring markup with them; from
+	 *										from a template per part - Section (the hero, the
+	 *										sections and the covers), Card, Buttons, Lists and
+	 *										Tables - plus a header and a footer, which are the two
+	 *										parts that bring markup with them; from
 	 *										a knob for each thing a template lets go of; from the root
 	 *										size, the width, the whitespace and the animation of the page; from the
 	 *										five font roles; and from the palette.

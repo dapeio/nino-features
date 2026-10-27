@@ -1,0 +1,88 @@
+/*	@name			Filled
+ *	@description	A table head that stays while the rows scroll, figures that line up.
+ *	@description-de	Ein Tabellenkopf, der beim Scrollen bleibt, Ziffern, die untereinander stehen.
+ *
+ *	@knob	scale		Type size of a table
+ *	@knob	space		Space inside a cell
+ *	@knob	border		Weight of the lines of a table
+ *	@knob	zebra		Stripes of a table that asks for them
+ *	@knob	stripes		How strong the stripes are
+ *
+ *	A long table needs what a short one does not: figures that line up on the
+ *	decimal, and the stripes, in the choice of the zebra knob, because at this
+ *	row height the eye does lose the line. The head stays where it is while the
+ *	rows go past, on a ground of its own - the ground the table stands on - or
+ *	the rows would scroll through it. The lines are the framework's own: the
+ *	border knob is the weight of the one under a cell and of the box of each
+ *	cell of a bordered table, as it is in regular.
+ *
+ *	Every ladder is Nino's, value for value. The padding of a cell is drawn a
+ *	little tighter than Nino's - .8 and 1.6 times the space of the ladder - and
+ *	a position of the knob moves it in the proportions it moves Nino's.
+ */
+
+/*	The ladders are Nino's, value for value - tables regular says what each of them is.
+	The zebra is a choice of three and its ink an aspect of it: they move with the knob	*/
+:root {
+	--tables-scale--least: 		.75;
+	--tables-scale--less: 		.87;
+	--tables-scale--default: 	1;
+	--tables-scale--more: 		1.15;
+	--tables-scale--most: 		1.32;
+
+	--tables-space--least: 		calc( var(--space-1) * .4 );
+	--tables-space--less: 		calc( var(--space-1) * .7 );
+	--tables-space--default: 	var(--space-1);
+	--tables-space--more: 		calc( var(--space-1) * 1.5 );
+	--tables-space--most: 		calc( var(--space-1) * 2.2 );
+
+	--tables-border--least: 	0px;
+	--tables-border--less: 		.5px;
+	--tables-border--default: 	1px;
+	--tables-border--more: 		2px;
+	--tables-border--most: 		3px;
+
+	--tables-zebra--less: 		transparent;
+	--tables-zebra--default: 	var(--tables-stripes);
+	--tables-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--tables-stripes);
+
+	--tables-zebra-ink--less: 		initial;
+	--tables-zebra-ink--default: 	var(--color-section-alt-text);
+	--tables-zebra-ink--more: 		var(--color-section-alt-text);
+
+	--tables-stripes--least: 		color-mix( in srgb, var(--color-section-alt-bg) 35%, var(--color-background) );
+	--tables-stripes--less: 		color-mix( in srgb, var(--color-section-alt-bg) 70%, var(--color-background) );
+	--tables-stripes--default: 		var(--color-section-alt-bg);
+	--tables-stripes--more: 		color-mix( in srgb, var(--color-section-alt-text) 8%, var(--color-section-alt-bg) );
+	--tables-stripes--most: 		color-mix( in srgb, var(--color-section-alt-text) 16%, var(--color-section-alt-bg) );
+}
+
+.nino-table {
+	font-size: calc( 1em * var(--tables-scale) );
+	font-variant-numeric: tabular-nums;
+}
+.nino-table th,
+.nino-table td {
+	padding: calc( var(--tables-space) * 2 / 2.5 ) calc( var(--tables-space) * 1.6 );
+	border-bottom-width: var(--tables-border);
+	line-height: 1.4;
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: var(--tables-border);
+}
+
+/*	Sticky against the wrapper the framework already puts around a table, so
+	the header stays while the rows go past. It needs a ground of its own, or
+	the rows scroll through it	*/
+.nino-table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--color-ground);
+	white-space: nowrap;
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--tables-zebra);
+	color: var(--tables-zebra-ink, currentcolor);
+}

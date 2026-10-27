@@ -1,0 +1,122 @@
+/*	@name			Regular
+ *	@description	The framework as it is: the middle of every ladder. Plain lists, lists with a check and numbered lists.
+ *	@description-de	Das Framework, wie es ist: die Mitte jeder Leiter. Einfache Listen, Listen mit Haken und nummerierte Listen.
+ *
+ *	@knob	scale		Type size of a list
+ *	@knob	space		Space between the items
+ *	@knob	marker		The mark before an item of a check list and of a numbered list
+ *
+ *	Regular is the starting point, not a design. Every value it declares is the
+ *	framework's own, so a list under it looks as it does under Nino.css alone -
+ *	and every one of them is a ladder, so each knob has something to reach: the
+ *	five values of a scale, the middle of them Nino.css and the others two steps
+ *	to each side, or the three of a choice.
+ *
+ *	Two rules for a set:
+ *
+ *	  - Only the classes of this template: the list, its items and the marks
+ *	    before them. A set of tables does not touch a list, however tempting.
+ *	  - Colours through the roles, never as literals. Nor the font: the face
+ *	    and the case of the text are the roles of the type tab.
+ *
+ *	The size of a list is the size of the text round it, times the scale; the
+ *	marks and the room they stand in follow it. The space is the gap between
+ *	two items. A list in columns keeps the gaps Nino.css gives it.
+ *
+ *	The marker is a choice of three: plain - the glyph and the number in the
+ *	colour and the weight of the text, with nothing under them -, the middle,
+ *	which is Nino.css (the glyph bold in the success colour, the number bold
+ *	on a disc of the primary colour), and emphasised, with the disc under both,
+ *	in the primary colour and the text solved for it. A mark is more than one
+ *	value - its weight, and for each kind of list the ink and the ground, and
+ *	the size of the disc where the glyph has one -, so the knob declares one
+ *	more ladder for each, named after the knob, the kind and the aspect
+ *	(--lists-marker-check-ink--less ...), as long as the knob's own, which is
+ *	the weight. They move together: the compiler selects every ladder of a
+ *	knob where it stands. A choice is declared under less, default and more.
+ *	Copy this file under a name of your own and start there.
+ */
+
+:root {
+	/*	The type size of a list is the size of the text round it, times this	*/
+	--lists-scale--least: 		.8;
+	--lists-scale--less: 		.9;
+	--lists-scale--default: 	1;
+	--lists-scale--more: 		1.15;
+	--lists-scale--most: 		1.3;
+
+	/*	The gap between two items: --space-1, two steps to each side in fractions of it,
+		since the room between two lines of text is finer than a step of the scale	*/
+	--lists-space--least: 		calc( var(--space-1) * .4 );
+	--lists-space--less: 		calc( var(--space-1) * .7 );
+	--lists-space--default: 	var(--space-1);
+	--lists-space--more: 		calc( var(--space-1) * 1.5 );
+	--lists-space--most: 		calc( var(--space-1) * 2.2 );
+
+	/*	The weight of the mark. Plain is the weight of the text, Nino.css has it bold	*/
+	--lists-marker--less: 		normal;
+	--lists-marker--default: 	bold;
+	--lists-marker--more: 		bold;
+
+	/*	The glyph of a check list: its ink, the disc under it and the size of that disc.
+		Nino.css draws the glyph in the success colour with no disc, and a glyph with none
+		is as big as itself, which is what auto says. The emphasised mark is on a disc of
+		the primary colour, in the ink solved for it	*/
+	--lists-marker-check-ink--less: 		currentcolor;
+	--lists-marker-check-ink--default: 		var(--color-success);
+	--lists-marker-check-ink--more: 		var(--color-primary-text);
+
+	--lists-marker-check-ground--less: 		transparent;
+	--lists-marker-check-ground--default: 	transparent;
+	--lists-marker-check-ground--more: 		var(--color-primary);
+
+	--lists-marker-check-box--less: 		auto;
+	--lists-marker-check-box--default: 		auto;
+	--lists-marker-check-box--more: 		1.5em;
+
+	/*	The number of a numbered list: its ink and the disc under it. Nino.css draws it
+		in the ink solved for the primary colour, on a disc of it; plain takes the disc away	*/
+	--lists-marker-number-ink--less: 		currentcolor;
+	--lists-marker-number-ink--default: 	var(--color-primary-text);
+	--lists-marker-number-ink--more: 		var(--color-primary-text);
+
+	--lists-marker-number-ground--less: 	transparent;
+	--lists-marker-number-ground--default: 	var(--color-primary);
+	--lists-marker-number-ground--more: 	var(--color-primary);
+}
+
+/*	The size and the gap. A list in columns keeps its own gaps	*/
+.nino-list {
+	font-size: calc( 1em * var(--lists-scale) );
+}
+.nino-list:not(.nino-list--columns) {
+	gap: var(--lists-space);
+}
+
+/*	The room the marks stand in grows with the type, so that the middle is Nino.css and
+	a list at +2 has marks that are not lost in it	*/
+.nino-list--check li {
+	padding-left: calc( var(--space-3) * var(--lists-scale) );
+}
+.nino-list--check li::before {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--lists-marker-check-box);
+	height: var(--lists-marker-check-box);
+	border-radius: 50%;
+	background-color: var(--lists-marker-check-ground);
+	color: var(--lists-marker-check-ink);
+	font-weight: var(--lists-marker);
+}
+.nino-list--numbered li {
+	min-height: calc( var(--space-3) * var(--lists-scale) );
+	padding-left: calc( var(--space-4) * var(--lists-scale) );
+}
+.nino-list--numbered li::before {
+	width: calc( var(--space-3) * var(--lists-scale) );
+	height: calc( var(--space-3) * var(--lists-scale) );
+	background-color: var(--lists-marker-number-ground);
+	color: var(--lists-marker-number-ink);
+	font-weight: var(--lists-marker);
+}

@@ -320,7 +320,7 @@ namespace Nino\Modules\Design {
 		/*	Depth: how far a panel separates from the page. Two things say that
 			together, so one knob moves both - the distance the alt surface keeps
 			from the ground, and how firmly a border draws. How much shadow a card
-			or a block throws is the content template's knob and nothing of the
+			or a block throws is the card template's knob and nothing of the
 			palette's: the shadow of a surface is one alpha per mode, and where it
 			is used is for the template to say.
 

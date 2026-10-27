@@ -1,0 +1,195 @@
+/*	@name			Panel
+ *	@description	The opening on a rail at the left, every band inset and rounded against the page.
+ *	@description-de	Der Hero an einer Leiste links, jedes Band eingerückt und gerundet gegen die Seite.
+ *
+ *	@knob	hero-title			Size of the title of a hero
+ *	@knob	hero-text			Size of the text of a hero
+ *	@knob	quiet				Size of a quiet title, subtitle and text
+ *	@knob	loud				Size of a loud title, subtitle and text
+ *	@knob	title				Size of the title of a band
+ *	@knob	subtitle			Size of the subtitle of a band
+ *	@knob	space				Padding of a band
+ *	@knob	rule				Rule under the title of a band
+ *	@knob	dim					How dark the scrim of a dimmed cover is
+ *
+ *	A band is a panel here rather than a stripe across the page, which is what
+ *	makes a run of them read as a stack of things instead of one long scroll:
+ *	inset by the gutter, cut at the standard radius of the page, padded on all
+ *	four sides, and casting the shadow the shadow knob of the card gives it.
+ *	Two plain bands in a row are a stack instead: the second has the hairline
+ *	as its top edge and neither rounding nor shadow of its own, as the
+ *	continuation of the first. The opening is the first article rather than a
+ *	poster: text left, a rule down its left edge, nothing centred.
+ *
+ *	The shadow of a band is the one dependency of this set on the card family:
+ *	the rule of the band reads --card-shadow, the ladder of the shadow knob,
+ *	which every card set declares and Panel's own card half carries beside its
+ *	rows. The two halves have the same name so that a theme pairs them; a card
+ *	set that declares no shadow leaves the bands flat.
+ *
+ *	Every ladder is Nino's, value for value.
+ */
+
+/*	The ladders are Nino's, value for value - section regular says what each of them is	*/
+:root {
+	--section-hero-title--least: 		.896;
+	--section-hero-title--less: 		1.12;
+	--section-hero-title--default: 	1.4;
+	--section-hero-title--more: 		1.75;
+	--section-hero-title--most: 		2.1875;
+
+	--section-hero-text--least: 		.768;
+	--section-hero-text--less: 			.96;
+	--section-hero-text--default: 	1.2;
+	--section-hero-text--more: 			1.5;
+	--section-hero-text--most: 			1.875;
+
+	--section-quiet--least: 				.6;
+	--section-quiet--less: 					.75;
+	--section-quiet--default: 			.85;
+	--section-quiet--more: 					.92;
+	--section-quiet--most: 					.97;
+
+	--section-loud--least: 					1.05;
+	--section-loud--less: 					1.1;
+	--section-loud--default: 				1.2;
+	--section-loud--more: 					1.35;
+	--section-loud--most: 					1.6;
+
+	--section-title--least: 	.8;
+	--section-title--less: 		.9;
+	--section-title--default: 	1;
+	--section-title--more: 		1.15;
+	--section-title--most: 		1.3;
+
+	--section-subtitle--least: 		.85;
+	--section-subtitle--less: 		.92;
+	--section-subtitle--default: 	1;
+	--section-subtitle--more: 		1.1;
+	--section-subtitle--most: 		1.2;
+
+	--section-space--least: 	var(--space-2);
+	--section-space--less: 		var(--space-3);
+	--section-space--default: var(--space-4);
+	--section-space--more: 		var(--space-5);
+	--section-space--most: 		var(--space-6);
+
+	--section-rule--least: 		0px;
+	--section-rule--less: 		0px;
+	--section-rule--default: 	0px;
+	--section-rule--more: 		1px;
+	--section-rule--most: 		2px;
+
+	--section-dim--least: 		color-mix( in srgb, var(--color-background-dim) 50%, transparent );
+	--section-dim--less: 		color-mix( in srgb, var(--color-background-dim) 75%, transparent );
+	--section-dim--default: 	var(--color-background-dim);
+	--section-dim--more: 		color-mix( in srgb, var(--color-background-dim) 75%, var(--color-section-black-bg) );
+	--section-dim--most: 		color-mix( in srgb, var(--color-background-dim) 50%, var(--color-section-black-bg) );
+}
+
+@media (min-width: 768px) {
+	:root {
+		--section-hero-title--least: 		.928;
+		--section-hero-title--less: 		1.16;
+		--section-hero-title--default: 	1.45;
+		--section-hero-title--more: 		1.8125;
+		--section-hero-title--most: 		2.2656;
+
+		--section-hero-text--least: 		calc(.64 * 10 / 9);
+		--section-hero-text--less: 			calc(.8 * 10 / 9);
+		--section-hero-text--default: 	calc(10 / 9);
+		--section-hero-text--more: 			calc(1.25 * 10 / 9);
+		--section-hero-text--most: 			calc(1.5625 * 10 / 9);
+
+		--section-space--least: 	var(--space-3);
+		--section-space--less: 		var(--space-4);
+		--section-space--default: var(--space-5);
+		--section-space--more: 		var(--space-6);
+		--section-space--most: 		calc( var(--space-6) * 1.25 );
+	}
+}
+
+:root {
+	--hero-title-scale: var(--section-hero-title);
+	--hero-text-scale: var(--section-hero-text);
+	--section-title-scale: var(--section-title);
+	--section-subtitle-scale: var(--section-subtitle);
+	--section-line: var(--section-rule);
+	--scale-quiet: var(--section-quiet);
+	--scale-loud: var(--section-loud);
+}
+
+/* ---- the opening ---- */
+
+/*	The rail is the alignment, so an opening told to centre itself keeps the
+	text left and centres the block instead - two alignments in one hero is
+	neither	*/
+.nino-hero-title,
+.nino-hero-subtitle,
+.nino-text-center .nino-hero-title,
+.nino-text-center .nino-hero-subtitle {
+	max-width: 32rem;
+	margin-right: 0;
+	margin-left: 0;
+	text-align: left;
+}
+.nino-hero-title {
+	line-height: 1.1;
+	padding-left: var(--space-2);
+	border-left: 3px solid var(--color-primary);
+}
+.nino-hero-subtitle {
+	line-height: 1.5;
+	padding-left: calc( var(--space-2) + 3px );
+	opacity: 1;
+}
+.nino-hero-arrowdown {
+	margin-left: 0;
+}
+
+/* ---- bands ---- */
+
+/*	A band that is a panel: inset by the gutter, cut at the standard radius of
+	the page - a band is none of the five kinds of surface, so it has no default
+	of its own and no toggle - and padded on all four sides. The opening, a band
+	that runs the full width on purpose - a full row that stands at both edges,
+	which is what the Builder writes for it, or a section that says no padding
+	at its sides, which is what a hand-written cover says - and one at full
+	height - no padding above and below - are left as the page has them. The
+	shadow is the card family's ladder of it (see the opening comment)	*/
+.nino-section:where(:not(.nino-hero, .nino-cover, .nino-pt-0.nino-pb-0, .nino-pl-0.nino-pr-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0))) {
+	width: calc( 100% - 2 * var(--grid-gutter) );
+	max-width: var(--grid-max-width);
+	margin-right: auto;
+	margin-left: auto;
+	border-radius: var(--radius-surface);
+	box-shadow: var(--card-shadow);
+}
+/*	The padding of a panel is times the whitespace of the page, as in regular	*/
+.nino-section:where(:not([class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: calc( var(--section-space) * var(--whitespace-scale, 1) );
+}
+.nino-section:where(:not([class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: calc( var(--section-space) * var(--whitespace-scale, 1) );
+}
+
+/*	Two plain bands in a row would have nothing between them, so the second gets
+	the one hairline this template draws, as its top edge - and, as the
+	continuation of the first, it is not round and casts no shadow of its own	*/
+.nino-section:where(:not([class*="nino-section--"])) + .nino-section:where(:not([class*="nino-section--"])) {
+	border-top: 1px solid var(--color-border);
+	border-radius: 0;
+	box-shadow: none;
+}
+
+/*	The scrim, as the ladder of the dimming says it: the ::before of a dimmed cover and of a
+	dimmed parallax, which Nino.css draws it with, and the ::after of the block of the picture
+	behind a section, a row and a column, which have no cover to draw one with. A card draws one
+	of its own and is the card family's	*/
+.nino-parallex--dim::before,
+.nino-cover--dim::before,
+.nino-section--dim > .nino-section-bg::after,
+.nino-grid-row--dim > .nino-grid-row-bg::after,
+.nino-grid--dim > .nino-grid-bg::after {
+	background-color: var(--section-dim);
+}
