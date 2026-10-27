@@ -8,8 +8,10 @@
  *													is said of it, the tools that change it (settings, up,
  *													down, duplicate, delete; and for a section to edit it as
  *													HTML+) -, every level ends in a button that adds to it,
- *													and the settings of a frame open in a dialog that tells
- *													its order in tabs and groups. A component that holds
+ *													and the settings of a frame open in a dialog of blocks, an
+ *													accordion of the ones the element has - content, link,
+ *													surface, spacing, width and properties - drawn from one
+ *													table. A component that holds
  *													components is a frame of its own among the components of
  *													its column, with its children in it and a form of its own.
  *													The source of a text or a picture is changed in a dialog
@@ -89,6 +91,10 @@
 		_keysAsked: false,
 		// Whether the answer is in: before it, no key is there and none was refused
 		_keysAnswered: false,
+		// Whether this account may read the keys - the answer was a 200 - and so may make one from the dialog of a link; and the pages of the site as the answer
+		// listed them (see _pageKey()): none where the Routes panel is not there
+		_keysRead	: false,
+		_pages		: [],
 		// What the last save refused: the sentences of a 400, and the block each names
 		_problems	: [],
 		_saving		: false,
@@ -109,8 +115,11 @@
 		// The ground counter is on each ground, the pairs of Nino.css: default and alt, tint to default, dark and black, primary and brand-alt
 		COUNTERS	: { '' : 'alt', alt : '', tint : '', dark : 'black', black : 'dark', primary : 'brand-alt', 'brand-alt' : 'primary' },
 		BORDERS		: [ '', '1', '2', '3' ],
-		// The maximum width of a row: the grid's own, which is none, two narrower ones, and none at all - full
-		ROWS			: [ '', 'narrow', 'wide', 'full' ],
+		// The maximum width of a row that has one: the grid's own, which is none, and two narrower ones. None at all is the full width, which is a choice of its own (WIDTHS)
+		ROWS			: [ '', 'narrow', 'wide' ],
+		// How wide the row of a section is: as wide as the content, as wide as the page, or to the edge of the page, with no padding at its sides. The first two are the
+		// setting row (none, or full), the third is full with the padding at the left and the right of the row at 0 (see _widthOf())
+		WIDTHS		: [ 'content', 'full', 'edge' ],
 		// Where a row narrower than the page stands, in the order it is seen: at the left, in the middle - none - and at the right
 		ROW_PLACES	: [ 'left', '', 'right' ],
 		// Where a row puts its columns, up and down: at the top, which is none, in the middle,
@@ -125,6 +134,12 @@
 		LINK_TARGETS	: [ '', '_blank' ],
 		TEXTS			: [ '', 'left', 'center', 'right' ],
 		SPACES		: [ '', '0', '1', '2', '3', '4', '5', '6' ],
+		// The six sides of the spacing of an element, in the order the Reader keeps them (Reader::SPACING): outside above and below, inside above, below, left and right
+		SIDES			: [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ],
+		// The padding of the row of a section on its four sides, above, below, left and right: the row is the frame its columns stand in and has no outside
+		ROW_SIDES	: [ 'rowPt', 'rowPb', 'rowPl', 'rowPr' ],
+		// How far in from the left and the right the ground or the picture of a row, a column or a card starts: the steps of the space scale up to the third, none being the page's own
+		OFFSETS		: [ '', '0', '1', '2', '3' ],
 		// The effects of Nino.css, each of them in three strengths, which the model keeps with
 		// the effect as one word (zoom-soft). The plain one, which fades in and rises, has neither
 		EFFECTS		: [ '', 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'flip', 'blur' ],
@@ -134,8 +149,6 @@
 		// What an animation is set to run as: once, which is the page's default, or each time it comes into view
 		ANIMATION_MODES	: [ '', 'repeat' ],
 		COL_WIDTHS: [ '25', '33', '50', '66', '75', '100' ],
-		// The viewports a column that is added stands beside the others in: the medium and the large screen. On the small one the columns stand below each other
-		BESIDE		: [ 'm', 'l' ],
 		STACK_ALIGN: [ '', 'start', 'center', 'end' ],
 		// The nine places of the focus of a picture, by the words of the panel, in the order
 		// Nino.css numbers them: 1 is the top left, 5 the middle, 9 the bottom right
@@ -158,8 +171,11 @@
 		SHAPE_TAGS	: { path : [ 'd' ], circle : [ 'cx', 'cy', 'r' ], ellipse : [ 'cx', 'cy', 'rx', 'ry' ], rect : [ 'x', 'y', 'width', 'height', 'rx', 'ry' ], line : [ 'x1', 'y1', 'x2', 'y2' ], polyline : [ 'points' ], polygon : [ 'points' ] },
 		// The custom property of Nino.css that holds the ground a colour paints
 		GROUNDS		: { '' : '--color-section-default-bg', alt : '--color-section-alt-bg', tint : '--color-section-tint-bg', dark : '--color-section-dark-bg', black : '--color-section-black-bg', primary : '--color-primary', 'brand-alt' : '--color-brand-alt' },
-		// The types of an attribute that fit half a line, next to another
-		SHORT			: [ 'select', 'bool', 'int', 'string' ],
+		// How many characters of a text the head of a block says of it
+		SAID_MAX	: 28,
+		// The attributes of a component that are its link and stand in that block, besides the address (the type href) and the two a component that is a link has: the window
+		// it opens in and - of a surface - whether all of it is the link
+		LINK_KEYS	: [ 'target', 'linked' ],
 		// The words the Builder has for the values of an attribute a component declares, by the name of the attribute: the group of their
 		// words (see _optionLabel()). The select of an attribute with another name keeps its values as they are
 		ATTRIBUTE_WORDS	: { padding : 'space', align : 'text', vertical : 'vertical', target : 'target' },
@@ -184,6 +200,36 @@
 
 		// The preview images the registry may name, and the one for the rest
 		PREVIEWS	: [ 'title', 'text', 'image', 'button', 'block', 'cells' ],
+
+		// What the dialog of an element shows, and the one place that says it: for each kind of element the blocks it has, in the order they are drawn in - the same six for every kind, in
+		// this order: content, link, surface, spacing, width and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
+		// control that writes several settings stands under each of them and is drawn once, at the first (the box of the six sides, the two offsets of a ground, the width of a column and where
+		// it is hidden); one that is no setting of its own stands under its own name (the width of the row of a section, which is the maximum width, the padding at its sides and the full
+		// width in one choice). _blocksOf() draws what stands here and nothing else: a control that is moved is drawn in its new block, one that is struck out is not drawn at all, and a
+		// block none of whose controls the element has is not drawn (a card has no content: its title, its text and its picture are components with a form of their own). The controls of
+		// a section and of a column are made by _sectionControls() and _colControls(). A component has the controls of its schema, by group - the source, the attributes that are a
+		// link, those on the tab of the background, the variants and the other attributes, each group a control - and the settings every component has (_componentControls())
+		BLOCKS		: {
+			section : [
+				{ id : 'surface', controls : [ 'color', 'border', 'borderPrimary', 'background', 'cover', 'parallax', 'dim', 'inner', 'padded', 'radius', 'rowRadius', 'rowBgPl', 'rowBgPr', 'arrow' ] },
+				{ id : 'spacing', controls : [ 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
+				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
+				{ id : 'properties', controls : [ 'stack', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
+			],
+			column : [
+				{ id : 'surface', controls : [ 'color', 'background', 'dim', 'bgPl', 'bgPr', 'radius' ] },
+				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
+				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
+				{ id : 'properties', controls : [ 'stack', 'vpa', 'vpaSpeed', 'vpaMode', 'custom' ] },
+			],
+			component : [
+				{ id : 'content', controls : [ 'source' ] },
+				{ id : 'link', controls : [ 'link' ] },
+				{ id : 'surface', controls : [ 'background', 'bgPl', 'bgPr', 'radius' ] },
+				{ id : 'spacing', controls : [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
+				{ id : 'properties', controls : [ 'variants', 'attributes', 'class' ] },
+			],
+		},
 		// --------------------------------------------------------- The model
 
 		/**
@@ -757,7 +803,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: [ builder._newCol() ],
@@ -770,31 +816,12 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function() {
-			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', p : '', mt : '', mb : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
 		},
 
 		/**
-		 *	The width the columns of a row share when there are count of them: the widest step of the grid that takes that
-		 *	many side by side - two have 50, three 33, four 25 - and none where the grid has no step for so many
-		 *
-		 *	@param		{number}		count
-		 *
-		 *	@return		{number|null}
-		 */
-		_share : function( count ) {
-
-			const fits = Nino.admin.builder.COL_WIDTHS.map( Number ).filter( function( width ) { return width * count <= 100 } );
-
-			return fits.length === 0 ? null : Math.max.apply( null, fits );
-		},
-
-		/**
-		 *	A column added to the row of a section: it stands beside the ones the row has, and the widths of the row are
-		 *	shared out again among all of them - in the viewports where columns stand beside each other (BESIDE). Where the
-		 *	columns stand below each other - two or more, each at the whole width - they stay so, and the new one is below
-		 *	them; and where the row is full, because the grid has no step for one more beside the others, the new column
-		 *	is on a line of its own, as every new column was. A column that is hidden in a viewport takes no room in it, and
-		 *	the small screen is left alone: there the columns stand below each other
+		 *	A column added to the row of a section: the last of the row, the whole width everywhere. The columns the row has keep the widths they have - what was set
+		 *	is the editor's, and a share made behind its back is not - and the width of the new one is for the editor to set
 		 *
 		 *	@param		{Object}		section
 		 *
@@ -802,21 +829,7 @@
 		 */
 		_addedCol : function( section ) {
 
-			const builder = Nino.admin.builder;
-			const col = builder._newCol();
-
-			builder.BESIDE.forEach( function( viewport ) {
-
-				const shown = section.cols.filter( function( other ) { return other.hidden[viewport] !== true } );
-				const below = shown.length > 1 && shown.every( function( other ) { return Number( other.width[viewport] ) === 100 } );
-				const share = builder._share( shown.length + 1 );
-
-				if( below === true || share === null )
-					return;
-
-				shown.forEach( function( other ) { other.width[viewport] = share } );
-				col.width[viewport] = share;
-			} );
+			const col = Nino.admin.builder._newCol();
 
 			section.cols.push( col );
 
@@ -1175,7 +1188,7 @@
 
 		/**
 		 *	A component as the editor makes a new one: the attributes the schema
-		 *	has, and in a static column a key of its own where it reads a text -
+		 *	has, the six sides of the spacing, and in a static column a key of its own where it reads a text -
 		 *	made when the document is saved, with the text that is typed for it in
 		 *	each language and none in the others: the component's label is no text
 		 *	of its key, the field and the preview show it where nothing is typed.
@@ -1199,9 +1212,18 @@
 			const section = model.blocks[at[0]];
 			const component = { name : name, source : '', text : null, attributes : builder._clone( schema.defaults || {} ) };
 
-			// A component that is a surface has a radius of its own, which is none until the editor sets it: it follows the default of its kind
+			// Every component has the six sides of the spacing, none until the editor sets them
+			builder.SIDES.forEach( function( side ) { component[side] = '' } );
+
+			// A component that is a surface has a radius of its own, which is none until the editor sets it: it follows the default of its kind. The card, which paints a ground,
+			// has the two offsets of it as well
 			if( builder._surfaceOf( schema ) !== '' )
 				component.radius = '';
+
+			if( builder._surfaceOf( schema ) === 'card' ) {
+				component.bgPl = '';
+				component.bgPr = '';
+			}
 
 			// What stands between the tags of a component that holds components is its children; of any other it is a content
 			if( kind === 'content' && builder._holds( registry, name ) !== '' )
@@ -2864,8 +2886,14 @@
 				builder._keysAnswered = true;
 				Object.assign( builder._seen, stamp );
 
-				if( status === 200 && response !== null && Array.isArray( response.keys ) === true )
+				if( status === 200 && response !== null && Array.isArray( response.keys ) === true ) {
+
 					builder._keys = response.keys;
+					builder._keysRead = true;
+					builder._pages = Array.isArray( response.pages ) === true ? response.pages.filter( function( page ) {
+						return page !== null && typeof page === 'object' && typeof page.uri === 'string' && page.uri !== '';
+					} ) : [];
+				}
 
 				if( builder._doc !== null )
 					builder._redraw();
@@ -2954,6 +2982,7 @@
 
 			builder._problems = [];
 			builder._repaint();
+			builder._saySummaries();
 
 			Nino.admin.dirty.refresh();
 		},
@@ -3157,7 +3186,7 @@
 				if( block.whitespace !== '' )
 					status.appendChild( builder._statusItem( 'whitespace', 'move-vertical', Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/whitespace'), builder._optionLabel( 'whitespace', block.whitespace ) ), '' ) );
 
-				// A section that makes a section of every element says so as a column that runs a loop does: it is a button, which opens the Loop tab
+				// A section that makes a section of every element says so as a column that runs a loop does: it is a button, which opens the properties of the section, where the loop is
 				if( block.loop !== null ) {
 
 					const says = Nino.content.getText('/_admin/builder/stack/sections')+ ' · '+ block.loop.type;
@@ -3168,7 +3197,7 @@
 							return;
 
 						builder._select( block.path, false );
-						builder._sectionDialog( block.path, 'loop' );
+						builder._sectionDialog( block.path, builder._blockOf( 'section', 'stack' ) );
 					} ) );
 				}
 
@@ -3401,7 +3430,7 @@
 
 				status.appendChild( builder._statusItem( 'align', icon, Nino.adminUi.format( Nino.content.getText( '/_admin/builder/preview/'+ how.words ), builder._optionLabel( how.group, col[how.key] ) ), '', function() {
 					builder._select( col.path, false );
-					builder._openSettings( col.path );
+					builder._openSettings( col.path, builder._blockOf( 'column', how.key ) );
 				} ) );
 			} );
 
@@ -3698,7 +3727,7 @@
 		},
 
 		/**
-		 *	A new column at the end of the row of a section, beside the others (see _addedCol())
+		 *	A new column at the end of the row of a section, the whole width (see _addedCol())
 		 *
 		 *	@param		{Array}			path					The section
 		 *
@@ -3823,9 +3852,9 @@
 
 			builder._openSettings( builder._sel );
 
-			// The first control of the tab that is shown
-			const pane = Array.from( dc.querySelectorAll('#builder-dialog-content .builder-tabpane') ).find( function( candidate ) { return candidate.hidden === false } );
-			const first = pane === undefined ? null : pane.querySelector('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)');
+			// The first control of the block that is open
+			const open = Array.from( dc.querySelectorAll('#builder-dialog-content .builder-block-body') ).find( function( candidate ) { return candidate.hidden === false } );
+			const first = open === undefined ? null : open.querySelector('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)');
 
 			if( first !== null )
 				first.focus();
@@ -3859,19 +3888,18 @@
 		// -------------------------------------------------------------- Dialogs
 
 		/**
-		 *	Open the dialog the template has, with a title, a body that is built
-		 *	here - in tabs, where it has them - and the actions it ends with. A
-		 *	form of a node writes into the model as it is changed, so the actions
-		 *	are only the way out; the dialog that asks (a new template, an HTML+
-		 *	block) has an action that decides
+		 *	Open the dialog the template has, with a title, a body that is built here - the blocks of the form of an element, where it is one - and the actions it
+		 *	ends with. A form of a node writes into the model as it is changed, so the actions are only the way out; the dialog that asks (a new template, an
+		 *	HTML+ block) has an action that decides
 		 *
 		 *	@param		{Object}		options
 		 *	@param		{string}		options.title
 		 *	@param		{Array}			[options.rename]		The path of a section: its name stands in the title, where it is changed
-		 *	@param		{number}		[options.blame]			The index of the block the form is of: what a refused save said of it goes over the first tab
+		 *	@param		{number}		[options.blame]			The index of the section the form is of: what a refused save said of it goes over the form
 		 *	@param		{Function}	[options.build]			Called with the body
-		 *	@param		{Array}			[options.tabs]			[ { id, label, build( pane ) } ]
-		 *	@param		{string}		[options.tab]				The tab to start on
+		 *	@param		{Array}			[options.blocks]		[ { id, controls, held, build( body ), says() } ] - the form of an element, one block for each, drawn as an accordion (see _blocks())
+		 *	@param		{string}		[options.kind]			The kind of element the blocks are of: the dialog opens on the block that was open last in a dialog of that kind
+		 *	@param		{string}		[options.block]			The block to open, whichever was open last
 		 *	@param		{Array}			[options.actions]		[ { label, kind, onClick( problem ) } ] - false keeps the dialog open
 		 *	@param		{Function}	[options.onClose]
 		 *	@param		{boolean}		[options.wide]
@@ -3884,7 +3912,6 @@
 			const builder = Nino.admin.builder;
 			const dialog = dc.getElementById('builder-dialog');
 			const content = dc.getElementById('builder-dialog-content');
-			const strip = dc.getElementById('builder-dialog-tabs');
 			const actions = dc.getElementById('builder-dialog-actions');
 			const problems = dc.getElementById('builder-dialog-problems');
 			const heading = dc.getElementById('builder-dialog-heading');
@@ -3899,7 +3926,6 @@
 			dialog.classList.toggle( 'is-wide', options.wide === true );
 			dc.getElementById('builder-dialog-kind').textContent = options.title;
 			content.innerHTML = '';
-			strip.innerHTML = '';
 			actions.innerHTML = '';
 			problems.textContent = '';
 			problems.hidden = true;
@@ -3915,20 +3941,17 @@
 
 			if( options.rename !== undefined ) {
 				name.textContent = builder._doc.model.blocks[options.rename[0]].id;
-				heading.appendChild( builder._renamer( name, options.rename, problem, function( id ) { name.textContent = id } ) );
+				heading.appendChild( builder._renamer( name, options.rename, problem, function( id ) { builder._renamedIn( id ) } ) );
 			}
 
-			if( Array.isArray( options.tabs ) === true && options.tabs.length > 0 ) {
-				builder._dialogPanes = builder._tabs( strip, content, options.tabs, options.tab, 'builder' );
-				strip.hidden = false;
+			if( Array.isArray( options.blocks ) === true && options.blocks.length > 0 ) {
 
 				if( options.blame !== undefined )
-					builder._blamed( builder._dialogPanes[options.tabs[0].id], options.blame );
-			} else {
-				strip.hidden = true;
-				builder._dialogPanes = {};
+					builder._blamed( content, options.blame );
+
+				builder._blocks( content, options );
+			} else
 				options.build( content );
-			}
 
 			( options.actions || [] ).forEach( function( action ) {
 
@@ -3956,6 +3979,176 @@
 			else
 				dialog.setAttribute( 'open', '' );
 		},
+
+		/**
+		 *	The blocks of the form of an element, as an accordion: a head for each - its name, and muted beside it what the block says of the element where that
+		 *	is not the default (see _saySummaries()) - over a body that holds its controls. One is open and the others are closed; a click on a head opens that
+		 *	block and closes the one that was open, or closes the one it is the head of. The block that opens is the one asked for, else the one that was open
+		 *	last in a dialog of the same kind of element - kept while the page is open, and nowhere else -, else the first. The bodies are all built at once and
+		 *	the closed ones hidden, as the panes of a tab list were
+		 *
+		 *	@param		{Element}		content
+		 *	@param		{Object}		options					As _dialog() has them: blocks, kind, block
+		 *
+		 *	@return		void
+		 */
+		_blocks : function( content, options ) {
+
+			const builder = Nino.admin.builder;
+			const state = { kind : options.kind, ids : [], parts : {}, open : null };
+			const host = builder._el( 'div', 'builder-blocks' );
+			const has = function( id ) { return options.blocks.some( function( block ) { return block.id === id } ) };
+			const start = [ options.block, builder._lastBlock[options.kind] ].find( function( id ) { return id !== undefined && has( id ) === true } ) ?? options.blocks[0].id;
+
+			options.blocks.forEach( function( block ) {
+
+				const part = builder._el( 'section', 'builder-block' );
+				const title = builder._el( 'h3', 'builder-block-title' );
+				const head = builder._el( 'button', 'builder-block-head' );
+				const says = builder._el( 'span', 'builder-block-says' );
+				const body = builder._el( 'div', 'builder-block-body' );
+
+				part.id = 'builder-block-'+ block.id;
+				head.id = 'builder-head-'+ block.id;
+				body.id = 'builder-body-'+ block.id;
+				head.type = 'button';
+				head.setAttribute( 'aria-controls', body.id );
+				body.setAttribute( 'role', 'region' );
+				body.setAttribute( 'aria-labelledby', head.id );
+				head.appendChild( builder._icon('down') );
+				head.appendChild( builder._el( 'span', 'builder-block-name', Nino.content.getText( '/_admin/builder/block/'+ block.id+ '/label' ) ) );
+				head.appendChild( says );
+				head.addEventListener( 'click', function() { builder._openBlock( state.open === block.id ? null : block.id ) } );
+				title.appendChild( head );
+				part.appendChild( title );
+				part.appendChild( body );
+				host.appendChild( part );
+				state.ids.push( block.id );
+				state.parts[block.id] = { part : part, head : head, says : says, body : body, spec : block };
+				block.build( body );
+			} );
+
+			content.appendChild( host );
+			builder._dialogBlocks = state;
+			builder._openBlock( start );
+			builder._saySummaries();
+		},
+
+		/**
+		 *	Open one block of the dialog and close the others - or close them all, for null. What was opened is what a dialog of the same kind of element opens on
+		 *	next time
+		 *
+		 *	@param		{string|null}	id
+		 *
+		 *	@return		void
+		 */
+		_openBlock : function( id ) {
+
+			const builder = Nino.admin.builder;
+			const state = builder._dialogBlocks;
+
+			if( state === null )
+				return;
+
+			state.open = id;
+
+			state.ids.forEach( function( other ) {
+
+				const part = state.parts[other];
+
+				part.part.classList.toggle( 'is-open', other === id );
+				part.head.setAttribute( 'aria-expanded', other === id ? 'true' : 'false' );
+				part.body.hidden = other !== id;
+			} );
+
+			if( id !== null && state.kind !== undefined )
+				builder._lastBlock[state.kind] = id;
+		},
+
+		/**
+		 *	Draw blocks of the dialog again - a choice in one changes what another holds. The control that has the focus is gone with the block, and the focus
+		 *	goes to the one that stands in its place
+		 *
+		 *	@param		{...string}		ids						The blocks; the ones the dialog has none of are let go
+		 *
+		 *	@return		void
+		 */
+		_refreshBlock : function( ...ids ) {
+
+			const builder = Nino.admin.builder;
+			const state = builder._dialogBlocks;
+
+			if( state === null )
+				return;
+
+			ids.forEach( function( id ) {
+
+				const part = state.parts[id];
+
+				if( part === undefined )
+					return;
+
+				const controls = function() { return Array.from( part.body.querySelectorAll('input, select, textarea, button') ) };
+				const had = dc.activeElement;
+				const at = had === null ? -1 : controls().indexOf( had );
+
+				part.body.innerHTML = '';
+				part.spec.build( part.body );
+
+				if( at !== -1 && controls()[at] !== undefined )
+					controls()[at].focus();
+			} );
+
+			builder._saySummaries();
+		},
+
+		/**
+		 *	Draw the blocks of the dialog that hold some of the controls named again - a choice in one control changes what another shows, and the table says where that stands.
+		 *	With no name, every block of the dialog
+		 *
+		 *	@param		{...string}		names						The controls, by the names the table lists them under
+		 *
+		 *	@return		void
+		 */
+		_refreshControls : function( ...names ) {
+
+			const builder = Nino.admin.builder;
+			const state = builder._dialogBlocks;
+
+			if( state === null )
+				return;
+
+			builder._refreshBlock( ...state.ids.filter( function( id ) {
+				return names.length === 0 || state.parts[id].spec.controls.some( function( name ) { return names.indexOf( name ) !== -1 } );
+			} ) );
+		},
+
+		/**
+		 *	What the head of each block says: the values of its controls that are not the default, as the block's own words say them, joined by a dot. A block
+		 *	whose controls are all at the default says nothing
+		 *
+		 *	@return		void
+		 */
+		_saySummaries : function() {
+
+			const state = Nino.admin.builder._dialogBlocks;
+
+			if( state === null )
+				return;
+
+			state.ids.forEach( function( id ) {
+
+				const said = state.parts[id].spec.says();
+
+				state.parts[id].says.textContent = said;
+				state.parts[id].says.hidden = said === '';
+			} );
+		},
+
+		// The kind of element each dialog was of and the block that was open in it last, by kind: kept while the page is open
+		_lastBlock : {},
+		// The blocks of the dialog that is open: { kind, ids, parts : id => { part, head, says, body, spec }, open }; null where it has none
+		_dialogBlocks : null,
 
 		/**
 		 *	Tabs over panes, as a tab list is made: the buttons of the strip are tabs
@@ -4006,28 +4199,10 @@
 			return panes;
 		},
 
-		// The options of the dialog that is open, its panes by the id of their tab, the way it says what is wrong, and the control that had the focus when it opened
+		// The options of the dialog that is open, the way it says what is wrong, and the control that had the focus when it opened
 		_dialogOptions : null,
-		_dialogPanes : {},
 		_dialogProblem : null,
 		_dialogOpener : null,
-
-		/**
-		 *	Draw the pane of a tab again - a choice in it changes what it holds
-		 *
-		 *	@param		{string}		id
-		 *
-		 *	@return		void
-		 */
-		_refreshTab : function( id ) {
-
-			const builder = Nino.admin.builder;
-			const pane = builder._dialogPanes[id];
-			const tab = builder._dialogOptions.tabs.find( function( candidate ) { return candidate.id === id } );
-
-			pane.innerHTML = '';
-			tab.build( pane );
-		},
 
 		/**
 		 *	Close the dialog, and tell what it was made for. The dialog of a source, which
@@ -4050,6 +4225,7 @@
 
 			builder._dialogOptions = null;
 			builder._dialogOpener = null;
+			builder._dialogBlocks = null;
 			builder._closePicker();
 
 			if( dialog !== null && dialog.open === true && typeof dialog.close === 'function' ) {
@@ -4090,6 +4266,7 @@
 
 			builder._dialogOptions = null;
 			builder._dialogOpener = null;
+			builder._dialogBlocks = null;
 
 			if( options !== null && typeof options.onClose === 'function' )
 				options.onClose();
@@ -4273,6 +4450,30 @@
 		},
 
 		/**
+		 *	The group of a block that a control belongs to, by the name of the group (group/<name>): the one that was drawn last in the body where it is that group, else a new
+		 *	one under its heading. A group is there once a control has asked for it, so a control that draws nothing leaves no heading
+		 *
+		 *	@param		{Element}		body
+		 *	@param		{string}		name
+		 *
+		 *	@return		{Element}									Where the fields of the group go
+		 */
+		_groupIn : function( body, name ) {
+
+			const builder = Nino.admin.builder;
+			const last = body.children[body.children.length - 1];
+
+			if( last !== undefined && last.dataset.group === name )
+				return builder._one( last, '.builder-group-body' );
+
+			const inner = builder._group( body, Nino.content.getText( '/_admin/builder/group/'+ name ) );
+
+			body.children[body.children.length - 1].dataset.group = name;
+
+			return inner;
+		},
+
+		/**
 		 *	A table of a form, with its heads
 		 *
 		 *	@param		{Array}			heads							The words over its columns
@@ -4420,8 +4621,8 @@
 
 		/**
 		 *	The link under a table of one row: the preview shows all the viewports, and
-		 *	the tabs of the dialog it is in are drawn again with all of them - the tab
-		 *	that is shown is not the only one with a table of viewports
+		 *	the blocks of the dialog it is in that have a table of viewports are drawn
+		 *	again with all of them - the block that is open is not the only one
 		 *
 		 *	@return		{Element}
 		 */
@@ -4433,70 +4634,10 @@
 			link.type = 'button';
 			link.addEventListener( 'click', function() {
 				builder._setView('g');
-				Object.keys( builder._dialogPanes ).forEach( function( id ) { builder._refreshTab( id ) } );
+				builder._refreshControls( 'width', 'stack' );
 			} );
 
 			return link;
-		},
-
-		/**
-		 *	The spacing of a section: a table, with above and below for its rows and
-		 *	the margin and the padding for its columns
-		 *
-		 *	@param		{Object}		settings					Of a section
-		 *
-		 *	@return		{Element}
-		 */
-		_spacingTable : function( settings ) {
-
-			const builder = Nino.admin.builder;
-			const table = builder._table( [ Nino.content.getText('/_admin/builder/section/spacing'), Nino.content.getText('/_admin/builder/section/outer'), Nino.content.getText('/_admin/builder/section/inner') ] );
-			const options = builder._options( 'space', builder.SPACES );
-
-			[ [ 'above', 'mt', 'pt' ], [ 'below', 'mb', 'pb' ] ].forEach( function( row ) {
-
-				const side = Nino.content.getText( '/_admin/builder/section/'+ row[0] );
-
-				builder._tableRow( table.body, builder._rowHead( side ), [ [ row[1], 'outer' ], [ row[2], 'inner' ] ].map( function( cell ) {
-					return builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/section/spacing-cell'), side, Nino.content.getText( '/_admin/builder/section/'+ cell[1] ) ), options, settings[cell[0]], function( value ) {
-						settings[cell[0]] = value;
-						builder._changed();
-					} );
-				} ) );
-			} );
-
-			return table.table;
-		},
-
-		/**
-		 *	The padding of a row on two sides: a pair of selects under the name of the pair, and under them what the
-		 *	hint says of both - the steps of the space scale, and the default, which is the gutter of the grid at the sides
-		 *	and none above and below. The pair is a group of its own for whoever does not see it
-		 *
-		 *	@param		{Object}		target						The settings of a section
-		 *	@param		{string}		label							The key of the words that name the pair
-		 *	@param		{string}		hint								The key of the words under it
-		 *	@param		{Array}			cells							[ { key, label } ] - the setting each select writes, and the key of its words
-		 *
-		 *	@return		{Element}
-		 */
-		_paddingPair : function( target, label, hint, cells ) {
-
-			const builder = Nino.admin.builder;
-			const pair = builder._el( 'div', 'builder-pair' );
-			const name = Nino.content.getText( label );
-			const shown = builder._el( 'span', 'builder-pair-label', name );
-
-			pair.setAttribute( 'role', 'group' );
-			pair.setAttribute( 'aria-label', name );
-			shown.setAttribute( 'aria-hidden', 'true' );
-			pair.appendChild( shown );
-			pair.appendChild( builder._line( cells.map( function( cell ) {
-				return builder._setting( target, { key : cell.key, type : 'select', label : cell.label, group : 'space', values : builder.SPACES } );
-			} ) ) );
-			pair.appendChild( builder._el( 'small', 'nino-admin-hint', Nino.content.getText( hint ) ) );
-
-			return pair;
 		},
 
 		// ---------------------------------------------------------------- Fields
@@ -4572,6 +4713,260 @@
 		},
 
 		/**
+		 *	The spacing of an element as the box it is: the four sides inside as a select each around a small rectangle, the two outside above and below it, where the
+		 *	element has an outside. A select holds the steps 0 to 6 and none, which is the page's own and drawn as a dash. The box reads and writes the settings it is given -
+		 *	the keys of the sides, the Writer makes the classes of them - and nothing else
+		 *
+		 *	@param		{Object}		holder						Where the settings are kept: the settings of a section, a column, a component
+		 *	@param		{Object}		options						{ name, hint, outside, inside, after }: the words the box is called by - '' for none -, the sentence a "?" says of it, the keys of the sides
+		 *																	outside - above, below, or null where it has no outside - and inside - above, below, left, right -, and what is called with the key of a side after it was written
+		 *
+		 *	@return		{Element}
+		 */
+		_boxField : function( holder, options ) {
+
+			const builder = Nino.admin.builder;
+			const box = builder._el( 'div', 'builder-box' );
+			const head = builder._el( 'div', 'builder-box-head' );
+			const frame = builder._el( 'div', 'builder-box-frame' );
+			const label = options.name === '' ? Nino.content.getText('/_admin/builder/block/spacing/label') : options.name;
+			const side = function( key, place, words ) {
+
+				const select = builder._el( 'select', 'nino-admin-input builder-step builder-step-'+ place );
+
+				select.dataset.key = key;
+				select.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText('/_admin/builder/section/spacing-cell'), Nino.content.getText( '/_admin/builder/section/'+ words ), Nino.content.getText( '/_admin/builder/spacing/'+ ( place === 'outer' ? 'outside' : 'inside' ) ) ) );
+
+				builder.SPACES.forEach( function( value ) {
+
+					const option = builder._el( 'option', '', value === '' ? '–' : value );
+
+					option.value = value;
+					select.appendChild( option );
+				} );
+
+				select.value = String( holder[key] ?? '' );
+				select.addEventListener( 'change', function() {
+
+					holder[key] = select.value;
+
+					if( typeof options.after === 'function' )
+						options.after( key );
+
+					builder._changed();
+				} );
+
+				return select;
+			};
+
+			box.setAttribute( 'role', 'group' );
+			box.setAttribute( 'aria-label', label );
+			head.appendChild( builder._el( 'span', 'builder-box-name', options.name ) );
+
+			if( options.hint !== '' )
+				head.appendChild( builder._help( options.hint, label ) );
+
+			box.appendChild( head );
+
+			if( options.outside !== null )
+				box.appendChild( side( options.outside[0], 'outer', 'above' ) );
+
+			frame.appendChild( side( options.inside[0], 'inner', 'above' ) );
+			frame.appendChild( side( options.inside[2], 'inner', 'left' ) );
+			frame.appendChild( builder._el( 'span', 'builder-box-core' ) );
+			frame.appendChild( side( options.inside[3], 'inner', 'right' ) );
+			frame.appendChild( side( options.inside[1], 'inner', 'below' ) );
+			box.appendChild( frame );
+
+			if( options.outside !== null )
+				box.appendChild( side( options.outside[1], 'outer', 'below' ) );
+
+			return box;
+		},
+
+		/**
+		 *	What a box says of itself in the head of its block: where a side is set, outside above and below, then inside above, below, left and right, a dash for the sides that are
+		 *	not set - a box with no outside says the inside alone, and a box with nothing set says nothing. A box that has a name of its own has it in front
+		 *
+		 *	@param		{Object}		holder
+		 *	@param		{Array|null}	outside						The keys above and below, null for a box that has no outside
+		 *	@param		{Array}			inside						The keys above, below, left and right
+		 *	@param		{string}		[name]
+		 *
+		 *	@return		{string}									'' where no side is set
+		 */
+		_boxSaid : function( holder, outside, inside, name ) {
+
+			const set = function( key ) { return holder[key] !== undefined && holder[key] !== '' };
+			const steps = function( keys ) { return keys.map( function( key ) { return set( key ) === true ? holder[key] : '–' } ).join('/') };
+
+			if( ( outside === null ? inside : outside.concat( inside ) ).some( set ) === false )
+				return '';
+
+			const parts = outside === null ? [] : [ Nino.content.getText('/_admin/builder/spacing/outside')+ ' '+ steps( outside ) ];
+
+			parts.push( Nino.content.getText('/_admin/builder/spacing/inside')+ ' '+ steps( inside ) );
+
+			return ( name === undefined || name === '' ? '' : name+ ' ' )+ parts.join(' · ');
+		},
+
+		/**
+		 *	How far in from the left and the right the picture or the ground of a row, a column or a card starts: two selects, left and right, of the steps up to the third - none
+		 *	being the page's own - under one name
+		 *
+		 *	@param		{Object}		holder
+		 *	@param		{Array}			keys							The settings, left then right
+		 *	@param		{string}		label
+		 *	@param		{string}		hint
+		 *
+		 *	@return		{Element}									The group; setDisabled( boolean ) puts it to sleep
+		 */
+		_offsetField : function( holder, keys, label, hint ) {
+
+			const builder = Nino.admin.builder;
+			const field = builder._el( 'div', 'builder-offset' );
+			const group = builder._el( 'div', 'builder-offset-steps' );
+			const selects = [];
+
+			group.setAttribute( 'role', 'group' );
+			group.setAttribute( 'aria-label', label );
+
+			keys.forEach( function( key, at ) {
+
+				const select = builder._el( 'select', 'nino-admin-input builder-step' );
+
+				select.dataset.key = key;
+				select.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText('/_admin/builder/section/spacing-cell'), label, Nino.content.getText( '/_admin/builder/section/'+ ( at === 0 ? 'left' : 'right' ) ) ) );
+
+				builder.OFFSETS.forEach( function( value ) {
+
+					const option = builder._el( 'option', '', value === '' ? '–' : value );
+
+					option.value = value;
+					select.appendChild( option );
+				} );
+
+				select.value = String( holder[key] ?? '' );
+				select.addEventListener( 'change', function() {
+					holder[key] = select.value;
+					builder._changed();
+				} );
+				selects.push( select );
+				group.appendChild( builder._el( 'span', 'builder-offset-side', Nino.content.getText( '/_admin/builder/section/'+ ( at === 0 ? 'left' : 'right' ) ) ) );
+				group.appendChild( select );
+			} );
+
+			field.appendChild( builder._el( 'span', 'builder-offset-label', label ) );
+			field.appendChild( group );
+
+			const row = builder._hinted( field, hint, label );
+
+			row.setDisabled = function( disabled ) { selects.forEach( function( select ) { select.disabled = disabled === true } ) };
+
+			return row;
+		},
+
+		/**
+		 *	What a holder says of how far in from its sides its ground starts: both steps, a dash where one is not set - nothing where neither is
+		 *
+		 *	@param		{Object}		holder
+		 *	@param		{Array}			keys
+		 *	@param		{string}		label
+		 *
+		 *	@return		{string}
+		 */
+		_offsetSaid : function( holder, keys, label ) {
+
+			if( keys.every( function( key ) { return holder[key] === undefined || holder[key] === '' } ) === true )
+				return '';
+
+			return label+ ' '+ keys.map( function( key ) { return holder[key] === undefined || holder[key] === '' ? '–' : holder[key] } ).join('/');
+		},
+
+		/**
+		 *	The control element of a field marked with the setting it writes: the select, the input or the group of buttons that is the field, or is in it - what a test, a script
+		 *	or a reader of the page finds the field of a setting by
+		 *
+		 *	@param		{Element}		field
+		 *	@param		{string}		key
+		 *
+		 *	@return		{Element}									The field
+		 */
+		_keyed : function( field, key ) {
+
+			const selector = 'select, textarea, input[type="text"], input[type="number"], input[type="checkbox"], .builder-segment';
+			const control = field.matches( selector ) === true ? field : field.querySelector( selector );
+
+			if( control !== null )
+				control.dataset.key = key;
+
+			return field;
+		},
+
+		/**
+		 *	The blocks an element has, drawn from the table (BLOCKS): for each block of the kind the controls it lists, in its order, that the element has - and a block none of whose
+		 *	controls the element has is not one of them. A control that is listed under several of its settings is drawn once in the dialog, where the first of them stands. What the
+		 *	head of a block says is what these controls say, in the same order
+		 *
+		 *	@param		{string}		kind							section, column or component
+		 *	@param		{Object}		controls					The controls of the element by name: { keys, build( body ), says() } each (see _sectionControls())
+		 *
+		 *	@return		{Array}										[ { id, controls, held, build, says } ] for the dialog: the names the table lists for the block, the controls drawn in it
+		 */
+		_blocksOf : function( kind, controls ) {
+
+			const builder = Nino.admin.builder;
+			const drawn = [];
+
+			return builder.BLOCKS[kind].map( function( block ) {
+
+				const held = block.controls.filter( function( name ) { return Object.prototype.hasOwnProperty.call( controls, name ) } ).map( function( name ) { return controls[name] } ).filter( function( control ) {
+
+					if( drawn.indexOf( control ) !== -1 )
+						return false;
+
+					drawn.push( control );
+
+					return true;
+				} );
+
+				return {
+					id			: block.id,
+					controls	: block.controls,
+					held		: held,
+					build		: function( body ) { held.forEach( function( control ) { control.build( body ) } ) },
+					says		: function() { return builder._said( held.map( function( control ) { return control.says() } ) ) },
+				};
+			} ).filter( function( block ) { return block.held.length > 0 } );
+		},
+
+		/**
+		 *	The block of the table that lists a control: the one a status of a frame opens the dialog on, whichever block the table has put the control in
+		 *
+		 *	@param		{string}		kind							section, column or component
+		 *	@param		{string}		control						The name the table lists the control under
+		 *
+		 *	@return		{string|undefined}						The id of the block, undefined where the table lists the control in none
+		 */
+		_blockOf : function( kind, control ) {
+
+			const block = Nino.admin.builder.BLOCKS[kind].find( function( candidate ) { return candidate.controls.indexOf( control ) !== -1 } );
+
+			return block === undefined ? undefined : block.id;
+		},
+
+		/**
+		 *	What a block says in its head: the words that are not empty, joined by a dot, each once
+		 *
+		 *	@param		{Array}			words
+		 *
+		 *	@return		{string}
+		 */
+		_said : function( words ) {
+			return words.filter( function( word, at ) { return word !== '' && words.indexOf( word ) === at } ).join(' · ');
+		},
+
+		/**
 		 *	A select of the design system, whose change is the caller's
 		 *
 		 *	@param		{string}		label
@@ -4584,26 +4979,106 @@
 		 */
 		_selectField : function( label, hint, options, value, onChange ) {
 
-			const field = Nino.adminUi.selectField( { key : '', label : label, hint : hint, options : options, value : value, onChange : onChange } );
+			const field = Nino.adminUi.selectField( { key : '', label : label, hint : '', options : options, value : value, onChange : onChange } );
 
-			return Nino.admin.builder._hinted( field, hint );
+			return Nino.admin.builder._hinted( field, hint, label );
 		},
 
 		/**
-		 *	The hint of a field under it, where it has one
+		 *	The sentence a field has to say, as a "?" that carries it (see _help()) - none under the field. A field with nothing to say is the field itself;
+		 *	one with a sentence stands in a row with its button, which is not inside the label of the field: a label holds no button, and the name of the
+		 *	control is the label's words alone
 		 *
 		 *	@param		{Element}		field
 		 *	@param		{string}		hint
+		 *	@param		{string}		[name]						What the field is called, for the button
 		 *
-		 *	@return		{Element}
+		 *	@return		{Element}									The field, or its row
 		 */
-		_hinted : function( field, hint ) {
+		_hinted : function( field, hint, name ) {
 
-			if( hint !== '' && hint !== undefined && field.querySelector('.nino-admin-hint') === null )
-				field.appendChild( Nino.admin.builder._el( 'small', 'nino-admin-hint', hint ) );
+			const builder = Nino.admin.builder;
 
-			return field;
+			if( hint === '' || hint === undefined || hint === null )
+				return field;
+
+			const row = builder._el( 'div', 'builder-row' );
+
+			row.appendChild( field );
+			row.appendChild( builder._help( hint, name ) );
+
+			return row;
 		},
+
+		/**
+		 *	The mark of a sentence a control has to say: a button "?" that has the sentence as a tooltip - on hover and on focus, and by a touch -, and as its
+		 *	description (aria-describedby), so that a screen reader reads it with the button. Escape closes the tooltip and nothing else, and a tooltip the
+		 *	pointer is over stays while it is. The tooltip is drawn where the button is on the window and kept inside it: the region of a dialog scrolls
+		 *	and would cut it. The pattern is the Builder's own (.builder-help); every panel of the workbench has its hints under the fields, and one for all of
+		 *	them is for the kernel to make
+		 *
+		 *	@param		{string}		text							The sentence
+		 *	@param		{string}		[name]						What the button is for, said to whoever does not see it: the name of the field
+		 *
+		 *	@return		{Element}									The wrap of the button and its tooltip
+		 */
+		_help : function( text, name ) {
+
+			const builder = Nino.admin.builder;
+			const wrap = builder._el( 'span', 'builder-help' );
+			const button = builder._el( 'button', 'builder-help-btn', '?' );
+			const tip = builder._el( 'span', 'builder-help-tip', text );
+			const id = 'builder-tip-'+ ( ++builder._helps );
+			const hide = function() { tip.hidden = true };
+			const show = function() {
+
+				tip.hidden = false;
+
+				if( typeof button.getBoundingClientRect !== 'function' )
+					return;
+
+				const at = button.getBoundingClientRect();
+				const room = 8;
+				const left = Math.max( room, Math.min( at.left, wn.innerWidth - tip.offsetWidth - room ) );
+				const below = at.bottom + 6;
+
+				tip.style.left = left+ 'px';
+				tip.style.top = ( below + tip.offsetHeight + room > wn.innerHeight ? Math.max( room, at.top - tip.offsetHeight - 6 ) : below )+ 'px';
+			};
+
+			button.type = 'button';
+			button.setAttribute( 'aria-label', typeof name === 'string' && name !== '' ? Nino.adminUi.format( Nino.content.getText('/_admin/builder/label/help-of'), name ) : Nino.content.getText('/_admin/builder/label/help') );
+			button.setAttribute( 'aria-describedby', id );
+			tip.id = id;
+			tip.setAttribute( 'role', 'tooltip' );
+			tip.hidden = true;
+
+			wrap.addEventListener( 'mouseenter', show );
+			wrap.addEventListener( 'mouseleave', function() { if( dc.activeElement !== button ) hide() } );
+			button.addEventListener( 'focus', show );
+			button.addEventListener( 'blur', hide );
+			button.addEventListener( 'click', function() { if( tip.hidden === true ) show(); else hide() } );
+			wrap.addEventListener( 'keydown', function( ev ) {
+
+				if( ev.key !== 'Escape' || tip.hidden === true )
+					return;
+
+				// The tooltip is what Escape closes: the dialog stays
+				ev.preventDefault();
+				ev.stopPropagation();
+				hide();
+			} );
+
+			wrap.appendChild( button );
+			wrap.appendChild( tip );
+			// What describes a group that has no button of its own to carry it
+			wrap.tipId = id;
+
+			return wrap;
+		},
+
+		// How many tooltips were made: the number in the id that joins a button to its sentence
+		_helps : 0,
 
 		/**
 		 *	A switch of the design system
@@ -4617,12 +5092,12 @@
 		 */
 		_switchField : function( label, hint, checked, onChange ) {
 
-			const field = Nino.adminUi.switchField( { key : '', checked : checked, label : label, hint : hint } );
+			const field = Nino.adminUi.switchField( { key : '', checked : checked, label : label, hint : '' } );
 			const input = field.querySelector('input');
 
 			input.addEventListener( 'change', function() { onChange( input.checked ) } );
 
-			return field;
+			return Nino.admin.builder._hinted( field, hint, label );
 		},
 
 		/**
@@ -4650,7 +5125,7 @@
 			item.appendChild( builder._el( 'span', '', label ) );
 			field.appendChild( item );
 
-			return builder._hinted( field, hint );
+			return builder._hinted( field, hint, label );
 		},
 
 		/**
@@ -4667,7 +5142,7 @@
 		 */
 		_numberField : function( label, hint, value, min, max, onChange ) {
 
-			const field = Nino.adminUi.numberField( { key : '', value : value === null ? '' : value, min : min, max : max, label : label, hint : hint } );
+			const field = Nino.adminUi.numberField( { key : '', value : value === null ? '' : value, min : min, max : max, label : label, hint : '' } );
 			const input = field.querySelector('input');
 
 			input.addEventListener( 'input', function() {
@@ -4675,7 +5150,7 @@
 				onChange( isNaN( number ) === true ? null : number );
 			} );
 
-			return field;
+			return Nino.admin.builder._hinted( field, hint, label );
 		},
 
 		/**
@@ -4718,9 +5193,12 @@
 				control.addEventListener( 'change', function() { options.onCommit( control.value, control ) } );
 
 			field.appendChild( control );
-			field.control = control;
 
-			return builder._hinted( field, hint );
+			const row = builder._hinted( field, hint, label );
+
+			row.control = control;
+
+			return row;
 		},
 
 		/**
@@ -4777,14 +5255,15 @@
 
 			field.appendChild( builder._el( 'span', 'builder-segment-label', label ) );
 			field.appendChild( group );
-			builder._hinted( field, hint );
 
-			field.setDisabled = function( disabled ) {
+			const row = builder._hinted( field, hint, label );
+
+			row.setDisabled = function( disabled ) {
 				group.classList.toggle( 'is-disabled', disabled === true );
 				inputs.forEach( function( input ) { input.disabled = disabled === true } );
 			};
 
-			return field;
+			return row;
 		},
 
 		/**
@@ -4873,16 +5352,7 @@
 			} ) );
 			row.appendChild( swatch );
 
-			if( hint === '' || hint === undefined )
-				return row;
-
-			// The hint stands under the select and the patch: between them it would put the patch level with the end of the hint
-			const field = builder._el( 'div', 'builder-with-hint' );
-
-			field.appendChild( row );
-			field.appendChild( builder._el( 'small', 'nino-admin-hint', hint ) );
-
-			return field;
+			return builder._hinted( row, hint, label );
 		},
 
 		/**
@@ -5048,22 +5518,24 @@
 				builder._changed();
 			};
 
+			const keyed = function( control ) { return builder._keyed( control, field.key ) };
+
 			if( field.type === 'bool' )
-				return builder._switchField( label, hint, target[field.key] === true, write );
+				return keyed( builder._switchField( label, hint, target[field.key] === true, write ) );
 
 			if( field.type === 'int' )
-				return builder._numberField( label, hint, target[field.key], field.min, field.max, write );
+				return keyed( builder._numberField( label, hint, target[field.key], field.min, field.max, write ) );
 
 			if( field.type === 'string' )
-				return builder._textField( label, hint, target[field.key], write );
+				return keyed( builder._textField( label, hint, target[field.key], write ) );
 
 			if( field.type === 'color' )
-				return builder._colorField( label, hint, String( target[field.key] ), write, field.around );
+				return keyed( builder._colorField( label, hint, String( target[field.key] ), write, field.around ) );
 
 			if( field.type === 'segment' )
-				return builder._segmentField( label, field.items, String( target[field.key] ), write, hint );
+				return keyed( builder._segmentField( label, field.items, String( target[field.key] ), write, hint ) );
 
-			return builder._selectField( label, hint, builder._options( field.group, field.values ), String( target[field.key] ), write );
+			return keyed( builder._selectField( label, hint, builder._options( field.group, field.values ), String( target[field.key] ), write ) );
 		},
 
 		// ---------------------------------------------------------- The radius of a surface
@@ -5140,7 +5612,7 @@
 			};
 			field.syncRadius();
 
-			return field;
+			return builder._keyed( field, key );
 		},
 
 		// ---------------------------------------------------------- The settings
@@ -5149,10 +5621,11 @@
 		 *	Open the form of what a path names
 		 *
 		 *	@param		{Array}			path
+		 *	@param		{string}		[block]						The block of the form to open, for a form that has blocks: the one that was open last by default
 		 *
 		 *	@return		void
 		 */
-		_openSettings : function( path ) {
+		_openSettings : function( path, block ) {
 
 			const builder = Nino.admin.builder;
 			const kind = builder._kind( builder._doc.model, path );
@@ -5165,22 +5638,18 @@
 				return builder._templateDialog();
 
 			if( kind === 'section' )
-				return builder._sectionDialog( path );
+				return builder._sectionDialog( path, block );
 
 			if( kind === 'col' )
-				return builder._colDialog( path, 'layout' );
+				return builder._colDialog( path, block );
 
 			if( kind === 'stack' )
-				return builder._colDialog( path.slice( 0, 2 ), 'loop' );
+				return builder._colDialog( path.slice( 0, 2 ), builder._blockOf( 'column', 'stack' ) );
 
 			if( kind === 'html' )
 				return builder._editBlock( path );
 
-			// What holds components has a form of its own where it stands in a column; its children have the form every component has
-			if( path.length === 3 && builder._holds( builder._registry, builder._get( builder._doc.model, path ).name ) !== '' )
-				return builder._containerDialog( path );
-
-			builder._componentDialog( path );
+			builder._componentDialog( path, block );
 		},
 
 		/**
@@ -5225,10 +5694,10 @@
 					general.appendChild( builder._textField( Nino.content.getText('/_admin/builder/label/name'), Nino.content.getText('/_admin/builder/hint/name'), doc.model.name, function( value ) { doc.model.name = value; builder._changed() } ) );
 					general.appendChild( builder._textField( Nino.content.getText('/_admin/builder/label/file'), Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/file'), doc.file.replace( /^page-/, '' ), doc.file ), doc.file+ '.tpl', function() {}, { readonly : true } ) );
 
-					builder._group( body, Nino.content.getText('/_admin/builder/group/frames') ).appendChild( builder._line( [
-						builder._frameField( Nino.content.getText('/_admin/builder/label/header'), registry.headers, doc.model.header, function( value ) { doc.model.header = value; builder._changed() } ),
-						builder._frameField( Nino.content.getText('/_admin/builder/label/footer'), registry.footers, doc.model.footer, function( value ) { doc.model.footer = value; builder._changed() } ),
-					] ) );
+					const frames = builder._group( body, Nino.content.getText('/_admin/builder/group/frames') );
+
+					frames.appendChild( builder._frameField( Nino.content.getText('/_admin/builder/label/header'), registry.headers, doc.model.header, function( value ) { doc.model.header = value; builder._changed() } ) );
+					frames.appendChild( builder._frameField( Nino.content.getText('/_admin/builder/label/footer'), registry.footers, doc.model.footer, function( value ) { doc.model.footer = value; builder._changed() } ) );
 
 					const animation = builder._group( body, Nino.content.getText('/_admin/builder/group/animation') );
 
@@ -5277,51 +5746,194 @@
 		},
 
 		/**
-		 *	The form of a section, in six tabs: the section itself (its whitespace, the spacing above and below it,
-		 *	whether it is a cover, how high that is, whether it keeps the room of the page around it - and the radius
-		 *	of what a cover paints with it - and where its content stands in it), its grid row (how wide it may be,
-		 *	where it stands when it is narrower than the page, its padding on four sides, where its columns and its
-		 *	text are put, and the radius of what the row paints), its background (the colour,
-		 *	the border - a strength, and a switch for the brand colour that waits for one -, the picture, whether
-		 *	it is a parallax, whether it is dimmed and whether the background stands inside, on the row), the loop
-		 *	that makes a section of every element of a type, its animation and the classes of its own. The name of
-		 *	the section is part of the title, where it is changed. Each field writes into the model at once
+		 *	The form of a section, in the blocks the table has for it (BLOCKS.section): its surface - the ground and the line, the picture, the cover and what stands inside it - its
+		 *	spacing - the whitespace of the page and the box of its sides, with the box of its row under it -, its width and its alignment - how wide the row is and where it stands,
+		 *	where the text and the columns are put - and its properties: the loop that makes a section of every element, the animation, the classes of its own and the id. The name
+		 *	of the section stands in the title as well, where it is changed too. Each field writes into the model at once
 		 *
 		 *	@param		{Array}			path
-		 *	@param		{string}		[tab]							The tab to start on: section by default
+		 *	@param		{string}		[block]						The block to open: the one that was open last in a dialog of a section, by default
 		 *
 		 *	@return		void
 		 */
-		_sectionDialog : function( path, tab ) {
+		_sectionDialog : function( path, block ) {
+
+			const builder = Nino.admin.builder;
+
+			builder._dialog( {
+				title		: Nino.content.getText('/_admin/builder/tree/section'),
+				rename	: path,
+				blame		: path[0],
+				returnTo	: path,
+				kind		: 'section',
+				block		: block,
+				blocks	: builder._blocksOf( 'section', builder._sectionControls( path ) ),
+			} );
+		},
+
+		/**
+		 *	The controls of the form of a section, by the name the table lists them under (see BLOCKS): { keys, build( body ), says() } each - the settings it writes, what it draws into
+		 *	the body of the block it stands in, and what the head of that block says of it where it is not the default. A control that writes several settings is the same entry under
+		 *	each of them. The controls reach into one another where a choice of one changes what another shows at once - the colour wakes the background inside, a line its brand
+		 *	colour - by the name, and where it changes what others show the blocks are drawn again
+		 *
+		 *	@param		{Array}			path
+		 *
+		 *	@return		{Object}									name of the control => its entry (see _blocksOf())
+		 */
+		_sectionControls : function( path ) {
 
 			const builder = Nino.admin.builder;
 			const section = builder._doc.model.blocks[path[0]];
-			const setting = function( field ) { return builder._setting( section.settings, field ) };
-			// Which of the three the animation is: like the template, off or its own - kept while the form is open
-			const animation = { mode : builder._animationMode( builder._doc.model.animate === true, section.settings ) };
+			const settings = section.settings;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			const setting = function( field, after ) { return builder._setting( settings, field, after ) };
+			const has = function() { return section.background !== null && section.background !== undefined };
+			// Which of the three the animation is: like the template, off or its own - kept while the form is open - and the controls of the animation it has then
+			const animation = { mode : builder._animationMode( builder._doc.model.animate === true, settings ) };
+			const animations = builder._animationControls( settings, {} );
+			// The fields that a choice of another control changes at once, by the name of the control: the one that was drawn last
+			const fields = {};
+			// A choice that other controls show: the blocks are drawn again
+			const again = function() { builder._refreshControls() };
+			// There is nothing to put inside where the section has neither a colour nor a picture, and a cover or a parallax is the section's own picture
+			const possible = function() { return settings.cover === null && settings.parallax !== true && ( settings.color !== '' || has() === true ) };
+			// What is on with none of that is no more than the file can say, and it goes off - and with it the corners are the cover's again, not the row's
+			const settle = function() {
 
-			builder._dialog( {
-				title	: Nino.content.getText('/_admin/builder/tree/section'),
-				rename	: path,
-				blame	: path[0],
-				returnTo	: path,
-				tab		: tab,
-				tabs	: [
-					{ id : 'section', label : Nino.content.getText('/_admin/builder/tab/section'), build : function( pane ) {
-						pane.appendChild( setting( { key : 'whitespace', type : 'select', label : '/_admin/builder/section/whitespace', hint : '/_admin/builder/hint/whitespace', group : 'whitespace', values : builder.WHITESPACE } ) );
-						pane.appendChild( builder._spacingTable( section.settings ) );
+				if( possible() === false && settings.cover === null && settings.parallax !== true && settings.inner === true )
+					settings.inner = false;
+			};
+			// The switch of the background inside shows what the colour made of it, and the blocks are drawn again where that changed what they show
+			const syncInner = function() {
 
-						// A cover is a switch, its height in percent of the window's beside it, and where its content stands in it - which a parallax has to say as well
-						const height = builder._numberField( Nino.content.getText('/_admin/builder/section/cover-height'), '', section.settings.cover, 1, 100, function( percent ) {
+				const was = settings.inner;
+
+				settle();
+
+				if( fields.inner !== undefined ) {
+					builder._one( fields.inner, 'input' ).checked = settings.inner === true;
+					builder._one( fields.inner, 'input' ).disabled = possible() === false && settings.inner !== true;
+				}
+
+				if( was !== settings.inner )
+					again();
+			};
+			const radiusSaid = function( radius ) { return radius === '' ? '' : word( radius === 'alternative' ? 'common/radius-alt' : 'common/radius-standard' ) };
+			// What an alignment says of itself in the head, by the words of its group
+			const alignSaid = function( key, group ) { return settings[key] === '' ? '' : builder._optionLabel( group, settings[key] ) };
+			// A field of the animation that the section has where its animation is its own: like the template and off leave nothing to choose
+			const animated = function( key ) {
+				return {
+					keys	: [ key ],
+					build	: function( body ) {
+						if( animation.mode === 'own' )
+							animations[key].build( builder._groupIn( body, 'animation' ) );
+					},
+					says	: function() { return '' },
+				};
+			};
+			const sides = {
+				keys	: builder.SIDES,
+				build	: function( body ) { body.appendChild( builder._boxField( settings, { name : word('tree/section'), hint : word('hint/spacing'), outside : [ 'mt', 'mb' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
+				says	: function() { return builder._boxSaid( settings, [ 'mt', 'mb' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
+			};
+			const rowSides = {
+				keys	: builder.ROW_SIDES,
+				build	: function( body ) {
+
+					// The row of the section is the frame its columns stand in: the room inside it, which a background inside paints. The width of the row to the edge is the same two sides
+					body.appendChild( builder._boxField( settings, { name : word('spacing/row'), hint : word('hint/spacing-row'), outside : null, inside : builder.ROW_SIDES, after : function( key ) {
+						if( key === 'rowPl' || key === 'rowPr' )
+							builder._refreshControls( 'width' );
+					} } ) );
+				},
+				says	: function() { return builder._boxSaid( settings, null, builder.ROW_SIDES, word('spacing/row') ) },
+			};
+			const offset = {
+				keys	: [ 'rowBgPl', 'rowBgPr' ],
+				build	: function( body ) {
+
+					// How far in from the sides the picture inside the row starts: there is one only with the background inside
+					const inset = builder._offsetField( settings, [ 'rowBgPl', 'rowBgPr' ], word('section/offset'), word('hint/offset') );
+
+					inset.setDisabled( settings.inner !== true || has() === false );
+					body.appendChild( inset );
+				},
+				says	: function() { return builder._offsetSaid( settings, [ 'rowBgPl', 'rowBgPr' ], word('section/offset') ) },
+			};
+
+			settle();
+
+			return {
+				color : {
+					keys	: [ 'color' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color' }, syncInner ) ) },
+					says	: function() { return settings.color === '' ? '' : builder._optionLabel( 'color', settings.color ) },
+				},
+				border : {
+					keys	: [ 'border' ],
+					build	: function( body ) {
+
+						// The brand colour is the colour of the line, and a line of no strength draws nothing: the switch waits for a strength. The model keeps what it holds
+						const waits = function( strength ) {
+							if( fields.borderPrimary !== undefined )
+								builder._one( fields.borderPrimary, 'input' ).disabled = strength === '';
+						};
+
+						body.appendChild( setting( { key : 'border', type : 'select', label : '/_admin/builder/section/border', group : 'border', values : builder.BORDERS }, waits ) );
+					},
+					says	: function() { return settings.border === '' ? '' : word('section/border')+ ' '+ builder._optionLabel( 'border', settings.border ).toLowerCase() },
+				},
+				borderPrimary : {
+					keys	: [ 'borderPrimary' ],
+					build	: function( body ) {
+
+						fields.borderPrimary = setting( { key : 'borderPrimary', type : 'bool', label : '/_admin/builder/section/border-primary' } );
+						builder._one( fields.borderPrimary, 'input' ).disabled = settings.border === '';
+						body.appendChild( fields.borderPrimary );
+					},
+					says	: function() { return settings.border !== '' && settings.borderPrimary === true ? word('section/border-primary') : '' },
+				},
+				background : {
+					keys	: [ 'background' ],
+					build	: function( body ) { body.appendChild( builder._backgroundField( path, again ) ) },
+					says	: function() { return has() === true ? word('source/background-image') : '' },
+				},
+				cover : {
+					keys	: [ 'cover' ],
+					build	: function( body ) {
+
+						const looping = builder._looping( section );
+						// A cover is a switch and its height in percent of the window's beside it. A section that makes sections of elements has a call for a tag, which has no attribute for a height
+						const height = builder._numberField( word('section/cover-height'), '', settings.cover, 1, 100, function( percent ) {
 
 							// The cover is never lost by a field on its way to a number: an emptied one, or one out of bounds, leaves the height as it is
 							if( percent === null || percent < 1 || percent > 100 )
 								return;
 
-							section.settings.cover = percent;
+							settings.cover = percent;
 							builder._changed();
 						} );
-						const place = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
+						const cover = builder._keyed( builder._switchField( word('section/cover'), word('hint/cover'), settings.cover !== null, function( on ) {
+
+							// A cover is 90 high to begin with, what Nino.ui.js makes of one that names no height
+							settings.cover = on === true ? ( settings.cover ?? 90 ) : null;
+
+							// A cover is the section's own picture, and the background cannot stand inside. With the cover - and with no parallax to be one - goes the room around it, and a
+							// scrim over no picture: a section that is neither has the scrim of its own, for a picture it has
+							if( on === true )
+								settings.inner = false;
+							else if( settings.parallax !== true ) {
+								settings.padded = false;
+
+								if( has() === false )
+									settings.dim = false;
+							}
+
+							builder._changed();
+							again();
+						} ), 'cover' );
 
 						// Once the typing is over the field shows the height in force: 150 on its way to nothing stays in the model as 15, and the field says so
 						builder._one( height, 'input' ).addEventListener( 'change', function() {
@@ -5330,129 +5942,337 @@
 							const percent = parseInt( input.value, 10 );
 
 							if( isNaN( percent ) === true || percent < 1 || percent > 100 )
-								input.value = section.settings.cover === null ? '' : section.settings.cover;
+								input.value = settings.cover === null ? '' : settings.cover;
 						} );
+						builder._one( height, 'input' ).disabled = settings.cover === null || looping === true;
+						builder._keyed( height, 'cover' );
+						body.appendChild( cover );
+						body.appendChild( height );
+					},
+					says	: function() { return settings.cover === null ? '' : word('section/cover')+ ' '+ settings.cover+ ' %' },
+				},
+				parallax : {
+					keys	: [ 'parallax' ],
+					build	: function( body ) {
 
-						// A section that makes sections of elements has a call for a tag, which has no attribute for a height: its cover is as high as the page makes it
-						builder._one( height, 'input' ).disabled = section.settings.cover === null || builder._looping( section ) === true;
-						// Elsewhere the row stands in the flow of the page
-						builder._one( place, 'select' ).disabled = section.settings.cover === null && section.settings.parallax !== true;
+						const parallax = builder._keyed( builder._switchField( word('section/parallax'), '', settings.parallax === true, function( on ) {
+
+							settings.parallax = on;
+
+							// A parallax is the section's own picture, and the background cannot stand inside. Without it - and with no cover to be one - goes the room around it, and the
+							// scrim over no picture
+							if( on === true )
+								settings.inner = false;
+							else if( settings.cover === null ) {
+								settings.padded = false;
+
+								if( has() === false )
+									settings.dim = false;
+							}
+
+							builder._changed();
+							again();
+						} ), 'parallax' );
+
+						// A switch that is on can be switched off whatever the picture: a parallax a template wrote without one, or that lost its picture, must not be stuck
+						builder._one( parallax, 'input' ).disabled = has() === false && settings.parallax !== true;
+						body.appendChild( parallax );
+					},
+					says	: function() { return settings.parallax === true ? word('section/parallax') : '' },
+				},
+				dim : {
+					keys	: [ 'dim' ],
+					build	: function( body ) {
+
+						// The scrim is for a picture, of any section: the cover's, the parallax's, and the plain section's own
+						const dim = setting( { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim', hint : '/_admin/builder/hint/dim-text' } );
+
+						builder._one( dim, 'input' ).disabled = has() === false && settings.dim !== true;
+
+						// Text on a picture reads better with the picture dimmed: the question mark of the switch is there for as long as that is advice - a picture, text on it, the
+						// dimming off - and no more than that
+						const advise = function() { builder._one( dim, '.builder-help' ).hidden = has() === false || settings.dim === true || builder._carriesText( section, builder._registry ) === false };
+
+						builder._one( dim, 'input' ).addEventListener( 'change', advise );
+						advise();
+						body.appendChild( dim );
+					},
+					says	: function() { return settings.dim === true ? word('section/dim') : '' },
+				},
+				inner : {
+					keys	: [ 'inner' ],
+					build	: function( body ) {
+
+						// The row paints once the background stands inside, and the radius that follows is the row's
+						fields.inner = setting( { key : 'inner', type : 'bool', label : '/_admin/builder/section/inner-background', hint : '/_admin/builder/hint/inner-background' }, again );
+						builder._one( fields.inner, 'input' ).disabled = possible() === false && settings.inner !== true;
+						body.appendChild( fields.inner );
+					},
+					says	: function() { return settings.inner === true ? word('section/inner-background') : '' },
+				},
+				padded : {
+					keys	: [ 'padded' ],
+					build	: function( body ) {
 
 						// The room of the page around a cover or a parallax: there is none to keep around a section that is neither. A switch that is on can be switched off
-						const sleeps = function() { return section.settings.cover === null && section.settings.parallax !== true && section.settings.padded !== true };
-						// What a cover paints with the room around it - its picture, the box of a parallax, the scrim of a dimmed cover - has a radius, which is the cover's to take: it sleeps where there is none
-						const radius = builder._radiusToggle( section.settings, 'radius', 'cover', function() { return section.settings.padded === true && ( section.settings.cover !== null || section.settings.parallax === true ) } );
-						const padded = builder._setting( section.settings, { key : 'padded', type : 'bool', label : '/_admin/builder/section/padded', hint : '/_admin/builder/hint/padded' }, function() {
-							builder._one( padded, 'input' ).disabled = sleeps();
-							radius.syncRadius();
+						const padded = setting( { key : 'padded', type : 'bool', label : '/_admin/builder/section/padded', hint : '/_admin/builder/hint/padded' }, again );
+
+						builder._one( padded, 'input' ).disabled = settings.cover === null && settings.parallax !== true && settings.padded !== true;
+						body.appendChild( padded );
+					},
+					says	: function() { return settings.padded === true ? word('section/padded') : '' },
+				},
+				// One toggle for the corners, whichever of the two is drawn: the row's where the background stands inside it - what the row paints has the radius of the row -, else of
+				// what a cover paints with the room of the page around it. It sleeps where there is nothing to round
+				radius : {
+					keys	: [ 'radius' ],
+					build	: function( body ) {
+						if( settings.inner !== true )
+							body.appendChild( builder._radiusToggle( settings, 'radius', 'cover', function() { return settings.padded === true && ( settings.cover !== null || settings.parallax === true ) } ) );
+					},
+					says	: function() { return radiusSaid( settings.radius ) },
+				},
+				rowRadius : {
+					keys	: [ 'rowRadius' ],
+					build	: function( body ) {
+						if( settings.inner === true )
+							body.appendChild( builder._radiusToggle( settings, 'rowRadius', 'row', function() { return true } ) );
+					},
+					says	: function() { return radiusSaid( settings.rowRadius ) },
+				},
+				rowBgPl : offset,
+				rowBgPr : offset,
+				arrow : {
+					keys	: [ 'arrow' ],
+					build	: function( body ) {
+
+						// The arrow at the foot of a cover: a section that is none has no use for it, and one that has it keeps it
+						const arrow = builder._checkField( word('section/arrow'), word('hint/arrow'), settings.arrow === true, function( on ) {
+							settings.arrow = on;
+							builder._changed();
 						} );
 
-						builder._one( padded, 'input' ).disabled = sleeps();
+						builder._keyed( arrow, 'arrow' );
+						builder._one( arrow, 'input' ).disabled = settings.cover === null && settings.arrow !== true;
+						body.appendChild( arrow );
+					},
+					says	: function() { return settings.arrow === true ? word('section/arrow') : '' },
+				},
+				whitespace : {
+					keys	: [ 'whitespace' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'whitespace', type : 'select', label : '/_admin/builder/section/whitespace', hint : '/_admin/builder/hint/whitespace', group : 'whitespace', values : builder.WHITESPACE } ) ) },
+					says	: function() { return settings.whitespace === '' ? '' : word('section/whitespace')+ ' '+ builder._optionLabel( 'whitespace', settings.whitespace ).toLowerCase() },
+				},
+				mt : sides,
+				mb : sides,
+				pt : sides,
+				pb : sides,
+				pl : sides,
+				pr : sides,
+				rowPt : rowSides,
+				rowPb : rowSides,
+				rowPl : rowSides,
+				rowPr : rowSides,
+				width : {
+					keys	: [ 'row', 'rowPl', 'rowPr' ],
+					build	: function( body ) {
 
-						const builderCoverLine = builder._line( [
-							builder._switchField( Nino.content.getText('/_admin/builder/section/cover'), Nino.content.getText('/_admin/builder/hint/cover'), section.settings.cover !== null, function( on ) {
+						body.appendChild( builder._keyed( builder._segmentField( word('section/width'), builder.WIDTHS.map( function( value ) {
+							return { value : value, label : builder._optionLabel( 'width', value ), icon : 'width-'+ value };
+						} ), builder._widthOf( settings ), function( value ) {
+							builder._widthSet( settings, value );
+							builder._changed();
+							// The maximum width and the place of the row are for a row as wide as its content, and the box of the row shows the sides that to the edge sets
+							builder._refreshControls( 'width', 'row', 'rowPlace', 'rowPt' );
+						}, word('hint/width') ), 'row' ) );
+					},
+					says	: function() {
 
-								// A cover is 90 high to begin with, what Nino.ui.js makes of one that names no height
-								section.settings.cover = on === true ? ( section.settings.cover ?? 90 ) : null;
+						const width = builder._widthOf( settings );
 
-								// A cover is the section's own picture, and the background cannot stand inside. With the cover - and with no parallax to be one - goes the room around it, and a
-								// scrim over no picture: a section that is neither has the scrim of its own, for a picture it has
-								if( on === true )
-									section.settings.inner = false;
-								else if( section.settings.parallax !== true ) {
-									section.settings.padded = false;
+						return width === 'content' ? '' : builder._optionLabel( 'width', width );
+					},
+				},
+				row : {
+					keys	: [ 'row' ],
+					build	: function( body ) {
 
-									if( section.background === null || section.background === undefined )
-										section.settings.dim = false;
-								}
+						// The width the row may have where it has one: it is for a row as wide as its content
+						const own = setting( { key : 'row', type : 'select', label : '/_admin/builder/section/row', group : 'row', values : builder.ROWS } );
 
-								builder._changed();
-								// The height and the place wake or sleep, and so does what is in the other tabs
-								builder._refreshTab('section');
-								builder._refreshTab('row');
-								builder._refreshTab('background');
-							} ),
-							height,
-							padded,
-							radius,
-							place,
-						] );
-						builderCoverLine.id = 'builder-cover-line';
-						pane.appendChild( builderCoverLine );
-					} },
-					{ id : 'row', label : Nino.content.getText('/_admin/builder/tab/row'), build : function( pane ) {
+						builder._one( own, 'select' ).disabled = builder._widthOf( settings ) !== 'content';
+						body.appendChild( own );
+					},
+					says	: function() { return settings.row !== '' && builder._widthOf( settings ) === 'content' ? builder._optionLabel( 'row', settings.row ) : '' },
+				},
+				rowPlace : {
+					keys	: [ 'rowPlace' ],
+					build	: function( body ) {
 
-						// Where a row stands is for a row that is narrower than the page: with no maximum width it has no room to stand anywhere else, and the place sleeps - the model keeps what it holds
+						// Where a row narrower than the page stands: a row as wide as the page has no place to stand in
 						const place = setting( { key : 'rowPlace', type : 'segment', label : '/_admin/builder/section/row-place', hint : '/_admin/builder/hint/row-place', items : builder._options( 'row-place', builder.ROW_PLACES ) } );
-						const width = builder._setting( section.settings, { key : 'row', type : 'select', label : '/_admin/builder/section/row', group : 'row', values : builder.ROWS }, function( value ) { place.setDisabled( value === 'full' ) } );
 
-						place.setDisabled( section.settings.row === 'full' );
+						place.setDisabled( builder._widthOf( settings ) !== 'content' );
+						body.appendChild( place );
+					},
+					says	: function() { return settings.rowPlace !== '' && builder._widthOf( settings ) === 'content' ? builder._optionLabel( 'row-place', settings.rowPlace ) : '' },
+				},
+				text : {
+					keys	: [ 'text' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) ) },
+					says	: function() { return alignSaid( 'text', 'text' ) },
+				},
+				rowAlign : {
+					keys	: [ 'rowAlign' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ) ) },
+					says	: function() { return alignSaid( 'rowAlign', 'row-align' ) },
+				},
+				contentPos : {
+					keys	: [ 'contentPos' ],
+					build	: function( body ) {
 
-						const size = builder._line( [ width, place ] );
+						// Where the row of a cover or a parallax stands in it: elsewhere the row stands in the flow of the page
+						const content = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
 
-						size.classList.add('builder-line-top');
-						pane.appendChild( size );
+						builder._one( content, 'select' ).disabled = settings.cover === null && settings.parallax !== true;
+						body.appendChild( content );
+					},
+					says	: function() { return alignSaid( 'contentPos', 'content-pos' ) },
+				},
+				stack : {
+					keys	: [ 'stack' ],
+					build	: function( body ) {
 
-						// The padding of the row on four sides, a pair of selects each - at the sides and above and below -, every one of the steps of the space scale or the default
-						const padding = builder._line( [
-							builder._paddingPair( section.settings, '/_admin/builder/section/row-padding-horizontal', '/_admin/builder/hint/row-padding-horizontal', [ { key : 'rowPl', label : '/_admin/builder/section/left' }, { key : 'rowPr', label : '/_admin/builder/section/right' } ] ),
-							builder._paddingPair( section.settings, '/_admin/builder/section/row-padding-vertical', '/_admin/builder/hint/row-padding-vertical', [ { key : 'rowPt', label : '/_admin/builder/section/above' }, { key : 'rowPb', label : '/_admin/builder/section/below' } ] ),
-						] );
+						const loop = builder._el( 'div', 'builder-loop' );
 
-						padding.classList.add('builder-line-pairs');
-						pane.appendChild( padding );
-						pane.appendChild( builder._line( [
-							setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ),
-							setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
-						] ) );
-						// A row paints where the background stands inside, on it: its colour and its picture have the radius of the row, which sleeps where the row has none to paint
-						pane.appendChild( builder._radiusToggle( section.settings, 'rowRadius', 'row', function() { return section.settings.inner === true } ) );
-					} },
-					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
+						builder._stackForm( loop, path );
+						body.appendChild( loop );
+					},
+					says	: function() { return builder._looping( section ) === true ? word('stack/sections') : '' },
+				},
+				vpa : {
+					keys	: [ 'vpa' ],
+					build	: function( body ) {
 
-						// The brand colour is the colour of the border, and a border of no strength draws nothing: the switch waits for a strength. The model keeps what it holds
-						const primary = setting( { key : 'borderPrimary', type : 'bool', label : '/_admin/builder/section/border-primary' } );
-						const waits = function( strength ) { builder._one( primary, 'input' ).disabled = strength === '' };
+						const group = builder._groupIn( body, 'animation' );
 
-						waits( section.settings.border );
-						pane.appendChild( builder._line( [
-							builder._setting( section.settings, { key : 'border', type : 'select', label : '/_admin/builder/section/border', group : 'border', values : builder.BORDERS }, waits ),
-							primary,
-						] ) );
-						const background = builder._backgroundField( path );
+						group.appendChild( builder._animationModeField( section, animation ) );
 
-						// With neither a colour nor a picture there is nothing of the background to put inside: the switch goes with the last of them
-						pane.appendChild( builder._setting( section.settings, { key : 'color', type : 'color', label : '/_admin/builder/section/color' }, function() {
-							background.syncInner();
-							builder._refreshTab('row');
-						} ) );
-						pane.appendChild( background );
-					} },
-					{ id : 'loop', label : Nino.content.getText('/_admin/builder/tab/loop'), build : function( pane ) { builder._stackForm( pane, path ) } },
-					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._sectionAnimation( pane, section, animation ) } },
-					{ id : 'custom', label : Nino.content.getText('/_admin/builder/tab/custom'), build : function( pane ) {
-						pane.appendChild( builder._el( 'p', 'nino-admin-hint', Nino.content.getText('/_admin/builder/hint/custom') ) );
-						pane.appendChild( builder._line( [
-							setting( { key : 'custom', type : 'string', label : '/_admin/builder/section/custom' } ),
-							setting( { key : 'rowCustom', type : 'string', label : '/_admin/builder/section/row-custom' } ),
-						] ) );
-					} },
-				],
-			} );
+						if( animation.mode === 'own' )
+							animations.vpa.build( group );
+					},
+					says	: function() {
+
+						const mode = builder._animationMode( builder._doc.model.animate === true, settings );
+
+						if( mode === 'off' )
+							return word('section/vpa')+ ' '+ builder._optionLabel( 'anim', 'off' ).toLowerCase();
+
+						return mode === 'own' && settings.vpa !== null ? word('section/vpa')+ ' '+ builder._optionLabel( 'effect', builder._effectSplit( settings.vpa ).effect ).toLowerCase() : '';
+					},
+				},
+				vpaSpeed : animated( 'vpaSpeed' ),
+				vpaMode : animated( 'vpaMode' ),
+				vpaDelay : animated( 'vpaDelay' ),
+				vpaDuration : animated( 'vpaDuration' ),
+				custom : {
+					keys	: [ 'custom' ],
+					build	: function( body ) { builder._groupIn( body, 'custom' ).appendChild( setting( { key : 'custom', type : 'string', label : '/_admin/builder/section/custom', hint : '/_admin/builder/hint/custom' } ) ) },
+					says	: function() { return settings.custom === '' ? '' : word('group/custom') },
+				},
+				rowCustom : {
+					keys	: [ 'rowCustom' ],
+					build	: function( body ) { builder._groupIn( body, 'custom' ).appendChild( setting( { key : 'rowCustom', type : 'string', label : '/_admin/builder/section/row-custom' } ) ) },
+					says	: function() { return settings.rowCustom === '' ? '' : word('group/custom') },
+				},
+				// The id is what the pencil in the title changes: the same rename, with the same question where keys and slots move with it. The field has the id the section has -
+				// after a name that will not do, after a question that is answered no, and once the section is renamed
+				id : {
+					keys	: [ 'id' ],
+					build	: function( body ) {
+
+						const field = builder._keyed( builder._textField( word('section/id'), '', section.id, function() {}, { onCommit : function( value, control ) {
+
+							if( value.trim() === section.id )
+								builder._dialogProblem( '' );
+							else
+								builder._renameTo( path, value, builder._dialogProblem, builder._renamedIn );
+
+							control.value = section.id;
+						} } ), 'id' );
+
+						// Escape puts the id the section has back and stays in the field, as the pencil's field does: the first Escape reverts what was typed and is not the one that
+						// closes the dialog, the next one closes it with nothing left to commit (the field commits on change, which a dialog closing fires as well)
+						field.control.addEventListener( 'keydown', function( ev ) {
+
+							if( ev.key !== 'Escape' || field.control.value === section.id )
+								return;
+
+							field.control.value = section.id;
+							builder._dialogProblem( '' );
+							ev.preventDefault();
+							ev.stopPropagation();
+						} );
+
+						body.appendChild( field );
+					},
+					says	: function() { return '' },
+				},
+			};
 		},
+
+		/**
+		 *	How wide the row of a section is, as the form says it: the width of the content, the width of the page - the row has no maximum width - or to the edge of the page, which
+		 *	is that with no padding at the left and the right of the row
+		 *
+		 *	@param		{Object}		settings					Of a section
+		 *
+		 *	@return		{string}									A value of WIDTHS
+		 */
+		_widthOf : function( settings ) {
+
+			if( settings.row !== 'full' )
+				return 'content';
+
+			return settings.rowPl === '0' && settings.rowPr === '0' ? 'edge' : 'full';
+		},
+
+		/**
+		 *	The row of a section made as wide as the form asks: content width leaves the row the width it has - the grid's own where it had none at all -, full width takes the
+		 *	maximum width away, and to the edge does that and has no padding at the sides. What the edge put there goes with it: another width leaves the sides as they were before
+		 *
+		 *	@param		{Object}		settings					Of a section
+		 *	@param		{string}		width							A value of WIDTHS
+		 *
+		 *	@return		void
+		 */
+		_widthSet : function( settings, width ) {
+
+			const was = Nino.admin.builder._widthOf( settings );
+
+			settings.row = width === 'content' ? ( settings.row === 'full' ? '' : settings.row ) : 'full';
+
+			if( width === 'edge' ) {
+				settings.rowPl = '0';
+				settings.rowPr = '0';
+			} else if( was === 'edge' ) {
+				settings.rowPl = '';
+				settings.rowPr = '';
+			}
+		},
+
 
 		/**
 		 *	The animation of a section: like the template - what the template gives its
 		 *	sections -, off, or its own, which opens the fields. Where the template does not
 		 *	animate its sections, none is like the template and there is no off
 		 *
-		 *	@param		{Element}		pane
 		 *	@param		{Object}		section
-		 *	@param		{Object}		state							{ mode }, kept by the dialog over a redraw of the tab
+		 *	@param		{Object}		state							{ mode }, kept by the dialog over a redraw of the block
 		 *
-		 *	@return		void
+		 *	@return		{Element}
 		 */
-		_sectionAnimation : function( pane, section, state ) {
+		_animationModeField : function( section, state ) {
 
 			const builder = Nino.admin.builder;
 			const animate = builder._doc.model.animate === true;
@@ -5460,116 +6280,127 @@
 				return { value : value, label : Nino.content.getText( '/_admin/builder/option/anim-'+ ( value === 'like' && animate === false ? 'like-off' : value ) ) };
 			} );
 
-			pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/section/vpa'), Nino.content.getText( animate === true ? '/_admin/builder/hint/vpa-section' : '/_admin/builder/hint/vpa-section-off' ), options, state.mode, function( value ) {
+			return builder._selectField( Nino.content.getText('/_admin/builder/section/vpa'), Nino.content.getText( animate === true ? '/_admin/builder/hint/vpa-section' : '/_admin/builder/hint/vpa-section-off' ), options, state.mode, function( value ) {
 
 				state.mode = value;
 				builder._animationSet( animate, section.settings, value );
 				builder._changed();
-				builder._refreshTab('animation');
-			} ) );
-
-			// A call has no attribute for the delay and the duration of an animation, as a column has none
-			if( state.mode === 'own' )
-				builder._animationFields( pane, section.settings, { times : builder._looping( section ) === false } );
+				builder._refreshControls( 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration' );
+			} );
 		},
 
 		/**
-		 *	The animation of a section or a column, or the kind of animation of the
-		 *	template: the effect and its strength on a line, how fast and how often on the
-		 *	next, when it starts and how long it takes on the last. The effect and the
-		 *	strength are two fields and one word of the model (zoom-soft); the strength is
-		 *	none to choose with the plain effect, or with none. vpa is null for none, '' for
-		 *	the plain effect, else that word. With none, the speed and how often are none to
-		 *	choose either: nothing is written for an animation that is not there
+		 *	The controls of the animation of a section or a column, or of the kind of animation of the template: the effect and its strength, how fast and how often, when it starts
+		 *	and how long it takes, a control each - { keys, build( pane ) }, by the setting it writes. The effect and the strength are two fields and one word of the model
+		 *	(zoom-soft); the strength is none to choose with the plain effect, or with none. vpa is null for none, '' for the plain effect, else that word. With none, the speed
+		 *	and how often are none to choose either: nothing is written for an animation that is not there
+		 *
+		 *	@param		{Object}		target						The settings of a section or a column - or the model of the template
+		 *	@param		{Object}		options						{ none: whether none is among the effects - a column's -, rest: false for no repeat, delay and duration - the template's -,
+		 *															times: false for no delay and duration - a column's, which the file keeps as classes and has no attribute for -, hint: the key of
+		 *															the words under the effect, speeds: the group of the words of the speeds }
+		 *
+		 *	@return		{Object}									vpa, vpaSpeed and, where the options leave them, vpaMode, vpaDelay and vpaDuration => { keys, build( pane ) }
+		 */
+		_animationControls : function( target, options ) {
+
+			const builder = Nino.admin.builder;
+			const state = { strength : builder._effectSplit( target.vpa ).strength || 'medium' };
+			// What the effect leaves to choose, as the fields that were drawn last have it: the strength with an effect that has one, the speed and the mode with any
+			const fields = {};
+			const sync = function() {
+
+				if( fields.strength !== undefined )
+					fields.strength.setDisabled( ( target.vpa ?? '' ) === '' );
+
+				[ 'vpaSpeed', 'vpaMode' ].forEach( function( key ) {
+					if( fields[key] !== undefined )
+						fields[key].querySelector('select').disabled = target.vpa === null;
+				} );
+			};
+			const controls = {
+				vpa : {
+					keys	: [ 'vpa' ],
+					build	: function( pane ) {
+
+						const effects = builder.EFFECTS.map( function( effect ) { return { value : effect, label : builder._optionLabel( 'effect', effect ) } } );
+
+						if( options.none === true )
+							effects.unshift( { value : 'none', label : builder._optionLabel( 'vpa', 'none' ) } );
+
+						fields.strength = builder._segmentField( Nino.content.getText('/_admin/builder/section/vpa-strength'), builder.STRENGTHS.map( function( value ) {
+							return { value : value, label : builder._optionLabel( 'strength', value ) };
+						} ), state.strength, function( value ) {
+							state.strength = value;
+							target.vpa = builder._effectJoin( builder._effectSplit( target.vpa ).effect, value );
+							builder._changed();
+						} );
+
+						pane.appendChild( builder._keyed( builder._selectField( Nino.content.getText('/_admin/builder/section/vpa-effect'), options.hint === undefined ? '' : Nino.content.getText( options.hint ), effects, target.vpa === null ? 'none' : builder._effectSplit( target.vpa ).effect, function( effect ) {
+
+							target.vpa = effect === 'none' ? null : builder._effectJoin( effect, state.strength );
+							sync();
+							builder._changed();
+						} ), 'vpa' ) );
+						pane.appendChild( builder._keyed( fields.strength, 'vpa' ) );
+						sync();
+					},
+				},
+				vpaSpeed : {
+					keys	: [ 'vpaSpeed' ],
+					build	: function( pane ) {
+
+						fields.vpaSpeed = builder._setting( target, { key : 'vpaSpeed', type : 'select', label : '/_admin/builder/section/vpa-speed', group : options.speeds ?? 'speed', values : builder.SPEEDS } );
+						pane.appendChild( fields.vpaSpeed );
+						sync();
+					},
+				},
+			};
+
+			if( options.rest === false )
+				return controls;
+
+			controls.vpaMode = {
+				keys	: [ 'vpaMode' ],
+				build	: function( pane ) {
+
+					// A mode a hand-written file carries is kept in the list, so that reading it changes nothing
+					fields.vpaMode = builder._setting( target, { key : 'vpaMode', type : 'select', label : '/_admin/builder/section/vpa-mode', group : 'mode',
+						values : builder.ANIMATION_MODES.concat( builder.ANIMATION_MODES.indexOf( target.vpaMode ) === -1 ? [ target.vpaMode ] : [] ) } );
+					pane.appendChild( fields.vpaMode );
+					sync();
+				},
+			};
+
+			if( options.times !== false )
+				[ [ 'vpaDelay', '/_admin/builder/section/vpa-delay' ], [ 'vpaDuration', '/_admin/builder/section/vpa-duration' ] ].forEach( function( time ) {
+					controls[time[0]] = {
+						keys	: [ time[0] ],
+						build	: function( pane ) { pane.appendChild( builder._setting( target, { key : time[0], type : 'string', label : time[1], hint : '/_admin/builder/hint/time' } ) ) },
+					};
+				} );
+
+			return controls;
+		},
+
+		/**
+		 *	The animation of the template, or of anything else that has the fields in one place: the controls of the animation (see _animationControls()) one after the other, in
+		 *	the order of their settings
 		 *
 		 *	@param		{Element}		pane
-		 *	@param		{Object}		target						The settings of a section or a column - or the model of the template
-		 *	@param		{Object}		options						{ none: whether none is among the effects - a column's -, rest: false for no
-		 *															repeat, delay and duration - the template's -, times: false for no delay and
-		 *															duration - a column's, which the file keeps as classes and has no attribute
-		 *															for -, hint: the key of the words under the effect, speeds: the group of the
-		 *															words of the speeds }
+		 *	@param		{Object}		target						The model of the template
+		 *	@param		{Object}		options						As _animationControls() has them
 		 *
 		 *	@return		void
 		 */
 		_animationFields : function( pane, target, options ) {
 
-			const builder = Nino.admin.builder;
-			const state = { strength : builder._effectSplit( target.vpa ).strength || 'medium' };
-			const effects = builder.EFFECTS.map( function( effect ) { return { value : effect, label : builder._optionLabel( 'effect', effect ) } } );
-			const strength = builder._segmentField( Nino.content.getText('/_admin/builder/section/vpa-strength'), builder.STRENGTHS.map( function( value ) {
-				return { value : value, label : builder._optionLabel( 'strength', value ) };
-			} ), state.strength, function( value ) {
-				state.strength = value;
-				target.vpa = builder._effectJoin( builder._effectSplit( target.vpa ).effect, value );
-				builder._changed();
+			const controls = Nino.admin.builder._animationControls( target, options );
+
+			[ 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration' ].forEach( function( key ) {
+				if( controls[key] !== undefined )
+					controls[key].build( pane );
 			} );
-			const speed = builder._setting( target, { key : 'vpaSpeed', type : 'select', label : '/_admin/builder/section/vpa-speed', group : options.speeds ?? 'speed', values : builder.SPEEDS } );
-
-			// A mode a hand-written file carries is kept in the list, so that reading it changes nothing
-			const mode = options.rest === false ? null : builder._setting( target, { key : 'vpaMode', type : 'select', label : '/_admin/builder/section/vpa-mode', group : 'mode',
-				values : builder.ANIMATION_MODES.concat( builder.ANIMATION_MODES.indexOf( target.vpaMode ) === -1 ? [ target.vpaMode ] : [] ) } );
-
-			// What the effect leaves to choose: the strength with an effect that has one, the speed and the mode with any
-			const sync = function() {
-
-				strength.setDisabled( ( target.vpa ?? '' ) === '' );
-
-				[ speed, mode ].forEach( function( field ) {
-					if( field !== null )
-						field.querySelector('select').disabled = target.vpa === null;
-				} );
-			};
-
-			if( options.none === true )
-				effects.unshift( { value : 'none', label : builder._optionLabel( 'vpa', 'none' ) } );
-
-			pane.appendChild( builder._line( [
-				builder._selectField( Nino.content.getText('/_admin/builder/section/vpa-effect'), options.hint === undefined ? '' : Nino.content.getText( options.hint ), effects, target.vpa === null ? 'none' : builder._effectSplit( target.vpa ).effect, function( effect ) {
-
-					target.vpa = effect === 'none' ? null : builder._effectJoin( effect, state.strength );
-					sync();
-					builder._changed();
-				} ),
-				strength,
-			] ) );
-
-			if( mode === null )
-				pane.appendChild( speed );
-			else {
-
-				pane.appendChild( builder._line( [ speed, mode ] ) );
-
-				if( options.times !== false )
-					pane.appendChild( builder._line( [
-						builder._setting( target, { key : 'vpaDelay', type : 'string', label : '/_admin/builder/section/vpa-delay', hint : '/_admin/builder/hint/time' } ),
-						builder._setting( target, { key : 'vpaDuration', type : 'string', label : '/_admin/builder/section/vpa-duration', hint : '/_admin/builder/hint/time' } ),
-					] ) );
-			}
-
-			sync();
-		},
-
-		/**
-		 *	Fields that belong together in one row, the width shared among them - and
-		 *	a caption in front of them where there is one
-		 *
-		 *	@param		{Array}			fields						Elements
-		 *	@param		{string}		[caption]
-		 *
-		 *	@return		{Element}
-		 */
-		_line : function( fields, caption ) {
-
-			const builder = Nino.admin.builder;
-			const line = builder._el( 'div', caption === undefined ? 'builder-line' : 'builder-line has-caption' );
-
-			if( caption !== undefined )
-				line.appendChild( builder._el( 'span', 'builder-line-caption', caption ) );
-
-			fields.forEach( function( field ) { line.appendChild( field ) } );
-
-			return line;
 		},
 
 		/**
@@ -5817,69 +6648,202 @@
 			builder._changed();
 		},
 
-		// ---------------------------------------------------- Columns and loops
-
 		/**
-		 *	The form of a column, in five tabs: its layout (its width and visibility in the
-		 *	viewport or in each of them, where its components and its text are put on a line, the
-		 *	gap below, and the spacing: inside, above and below it), its background (the colour it
-		 *	paints, the picture behind it, whether the picture is dimmed, and the radius of what it
-		 *	paints), the loop it runs, its animation, and the classes of its own
+		 *	The section of the dialog that is open has its new name: the title says it, and so do the controls of the form that show it - the id, and the id of a loop that makes sections
 		 *
-		 *	@param		{Array}			path
-		 *	@param		{string}		tab						The tab to start on: layout or loop
+		 *	@param		{string}		id
 		 *
 		 *	@return		void
 		 */
-		_colDialog : function( path, tab ) {
+		_renamedIn : function( id ) {
+
+			dc.getElementById('builder-dialog-name').textContent = id;
+			Nino.admin.builder._refreshControls( 'id', 'stack' );
+		},
+
+		// ---------------------------------------------------- Columns and loops
+
+		/**
+		 *	The form of a column, in the blocks the table has for it (BLOCKS.column): its surface - the colour it paints, the picture behind it and how far in from the sides
+		 *	that starts, whether the picture is dimmed and the radius of what it paints -, its spacing - the gap between its components and the box of its sides -, its width and its
+		 *	alignment - how wide it is and whether it is hidden in each viewport, where its components and its text are put - and its properties: the loop it runs, its animation
+		 *	and the classes of its own
+		 *
+		 *	@param		{Array}			path
+		 *	@param		{string}		[block]						The block to open: the one that was open last in a dialog of a column, by default
+		 *
+		 *	@return		void
+		 */
+		_colDialog : function( path, block ) {
+
+			const builder = Nino.admin.builder;
+			const section = builder._doc.model.blocks[path[0]];
+
+			builder._dialog( {
+				title		: Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/title'), section.id ),
+				blame		: path[0],
+				returnTo	: path,
+				kind		: 'column',
+				block		: block,
+				blocks	: builder._blocksOf( 'column', builder._colControls( path ) ),
+			} );
+		},
+
+		/**
+		 *	The controls of the form of a column, by the name the table lists them under (see BLOCKS and _sectionControls())
+		 *
+		 *	@param		{Array}			path
+		 *
+		 *	@return		{Object}									name of the control => its entry (see _blocksOf())
+		 */
+		_colControls : function( path ) {
 
 			const builder = Nino.admin.builder;
 			const section = builder._doc.model.blocks[path[0]];
 			const col = section.cols[path[1]];
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			const setting = function( field, after ) { return builder._setting( col, field, after ) };
+			const has = function() { return col.background !== null && col.background !== undefined };
+			// The animation of a column is its own, and has no delay and no duration: the file keeps it as classes
+			const animations = builder._animationControls( col, { none : true, times : false } );
+			// The fields that a choice of another control changes at once, by the name of the control: the one that was drawn last
+			const fields = {};
+			// A choice that other controls show: the blocks are drawn again
+			const again = function() { builder._refreshControls() };
+			const animated = function( key ) {
+				return {
+					keys	: [ key ],
+					build	: function( body ) { animations[key].build( builder._groupIn( body, 'animation' ) ) },
+					says	: function() { return '' },
+				};
+			};
+			const sides = {
+				keys	: builder.SIDES,
+				build	: function( body ) { body.appendChild( builder._boxField( col, { name : '', hint : word('hint/spacing'), outside : [ 'mt', 'mb' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
+				says	: function() { return builder._boxSaid( col, [ 'mt', 'mb' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
+			};
+			const offset = {
+				keys	: [ 'bgPl', 'bgPr' ],
+				build	: function( body ) {
 
-			builder._dialog( {
-				title	: Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/title'), section.id ),
-				blame	: path[0],
-				returnTo	: path,
-				tab		: tab,
-				tabs	: [
-					{ id : 'layout', label : Nino.content.getText('/_admin/builder/tab/layout'), build : function( pane ) {
+					// How far in from the sides the picture starts: it is read where the column has one
+					const inset = builder._offsetField( col, [ 'bgPl', 'bgPr' ], word('section/offset'), word('hint/offset') );
 
-						builder._widthTable( pane, col );
+					inset.setDisabled( has() === false );
+					body.appendChild( inset );
+				},
+				says	: function() { return builder._offsetSaid( col, [ 'bgPl', 'bgPr' ], word('section/offset') ) },
+			};
+			// What a column says in its head of the width it has in each viewport and of where it is hidden
+			const widthSaid = function() {
 
-						pane.appendChild( builder._line( [
-							builder._setting( col, { key : 'stackAlign', type : 'segment', label : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ),
-							builder._setting( col, { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
-						] ) );
-						pane.appendChild( builder._setting( col, { key : 'stackGap', type : 'select', label : '/_admin/builder/col/stack-gap', group : 'space', values : builder.SPACES } ) );
-						pane.appendChild( builder._line( [
-							builder._setting( col, { key : 'p', type : 'select', label : '/_admin/builder/col/padding', group : 'space', values : builder.SPACES } ),
-							builder._setting( col, { key : 'mt', type : 'select', label : '/_admin/builder/col/margin-top', group : 'space', values : builder.SPACES } ),
-							builder._setting( col, { key : 'mb', type : 'select', label : '/_admin/builder/col/margin-bottom', group : 'space', values : builder.SPACES } ),
-						], Nino.content.getText('/_admin/builder/col/spacing') ) );
-					} },
-					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/column-background'), build : function( pane ) {
+				const words = [];
+				const widths = builder.VIEWPORTS.map( function( viewport ) { return Number( col.width[viewport] ) } );
+				const hidden = builder.VIEWPORTS.filter( function( viewport ) { return col.hidden[viewport] === true } );
 
-						// A column that paints - a colour, a picture - has a radius, which is the column's to take; one that paints nothing has none, and the toggle sleeps
-						const radius = builder._radiusToggle( col, 'radius', 'column', function() { return ( col.color !== '' && col.color !== undefined ) || ( col.background !== null && col.background !== undefined ) } );
+				if( widths.some( function( width ) { return width !== 100 } ) === true )
+					words.push( widths.join('/')+ ' %' );
 
-						pane.appendChild( builder._setting( col, { key : 'color', type : 'color', label : '/_admin/builder/section/color', around : section.settings.color }, function() { radius.syncRadius() } ) );
-						pane.appendChild( builder._backgroundField( path ) );
+				if( hidden.length > 0 )
+					words.push( Nino.adminUi.format( word('preview/hidden-in'), hidden.map( function( viewport ) { return word( 'viewport/'+ viewport ) } ).join(', ') ) );
+
+				return builder._said( words );
+			};
+			const width = {
+				keys	: [ 'width', 'hidden' ],
+				build	: function( body ) { builder._widthTable( body, col ) },
+				says	: widthSaid,
+			};
+
+			return {
+				color : {
+					keys	: [ 'color' ],
+					build	: function( body ) {
+						body.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color', around : section.settings.color }, function() {
+							if( fields.radius !== undefined )
+								fields.radius.syncRadius();
+						} ) );
+					},
+					says	: function() { return col.color === '' ? '' : builder._groundLabel( col.color ) },
+				},
+				background : {
+					keys	: [ 'background' ],
+					build	: function( body ) { body.appendChild( builder._backgroundField( path, again ) ) },
+					says	: function() { return has() === true ? word('source/background-image') : '' },
+				},
+				dim : {
+					keys	: [ 'dim' ],
+					build	: function( body ) {
+
+						const dim = setting( { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
 
 						// There is a picture to darken, or there is none
-						const dim = builder._setting( col, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
+						builder._one( dim, 'input' ).disabled = has() === false;
+						body.appendChild( dim );
+					},
+					says	: function() { return col.dim === true && has() === true ? word('section/dim') : '' },
+				},
+				bgPl : offset,
+				bgPr : offset,
+				radius : {
+					keys	: [ 'radius' ],
+					build	: function( body ) {
 
-						builder._one( dim, 'input' ).disabled = col.background === null || col.background === undefined;
-						pane.appendChild( builder._line( [ dim, radius ] ) );
-					} },
-					{ id : 'loop', label : Nino.content.getText('/_admin/builder/tab/loop'), build : function( pane ) { builder._stackForm( pane, path ) } },
-					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._animationFields( pane, col, { none : true, times : false } ) } },
-					{ id : 'custom', label : Nino.content.getText('/_admin/builder/tab/custom'), build : function( pane ) {
-						pane.appendChild( builder._setting( col, { key : 'custom', type : 'string', label : '/_admin/builder/col/custom', hint : '/_admin/builder/hint/custom' } ) );
-					} },
-				],
-			} );
+						// A column that paints - a colour, a picture - has a radius, which is the column's to take; one that paints nothing has none, and the toggle sleeps
+						fields.radius = builder._radiusToggle( col, 'radius', 'column', function() { return ( col.color !== '' && col.color !== undefined ) || has() } );
+						body.appendChild( fields.radius );
+					},
+					says	: function() { return col.radius === '' ? '' : word( col.radius === 'alternative' ? 'common/radius-alt' : 'common/radius-standard' ) },
+				},
+				stackGap : {
+					keys	: [ 'stackGap' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'stackGap', type : 'select', label : '/_admin/builder/col/stack-gap', group : 'space', values : builder.SPACES } ) ) },
+					says	: function() { return col.stackGap === '' ? '' : word('spacing/gap')+ ' '+ col.stackGap },
+				},
+				mt : sides,
+				mb : sides,
+				pt : sides,
+				pb : sides,
+				pl : sides,
+				pr : sides,
+				width : width,
+				hidden : width,
+				stackAlign : {
+					keys	: [ 'stackAlign' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'stackAlign', type : 'segment', label : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ) ) },
+					says	: function() { return col.stackAlign === '' ? '' : builder._optionLabel( 'stack-align', col.stackAlign ) },
+				},
+				text : {
+					keys	: [ 'text' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) ) },
+					says	: function() { return col.text === '' ? '' : builder._optionLabel( 'text', col.text ) },
+				},
+				stack : {
+					keys	: [ 'stack' ],
+					build	: function( body ) {
+
+						const loop = builder._el( 'div', 'builder-loop' );
+
+						builder._stackForm( loop, path );
+						body.appendChild( loop );
+					},
+					says	: function() { return col.stack === null || col.stack === undefined ? '' : builder._stackLabel( builder._registry, col.stack.name ) },
+				},
+				vpa : {
+					keys	: [ 'vpa' ],
+					build	: function( body ) { animations.vpa.build( builder._groupIn( body, 'animation' ) ) },
+					says	: function() { return col.vpa === null || col.vpa === undefined ? '' : word('section/vpa')+ ' '+ builder._optionLabel( 'effect', builder._effectSplit( col.vpa ).effect ).toLowerCase() },
+				},
+				vpaSpeed : animated( 'vpaSpeed' ),
+				vpaMode : animated( 'vpaMode' ),
+				custom : {
+					keys	: [ 'custom' ],
+					build	: function( body ) { builder._groupIn( body, 'custom' ).appendChild( setting( { key : 'custom', type : 'string', label : '/_admin/builder/col/custom', hint : '/_admin/builder/hint/custom' } ) ) },
+					says	: function() { return col.custom === '' ? '' : word('group/custom') },
+				},
+			};
 		},
+
 
 		/**
 		 *	The viewports of a column as a table, a row for each that is shown (see
@@ -5899,14 +6863,14 @@
 				const device = Nino.content.getText( '/_admin/builder/viewport/'+ viewport );
 
 				return [
-					builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), builder._widths(), col.width[viewport], function( value ) {
+					builder._keyed( builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), builder._widths(), col.width[viewport], function( value ) {
 						builder._setWidth( col, viewport, value );
 						builder._changed();
-					} ),
-					builder._hiddenBox( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/hidden'), device ), col.hidden[viewport] === true, function( checked ) {
+					} ), 'width' ),
+					builder._keyed( builder._hiddenBox( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/hidden'), device ), col.hidden[viewport] === true, function( checked ) {
 						builder._setHidden( col, viewport, checked );
 						builder._changed();
-					} ),
+					} ), 'hidden' ),
 				];
 			} );
 		},
@@ -5975,23 +6939,12 @@
 
 				col.stack = name === '' ? null : builder._stackFor( registry, name, col.stack === null || col.stack === undefined ? null : col.stack );
 
-				// A call makes no cover of another height, and has no attribute for the delay and the duration of an animation
-				if( whole === true && col.stack !== null ) {
-
-					if( section.settings.cover !== null )
-						section.settings.cover = 90;
-
-					section.settings.vpaDelay = '';
-					section.settings.vpaDuration = '';
-				}
+				// A call makes no cover of another height
+				if( whole === true && col.stack !== null && section.settings.cover !== null )
+					section.settings.cover = 90;
 
 				builder._changed();
-				builder._refreshTab('loop');
-
-				if( whole === true ) {
-					builder._refreshTab('section');
-					builder._refreshTab('animation');
-				}
+				builder._refreshControls();
 			} );
 
 			kind.querySelector('select').disabled = held === true;
@@ -6028,13 +6981,15 @@
 			// What the loop runs over; a loop without a grid has its id here, since it has no grid to put it in
 			const data = builder._group( pane, Nino.content.getText('/_admin/builder/group/data') );
 
-			data.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/type'), '', typeOptions, stack.source, function( value ) {
+			data.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/type'), Nino.content.getText('/_admin/builder/stack/type-hint'), typeOptions, stack.source, function( value ) {
 				stack.source = value;
 				builder._changed();
-				builder._refreshTab('loop');
+				builder._refreshControls( 'stack' );
 			} ) );
 
-			data.appendChild( Nino.adminUi.notice( Nino.content.getText( type === undefined ? '/_admin/builder/stack/type-missing' : '/_admin/builder/stack/type-hint' ), { href : '#types', label : Nino.content.getText('/_admin/builder/stack/types-link') } ) );
+			// A type the project does not have is a thing to say where it is, and to point to the panel that makes it
+			if( type === undefined )
+				data.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/type-missing'), { href : '#types', label : Nino.content.getText('/_admin/builder/stack/types-link') } ) );
 
 			data.appendChild( builder._textField( Nino.content.getText('/_admin/builder/stack/query'), Nino.content.getText('/_admin/builder/hint/query'), stack.attributes.query, function( value ) {
 				stack.attributes.query = value;
@@ -6048,7 +7003,8 @@
 			const order = builder._group( pane, Nino.content.getText('/_admin/builder/group/order') );
 
 			builder._sortField( order, stack, type === undefined ? {} : type.fields );
-			order.appendChild( builder._line( [ number( 'limit', '/_admin/builder/stack/limit', '/_admin/builder/hint/limit' ), number( 'offset', '/_admin/builder/stack/offset' ) ] ) );
+			order.appendChild( number( 'limit', '/_admin/builder/stack/limit', '/_admin/builder/hint/limit' ) );
+			order.appendChild( number( 'offset', '/_admin/builder/stack/offset' ) );
 
 			// The cells: how wide in each viewport, how far apart, as high as the highest
 			if( grid === true ) {
@@ -6057,16 +7013,14 @@
 
 				builder._cellsTable( cells, stack );
 
-				cells.appendChild( builder._line( [
-					builder._selectField( Nino.content.getText('/_admin/builder/stack/gap'), '', builder._options( 'space', builder.SPACES.slice( 1 ) ), String( stack.attributes.gap ), function( value ) {
-						stack.attributes.gap = value;
-						builder._changed();
-					} ),
-					builder._switchField( Nino.content.getText('/_admin/builder/stack/autoheight'), '', stack.attributes.autoheight === '1', function( checked ) {
-						stack.attributes.autoheight = checked === true ? '1' : '0';
-						builder._changed();
-					} ),
-				] ) );
+				cells.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/gap'), '', builder._options( 'space', builder.SPACES.slice( 1 ) ), String( stack.attributes.gap ), function( value ) {
+					stack.attributes.gap = value;
+					builder._changed();
+				} ) );
+				cells.appendChild( builder._switchField( Nino.content.getText('/_admin/builder/stack/autoheight'), '', stack.attributes.autoheight === '1', function( checked ) {
+					stack.attributes.autoheight = checked === true ? '1' : '0';
+					builder._changed();
+				} ) );
 
 				cells.appendChild( id );
 			}
@@ -6078,7 +7032,7 @@
 					fields	: type === undefined ? {} : type.fields,
 					section	: section,
 					around	: whole === true ? ( section.settings.color || '' ) : builder._surface( section, col ),
-					redraw	: function() { builder._refreshTab('loop') },
+					redraw	: function() { builder._refreshControls( 'stack' ) },
 				} );
 		},
 
@@ -6135,25 +7089,21 @@
 
 			const names = Object.keys( fields );
 			const choices = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ].concat( names.map( function( name ) { return { value : name, label : name } } ) );
-			const line = builder._el( 'div', 'builder-sort' );
 
 			if( state.field !== '' && names.indexOf( state.field ) === -1 )
 				choices.push( { value : state.field, label : state.field } );
 
-			line.appendChild( builder._selectField( label, '', choices, state.field, function( value ) {
+			pane.appendChild( builder._selectField( label, hint, choices, state.field, function( value ) {
 				state.field = value;
 				builder._sortSet( stack, state.field, state.descending );
 				builder._changed();
 			} ) );
 
-			line.appendChild( builder._sortToggles( state.descending, function( descending ) {
+			pane.appendChild( builder._sortToggles( state.descending, function( descending ) {
 				state.descending = descending;
 				builder._sortSet( stack, state.field, state.descending );
 				builder._changed();
 			} ) );
-
-			pane.appendChild( line );
-			pane.appendChild( builder._el( 'small', 'nino-admin-hint', hint ) );
 		},
 
 		/**
@@ -6194,129 +7144,6 @@
 		},
 
 		/**
-		 *	The tab of the classes a component has of its own
-		 *
-		 *	@param		{Object}		component
-		 *
-		 *	@return		{Object}									A tab, as _tabs() has them
-		 */
-		_customTab : function( component ) {
-
-			const builder = Nino.admin.builder;
-
-			return { id : 'custom', label : Nino.content.getText('/_admin/builder/tab/custom'), build : function( pane ) {
-				pane.appendChild( builder._textField( Nino.content.getText('/_admin/builder/component/custom'), Nino.content.getText('/_admin/builder/hint/custom'), component.attributes['class'], function( value ) {
-					component.attributes['class'] = value;
-					builder._changed();
-				} ) );
-			} };
-		},
-
-		/**
-		 *	The form of a component that holds components, in tabs: its properties, which are the attributes its
-		 *	schema declares - a field each, by the type and the input, in the order of the schema (see _attributeFields()) -
-		 *	and the toggle of its radius, which it has as a surface, its variants and its link where it has them (see
-		 *	_attributeTabs()), and the classes of its own. Its children are edited where they stand, each in the form every
-		 *	component has
-		 *
-		 *	@param		{Array}			path							The component, in a column
-		 *
-		 *	@return		void
-		 */
-		_containerDialog : function( path ) {
-
-			const builder = Nino.admin.builder;
-			const doc = builder._doc;
-			const component = builder._get( doc.model, path );
-			const schema = ( builder._registry.components || {} )[component.name] || {};
-			const section = doc.model.blocks[path[0]];
-			const col = section.cols[path[1]];
-			const tabs = builder._attributeTabs( component, schema, path, { fields : builder._typeFields( section, col ), section : section, around : builder._surface( section, col ) } );
-
-			tabs.push( builder._customTab( component ) );
-
-			builder._dialog( {
-				title	: schema.label || component.name,
-				blame	: path[0],
-				returnTo	: path,
-				tabs	: tabs,
-			} );
-		},
-
-		/**
-		 *	The attributes of a schema told apart by where they are edited: the variants, which are words that choose a class and have a
-		 *	tab of their own, and the properties, which are all the rest
-		 *
-		 *	@param		{Object}		declared					name => the schema's entry, as _declared() has them
-		 *
-		 *	@return		{Object}									{ properties, variants } - each name => entry, in the order of the schema
-		 */
-		_split : function( declared ) {
-
-			const parts = { properties : {}, variants : {} };
-
-			Object.keys( declared ).forEach( function( name ) { parts[ declared[name].type === 'variant' ? 'variants' : 'properties' ][name] = declared[name] } );
-
-			return parts;
-		},
-
-		/**
-		 *	The tabs of the attributes of a component: its properties - the attributes that are no variants, a field each by the type and the
-		 *	input its schema gives, and for a component that is a surface the toggle of its radius (see _radiusToggle()), which it has always -, its
-		 *	variants - a row of buttons for each, one to a line -, and, for a component that is a link, the address and the window it opens in. A tab
-		 *	is left out for what the component does not have
-		 *
-		 *	@param		{Object}		component
-		 *	@param		{Object}		schema						Its entry of the registry
-		 *	@param		{Array}			path
-		 *	@param		{Object}		context						{ fields, section, around }, as _attributeFields() has them: what a field of the form needs of where the component stands
-		 *
-		 *	@return		{Array}										Tabs, as _tabs() has them
-		 */
-		_attributeTabs : function( component, schema, path, context ) {
-
-			const builder = Nino.admin.builder;
-			const parts = builder._split( builder._declared( schema ) );
-			const tabs = [];
-			const surface = builder._surfaceOf( schema );
-			const fill = function( id, declared ) {
-				return function( pane ) {
-					builder._attributeFields( pane, declared, component.attributes, Object.assign( {}, context, {
-						node		: component,
-						path		: path,
-						redraw	: function() { builder._refreshTab( id ) },
-					} ) );
-				};
-			};
-
-			// A component that is a surface has a radius of its own, which is no attribute of its call: it has a tab for it where it has no property
-			if( Object.keys( parts.properties ).length > 0 || surface !== '' )
-				tabs.push( { id : 'properties', label : Nino.content.getText('/_admin/builder/tab/properties'), build : function( pane ) {
-
-					fill( 'properties', parts.properties )( pane );
-
-					if( surface !== '' )
-						pane.appendChild( builder._radiusToggle( component, 'radius', surface, function() { return true } ) );
-				} } );
-
-			if( Object.keys( parts.variants ).length > 0 )
-				tabs.push( { id : 'variants', label : Nino.content.getText('/_admin/builder/tab/variants'), build : fill( 'variants', parts.variants ) } );
-
-			// Where it goes and where it opens: the two attributes every link has, which the schema does not declare
-			if( schema.link === true )
-				tabs.push( { id : 'link', label : Nino.content.getText('/_admin/builder/tab/link'), build : function( pane ) {
-
-					pane.appendChild( builder._el( 'p', 'nino-admin-hint', Nino.content.getText('/_admin/builder/hint/link') ) );
-					fill( 'link', {
-						href		: { type : 'href', label : Nino.content.getText('/_admin/builder/link/href'), hint : Nino.content.getText('/_admin/builder/hint/link-href') },
-						target	: { type : 'select', options : builder.LINK_TARGETS, label : Nino.content.getText('/_admin/builder/link/target') },
-					} )( pane );
-				} } );
-
-			return tabs;
-		},
-
-		/**
 		 *	The attributes of a schema as a map - php sends an empty one as a list
 		 *
 		 *	@param		{Object}		schema
@@ -6328,20 +7155,255 @@
 		},
 
 		/**
-		 *	The form of a component, in tabs: its content - the source of its text or its
-		 *	picture and, under it, the text of the key in the language the editor works in or
-		 *	the picture of the slot with its alt text; for [html] the editor of the blocks
-		 *	profile instead -, its properties, which are the attributes its schema declares, in
-		 *	the order of the schema and drawn by their type and input, and the toggle of its radius where it is
-		 *	a surface, its variants, its link - the address and the window - and the classes of its own. A component without a source,
-		 *	without attributes, without variants and not a link has no tab for what it does not have. A child of a component that
-		 *	holds components has this form; what holds them has another (see _containerDialog())
+		 *	The form of a component, in the blocks the table has for it (BLOCKS.component) and its schema fills: its content - the source of its text or its picture and, under it,
+		 *	the text of the key in the language the editor works in or the picture of the slot with its alt text; for [html] the editor of the blocks profile instead -, its
+		 *	link - the address and the window it opens in, and whether all of it is the link -, its surface - the attributes the schema puts on the tab of the background, and the
+		 *	toggle of its radius -, its spacing - the box of its sides - and its properties: the variants and the other attributes, in the order of the schema, and the classes of its
+		 *	own. A component that holds components has no content: its children are edited where they stand, each in the form every component has. A block the component has
+		 *	nothing for is not drawn
 		 *
 		 *	@param		{Array}			path
+		 *	@param		{string}		[block]						The block to open: the one that was open last in a dialog of that component, by default
 		 *
 		 *	@return		void
 		 */
-		_componentDialog : function( path ) {
+		_componentDialog : function( path, block ) {
+
+			const builder = Nino.admin.builder;
+			const component = builder._get( builder._doc.model, path );
+			const schema = ( builder._registry.components || {} )[component.name] || {};
+			const container = builder._holds( builder._registry, component.name ) !== '';
+			// The editor of an [html] component and those of the texts of a key, which the dialog lets go of when it closes
+			const state = { editors : [], editor : null, typed : false };
+
+			builder._dialog( {
+				title		: container === true ? ( schema.label || component.name ) : Nino.adminUi.format( Nino.content.getText('/_admin/builder/component/title'), schema.label || component.name ),
+				blame		: path[0],
+				returnTo	: path,
+				kind		: 'component:'+ component.name,
+				block		: block,
+				blocks	: builder._blocksOf( 'component', builder._componentControls( path, state ) ),
+				onClose	: function() {
+
+					state.editors.splice( 0 ).forEach( function( made ) { made.destroy() } );
+
+					// The content stays as it was where nothing was typed: the editor shows it in its own normal form, which is not the file's
+					if( state.editor !== null ) {
+
+						if( state.typed === true ) {
+							component.content = state.editor.getValue();
+							builder._changed();
+						}
+
+						state.editor.destroy();
+					}
+				},
+			} );
+		},
+
+		/**
+		 *	The group of controls an attribute of a schema belongs to, which the table places in a block (see BLOCKS): the background for what the schema puts on the tab of the
+		 *	background, the link for an address and for the attributes that are a link (LINK_KEYS), the variants, and the attributes for every other
+		 *
+		 *	@param		{string}		name
+		 *	@param		{Object}		declared					The schema's entry
+		 *
+		 *	@return		{string}									background, link, variants or attributes
+		 */
+		_groupOf : function( name, declared ) {
+
+			if( declared.tab === 'background' )
+				return 'background';
+
+			if( declared.type === 'href' || Nino.admin.builder.LINK_KEYS.indexOf( name ) !== -1 )
+				return 'link';
+
+			return declared.type === 'variant' ? 'variants' : 'attributes';
+		},
+
+		/**
+		 *	The controls of the form of a component, by the name the table lists them under (see BLOCKS and _sectionControls()): the source, one control for each group of the
+		 *	attributes of its schema - the link, the background, the variants and the other attributes, each a field to the attribute in the order of the schema -, the offsets of the
+		 *	picture behind a card and the radius of a surface, the box of the six sides and the classes of the component. A control the component has nothing for is not one of them
+		 *
+		 *	@param		{Array}			path
+		 *	@param		{Object}		state							{ editors, editor, typed }, kept by the dialog for what is made in the content and is let go of when it closes
+		 *
+		 *	@return		{Object}									name of the control => its entry (see _blocksOf())
+		 */
+		_componentControls : function( path, state ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const component = builder._get( doc.model, path );
+			const schema = ( builder._registry.components || {} )[component.name] || {};
+			const kind = builder._sourceKind( builder._registry, component.name );
+			const surface = builder._surfaceOf( schema );
+			const section = doc.model.blocks[path[0]];
+			const col = section.cols[path[1]];
+			const fields = builder._typeFields( section, col );
+			const declared = builder._declared( schema );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			// What the attributes of the schema are to each other, told by the whole schema: the focus and the dimming of a picture follow it wherever they stand
+			const roles = builder._roles( declared );
+			// The attributes by the group they stand in, in the order of the schema
+			const groups = { link : {}, background : {}, variants : {}, attributes : {} };
+
+			Object.keys( declared ).forEach( function( name ) { groups[builder._groupOf( name, declared[name] )][name] = declared[name] } );
+
+			// An address and the window it opens in are what a component that is a link has besides the attributes it declares, which the schema does not declare for it
+			if( schema.link === true )
+				groups.link = Object.assign( {
+					href		: { type : 'href', label : word('link/href'), hint : word('hint/link-href') },
+					target	: { type : 'select', options : builder.LINK_TARGETS, label : word('link/target') },
+				}, groups.link );
+
+			const context = function( name ) {
+				return { fields : fields, section : section, around : builder._surface( section, col ), roles : roles, node : component, path : path, redraw : function() { builder._refreshControls( name ) } };
+			};
+			const said = function( from ) {
+				return builder._said( Object.keys( from ).map( function( name ) { return builder._attributeSaid( name, from[name], component.attributes[name], schema ) } ) );
+			};
+			// The control of a group of attributes: a field to each
+			const attributes = function( group ) {
+				return {
+					keys	: Object.keys( groups[group] ),
+					build	: function( body ) { builder._attributeFields( body, groups[group], component.attributes, context( group ) ) },
+					says	: function() { return said( groups[group] ) },
+				};
+			};
+			const controls = {};
+			const sides = {
+				keys	: builder.SIDES,
+				build	: function( body ) { body.appendChild( builder._boxField( component, { name : '', hint : word('hint/spacing'), outside : [ 'mt', 'mb' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
+				says	: function() { return builder._boxSaid( component, [ 'mt', 'mb' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
+			};
+
+			if( kind !== 'none' && builder._holds( builder._registry, component.name ) === '' )
+				controls.source = {
+					keys	: [ 'source' ],
+					build	: function( body ) { builder._componentContent( body, path, state ) },
+					says	: function() { return builder._contentSaid( component, kind ) },
+				};
+
+			Object.keys( groups ).forEach( function( group ) {
+				if( Object.keys( groups[group] ).length > 0 )
+					controls[group] = attributes( group );
+			} );
+
+			// A card paints a ground, and has how far in from its sides it starts
+			if( component.bgPl !== undefined )
+				controls.bgPl = controls.bgPr = {
+					keys	: [ 'bgPl', 'bgPr' ],
+					build	: function( body ) { body.appendChild( builder._offsetField( component, [ 'bgPl', 'bgPr' ], word('section/offset'), word('hint/offset') ) ) },
+					says	: function() { return builder._offsetSaid( component, [ 'bgPl', 'bgPr' ], word('section/offset') ) },
+				};
+
+			// A component that is a surface has a radius of its own, which is no attribute of its call
+			if( surface !== '' )
+				controls.radius = {
+					keys	: [ 'radius' ],
+					build	: function( body ) { body.appendChild( builder._radiusToggle( component, 'radius', surface, function() { return true } ) ) },
+					says	: function() { return component.radius === '' ? '' : word( component.radius === 'alternative' ? 'common/radius-alt' : 'common/radius-standard' ) },
+				};
+
+			builder.SIDES.forEach( function( side ) { controls[side] = sides } );
+
+			controls['class'] = {
+				keys	: [ 'class' ],
+				build	: function( body ) {
+					body.appendChild( builder._keyed( builder._textField( word('component/custom'), word('hint/custom'), component.attributes['class'], function( value ) {
+						component.attributes['class'] = value;
+						builder._changed();
+					} ), 'class' ) );
+				},
+				says	: function() { return String( component.attributes['class'] ?? '' ) === '' ? '' : word('group/custom') },
+			};
+
+			return controls;
+		},
+
+		/**
+		 *	What the head of the content of a component says: the first words of its text, or the name of its picture's slot - nothing where it has none
+		 *
+		 *	@param		{Object}		component
+		 *	@param		{string}		kind							What the component is by its schema (see _sourceKind())
+		 *
+		 *	@return		{string}
+		 */
+		_contentSaid : function( component, kind ) {
+
+			const builder = Nino.admin.builder;
+			const last = function( source ) { return String( source ?? '' ).split('/').pop() };
+
+			if( kind === 'content' )
+				return builder._firstLine( component.content ?? '', builder.SAID_MAX );
+
+			if( kind !== 'text' )
+				return last( component.source );
+
+			const info = builder._textOf( component, builder._locale, builder._keys, builder._registry );
+
+			if( info !== null )
+				return builder._firstLine( info.value, builder.SAID_MAX );
+
+			return typeof component.text === 'string' ? builder._firstLine( component.text, builder.SAID_MAX ) : last( component.source );
+		},
+
+		/**
+		 *	What the head of a block says of an attribute whose value is not what its schema gives it: a switch by its name, a choice by the word of its value, a number by its name and
+		 *	itself, a picture by its name, any other value cut short
+		 *
+		 *	@param		{string}		name
+		 *	@param		{Object}		declared					The schema's entry
+		 *	@param		{*}					value							What the component has
+		 *	@param		{Object}		schema						The component's entry of the registry, whose defaults are the ones of the call
+		 *
+		 *	@return		{string}									'' where the value is the default
+		 */
+		_attributeSaid : function( name, declared, value, schema ) {
+
+			const builder = Nino.admin.builder;
+			const own = String( ( schema.defaults || {} )[name] ?? declared.default ?? '' );
+			const now = value === undefined || value === null ? '' : String( value );
+			const label = declared.label || name;
+
+			if( now === own )
+				return '';
+
+			if( declared.type === 'bool' )
+				return now === '1' ? label : '';
+
+			if( declared.type === 'image' )
+				return now === '' ? '' : label;
+
+			if( declared.type === 'int' )
+				return label+ ' '+ now;
+
+			if( declared.type === 'select' && builder._isFocus( declared ) === true )
+				return now === '' ? '' : label+ ' '+ Nino.content.getText( '/_admin/builder/focus/'+ builder.FOCUS[parseInt( now, 10 ) - 1] );
+
+			if( declared.type === 'select' && builder._isGround( declared ) === true )
+				return builder._groundLabel( now );
+
+			if( declared.type === 'select' || declared.type === 'variant' )
+				return builder._wordOf( declared.type === 'variant' ? 'variant' : ( Object.prototype.hasOwnProperty.call( builder.ATTRIBUTE_WORDS, name ) === true ? builder.ATTRIBUTE_WORDS[name] : 'attribute-'+ name ), now );
+
+			return builder._firstLine( now, builder.SAID_MAX );
+		},
+
+		/**
+		 *	The content of a component in its block: the source of its text or its picture and, under it, the text of the key in the language the editor works in or the picture of
+		 *	the slot with its alt text; for a component whose content is HTML the editor of the blocks profile. What an editor made here is kept in the state of the dialog, which
+		 *	lets go of it when it closes
+		 *
+		 *	@param		{Element}		body
+		 *	@param		{Array}			path							The component
+		 *	@param		{Object}		state							{ editors, editor, typed }
+		 *
+		 *	@return		void
+		 */
+		_componentContent : function( body, path, state ) {
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
@@ -6351,197 +7413,125 @@
 			const section = doc.model.blocks[path[0]];
 			const col = section.cols[path[1]];
 			const fields = builder._typeFields( section, col );
-			const tabs = [];
-			// The editor of an [html] component and those of the texts of a key, which the dialog lets go of when it closes
-			const editors = [];
-			let editor = null;
-			let typed = false;
 
-			if( kind !== 'none' )
-				tabs.push( { id : 'content', label : Nino.content.getText('/_admin/builder/tab/content'), build : function( pane ) {
+			if( kind === 'content' ) {
 
-					if( kind === 'content' ) {
+				const mount = builder._el( 'div', 'builder-content' );
 
-						const mount = builder._el( 'div', 'builder-content' );
+				body.appendChild( builder._el( 'span', 'builder-label', Nino.content.getText('/_admin/builder/component/content') ) );
+				body.appendChild( mount );
 
-						pane.appendChild( builder._el( 'span', 'builder-label', Nino.content.getText('/_admin/builder/component/content') ) );
-						pane.appendChild( mount );
+				if( typeof Nino.admin.htmlEditor === 'object' ) {
+					state.editor = Nino.admin.htmlEditor.create( mount, component.content ?? '', builder.CONTENT_MAX, 8, 'blocks' );
+					mount.addEventListener( 'input', function() { state.typed = true; component.content = state.editor.getValue(); builder._changed() } );
+				}
 
-						if( typeof Nino.admin.htmlEditor === 'object' ) {
-							editor = Nino.admin.htmlEditor.create( mount, component.content ?? '', builder.CONTENT_MAX, 8, 'blocks' );
-							mount.addEventListener( 'input', function() { typed = true; component.content = editor.getValue(); builder._changed() } );
-						}
+				return;
+			}
 
-						return;
-					}
+			// What is under the source: the text of its key, or the picture of its slot - and nothing where it has none
+			const extra = builder._el( 'div', 'builder-content-extra' );
+			const fill = function() {
 
-					// What is under the source: the text of its key, or the picture of its slot - and nothing where it has none
-					const extra = builder._el( 'div', 'builder-content-extra' );
-					const fill = function() {
+				state.editors.splice( 0 ).forEach( function( made ) { made.destroy() } );
+				extra.innerHTML = '';
 
-						editors.splice( 0 ).forEach( function( made ) { made.destroy() } );
-						extra.innerHTML = '';
+				const text = kind === 'text' ? builder._textOf( component, builder._locale, builder._keys, builder._registry ) : null;
 
-						const text = kind === 'text' ? builder._textOf( component, builder._locale, builder._keys, builder._registry ) : null;
+				if( text !== null )
+					extra.appendChild( builder._valueField( component, text, state.editors ) );
 
-						if( text !== null )
-							extra.appendChild( builder._valueField( component, text, editors ) );
+				if( kind === 'image' && ( component.source.charAt(0) === '/' || ( component.source === '' && builder._loopOf( section, col ) === null ) ) )
+					extra.appendChild( builder._pictureField( {
+						owner		: {
+							get : function() { return { uri : component.source, create : component.create } },
+							put : function( uri, create ) {
+								component.source = uri;
+								component.text = null;
 
-						if( kind === 'image' && ( component.source.charAt(0) === '/' || ( component.source === '' && builder._loopOf( section, col ) === null ) ) )
-							extra.appendChild( builder._pictureField( {
-								owner		: {
-									get : function() { return { uri : component.source, create : component.create } },
-									put : function( uri, create ) {
-										component.source = uri;
-										component.text = null;
-
-										if( create === undefined )
-											delete component.create;
-										else
-											component.create = create;
-									},
-								},
-								section	: section,
-								name		: component.name,
-								seed		: schema.label || component.name,
-								redraw	: fill,
-							} ) );
-
-						if( extra.children.length === 0 )
-							extra.remove();
-						else
-							pane.appendChild( extra );
-					};
-
-					pane.appendChild( builder._sourceRow( {
-						kind		: kind,
-						fixed		: kind !== 'image',
-						create	: true,
-						fields	: fields,
-						value		: component.source,
-						text		: component.text,
+								if( create === undefined )
+									delete component.create;
+								else
+									component.create = create;
+							},
+						},
 						section	: section,
 						name		: component.name,
 						seed		: schema.label || component.name,
-						caption	: Nino.content.getText('/_admin/builder/source/current'),
-						red			: builder._red( doc.model, builder._registry ).find( function( entry ) { return builder._same( entry.path, path ) } ),
-						onPick	: function( source, create ) {
-
-							// The texts typed for the key the component had are that key's, not the new one's
-							if( source !== component.source )
-								delete component.values;
-
-							component.source = source;
-							component.text = null;
-
-							if( create === null )
-								delete component.create;
-							else {
-								component.create = create;
-								builder._placeholders( builder._registry, component );
-							}
-
-							builder._changed();
-							fill();
-						},
-						onFixed	: function( text ) {
-							component.text = text;
-							component.source = '';
-							delete component.create;
-							delete component.values;
-							builder._changed();
-							fill();
-						},
+						redraw	: fill,
 					} ) );
 
-					fill();
-				} } );
+				if( extra.children.length === 0 )
+					extra.remove();
+				else
+					body.appendChild( extra );
+			};
 
-			builder._attributeTabs( component, schema, path, { fields : fields, section : section, around : builder._surface( section, col ) } ).forEach( function( tab ) { tabs.push( tab ) } );
-			tabs.push( builder._customTab( component ) );
+			body.appendChild( builder._sourceRow( {
+				kind		: kind,
+				fixed		: kind !== 'image',
+				create	: true,
+				fields	: fields,
+				value		: component.source,
+				text		: component.text,
+				section	: section,
+				name		: component.name,
+				seed		: schema.label || component.name,
+				caption	: Nino.content.getText('/_admin/builder/source/current'),
+				red			: builder._red( doc.model, builder._registry ).find( function( entry ) { return builder._same( entry.path, path ) } ),
+				onPick	: function( source, create ) {
 
-			builder._dialog( {
-				title	: Nino.adminUi.format( Nino.content.getText('/_admin/builder/component/title'), schema.label || component.name ),
-				blame	: path[0],
-				returnTo	: path,
-				wide	: kind === 'content',
-				tabs	: tabs,
-				onClose	: function() {
+					// The texts typed for the key the component had are that key's, not the new one's
+					if( source !== component.source )
+						delete component.values;
 
-					editors.splice( 0 ).forEach( function( made ) { made.destroy() } );
+					component.source = source;
+					component.text = null;
 
-					// The content stays as it was where nothing was typed: the editor shows it in its own normal form, which is not the file's
-					if( editor !== null ) {
-
-						if( typed === true ) {
-							component.content = editor.getValue();
-							builder._changed();
-						}
-
-						editor.destroy();
+					if( create === null )
+						delete component.create;
+					else {
+						component.create = create;
+						builder._placeholders( builder._registry, component );
 					}
+
+					builder._changed();
+					fill();
 				},
-			} );
+				onFixed	: function( text ) {
+					component.text = text;
+					component.source = '';
+					delete component.create;
+					delete component.values;
+					builder._changed();
+					fill();
+				},
+			} ) );
+
+			fill();
 		},
 
-		/**
-		 *	The attributes of a schema as the lines of a form: in the order of the schema,
-		 *	two to a line where both of them are short, a select, a switch, a number or a
-		 *	line of text; every other one has a line to itself, and so has the focus of a
-		 *	picture, which is a grid
-		 *
-		 *	@param		{Object}		declared					name => the schema's entry
-		 *
-		 *	@return		{Array}										[ [ name, name ], [ name ] ]
-		 */
-		_attributeLines : function( declared ) {
-
-			const builder = Nino.admin.builder;
-			const lines = [];
-			let open = null;
-
-			Object.keys( declared ).forEach( function( name ) {
-
-				if( builder.SHORT.indexOf( declared[name].type ) === -1 || builder._isFocus( declared[name] ) === true ) {
-					open = null;
-					lines.push( [ name ] );
-				} else if( open !== null ) {
-					open.push( name );
-					open = null;
-				} else {
-					open = [ name ];
-					lines.push( open );
-				}
-			} );
-
-			return lines;
-		},
 
 		/**
-		 *	The attributes of a component or a stack, a field each, as _attributeLines() has
-		 *	them in lines
+		 *	The attributes of a component or a stack, a field each in the order of the schema, in one column. A field is marked with the attribute it writes
 		 *
 		 *	@param		{Element}		pane
 		 *	@param		{Object}		declared					name => the schema's entry
 		 *	@param		{Object}		attributes				Where the values are kept
-		 *	@param		{Object}		context						{ fields, section, node, path, around, redraw }: the fields of the stack's type, where there is a stack, and the section
+		 *	@param		{Object}		context						{ fields, section, node, path, around, redraw, roles }: the fields of the stack's type, where there is a stack, and the section
 		 *																the attributes are in; the component they belong to and its path, where they are a component's; the ground the
-		 *																column paints (see _surface()), for the grounds an attribute names; and what draws the form again, for a
-		 *																picture that is changed - its focus and its dimming follow it
+		 *																column paints (see _surface()), for the grounds an attribute names; what draws the form again, for a
+		 *																picture that is changed - its focus and its dimming follow it; and what the attributes are to a picture (see _roles()), where
+		 *																the form shows only some of the attributes of the schema - by default the roles of the attributes it is given
 		 *
 		 *	@return		void
 		 */
 		_attributeFields : function( pane, declared, attributes, context ) {
 
 			const builder = Nino.admin.builder;
-			const here = Object.assign( {}, context, { roles : builder._roles( declared ) } );
+			const here = Object.assign( { roles : builder._roles( declared ) }, context );
 
-			builder._attributeLines( declared ).forEach( function( names ) {
-
-				const fields = names.map( function( name ) { return builder._attributeField( name, declared[name], attributes, here ) } );
-
-				pane.appendChild( fields.length === 1 ? fields[0] : builder._line( fields ) );
-			} );
+			Object.keys( declared ).forEach( function( name ) { pane.appendChild( builder._keyed( builder._attributeField( name, declared[name], attributes, here ), name ) ) } );
 		},
 
 		/**
@@ -6654,7 +7644,7 @@
 				return builder._sourceRow( {
 					kind		: declared.type === 'image' ? 'image' : ( declared.type === 'href' ? 'href' : 'text' ),
 					fixed		: declared.type === 'href',
-					create	: false,
+					create	: declared.type === 'href' && builder._keysRead === true,
 					fields	: fields,
 					value		: fixed === true ? '' : value,
 					text		: fixed === true ? value : null,
@@ -6868,6 +7858,47 @@
 		},
 
 		/**
+		 *	The key that holds the address of a page of the site - one of the pages the list of keys told of: the fill of its uri, which is the address in the language the
+		 *	page is read in
+		 *
+		 *	@param		{Object}		page							{ uri, httpUri, template, category, templateName }
+		 *
+		 *	@return		{string}
+		 */
+		_pageKey : function( page ) {
+			return '/_nino/webpage'+ page.uri+ '/uri';
+		},
+
+		/**
+		 *	The page of the site a source is the address of, null for a source that is the address of none
+		 *
+		 *	@param		{string}		source
+		 *
+		 *	@return		{Object|null}
+		 */
+		_pageOf : function( source ) {
+
+			const builder = Nino.admin.builder;
+
+			return builder._pages.find( function( page ) { return builder._pageKey( page ) === source } ) ?? null;
+		},
+
+		/**
+		 *	A page as it is said where one is chosen: its address and the name of the template it shows
+		 *
+		 *	@param		{Object}		page
+		 *
+		 *	@return		{string}
+		 */
+		_pageSaid : function( page ) {
+
+			const name = typeof page.templateName === 'string' && page.templateName !== '' ? page.templateName : ( typeof page.template === 'string' ? page.template : '' );
+			const address = typeof page.httpUri === 'string' && page.httpUri !== '' ? page.httpUri : page.uri;
+
+			return name === '' ? address : address+ ' - '+ name;
+		},
+
+		/**
 		 *	The dialog of a source, over the dialog it was opened from: where the value
 		 *	of a text or a picture is chosen - from the ones there are, made new, or typed
 		 *	in. It answers by calling onPick or onFixed with the choice and closing; Escape
@@ -6898,9 +7929,37 @@
 			const content = dc.getElementById('builder-picker-content');
 			const done = builder._closePicker;
 			const tabs = [ { id : 'pick', label : Nino.content.getText('/_admin/builder/source/tab-pick'), build : function( pane ) { builder._pickPane( pane, options, done ) } } ];
+			const pages = options.kind === 'href' && builder._pages.length > 0;
+
+			// A link may lead to a page of the site, which is chosen by its address and the template it shows and not by the key that holds the address
+			if( pages === true )
+				tabs.push( { id : 'internal', label : Nino.content.getText('/_admin/builder/source/tab-internal'), build : function( pane ) { builder._internalPane( pane, options, done ) } } );
 
 			if( options.create === true )
 				tabs.push( { id : 'new', label : Nino.content.getText('/_admin/builder/source/tab-new'), build : function( pane ) {
+
+					// The key of a link holds the address, which is typed with it: it is made at once, as the slot of an upload is, and not with the document
+					if( options.kind === 'href' ) {
+
+						builder._newName( pane, options, 'key', function( key, size, text, answer ) {
+
+							builder._apiCall( 'keys/create', { key : key, global : true, format : 'plain', value : text }, function( status, response ) {
+
+								if( status !== 200 )
+									return answer( builder._errorText( status, response, '/_admin/builder/error/key' ) );
+
+								// The keys of the project have it now, and the list of the dialog the next time it is open
+								builder._keysAsked = false;
+								builder._loadKeys();
+								options.onPick( key, null );
+								done();
+							} );
+
+							return true;
+						}, Nino.content.getText('/_admin/builder/source/address') );
+
+						return;
+					}
 
 					const what = options.kind === 'image' ? 'slot' : 'key';
 
@@ -6915,7 +7974,7 @@
 
 			strip.innerHTML = '';
 			content.innerHTML = '';
-			builder._tabs( strip, content, tabs, typeof options.text === 'string' ? 'fixed' : 'pick', 'builder-picker' );
+			builder._tabs( strip, content, tabs, typeof options.text === 'string' ? 'fixed' : ( pages === true && builder._pageOf( options.value ) !== null ? 'internal' : 'pick' ), 'builder-picker' );
 
 			if( typeof dialog.showModal === 'function' )
 				dialog.showModal();
@@ -7058,14 +8117,47 @@
 				return { value : entry.key, label : entry.key, sub : typeof value === 'string' ? value.replace( /<[^>]*>/g, '' ).slice( 0, 60 ) : '' };
 			} );
 
+			// The addresses of the pages of the site stand beside the texts a link may be, in front of them: a link leads to a page more often than to a text
+			const pages = options.kind === 'href' ? builder._pages.map( function( page ) {
+				return { value : builder._pageKey( page ), label : builder._pageKey( page ), sub : builder._pageSaid( page ) };
+			} ) : [];
+
 			pane.appendChild( builder._el( 'span', 'builder-label', Nino.content.getText('/_admin/builder/source/key') ) );
 
-			if( keys.length > 0 )
-				builder._picker( pane, keys, options.value, Nino.content.getText('/_admin/builder/source/search'), pick, keys.some( function( key ) { return key.value.indexOf( own ) === 0 } ) === true ? own : '' );
+			if( keys.length > 0 || pages.length > 0 )
+				builder._picker( pane, pages.concat( keys ), options.value, Nino.content.getText('/_admin/builder/source/search'), pick, pages.length === 0 && keys.some( function( key ) { return key.value.indexOf( own ) === 0 } ) === true ? own : '' );
 			else
 				pane.appendChild( builder._textField( Nino.content.getText('/_admin/builder/source/typed'), builder._keysAnswered === true ? Nino.content.getText('/_admin/builder/hint/typed') : '', options.value.charAt(0) === '/' ? options.value : '', function() {}, {
 					onCommit : function( value ) { if( builder.KEY.test( value.trim() ) === true || value.trim().indexOf('/_nino/') === 0 ) pick( value.trim() ) },
 				} ) );
+		},
+
+		/**
+		 *	The tab of a link that leads to a page of the site: a choice among the pages by their address and the template they show. The source is the key that holds the
+		 *	address of the page, so the link follows the page into the language the visitor reads. A choice is the answer: it closes the dialog
+		 *
+		 *	@param		{Element}		pane
+		 *	@param		{Object}		options						See _sourceDialog()
+		 *	@param		{Function}	done							Closes the dialog
+		 *
+		 *	@return		void
+		 */
+		_internalPane : function( pane, options, done ) {
+
+			const builder = Nino.admin.builder;
+			const now = builder._pageOf( options.value );
+			const items = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ].concat( builder._pages.map( function( page ) {
+				return { value : builder._pageKey( page ), label : builder._pageSaid( page ) };
+			} ) );
+
+			pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/page'), Nino.content.getText('/_admin/builder/hint/page'), items, now === null ? '' : builder._pageKey( now ), function( value ) {
+
+				if( value === '' )
+					return;
+
+				options.onPick( value, null );
+				done();
+			} ) );
 		},
 
 		/**
@@ -7111,11 +8203,13 @@
 		 *	@param		{Element}		pane
 		 *	@param		{Object}		options
 		 *	@param		{string}		what							key or slot
-		 *	@param		{Function}	use								( uri, { width, height } )
+		 *	@param		{Function}	use								( uri, { width, height }, address, answer ) - one that has to ask the server first answers true and tells what went wrong, or nothing, to
+		 *																	answer() when it has been told
+		 *	@param		{string}		[address]					The label of a field for the text the new key is made with: the key of a link holds its address
 		 *
 		 *	@return		void
 		 */
-		_newName : function( pane, options, what, use ) {
+		_newName : function( pane, options, what, use, address ) {
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
@@ -7125,6 +8219,8 @@
 			const uri = builder._one( box, '.builder-new-uri' );
 			const message = builder._one( box, '.builder-new-message' );
 			const go = builder._one( box, '.builder-new-use' );
+			const typed = address === undefined ? null : builder._textField( address, '', '', function() { check() } );
+			let asking = false;
 			const check = function() {
 
 				let problem = builder.SEGMENT.test( options.section.id ) === false ? 'grammar' : builder._nameProblem( options.section, doc.file, name.value.trim(), builder._keys );
@@ -7133,9 +8229,13 @@
 				if( problem === '' && what === 'slot' )
 					problem = /^[a-z]/.test( options.section.id ) === false ? 'slot' : ( /^[a-z]/.test( name.value.trim() ) === false ? 'slot-name' : '' );
 
+				// A key that is made with a text is not made without
+				if( problem === '' && typed !== null && typed.control.value.trim() === '' )
+					problem = 'address';
+
 				uri.textContent = builder._keyUri( doc.file, options.section.id, name.value.trim() );
 				message.textContent = problem === '' ? '' : Nino.content.getText( '/_admin/builder/source/name-'+ problem );
-				go.disabled = problem !== '';
+				go.disabled = problem !== '' || asking === true;
 			};
 
 			builder._one( box, '.builder-new-title' ).textContent = Nino.content.getText( what === 'key' ? '/_admin/builder/source/new-key' : '/_admin/builder/source/new-slot' );
@@ -7157,10 +8257,31 @@
 				} );
 
 			go.addEventListener( 'click', function() {
-				use( uri.textContent, size );
+
+				asking = true;
+
+				// What is made at once is told when it is: the form is as it was until then, and says what went wrong
+				const waits = use( uri.textContent, size, typed === null ? '' : typed.control.value.trim(), function( problem ) {
+					asking = false;
+					check();
+					message.textContent = problem ?? '';
+				} ) === true;
+
+				if( waits === true ) {
+
+					if( asking === true )
+						check();
+
+					return;
+				}
+
+				asking = false;
 				name.value = builder._keyName( options.section, doc.file, options.name, builder._keys );
 				check();
 			} );
+
+			if( typed !== null )
+				box.insertBefore( typed, message );
 
 			check();
 			pane.appendChild( box );
@@ -7195,18 +8316,17 @@
 		},
 
 		/**
-		 *	The picture behind a section or a column: its slot, the picture it has with the upload
-		 *	that stores one and the alt text in the language the editor works in, for a section
-		 *	whether the picture is a parallax and whether it is dimmed, its focus, and the way to take
-		 *	it away again. The slot is the source of the row, which is changed in the dialog of the
-		 *	sources. A column that loses its picture loses the dimming with it, a section the
-		 *	parallax and the dimming
+		 *	The picture behind a section or a column: its slot, the picture it has with the upload that stores one and the alt text in the language the editor works in, its
+		 *	focus and the way to take it away again. The slot is the source of the row, which is changed in the dialog of the sources. A column that loses its picture
+		 *	loses the dimming with it, a section the parallax and the dimming. What else the picture decides - the switches of a section, the offsets of a column - is the
+		 *	block's: it is told when the picture changes
 		 *
 		 *	@param		{Array}			path							A section, or a column
+		 *	@param		{Function}	redraw						Draws the blocks that follow the picture again
 		 *
 		 *	@return		{Element}
 		 */
-		_backgroundField : function( path ) {
+		_backgroundField : function( path, redraw ) {
 
 			const builder = Nino.admin.builder;
 			const section = builder._doc.model.blocks[path[0]];
@@ -7218,6 +8338,7 @@
 			// What it is called where nothing else names it: the background of the section, or of a column of it
 			const words = column === true ? Nino.adminUi.format( Nino.content.getText('/_admin/builder/source/column-background'), path[1] + 1 ) : Nino.content.getText('/_admin/builder/source/background');
 
+			wrap.dataset.key = 'background';
 			wrap.appendChild( builder._sourceRow( {
 				kind		: 'image',
 				fixed		: false,
@@ -7239,7 +8360,7 @@
 
 					builder._changed();
 					// The focus and the button that takes the picture away are there for a picture
-					builder._refreshTab('background');
+					redraw();
 				},
 			} ) );
 
@@ -7261,67 +8382,8 @@
 				name		: column === true ? 'column-background' : 'background',
 				// A slot made by an upload has no form to name it: it is the background of this section, or of this column of it
 				seed		: section.id+ ': '+ words,
-				redraw	: function() { builder._refreshTab('background') },
+				redraw	: redraw,
 			} ) );
-
-			// Whether the picture behind a section moves slower than the page, whether it is dimmed and whether it stands inside - on the row, with the colour - are the section's alone
-			if( column === false ) {
-
-				const parallax = builder._switchField( Nino.content.getText('/_admin/builder/section/parallax'), '', section.settings.parallax === true, function( on ) {
-
-					section.settings.parallax = on;
-
-					// A parallax is the section's own picture, and the background cannot stand inside. Without it - and with no cover to be one - goes the room around it, and the
-					// scrim over no picture: a section that is neither has the scrim of its own, for a picture it has
-					if( on === true )
-						section.settings.inner = false;
-					else if( section.settings.cover === null ) {
-						section.settings.padded = false;
-
-						if( has === false )
-							section.settings.dim = false;
-					}
-
-					builder._changed();
-					// The scrim and the switch inside wake or sleep, and so does what is in the other tabs: the place of the content and the radius of the row
-					builder._refreshTab('background');
-					builder._refreshTab('section');
-					builder._refreshTab('row');
-				} );
-				const dim = builder._setting( section.settings, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
-				// The row paints once the background stands inside, and the toggle of its radius in the other tab wakes with it
-				const inner = builder._setting( section.settings, { key : 'inner', type : 'bool', label : '/_admin/builder/section/inner-background', hint : '/_admin/builder/hint/inner-background' }, function() { builder._refreshTab('row') } );
-				const box = builder._one( inner, 'input' );
-
-				// A switch that is on can be switched off whatever the picture: a parallax a template wrote without one, or that lost its picture, must not be stuck.
-				// The scrim is for a picture, of any section: the cover's, the parallax's, and the plain section's own
-				builder._one( parallax, 'input' ).disabled = has === false && section.settings.parallax !== true;
-				builder._one( dim, 'input' ).disabled = has === false && section.settings.dim !== true;
-				wrap.appendChild( builder._line( [ parallax, dim ] ) );
-
-				// Text on a picture reads better with the picture dimmed: said in one line under the switch for as long as it is off, and no more than said
-				const advice = builder._el( 'p', 'nino-admin-hint builder-dim-hint', Nino.content.getText('/_admin/builder/hint/dim-text') );
-				const advise = function() { advice.hidden = has === false || section.settings.dim === true || builder._carriesText( section, builder._registry ) === false };
-
-				builder._one( dim, 'input' ).addEventListener( 'change', advise );
-				advise();
-				wrap.appendChild( advice );
-
-				// The background inside is the row's colour, picture and scrim: a cover and a parallax are the section's own picture, and there is nothing to put inside where the
-				// section has neither a colour nor a picture. What is on with none of these is no more than the file can say, and it goes off
-				wrap.syncInner = function() {
-
-					const possible = section.settings.cover === null && section.settings.parallax !== true && ( section.settings.color !== '' || has === true );
-
-					if( possible === false && section.settings.cover === null && section.settings.parallax !== true && section.settings.inner === true )
-						section.settings.inner = false;
-
-					box.checked = section.settings.inner === true;
-					box.disabled = possible === false && section.settings.inner !== true;
-				};
-				wrap.syncInner();
-				wrap.appendChild( builder._line( [ inner ] ) );
-			}
 
 			wrap.appendChild( builder._focusField( has === true ? holder.background.focus : null, has, function( focus ) {
 				holder.background.focus = focus;
@@ -7346,13 +8408,7 @@
 				}
 
 				builder._changed();
-				builder._refreshTab('background');
-
-				// A section that was a parallax is none now: the place of its content is the Section tab's - and a row that had the background inside has none now
-				if( column === false ) {
-					builder._refreshTab('section');
-					builder._refreshTab('row');
-				}
+				redraw();
 			} );
 			wrap.appendChild( remove );
 
@@ -7618,16 +8674,18 @@
 			} else {
 
 				const mount = builder._el( 'div', 'builder-content' );
+				const head = builder._el( 'div', 'builder-label-row' );
 				const name = builder._el( 'span', 'builder-label', label );
-				const hint = builder._el( 'small', 'nino-admin-hint', Nino.content.getText('/_admin/builder/value/hint') );
+				const help = builder._help( Nino.content.getText('/_admin/builder/value/hint'), label );
 
-				// An editor is no input that its label wraps: the group is named by the label and described by the hint, as the Text panel does it
+				// An editor is no input that its label wraps: the group is named by the label and described by the sentence behind the mark, as the Text panel does it
 				name.id = 'builder-value-label';
-				hint.id = 'builder-value-hint';
 				wrap.setAttribute( 'role', 'group' );
 				wrap.setAttribute( 'aria-labelledby', name.id );
-				wrap.setAttribute( 'aria-describedby', hint.id );
-				wrap.appendChild( name );
+				wrap.setAttribute( 'aria-describedby', help.tipId );
+				head.appendChild( name );
+				head.appendChild( help );
+				wrap.appendChild( head );
 				wrap.appendChild( mount );
 
 				if( typeof Nino.admin.htmlEditor === 'object' ) {
@@ -7663,8 +8721,6 @@
 					[ 'input', 'click', 'keyup', 'focusout' ].forEach( function( type ) { mount.addEventListener( type, sync ) } );
 					editors.push( editor );
 				}
-
-				wrap.appendChild( hint );
 			}
 
 			return wrap;
@@ -7775,15 +8831,15 @@
 					builder._upload( options, file.files[0], file, say );
 			} );
 
-			controls.appendChild( builder._el( 'span', 'builder-label', Nino.content.getText('/_admin/builder/picture/upload') ) );
-			controls.appendChild( file );
-
+			// What the upload is and what the server takes of it is said behind the mark by its name
 			const limits = Nino.adminUi.uploadHint();
+			const caption = builder._el( 'div', 'builder-label-row' );
+			const upload = Nino.content.getText('/_admin/builder/picture/upload');
 
-			if( limits !== null )
-				controls.appendChild( limits );
-
-			controls.appendChild( builder._el( 'small', 'nino-admin-hint', Nino.content.getText( slot === null ? '/_admin/builder/picture/hint-made' : '/_admin/builder/picture/hint' ) ) );
+			caption.appendChild( builder._el( 'span', 'builder-label', upload ) );
+			caption.appendChild( builder._help( Nino.content.getText( slot === null ? '/_admin/builder/picture/hint-made' : '/_admin/builder/picture/hint' )+ ( limits === null ? '' : ' '+ limits.textContent ), upload ) );
+			controls.appendChild( caption );
+			controls.appendChild( file );
 			controls.appendChild( message );
 			view.appendChild( thumb );
 			view.appendChild( controls );

@@ -2226,8 +2226,8 @@ namespace Nino\Modules\Builder {
 		 *	call cannot carry - or a loop in one of its columns, a background that is no
 		 *	slot or whose focus is none of the nine places, a call that is no
 		 *	call, texts that are no text for each language, the padding of a
-		 *	row and the padding and the margins of a column that are none of the
-		 *	steps 0 to 6, how far in from its sides the picture behind a row, a
+		 *	row and the six sides of the spacing of a section, a column or a
+		 *	component that are none of the steps 0 to 6, how far in from its sides the picture behind a row, a
 		 *	column or a card starts where that is none of the steps 0 to 3 - or
 		 *	is asked of a component that is no card -, a
 		 *	component that holds components with a content or with children
@@ -2307,7 +2307,11 @@ namespace Nino\Modules\Builder {
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
 
-				// The padding of the row on each side is a step of the space scale: what is none of them would be a class of nothing
+				// The spacing of the section on its six sides and the padding of the row on each of its four are steps of the space scale: what is none of them would be a class of nothing
+				foreach( Reader::SPACING as $key )
+					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
+						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 6';
+
 				foreach( Reader::ROW_SPACING as $key )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 6';
@@ -2362,8 +2366,8 @@ namespace Nino\Modules\Builder {
 					if( is_bool( $col['dim'] ?? false ) === false )
 						$problems[] = 'the dim of '. $of. ' is neither on nor off';
 
-					// The padding and the margins are steps of the space scale: what is none of them would be a class of nothing
-					foreach( Reader::COL_SPACING as $key )
+					// The six sides of the spacing are steps of the space scale: what is none of them would be a class of nothing
+					foreach( Reader::SPACING as $key )
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none of the steps 0 to 6';
 
@@ -2400,7 +2404,7 @@ namespace Nino\Modules\Builder {
 
 					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
 					foreach( $col['components'] ?? [] as $component )
-						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ) );
+						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ) );
 
 					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
 					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )
@@ -2495,6 +2499,33 @@ namespace Nino\Modules\Builder {
 
 			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
 				$problems = array_merge( $problems, self::_shapeGround( $child, $schemas, $at ) );
+
+			return $problems;
+		}
+
+		/**
+		 *	What is wrong with the six sides of the spacing of a component and of the children it holds: a value that is none of the steps 0 to 6, which the Writer would
+		 *	write as a class of nothing and the Reader read back as a custom one. Every component has the six, a surface or not
+		 *
+		 *	@param		mixed			$call					A component of a column, or a child of one
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeSpacing( mixed $call, string $at ): array {
+
+			// A call that is none has been told already
+			if( is_array( $call ) === false || self::_callWrong( $call ) !== '' )
+				return [];
+
+			$problems = [];
+
+			foreach( Reader::SPACING as $key )
+				if( in_array( $call[$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
+					$problems[] = $at. ' has the component "'. (string) ( $call['name'] ?? '' ). '" with a '. $key. ' that is none of the steps 0 to 6';
+
+			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
+				$problems = array_merge( $problems, self::_shapeSpacing( $child, $at ) );
 
 			return $problems;
 		}

@@ -70,7 +70,6 @@
 				</div>
 				<button type="button" id="builder-dialog-close" class="builder-icon-btn" title="[[/_admin/builder/label/close]]" aria-label="[[/_admin/builder/label/close]]">&times;</button>
 			</div>
-			<div id="builder-dialog-tabs" class="builder-tabs" role="tablist" hidden></div>
 			<div id="builder-dialog-content" class="builder-dialog-content"></div>
 			<p id="builder-dialog-problems" class="nino-admin-error" role="alert" hidden></p>
 			<div id="builder-dialog-actions" class="nino-admin-dialog-actions"></div>
@@ -119,6 +118,9 @@
 		<symbol id="builder-icon-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
 		<symbol id="builder-icon-frame" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></symbol>
 		<symbol id="builder-icon-move-vertical" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="m8 18 4 4 4-4"/><path d="m8 6 4-4 4 4"/></symbol>
+		<symbol id="builder-icon-width-content" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M22 4v16"/><rect width="10" height="10" x="7" y="7" rx="1"/></symbol>
+		<symbol id="builder-icon-width-full" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M22 4v16"/><rect width="16" height="10" x="4" y="7" rx="1"/></symbol>
+		<symbol id="builder-icon-width-edge" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M22 4v16"/><path d="M6 12h12"/><path d="m9 9-3 3 3 3"/><path d="m15 9 3 3-3 3"/></symbol>
 		<symbol id="builder-icon-inner" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="3"/><rect width="10" height="10" x="7" y="7" rx="1.5"/></symbol>
 		<symbol id="builder-icon-loop" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
 		<symbol id="builder-icon-source" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>

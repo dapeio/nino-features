@@ -7,7 +7,7 @@
 		<div class="nino-grid-s-100 nino-grid-m-33 nino-grid-l-33">
 			[image /template/page-home-card/story/photo ratio="4-3"]
 		</div>
-		<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-p-2 nino-mt-1 nino-mb-1">
+		<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-mt-1 nino-mb-1 nino-p-2">
 			[card padding="3" ground="counter"]
 				[card-title /template/page-home-card/story/title tag="h3"]
 				[text /template/page-home-card/story/text]

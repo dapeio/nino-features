@@ -38,6 +38,8 @@
                 "mb": "",
                 "pt": "",
                 "pb": "",
+                "pl": "",
+                "pr": "",
                 "text": "",
                 "arrow": false,
                 "vpa": null,
@@ -64,9 +66,12 @@
                     "text": "",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "",
                     "mt": "",
                     "mb": "",
+                    "pt": "",
+                    "pb": "",
+                    "pl": "",
+                    "pr": "",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -89,7 +94,13 @@
                                 "target": "",
                                 "class": ""
                             },
-                            "radius": ""
+                            "radius": "",
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         }
                     ]
                 },
@@ -107,9 +118,12 @@
                     "text": "",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "2",
                     "mt": "1",
                     "mb": "1",
+                    "pt": "2",
+                    "pb": "2",
+                    "pl": "2",
+                    "pr": "2",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -140,6 +154,12 @@
                             "radius": "",
                             "bgPl": "",
                             "bgPr": "",
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": "",
                             "components": [
                                 {
                                     "name": "card-title",
@@ -152,7 +172,13 @@
                                         "href": "",
                                         "target": "",
                                         "class": ""
-                                    }
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
                                 },
                                 {
                                     "name": "text",
@@ -166,7 +192,13 @@
                                         "href": "",
                                         "target": "",
                                         "class": ""
-                                    }
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
                                 },
                                 {
                                     "name": "button",
@@ -179,7 +211,13 @@
                                         "width": "",
                                         "target": "",
                                         "class": ""
-                                    }
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
                                 }
                             ]
                         }
@@ -217,6 +255,8 @@
                 "mb": "",
                 "pt": "",
                 "pb": "",
+                "pl": "",
+                "pr": "",
                 "text": "",
                 "arrow": false,
                 "vpa": null,
@@ -243,9 +283,12 @@
                     "text": "",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "",
                     "mt": "",
                     "mb": "",
+                    "pt": "",
+                    "pb": "",
+                    "pl": "",
+                    "pr": "",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -292,6 +335,12 @@
                             "radius": "",
                             "bgPl": "",
                             "bgPr": "",
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": "",
                             "components": [
                                 {
                                     "name": "card-title",
@@ -304,7 +353,13 @@
                                         "href": "",
                                         "target": "",
                                         "class": ""
-                                    }
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
                                 }
                             ]
                         }

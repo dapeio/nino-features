@@ -38,6 +38,8 @@
                 "mb": "",
                 "pt": "",
                 "pb": "",
+                "pl": "",
+                "pr": "",
                 "text": "",
                 "arrow": true,
                 "vpa": "",
@@ -67,9 +69,12 @@
                     "text": "left",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "",
                     "mt": "",
                     "mb": "",
+                    "pt": "",
+                    "pb": "",
+                    "pl": "",
+                    "pr": "",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -91,7 +96,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "subtitle",
@@ -104,7 +115,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "button",
@@ -117,7 +134,13 @@
                                 "width": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         }
                     ]
                 }
@@ -153,6 +176,8 @@
                 "mb": "",
                 "pt": "",
                 "pb": "",
+                "pl": "",
+                "pr": "",
                 "text": "",
                 "arrow": false,
                 "vpa": "",
@@ -179,9 +204,12 @@
                     "text": "",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "",
                     "mt": "",
                     "mb": "",
+                    "pt": "",
+                    "pb": "",
+                    "pl": "",
+                    "pr": "",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -203,7 +231,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "text",
@@ -217,7 +251,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         }
                     ]
                 },
@@ -235,9 +275,12 @@
                     "text": "",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "",
                     "mt": "",
                     "mb": "",
+                    "pt": "",
+                    "pb": "",
+                    "pl": "",
+                    "pr": "",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -276,7 +319,13 @@
                                 "target": "",
                                 "class": ""
                             },
-                            "radius": ""
+                            "radius": "",
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "title",
@@ -289,7 +338,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "text",
@@ -303,7 +358,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "button",
@@ -316,7 +377,13 @@
                                 "width": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         }
                     ]
                 }
@@ -357,6 +424,8 @@
                 "mb": "",
                 "pt": "",
                 "pb": "",
+                "pl": "",
+                "pr": "",
                 "text": "center",
                 "arrow": false,
                 "vpa": null,
@@ -383,9 +452,12 @@
                     "text": "",
                     "stackAlign": "",
                     "stackGap": "",
-                    "p": "",
                     "mt": "",
                     "mb": "",
+                    "pt": "",
+                    "pb": "",
+                    "pl": "",
+                    "pr": "",
                     "bgPl": "",
                     "bgPr": "",
                     "vpa": null,
@@ -407,7 +479,13 @@
                                 "href": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         },
                         {
                             "name": "button",
@@ -420,7 +498,13 @@
                                 "width": "",
                                 "target": "",
                                 "class": ""
-                            }
+                            },
+                            "mt": "",
+                            "mb": "",
+                            "pt": "",
+                            "pb": "",
+                            "pl": "",
+                            "pr": ""
                         }
                     ]
                 }

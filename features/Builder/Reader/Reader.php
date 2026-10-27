@@ -148,7 +148,11 @@ namespace Nino\Modules\Builder {
 	 *											                                      is nothing on the row to read it from, and it reads as off
 	 *											    whitespace  ''|least|less|more|most   nino-whitespace--<x>: how much room the section keeps, on
 	 *											                                      the scale of the page's whitespace (the Design's)
-	 *											    mt mb pt pb ''|0..6               nino-mt-<n> ...
+	 *											    mt mb pt pb pl pr ''|0..6         nino-mt-<n> nino-mb-<n> nino-pt-<n> nino-pb-<n> nino-pl-<n> nino-pr-<n>: the six sides of the spacing of the section - the margin
+	 *											                                      above and below it, the padding at its top, at its bottom, on its left and on its right -, each a step of the space scale, in the
+	 *											                                      order of SPACING. The first class of a side is the setting, a second class of the side is a class of its own. The kernel's nino-p-<n>
+	 *											                                      is the four inside sides at once, the base that a class of one side stands over, whatever the order of the two in the attribute, and a
+	 *											                                      second nino-p-<n> is a class of its own; the Writer says the four inside sides as nino-p-<n> where they are set and the same
 	 *											    text        ''|left|center|right  nino-text-<x>
 	 *											    arrow       bool                  [scroll-hint], the line after the row: the arrow at the foot of the section, which leads to what follows it
 	 *											    vpa         null|string           the animation of the section stands on its row - its classes among those of the row, its delay and its duration as
@@ -192,10 +196,8 @@ namespace Nino\Modules\Builder {
 	 *											  text      ''|left|center|right
 	 *											  stackAlign ''|start|center|end   nino-stack-<x>
 	 *											  stackGap  ''|0..6                nino-stack-gap-<n>
-	 *											  p, mt, mb ''|0..6                nino-p-<n>, nino-mt-<n>, nino-mb-<n>: the
-	 *											                    padding of the column and the margin above and below it,
-	 *											                    each a step of the space scale; the first of a kind is the
-	 *											                    setting, a second is a class of its own, as in a section
+	 *											  mt mb pt pb pl pr ''|0..6        the six sides of the spacing of the column, read and written as those of a section: nino-mt-<n> to nino-pr-<n>,
+	 *											                    and the kernel's nino-p-<n> for the four inside sides at once
 	 *											  bgPl, bgPr ''|0..3               nino-bg-pl-<n>, nino-bg-pr-<n>: how far in from the left and from the right the picture of the column starts, a step of the
 	 *											                    space scale; read where the column has a picture (background), else the two classes are idle and stay custom ones
 	 *											  vpa, vpaSpeed, vpaMode   as the animation in settings, with the classes of the column
@@ -220,6 +222,10 @@ namespace Nino\Modules\Builder {
 	 *											                    of the call
 	 *											  bgPl, bgPr ''|0..3   only for the card, the surface that paints a ground: the classes nino-bg-pl-<n> and nino-bg-pr-<n> of its call,
 	 *											                    taken out of the class attribute as the radius is and put back after it by the Writer, whatever the call says of a picture
+	 *											  mt mb pt pb pl pr ''|0..6   the six sides of the spacing of any component: the classes nino-mt-<n> to nino-pr-<n> of its call, taken out of the class attribute as
+	 *											                    the radius is - the first of a side is the setting, a second is a class of the editor's - and put back by the Writer after the radius and the
+	 *											                    offsets of the ground, in the order of SPACING. The kernel's nino-p-<n> is no setting of a call: a card's padding attribute says the same
+	 *											                    for its four sides, and the Builder keeps the two apart
 	 *											  content   string  only for a component whose source is 'content' and whose
 	 *											                    schema does not say 'holds'
 	 *											  components list  only for a component whose schema says 'holds' (a container):
@@ -269,9 +275,11 @@ namespace Nino\Modules\Builder {
 		// Where the row stands in a cover or a parallax, the middle being none: nino-cover-center aligns the text of a
 		// .nino-cover-content, which the Builder does not write, so it is a custom class here
 		public const array CONTENT_POS = [ 'top', 'bottom' ];
-		public const array SPACING = [ 'mt', 'mb', 'pt', 'pb' ];
-		// A column has its padding and the margin above and below it, each one of the steps of the space scale
-		public const array COL_SPACING = [ 'p', 'mt', 'mb' ];
+		// The spacing of a section, a column and a component: six sides, each one of the steps of the space scale, in the order the Writer writes their classes and the
+		// settings stand in - the margin above and below, then the padding at the top, at the bottom, on the left and on the right
+		public const array SPACING = [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ];
+		// The four of them that are inside: the kernel's nino-p-<n> says the same for all four at once
+		public const array INSIDE = [ 'pt', 'pb', 'pl', 'pr' ];
 		public const array STEPS = [ '0', '1', '2', '3', '4', '5', '6' ];
 		// How far in from either side the picture behind a row, a column or a card starts: the word of the class and the setting that holds it, one step of the space scale from 0 to 3
 		public const array BG_STEPS = [ '0', '1', '2', '3' ];
@@ -366,7 +374,7 @@ namespace Nino\Modules\Builder {
 			return [
 				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'whitespace' => '',
-				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '', 'arrow' => false,
+				...array_fill_keys( self::SPACING, '' ), 'text' => '', 'arrow' => false,
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
@@ -377,7 +385,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', 'p' => '', 'mt' => '', 'mb' => '', 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -511,6 +519,63 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $steps === [] ? [ [], $class ] : [ $steps, implode( ' ', $rest ) ];
+		}
+
+		/**
+		 *	The six sides of the spacing out of the classes of an element: the first class of a side is its setting, a second class of the side is a class of its
+		 *	own and stays. Where $shorthand is set - on a tag - the kernel's nino-p-<n> is the four inside sides at once, the base that a class of one side stands
+		 *	over, whatever the order of the two in the attribute (Nino.css writes the rules of one side after that of all four); a second nino-p-<n> stays as well
+		 *
+		 *	@param		array			$tokens				The classes
+		 *	@param		bool			$shorthand		Whether nino-p-<n> says the four inside sides: on a tag it does, on a call it is a class of the editor's
+		 *
+		 *	@return 	array											[ side => step for each side that is set, the classes that are left ]
+		 */
+		private static function _sides( array $tokens, bool $shorthand ): array {
+
+			$words	= implode( '|', $shorthand === true ? [ 'p', ...self::SPACING ] : self::SPACING );
+			$sides	= [];
+			$base		= null;
+			$rest		= [];
+
+			foreach( $tokens as $token ) {
+
+				if( preg_match( '/^nino-('. $words. ')-([0-6])$/D', $token, $m ) === 1 ) {
+
+					if( $m[1] === 'p' && $base === null ) {
+						$base = $m[2];
+						continue;
+					}
+
+					if( $m[1] !== 'p' && isset( $sides[$m[1]] ) === false ) {
+						$sides[$m[1]] = $m[2];
+						continue;
+					}
+				}
+
+				$rest[] = $token;
+			}
+
+			if( $base !== null )
+				foreach( self::INSIDE as $side )
+					$sides[$side] ??= $base;
+
+			return [ $sides, $rest ];
+		}
+
+		/**
+		 *	The six sides of the spacing out of the class attribute of a call, as the radius is taken out of it: the first class of each side, and the rest of the
+		 *	classes as they were. A call with none of them keeps its class attribute byte for byte
+		 *
+		 *	@param		string		$class				The class attribute of the call
+		 *
+		 *	@return 	array											[ side => step for each side that has a class, the classes that are left ]
+		 */
+		private static function _callSides( string $class ): array {
+
+			[ $sides, $rest ] = self::_sides( preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [], false );
+
+			return $sides === [] ? [ [], $class ] : [ $sides, implode( ' ', $rest ) ];
 		}
 
 		/**
@@ -1102,6 +1167,10 @@ namespace Nino\Modules\Builder {
 			$places	= [];
 			$default	= $s;
 
+			// The spacing is read apart from the other classes: the shorthand of the four inside sides is the base of them, wherever it stands
+			[ $sides, $tokens ] = self::_sides( $tokens, true );
+			$s = array_replace( $s, $sides );
+
 			// A second modifier of a kind that has one place is a class of its
 			// own: kept, not lost
 			$set = static function( string $key, mixed $value, string $token ) use ( &$s, &$custom, $default ): void {
@@ -1141,8 +1210,6 @@ namespace Nino\Modules\Builder {
 					$set( 'whitespace', $m[1], $token );
 				elseif( preg_match( '/^nino-cover-('. implode( '|', self::CONTENT_POS ). ')$/D', $token, $m ) === 1 )
 					$places[] = [ $m[1], $token ];
-				elseif( preg_match( '/^nino-(mt|mb|pt|pb)-([0-6])$/D', $token, $m ) === 1 )
-					$set( $m[1], $m[2], $token );
 				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 )
 					$set( 'text', $m[1], $token );
 				else
@@ -1447,7 +1514,7 @@ namespace Nino\Modules\Builder {
 			[ $call, $pos ] = self::_call( $body, $pos, 0, $registry );
 
 			if( $call['stack'] === true || $call['node']['name'] !== 'image' || $call['node']['source'] === '' || $call['node']['source'][0] !== '/'
-				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' || ( $call['node']['radius'] ?? '' ) !== '' )
+				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' || ( $call['node']['radius'] ?? '' ) !== '' || implode( '', array_intersect_key( $call['node'], array_flip( self::SPACING ) ) ) !== '' )
 				throw self::_fail( 'background-image', '', $pos );
 
 			// Only the slot and the empty alt: any other attribute set would be lost in writing
@@ -1486,7 +1553,10 @@ namespace Nino\Modules\Builder {
 			if( in_array( 'nino-grid-row', $tokens, true ) === true )
 				throw self::_fail( 'nested-row', '', $pos );
 
-			$col = [ 'width' => [], 'hidden' => [] ] + self::colDefaults() + [ 'stack' => null, 'components' => [] ];
+			// The spacing is read apart from the other classes, as a section's is
+			[ $sides, $tokens ] = self::_sides( $tokens, true );
+
+			$col = array_replace( [ 'width' => [], 'hidden' => [] ] + self::colDefaults() + [ 'stack' => null, 'components' => [] ], $sides );
 			$custom = [];
 			$dim = false;
 			$radii = [];
@@ -1539,8 +1609,6 @@ namespace Nino\Modules\Builder {
 					$col['stackGap'] = $m[1];
 				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 && $col['text'] === '' )
 					$col['text'] = $m[1];
-				elseif( preg_match( '/^nino-(p|mt|mb)-([0-6])$/D', $token, $m ) === 1 && $col[$m[1]] === '' )
-					$col[$m[1]] = $m[2];
 				elseif( self::_animation( $token, $col ) === false )
 					$custom[] = $token;
 			}
@@ -1749,6 +1817,15 @@ namespace Nino\Modules\Builder {
 
 				foreach( self::BG_SPACING as $side => $key )
 					$node[$key] = $steps[$side] ?? '';
+			}
+
+			// Any component carries the six sides of the spacing in its class, after the radius and the offsets of the ground; a loop is no component and keeps its class attribute
+			if( $isStack === false ) {
+
+				[ $sides, $node['attributes']['class'] ] = self::_callSides( (string) ( $node['attributes']['class'] ?? '' ) );
+
+				foreach( self::SPACING as $side )
+					$node[$side] = $sides[$side] ?? '';
 			}
 
 			if( $isStack === true ) {

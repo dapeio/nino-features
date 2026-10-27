@@ -344,9 +344,8 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['whitespace'] !== '' )
 				$class[] = 'nino-whitespace--'. $s['whitespace'];
 
-			foreach( Reader::SPACING as $space )
-				if( (string) $s[$space] !== '' )
-					$class[] = 'nino-'. $space. '-'. $s[$space];
+			// The six sides of the spacing: the margins, then the paddings - the four inside ones as nino-p-<n> where they are the same
+			$class = array_merge( $class, self::_spacing( $s, true ) );
 
 			// The radius of the picture of a padded cover - after the spacing, and written for a section that is one and for no other
 			if( isset( Reader::RADIUS_CLASS[(string) $s['radius']] ) === true && $s['padded'] === true && ( $s['cover'] !== null || $s['parallax'] === true ) )
@@ -447,10 +446,8 @@ namespace Nino\Modules\Builder {
 			if( (string) $col['text'] !== '' )
 				$class[] = 'nino-text-'. $col['text'];
 
-			// The padding, then the margin above and the margin below
-			foreach( Reader::COL_SPACING as $space )
-				if( (string) $col[$space] !== '' )
-					$class[] = 'nino-'. $space. '-'. $col[$space];
+			// The six sides of the spacing, as a section has them
+			$class = array_merge( $class, self::_spacing( $col, true ) );
 
 			// How far in from either side the picture behind the column starts, left then right, after the spacing
 			if( self::_pictured( $col ) === true )
@@ -463,6 +460,43 @@ namespace Nino\Modules\Builder {
 				$class[] = Reader::RADIUS_CLASS[$col['radius']];
 
 			return array_merge( $class, self::_animationClasses( $col ), self::_custom( (string) $col['custom'] ) );
+		}
+
+		/**
+		 *	The classes of the six sides of the spacing of a section, a column or a component, in the order of Reader::SPACING: one for each side that is set, and -
+		 *	where $shorthand is set and the four inside sides are set and the same - the kernel's nino-p-<n> for them, standing where the first of the four would
+		 *	stand, which the Reader reads back as the four
+		 *
+		 *	@param		array			$of						The settings of the section, the column or the component
+		 *	@param		bool			$shorthand		Whether the four inside sides may be said at once: on a tag they may, on a call nino-p-<n> is a class of the editor's
+		 *
+		 *	@return 	array											Class names
+		 */
+		private static function _spacing( array $of, bool $shorthand ): array {
+
+			$inside	= array_map( static fn( string $side ): string => (string) ( $of[$side] ?? '' ), Reader::INSIDE );
+			$whole	= $shorthand === true && $inside[0] !== '' && count( array_unique( $inside ) ) === 1;
+			$class	= [];
+
+			foreach( Reader::SPACING as $side ) {
+
+				$step = (string) ( $of[$side] ?? '' );
+
+				if( $step === '' )
+					continue;
+
+				if( $whole === true && in_array( $side, Reader::INSIDE, true ) === true ) {
+
+					if( $side === Reader::INSIDE[0] )
+						$class[] = 'nino-p-'. $step;
+
+					continue;
+				}
+
+				$class[] = 'nino-'. $side. '-'. $step;
+			}
+
+			return $class;
 		}
 
 		/**
@@ -642,12 +676,15 @@ namespace Nino\Modules\Builder {
 			$call				= '['. $name;
 
 			// The radius of a surface is the first class of its call, then - on a card - how far in from either side its picture starts, left then right, then the
-			// classes the editor wrote (the model refuses either on a component that is none: see Document)
+			// six sides of the spacing of any component, then the classes the editor wrote (the model refuses the radius and the offsets on a component that is none:
+			// see Document)
 			$first = isset( Reader::RADIUS_CLASS[(string) ( $node['radius'] ?? '' )] ) === true ? [ Reader::RADIUS_CLASS[$node['radius']] ] : [];
 
 			foreach( Reader::BG_SPACING as $side => $key )
 				if( (string) ( $node[$key] ?? '' ) !== '' )
 					$first[] = 'nino-bg-'. $side. '-'. $node[$key];
+
+			array_push( $first, ...self::_spacing( $node, false ) );
 
 			if( $first !== [] )
 				$attributes['class'] = trim( implode( ' ', $first ). ' '. self::_string( $attributes['class'] ?? '' ) );

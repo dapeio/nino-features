@@ -30,8 +30,9 @@
  *												knows them by - the label of a field, the word of a cell of a
  *												table, the title of an icon - and changed the way a person
  *												changes them, so what a form writes into the model is
- *												measured, and so are the heads of the frames, the tabs, the
- *												groups, the lines of two fields, the radio groups, the icons,
+ *												measured, and so are the heads of the frames, the blocks of a
+ *												dialog and what the head of a closed one says, the groups, the
+ *												radio groups, the icons, the question marks with their tips,
  *												the name that is changed where it stands and the focus it
  *												leaves behind, what an animation leaves to choose (a column
  *												has no delay and no duration, none has no speed), the
@@ -53,7 +54,7 @@
  *												every way it fails - and a save that stopped on the way, after
  *												which the slots are asked for again.
  *
- *												The grounds and the places: the Background tab of a column (its
+ *												The grounds and the places: the surface of a column (its
  *												colour with counter, which the patch resolves by the pairs of
  *												Nino.css, the picture behind it and the slot an upload makes for
  *												it, the dimming that goes with the picture), the border of a
@@ -79,7 +80,7 @@
  *												form - the ground as the colour select, the words of the Builder
  *												for the values, the focus and the dimming that wait for the
  *												picture, the picture from a slot, from a field or from an upload
- *												- and the spacing of a column, which is a line of its Layout tab.
+ *												- and the spacing of a column, which is the box of its sides.
  *
  *												The icon of a component in the lightbox: each item holds the svg
  *												the parts of the registry's entry are built into, tag by tag
@@ -87,8 +88,9 @@
  *												the two of a feature that has its own - or, for a component
  *												that gives none, the puzzle of the sprite; the parts the
  *												script does not know are left out, nothing is written as
- *												markup, and the stylesheet lays the lightbox out as rows for a
- *												phone and as columns side by side where the dialog is wide. The
+ *												markup, and the stylesheet lays the lightbox out as rows that
+ *												wrap for a phone and as a row for each group where the dialog is
+ *												wide. The
  *												stand-in remembers the namespace an element is made in, to
  *												tell an svg element from an html one.
  *
@@ -99,14 +101,14 @@
  *												button or by the cross (the control that opened it was drawn
  *												away with the preview: the focus goes to the settings tool the
  *												preview has drawn in its place); the
- *												tabs a component has something for (Content, Properties,
- *												Variants, Link, CSS classes) and the kinds of input the
+ *												blocks a component has something for (content, link, surface,
+ *												spacing, properties) and the kinds of input the
  *												registry asks for - a row of buttons, a row of icons, a
  *												select, a switch, a checkbox -, tried on a component of a
  *												feature the stand-in registry makes up. The section: the
  *												padded cover, the whitespace, the background inside - what it
  *												needs and what takes it away -, the dimming of a plain section
- *												and the Loop tab, which makes a section of every element; what
+ *												and the loop, which makes a section of every element; what
  *												the head of a frame says of them, and of a link; that a click
  *												in the preview leaves the page where it is (the stand-in
  *												records what is scrolled into view); and the stamps of the
@@ -114,6 +116,16 @@
  *												asks for again when another panel wrote - and not while a
  *												dialog is open - and what it writes itself, which is no news
  *												to it.
+ *
+ *												The dialogs of the elements: the table of the blocks of each
+ *												kind - what a dialog shows is what the table says and the
+ *												element has -, the accordion with one block open, the head of a
+ *												closed one saying only what deviates from the default of the
+ *												element, the block that was open last remembered by the kind of
+ *												element, the box of the six sides, the offsets of a picture,
+ *												the question mark that carries what a field has to say - wired
+ *												to its tip by aria, closed by Escape - and no sentence under a
+ *												field.
  *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
@@ -892,6 +904,9 @@ const change = function( root, label, value, nth ) {
 	return true;
 };
 
+// Every block of the dialog that is open drawn again, as a choice that changed what the blocks show would have them drawn
+const redrawBlocks = function() { builder._refreshBlock( ...builder._dialogBlocks.ids ) };
+
 const pressKey = function( el, key ) { return el.dispatch( 'keydown', { key : key } ) };
 
 // ------------------------------------------------------------ What stands on the page
@@ -899,7 +914,8 @@ const pressKey = function( el, key ) { return el.dispatch( 'keydown', { key : ke
 const dialogBox = function() { return screen.getElementById('builder-dialog') };
 const pickerBox = function() { return screen.getElementById('builder-picker') };
 const dialogText = function( id ) { return screen.getElementById( id ).textContent };
-const paneOf = function( id ) { return screen.getElementById( 'builder-pane-'+ id ) };
+// The body of a block of the dialog that is open, by the id of the block: every block is in the page, and the ones that are closed are hidden
+const blockOf = function( id ) { return screen.getElementById( 'builder-body-'+ id ) };
 const pickerPane = function( id ) { return screen.getElementById( 'builder-picker-pane-'+ id ) };
 const pickerStrip = function() { return screen.getElementById('builder-picker-tabs') };
 const fixedField = function() { return pickerPane('fixed').querySelector('input') };
@@ -909,11 +925,22 @@ const preview = function() { return screen.getElementById('builder-preview') };
 const frameOf = function( at ) { return preview().querySelector('[data-path="'+ at+ '"]') };
 const toolOf = function( at, tool ) { return frameOf( at ).querySelectorAll('button').find( function( button ) { return button.dataset.tool === tool } ) };
 
-// The tabs of a strip: [ id, word ] each, in the order they are drawn
+// The tabs of a strip - the picker's: [ id, word ] each, in the order they are drawn
 const tabsOf = function( strip, prefix ) {
 	return strip.querySelectorAll('[role="tab"]').map( function( tab ) { return [ tab.id.replace( prefix+ '-tab-', '' ), tab.textContent ] } );
 };
-const dialogTabs = function() { return tabsOf( screen.getElementById('builder-dialog-tabs'), 'builder' ) };
+
+// The blocks of the dialog that is open, by id in the order they are drawn, and the one that is open - the others are closed, and the body of a closed one is hidden
+const blockIds = function() { return dialogContent().querySelectorAll('.builder-block').map( function( part ) { return part.id.replace( 'builder-block-', '' ) } ) };
+const openBlock = function() { return dialogContent().querySelectorAll('.builder-block-body').filter( function( body ) { return body.hidden === false } ).map( function( body ) { return body.id.replace( 'builder-body-', '' ) } ).join() };
+// The head of a block: its button, and what it says of the element - nothing where the block is on its defaults
+const headOf = function( id ) { return screen.getElementById( 'builder-head-'+ id ) };
+const saysOf = function( id ) { return headOf( id ).querySelector('.builder-block-says') };
+// The sentence a field has to say, behind the question mark that stands in its row - null for a field that has none
+const tipOf = function( control ) {
+	const row = control.el.closest('.builder-row');
+	return row === null || row.querySelector('.builder-help-tip') === null ? null : row.querySelector('.builder-help-tip').textContent;
+};
 
 // The tab that is shown: the one whose pane is not hidden
 const shownTab = function( strip, prefix ) {
@@ -1088,7 +1115,7 @@ model = page();
 check( 'delete takes a section, a column or a component out', builder._remove( model, [ 1, 1, 0 ] ) === true && model.blocks[1].cols[1].components.length === 3
 	&& builder._remove( model, [ 2 ] ) === true && model.blocks.length === 3 && builder._remove( model, [ 0, 0 ] ) === true && model.blocks[0].cols.length === 0 && builder._remove( model, [ 9 ] ) === false && builder._remove( model, [] ) === false );
 model = page();
-check( '...a loop is not taken out like that: it is set to Static in the Loop tab of its column, and the components stay', builder._remove( model, [ 1, 1, 'x' ] ) === false && model.blocks[1].cols[1].stack !== null && model.blocks[1].cols[1].components.length === 4
+check( '...a loop is not taken out like that: it is set to Static in the properties of its column, and the components stay', builder._remove( model, [ 1, 1, 'x' ] ) === false && model.blocks[1].cols[1].stack !== null && model.blocks[1].cols[1].components.length === 4
 	&& builder._remove( model, [ 1, 0, 'x' ] ) === false && builder._remove( model, [ 0, 5, 'x' ] ) === false && model.blocks[1].cols.length === 2 );
 
 console.log( '\nThe tools of a frame' );
@@ -1101,7 +1128,7 @@ check( '...a block of html has no tool of its own to edit it as HTML+: its setti
 check( '...a column and a component move inside their level: the first of two cannot go up, the last cannot go down', builder._toolbar( model, [ 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 0 ] ).down === true && builder._toolbar( model, [ 1, 1 ] ).down === false
 	&& builder._toolbar( model, [ 1, 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 1, 3 ] ).down === false && builder._toolbar( model, [ 1, 1, 3 ] ).up === true && builder._toolbar( model, [ 1, 1, 0 ] ).html === null );
 check( '...the only column of a section is not deleted: a section has one at least', builder._toolbar( model, [ 0, 0 ] ).delete === false && builder._toolbar( model, [ 1, 0 ] ).delete === true && builder._toolbar( model, [ 0, 0, 0 ] ).delete === true );
-check( '...a loop is no frame and has no tools: it is set in the Loop tab of its column', builder._toolbar( model, [ 1, 1, 'x' ] ) === null );
+check( '...a loop is no frame and has no tools: it is set in the properties of its column', builder._toolbar( model, [ 1, 1, 'x' ] ) === null );
 check( '...the template has no tools, and a path the model has nothing at has none to use', builder._toolbar( model, [] ) === null && builder._toolbar( model, [ 9, 0, 0 ] ).up === false && builder._toolbar( model, [ 9, 0, 0 ] ).delete === false );
 
 check( 'what a frame holds that a delete would take with it: the components of a column and its loop, all of a section - a loop holds nothing of its own, it is the column\'s', builder._children( model, [ 0 ] ) === 3 && builder._children( model, [ 1 ] ) === 7 && builder._children( model, [ 0, 0 ] ) === 3
@@ -1427,9 +1454,9 @@ check( '...its title carries the status as well, since in a narrow column the te
 	const german = /^\s*'\[\[\/_admin\/builder\/menu\/loop\]\]'\s*=>\s*'(.*)',\s*$/m.exec( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ) );
 	return loopItem().title === 'Settings of the loop: '+ loopItem().textContent && words['/_admin/builder/menu/loop'].split('%s').length === 2 && german !== null && german[1].split('%s').length === 2;
 } )() );
-check( '...and the loop is set in the Loop tab of the column: the status opens the column dialog on it', ( function() {
+check( '...and the loop is set in the properties of the column: the status opens the column dialog on it', ( function() {
 	loopItem().click();
-	const opened = dialogBox().open === true && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' && dialogText('builder-dialog-kind') === 'Column of "services"' && builder._same( builder._sel, [ 1, 1, 'x' ] );
+	const opened = dialogBox().open === true && openBlock() === 'properties' && dialogText('builder-dialog-kind') === 'Column of "services"' && builder._same( builder._sel, [ 1, 1, 'x' ] );
 	dialogBox().open = false;
 	return opened;
 } )() );
@@ -1449,7 +1476,7 @@ check( '...and a component is chosen in a lightbox, which opens in the dialog an
 
 	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offeredAt( [ 0, 0 ] ) === belonging( 'hero' ) && offeredAt( [ 1, 0 ] ) === belonging( 'section' )
 		&& offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === Object.keys( registryFixture.components ).length
-		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && screen.getElementById('builder-dialog-tabs').hidden === true;
+		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && dialogContent().querySelector('.builder-blocks') === null;
 } )() );
 check( '...the lightbox is in groups, each with a heading: what the kernel and the modules of a project registered by the group its schema names - the words of the registry, in the order the lightbox lists them - and then the Features for what a feature registered, each in the order of the registry; a group with nothing in it is not drawn, and a feature has a heading of its own where there is more than one', ( function() {
 
@@ -1617,14 +1644,14 @@ check( '...the words of the titles have a place for the alignment in both langua
 		return words['/_admin/builder/preview/'+ word].split('%s').length === 2 && found !== null && found[1].split('%s').length === 2;
 	} );
 } )() );
-check( '...a click on it opens the dialog of the column on its Layout tab, with the column selected', ( function() {
+check( '...a click on it opens the dialog of the column on its block of the width and the alignment, with the column selected - wherever the dialog stood before', ( function() {
 	alignOf('1.0')[1].click();
-	const opened = dialogBox().open === true && dialogText('builder-dialog-kind') === 'Column of "services"' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' && builder._same( builder._sel, [ 1, 0 ] );
+	const opened = dialogBox().open === true && dialogText('builder-dialog-kind') === 'Column of "services"' && openBlock() === 'width' && builder._same( builder._sel, [ 1, 0 ] );
 	builder._closeDialog();
 	builder._openSettings( [ 1, 0 ] );
-	buttonOf( screen.getElementById('builder-dialog-tabs'), 'Loop' ).click();
+	headOf('properties').click();
 	alignOf('1.0')[0].click();
-	return opened && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout';
+	return opened && openBlock() === 'width';
 } )() );
 builder._closeDialog();
 
@@ -1796,9 +1823,11 @@ builder._openSettings( [ 0 ] );
 const heading = screen.getElementById('builder-dialog-heading');
 const titleName = screen.getElementById('builder-dialog-name');
 const problemLine = screen.getElementById('builder-dialog-problems');
+const idLabel = words['/_admin/builder/section/id'];
+const loopIdLabel = words['/_admin/builder/stack/id'];
 check( 'the title of the dialog of a section is the kind and the name, with the pencil right of the name', dialogText('builder-dialog-kind') === 'Section' && titleName.hidden === false && titleName.textContent === 'hero' && heading.querySelectorAll('.builder-rename').length === 1
 	&& iconOf( heading.querySelector('.builder-rename') ) === 'pencil' && heading.querySelector('.builder-rename').title === 'Rename' );
-check( '...and the form has no field for the id any more', controlsIn( dialogContent() ).filter( function( control ) { return control.label === 'Id' } ).length === 0 );
+check( '...and the form has the id as a field as well: the name is in the title and in the properties, where it is changed the same way', controlsIn( dialogContent() ).filter( function( control ) { return control.label === idLabel } ).length === 1 );
 heading.querySelector('.builder-rename').click();
 const titleField = heading.querySelector('.builder-name-input');
 check( '...the pencil turns the name into a field in the title', titleField !== null && titleField.value === 'hero' && titleName.hidden === true && titleField.parentNode === titleName.parentNode );
@@ -1821,6 +1850,76 @@ check( 'the dialogs of the other nodes have no name in their title and no pencil
 builder._openSettings( [] );
 builder._openSettings( [ 3 ] );
 check( '...and the dialog of a section has one pencil however often it is opened', heading.querySelectorAll('.builder-rename').length === 1 && titleName.textContent === 'contact' );
+console.log( '\nThe id of a section in its properties' );
+
+doc = open();
+builder._renderEditor();
+builder._lastBlock = {};
+builder._openSettings( [ 0 ] );
+builder._openBlock('properties');
+const idField = function() { return controlOf( blockOf('properties'), idLabel ) };
+const idLabels = labelList( blockOf('properties') );
+const idBefore = changes;
+check( 'the id of a section is a field of its properties, after its classes: labelled Id, marked with the setting it names, holding the id the section has - and the only field of the form with that label, the name in the title being no field', controlsIn( dialogContent() ).filter( function( control ) { return control.label === idLabel } ).length === 1
+	&& idField().kind === 'text' && idField().el.dataset.key === 'id' && idField().el.value === 'hero' && idLabels.slice( -3 ).join() === [ words['/_admin/builder/section/custom'], words['/_admin/builder/section/row-custom'], idLabel ].join() && titleName.textContent === 'hero' && saysOf('properties').textContent.indexOf('hero') === -1 );
+change( blockOf('properties'), idLabel, 'Not A Slug' );
+check( 'a name that will not do is said where the pencil says it - in the dialog, which stays open - and the field has the id the section has again: nothing is renamed and nothing is asked', problemLine.hidden === false && problemLine.textContent === words['/_admin/builder/error/id-slug'] && idField().el.value === 'hero'
+	&& builder._doc.model.blocks[0].id === 'hero' && questions.length === 0 && dialogBox().open === true );
+change( blockOf('properties'), idLabel, 'contact' );
+check( '...nor is the id another section has', problemLine.textContent === words['/_admin/builder/error/id-taken'] && idField().el.value === 'hero' && builder._doc.model.blocks[0].id === 'hero' && questions.length === 0 );
+change( blockOf('properties'), idLabel, 'hero' );
+check( '...and the id the section has is no change and no complaint: what was said is gone', problemLine.hidden === true && questions.length === 0 && changes === idBefore );
+idField().el.value = 'typed-then-escape';
+const idEscape = pressKey( idField().el, 'Escape' );
+check( 'Escape in the field puts the id the section has back and stays in the field, as the pencil\'s field does: nothing is renamed, nothing is asked, the dialog stays open and the Escape does not reach it - and with the id as it is, an Escape is left to the dialog',
+	idEscape.defaultPrevented === true && idEscape.stopped === true && idField().el.value === 'hero' && builder._doc.model.blocks[0].id === 'hero' && questions.length === 0 && dialogBox().open === true
+	&& pressKey( idField().el, 'Escape' ).defaultPrevented === false );
+change( blockOf('properties'), idLabel, 'top' );
+check( 'a name that will do asks what the pencil asks, since the keys and slots of the section move with its name - and nothing is renamed until it is answered: the section, the title and the field have the id they had',
+	questions.length === 1 && questions[0].message === words['/_admin/builder/confirm/rename'].replace( '%s', 'hero' ).replace( '%s', 'top' ) && questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'rename,cancel'
+	&& builder._doc.model.blocks[0].id === 'hero' && titleName.textContent === 'hero' && idField().el.value === 'hero' && changes === idBefore );
+questions[0].onChoose( 'cancel' );
+check( '...No leaves everything as it is: the id, the title, the field and where the section was renamed from', builder._doc.model.blocks[0].id === 'hero' && builder._doc.model.blocks[0].renamedFrom === undefined && titleName.textContent === 'hero' && idField().el.value === 'hero' );
+questions = [];
+change( blockOf('properties'), idLabel, 'top' );
+questions[0].onChoose( 'rename' );
+check( '...Yes renames the section as the pencil does - it says where it was renamed from, for the server moves the keys - and the title, the field and the preview have the new name', builder._doc.model.blocks[0].id === 'top' && builder._doc.model.blocks[0].renamedFrom === 'hero' && titleName.textContent === 'top'
+	&& idField().el.value === 'top' && frameName( 0 ).textContent === 'top' && problemLine.hidden === true && changes === idBefore + 1 && builder._unsaved( builder._doc ) === true );
+questions = [];
+heading.querySelector('.builder-rename').click();
+heading.querySelector('.builder-name-input').value = 'start';
+pressKey( heading.querySelector('.builder-name-input'), 'Enter' );
+check( 'the pencil in the title and the field are one rename: what the pencil renames the field shows - the keys have not moved yet, so nothing is asked - and a second rename keeps where the first was from', questions.length === 0 && idField().el.value === 'start' && titleName.textContent === 'start' && builder._doc.model.blocks[0].id === 'start' && builder._doc.model.blocks[0].renamedFrom === 'hero' );
+builder._closeDialog();
+builder._openSettings( [ 3 ] );
+builder._openBlock('properties');
+change( blockOf('properties').querySelector('.builder-loop'), words['/_admin/builder/stack/kind'], 'sections' );
+questions = [];
+change( blockOf('properties'), idLabel, 'contact-us' );
+questions[0].onChoose( 'rename' );
+check( 'the id of the loop that makes the sections is the id of the section, and shows the new one once the section is renamed: it is drawn again', builder._doc.model.blocks[3].id === 'contact-us' && controlOf( blockOf('properties').querySelector('.builder-loop'), loopIdLabel ).el.value === 'contact-us' && idField().el.value === 'contact-us' && titleName.textContent === 'contact-us' );
+builder._closeDialog();
+builder._addSection();
+questions = [];
+builder._openSettings( [ 4 ] );
+builder._openBlock('properties');
+change( blockOf('properties'), idLabel, 'faq' );
+check( 'a section made here that holds no key is renamed at once through the field, without a question: the title, the field and the preview have the name, and nothing is said of where it was renamed from', questions.length === 0 && builder._doc.model.blocks[4].id === 'faq' && builder._doc.model.blocks[4].renamedFrom === undefined && builder._fresh.faq === true
+	&& titleName.textContent === 'faq' && idField().el.value === 'faq' && frameName( 4 ).textContent === 'faq' );
+builder._closeDialog();
+builder._addComponent( [ 4, 0 ], 'title' );
+builder._closeDialog();
+builder._openSettings( [ 4 ] );
+builder._openBlock('properties');
+questions = [];
+change( blockOf('properties'), idLabel, 'questions' );
+check( '...one that holds a key is asked as a saved one is and, answered, its sources are written new under the new name - nothing is moved that was never made', ( function() {
+	const asked = questions.length === 1;
+	questions[0].onChoose( 'rename' );
+	const component = builder._doc.model.blocks[4].cols[0].components[0];
+	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && builder._fresh.questions === true && idField().el.value === 'questions' && titleName.textContent === 'questions';
+} )() );
+builder._closeDialog();
 console.log( '\nThe dialog of the template' );
 
 doc = open();
@@ -1831,12 +1930,12 @@ const templateBody = dialogContent();
 const templateKeep = function( model ) { return JSON.stringify( [ model.animate, model.vpa, model.vpaSpeed, model.wrapClass ] ) };
 const fold = templateBody.querySelector('details');
 check( 'the dialog of the template has no tabs and no name in its title; its fields are in groups under their headings: General, Frames, Viewport animation - and, folded away in the last, the kind of animation for this template', dialogText('builder-dialog-kind') === 'Template' && screen.getElementById('builder-dialog-name').hidden === true
-	&& screen.getElementById('builder-dialog-tabs').hidden === true && titlesIn( templateBody ) === 'General,Frames,Viewport animation,Kind for this template' && fold.localName === 'details' && fold.hasAttribute('open') === false && fold.open === false
+	&& dialogContent().querySelector('.builder-blocks') === null && titlesIn( templateBody ) === 'General,Frames,Viewport animation,Kind for this template' && fold.localName === 'details' && fold.hasAttribute('open') === false && fold.open === false
 	&& fold.parentNode.parentNode.querySelector('.builder-group-title').textContent === 'Viewport animation' && fold.querySelector('summary').textContent === 'Kind for this template' );
-check( '...the fields in the groups: the name and the file, the header and the footer on a line, the switch of the animation, and in the fold the effect, its strength and the speed', labelsIn( templateBody ) === 'Name,File,Header,Footer,Animate the sections,Effect,Strength,Speed'
-	&& templateBody.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2' && fold.querySelectorAll('.builder-line').length === 1 && labelsIn( fold ) === 'Effect,Strength,Speed' );
+check( '...the fields in the groups: the name and the file, the header and the footer, the switch of the animation, and in the fold the effect, its strength and the speed - one under the other', labelsIn( templateBody ) === 'Name,File,Header,Footer,Animate the sections,Effect,Strength,Speed'
+	&& templateBody.querySelectorAll('.builder-line').length === 0 && labelsIn( fold ) === 'Effect,Strength,Speed' );
 check( '...the file is text that cannot be changed, with the slug the text keys of the page are made of in its hint; the name is a field', controlOf( templateBody, 'File' ).el.readOnly === true && valueAt( templateBody, 'File' ) === 'page-home.tpl' && controlOf( templateBody, 'Name' ).el.readOnly === false && valueAt( templateBody, 'Name' ) === 'Home'
-	&& controlOf( templateBody, 'File' ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'The slug is "home". The name of the file is the category of the text keys of the page (/template/page-home/...), so it does not change.' );
+	&& tipOf( controlOf( templateBody, 'File' ) ) === 'The slug is "home". The name of the file is the category of the text keys of the page (/template/page-home/...), so it does not change.' );
 check( '...the effect is a select with words - the plain one first, the others in the order of Nino.css, the four slides named for the motion the visitor sees: slide-left starts at a positive translateX, to the right of its place, and ends at 0, so it slides left; slide-up starts below its place and slides up -, the strength a group of radio buttons, the speed a select whose first word is the frame', controlOf( templateBody, 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
 	=== '=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,slide-up=Slides up,slide-down=Slides down,flip=Flip,blur=Blur'
 	&& controlOf( templateBody, 'Speed' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like the frame,fast=Fast,medium=Medium,slow=Slow'
@@ -1927,119 +2026,103 @@ console.log( '\nThe dialog of a section' );
 
 doc = open();
 builder._renderEditor();
+builder._lastBlock = {};
 builder._openSettings( [ 0 ] );
 const settingsOf = function() { return builder._doc.model.blocks[0].settings };
-const stripOf = function() { return screen.getElementById('builder-dialog-tabs') };
-const tabIds = function() { return dialogTabs().map( function( tab ) { return tab[0] } ) };
-check( 'the dialog of a section has six tabs, by their ids in this order: the section, its grid row, its background, its loop, its animation and its classes - each named by the words of its own key', JSON.stringify( tabIds() ) === '["section","row","background","loop","animation","custom"]'
-	&& dialogTabs().every( function( tab ) { return tab[1] === words['/_admin/builder/tab/'+ tab[0]] && tab[1] !== '' } ) && stripOf().hidden === false );
-check( '...the tabs are tabs of a tab list and the panes are tab panels they name: a tab controls its pane, a pane is labelled by its tab, and the first is chosen and shown', stripOf().getAttribute('role') === 'tablist' && stripOf().querySelectorAll('[role="tab"]').every( function( tab ) {
-	const pane = screen.getElementById( tab.getAttribute('aria-controls') );
-	return pane !== null && pane.getAttribute('role') === 'tabpanel' && pane.getAttribute('aria-labelledby') === tab.id && dialogContent().contains( pane );
-} ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false' && shownTab( stripOf(), 'builder' ) === 'section'
-	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1,-1,-1' );
-buttonOf( stripOf(), words['/_admin/builder/tab/background'] ).click();
-check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,false,true,false,false,false'
-	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,-1,0,-1,-1,-1' );
-buttonOf( stripOf(), words['/_admin/builder/tab/row'] ).click();
-check( '...the Grid row is a tab of its own: pressed, it shows its pane and hides the section\'s', shownTab( stripOf(), 'builder' ) === 'row' && paneOf('row').hidden === false && paneOf('section').hidden === true );
-buttonOf( stripOf(), words['/_admin/builder/tab/section'] ).click();
-
 const word = function( key ) { return words['/_admin/builder/'+ key] };
-const sectionTab = paneOf('section');
+// The name a select of the box of the spacing has: its side and whether it is outside or inside
+const sideLabel = function( side, place ) { return word('section/spacing-cell').replace( '%s', word('section/'+ side) ).replace( '%s', word('spacing/'+ place) ) };
+const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
+const stepsOf = function( box ) { return box.querySelectorAll('select').map( function( select ) { return select.dataset.key } ).join() };
+
+check( 'the dialog of a section has the blocks the table has for it, in the order of the table - the ids and how many - and no strip of tabs: surface, spacing, width and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ) )
+	&& blockIds().join() === 'surface,spacing,width,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
+check( '...every block is named by the words of its own key: a head that is a button with the name in it - and no block but the first has what it says of the element in front of the name', blockIds().every( function( id ) {
+	return headOf( id ).localName === 'button' && headOf( id ).querySelector('.builder-block-name').textContent === word('block/'+ id+ '/label') && word('block/'+ id+ '/label') !== '';
+} ) );
+check( '...the blocks are an accordion: the head controls its body and says whether it is open, the body is a region the head names, and exactly one block is open - the first where no other was open before', blockIds().every( function( id ) {
+	const body = blockOf( id );
+	return headOf( id ).getAttribute('aria-controls') === body.id && body.getAttribute('role') === 'region' && body.getAttribute('aria-labelledby') === headOf( id ).id && dialogContent().contains( body );
+} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false' && openBlock() === 'surface'
+	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true' );
+headOf('width').click();
+const pressed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
+headOf('width').click();
+const closed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
+headOf('surface').click();
+check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,true,false' && closed === '/false,false,false,false' && openBlock() === 'surface' );
+// The controls the table lists for a block, as the dialog has drawn them, and the keys they write
+const heldIn = function( id ) { return builder._dialogBlocks.parts[id].spec.held };
+const keysHeld = function( id ) { return Array.from( new Set( [].concat( ...heldIn( id ).map( function( control ) { return control.keys } ) ) ) ) };
+const keysDrawn = function( id ) { return Array.from( new Set( blockOf( id ).all().filter( function( el ) { return el.dataset.key !== undefined } ).map( function( el ) { return el.dataset.key } ) ) ) };
+check( '...the table says what each block holds: what is drawn in a block is marked with keys of the controls the table lists for it, and a control that has keys of its own draws them - the corners are one toggle, of the row where the background stands inside and of the cover otherwise', ( function() {
+	const within = blockIds().every( function( id ) { return keysDrawn( id ).every( function( key ) { return keysHeld( id ).indexOf( key ) !== -1 } ) } );
+	const drawn = [ 'color', 'border', 'borderPrimary', 'background', 'cover', 'parallax', 'dim', 'inner', 'padded', 'radius', 'rowBgPl', 'rowBgPr', 'arrow' ].every( function( key ) { return keysDrawn('surface').indexOf( key ) !== -1 } );
+	const corners = function( inner ) { settingsOf().inner = inner; redrawBlocks(); return keysDrawn('surface').filter( function( key ) { return key === 'radius' || key === 'rowRadius' } ).join() };
+	const both = [ corners( false ), corners( true ) ];
+	settingsOf().inner = false;
+	redrawBlocks();
+	return within === true && drawn === true && both.join() === 'radius,rowRadius';
+} )() );
+
 const coverLabel = word('section/cover');
 const heightLabel = word('section/cover-height');
 const paddedLabel = word('section/padded');
 const radiusLabel = word('common/radius-alt');
 const placeLabel = word('section/content-pos');
-const cellLabel = function( side, kind ) { return word('section/spacing-cell').replace( '%s', word('section/'+ side) ).replace( '%s', word('section/'+ kind) ) };
-check( 'Section: the whitespace, the spacing as a table - margin and padding above and below - and the cover with its height, whether it is padded, the toggle of its radius and the place of its content, in this order and nothing else: the width and the alignments are in the tab of the row',
-	JSON.stringify( labelList( sectionTab ) ) === JSON.stringify( [ word('section/whitespace'), cellLabel( 'above', 'outer' ), cellLabel( 'above', 'inner' ), cellLabel( 'below', 'outer' ), cellLabel( 'below', 'inner' ), coverLabel, heightLabel, paddedLabel, radiusLabel, placeLabel ] )
-	&& JSON.stringify( controlsIn( sectionTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'select', 'select', 'select', 'select', 'switch', 'number', 'switch', 'switch', 'select' ] ) );
-check( '...the spacing is a table: Margin and Padding over the columns, Above and Below at the head of the rows, a select of 0 to 6 in each cell - with the word of the cell for its label', ( function() {
-	const table = sectionTab.querySelector('table');
-	const heads = table.querySelectorAll('thead th');
-	const rows = table.querySelectorAll('tbody tr');
-	return texts( heads ) === 'Spacing,Margin,Padding' && heads.every( function( head ) { return head.getAttribute('scope') === 'col' } ) && rows.length === 2 && rows.map( function( row ) { return row.querySelector('th').textContent } ).join() === 'Above,Below'
-		&& rows.every( function( row ) { return row.querySelector('th').getAttribute('scope') === 'row' && row.querySelectorAll('select').length === 2 } )
-		&& texts( table.querySelector('select').children ) === 'Default,0,1,2,3,4,5,6' && table.querySelector('select').children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6';
-} )() );
-check( '...and each cell writes its own setting: above the margin and the padding, below the margin and the padding - the section\'s own, the row\'s are in the other tab', ( function() {
-	const before = changes;
-	change( sectionTab, cellLabel( 'above', 'outer' ), '3' );
-	change( sectionTab, cellLabel( 'above', 'inner' ), '1' );
-	change( sectionTab, cellLabel( 'below', 'outer' ), '5' );
-	change( sectionTab, cellLabel( 'below', 'inner' ), '2' );
-	return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() === '3,1,5,2' && valueAt( sectionTab, cellLabel( 'below', 'outer' ) ) === '5' && changes === before + 4
-		&& [ settingsOf().rowPt, settingsOf().rowPb ].join() === ',';
-} )() );
+const offsetLabel = function( side ) { return word('section/spacing-cell').replace( '%s', word('section/offset') ).replace( '%s', word('section/'+ side) ) };
+const surface = function() { return blockOf('surface') };
+check( 'Surface: the colour, the line with its strength and the switch for the brand colour, the picture with the upload, its alt text and its focus, the cover and its height, the parallax, the scrim, the background inside, the frame of a cover, the corners, the offset of the picture at the sides and the arrow - one column, one field under the other, in this order and nothing else',
+	JSON.stringify( labelList( surface() ) ) === JSON.stringify( [ word('section/color'), word('section/border'), word('section/border-primary'), word('picture/upload'), 'Alt text (English (US))', word('source/no-focus'), word('source/focus'), coverLabel, heightLabel,
+		word('section/parallax'), word('section/dim'), word('section/inner-background'), paddedLabel, radiusLabel, offsetLabel('left'), offsetLabel('right'), word('section/arrow') ] )
+	&& controlsIn( surface() ).map( function( control ) { return control.kind } ).join() === 'select,select,switch,text,text,switch,group,switch,number,switch,switch,switch,switch,switch,select,select,box'
+	&& surface().querySelector('.builder-line') === null && surface().querySelector('table') === null );
+check( '...the hero opens with the cover on, 100 in the number and the corners of the cover asleep - the cover has no room of the page around it - and the sentence the cover has to say is behind its question mark, not under it', valueAt( surface(), coverLabel ) === true && String( valueAt( surface(), heightLabel ) ) === '100'
+	&& controlOf( surface(), heightLabel ).el.disabled === false && controlOf( surface(), radiusLabel ).el.disabled === true && tipOf( controlOf( surface(), coverLabel ) ) === word('hint/cover') && controlOf( surface(), coverLabel ).el.closest('label').querySelector('small') === null );
+check( '...the head of the surface says what the hero has that is not the default: its colour, that it has a picture, the cover with its height, the scrim and the arrow - and none of what is off', saysOf('surface').textContent === [ builder._optionLabel( 'color', 'black' ), word('source/background-image'), coverLabel+ ' 100 %', word('section/dim'), word('section/arrow') ].join(' · ')
+	&& saysOf('surface').hidden === false );
 
-check( 'the cover is one line of five fields: a switch, its height in percent of the window\'s beside it, whether it keeps the room of the page around it, the toggle of its radius, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', screen.getElementById('builder-cover-line').children.length === 5
-	&& controlOf( sectionTab, coverLabel ).kind === 'switch' && controlOf( sectionTab, heightLabel ).kind === 'number' && controlOf( sectionTab, placeLabel ).kind === 'select'
-	&& valueAt( sectionTab, coverLabel ) === true && String( valueAt( sectionTab, heightLabel ) ) === '100' && controlOf( sectionTab, heightLabel ).el.disabled === false && valueAt( sectionTab, placeLabel ) === '' && controlOf( sectionTab, placeLabel ).el.disabled === false );
-check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch says what it is for under its name, the number and the place do not', controlOf( sectionTab, placeLabel ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
-	&& controlOf( sectionTab, coverLabel ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( sectionTab, placeLabel ).el.closest('label').querySelector('.nino-admin-hint') === null
-	&& controlOf( sectionTab, heightLabel ).el.closest('label').querySelector('small') === null && controlOf( sectionTab, paddedLabel ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/padded'] );
-
-// The grid row: what it says of itself, by the words of the panel - the controls are found by their labels, and the labels are the texts of their keys
-const rowTab = paneOf('row');
-const rowLines = function() { return rowTab.children.filter( function( child ) { return child.classList.contains('builder-line') } ) };
-const space = '='+ word('option/space-default')+ ',0=0,1=1,2=2,3=3,4=4,5=5,6=6';
-check( 'Grid row: the maximum width and the place of the row on one line, the padding on the sides and the padding above and below on the next - two pairs of two selects -, the alignment of its columns and of its text on the last, and under the lines the toggle of the radius of what the row paints: three lines, nine controls',
-	JSON.stringify( labelList( rowTab ) ) === JSON.stringify( [ word('section/row'), word('section/row-place'), word('section/left'), word('section/right'), word('section/above'), word('section/below'), word('section/row-align'), word('section/text'), radiusLabel ] )
-	&& JSON.stringify( controlsIn( rowTab ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'group', 'select', 'select', 'select', 'select', 'group', 'group', 'switch' ] )
-	&& rowLines().length === 3 && rowLines().map( function( line ) { return line.children.length } ).join() === '2,2,2' && rowLines()[0].contains( controlOf( rowTab, word('section/row') ).el ) && rowLines()[0].contains( controlOf( rowTab, word('section/row-place') ).el )
-	&& rowLines()[0].classList.contains('builder-line-top') );
-check( '...the maximum width is a select of four: the grid\'s own, which is the default, narrow, wide and none at all - and it opens on what the section says', controlOf( rowTab, word('section/row') ).el.children.length === 4
-	&& optionsOf( rowTab, word('section/row') ) === '='+ word('option/row-default')+ ',narrow='+ word('option/row-narrow')+ ',wide='+ word('option/row-wide')+ ',full='+ word('option/row-full') && valueAt( rowTab, word('section/row') ) === 'wide' );
-check( '...the place of the row is a row of three buttons, the left, the middle - which is none - and the right, in the order they are seen, with the words of the panel, and it opens on the middle',
-	rowOf( rowTab, word('section/row-place') ) === 'left:'+ word('option/row-place-left')+ ':,:'+ word('option/row-place-default')+ ':,right:'+ word('option/row-place-right')+ ':' && valueAt( rowTab, word('section/row-place') ) === ''
-	&& controlOf( rowTab, word('section/row-place') ).el.closest('.builder-segment-field').querySelector('.nino-admin-hint').textContent === word('hint/row-place') );
-check( '...the width and the place are written as they are chosen, and the place sleeps while the width is none at all - the buttons are out of reach, and the model keeps the place it holds - and wakes with any other width', ( function() {
-	const place = function() { return radiosOf( controlOf( rowTab, word('section/row-place') ).el ) };
-	const states = function() { return place().map( function( radio ) { return radio.disabled } ).join() };
-	change( rowTab, word('section/row-place'), 'right' );
-	const placed = settingsOf().rowPlace === 'right' && states() === 'false,false,false';
-	change( rowTab, word('section/row'), 'full' );
-	const asleep = settingsOf().row === 'full' && states() === 'true,true,true' && change( rowTab, word('section/row-place'), 'left' ) === false && settingsOf().rowPlace === 'right' && valueAt( rowTab, word('section/row-place') ) === 'right';
-	change( rowTab, word('section/row'), 'narrow' );
-	const awake = settingsOf().row === 'narrow' && states() === 'false,false,false' && ( change( rowTab, word('section/row-place'), 'left' ), settingsOf().rowPlace === 'left' );
-	change( rowTab, word('section/row'), '' );
-	change( rowTab, word('section/row-place'), '' );
-	return placed && asleep && awake && settingsOf().row === '' && settingsOf().rowPlace === '' && valueAt( rowTab, word('section/row') ) === '';
+const widthBody = function() { return blockOf('width') };
+check( 'Width and alignment: the width of the row as three choices with an icon each, the maximum width it may have, where a narrower row stands, the alignment of the text and of the columns and the place of the content of a cover - one column, in this order',
+	JSON.stringify( labelList( widthBody() ) ) === JSON.stringify( [ word('section/width'), word('section/row'), word('section/row-place'), word('section/text'), word('section/row-align'), placeLabel ] )
+	&& controlsIn( widthBody() ).map( function( control ) { return control.kind } ).join() === 'group,select,group,group,group,select' && widthBody().querySelector('.builder-line') === null );
+check( '...the width is the width of the content, the full width of the page or to its edge: three buttons with an icon each and their words for title and label, and the hero - whose row has a maximum width - opens on the content', rowOf( widthBody(), word('section/width') ) === 'content:'+ word('option/width-content')+ ':width-content,full:'+ word('option/width-full')+ ':width-full,edge:'+ word('option/width-edge')+ ':width-edge'
+	&& valueAt( widthBody(), word('section/width') ) === 'content' && unnamed( widthBody() ).length === 0 && iconsKnown( widthBody() ) );
+check( '...the maximum width is a select of three - the grid\'s own, which is the default, narrow and wide - and it opens on what the section says', optionsOf( widthBody(), word('section/row') ) === '='+ word('option/row-default')+ ',narrow='+ word('option/row-narrow')+ ',wide='+ word('option/row-wide') && valueAt( widthBody(), word('section/row') ) === 'wide' );
+check( '...the place of the row is a row of three buttons, the left, the middle - which is none - and the right, in the order they are seen, with the words of the panel, and it opens on the middle; what it says is behind its question mark',
+	rowOf( widthBody(), word('section/row-place') ) === 'left:'+ word('option/row-place-left')+ ':,:'+ word('option/row-place-default')+ ':,right:'+ word('option/row-place-right')+ ':' && valueAt( widthBody(), word('section/row-place') ) === ''
+	&& tipOf( controlOf( widthBody(), word('section/row-place') ) ) === word('hint/row-place') );
+check( '...the width writes the row: the content width leaves the maximum width as it is, the full width takes it away, and to the edge takes it away and has no padding at the sides - the padding of the row at the left and the right is what the box of the row under spacing draws as well', ( function() {
+	const state = function() { return [ settingsOf().row, settingsOf().rowPl, settingsOf().rowPr ].join('/') };
+	const at = function( width ) { change( widthBody(), word('section/width'), width ); return state()+ ':'+ valueAt( widthBody(), word('section/width') ) };
+	const first = state();
+	const kept = at( 'content' );
+	const edge = at( 'edge' );
+	const full = at( 'full' );
+	const content = at( 'content' );
+	const edgeAgain = at( 'edge' );
+	const contentAgain = at( 'content' );
+	return first === 'wide//' && kept === 'wide//:content' && edge === 'full/0/0:edge' && full === 'full//:full' && content === '//:content' && edgeAgain === 'full/0/0:edge' && contentAgain === '//:content';
 } )() );
-check( '...a row that is none at all opens with the place asleep, and a dialog that is drawn again wakes it with any other width', ( function() {
-	settingsOf().row = 'full';
-	builder._refreshTab('row');
-	const asleep = radiosOf( controlOf( rowTab, word('section/row-place') ).el ).every( function( radio ) { return radio.disabled === true } ) && valueAt( rowTab, word('section/row') ) === 'full';
-	settingsOf().row = 'wide';
-	builder._refreshTab('row');
-	return asleep && radiosOf( controlOf( rowTab, word('section/row-place') ).el ).every( function( radio ) { return radio.disabled === false } ) && valueAt( rowTab, word('section/row') ) === 'wide';
+settingsOf().row = 'wide';
+redrawBlocks();
+check( '...the place of the row sleeps while the row has no maximum width, whatever it is the width of - the buttons are out of reach and the model keeps the place it holds - and so does the maximum width itself: they are for a row that is as wide as its content', ( function() {
+	const place = function() { return radiosOf( controlOf( widthBody(), word('section/row-place') ).el ) };
+	const states = function() { return place().map( function( radio ) { return radio.disabled } ).join() + '|' + controlOf( widthBody(), word('section/row') ).el.disabled };
+	change( widthBody(), word('section/row-place'), 'right' );
+	const placed = settingsOf().rowPlace === 'right' && states() === 'false,false,false|false';
+	change( widthBody(), word('section/width'), 'full' );
+	const asleep = states() === 'true,true,true|true' && change( widthBody(), word('section/row-place'), 'left' ) === false && settingsOf().rowPlace === 'right' && valueAt( widthBody(), word('section/row-place') ) === 'right';
+	change( widthBody(), word('section/width'), 'content' );
+	change( widthBody(), word('section/row'), 'narrow' );
+	const awake = settingsOf().row === 'narrow' && states() === 'false,false,false|false' && ( change( widthBody(), word('section/row-place'), 'left' ), settingsOf().rowPlace === 'left' );
+	change( widthBody(), word('section/row'), 'wide' );
+	change( widthBody(), word('section/row-place'), '' );
+	return placed && asleep && awake && settingsOf().row === 'wide' && settingsOf().rowPlace === '' && valueAt( widthBody(), word('section/row') ) === 'wide';
 } )() );
-check( '...the padding is two pairs of selects, each a group under its name and with a hint under it for both - on the sides, the left and the right, and above and below -, the steps of the space scale and the default in every one', ( function() {
-	const pairs = rowTab.querySelectorAll('.builder-pair');
-	return pairs.length === 2 && pairs.map( function( pair ) { return pair.getAttribute('role')+ ':'+ pair.getAttribute('aria-label') } ).join() === 'group:'+ word('section/row-padding-horizontal')+ ',group:'+ word('section/row-padding-vertical')
-		&& pairs.every( function( pair ) { return pair.querySelectorAll('select').length === 2 } ) && pairs.map( function( pair ) { return pair.querySelector('.nino-admin-hint').textContent } ).join() === word('hint/row-padding-horizontal')+ ','+ word('hint/row-padding-vertical')
-		&& rowLines()[1].children.length === 2 && rowLines()[1].children.every( function( child ) { return pairs.indexOf( child ) !== -1 } ) && rowLines()[1].classList.contains('builder-line-pairs')
-		&& [ 'section/left', 'section/right', 'section/above', 'section/below' ].every( function( key ) { return optionsOf( rowTab, word( key ) ) === space } );
-} )() );
-check( '...and each select writes its own setting - the left, the right, above and below of the row, and none of the section\'s own padding - and the default is none', ( function() {
-	const own = function() { return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() };
-	const before = [ own(), changes ];
-	change( rowTab, word('section/left'), '0' );
-	change( rowTab, word('section/right'), '2' );
-	change( rowTab, word('section/above'), '4' );
-	change( rowTab, word('section/below'), '6' );
-	const written = [ settingsOf().rowPl, settingsOf().rowPr, settingsOf().rowPt, settingsOf().rowPb ].join() === '0,2,4,6' && valueAt( rowTab, word('section/right') ) === '2' && own() === before[0] && changes === before[1] + 4;
-	change( rowTab, word('section/left'), '' );
-	change( rowTab, word('section/right'), '' );
-	change( rowTab, word('section/above'), '' );
-	change( rowTab, word('section/below'), '' );
-	return written && [ settingsOf().rowPl, settingsOf().rowPr, settingsOf().rowPt, settingsOf().rowPb ].join() === ',,,';
-} )() );
-check( '...the alignments are two rows of icons on one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', rowLines()[2].children.length === 2 && ( function() {
-	const vertical = controlOf( rowTab, word('section/row-align') ).el;
-	const horizontal = controlOf( rowTab, word('section/text') ).el;
+check( '...the alignments are two rows of icons: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', ( function() {
+	const vertical = controlOf( widthBody(), word('section/row-align') ).el;
+	const horizontal = controlOf( widthBody(), word('section/text') ).el;
 	const options = function( group ) { return group.querySelectorAll('.builder-segment-option').map( function( option ) { return [ option.querySelector('input').value, option.title, option.querySelector('input').getAttribute('aria-label'), iconOf( option ) ].join(':') } ).join() };
 	return vertical.getAttribute('role') === 'radiogroup' && horizontal.getAttribute('role') === 'radiogroup'
 		&& options( vertical ) === ':Top:Top:align-top,middle:Middle:Middle:align-middle,bottom:Bottom:Bottom:align-bottom'
@@ -2047,16 +2130,74 @@ check( '...the alignments are two rows of icons on one line: radio buttons, each
 		&& horizontal.querySelector('.builder-segment-face').textContent === 'Inherited'
 		&& radiosOf( vertical ).every( function( radio ) { return radio.type === 'radio' && radio.name === radiosOf( vertical )[0].name } ) && radiosOf( vertical )[0].name !== radiosOf( horizontal )[0].name;
 } )() );
-check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( rowTab, word('section/row-align') ) === 'middle' && ( change( rowTab, word('section/row-align'), 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( rowTab, word('section/row-align'), '' ), settingsOf().rowAlign === '' )
-	&& valueAt( rowTab, word('section/text') ) === '' && ( change( rowTab, word('section/text'), 'center' ), settingsOf().text === 'center' ) && valueAt( rowTab, word('section/text') ) === 'center' );
+check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( widthBody(), word('section/row-align') ) === 'middle' && ( change( widthBody(), word('section/row-align'), 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( widthBody(), word('section/row-align'), '' ), settingsOf().rowAlign === '' )
+	&& valueAt( widthBody(), word('section/text') ) === '' && ( change( widthBody(), word('section/text'), 'center' ), settingsOf().text === 'center' ) && valueAt( widthBody(), word('section/text') ) === 'center' );
+change( widthBody(), word('section/text'), '' );
+change( widthBody(), word('section/row-align'), 'middle' );
+check( '...the head of the block says what is not the default - the maximum width the hero has and the alignment it has - and nothing of the width, which is the content\'s', saysOf('width').textContent === [ builder._optionLabel( 'row', 'wide' ), builder._optionLabel( 'row-align', 'middle' ) ].join(' · '));
 
-const ground = paneOf('background');
-check( 'Background: the border with the switch for the brand colour beside it, the colour, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, whether the background stands inside, the focus - and the lines hold two fields each, the switch inside one', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Border', 'In the brand colour', 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Parallax effect', 'Dim the picture', 'Background inside', 'Automatic focus', 'Manual focus' ] )
-	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,1' );
-check( '...the parallax and the dimming are two switches on one line, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off, and neither has a note under its name', controlOf( ground, 'Parallax effect' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'
-	&& controlOf( ground, 'Parallax effect' ).el.closest('.builder-line') === controlOf( ground, 'Dim the picture' ).el.closest('.builder-line') && valueAt( ground, 'Parallax effect' ) === false && valueAt( ground, 'Dim the picture' ) === true
+const spacingBody = function() { return blockOf('spacing') };
+check( 'Spacing: the whitespace of the page, then the box of the section - outside above, inside above, left, right and below, outside below - and under it, with its name, the box of its row, which has the inside alone: a box is a group of selects around a small rectangle',
+	JSON.stringify( labelList( spacingBody() ) ) === JSON.stringify( [ word('section/whitespace'), sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ),
+		sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ) ] )
+	&& boxesIn().length === 2 && boxesIn().every( function( box ) { return box.getAttribute('role') === 'group' && box.querySelector('.builder-box-frame') !== null && box.querySelector('.builder-box-core') !== null } )
+	&& boxesIn().map( function( box ) { return box.getAttribute('aria-label') } ).join() === word('tree/section')+ ','+ word('spacing/row') && boxesIn()[1].querySelector('.builder-box-name').textContent === word('spacing/row')
+	&& spacingBody().querySelector('table') === null );
+check( '...the section\'s box is the six sides of the section, in the order the Reader keeps them, and the row\'s the four inside sides of the row - each select marked with the setting it writes - and a step is none, shown as a dash, or 0 to 6', stepsOf( boxesIn()[0] ) === 'mt,pt,pl,pr,pb,mb' && stepsOf( boxesIn()[1] ) === 'rowPt,rowPl,rowPr,rowPb' && builder.SIDES.join() === 'mt,mb,pt,pb,pl,pr'
+	&& boxesIn().every( function( box ) { return box.querySelectorAll('select').every( function( select ) { return select.children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6' && select.children[0].textContent === '–' && select.children[3].textContent === '2' } ) } ) );
+check( '...each select writes its own setting, the section\'s box the section\'s and the row\'s box the row\'s - above and below outside, the four sides inside - and none of the others', ( function() {
+	const own = function() { return builder.SIDES.map( function( side ) { return settingsOf()[side] } ).join() };
+	const row = function() { return [ 'rowPt', 'rowPb', 'rowPl', 'rowPr' ].map( function( key ) { return settingsOf()[key] } ).join() };
+	const before = changes;
+	change( boxesIn()[0], sideLabel( 'above', 'outside' ), '3' );
+	change( boxesIn()[0], sideLabel( 'below', 'outside' ), '5' );
+	change( boxesIn()[0], sideLabel( 'above', 'inside' ), '1' );
+	change( boxesIn()[0], sideLabel( 'below', 'inside' ), '2' );
+	change( boxesIn()[0], sideLabel( 'left', 'inside' ), '4' );
+	change( boxesIn()[0], sideLabel( 'right', 'inside' ), '6' );
+	const section = own() === '3,5,1,2,4,6' && row() === ',,,';
+	change( boxesIn()[1], sideLabel( 'above', 'inside' ), '0' );
+	change( boxesIn()[1], sideLabel( 'below', 'inside' ), '6' );
+	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '2' );
+	change( boxesIn()[1], sideLabel( 'right', 'inside' ), '3' );
+	const sides = row() === '0,6,2,3' && own() === '3,5,1,2,4,6' && changes === before + 10 && valueAt( boxesIn()[1], sideLabel( 'left', 'inside' ) ) === '2';
+	return section && sides;
+} )() );
+check( '...the head of the block says each box that has a side set - outside above and below, then inside above, below, left and right, a dash for a side that is not set - and the row\'s with its name in front and the inside alone, and the whitespace of the page', ( function() {
+	const first = word('spacing/outside')+ ' 3/5 · '+ word('spacing/inside')+ ' 1/2/4/6';
+	const second = word('spacing/row')+ ' '+ word('spacing/inside')+ ' 0/6/2/3';
+	const both = saysOf('spacing').textContent === first+ ' · '+ second;
+	change( boxesIn()[0], sideLabel( 'left', 'inside' ), '' );
+	change( boxesIn()[0], sideLabel( 'right', 'inside' ), '' );
+	change( boxesIn()[0], sideLabel( 'above', 'inside' ), '' );
+	change( boxesIn()[0], sideLabel( 'below', 'inside' ), '' );
+	const dashes = saysOf('spacing').textContent === word('spacing/outside')+ ' 3/5 · '+ word('spacing/inside')+ ' –/–/–/– · '+ second;
+	[ 'above', 'below' ].forEach( function( side ) { change( boxesIn()[0], sideLabel( side, 'outside' ), '' ) } );
+	[ 'above', 'below', 'left', 'right' ].forEach( function( side ) { change( boxesIn()[1], sideLabel( side, 'inside' ), '' ) } );
+	return both && dashes && saysOf('spacing').textContent === '' && saysOf('spacing').hidden === true && builder.SIDES.every( function( side ) { return settingsOf()[side] === '' } );
+} )() );
+check( '...the box of the row and the width are the same two settings: the width to the edge shows the row\'s left and right at 0, and a side the box sets changes what the width says - to the edge only where both are 0 with the full width', ( function() {
+	change( widthBody(), word('section/width'), 'edge' );
+	const shown = valueAt( boxesIn()[1], sideLabel( 'left', 'inside' ) )+ valueAt( boxesIn()[1], sideLabel( 'right', 'inside' ) );
+	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '1' );
+	const moved = valueAt( widthBody(), word('section/width') );
+	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '0' );
+	const back = valueAt( widthBody(), word('section/width') );
+	change( widthBody(), word('section/width'), 'content' );
+	const cleared = valueAt( boxesIn()[1], sideLabel( 'left', 'inside' ) )+ valueAt( boxesIn()[1], sideLabel( 'right', 'inside' ) )+ settingsOf().rowPl+ settingsOf().rowPr;
+	settingsOf().row = 'wide';
+	redrawBlocks();
+	return shown === '00' && moved === 'full' && back === 'edge' && cleared === '' && settingsOf().row === 'wide';
+} )() );
+check( 'Spacing: the whitespace is a select of the four rungs around the middle, with the words of the panel - the empty one is the page\'s own, which the Design sets - and it writes the word of the one chosen; what it says is behind its question mark', optionsOf( spacingBody(), word('section/whitespace') ) === '='+ word('option/whitespace-default')+ ',least='+ word('option/whitespace-least')+ ',less='+ word('option/whitespace-less')+ ',more='+ word('option/whitespace-more')+ ',most='+ word('option/whitespace-most')
+	&& valueAt( spacingBody(), word('section/whitespace') ) === '' && ( change( spacingBody(), word('section/whitespace'), 'most' ), settingsOf().whitespace === 'most' ) && saysOf('spacing').textContent === word('section/whitespace')+ ' '+ word('option/whitespace-most').toLowerCase()
+	&& ( change( spacingBody(), word('section/whitespace'), '' ), settingsOf().whitespace === '' ) && tipOf( controlOf( spacingBody(), word('section/whitespace') ) ) === word('hint/whitespace') );
+
+const ground = dialogContent();
+check( 'the parallax and the dimming are two switches, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off - and the dimming has what it says behind its question mark, the parallax has none', controlOf( ground, 'Parallax effect' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'
+	&& valueAt( ground, 'Parallax effect' ) === false && valueAt( ground, 'Dim the picture' ) === true
 	&& controlOf( ground, 'Parallax effect' ).el.disabled === false && controlOf( ground, 'Dim the picture' ).el.disabled === false
-	&& controlOf( ground, 'Parallax effect' ).el.closest('label').querySelector('small') === null && controlOf( ground, 'Dim the picture' ).el.closest('label').querySelector('small') === null );
+	&& tipOf( controlOf( ground, 'Parallax effect' ) ) === null && tipOf( controlOf( ground, 'Dim the picture' ) ) === word('hint/dim-text') );
 check( '...the colour is a select with a patch beside it that follows the choice - and the patch is a patch of the page, not of the picture', ( function() {
 	const swatch = ground.querySelector('.builder-swatch');
 	const first = swatch.dataset.color;
@@ -2068,10 +2209,9 @@ check( '...the colour is a select with a patch beside it that follows the choice
 } )() );
 check( '...the colours and the border have words of their own, not the names of the classes of Nino.css - and the empty value of the border has its word, not the lower case none of the label', controlOf( ground, 'Background colour' ).el.children.map( function( option ) { return option.textContent } ).join() === 'Default,Alternate,Tinted,Dark,Black,Brand colour,Second colour'
 	&& controlOf( ground, 'Border' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,1=Thin,2=Medium,3=Strong' );
-check( '...the border is a strength and, beside it on the line, a switch for the brand colour: the select writes the strength, the switch the colour - two settings of the section, and neither takes the other along; a switch alone is a border of the brand colour with no strength', ( function() {
+check( '...the border is a strength and, under it, a switch for the brand colour: the select writes the strength, the switch the colour - two settings of the section, and neither takes the other along; a switch alone is a border of the brand colour with no strength', ( function() {
 
 	const state = function() { return settingsOf().border+ '/'+ settingsOf().borderPrimary };
-	const line = controlOf( ground, 'Border' ).el.closest('.builder-line');
 	const start = state();
 
 	change( ground, 'Border', '2' );
@@ -2091,7 +2231,7 @@ check( '...the border is a strength and, beside it on the line, a switch for the
 	change( ground, 'In the brand colour', false );
 	change( ground, 'Border', '' );
 
-	return start === '/false' && strength === '2/false' && both === '2/true' && alone === '/true' && state() === '/false' && line.children.length === 2 && line.children[0].contains( controlOf( ground, 'Border' ).el ) && line.children[1].contains( controlOf( ground, 'In the brand colour' ).el )
+	return start === '/false' && strength === '2/false' && both === '2/true' && alone === '/true' && state() === '/false'
 		&& controlOf( ground, 'In the brand colour' ).kind === 'switch' && valueAt( ground, 'Border' ) === '' && valueAt( ground, 'In the brand colour' ) === false;
 } )() );
 check( '...the switch waits for a strength: it takes no choice while the border is none and takes one as soon as a strength is chosen - and the model keeps what it holds, so the brand colour of a border whose strength is taken away stays on, out of reach', ( function() {
@@ -2125,7 +2265,7 @@ check( '...a brand colour with no strength, as a file may hold it, is shown as i
 	builder._closeDialog();
 	builder._openSettings( [ 0 ] );
 
-	const alone = paneOf('background');
+	const alone = dialogContent();
 	const shown = [ valueAt( alone, 'Border' ), controlOf( alone, 'In the brand colour' ).el.disabled, valueAt( alone, 'In the brand colour' ) ].join();
 	const kept = [ settingsOf().border, settingsOf().borderPrimary, changes - before ].join();
 
@@ -2141,117 +2281,118 @@ sandbox.getComputedStyle = function() {
 	return { getPropertyValue : function( property ) { return { '--color-section-dark-bg' : ' #112233 ', '--color-primary' : 'rgb(10, 20, 30)' }[property] ?? '' } };
 };
 builder._openSettings( [ 0 ] );
-change( paneOf('background'), 'Background colour', 'dark' );
-const patch = function() { return paneOf('background').querySelector('.builder-swatch').style.getPropertyValue('--builder-swatch') };
+change( dialogContent(), 'Background colour', 'dark' );
+const patch = function() { return dialogContent().querySelector('.builder-swatch').style.getPropertyValue('--builder-swatch') };
 const darkPatch = patch();
-change( paneOf('background'), 'Background colour', 'primary' );
+change( dialogContent(), 'Background colour', 'primary' );
 const primaryPatch = patch();
-change( paneOf('background'), 'Background colour', 'tint' );
-check( '...the colour of the patch is read at the time from the custom properties of Nino.css the preview has - and where the page does not know one the patch has no colour of its own, and is the neutral grey of the stylesheet', darkPatch === '#112233' && primaryPatch === 'rgb(10, 20, 30)' && patch() === '' && paneOf('background').querySelector('.builder-swatch').dataset.color === 'tint' );
+change( dialogContent(), 'Background colour', 'tint' );
+check( '...the colour of the patch is read at the time from the custom properties of Nino.css the preview has - and where the page does not know one the patch has no colour of its own, and is the neutral grey of the stylesheet', darkPatch === '#112233' && primaryPatch === 'rgb(10, 20, 30)' && patch() === '' && dialogContent().querySelector('.builder-swatch').dataset.color === 'tint' );
 delete sandbox.getComputedStyle;
 check( 'the picture behind the section: a row with the slot as text and an icon button beside it that has the source for its title and its label', ( function() {
-	const row = paneOf('background').querySelector('.builder-source');
+	const row = dialogContent().querySelector('.builder-source');
 	const button = row.querySelector('button');
 	return row.querySelector('.builder-source-caption').textContent === 'Current image slot:' && row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/background' && button.className === 'builder-icon-btn' && button.title === 'Source'
 		&& button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && row.querySelector('.builder-source-line').contains( button );
 } )() );
 
-const focusGrid = function() { return controlOf( paneOf('background'), 'Manual focus' ).el };
+const focusGrid = function() { return controlOf( dialogContent(), 'Manual focus' ).el };
 check( 'the focus of the picture is a grid of nine radio buttons in the order of Nino.css, each with its place for its label, and a switch that says there is none - the focus the section has is the one that is on', ( function() {
 	return focusGrid().getAttribute('role') === 'radiogroup' && radiosOf( focusGrid() ).map( function( radio ) { return radio.value+ '='+ radio.getAttribute('aria-label') } ).join() === '1=Top left,2=Top centre,3=Top right,4=Centre left,5=Centre,6=Centre right,7=Bottom left,8=Bottom centre,9=Bottom right'
-		&& valueAt( paneOf('background'), 'Manual focus' ) === '5' && valueAt( paneOf('background'), 'Automatic focus' ) === false && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === false } ) && focusGrid().classList.contains('is-disabled') === false;
+		&& valueAt( dialogContent(), 'Manual focus' ) === '5' && valueAt( dialogContent(), 'Automatic focus' ) === false && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === false } ) && focusGrid().classList.contains('is-disabled') === false;
 } )() );
-change( paneOf('background'), 'Manual focus', '9' );
-check( '...a place is written as its number', builder._doc.model.blocks[0].background.focus === 9 && valueAt( paneOf('background'), 'Manual focus' ) === '9' );
-change( paneOf('background'), 'Automatic focus', true );
+change( dialogContent(), 'Manual focus', '9' );
+check( '...a place is written as its number', builder._doc.model.blocks[0].background.focus === 9 && valueAt( dialogContent(), 'Manual focus' ) === '9' );
+change( dialogContent(), 'Automatic focus', true );
 check( '...no focus is null, and the grid is greyed and takes no choice while there is none', builder._doc.model.blocks[0].background.focus === null && focusGrid().classList.contains('is-disabled') && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true && radio.checked === false } )
-	&& change( paneOf('background'), 'Manual focus', '3' ) === false && builder._doc.model.blocks[0].background.focus === null );
-change( paneOf('background'), 'Automatic focus', false );
-check( '...and a focus again starts in the middle', builder._doc.model.blocks[0].background.focus === 5 && valueAt( paneOf('background'), 'Manual focus' ) === '5' && focusGrid().classList.contains('is-disabled') === false );
-change( paneOf('background'), 'Parallax effect', true );
-buttonOf( paneOf('background'), 'Remove the picture' ).click();
-check( 'the picture is taken away with its button: no background, the row says none, the focus and the button are off', builder._doc.model.blocks[0].background === null && paneOf('background').querySelector('.builder-source-current').textContent === 'none' && focusGrid().classList.contains('is-disabled')
-	&& controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === true && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
-check( '...a section that loses its picture loses the parallax and the dimming with it, and both are off and out of reach again', settingsOf().parallax === false && settingsOf().dim === false && valueAt( paneOf('background'), 'Parallax effect' ) === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
-	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && settingsOf().cover === 100 );
+	&& change( dialogContent(), 'Manual focus', '3' ) === false && builder._doc.model.blocks[0].background.focus === null );
+change( dialogContent(), 'Automatic focus', false );
+check( '...and a focus again starts in the middle', builder._doc.model.blocks[0].background.focus === 5 && valueAt( dialogContent(), 'Manual focus' ) === '5' && focusGrid().classList.contains('is-disabled') === false );
+change( dialogContent(), 'Parallax effect', true );
+buttonOf( dialogContent(), 'Remove the picture' ).click();
+check( 'the picture is taken away with its button: no background, the row says none, the focus and the button are off', builder._doc.model.blocks[0].background === null && dialogContent().querySelector('.builder-source-current').textContent === 'none' && focusGrid().classList.contains('is-disabled')
+	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === true && buttonOf( dialogContent(), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
+check( '...a section that loses its picture loses the parallax and the dimming with it, and both are off and out of reach again', settingsOf().parallax === false && settingsOf().dim === false && valueAt( dialogContent(), 'Parallax effect' ) === false && valueAt( dialogContent(), 'Dim the picture' ) === false
+	&& controlOf( dialogContent(), 'Parallax effect' ).el.disabled === true && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === true && settingsOf().cover === 100 );
 builder._openSettings( [ 1 ] );
 const sectionOne = function() { return builder._doc.model.blocks[1].settings };
-check( '...so is a section that has none to begin with, and so are its parallax and its dimming', controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true
-	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
-check( 'a section that is no cover has the switch off, a number that is empty and takes no input, and the place of its content out of reach - a parallax has the place as a cover has, and a section that is neither stands in the flow of the page', valueAt( paneOf('section'), 'Cover' ) === false && valueAt( paneOf('section'), heightLabel ) === ''
-	&& controlOf( paneOf('section'), heightLabel ).el.disabled === true && controlOf( paneOf('section'), placeLabel ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
-change( paneOf('section'), 'Cover', true );
-check( '...the cover switched on is 90 high, what Nino.ui.js makes of a cover that names no height: the model has it, the number shows it and takes input, and the place of the content wakes', sectionOne().cover === 90 && valueAt( paneOf('section'), 'Cover' ) === true
-	&& String( valueAt( paneOf('section'), heightLabel ) ) === '90' && controlOf( paneOf('section'), heightLabel ).el.disabled === false && controlOf( paneOf('section'), placeLabel ).el.disabled === false );
-change( paneOf('section'), heightLabel, 60 );
-check( '...a height typed is written', sectionOne().cover === 60 && valueAt( paneOf('section'), 'Cover' ) === true );
-check( '...and a field on its way to a number does not take the cover away: one emptied, or one out of bounds, leaves the height as it is - and once the typing is over the field says the height in force', [ '', 0, 101, -5 ].every( function( typed ) { change( paneOf('section'), heightLabel, typed ); return sectionOne().cover === 60 } ) && String( valueAt( paneOf('section'), heightLabel ) ) === '60' );
-change( paneOf('section'), placeLabel, 'bottom' );
-change( paneOf('section'), heightLabel, 150 );
-check( '...and once the typing is over a value out of bounds goes back to the height in force: 150 typed, 60 read', String( valueAt( paneOf('section'), heightLabel ) ) === '60' && sectionOne().cover === 60 );
+check( '...so is a section that has none to begin with, and so are its parallax and its dimming', controlOf( dialogContent(), 'Automatic focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( dialogContent(), 'Remove the picture' ).disabled === true
+	&& controlOf( dialogContent(), 'Parallax effect' ).el.disabled === true && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === true );
+check( 'a section that is no cover has the switch off, a number that is empty and takes no input, and the place of its content out of reach - a parallax has the place as a cover has, and a section that is neither stands in the flow of the page', valueAt( dialogContent(), 'Cover' ) === false && valueAt( dialogContent(), heightLabel ) === ''
+	&& controlOf( dialogContent(), heightLabel ).el.disabled === true && controlOf( dialogContent(), placeLabel ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
+change( dialogContent(), 'Cover', true );
+check( '...the cover switched on is 90 high, what Nino.ui.js makes of a cover that names no height: the model has it, the number shows it and takes input, and the place of the content wakes', sectionOne().cover === 90 && valueAt( dialogContent(), 'Cover' ) === true
+	&& String( valueAt( dialogContent(), heightLabel ) ) === '90' && controlOf( dialogContent(), heightLabel ).el.disabled === false && controlOf( dialogContent(), placeLabel ).el.disabled === false );
+change( dialogContent(), heightLabel, 60 );
+check( '...a height typed is written', sectionOne().cover === 60 && valueAt( dialogContent(), 'Cover' ) === true );
+check( '...and a field on its way to a number does not take the cover away: one emptied, or one out of bounds, leaves the height as it is - and once the typing is over the field says the height in force', [ '', 0, 101, -5 ].every( function( typed ) { change( dialogContent(), heightLabel, typed ); return sectionOne().cover === 60 } ) && String( valueAt( dialogContent(), heightLabel ) ) === '60' );
+change( dialogContent(), placeLabel, 'bottom' );
+change( dialogContent(), heightLabel, 150 );
+check( '...and once the typing is over a value out of bounds goes back to the height in force: 150 typed, 60 read', String( valueAt( dialogContent(), heightLabel ) ) === '60' && sectionOne().cover === 60 );
 const bottom = sectionOne().contentPos;
-change( paneOf('section'), placeLabel, 'top' );
+change( dialogContent(), placeLabel, 'top' );
 const top = sectionOne().contentPos;
-change( paneOf('section'), placeLabel, '' );
-check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( paneOf('section'), placeLabel ) === '' );
+change( dialogContent(), placeLabel, '' );
+check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( dialogContent(), placeLabel ) === '' );
 sectionOne().dim = true;
-change( paneOf('section'), 'Cover', false );
-check( 'the cover switched off is none in the model, the number is empty and out of reach, the place of the content sleeps again - and the scrim goes with the cover, as there is nothing left to dim', sectionOne().cover === null && valueAt( paneOf('section'), 'Cover' ) === false
-	&& valueAt( paneOf('section'), heightLabel ) === '' && controlOf( paneOf('section'), heightLabel ).el.disabled === true && controlOf( paneOf('section'), placeLabel ).el.disabled === true && sectionOne().dim === false );
+change( dialogContent(), 'Cover', false );
+check( 'the cover switched off is none in the model, the number is empty and out of reach, the place of the content sleeps again - and the scrim goes with the cover, as there is nothing left to dim', sectionOne().cover === null && valueAt( dialogContent(), 'Cover' ) === false
+	&& valueAt( dialogContent(), heightLabel ) === '' && controlOf( dialogContent(), heightLabel ).el.disabled === true && controlOf( dialogContent(), placeLabel ).el.disabled === true && sectionOne().dim === false );
 sectionOne().parallax = true;
 sectionOne().dim = true;
-builder._refreshTab('background');
-check( 'a parallax a template wrote without a picture, or that lost it, is not stuck: a switch that is on is in reach, and switched off it takes the scrim with it and both sleep', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
-	&& change( paneOf('background'), 'Parallax effect', false ) === true && sectionOne().parallax === false && sectionOne().dim === false
-	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+redrawBlocks();
+check( 'a parallax a template wrote without a picture, or that lost it, is not stuck: a switch that is on is in reach, and switched off it takes the scrim with it and both sleep', controlOf( dialogContent(), 'Parallax effect' ).el.disabled === false && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false
+	&& change( dialogContent(), 'Parallax effect', false ) === true && sectionOne().parallax === false && sectionOne().dim === false
+	&& controlOf( dialogContent(), 'Parallax effect' ).el.disabled === true && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === true );
 builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
-builder._refreshTab('background');
-check( 'with a picture the parallax and the dimming are both in reach, whatever the section is: the scrim is for the picture, and a plain section has one of its own as a cover and a parallax have', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
-change( paneOf('background'), 'Parallax effect', true );
-check( '...a parallax wakes the place of the content in the Layout tab, where the cover stays off, and leaves the dimming in reach', sectionOne().parallax === true && sectionOne().cover === null && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
-	&& controlOf( paneOf('section'), placeLabel ).el.disabled === false && valueAt( paneOf('section'), 'Cover' ) === false );
-change( paneOf('background'), 'Dim the picture', true );
-change( paneOf('background'), 'Parallax effect', false );
-check( '...and switched off in a section that is no cover the scrim stays - it is the section\'s own over its picture now - while the place of the content sleeps again, in the Layout tab', sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true
-	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false && controlOf( paneOf('section'), placeLabel ).el.disabled === true );
-change( paneOf('section'), 'Cover', true );
-check( '...a cover leaves the dimming in reach and the scrim as it was', sectionOne().cover === 90 && sectionOne().dim === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
-change( paneOf('background'), 'Dim the picture', true );
-change( paneOf('background'), 'Parallax effect', true );
-change( paneOf('background'), 'Parallax effect', false );
-check( '...the parallax switched off in a cover keeps the scrim, which is the cover\'s', sectionOne().cover === 90 && sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true );
-change( paneOf('background'), 'Parallax effect', true );
-change( paneOf('section'), 'Cover', false );
+redrawBlocks();
+check( 'with a picture the parallax and the dimming are both in reach, whatever the section is: the scrim is for the picture, and a plain section has one of its own as a cover and a parallax have', controlOf( dialogContent(), 'Parallax effect' ).el.disabled === false && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false );
+change( dialogContent(), 'Parallax effect', true );
+check( '...a parallax wakes the place of the content in the width block, where the cover stays off, and leaves the dimming in reach', sectionOne().parallax === true && sectionOne().cover === null && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false
+	&& controlOf( dialogContent(), placeLabel ).el.disabled === false && valueAt( dialogContent(), 'Cover' ) === false );
+change( dialogContent(), 'Dim the picture', true );
+change( dialogContent(), 'Parallax effect', false );
+check( '...and switched off in a section that is no cover the scrim stays - it is the section\'s own over its picture now - while the place of the content sleeps again, in the width block', sectionOne().parallax === false && sectionOne().dim === true && valueAt( dialogContent(), 'Dim the picture' ) === true
+	&& controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false && controlOf( dialogContent(), placeLabel ).el.disabled === true );
+change( dialogContent(), 'Cover', true );
+check( '...a cover leaves the dimming in reach and the scrim as it was', sectionOne().cover === 90 && sectionOne().dim === true && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false );
+change( dialogContent(), 'Dim the picture', true );
+change( dialogContent(), 'Parallax effect', true );
+change( dialogContent(), 'Parallax effect', false );
+check( '...the parallax switched off in a cover keeps the scrim, which is the cover\'s', sectionOne().cover === 90 && sectionOne().parallax === false && sectionOne().dim === true && valueAt( dialogContent(), 'Dim the picture' ) === true );
+change( dialogContent(), 'Parallax effect', true );
+change( dialogContent(), 'Cover', false );
 check( '...and so is the cover switched off in a parallax: the scrim stays, and so does the place of the content', sectionOne().cover === null && sectionOne().parallax === true && sectionOne().dim === true
-	&& controlOf( paneOf('section'), placeLabel ).el.disabled === false && valueAt( paneOf('background'), 'Dim the picture' ) === true );
-change( paneOf('section'), 'Cover', true );
-change( paneOf('section'), heightLabel, 60 );
-change( paneOf('section'), placeLabel, 'bottom' );
-change( paneOf('background'), 'Border', '3' );
-change( paneOf('background'), 'In the brand colour', true );
-check( '...the other fields of the picture and of the cover write their settings: the parallax and the dimming in the Background tab, the cover, its height and the place of the content in the Layout tab', ( function() {
+	&& controlOf( dialogContent(), placeLabel ).el.disabled === false && valueAt( dialogContent(), 'Dim the picture' ) === true );
+change( dialogContent(), 'Cover', true );
+change( dialogContent(), heightLabel, 60 );
+change( dialogContent(), placeLabel, 'bottom' );
+change( dialogContent(), 'Border', '3' );
+change( dialogContent(), 'In the brand colour', true );
+check( '...the other fields of the picture and of the cover write their settings: the parallax, the dimming, the cover and its height in the surface and the place of the content in the width block', ( function() {
 	const settings = sectionOne();
 	return settings.parallax === true && settings.dim === true && settings.contentPos === 'bottom' && settings.cover === 60 && settings.border === '3' && settings.borderPrimary === true;
 } )() );
-buttonOf( paneOf('background'), 'Remove the picture' ).click();
+buttonOf( dialogContent(), 'Remove the picture' ).click();
 check( '...and the picture taken away takes the parallax and the dimming with it, and nothing of the cover: its height and the place of its content stay', sectionOne().parallax === false && sectionOne().dim === false && sectionOne().cover === 60 && sectionOne().contentPos === 'bottom'
-	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('section'), heightLabel ).el.disabled === false );
-change( paneOf('section'), 'Cover', false );
+	&& controlOf( dialogContent(), 'Parallax effect' ).el.disabled === true && controlOf( dialogContent(), heightLabel ).el.disabled === false );
+change( dialogContent(), 'Cover', false );
 builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
-builder._refreshTab('background');
-change( paneOf('background'), 'Parallax effect', true );
-const reach = controlOf( paneOf('section'), placeLabel ).el.disabled === false;
-buttonOf( paneOf('background'), 'Remove the picture' ).click();
-check( '...and from a parallax that is no cover the picture taken away takes the reach of the place of the content with it, in the Layout tab: the parallax was all that gave it', reach === true && sectionOne().parallax === false && sectionOne().cover === null
-	&& controlOf( paneOf('section'), placeLabel ).el.disabled === true );
+redrawBlocks();
+change( dialogContent(), 'Parallax effect', true );
+const reach = controlOf( dialogContent(), placeLabel ).el.disabled === false;
+buttonOf( dialogContent(), 'Remove the picture' ).click();
+check( '...and from a parallax that is no cover the picture taken away takes the reach of the place of the content with it, in the width block: the parallax was all that gave it', reach === true && sectionOne().parallax === false && sectionOne().cover === null
+	&& controlOf( dialogContent(), placeLabel ).el.disabled === true );
 
 doc = open();
 builder._openSettings( [ 0 ] );
-const animationPane = function() { return paneOf('animation') };
+// The group of the animation in the properties of the section: the field that chooses it and the ones that follow where it is the section's own
+const animationPane = function() { return blockOf('properties').querySelectorAll('.builder-group').find( function( group ) { return group.querySelector('.builder-group-title').textContent === word('group/animation') } ).querySelector('.builder-group-body') };
 check( 'Viewport animation: the section carries what the template gives, none, or an animation of its own - with a template that does not animate, none is like the template and there is no off', controlOf( animationPane(), 'Animation' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'like=Like the template (off),own=Own'
-	&& controlOf( animationPane(), 'Animation' ).el.title === words['/_admin/builder/hint/vpa-section-off'] );
-check( '...a section with the plain animation has an animation of its own where the template has none: its fields are there - the effect and its strength, the speed and how often, the delay and the duration, a line each', valueAt( animationPane(), 'Animation' ) === 'own'
-	&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( [ 'Animation', 'Effect', 'Strength', 'Speed', 'Repeat', 'Delay', 'Duration' ] ) && animationPane().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,2' );
+	&& tipOf( controlOf( animationPane(), 'Animation' ) ) === words['/_admin/builder/hint/vpa-section-off'] );
+check( '...a section with the plain animation has an animation of its own where the template has none: its fields are there - the effect and its strength, the speed and how often, the delay and the duration, one under the other', valueAt( animationPane(), 'Animation' ) === 'own'
+	&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( [ 'Animation', 'Effect', 'Strength', 'Speed', 'Repeat', 'Delay', 'Duration' ] ) && animationPane().querySelector('.builder-line') === null );
 check( '...its effects are those of Nino.css and no word for none - that is the choice above -, its repeat is once or repeat, its speed the three', controlOf( animationPane(), 'Effect' ).el.children.map( function( option ) { return option.value } ).join() === ',zoom,zoom-out,slide-left,slide-right,slide-up,slide-down,flip,blur'
 	&& controlOf( animationPane(), 'Repeat' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Once,repeat=Repeat' && controlOf( animationPane(), 'Speed' ).el.children.map( function( option ) { return option.value } ).join() === ',fast,medium,slow'
 	&& radiosOf( controlOf( animationPane(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === true } ) );
@@ -2272,7 +2413,7 @@ doc = open();
 builder._doc.model.animate = true;
 builder._openSettings( [ 0 ] );
 check( 'with a template that animates its sections: like the template, off or own - a section with the bare class is like the template, and its fields are not shown', controlOf( animationPane(), 'Animation' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'like=Like the template,off=Off,own=Own'
-	&& valueAt( animationPane(), 'Animation' ) === 'like' && labelList( animationPane() ).length === 1 && controlOf( animationPane(), 'Animation' ).el.title === words['/_admin/builder/hint/vpa-section'] );
+	&& valueAt( animationPane(), 'Animation' ) === 'like' && labelList( animationPane() ).length === 1 && tipOf( controlOf( animationPane(), 'Animation' ) ) === words['/_admin/builder/hint/vpa-section'] );
 change( animationPane(), 'Animation', 'off' );
 check( '...off is no class at all', settingsOf().vpa === null && valueAt( animationPane(), 'Animation' ) === 'off' && labelList( animationPane() ).length === 1 );
 change( animationPane(), 'Animation', 'own' );
@@ -2296,20 +2437,21 @@ check( '...and a repeat that a hand-written file has (visible, visible-once) sta
 	return controlOf( animationPane(), 'Repeat' ).el.children.map( function( option ) { return option.value } ).join() === ',repeat,visible' && valueAt( animationPane(), 'Repeat' ) === 'visible' && settingsOf().vpaMode === 'visible';
 } )() );
 
-const custom = paneOf('custom');
-check( 'CSS classes: the class of the section and the class of the row on a line, with the words about classes of Nino.css above them', JSON.stringify( labelList( custom ) ) === JSON.stringify( [ 'Class of the section', 'Class of the row' ] ) && custom.querySelectorAll('.builder-line')[0].children.length === 2
-	&& custom.children[0].textContent === words['/_admin/builder/hint/custom'] && ( change( custom, 'Class of the section', 'my-hero' ), change( custom, 'Class of the row', 'my-row' ), settingsOf().custom === 'my-hero' && settingsOf().rowCustom === 'my-row' ) );
+const custom = blockOf('properties').querySelectorAll('.builder-group').find( function( group ) { return group.querySelector('.builder-group-title').textContent === word('group/custom') } ).querySelector('.builder-group-body');
+check( 'CSS classes: the class of the section and the class of the row, one under the other, and what Nino.css has to say of classes behind the question mark of the first', JSON.stringify( labelList( custom ) ) === JSON.stringify( [ 'Class of the section', 'Class of the row' ] ) && custom.querySelector('.builder-line') === null
+	&& tipOf( controlOf( custom, 'Class of the section' ) ) === words['/_admin/builder/hint/custom'] && ( change( custom, 'Class of the section', 'my-hero' ), change( custom, 'Class of the row', 'my-row' ), settingsOf().custom === 'my-hero' && settingsOf().rowCustom === 'my-row' ) );
 
 doc = open();
 builder._problems = [ 'the section "services": the source "x" means nothing here', 'the section "hero": the name is bad' ];
 builder._openSettings( [ 1 ] );
-check( 'what a refused save said of a section stands over its first tab', paneOf('section').children[0].className === 'nino-admin-error' && paneOf('section').children[0].textContent === 'the section "services": the source "x" means nothing here' && paneOf('background').children[0].className !== 'nino-admin-error' );
+check( 'what a refused save said of a section stands over its form, above the blocks, and in none of them', dialogContent().children[0].className === 'nino-admin-error' && dialogContent().children[0].textContent === 'the section "services": the source "x" means nothing here' && dialogContent().children[1].className === 'builder-blocks'
+	&& blockIds().every( function( id ) { return blockOf( id ).querySelectorAll('.nino-admin-error').every( function( el ) { return el.hidden === true } ) } ) );
 
 doc = open();
 settingsOf().rowAlign = 'center';
 builder._openSettings( [ 0 ] );
-check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('row'), 'Vertical content alignment' ) === null && settingsOf().rowAlign === 'center'
-	&& ( change( paneOf('row'), 'Vertical content alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
+check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( dialogContent(), 'Vertical content alignment' ) === null && settingsOf().rowAlign === 'center'
+	&& ( change( dialogContent(), 'Vertical content alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
 console.log( '\nPadded, whitespace, the background inside, the dimming of a plain section and the loop of a section' );
 
 doc = open();
@@ -2318,50 +2460,47 @@ builder._openSettings( [ 0 ] );
 const settingsAt = function( b ) { return builder._doc.model.blocks[b].settings };
 const blockAt = function( b ) { return builder._doc.model.blocks[b] };
 const reachOf = function( pane, label ) { return controlOf( pane, label ).el.disabled === false };
-check( 'Padded is a switch of the cover and the parallax, which keep the room of the page around them: in reach where the section is one of the two - the hero is a cover - and writes the setting', reachOf( paneOf('section'), 'Padded' ) === true && valueAt( paneOf('section'), 'Padded' ) === false
-	&& ( change( paneOf('section'), 'Padded', true ), settingsAt( 0 ).padded === true ) && valueAt( paneOf('section'), 'Padded' ) === true );
-change( paneOf('section'), 'Cover', false );
-check( '...with the cover gone - and no parallax to be one - the room around it goes too, and the switch sleeps: there is no cover to keep it around', settingsAt( 0 ).cover === null && settingsAt( 0 ).padded === false && reachOf( paneOf('section'), 'Padded' ) === false && valueAt( paneOf('section'), 'Padded' ) === false );
-change( paneOf('background'), 'Parallax effect', true );
-check( '...a parallax is a picture that fills the section as a cover does: it wakes the switch again, and the cover that is switched on after it keeps what was set', reachOf( paneOf('section'), 'Padded' ) === true && ( change( paneOf('section'), 'Padded', true ), change( paneOf('section'), 'Cover', true ), settingsAt( 0 ).padded === true ) );
-change( paneOf('background'), 'Parallax effect', false );
-check( '...and a parallax switched off in a section that is a cover keeps it too; a section that is neither - and was padded by a hand-written file - can still switch it off, which is all it can do', settingsAt( 0 ).padded === true && ( change( paneOf('section'), 'Cover', false ), settingsAt( 0 ).padded === false ) && ( function() {
+check( 'Padded is a switch of the cover and the parallax, which keep the room of the page around them: in reach where the section is one of the two - the hero is a cover - and writes the setting', reachOf( dialogContent(), paddedLabel ) === true && valueAt( dialogContent(), paddedLabel ) === false
+	&& ( change( dialogContent(), paddedLabel, true ), settingsAt( 0 ).padded === true ) && valueAt( dialogContent(), paddedLabel ) === true );
+change( dialogContent(), 'Cover', false );
+check( '...with the cover gone - and no parallax to be one - the room around it goes too, and the switch sleeps: there is no cover to keep it around', settingsAt( 0 ).cover === null && settingsAt( 0 ).padded === false && reachOf( dialogContent(), paddedLabel ) === false && valueAt( dialogContent(), paddedLabel ) === false );
+change( dialogContent(), 'Parallax effect', true );
+check( '...a parallax is a picture that fills the section as a cover does: it wakes the switch again, and the cover that is switched on after it keeps what was set', reachOf( dialogContent(), paddedLabel ) === true && ( change( dialogContent(), paddedLabel, true ), change( dialogContent(), 'Cover', true ), settingsAt( 0 ).padded === true ) );
+change( dialogContent(), 'Parallax effect', false );
+check( '...and a parallax switched off in a section that is a cover keeps it too; a section that is neither - and was padded by a hand-written file - can still switch it off, which is all it can do', settingsAt( 0 ).padded === true && ( change( dialogContent(), 'Cover', false ), settingsAt( 0 ).padded === false ) && ( function() {
 	builder._closeDialog();
 	settingsAt( 3 ).padded = true;
 	builder._openSettings( [ 3 ] );
-	const asleep = reachOf( paneOf('section'), 'Padded' ) === true && valueAt( paneOf('section'), 'Padded' ) === true;
-	change( paneOf('section'), 'Padded', false );
-	return asleep && settingsAt( 3 ).padded === false && reachOf( paneOf('section'), 'Padded' ) === false;
+	const asleep = reachOf( dialogContent(), paddedLabel ) === true && valueAt( dialogContent(), paddedLabel ) === true;
+	change( dialogContent(), paddedLabel, false );
+	return asleep && settingsAt( 3 ).padded === false && reachOf( dialogContent(), paddedLabel ) === false;
 } )() );
 
-check( 'Whitespace is a select of the four rungs around the middle, with the words of the panel - the empty one is the page\'s own, which the Design sets - and it writes the word of the one chosen', optionsOf( paneOf('section'), 'Whitespace' ) === '=As the page,least=Much narrower,less=Narrower,more=Wider,most=Much wider'
-	&& valueAt( paneOf('section'), 'Whitespace' ) === '' && ( change( paneOf('section'), 'Whitespace', 'most' ), settingsAt( 3 ).whitespace === 'most' ) && ( change( paneOf('section'), 'Whitespace', '' ), settingsAt( 3 ).whitespace === '' )
-	&& controlOf( paneOf('section'), 'Whitespace' ).el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/whitespace'] );
 builder._closeDialog();
 
 // The background inside: colour, picture and scrim stand on the row of the section, not on the section
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1 ] );
-const insideOf = function() { return controlOf( paneOf('background'), 'Background inside' ) };
-check( 'Background inside is a switch under the picture: asleep while the section has neither a colour nor a picture - there is nothing to put inside -, in reach with one of the two', insideOf().el.disabled === true && valueAt( paneOf('background'), 'Background inside' ) === false
-	&& ( change( paneOf('background'), 'Background colour', 'alt' ), insideOf().el.disabled === false ) && insideOf().el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/inner-background'] );
-change( paneOf('background'), 'Background inside', true );
+const insideOf = function() { return controlOf( dialogContent(), 'Background inside' ) };
+check( 'Background inside is a switch under the picture: asleep while the section has neither a colour nor a picture - there is nothing to put inside -, in reach with one of the two', insideOf().el.disabled === true && valueAt( dialogContent(), 'Background inside' ) === false
+	&& ( change( dialogContent(), 'Background colour', 'alt' ), insideOf().el.disabled === false ) && tipOf( insideOf() ) === words['/_admin/builder/hint/inner-background'] );
+change( dialogContent(), 'Background inside', true );
 check( '...and writes the setting: the colour of the section is the row\'s then, as the model has it - the switch changes nothing else', settingsAt( 1 ).inner === true && settingsAt( 1 ).color === 'alt' );
-change( paneOf('background'), 'Background colour', '' );
-check( '...the colour that goes while no picture is there takes the switch with it - it could say nothing but "inside" of nothing -, and the switch sleeps again', settingsAt( 1 ).inner === false && valueAt( paneOf('background'), 'Background inside' ) === false && insideOf().el.disabled === true );
+change( dialogContent(), 'Background colour', '' );
+check( '...the colour that goes while no picture is there takes the switch with it - it could say nothing but "inside" of nothing -, and the switch sleeps again', settingsAt( 1 ).inner === false && valueAt( dialogContent(), 'Background inside' ) === false && insideOf().el.disabled === true );
 blockAt( 1 ).background = { slot : '/template/page-home/services/background', focus : 5 };
-builder._refreshTab('background');
+redrawBlocks();
 check( '...a picture of the section is a thing to put inside as well, with no colour; and a cover or a parallax - the picture the section stands on - is not: the switch is asleep there, and switching either of them on takes the background out of the row again', insideOf().el.disabled === false
-	&& ( change( paneOf('background'), 'Background inside', true ), settingsAt( 1 ).inner === true ) && ( change( paneOf('section'), 'Cover', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true )
-	&& ( change( paneOf('section'), 'Cover', false ), insideOf().el.disabled === false ) && ( change( paneOf('background'), 'Background inside', true ), change( paneOf('background'), 'Parallax effect', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true ) );
-change( paneOf('background'), 'Parallax effect', false );
+	&& ( change( dialogContent(), 'Background inside', true ), settingsAt( 1 ).inner === true ) && ( change( dialogContent(), 'Cover', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true )
+	&& ( change( dialogContent(), 'Cover', false ), insideOf().el.disabled === false ) && ( change( dialogContent(), 'Background inside', true ), change( dialogContent(), 'Parallax effect', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true ) );
+change( dialogContent(), 'Parallax effect', false );
 check( '...with the picture taken away - and the colour of the section none - the background is not inside any more; with a colour left it stays where it was', ( function() {
-	change( paneOf('background'), 'Background colour', 'tint' );
-	change( paneOf('background'), 'Background inside', true );
-	buttonOf( paneOf('background'), 'Remove the picture' ).click();
+	change( dialogContent(), 'Background colour', 'tint' );
+	change( dialogContent(), 'Background inside', true );
+	buttonOf( dialogContent(), 'Remove the picture' ).click();
 	const kept = settingsAt( 1 ).inner === true && insideOf().el.disabled === false;
-	change( paneOf('background'), 'Background colour', '' );
+	change( dialogContent(), 'Background colour', '' );
 	return kept && settingsAt( 1 ).inner === false && insideOf().el.disabled === true;
 } )() );
 
@@ -2370,23 +2509,23 @@ builder._closeDialog();
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1 ] );
-const dimOf = function() { return controlOf( paneOf('background'), 'Dim the picture' ) };
-check( 'the dimming is for a picture and for nothing else: a plain section has none to dim until it has one, then it is in reach as it is in a cover and a parallax - with the cover and the parallax off', dimOf().el.disabled === true && valueAt( paneOf('background'), 'Dim the picture' ) === false
-	&& ( blockAt( 1 ).background = { slot : '/template/page-home/services/background', focus : 5 }, builder._refreshTab('background'), dimOf().el.disabled === false ) && settingsAt( 1 ).cover === null && settingsAt( 1 ).parallax === false );
-change( paneOf('background'), 'Dim the picture', true );
-check( '...and writes the setting of the section, not of a cover: the plain section is dimmed over its picture - and loses the dimming with the picture, as the others do', settingsAt( 1 ).dim === true && ( buttonOf( paneOf('background'), 'Remove the picture' ).click(), settingsAt( 1 ).dim === false && dimOf().el.disabled === true ) );
+const dimOf = function() { return controlOf( dialogContent(), 'Dim the picture' ) };
+check( 'the dimming is for a picture and for nothing else: a plain section has none to dim until it has one, then it is in reach as it is in a cover and a parallax - with the cover and the parallax off', dimOf().el.disabled === true && valueAt( dialogContent(), 'Dim the picture' ) === false
+	&& ( blockAt( 1 ).background = { slot : '/template/page-home/services/background', focus : 5 }, redrawBlocks(), dimOf().el.disabled === false ) && settingsAt( 1 ).cover === null && settingsAt( 1 ).parallax === false );
+change( dialogContent(), 'Dim the picture', true );
+check( '...and writes the setting of the section, not of a cover: the plain section is dimmed over its picture - and loses the dimming with the picture, as the others do', settingsAt( 1 ).dim === true && ( buttonOf( dialogContent(), 'Remove the picture' ).click(), settingsAt( 1 ).dim === false && dimOf().el.disabled === true ) );
 builder._closeDialog();
 
 // The loop of a section: a section that makes a section of every element
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 3 ] );
-const loopTab = function() { return paneOf('loop') };
-check( 'a section has a Loop tab of its own, between the border and the animation, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["section","row","background","loop","animation","custom"]'
+const loopTab = function() { return blockOf('properties').querySelector('.builder-loop') };
+check( 'a section has its loop in its properties, before the animation, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","width","properties"]' && blockOf('properties').children[0] === loopTab()
 	&& JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && valueAt( loopTab(), 'Loop' ) === '' && optionsOf( loopTab(), 'Loop' ) === '=Static,sections=Element loop' && loopTab().querySelectorAll('.builder-group').length === 0
 	&& builder._sectionLoop( builder._registry ) === 'sections' && builder._sectionLoop( { stacks : { stack : { grid : true } } } ) === '' );
 change( loopTab(), 'Loop', 'sections' );
-check( '...the loop that is chosen runs over the first type of the project with the attributes the stack has, and the tab shows its form in two groups, Data and Order - no cells, no gap, no equal height: a section is the cell -, with the id of the loop that is the id of the section, shown and not to be typed, and the sentence that says how the sections are numbered after it', ( function() {
+check( '...the loop that is chosen runs over the first type of the project with the attributes the stack has, and the properties show its form in two groups, Data and Order - no cells, no gap, no equal height: a section is the cell -, with the id of the loop that is the id of the section, shown and not to be typed, and the sentence that says how the sections are numbered after it', ( function() {
 
 	const loop = blockAt( 3 ).stack;
 	const id = controlOf( loopTab(), 'Id of the loop' );
@@ -2396,9 +2535,9 @@ check( '...the loop that is chosen runs over the first type of the project with 
 
 	return loop.name === 'sections' && loop.source === '/services' && loop.attributes.id === '' && titlesIn( loopTab() ) === ( own.length > 0 ? 'Data,Order,Own' : 'Data,Order' )
 		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Id of the loop', 'Sort by', 'Direction', 'Limit', 'Offset' ].concat( own.map( function( key ) { return registry().stacks.sections.attributes[key].label } ) ) )
-		&& id.el.readOnly === true && id.el.value === 'contact' && id.el.closest('label').querySelector('.nino-admin-hint').textContent === 'The loop makes one section for each element, numbered after the id of the section: contact-1, contact-2 and so on. The id is changed in the title.';
+		&& id.el.readOnly === true && id.el.value === 'contact' && tipOf( id ) === words['/_admin/builder/hint/sections-id'].replace( /%s/g, 'contact' );
 } )() );
-check( '...a section that runs a loop says so in its head, as a column does: "Element loop" and the type, a button that opens the Loop tab of the section - and the loop is in no other tab\'s way: the columns of the section are the cell, once for each element', ( function() {
+check( '...a section that runs a loop says so in its head, as a column does: "Element loop" and the type, a button that opens the properties of the section - and the loop is in no other block\'s way: the columns of the section are the cell, once for each element', ( function() {
 
 	builder._closeDialog();
 	builder._renderEditor();
@@ -2408,39 +2547,40 @@ check( '...a section that runs a loop says so in its head, as a column does: "El
 
 	item.click();
 
-	return opened && dialogText('builder-dialog-kind') === 'Section' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' && builder._same( builder._sel, [ 3 ] )
+	return opened && dialogText('builder-dialog-kind') === 'Section' && openBlock() === 'properties' && builder._same( builder._sel, [ 3 ] )
 		&& preview().children[0].querySelector('.builder-frame-head .builder-status-item.is-loop') === null;
 } )() );
-check( '...what the loop of a section takes of the other tabs is its own: the cover is as high as the page makes it - the height is asleep and is 90, the one height a call has - and the delay and the duration of an animation are not set, for the call has no attribute for them', ( function() {
+check( '...what the loop of a section takes of the other blocks is its own: the cover is as high as the page makes it - the height is asleep and is 90, the one height a call has - and the animation is the section\'s as it was, delay and duration among it: the document takes them of a loop, so the fields stay and what they hold is kept', ( function() {
 
 	builder._closeDialog();
 	builder._openSettings( [ 0 ] );
 
-	if( valueAt( paneOf('animation'), 'Animation' ) !== 'own' )
-		change( paneOf('animation'), 'Animation', 'own' );
+	if( valueAt( dialogContent(), 'Animation' ) !== 'own' )
+		change( dialogContent(), 'Animation', 'own' );
 
-	const before = labelList( paneOf('animation') );
-	const height = controlOf( paneOf('section'), heightLabel );
+	change( animationPane(), 'Delay', '200ms' );
+	change( animationPane(), 'Duration', '1s' );
+
+	const before = labelList( animationPane() );
+	const height = controlOf( dialogContent(), heightLabel );
 	const free = height.el.disabled === false && String( height.el.value ) === '100';
 
-	change( paneOf('loop'), 'Loop', 'sections' );
+	change( dialogContent(), 'Loop', 'sections' );
 
-	const after = labelList( paneOf('animation') );
-
-	return free === true && controlOf( paneOf('section'), heightLabel ).el.disabled === true && String( controlOf( paneOf('section'), heightLabel ).el.value ) === '90' && settingsAt( 0 ).cover === 90
-		&& before.filter( function( label ) { return after.indexOf( label ) === -1 } ).length === 2 && after.length === before.length - 2 && settingsAt( 0 ).vpaDelay === '' && settingsAt( 0 ).vpaDuration === '';
+	return free === true && controlOf( dialogContent(), heightLabel ).el.disabled === true && String( controlOf( dialogContent(), heightLabel ).el.value ) === '90' && settingsAt( 0 ).cover === 90
+		&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( before ) && before.indexOf('Delay') !== -1 && before.indexOf('Duration') !== -1 && settingsAt( 0 ).vpaDelay === '200ms' && settingsAt( 0 ).vpaDuration === '1s';
 } )() );
-check( '...a column of such a section may not run a loop of its own, and the loop of the section is not put in a loop: the one that would be the loop in a loop is held back, in the tab of the section as in the tab of a column, with the reason', ( function() {
+check( '...a column of such a section may not run a loop of its own, and the loop of the section is not put in a loop: the one that would be the loop in a loop is held back, in the properties of the section as in those of a column, with the reason', ( function() {
 
 	builder._closeDialog();
 	builder._openSettings( [ 0, 0 ] );
 
-	const column = controlOf( paneOf('loop'), 'Loop' ).el.disabled === true && paneOf('loop').querySelector('.nino-admin-notice').textContent.indexOf('The section makes a section of every element') === 0;
+	const column = controlOf( dialogContent(), 'Loop' ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('The section makes a section of every element') === 0;
 
 	builder._closeDialog();
 	builder._openSettings( [ 1 ] );
 
-	return column && controlOf( paneOf('loop'), 'Loop' ).el.disabled === true && paneOf('loop').querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
+	return column && controlOf( dialogContent(), 'Loop' ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
 } )() );
 check( '...and the picker of a column of such a section holds back what a loop does not take, as it does in the column that runs one', ( function() {
 	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
@@ -2451,8 +2591,8 @@ check( '...and the picker of a column of such a section holds back what a loop d
 } )() );
 builder._closeDialog();
 builder._openSettings( [ 0 ] );
-change( paneOf('loop'), 'Loop', '' );
-check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( paneOf('loop') ) ) === '["Loop"]' && settingsAt( 0 ).cover === 90 && controlOf( paneOf('section'), heightLabel ).el.disabled === false );
+change( dialogContent(), 'Loop', '' );
+check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && settingsAt( 0 ).cover === 90 && controlOf( dialogContent(), heightLabel ).el.disabled === false );
 builder._closeDialog();
 
 console.log( '\nWhat the preview says of a section and of a link, and where a click leaves the page' );
@@ -2573,71 +2713,85 @@ console.log( '\nThe dialog of a column, and the viewports in its tables' );
 
 doc = open();
 builder._renderEditor();
+builder._lastBlock = {};
 builder._openSettings( [ 0, 0 ] );
 const colOf = function() { return builder._doc.model.blocks[0].cols[0] };
-check( 'the dialog of a column has five tabs: Layout, Background, Loop, Viewport animation and CSS classes - the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
-	&& JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Background"],["loop","Loop"],["animation","Viewport animation"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
+check( 'the dialog of a column has the blocks the table has for it, in the order of the table - surface, spacing, width and properties - and opens on the first: the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
+	&& JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.column.map( function( block ) { return block.id } ) ) && blockIds().join() === 'surface,spacing,width,properties' && openBlock() === 'surface' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
+check( '...the section\'s dialog and the column\'s are of their own: the block that was open last in a dialog of a section is not the one a column opens on - the builder keeps the last one for each kind of element, in memory and nowhere else', ( function() {
+	headOf('width').click();
+	builder._closeDialog();
+	builder._openSettings( [ 0 ] );
+	const section = openBlock();
+	headOf('properties').click();
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	const column = openBlock();
+	builder._closeDialog();
+	builder._openSettings( [ 0 ] );
+	const again = openBlock();
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	return section === 'surface' && column === 'width' && again === 'properties' && builder._lastBlock.section === 'properties' && builder._lastBlock.column === 'width' && sandbox.localStorage === undefined;
+} )() );
+headOf('width').click();
 
-const widths = function() { return paneOf('layout').querySelector('table') };
+const widths = function() { return blockOf('width').querySelector('table') };
 check( 'in a viewport the table of the widths has the row of that viewport only - the device with its icon and its word, the width, whether the column is hidden there - and under it a link to all of them', ( function() {
 	const rows = widths().querySelectorAll('tbody tr');
 	return texts( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
-		&& valueAt( paneOf('layout'), 'Width, Desktop' ) === '66' && valueAt( paneOf('layout'), 'Hidden, Desktop' ) === false && controlOf( paneOf('layout'), 'Hidden, Desktop' ).kind === 'box'
-		&& controlOf( paneOf('layout'), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && paneOf('layout').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
-		&& widths().nextSibling === paneOf('layout').querySelector('.builder-link-btn');
+		&& valueAt( dialogContent(), 'Width, Desktop' ) === '66' && valueAt( dialogContent(), 'Hidden, Desktop' ) === false && controlOf( dialogContent(), 'Hidden, Desktop' ).kind === 'box'
+		&& controlOf( dialogContent(), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && blockOf('width').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
+		&& widths().nextSibling === blockOf('width').querySelector('.builder-link-btn');
 } )() );
-check( '...and the rest of the tab: one line with the vertical alignment of the components and the horizontal alignment, in this order, both as icons - the vertical one with Off as a word, and without a hint -, the gap on a line of its own below, and under it the spacing', JSON.stringify( labelList( paneOf('layout') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal text alignment', 'Gap (--space-*)', 'Inside', 'Top', 'Bottom' ] )
-	&& valueAt( paneOf('layout'), 'Horizontal text alignment' ) === 'left' && valueAt( paneOf('layout'), 'Vertical alignment' ) === '' && controlOf( paneOf('layout'), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
-		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && controlOf( paneOf('layout'), 'Gap (--space-*)' ).el.children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6'
-	&& ( function() {
-		const lines = paneOf('layout').querySelectorAll('.builder-line');
-		const gap = controlOf( paneOf('layout'), 'Gap (--space-*)' ).el;
-		return lines.length === 2 && lines[0].children.length === 2 && lines[0].children[0].contains( controlOf( paneOf('layout'), 'Vertical alignment' ).el ) && lines[0].children[1].contains( controlOf( paneOf('layout'), 'Horizontal text alignment' ).el )
-			&& lines[0].children[0].querySelector('.nino-admin-hint') === null && lines[0].nextSibling.contains( gap ) && lines[0].contains( gap ) === false;
-	} )() );
-change( paneOf('layout'), 'Width, Desktop', '33' );
-change( paneOf('layout'), 'Horizontal text alignment', 'right' );
-change( paneOf('layout'), 'Vertical alignment', 'center' );
-change( paneOf('layout'), 'Gap (--space-*)', '3' );
-check( '...what the tab writes is the width of the viewport, the alignments and the gap', colOf().width.l === 33 && colOf().text === 'right' && colOf().stackAlign === 'center' && colOf().stackGap === '3' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}' );
-check( '...the spacing is one line under the gap with its caption in front: Inside, Top and Bottom, a select of the steps 0 to 6 each, in the words the section has for them - none is the default - and none set to begin with', ( function() {
-	const lines = paneOf('layout').querySelectorAll('.builder-line');
-	const spacing = lines[1];
-	return spacing.classList.contains('has-caption') && spacing.children[0].className === 'builder-line-caption' && spacing.children[0].textContent === 'Spacing' && spacing.children.length === 4
-		&& lines[0].nextSibling.contains( controlOf( paneOf('layout'), 'Gap (--space-*)' ).el ) && lines[0].nextSibling.nextSibling === spacing
-		&& [ 'Inside', 'Top', 'Bottom' ].every( function( label ) {
-			const control = controlOf( paneOf('layout'), label );
-			return control.kind === 'select' && spacing.contains( control.el ) && control.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6' && valueAt( paneOf('layout'), label ) === '';
-		} ) && colOf().p === '' && colOf().mt === '' && colOf().mb === '';
-} )() );
-change( paneOf('layout'), 'Inside', '3' );
-change( paneOf('layout'), 'Top', '1' );
-change( paneOf('layout'), 'Bottom', '0' );
-check( '...what the line writes is the padding, the margin above and the margin below of the column, each a step as text - 0 is a step of its own and is not none - and into nothing else', colOf().p === '3' && colOf().mt === '1' && colOf().mb === '0' && colOf().stackGap === '3'
-	&& valueAt( paneOf('layout'), 'Inside' ) === '3' && valueAt( paneOf('layout'), 'Bottom' ) === '0' && builder._doc.model.blocks[0].settings.mt === '' && builder._doc.model.blocks[0].settings.pt === '' );
-change( paneOf('layout'), 'Top', '' );
-check( '...none puts the step away again', colOf().mt === '' && colOf().p === '3' );
-change( paneOf('layout'), 'Inside', '' );
-change( paneOf('layout'), 'Bottom', '' );
+check( '...and the rest of the block: the vertical alignment of the components and the horizontal alignment of the text, in this order, both as icons - the vertical one with Off as a word, and without a sentence - one under the other', JSON.stringify( labelList( blockOf('width') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal text alignment' ] )
+	&& valueAt( dialogContent(), 'Horizontal text alignment' ) === 'left' && valueAt( dialogContent(), 'Vertical alignment' ) === '' && controlOf( dialogContent(), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
+		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && tipOf( controlOf( dialogContent(), 'Vertical alignment' ) ) === null && blockOf('width').querySelector('.builder-line') === null );
+change( dialogContent(), 'Width, Desktop', '33' );
+change( dialogContent(), 'Horizontal text alignment', 'right' );
+change( dialogContent(), 'Vertical alignment', 'center' );
+check( '...what the block writes is the width of the viewport and the alignments', colOf().width.l === 33 && colOf().text === 'right' && colOf().stackAlign === 'center' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}' );
+check( '...the head of the block says the widths of the three viewports, and that the column is hidden where it is, and the alignments - the widths where one is not the whole width', saysOf('width').textContent === [ '100/100/33 %', builder._optionLabel( 'stack-align', 'center' ), builder._optionLabel( 'text', 'right' ) ].join(' · ') );
 
-buttonOf( paneOf('layout'), 'All viewports' ).click();
-check( 'the link shows all the viewports: the preview is in the view of all of them (and its button the pressed one), and the tables of the dialog have a row for each - the link is gone, the tab is where it was', builder._viewport === 'g' && preview().dataset.viewport === 'g' && screen.getElementById('builder-viewport-g').getAttribute('aria-pressed') === 'true'
-	&& widths().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && paneOf('layout').querySelector('.builder-link-btn') === null
-	&& JSON.stringify( labelList( paneOf('layout') ).slice( 0, 6 ) ) === JSON.stringify( [ 'Width, Mobile', 'Hidden, Mobile', 'Width, Tablet', 'Hidden, Tablet', 'Width, Desktop', 'Hidden, Desktop' ] ) && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' && dialogBox().open === true );
+headOf('spacing').click();
+const colBoxes = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
+check( 'Spacing of a column: the gap between its components, then the box of its sides - outside above, inside above, left, right and below, outside below - the six sides of the column, none set to begin with', JSON.stringify( labelList( blockOf('spacing') ) ) === JSON.stringify( [ word('col/stack-gap'), sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ) ] )
+	&& colBoxes().length === 1 && stepsOf( colBoxes()[0] ) === 'mt,pt,pl,pr,pb,mb' && colBoxes()[0].getAttribute('aria-label') === word('block/spacing/label') && builder.SIDES.every( function( side ) { return colOf()[side] === '' } ) && colOf().p === undefined
+	&& optionsOf( blockOf('spacing'), word('col/stack-gap') ) === '='+ word('option/space-default')+ ',0=0,1=1,2=2,3=3,4=4,5=5,6=6' && tipOf( controlOf( blockOf('spacing'), word('col/stack-gap') ) ) === null
+	&& colBoxes()[0].querySelector('.builder-help-tip').textContent === word('hint/spacing') );
+change( dialogContent(), word('col/stack-gap'), '3' );
+change( colBoxes()[0], sideLabel( 'above', 'inside' ), '1' );
+change( colBoxes()[0], sideLabel( 'left', 'inside' ), '0' );
+change( colBoxes()[0], sideLabel( 'below', 'outside' ), '4' );
+check( '...what the block writes is the gap and the sides of the column, each a step as text - 0 is a step of its own and is not none - and into nothing else: the settings of the section have none of them', colOf().stackGap === '3' && colOf().pt === '1' && colOf().pl === '0' && colOf().mb === '4' && colOf().mt === '' && colOf().pb === '' && colOf().pr === ''
+	&& valueAt( colBoxes()[0], sideLabel( 'left', 'inside' ) ) === '0' && builder._doc.model.blocks[0].settings.mt === '' && builder._doc.model.blocks[0].settings.pt === '' && builder._doc.model.blocks[0].settings.pl === ''
+	&& saysOf('spacing').textContent === [ word('spacing/gap')+ ' 3', word('spacing/outside')+ ' –/4 · '+ word('spacing/inside')+ ' 1/–/0/–' ].join(' · ') );
+change( colBoxes()[0], sideLabel( 'above', 'inside' ), '' );
+check( '...none puts the step away again', colOf().pt === '' && colOf().pl === '0' );
+change( dialogContent(), word('col/stack-gap'), '' );
+change( colBoxes()[0], sideLabel( 'left', 'inside' ), '' );
+change( colBoxes()[0], sideLabel( 'below', 'outside' ), '' );
+check( '...a block with nothing set says nothing in its head', saysOf('spacing').textContent === '' && saysOf('spacing').hidden === true );
+headOf('width').click();
+
+buttonOf( dialogContent(), 'All viewports' ).click();
+check( 'the link shows all the viewports: the preview is in the view of all of them (and its button the pressed one), and the tables of the dialog have a row for each - the link is gone, the block is where it was', builder._viewport === 'g' && preview().dataset.viewport === 'g' && screen.getElementById('builder-viewport-g').getAttribute('aria-pressed') === 'true'
+	&& widths().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && blockOf('width').querySelector('.builder-link-btn') === null
+	&& JSON.stringify( labelList( blockOf('width') ).slice( 0, 6 ) ) === JSON.stringify( [ 'Width, Mobile', 'Hidden, Mobile', 'Width, Tablet', 'Hidden, Tablet', 'Width, Desktop', 'Hidden, Desktop' ] ) && openBlock() === 'width' && dialogBox().open === true );
 builder._openSettings( [ 0, 0 ] );
-check( 'in the view of all the viewports a dialog opened has the three rows from the start - and no link', widths().querySelectorAll('tbody tr').length === 3 && paneOf('layout').querySelector('.builder-link-btn') === null );
-change( paneOf('layout'), 'Width, Mobile', '50' );
-change( paneOf('layout'), 'Width, Desktop', '25' );
-change( paneOf('layout'), 'Hidden, Tablet', true );
-change( paneOf('layout'), 'Hidden, Mobile', true );
-change( paneOf('layout'), 'Hidden, Mobile', false );
+check( 'in the view of all the viewports a dialog opened has the three rows from the start - and no link', widths().querySelectorAll('tbody tr').length === 3 && blockOf('width').querySelector('.builder-link-btn') === null );
+change( dialogContent(), 'Width, Mobile', '50' );
+change( dialogContent(), 'Width, Desktop', '25' );
+change( dialogContent(), 'Hidden, Tablet', true );
+change( dialogContent(), 'Hidden, Mobile', true );
+change( dialogContent(), 'Hidden, Mobile', false );
 check( '...what the table writes is the width of each viewport, and the viewports that hide the column: none that shows it', colOf().width.s === 50 && colOf().width.l === 25 && colOf().width.m === 100 && JSON.stringify( colOf().hidden ) === '{"m":true}' );
 
 [ [ 's', 'Mobile', 'smartphone' ], [ 'm', 'Tablet', 'tablet' ] ].forEach( function( view ) {
 	builder._setView( view[0] );
 	builder._openSettings( [ 0, 0 ] );
 	check( 'in the view of '+ view[1]+ ' the table has its row alone, with the link under it', widths().querySelectorAll('tbody tr').length === 1 && widths().querySelector('th[scope="row"]').textContent === view[1] && iconOf( widths() ) === view[2]
-		&& JSON.stringify( labelList( paneOf('layout') ).slice( 0, 2 ) ) === JSON.stringify( [ 'Width, '+ view[1], 'Hidden, '+ view[1] ] ) && paneOf('layout').querySelectorAll('.builder-link-btn').length === 1 );
+		&& JSON.stringify( labelList( blockOf('width') ).slice( 0, 2 ) ) === JSON.stringify( [ 'Width, '+ view[1], 'Hidden, '+ view[1] ] ) && blockOf('width').querySelectorAll('.builder-link-btn').length === 1 );
 } );
 builder._setView('l');
 
@@ -2646,11 +2800,11 @@ console.log( '\nThe background of a column' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
-const colGround = function() { return paneOf('background') };
+builder._openBlock('surface');
+const colGround = function() { return blockOf('surface') };
 const groundOf = function() { return builder._doc.model.blocks[1].cols[0] };
-check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end, with the toggle of the radius beside it; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Automatic focus', 'Manual focus', 'Dim the picture', radiusLabel ] )
-	&& colGround().children[0].className === 'builder-with-swatch' && colGround().children[0].contains( controlOf( colGround(), 'Background colour' ).el ) && colGround().children[0].querySelector('.builder-swatch') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
+check( 'Surface of a column: the colour first, with the patch beside it, then the picture - the upload and its alt text, the focus -, the dimming, the offset of the picture at the sides and the toggle of the radius, one under the other; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Automatic focus', 'Manual focus', 'Dim the picture', offsetLabel('left'), offsetLabel('right'), radiusLabel ] )
+	&& colGround().children[0].className === 'builder-with-swatch' && colGround().children[0].contains( controlOf( colGround(), 'Background colour' ).el ) && colGround().children[0].querySelector('.builder-swatch') !== null && openBlock() === 'surface' && colGround().querySelector('.builder-line') === null );
 check( '...the colour is none of its own - which is the surroundings the column is in -, counter, and the colours of a section, in the words the section has for them', controlOf( colGround(), 'Background colour' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
 	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && valueAt( colGround(), 'Background colour' ) === '' );
 check( '...the choice is written into the column and into nothing else', ( function() {
@@ -2677,7 +2831,7 @@ check( '...the patch is the ground the column ends up with - the section\'s wher
 		builder._closeDialog();
 		builder._doc.model.blocks[1].settings.color = around;
 		builder._openSettings( [ 1, 0 ] );
-		buttonOf( stripOf(), 'Background' ).click();
+		builder._openBlock('surface');
 
 		const swatch = colGround().querySelector('.builder-swatch');
 		const own = swatch.dataset.color;
@@ -2699,10 +2853,10 @@ check( '...the patch is the ground the column ends up with - the section\'s wher
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 check( '...the dimming is a switch under the rows of the picture: off while there is no picture to darken - it is greyed out and the column has none', controlOf( colGround(), 'Dim the picture' ).kind === 'switch' && controlOf( colGround(), 'Dim the picture' ).el.disabled === true && valueAt( colGround(), 'Dim the picture' ) === false && groundOf().dim === false );
 groundOf().background = { slot : '/template/page-home/services/column-background', focus : null };
-builder._refreshTab('background');
+redrawBlocks();
 check( '...with a picture it can be turned on, and writes the dim of the column', controlOf( colGround(), 'Dim the picture' ).el.disabled === false && ( change( colGround(), 'Dim the picture', true ), groundOf().dim === true ) && valueAt( colGround(), 'Dim the picture' ) === true );
 change( colGround(), 'Automatic focus', false );
 
@@ -2716,43 +2870,44 @@ check( '...a picture taken away takes the dimming with it: the column has no bac
 
 console.log( '\nThe loop of a column' );
 
-const loopPane = function() { return paneOf('loop') };
+const loopPane = function() { return blockOf('properties').querySelector('.builder-loop') };
 
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1 ] );
 check( 'in the view of one viewport the cells of a loop are a row, with the link to all of them under the table', loopPane().querySelectorAll('tbody tr').length === 1 && loopPane().querySelectorAll('.builder-link-btn').length === 1 && loopPane().querySelector('tbody th').textContent === 'Desktop' );
-buttonOf( paneOf('layout'), 'All viewports' ).click();
-check( '...the link pressed in the Layout tab has the Loop tab show all of them as well, which is not the tab that is shown', loopPane().querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('.builder-link-btn').length === 0 && paneOf('layout').querySelectorAll('tbody tr').length === 3
-	&& shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' );
+headOf('width').click();
+buttonOf( blockOf('width'), 'All viewports' ).click();
+check( '...the link pressed in the block of the width has the loop show all of them as well, which is not the block that is open', loopPane().querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('.builder-link-btn').length === 0 && blockOf('width').querySelectorAll('tbody tr').length === 3
+	&& openBlock() === 'width' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
 buttonOf( loopPane(), 'All viewports' ).click();
-check( '...and the other way round', paneOf('layout').querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('tbody tr').length === 3 && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' );
+check( '...and the other way round', blockOf('width').querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('tbody tr').length === 3 && openBlock() === 'properties' );
 
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0 ] );
-check( 'the Loop tab of a column with no loop has the choice of the loop and nothing else: Static, and the loops of the registry - the plain one called the element loop', JSON.stringify( labelList( paneOf('loop') ) ) === JSON.stringify( [ 'Loop' ] ) && valueAt( paneOf('loop'), 'Loop' ) === ''
-	&& controlOf( paneOf('loop'), 'Loop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Static,stack=Element loop,slider=Slider,filter=Filter,list=List' && paneOf('loop').querySelectorAll('.builder-group').length === 0 );
-change( paneOf('loop'), 'Loop', 'stack' );
-check( '...a loop that is chosen is the kernel\'s, over the first type of the project, with the attributes it has - and the tab shows its form in groups: the data it runs over, the order, the grid of the cells', ( function() {
+check( 'the loop of a column that runs none is the choice of the loop and nothing else: Static, and the loops of the registry - the plain one called the element loop', JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop' ] ) && valueAt( dialogContent(), 'Loop' ) === ''
+	&& controlOf( dialogContent(), 'Loop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Static,stack=Element loop,slider=Slider,filter=Filter,list=List' && loopPane().querySelectorAll('.builder-group').length === 0 );
+change( dialogContent(), 'Loop', 'stack' );
+check( '...a loop that is chosen is the kernel\'s, over the first type of the project, with the attributes it has - and the properties show its form in groups: the data it runs over, the order, the grid of the cells', ( function() {
 	const stack = colOf().stack;
-	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '' && titlesIn( paneOf('loop') ) === 'Data,Order,Grid' && builder._doc.model.blocks[0].cols[0].components.length === 3;
+	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '' && titlesIn( loopPane() ) === 'Data,Order,Grid' && builder._doc.model.blocks[0].cols[0].components.length === 3;
 } )() );
 
 doc = open();
 builder._renderEditor();
 builder._setView('g');
 builder._openSettings( [ 1, 1, 'x' ] );
-check( 'the loop of a column opens the form of the column on its Loop tab (the loop is no frame, but the column\'s own settings)', dialogText('builder-dialog-kind') === 'Column of "services"' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' );
+check( 'the loop of a column opens the form of the column on its properties (the loop is no frame, but the column\'s own settings)', dialogText('builder-dialog-kind') === 'Column of "services"' && openBlock() === 'properties' );
 check( 'the form of the loop: the kind, then the groups - Data (the type, a note, the query), Order (the field and the direction, the limit and the offset), Grid (the cells of each viewport, the gap and the equal height, the id) - and no field for the cards of the cells: the loop is the grid alone', titlesIn( loopPane() ) === 'Data,Order,Grid'
 	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height', 'Id of the loop' ] ) );
-check( '...the groups hold what they are called after: the type and the query in Data, the order in Order - the limit and the offset on a line -, the cells in Grid with the gap and the equal height on a line and the id below', ( function() {
+check( '...the groups hold what they are called after: the type and the query in Data, the order in Order, the cells in Grid with the gap, the equal height and the id below - one field under the other', ( function() {
 	const groups = loopPane().querySelectorAll('.builder-group');
 	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query~Sort by|Direction|Limit|Offset~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height|Id of the loop'
-		&& groups[1].querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2' && groups[2].querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2';
+		&& loopPane().querySelector('.builder-line') === null;
 } )() );
 const stackNow = function() { return builder._doc.model.blocks[1].cols[1].stack };
 check( '...the stacks of the kernel carry no attribute for the cards of the cells any more - the cell is a div, and what stands in it is the cell\'s components -, so the loop has none to set and writes none: the grid is all it brings', ( function() {
@@ -2847,16 +3002,16 @@ console.log( '\nThe animation and the classes of a column' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0 ] );
-const colAnimation = function() { return paneOf('animation') };
+const colAnimation = function() { return blockOf('properties').querySelectorAll('.builder-group').find( function( group ) { return group.querySelector('.builder-group-title').textContent === word('group/animation') } ).querySelector('.builder-group-body') };
 const pickedOff = function( label ) { return controlOf( colAnimation(), label ).el.disabled === true };
 check( 'the animation of a column is its own, and has no like, off or own: the effect and its strength, the speed and how often - the effect is none before it is the plain one, and the words under it are those of a column', JSON.stringify( labelList( colAnimation() ) ) === JSON.stringify( [ 'Effect', 'Strength', 'Speed', 'Repeat' ] )
 	&& controlOf( colAnimation(), 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'none=No animation,=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,slide-up=Slides up,slide-down=Slides down,flip=Flip,blur=Blur'
-	&& valueAt( colAnimation(), 'Effect' ) === 'none' && colAnimation().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2'
+	&& valueAt( colAnimation(), 'Effect' ) === 'none' && colAnimation().querySelector('.builder-line') === null
 	&& controlOf( colAnimation(), 'Effect' ).el.title === '' && colAnimation().querySelector('.nino-admin-hint') === null );
 check( '...it has no delay and no duration, whatever the animation is: the file keeps a column\'s animation as classes, and a column has no attribute for either - the animation of a section has both', ( function() {
 	const column = labelList( colAnimation() );
 	builder._openSettings( [ 0 ] );
-	const section = labelList( paneOf('animation') );
+	const section = labelList( dialogContent() );
 	builder._openSettings( [ 0, 0 ] );
 	return column.indexOf('Delay') === -1 && column.indexOf('Duration') === -1 && section.indexOf('Delay') !== -1 && section.indexOf('Duration') !== -1;
 } )() );
@@ -2878,109 +3033,354 @@ check( '...a repeat that a hand-written file has (visible, visible-once) stays i
 	colOf().vpaMode = 'repeat';
 	return modes === ',repeat,visible-once' && shown === 'visible-once' && pickedOff('Repeat') === false;
 } )() );
-change( paneOf('custom'), 'Class of the column', 'my-col' );
-check( 'the class of a column is the only field of the CSS classes tab, with the hint about classes of Nino.css', JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the column' ] ) && colOf().custom === 'my-col' && paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] );
+change( dialogContent(), 'Class of the column', 'my-col' );
+const colCustom = blockOf('properties').querySelectorAll('.builder-group').find( function( group ) { return group.querySelector('.builder-group-title').textContent === word('group/custom') } ).querySelector('.builder-group-body');
+check( 'the class of a column is the only field of the CSS classes group, with what Nino.css has to say of classes behind its question mark', JSON.stringify( labelList( colCustom ) ) === JSON.stringify( [ 'Class of the column' ] ) && colOf().custom === 'my-col' && tipOf( controlOf( colCustom, 'Class of the column' ) ) === words['/_admin/builder/hint/custom'] );
 console.log( '\nThe dialog of a component' );
 
 doc = open();
 builder._renderEditor();
+builder._lastBlock = {};
 builder._openSettings( [ 0, 0, 0 ] );
 const componentAt = function( at ) { return builder._doc.model.blocks[at[0]].cols[at[1]].components[at[2]] };
-check( 'the dialog of a component has the tabs it has something for - for a text that is a link: Content, Properties, Variants, Link and CSS classes; the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"'
-	&& JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["variants","Variants"],["link","Link"],["custom","CSS classes"]]' && screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
+// Whether the blocks of a dialog are some of the blocks the table has for the kind of element, in the order of the table
+const inTableOrder = function( kind, ids ) {
+	const order = builder.BLOCKS[kind].map( function( block ) { return block.id } );
+	return ids.every( function( id, at ) { return order.indexOf( id ) !== -1 && ( at === 0 || order.indexOf( id ) > order.indexOf( ids[at - 1] ) ) } );
+};
+check( 'the dialog of a component has the blocks it has something for, in the order of the table - for a text that is a link: content, link, spacing and properties; the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"'
+	&& blockIds().join() === 'content,link,spacing,properties' && inTableOrder( 'component', blockIds() ) && screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
 check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources - and under it, for a key the project knows, the text it holds in the language the editor works in', ( function() {
-	const row = paneOf('content').querySelector('.builder-source');
+	const row = blockOf('content').querySelector('.builder-source');
 	const button = row.querySelector('button');
-	return paneOf('content').children.length === 2 && paneOf('content').children[0] === row && paneOf('content').children[1].className === 'builder-content-extra' && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false
+	return blockOf('content').children.length === 2 && blockOf('content').children[0] === row && blockOf('content').children[1].className === 'builder-content-extra' && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false
 		&& row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
-		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( paneOf('content') ) ) === '["Text (English (US))"]';
+		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( blockOf('content') ) ) === '["Text (English (US))"]';
 } )() );
-check( '...Properties: the attributes of the schema that are no variants, in the order of the schema - here the HTML tag alone, a select that offers the tags the registry offers, as many and in its order, whichever tags the kernel has', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'HTML tag' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'nino-admin-field'
-	&& controlOf( paneOf('properties'), 'HTML tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === registryFixture.components[componentAt( [ 0, 0, 0 ] ).name].attributes.tag.options.map( function( option ) { return option+ '='+ option } ).join()
-	&& registryFixture.components[componentAt( [ 0, 0, 0 ] ).name].attributes.tag.options.length >= 3 && valueAt( paneOf('properties'), 'HTML tag' ) === 'h3' );
-check( '...Variants: a row of buttons for each variant, one to a line, in the order of the schema - the words of the panel for the values, Default for none - and the one the component has is the one that is chosen', JSON.stringify( labelList( paneOf('variants') ) ) === JSON.stringify( [ 'Style', 'Text colour' ] )
-	&& classes( paneOf('variants').children ) === 'builder-segment-field,builder-segment-field' && controlsIn( paneOf('variants') ).every( function( control ) { return control.kind === 'group' } )
-	&& segmentOf( paneOf('variants'), 'Style' ) === ':Default,loud:Loud,quiet:Quiet' && segmentOf( paneOf('variants'), 'Text colour' ) === ':Default,muted:Muted,accent:Accent'
-	&& valueAt( paneOf('variants'), 'Style' ) === 'loud' && valueAt( paneOf('variants'), 'Text colour' ) === '' );
-check( '...Link: the two attributes every link has and the schema does not declare, a note over them - where it leads, as a source, and the window it opens in, a select of the same window and a new one', ( function() {
-	const pane = paneOf('link');
-	return classes( pane.children ) === 'nino-admin-hint,builder-source,nino-admin-field' && pane.children[0].textContent === words['/_admin/builder/hint/link'] && JSON.stringify( labelList( pane ) ) === JSON.stringify( [ 'Opens in' ] )
-		&& pane.querySelector('.builder-source-name').textContent === 'Link' && pane.querySelector('.builder-source-current').textContent === 'none' && controlOf( pane, 'Opens in' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Same window,_blank=New window'
-		&& valueAt( pane, 'Opens in' ) === '';
+check( '...the head of the content says the first words of the text, in the language of the editor - and nothing of what is not there', saysOf('content').textContent === 'Welcome' && saysOf('content').hidden === false );
+check( '...Properties: the variants first, a row of buttons for each, one to a line, in the order of the schema - the words of the panel for the values, Default for none - and the one the component has is the one that is chosen; then the other attributes in the order of the schema, here the HTML tag alone, a select that offers the tags the registry offers, as many and in its order, whichever tags the kernel has; and the class of the component last',
+	JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [ 'Style', 'Text colour', 'HTML tag', 'Class of the component' ] ) && controlsIn( blockOf('properties') ).map( function( control ) { return control.kind } ).join() === 'group,group,select,text'
+	&& segmentOf( blockOf('properties'), 'Style' ) === ':Default,loud:Loud,quiet:Quiet' && segmentOf( blockOf('properties'), 'Text colour' ) === ':Default,muted:Muted,accent:Accent' && valueAt( blockOf('properties'), 'Style' ) === 'loud' && valueAt( blockOf('properties'), 'Text colour' ) === ''
+	&& controlOf( blockOf('properties'), 'HTML tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === registryFixture.components[componentAt( [ 0, 0, 0 ] ).name].attributes.tag.options.map( function( option ) { return option+ '='+ option } ).join()
+	&& registryFixture.components[componentAt( [ 0, 0, 0 ] ).name].attributes.tag.options.length >= 3 && valueAt( blockOf('properties'), 'HTML tag' ) === 'h3' );
+check( '...the head of the properties says what the component has that is not the default: the style it has, and nothing of the colour it has none of', saysOf('properties').textContent === words['/_admin/builder/option/variant-loud'] && saysOf('properties').hidden === false );
+check( '...Link: the two attributes every link has and the schema does not declare - where it leads, as a source, and the window it opens in, a select of the same window and a new one - and no note over them', ( function() {
+	const body = blockOf('link');
+	return classes( body.children ) === 'builder-source,nino-admin-field' && JSON.stringify( labelList( body ) ) === JSON.stringify( [ 'Opens in' ] ) && body.querySelector('.nino-admin-hint') === null
+		&& body.querySelector('.builder-source-name').textContent === 'Link' && body.querySelector('.builder-source-current').textContent === 'none' && controlOf( body, 'Opens in' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Same window,_blank=New window'
+		&& valueAt( body, 'Opens in' ) === '' && saysOf('link').hidden === true;
 } )() );
-change( paneOf('properties'), 'HTML tag', 'h4' );
-change( paneOf('variants'), 'Style', '' );
-change( paneOf('variants'), 'Text colour', 'accent' );
-change( paneOf('link'), 'Opens in', '_blank' );
-buttonOf( paneOf('link'), 'Source' ).click();
+change( dialogContent(), 'HTML tag', 'h4' );
+change( dialogContent(), 'Style', '' );
+change( dialogContent(), 'Text colour', 'accent' );
+change( dialogContent(), 'Opens in', '_blank' );
+buttonOf( blockOf('link'), 'Source' ).click();
 buttonOf( pickerStrip(), 'Static' ).click();
 fixedField().value = '/contact';
 buttonOf( pickerPane('fixed'), 'Use it' ).click();
-change( paneOf('custom'), 'Class of the component', 'big' );
-check( '...and write the attributes - the properties, the variants and the link of the component under the names of the schema and of the call: href and target - CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.tag === 'h4' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes.color === 'accent'
+change( dialogContent(), 'Class of the component', 'big' );
+check( '...and write the attributes - the properties, the variants and the link of the component under the names of the schema and of the call: href and target - the class of the component the class', componentAt( [ 0, 0, 0 ] ).attributes.tag === 'h4' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes.color === 'accent'
 	&& componentAt( [ 0, 0, 0 ] ).attributes.target === '_blank' && componentAt( [ 0, 0, 0 ] ).attributes.href === '/contact' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big'
-	&& JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] ) && paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] && changes === 6
-	&& valueAt( paneOf('variants'), 'Text colour' ) === 'accent' && paneOf('link').querySelector('.builder-source-current').textContent === '“/contact”' );
+	&& tipOf( controlOf( blockOf('properties'), 'Class of the component' ) ) === words['/_admin/builder/hint/custom'] && changes === 6
+	&& valueAt( blockOf('properties'), 'Text colour' ) === 'accent' && blockOf('link').querySelector('.builder-source-current').textContent === '“/contact”'
+	&& saysOf('link').textContent === [ '/contact', words['/_admin/builder/option/target-blank'] ].join(' · ') );
 
 builder._openSettings( [ 0, 0, 2 ] );
-check( 'a link is a source of its own, a line of its own - the other attributes follow in the order of the schema, two to a line where both are short, the segments of a choice that is few among them: the button has no Link tab, its link is its own attribute', dialogText('builder-dialog-kind') === 'Component "Button"'
-	&& JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","custom"]'
-	&& classes( paneOf('properties').children ) === 'builder-source,builder-line,builder-line' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Style', 'Size', 'Width', 'Opens in' ] ) && paneOf('properties').children[1].children.length === 2 && paneOf('properties').children[2].children.length === 2
-	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'select,group,group,select'
-	&& paneOf('properties').children[0].querySelector('.builder-source-name').textContent === 'Link' && paneOf('properties').children[0].querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
-	&& paneOf('properties').children[0].querySelector('.builder-source-caption').hidden === true );
-check( '...a choice of a few the schema says is a segment is a row of buttons - the size and the width of a button, with the words of the panel - and writes the value like a select does, the empty one for the default', segmentOf( paneOf('properties'), 'Size' ) === ':Normal,small:Small,big:Big' && segmentOf( paneOf('properties'), 'Width' ) === ':Automatic,full:Full width'
-	&& valueAt( paneOf('properties'), 'Size' ) === '' && ( change( paneOf('properties'), 'Width', 'full' ), componentAt( [ 0, 0, 2 ] ).attributes.width === 'full' ) && valueAt( paneOf('properties'), 'Width' ) === 'full'
-	&& ( change( paneOf('properties'), 'Size', 'big' ), componentAt( [ 0, 0, 2 ] ).attributes.size === 'big' ) && ( change( paneOf('properties'), 'Size', '' ), componentAt( [ 0, 0, 2 ] ).attributes.size === '' ) );
+check( 'a link is a source of its own - the address stands in the link block with the window it opens in, whichever the component: the button has its link as an attribute of its own, and the block for it, and its other attributes - style, size and width - are its properties', dialogText('builder-dialog-kind') === 'Component "Button"'
+	&& blockIds().join() === 'content,link,spacing,properties' && classes( blockOf('link').children ) === 'builder-source,nino-admin-field' && JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ 'Opens in' ] )
+	&& blockOf('link').querySelector('.builder-source-name').textContent === 'Link' && blockOf('link').querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri' && blockOf('link').querySelector('.builder-source-caption').hidden === true
+	&& JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [ 'Style', 'Size', 'Width', 'Class of the component' ] ) && controlsIn( blockOf('properties') ).map( function( control ) { return control.kind } ).join() === 'select,group,group,text' );
+check( '...a choice of a few the schema says is a segment is a row of buttons - the size and the width of a button, with the words of the panel - and writes the value like a select does, the empty one for the default', segmentOf( dialogContent(), 'Size' ) === ':Normal,small:Small,big:Big' && segmentOf( dialogContent(), 'Width' ) === ':Automatic,full:Full width'
+	&& valueAt( dialogContent(), 'Size' ) === '' && ( change( dialogContent(), 'Width', 'full' ), componentAt( [ 0, 0, 2 ] ).attributes.width === 'full' ) && valueAt( dialogContent(), 'Width' ) === 'full'
+	&& ( change( dialogContent(), 'Size', 'big' ), componentAt( [ 0, 0, 2 ] ).attributes.size === 'big' ) && ( change( dialogContent(), 'Size', '' ), componentAt( [ 0, 0, 2 ] ).attributes.size === '' ) );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...the properties of the image are drawn as the schema pairs them, in the order of the schema, the variant left out - it has its tab: a line of two is a line, an attribute alone is a field, and the focus - the switch for none and the nine places - is a grid with a line to itself, and the toggle of the radius - the image is a surface - comes last', ( function() {
+check( '...the image has a block for its surface, which holds the toggle of its radius alone, and its properties in the order of the schema - the focus, the switch for none and the nine places, among them - with its class last', ( function() {
 
-	const attributes = builder._split( registry().components.image.attributes ).properties;
+	const attributes = registry().components.image.attributes;
 	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
 	const focus = function( name ) { return attributes[name].type === 'select' && attributes[name].options.join() === places.join() };
-	const lines = builder._attributeLines( attributes );
 	const kinds = { select : 'select', string : 'text', bool : 'switch' };
 
-	return dialogText('builder-dialog-kind') === 'Component "Image"' && focus( 'focus' ) === true && lines.length > 1
-		&& classes( paneOf('properties').children ) === lines.map( function( line ) { return line.length === 2 ? 'builder-line' : ( focus( line[0] ) === true ? 'builder-focus' : 'nino-admin-field' ) } ).concat( [ 'nino-admin-switch' ] ).join()
-		&& JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [].concat.apply( [], Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? [ 'Automatic focus', 'Focus' ] : [ attributes[name].label ] } ) ).concat( [ radiusLabel ] ) )
-		&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? 'switch,group' : kinds[attributes[name].type] } ).concat( [ 'switch' ] ).join();
-} )() );
-
-check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture, a key or the focus of a picture - a select over none and the nine places - has a line to itself', ( function() {
-	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
-	const declared = { a : { type : 'select' }, b : { type : 'bool' }, c : { type : 'lines' }, d : { type : 'int' }, e : { type : 'string' }, f : { type : 'href' }, g : { type : 'select' }, h : { type : 'image' }, i : { type : 'key' }, j : { type : 'select' }, k : { type : 'select' }, l : { type : 'select' }, m : { type : 'select', options : places }, n : { type : 'bool' }, o : { type : 'select', options : [ '', 'left' ] } };
-	const components = registry().components;
-	const short = [ 'select', 'bool', 'int', 'string' ];
-	const focus = function( attribute ) { return attribute.type === 'select' && Array.isArray( attribute.options ) === true && attribute.options.join() === places.join() };
-
-	return JSON.stringify( builder._attributeLines( declared ) ) === '[["a","b"],["c"],["d","e"],["f"],["g"],["h"],["i"],["j","k"],["l"],["m"],["n","o"]]' && JSON.stringify( builder._attributeLines( {} ) ) === '[]'
-		// ...and so are the attributes of every component and every stack of the registry: each once, in the order of the schema, a line of one or of two, the two being short ones and the focus never one of them
-		&& Object.keys( components ).concat( Object.keys( registry().stacks ) ).every( function( name ) {
-			const attributes = ( components[name] || registry().stacks[name] ).attributes;
-			const lines = builder._attributeLines( attributes );
-			return JSON.stringify( [].concat.apply( [], lines ) ) === JSON.stringify( Object.keys( attributes ) ) && lines.every( function( line ) {
-				return line.length === 1 || ( line.length === 2 && line.every( function( key ) { return short.indexOf( attributes[key].type ) !== -1 && focus( attributes[key] ) === false } ) );
-			} );
-		} );
+	return dialogText('builder-dialog-kind') === 'Component "Image"' && focus( 'focus' ) === true && blockIds().join() === 'content,link,surface,spacing,properties' && inTableOrder( 'component', blockIds() )
+		&& JSON.stringify( labelList( blockOf('surface') ) ) === JSON.stringify( [ radiusLabel ] )
+		&& JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [].concat.apply( [], Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? [ 'Automatic focus', 'Focus' ] : [ attributes[name].label ] } ) ).concat( [ 'Class of the component' ] ) )
+		&& controlsIn( blockOf('properties') ).map( function( control ) { return control.kind } ).join() === Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? 'switch,group' : kinds[attributes[name].type] } ).concat( [ 'text' ] ).join();
 } )() );
 
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : { size : '2', 'class' : '' } } );
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'unknown-one', source : '', text : null, attributes : { 'class' : '' } } );
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'html', source : '', text : null, attributes : { 'class' : '' }, content : '<p>x</p>' } );
-const tabsOfComponent = function( at ) { builder._openSettings( at ); return dialogTabs().map( function( tab ) { return tab[0] } ).join() };
+const blocksOfComponent = function( at ) { builder._openSettings( at ); return blockIds().join() };
 const registryWith = registry();
 registryWith.components.divider = { label : 'Divider', source : 'none', loop : true, preview : 'block', attributes : [], defaults : { 'class' : '' } };
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'divider', source : '', text : null, attributes : { 'class' : '' } } );
 builder._registry = registryWith;
-check( 'a component has the tabs it has something for: no Content where it has no source (a spacer), no Properties where its schema declares none (a component the registry does not know, the editor of the content), and CSS classes always',
-	tabsOfComponent( [ 0, 0, 3 ] ) === 'properties,custom' && tabsOfComponent( [ 0, 0, 4 ] ) === 'content,custom' && tabsOfComponent( [ 0, 0, 5 ] ) === 'content,custom' && tabsOfComponent( [ 0, 0, 6 ] ) === 'custom' );
+check( 'a component has the blocks it has something for: no content where it has no source (a spacer, a divider), the spacing and the properties - the class of the component - always, and the editor of the content for a component the registry does not know and for one whose content is HTML',
+	blocksOfComponent( [ 0, 0, 3 ] ) === 'spacing,properties' && blocksOfComponent( [ 0, 0, 4 ] ) === 'content,spacing,properties' && blocksOfComponent( [ 0, 0, 5 ] ) === 'content,spacing,properties' && blocksOfComponent( [ 0, 0, 6 ] ) === 'spacing,properties' );
 builder._openSettings( [ 0, 0, 3 ] );
-check( '...the spacer holds its size, and its title is its label', dialogText('builder-dialog-kind') === 'Component "Spacer"' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Size' ] ) && valueAt( paneOf('properties'), 'Size' ) === '2' );
+check( '...the spacer holds its size, and its title is its label', dialogText('builder-dialog-kind') === 'Component "Spacer"' && JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [ 'Size', 'Class of the component' ] ) && valueAt( dialogContent(), 'Size' ) === '2' );
 builder._openSettings( [ 0, 0, 4 ] );
-check( '...a component the registry does not know is called by its name, and has a source of the text kind', dialogText('builder-dialog-kind') === 'Component "unknown-one"' && paneOf('content').querySelector('.builder-source') !== null );
-builder._openSettings( [ 0, 0, 6 ] );
-check( '...and the tab that is the only one is the one that is shown', shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'custom' && dialogTabs().length === 1 );
+check( '...a component the registry does not know is called by its name, and has a source of the text kind', dialogText('builder-dialog-kind') === 'Component "unknown-one"' && blockOf('content').querySelector('.builder-source') !== null );
+builder._openSettings( [ 0, 0, 5 ] );
+check( '...the content that is HTML has the editor of the workbench in its block, and a dialog of the width of the others', blockOf('content').querySelector('.builder-content') !== null && dialogBox().classList.contains('is-wide') === false );
+console.log( '\nThe table of the blocks is the one place that says what a dialog shows' );
+
+doc = open();
+builder._renderEditor();
+builder._lastBlock = {};
+// The dialog of an element opened as the page opens it - with the table the page has, or with another: a copy of it that was changed
+const openWith = function( at, table ) {
+
+	const original = builder.BLOCKS;
+
+	builder.BLOCKS = table === undefined ? original : table;
+
+	try {
+		builder._openSettings( at );
+	} finally {
+		builder.BLOCKS = original;
+	}
+};
+const tableWith = function() { return JSON.parse( JSON.stringify( builder.BLOCKS ) ) };
+// A control struck out of the table of a kind of element, and put at the end of a block of it where one is named
+const tableMoved = function( table, kind, name, to ) {
+
+	table[kind].forEach( function( block ) { block.controls = block.controls.filter( function( control ) { return control !== name } ) } );
+
+	if( to !== undefined )
+		table[kind].find( function( block ) { return block.id === to } ).controls.push( name );
+
+	return table;
+};
+const drawnIn = function( id, key ) { return blockOf( id ).all().filter( function( el ) { return el.dataset.key === key } ).length };
+const drawnAnywhere = function( key ) { return blockIds().reduce( function( count, id ) { return count + drawnIn( id, key ) }, 0 ) };
+// The controls of a component as its dialog makes them, and each of them once whatever the names it stands under
+const controlsOfComponent = function( at ) {
+	const made = builder._componentControls( at, { editors : [], editor : null, typed : false } );
+	return Array.from( new Set( Object.keys( made ).map( function( name ) { return made[name] } ) ) );
+};
+const everyComponent = function( then ) {
+
+	return Object.keys( builder._registry.components ).every( function( name ) {
+
+		const components = builder._doc.model.blocks[0].cols[0].components;
+
+		components.push( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 0, 0 ], name, known() ) );
+
+		return then( name, [ 0, 0, components.length - 1 ] );
+	} );
+};
+
+check( 'the table lists every control of a section and of a column once, and nothing that is none: the names of the table and the controls the dialog makes are the same', [ [ 'section', builder._sectionControls( [ 0 ] ) ], [ 'column', builder._colControls( [ 0, 0 ] ) ] ].every( function( pair ) {
+
+	const listed = [].concat( ...builder.BLOCKS[pair[0]].map( function( block ) { return block.controls } ) );
+
+	return new Set( listed ).size === listed.length && JSON.stringify( listed.slice().sort() ) === JSON.stringify( Object.keys( pair[1] ).sort() );
+} ) );
+check( '...and of a component: each control it has is listed, once - in a block of the kinds of content, link, surface, spacing and properties - and every attribute of its schema stands in one control, the one of its group, whichever component of the registry it is', everyComponent( function( name, at ) {
+
+	const listed = [].concat( ...builder.BLOCKS.component.map( function( block ) { return block.controls } ) );
+	const made = builder._componentControls( at, { editors : [], editor : null, typed : false } );
+	const written = [].concat( ...controlsOfComponent( at ).map( function( control ) { return control.keys } ) );
+
+	return Object.keys( made ).every( function( key ) { return listed.indexOf( key ) !== -1 } ) && new Set( listed ).size === listed.length
+		&& Object.keys( builder._declared( builder._registry.components[name] ) ).every( function( attribute ) { return written.filter( function( key ) { return key === attribute } ).length === 1 } );
+} ) );
+check( '...each control draws marks of the settings it writes only, whichever element it is of: a control that has keys marks nothing else', ( function() {
+
+	const only = function( control ) {
+		const scratch = screen.createElement('div');
+		control.build( scratch );
+		return scratch.all().filter( function( el ) { return el.dataset.key !== undefined } ).every( function( el ) { return control.keys.indexOf( el.dataset.key ) !== -1 } );
+	};
+	const section = builder._sectionControls( [ 0 ] );
+	const column = builder._colControls( [ 0, 0 ] );
+
+	return Object.keys( section ).every( function( name ) { return only( section[name] ) } ) && Object.keys( column ).every( function( name ) { return only( column[name] ) } )
+		&& everyComponent( function( name, at ) { return controlsOfComponent( at ).every( only ) } );
+} )() );
+
+doc = open();
+builder._renderEditor();
+check( 'what a dialog draws in a block is what the table lists for it: in the dialog of a section, of a column and of every component of the registry, whatever is marked with a setting in a block is a setting of a control the table lists for that block', ( function() {
+
+	const within = function() { return blockIds().every( function( id ) { return keysDrawn( id ).every( function( key ) { return keysHeld( id ).indexOf( key ) !== -1 } ) } ) };
+
+	builder._openSettings( [ 0 ] );
+
+	const section = within();
+
+	builder._openSettings( [ 0, 0 ] );
+
+	const column = within();
+
+	return section === true && column === true && everyComponent( function( name, at ) { builder._openSettings( at ); return within() } );
+} )() );
+
+doc = open();
+builder._renderEditor();
+builder._doc.model.blocks[0].settings.arrow = true;
+openWith( [ 0 ], tableMoved( tableWith(), 'section', 'arrow', 'properties' ) );
+check( 'a control moved in the table is drawn in the block it was moved to: the arrow of a section, moved from Surface to Properties, is a field of the properties and none of the surface - and the heads follow it, the one of the properties says it and the one of the surface does not', drawnIn( 'properties', 'arrow' ) === 1 && drawnIn( 'surface', 'arrow' ) === 0
+	&& saysOf('properties').textContent.indexOf( word('section/arrow') ) !== -1 && saysOf('surface').textContent.indexOf( word('section/arrow') ) === -1 );
+openWith( [ 0 ], tableMoved( tableWith(), 'section', 'whitespace', 'width' ) );
+check( '...so is a setting that has a block of its own to leave: the whitespace of a section, moved from Spacing to Width and alignment, is a select of the width and none of the spacing', drawnIn( 'width', 'whitespace' ) === 1 && drawnIn( 'spacing', 'whitespace' ) === 0 && labelList( blockOf('width') ).indexOf( word('section/whitespace') ) !== -1 );
+openWith( [ 0 ], tableMoved( tableWith(), 'section', 'border' ) );
+check( 'a control struck out of every block of the table is not drawn at all: the border of a section is no field of any block - and the switch for its brand colour, which the table still lists, is', drawnAnywhere( 'border' ) === 0 && drawnAnywhere( 'borderPrimary' ) === 1 );
+openWith( [ 0 ], tableMoved( tableWith(), 'section', 'id' ) );
+check( '...nor is the id of a section, which is a control like the others: the field is gone, the pencil in the title is not', drawnAnywhere( 'id' ) === 0 && labelList( dialogContent() ).indexOf( idLabel ) === -1 && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 1 );
+openWith( [ 0 ], ( function() {
+	const table = tableWith();
+	table.section.find( function( block ) { return block.id === 'width' } ).controls = [];
+	return table;
+} )() );
+check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other three blocks, in the order of the table', blockIds().join() === 'surface,spacing,properties' );
+openWith( [ 0 ] );
+settingsOf().custom = 'one';
+settingsOf().rowCustom = 'two';
+settingsOf().radius = 'alternative';
+settingsOf().rowRadius = 'alternative';
+redrawBlocks();
+check( 'a head says a word once, however many controls say it: the classes of a section and of its row, the radius of its cover and of its row', saysOf('properties').textContent.split( word('group/custom') ).length === 2 && saysOf('surface').textContent.split( word('common/radius-alt') ).length === 2 );
+settingsOf().custom = '';
+settingsOf().rowCustom = '';
+settingsOf().radius = '';
+settingsOf().rowRadius = '';
+openWith( [ 0 ], tableMoved( tableWith(), 'section', 'rowPt', 'surface' ) );
+check( 'a control that writes several settings is drawn once, where the first of the names it stands under is: the box of the row, moved to Surface by one of its names, is there and not twice - and the other names it stands under draw nothing more', drawnIn( 'surface', 'rowPt' ) === 1 && drawnIn( 'spacing', 'rowPt' ) === 0 && drawnAnywhere( 'rowPb' ) === 1 );
+openWith( [ 0, 0 ], tableMoved( tableWith(), 'column', 'stackGap', 'width' ) );
+check( 'the same holds for a column: the gap between its components, moved from Spacing to Width and alignment, is a select of the width', drawnIn( 'width', 'stackGap' ) === 1 && drawnIn( 'spacing', 'stackGap' ) === 0 );
+openWith( [ 0, 0 ], tableMoved( tableWith(), 'column', 'dim' ) );
+check( '...a control struck out is not drawn: the dimming of the picture behind a column', drawnAnywhere( 'dim' ) === 0 && drawnAnywhere( 'color' ) === 1 );
+openWith( [ 0, 0 ], tableMoved( tableWith(), 'column', 'width', 'properties' ) );
+const viewports = builder._views().length;
+const stays = drawnIn( 'width', 'width' ) === viewports && drawnIn( 'width', 'hidden' ) === viewports && drawnAnywhere( 'width' ) === viewports;
+openWith( [ 0, 0 ], tableMoved( tableMoved( tableWith(), 'column', 'width', 'properties' ), 'column', 'hidden', 'properties' ) );
+check( '...a control that writes several settings goes with all of its names: the table of the viewports - the width of the column and where it is hidden - stays where the other name stands when one of them is moved, and is in the properties, one row to a viewport and none left behind, when both are', stays === true
+	&& drawnIn( 'properties', 'width' ) === viewports && drawnIn( 'properties', 'hidden' ) === viewports && drawnIn( 'width', 'width' ) === 0 && drawnIn( 'width', 'hidden' ) === 0 );
+check( '...and the status of a frame that opens the dialog on a block opens the one the table has put the control in: the loop of a section and of a column, the alignments of a column - wherever the table has them', ( function() {
+	const original = builder.BLOCKS;
+	builder.BLOCKS = tableMoved( tableWith(), 'column', 'stackAlign', 'surface' );
+	const block = builder._blockOf( 'column', 'stackAlign' );
+	builder.BLOCKS = original;
+	return block === 'surface' && builder._blockOf( 'column', 'stackAlign' ) === 'width' && builder._blockOf( 'column', 'text' ) === 'width' && builder._blockOf( 'section', 'stack' ) === 'properties' && builder._blockOf( 'column', 'stack' ) === 'properties' && builder._blockOf( 'column', 'nothing' ) === undefined;
+} )() );
+openWith( [ 0, 0, 0 ], tableMoved( tableMoved( tableWith(), 'component', 'class', 'spacing' ), 'component', 'attributes' ) );
+check( 'a component has its controls by the table too: its class, moved to Spacing, is a field of the spacing and none of the properties, and its other attributes, struck out, are not drawn - the HTML tag of a title', drawnIn( 'spacing', 'class' ) === 1 && drawnIn( 'properties', 'class' ) === 0 && drawnAnywhere( 'tag' ) === 0 );
+openWith( [ 0, 0, 0 ], tableMoved( tableWith(), 'component', 'variants', 'surface' ) );
+check( '...its variants, moved to Surface, are the surface - a block the title had none of - and the attributes that are none of them stay among the properties', blockIds().join() === 'content,link,surface,spacing,properties' && drawnIn( 'surface', 'style' ) === 1 && drawnIn( 'properties', 'style' ) === 0 && drawnIn( 'properties', 'tag' ) === 1 );
+openWith( [ 0, 0, 0 ], tableMoved( tableWith(), 'component', 'source' ) );
+check( '...and the content of a component, struck out, leaves the dialog without the block', blockIds().join() === 'link,spacing,properties' );
+builder._closeDialog();
+doc = open();
+doc.model.blocks[1].cols[0].stackAlign = 'end';
+builder._doc.model.blocks[3].stack = builder._stackFor( builder._registry, 'sections', null );
+builder._renderEditor();
+check( 'what is said of a frame in the preview opens its dialog on the block the table has put the control in: the loop of a section and the alignment of a column, with the table changed to have them in the surface', ( function() {
+
+	const original = builder.BLOCKS;
+
+	builder.BLOCKS = tableMoved( tableMoved( tableWith(), 'section', 'stack', 'surface' ), 'column', 'stackAlign', 'surface' );
+
+	try {
+		preview().children[3].querySelector('.builder-frame-head .builder-status-item.is-loop').click();
+
+		const loop = openBlock() === 'surface' && dialogText('builder-dialog-kind') === 'Section';
+
+		builder._closeDialog();
+		alignOf('1.0')[0].click();
+
+		return loop && openBlock() === 'surface' && dialogText('builder-dialog-kind') === 'Column of "services"';
+	} finally {
+		builder.BLOCKS = original;
+	}
+} )() );
+builder._closeDialog();
+// The keys the controls of a block are marked with, in the order they stand in the body
+const keysInOrder = function( id ) { return blockOf( id ).all().filter( function( el ) { return el.dataset.key !== undefined } ).map( function( el ) { return el.dataset.key } ) };
+openWith( [ 0 ] );
+const straightKeys = keysInOrder('properties');
+builder._closeDialog();
+const turned = tableWith();
+turned.section.filter( function( block ) { return block.id === 'properties' } )[0].controls.reverse();
+openWith( [ 0 ], turned );
+check( 'the controls inside a block stand in the order the table lists them: the properties of a section, drawn with the block\'s controls reversed in a copy of the table, come out reversed - the id first',
+	straightKeys.length > 2 && straightKeys[0] !== 'id' && keysInOrder('properties').join() === straightKeys.slice().reverse().join() && keysInOrder('properties')[0] === 'id' );
+builder._closeDialog();
+console.log( '\nThe question mark, the heads of closed blocks and the sentence that stands under no field' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0, 0 ] );
+builder._openBlock('properties');
+const helpsIn = function() { return dialogContent().querySelectorAll('.builder-help') };
+const helpOf = function( control ) { return control.el.closest('.builder-row').querySelector('.builder-help') };
+const buttonOfHelp = function( help ) { return help.querySelector('.builder-help-btn') };
+const tipOfHelp = function( help ) { return help.querySelector('.builder-help-tip') };
+check( 'a sentence a field has to say is behind a question mark in the row of the field, or in the head of the box of the sides - a button named after the field and the tip it describes, which is a tooltip: hidden at rest, an id of its own, and the button points at it by aria-describedby and at nothing else', helpsIn().length > 0 && helpsIn().every( function( help ) {
+	return buttonOfHelp( help ).localName === 'button' && buttonOfHelp( help ).type === 'button' && buttonOfHelp( help ).textContent === '?' && tipOfHelp( help ).getAttribute('role') === 'tooltip' && tipOfHelp( help ).hidden === true
+		&& tipOfHelp( help ).id !== '' && buttonOfHelp( help ).getAttribute('aria-describedby') === tipOfHelp( help ).id && tipOfHelp( help ).textContent !== '' && ( help.closest('.builder-row') !== null || help.closest('.builder-box-head') !== null ) && help.closest('.builder-block-body') !== null;
+} ) && new Set( helpsIn().map( function( help ) { return tipOfHelp( help ).id } ) ).size === helpsIn().length
+	&& buttonOfHelp( helpOf( controlOf( blockOf('properties'), 'Class of the component' ) ) ).getAttribute('aria-label') === word('label/help-of').replace( '%s', 'Class of the component' ) );
+check( '...it opens where the button has the focus and where the pointer is over it, and closes where either goes - the pointer does not close it while the focus is there -, one click opens it and the next closes it, and Escape closes the tip and leaves the dialog open', ( function() {
+
+	const help = helpOf( controlOf( blockOf('properties'), 'Class of the component' ) );
+	const button = buttonOfHelp( help );
+	const tip = tipOfHelp( help );
+	const shown = function() { return tip.hidden === false };
+	const states = [];
+
+	button.dispatch('focus');
+	states.push( shown() );
+	button.dispatch('blur');
+	states.push( shown() );
+	help.dispatch('mouseenter');
+	states.push( shown() );
+	help.dispatch('mouseleave');
+	states.push( shown() );
+	button.click();
+	states.push( shown() );
+	button.click();
+	states.push( shown() );
+	button.click();
+	button.focus();
+	help.dispatch('mouseleave');
+	states.push( shown() );
+
+	const escape = pressKey( button, 'Escape' );
+
+	states.push( shown() );
+
+	return states.join() === 'true,false,true,false,true,false,true,false' && escape.defaultPrevented === true && dialogBox().open === true && pressKey( button, 'Escape' ).defaultPrevented === false;
+} )() );
+check( '...a field with nothing to say has no mark - the sentences are behind the marks and under nothing: a dialog of an element has no hint under a field and no small print, whichever element it is - what stands under the upload of a picture is what became of it, not a hint', ( function() {
+
+	const none = function( at ) {
+
+		builder._openSettings( at );
+
+		const clean = dialogContent().querySelectorAll('.nino-admin-hint').filter( function( el ) { return el.classList.contains('builder-picture-message') === false } ).length === 0 && dialogContent().querySelectorAll('small').length === 0
+			&& dialogContent().querySelectorAll('.builder-help').length > 0;
+
+		builder._closeDialog();
+
+		return clean;
+	};
+
+	return tipOf( controlOf( blockOf('properties'), 'HTML tag' ) ) === null && [ [ 0 ], [ 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 2 ], [ 1, 1, 0 ], [ 1, 1 ] ].every( none );
+} )() );
+
+doc = open();
+builder._doc.model.blocks.push( builder._newSection( builder._doc.model ) );
+builder._doc.model.blocks[4].cols.push( builder._newCol() );
+builder._renderEditor();
+builder._openSettings( [ 4 ] );
+check( 'the heads of a section that was just made say nothing - its blocks are on their defaults, and a closed block says only what deviates from them: the head stands there, muted, with its name', blockIds().every( function( id ) { return saysOf( id ).textContent === '' && saysOf( id ).hidden === true && headOf( id ).querySelector('.builder-block-name').textContent !== '' } ) );
+builder._closeDialog();
+builder._openSettings( [ 4, 0 ] );
+check( '...and so do those of a column that was just made, and of a component the editor makes new - the text of a column of its own, which has nothing but the key it was given', blockIds().every( function( id ) { return saysOf( id ).textContent === '' } ) );
+builder._closeDialog();
+
 console.log( '\nThe kinds of input of the attributes of a component' );
 
 // A component of a feature that has one attribute of each kind the registry can ask for: the registry of the kernel does not carry them all, and the panel knows the types and the hints, not the components
@@ -3002,69 +3402,71 @@ builder._registry.components['stub-kinds'] = {
 	defaults : { mode : '', place : '', pick : '', forced : '', flag : '0', lever : '0', tone : '', where : '', look : '', href : '', target : '', 'class' : '' },
 };
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'stub-kinds', source : '', text : null, attributes : { mode : '', place : '', pick : '', forced : '', flag : '0', lever : '0', tone : '', where : '', look : '', href : '', target : '', 'class' : '' } } );
+builder._lastBlock = {};
 builder._openSettings( [ 0, 0, 3 ] );
 
 const kindsAt = [ 0, 0, 3 ];
 const kindsOf = function() { return builder._get( builder._doc.model, kindsAt ).attributes };
-check( 'a component that has no source and attributes of every kind has the tabs it has something for - Properties, Variants, Link, CSS classes - and no Content', JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["properties","variants","link","custom"]' && paneOf('content') === null );
-check( 'Properties: a field for each attribute that is no variant, by its type and the input the schema asks for - a choice of a few as a row of buttons (segment), the places of a stack as a row of icons (icons), the rest of the choices as a select (select, which is what none says as well), a flag as a switch or, where the schema says so, as a plain checkbox', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Mode', 'Place', 'Pick', 'Forced', 'Flag', 'Lever' ] )
-	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'group,group,select,select,box,switch' && classes( paneOf('properties').children ) === 'builder-line,builder-line,builder-line' );
-check( '...a segment has the words of its values - the panel\'s where it has them, the value made into words where it has not, none for the empty one - and the icons of a stack the icons of the three places, with the word of each for its title; a select that is no segment has its values as they are', segmentOf( paneOf('properties'), 'Mode' ) === ':none,one:One,two:Two'
-	&& rowOf( paneOf('properties'), 'Place' ) === ':none:,start:Start:stack-start,center:Center:stack-center,end:End:stack-end' && optionsOf( paneOf('properties'), 'Pick' ) === '=none,alpha=alpha,beta=beta' && optionsOf( paneOf('properties'), 'Forced' ) === '=none,x=x,y=y' );
-check( '...a hint is under the field it belongs to - a segment\'s as well as a checkbox\'s', controlOf( paneOf('properties'), 'Mode' ).el.closest('.builder-segment-field').querySelector('.nino-admin-hint').textContent === 'How it works.'
-	&& controlOf( paneOf('properties'), 'Flag' ).el.closest('.builder-check-field').querySelector('.nino-admin-hint').textContent === 'Small.' && controlOf( paneOf('properties'), 'Flag' ).el.closest('label').classList.contains('builder-check') === true
-	&& controlOf( paneOf('properties'), 'Lever' ).el.closest('.nino-admin-switch') !== null );
-check( '...each kind writes what a person chose into the attribute, as the call has it: the word of a button, of an icon or of an option, "1" for a flag that is on and "0" for one that is off - the checkbox and the switch alike', ( function() {
+const kinds = function() { return blockOf('properties') };
+check( 'a component that has no source and attributes of every kind has the blocks it has something for - link, spacing and properties - and no content', blockIds().join() === 'link,spacing,properties' && openBlock() === 'link' );
+check( 'Properties: the variants first - a row of buttons unless the schema says another way, one to a line, the words of the panel for its values and none for the empty one, the icons of an alignment where the schema asks for them, a select where it asks for one - and then a field for each of the others, by its type and the input the schema asks for: a choice of a few as a row of buttons (segment), the places of a stack as a row of icons (icons), the rest of the choices as a select (select, which is what none says as well), a flag as a switch or, where the schema says so, as a plain checkbox',
+	JSON.stringify( labelList( kinds() ) ) === JSON.stringify( [ 'Tone', 'Where', 'Look', 'Mode', 'Place', 'Pick', 'Forced', 'Flag', 'Lever', 'Class of the component' ] )
+	&& controlsIn( kinds() ).map( function( control ) { return control.kind } ).join() === 'group,group,select,group,group,select,select,box,switch,text' );
+check( '...a segment has the words of its values - the panel\'s where it has them, the value made into words where it has not, none for the empty one - and the icons of a stack the icons of the three places, with the word of each for its title; a select that is no segment has its values as they are; a variant has Default for none', segmentOf( kinds(), 'Mode' ) === ':none,one:One,two:Two'
+	&& rowOf( kinds(), 'Place' ) === ':none:,start:Start:stack-start,center:Center:stack-center,end:End:stack-end' && optionsOf( kinds(), 'Pick' ) === '=none,alpha=alpha,beta=beta' && optionsOf( kinds(), 'Forced' ) === '=none,x=x,y=y'
+	&& segmentOf( kinds(), 'Tone' ) === ':Default,warm:Warm,cold-snap:Cold snap' && rowOf( kinds(), 'Where' ) === ':Default:,left:Left:align-left,center:Center:align-center,right:Right:align-right' && optionsOf( kinds(), 'Look' ) === '=Default,a=a,b=b' );
+check( '...a sentence is behind the question mark of the field it belongs to - a segment\'s as well as a checkbox\'s - and a field that has none has no mark', tipOf( controlOf( kinds(), 'Mode' ) ) === 'How it works.' && tipOf( controlOf( kinds(), 'Flag' ) ) === 'Small.' && controlOf( kinds(), 'Flag' ).el.closest('label').classList.contains('builder-check') === true
+	&& controlOf( kinds(), 'Lever' ).el.closest('.nino-admin-switch') !== null && tipOf( controlOf( kinds(), 'Lever' ) ) === null && tipOf( controlOf( kinds(), 'Place' ) ) === null && kinds().querySelector('.nino-admin-hint') === null && kinds().querySelector('small') === null );
+check( '...each kind writes what a person chose into the attribute, as the call has it: the word of a button, of an icon or of an option, "1" for a flag that is on and "0" for one that is off - the checkbox and the switch alike, and the variants the word chosen', ( function() {
 
-	change( paneOf('properties'), 'Mode', 'two' );
-	change( paneOf('properties'), 'Place', 'end' );
-	change( paneOf('properties'), 'Pick', 'beta' );
-	change( paneOf('properties'), 'Forced', 'x' );
-	change( paneOf('properties'), 'Flag', true );
-	change( paneOf('properties'), 'Lever', true );
+	change( kinds(), 'Mode', 'two' );
+	change( kinds(), 'Place', 'end' );
+	change( kinds(), 'Pick', 'beta' );
+	change( kinds(), 'Forced', 'x' );
+	change( kinds(), 'Flag', true );
+	change( kinds(), 'Lever', true );
 
 	const on = [ kindsOf().mode, kindsOf().place, kindsOf().pick, kindsOf().forced, kindsOf().flag, kindsOf().lever ].join();
 
-	change( paneOf('properties'), 'Flag', false );
-	change( paneOf('properties'), 'Lever', false );
-	change( paneOf('properties'), 'Mode', '' );
+	change( kinds(), 'Flag', false );
+	change( kinds(), 'Lever', false );
+	change( kinds(), 'Mode', '' );
+	change( kinds(), 'Tone', 'cold-snap' );
+	change( kinds(), 'Where', 'center' );
+	change( kinds(), 'Look', 'b' );
 
-	return on === 'two,end,beta,x,1,1' && kindsOf().flag === '0' && kindsOf().lever === '0' && kindsOf().mode === '' && valueAt( paneOf('properties'), 'Mode' ) === '' && valueAt( paneOf('properties'), 'Place' ) === 'end';
+	return on === 'two,end,beta,x,1,1' && kindsOf().flag === '0' && kindsOf().lever === '0' && kindsOf().mode === '' && valueAt( kinds(), 'Mode' ) === '' && valueAt( kinds(), 'Place' ) === 'end'
+		&& [ kindsOf().tone, kindsOf().where, kindsOf().look ].join() === 'cold-snap,center,b' && valueAt( kinds(), 'Tone' ) === 'cold-snap';
 } )() );
-check( 'Variants: a variant is a row of buttons unless the schema says another way - one to a line, the words of the panel for its values and none for the empty one, the icons of an alignment where the schema asks for them, a select where it asks for one', JSON.stringify( labelList( paneOf('variants') ) ) === JSON.stringify( [ 'Tone', 'Where', 'Look' ] )
-	&& controlsIn( paneOf('variants') ).map( function( control ) { return control.kind } ).join() === 'group,group,select' && classes( paneOf('variants').children ) === 'builder-segment-field,builder-segment-field,nino-admin-field'
-	&& segmentOf( paneOf('variants'), 'Tone' ) === ':Default,warm:Warm,cold-snap:Cold snap' && rowOf( paneOf('variants'), 'Where' ) === ':Default:,left:Left:align-left,center:Center:align-center,right:Right:align-right' && optionsOf( paneOf('variants'), 'Look' ) === '=Default,a=a,b=b' );
-check( '...and writes the word of the one that is chosen', ( function() {
-
-	change( paneOf('variants'), 'Tone', 'cold-snap' );
-	change( paneOf('variants'), 'Where', 'center' );
-	change( paneOf('variants'), 'Look', 'b' );
-
-	return [ kindsOf().tone, kindsOf().where, kindsOf().look ].join() === 'cold-snap,center,b' && valueAt( paneOf('variants'), 'Tone' ) === 'cold-snap';
-} )() );
-check( 'Link: only where the schema says the component is a link - and the component without the key has none, with the properties it has: the address and the window it opens in are the attributes of the call that every link has, and are written as href and target', JSON.stringify( labelList( paneOf('link') ) ) === JSON.stringify( [ 'Opens in' ] )
-	&& ( change( paneOf('link'), 'Opens in', '_blank' ), kindsOf().target === '_blank' ) && ( function() {
+check( 'Link: only where the schema says the component is a link - and the component without the key has none, with the properties it has: the address and the window it opens in are the attributes of the call that every link has, and are written as href and target', JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ 'Opens in' ] )
+	&& ( change( blockOf('link'), 'Opens in', '_blank' ), kindsOf().target === '_blank' ) && ( function() {
 		delete builder._registry.components['stub-kinds'].link;
 		builder._openSettings( kindsAt );
-		return JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["properties","variants","custom"]';
+		return blockIds().join() === 'spacing,properties';
 	} )() );
 delete builder._registry.components['stub-kinds'];
 builder._closeDialog();
 
-check( 'a schema that declares no variants has no tab for them, one that declares only variants has no Properties: the tabs are made of what the schema holds', ( function() {
+check( 'an attribute of a schema stands in the block its schema names or its kind puts it in: one that names the tab of the background is of the surface, an address and the window of a link and whether all of a surface is the link are of the link, every other is a property - so the blocks are made of what the schema holds', ( function() {
 
-	const names = function( attributes ) {
-		builder._registry.components['stub-only'] = { label : 'Stub only', source : 'none', loop : true, preview : 'block', attributes : attributes, defaults : { 'class' : '' } };
+	const names = function( attributes, surface ) {
+		builder._registry.components['stub-only'] = { label : 'Stub only', source : 'none', loop : true, preview : 'block', attributes : attributes, surface : surface, defaults : { 'class' : '' } };
 		builder._doc.model.blocks[0].cols[0].components[3] = { name : 'stub-only', source : '', text : null, attributes : { 'class' : '' } };
 		builder._openSettings( kindsAt );
-		return dialogTabs().map( function( tab ) { return tab[0] } ).join();
+		return blockIds().map( function( id ) { return id+ ':'+ labelList( blockOf( id ) ).join('|') } ).join(' / ');
 	};
-	const found = [ names( { tone : { type : 'variant', label : 'Tone', hint : '', options : [ '', 'warm' ], default : '' } } ), names( { mode : { type : 'select', label : 'Mode', hint : '', options : [ '', 'one' ], default : '' } } ) ].join(' | ');
+	const found = [
+		names( { tone : { type : 'variant', label : 'Tone', hint : '', options : [ '', 'warm' ], default : '' } } ),
+		names( { go : { type : 'href', label : 'Go', hint : '', default : '' }, how : { type : 'select', label : 'How', hint : '', options : [ '', '_blank' ], default : '' }, target : { type : 'select', label : 'Opens', hint : '', options : [ '', '_blank' ], default : '' }, linked : { type : 'bool', label : 'Linked', hint : '', default : false } } ),
+		names( { tint : { type : 'select', label : 'Tint', hint : '', tab : 'background', options : [ '', 'alt', 'tint' ], default : '' }, mode : { type : 'select', label : 'Mode', hint : '', options : [ '', 'one' ], default : '' } } ),
+	];
 
 	delete builder._registry.components['stub-only'];
 	builder._closeDialog();
 
-	return found === 'variants,custom | properties,custom';
+	return found[0] === 'spacing:'+ [ sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ) ].join('|')+ ' / properties:Tone|Class of the component'
+		&& found[1].indexOf('link:') === 0 && found[1].indexOf('link:Opens|Linked') !== -1 && found[1].indexOf('properties:How|Class of the component') !== -1
+		&& found[2].indexOf('surface:Tint') === 0 && found[2].indexOf('properties:Mode|Class of the component') !== -1;
 } )() );
 
 console.log( '\nThe dialog of a source' );
@@ -3075,7 +3477,7 @@ const pickItems = function() { return pickerPane('pick').querySelectorAll('.buil
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0, 0 ] );
-sourceButton( paneOf('content') ).click();
+sourceButton( dialogContent() ).click();
 check( 'the source button opens a second dialog above the one of the component - a smaller one of its own, the first stays open - with three tabs for a text: Choose a value, Create new and Static', pickerBox().open === true && dialogBox().open === true && pickerBox().classList.contains('builder-picker-dialog')
 	&& pickerBox().querySelector('.nino-admin-dialog-title').textContent === 'Source' && JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"],["fixed","Static"]]' && shownTab( pickerStrip(), 'builder-picker' ) === 'pick' );
 check( '...its tabs are tabs and its panes tab panels, as the other dialog\'s are', pickerStrip().querySelectorAll('[role="tab"]').every( function( tab ) {
@@ -3102,9 +3504,9 @@ check( '...the search narrows the list by the name and the text of a key - and s
 } )() );
 pickItems()[1].click();
 check( '...a key that is chosen is the source of the component, with no instruction to make it - and the dialog of the source closes, the one below it does not and shows the new source', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/subtitle' && componentAt( [ 0, 0, 0 ] ).create === undefined && componentAt( [ 0, 0, 0 ] ).text === null
-	&& pickerBox().open === false && dialogBox().open === true && paneOf('content').querySelector('.builder-source-current').textContent === '/template/page-home/hero/subtitle' && changes === 1 );
+	&& pickerBox().open === false && dialogBox().open === true && dialogContent().querySelector('.builder-source-current').textContent === '/template/page-home/hero/subtitle' && changes === 1 );
 
-sourceButton( paneOf('content') ).click();
+sourceButton( dialogContent() ).click();
 buttonOf( pickerStrip(), 'Create new' ).click();
 const fresh = function( selector ) { return pickerPane('new').querySelector( selector ) };
 check( 'Create new: a new key, named by the kind of the component and numbered where the section has the name, with the key it makes shown and no size - a key has none', shownTab( pickerStrip(), 'builder-picker' ) === 'new' && fresh('.builder-new-title').textContent === 'New key' && fresh('.builder-new-name').value === 'title-2'
@@ -3118,18 +3520,18 @@ typed('cta');
 check( '...a name that will do shows the key it makes', fresh('.builder-new-uri').textContent === '/template/page-home/hero/cta' && fresh('.builder-new-message').textContent === '' && fresh('.builder-new-use').disabled === false );
 fresh('.builder-new-use').click();
 check( '...and using it makes the key the source, with a mark that says no more than that the key is made - the dialog closes', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/cta' && JSON.stringify( componentAt( [ 0, 0, 0 ] ).create ) === '{}' && pickerBox().open === false
-	&& paneOf('content').querySelector('.builder-source-current').textContent === '/template/page-home/hero/cta' );
+	&& dialogContent().querySelector('.builder-source-current').textContent === '/template/page-home/hero/cta' );
 check( '...and no text is typed for it in any language: the label of the component is no text of the key', componentAt( [ 0, 0, 0 ] ).values === undefined );
 
-sourceButton( paneOf('content') ).click();
+sourceButton( dialogContent() ).click();
 buttonOf( pickerStrip(), 'Static' ).click();
-check( 'Static: a value that stands in the template - a field with a hint and a button to use it', shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && labelsIn( pickerPane('fixed') ) === 'Fixed value' && fixedField().value === '' && buttonOf( pickerPane('fixed'), 'Use it' ).textContent === 'Use it'
-	&& pickerPane('fixed').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/fixed'] );
+check( 'Static: a value that stands in the template - a field with a sentence behind its question mark and a button to use it', shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && labelsIn( pickerPane('fixed') ) === 'Fixed value' && fixedField().value === '' && buttonOf( pickerPane('fixed'), 'Use it' ).textContent === 'Use it'
+	&& tipOf( controlOf( pickerPane('fixed'), 'Fixed value' ) ) === words['/_admin/builder/hint/fixed'] );
 fixedField().value = 'Mehr';
 const used = pressKey( fixedField(), 'Enter' );
 check( '...the value is the text of the call and no source - Enter uses it as the button does, and goes no further: the key is not for the button the dialog gives the focus back to -, and the row shows it in quotes', used.defaultPrevented === true && componentAt( [ 0, 0, 0 ] ).text === 'Mehr' && componentAt( [ 0, 0, 0 ] ).source === '' && componentAt( [ 0, 0, 0 ] ).create === undefined && pickerBox().open === false
-	&& paneOf('content').querySelector('.builder-source-current').textContent === '“Mehr”' );
-sourceButton( paneOf('content') ).click();
+	&& dialogContent().querySelector('.builder-source-current').textContent === '“Mehr”' );
+sourceButton( dialogContent() ).click();
 check( '...and a source that is a fixed value opens on the tab for it, with the value in the field', shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' );
 screen.getElementById('builder-picker-close').click();
 check( '...closing the dialog of the source gives no answer', pickerBox().open === false && dialogBox().open === true && componentAt( [ 0, 0, 0 ] ).text === 'Mehr' && changes === 3 );
@@ -3137,7 +3539,7 @@ check( '...closing the dialog of the source gives no answer', pickerBox().open =
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0 ] );
-buttonOf( paneOf('background'), 'Source' ).click();
+buttonOf( dialogContent(), 'Source' ).click();
 check( 'the picture behind a section is chosen in the same dialog, with the tabs of a picture: Choose a value and Create new - no Static', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"]]'
 	&& pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickerPane('pick').querySelector('input[type="search"]').getAttribute('aria-label') === 'Find an image slot' && pickerPane('pick').querySelector('.builder-source-current').textContent === '/template/page-home/hero/background' );
 check( '...the slots start with those of the section, each with the picture it has as a small thumbnail - none where it has none - and the word for an empty one', ( function() {
@@ -3149,11 +3551,11 @@ check( '...the slots start with those of the section, each with the picture it h
 } )() );
 pickItems()[1].click();
 check( '...a slot that is chosen is the picture, and the focus stays - the row, the preview and the focus below it follow', builder._doc.model.blocks[0].background.slot === '/project/logo/header/image' && builder._doc.model.blocks[0].background.focus === 5 && builder._doc.model.blocks[0].background.create === undefined && pickerBox().open === false
-	&& paneOf('background').querySelector('.builder-source-current').textContent === '/project/logo/header/image' );
+	&& dialogContent().querySelector('.builder-source-current').textContent === '/project/logo/header/image' );
 
 doc = open();
 builder._openSettings( [ 0 ] );
-buttonOf( paneOf('background'), 'Source' ).click();
+buttonOf( dialogContent(), 'Source' ).click();
 buttonOf( pickerStrip(), 'Create new' ).click();
 check( 'a new slot has a name of the section\'s kind, and a size - 1600 by 900 to start with', fresh('.builder-new-title').textContent === 'New image slot' && fresh('.builder-new-name').value === 'background-2' && fresh('.builder-new-uri').textContent === '/template/page-home/hero/background-2'
 	&& fresh('.builder-new-size').hidden === false && fresh('.builder-new-width').value === '1600' && fresh('.builder-new-height').value === '900' && fresh('.builder-new-width-label').textContent === words['/_admin/common/label/width'] );
@@ -3169,13 +3571,13 @@ check( 'a slot is no slot where a segment of it starts with a digit, and the dia
 		doc = open();
 		builder._doc.model.blocks[0].id = id;
 		builder._openSettings( [ 0 ] );
-		buttonOf( paneOf('background'), 'Source' ).click();
+		buttonOf( dialogContent(), 'Source' ).click();
 		buttonOf( pickerStrip(), 'Create new' ).click();
 		if( kind === 'key' ) {
 			pickerBox().open = false;
 			builder._doc.model.blocks[0].cols[0].components.length = 1;
 			builder._openSettings( [ 0, 0, 0 ] );
-			sourceButton( paneOf('content') ).click();
+			sourceButton( dialogContent() ).click();
 			buttonOf( pickerStrip(), 'Create new' ).click();
 		}
 		typed( name );
@@ -3189,7 +3591,7 @@ check( 'a slot is no slot where a segment of it starts with a digit, and the dia
 check( 'the slots of the project come with the picture they have for the thumbnail: the url, and none where there is no picture', ( function() {
 	doc = open();
 	builder._openSettings( [ 0 ] );
-	buttonOf( paneOf('background'), 'Source' ).click();
+	buttonOf( dialogContent(), 'Source' ).click();
 	pickerPane('pick').querySelector('input[type="search"]').value = '';
 	pickerPane('pick').querySelector('input[type="search"]').dispatch('input');
 	return pickItems().map( function( item ) { return item.querySelector('img') === null ? '' : item.querySelector('img').getAttribute('src') } ).join() === '/uploads/hero.1600x900.jpg,';
@@ -3198,32 +3600,32 @@ check( 'the slots of the project come with the picture they have for the thumbna
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 0 ] );
-sourceButton( paneOf('content') ).click();
+sourceButton( dialogContent() ).click();
 check( 'in a loop the source of a picture is a field of the element first - the fields of the type that hold a picture, and none - then the slots of the project', ( function() {
 	const field = controlOf( pickerPane('pick'), 'Field of the element' );
 	return pickerPane('pick').querySelector('.builder-source-current').textContent === 'image' && field.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,image=image' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'image'
-		&& field.el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/field'] && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickItems().length === 0;
+		&& tipOf( field ) === words['/_admin/builder/hint/field'] && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickItems().length === 0;
 } )() );
 change( pickerPane('pick'), 'Field of the element', '' );
-check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && paneOf('content').querySelector('.builder-source-current').textContent === 'none' );
+check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && dialogContent().querySelector('.builder-source-current').textContent === 'none' );
 builder._openSettings( [ 1, 1, 1 ] );
-sourceButton( paneOf('content') ).click();
+sourceButton( dialogContent() ).click();
 check( 'the source of a text in a loop is a field of the element that holds a text, the id of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id'
 	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' && pickItems().length === 2 && ( change( pickerPane('pick'), 'Field of the element', 'summary' ), componentAt( [ 1, 1, 1 ] ).source === 'summary' ) );
 builder._openSettings( [ 1, 1, 3 ] );
-check( 'the button in a loop has the source it has and the fixed text it has: the dialog opens on the fixed value', paneOf('content').querySelector('.builder-source-current').textContent === '.uri' && ( sourceButton( paneOf('content') ).click(), shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' ) );
+check( 'the button in a loop has the source it has and the fixed text it has: the dialog opens on the fixed value', dialogContent().querySelector('.builder-source-current').textContent === '.uri' && ( sourceButton( dialogContent() ).click(), shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' ) );
 builder._openSettings( [ 1, 1, 3 ] );
-buttonOf( paneOf('properties'), 'Source' ).click();
+buttonOf( blockOf('link'), 'Source' ).click();
 check( 'the link of a button in a loop may be the uri or the id of the element - or a fixed address, which is a value that stands in the template', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.uri'
 	&& JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' );
 buttonOf( pickerStrip(), 'Static' ).click();
 fixedField().value = '/contact';
 buttonOf( pickerPane('fixed'), 'Use it' ).click();
-check( '...an attribute has no key to make: it has no Create new, and what is used as a fixed value is written as it is', componentAt( [ 1, 1, 3 ] ).attributes.href === '/contact' && pickerBox().open === false && paneOf('properties').querySelector('.builder-source-current').textContent === '“/contact”' );
+check( '...an attribute has no key to make: it has no Create new, and what is used as a fixed value is written as it is', componentAt( [ 1, 1, 3 ] ).attributes.href === '/contact' && pickerBox().open === false && blockOf('link').querySelector('.builder-source-current').textContent === '“/contact”' );
 
 doc = open();
 builder._openSettings( [ 0, 0, 2 ] );
-buttonOf( paneOf('properties'), 'Source' ).click();
+buttonOf( blockOf('link'), 'Source' ).click();
 pickItems();
 check( 'the link of a button outside a loop is a key; typed addresses are shown as the fixed values they are', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' && pickerPane('pick').querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
 	&& pickerPane('pick').querySelector('.builder-label').textContent === 'Text key' );
@@ -3232,8 +3634,8 @@ doc = open();
 builder._keys = [];
 builder._keysAnswered = true;
 builder._openSettings( [ 0, 0, 0 ] );
-sourceButton( paneOf('content') ).click();
-check( 'where the keys of the project may not be read the key is typed: a field with the hint, and a key that will do is the answer', ( function() {
+sourceButton( dialogContent() ).click();
+check( 'where the keys of the project may not be read the key is typed: a field with its sentence behind the question mark, and a key that will do is the answer', ( function() {
 	const field = controlOf( pickerPane('pick'), 'Text key' );
 	field.el.value = 'nothing';
 	field.el.dispatch('input');
@@ -3241,9 +3643,100 @@ check( 'where the keys of the project may not be read the key is typed: a field 
 	const refused = componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/title';
 	field.el.value = '/template/page-home/hero/other';
 	field.el.dispatch('change');
-	return field.el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/typed'] && refused && componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/other' && pickerBox().open === false;
+	return tipOf( field ) === words['/_admin/builder/hint/typed'] && refused && componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/other' && pickerBox().open === false;
 } )() );
 builder._keysAnswered = false;
+
+console.log( '\nThe link: the pages of the site, a page chosen by its address, an address made a key' );
+
+// The pages the list of keys tells of - the routes that are pages -, as the answer of text/keys has them
+const sitePages = function() { return [
+	{ uri : '/contact', httpUri : '/contact-us', template : 'page-contact', category : 'page-contact', templateName : 'Contact' },
+	{ uri : '/home', httpUri : '/', template : 'page-home', category : 'page-home', templateName : null },
+] };
+const pageKey = function( at ) { return '/_nino/webpage'+ sitePages()[at].uri+ '/uri' };
+
+doc = open();
+builder._renderEditor();
+requests = [];
+builder._keysAsked = false;
+builder._keysRead = false;
+builder._pages = [];
+builder._loadKeys();
+
+const keysAsked = requests[requests.length - 1];
+
+keysAsked.callback( 200, { keys : known(), pages : sitePages().concat( [ 'nothing', { uri : '' }, { httpUri : '/x' } ] ) } );
+check( 'the list of keys comes with the pages of the site, and the panel keeps what is a page - one that has a uri - and takes the answer for what it is: this account may read the keys, and may make one', keysAsked.action === 'text/keys' && builder._keysRead === true
+	&& JSON.stringify( builder._pages ) === JSON.stringify( sitePages() ) );
+requests = [];
+builder._keysAsked = false;
+builder._loadKeys();
+requests[requests.length - 1].callback( 200, { keys : known() } );
+check( '...an answer without the pages - where the Routes panel is not there - has none, and one that is a refusal takes nothing away', builder._pages.length === 0 && ( builder._keysAsked = false, builder._loadKeys(), requests[requests.length - 1].callback( 403, { error : 'no' } ), builder._keysRead === true && builder._keys.length === 2 ) );
+builder._pages = sitePages();
+
+builder._openSettings( [ 0, 0, 2 ] );
+buttonOf( blockOf('link'), 'Source' ).click();
+check( 'the dialog of the address of a link has a way for each of the four: Choose a value, Internal page, Create new and Static - and opens on the page the link leads to, where it leads to one', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","internal","new","fixed"]'
+	&& JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[1] } ) ) === JSON.stringify( [ words['/_admin/builder/source/tab-pick'], words['/_admin/builder/source/tab-internal'], words['/_admin/builder/source/tab-new'], words['/_admin/builder/source/tab-fixed'] ] )
+	&& shownTab( pickerStrip(), 'builder-picker' ) === 'internal' && builder._pageOf( componentAt( [ 0, 0, 2 ] ).attributes.href ) !== null );
+buttonOf( pickerStrip(), words['/_admin/builder/source/tab-pick'] ).click();
+check( '...Choose a value lists the addresses of the pages in front of the texts - each the key that holds the address, and the address of the page with the template it shows - with the page the link leads to marked, and starts with no search, so that they are in sight', ( function() {
+	const search = pickerPane('pick').querySelector('input[type="search"]');
+	return search.value === '' && pickItems().map( function( item ) { return item.querySelector('.builder-pick-name').textContent+ '='+ item.querySelector('.builder-pick-sub').textContent+ ( item.classList.contains('is-current') ? '*' : '' ) } ).join()
+		=== pageKey( 0 )+ '=/contact-us - Contact*,'+ pageKey( 1 )+ '=/ - page-home,/template/page-home/hero/title=Welcome,/template/page-home/hero/subtitle=We build';
+} )() );
+buttonOf( pickerStrip(), words['/_admin/builder/source/tab-internal'] ).click();
+check( '...Internal page: a select of the pages, by their address and the template they show, with none in front - on the page the link leads to - and its sentence behind the question mark', ( function() {
+	const select = controlOf( pickerPane('internal'), words['/_admin/builder/source/page'] );
+	return select.kind === 'select' && select.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '='+ words['/_admin/builder/label/none']+ ','+ pageKey( 0 )+ '=/contact-us - Contact,'+ pageKey( 1 )+ '=/ - page-home' && valueAt( pickerPane('internal'), words['/_admin/builder/source/page'] ) === pageKey( 0 )
+		&& tipOf( select ) === words['/_admin/builder/hint/page'];
+} )() );
+changes = 0;
+change( pickerPane('internal'), words['/_admin/builder/source/page'], '' );
+check( '...none is no choice: the link is as it was, and the dialog stays', componentAt( [ 0, 0, 2 ] ).attributes.href === pageKey( 0 ) && pickerBox().open === true && changes === 0 );
+change( pickerPane('internal'), words['/_admin/builder/source/page'], pageKey( 1 ) );
+check( '...a page that is chosen is the address of the link - the key that holds its address, which the Writer makes the fill of it, so that the link goes to the page in the language the visitor reads - and the dialog closes, the form behind it shows it', componentAt( [ 0, 0, 2 ] ).attributes.href === pageKey( 1 )
+	&& pickerBox().open === false && blockOf('link').querySelector('.builder-source-current').textContent === pageKey( 1 ) && changes === 1 && componentAt( [ 0, 0, 2 ] ).create === undefined );
+
+buttonOf( blockOf('link'), 'Source' ).click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+requests = [];
+check( 'Create new: a new key for the address, named by the attribute and numbered where the section has the name, with the key it makes shown - and a field for the address, which is what the key holds: the button waits for one', shownTab( pickerStrip(), 'builder-picker' ) === 'new' && fresh('.builder-new-title').textContent === 'New key'
+	&& fresh('.builder-new-uri').textContent === '/template/page-home/hero/'+ fresh('.builder-new-name').value && labelsIn( pickerPane('new') ).indexOf('Name,Address') === 0 && fresh('.builder-new-use').disabled === true && fresh('.builder-new-message').textContent === words['/_admin/builder/source/name-address'] );
+
+const addressField = function() { return controlOf( pickerPane('new'), words['/_admin/builder/source/address'] ) };
+const nameOfNew = fresh('.builder-new-name').value;
+
+addressField().el.value = '/shop';
+addressField().el.dispatch('input');
+check( '...an address typed lets it be used - and none of the checks of a name is left out: a name that will not do is refused as it is for a text', fresh('.builder-new-message').textContent === '' && fresh('.builder-new-use').disabled === false
+	&& ( typed('Bad Name'), fresh('.builder-new-use').disabled === true && fresh('.builder-new-message').textContent === words['/_admin/builder/source/name-grammar'] ) && ( typed( nameOfNew ), fresh('.builder-new-use').disabled === false ) );
+fresh('.builder-new-use').click();
+check( '...using it makes the key at once, with the Text panel: a key every language shares, in plain text, holding the address - the form waits for the answer and can be used no more in the meantime, and the link is not changed yet', requests.length === 1 && requests[0].action === 'keys/create'
+	&& JSON.stringify( requests[0].payload ) === JSON.stringify( { key : '/template/page-home/hero/'+ nameOfNew, global : true, format : 'plain', value : '/shop' } ) && fresh('.builder-new-use').disabled === true && pickerBox().open === true && componentAt( [ 0, 0, 2 ] ).attributes.href === pageKey( 1 ) );
+requests[0].callback( 409, { error : 'key already exists', code : 'keys_exists' } );
+check( '...a refusal is said in the dialog, in the words of the panel for a key that could not be made, and nothing is lost: the name and the address are as they were, the button is there again, the link is as it was', fresh('.builder-new-message').textContent === '(409) /_admin/builder/error/key'
+	&& fresh('.builder-new-use').disabled === false && fresh('.builder-new-name').value === nameOfNew && addressField().el.value === '/shop' && componentAt( [ 0, 0, 2 ] ).attributes.href === pageKey( 1 ) && pickerBox().open === true );
+requests = [];
+changes = 0;
+fresh('.builder-new-use').click();
+requests[0].callback( 200, { ok : true, key : '/template/page-home/hero/'+ nameOfNew } );
+check( '...an answer of 200 makes the key the address of the link - with no mark that makes it with the document, it is made - and the dialog closes, and the keys of the project are asked for again, so that the key is among them', componentAt( [ 0, 0, 2 ] ).attributes.href === '/template/page-home/hero/'+ nameOfNew
+	&& componentAt( [ 0, 0, 2 ] ).create === undefined && componentAt( [ 0, 0, 2 ] ).slots === undefined && pickerBox().open === false && changes === 1 && requests.length === 2 && requests[1].action === 'text/keys'
+	&& blockOf('link').querySelector('.builder-source-current').textContent === '/template/page-home/hero/'+ nameOfNew );
+requests = [];
+
+doc = open();
+builder._keysRead = false;
+builder._pages = [];
+builder._openSettings( [ 0, 0, 2 ] );
+buttonOf( blockOf('link'), 'Source' ).click();
+check( 'where the keys may not be read there is no Create new for a link - the Text panel would refuse the key - and where the site has no pages there is no Internal page: the ways are the two there were', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' );
+builder._closeDialog();
+builder._keysRead = true;
+builder._pages = sitePages();
 
 console.log( '\nThe dialog of a source as a dialog of the workbench could take it over' );
 
@@ -3283,7 +3776,7 @@ console.log( '\nThe editor of HTML+' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 2 ] );
-check( 'a block of html has no form: it has the editor, which is a dialog of its own, titled as such, wide, with nothing in it to choose but the markup', dialogText('builder-dialog-kind') === words['/_admin/builder/html/title'] && dialogBox().classList.contains('is-wide') && screen.getElementById('builder-dialog-tabs').hidden === true
+check( 'a block of html has no form: it has the editor, which is a dialog of its own, titled as such, wide, with nothing in it to choose but the markup', dialogText('builder-dialog-kind') === words['/_admin/builder/html/title'] && dialogBox().classList.contains('is-wide') && dialogContent().querySelector('.builder-blocks') === null
 	&& JSON.stringify( labelList( dialogContent() ) ) === JSON.stringify( [ 'The markup of the block' ] ) && dialogContent().querySelector('.builder-html-note').textContent === words['/_admin/builder/html/note'] );
 const markup = function() { return dialogContent().querySelector('.builder-html-source') };
 const applyButton = function() { return screen.getElementById('builder-dialog-actions').children[0] };
@@ -3370,7 +3863,7 @@ check( 'a template is copied from the list: the dialog asks for the name of the 
 	change( dialogContent(), 'Name', 'My copy' );
 	requests = [];
 	copyButton().click();
-	return dialogText('builder-dialog-kind') === 'Duplicate' && asked === 'Copy of Home' && texts( screen.getElementById('builder-dialog-actions').children ) === 'Duplicate,Cancel' && screen.getElementById('builder-dialog-tabs').hidden === true
+	return dialogText('builder-dialog-kind') === 'Duplicate' && asked === 'Copy of Home' && texts( screen.getElementById('builder-dialog-actions').children ) === 'Duplicate,Cancel' && dialogContent().querySelector('.builder-blocks') === null
 		&& requests.length === 1 && requests[0].action === 'builder/duplicate' && JSON.stringify( requests[0].payload ) === '{"file":"page-home","name":"My copy"}' && dialogBox().open === true;
 } )() );
 check( '...keys and image slots that are in the way are named in the dialog after the sentence of the code, in the panel\'s own words: the server answers the bare uris, the keys and then the slots', ( function() {
@@ -3545,7 +4038,7 @@ builder._addSection();
 builder._addCol( [ 0 ] );
 builder._addComponent( [ 0, 0 ], 'button' );
 check( 'a new section is below the last, fresh, with the animation of the template - the bare class where it animates its sections; a column ends the row of its section; a component ends its column - with its key', builder._doc.model.blocks[4].id === 'section' && builder._fresh.section === true && builder._doc.model.blocks[4].settings.vpa === ''
-	&& builder._animationMode( true, builder._doc.model.blocks[4].settings ) === 'like' && builder._doc.model.blocks[0].cols.length === 2 && JSON.stringify( builder._doc.model.blocks[0].cols[1].width ) === '{"s":100,"m":50,"l":50}'
+	&& builder._animationMode( true, builder._doc.model.blocks[4].settings ) === 'like' && builder._doc.model.blocks[0].cols.length === 2 && JSON.stringify( builder._doc.model.blocks[0].cols[1].width ) === '{"s":100,"m":100,"l":100}' && JSON.stringify( builder._doc.model.blocks[0].cols[0].width ) === '{"s":100,"m":100,"l":66}'
 	&& builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].source === '/template/page-home/hero/button' && JSON.stringify( builder._doc.model.blocks[0].cols[0].components[3].create ) === '{}' && builder._same( builder._sel, [ 0, 0, 3 ] ) );
 builder._addCol( [ 1 ] );
 builder._addComponent( [ 1, 1 ], 'title' );
@@ -3827,10 +4320,10 @@ check( 'the errors of the panel, and an editor that is opened and fails to load'
 	} );
 } ) && builder._doc !== null && builder._doc.hash === 'h9' && builder._doc.usedBy.length === 1 );
 
-check( 'the stylesheet keeps what the script hides hidden (a button with display set is shown all the same), paints the sections in grey levels, shows the tools of the frame the pointer is over and of the selected one, gives the dialog 44rem and the dialog of a source 34rem - and has no picture of its own: the icons are the sprite\'s', ( function() {
+check( 'the stylesheet keeps what the script hides hidden (a button with display set is shown all the same), paints the sections in grey levels, shows the tools of the frame the pointer is over and of the selected one, gives the dialog of a form 29.4rem - a column of fields about 400px wide -, the wide one of the lightbox and the editors 52rem and the dialog of a source 34rem - and has no picture of its own: the icons are the sprite\'s', ( function() {
 	const colours = stylesheet.split( '.builder-frame.builder-color-' ).slice( 1 ).map( function( rule ) { return rule.slice( 0, rule.indexOf( '}' ) ) } );
 	return stylesheet.indexOf( '.builder-icon-btn[hidden] {\n\tdisplay: none;' ) !== -1 && colours.length === 6 && colours.every( function( rule ) { return /var\(--editor-(blue|orange)/.test( rule ) === false } )
-		&& stylesheet.indexOf( '.builder-pick.is-hover > header > .builder-tools' ) !== -1 && stylesheet.indexOf( '.builder-pick.is-selected > .builder-tools' ) !== -1 && stylesheet.indexOf( 'width: min(44rem, calc(100vw - 2rem));' ) !== -1
+		&& stylesheet.indexOf( '.builder-pick.is-hover > header > .builder-tools' ) !== -1 && stylesheet.indexOf( '.builder-pick.is-selected > .builder-tools' ) !== -1 && stylesheet.indexOf( 'width: min(29.4rem, calc(100vw - 2rem));' ) !== -1 && stylesheet.indexOf( 'width: min(52rem, calc(100vw - 2rem));' ) !== -1
 		&& stylesheet.indexOf( 'width: min(34rem, calc(100vw - 2rem));' ) !== -1 && stylesheet.indexOf( 'data:' ) === -1 && stylesheet.indexOf( 'url(' ) === -1;
 } )() );
 check( 'the template holds a fragment for everything the script clones, and the script clones everything the template holds - and none for a tree', ( function() {
@@ -3845,11 +4338,12 @@ check( 'every icon the script names is a symbol of the sprite, and every symbol 
 	template.replace( /<symbol id="builder-icon-([a-z-]+)"/g, function( all, name ) { symbols.push( name ) } );
 	const named = [];
 	template.replace( /href="#builder-icon-([a-z-]+)"/g, function( all, name ) { named.push( name ) } );
-	// The script names them as an icon (_icon, _iconButton, _statusItem), as the icon of an option, in DEVICES and in ALIGN_ICONS
+	// The script names them as an icon (_icon, _iconButton, _statusItem), as the icon of an option, in DEVICES and in ALIGN_ICONS, and for each of the WIDTHS (the start of a name that is put together is no name)
 	source.replace( /_(?:icon|iconButton)\( '([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
 	source.replace( /_statusItem\( '[a-z]+', '([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
-	source.replace( /icon\s*:\s*'([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
+	source.replace( /icon\s*:\s*'([a-z-]+)'(?!\s*\+)/g, function( all, name ) { named.push( name ) } );
 	Object.keys( builder.DEVICES ).forEach( function( key ) { named.push( builder.DEVICES[key] ) } );
+	builder.WIDTHS.forEach( function( value ) { named.push( 'width-'+ value ) } );
 	Object.keys( builder.ALIGN_ICONS ).forEach( function( setting ) { Object.keys( builder.ALIGN_ICONS[setting] ).forEach( function( value ) { named.push( builder.ALIGN_ICONS[setting][value] ) } ) } );
 	return named.every( function( name ) { return symbols.indexOf( name ) !== -1 } ) && symbols.every( function( name ) { return named.indexOf( name ) !== -1 } );
 } )() );
@@ -3956,11 +4450,11 @@ doc = open();
 builder._renderEditor();
 changes = 0;
 builder._openSettings( [ 0, 0, 0 ] );
-const contentPane = function() { return paneOf('content') };
+const contentPane = function() { return blockOf('content') };
 const field = function() { return controlOf( contentPane(), lineLabel ) };
-check( 'a component with a text key has the text of its key under its source, in the language the editor works in: a line of text for a key of the plain format, with the limit of the key, a hint that says when it is written - and no editor of the workbench', field().kind === 'text'
+check( 'a component with a text key has the text of its key under its source, in the language the editor works in: a line of text for a key of the plain format, with the limit of the key, a sentence behind the question mark that says when it is written - and no editor of the workbench', field().kind === 'text'
 	&& field().el.localName === 'input' && field().el.value === 'Welcome' && field().el.maxLength === 160 && field().el.spellcheck === true && contentPane().children[1].className === 'builder-content-extra'
-	&& contentPane().children[1].querySelector('.nino-admin-hint').textContent === 'Written to the key when the template is saved.' && textEditors.length === 0 );
+	&& tipOf( field() ) === 'Written to the key when the template is saved.' && contentPane().querySelector('.nino-admin-hint') === null && textEditors.length === 0 );
 change( contentPane(), lineLabel, 'Hello' );
 check( 'what is typed is kept in the model, under the language - a change, and nothing is sent: the key is written when the document is saved - and the preview behind shows it', JSON.stringify( heroTitle().values ) === '{"en_US":"Hello"}' && changes === 1
 	&& builder._unsaved( builder._doc ) === true && requests.length === 0 && lines()[0] === 'Hello' && builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title' );
@@ -3998,7 +4492,7 @@ const stripped = {
 };
 check( 'the text has a field where the source is a text key the project knows - and not for a fixed text, the field of an element in a loop, a picture, a key that is not in the list (the account may not read them, or it is hidden)', Object.keys( stripped ).every( function( what ) {
 	builder._openSettings( stripped[what] );
-	const children = paneOf('content').children.length;
+	const children = dialogContent().children.length;
 	builder._closeDialog();
 	return children === 1 || console.log( '      '+ what+ ': '+ children+ ' children' ) === undefined;
 } ) );
@@ -4008,7 +4502,7 @@ check( '...nor for a component that has a fixed text and a key both - the model 
 } )() );
 builder._keys = [];
 builder._openSettings( [ 0, 0, 0 ] );
-check( '...nor for an account that cannot read the keys: it knows no text to show, and it would only be the text of a key it cannot see', paneOf('content').children.length === 1 );
+check( '...nor for an account that cannot read the keys: it knows no text to show, and it would only be the text of a key it cannot see', dialogContent().children.length === 1 );
 builder._closeDialog();
 
 doc = open();
@@ -4033,8 +4527,9 @@ const madeEditor = textEditors[textEditors.length - 1];
 check( 'a component with a format of its own - [text] - makes its key in that format, and the field is the editor of the workbench in the profile of it: blocks by default, with a limit and not none - and empty, as the key holds no text', madeEditor.format === 'blocks' && madeEditor.value === '' && madeEditor.maxlength === builder.CONTENT_MAX
 	&& madeEditor.mount.parentNode.className === 'builder-value' && madeEditor.mount.className.indexOf('builder-content') !== -1 && contentPane().querySelector('.builder-value .builder-label').textContent === lineLabel && contentPane().querySelectorAll('input').length === 0 );
 const valueGroup = contentPane().querySelector('.builder-value');
-check( '...an editor is no input that a label wraps, so the field is a group that its label names and its hint describes, as the Text panel names its editors', valueGroup.getAttribute('role') === 'group' && valueGroup.getAttribute('aria-labelledby') === valueGroup.querySelector('.builder-label').id
-	&& valueGroup.getAttribute('aria-describedby') === valueGroup.querySelector('.nino-admin-hint').id && valueGroup.querySelector('.builder-label').id !== '' && valueGroup.querySelector('.nino-admin-hint').id !== '' && valueGroup.querySelector('.builder-label').id !== valueGroup.querySelector('.nino-admin-hint').id );
+check( '...an editor is no input that a label wraps, so the field is a group that its label names and its sentence - behind the question mark beside the name - describes, as the Text panel names its editors', valueGroup.getAttribute('role') === 'group' && valueGroup.getAttribute('aria-labelledby') === valueGroup.querySelector('.builder-label').id
+	&& valueGroup.getAttribute('aria-describedby') === valueGroup.querySelector('.builder-help-tip').id && valueGroup.querySelector('.builder-label').id !== '' && valueGroup.querySelector('.builder-help-tip').id !== '' && valueGroup.querySelector('.builder-label').id !== valueGroup.querySelector('.builder-help-tip').id
+	&& valueGroup.querySelector('.builder-help-tip').textContent === words['/_admin/builder/value/hint'] && valueGroup.querySelector('.nino-admin-hint') === null );
 check( '...an editor that holds no text says what it is for as an input does: the label of the component in the language it is typed in is its placeholder, drawn by the stylesheet while the box is blank - and it is no text', madeEditor.mount.querySelector('.nino-admin-richtext-content').dataset.placeholder === labelIn( 'text', 'en_US' )
 	&& madeEditor.mount.querySelector('.nino-admin-richtext-content').classList.contains('is-blank') === true && stylesheet.indexOf( '.builder-value .nino-admin-richtext-content.is-blank::before {\n\tcontent: attr(data-placeholder);' ) !== -1 );
 madeEditor.value = '<p>Hi</p>';
@@ -4208,6 +4703,33 @@ const ruleOf = function( selector ) {
 	return '';
 };
 
+check( 'what the Builder draws over the page is not the page\'s: the title of a head, each thing that is said of a frame and its tools stand on a chip - solid, in the colours of the workbench, whatever ground the preview paints under them - and every ground sets the ink that reads on it, a light one as well, so that a card of a light ground in a section of a black one is no white on white', ( function() {
+
+	const chip = '.builder-head-title,\n.builder-head-status .builder-status-item,\n.builder-tools {\n\tborder: 1px solid var(--editor-border);\n\tborder-radius: var(--editor-radius-sm);\n\tbackground: var(--editor-bg-elevated);\n\tcolor: var(--editor-text);\n}';
+	// Whether the rule a selector stands in - alone or in a list - sets a colour
+	const sets = function( selector ) {
+
+		const at = stylesheet.search( new RegExp( '\\n'+ selector.replace( /\./g, '\\.' )+ '(,| \\{)' ) );
+
+		return at !== -1 && stylesheet.slice( stylesheet.indexOf( '{', at ), stylesheet.indexOf( '\n}', at ) ).indexOf( '\n\tcolor: ' ) !== -1;
+	};
+	const grounds = [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt', 'plain' ];
+
+	return stylesheet.indexOf( chip ) !== -1 && ruleOf('.builder-pcol-head').indexOf('opacity') === -1 && ruleOf('.builder-card-head').indexOf('opacity') === -1
+		&& grounds.every( function( ground ) { return sets( '.builder-card.builder-color-'+ ground ) && sets( '.builder-pcol.builder-color-'+ ground ) } );
+} )() );
+check( 'a dialog is never taller than the window and has one region that scrolls: it is a column of its head, its content and its actions, limited to the height of the window less a margin - the plain height first, the dynamic one after it for a browser that has it - and clipping, and the content is the one thing that may shrink and scroll - its rows as high as what is in them, so that no box in it is shrunk and cuts off the rest - so that the actions stay in sight', ( function() {
+
+	const dialog = ruleOf('.builder-dialog').split('\n');
+	const limits = dialog.filter( function( line ) { return /^\tmax-height: calc\(100d?vh - 2rem\);$/.test( line ) } );
+	const lines = function( selector ) { return ruleOf( selector ).split('\n') };
+
+	return limits.length === 2 && limits[0].indexOf('100vh') !== -1 && limits[1].indexOf('100dvh') !== -1 && dialog.indexOf( '\toverflow: hidden;' ) !== -1
+		&& lines('.builder-dialog[open]').indexOf( '\tdisplay: flex;' ) !== -1 && lines('.builder-dialog[open]').indexOf( '\tflex-direction: column;' ) !== -1
+		&& lines('.builder-dialog .nino-admin-dialog-body').indexOf( '\tmin-height: 0;' ) !== -1
+		&& lines('.builder-dialog-content').indexOf( '\tflex: 1 1 auto;' ) !== -1 && lines('.builder-dialog-content').indexOf( '\tmin-height: 0;' ) !== -1 && lines('.builder-dialog-content').indexOf( '\toverflow: auto;' ) !== -1
+		&& lines('.builder-dialog-content').indexOf( '\tgrid-auto-rows: max-content;' ) !== -1;
+} )() );
 check( 'the options of a choice wear the colours of the knob strips of the Design feature: the elevated ground and the quiet ink, the ink of the text for one that is pointed at and not chosen - in a segment that takes a choice, not in a disabled one - and for the one that is chosen the blue and the ink of an active tab - without the ring and the soft blue it had', ( function() {
 
 	const option = ruleOf('.builder-segment-option');
@@ -4250,10 +4772,10 @@ const image = function() { return builder._get( builder._doc.model, imageAt ) };
 builder._openSettings( imageAt );
 changes = 0;
 check( 'the content of a picture is its slot, and under it the picture: a thumbnail that is out of sight where the slot has none, the choice of a file that has the words for its label and the limits an upload runs into above it, what is done with the first picture, and the alt text', fileField( contentPane() ).getAttribute('aria-label') === 'Upload a picture'
-	&& thumbOf( contentPane() ).hidden === true && contentPane().querySelector('.builder-picture-controls .nino-admin-hint').textContent === 'At most 8 MB and 20 megapixels.'
-	&& contentPane().querySelector('.builder-picture-controls small').textContent === 'The first picture makes the slot and is stored at once.' && noteOf( contentPane() ).hidden === true );
+	&& thumbOf( contentPane() ).hidden === true && contentPane().querySelector('.builder-picture-controls .builder-help-tip').textContent === 'The first picture makes the slot and is stored at once. At most 8 MB and 20 megapixels.'
+	&& contentPane().querySelector('.builder-picture-controls small') === null && noteOf( contentPane() ).hidden === true );
 check( '...the alt text is the one of the language the editor works in - at first the placeholder the picture was made with in that language, the label of the component -; a slot that is not there yet cannot take it, so it waits in the mark that makes the slot and is said so', valueAt( contentPane(), altLabel ) === labelIn( 'image', 'en_US' )
-	&& controlOf( contentPane(), altLabel ).el.disabled === false && controlOf( contentPane(), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Stored with the slot as soon as it is made.' );
+	&& controlOf( contentPane(), altLabel ).el.disabled === false && tipOf( controlOf( contentPane(), altLabel ) ) === 'Stored with the slot as soon as it is made.' );
 change( contentPane(), altLabel, 'A house' );
 check( '...what is typed goes into the mark of the slot, under the language, as a change - and nothing is sent - and the other language keeps its placeholder', JSON.stringify( image().create ) === JSON.stringify( { label : 'Image', width : 1600, height : 900, alt : { en_US : 'A house', de_DE : labelIn( 'image', 'de_DE' ) } } ) && changes === 1 && requests.length === 0 );
 builder._closeDialog();
@@ -4278,7 +4800,7 @@ check( '...the alt text that was waiting is written once the picture is stored, 
 requests[2].callback( 200, { alt : { en_US : 'A house', de_DE : 'Ein Haus' } } );
 check( '...and the form shows it: the thumbnail, a note that the picture is stored, the alt text of the slot with the hint that it is stored at once - and the preview has the picture in the placeholder of the component', thumbOf( contentPane() ).hidden === false && thumbOf( contentPane() ).src.indexOf( '/uploads/image.jpg?t=' ) === 0
 	&& noteOf( contentPane() ).textContent === 'The picture is stored.' && noteOf( contentPane() ).classList.contains('is-error') === false && fileField( contentPane() ).disabled === false && valueAt( contentPane(), altLabel ) === 'A house'
-	&& controlOf( contentPane(), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Stored at once, with the slot.' && preview().querySelector('[data-path="0.0.3"] .builder-ph-picture').src.indexOf( '/uploads/image.jpg' ) === 0
+	&& tipOf( controlOf( contentPane(), altLabel ) ) === 'Stored at once, with the slot.' && preview().querySelector('[data-path="0.0.3"] .builder-ph-picture').src.indexOf( '/uploads/image.jpg' ) === 0
 	&& builder._slotOf( '/template/page-home/hero/image' ).hasImage === true && builder._altOf( builder._slotOf( '/template/page-home/hero/image' ) ).de_DE === 'Ein Haus' );
 
 choose( contentPane(), house );
@@ -4359,41 +4881,41 @@ console.log( '\nThe picture behind a section' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1 ] );
-buttonOf( stripOf(), 'Border / Background' ).click();
-check( 'the picture behind a section has the same under its source: the upload and the alt text - and where the section has none the alt text has no slot to wait in, and says that a picture comes first', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
-	&& controlOf( paneOf('background'), altLabel ).el.disabled === true && controlOf( paneOf('background'), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Upload a picture first, or choose a slot with the Source button.' );
+builder._openBlock('surface');
+check( 'the picture behind a section has the same under its source: the upload and the alt text - and where the section has none the alt text has no slot to wait in, and says that a picture comes first', fileField( dialogContent() ) !== null && thumbOf( dialogContent() ).hidden === true
+	&& controlOf( dialogContent(), altLabel ).el.disabled === true && tipOf( controlOf( dialogContent(), altLabel ) ) === 'Upload a picture first, or choose a slot with the Source button.' );
 requests = [];
 changes = 0;
-choose( paneOf('background'), house );
+choose( dialogContent(), house );
 check( '...a picture chosen for a section that has none makes a slot of the kind of a new one - the name background, free in the section, the size it starts with, and for its label the name of the section and the word for a background - and the background is that slot, without a mark', actionsOf() === 'slots/create'
 	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/services/background","label":"services: Background","width":1600,"height":900}' );
 requests[0].callback( 200, { ok : true } );
 check( '...the section has the picture behind it, with no focus until it is chosen and nothing to make', JSON.stringify( builder._doc.model.blocks[1].background ) === '{"slot":"/template/page-home/services/background","focus":null}' && changes === 1 && actionsOf() === 'slots/create,images/upload' );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/services.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
-check( '...and the tab is drawn again with it: the thumbnail, the focus and the button that takes the picture away are on, the alt text can be written - and the preview says that a picture is behind the section', thumbOf( paneOf('background') ).hidden === false && thumbOf( paneOf('background') ).src.indexOf( '/uploads/services.jpg' ) === 0
-	&& controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && noteOf( paneOf('background') ).textContent === 'The picture is stored.'
-	&& preview().children[1].querySelector('.is-background') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
+check( '...and the surface is drawn again with it: the thumbnail, the focus and the button that takes the picture away are on, the alt text can be written - and the preview says that a picture is behind the section', thumbOf( dialogContent() ).hidden === false && thumbOf( dialogContent() ).src.indexOf( '/uploads/services.jpg' ) === 0
+	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === false && buttonOf( dialogContent(), 'Remove the picture' ).disabled === false && controlOf( dialogContent(), altLabel ).el.disabled === false && noteOf( dialogContent() ).textContent === 'The picture is stored.'
+	&& preview().children[1].querySelector('.is-background') !== null && openBlock() === 'surface' );
 builder._closeDialog();
 builder._doc.model.blocks[1].id = '2col';
 builder._openSettings( [ 1 ] );
-buttonOf( stripOf(), 'Border / Background' ).click();
+builder._openBlock('surface');
 builder._doc.model.blocks[1].background = null;
-builder._refreshTab('background');
+redrawBlocks();
 requests = [];
-choose( paneOf('background'), house );
-check( 'a section whose id starts with a digit cannot have a slot made of its name: it is told so, as the form of a new slot tells it, and nothing is sent', requests.length === 0 && noteOf( paneOf('background') ).textContent === words['/_admin/builder/source/name-slot'] && noteOf( paneOf('background') ).classList.contains('is-error') );
+choose( dialogContent(), house );
+check( 'a section whose id starts with a digit cannot have a slot made of its name: it is told so, as the form of a new slot tells it, and nothing is sent', requests.length === 0 && noteOf( dialogContent() ).textContent === words['/_admin/builder/source/name-slot'] && noteOf( dialogContent() ).classList.contains('is-error') );
 builder._closeDialog();
 
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0 ] );
-buttonOf( stripOf(), 'Border / Background' ).click();
-check( 'the slot a section has shows its picture and the alt text it holds', thumbOf( paneOf('background') ).src === '/uploads/hero.1600x900.jpg' && valueAt( paneOf('background'), altLabel ) === '' );
+builder._openBlock('surface');
+check( 'the slot a section has shows its picture and the alt text it holds', thumbOf( dialogContent() ).src === '/uploads/hero.1600x900.jpg' && valueAt( dialogContent(), altLabel ) === '' );
 builder._doc.model.blocks[0].background = { slot : '/template/page-home/hero/background-2', focus : 5, create : { label : 'Background', width : 800, height : 400, alt : { en_US : 'Waves' } } };
-builder._refreshTab('background');
-check( '...one that is made when the document is saved holds the alt text in its mark', valueAt( paneOf('background'), altLabel ) === 'Waves' && ( change( paneOf('background'), altLabel, 'More waves' ), builder._doc.model.blocks[0].background.create.alt.en_US === 'More waves' ) && changes > 0 );
+redrawBlocks();
+check( '...one that is made when the document is saved holds the alt text in its mark', valueAt( dialogContent(), altLabel ) === 'Waves' && ( change( dialogContent(), altLabel, 'More waves' ), builder._doc.model.blocks[0].background.create.alt.en_US === 'More waves' ) && changes > 0 );
 requests = [];
-choose( paneOf('background'), house );
+choose( dialogContent(), house );
 requests[0].callback( 200, { ok : true } );
 check( '...it is made with the label and the size of the mark, and the alt text it holds goes to it once the picture is stored', JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/hero/background-2","label":"Background","width":800,"height":400}' && builder._doc.model.blocks[0].background.create === undefined
 	&& builder._doc.model.blocks[0].background.focus === 5 );
@@ -4406,39 +4928,39 @@ console.log( '\nThe picture behind a column' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 const columnAt = function( at ) { return builder._doc.model.blocks[1].cols[at] };
-check( 'the picture behind a column has what the one behind a section has under its source: the upload and the alt text - which has no slot to wait in while there is no picture, and says that a picture comes first - and not whether the picture is a parallax, which is the section\'s alone', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
-	&& controlOf( paneOf('background'), altLabel ).el.disabled === true && controlOf( paneOf('background'), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Upload a picture first, or choose a slot with the Source button.'
-	&& paneOf('background').querySelector('.builder-source-current').textContent === 'none' && labelList( paneOf('background') ).indexOf('Parallax effect') === -1 );
+check( 'the picture behind a column has what the one behind a section has under its source: the upload and the alt text - which has no slot to wait in while there is no picture, and says that a picture comes first - and not whether the picture is a parallax, which is the section\'s alone', fileField( dialogContent() ) !== null && thumbOf( dialogContent() ).hidden === true
+	&& controlOf( dialogContent(), altLabel ).el.disabled === true && tipOf( controlOf( dialogContent(), altLabel ) ) === 'Upload a picture first, or choose a slot with the Source button.'
+	&& dialogContent().querySelector('.builder-source-current').textContent === 'none' && labelList( dialogContent() ).indexOf('Parallax effect') === -1 );
 requests = [];
 changes = 0;
-choose( paneOf('background'), house );
+choose( dialogContent(), house );
 check( '...a picture chosen for a column that has none makes a slot of the kind of a new one - the name column-background, free in the section, the size it starts with, and for its label the name of the section, the number of the column and the word for a background', actionsOf() === 'slots/create'
 	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/services/column-background","label":"services: Column 1: background","width":1600,"height":900}' );
 requests[0].callback( 200, { ok : true } );
 check( '...the background of the column is that slot, with no focus until it is chosen and nothing to make - the section has none of its own', JSON.stringify( columnAt( 0 ).background ) === '{"slot":"/template/page-home/services/column-background","focus":null}' && builder._doc.model.blocks[1].background === null && changes === 1 && actionsOf() === 'slots/create,images/upload' );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/column.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
-check( '...and the tab is drawn again with it: the thumbnail, the focus, the button that takes the picture away, the alt text and the dimming are on - and the preview says that a picture is behind the column, not behind the section', thumbOf( paneOf('background') ).hidden === false && thumbOf( paneOf('background') ).src.indexOf( '/uploads/column.jpg' ) === 0
-	&& controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
-	&& noteOf( paneOf('background') ).textContent === 'The picture is stored.' && preview().querySelector('[data-path="1.0"] .is-background') !== null && preview().children[1].querySelector('.builder-frame-head .is-background') === null && shownTab( stripOf(), 'builder' ) === 'background' );
+check( '...and the surface is drawn again with it: the thumbnail, the focus, the button that takes the picture away, the alt text and the dimming are on - and the preview says that a picture is behind the column, not behind the section', thumbOf( dialogContent() ).hidden === false && thumbOf( dialogContent() ).src.indexOf( '/uploads/column.jpg' ) === 0
+	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === false && buttonOf( dialogContent(), 'Remove the picture' ).disabled === false && controlOf( dialogContent(), altLabel ).el.disabled === false && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false
+	&& noteOf( dialogContent() ).textContent === 'The picture is stored.' && preview().querySelector('[data-path="1.0"] .is-background') !== null && preview().children[1].querySelector('.builder-frame-head .is-background') === null && openBlock() === 'surface' );
 builder._closeDialog();
 builder._openSettings( [ 1, 1 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 requests = [];
-choose( paneOf('background'), house );
+choose( dialogContent(), house );
 check( 'the picture behind the next column of the section takes the next name, and the number of the column is in its label', JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/services/column-background-2","label":"services: Column 2: background","width":1600,"height":900}' );
 builder._closeDialog();
 
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 columnAt( 0 ).background = { slot : '/template/page-home/services/column-background-2', focus : 5, create : { label : 'services: Column 1: background', width : 800, height : 400, alt : { en_US : 'Waves' } } };
-builder._refreshTab('background');
-check( 'a picture that is made when the document is saved holds its alt text in its mark, as the one behind a section does', valueAt( paneOf('background'), altLabel ) === 'Waves' && ( change( paneOf('background'), altLabel, 'More waves' ), columnAt( 0 ).background.create.alt.en_US === 'More waves' ) );
+redrawBlocks();
+check( 'a picture that is made when the document is saved holds its alt text in its mark, as the one behind a section does', valueAt( dialogContent(), altLabel ) === 'Waves' && ( change( dialogContent(), altLabel, 'More waves' ), columnAt( 0 ).background.create.alt.en_US === 'More waves' ) );
 requests = [];
-choose( paneOf('background'), house );
+choose( dialogContent(), house );
 requests[0].callback( 200, { ok : true } );
 check( '...it is made with the label and the size of the mark, the focus stays, and the alt text goes to the slot once the picture is stored', JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/services/column-background-2","label":"services: Column 1: background","width":800,"height":400}' && columnAt( 0 ).background.create === undefined && columnAt( 0 ).background.focus === 5 );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/c2.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
@@ -4448,7 +4970,7 @@ builder._closeDialog();
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 buttonOf( colGround(), 'Source' ).click();
 check( 'the picture behind a column is chosen in the dialog of the section\'s, with the tabs of a picture: Choose a value and Create new - no Static', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"]]' && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot'
 	&& pickerPane('pick').querySelector('.builder-source-current').textContent === 'none' );
@@ -4460,7 +4982,7 @@ check( '...using it makes the slot the picture of the column, with what it is ma
 	&& pickerBox().open === false && colGround().querySelector('.builder-source-current').textContent === '/template/page-home/services/column-background' && builder._doc.model.blocks[1].background === null && preview().querySelector('[data-path="1.0"] .is-background') !== null );
 builder._closeDialog();
 builder._openSettings( [ 1, 1 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 buttonOf( colGround(), 'Source' ).click();
 buttonOf( pickerStrip(), 'Create new' ).click();
 check( '...the next column of the section takes the next name, whichever column has the first', fresh('.builder-new-name').value === 'column-background-2' && fresh('.builder-new-uri').textContent === '/template/page-home/services/column-background-2' );
@@ -4508,7 +5030,7 @@ builder._loadKeys();
 requests[requests.length - 1].callback( 403, { error : 'not allowed' } );
 builder._openSettings( [ 0, 0, 0 ] );
 check( '...an account that never could read them is refused the first time (403) and has none: the keys are an empty list that has been answered, the preview says the label of the component, and there is no text under the source',
-	JSON.stringify( builder._keys ) === '[]' && builder._keysAnswered === true && lines()[0] === 'Title (Section)' && paneOf('content').children.length === 1 );
+	JSON.stringify( builder._keys ) === '[]' && builder._keysAnswered === true && lines()[0] === 'Title (Section)' && dialogContent().children.length === 1 );
 builder._closeDialog();
 
 doc = open();
@@ -4956,10 +5478,10 @@ const offered = firstOffered( pickAt( [ 3, 0 ] ), 'section' );
 const offeredName = offered.dataset.name;
 offered.click();
 const addedAt = [ 3, 0, 2 ];
-check( 'a click on a component of the lightbox adds it at the end of the column and the dialog goes on to its settings, in the same dialog: the lightbox is gone, the form of the component stands there with its tabs, the component is the selection, and the first control of the form has the focus', dialogBox().open === true && lightboxOf() === null
+check( 'a click on a component of the lightbox adds it at the end of the column and the dialog goes on to its settings, in the same dialog: the lightbox is gone, the form of the component stands there with its blocks, the component is the selection, and the first control of the form has the focus', dialogBox().open === true && lightboxOf() === null
 	&& builder._doc.model.blocks[3].cols[0].components.length === 3 && builder._doc.model.blocks[3].cols[0].components[2].name === offeredName && dialogText('builder-dialog-kind') === titleOf( offeredName )
-	&& JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' && builder._same( builder._sel, addedAt )
-	&& screen.activeElement !== null && paneOf('content').contains( screen.activeElement ) && screen.activeElement.disabled === false );
+	&& blockIds().join() === 'content,link,spacing,properties' && builder._same( builder._sel, addedAt )
+	&& screen.activeElement !== null && dialogContent().contains( screen.activeElement ) && screen.activeElement.disabled === false );
 check( '...it is a component as any is added: its key is made in the section, the document has changed - once - and the preview shows it as the selection', builder._doc.model.blocks[3].cols[0].components[2].source.indexOf( '/template/page-home/contact/'+ offeredName ) === 0 && builder._doc.model.blocks[3].cols[0].components[2].create !== undefined
 	&& changes === 1 && builder._unsaved( builder._doc ) === true && preview().querySelector('[data-path="3.0.2"]').classList.contains('is-selected') );
 dialogBox().close();
@@ -4992,7 +5514,7 @@ doc = open();
 builder._renderEditor();
 const gone = addWith( '3.0', 'section' );
 check( 'a component added by the keyboard in the lightbox has its settings open, and the button that opened the lightbox is not on the page any more: the preview was drawn again for the new component', dialogBox().open === true
-	&& dialogText('builder-dialog-kind') === titleOf( builder._get( builder._doc.model, builder._sel ).name ) && gone.isConnected === false && screen.activeElement !== null && paneOf('content').contains( screen.activeElement ) );
+	&& dialogText('builder-dialog-kind') === titleOf( builder._get( builder._doc.model, builder._sel ).name ) && gone.isConnected === false && screen.activeElement !== null && dialogContent().contains( screen.activeElement ) );
 dialogBox().close();
 check( 'Escape - the close the browser does - leaves the focus on the settings tool of the component that was added: where it is drawn in the preview now, and not on the page', dialogBox().open === false && onTool( '3.0.2' ) );
 
@@ -5023,7 +5545,7 @@ dialogBox().close();
 check( 'a lightbox that is closed with no choice leaves the preview as it was - no component was added, so the button that opened it is where it was - and the focus is on that button: the browser gives it back',
 	dialogBox().open === false && left.isConnected === true && screen.activeElement === left && builder._doc.model.blocks[3].cols[0].components.length === 2 && changes === 0 );
 
-[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'layout', 'Width, Desktop', '33' ], [ 'a section', '3', 'section', 'Cover', true ] ].forEach( function( kind ) {
+[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'width', 'Width, Desktop', '33' ], [ 'a section', '3', 'surface', 'Cover', true ] ].forEach( function( kind ) {
 
 	doc = open();
 	builder._renderEditor();
@@ -5037,7 +5559,7 @@ check( 'a lightbox that is closed with no choice leaves the preview as it was - 
 
 	tool.focus();
 	tool.click();
-	change( paneOf( kind[2] ), kind[3], kind[4] );
+	change( blockOf( kind[2] ), kind[3], kind[4] );
 	dialogBox().close();
 	check( 'the settings of '+ kind[0]+ ' give the focus back to the tool that opened them where nothing changed - the browser does - and, where a change in the form drew the preview again and took the tool with it, '
 		+ 'to the tool that is drawn in its place', kept === true && tool.isConnected === false && changes === 1 && onTool( kind[1] ) );
@@ -5057,7 +5579,7 @@ doc = open();
 builder._renderEditor();
 screen.focused = null;
 frameOf('3.0.0').dispatch('dblclick');
-change( paneOf('properties'), 'HTML tag', 'h4' );
+change( dialogContent(), 'HTML tag', 'h4' );
 dialogBox().close();
 check( 'a form that a double click opened, with the focus on no control, leaves the focus where the browser has it: nothing is taken to a tool the person never was on', screen.activeElement === null && changes === 1 );
 
@@ -5066,11 +5588,11 @@ builder._renderEditor();
 const cardOffered = firstOffered( pickAt( cardAt ), 'card' );
 cardOffered.click();
 check( 'in a card the component goes in as a child at the end of the card, and the settings are the child\'s, in the dialog the lightbox was in', dialogText('builder-dialog-kind') === titleOf( cardOffered.dataset.name ) && cardIn( builder._doc.model ).components.length === 4
-	&& cardIn( builder._doc.model ).components[3].name === cardOffered.dataset.name && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && lightboxOf() === null && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' );
+	&& cardIn( builder._doc.model ).components[3].name === cardOffered.dataset.name && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && lightboxOf() === null && blockIds().join() === 'content,link,spacing,properties' );
 dialogBox().close();
 itemNamed( pickAt( [ 1, 0 ] ), 'image' ).click();
-check( '...in a column that runs a loop it goes in as a component of the cell, with no key of its own to make - and a picture, the settings of which have the content tab of a picture', builder._get( builder._doc.model, [ 1, 0, 1 ] ).name === 'image' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).source === '' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).create === undefined
-	&& dialogText('builder-dialog-kind') === titleOf('image') && builder._same( builder._sel, [ 1, 0, 1 ] ) && paneOf('content') !== null );
+check( '...in a column that runs a loop it goes in as a component of the cell, with no key of its own to make - and a picture, the settings of which have the content of a picture', builder._get( builder._doc.model, [ 1, 0, 1 ] ).name === 'image' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).source === '' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).create === undefined
+	&& dialogText('builder-dialog-kind') === titleOf('image') && builder._same( builder._sel, [ 1, 0, 1 ] ) && dialogContent() !== null );
 dialogBox().close();
 check( '...and what a card says it does not take stands in its lightbox greyed, and a click on it does nothing: the card is not put in a card, the title of a section is not put in one', ( function() {
 
@@ -5195,7 +5717,7 @@ check( '...none of it is written as markup: the script assigns an empty string t
 	return assigned.length > 0 && assigned.every( function( found ) { return /^\.innerHTML\s*=\s*'';$/.test( found ) } ) && /insertAdjacentHTML|\.outerHTML\s*=|document\.write|createContextualFragment|DOMParser/.test( source ) === false
 		&& ( function() { try { made('div').innerHTML = '<svg></svg>'; return false } catch( error ) { return true } } )();
 } )() );
-check( '...the stylesheet lays the lightbox out as rows that wrap in the dialog of a phone - a heading for each group, under it the items, each the icon and the label in the middle of the line - and as columns side by side where the dialog has the room: two, three, and then one for each group, which stand in the document in the order they are listed in, so that the keys go down one column and on to the next, the items of a column under each other and as wide as it; the icon is a square of a rem that does not shrink, and an item that cannot be added is dimmed and has no pointer', ( function() {
+check( '...the stylesheet lays the lightbox out as rows that wrap in the dialog of a phone - a heading for each group, under it the items, each the icon and the label in the middle of the line - and, from the width of the dialog on, each group as a row of its own: its heading in a column the groups share, its items beside it in a grid of cells of one width that wraps; the groups stand in the document in the order they are listed in, so that the keys go along a row and on to the next; the icon is a square of a rem that does not shrink, and an item that cannot be added is dimmed and has no pointer', ( function() {
 
 	const lines = function( selector ) { return ruleOf( selector ).split('\n') };
 	const has = function( selector, list ) { return list.every( function( line ) { return lines( selector ).indexOf( line ) !== -1 } ) };
@@ -5205,9 +5727,8 @@ check( '...the stylesheet lays the lightbox out as rows that wrap in the dialog 
 
 	return has( '.builder-lightbox-row', [ '\tdisplay: flex;', '\tflex-wrap: wrap;' ] ) && has( '.builder-pick-item', [ '\tdisplay: flex;', '\talign-items: center;' ] ) && has( '.builder-pick-icon', [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ] )
 		&& has( '.builder-lightbox .builder-pick-item:disabled', [ '\topacity: .45;', '\tcursor: default;' ] ) && has( '.builder-lightbox', [ '\tdisplay: grid;' ] )
-		&& blocks.length === 3 && blocks[0].width < blocks[1].width && blocks[1].width < blocks[2].width
-		&& holds( blocks[0], [ '\t\tgrid-template-columns: repeat( 2, minmax( 0, 1fr ) );', '\t.builder-lightbox-row {\n\t\tdisplay: grid;', '\t\twidth: 100%;' ] ) && holds( blocks[1], [ '\t\tgrid-template-columns: repeat( 3, minmax( 0, 1fr ) );' ] )
-		&& holds( blocks[2], [ '\t\tgrid-auto-flow: column;', '\t\tgrid-template-columns: none;' ] );
+		&& blocks.length === 1 && blocks[0].width === 36
+		&& holds( blocks[0], [ '\t\tgrid-template-columns: fit-content( 12rem ) minmax( 0, 1fr );', '\t\tgrid-template-columns: subgrid;', '\t\tgrid-template-columns: repeat( auto-fill, minmax( 10.5rem, 1fr ) );', '\t.builder-lightbox-row {\n\t\tdisplay: grid;' ] );
 } )() );
 
 console.log( '\nThe form of a card' );
@@ -5216,16 +5737,20 @@ openCard();
 builder._renderEditor();
 builder._openSettings( cardAt );
 
-const holderPane = function() { return paneOf('properties') };
+const holderPane = function() { return dialogContent() };
 const holderNow = function() { return cardIn( builder._doc.model ) };
 
 // The attributes of the card as the registry has them: the form of the card is cut from their types, in their order - no pin of it names an attribute or a label
 const cardDeclared = registry().components.card.attributes;
 const cardDefaults = registry().components.card.defaults;
 const cardNames = Object.keys( cardDeclared ).filter( function( name ) { return cardDeclared[name].type !== 'variant' } );
+// The labels the registry gives the ground, the padding and the two alignments: the pins name them by what the registry says
+const cardGround = cardDeclared.ground.label;
+const cardPadding = cardDeclared.padding.label;
+const cardVertical = cardDeclared.vertical.label;
+const cardHorizontal = cardDeclared.align.label;
 // A focus is a select over none and the nine places, whatever it is called
 const cardIsFocus = function( name ) { return cardDeclared[name].type === 'select' && cardDeclared[name].options.join() === [ '', 1, 2, 3, 4, 5, 6, 7, 8, 9 ].join() };
-const cardIsShort = function( name ) { return [ 'select', 'bool', 'int', 'string' ].indexOf( cardDeclared[name].type ) !== -1 && cardIsFocus( name ) === false };
 // The controls an attribute has, by label: the upload of the Builder for a picture, the switch for none and then the grid for a focus, the label of the schema for the rest
 const cardControls = function( name ) {
 	return cardDeclared[name].type === 'image' ? [ word('picture/upload') ] : ( cardIsFocus( name ) === true ? [ word('source/no-focus'), cardDeclared[name].label ] : [ cardDeclared[name].label ] );
@@ -5246,32 +5771,6 @@ const cardKinds = function( name ) {
 
 	return [ { int : 'number', string : 'text' }[declared.type] ?? ( declared.input === 'segment' || declared.input === 'icons' ? 'group' : 'select' ) ];
 };
-// The lines of the form, as lists of attributes: a run of short attributes is cut into pairs, any other attribute stands alone
-const cardPlan = ( function() {
-
-	const plan = [];
-	let run = [];
-	const cut = function() {
-
-		for( let at = 0; at < run.length; at += 2 )
-			plan.push( run.slice( at, at + 2 ) );
-
-		run = [];
-	};
-
-	cardNames.forEach( function( name ) {
-
-		if( cardIsShort( name ) === true ) {
-			run.push( name );
-		} else {
-			cut();
-			plan.push( [ name ] );
-		}
-	} );
-	cut();
-
-	return plan;
-} )();
 // What hangs on the picture and waits for one: the picture, its focus, and the switch that follows them - its dimming
 const cardPictured = ( function() {
 
@@ -5291,27 +5790,31 @@ const cardPictured = ( function() {
 	return found;
 } )();
 
-check( 'the form of a card has the label of the component for its title and two tabs: Properties and CSS classes - the attributes the schema declares, and the classes of its own; the form of a column or a plain component is not it, and the card has no tab for a content', dialogText('builder-dialog-kind') === 'Card'
-	&& JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'properties' && screen.getElementById('builder-dialog-name').hidden === true && paneOf('content') === null );
-check( '...Properties: a field for each attribute of the schema that is no variant, in the order of the schema, by the type the schema gives it - a switch for a flag, a select for a choice, a row of buttons where the schema draws it so, the upload of the Builder for a picture, for a focus its switch for none and then the grid -, and last the toggle of the radius', cardNames.length > 0
-	&& JSON.stringify( labelList( holderPane() ) ) === JSON.stringify( cardNames.map( cardControls ).flat().concat( [ radiusLabel ] ) )
-	&& JSON.stringify( controlsIn( holderPane() ).map( function( control ) { return control.kind } ) ) === JSON.stringify( cardNames.map( cardKinds ).flat().concat( [ 'switch' ] ) ) );
-check( '...two to a line where both are short - a select, a flag, a number or a text -, a line of its own for the rest: the picture and the focus, which is a grid, and the toggle of the radius alone and last; the lines are cut from the types the schema gives', cardPlan.some( function( line ) { return line.length === 2 } ) && cardPlan.some( function( line ) { return line.length === 1 } )
-	&& JSON.stringify( holderPane().children.map( function( el ) { return labelList( el ) } ) ) === JSON.stringify( cardPlan.map( function( line ) { return line.map( cardControls ).flat() } ).concat( [ [ radiusLabel ] ] ) )
-	&& classes( holderPane().children ) === cardPlan.map( function( line ) {
-
-		const declared = cardDeclared[line[0]];
-
-		return line.length === 2 ? 'builder-line' : ( declared.type === 'image' ? 'builder-background' : ( cardIsFocus( line[0] ) === true ? 'builder-focus' : ( declared.type === 'bool' ? 'nino-admin-switch' : 'nino-admin-field' ) ) );
-	} ).concat( [ 'nino-admin-switch' ] ).join() );
-check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), 'Background colour' )
-	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Background colour' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
-	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Background colour' ) === 'counter' );
-check( '...the ground has no hint: the select and the patch stand in their line by themselves, and the registry hands the attribute over without one', holderPane().querySelector('.builder-with-swatch').parentNode.className === 'builder-line' && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null
-	&& holderPane().querySelector('.builder-with-hint') === null && registry().components.card.attributes.ground.hint === '' );
-check( '...the padding has the steps of the section\'s spacing, in a select; the two alignments are rows of icons, as the schema says (its input) - the vertical one with its own words, top, middle, bottom, last element at the bottom, the horizontal one with the words of the alignment of a text, Inherited as a word and Left, Centre and Right as icons; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), 'Padding' ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
-	&& rowOf( holderPane(), 'Vertical element alignment' ) === ':Top:align-top,middle:Middle:align-middle,bottom:Bottom:align-bottom,last-bottom:Last element at the bottom:align-last-bottom' && rowOf( holderPane(), 'Horizontal text alignment' ) === ':Inherited:,left:Left:align-left,center:Centre:align-center,right:Right:align-right'
-	&& controlOf( holderPane(), 'Vertical element alignment' ).kind === 'group' && controlOf( holderPane(), 'Horizontal text alignment' ).kind === 'group' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical element alignment' ) === '' );
+// The block an attribute of the card is in: its tab says the surface, the address and the window are the link, any other is a property - read from the registry, not from the script
+const cardBlockOf = function( name ) {
+	return cardDeclared[name].tab === 'background' ? 'surface' : ( cardDeclared[name].type === 'href' || [ 'target', 'linked' ].indexOf( name ) !== -1 ? 'link' : 'properties' );
+};
+const cardHas = function( id ) { return cardNames.filter( function( name ) { return cardBlockOf( name ) === id } ) };
+const classLabel = word('component/custom');
+check( 'the form of a card has the label of the component for its title and the blocks the card has - its link, its surface, its spacing and its properties, in that order - and no content, no tabs: it holds components, which are edited where they stand', dialogText('builder-dialog-kind') === 'Card'
+	&& blockIds().join() === 'link,surface,spacing,properties' && screen.getElementById('builder-dialog-tabs') === null && screen.getElementById('builder-dialog-name').hidden === true && dialogContent() !== null );
+check( '...in each block a field for each attribute of the schema that stands there - the schema says by its tab where the picture and its ground go, and the card is the link by its own attribute -, in the order of the schema, by the type the schema gives it - a switch for a flag, a select for a choice, a row of buttons where the schema draws it so, the upload of the Builder for a picture, for a focus its switch for none and then the grid -, the offsets and the toggle of the radius after the ground, the classes last of the properties',
+	cardNames.length > 0 && cardHas('link').length > 0 && cardHas('surface').length > 0 && cardHas('properties').length > 0
+	&& JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( cardHas('link').map( cardControls ).flat() )
+	&& JSON.stringify( labelList( blockOf('surface') ) ) === JSON.stringify( cardHas('surface').map( cardControls ).flat().concat( [ offsetLabel('left'), offsetLabel('right'), radiusLabel ] ) )
+	&& JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( cardHas('properties').map( cardControls ).flat().concat( [ classLabel ] ) )
+	&& JSON.stringify( controlsIn( blockOf('surface') ).map( function( control ) { return control.kind } ) ) === JSON.stringify( cardHas('surface').map( cardKinds ).flat().concat( [ 'select', 'select', 'switch' ] ) )
+	&& JSON.stringify( controlsIn( blockOf('properties') ).map( function( control ) { return control.kind } ) ) === JSON.stringify( cardHas('properties').map( cardKinds ).flat().concat( [ 'text' ] ) ) );
+check( '...one column: a field under the other, in no line and no table, and the offsets of the picture at the sides are the ones of the section', dialogContent().querySelector('.builder-line') === null && dialogContent().querySelector('table') === null
+	&& controlOf( blockOf('surface'), offsetLabel('left') ).kind === 'select' && optionsOf( blockOf('surface'), offsetLabel('left') ) === optionsOf( blockOf('surface'), offsetLabel('right') ) );
+check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), cardGround )
+	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), cardGround ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
+	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), cardGround ) === 'counter' );
+check( '...the ground has no hint, so no question mark: the select and the patch stand by themselves, and the registry hands the attribute over without one', tipOf( controlOf( blockOf('surface'), cardGround ) ) === null && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null
+	&& registry().components.card.attributes.ground.hint === '' );
+check( '...the padding has the steps of the section\'s spacing, in a select; the two alignments are rows of icons, as the schema says (its input) - the vertical one with its own words, top, middle, bottom, last element at the bottom, the horizontal one with the words of the alignment of a text, Inherited as a word and Left, Centre and Right as icons; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), cardPadding ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
+	&& rowOf( holderPane(), cardVertical ) === ':Top:align-top,middle:Middle:align-middle,bottom:Bottom:align-bottom,last-bottom:Last element at the bottom:align-last-bottom' && rowOf( holderPane(), cardHorizontal ) === ':Inherited:,left:Left:align-left,center:Centre:align-center,right:Right:align-right'
+	&& controlOf( holderPane(), cardVertical ).kind === 'group' && controlOf( holderPane(), cardHorizontal ).kind === 'group' && valueAt( holderPane(), cardPadding ) === '3' && valueAt( holderPane(), cardVertical ) === '' );
 
 const swatchOf = function() { return holderPane().querySelector('.builder-swatch').dataset.color };
 check( '...the patch is the ground the card ends up with: the ground of its column - or of its section where the column has none - for none of its own, the counter of that, by the pairs of Nino.css, for counter, and the ground itself for the rest', ( function() {
@@ -5326,15 +5829,15 @@ check( '...the patch is the ground the card ends up with: the ground of its colu
 
 		const counter = swatchOf();
 
-		change( holderPane(), 'Background colour', '' );
+		change( holderPane(), cardGround, '' );
 
 		const none = swatchOf();
 
-		change( holderPane(), 'Background colour', 'tint' );
+		change( holderPane(), cardGround, 'tint' );
 
 		const own = swatchOf();
 
-		change( holderPane(), 'Background colour', 'counter' );
+		change( holderPane(), cardGround, 'counter' );
 
 		return counter === pairs[around] && none === ( around === '' ? 'plain' : around ) && own === 'tint' && holderNow().attributes.ground === 'counter';
 	} );
@@ -5348,7 +5851,7 @@ check( '...a column that paints a ground of its own is what the card stands on -
 
 	const own = swatchOf();
 
-	change( holderPane(), 'Background colour', '' );
+	change( holderPane(), cardGround, '' );
 
 	const none = swatchOf();
 
@@ -5417,7 +5920,7 @@ check( 'the focus of the picture is the grid of the one behind a section - a swi
 
 holderNow().attributes.background = '/template/page-home-card/story/card-picture';
 holderNow().attributes.focus = '';
-builder._refreshTab('properties');
+redrawBlocks();
 check( '...with a picture the switch for none is on, as the focus is none, and turning it off starts in the middle, as the picture of a section does; the grid chooses a place, written as its number - and none is empty', ( function() {
 
 	const none = controlOf( holderPane(), 'Automatic focus' ).el;
@@ -5460,7 +5963,7 @@ check( '...the dimming is a switch that is on for a picture, and writes 1 or 0 -
 check( '...and the focus goes with it: a place chosen for the picture is none again, the attribute is empty, and the switch for none is on and greyed out with no place of the grid chosen', ( function() {
 
 	holderNow().attributes.background = '/template/page-home-card/story/card-picture';
-	builder._refreshTab('properties');
+	redrawBlocks();
 	change( holderPane(), 'Automatic focus', false );
 	change( holderPane(), 'Focus', '9' );
 
@@ -5475,10 +5978,10 @@ check( '...and the focus goes with it: a place chosen for the picture is none ag
 openCard();
 builder._renderEditor();
 builder._openSettings( [ 0, 0, 0 ] );
-check( 'the focus of a component that is a picture itself - [image], whose picture is its source - is the grid as well, and is on from the start: no attribute of the type image comes before it, so there is no picture it would wait for', controlOf( paneOf('properties'), 'Focus' ).kind === 'group'
-	&& controlOf( paneOf('properties'), 'Automatic focus' ).el.disabled === false && valueAt( paneOf('properties'), 'Automatic focus' ) === true && radiosOf( controlOf( paneOf('properties'), 'Focus' ).el ).every( function( radio ) { return radio.disabled === true } )
-	&& ( change( paneOf('properties'), 'Automatic focus', false ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '5' ) && ( change( paneOf('properties'), 'Focus', '3' ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '3' )
-	&& ( change( paneOf('properties'), 'Automatic focus', true ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '' ) );
+check( 'the focus of a component that is a picture itself - [image], whose picture is its source - is the grid as well, and is on from the start: no attribute of the type image comes before it, so there is no picture it would wait for', controlOf( dialogContent(), 'Focus' ).kind === 'group'
+	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === false && valueAt( dialogContent(), 'Automatic focus' ) === true && radiosOf( controlOf( dialogContent(), 'Focus' ).el ).every( function( radio ) { return radio.disabled === true } )
+	&& ( change( dialogContent(), 'Automatic focus', false ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '5' ) && ( change( dialogContent(), 'Focus', '3' ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '3' )
+	&& ( change( dialogContent(), 'Automatic focus', true ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '' ) );
 builder._closeDialog();
 
 console.log( '\nThe radius of a surface' );
@@ -5531,10 +6034,10 @@ const switched = function( at, marker, held, steps, over ) {
 	builder._renderEditor();
 	builder._openSettings( at );
 
-	const trail = [ valueAt( paneOf('properties'), radiusLabel ), builder._get( builder._doc.model, at ).radius ];
+	const trail = [ valueAt( dialogContent(), radiusLabel ), builder._get( builder._doc.model, at ).radius ];
 
 	steps.forEach( function( on ) {
-		change( paneOf('properties'), radiusLabel, on );
+		change( dialogContent(), radiusLabel, on );
 		trail.push( builder._get( builder._doc.model, at ).radius );
 	} );
 	builder._closeDialog();
@@ -5562,24 +6065,24 @@ check( '...it is in reach on a card and on a picture whatever they hold - they a
 	builder._renderEditor();
 	builder._openSettings( cardAt );
 
-	const card = controlOf( paneOf('properties'), radiusLabel ).el.disabled === false && labelList( paneOf('properties') ).pop() === radiusLabel;
+	const card = controlOf( dialogContent(), radiusLabel ).el.disabled === false && labelList( blockOf('surface') ).pop() === radiusLabel;
 
 	builder._closeDialog();
 	builder._openSettings( shownPictureAt );
 
-	const image = controlOf( paneOf('properties'), radiusLabel ).el.disabled === false && labelList( paneOf('properties') ).pop() === radiusLabel;
+	const image = controlOf( dialogContent(), radiusLabel ).el.disabled === false && labelList( blockOf('surface') ).pop() === radiusLabel;
 
 	builder._closeDialog();
 	builder._openSettings( [ 0, 1, 0, 0 ] );
 
-	const child = labelList( paneOf('properties') ).indexOf( radiusLabel ) === -1 && 'radius' in builder._get( builder._doc.model, [ 0, 1, 0, 0 ] ) === false;
+	const child = labelList( dialogContent() ).indexOf( radiusLabel ) === -1 && 'radius' in builder._get( builder._doc.model, [ 0, 1, 0, 0 ] ) === false;
 
 	builder._closeDialog();
 
 	return card === true && image === true && child === true;
 } )() );
 
-check( '...and a component the registry calls a surface by a name the script has never seen is one: the toggle is in its properties - which it has for no other reason - and writes its radius, whatever the component is called', ( function() {
+check( '...and a component the registry calls a surface by a name the script has never seen is one: the toggle is in its surface - a block it has for no other reason - and writes its radius, whatever the component is called', ( function() {
 
 	open();
 	builder._registry.components.stub = { label : 'Stub', source : 'content', preview : 'block', surface : 'tile' };
@@ -5588,11 +6091,11 @@ check( '...and a component the registry calls a surface by a name the script has
 	builder._renderEditor();
 	builder._openSettings( [ 0, 0, 3 ] );
 
-	const tabbed = paneOf('properties') !== null && dialogTabs().map( function( tab ) { return tab[0] } ).indexOf('properties') !== -1;
-	const shown = tabbed === true && valueAt( paneOf('properties'), radiusLabel ) === true;
+	const blocked = blockIds().join() === 'content,surface,spacing,properties';
+	const shown = blocked === true && valueAt( dialogContent(), radiusLabel ) === true;
 
-	if( tabbed === true )
-		change( paneOf('properties'), radiusLabel, false );
+	if( blocked === true )
+		change( dialogContent(), radiusLabel, false );
 
 	const written = builder._get( builder._doc.model, [ 0, 0, 3 ] ).radius;
 
@@ -5621,12 +6124,12 @@ markersAre('standard');
 builder._renderEditor();
 builder._openSettings( [ 0 ] );
 check( 'the toggle of a cover sleeps unless the cover keeps the room of the page around it - Padded: the hero is a cover that does not, so it sleeps - and wakes with the switch; what it writes is the radius of the section',
-	controlOf( paneOf('section'), radiusLabel ).el.disabled === true && valueAt( paneOf('section'), radiusLabel ) === false && ( change( paneOf('section'), 'Padded', true ), controlOf( paneOf('section'), radiusLabel ).el.disabled === false )
-	&& ( change( paneOf('section'), radiusLabel, true ), settingsAt( 0 ).radius === 'alternative' ) && ( change( paneOf('section'), radiusLabel, false ), settingsAt( 0 ).radius === '' ) && settingsOf().rowRadius === '' );
-change( paneOf('section'), radiusLabel, true );
-change( paneOf('section'), 'Padded', false );
-check( '...it sleeps again with the switch and keeps what it holds - the setting waits in the model, and the toggle shows it - and a parallax, which keeps the room as a cover does, wakes it', controlOf( paneOf('section'), radiusLabel ).el.disabled === true && valueAt( paneOf('section'), radiusLabel ) === true && settingsAt( 0 ).radius === 'alternative'
-	&& ( change( paneOf('section'), 'Cover', false ), change( paneOf('background'), 'Parallax effect', true ), change( paneOf('section'), 'Padded', true ), controlOf( paneOf('section'), radiusLabel ).el.disabled === false ) );
+	controlOf( dialogContent(), radiusLabel ).el.disabled === true && valueAt( dialogContent(), radiusLabel ) === false && ( change( dialogContent(), paddedLabel, true ), controlOf( dialogContent(), radiusLabel ).el.disabled === false )
+	&& ( change( dialogContent(), radiusLabel, true ), settingsAt( 0 ).radius === 'alternative' ) && ( change( dialogContent(), radiusLabel, false ), settingsAt( 0 ).radius === '' ) && settingsOf().rowRadius === '' );
+change( dialogContent(), radiusLabel, true );
+change( dialogContent(), paddedLabel, false );
+check( '...it sleeps again with the switch and keeps what it holds - the setting waits in the model, and the toggle shows it - and a parallax, which keeps the room as a cover does, wakes it', controlOf( dialogContent(), radiusLabel ).el.disabled === true && valueAt( dialogContent(), radiusLabel ) === true && settingsAt( 0 ).radius === 'alternative'
+	&& ( change( dialogContent(), 'Cover', false ), change( dialogContent(), 'Parallax effect', true ), change( dialogContent(), paddedLabel, true ), controlOf( dialogContent(), radiusLabel ).el.disabled === false ) );
 builder._closeDialog();
 
 // The toggle of a row: what the row paints is its colour and its picture, which it has where the background stands inside
@@ -5634,24 +6137,24 @@ doc = open();
 markersAre('standard');
 builder._renderEditor();
 builder._openSettings( [ 1 ] );
-check( 'the toggle of the row sleeps where the row paints nothing - the background does not stand inside - and wakes when it does: the switch Background inside is in the other tab, and the toggle follows it there; it writes the radius of the row',
-	controlOf( paneOf('row'), radiusLabel ).el.disabled === true && ( change( paneOf('background'), 'Background colour', 'alt' ), controlOf( paneOf('row'), radiusLabel ).el.disabled === true )
-	&& ( change( paneOf('background'), 'Background inside', true ), controlOf( paneOf('row'), radiusLabel ).el.disabled === false ) && ( change( paneOf('row'), radiusLabel, true ), settingsAt( 1 ).rowRadius === 'alternative' && settingsAt( 1 ).radius === '' )
-	&& valueAt( paneOf('row'), radiusLabel ) === true );
-check( '...it sleeps again with the colour that takes the background inside with it, or with a cover that does, and keeps what it holds', ( function() {
+check( 'the toggle of the row sleeps where the row paints nothing - the background does not stand inside - and wakes when it does: the switch Background inside is in the same block, and the toggle follows it; it writes the radius of the row',
+	controlOf( dialogContent(), radiusLabel ).el.disabled === true && ( change( dialogContent(), 'Background colour', 'alt' ), controlOf( dialogContent(), radiusLabel ).el.disabled === true )
+	&& ( change( dialogContent(), 'Background inside', true ), controlOf( dialogContent(), radiusLabel ).el.disabled === false ) && ( change( dialogContent(), radiusLabel, true ), settingsAt( 1 ).rowRadius === 'alternative' && settingsAt( 1 ).radius === '' )
+	&& valueAt( dialogContent(), radiusLabel ) === true );
+check( '...it is the toggle of the corners of the section for the one that paints: with the colour that takes the background inside with it the corners are the cover\'s again, which sleeps - there is no room of the page around it - and the row keeps what it holds, as does a cover that takes the background inside with it', ( function() {
 
-	change( paneOf('background'), 'Background colour', '' );
+	change( dialogContent(), 'Background colour', '' );
 
-	const colour = controlOf( paneOf('row'), radiusLabel ).el.disabled === true && valueAt( paneOf('row'), radiusLabel ) === true && settingsAt( 1 ).rowRadius === 'alternative';
+	const colour = controlOf( dialogContent(), radiusLabel ).el.disabled === true && valueAt( dialogContent(), radiusLabel ) === false && settingsAt( 1 ).inner === false && settingsAt( 1 ).rowRadius === 'alternative';
 
-	change( paneOf('background'), 'Background colour', 'alt' );
-	change( paneOf('background'), 'Background inside', true );
+	change( dialogContent(), 'Background colour', 'alt' );
+	change( dialogContent(), 'Background inside', true );
 
-	const woken = controlOf( paneOf('row'), radiusLabel ).el.disabled === false;
+	const woken = controlOf( dialogContent(), radiusLabel ).el.disabled === false && valueAt( dialogContent(), radiusLabel ) === true;
 
-	change( paneOf('section'), 'Cover', true );
+	change( dialogContent(), 'Cover', true );
 
-	return colour === true && woken === true && controlOf( paneOf('row'), radiusLabel ).el.disabled === true && settingsAt( 1 ).inner === false && settingsAt( 1 ).rowRadius === 'alternative';
+	return colour === true && woken === true && controlOf( dialogContent(), radiusLabel ).el.disabled === true && settingsAt( 1 ).inner === false && settingsAt( 1 ).rowRadius === 'alternative';
 } )() );
 builder._closeDialog();
 
@@ -5660,14 +6163,14 @@ doc = open();
 markersAre('standard');
 builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
+builder._openBlock('surface');
 check( 'the toggle of a column sleeps where the column paints nothing - no ground, no picture - and wakes with either; it writes the radius of the column and keeps it while it sleeps',
-	controlOf( paneOf('background'), radiusLabel ).el.disabled === true && ( change( paneOf('background'), 'Background colour', 'counter' ), controlOf( paneOf('background'), radiusLabel ).el.disabled === false )
-	&& ( change( paneOf('background'), radiusLabel, true ), builder._doc.model.blocks[1].cols[0].radius === 'alternative' ) && ( change( paneOf('background'), 'Background colour', '' ), controlOf( paneOf('background'), radiusLabel ).el.disabled === true )
-	&& valueAt( paneOf('background'), radiusLabel ) === true && builder._doc.model.blocks[1].cols[0].radius === 'alternative' );
+	controlOf( dialogContent(), radiusLabel ).el.disabled === true && ( change( dialogContent(), 'Background colour', 'counter' ), controlOf( dialogContent(), radiusLabel ).el.disabled === false )
+	&& ( change( dialogContent(), radiusLabel, true ), builder._doc.model.blocks[1].cols[0].radius === 'alternative' ) && ( change( dialogContent(), 'Background colour', '' ), controlOf( dialogContent(), radiusLabel ).el.disabled === true )
+	&& valueAt( dialogContent(), radiusLabel ) === true && builder._doc.model.blocks[1].cols[0].radius === 'alternative' );
 builder._doc.model.blocks[1].cols[0].background = { slot : '/template/page-home/services/background', focus : 5 };
-builder._refreshTab('background');
-check( '...a picture behind the column wakes it as a ground does', controlOf( paneOf('background'), radiusLabel ).el.disabled === false );
+redrawBlocks();
+check( '...a picture behind the column wakes it as a ground does', controlOf( dialogContent(), radiusLabel ).el.disabled === false );
 builder._closeDialog();
 
 console.log( '\nThe picture behind a card' );
@@ -5675,6 +6178,7 @@ console.log( '\nThe picture behind a card' );
 openCard();
 builder._renderEditor();
 builder._openSettings( cardAt );
+builder._openBlock('surface');
 
 check( 'the picture behind a card is a source row - the label of the attribute over it, what it is now below it, the button of the dialog of the sources beside it - and under it the upload and the way to take it away; it has no alt text: the picture behind a content is decoration', ( function() {
 
@@ -5696,12 +6200,13 @@ requests[1].callback( 200, { filename : 'f', url : '/uploads/card.jpg', source :
 check( '...and the form is drawn again with it: the thumbnail, the focus and the dimming are on, the picture can be taken away, and the preview says that a picture is behind the card, not behind the column or the section', thumbOf( holderPane() ).hidden === false && thumbOf( holderPane() ).src.indexOf('/uploads/card.jpg') === 0
 	&& controlOf( holderPane(), 'Automatic focus' ).el.disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false && noteOf( holderPane() ).textContent === 'The picture is stored.'
 	&& preview().querySelector('[data-path="0.1.0"] .is-background') !== null && preview().querySelector('[data-path="0.1.0"] .is-background').title === 'Picture behind the card' && preview().querySelector('[data-path="0.1"] .builder-pcol-head .is-background') === null
-	&& preview().children[0].querySelector('.builder-frame-head .is-background') === null && shownTab( stripOf(), 'builder' ) === 'properties' );
+	&& preview().children[0].querySelector('.builder-frame-head .is-background') === null && openBlock() === 'surface' );
 builder._closeDialog();
 
 openCard();
 builder._renderEditor();
 builder._openSettings( cardAt );
+builder._openBlock('surface');
 buttonOf( holderPane(), 'Source' ).click();
 check( 'the picture behind a card is chosen in the dialog of the sources, with the tabs of a picture - Choose a value and Create new, no Static -, and a card in a static column offers the slots of the project and no field of an element', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"]]'
 	&& pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && labelList( pickerPane('pick') ).indexOf('Field of the element') === -1 && pickerPane('pick').querySelector('.builder-source-current').textContent === 'none' );
@@ -5864,9 +6369,9 @@ check( '...the head of the card selects the card', builder._same( builder._sel, 
 frameOf('0.1').querySelector('.builder-pcol-head').click();
 check( '...and the head of the column the column', builder._same( builder._sel, [ 0, 1 ] ) && frameOf('0.1').classList.contains('is-selected') === true && frameOf('0.1.0').classList.contains('is-selected') === false );
 frameOf('0.1.0').dispatch('dblclick');
-check( 'a double click on the card opens the form of the card, one on a child the form of that component', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Card' && JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' );
+check( 'a double click on the card opens the form of the card, one on a child the form of that component', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Card' && blockIds().join() === 'link,surface,spacing,properties' );
 frameOf('0.1.0.1').dispatch('dblclick');
-check( '...the form of a component at depth four is the form every component has: for a text that is a link Content, Properties, Variants, Link and CSS classes', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' );
+check( '...the form of a component at depth four is the form every component has: for a text that is a link its content, its link, its spacing and its properties', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && blockIds().join() === 'content,link,spacing,properties' );
 builder._closeDialog();
 toolOf( '0.1.0', 'settings' ).click();
 check( 'the tool for the settings selects the frame and opens its form: the card\'s', dialogText('builder-dialog-kind') === 'Card' && builder._same( builder._sel, cardAt ) );
@@ -6332,86 +6837,52 @@ check( '...and the ids are not used twice where the dialog is opened again: each
 } )() );
 builder._closeDialog();
 
-console.log( '\nA column that is added stands beside the others' );
+console.log( '\nA column that is added is a column of its own' );
 
-check( 'the width the columns of a row share is a step of the grid: two have 50, three 33, four 25 - and the grid has no step for five', builder._share(1) === 100 && builder._share(2) === 50 && builder._share(3) === 33
-	&& builder._share(4) === 25 && builder._share(5) === null && builder._share(12) === null );
 const sharedBy = function( row, viewport ) { return row.cols.map( function( col ) { return col.width[viewport] } ).join() };
-check( 'a column added to a row of one stands beside it: the widths are shared out again among all of them - 50 and 50, 33 three times, 25 four times - in the medium and the large screen, and the small one is left alone: there the columns stand below each other', ( function() {
-
-	const row = { cols : [ builder._newCol() ] };
-	const seen = [];
-
-	for( let more = 0; more < 3; more++ ) {
-		builder._addedCol( row );
-		seen.push( sharedBy( row, 'm' )+ '|'+ sharedBy( row, 'l' )+ '|'+ sharedBy( row, 's' ) );
-	}
-
-	return seen.join(' ') === '50,50|50,50|100,100 33,33,33|33,33,33|100,100,100 25,25,25,25|25,25,25,25|100,100,100,100' && row.cols.length === 4;
-} )() );
-check( '...a row that fills the grid - it has as many columns as the grid has steps for - gets the column on a line of its own, as every new column did: the others keep their widths', ( function() {
-
-	const row = { cols : [ builder._newCol() ] };
-
-	for( let more = 0; more < 5; more++ )
-		builder._addedCol( row );
-
-	return row.cols.length === 6 && sharedBy( row, 'l' ) === '25,25,25,25,100,100' && sharedBy( row, 'm' ) === '25,25,25,25,100,100' && sharedBy( row, 's' ) === '100,100,100,100,100,100';
-} )() );
-check( '...a viewport the columns stand below each other in - two or more, each at the whole width - stays so: the new column is below them, and the widths of the other viewports are shared', ( function() {
-
-	const stacked = builder._newCol();
-	const wide = builder._newCol();
-
-	wide.width = { s : 100, m : 100, l : 50 };
-	stacked.width = { s : 100, m : 100, l : 50 };
-
-	const row = { cols : [ stacked, wide ] };
-
-	builder._addedCol( row );
-
-	return sharedBy( row, 'm' ) === '100,100,100' && sharedBy( row, 'l' ) === '33,33,33' && sharedBy( row, 's' ) === '100,100,100';
-} )() );
-check( '...a column that is hidden in a viewport takes no room in it: the others share the row without it, and it keeps its width for the viewports it is shown in', ( function() {
+check( 'a column added to a row is the last of it and has the whole width in every viewport: the columns the row has keep the widths they have - what was set is the editor\'s, and a share made behind its back is not', ( function() {
 
 	const first = builder._newCol();
-	const gone = builder._newCol();
+	const second = builder._newCol();
 
 	first.width = { s : 100, m : 50, l : 50 };
-	gone.width = { s : 100, m : 25, l : 25 };
-	gone.hidden = { l : true };
+	second.width = { s : 100, m : 25, l : 25 };
+	second.hidden = { l : true };
 
-	const row = { cols : [ first, gone ] };
-
-	builder._addedCol( row );
-
-	return sharedBy( row, 'l' ) === '50,25,50' && sharedBy( row, 'm' ) === '33,33,33';
-} )() );
-check( '...a row of columns of any widths is shared out as a whole, and the new column is the last, a column of its own in every way: it is not hidden anywhere, has no loop and no components', ( function() {
-
-	const a = builder._newCol();
-	const b = builder._newCol();
-
-	a.width = { s : 100, m : 66, l : 66 };
-	b.width = { s : 100, m : 33, l : 33 };
-
-	const row = { cols : [ a, b ] };
+	const row = { cols : [ first, second ] };
 	const added = builder._addedCol( row );
 
-	return row.cols[2] === added && sharedBy( row, 'm' ) === '33,33,33' && sharedBy( row, 'l' ) === '33,33,33' && JSON.stringify( added.hidden ) === '{}' && added.stack === null && added.components.length === 0;
+	return row.cols[2] === added && sharedBy( row, 'l' ) === '50,25,100' && sharedBy( row, 'm' ) === '50,25,100' && sharedBy( row, 's' ) === '100,100,100' && builder._share === undefined && builder.BESIDE === undefined;
+} )() );
+check( '...the new column is a column of its own in every way: it is not hidden anywhere, has no loop and no components, and none of the six sides of its spacing is set', ( function() {
+
+	const row = { cols : [ builder._newCol() ] };
+	const added = builder._addedCol( row );
+
+	return JSON.stringify( added.hidden ) === '{}' && added.stack === null && added.components.length === 0 && builder.SIDES.every( function( side ) { return added[side] === '' } ) && added.p === undefined;
 } )() );
 doc = open();
 builder._renderEditor();
 builder._addCol( [ 0 ] );
-check( 'the button at the end of a row adds a column beside the one it has: the hero has two columns that share the row, the preview shows it - and the new column is the selection, in one change', ( function() {
+check( 'the button at the end of a row adds a column: the hero has two, the first as wide as it was and the new one the whole width, the preview shows it - and the new column is the selection, in one change', ( function() {
 	const hero = builder._doc.model.blocks[0];
-	return changes === 1 && builder._same( builder._sel, [ 0, 1 ] ) && sharedBy( hero, 'l' ) === '50,50' && sharedBy( hero, 'm' ) === '50,50' && sharedBy( hero, 's' ) === '100,100'
-		&& texts( frameOf('0').querySelectorAll('.builder-col-name') ) === '50%,50%' && frameOf('0.1').classList.contains('is-selected');
+	return changes === 1 && builder._same( builder._sel, [ 0, 1 ] ) && sharedBy( hero, 'l' ) === '66,100' && sharedBy( hero, 'm' ) === '100,100' && sharedBy( hero, 's' ) === '100,100'
+		&& texts( frameOf('0').querySelectorAll('.builder-col-name') ) === '66%,100%' && frameOf('0.1').classList.contains('is-selected');
 } )() );
 builder._addCol( [ 1 ] );
-check( '...in a row of two that stand side by side in the large screen and below each other in the medium one, it is the large one that is shared out', ( function() {
+check( '...in a row of two that stand side by side in the large screen and below each other in the medium one the same holds: the two keep what they have, the third has the whole width', ( function() {
 	const services = builder._doc.model.blocks[1];
-	return sharedBy( services, 'l' ) === '33,33,33' && sharedBy( services, 'm' ) === '100,100,100' && sharedBy( services, 's' ) === '100,100,100';
+	return sharedBy( services, 'l' ) === '50,50,100' && sharedBy( services, 'm' ) === '100,100,100' && sharedBy( services, 's' ) === '100,100,100';
+} )() );
+check( 'what the editor makes new has the six sides of the spacing, none of them set: a section in its settings, a column, a component in its node - and the card, the one component that paints a ground, the two offsets of it as well; the column has no padding of its own as one setting', ( function() {
+	const section = builder._newSection( page() );
+	const col = builder._newCol();
+	const text = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'text', [] );
+	const card = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'card', [] );
+	const none = function( node ) { return builder.SIDES.every( function( side ) { return node[side] === '' } ) };
+
+	return none( section.settings ) && none( col ) && none( text ) && none( card ) && text.bgPl === undefined && card.bgPl === '' && card.bgPr === '' && card.radius === '' && col.p === undefined
+		&& JSON.stringify( Object.keys( section.settings ).filter( function( key ) { return builder.SIDES.indexOf( key ) !== -1 } ) ) === JSON.stringify( builder.SIDES );
 } )() );
 
 console.log( '\nA new component is made with no text of its own' );
@@ -6584,23 +7055,24 @@ check( 'the copy that the tool makes is made with them: the text of every langua
 
 console.log( '\nText on a picture reads better with the picture dimmed' );
 
-const dimHint = function() { return paneOf('background').querySelector('.builder-dim-hint') };
 const dimLabel = words['/_admin/builder/section/dim'];
+// The question mark of the switch for the dimming: the advice is behind it, and it is there for as long as the advice applies
+const dimHelp = function() { return controlOf( blockOf('surface'), dimLabel ).el.closest('.builder-row').querySelector('.builder-help') };
 
 doc = open();
 builder._renderEditor();
 builder._doc.model.blocks[0].settings.dim = false;
 builder._openSettings( [ 0 ] );
-check( 'a section that has a picture, text on it and the dimming off says in one line that the text reads better with the picture dimmed - which blocks nothing: it is a hint', dimHint() !== null && dimHint().hidden === false
-	&& dimHint().textContent === words['/_admin/builder/hint/dim-text'] && dimHint().classList.contains('nino-admin-hint') === true && dimHint().localName === 'p' );
-check( '...it is gone with the dimming on, and there again with it off', ( change( paneOf('background'), dimLabel, true ), dimHint().hidden === true ) && ( change( paneOf('background'), dimLabel, false ), dimHint().hidden === false ) );
+check( 'a section that has a picture, text on it and the dimming off has the advice that the text reads better with the picture dimmed behind the question mark of the switch - which blocks nothing: it is a hint, and none of it stands under the switch', dimHelp() !== null && dimHelp().hidden === false
+	&& tipOf( controlOf( blockOf('surface'), dimLabel ) ) === words['/_admin/builder/hint/dim-text'] && blockOf('surface').querySelector('.builder-dim-hint') === null );
+check( '...the mark is gone with the dimming on, and there again with it off', ( change( dialogContent(), dimLabel, true ), dimHelp().hidden === true ) && ( change( dialogContent(), dimLabel, false ), dimHelp().hidden === false ) );
 builder._closeDialog();
 
 doc = open();
 builder._renderEditor();
 builder._doc.model.blocks[1].settings.dim = false;
 builder._openSettings( [ 1 ] );
-check( '...a section that has no picture says nothing, however much text it has', dimHint() !== null && dimHint().hidden === true );
+check( '...a section that has no picture has no mark, however much text it has', dimHelp() !== null && dimHelp().hidden === true );
 builder._closeDialog();
 
 doc = open();
@@ -6608,20 +7080,20 @@ builder._renderEditor();
 builder._doc.model.blocks[0].settings.dim = false;
 builder._doc.model.blocks[0].cols[0].components = [ { name : 'image', source : '', text : null, attributes : {} }, { name : 'spacer', source : '', text : null, attributes : {} } ];
 builder._openSettings( [ 0 ] );
-const quiet = dimHint().hidden === true;
+const quiet = dimHelp().hidden === true;
 builder._closeDialog();
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'card', source : '', text : null, attributes : {}, components : [ { name : 'card-title', source : '', text : null, attributes : {} } ] } );
 builder._openSettings( [ 0 ] );
-const spoken = dimHint().hidden === false;
+const spoken = dimHelp().hidden === false;
 builder._closeDialog();
 check( '...nor does one with nothing on it but pictures and space - and one with a title in a card in its column has text on it', quiet && spoken );
 builder._doc.model.blocks[0].cols[0].components = [ { name : 'html', source : '', text : null, attributes : {}, content : '   ' } ];
 builder._openSettings( [ 0 ] );
-const emptyHtml = dimHint().hidden === true;
+const emptyHtml = dimHelp().hidden === true;
 builder._closeDialog();
 builder._doc.model.blocks[0].cols[0].components[0].content = '<p>Hello</p>';
 builder._openSettings( [ 0 ] );
-check( '...a block of HTML has text on it where it is not empty', emptyHtml && dimHint().hidden === false );
+check( '...a block of HTML has text on it where it is not empty', emptyHtml && dimHelp().hidden === false );
 builder._closeDialog();
 
 console.log( '\nThe list, the refusal for the id of a section, and the focus where the preview is drawn again' );
@@ -6676,7 +7148,7 @@ check( '...a focus that is not on a tool of the preview is not the preview\'s to
 	builder._renderEditor();
 	builder._openSettings( [ 3, 0, 0 ] );
 
-	const field = paneOf('content').querySelector('input, select, textarea, button');
+	const field = dialogContent().querySelector('input, select, textarea, button');
 
 	field.focus();
 	builder._refreshSlots();

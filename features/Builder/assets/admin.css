@@ -5,15 +5,18 @@
  *	admin.css		The panel's own stylesheet, loaded exactly while the panel is (see
  *							Admin::assets()). The workbench styles headings, hints, fields,
  *							buttons and the dialog; this file keeps to what the editor adds -
- *							the preview with its frames, placeholders and tools, the tabs,
- *							the groups and the lines of a form, and the controls of its own
- *							(a choice of buttons, the focus of a picture, the patch of a
- *							colour, the row of a source) - and reads the workbench's own custom
+ *							the preview with its frames, placeholders and tools, the blocks
+ *							of a form drawn as an accordion, one column of fields with the
+ *							name at the left and a question mark for a sentence, and the
+ *							controls of its own (the box of the spacing, a choice of buttons,
+ *							the focus of a picture, the patch of a colour, the row of a
+ *							source) - and reads the workbench's own custom
  *							properties rather than colours of its own, so the light and the
- *							dark scheme are the workbench's. The one colours that are not are
- *							the fixed greys of a section that is dark, black, primary or
+ *							dark scheme are the workbench's. The only colours that are not
+ *							are the fixed greys of a section that is dark, black, primary or
  *							brand-alt: they stay as they are in both schemes, as the section
- *							does on the page.
+ *							does on the page - and what is said over them, the heads and the
+ *							tools, stands on a chip in the workbench's colours.
  *
  *							The preview is the editor: it has the whole width, every frame in
  *							it carries tools that show where the pointer is over it and on the
@@ -184,11 +187,6 @@
 	letter-spacing: .08em;
 	text-transform: uppercase;
 }
-/* The line of the cover: the switch takes half, the height and the vertical alignment of the content share the rest */
-#builder-cover-line {
-	grid-template-columns: 50% repeat(auto-fit, minmax(9rem, 1fr));
-}
-
 @media (min-width: 64rem) {
 	.builder-editor {
 		height: calc(100dvh - 3.4rem);
@@ -252,8 +250,8 @@
 /* The lightbox that offers the components: a heading for each group, under it the buttons of the group - the icon of the component and
    its label, about 100 by 30 px - and a component that cannot go where the list is stands there greyed, with the reason as its title.
    The class of the buttons is the one the list of a source has, laid out as a button here. What follows is the dialog of a phone, the
-   groups under each other with their buttons in rows that wrap; the media queries after the buttons put the groups side by side where
-   the window has the room */
+   groups under each other with their buttons in rows that wrap; from 36rem on the groups stand in rows, as the media query after the
+   buttons says it */
 .builder-lightbox {
 	display: grid;
 	gap: 1rem;
@@ -310,36 +308,40 @@
 .builder-pick-label {
 	min-width: 0;
 }
-/* Side by side where the window has the room: a column for each group - its heading on top, its buttons under each other and as wide as
-   the column - and, as the groups stand in the document in the order they are listed in, the Tab key goes down one column and on to the
-   next. Five columns are what the dialog takes from a window of 50rem on, with the longest label of the registry on one line in either
-   language; below that the groups fold into three columns, into two and, below 25rem, into the one of the phone. The five are as wide as
-   their longest label and share what is left between them, so that a label wraps only where there is no room for it */
-@media (min-width: 25rem) {
+/* In rows from 36rem on: the groups stand under each other, and each is a row - its heading at the left, in a column the groups share, as wide
+   as the longest heading (the group of the features has its sub-headings, one for each feature, in that column under its own), and the buttons of
+   the group to the right in a grid of cells of one width that wraps, a cell wide enough for the longest label of the kernel and of the features on
+   one line in either language (10.5rem: the longest, a German one, is 153 px of the 157 px of the cell at the 15 px of the admin; a longer label of a
+   project wraps in its button). A group is a grid of its own over the columns of the lightbox (a subgrid), so that its heading and its buttons are one
+   row, and as the groups stand in the document in the order they are listed in, the Tab key goes along the row and on to the next. Below 36rem the
+   one column above */
+@media (min-width: 36rem) {
 	.builder-lightbox {
-		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+		grid-template-columns: fit-content( 12rem ) minmax( 0, 1fr );
+		column-gap: 1rem;
 		align-items: start;
+	}
+	.builder-lightbox-group {
+		grid-column: 1 / -1;
+		grid-template-columns: subgrid;
+		column-gap: normal;
+	}
+	.builder-lightbox-title,
+	.builder-lightbox-sub {
+		grid-column: 1;
+		margin: 0;
+		line-height: 1.9rem;
 	}
 	.builder-lightbox-row {
 		display: grid;
+		grid-column: 2;
+		grid-template-columns: repeat( auto-fill, minmax( 10.5rem, 1fr ) );
 	}
 	.builder-lightbox .builder-pick-item {
 		width: 100%;
 		min-width: 0;
 		padding-inline: .6rem;
 		gap: .5rem;
-	}
-}
-@media (min-width: 36rem) {
-	.builder-lightbox {
-		grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
-	}
-}
-@media (min-width: 50rem) {
-	.builder-lightbox {
-		grid-auto-flow: column;
-		grid-template-columns: none;
-		column-gap: .75rem;
 	}
 }
 
@@ -413,18 +415,22 @@
 }
 /* The colour of a section is a grey level: the preview knows no palette, and none of the workbench's accent colours is the site's.
    A column that paints a ground of its own is tinted the same way - with the colour alone, so that the stripes of a hidden column stay -,
-   and so is a component that holds components and paints one, and the area of the row of a section whose background is inside */
+   and so is a component that holds components and paints one, and the area of the row of a section whose background is inside. A ground
+   sets the ink that reads on it, a light one as well: what stands in a card of a light ground inside a section of a black one does not take
+   the white of the section */
 .builder-frame.builder-color-alt,
 .builder-frame-body.builder-color-alt,
 .builder-pcol.builder-color-alt,
 .builder-card.builder-color-alt {
 	background-color: var(--builder-ground-alt);
+	color: var(--editor-text);
 }
 .builder-frame.builder-color-tint,
 .builder-frame-body.builder-color-tint,
 .builder-pcol.builder-color-tint,
 .builder-card.builder-color-tint {
 	background-color: var(--builder-ground-tint);
+	color: var(--editor-text);
 }
 .builder-frame.builder-color-dark,
 .builder-frame-body.builder-color-dark,
@@ -555,6 +561,24 @@ button.builder-status-item:hover {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+/* What the Builder says over the page is the Builder's and not the page's: the title of a head, each thing that is said of the frame and its tools stand on a chip of their
+   own - solid, in the colours of the workbench - so that they read on every ground the preview paints under them: a section of a black ground, a dark one, the brand's and a light
+   one, and a card of a light ground inside one of them. The preview itself stays the page's grey levels */
+.builder-head-title,
+.builder-head-status .builder-status-item,
+.builder-tools {
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+	color: var(--editor-text);
+}
+.builder-head-title,
+.builder-head-status .builder-status-item {
+	padding: .05rem .4rem;
+}
+.builder-head-status button.builder-status-item:hover {
+	background: color-mix(in srgb, var(--editor-text) 10%, var(--editor-bg-elevated));
+}
 /* The tools of a frame: in the head of a frame and of a column, at the end of a component.
    They are there, so that Tab reaches them, and seen where the pointer is over the frame
    (is-hover, set for the innermost one), on the one that is selected, and where focus is in them */
@@ -627,7 +651,6 @@ button.builder-status-item:hover {
 .builder-pcol-head {
 	padding: .3rem .35rem .3rem .6rem;
 	font-size: .66rem;
-	opacity: .8;
 }
 .builder-col-body {
 	display: grid;
@@ -648,7 +671,6 @@ button.builder-status-item:hover {
 	min-width: 0;
 	padding: .25rem .35rem .25rem .6rem;
 	font-size: .62rem;
-	opacity: .8;
 }
 .builder-card-body {
 	display: grid;
@@ -673,7 +695,6 @@ button.builder-status-item:hover {
 .builder-ph .builder-status-item.is-linked {
 	flex: 0 0 auto;
 	margin-left: auto;
-	opacity: .7;
 }
 .builder-ph .builder-status-item.is-linked + .builder-tools {
 	margin-left: 0;
@@ -727,8 +748,26 @@ button.builder-status-item:hover {
 }
 /* ---------------------------------------------------------------- Dialogs */
 
+/* A dialog never grows beyond the window, the pattern of the workbench's manual dialog: it is a column of its head, its content and its actions with a
+   height of at most the window less a margin, and what stands between the head and the actions is the one thing that scrolls - the dialog itself never
+   does -, so that the actions are in sight whatever the length of a form is. The form of an element is narrow, a column of fields about 400px wide
+   (the padding of the dialog is 1.25rem on each side); the lightbox that offers the components is wider and so is the dialog of a source, which stands
+   over this one in a smaller size */
 .builder-dialog {
-	width: min(44rem, calc(100vw - 2rem));
+	width: min(29.4rem, calc(100vw - 2rem));
+	max-height: calc(100vh - 2rem);
+	max-height: calc(100dvh - 2rem);
+	overflow: hidden;
+}
+.builder-dialog[open] {
+	display: flex;
+	flex-direction: column;
+}
+.builder-dialog .nino-admin-dialog-body {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-height: 0;
 }
 .builder-dialog.is-wide {
 	width: min(52rem, calc(100vw - 2rem));
@@ -756,17 +795,26 @@ button.builder-status-item:hover {
 	margin: 0;
 }
 .builder-dialog-heading .builder-name-input {
-	width: 14rem;
+	width: 10rem;
 	height: 2rem;
 	font-size: 1rem;
 }
+/* The content is the box that positioned elements in it - the switches and the radios of a form, which are an input laid over their label - are placed
+   in and clipped by: without it they are placed in the dialog, stay where they were when the content scrolls, and reach out of the dialog's box. Its rows
+   are as high as what is in them and no less: a box that clips its corners (the blocks of the accordion) would be shrunk by a row of its own to the room
+   the dialog has, and cut off what does not fit, where the content itself is to scroll */
 .builder-dialog-content {
 	display: grid;
+	position: relative;
+	flex: 1 1 auto;
+	grid-auto-rows: max-content;
+	align-content: start;
 	gap: .75rem;
-	max-height: 62dvh;
+	min-height: 0;
 	overflow: auto;
 	padding-right: .25rem;
 }
+/* The tabs of the dialog of a source */
 .builder-tabs {
 	display: flex;
 	flex-wrap: wrap;
@@ -802,6 +850,282 @@ button.builder-status-item:hover {
 .builder-tabpane[hidden] {
 	display: none;
 }
+
+/* The blocks of a form are an accordion: a head for each - its name, and muted beside it what the block says of the element where that is not the
+   default - over a body that holds the fields. One block is open, the others are closed */
+.builder-blocks {
+	display: grid;
+	border: 1px solid var(--editor-separator);
+	border-radius: var(--editor-radius-sm);
+	overflow: hidden;
+}
+.builder-block + .builder-block {
+	border-top: 1px solid var(--editor-separator);
+}
+.builder-block-title {
+	margin: 0;
+	font-size: inherit;
+}
+.builder-block-head {
+	display: grid;
+	grid-template-columns: 1rem auto minmax(0, 1fr);
+	align-items: center;
+	gap: .5rem;
+	width: 100%;
+	min-height: 2.4rem;
+	margin: 0;
+	padding: .35rem .8rem;
+	border: 0;
+	border-radius: 0;
+	background: var(--nino-admin-surface-muted);
+	box-shadow: none;
+	color: var(--editor-text);
+	font-size: .88rem;
+	text-align: left;
+	cursor: pointer;
+}
+.builder-block.is-open > .builder-block-title > .builder-block-head {
+	background: var(--editor-blue-soft);
+}
+.builder-block-head:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: -2px;
+}
+.builder-block-head .builder-icon {
+	width: .9rem;
+	height: .9rem;
+	color: var(--editor-text-secondary);
+	transform: rotate(-90deg);
+	transition: transform .15s ease;
+}
+.builder-block.is-open .builder-block-head .builder-icon {
+	transform: none;
+}
+.builder-block-name {
+	font-weight: 650;
+	white-space: nowrap;
+}
+.builder-block-says {
+	overflow: hidden;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 400;
+	text-align: right;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.builder-block-says[hidden] {
+	display: none;
+}
+.builder-block-body {
+	display: grid;
+	gap: .6rem;
+	padding: .8rem;
+	--builder-label: 8.25rem;
+}
+.builder-block-body[hidden] {
+	display: none;
+}
+/* The form of the loop of a section or a column: its choice and, where it runs one, its groups */
+.builder-loop {
+	display: grid;
+	gap: .6rem;
+}
+
+/* One column of fields: the name at the left, the control at the right, and where a field has a sentence to say a question mark after the name. The
+   fields of the workbench (a label that holds the name and the control) and the ones of the Builder are the same grid */
+.builder-block-body .nino-admin-field,
+.builder-block-body .builder-segment-field,
+.builder-block-body .builder-offset,
+.builder-block-body .nino-admin-switch,
+.builder-block-body .builder-check {
+	display: grid;
+	grid-template-columns: var(--builder-label) minmax(0, 1fr);
+	align-items: center;
+	column-gap: .5rem;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+}
+.builder-block-body .nino-admin-field > span:first-child,
+.builder-block-body .builder-segment-label,
+.builder-block-body .builder-offset-label,
+.builder-block-body .nino-admin-switch-copy,
+.builder-block-body .builder-check > span {
+	display: block;
+	grid-column: 1;
+	grid-row: 1;
+	margin: 0;
+	padding-right: 1.4rem;
+	font-size: .82rem;
+	font-weight: 500;
+	line-height: 1.3;
+}
+.builder-block-body .nino-admin-field > :not(span:first-child),
+.builder-block-body .builder-segment,
+.builder-block-body .builder-offset-steps,
+.builder-block-body .nino-admin-switch-track,
+.builder-block-body .builder-check > input {
+	grid-column: 2;
+	grid-row: 1;
+}
+.builder-block-body .nino-admin-switch-track {
+	justify-self: start;
+	margin: 0;
+}
+.builder-block-body .builder-check > input {
+	justify-self: start;
+	margin: 0;
+}
+.builder-block-body .nino-admin-input {
+	width: 100%;
+}
+/* A field with a sentence stands in a row with its button, which sits at the end of the name */
+.builder-row {
+	position: relative;
+}
+/* Where a form has no column of names, the mark stands at the end of the line of the name */
+.builder-row > .builder-help {
+	position: absolute;
+	top: .05rem;
+	right: 0;
+}
+.builder-block-body .builder-row > .builder-help {
+	top: .12rem;
+	right: auto;
+	left: calc(var(--builder-label) - 1.35rem);
+}
+.builder-label-row {
+	display: flex;
+	align-items: center;
+	gap: .4rem;
+}
+.builder-help {
+	display: inline-grid;
+}
+.builder-help-btn {
+	display: grid;
+	place-items: center;
+	width: 1.05rem;
+	min-width: 0;
+	height: 1.05rem;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--editor-border);
+	border-radius: 50%;
+	background: var(--editor-bg-elevated);
+	box-shadow: none;
+	color: var(--editor-text-secondary);
+	font-size: .66rem;
+	font-weight: 700;
+	line-height: 1;
+	cursor: help;
+}
+.builder-help-btn:hover,
+.builder-help-btn:focus-visible {
+	border-color: var(--editor-blue);
+	color: var(--editor-blue);
+}
+.builder-help-btn:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: 1px;
+}
+.builder-help-tip {
+	position: fixed;
+	z-index: 20;
+	width: 16rem;
+	max-width: calc(100vw - 1rem);
+	padding: .5rem .65rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+	box-shadow: var(--editor-shadow);
+	color: var(--editor-text);
+	font-size: .76rem;
+	font-weight: 400;
+	line-height: 1.4;
+	text-align: left;
+	text-transform: none;
+	letter-spacing: normal;
+}
+
+/* The box of the spacing: the four sides inside as selects around a small rectangle in a dashed frame, the two outside above and below it */
+.builder-box {
+	display: grid;
+	justify-items: center;
+	gap: .3rem;
+}
+.builder-box + .builder-box {
+	padding-top: .6rem;
+	border-top: 1px solid var(--editor-separator);
+}
+.builder-box-head {
+	display: flex;
+	align-items: center;
+	gap: .4rem;
+	justify-self: start;
+	min-height: 1.1rem;
+}
+.builder-box-name {
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 650;
+}
+.builder-box-name:empty {
+	display: none;
+}
+.builder-box-frame {
+	display: grid;
+	grid-template-columns: repeat( 3, 3.9rem );
+	grid-template-areas: ". top ." "left core right" ". bottom .";
+	gap: .35rem .5rem;
+	justify-items: center;
+	align-items: center;
+	padding: .55rem;
+	border: 1px dashed var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+}
+.builder-box-frame > :nth-child(1) {
+	grid-area: top;
+}
+.builder-box-frame > :nth-child(2) {
+	grid-area: left;
+}
+.builder-box-frame > :nth-child(3) {
+	grid-area: core;
+}
+.builder-box-frame > :nth-child(4) {
+	grid-area: right;
+}
+.builder-box-frame > :nth-child(5) {
+	grid-area: bottom;
+}
+.builder-box-core {
+	width: 3.6rem;
+	height: 1.7rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--nino-admin-surface-muted);
+}
+.builder-block-body .builder-step {
+	width: 3.9rem;
+	padding-inline: .3rem;
+	text-align: center;
+	text-align-last: center;
+}
+/* How far in from the sides the ground of a row, a column or a card starts: the two steps side by side under one name */
+.builder-offset-steps {
+	display: grid;
+	grid-template-columns: auto 3.9rem auto 3.9rem;
+	align-items: center;
+	justify-content: start;
+	gap: .35rem;
+}
+.builder-offset-side {
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+}
 .builder-label {
 	color: var(--editor-text-secondary);
 	font-size: .78rem;
@@ -829,6 +1153,25 @@ button.builder-status-item:hover {
 .builder-source:has(+ .builder-content-extra > .builder-picture) .builder-source-line {
 	border-bottom: 0;
 	border-radius: var(--editor-radius-sm) var(--editor-radius-sm) 0 0;
+}
+/* The row of a source that has a name of its own and no picture under it is a field like the others: the name at the left, the row at the right */
+.builder-block-body .builder-source:has(> .builder-source-name:not([hidden])):not(:has(+ .builder-picture)) {
+	grid-template-columns: var(--builder-label) minmax(0, 1fr);
+	align-items: center;
+	column-gap: .5rem;
+}
+.builder-block-body .builder-source > .builder-source-name {
+	margin: 0;
+	padding: 0;
+	font-size: .82rem;
+	font-weight: 500;
+}
+.builder-block-body .builder-source:has(> .builder-source-name:not([hidden])):not(:has(+ .builder-picture)) > .builder-source-line {
+	grid-column: 2;
+	grid-row: 1;
+}
+.builder-block-body .builder-source > .builder-source-red {
+	grid-column: 1 / -1;
 }
 .builder-source-caption {
 	flex: 0 0 auto;
@@ -1000,8 +1343,21 @@ button.builder-status-item:hover {
 	tab-size: 4;
 	resize: vertical;
 }
+/* The source of the file in the dialog: its note over the code, which fills what the dialog has left and scrolls in its own box - up and down, and
+   sideways for a long line - as the one scrollbar the dialog has */
+.builder-dialog-content:has(> .builder-view) {
+	grid-template-rows: minmax(0, 1fr);
+	overflow: hidden;
+}
+.builder-view {
+	display: flex;
+	flex-direction: column;
+	gap: .75rem;
+	min-height: 0;
+}
 .builder-view-code {
-	max-height: 58dvh;
+	flex: 1 1 auto;
+	min-height: 0;
 	margin: 0;
 	padding: .75rem;
 	overflow: auto;
@@ -1020,44 +1376,7 @@ button.builder-status-item:hover {
 	box-shadow: 0 0 0 1px var(--editor-red);
 }
 
-/* A line of fields that belong together: one row, the width shared */
-.builder-line {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-	gap: .75rem;
-	align-items: center;
-}
-.builder-line > .builder-line-caption {
-	align-self: end;
-	padding-bottom: .55rem;
-	color: var(--editor-text-secondary);
-	font-size: .78rem;
-	font-weight: 650;
-}
-.builder-line.has-caption {
-	grid-template-columns: 5rem repeat(auto-fit, minmax(8rem, 1fr));
-}
-/* A line whose fields stand at the same top, where one has a hint under it and another has none: the width of a row and its place */
-.builder-line.builder-line-top {
-	align-items: start;
-}
-/* The padding of a row: two selects side by side under the name of the pair and the hint for both, the pairs beside each other where there is room and under each other where there is none */
-.builder-line.builder-line-pairs {
-	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-	align-items: start;
-}
-.builder-pair {
-	display: grid;
-	gap: .22rem;
-	min-width: 0;
-	align-content: start;
-}
-.builder-pair-label {
-	color: var(--editor-text-secondary);
-	font-size: .74rem;
-	font-weight: 600;
-}
-/* The tables of a form: the viewports of a column and of a loop, the spacing of a section */
+/* The tables of a form: the viewports of a column and of a loop */
 .builder-table {
 	width: 100%;
 }
@@ -1086,14 +1405,6 @@ button.builder-status-item:hover {
 	text-decoration: underline;
 	cursor: pointer;
 }
-.builder-sort {
-	display: flex;
-	align-items: end;
-	gap: .5rem;
-}
-.builder-sort > label {
-	flex: 1 1 auto;
-}
 /* ------------------------------------------------------------ Groups */
 
 /* What belongs together in a form is a group under its heading; a group that is rarely wanted is folded away */
@@ -1101,7 +1412,9 @@ button.builder-status-item:hover {
 	display: grid;
 	gap: .6rem;
 }
-.builder-group + .builder-group {
+.builder-group + .builder-group,
+.builder-block-body > .builder-group + .nino-admin-field,
+.builder-block-body > .builder-group + .builder-row {
 	padding-top: .8rem;
 	border-top: 1px solid var(--editor-separator);
 }
@@ -1130,13 +1443,10 @@ button.builder-status-item:hover {
    of the Design feature */
 .builder-segment-field {
 	min-width: 0;
-	margin-bottom: .72rem;
 }
 .builder-segment-label {
 	display: block;
-	margin-bottom: .22rem;
 	color: var(--editor-text-secondary);
-	font-size: .74rem;
 	font-weight: 600;
 }
 .builder-segment {
@@ -1202,19 +1512,13 @@ button.builder-status-item:hover {
 .builder-with-swatch {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: end;
+	align-items: center;
 	gap: .5rem;
-}
-/* A colour select that has a hint: the hint stands under the select and the patch, closer to them than a field's own margin */
-.builder-with-hint > .nino-admin-hint {
-	display: block;
-	margin: -.4rem 0 .72rem;
 }
 .builder-swatch {
 	--builder-ground: var(--builder-ground-plain);
 	width: var(--nino-admin-control-height);
 	height: var(--nino-admin-control-height);
-	margin-bottom: .72rem;
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 	background: var(--builder-swatch, var(--builder-ground));
@@ -1243,6 +1547,20 @@ button.builder-status-item:hover {
 	display: grid;
 	justify-items: start;
 	gap: .25rem;
+}
+.builder-block-body .builder-focus {
+	grid-template-columns: var(--builder-label) minmax(0, 1fr);
+	align-items: center;
+	column-gap: .5rem;
+}
+.builder-block-body .builder-focus > :first-child {
+	grid-column: 1 / -1;
+}
+.builder-block-body .builder-focus > .builder-focus-grid {
+	grid-column: 2;
+}
+.builder-block-body .builder-background > .nino-admin-btn-secondary {
+	justify-self: start;
 }
 .builder-focus-grid {
 	display: grid;

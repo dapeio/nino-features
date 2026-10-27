@@ -10,10 +10,10 @@ declare(strict_types=1);
 // The parts, by what they hold:
 //
 //   /_admin/builder/label/...     the buttons, the columns of the list and the names of the editor's regions
-//   /_admin/builder/hint/...      the hint under a field of a form
+//   /_admin/builder/hint/...      the sentence a field of a form has to say, which stands behind its question mark
 //   /_admin/builder/tree/...      what a frame is called, what the add buttons say, and why a source is red
 //   /_admin/builder/menu/...      the titles of the buttons on a frame
-//   /_admin/builder/tab/...       the tabs of the forms
+//   /_admin/builder/block/...     the names of the six blocks every form is drawn in, as block/<name>/label
 //   /_admin/builder/group/...     the headings of the groups of a form
 //   /_admin/builder/section/...   the fields of the section and row forms
 //   /_admin/builder/template/...  the fields of the template form
@@ -38,7 +38,8 @@ declare(strict_types=1);
 //   /_admin/builder/reason/...    why a section is not read, by the code the Reader gives - and, as pick-*, why a component
 //                                 cannot be added where the lightbox was opened
 //   /_admin/builder/pick/...      the headings of the groups of the lightbox that offers the components
-//   /_admin/builder/link/...      the fields of the tab of a component that is a link
+//   /_admin/builder/spacing/...   the words of the box of the spacing: outside, inside, the row, the gap
+//   /_admin/builder/link/...      the fields of the link block of a component
 return [
 
 	'[[/_admin/builder/label/nav]]'						=> 'Builder',
@@ -57,6 +58,8 @@ return [
 	'[[/_admin/builder/label/copy-of]]'					=> 'Copy of %s',
 	'[[/_admin/builder/label/delete]]'					=> 'Delete',
 	'[[/_admin/builder/label/reload]]'					=> 'Reload',
+	'[[/_admin/builder/label/help]]'	=> 'Hint',
+	'[[/_admin/builder/label/help-of]]'	=> 'Hint on %s',
 
 	'[[/_admin/builder/empty/headline]]'				=> 'No page template yet',
 	'[[/_admin/builder/empty/lead]]'						=> 'A page template is a page-*.tpl of the project. Create one here, or write one by hand: the Builder reads it either way.',
@@ -188,18 +191,17 @@ return [
 	'[[/_admin/builder/menu/loop]]'							=> 'Settings of the loop: %s',
 
 	// The words of the forms
-	'[[/_admin/builder/tab/background]]'					=> 'Border / Background',
-	'[[/_admin/builder/tab/column-background]]'			=> 'Background',
-	'[[/_admin/builder/tab/animation]]'						=> 'Viewport animation',
-	'[[/_admin/builder/tab/custom]]'						=> 'CSS classes',
-	'[[/_admin/builder/tab/section]]'						=> 'Section',
-	'[[/_admin/builder/tab/row]]'							=> 'Grid row',
-	'[[/_admin/builder/tab/layout]]'						=> 'Layout',
-	'[[/_admin/builder/tab/loop]]'							=> 'Loop',
-	'[[/_admin/builder/tab/content]]'						=> 'Content',
-	'[[/_admin/builder/tab/properties]]'					=> 'Properties',
-	'[[/_admin/builder/tab/variants]]'	=> 'Variants',
-	'[[/_admin/builder/tab/link]]'	=> 'Link',
+	'[[/_admin/builder/group/custom]]'						=> 'CSS classes',
+	'[[/_admin/builder/block/content/label]]'	=> 'Content',
+	'[[/_admin/builder/block/link/label]]'	=> 'Link',
+	'[[/_admin/builder/block/surface/label]]'	=> 'Surface',
+	'[[/_admin/builder/block/spacing/label]]'	=> 'Spacing',
+	'[[/_admin/builder/block/width/label]]'	=> 'Width and alignment',
+	'[[/_admin/builder/block/properties/label]]'	=> 'Properties',
+	'[[/_admin/builder/spacing/outside]]'	=> 'outside',
+	'[[/_admin/builder/spacing/inside]]'	=> 'inside',
+	'[[/_admin/builder/spacing/row]]'	=> 'Row',
+	'[[/_admin/builder/spacing/gap]]'	=> 'Gap',
 	'[[/_admin/builder/group/general]]'						=> 'General',
 	'[[/_admin/builder/group/frames]]'						=> 'Frames',
 	'[[/_admin/builder/group/animation]]'					=> 'Viewport animation',
@@ -215,25 +217,23 @@ return [
 	'[[/_admin/builder/section/border-primary]]'			=> 'In the brand colour',
 	'[[/_admin/builder/section/parallax]]'					=> 'Parallax effect',
 	'[[/_admin/builder/section/dim]]'						=> 'Dim the picture',
-	'[[/_admin/builder/section/padded]]'	=> 'Padded',
+	'[[/_admin/builder/section/padded]]'	=> 'Cover with frame',
 	'[[/_admin/builder/section/whitespace]]'	=> 'Whitespace',
 	'[[/_admin/builder/section/inner-background]]'	=> 'Background inside',
+	'[[/_admin/builder/section/width]]'	=> 'Width',
+	'[[/_admin/builder/section/offset]]'	=> 'Background offset',
+	'[[/_admin/builder/section/arrow]]'	=> 'Arrow down',
 	'[[/_admin/builder/section/cover]]'						=> 'Cover',
 	'[[/_admin/builder/section/cover-height]]'				=> 'Height (%)',
 	'[[/_admin/builder/section/content-pos]]'				=> 'Place of the content',
 	'[[/_admin/builder/section/text]]'						=> 'Horizontal text alignment',
 	'[[/_admin/builder/section/row-align]]'					=> 'Vertical content alignment',
 	'[[/_admin/builder/section/row-place]]'					=> 'Place of the row',
-	'[[/_admin/builder/section/row-padding-horizontal]]'	=> 'Padding left/right',
-	'[[/_admin/builder/section/row-padding-vertical]]'	=> 'Padding above/below',
 	'[[/_admin/builder/section/left]]'						=> 'Left',
 	'[[/_admin/builder/section/right]]'						=> 'Right',
 	'[[/_admin/builder/section/above]]'					=> 'Above',
 	'[[/_admin/builder/section/below]]'					=> 'Below',
-	'[[/_admin/builder/section/spacing]]'					=> 'Spacing',
 	'[[/_admin/builder/section/spacing-cell]]'				=> '%s, %s',
-	'[[/_admin/builder/section/outer]]'					=> 'Margin',
-	'[[/_admin/builder/section/inner]]'					=> 'Padding',
 	'[[/_admin/builder/section/custom]]'					=> 'Class of the section',
 	'[[/_admin/builder/section/row-custom]]'				=> 'Class of the row',
 	'[[/_admin/builder/section/vpa]]'						=> 'Animation',
@@ -250,11 +250,7 @@ return [
 	'[[/_admin/builder/col/head-width]]'				=> 'Width',
 	'[[/_admin/builder/col/head-hidden]]'				=> 'Hidden',
 	'[[/_admin/builder/col/stack-align]]'					=> 'Vertical alignment',
-	'[[/_admin/builder/col/stack-gap]]'						=> 'Gap (--space-*)',
-	'[[/_admin/builder/col/spacing]]'						=> 'Spacing',
-	'[[/_admin/builder/col/padding]]'						=> 'Inside',
-	'[[/_admin/builder/col/margin-top]]'					=> 'Top',
-	'[[/_admin/builder/col/margin-bottom]]'					=> 'Bottom',
+	'[[/_admin/builder/col/stack-gap]]'						=> 'Gap between the elements',
 	'[[/_admin/builder/col/custom]]'						=> 'Class of the column',
 	'[[/_admin/builder/stack/static]]'						=> 'Static',
 	'[[/_admin/builder/stack/kind]]'						=> 'Loop',
@@ -303,8 +299,11 @@ return [
 	'[[/_admin/builder/source/tab-pick]]'					=> 'Choose a value',
 	'[[/_admin/builder/source/tab-new]]'					=> 'Create new',
 	'[[/_admin/builder/source/tab-fixed]]'					=> 'Static',
+	'[[/_admin/builder/source/tab-internal]]'				=> 'Internal page',
 	'[[/_admin/builder/source/key]]'						=> 'Text key',
 	'[[/_admin/builder/source/field]]'						=> 'Field of the element',
+	'[[/_admin/builder/source/page]]'						=> 'Page',
+	'[[/_admin/builder/source/address]]'					=> 'Address',
 	'[[/_admin/builder/source/search]]'						=> 'Find a key by its name or its text',
 	'[[/_admin/builder/source/search-slot]]'				=> 'Find an image slot',
 	'[[/_admin/builder/source/slot]]'						=> 'Image slot',
@@ -319,6 +318,7 @@ return [
 	'[[/_admin/builder/source/name-taken]]'					=> 'The section has that name already.',
 	'[[/_admin/builder/source/name-slot]]'					=> 'The id of the section starts with a digit, and an image slot has to start with a letter. Rename the section.',
 	'[[/_admin/builder/source/name-slot-name]]'				=> 'The name of an image slot has to start with a letter.',
+	'[[/_admin/builder/source/name-address]]'				=> 'Type the address the link leads to.',
 	'[[/_admin/builder/source/no-hits]]'					=> 'Nothing found.',
 	'[[/_admin/builder/source/more]]'						=> '%s more - narrow the search.',
 	'[[/_admin/builder/source/background]]'					=> 'Background',
@@ -346,6 +346,7 @@ return [
 	'[[/_admin/builder/picture/small]]'					=> 'The picture is smaller than the slot (%s) and is scaled up.',
 
 	'[[/_admin/builder/common/radius-alt]]'				=> 'Alternative radius',
+	'[[/_admin/builder/common/radius-standard]]'	=> 'Standard radius',
 
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'One line. The file name is made of it when the template is created and stays as it is.',
@@ -353,17 +354,19 @@ return [
 	'[[/_admin/builder/hint/animate]]'						=> 'A new section is given the animation, and a section set to like the template carries it. What it looks like is set by the kind below.',
 	'[[/_admin/builder/hint/duplicate]]'				=> 'A copy is a file of its own, with text keys and image slots of its own: they are made from the ones of %s, with the same texts and pictures. A language in which a text is still missing gets the text of the first language.',
 	'[[/_admin/builder/hint/cover]]'						=> 'Height follows the viewport',
+	'[[/_admin/builder/hint/width]]'	=> 'Content width keeps the row at the width of the content. Full width has no maximum width. To the edge takes the padding at the left and the right of the row away as well.',
+	'[[/_admin/builder/hint/spacing]]'	=> 'Inside: the padding of the four sides, in steps from 0 to 6. Outside: the space above and below. A dash leaves the side to the page.',
+	'[[/_admin/builder/hint/spacing-row]]'	=> 'The room inside the row of the section, which a background inside paints. Left and right at 0 is the width to the edge.',
+	'[[/_admin/builder/hint/offset]]'	=> 'How far in from the left and the right the picture starts, in steps from 0 to 3.',
+	'[[/_admin/builder/hint/arrow]]'	=> 'A small arrow at the foot of the section that leads to the next one. It is for a cover.',
 	'[[/_admin/builder/hint/row-place]]'					=> 'Where a row that is narrower than the page stands.',
-	'[[/_admin/builder/hint/row-padding-horizontal]]'	=> 'Default is the gutter of the grid; 0 puts the content at the edge.',
-	'[[/_admin/builder/hint/row-padding-vertical]]'	=> 'Default is none; a row with a background inside has padding of its own.',
 	'[[/_admin/builder/hint/padded]]'	=> 'The cover or the parallax keeps the room of the page around it.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'How much room the section keeps. The whitespace of the page is set in the Design.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'The colour, the picture and the dimming stand on the row inside the section, not on the section itself.',
 	'[[/_admin/builder/hint/radius-alt]]'	=> 'Standard and alternative are the two radii the Design sets for the page. An element keeps the default of its kind until you switch it.',
 	'[[/_admin/builder/hint/dim-text]]'	=> 'Text on a picture reads better with the picture dimmed.',
-	'[[/_admin/builder/hint/link]]'	=> 'Where the component leads. Without a link it is none.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'A text key, an address or - in a loop - a field of the element.',
-	'[[/_admin/builder/hint/sections-id]]'	=> 'The loop makes one section for each element, numbered after the id of the section: %s-1, %s-2 and so on. The id is changed in the title.',
+	'[[/_admin/builder/hint/sections-id]]'	=> 'The loop makes one section for each element, numbered after the id of the section: %s-1, %s-2 and so on. The id is changed in the field Id or in the title.',
 	'[[/_admin/builder/hint/custom]]'						=> 'Classes of Nino.css the form has no field for, separated by spaces.',
 	'[[/_admin/builder/hint/vpa-section]]'					=> 'Like the template: the section carries the animation the template gives its sections. Off: it is not animated. Own: you set it yourself. Own with the plain effect and nothing else set is Like the template again the next time the dialog is opened.',
 	'[[/_admin/builder/hint/vpa-section-off]]'				=> 'The template does not animate its sections, and a section with no animation is like the template. It can have an animation of its own all the same.',
@@ -376,6 +379,7 @@ return [
 	'[[/_admin/builder/hint/field]]'						=> 'In a loop the components read the fields of each element.',
 	'[[/_admin/builder/hint/fixed]]'						=> 'The value stands in the template: the editors cannot change it.',
 	'[[/_admin/builder/hint/typed]]'						=> 'You may not read the keys of the project, so a key is typed: /template/<file>/<section>/<name>.',
+	'[[/_admin/builder/hint/page]]'						=> 'The link follows the page: it leads to the address the page has in the language the visitor reads.',
 	'[[/_admin/builder/hint/focus]]'						=> 'Alignment of the crop (default: the middle).',
 
 	// What the editor asks and says
@@ -395,7 +399,9 @@ return [
 	'[[/_admin/builder/option/row-default]]'				=> 'Normal',
 	'[[/_admin/builder/option/row-narrow]]'					=> 'Narrow',
 	'[[/_admin/builder/option/row-wide]]'					=> 'Wide',
-	'[[/_admin/builder/option/row-full]]'					=> 'None',
+	'[[/_admin/builder/option/width-content]]'	=> 'Content width',
+	'[[/_admin/builder/option/width-full]]'	=> 'Full width',
+	'[[/_admin/builder/option/width-edge]]'	=> 'To the edge',
 	'[[/_admin/builder/option/row-place-left]]'				=> 'Left',
 	'[[/_admin/builder/option/row-place-default]]'			=> 'Middle',
 	'[[/_admin/builder/option/row-place-right]]'				=> 'Right',
