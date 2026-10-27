@@ -43,11 +43,11 @@
 
 @layer nino.tool {
 
-/*	The six tabs. In the pane's head the strip stands beside the panel's name
+/*	The seven tabs. In the pane's head the strip stands beside the panel's name
 	and the head lays it out; this is the column it opens where there is no
 	head (see _head() in admin.js). A margin below rather than a
 	border: the card under it already draws one, and two lines a row apart
-	read as a box nobody meant to draw. Six tabs side by side are wider than a
+	read as a box nobody meant to draw. Seven tabs side by side are wider than a
 	phone: the strip scrolls in its own box, and the page does not scroll with it */
 .nino-admin .design-tabs {
 	margin: 0 0 1rem;
@@ -55,12 +55,12 @@
 	scrollbar-width: none;
 }
 
-/*	The screens of Theme and Type: the same strip as the tabs. It stands in the
+/*	The screens of Theme: the same strip as the tabs. It stands in the
 	column itself, over the cards of the screen that is open, and has the room of a
 	card's gap under it. Three short words are one line of the column - with a
-	little less air round each than the six tabs have, so that the German ones are
+	little less air round each than the seven tabs have, so that the German ones are
 	too at the width of a phone; where they are not, the strip scrolls in its own
-	box like the six tabs do, and the card does not scroll with it */
+	box like the seven tabs do, and the card does not scroll with it */
 .nino-admin .design-groups {
 	margin: 0 0 .75rem;
 	overflow-x: auto;
@@ -88,8 +88,8 @@
 
 /* ---- the card, and the field grid in it ----
 
-   One raised surface for both kinds of card in the column - the cards of the
-   rows of a tab and the cards of the screens of Theme and Type - because they
+   One raised surface for both kinds of card in the column - the blocks of the
+   tabs and the cards of the screens of Theme and of the loader - because they
    are one column of the same kind of thing. The surface itself is the design
    system's .nino-admin-card; only the measures are here, tightened from that
    card's roomier default */
@@ -106,9 +106,6 @@
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: .5rem .75rem;
-}
-.design-form-section > .design-field + .design-field {
-	margin-top: .5rem;
 }
 
 /*	One field: the name above the control, the terse line about it below. The
@@ -160,7 +157,7 @@
 	font-size: .82rem;
 	font-weight: 650;
 }
-.nino-admin :is(.design-form-section, .design-accordion-body) > .design-section-label:first-child {
+.nino-admin .design-accordion-body > .design-section-label:first-child {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: 0;
@@ -168,7 +165,7 @@
 
 /* ---- the accordion ----
 
-   The rows of Type and Surfaces are the blocks of one (see _renderRows() in admin.js): the card is the block, with a head
+   The rows of every tab that is drawn from the table are the blocks of one (see _renderRows() in admin.js): the card is the block, with a head
    that is a button as wide as it and, while it is open, a body under it - the controls of the row, which are not drawn
    before. The head is one line of 48px: the word of the object, the controls that stand elsewhere than at the defaults,
    small and muted and cut with dots where there is not the room, and the chevron, which is turned over while the block

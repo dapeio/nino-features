@@ -169,9 +169,9 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Let the workbench load the previews of the typeface list. The Install screen of
-		 *	Fonts sets each name of the list in its own face by loading, in the browser of
-		 *	whoever has the screen open, the small font file the repository publishes for the
+		 *	Let the workbench load the previews of the typeface list. The Typefaces tab
+		 *	sets each name of the list in its own face by loading, in the browser of
+		 *	whoever has the tab open, the small font file the repository publishes for the
 		 *	family; and the policy the workbench is sent has no font-src, so its default-src
 		 *	'self' refuses the file and every name stays in the face of the page. The origin
 		 *	of the list's address is added to font-src, and to no other directive.

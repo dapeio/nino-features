@@ -18,8 +18,8 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
-	 *										One model for the panel (the Install screen of Type
-	 *										installs families and keeps nothing here): the five
+	 *										One model for the panel (the Typefaces tab installs
+	 *										families and keeps nothing here): the five
 	 *										templates (header and footer bring markup, content,
 	 *										buttons and components are one stylesheet each), the root
 	 *										size, the width and the whitespace of the page, the radius
@@ -127,15 +127,21 @@ namespace Nino\Modules\Design {
 		];
 
 		/*	The panel in two axes. A tab is a property of the design - the theme it was
-			taken from, the templates, the type, the surfaces, the colours, the motion - and
-			an object is what a property is set on: the page, a section, a card, the buttons,
-			the fields and tables. TABS are the six tabs in the order they are shown in and
-			OBJECTS the five objects in the order their rows follow one another on a tab that
-			draws rows (the type and the surfaces). The panel's words for them are
-			/_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label	*/
-		public const array TABS = [ 'theme', 'templates', 'type', 'surfaces', 'colours', 'motion' ];
+			taken from, the templates, the typefaces, the type, the surfaces, the colours, the
+			motion - and an object is what a property is set on: the page, the header, the
+			footer, the content, a section, a card, the buttons, the fields and tables. TABS
+			are the seven tabs in the order they are shown in and OBJECTS the eight objects in
+			the order their rows follow one another on a tab that draws rows, which is every
+			tab but the theme and the typefaces: the templates, the type, the surfaces, the
+			colours and the motion, each an accordion of one block for each object that has a
+			control on it. The panel's words for them are /_admin/design/tab/<tab>/label and
+			/_admin/design/object/<object>/label.
 
-		public const array OBJECTS = [ 'page', 'section', 'card', 'buttons', 'components' ];
+			The content is the object of the content set, which a section and a card are
+			drawn with together: neither has a template of its own	*/
+		public const array TABS = [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ];
+
+		public const array OBJECTS = [ 'page', 'header', 'footer', 'content', 'section', 'card', 'buttons', 'components' ];
 
 		/*	Where every control of the panel stands, and the only place that says: one entry for
 			each thing the setup lets a person choose, keyed by where the choice is kept in it -
@@ -147,18 +153,21 @@ namespace Nino\Modules\Design {
 			stand at one place are one control: the cover, the row and the column of a section
 			take the strength of their corners from one choice, and the second colour is the
 			swatch at the end of the row of Harmony. An object with no control on a tab has no
-			row there. The five templates stand under no object ('') - they are what the objects
-			are made of - and the colours and the motion are the page's. The Theme tab has no
-			control in the table: its screens work on `theme` and `css`, which a theme file is
-			kept with and which are no choice of a design. Nothing is stored under a place: a
-			setup, and a theme file, keep every choice by its key, as before	*/
+			row there. Every entry names one of OBJECTS: the five templates stand under the
+			object each is the template of - the header, the footer, the content, the buttons
+			and the fields and tables - and the colours and the motion are the page's. The
+			Theme tab and the Typefaces tab have no control in the table: the screens of the
+			first work on `theme` and `css`, which a theme file is kept with and which are no
+			choice of a design, and the second is the loader, which keeps nothing in the setup.
+			Nothing is stored under a place: a setup, and a theme file, keep every choice by
+			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the five choices of a set, in the order they are compiled in
-			'parts/header' 							=> [ 'templates', '', 1 ],
-			'parts/footer' 							=> [ 'templates', '', 2 ],
-			'parts/content' 						=> [ 'templates', '', 3 ],
-			'parts/buttons' 						=> [ 'templates', '', 4 ],
-			'parts/components' 						=> [ 'templates', '', 5 ],
+			// The templates: the choice of a set for each of the five parts, under the object it is the template of
+			'parts/header' 							=> [ 'templates', 'header', 1 ],
+			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
+			'parts/content' 						=> [ 'templates', 'content', 1 ],
+			'parts/buttons' 						=> [ 'templates', 'buttons', 1 ],
+			'parts/components' 						=> [ 'templates', 'components', 1 ],
 
 			// The type: the root size and the five roles are the page's; the sizes of the titles are the section's, the card's, the buttons' and the fields' own
 			'size' 									=> [ 'type', 'page', 1 ],

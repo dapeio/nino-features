@@ -12,19 +12,21 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: six tabs over one setup, in two axes -
+	 *	Design\Admin			The "Design" panel: seven tabs over one setup, in two axes -
 	 *										Theme, in three screens - the list of themes, the loaded theme
 	 *										with the row that makes another, and the css of its own - where
 	 *										the whole setup is kept under a name (see Themes); Templates,
-	 *										the five choices of a set; Type and Surfaces, each a row for the
-	 *										page, a section, a card, the buttons and the fields and tables,
-	 *										with the controls of that object; Colours, with the two colours,
-	 *										the five knobs and the mode the palette is solved from; and
-	 *										Motion, the animation of the page - compiled together into
+	 *										the five choices of a set; Type, Surfaces, Colours and Motion,
+	 *										each a block for every object that has a control on the tab -
+	 *										the page, the header, the footer, the content, a section, a
+	 *										card, the buttons and the fields and tables - with the controls
+	 *										of that object: on Colours, the two colours, the five knobs and
+	 *										the mode the palette is solved from, and on Motion the animation
+	 *										of the page, both the page's - compiled together into
 	 *										assets/theme.css. Where a control stands is Setup::LAYOUT's
 	 *										and nobody else's: the list hands the table over and the
-	 *										screen is drawn from it. The loader, the Install screen of
-	 *										Type, shows the typefaces a project has installed and the
+	 *										screen is drawn from it. The loader, the Typefaces tab,
+	 *										shows the typefaces a project has installed and the
 	 *										signed list of those it can install (see Webfonts), which
 	 *										belongs to the setup only as far as the selects of the roles
 	 *										list what is installed. Installing and removing happen when
@@ -234,7 +236,7 @@ namespace Nino\Modules\Design {
 				// choice is named by, and the size and the width are positions as well
 				'knobs' 	=> $setup['knobs'],
 				'kinds' 	=> Setup::KNOBS,
-				// Where the panel puts what it sets: the six tabs, the five objects and the
+				// Where the panel puts what it sets: the seven tabs, the eight objects and the
 				// table that says, for every control of the setup, its tab, its object and its
 				// place in the row - the screen draws a tab from it and from nothing else
 				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::OBJECTS, 'controls' => Setup::LAYOUT ],
@@ -621,7 +623,7 @@ namespace Nino\Modules\Design {
 		 *	Install a family of the list, or update it: the whole family, from the
 		 *	archive the signed list names. The answer is the one the list gives, after
 		 *	the change, with the sentence for the action bar. The screen asks design/list
-		 *	again, for the selects of the Type tab
+		 *	again, for the selects of the roles on the Type tab
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -1160,7 +1162,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What the Install screen of Type is drawn from, the same after every action
+		 *	What the Typefaces tab is drawn from, the same after every action
 		 *	of it: the list as far as there is one, and the families the project has
 		 *	installed - with what each is set in its own face from, who uses it, and
 		 *	the directories that are none. The slugs of the families the feature brings
@@ -1331,7 +1333,7 @@ namespace Nino\Modules\Design {
 		 *	family (Webfonts::SLUG), so that the screen can offer to install it before it
 		 *	takes the theme over. The families that stay unoffered are told in $missing,
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
-		 *	has none) and whether the list of the Install screen has it at all.
+		 *	has none) and whether the list of the Typefaces tab has it at all.
 		 *
 		 *	And except for the colours: a file that names none - every theme the feature
 		 *	ships - chooses no brand colour, so the setup has none either, and what takes

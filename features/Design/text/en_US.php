@@ -12,25 +12,27 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The six tabs - the properties of the design - and the five objects that the rows of Type and Surfaces are headed with
+	// The seven tabs - the properties of the design - and the eight objects that the blocks of the tabs are headed with
 	'[[/_admin/design/tab/theme/label]]'							=> 'Theme',
 	'[[/_admin/design/tab/templates/label]]'						=> 'Templates',
+	'[[/_admin/design/tab/typefaces/label]]'						=> 'Typefaces',
 	'[[/_admin/design/tab/type/label]]'								=> 'Type',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surfaces',
 	'[[/_admin/design/tab/colours/label]]'							=> 'Colours',
 	'[[/_admin/design/tab/motion/label]]'							=> 'Motion',
 	'[[/_admin/design/object/page/label]]'							=> 'Page',
+	'[[/_admin/design/object/header/label]]'						=> 'Header',
+	'[[/_admin/design/object/footer/label]]'						=> 'Footer',
+	'[[/_admin/design/object/content/label]]'						=> 'Content',
 	'[[/_admin/design/object/section/label]]'						=> 'Section',
 	'[[/_admin/design/object/card/label]]'							=> 'Card',
 	'[[/_admin/design/object/buttons/label]]'						=> 'Buttons',
 	'[[/_admin/design/object/components/label]]'					=> 'Fields and tables',
 
-	// The screens of the Theme and Type tabs: a strip of tabs under the strip of the tabs, and under it the screen that is open
+	// The screens of the Theme tab: a strip of tabs under the strip of the tabs, and under it the screen that is open
 	'[[/_admin/design/group/theme/load/label]]'					=> 'Load',
 	'[[/_admin/design/group/theme/properties/label]]'			=> 'Properties',
 	'[[/_admin/design/group/theme/css/label]]'					=> 'Custom CSS',
-	'[[/_admin/design/group/type/roles/label]]'					=> 'Assignments',
-	'[[/_admin/design/group/type/install/label]]'				=> 'Install',
 
 	// The Theme tab, in three screens: the list of themes with the import, the loaded one with its name and description and the row that makes another, the css of its own - and what a theme says of itself
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
@@ -73,7 +75,8 @@ return [
 	'[[/_admin/design/theme/error/export]]'			=> 'The theme could not be exported.',
 	'[[/_admin/design/theme/error/import]]'			=> 'The file could not be imported.',
 
-	// Templates: the five choices of a set. Type and Surfaces: the strips of the page - the root size, the width, the whitespace and the two radii - and of its surfaces
+	// Templates: the choice of a set, a select in the block of its object with the one word of its label. A part is named by the word of its own in the note of a template that is not in the library. Type and Surfaces: the strips of the page - the root size, the width, the whitespace and the two radii - and of its surfaces
+	'[[/_admin/design/label/template]]'							=> 'Template',
 	'[[/_admin/design/part/header]]'								=> 'Header template',
 	'[[/_admin/design/part/footer]]'								=> 'Footer template',
 	'[[/_admin/design/part/content]]'							=> 'Content template',
@@ -98,7 +101,6 @@ return [
 	'[[/_admin/design/radii/alternative]]'						=> 'Alternative',
 
 	// The animation of the page: what Nino.css does as things come into view, for everything that has none of its own
-	'[[/_admin/design/label/motion]]'							=> 'Animation',
 	'[[/_admin/design/motion/default]]'							=> 'Nino\'s default',
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effect',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
@@ -118,7 +120,7 @@ return [
 	'[[/_admin/design/motion/speed/medium]]'						=> 'Medium',
 	'[[/_admin/design/motion/speed/slow]]'						=> 'Slow',
 
-	// Type, the Assignments screen: the five roles of Nino.css, as a table
+	// Type: the five roles of Nino.css, as a table
 	'[[/_admin/design/label/fonts]]'								=> 'Fonts',
 	'[[/_admin/design/font/role/title]]'							=> 'Title',
 	'[[/_admin/design/font/role/subtitle]]'						=> 'Subtitle',
@@ -139,7 +141,7 @@ return [
 	'[[/_admin/design/weight/bold]]'								=> 'Bold',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Type, the Install screen: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
+	// The Typefaces tab: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
 	'[[/_admin/design/typefaces/installed/title]]'				=> 'Installed',
 	'[[/_admin/design/typefaces/installed/empty]]'				=> 'No typeface is installed yet. Load the available typefaces below and install one: it lands in assets/fonts/ of your project, with its licence.',
 	'[[/_admin/design/typefaces/installed/used]]'				=> 'used by %s',
