@@ -2069,6 +2069,7 @@ const coverLabel = word('section/cover');
 const heightLabel = word('section/cover-height');
 const paddedLabel = word('section/padded');
 const radiusLabel = word('common/radius-alt');
+const hoverLabel = word('common/hover');
 const placeLabel = word('section/content-pos');
 const offsetLabel = function( side ) { return word('section/spacing-cell').replace( '%s', word('section/offset') ).replace( '%s', word('section/'+ side) ) };
 const surface = function() { return blockOf('surface') };
@@ -3094,7 +3095,7 @@ check( '...a choice of a few the schema says is a segment is a row of buttons - 
 	&& valueAt( dialogContent(), 'Size' ) === '' && ( change( dialogContent(), 'Width', 'full' ), componentAt( [ 0, 0, 2 ] ).attributes.width === 'full' ) && valueAt( dialogContent(), 'Width' ) === 'full'
 	&& ( change( dialogContent(), 'Size', 'big' ), componentAt( [ 0, 0, 2 ] ).attributes.size === 'big' ) && ( change( dialogContent(), 'Size', '' ), componentAt( [ 0, 0, 2 ] ).attributes.size === '' ) );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...the image has a block for its surface, which holds the toggle of its radius alone, and its properties in the order of the schema - the focus, the switch for none and the nine places, among them - with its class last', ( function() {
+check( '...the image has a block for its surface, which holds the toggle of its radius and the one of its hover, and its properties in the order of the schema - the focus, the switch for none and the nine places, among them - with its class last', ( function() {
 
 	const attributes = registry().components.image.attributes;
 	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
@@ -3102,7 +3103,7 @@ check( '...the image has a block for its surface, which holds the toggle of its 
 	const kinds = { select : 'select', string : 'text', bool : 'switch' };
 
 	return dialogText('builder-dialog-kind') === 'Component "Image"' && focus( 'focus' ) === true && blockIds().join() === 'content,link,surface,spacing,properties' && inTableOrder( 'component', blockIds() )
-		&& JSON.stringify( labelList( blockOf('surface') ) ) === JSON.stringify( [ radiusLabel ] )
+		&& JSON.stringify( labelList( blockOf('surface') ) ) === JSON.stringify( [ radiusLabel, hoverLabel ] )
 		&& JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [].concat.apply( [], Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? [ 'Automatic focus', 'Focus' ] : [ attributes[name].label ] } ) ).concat( [ 'Class of the component' ] ) )
 		&& controlsIn( blockOf('properties') ).map( function( control ) { return control.kind } ).join() === Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? 'switch,group' : kinds[attributes[name].type] } ).concat( [ 'text' ] ).join();
 } )() );
@@ -6058,7 +6059,7 @@ check( '...a picture has the toggle as well, with the default of its own kind, a
 	switched( shownPictureAt, 'standard', '', [ false, true ], { image : 'alternative' } ) === '[true,"","standard",""]' && switched( shownPictureAt, 'standard', '', [ true, false ] ) === '[false,"","alternative",""]'
 	&& switched( shownPictureAt, 'standard', 'alternative', [], { card : 'alternative' } ) === '[true,"alternative"]' );
 
-// The toggle is the last field of the properties of a surface, in reach always: the card and the picture paint a surface of their own
+// The toggle is the last field of the surface of a card and the one before the hover of a picture, in reach always: the card and the picture paint a surface of their own
 check( '...it is in reach on a card and on a picture whatever they hold - they are a surface of their own - and a component that is none has no such toggle, and no radius of its own in the model', ( function() {
 
 	openCard();
@@ -6070,7 +6071,7 @@ check( '...it is in reach on a card and on a picture whatever they hold - they a
 	builder._closeDialog();
 	builder._openSettings( shownPictureAt );
 
-	const image = controlOf( dialogContent(), radiusLabel ).el.disabled === false && labelList( blockOf('surface') ).pop() === radiusLabel;
+	const image = controlOf( dialogContent(), radiusLabel ).el.disabled === false && labelList( blockOf('surface') ).join() === [ radiusLabel, hoverLabel ].join();
 
 	builder._closeDialog();
 	builder._openSettings( [ 0, 1, 0, 0 ] );
@@ -6172,6 +6173,182 @@ builder._doc.model.blocks[1].cols[0].background = { slot : '/template/page-home/
 redrawBlocks();
 check( '...a picture behind the column wakes it as a ground does', controlOf( dialogContent(), radiusLabel ).el.disabled === false );
 builder._closeDialog();
+
+console.log( '\nThe hover of a picture' );
+
+// A picture is what the registry says it is - a schema whose source is an image: the frame of [image], the picture of a card and a component of a feature the script has never seen - and the script
+// names none. Each is made as the editor makes one and set where its schema lets it stand: in the card of the card page where it names the place the card holds, in the first column otherwise
+const pictureNames = Object.keys( registry().components ).filter( function( name ) { return registry().components[name].source === 'image' } );
+let hoverAt = [];
+const pictureOpened = function( name, over ) {
+
+	openCard();
+	builder._registry = over ?? registry();
+
+	const model = builder._doc.model;
+	const container = cardIn( model );
+	const schema = builder._registry.components[name];
+	const inCard = Array.isArray( schema['in'] ) === true && schema['in'].indexOf( builder._holds( builder._registry, container.name ) ) !== -1;
+	const holder = inCard === true ? container.components : model.blocks[0].cols[0].components;
+
+	holder.push( builder._newComponent( model, builder._registry, 'page-home-card', inCard === true ? cardAt : [ 0, 0 ], name, [] ) );
+	hoverAt = inCard === true ? cardAt.concat( [ holder.length - 1 ] ) : [ 0, 0, holder.length - 1 ];
+	builder._renderEditor();
+	builder._openSettings( hoverAt );
+
+	return builder._get( model, hoverAt );
+};
+// The blocks of the dialog of a picture, and what its block for the surface lists
+const surfaceOfPicture = function( name ) {
+
+	pictureOpened( name );
+
+	const block = blockOf('surface');
+	const found = [ block === null ? [] : labelList( block ), blockIds() ];
+
+	builder._closeDialog();
+
+	return found;
+};
+// Whether the dialog that is open has the switch of the hover: a picture that has none fails its check and does not stop the script
+const hoverIn = function() { return blockOf('surface') !== null && labelList( blockOf('surface') ).indexOf( hoverLabel ) !== -1 };
+
+check( 'a picture has the switch of the hover in the block for its surface, whatever the schema says it paints: every component whose source is an image - the frame of [image] and the picture of a card among them -, after the radius where the picture has one, and the block is in the place the table gives it',
+	[ 'image', 'card-image' ].every( function( name ) { return pictureNames.indexOf( name ) !== -1 } ) && pictureNames.every( function( name ) {
+
+		const [ labels, ids ] = surfaceOfPicture( name );
+		const radius = builder._surfaceOf( registry().components[name] ) !== '';
+
+		return ids.indexOf('surface') !== -1 && inTableOrder( 'component', ids ) && labels.join() === ( radius === true ? [ radiusLabel, hoverLabel ] : [ hoverLabel ] ).join();
+	} ) );
+
+check( '...a component that is no picture has no such switch and no setting hover of its own: a text has no block for its surface at all, a card has the one for its radius and its picture alone - the table lists the hover in the surface of a component, after the radius', ( function() {
+
+	openCard();
+	builder._renderEditor();
+	builder._openSettings( [ 0, 1, 0, 1 ] );
+
+	const text = blockIds().indexOf('surface') === -1 && labelList( dialogContent() ).indexOf( hoverLabel ) === -1;
+
+	builder._closeDialog();
+	builder._openSettings( cardAt );
+
+	const card = labelList( blockOf('surface') ).indexOf( hoverLabel ) === -1 && 'hover' in builder._get( builder._doc.model, cardAt ) === false;
+	const controls = builder.BLOCKS.component.filter( function( block ) { return block.id === 'surface' } )[0].controls;
+
+	builder._closeDialog();
+
+	return text === true && card === true && controls.indexOf('hover') === controls.indexOf('radius') + 1 && controls.indexOf('radius') !== -1
+		&& builder.BLOCKS.component.filter( function( block ) { return block.controls.indexOf('hover') !== -1 } ).length === 1
+		&& [ 'section', 'column' ].every( function( kind ) { return builder.BLOCKS[kind].every( function( block ) { return block.controls.indexOf('hover') === -1 } ) } );
+} )() );
+
+check( '...the switch is marked with the key it writes, the table holds that key in the surface of the picture and the form draws it there, once - and the sentence it has to say is behind its question mark, in words the panel has', ( function() {
+
+	pictureOpened('card-image');
+
+	const drawn = hoverIn() === true && keysDrawn('surface').join() === 'hover' && keysHeld('surface').indexOf('hover') !== -1;
+	const tip = drawn === true ? tipOf( controlOf( blockOf('surface'), hoverLabel ) ) : null;
+
+	builder._closeDialog();
+
+	return drawn === true && typeof tip === 'string' && tip !== '' && tip === words['/_admin/builder/hint/hover'] && hoverLabel !== undefined && hoverLabel !== '';
+} )() );
+
+check( '...switching it writes the setting - on, or empty - and each switch is a change of the document: the same for every picture, whatever it is called, and the switch shows what the picture holds', pictureNames.every( function( name ) {
+
+	const node = pictureOpened( name );
+
+	if( hoverIn() === false ) {
+		builder._closeDialog();
+		return false;
+	}
+
+	const before = valueAt( blockOf('surface'), hoverLabel ) === false && node.hover === '';
+
+	changes = 0;
+	change( dialogContent(), hoverLabel, true );
+
+	const on = node.hover === 'on' && changes === 1 && valueAt( blockOf('surface'), hoverLabel ) === true;
+
+	change( dialogContent(), hoverLabel, false );
+
+	const off = node.hover === '' && changes === 2 && valueAt( blockOf('surface'), hoverLabel ) === false;
+
+	builder._closeDialog();
+	builder._openSettings( hoverAt );
+	node.hover = 'on';
+	redrawBlocks();
+
+	const held = valueAt( blockOf('surface'), hoverLabel ) === true;
+
+	builder._closeDialog();
+
+	return before === true && on === true && off === true && held === true;
+} ) );
+
+check( '...the head of the block names it while it is on - after the radius the picture says, in the order of the table - and says nothing of it while it is off', pictureNames.every( function( name ) {
+
+	const node = pictureOpened( name );
+
+	if( hoverIn() === false ) {
+		builder._closeDialog();
+		return false;
+	}
+
+	const radius = 'radius' in node;
+
+	if( radius === true )
+		node.radius = 'alternative';
+
+	redrawBlocks();
+
+	const said = function() { return saysOf('surface').hidden === true ? '' : saysOf('surface').textContent };
+	const off = said() === ( radius === true ? radiusLabel : '' );
+
+	change( dialogContent(), hoverLabel, true );
+
+	const on = said() === ( radius === true ? [ radiusLabel, hoverLabel ] : [ hoverLabel ] ).join(' · ');
+
+	change( dialogContent(), hoverLabel, false );
+	builder._closeDialog();
+
+	return off === true && on === true && said() === ( radius === true ? radiusLabel : '' );
+} ) );
+
+check( '...and a component the registry calls a picture by a name the script has never seen has the switch: it is in the surface - a block it has for no other reason - and writes its hover, whatever the component is called', ( function() {
+
+	const own = registry();
+
+	own.components.stub = { label : 'Stub', source : 'image', preview : 'block' };
+
+	const node = pictureOpened( 'stub', own );
+	const blocked = hoverIn() === true && labelList( blockOf('surface') ).join() === hoverLabel && node.hover === '';
+
+	if( blocked === true )
+		change( dialogContent(), hoverLabel, true );
+
+	const written = node.hover;
+
+	builder._closeDialog();
+
+	return blocked === true && written === 'on';
+} )() );
+
+check( 'what the editor makes new has the setting where it means something: a component whose source is an image has the hover, off - the picture of a card and one of a feature the script has never seen among them - and a component that is none does not have it', ( function() {
+
+	const model = page();
+	const own = registry();
+
+	own.components.stub = { label : 'Stub', source : 'image', preview : 'block' };
+
+	return Object.keys( own.components ).length > pictureNames.length + 1 && Object.keys( own.components ).every( function( name ) {
+
+		const made = builder._newComponent( model, own, 'page-home', [ 0, 0 ], name, [] );
+
+		return own.components[name].source === 'image' ? made.hover === '' : 'hover' in made === false;
+	} );
+} )() );
 
 console.log( '\nThe picture behind a card' );
 

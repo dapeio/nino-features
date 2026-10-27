@@ -21,7 +21,7 @@ declare(strict_types=1);
 //   /_admin/builder/stack/...     the fields of the loop form (the model and the kernel call it a stack)
 //   /_admin/builder/component/... the title and the content of the component form
 //   /_admin/builder/common/...    what the forms of a section, a column and a component have in common: the toggle of
-//                                 the radius of a surface
+//                                 the radius of a surface and the hover of a picture
 //   /_admin/builder/source/...    the dialog of a source: its tabs, the search, a new key or slot - and the focus of a picture
 //   /_admin/builder/value/...     the text of a key, in the language the editor works in
 //   /_admin/builder/picture/...   the picture of a slot and its alt text, and what is said of the upload
@@ -347,6 +347,7 @@ return [
 
 	'[[/_admin/builder/common/radius-alt]]'				=> 'Alternative radius',
 	'[[/_admin/builder/common/radius-standard]]'	=> 'Standard radius',
+	'[[/_admin/builder/common/hover]]'						=> 'Hover effect',
 
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'One line. The file name is made of it when the template is created and stays as it is.',
@@ -364,6 +365,7 @@ return [
 	'[[/_admin/builder/hint/whitespace]]'	=> 'How much room the section keeps. The whitespace of the page is set in the Design.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'The colour, the picture and the dimming stand on the row inside the section, not on the section itself.',
 	'[[/_admin/builder/hint/radius-alt]]'	=> 'Standard and alternative are the two radii the Design sets for the page. An element keeps the default of its kind until you switch it.',
+	'[[/_admin/builder/hint/hover]]'	=> 'The picture moves under the pointer - what it does and how strongly, the Design sets under Motion › Page; without a setting Nino zooms gently. On a touch device nothing happens.',
 	'[[/_admin/builder/hint/dim-text]]'	=> 'Text on a picture reads better with the picture dimmed.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'A text key, an address or - in a loop - a field of the element.',
 	'[[/_admin/builder/hint/sections-id]]'	=> 'The loop makes one section for each element, numbered after the id of the section: %s-1, %s-2 and so on. The id is changed in the field Id or in the title.',

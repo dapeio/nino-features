@@ -220,6 +220,9 @@ namespace Nino\Modules\Builder {
 	 *											  radius    ''|standard|alternative   only for a component that is a surface (see surface()): the class nino-radius or nino-radius-alt of its call,
 	 *											                    the page's own for ''. The Reader takes the first of the two out of the class attribute, the Writer puts it back as the first class
 	 *											                    of the call
+	 *											  hover     ''|on   only for a component whose source is an image, the picture of a card among them, which is no surface: the class nino-hover of its call,
+	 *											                    the first of them taken out of the class attribute as the radius is and put back by the Writer after the radius, before the offsets of
+	 *											                    the ground of a card and the sides of the spacing; what it does is the Design's to say
 	 *											  bgPl, bgPr ''|0..3   only for the card, the surface that paints a ground: the classes nino-bg-pl-<n> and nino-bg-pr-<n> of its call,
 	 *											                    taken out of the class attribute as the radius is and put back after it by the Writer, whatever the call says of a picture
 	 *											  mt mb pt pb pl pr ''|0..6   the six sides of the spacing of any component: the classes nino-mt-<n> to nino-pr-<n> of its call, taken out of the class attribute as
@@ -292,6 +295,10 @@ namespace Nino\Modules\Builder {
 		public const array RADIUS = [ 'standard', 'alternative' ];
 		public const array RADIUS_CLASS = [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ];
 		public const array SURFACES = [ 'cover', 'row', 'column', 'card', 'image' ];
+		// The hover of a picture - a component whose schema says its source is an image -: the one class that puts the hover effect of the page on its frame, and the word of the
+		// setting while it does
+		public const string HOVER = 'on';
+		public const string HOVER_CLASS = 'nino-hover';
 		// Where a component that is a link opens: the target that every component with 'link' has, the second of its two implicit attributes
 		public const array TARGETS = [ '', '_blank' ];
 		public const array TEXT = [ 'left', 'center', 'right' ];
@@ -471,6 +478,50 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Whether a source says the hover of a picture behind a class that the Writer puts after it. The Writer writes nino-hover as the first class of the call of a
+		 *	picture, or behind the radius of one that has a radius; a call that says it after any other class, an editor's own among them, reads as the same setting and so
+		 *	as the same model as the call the Writer writes, and a save has to write the file anew even where the model says that nothing changed (see Document::save()). It
+		 *	looks at the text and not at the model, at the calls of the components whose schema says that their source is an image, and a call that is none of a picture's of
+		 *	the page may make it say yes: the file is then written as the Writer writes it, as it is by any other save
+		 *
+		 *	@param		string		$source				The file
+		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
+		 *
+		 *	@return 	bool
+		 */
+		public static function hoverBehind( string $source, array $registry ): bool {
+
+			$components	= (array) ( $registry['components'] ?? [] );
+			$pictures		= [];
+
+			foreach( $components as $name => $schema )
+				if( is_array( $schema ) === true && ( $schema['source'] ?? '' ) === 'image' )
+					$pictures[(string) $name] = self::surface( $schema, $components ) !== '';
+
+			if( $pictures === [] || preg_match_all( '~\[('. implode( '|', array_map( static fn( string $name ): string => preg_quote( $name, '~' ), array_keys( $pictures ) ) ). ')(?: ([^\]]*))?\]~', $source, $found, PREG_SET_ORDER ) === 0 )
+				return false;
+
+			foreach( $found as $call ) {
+
+				try {
+					$named = self::_arguments( $call[2] ?? '', $call[1], 0 )[1];
+				}
+				catch( \RuntimeException ) {
+					continue;
+				}
+
+				$tokens	= preg_split( '/\s+/', trim( $named['class'] ?? '' ), -1, PREG_SPLIT_NO_EMPTY ) ?: [];
+				$at			= array_search( self::HOVER_CLASS, $tokens, true );
+
+				// It stands first, or behind the radius class of a picture that has a radius - the class of its kind that stands first is the one the Reader takes
+				if( $at !== false && $at !== 0 && ( $at !== 1 || $pictures[$call[1]] === false || in_array( $tokens[0], self::RADIUS_CLASS, true ) === false ) )
+					return true;
+			}
+
+			return false;
+		}
+
+		/**
 		 *	The radius out of the class attribute of a call: the first of the two classes of the page, and the rest of the classes as they were. A
 		 *	second class of the kind is a class of its own and stays. A call with none of them keeps its class attribute byte for byte
 		 *
@@ -494,6 +545,30 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $word === '' ? [ '', $class ] : [ $word, implode( ' ', $rest ) ];
+		}
+
+		/**
+		 *	The hover out of the class attribute of a call: the first nino-hover, and the rest of the classes as they were. A second one is a class of its own and
+		 *	stays. A call without it keeps its class attribute byte for byte
+		 *
+		 *	@param		string		$class				The class attribute of the call
+		 *
+		 *	@return 	array											[ '' or HOVER, the classes that are left ]
+		 */
+		private static function _hover( string $class ): array {
+
+			$on		= false;
+			$rest	= [];
+
+			foreach( preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token ) {
+
+				if( $token === self::HOVER_CLASS && $on === false )
+					$on = true;
+				else
+					$rest[] = $token;
+			}
+
+			return $on === false ? [ '', $class ] : [ self::HOVER, implode( ' ', $rest ) ];
 		}
 
 		/**
@@ -1514,7 +1589,7 @@ namespace Nino\Modules\Builder {
 			[ $call, $pos ] = self::_call( $body, $pos, 0, $registry );
 
 			if( $call['stack'] === true || $call['node']['name'] !== 'image' || $call['node']['source'] === '' || $call['node']['source'][0] !== '/'
-				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' || ( $call['node']['radius'] ?? '' ) !== '' || implode( '', array_intersect_key( $call['node'], array_flip( self::SPACING ) ) ) !== '' )
+				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' || ( $call['node']['radius'] ?? '' ) !== '' || ( $call['node']['hover'] ?? '' ) !== '' || implode( '', array_intersect_key( $call['node'], array_flip( self::SPACING ) ) ) !== '' )
 				throw self::_fail( 'background-image', '', $pos );
 
 			// Only the slot and the empty alt: any other attribute set would be lost in writing
@@ -1809,6 +1884,10 @@ namespace Nino\Modules\Builder {
 
 			if( $surface !== '' )
 				[ $node['radius'], $node['attributes']['class'] ] = self::_radius( (string) ( $node['attributes']['class'] ?? '' ) );
+
+			// A picture - any component whose source is an image, the picture of a card too, which is no surface - has the hover of the page apart from its classes
+			if( $kind === 'image' )
+				[ $node['hover'], $node['attributes']['class'] ] = self::_hover( (string) ( $node['attributes']['class'] ?? '' ) );
 
 			// A card is the one surface that paints a ground: how far in from either side its picture starts is split off the classes as well, whatever the call says of a picture
 			if( $surface === 'card' ) {

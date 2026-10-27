@@ -428,6 +428,8 @@ const LAYOUT = {
 	'motion/effect'                   : [ 'motion', 'page', 1 ],
 	'motion/strength'                 : [ 'motion', 'page', 2 ],
 	'motion/speed'                    : [ 'motion', 'page', 3 ],
+	'motion/hover'                    : [ 'motion', 'page', 4 ],
+	'motion/hover-strength'           : [ 'motion', 'page', 5 ],
 	'knobs/card/hover'                : [ 'motion', 'card', 1 ],
 	'knobs/buttons/hover'             : [ 'motion', 'buttons', 1 ],
 };
@@ -495,7 +497,7 @@ function listing( over ) {
 		radius 			: 0,
 		'radius-alt' : 1,
 		radii 			: { cover : 'standard', row : 'standard', column : 'standard', card : 'standard', image : 'standard' },
-		motion 			: { effect : '', strength : '', speed : '' },
+		motion 			: { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' },
 		parts 			: { header : 'first', footer : 'first', section : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first' },
 		knobs 			: JSON.parse( JSON.stringify( knobs ) ),
 		fonts 			: JSON.parse( JSON.stringify( fonts ) ),
@@ -557,8 +559,9 @@ function listing( over ) {
 		running 	: '',
 		themes 		: THEMES.map( function( theme ) { return Object.assign( {}, theme ) } ),
 		active 		: null,
-		motion 		: { effect : '', strength : '', speed : '' },
+		motion 		: { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' },
 		effects 	: [ 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'blur', 'flip' ],
+		hovers 		: [ 'zoom', 'bright', 'zoom-bright', 'none' ],
 		strengths : [ 'soft', 'medium', 'hard' ],
 		speeds 		: [ 'fast', 'medium', 'slow' ],
 		roles 		: roles,
@@ -2701,6 +2704,8 @@ mo.tab( tabWord('motion') );
 const effect = mo.byId('design-motion-effect');
 const strength = mo.byId('design-motion-strength');
 const speed = mo.byId('design-motion-speed');
+const hover = mo.byId('design-motion-hover');
+const hoverStrength = mo.byId('design-motion-hover-strength');
 
 /** What a select of the animation offers: the default first, then a word for each value of the answer, taken from the texts by its key */
 function motionOffer( key, values ) {
@@ -2710,15 +2715,21 @@ function motionOffer( key, values ) {
 const moFresh = panel();
 moFresh.tab( tabWord('motion') );
 
-check( 'the Motion tab is the animation of the page and what a card and a button do under the pointer: three blocks, the first open, with three selects - the effect, which starts on what Nino.css does by itself, the strength and the speed - the controls the table gives the page there',
-	tabOf( mo ) === 'motion' && mo.body().children.length === 3 && mo.body().children.every( function( card ) { return hasClass( card, 'design-form-section' ) } ) && byTag( mo.body().children[0], 'select' ).length === 3
-	&& byTag( mo.body(), 'select' ).length === 3 && JSON.stringify( drawnRows( moFresh ) ) === JSON.stringify( tableRows( mo.design._data.layout, 'motion' ) )
+check( 'the Motion tab is the animation of the page, the hover of its pictures and what a card and a button do under the pointer: three blocks, the first open, with five selects - the effect, which starts on what Nino.css does by itself, the strength and the speed of the animation, the kind of hover and its strength - the controls the table gives the page there',
+	tabOf( mo ) === 'motion' && mo.body().children.length === 3 && mo.body().children.every( function( card ) { return hasClass( card, 'design-form-section' ) } ) && byTag( mo.body().children[0], 'select' ).length === 5
+	&& byTag( mo.body(), 'select' ).length === 5 && JSON.stringify( drawnRows( moFresh ) ) === JSON.stringify( tableRows( mo.design._data.layout, 'motion' ) )
 	&& JSON.stringify( offered( effect ) ) === JSON.stringify( motionOffer( 'effect', mo.design._data.effects ) ) && mo.design._data.effects.length === 8
 	&& JSON.stringify( offered( strength ) ) === JSON.stringify( motionOffer( 'strength', mo.design._data.strengths ) ) && mo.design._data.strengths.length === 3
 	&& JSON.stringify( offered( speed ) ) === JSON.stringify( motionOffer( 'speed', mo.design._data.speeds ) ) && mo.design._data.speeds.length === 3
-	&& shown( effect ) === '' && mo.byId('design-set-header') === null && mo.groups() === null );
-check( '...and the strength and the speed are switched off while there is no effect for them to belong to',
-	strength.disabled === true && speed.disabled === true && effect.disabled === false );
+	&& JSON.stringify( offered( hover ) ) === JSON.stringify( motionOffer( 'hover', mo.design._data.hovers ) ) && mo.design._data.hovers.length === 4
+	&& JSON.stringify( offered( hoverStrength ) ) === JSON.stringify( motionOffer( 'hover-strength', mo.design._data.strengths ) )
+	&& shown( effect ) === '' && shown( hover ) === '' && shown( hoverStrength ) === '' && mo.byId('design-set-header') === null && mo.groups() === null );
+check( '...the two of the hover are named by the texts of their own keys - the label of each over its select, in the order of the table after the animation\'s three - and the five stand in one grid',
+	byTag( mo.body().children[0], 'label' ).map( function( label ) { return label.getAttribute('for') } ).join() === [ 'effect', 'strength', 'speed', 'hover', 'hover-strength' ].map( function( key ) { return 'design-motion-'+ key } ).join()
+	&& byTag( mo.body().children[0], 'label' ).map( function( label ) { return label.textContent } ).join() === [ 'effect', 'strength', 'speed', 'hover', 'hover-strength' ].map( function( key ) { return TEXT['/_admin/design/motion/'+ key+ '/label'] } ).join()
+	&& byClass( mo.body().children[0], 'design-form-grid' ).length === 1 && byTag( byClass( mo.body().children[0], 'design-form-grid' )[0], 'select' ).length === 5 );
+check( '...and the strength and the speed are switched off while there is no effect for them to belong to - the kind of hover is not, and the strength of the hover is, while it is none of the kinds that has one',
+	strength.disabled === true && speed.disabled === true && effect.disabled === false && hover.disabled === false && hoverStrength.disabled === true );
 
 choose( effect, 'blur' );
 
@@ -2728,7 +2739,7 @@ choose( strength, 'hard' );
 choose( speed, 'slow' );
 
 check( '...and what they are set to is the selection',
-	JSON.stringify( mo.design._edit.motion ) === JSON.stringify( { effect : 'blur', strength : 'hard', speed : 'slow' } ) );
+	JSON.stringify( mo.design._edit.motion ) === JSON.stringify( { effect : 'blur', strength : 'hard', speed : 'slow', hover : '', 'hover-strength' : '' } ) );
 
 mo.tab( tabWord('type') );
 mo.tab( tabWord('motion') );
@@ -2740,7 +2751,34 @@ choose( mo.byId('design-motion-effect'), '' );
 
 check( 'no effect again is Nino\'s default again, and the other two are switched off with it',
 	mo.byId('design-motion-strength').disabled === true && mo.byId('design-motion-speed').disabled === true
-	&& JSON.stringify( mo.design._edit.motion ) === JSON.stringify( { effect : '', strength : 'hard', speed : 'slow' } ) );
+	&& JSON.stringify( mo.design._edit.motion ) === JSON.stringify( { effect : '', strength : 'hard', speed : 'slow', hover : '', 'hover-strength' : '' } ) );
+
+// The hover of the pictures: the kind switches the strength on, except the kind that is none and the empty one, which have none; the animation is not what they wait for
+const mq = panel();
+mq.tab( tabWord('motion') );
+
+const mqHover = mq.byId('design-motion-hover');
+const mqStrength = mq.byId('design-motion-hover-strength');
+const mqKinds = mq.design._data.hovers;
+const mqSleeps = mqKinds.map( function( kind ) { return choose( mqHover, kind ), String( mqStrength.disabled ) } ).join();
+
+check( 'the strength of the hover is switched off while there is no kind of hover - and with the kind that is none, which has no strength: a kind that does something switches it on, whatever the animation is',
+	mq.design._data.hovers.indexOf('none') !== -1 && mqSleeps === mqKinds.map( function( kind ) { return String( kind === 'none' ) } ).join() && mq.byId('design-motion-effect').disabled === false
+	&& ( choose( mqHover, '' ), mqStrength.disabled === true ) && ( choose( mqHover, 'zoom' ), mqStrength.disabled === false ) && ( choose( mqHover, 'none' ), mqStrength.disabled === true ) && ( choose( mqHover, 'zoom-bright' ), mqStrength.disabled === false )
+	&& mq.byId('design-motion-strength').disabled === true && mq.byId('design-motion-speed').disabled === true );
+
+choose( mqStrength, 'hard' );
+choose( mqHover, 'none' );
+
+check( '...and what they are set to is the selection - the strength is kept where the kind is none, asleep, as the strength of an effect is kept where there is no effect - and the animation is left as it was',
+	JSON.stringify( mq.design._edit.motion ) === JSON.stringify( { effect : '', strength : '', speed : '', hover : 'none', 'hover-strength' : 'hard' } ) && mqStrength.disabled === true );
+
+mq.tab( tabWord('type') );
+mq.tab( tabWord('motion') );
+
+check( '...another tab and back, and the hover is drawn again from what is chosen - on the selects, the strength still asleep behind the kind that is none',
+	shown( mq.byId('design-motion-hover') ) === 'none' && shown( mq.byId('design-motion-hover-strength') ) === 'hard' && mq.byId('design-motion-hover-strength').disabled === true
+	&& ( choose( mq.byId('design-motion-hover'), 'bright' ), mq.byId('design-motion-hover-strength').disabled === false ) );
 
 // The one block of the page: open to begin with, closable, remembered - and its head, closed, says what stands off the defaults
 const mb = panel();
@@ -2749,11 +2787,11 @@ const mbBlock = function() { return blocksOf( mb.form )[0] };
 const mbSaid = function() { return byClass( mbBlock(), 'design-accordion-summary' )[0].textContent };
 const mbPart = function( key, value ) { return TEXT['/_admin/design/motion/'+ key+ '/label']+ ' '+ TEXT['/_admin/design/motion/'+ key+ '/'+ value] };
 
-check( 'the Motion tab is three blocks, the page\'s first, the card\'s and the buttons\' after it: a head named by the word of its object, the page\'s open to begin with with the three selects in its body, and the other two drawn when they are opened',
+check( 'the Motion tab is three blocks, the page\'s first, the card\'s and the buttons\' after it: a head named by the word of its object, the page\'s open to begin with with the five selects in its body, and the other two drawn when they are opened',
 	blocksOf( mb.form ).length === 3 && blocksOf( mb.form ).map( function( card ) { return card.dataset.object } ).join() === 'page,card,buttons' && blocksOf( mb.form ).every( function( card ) { return card.dataset.tab === 'motion' } )
 	&& isOpen( mbBlock() ) === true && blocksOf( mb.form ).filter( isOpen ).length === 1
 	&& blocksOf( mb.form ).every( function( card ) { return byClass( headButton( card ), 'design-accordion-name' )[0].textContent === objectWord( card.dataset.object ) } )
-	&& byTag( mbBlock(), 'select' ).length === 3 && byTag( mb.form, 'select' ).length === 3 && mb.design._blockOf( 'motion', tableRows( listing().layout, 'motion' ) ) === 'page' );
+	&& byTag( mbBlock(), 'select' ).length === 5 && byTag( mb.form, 'select' ).length === 5 && mb.design._blockOf( 'motion', tableRows( listing().layout, 'motion' ) ) === 'page' );
 
 toggle( mbBlock() );
 
@@ -2782,6 +2820,45 @@ toggle( mbBlock() );
 
 check( '...with no effect there is nothing for them to belong to: the head says nothing, though the selection keeps the strength and the speed that were set, which their selects - switched off - do not offer',
 	mbSaid() === '' && mb.design._edit.motion.strength === 'hard' && mb.design._edit.motion.speed === 'slow' );
+
+// ...and the hover of the pictures after the animation, in the order of the table: the kind, and the strength once the kind has one
+toggle( mbBlock() );
+choose( mb.byId('design-motion-hover'), 'zoom-bright' );
+toggle( mbBlock() );
+
+const mbKind = mbSaid();
+
+toggle( mbBlock() );
+choose( mb.byId('design-motion-hover-strength'), 'soft' );
+toggle( mbBlock() );
+
+const mbBoth = mbSaid();
+
+toggle( mbBlock() );
+choose( mb.byId('design-motion-effect'), 'blur' );
+toggle( mbBlock() );
+
+const mbAll = mbSaid();
+
+toggle( mbBlock() );
+choose( mb.byId('design-motion-hover'), 'none' );
+toggle( mbBlock() );
+
+const mbNone = mbSaid();
+
+toggle( mbBlock() );
+choose( mb.byId('design-motion-hover'), '' );
+toggle( mbBlock() );
+
+check( 'a head that is closed names the kind of hover that was chosen - the label of the select and the word of the value - and its strength once it is chosen, after the animation\'s in the order of the table: the strength it says nothing of while the kind has none',
+	mbKind === mbPart( 'hover', 'zoom-bright' ) && mbBoth === [ mbPart( 'hover', 'zoom-bright' ), mbPart( 'hover-strength', 'soft' ) ].join( acSeparator )
+	&& mbAll === [ mbPart( 'effect', 'blur' ), mbPart( 'strength', 'hard' ), mbPart( 'speed', 'slow' ), mbPart( 'hover', 'zoom-bright' ), mbPart( 'hover-strength', 'soft' ) ].join( acSeparator ) );
+check( '...the kind that is none says itself and not the strength, which the selection keeps, asleep; and with no kind the head says nothing of the hover',
+	mbNone === [ mbPart( 'effect', 'blur' ), mbPart( 'strength', 'hard' ), mbPart( 'speed', 'slow' ), mbPart( 'hover', 'none' ) ].join( acSeparator ) && mb.design._edit.motion['hover-strength'] === 'soft'
+	&& mbSaid() === [ mbPart( 'effect', 'blur' ), mbPart( 'strength', 'hard' ), mbPart( 'speed', 'slow' ) ].join( acSeparator ) );
+toggle( mbBlock() );
+choose( mb.byId('design-motion-effect'), '' );
+toggle( mbBlock() );
 
 // What a card and a button do under the pointer: a strip of three words in the block of its object
 const mh = panel();
@@ -5119,7 +5196,8 @@ console.log( 'The anchors' );
 const TAB_AIMS = { theme : 'global', templates : 'global', typefaces : 'type', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global' };
 const OBJECT_AIMS = { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' };
 const CONTROL_AIMS = { 'knobs/section/quiet' : 'type', 'knobs/section/loud' : 'type',
-	'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours' };
+	'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
+	'motion/hover' : 'cards', 'motion/hover-strength' : 'cards' };
 
 /** Where a control is looked at, from the table: the id it has of its own, else that of the object it stands under, else that of its tab - how many rows its tab draws is no part of it */
 function aimOf( layout, key ) {
@@ -5279,8 +5357,23 @@ anchors.stage.reachable = true;
 anchors.stage.animated = [];
 anchors.design._frames = 'first|first';
 anchors.design._edit.size = 'm';
-anchors.design._edit.motion = { effect : '', strength : '', speed : '' };
+anchors.design._edit.motion = { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' };
 anchors.design._replays = false;
+anchors.requests.length = 0;
+
+// The hover of the pictures is seen under the pointer and nothing comes into view for it: a choice of it sets the place the preview looks at and asks for no replay of the page
+anchors.design._setMotion( 'hover', 'zoom' );
+
+check( 'choosing the kind of hover of the pictures asks for no replay of the page, and sets the place the preview looks at - the cards, whose first row has the pictures',
+	anchors.design._replays === false && anchors.design._target === 'cards' && anchors.design._edit.motion.hover === 'zoom' );
+
+anchors.design._target = null;
+anchors.design._setMotion( 'hover-strength', 'hard' );
+
+check( '...and so does choosing its strength', anchors.design._replays === false && anchors.design._target === 'cards' && anchors.design._edit.motion['hover-strength'] === 'hard' );
+
+anchors.design._edit.motion = { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' };
+anchors.design._target = null;
 anchors.requests.length = 0;
 
 // A frame that cannot be reached: the panel asks for the whole page instead of showing a stale one
@@ -5429,14 +5522,14 @@ function jpAnswer() {
 	jp.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 }
 
-check( 'the specimen knows where a control is looked at, by the object it stands under and by itself: the page and the header at the top of the page, the footer at its foot, a section in the first section of the page, a card in the cards, the buttons, the lists and the tables each in their block - and the two variants in the typography block, and the eight controls of the palette in the grounds, where the page of the colours has its own anchor no more than the page of the other tabs has the top of the page; the maps say no more than that, and a template is looked at where its object is',
+check( 'the specimen knows where a control is looked at, by the object it stands under and by itself: the page and the header at the top of the page, the footer at its foot, a section in the first section of the page, a card in the cards, the buttons, the lists and the tables each in their block - and the two variants in the typography block, and the eight controls of the palette in the grounds, where the page of the colours has its own anchor no more than the page of the other tabs has the top of the page, and the two of the hover of the pictures in the cards, whose first row has pictures that say the class; the maps say no more than that, and a template is looked at where its object is',
 	JSON.stringify( jp.design.OBJECT_ANCHORS ) === JSON.stringify( OBJECT_AIMS ) && JSON.stringify( jp.design.CONTROL_ANCHORS ) === JSON.stringify( CONTROL_AIMS ) && jp.design._target === null );
 check( '...and the place of every control follows from the table of the answer: what is set on the page - the root size and the roles of the fonts as much as the width, the whitespace and the corners - and the animation at the top, the palette at the grounds, a section in its section, a card in the cards, the buttons, the lists and the tables in their blocks, the header at the top of the page and the footer at its foot, the two variants in the typography block - the ids the maps name, counted from the table and not from the names of the controls',
 	Object.keys( jpLayout.controls ).every( function( key ) { return jp.design._anchorOf( key ) === aimOf( jpLayout, key ) } )
 	&& [ [ 'width', 'global' ], [ 'radii/image', 'global' ], [ 'motion/effect', 'global' ], [ 'size', 'global' ], [ 'fonts/code', 'global' ], [ 'fonts/title', 'global' ], [ 'knobs/section/loud', 'type' ], [ 'colours/depth', 'colours' ], [ 'colours/primary', 'colours' ], [ 'colours/mode', 'colours' ],
 		[ 'parts/header', 'global' ], [ 'parts/footer', 'footer' ], [ 'parts/section', 'content' ], [ 'parts/card', 'cards' ], [ 'parts/buttons', 'buttons' ], [ 'parts/lists', 'lists' ], [ 'parts/tables', 'tables' ],
 		[ 'knobs/header/height', 'global' ], [ 'knobs/header/ground', 'global' ], [ 'knobs/footer/space', 'footer' ], [ 'knobs/footer/ground', 'footer' ],
-		[ 'knobs/section/space', 'content' ], [ 'radii/cover', 'content' ], [ 'knobs/section/dim', 'content' ], [ 'knobs/card/space', 'cards' ], [ 'knobs/card/tone', 'cards' ], [ 'knobs/card/hover', 'cards' ], [ 'radii/card', 'cards' ],
+		[ 'knobs/section/space', 'content' ], [ 'radii/cover', 'content' ], [ 'knobs/section/dim', 'content' ], [ 'knobs/card/space', 'cards' ], [ 'knobs/card/tone', 'cards' ], [ 'knobs/card/hover', 'cards' ], [ 'radii/card', 'cards' ], [ 'motion/hover', 'cards' ], [ 'motion/hover-strength', 'cards' ],
 		[ 'knobs/buttons/space', 'buttons' ], [ 'knobs/buttons/hover', 'buttons' ], [ 'knobs/lists/marker', 'lists' ], [ 'knobs/lists/space', 'lists' ], [ 'knobs/tables/zebra', 'tables' ], [ 'knobs/tables/stripes', 'tables' ] ].every( function( entry ) { return jp.design._anchorOf( entry[0] ) === entry[1] } ) );
 
 /*	The place follows the table it is handed: a control moved to another object is looked at where that object is, and a change of it
@@ -5523,6 +5616,8 @@ const jpDriven = [
 	[ 'colours', undefined, 'colours/saturation', function() { byTag( controlOf( jp, 'colours/saturation' ), 'button' )[0].fire('click') } ],
 	[ 'colours', undefined, 'colours/mode', function() { choose( jp.byId('design-colour-mode'), 'dark' ) } ],
 	[ 'motion', undefined, 'motion/effect', function() { controlOf( jp, 'motion/effect' ); choose( jp.byId('design-motion-effect'), 'flip' ) } ],
+	[ 'motion', undefined, 'motion/hover', function() { controlOf( jp, 'motion/hover' ); choose( jp.byId('design-motion-hover'), 'zoom' ) } ],
+	[ 'motion', undefined, 'motion/hover-strength', function() { controlOf( jp, 'motion/hover-strength' ); choose( jp.byId('design-motion-hover-strength'), 'hard' ) } ],
 	[ 'templates', undefined, 'parts/header', function() { choose( setSelect( jp, 'header' ), 'second' ) } ],
 	[ 'templates', undefined, 'parts/footer', function() { choose( setSelect( jp, 'footer' ), 'second' ) } ],
 	[ 'templates', undefined, 'parts/section', function() { choose( setSelect( jp, 'section' ), 'second' ) } ],
@@ -5543,7 +5638,7 @@ jpDriven.forEach( function( entry ) {
 check( 'a change of any other control sets its place as well - read off the target the change left: a strip of the page, the corners of a kind of surface, a font role, a part of the animation, the palette and its mode, and a template; each where the table has it',
 	jpDriven.every( function( entry ) { return jpDrivenAt[ entry[2] ] === aimOf( jpLayout, entry[2] ) } )
 	&& jpDrivenAt['size'] === 'global' && jpDrivenAt['fonts/title'] === 'global' && jpDrivenAt['width'] === 'global' && jpDrivenAt['radii/cover'] === 'content' && jpDrivenAt['radii/card'] === 'cards'
-	&& jpDrivenAt['colours/saturation'] === 'colours' && jpDrivenAt['motion/effect'] === 'global' && jpDrivenAt['parts/header'] === 'global' && jpDrivenAt['parts/footer'] === 'footer' && jpDrivenAt['parts/section'] === 'content' && jpDrivenAt['parts/card'] === 'cards'
+	&& jpDrivenAt['colours/saturation'] === 'colours' && jpDrivenAt['motion/effect'] === 'global' && jpDrivenAt['motion/hover'] === 'cards' && jpDrivenAt['motion/hover-strength'] === 'cards' && jpDrivenAt['parts/header'] === 'global' && jpDrivenAt['parts/footer'] === 'footer' && jpDrivenAt['parts/section'] === 'content' && jpDrivenAt['parts/card'] === 'cards'
 	&& jpDrivenAt['parts/buttons'] === 'buttons' && jpDrivenAt['parts/lists'] === 'lists' && jpDrivenAt['parts/tables'] === 'tables' );
 
 jp.show( 'type' );
@@ -7203,8 +7298,8 @@ else {
 				} );
 			}
 			else if( path[0] === 'motion' ) {
-				// Strength and speed mean something once there is an effect
-				if( real.motion[ path[1] ] !== real.defaults.motion[ path[1] ] && ( path[1] === 'effect' || real.motion.effect !== '' ) )
+				// Strength and speed mean something once there is an effect, the strength of the hover once there is a kind of it that has one
+				if( real.motion[ path[1] ] !== real.defaults.motion[ path[1] ] && ( path[1] === 'effect' || path[1] === 'hover' || ( path[1] === 'hover-strength' ? [ '', 'none' ].indexOf( real.motion.hover ) === -1 : real.motion.effect !== '' ) ) )
 					lines.push( TEXT['/_admin/design/motion/'+ path[1]+ '/label']+ ' '+ TEXT['/_admin/design/motion/'+ path[1]+ '/'+ real.motion[ path[1] ]] );
 			}
 			else if( real[ keys[0] ] !== real.defaults[ keys[0] ] ) {
@@ -7295,7 +7390,8 @@ else {
 
 	check( '...and the animation on the values stored is the Motion tab\'s',
 		shown( whole.byId('design-motion-effect') ) === real.motion.effect && shown( whole.byId('design-motion-strength') ) === real.motion.strength
-		&& shown( whole.byId('design-motion-speed') ) === real.motion.speed
+		&& shown( whole.byId('design-motion-speed') ) === real.motion.speed && shown( whole.byId('design-motion-hover') ) === real.motion.hover && shown( whole.byId('design-motion-hover-strength') ) === real.motion['hover-strength']
+		&& offered( whole.byId('design-motion-hover') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.hovers ).join() && whole.byId('design-motion-hover-strength').disabled === ( [ '', 'none' ].indexOf( real.motion.hover ) !== -1 )
 		&& offered( whole.byId('design-motion-effect') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.effects ).join()
 		&& whole.byId('design-motion-strength').disabled === ( real.motion.effect === '' ) && whole.knobRow( radiusStrip ) === null );
 

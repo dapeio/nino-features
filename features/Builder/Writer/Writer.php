@@ -46,6 +46,12 @@ namespace Nino\Modules\Builder {
 	 *											no setting where the radius asked for is that default, and the Writer
 	 *											writes what the model holds.
 	 *
+	 *											The hover of a picture is a class of the page as well, nino-hover: it
+	 *											stands on the call of a component whose source is an image, the picture
+	 *											of a card among them. The classes of a call come in this order: the
+	 *											radius, the hover, the two offsets of the ground of a card, the six
+	 *											sides of the spacing, then the classes the editor wrote.
+	 *
 	 *											How far in from its sides the picture behind an element starts is a
 	 *											class of the page as well, nino-bg-pl-<n> and nino-bg-pr-<n>: it stands
 	 *											before the radius of a row and of a column, after the radius of a card,
@@ -675,10 +681,13 @@ namespace Nino\Modules\Builder {
 			$attributes	= (array) ( $node['attributes'] ?? [] );
 			$call				= '['. $name;
 
-			// The radius of a surface is the first class of its call, then - on a card - how far in from either side its picture starts, left then right, then the
-			// six sides of the spacing of any component, then the classes the editor wrote (the model refuses the radius and the offsets on a component that is none:
-			// see Document)
+			// The radius of a surface is the first class of its call, then the hover of a picture, then - on a card - how far in from either side its picture starts, left
+			// then right, then the six sides of the spacing of any component, then the classes the editor wrote (the model refuses the radius, the hover and the offsets on a
+			// component that is none of the kinds they are for: see Document)
 			$first = isset( Reader::RADIUS_CLASS[(string) ( $node['radius'] ?? '' )] ) === true ? [ Reader::RADIUS_CLASS[$node['radius']] ] : [];
+
+			if( (string) ( $node['hover'] ?? '' ) === Reader::HOVER )
+				$first[] = Reader::HOVER_CLASS;
 
 			foreach( Reader::BG_SPACING as $side => $key )
 				if( (string) ( $node[$key] ?? '' ) !== '' )

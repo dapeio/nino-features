@@ -225,7 +225,7 @@
 			component : [
 				{ id : 'content', controls : [ 'source' ] },
 				{ id : 'link', controls : [ 'link' ] },
-				{ id : 'surface', controls : [ 'background', 'bgPl', 'bgPr', 'radius' ] },
+				{ id : 'surface', controls : [ 'background', 'bgPl', 'bgPr', 'radius', 'hover' ] },
 				{ id : 'spacing', controls : [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'properties', controls : [ 'variants', 'attributes', 'class' ] },
 			],
@@ -1193,7 +1193,7 @@
 		 *	each language and none in the others: the component's label is no text
 		 *	of its key, the field and the preview show it where nothing is typed.
 		 *	A component that holds components has none of its own: it starts with no
-		 *	children. A component that is a surface starts with no radius of its own
+		 *	children. A component that is a surface starts with no radius of its own, and a picture with the hover off
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
@@ -1224,6 +1224,10 @@
 				component.bgPl = '';
 				component.bgPr = '';
 			}
+
+			// A picture - a component whose source is an image, the picture of a card among them - has the hover of the page, off until the editor switches it on
+			if( kind === 'image' )
+				component.hover = '';
 
 			// What stands between the tags of a component that holds components is its children; of any other it is a content
 			if( kind === 'content' && builder._holds( registry, name ) !== '' )
@@ -5615,6 +5619,29 @@
 			return builder._keyed( field, key );
 		},
 
+		// ---------------------------------------------------------- The hover of a picture
+
+		/**
+		 *	The toggle "hover effect" of a picture - the frame of [image] and the picture of a card alike, any component whose source is an image. The effect is the page's: the Design
+		 *	chooses its kind and its strength for the whole site (Motion, Page), and a picture only takes part in it, which it says with the class nino-hover. The toggle is on where the
+		 *	picture has the class; switching it writes the class and takes it away, and the classes the editor wrote stay as they were. Nothing here depends on the rest of the form: a picture
+		 *	may take part with any ratio, any focus, any link
+		 *
+		 *	@param		{Object}		holder						The component
+		 *
+		 *	@return		{Element}									The switch
+		 */
+		_hoverToggle : function( holder ) {
+
+			const builder = Nino.admin.builder;
+
+			return builder._keyed( builder._switchField( Nino.content.getText('/_admin/builder/common/hover'), Nino.content.getText('/_admin/builder/hint/hover'), holder.hover === 'on', function( on ) {
+
+				holder.hover = on === true ? 'on' : '';
+				builder._changed();
+			} ), 'hover' );
+		},
+
 		// ---------------------------------------------------------- The settings
 
 		/**
@@ -7158,7 +7185,7 @@
 		 *	The form of a component, in the blocks the table has for it (BLOCKS.component) and its schema fills: its content - the source of its text or its picture and, under it,
 		 *	the text of the key in the language the editor works in or the picture of the slot with its alt text; for [html] the editor of the blocks profile instead -, its
 		 *	link - the address and the window it opens in, and whether all of it is the link -, its surface - the attributes the schema puts on the tab of the background, and the
-		 *	toggle of its radius -, its spacing - the box of its sides - and its properties: the variants and the other attributes, in the order of the schema, and the classes of its
+		 *	toggle of its radius and the one of its hover, which a picture has -, its spacing - the box of its sides - and its properties: the variants and the other attributes, in the order of the schema, and the classes of its
 		 *	own. A component that holds components has no content: its children are edited where they stand, each in the form every component has. A block the component has
 		 *	nothing for is not drawn
 		 *
@@ -7224,7 +7251,7 @@
 		/**
 		 *	The controls of the form of a component, by the name the table lists them under (see BLOCKS and _sectionControls()): the source, one control for each group of the
 		 *	attributes of its schema - the link, the background, the variants and the other attributes, each a field to the attribute in the order of the schema -, the offsets of the
-		 *	picture behind a card and the radius of a surface, the box of the six sides and the classes of the component. A control the component has nothing for is not one of them
+		 *	picture behind a card, the radius of a surface and the hover of a picture, the box of the six sides and the classes of the component. A control the component has nothing for is not one of them
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{Object}		state							{ editors, editor, typed }, kept by the dialog for what is made in the content and is let go of when it closes
@@ -7305,6 +7332,14 @@
 					keys	: [ 'radius' ],
 					build	: function( body ) { body.appendChild( builder._radiusToggle( component, 'radius', surface, function() { return true } ) ) },
 					says	: function() { return component.radius === '' ? '' : word( component.radius === 'alternative' ? 'common/radius-alt' : 'common/radius-standard' ) },
+				};
+
+			// A picture - by what the schema says its source is, so the frame of [image] and the picture of a card alike - takes part in the hover effect of the page by a switch
+			if( kind === 'image' )
+				controls.hover = {
+					keys	: [ 'hover' ],
+					build	: function( body ) { body.appendChild( builder._hoverToggle( component ) ) },
+					says	: function() { return component.hover === 'on' ? word('common/hover') : '' },
 				};
 
 			builder.SIDES.forEach( function( side ) { controls[side] = sides } );

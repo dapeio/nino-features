@@ -23,8 +23,9 @@ namespace Nino\Modules\Design {
 	 *										object: on Colours, the two colours, the five knobs and the
 	 *										mode the palette is solved from, which are the page's, and the
 	 *										dimming of a section, the tone of the shadow of a card and the
-	 *										stripes of a table, and on Motion the animation of the page and
-	 *										what a card and a button do under the pointer - compiled
+	 *										stripes of a table, and on Motion the animation of the page,
+	 *										the hover of its pictures and what a card and a button do
+	 *										under the pointer - compiled
 	 *										together into assets/theme.css. Where a control stands is
 	 *										Setup::LAYOUT's and nobody else's: the list hands the table
 	 *										over and the screen is drawn from it. The loader, the
@@ -266,10 +267,11 @@ namespace Nino\Modules\Design {
 				'running' => is_string( $setup['compiled']['setup']['theme'] ?? null ) === true ? $setup['compiled']['setup']['theme'] : '',
 				'themes' 	=> Themes::all( $appData, $library, $locale ),
 				'active' 	=> self::_active( $appData, $library, $locale, (string) ( $setup['theme'] ?? '' ) ),
-				// The animation of the page, and what it can be: the effects and
-				// strengths and speeds of Nino.css's viewport animations
+				// The animation of the page and the hover of its pictures, and what they can be: the effects and
+				// strengths and speeds of Nino.css's viewport animations, the kinds of hover - which take the same strengths
 				'motion' 	=> (array) ( $setup['motion'] ?? [] ),
 				'effects' => array_keys( Setup::EFFECTS ),
+				'hovers' 	=> array_keys( Setup::HOVERS ),
 				'strengths' => Setup::STRENGTHS,
 				'speeds' 	=> array_keys( Setup::SPEEDS ),
 				/*	The five font roles: what each has, the families to choose from
@@ -551,12 +553,12 @@ namespace Nino\Modules\Design {
 			$document = '';
 
 			/*	Five of the seven parts are a stylesheet and nothing else, and so
-				are the knobs, the size, the width, the animation, the fonts and
-				the palette: for those the screen swaps one <style> inside the
-				frame it already has, and neither the markup nor the framework
-				below it has to travel again. The two that do bring markup -
-				header and footer - rebuild the document, and so does the first
-				preview of a visit */
+				are the knobs, the size, the width, the animation, the hover of the
+				pictures, the fonts and the palette: for those the screen swaps
+				one <style> inside the frame it already has, and neither the
+				markup nor the framework below it has to travel again. The two
+				that do bring markup - header and footer - rebuild the document,
+				and so does the first preview of a visit */
 			if( ( $posted['full'] ?? false ) === true )
 				$document = self::document( $appData, $library, $setup, $css, $notes );
 

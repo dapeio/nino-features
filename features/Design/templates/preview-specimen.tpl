@@ -17,7 +17,7 @@
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Cards</h2><p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p></div>
 		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
-			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-image nino-card-img nino-hover"><img src="[[placeholder]]" alt="" width="640" height="420"></div>
 			<div class="nino-card-content">
 				<h3 class="nino-card-title nino-card-title--quiet">With a price, quiet</h3>
 				<p class="nino-card-subtitle nino-card-subtitle--quiet">Subtitle</p>
@@ -26,7 +26,7 @@
 			</div>
 		</article>
 		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
-			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-image nino-card-img nino-hover"><img src="[[placeholder]]" alt="" width="640" height="420"></div>
 			<div class="nino-card-content">
 				<h3 class="nino-card-title">With a badge</h3>
 				<p class="nino-card-subtitle">Subtitle</p>
@@ -35,7 +35,7 @@
 			</div>
 		</article>
 		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
-			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-image nino-card-img nino-hover"><img src="[[placeholder]]" alt="" width="640" height="420"></div>
 			<div class="nino-card-content">
 				<h3 class="nino-card-title nino-card-title--loud">With an action, loud</h3>
 				<p class="nino-card-subtitle nino-card-subtitle--loud">Subtitle</p>

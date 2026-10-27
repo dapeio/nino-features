@@ -123,6 +123,9 @@ check( '...and names the markup it reads and writes besides the wrap and the pic
 $settingsLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'de_DE' ) ];
 check( '...and has a line of its own for the settings dialogs of columns and components, in both languages and under a thousand bytes each',
 	$settingsLines['en_US'] !== '' && $settingsLines['de_DE'] !== '' && $settingsLines['en_US'] !== $settingsLines['de_DE'] && strlen( $settingsLines['en_US'] ) < 1000 && strlen( $settingsLines['de_DE'] ) < 1000 );
+$hoverLines = array_filter( $manifest['manual']['panel'], static fn( mixed $line ): bool => str_contains( \Nino\Features::localized( $line, 'en_US' ), \Nino\Modules\Builder\Reader::HOVER_CLASS ) === true );
+check( '...and names the class a picture takes for the hover of the page in a line that is told in both languages',
+	$hoverLines !== [] && array_filter( $hoverLines, static fn( mixed $line ): bool => str_contains( \Nino\Features::localized( $line, 'de_DE' ), \Nino\Modules\Builder\Reader::HOVER_CLASS ) === false || \Nino\Features::localized( $line, 'de_DE' ) === \Nino\Features::localized( $line, 'en_US' ) ) === [] );
 check( '...and has a line of its own for the tools of a frame - how the toolbar is named and how large a tool is to hit - in both languages',
 	isset( $manifest['manual']['panel']['The tools of a frame'] ) === true && array_diff( [ 'en_US', 'de_DE' ], array_keys( $manifest['manual']['panel']['The tools of a frame'] ) ) === []
 	&& \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'en_US' ) );
@@ -139,6 +142,11 @@ check( '...asks for its own permission, names no group in its nav() - three entr
 check( '...and brings the HTML editor of the workbench, its own script and its stylesheet, which are there', count( \Nino\Modules\Builder\Admin::assets() ) === 3 && in_array( '/_admin/assets/html-editor.js', \Nino\Modules\Builder\Admin::assets(), true ) === true
 	&& array_filter( [ 'assets/admin.js', 'assets/admin.css', 'templates/panel.tpl', 'text/en_US.php', 'text/de_DE.php' ], static fn( string $file ): bool => is_file( dirname( __DIR__ ). '/'. $file ) === false ) === [] );
 check( '...whose words are the same keys in both languages', array_keys( (array) include $dir. '/text/en_US.php' ) === array_keys( (array) include $dir. '/text/de_DE.php' ) );
+check( '...and the switch of a picture has its label and its hint in both of them, the words of the two languages differing', array_filter( [ '[[/_admin/builder/common/hover]]', '[[/_admin/builder/hint/hover]]' ], static function( string $key ) use ( $dir ): bool {
+	$english = (array) include $dir. '/text/en_US.php';
+	$german = (array) include $dir. '/text/de_DE.php';
+	return trim( (string) ( $english[$key] ?? '' ) ) === '' || trim( (string) ( $german[$key] ?? '' ) ) === '' || $english[$key] === $german[$key];
+} ) === [] );
 check( '...and the sentences that name the keys and the slots of a copy in the way have a place for the list, one each, in both', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 	$texts = (array) include $dir. '/text/'. $locale. '.php';
 	return substr_count( (string) ( $texts['[[/_admin/builder/error/keys-in-the-way]]'] ?? '' ), '%s' ) !== 1 || substr_count( (string) ( $texts['[[/_admin/builder/error/slots-in-the-way]]'] ?? '' ), '%s' ) !== 1;
@@ -1629,6 +1637,86 @@ $backgroundRadius = $read( $page( $groundOf( 'nino-grid-100', "<div class=\"nino
 check( '...the picture behind a column is a background and has no radius: the section that gives it one is not read as a section, it is a foreign block with its reason',
 	$backgroundRadius['blocks'][0]['kind'] === 'html' && ( $backgroundRadius['blocks'][0]['reason']['code'] ?? '' ) === 'background-image' );
 
+// The hover of a picture: a component whose schema says that its source is an image - the frame of [image] and the picture of a card alike, found by the schema and not by the name - has
+// the class nino-hover apart from its classes, the first of them as the radius of a surface is, and the Writer puts it back after the radius and before the sides of the spacing
+$pictures		= array_keys( array_filter( $registry['components'], static fn( array $schema ): bool => ( $schema['source'] ?? '' ) === 'image' ) );
+$holderOf		= static function( string $name ) use ( $registry, $reader ): string {
+
+	foreach( $registry['components'] as $holder => $schema )
+		if( $reader::holds( $schema ) === true && in_array( $schema['holds'], (array) ( $registry['components'][$name]['in'] ?? [] ), true ) === true )
+			return (string) $holder;
+
+	return '';
+};
+$hoverCall	= static function( string $name, string $class ) use ( $holderOf, $section ): string {
+
+	$call		= '['. $name. ' /template/page-x/a/photo'. ( $class === '' ? '' : ' class="'. $class. '"' ). ']';
+	$holder	= $holderOf( $name );
+
+	return $section( $holder === '' ? $call : '['. $holder. "]\n\t\t\t\t". $call. "\n\t\t\t[/". $holder. ']' );
+};
+$hoverNode	= static function( string $name, string $class ) use ( $holderOf, $read, $page, $hoverCall ): array {
+
+	$held = $read( $page( $hoverCall( $name, $class ) ) )['blocks'][0]['cols'][0]['components'][0];
+
+	return $holderOf( $name ) === '' ? $held : $held['components'][0];
+};
+$hoverWrong	= [];
+
+foreach( $pictures as $hoverName )
+	foreach( [ 'nino-hover' => [ 'on', '' ], 'nino-hover my-class' => [ 'on', 'my-class' ], 'my-class nino-hover' => [ 'on', 'my-class' ], 'my-class nino-hover other' => [ 'on', 'my-class other' ], 'my-class' => [ '', 'my-class' ], 'my-class  other' => [ '', 'my-class  other' ], '' => [ '', '' ] ] as $hoverClass => [ $hoverWord, $hoverRest ] ) {
+
+		$hoverRead = $hoverNode( $hoverName, $hoverClass );
+
+		if( ( $hoverRead['hover'] ?? null ) !== $hoverWord || $hoverRead['attributes']['class'] !== $hoverRest )
+			$hoverWrong[] = $hoverName. ' "'. $hoverClass. '"';
+
+		// What the file says in the canonical order is written back as it was, a hover after another class is written first
+		$hoverCanonical = $hoverWord === 'on' ? $hoverCall( $hoverName, trim( 'nino-hover '. $hoverRest ) ) : $hoverCall( $hoverName, $hoverClass );
+
+		if( $write( $read( $page( $hoverCall( $hoverName, $hoverClass ) ) ) ) !== $inWrap( $page( $hoverCanonical ) ) )
+			$hoverWrong[] = $hoverName. ' "'. $hoverClass. '" written';
+	}
+
+check( 'the hover of the page is a setting of every component whose schema says that its source is an image - [image] and the picture of a card among them: the first class nino-hover of the call is taken out of the class attribute into the setting hover, on, and put back as the first class of the call; a call without it has the setting empty and keeps its class attribute byte for byte'
+	. ( $hoverWrong === [] ? '' : ' - '. implode( ', ', $hoverWrong ) ),
+	$hoverWrong === [] && $reader::HOVER === 'on' && $reader::HOVER_CLASS === 'nino-hover' && array_diff( [ 'image', 'card-image' ], $pictures ) === [] );
+
+$hoverText = '';
+
+foreach( $pictures as $hoverName ) {
+
+	$hoverSurface	= $reader::surface( $registry['components'][$hoverName], $registry['components'] ) !== '';
+	$hoverMixed		= 'my nino-pr-3 nino-hover'. ( $hoverSurface === true ? ' nino-radius' : '' ). ' nino-mt-1';
+	$hoverTwice		= $hoverNode( $hoverName, 'nino-hover nino-hover' );
+	$hoverOrder		= $hoverNode( $hoverName, $hoverMixed );
+
+	if( $hoverTwice['hover'] !== 'on' || $hoverTwice['attributes']['class'] !== 'nino-hover' || $write( $read( $page( $hoverCall( $hoverName, 'nino-hover nino-hover' ) ) ) ) !== $inWrap( $page( $hoverCall( $hoverName, 'nino-hover nino-hover' ) ) ) )
+		$hoverText .= ' '. $hoverName. ' twice';
+
+	if( $hoverOrder['hover'] !== 'on' || $hoverOrder['mt'] !== '1' || $hoverOrder['pr'] !== '3' || ( $hoverOrder['radius'] ?? '' ) !== ( $hoverSurface === true ? 'standard' : '' ) || $hoverOrder['attributes']['class'] !== 'my'
+		|| $write( $read( $page( $hoverCall( $hoverName, $hoverMixed ) ) ) ) !== $inWrap( $page( $hoverCall( $hoverName, ( $hoverSurface === true ? 'nino-radius ' : '' ). 'nino-hover nino-mt-1 nino-pr-3 my' ) ) ) )
+		$hoverText .= ' '. $hoverName. ' ordered';
+}
+
+check( '...a second nino-hover is a class of the editor\'s and stays, and the call is written with the hover after the radius of the picture and before the sides of its spacing, whatever order the file has them in, then the classes of its own'
+	. ( $hoverText === '' ? '' : ' - wrong:'. $hoverText ), $hoverText === '' );
+
+$hoverTitle = $read( $page( $section( '[title /template/page-x/a/title class="nino-hover"]' ) ) )['blocks'][0]['cols'][0]['components'][0];
+$hoverCard = $read( $page( $cardCall( ' class="nino-hover"' ) ) )['blocks'][0]['cols'][0]['components'][0];
+check( '...a component that is no picture has no setting hover and the class stays a class of its own - the card that holds a picture does not take it either',
+	array_key_exists( 'hover', $hoverTitle ) === false && $hoverTitle['attributes']['class'] === 'nino-hover' && array_key_exists( 'hover', $hoverCard ) === false && $hoverCard['attributes']['class'] === 'nino-hover'
+	&& $write( $read( $page( $section( '[title /template/page-x/a/title class="nino-hover"]' ) ) ) ) === $inWrap( $page( $section( '[title /template/page-x/a/title class="nino-hover"]' ) ) ) );
+
+$withoutPictures = [ 'components' => array_diff_key( $registry['components'], array_flip( $pictures ) ), 'stacks' => $registry['stacks'] ];
+check( '...and a source says its hover behind a class by the calls of the pictures and of no other component: a picture does, a title and a card do not for the same class, nor does a picture for a registry that has none',
+	$reader::hoverBehind( $pictureCall( ' class="my-class nino-hover"' ), $registry ) === true && $reader::hoverBehind( $section( '[title /template/page-x/a/title class="my-class nino-hover"]' ), $registry ) === false
+	&& $reader::hoverBehind( $cardCall( ' class="my-class nino-hover"' ), $registry ) === false && $reader::hoverBehind( $pictureCall( ' class="my-class nino-hover"' ), $withoutPictures ) === false );
+
+$hoverBackground = $read( $page( $groundOf( 'nino-grid-100', "<div class=\"nino-grid-bg\">[image /template/page-x/a/photo alt=\"\" class=\"nino-hover\"]</div>" ) ) );
+check( '...and the picture behind a column is a background with no hover to give: the section that gives it one is not read as a section, it is a foreign block with its reason',
+	$hoverBackground['blocks'][0]['kind'] === 'html' && ( $hoverBackground['blocks'][0]['reason']['code'] ?? '' ) === 'background-image' );
+
 check( 'a component whose schema does not say that it holds components is one line, a list of children or not: the Writer does not make a container of what is none', str_contains( $write( [ 'blocks' => [ $plainBlock ] ] ), "\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n" ) === true && str_contains( $write( [ 'blocks' => [ $plainBlock ] ] ), '[/title]' ) === false );
 
 echo "\n";
@@ -2031,6 +2119,78 @@ foreach( $shapes as $label => $text ) {
 		&& file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-lib.tpl' ) ) === $text && $again['hash'] === $lib['hash'] && $again['model'] === $lib['model'] );
 }
 
+// The hover of a picture where the Writer writes it - the first class of the call, or the one behind the radius of a picture that has a radius - is the file as it is: a save without a change
+// keeps its bytes. A picture that says it behind another class reads as the same setting and so as the same model, and the file is written anew all the same, with the class where the Writer
+// puts it (Reader::hoverBehind()). The sections of these files stand without the blank lines the Writer puts between them, so that a file that is written is told from one that is kept
+$hoverLib		= static function( string $name, string $class ) use ( $holderOf, $section ): string {
+
+	$call		= '['. $name. ' /template/page-lib/a/photo class="'. $class. '"]';
+	$holder	= $holderOf( $name );
+
+	return "<!-- nino:template-name Lib -->\n[template /templates/html-header]\n". $section( $holder === '' ? $call : '['. $holder. "]\n\t\t\t\t". $call. "\n\t\t\t[/". $holder. ']' ). "\n". $section( '[title /template/page-lib/b/title]', 'b' ). "\n[template /templates/html-footer]\n";
+};
+$hoverShortcut	= [];
+
+foreach( $pictures as $hoverName ) {
+
+	$hoverRadius	= $reader::surface( $registry['components'][$hoverName], $registry['components'] ) !== '';
+
+	// The class of the call as the file has it => the class it has once the file has been saved without a change
+	foreach( [
+		'nino-hover'													=> 'nino-hover',
+		'nino-hover my-class'									=> 'nino-hover my-class',
+		'nino-radius-alt nino-hover my-class'	=> $hoverRadius === true ? 'nino-radius-alt nino-hover my-class' : 'nino-hover nino-radius-alt my-class',
+		'my-class nino-hover'									=> 'nino-hover my-class',
+		'nino-mt-1 nino-hover'								=> 'nino-hover nino-mt-1',
+		'my-class nino-radius-alt nino-hover'	=> $hoverRadius === true ? 'nino-radius-alt nino-hover my-class' : 'nino-hover my-class nino-radius-alt',
+		'my-class'														=> 'my-class',
+	] as $hoverClass => $hoverWritten ) {
+
+		$hoverText	= $hoverLib( $hoverName, $hoverClass );
+		\Nino\Filesystem::putFileContent( $appData, '/templates/page-lib.tpl', $hoverText );
+		$hoverLoaded	= \Nino\Modules\Builder\Document::load( $appData, 'page-lib' );
+		$hoverHeld		= $hoverLoaded['model']['blocks'][0]['cols'][0]['components'][0];
+		$hoverNodeLib	= $holderOf( $hoverName ) === '' ? $hoverHeld : $hoverHeld['components'][0];
+		$hoverSaved		= \Nino\Modules\Builder\Document::save( $appData, 'page-lib', $hoverLoaded['model'], $hoverLoaded['hash'] );
+		$hoverFile		= (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-lib.tpl' ) );
+
+		// The setting is read from the file as it is, and the model that comes back is the model that went in
+		$hoverRight		= $hoverNodeLib['hover'] === ( str_contains( $hoverClass, 'nino-hover' ) === true ? 'on' : '' ) && $hoverSaved['status'] === 200 && $hoverSaved['model'] === $hoverLoaded['model'];
+
+		if( $hoverClass === $hoverWritten )
+			$hoverRight = $hoverRight === true && $hoverFile === $hoverText && $hoverSaved['hash'] === $hoverLoaded['hash'];
+		else
+			$hoverRight = $hoverRight === true && str_contains( $hoverFile, '['. $hoverName. ' /template/page-lib/a/photo class="'. $hoverWritten. '"]' ) === true && str_contains( $hoverFile, 'class="'. $hoverClass. '"' ) === false
+				&& $hoverSaved['hash'] === hash( 'sha256', $hoverFile ) && $hoverSaved['hash'] !== $hoverLoaded['hash'];
+
+		if( $hoverRight === false )
+			$hoverShortcut[] = $hoverName. ' "'. $hoverClass. '"';
+	}
+}
+
+check( 'a file whose picture says nino-hover first, or behind its radius, keeps its bytes and its hash in a save without a change; one that says it behind another class - an editor\'s, a side of the spacing, a second radius or the radius of a picture that has none - reads as the same model all the same, and is written anew with the class where the Writer puts it'
+	. ( $hoverShortcut === [] ? '' : ' - wrong: '. implode( ', ', $hoverShortcut ) ), $hoverShortcut === [] && count( $pictures ) >= 2 );
+
+// The hover of a page that changes as well: the page is written whole, the class stands first - and switching the setting off takes it away, on takes it up again
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-lib.tpl', "<!-- nino:template-name Lib -->\n[template /templates/html-header]\n". $section( '[image /template/page-lib/a/photo class="my-class nino-hover"]', 'a' ). "\n[template /templates/html-footer]\n" );
+$libHover = \Nino\Modules\Builder\Document::load( $appData, 'page-lib' );
+$libHoverModel = $libHover['model'];
+$libHoverModel['blocks'][0]['settings']['mt'] = '2';
+$libHoverSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-lib', $libHoverModel, $libHover['hash'] );
+$libHoverFile = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-lib.tpl' ) );
+$libHoverModel = $libHoverSaved['model'];
+$libHoverModel['blocks'][0]['cols'][0]['components'][0]['hover'] = '';
+$libHoverOff = \Nino\Modules\Builder\Document::save( $appData, 'page-lib', $libHoverModel, $libHoverSaved['hash'] );
+$libHoverOffFile = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-lib.tpl' ) );
+$libHoverModel = $libHoverOff['model'];
+$libHoverModel['blocks'][0]['cols'][0]['components'][0]['hover'] = 'on';
+$libHoverOn = \Nino\Modules\Builder\Document::save( $appData, 'page-lib', $libHoverModel, $libHoverOff['hash'] );
+check( 'a picture that says nino-hover after a class of the editor\'s is read as hover on with the class kept, and once the page changes it is written with the class first, as the Writer writes it; switched off the call has the class of the editor\'s alone, switched on again the hover is first',
+	$libHover['model']['blocks'][0]['cols'][0]['components'][0]['hover'] === 'on' && $libHover['model']['blocks'][0]['cols'][0]['components'][0]['attributes']['class'] === 'my-class'
+	&& $libHoverSaved['status'] === 200 && str_contains( $libHoverFile, '[image /template/page-lib/a/photo class="nino-hover my-class"]' ) === true && str_contains( $libHoverFile, 'my-class nino-hover' ) === false
+	&& $libHoverOff['status'] === 200 && str_contains( $libHoverOffFile, '[image /template/page-lib/a/photo class="my-class"]' ) === true && $libHoverOff['model']['blocks'][0]['cols'][0]['components'][0]['hover'] === ''
+	&& $libHoverOn['status'] === 200 && str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-lib.tpl' ) ), '[image /template/page-lib/a/photo class="nino-hover my-class"]' ) === true );
+
 // A section that says it was renamed from its own id has not been renamed: the hand-written file keeps its bytes
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-lib.tpl', $shapes['a file whose sections are written without blank lines'] );
 $lib = \Nino\Modules\Builder\Document::load( $appData, 'page-lib' );
@@ -2197,6 +2357,18 @@ $answers = [
 			[ 'name' => 'card-title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'], 'radius' => 'standard' ],
 		] ];
 	} ),
+	'a hover on a component that is no picture'				=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['hover'] = 'on'; } ),
+	'a hover of a picture that is none of the two words'	=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '', 'text' => null, 'attributes' => $registry['components']['image']['defaults'], 'radius' => '', 'hover' => 'sideways' ];
+	} ),
+	'a hover of a picture that is a list'							=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '', 'text' => null, 'attributes' => $registry['components']['image']['defaults'], 'radius' => '', 'hover' => [ 'on' ] ];
+	} ),
+	'a hover on the child of a card that is no picture'	=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'components' => [
+			[ 'name' => 'card-title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'], 'hover' => 'on' ],
+		] ];
+	} ),
 	'a step of the picture behind the row that is a number'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowBgPl'] = 1; } ),
 	'a step of the picture behind the row outside the scale'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowBgPr'] = '4'; } ),
 	'a step of the picture behind a column outside the scale'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['bgPl'] = '4'; } ),
@@ -2230,6 +2402,21 @@ check( '...the radius is named where it is wrong: the setting of the section, of
 	&& str_contains( $radiusSaid('a radius of a card that is a list'), 'block 1 has the component "card" with a radius that is none of the two strengths' ) === true
 	&& str_contains( $radiusSaid('a radius on the child of a card'), 'block 1 has the component "card-title" with a radius, and it is no surface' ) === true
 	&& array_filter( \Nino\Modules\Builder\Document::problems( $appData, $radiusModel, $registry ), static fn( string $sentence ): bool => str_contains( $sentence, 'radius' ) === true ) === [] && ninoWarnings() === [] );
+
+// The hover is empty or on, on a component whose schema says its source is an image - the picture of a card among them - and a component that is none has no hover to give
+$hoverSaid = static fn( string $what ): string => implode( ' | ', $answers[$what]['problems'] ?? [] );
+$hoverModel = $shaped['model'];
+$hoverModel['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '', 'text' => null, 'attributes' => $registry['components']['image']['defaults'], 'radius' => '', 'hover' => 'on' ];
+$hoverModel['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'components' => [
+	[ 'name' => 'card-image', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card-image']['defaults'], 'hover' => 'on' ],
+	[ 'name' => 'card-image', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card-image']['defaults'], 'hover' => '' ],
+] ];
+check( '...the hover is named where it is wrong: a hover on a component that is no picture - a child of a card too - and a word that is neither empty nor on, or a list - and where it is empty or on, on the frame of a picture and on the picture of a card, nothing is said of it',
+	str_contains( $hoverSaid('a hover on a component that is no picture'), 'block 1 has the component "title" with a hover, and it is no picture' ) === true
+	&& str_contains( $hoverSaid('a hover of a picture that is none of the two words'), 'block 1 has the component "image" with a hover that is neither empty nor on' ) === true
+	&& str_contains( $hoverSaid('a hover of a picture that is a list'), 'block 1 has the component "image" with a hover that is neither empty nor on' ) === true
+	&& str_contains( $hoverSaid('a hover on the child of a card that is no picture'), 'block 1 has the component "card-title" with a hover, and it is no picture' ) === true
+	&& array_filter( \Nino\Modules\Builder\Document::problems( $appData, $hoverModel, $registry ), static fn( string $sentence ): bool => str_contains( $sentence, 'hover' ) === true ) === [] && ninoWarnings() === [] );
 
 // How far in from its sides the picture behind a row, a column and a card starts is a step from 0 to 3 or none - and the card is the one component to give a step
 $bgSaid = static fn( string $what ): string => implode( ' | ', $answers[$what]['problems'] ?? [] );
@@ -3750,6 +3937,17 @@ check( '...the tag the builder writes is the tag the kernel draws: a title is an
 	&& str_contains( $tagged, "[subtitle /template/page-home/contact/title]\n" ) === true && str_contains( $tagged, '[subtitle /template/page-home/contact/title tag="h5"]' ) === true && str_contains( $tagged, "[card-title /template/page-home/contact/title]\n" ) === true
 	&& str_contains( $drawn, '<h4 class="nino-section-title nino-section-title--loud">Contact</h4>' ) === true && str_contains( $drawn, '<div class="nino-section-subtitle">Contact</div>' ) === true
 	&& str_contains( $drawn, '<h5 class="nino-section-subtitle">Contact</h5>' ) === true && str_contains( $drawn, '<h4 class="nino-card-title">Contact</h4>' ) === true );
+$appData['/nino/html/images']['/template/page-x/a/hover'] = [ 'label' => 'Hover', 'width' => 1600, 'height' => 900, 'filename' => 'hover.1600x900.jpg' ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+$hoverMade = $read( $section( "[image /template/page-x/a/hover]\n\t\t\t[card]\n\t\t\t\t[card-image /template/page-x/a/hover]\n\t\t\t[/card]" ). "\n" );
+$hoverMade['blocks'][0]['cols'][0]['components'][0]['hover'] = 'on';
+$hoverMade['blocks'][0]['cols'][0]['components'][1]['components'][0]['hover'] = 'on';
+$hovered = $write( $hoverMade );
+$hoveredDrawn = \Nino\Html::renderHtml( $appData, $hovered );
+unset( $appData['/nino/html/images']['/template/page-x/a/hover'] );
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+check( '...the hover the builder writes is the class the kernel frames a picture for: switched on, the picture of [image] and the picture of a card, which has neither a ratio nor a focus, are in a frame that carries it, once each',
+	substr_count( $hovered, 'class="nino-hover"' ) === 2 && preg_match_all( '~<div class="nino-image[^"]*\bnino-hover\b[^"]*"><img ~', $hoveredDrawn ) === 2 && substr_count( $hoveredDrawn, 'nino-card-img nino-hover' ) === 1 );
 check( '...the stack is a loop of the elements, one cell each, in the order it names', preg_match_all( '/nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 nino-autoheight/', $page ) === 2
 	&& strpos( $page, 'App' ) < strpos( $page, 'Web' ) && str_contains( $page, 'Mehr</a>' ) === true );
 check( '...and the sections are what Nino.css knows: the cover with its height, the background block, the row and its columns',

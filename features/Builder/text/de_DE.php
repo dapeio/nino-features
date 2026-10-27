@@ -310,6 +310,7 @@ return [
 
 	'[[/_admin/builder/common/radius-alt]]'				=> 'Radius alternativ',
 	'[[/_admin/builder/common/radius-standard]]'	=> 'Radius Standard',
+	'[[/_admin/builder/common/hover]]'						=> 'Hover-Effekt',
 
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'Eine Zeile. Der Dateiname wird beim Anlegen daraus gebildet und bleibt danach.',
@@ -327,6 +328,7 @@ return [
 	'[[/_admin/builder/hint/whitespace]]'	=> 'Wie viel Platz die Sektion lässt. Den Weißraum der Seite stellst Du im Design ein.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'Farbe, Bild und Abdunkeln liegen auf der Row innerhalb der Sektion, nicht auf der Sektion selbst.',
 	'[[/_admin/builder/hint/radius-alt]]'	=> 'Standard und Alternativ sind die zwei Radien, die das Design für die Seite festlegt. Ein Element behält die Vorgabe seiner Art, bis Du es umschaltest.',
+	'[[/_admin/builder/hint/hover]]'	=> 'Das Bild bewegt sich unter dem Zeiger - was es tut und wie stark, stellt das Design unter Bewegung › Seite ein; ohne Einstellung zoomt Nino sanft. Auf einem Touch-Gerät passiert nichts.',
 	'[[/_admin/builder/hint/dim-text]]'	=> 'Text auf einem Bild liest sich besser mit abgedunkeltem Bild.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'Ein Textschlüssel, eine Adresse oder - in einem Loop - ein Feld des Elements.',
 	'[[/_admin/builder/hint/sections-id]]'	=> 'Der Loop macht aus jedem Element eine Sektion, nummeriert nach der Id der Sektion: %s-1, %s-2 und so weiter. Die Id änderst Du im Feld Id oder im Titel.',

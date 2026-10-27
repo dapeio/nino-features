@@ -254,7 +254,12 @@ namespace Nino\Modules\Design {
 		 *	below main inherits - and which the Builder overrides per template at
 		 *	its wrap, and a section with an animation class of its own overrides
 		 *	again. No effect writes nothing, whatever strength or speed stand
-		 *	beside it: they belong to an effect.
+		 *	beside it: they belong to an effect. The hover of the pictures adds its
+		 *	handles to that rule, after the animation's - the custom properties the
+		 *	rules of Nino.css for nino-hover read (see Setup::HOVERS), for the kind and
+		 *	the strength, the middle one where there is none - and is the rule by
+		 *	itself where there is no effect. No kind writes nothing, which is the
+		 *	kernel's own gentle zoom, and where neither is set there is no rule on main.
 		 *
 		 *	@param		array 		$setup				A normalised setup
 		 *
@@ -267,6 +272,7 @@ namespace Nino\Modules\Design {
 			$air 			= Setup::WHITESPACE[ (int) ( $setup['whitespace'] ?? 0 ) ] ?? '1';
 			$motion 	= is_array( $setup['motion'] ?? null ) === true ? $setup['motion'] : [];
 			$effect 	= (string) ( $motion['effect'] ?? '' );
+			$hover 		= (string) ( $motion['hover'] ?? '' );
 
 			if( $width !== null ) {
 				$rules[] = ":root { --grid-max-width: ". $width[0]. "; --grid-gutter: ". $width[1]. "; }";
@@ -291,6 +297,8 @@ namespace Nino\Modules\Design {
 
 			$rules[] = ":root {\n". implode( "\n", $lines ). "\n}";
 
+			$declarations = [];
+
 			if( isset( Setup::EFFECTS[$effect] ) === true ) {
 
 				$declarations = Setup::EFFECTS[$effect][ (string) ( $motion['strength'] ?? '' ) ] ?? Setup::EFFECTS[$effect]['medium'];
@@ -298,6 +306,12 @@ namespace Nino\Modules\Design {
 
 				if( isset( Setup::SPEEDS[$speed] ) === true )
 					$declarations['--vpa-duration'] = Setup::SPEEDS[$speed];
+			}
+
+			if( isset( Setup::HOVERS[$hover] ) === true )
+				$declarations = array_merge( $declarations, Setup::HOVERS[$hover][ (string) ( $motion['hover-strength'] ?? '' ) ] ?? Setup::HOVERS[$hover]['medium'] );
+
+			if( $declarations !== [] ) {
 
 				$lines = [];
 

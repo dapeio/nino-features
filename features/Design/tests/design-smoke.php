@@ -773,6 +773,17 @@ $axisEntries = array_values( array_intersect( $axisNamed['en_US'], $axisNamed['d
 check( '...the two axes are told in one entry of the manual: the same entry names all seven tabs and all eight objects in both languages, by the words the panel draws them with'. ( $axisEntries === [] ? ' - no entry does in both: '. count( $axisNamed['en_US'] ). ' in English, '. count( $axisNamed['de_DE'] ). ' in German' : '' ),
 	$axisEntries !== [] && count( Setup::TABS ) === 7 && count( Setup::OBJECTS ) === 8 );
 
+// The hover of the pictures is told in an entry of its own, which names the class that makes a picture take part and the two controls by the words the panel draws them with - the same entry in both languages
+$hoverNamed = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $hoverLocale )
+	$hoverNamed[$hoverLocale] = $namedIn( [ 'nino-hover', $panelWord( 'motion/hover/label', $hoverLocale ), $panelWord( 'motion/hover-strength/label', $hoverLocale ) ], $hoverLocale );
+
+$hoverEntries = array_values( array_intersect( $hoverNamed['en_US'], $hoverNamed['de_DE'] ) );
+
+check( '...and so is the hover of the pictures: one entry names the class a picture says to take part and the two controls of the page\'s block, by the words the panel draws them with, in both languages'. ( $hoverEntries === [] ? ' - no entry does in both: '. count( $hoverNamed['en_US'] ). ' in English, '. count( $hoverNamed['de_DE'] ). ' in German' : '' ),
+	count( $hoverEntries ) === 1 && $panelWord( 'motion/hover/label', 'en_US' ) !== '' && $panelWord( 'motion/hover-strength/label', 'de_DE' ) !== '' );
+
 // The description is the line the feature is listed by: it names the seven tabs, each by the word the panel draws it with and as a word of its own - Type is no part of Typefaces
 $describedGaps = [];
 
@@ -1333,12 +1344,12 @@ $setup = Setup::normalize( $appData, [], $library, $notes );
 
 $firstTheme = Themes::read( $appData, $library, Themes::SHIPPED[0] ) ?? [];
 
-check( 'a setup out of nothing is every part on the set the first shipped theme names, the delivered size, the width, the whitespace, the radius and the animation Nino.css has, and no note',
+check( 'a setup out of nothing is every part on the set the first shipped theme names, the delivered size, the width, the whitespace, the radius and the animation and the hover of the pictures Nino.css has, and no note',
 	$notes === [] && array_keys( $setup ) === Setup::KEYS
 	&& $setup['parts'] === ( Themes::setup( $firstTheme )['parts'] ?? [] ) && array_keys( $setup['parts'] ) === array_keys( Setup::PARTS )
 	&& $setup['size'] === 0 && $setup['width'] === 0 && $setup['whitespace'] === 0
 	&& $setup['radius'] === 0 && $setup['radius-alt'] === 1 && $setup['radii'] === array_fill_keys( Setup::SURFACES, 'standard' )
-	&& $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ] );
+	&& $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ] );
 check( '...every named knob of the seven parts in the middle, the font roles in the face the wizard delivers and the palette the framework has',
 	$setup['knobs'] === array_map( static fn( array $kinds ): array => array_fill_keys( array_keys( $kinds ), 0 ), Setup::KNOBS )
 	&& array_keys( $setup['knobs'] ) === array_keys( Setup::PARTS )
@@ -1468,7 +1479,7 @@ foreach( Setup::defaults( $library ) as $key => $value ) {
 $unplaced = array_values( array_diff( $chosen, array_keys( Setup::LAYOUT ) ) );
 $unknown = array_values( array_diff( array_keys( Setup::LAYOUT ), $chosen ) );
 
-check( 'the panel is drawn from a table - Setup::LAYOUT has an entry for every key of the setup that a person chooses, and for no other: the seven templates, the root size, the width, the whitespace, the two radii and the corners of each kind of surface, every knob, the five font roles, the colours and the animation'
+check( 'the panel is drawn from a table - Setup::LAYOUT has an entry for every key of the setup that a person chooses, and for no other: the seven templates, the root size, the width, the whitespace, the two radii and the corners of each kind of surface, every knob, the five font roles, the colours, the animation and the hover of the pictures'
 	. ( $unplaced === [] && $unknown === [] ? '' : ' - without an entry: '. implode( ', ', array_slice( $unplaced, 0, 4 ) ). ' - naming no key: '. implode( ', ', array_slice( $unknown, 0, 4 ) ) ),
 	$unplaced === [] && $unknown === [] && $chosen !== [] && count( $chosen ) === count( array_unique( $chosen ) ) );
 
@@ -1556,7 +1567,7 @@ check( '...and the table puts every control in the row of its object: each templ
 		'colours/section' 			=> [ 'knobs/section/dim' ],
 		'colours/card' 					=> [ 'knobs/card/tone' ],
 		'colours/tables' 				=> [ 'knobs/tables/stripes' ],
-		'motion/page' 					=> [ 'motion/effect', 'motion/strength', 'motion/speed' ],
+		'motion/page' 					=> [ 'motion/effect', 'motion/strength', 'motion/speed', 'motion/hover', 'motion/hover-strength' ],
 		'motion/card' 					=> [ 'knobs/card/hover' ],
 		'motion/buttons' 				=> [ 'knobs/buttons/hover' ],
 	] );
@@ -1650,10 +1661,15 @@ check( '...and passes the kind of the knob on, so that a choice at 2, which a se
 	&& Setup::step( [ 'knobs' => [ 'tables' => [ 'zebra' => 2, 'scale' => 2 ] ] ], 'tables', 'scale' ) === 'most' );
 
 // The root size, the width, the whitespace and the animation of the page
-$setup = Setup::normalize( $appData, [ 'size' => 1, 'width' => '2', 'whitespace' => '-2', 'motion' => [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] ], $library );
+$setup = Setup::normalize( $appData, [ 'size' => 1, 'width' => '2', 'whitespace' => '-2', 'motion' => [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow', 'hover' => 'zoom-bright', 'hover-strength' => 'soft' ] ], $library );
 
-check( 'the size, the width, the whitespace and the animation are kept as they were chosen', $setup['size'] === 1 && $setup['width'] === 2 && $setup['whitespace'] === -2
-	&& $setup['motion'] === [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] );
+check( 'the size, the width, the whitespace, the animation and the hover of the pictures are kept as they were chosen', $setup['size'] === 1 && $setup['width'] === 2 && $setup['whitespace'] === -2
+	&& $setup['motion'] === [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow', 'hover' => 'zoom-bright', 'hover-strength' => 'soft' ] );
+check( '...every kind of hover and every strength of it is kept, one by one, and the strength is kept beside no kind as the strength of an effect is kept beside no effect - it waits in the setup; a kind with no strength has none',
+	array_filter( array_keys( Setup::HOVERS ), static fn( string $kind ): bool => Setup::normalize( $appData, [ 'motion' => [ 'hover' => $kind ] ], $library )['motion']['hover'] !== $kind ) === []
+	&& array_filter( Setup::STRENGTHS, static fn( string $strength ): bool => Setup::normalize( $appData, [ 'motion' => [ 'hover' => 'bright', 'hover-strength' => $strength ] ], $library )['motion']['hover-strength'] !== $strength ) === []
+	&& Setup::normalize( $appData, [ 'motion' => [ 'hover-strength' => 'hard' ] ], $library )['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => 'hard' ]
+	&& Setup::normalize( $appData, [ 'motion' => [ 'hover' => 'none' ] ], $library )['motion']['hover-strength'] === '' );
 check( '...width -2, -1, 0, 1 and 2 are the five widths', array_map( static fn( int $width ): int => Setup::normalize( $appData, [ 'width' => $width ], $library )['width'], [ -2, -1, 0, 1, 2 ] ) === [ -2, -1, 0, 1, 2 ] );
 check( '...whitespace -2, -1, 0, 1 and 2 are the five positions of the air, Setup::WHITESPACE is keyed by them with the number the kernel\'s --whitespace-scale is set to, and the middle one is what a setup out of nothing has',
 	array_map( static fn( int $air ): int => Setup::normalize( $appData, [ 'whitespace' => $air ], $library )['whitespace'], [ -2, -1, 0, 1, 2 ] ) === [ -2, -1, 0, 1, 2 ]
@@ -1665,13 +1681,13 @@ check( '...the size is one of five, -2 to +2, each kept as it was chosen - and t
 	&& Setup::normalize( $appData, [], $library )['size'] === 0 );
 
 $notes = [];
-$setup = Setup::normalize( $appData, [ 'size' => 3, 'width' => 3, 'whitespace' => 3, 'motion' => [ 'effect' => 'spin', 'strength' => 'loud', 'speed' => 'warp', 'delay' => 1 ] ], $library, $notes );
+$setup = Setup::normalize( $appData, [ 'size' => 3, 'width' => 3, 'whitespace' => 3, 'motion' => [ 'effect' => 'spin', 'strength' => 'loud', 'speed' => 'warp', 'hover' => 'lift', 'hover-strength' => 'loud', 'delay' => 1 ] ], $library, $notes );
 
-check( 'a size, a width, a whitespace, an effect, a strength or a speed that is none of the choices is the default, not an error - 3 is no size, width or whitespace, and neither is a word: the xs to xl of the model before are mapped to nothing',
-	$setup['size'] === 0 && $setup['width'] === 0 && $setup['whitespace'] === 0 && $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ]
+check( 'a size, a width, a whitespace, an effect, a strength, a speed, a kind of hover or a strength of it that is none of the choices is the default, not an error - 3 is no size, width or whitespace, and neither is a word: the xs to xl of the model before are mapped to nothing',
+	$setup['size'] === 0 && $setup['width'] === 0 && $setup['whitespace'] === 0 && $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ]
 	&& array_filter( [ 'XL', 'xxl', 'xxs', 'xs', 's', 'm', 'l', 'xl', 'medium', '', ' s' ], static fn( string $size ): bool => Setup::normalize( $appData, [ 'size' => $size, 'width' => $size, 'whitespace' => $size ], $library )['size'] !== 0 ) === []
 	&& array_filter( [ 3, -3, 2.6, -2.6, 99 ], static fn( int|float $size ): bool => Setup::normalize( $appData, [ 'size' => $size, 'width' => $size, 'whitespace' => $size ], $library )['size'] !== 0 || Setup::normalize( $appData, [ 'width' => $size ], $library )['width'] !== 0 || Setup::normalize( $appData, [ 'whitespace' => $size ], $library )['whitespace'] !== 0 ) === [] );
-check( '...and a key of the animation that is none of its three is dropped and named', count( $notes ) === 1 && str_contains( $notes[0], '"delay"' ) === true );
+check( '...and a key of the motion that is none of its five is dropped and named - the value that is none of the choices is not', count( $notes ) === 1 && str_contains( $notes[0], '"delay"' ) === true );
 
 /*	The radius of the surfaces: two strengths, the standard one and the alternative one, each a position of the one table Setup::RADIUS, and for each kind of
 	surface the word of the strength it takes. A setup out of nothing stands where Nino.css does - the standard strength at the kernel's small radius, the alternative
@@ -3084,7 +3100,96 @@ else {
 	check( '...an effect with no strength is the middle one, and the rule is on main - where every animation below it inherits it from',
 		$sorted( designDeclarations( designBlock( designPlain( $pageOf( [ 'motion' => [ 'effect' => 'zoom' ] ] ) ), 'main {' ) ) ) === $sorted( $vpa['zoom']['medium'] )
 		&& preg_match( '/^main \{$/m', $pageOf( [ 'motion' => [ 'effect' => 'zoom' ] ] ) ) === 1 );
+
+	/*	The hover of the pictures is the handles Nino.css declares for the rules of nino-hover - the custom properties --image-hover-* on :root, in a block of their own - and the compiler writes
+		some of them on main, after the animation's. HOVERS is held in code, so this is where it is held to the stylesheet: every property a kind writes is one the kernel declares, and the only one it
+		declares and no kind writes is the time the change takes, which stays the kernel's. A handle the kernel gains is one the table has to decide about	*/
+	preg_match_all( '/:root\s*\{([^}]*)\}/', designPlain( $ninoCss ), $rootBlocks );
+
+	$kernelHover = [];
+
+	foreach( $rootBlocks[1] as $rootBlock )
+		$kernelHover += array_filter( designDeclarations( $rootBlock ), static fn( string $property ): bool => str_starts_with( $property, '--image-hover-' ), ARRAY_FILTER_USE_KEY );
+
+	$hoverWritten = [];
+
+	foreach( Setup::HOVERS as $hoverStrengths )
+		foreach( $hoverStrengths as $hoverDeclarations )
+			$hoverWritten = array_merge( $hoverWritten, array_keys( $hoverDeclarations ) );
+
+	$hoverWritten = array_values( array_unique( $hoverWritten ) );
+
+	check( 'the hover of the pictures names only handles Nino.css declares on :root, and all of them but the time the change takes - which stays the kernel\'s and is never written',
+		$hoverWritten !== [] && array_diff( $hoverWritten, array_keys( $kernelHover ) ) === [] && array_values( array_diff( array_keys( $kernelHover ), $hoverWritten ) ) === [ '--image-hover-duration' ] );
 }
+
+/*	The hover of the pictures is written into the one rule on main that the animation writes, after the animation's: the properties of Setup::HOVERS for the kind and the strength - the middle one
+	where there is none -, nothing for no kind, the rule by itself where there is no effect, and no rule on main where neither is set	*/
+$mainOf = static function( array $motion ) use ( $pageOf ): array {
+
+	$rule = designDeclarations( designBlock( designPlain( $pageOf( [ 'motion' => $motion ] ) ), 'main {' ) );
+
+	ksort( $rule );
+
+	return $rule;
+};
+$hoverDrift = [];
+
+foreach( Setup::HOVERS as $hoverKind => $hoverStrengths )
+	foreach( Setup::STRENGTHS as $hoverStrength ) {
+
+		$wantedRule = Setup::HOVERS[$hoverKind][$hoverStrength];
+
+		ksort( $wantedRule );
+
+		if( $wantedRule === [] || $mainOf( [ 'hover' => $hoverKind, 'hover-strength' => $hoverStrength ] ) !== $wantedRule )
+			$hoverDrift[] = $hoverKind. '-'. $hoverStrength;
+	}
+
+check( 'every kind of hover and every strength of it writes the properties of Setup::HOVERS, as the rule on main and nothing else ('. count( Setup::HOVERS ) * count( Setup::STRENGTHS ). ' of them)'
+	. ( $hoverDrift === [] ? '' : ' - drifted: '. implode( ', ', $hoverDrift ) ), $hoverDrift === [] && array_keys( Setup::HOVERS ) !== [] );
+check( '...a kind with no strength is the middle one, and no kind writes nothing whatever strength stands beside it - the page is then what it is with no motion at all',
+	array_filter( array_keys( Setup::HOVERS ), static function( string $kind ) use ( $mainOf ): bool {
+
+		$middle = Setup::HOVERS[$kind]['medium'];
+
+		ksort( $middle );
+
+		return $mainOf( [ 'hover' => $kind ] ) !== $middle;
+	} ) === [] && Setup::STRENGTHS[1] === 'medium'
+	&& array_filter( Setup::STRENGTHS, static fn( string $strength ): bool => $pageOf( [ 'motion' => [ 'hover' => '', 'hover-strength' => $strength ] ] ) !== $radiusOfNothing ) === []
+	&& $pageOf( [ 'motion' => [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ] ] ) === $radiusOfNothing && str_contains( $radiusOfNothing, 'main' ) === false );
+check( '...it comes after the animation in the one rule on main, which is alone in the page - and is the rule by itself where there is no effect',
+	( function() use ( $pageOf ): bool {
+
+		$both = $pageOf( [ 'motion' => [ 'effect' => 'zoom', 'strength' => 'soft', 'speed' => 'slow', 'hover' => 'bright', 'hover-strength' => 'hard' ] ] );
+		$order = array_keys( designDeclarations( designBlock( designPlain( $both ), 'main {' ) ) );
+		$alone = $pageOf( [ 'motion' => [ 'hover' => 'none' ] ] );
+
+		return substr_count( $both, 'main {' ) === 1 && $order === array_merge( array_keys( Setup::EFFECTS['zoom']['soft'] ), [ '--vpa-duration' ], array_keys( Setup::HOVERS['bright']['hard'] ) )
+			&& substr_count( $alone, 'main {' ) === 1 && array_keys( designDeclarations( designBlock( designPlain( $alone ), 'main {' ) ) ) === array_keys( Setup::HOVERS['none']['medium'] );
+	} )() );
+
+/*	The kinds are described by what they do, and the strengths by how much: zoom grows the picture and brighten brightens it, each more with every strength and from more than the factor 1 - brighten
+	keeps the size, which is the factor 1, or the zoom Nino.css has by itself would come with it -, zoom and brighten do both with the values of the other two, and none is every handle at the value that
+	does nothing, the same for the three strengths	*/
+$hoverNumbers = static fn( string $kind, string $property ): array => array_map( static fn( string $strength ): float => (float) ( Setup::HOVERS[$kind][$strength][$property] ?? 0 ), Setup::STRENGTHS );
+$hoverGrows = static fn( array $values ): bool => $values[0] > 1 && $values[0] < $values[1] && $values[1] < $values[2];
+$hoverNeutral = [];
+
+foreach( Setup::STRENGTHS as $hoverStrength ) {
+
+	$neutral = Setup::HOVERS['none'][$hoverStrength];
+
+	$hoverNeutral[] = (float) ( $neutral['--image-hover-scale'] ?? 0 ) === 1.0 && (float) ( $neutral['--image-hover-lift'] ?? 1 ) === 0.0 && (float) ( $neutral['--image-hover-brightness'] ?? 0 ) === 1.0
+		&& ( $neutral['--image-hover-shadow'] ?? '' ) === 'none' && count( $neutral ) === 4 && $neutral === Setup::HOVERS['none']['medium'];
+}
+
+check( 'the table of the hover says what each kind is: zoom grows the picture and brighten brightens it - more with every strength, from more than 1 -, brighten keeps the size, zoom and brighten is both, and none leaves everything as it is',
+	$hoverGrows( $hoverNumbers( 'zoom', '--image-hover-scale' ) ) === true && $hoverGrows( $hoverNumbers( 'bright', '--image-hover-brightness' ) ) === true && $hoverNumbers( 'bright', '--image-hover-scale' ) === [ 1.0, 1.0, 1.0 ]
+	&& array_filter( Setup::STRENGTHS, static fn( string $strength ): bool => array_keys( Setup::HOVERS['zoom'][$strength] ) !== [ '--image-hover-scale' ] ) === []
+	&& array_filter( Setup::STRENGTHS, static fn( string $strength ): bool => Setup::HOVERS['zoom-bright'][$strength] !== array_merge( Setup::HOVERS['bright'][$strength], Setup::HOVERS['zoom'][$strength] ) ) === []
+	&& $hoverNeutral === [ true, true, true ] && array_keys( Setup::HOVERS ) === [ 'zoom', 'bright', 'zoom-bright', 'none' ] );
 
 // base.css assigns the role --grid-max-width: var(--nino-measure), as the delivered theme.css does: the page comes after it and wins
 check( 'the compiled sheet carries the page where it was asked for: the width and the animation in section 6, after the roles - so they are the ones that apply',
@@ -3984,14 +4089,14 @@ check( 'a template of any of the seven parts names the knobs it answers to, each
 	&& ( $listed['parts'][2]['catalogue'][ $defaultSets['section'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['section'] )
 	&& ( $listed['parts'][0]['catalogue'][ $defaultSets['header'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['header'] )
 	&& ( $listed['parts'][1]['catalogue'][ $defaultSets['footer'] ]['knobs'] ?? null ) === array_keys( Setup::KNOBS['footer'] ) );
-check( 'and the screen is handed the vocabulary it draws: the parts with the kind of each knob, the five steps, the size, the width, the whitespace and the two radii as numbers, the strength of each kind of surface and the two words there are, the effects with their strengths and speeds - and no list of sizes: a strip numbers them, and none of the surfaces: the strengths name the kinds',
+check( 'and the screen is handed the vocabulary it draws: the parts with the kind of each knob, the five steps, the size, the width, the whitespace and the two radii as numbers, the strength of each kind of surface and the two words there are, the effects and the kinds of hover with their strengths and speeds - and no list of sizes: a strip numbers them, and none of the surfaces: the strengths name the kinds',
 	( $listed['kinds'] ?? null ) === Setup::KNOBS && ( $listed['steps'] ?? null ) === Setup::STEPS && count( $listed['steps'] ) === 5
 	&& array_key_exists( 'sizes', $listed ) === false && ( $listed['size'] ?? null ) === $onFile['size'] && is_int( $listed['size'] ) === true && ( $listed['width'] ?? null ) === 0 && is_int( $listed['width'] ) === true
 	&& ( $listed['whitespace'] ?? null ) === 0 && is_int( $listed['whitespace'] ) === true
 	&& ( $listed['radius'] ?? null ) === 0 && is_int( $listed['radius'] ) === true && ( $listed['radius-alt'] ?? null ) === 1 && is_int( $listed['radius-alt'] ) === true
 	&& ( $listed['radii'] ?? null ) === array_fill_keys( Setup::SURFACES, 'standard' ) && array_key_exists( 'surfaces', $listed ) === false && ( $listed['radiusWords'] ?? null ) === Setup::RADIUS_WORDS
-	&& ( $listed['motion'] ?? null ) === [ 'effect' => '', 'strength' => '', 'speed' => '' ]
-	&& ( $listed['effects'] ?? null ) === array_keys( Setup::EFFECTS ) && ( $listed['strengths'] ?? null ) === Setup::STRENGTHS
+	&& ( $listed['motion'] ?? null ) === [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ]
+	&& ( $listed['effects'] ?? null ) === array_keys( Setup::EFFECTS ) && ( $listed['hovers'] ?? null ) === array_keys( Setup::HOVERS ) && ( $listed['strengths'] ?? null ) === Setup::STRENGTHS
 	&& ( $listed['speeds'] ?? null ) === array_keys( Setup::SPEEDS ) );
 check( '...and where every control of the panel stands: the table of the model with the seven tabs and the eight objects it is made of - the screen is drawn from it and from nothing else',
 	( $listed['layout'] ?? null ) === [ 'tabs' => Setup::TABS, 'objects' => Setup::OBJECTS, 'controls' => Setup::LAYOUT ] );
@@ -4014,16 +4119,16 @@ check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] 
 	'parts' => array_intersect_key( $richParts, array_flip( [ 'section', 'card', 'buttons', 'lists', 'tables' ] ) ),
 	'knobs' => $every( 1 ),
 	'size' => 1, 'width' => 2, 'whitespace' => -1, 'radius' => 2, 'radius-alt' => -1, 'radii' => [ 'column' => 'alternative' ],
-	'motion' => [ 'effect' => 'slide-left', 'strength' => 'soft', 'speed' => 'fast' ],
+	'motion' => [ 'effect' => 'slide-left', 'strength' => 'soft', 'speed' => 'fast', 'hover' => 'bright', 'hover-strength' => 'hard' ],
 	'fonts' => [ 'title' => [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.4' ] ],
 	'colours' => [ 'mode' => 'dark' ],
 ] );
 $stored = Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
 
-check( 'saving stores the selection: the templates, the size, the width, the whitespace, the radius, the animation, the fonts and the mode', $status === 200
+check( 'saving stores the selection: the templates, the size, the width, the whitespace, the radius, the animation, the hover of the pictures, the fonts and the mode', $status === 200
 	&& $stored['parts']['section'] === $richParts['section'] && $stored['parts']['card'] === $richParts['card'] && $stored['parts']['tables'] === $richParts['tables'] && $stored['parts']['buttons'] === $richParts['buttons'] && $stored['size'] === 1 && $stored['width'] === 2 && $stored['whitespace'] === -1
 	&& $stored['radius'] === 2 && $stored['radius-alt'] === -1 && $stored['radii'] === array_replace( array_fill_keys( Setup::SURFACES, 'standard' ), [ 'column' => 'alternative' ] )
-	&& $stored['motion'] === [ 'effect' => 'slide-left', 'strength' => 'soft', 'speed' => 'fast' ]
+	&& $stored['motion'] === [ 'effect' => 'slide-left', 'strength' => 'soft', 'speed' => 'fast', 'hover' => 'bright', 'hover-strength' => 'hard' ]
 	&& $stored['fonts']['title'] === [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.4' ]
 	&& $stored['colours']['mode'] === 'dark' );
 check( '...and says the file no longer answers to it, rather than moving it', ( $saved['current'] ?? null ) === false
@@ -4894,6 +4999,29 @@ foreach( $stacks as $stack )
 check( 'the stack of cards is drawn as Nino 1.6 draws one: every cell of a stack is a div that holds one card, and no card is a cell'. ( $bareCells === [] ? '' : ' - '. implode( ', ', $bareCells ) ),
 	$stacks !== [] && $bareCells === [] );
 
+/*	The first row of cards frames its pictures for the hover of the pictures, as the kernel frames the picture of a card for a class of its own: a div that carries the classes of that frame and nino-hover,
+	round one picture. The two controls of the hover look at the cards (CONTROL_ANCHORS in admin.js), so the pictures they change are the ones the frame scrolls to; the cards after the first row keep the
+	bare picture, and the specimen shows both	*/
+$framedPictures = $byClass( $xpath, 'nino-hover', $sections[1] );
+$firstCards = array_slice( $byClass( $xpath, 'nino-card', $sections[1] ), 0, 3 );
+$framesWrong = array_filter( $framedPictures, static function( DOMNode $frame ): bool {
+
+	if( $frame instanceof DOMElement === false )
+		return true;
+
+	$tokens = array_values( array_filter( explode( ' ', $frame->getAttribute( 'class' ) ) ) );
+	$inside = $frame->getElementsByTagName( 'img' );
+
+	sort( $tokens );
+
+	return $frame->tagName !== 'div' || $tokens !== [ 'nino-card-img', 'nino-hover', 'nino-image' ] || $inside->length !== 1 || ( $inside->item( 0 )?->getAttribute( 'class' ) ?? 'x' ) !== '';
+} );
+
+check( 'the first row of cards frames its pictures for the hover of the pictures: a div with the classes of the frame the kernel gives the picture of a card and nino-hover, round one picture of no class of its own - in each of the first three cards, once, and in no other',
+	count( $framedPictures ) === 3 && $framesWrong === [] && count( $firstCards ) === 3 && array_filter( $firstCards, static fn( DOMNode $card ): bool => count( $byClass( $xpath, 'nino-hover', $card ) ) !== 1 ) === [] );
+check( '...and a card after them keeps the picture bare, an img with the class nino-card-img, so that the specimen shows a picture with the hover and one without',
+	array_filter( $byClass( $xpath, 'nino-card-img', $sections[1] ), static fn( DOMNode $node ): bool => $node->nodeName === 'img' ) !== [] );
+
 /*	The animation of the page is a choice of the Motion tab, and a page that
 	carries no viewport animation shows none of it: the cell of the hero, the
 	cards at the head of the page, the pricing items and the figures carry
@@ -5537,6 +5665,18 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) );
 	// ...and the ones a theme the feature ships chooses: all of them but the palette. A brand colour is the project's
 	$choosesShipped = array_values( array_diff( $chooses, [ 'colours' ] ) );
+	/*	The four themes the feature ships were written before the hover of the pictures was a part of the motion, and they stay as they were until the themes are looked at as a whole: they name the
+		parts of the motion they were written with, and the hover of the pictures reads as the default - what the screen holds of such a file is what normalising makes of it. $completed is a file's setup as it
+		stands once that default is put where the file names none, which is the only thing a shipped file may leave out	*/
+	$later = [ 'hover', 'hover-strength' ];
+	$completed = static function( array $given ) use ( $later, $library ): array {
+
+		foreach( $later as $part )
+			if( is_array( $given['motion'] ?? null ) === true && array_key_exists( $part, $given['motion'] ) === false )
+				$given['motion'][$part] = Setup::defaults( $library )['motion'][$part];
+
+		return $given;
+	};
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
 		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ]
@@ -5753,7 +5893,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order';
 		if( $notes !== [] )
 			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
-		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $given )
+		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $completed( $given ) )
 			$problems[] = 'a setup that is not its own normalisation';
 
 		$ranged = [];
@@ -5793,10 +5933,10 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$themeProblems[] = $slug. ' - '. implode( '; ', $problems );
 	}
 
-	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its seven parts in the library, every position of the thirty-seven knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation, with no note and no palette: the brand colour is the project\'s'
+	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its seven parts in the library, every position of the thirty-seven knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation - but for the parts that came after it was written, which read as the default - with no note and no palette: the brand colour is the project\'s'
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
-		Themes::setup( $shippedRaw[$shippedFirst] ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
+		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
 
 	// The compile
 	$notes = [];
@@ -5897,7 +6037,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	check( '...and design/list then says them, and the active theme as its file holds it: the row of the list, its own css, and its setup normalised against the library - the css the setup has is the one that was typed, not the theme\'s',
 		$listedActive['theme'] === $shippedFirst && $listedActive['css'] === ".a { color: inherit; }\n"
-		&& $listedActive['active'] === [ 'slug' => $shippedFirst, 'name' => $shippedWords['de_DE'][$shippedFirst][0], 'description' => $shippedWords['de_DE'][$shippedFirst][1], 'shipped' => true, 'setup' => Themes::setup( $shippedOne ), 'css' => Themes::css( $shippedOne ) ]
+		&& $listedActive['active'] === [ 'slug' => $shippedFirst, 'name' => $shippedWords['de_DE'][$shippedFirst][0], 'description' => $shippedWords['de_DE'][$shippedFirst][1], 'shipped' => true, 'setup' => $completed( Themes::setup( $shippedOne ) ), 'css' => Themes::css( $shippedOne ) ]
 		&& $listedActive['active']['css'] !== $listedActive['css'] );
 
 	/*	The theme the website runs is the one of the last apply - the record that apply left in the setup, under the setup it applied - and not the theme of a draft that was saved
@@ -5948,7 +6088,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	check( 'loading a theme answers what the screen takes over - its setup as the screen holds one, its css, its name and description in the language of the workbench, whether it is shipped - and nothing about fonts that are missing, as none are',
 		$status === 200 && array_keys( $loaded ) === [ 'slug', 'name', 'description', 'shipped', 'setup', 'css', 'missing', 'notes' ] && $loaded['slug'] === $shippedFirst && $loaded['name'] === $shippedWords['de_DE'][$shippedFirst][0]
-		&& $loaded['description'] === $shippedWords['de_DE'][$shippedFirst][1] && $loaded['shipped'] === true && $loaded['setup'] === Themes::setup( $shippedOne ) && $loaded['css'] === Themes::css( $shippedOne )
+		&& $loaded['description'] === $shippedWords['de_DE'][$shippedFirst][1] && $loaded['shipped'] === true && $loaded['setup'] === $completed( Themes::setup( $shippedOne ) ) && $loaded['css'] === Themes::css( $shippedOne )
 		&& $loaded['missing'] === [] && $loaded['notes'] === [] );
 	check( '...and no palette: a theme the feature ships has none to take over, so what answers has no colours at all and the screen keeps the ones it has',
 		array_key_exists( 'colours', $loaded['setup'] ) === false && array_keys( $loaded['setup'] ) === $choosesShipped );
@@ -6375,6 +6515,11 @@ foreach( Setup::STRENGTHS as $strength )
 	$wanted[] = 'motion/strength/'. $strength;
 foreach( array_keys( Setup::SPEEDS ) as $speed )
 	$wanted[] = 'motion/speed/'. $speed;
+array_push( $wanted, 'motion/hover/label', 'motion/hover-strength/label' );
+foreach( array_keys( Setup::HOVERS ) as $hover )
+	$wanted[] = 'motion/hover/'. $hover;
+foreach( Setup::STRENGTHS as $strength )
+	$wanted[] = 'motion/hover-strength/'. $strength;
 foreach( Fonts::ROLES as $role )
 	$wanted[] = 'font/role/'. $role;
 foreach( [ 'family', 'weight', 'uppercase', 'size' ] as $head )

@@ -102,7 +102,7 @@ return [
 	'[[/_admin/design/radii/standard]]'							=> 'Standard',
 	'[[/_admin/design/radii/alternative]]'						=> 'Alternative',
 
-	// The animation of the page: what Nino.css does as things come into view, for everything that has none of its own
+	// The animation of the page: what Nino.css does as things come into view, for everything that has none of its own - and the hover of its pictures, which have the strengths of the animation too
 	'[[/_admin/design/motion/default]]'							=> 'Nino\'s default',
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effect',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
@@ -121,6 +121,15 @@ return [
 	'[[/_admin/design/motion/speed/fast]]'						=> 'Fast',
 	'[[/_admin/design/motion/speed/medium]]'						=> 'Medium',
 	'[[/_admin/design/motion/speed/slow]]'						=> 'Slow',
+	'[[/_admin/design/motion/hover/label]]'						=> 'Images: hover effect',
+	'[[/_admin/design/motion/hover/zoom]]'						=> 'Zoom',
+	'[[/_admin/design/motion/hover/bright]]'					=> 'Brighten',
+	'[[/_admin/design/motion/hover/zoom-bright]]'				=> 'Zoom and brighten',
+	'[[/_admin/design/motion/hover/none]]'						=> 'None',
+	'[[/_admin/design/motion/hover-strength/label]]'			=> 'Images: strength',
+	'[[/_admin/design/motion/hover-strength/soft]]'				=> 'Soft',
+	'[[/_admin/design/motion/hover-strength/medium]]'			=> 'Medium',
+	'[[/_admin/design/motion/hover-strength/hard]]'				=> 'Hard',
 
 	// Type: the five roles of Nino.css, as a table
 	'[[/_admin/design/label/fonts]]'								=> 'Fonts',

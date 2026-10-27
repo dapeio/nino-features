@@ -24,8 +24,8 @@ namespace Nino\Modules {
 	 *										Tables - plus a header and a footer, which are the two
 	 *										parts that bring markup with them; from
 	 *										a knob for each thing a template lets go of; from the root
-	 *										size, the width, the whitespace and the animation of the page; from the
-	 *										five font roles; and from the palette.
+	 *										size, the width, the whitespace, the animation of the page and the
+	 *										hover of its pictures; from the five font roles; and from the palette.
 	 *
 	 *										Eight pieces, and they are deliberately separable:
 	 *

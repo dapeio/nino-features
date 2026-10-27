@@ -115,9 +115,12 @@
 			two variants, quiet and loud, which are sizes of the type of a section and are looked at where the specimen
 			sets every title three times, in the typography block (#type); and the eight controls of the palette,
 			which are the page's and are looked at in the grounds (#colours), where the page's own anchor is the top of
-			the page. The templates have none: a template is looked at where its object is (OBJECT_ANCHORS)	*/
+			the page; and the two controls of the hover of the pictures, which are the page's as well and are looked at in
+			the cards (#cards), whose first row of pictures says nino-hover. The templates have none: a template is looked at
+			where its object is (OBJECT_ANCHORS)	*/
 		CONTROL_ANCHORS	: { 'knobs/section/quiet' : 'type', 'knobs/section/loud' : 'type',
-			'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours' },
+			'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
+			'motion/hover' : 'cards', 'motion/hover-strength' : 'cards' },
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
 			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
@@ -127,6 +130,12 @@
 		/*	The word the label and the hint of a strip of the page stand under (/_admin/design/label/<word> and
 			/_admin/design/hint/<word>), by the key the table has the strip under	*/
 		PAGE_WORDS	: { size : 'size', width : 'pagewidth', whitespace : 'whitespace', radius : 'radius', 'radius-alt' : 'radius-alt' },
+
+		/*	The parts of the motion that wait for another, by the part: the part it follows and the values of that part at which it
+			means nothing. The strength and the speed of the animation mean something once there is an effect, the strength of the hover
+			once there is a kind of it that has one - not the empty kind, which is Nino.css's own, and not none. Until then their selects
+			are switched off (see _motionOff()) and their heads say nothing	*/
+		MOTION_FOLLOWS	: { strength : [ 'effect', [ '' ] ], speed : [ 'effect', [ '' ] ], 'hover-strength' : [ 'hover', [ '', 'none' ] ] },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
@@ -2543,8 +2552,9 @@
 		 *	is: it says nothing. The corners of a section - one choice for the cover, the row and the column - count once, and
 		 *	say the word the strip shows, which is the cover's. A part of the palette says its hex - the brand colour, and the
 		 *	second colour where one is set, which stands for the Harmony it ends - or its label and the word of its position,
-		 *	the mode too; a part of the animation says its label and the word it is set to, the strength and the speed only
-		 *	while there is an effect, since their selects are switched off until then (see _colourSaid()). A template says
+		 *	the mode too (see _colourSaid()); a part of the motion says its label and the word it is set to, the strength and the
+		 *	speed of the animation only while there is an effect and the strength of the hover of the pictures only while there is
+		 *	a kind of it that has one, since their selects are switched off until then (see MOTION_FOLLOWS). A template says
 		 *	nothing here: it is no position, and the head of its block names it whatever it is (see _summary())
 		 *
 		 *	@param		{Array}		keys			The keys of the control, as _rows() has them
@@ -2607,9 +2617,10 @@
 
 				const part = path[1];
 				const value = ( edit.motion || {} )[part] || '';
+				const follows = design.MOTION_FOLLOWS[part];
 
-				// Strength and speed mean something once there is an effect: until then their selects are switched off, and they say nothing
-				if( value === ( ( normal.motion || {} )[part] || '' ) || ( part !== 'effect' && ( edit.motion.effect || '' ) === '' ) )
+				// A part that waits for another means something once that has a value (MOTION_FOLLOWS): until then its select is switched off, and it says nothing
+				if( value === ( ( normal.motion || {} )[part] || '' ) || ( follows !== undefined && follows[1].indexOf( ( edit.motion || {} )[ follows[0] ] || '' ) !== -1 ) )
 					return [];
 
 				return [ design._said( Nino.content.getText('/_admin/design/motion/'+ part+ '/label'), design._motionOptions( part ), value ) ];
@@ -2680,10 +2691,10 @@
 		/**
 		 *	The controls of a row into the body of its block, in the order of the table. What a control is drawn as
 		 *	follows from the first segment of its key: a template (parts), a knob (knobs), the corners of a kind of
-		 *	surface (radii), a font role (fonts), a part of the animation (motion), a part of the palette (colours) - and a
+		 *	surface (radii), a font role (fonts), a part of the motion of the page (motion), a part of the palette (colours) - and a
 		 *	strip of the page for the rest: the root size, the width, the whitespace and the two radii. Every control
 		 *	carries the keys it stands for in data-control, joined by a space. The five roles are the rows of one table
-		 *	under the heading of the fonts, the three parts of the animation the fields of one grid, and the palette's
+		 *	under the heading of the fonts, the five parts of the motion of the page the fields of one grid, and the palette's
 		 *	knobs follow the brand colour under the heading Tuning
 		 *
 		 *	@param		{Element}	card			The body of the block
@@ -2768,9 +2779,11 @@
 				put( design._pageStrip( keys[0] ) );
 			} );
 
-			// Strength and speed only mean something once there is an effect
-			if( fields.strength !== undefined || fields.speed !== undefined )
-				design._motionOff( [ fields.strength, fields.speed ].map( function( field ) { return field === undefined ? null : field.querySelector('select') } ) );
+			// A part of the motion that waits for another only means something once that has a value
+			const selects = {};
+
+			Object.keys( fields ).forEach( function( key ) { selects[key] = fields[key].querySelector('select') } );
+			design._motionOff( selects );
 		},
 
 		/**
@@ -2869,10 +2882,10 @@
 		},
 
 		/**
-		 *	One of the three parts of the animation of the page, as a select: its effect, its strength or its speed.
-		 *	'' is what Nino.css does by itself, and is what a fresh setup has
+		 *	One of the five parts of the motion of the page, as a select: the effect, the strength and the speed of its animation, the kind and
+		 *	the strength of the hover of its pictures. '' is what Nino.css does by itself, and is what a fresh setup has
 		 *
-		 *	@param		{string}	key				effect, strength or speed
+		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
 		 *
 		 *	@return		{Element}
 		 */
@@ -2886,17 +2899,18 @@
 		},
 
 		/**
-		 *	What the select of one of the three parts of the animation offers, and what the head of its block says a value
-		 *	of it is: the default first, then a word for each value of the answer
+		 *	What the select of one of the five parts of the motion offers, and what the head of its block says a value
+		 *	of it is: the default first, then a word for each value of the answer - the strength of the hover has the three
+		 *	of the animation
 		 *
-		 *	@param		{string}	key				effect, strength or speed
+		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
 		 *
 		 *	@return		{Array}						{ value, label }
 		 */
 		_motionOptions : function( key ) {
 
 			const design = Nino.admin.design;
-			const values = { effect : design._data.effects, strength : design._data.strengths, speed : design._data.speeds }[key] || [];
+			const values = { effect : design._data.effects, strength : design._data.strengths, speed : design._data.speeds, hover : design._data.hovers, 'hover-strength' : design._data.strengths }[key] || [];
 
 			return [ { value : '', label : Nino.content.getText('/_admin/design/motion/default') } ].concat( values.map( function( value ) {
 				return { value : value, label : Nino.content.getText('/_admin/design/motion/'+ key+ '/'+ value ) };
@@ -2904,20 +2918,25 @@
 		},
 
 		/**
-		 *	Strength and speed only mean something once there is an effect: until
-		 *	then they are switched off rather than left to say nothing
+		 *	The parts of the motion that wait for another only mean something once that has a value (MOTION_FOLLOWS): the strength and
+		 *	the speed of the animation once there is an effect, the strength of the hover once there is a kind of it that has one. Until
+		 *	then their selects are switched off rather than left to say nothing
 		 *
-		 *	@param		{Array}		selects			The two controls
+		 *	@param		{Object}	selects			The selects that are drawn, by the part: one that is not there is left out
 		 *
 		 *	@return		void
 		 */
 		_motionOff : function( selects ) {
 
-			const none = ( Nino.admin.design._edit.motion.effect || '' ) === '';
+			const design = Nino.admin.design;
 
-			selects.forEach( function( select ) {
+			Object.keys( design.MOTION_FOLLOWS ).forEach( function( part ) {
+
+				const select = selects[part];
+				const follows = design.MOTION_FOLLOWS[part];
+
 				if( select !== null && select !== undefined )
-					select.disabled = none;
+					select.disabled = follows[1].indexOf( design._edit.motion[ follows[0] ] || '' ) !== -1;
 			} );
 		},
 
@@ -2991,20 +3010,28 @@
 		},
 
 		/**
-		 *	Choose one thing of the animation
+		 *	Choose one thing of the motion of the page: a part of its animation or of the hover of its pictures
 		 *
-		 *	@param		{string}	key				effect, strength or speed
+		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
 		 *	@param		{string}	value			'' is what Nino.css does by itself
 		 *
 		 *	@return		void
 		 */
 		_setMotion : function( key, value ) {
 
-			Nino.admin.design._edit.motion[key] = value;
-			Nino.admin.design._target = Nino.admin.design._anchorOf( 'motion/'+ key );
-			Nino.admin.design._replays = true;
-			Nino.admin.design._motionOff( [ dc.getElementById('design-motion-strength'), dc.getElementById('design-motion-speed') ] );
-			Nino.admin.design._preview();
+			const design = Nino.admin.design;
+			const selects = {};
+
+			design._edit.motion[key] = value;
+			design._target = design._anchorOf( 'motion/'+ key );
+
+			// A change of the animation plays it again; the hover of the pictures is seen under the pointer, and nothing is played
+			if( key.indexOf('hover') !== 0 )
+				design._replays = true;
+
+			Object.keys( design.MOTION_FOLLOWS ).forEach( function( part ) { selects[part] = dc.getElementById( 'design-motion-'+ part ) } );
+			design._motionOff( selects );
+			design._preview();
 		},
 
 		/**

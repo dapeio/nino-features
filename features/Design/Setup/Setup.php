@@ -24,9 +24,10 @@ namespace Nino\Modules\Design {
 	 *										section, card, buttons, lists and tables are one stylesheet
 	 *										each), the root size, the width and the whitespace of the
 	 *										page, the radius of its surfaces - two strengths and, for
-	 *										each kind of surface, the one it takes - and its animation,
-	 *										a position for every named knob of the seven templates, the
-	 *										five font roles and the palette - and, for the Theme tab,
+	 *										each kind of surface, the one it takes -, its animation and
+	 *										the hover of its pictures, a position for every named knob
+	 *										of the seven templates, the five font roles and the
+	 *										palette - and, for the Theme tab,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
 	 *										this whole setup kept under a name). Where each of them
@@ -174,7 +175,8 @@ namespace Nino\Modules\Design {
 			Every part but the page has an object of its own, named as the part is: the header and
 			the footer, the section, the card, the buttons, the lists and the tables. The page is
 			the one object that is no part - its controls are the root size, the width, the
-			whitespace, the radius, the five font roles, the palette and the animation	*/
+			whitespace, the radius, the five font roles, the palette, the animation and the
+			hover of the pictures	*/
 		public const array TABS = [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ];
 
 		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ];
@@ -193,10 +195,11 @@ namespace Nino\Modules\Design {
 			object each is the template of - the header, the footer, the section, the card, the
 			buttons, the lists and the tables -, and the knobs under the object of their part,
 			the frames' among them: a header and a footer have a ladder each for their type, their
-			surfaces and their ground. The colours and the motion are the page's palette and
-			animation, and each object that has a ladder of colour or of motion of its own has a
-			control there: the dimming of a section, the tone of the shadow of a card and the
-			stripes of a table on the colours, the hover of a card and of a button on the motion.
+			surfaces and their ground. The colours and the motion are the page's palette, its
+			animation and the hover of its pictures, and each object that has a ladder of colour
+			or of motion of its own has a control there: the dimming of a section, the tone of
+			the shadow of a card and the stripes of a table on the colours, the hover of a card
+			and of a button on the motion.
 			The Theme tab and the Typefaces tab have no control in the table: the screens of the
 			first work on `theme` and `css`, which a theme file is kept with and which are no
 			choice of a design, and the second is the loader, which keeps nothing in the setup.
@@ -276,10 +279,12 @@ namespace Nino\Modules\Design {
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
 
-			// The motion: the animation of the page, and what a card and a button do under the pointer
+			// The motion: the animation of the page and the hover of its pictures, and what a card and a button do under the pointer
 			'motion/effect' 						=> [ 'motion', 'page', 1 ],
 			'motion/strength' 						=> [ 'motion', 'page', 2 ],
 			'motion/speed' 							=> [ 'motion', 'page', 3 ],
+			'motion/hover' 							=> [ 'motion', 'page', 4 ],
+			'motion/hover-strength' 				=> [ 'motion', 'page', 5 ],
 			'knobs/card/hover' 						=> [ 'motion', 'card', 1 ],
 			'knobs/buttons/hover' 					=> [ 'motion', 'buttons', 1 ],
 		];
@@ -448,13 +453,49 @@ namespace Nino\Modules\Design {
 			],
 		];
 
+		/*	The hover of the pictures of the page: the custom properties Nino.css reads for
+			a picture that says nino-hover, as the properties of the rule on main that the
+			animation writes, after its own. Held in code, as the effects are, and held to
+			the stylesheet by tests/design-smoke.php: the names are the kernel's, and
+			--image-hover-duration, the time the change takes, is the kernel's and never
+			written. A kind with no strength is the middle one, and no kind is Nino.css's
+			own gentle zoom, which writes nothing. Zoom grows the picture, bright brightens
+			it and keeps its size - the factor Nino.css grows it by is set to 1, or the
+			brightening would come with a zoom nobody chose -, and zoom-bright does both. None
+			leaves the picture as it is under the pointer, which a template that says the
+			class does not change: every handle at the value that does nothing, the same for
+			all three strengths. There is no lift: a frame that rises is itself under the
+			pointer, which is a hover of its own	*/
+		public const array HOVERS = [
+			'zoom' => [
+				'soft' 		=> [ '--image-hover-scale' => '1.03' ],
+				'medium' 	=> [ '--image-hover-scale' => '1.06' ],
+				'hard' 		=> [ '--image-hover-scale' => '1.1' ],
+			],
+			'bright' => [
+				'soft' 		=> [ '--image-hover-scale' => '1', '--image-hover-brightness' => '1.06' ],
+				'medium' 	=> [ '--image-hover-scale' => '1', '--image-hover-brightness' => '1.12' ],
+				'hard' 		=> [ '--image-hover-scale' => '1', '--image-hover-brightness' => '1.2' ],
+			],
+			'zoom-bright' => [
+				'soft' 		=> [ '--image-hover-scale' => '1.03', '--image-hover-brightness' => '1.06' ],
+				'medium' 	=> [ '--image-hover-scale' => '1.06', '--image-hover-brightness' => '1.12' ],
+				'hard' 		=> [ '--image-hover-scale' => '1.1', '--image-hover-brightness' => '1.2' ],
+			],
+			'none' => [
+				'soft' 		=> [ '--image-hover-scale' => '1', '--image-hover-lift' => '0px', '--image-hover-brightness' => '1', '--image-hover-shadow' => 'none' ],
+				'medium' 	=> [ '--image-hover-scale' => '1', '--image-hover-lift' => '0px', '--image-hover-brightness' => '1', '--image-hover-shadow' => 'none' ],
+				'hard' 		=> [ '--image-hover-scale' => '1', '--image-hover-lift' => '0px', '--image-hover-brightness' => '1', '--image-hover-shadow' => 'none' ],
+			],
+		];
+
 		/**
 		 *	Everything a fresh install starts from: the seven sets of the first
 		 *	theme the feature ships (see Themes::SHIPPED - the theme that is the
 		 *	framework as it is), every knob in the middle, the delivered root
-		 *	size, the width, the whitespace, the radius and the animation of
-		 *	Nino.css, the face the base unit delivers, the framework's own
-		 *	colours, no theme and no css of its own
+		 *	size, the width, the whitespace, the radius, the animation and the
+		 *	hover of the pictures of Nino.css, the face the base unit delivers,
+		 *	the framework's own colours, no theme and no css of its own
 		 *
 		 *	The seven sets are read out of that theme's file, which is a php array
 		 *	and is included the way Themes::read() includes a shipped file - only
@@ -492,8 +533,8 @@ namespace Nino\Modules\Design {
 				'radius' 	=> 0,
 				'radius-alt' => 1,
 				'radii' 	=> array_fill_keys( self::SURFACES, self::RADIUS_WORDS[0] ),
-				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is
-				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
+				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is, and a gentle zoom of the pictures that say nino-hover
+				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
 				'parts' 	=> $parts,
 				'knobs' 	=> $knobs,
 				'fonts' 	=> Fonts::DEFAULTS,
@@ -771,16 +812,20 @@ namespace Nino\Modules\Design {
 
 			foreach( array_keys( $motion ) as $key )
 				if( isset( $setup['motion'][$key] ) === false )
-					$notes[] = 'the animation has no "'. self::shown( $key ). '" - dropped';
+					$notes[] = 'the motion has no "'. self::shown( $key ). '" - dropped';
 
 			$effect 	= $motion['effect'] ?? null;
 			$strength = $motion['strength'] ?? null;
 			$speed 		= $motion['speed'] ?? null;
+			$hover 		= $motion['hover'] ?? null;
+			$hoverStrength = $motion['hover-strength'] ?? null;
 
 			$setup['motion'] = [
 				'effect' 		=> is_string( $effect ) === true && isset( self::EFFECTS[$effect] ) === true ? $effect : '',
 				'strength' 	=> is_string( $strength ) === true && in_array( $strength, self::STRENGTHS, true ) === true ? $strength : '',
 				'speed' 		=> is_string( $speed ) === true && isset( self::SPEEDS[$speed] ) === true ? $speed : '',
+				'hover' 		=> is_string( $hover ) === true && isset( self::HOVERS[$hover] ) === true ? $hover : '',
+				'hover-strength' => is_string( $hoverStrength ) === true && in_array( $hoverStrength, self::STRENGTHS, true ) === true ? $hoverStrength : '',
 			];
 
 			$given = is_array( $raw['parts'] ?? null ) === true ? $raw['parts'] : [];

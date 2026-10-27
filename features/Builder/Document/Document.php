@@ -380,8 +380,10 @@ namespace Nino\Modules\Builder {
 		 *	section that does not read back is a problem the panel is told of
 		 *	with the Reader's reason, and nothing is written. A model that is
 		 *	what the file reads as already is not written at all - the file is
-		 *	not rewritten into the canonical form where nobody changed it. A
-		 *	block that came back from an edit (edited: true) is read as a
+		 *	not rewritten into the canonical form where nobody changed it - but
+		 *	for a file that says the hover of a picture behind a class the Writer
+		 *	puts after it (see Reader::hoverBehind()), which a save writes anew.
+		 *	A block that came back from an edit (edited: true) is read as a
 		 *	section again first; a section that carries renamedFrom has the
 		 *	keys of its old id moved to the new one - the sources, the text
 		 *	keys, and the slots, which are made again under the new name with
@@ -469,11 +471,12 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
 
-			// Nothing to write: the model is the file, and has no text to go to a key
+			// Nothing to write: the model is the file, and has no text to go to a key - and the file does not say the hover of a picture behind a class that the Writer puts after it,
+			// which reads as the model of the call the Writer writes and which a save writes anew, even where nothing else changed
 			$disk = Reader::read( $current, $schemas );
 			$disk['file'] = $file;
 
-			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk );
+			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk ) === true && Reader::hoverBehind( $current, $schemas ) === false;
 
 			if( $same === true && $texts === [] )
 				return [ 'status' => 200, 'model' => $disk, 'hash' => hash( 'sha256', $current ) ];
@@ -2229,7 +2232,9 @@ namespace Nino\Modules\Builder {
 		 *	row and the six sides of the spacing of a section, a column or a
 		 *	component that are none of the steps 0 to 6, how far in from its sides the picture behind a row, a
 		 *	column or a card starts where that is none of the steps 0 to 3 - or
-		 *	is asked of a component that is no card -, a
+		 *	is asked of a component that is no card -, the hover of a component that
+		 *	is neither empty nor on - or is asked of a component whose source is no
+		 *	image -, a
 		 *	component that holds components with a content or with children
 		 *	that are no calls - or inside another -, and children of a
 		 *	component that holds none or of a loop - what the Writer would
@@ -2404,7 +2409,7 @@ namespace Nino\Modules\Builder {
 
 					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
 					foreach( $col['components'] ?? [] as $component )
-						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ) );
+						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeHover( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ) );
 
 					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
 					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )
@@ -2462,6 +2467,37 @@ namespace Nino\Modules\Builder {
 
 			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
 				$problems = array_merge( $problems, self::_shapeRadius( $child, $schemas, $at ) );
+
+			return $problems;
+		}
+
+		/**
+		 *	What is wrong with the hover of a component and of the children it holds: a word that is neither empty nor on, or a hover on a component whose schema does
+		 *	not say that its source is an image - which the Writer would write as a class of nothing, and the Reader read back as a custom one
+		 *
+		 *	@param		mixed			$call					A component of a column, or a child of one
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeHover( mixed $call, array $schemas, string $at ): array {
+
+			// A call that is none has been told already
+			if( is_array( $call ) === false || self::_callWrong( $call ) !== '' )
+				return [];
+
+			$name				= (string) ( $call['name'] ?? '' );
+			$hover			= $call['hover'] ?? '';
+			$problems		= [];
+
+			if( in_array( $hover, [ '', Reader::HOVER ], true ) === false )
+				$problems[] = $at. ' has the component "'. $name. '" with a hover that is neither empty nor on';
+			elseif( $hover !== '' && ( $schemas['components'][$name]['source'] ?? '' ) !== 'image' )
+				$problems[] = $at. ' has the component "'. $name. '" with a hover, and it is no picture';
+
+			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
+				$problems = array_merge( $problems, self::_shapeHover( $child, $schemas, $at ) );
 
 			return $problems;
 		}

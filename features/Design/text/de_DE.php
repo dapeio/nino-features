@@ -102,7 +102,7 @@ return [
 	'[[/_admin/design/radii/standard]]'							=> 'Standard',
 	'[[/_admin/design/radii/alternative]]'						=> 'Alternativ',
 
-	// Die Animation der Seite: was Nino.css beim Einblenden tut, als Vorgabe für alles, was keine eigene hat
+	// Die Animation der Seite: was Nino.css beim Einblenden tut, als Vorgabe für alles, was keine eigene hat - und der Hover ihrer Bilder, der die Stärken der Animation auch hat
 	'[[/_admin/design/motion/default]]'							=> 'Vorgabe von Nino',
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effekt',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
@@ -121,6 +121,15 @@ return [
 	'[[/_admin/design/motion/speed/fast]]'						=> 'Schnell',
 	'[[/_admin/design/motion/speed/medium]]'						=> 'Mittel',
 	'[[/_admin/design/motion/speed/slow]]'						=> 'Langsam',
+	'[[/_admin/design/motion/hover/label]]'						=> 'Bilder: Hover-Effekt',
+	'[[/_admin/design/motion/hover/zoom]]'						=> 'Zoom',
+	'[[/_admin/design/motion/hover/bright]]'					=> 'Aufhellen',
+	'[[/_admin/design/motion/hover/zoom-bright]]'				=> 'Zoom und Aufhellen',
+	'[[/_admin/design/motion/hover/none]]'						=> 'Keiner',
+	'[[/_admin/design/motion/hover-strength/label]]'			=> 'Bilder: Stärke',
+	'[[/_admin/design/motion/hover-strength/soft]]'				=> 'Weich',
+	'[[/_admin/design/motion/hover-strength/medium]]'			=> 'Mittel',
+	'[[/_admin/design/motion/hover-strength/hard]]'				=> 'Stark',
 
 	// Schrift: die fünf Rollen von Nino.css als Tabelle
 	'[[/_admin/design/label/fonts]]'								=> 'Schriften',
