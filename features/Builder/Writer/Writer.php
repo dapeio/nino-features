@@ -46,6 +46,19 @@ namespace Nino\Modules\Builder {
 	 *											no setting where the radius asked for is that default, and the Writer
 	 *											writes what the model holds.
 	 *
+	 *											How far in from its sides the picture behind an element starts is a
+	 *											class of the page as well, nino-bg-pl-<n> and nino-bg-pr-<n>: it stands
+	 *											before the radius of a row and of a column, after the radius of a card,
+	 *											and is written for a row and a column only where they have a picture to
+	 *											move, and for a card whenever its node holds a step.
+	 *
+	 *											The animation of a section stands on its row: its classes after the
+	 *											radius of the row, its delay and its duration as the attributes of the
+	 *											row's tag - the kernel animates any element that carries nino-vpa, and a
+	 *											section that is a cover keeps the tag it has for its height alone. The
+	 *											arrow of a section is the one line after its row, the call of the kernel's
+	 *											scroll hint.
+	 *
 	 *											The blocks stand in the wrap: the line that opens it
 	 *											follows the name and the frame above, the line that closes
 	 *											it comes before the frame below, and nothing inside is
@@ -184,7 +197,7 @@ namespace Nino\Modules\Builder {
 
 			if( $stack !== null ) {
 
-				// The id and the classes after nino-section are the call's, and a call has no attributes of a tag: no cover height, no delay and no duration
+				// The id and the classes after nino-section are the call's, and a call has no attributes of a tag: no cover height
 				$stack['attributes'] = [ 'id' => (string) ( $section['id'] ?? '' ), 'class' => implode( ' ', array_slice( self::sectionClasses( $settings, $pictured ), 1 ) ) ] + (array) ( $stack['attributes'] ?? [] );
 
 				$lines[] = self::_call( $stack, $registry['stacks'][$stack['name'] ?? ''] ?? [] );
@@ -197,15 +210,13 @@ namespace Nino\Modules\Builder {
 				if( $settings['cover'] !== null )
 					$attributes .= ' data-cover-height="'. (int) $settings['cover']. '"';
 
-				$attributes .= self::_animationAttributes( $settings );
-
 				$lines[] = self::_fill( 'section-open', [ '[[id]]' => self::_escape( (string) ( $section['id'] ?? '' ) ), '[[class]]' => self::_class( self::sectionClasses( $settings, $pictured ) ), '[[attributes]]' => $attributes ] );
 			}
 
 			if( $pictured === true && $inner === false )
 				$lines[] = "\t". self::_background( (array) $section['background'], 'nino-section-bg' );
 
-			$lines[] = "\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::rowClasses( $settings, $pictured ) ) ] );
+			$lines[] = "\t". self::_fill( 'row-open', [ '[[class]]' => self::_class( self::rowClasses( $settings, $pictured ) ), '[[attributes]]' => self::_animationAttributes( $settings ) ] );
 
 			// The picture behind the row is the first thing in it, as a column's is in the column
 			if( $pictured === true && $inner === true )
@@ -235,6 +246,11 @@ namespace Nino\Modules\Builder {
 			}
 
 			$lines[] = "\t</div>";
+
+			// The arrow is the last thing in the section, after its row
+			if( $settings['arrow'] === true )
+				$lines[] = "\t". self::_fill( 'arrow', [] );
+
 			$lines[] = $stack !== null ? '[/'. (string) ( $stack['name'] ?? '' ). ']' : '</section>';
 
 			return implode( "\n", $lines );
@@ -339,12 +355,13 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['text'] !== '' )
 				$class[] = 'nino-text-'. $s['text'];
 
-			return array_merge( $class, self::_animationClasses( $s ), self::_custom( (string) $s['custom'] ) );
+			return array_merge( $class, self::_custom( (string) $s['custom'] ) );
 		}
 
 		/**
 		 *	The classes of the row: its width and its place, then - where the section's background stands inside, on the
-		 *	row - its ground and the scrim over its picture, then the alignment of its columns and its padding on each side
+		 *	row - its ground and the scrim over its picture, then the alignment of its columns and its padding on each side,
+		 *	how far in from either side that picture starts, the radius of what the row paints and the animation of the section
 		 *
 		 *	@param		array			$s						The section's settings
 		 *	@param		bool			$pictured			Whether the section has a picture, which is the row's where inner: a scrim over none is not written
@@ -378,11 +395,17 @@ namespace Nino\Modules\Builder {
 				if( (string) $s[$key] !== '' )
 					$class[] = 'nino-'. $side. '-'. $s[$key];
 
-			// The radius of what the row paints - its ground or its picture, which it has with the background inside - after the paddings
+			// How far in from either side the picture inside the row starts, left then right - it has one only with the background inside - after the paddings
+			if( self::_inner( $s ) === true && $pictured === true )
+				foreach( Reader::ROW_BG_SPACING as $side => $key )
+					if( (string) $s[$key] !== '' )
+						$class[] = 'nino-bg-'. $side. '-'. $s[$key];
+
+			// The radius of what the row paints - its ground or its picture, which it has with the background inside - after them
 			if( isset( Reader::RADIUS_CLASS[(string) $s['rowRadius']] ) === true && self::_inner( $s ) === true && ( (string) $s['color'] !== '' || $pictured === true ) )
 				$class[] = Reader::RADIUS_CLASS[$s['rowRadius']];
 
-			return array_merge( $class, self::_custom( (string) $s['rowCustom'] ) );
+			return array_merge( $class, self::_animationClasses( $s ), self::_custom( (string) $s['rowCustom'] ) );
 		}
 
 		/**
@@ -429,7 +452,13 @@ namespace Nino\Modules\Builder {
 				if( (string) $col[$space] !== '' )
 					$class[] = 'nino-'. $space. '-'. $col[$space];
 
-			// The radius of what the column paints - a ground or a picture - after the spacing
+			// How far in from either side the picture behind the column starts, left then right, after the spacing
+			if( self::_pictured( $col ) === true )
+				foreach( Reader::BG_SPACING as $side => $key )
+					if( (string) $col[$key] !== '' )
+						$class[] = 'nino-bg-'. $side. '-'. $col[$key];
+
+			// The radius of what the column paints - a ground or a picture - after them
 			if( isset( Reader::RADIUS_CLASS[(string) $col['radius']] ) === true && ( (string) $col['color'] !== '' || self::_pictured( $col ) === true ) )
 				$class[] = Reader::RADIUS_CLASS[$col['radius']];
 
@@ -612,9 +641,16 @@ namespace Nino\Modules\Builder {
 			$attributes	= (array) ( $node['attributes'] ?? [] );
 			$call				= '['. $name;
 
-			// The radius of a surface is the first class of its call, before the classes the editor wrote (the model refuses one on a component that is none: see Document)
-			if( isset( Reader::RADIUS_CLASS[(string) ( $node['radius'] ?? '' )] ) === true )
-				$attributes['class'] = trim( Reader::RADIUS_CLASS[$node['radius']]. ' '. self::_string( $attributes['class'] ?? '' ) );
+			// The radius of a surface is the first class of its call, then - on a card - how far in from either side its picture starts, left then right, then the
+			// classes the editor wrote (the model refuses either on a component that is none: see Document)
+			$first = isset( Reader::RADIUS_CLASS[(string) ( $node['radius'] ?? '' )] ) === true ? [ Reader::RADIUS_CLASS[$node['radius']] ] : [];
+
+			foreach( Reader::BG_SPACING as $side => $key )
+				if( (string) ( $node[$key] ?? '' ) !== '' )
+					$first[] = 'nino-bg-'. $side. '-'. $node[$key];
+
+			if( $first !== [] )
+				$attributes['class'] = trim( implode( ' ', $first ). ' '. self::_string( $attributes['class'] ?? '' ) );
 
 			if( (string) ( $node['source'] ?? '' ) !== '' )
 				$call .= ' '. self::_safe( (string) $node['source'], $name, 'source' );

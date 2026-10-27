@@ -2,19 +2,20 @@
 [template /templates/html-header]
 <div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium">
 
-<section id="hero" class="nino-section nino-section--black nino-cover nino-cover--dim nino-vpa" data-cover-height="100">
+<section id="hero" class="nino-section nino-section--black nino-cover nino-cover--dim" data-cover-height="100">
 	<div class="nino-section-bg nino-img-focus--5">[image /template/page-home/hero/background alt=""]</div>
-	<div class="nino-grid-row nino-grid-row--wide nino-grid-middle">
+	<div class="nino-grid-row nino-grid-row--wide nino-grid-middle nino-vpa">
 		<div class="nino-grid-s-100 nino-grid-m-100 nino-grid-l-66 nino-text-left">
 			[title /template/page-home/hero/title style="loud"]
 			[subtitle /template/page-home/hero/subtitle]
 			[button /_nino/webpage/contact/name href="/_nino/webpage/contact/uri" style="primary"]
 		</div>
 	</div>
+	[scroll-hint]
 </section>
 
-<section id="services" class="nino-section nino-vpa">
-	<div class="nino-grid-row">
+<section id="services" class="nino-section">
+	<div class="nino-grid-row nino-vpa">
 		<div class="nino-grid-s-100 nino-grid-m-100 nino-grid-l-50">
 			[title /template/page-home/services/title]
 			[text /template/page-home/services/text style="quiet"]

@@ -1169,17 +1169,19 @@ check( 'a section is made like the template, off or its own: like is the bare cl
 		&& state() === off && builder._animationMode( false, settings ) === 'like';
 } )() );
 
-check( 'a new section is made with the animation of the template: the bare class where it animates its sections, none where it does not - and it is like the template either way, with nothing said of the width, the place and the padding of its row, the settings in the order the Reader reads them', ( function() {
+check( 'a new section is made with the animation of the template: the bare class where it animates its sections, none where it does not - and it is like the template either way, with nothing said of the width, the place and the padding of its row, no arrow and no offset of the picture of its row, the settings in the order the Reader reads them', ( function() {
 	const off = page();
 	const on = page();
 	on.animate = true;
 	const first = builder._newSection( on );
 	const second = builder._newSection( off );
 	return first.settings.vpa === '' && second.settings.vpa === null && builder._animationMode( true, first.settings ) === 'like' && builder._animationMode( false, second.settings ) === 'like'
-		&& [ 'row', 'rowPlace', 'rowPl', 'rowPr', 'rowPt', 'rowPb' ].every( function( key ) { return first.settings[key] === '' && second.settings[key] === '' } )
+		&& [ 'row', 'rowPlace', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowBgPl', 'rowBgPr' ].every( function( key ) { return first.settings[key] === '' && second.settings[key] === '' } ) && first.settings.arrow === false && second.settings.arrow === false
 		&& first.settings.vpaSpeed === '' && first.settings.vpaDelay === ''
 		&& Object.keys( first.settings ).join() === Object.keys( fixture('page-home.json').blocks[0].settings ).join();
 } )() );
+check( '...and a new column has the keys of the Reader\'s, in the order it reads them, the offsets of its picture among them as none', Object.keys( builder._newCol() ).join() === Object.keys( fixture('page-home.json').blocks[0].cols[0] ).join()
+	&& builder._newCol().bgPl === '' && builder._newCol().bgPr === '' );
 
 check( 'the sections that are like the template are found - and, when the template\'s switch is turned, follow it: on, the ones with no animation get the bare class; off, the ones that have just that lose it. The others stay as they are', ( function() {
 
@@ -2389,8 +2391,11 @@ check( '...the loop that is chosen runs over the first type of the project with 
 	const loop = blockAt( 3 ).stack;
 	const id = controlOf( loopTab(), 'Id of the loop' );
 
-	return loop.name === 'sections' && loop.source === '/services' && loop.attributes.id === '' && titlesIn( loopTab() ) === 'Data,Order'
-		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Id of the loop', 'Sort by', 'Direction', 'Limit', 'Offset' ] )
+	// The attributes of the stack's own, where the registry gives it some, stand in a third group after the two
+	const own = Object.keys( registry().stacks.sections.attributes || {} );
+
+	return loop.name === 'sections' && loop.source === '/services' && loop.attributes.id === '' && titlesIn( loopTab() ) === ( own.length > 0 ? 'Data,Order,Own' : 'Data,Order' )
+		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Id of the loop', 'Sort by', 'Direction', 'Limit', 'Offset' ].concat( own.map( function( key ) { return registry().stacks.sections.attributes[key].label } ) ) )
 		&& id.el.readOnly === true && id.el.value === 'contact' && id.el.closest('label').querySelector('.nino-admin-hint').textContent === 'The loop makes one section for each element, numbered after the id of the section: contact-1, contact-2 and so on. The id is changed in the title.';
 } )() );
 check( '...a section that runs a loop says so in its head, as a column does: "Element loop" and the type, a button that opens the Loop tab of the section - and the loop is in no other tab\'s way: the columns of the section are the cell, once for each element', ( function() {
@@ -5214,13 +5219,91 @@ builder._openSettings( cardAt );
 const holderPane = function() { return paneOf('properties') };
 const holderNow = function() { return cardIn( builder._doc.model ) };
 
+// The attributes of the card as the registry has them: the form of the card is cut from their types, in their order - no pin of it names an attribute or a label
+const cardDeclared = registry().components.card.attributes;
+const cardDefaults = registry().components.card.defaults;
+const cardNames = Object.keys( cardDeclared ).filter( function( name ) { return cardDeclared[name].type !== 'variant' } );
+// A focus is a select over none and the nine places, whatever it is called
+const cardIsFocus = function( name ) { return cardDeclared[name].type === 'select' && cardDeclared[name].options.join() === [ '', 1, 2, 3, 4, 5, 6, 7, 8, 9 ].join() };
+const cardIsShort = function( name ) { return [ 'select', 'bool', 'int', 'string' ].indexOf( cardDeclared[name].type ) !== -1 && cardIsFocus( name ) === false };
+// The controls an attribute has, by label: the upload of the Builder for a picture, the switch for none and then the grid for a focus, the label of the schema for the rest
+const cardControls = function( name ) {
+	return cardDeclared[name].type === 'image' ? [ word('picture/upload') ] : ( cardIsFocus( name ) === true ? [ word('source/no-focus'), cardDeclared[name].label ] : [ cardDeclared[name].label ] );
+};
+// ... and their kinds: a flag is a switch (a box where the schema says so), a number a number, a text and the address of a picture a line of text, a choice a select - a row of buttons where the schema draws it so, and the grid of a focus
+const cardKinds = function( name ) {
+
+	const declared = cardDeclared[name];
+
+	if( declared.type === 'image' )
+		return [ 'text' ];
+
+	if( cardIsFocus( name ) === true )
+		return [ 'switch', 'group' ];
+
+	if( declared.type === 'bool' )
+		return [ declared.input === 'checkbox' ? 'box' : 'switch' ];
+
+	return [ { int : 'number', string : 'text' }[declared.type] ?? ( declared.input === 'segment' || declared.input === 'icons' ? 'group' : 'select' ) ];
+};
+// The lines of the form, as lists of attributes: a run of short attributes is cut into pairs, any other attribute stands alone
+const cardPlan = ( function() {
+
+	const plan = [];
+	let run = [];
+	const cut = function() {
+
+		for( let at = 0; at < run.length; at += 2 )
+			plan.push( run.slice( at, at + 2 ) );
+
+		run = [];
+	};
+
+	cardNames.forEach( function( name ) {
+
+		if( cardIsShort( name ) === true ) {
+			run.push( name );
+		} else {
+			cut();
+			plan.push( [ name ] );
+		}
+	} );
+	cut();
+
+	return plan;
+} )();
+// What hangs on the picture and waits for one: the picture, its focus, and the switch that follows them - its dimming
+const cardPictured = ( function() {
+
+	const found = [];
+	let chained = false;
+
+	cardNames.forEach( function( name ) {
+
+		const declared = cardDeclared[name];
+
+		if( declared.type === 'image' || ( chained === true && ( cardIsFocus( name ) === true || declared.type === 'bool' ) ) )
+			found.push( name );
+
+		chained = declared.type === 'image' || ( chained === true && cardIsFocus( name ) === true );
+	} );
+
+	return found;
+} )();
+
 check( 'the form of a card has the label of the component for its title and two tabs: Properties and CSS classes - the attributes the schema declares, and the classes of its own; the form of a column or a plain component is not it, and the card has no tab for a content', dialogText('builder-dialog-kind') === 'Card'
 	&& JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'properties' && screen.getElementById('builder-dialog-name').hidden === true && paneOf('content') === null );
-check( '...Properties: a field for each attribute in the order of the schema - the full height, the padding, the vertical and the horizontal alignment, the ground, the border, the picture with its focus and its dimming, and last the toggle of the radius - by the type the schema gives', JSON.stringify( labelList( holderPane() ) )
-	=== JSON.stringify( [ 'Full height', 'Padding', 'Vertical element alignment', 'Horizontal text alignment', 'Background colour', 'Without border', 'Upload a picture', 'Automatic focus', 'Focus', 'Dim the picture', radiusLabel ] ) && controlOf( holderPane(), 'Full height' ).kind === 'switch' && controlOf( holderPane(), 'Dim the picture' ).kind === 'switch'
-	&& controlOf( holderPane(), 'Without border' ).kind === 'switch' && controlOf( holderPane(), 'Focus' ).kind === 'group' );
-check( '...two to a line where both are short, a line of its own for the picture and for the focus: the full height and the padding, the vertical and the horizontal alignment, the ground and the border, then the picture, the focus, the dimming alone and the radius alone', classes( holderPane().children )
-	=== 'builder-line,builder-line,builder-line,builder-background,builder-focus,nino-admin-switch,nino-admin-switch' && holderPane().children.map( function( el ) { return labelList( el ).join('|') } ).join('~') === 'Full height|Padding~Vertical element alignment|Horizontal text alignment~Background colour|Without border~Upload a picture~Automatic focus|Focus~Dim the picture~'+ radiusLabel );
+check( '...Properties: a field for each attribute of the schema that is no variant, in the order of the schema, by the type the schema gives it - a switch for a flag, a select for a choice, a row of buttons where the schema draws it so, the upload of the Builder for a picture, for a focus its switch for none and then the grid -, and last the toggle of the radius', cardNames.length > 0
+	&& JSON.stringify( labelList( holderPane() ) ) === JSON.stringify( cardNames.map( cardControls ).flat().concat( [ radiusLabel ] ) )
+	&& JSON.stringify( controlsIn( holderPane() ).map( function( control ) { return control.kind } ) ) === JSON.stringify( cardNames.map( cardKinds ).flat().concat( [ 'switch' ] ) ) );
+check( '...two to a line where both are short - a select, a flag, a number or a text -, a line of its own for the rest: the picture and the focus, which is a grid, and the toggle of the radius alone and last; the lines are cut from the types the schema gives', cardPlan.some( function( line ) { return line.length === 2 } ) && cardPlan.some( function( line ) { return line.length === 1 } )
+	&& JSON.stringify( holderPane().children.map( function( el ) { return labelList( el ) } ) ) === JSON.stringify( cardPlan.map( function( line ) { return line.map( cardControls ).flat() } ).concat( [ [ radiusLabel ] ] ) )
+	&& classes( holderPane().children ) === cardPlan.map( function( line ) {
+
+		const declared = cardDeclared[line[0]];
+
+		return line.length === 2 ? 'builder-line' : ( declared.type === 'image' ? 'builder-background' : ( cardIsFocus( line[0] ) === true ? 'builder-focus' : ( declared.type === 'bool' ? 'nino-admin-switch' : 'nino-admin-field' ) ) );
+	} ).concat( [ 'nino-admin-switch' ] ).join() );
 check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), 'Background colour' )
 	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Background colour' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
 	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Background colour' ) === 'counter' );
@@ -5294,26 +5377,35 @@ check( '...a column that paints a ground of its own is what the card stands on -
 	return own === 'plain' && none === 'alt' && counter === 'brand-alt' && dimmed === 'dark';
 } )() );
 
-check( '...what the fields write is the attributes of the card, as the call writes them - a switch is 1 or 0 -, into the card and into nothing else', ( function() {
+check( '...what the fields write is the attributes of the card, as the call writes them - a switch is 1 or 0, a choice is its option -, into the card and into nothing else: every attribute that does not wait for a picture is given a value other than its default, and the card then holds the defaults of the schema with those', ( function() {
 
 	const column = JSON.stringify( builder._doc.model.blocks[0].cols[1].components.slice( 1 ) )+ JSON.stringify( builder._doc.model.blocks[0].cols[0] );
+	const written = {};
+	const free = cardNames.filter( function( name ) { return cardPictured.indexOf( name ) === -1 } );
 
-	change( holderPane(), 'Background colour', 'dark' );
-	change( holderPane(), 'Padding', '5' );
-	change( holderPane(), 'Full height', true );
-	change( holderPane(), 'Vertical element alignment', 'last-bottom' );
-	change( holderPane(), 'Horizontal text alignment', 'center' );
-	change( holderPane(), 'Without border', true );
+	free.forEach( function( name ) {
 
-	return JSON.stringify( holderNow().attributes ) === '{"fill":"1","padding":"5","vertical":"last-bottom","align":"center","ground":"dark","borderless":"1","background":"","focus":"","dim":"0","class":""}'
+		const declared = cardDeclared[name];
+
+		if( declared.type === 'bool' )
+			written[name] = '1';
+		else if( declared.type === 'select' )
+			written[name] = declared.options.filter( function( option ) { return option !== cardDefaults[name] } ).pop();
+		else
+			written[name] = declared.type === 'int' ? String( declared.max ?? 3 ) : 'text';
+
+		change( holderPane(), declared.label, declared.type === 'bool' ? true : written[name] );
+	} );
+
+	return free.length > 0 && free.every( function( name ) { return written[name] !== undefined && written[name] !== cardDefaults[name] } )
+		&& JSON.stringify( holderNow().attributes ) === JSON.stringify( Object.assign( {}, cardDefaults, written ) )
 		&& column === JSON.stringify( builder._doc.model.blocks[0].cols[1].components.slice( 1 ) )+ JSON.stringify( builder._doc.model.blocks[0].cols[0] ) && holderNow().components.length === 3 && Object.prototype.hasOwnProperty.call( holderNow(), 'content' ) === false
-		&& valueAt( holderPane(), 'Vertical element alignment' ) === 'last-bottom' && valueAt( holderPane(), 'Full height' ) === true;
+		&& free.every( function( name ) { return valueAt( holderPane(), cardDeclared[name].label ) === ( cardDeclared[name].type === 'bool' ? true : written[name] ) } );
 } )() );
-change( holderPane(), 'Full height', false );
-change( holderPane(), 'Without border', false );
-change( holderPane(), 'Vertical element alignment', '' );
-change( holderPane(), 'Horizontal text alignment', '' );
-check( '...switched off, a switch is 0 again, and an empty choice is the empty word', holderNow().attributes.fill === '0' && holderNow().attributes.borderless === '0' && holderNow().attributes.vertical === '' && holderNow().attributes.align === '' );
+cardNames.filter( function( name ) { return cardPictured.indexOf( name ) === -1 } ).forEach( function( name ) {
+	change( holderPane(), cardDeclared[name].label, cardDeclared[name].type === 'bool' ? false : cardDefaults[name] );
+} );
+check( '...taken back, a switch is 0 again and a choice with none is the empty word: the card holds the defaults of the schema again', JSON.stringify( holderNow().attributes ) === JSON.stringify( cardDefaults ) );
 
 check( 'the focus of the picture is the grid of the one behind a section - a switch for none and nine places - and waits for a picture: while the card has none the switch and the grid are off, and so is the dimming', ( function() {
 

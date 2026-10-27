@@ -422,11 +422,16 @@ $cell					= $cardModel['blocks'][1]['cols'][0];
 
 check( 'the page with a card is read as it is written: a picture beside a card in one section, a loop in the next', array_column( $cardModel['blocks'], 'kind' ) === [ 'section', 'section' ] && [ $cardModel['blocks'][0]['id'], $cardModel['blocks'][1]['id'] ] === [ 'story', 'services' ]
 	&& array_column( $story['cols'][0]['components'], 'name' ) === [ 'image' ] && array_column( $story['cols'][1]['components'], 'name' ) === [ 'card' ] && $cell['stack']['name'] === 'stack' && array_column( $cell['components'], 'name' ) === [ 'card' ] );
-check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column - and its radius, as a surface has one', array_keys( $cardNode ) === [ 'name', 'source', 'text', 'attributes', 'radius', 'components' ] && $cardNode['radius'] === ''
+check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column - and its radius and the offset of its ground at either side, as a surface that paints has them',
+	array_keys( $cardNode ) === array_merge( [ 'name', 'source', 'text', 'attributes', 'radius' ], array_values( $reader::BG_SPACING ), [ 'components' ] ) && $cardNode['radius'] === '' && array_intersect_key( $cardNode, array_flip( $reader::BG_SPACING ) ) === array_fill_keys( $reader::BG_SPACING, '' )
 	&& $cardNode['source'] === '' && $cardNode['text'] === null && array_column( $cardNode['components'], 'name' ) === [ 'card-title', 'text', 'button' ]
 	&& array_column( $cardNode['components'], 'source' ) === [ '/template/page-home-card/story/title', '/template/page-home-card/story/text', '/template/page-home-card/story/button' ] && array_key_exists( 'content', $cardNode ) === false );
-check( '...it has every attribute of its schema, in the order of the schema, the default where the call is silent - the ground and the padding are the two the file sets - and its children theirs', $cardNode['attributes'] === [ 'fill' => '0', 'padding' => '3', 'vertical' => '', 'align' => '', 'ground' => 'counter', 'borderless' => '0', 'background' => '', 'focus' => '', 'dim' => '0', 'class' => '' ]
-	&& array_keys( $cardNode['attributes'] ) === array_keys( $registry['components']['card']['defaults'] ) && $cardNode['components'][0]['attributes'] === array_replace( $registry['components']['card-title']['defaults'], [ 'tag' => 'h3' ] ) && array_key_exists( 'components', $cardNode['components'][0] ) === false );
+// The attributes the call of the card in the file sets, which the node holds besides the defaults of the registry
+preg_match( '/\[card ([^\]]*)\]/', $cardFixture, $cardCall );
+preg_match_all( '/([a-z]+)="([^"]*)"/', $cardCall[1] ?? '', $cardSet );
+$cardSetBy = array_combine( $cardSet[1], $cardSet[2] );
+check( '...it has every attribute of its schema, in the order of the schema, the default where the call is silent - the ones the file sets are the call\'s - and its children theirs', $cardSetBy !== [] && $cardNode['attributes'] === array_replace( $registry['components']['card']['defaults'], $cardSetBy )
+	&& array_keys( $cardNode['attributes'] ) === array_merge( array_keys( $registry['components']['card']['attributes'] ), [ 'class' ] ) && array_keys( $cardNode['attributes'] ) === array_keys( $registry['components']['card']['defaults'] ) && $cardNode['components'][0]['attributes'] === array_replace( $registry['components']['card-title']['defaults'], [ 'tag' => 'h3' ] ) && array_key_exists( 'components', $cardNode['components'][0] ) === false );
 check( '...a plain component carries no list of children, whatever it is: only a component that holds components does', array_filter( array_merge( $story['cols'][0]['components'], $cardNode['components'], $cell['components'][0]['components'] ), static fn( array $node ): bool => array_key_exists( 'components', $node ) === true ) === [] );
 check( '...in a loop the card stands in the content of the stack, once for each element: its picture is a field of the element, so is its title, and the stack holds the card and nothing else', $cell['components'][0]['attributes']['background'] === 'image' && $cell['components'][0]['attributes']['focus'] === '5' && $cell['components'][0]['attributes']['dim'] === '1' && $cell['components'][0]['attributes']['fill'] === '1'
 	&& $cell['components'][0]['components'][0]['source'] === 'title' && $cell['stack']['source'] === '/services' && array_key_exists( 'components', $cell['stack'] ) === false );
@@ -442,6 +447,34 @@ $handCard = $page( $section( "[card ground=\"counter\" padding=\"3\"][card-title
 $handNode = $read( $handCard )['blocks'][0]['cols'][0]['components'][0];
 check( 'a card whose attributes are in another order and whose children stand on its line is read as the card it is, and written in the canonical form', $handNode['attributes']['ground'] === 'counter' && $handNode['attributes']['padding'] === '3' && array_column( $handNode['components'], 'name' ) === [ 'card-title', 'text' ]
 	&& $write( $read( $handCard ) ) === $inWrap( $page( $section( "[card padding=\"3\" ground=\"counter\"]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\t[text /template/page-x/a/text]\n\t\t\t[/card]" ) ) ) );
+
+// How far in from either side the picture behind a card starts: split off the classes of its call as the radius of a surface is. The card is the one component that paints a ground, and the two classes are
+// taken off its call whatever it holds - they are idle without a picture, as its radius is
+$bgCardOf			= static fn( string $class ): string => $page( $section( "[card class=\"". $class. "\"]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t[/card]" ) );
+$bgCardWrong	= [];
+
+foreach( $reader::BG_STEPS as $step )
+	foreach( $reader::BG_SPACING as $side => $key ) {
+
+		$source	= $bgCardOf( 'nino-bg-'. $side. '-'. $step );
+		$node		= $read( $source )['blocks'][0]['cols'][0]['components'][0];
+
+		if( $node[$key] !== $step || $node['attributes']['class'] !== '' || $write( $read( $source ) ) !== $inWrap( $source ) || $read( $write( $read( $source ) ) ) !== $read( $source ) )
+			$bgCardWrong[] = $key. ' '. $step;
+	}
+
+check( 'how far in from either side the picture behind a card starts is split off the classes of its call: the node has the step for either side after its radius, the class attribute the classes that are left - read from nino-bg-pl-<n> and nino-bg-pr-<n> whatever the card holds, and written back byte for byte: all '
+	. count( $reader::BG_STEPS ) * count( $reader::BG_SPACING ). ' classes'. ( $bgCardWrong === [] ? '' : ' - '. implode( ', ', $bgCardWrong ) ), $bgCardWrong === [] );
+
+$bgCardFile		= $bgCardOf( $reader::RADIUS_CLASS['alternative']. ' nino-bg-pl-0 nino-bg-pr-2 my-card' );
+$bgCardMix		= $bgCardOf( 'my-card nino-bg-pr-2 '. $reader::RADIUS_CLASS['alternative']. ' nino-bg-pl-0' );
+$bgCardNode		= $read( $bgCardMix )['blocks'][0]['cols'][0]['components'][0];
+$bgCardTwice	= $read( $bgCardOf( 'nino-bg-pl-1 nino-bg-pl-4 nino-bg-pl-2' ) )['blocks'][0]['cols'][0]['components'][0];
+$bgNotCard		= $read( $page( $section( '[title /template/page-x/a/title class="nino-bg-pl-1"]' ) ) )['blocks'][0]['cols'][0]['components'][0];
+$bgNotCard2		= $read( $page( $section( '[image /template/page-x/a/photo alt="" class="nino-bg-pl-1"]' ) ) )['blocks'][0]['cols'][0]['components'][0];
+check( '...the radius, then the left side, then the right, then the classes of the card, whatever order the file has them in; a second class of a side, or a step the scale has not, is a class of the card, and a component that is no card has the class as it has any other - nothing is split off it',
+	$bgCardNode['radius'] === 'alternative' && $bgCardNode['bgPl'] === '0' && $bgCardNode['bgPr'] === '2' && $bgCardNode['attributes']['class'] === 'my-card' && $write( $read( $bgCardMix ) ) === $inWrap( $bgCardFile ) && $write( $read( $bgCardFile ) ) === $inWrap( $bgCardFile )
+	&& $bgCardTwice['bgPl'] === '1' && $bgCardTwice['attributes']['class'] === 'nino-bg-pl-4 nino-bg-pl-2' && array_key_exists( 'bgPl', $bgNotCard ) === false && $bgNotCard['attributes']['class'] === 'nino-bg-pl-1' && array_key_exists( 'bgPl', $bgNotCard2 ) === false && $bgNotCard2['attributes']['class'] === 'nino-bg-pl-1' );
 
 // A card with nothing between its tags is a card with no children, and is written with its closing tag on a line of its own
 $emptyCard = $page( $section( '[card][/card]' ) );
@@ -459,6 +492,10 @@ echo "A section that is not read is a foreign block, with its line and its reaso
 
 $row = "<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">[title /template/page-x/a/title]</div>\n\t</div>";
 $loopRow = "\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title title]\n\t\t</div>\n\t</div>";
+
+// The call of the scroll hint that the arrow of a section is, and the one attribute it has
+$arrowName	= \Nino\Modules\Builder\Reader::ARROW;
+$arrowTo		= (string) array_key_first( $registry['components'][$arrowName]['attributes'] );
 
 $failures = [
 	// 1.9: the examples of the concept
@@ -549,6 +586,18 @@ $failures = [
 	'a loop of sections with a class that cannot be kept' => [ "[sections /services id=\"news\" class=\"a&b\"]\n". $loopRow. "\n[/sections]", 'class-token', null, 'a&b' ],
 	'a loop in a column of a loop of sections' => [ "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]\n\t\t</div>\n\t</div>\n[/sections]", 'stack-in-stack' ],
 	'a component that holds none, with a loop of its own, in a column of a loop of sections' => [ "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title title]\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]\n\t\t</div>\n\t</div>\n[/sections]", 'stack-in-stack' ],
+	// The animation of a section is its row's: the delay and the duration are attributes of the row's tag, the tag of the section has none of them, and the row no other
+	'the delay of an animation on the tag of a section'		=> [ "<section id=\"a\" class=\"nino-section\" data-vpa-delay=\"200ms\">\n\t". $row. "\n</section>", 'section-attribute', null, 'data-vpa-delay' ],
+	'the duration of an animation on the tag of a section'	=> [ "<section id=\"a\" class=\"nino-section\" data-vpa-duration=\"2s\">\n\t". $row. "\n</section>", 'section-attribute', null, 'data-vpa-duration' ],
+	'a third attribute on the row of a section'					=> [ "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\" data-vpa-delay=\"200ms\" data-vpa-duration=\"2s\" data-aos=\"fade\">\n\t\t<div class=\"nino-grid-100\">[title /template/page-x/a/title]</div>\n\t</div>\n</section>", 'row-attribute', null, 'data-aos' ],
+	'a delay on the row that is no time'							=> [ "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row nino-vpa\" data-vpa-delay=\"soon\">\n\t\t<div class=\"nino-grid-100\">[title /template/page-x/a/title]</div>\n\t</div>\n</section>", 'attribute-value', null, 'data-vpa-delay' ],
+	// The arrow of a section is the call of the scroll hint as it is, on the line after its row - nothing else there is the arrow
+	'the arrow of a section with a target'							=> [ "<section id=\"a\" class=\"nino-section\">\n\t". $row. "\n\t[". $arrowName. ' '. $arrowTo. "=\"b\"]\n</section>", 'section-content' ],
+	'a second arrow after the row'										=> [ "<section id=\"a\" class=\"nino-section\">\n\t". $row. "\n\t[". $arrowName. "]\n\t[". $arrowName. "]\n</section>", 'section-content' ],
+	'markup after the arrow'											=> [ "<section id=\"a\" class=\"nino-section\">\n\t". $row. "\n\t[". $arrowName. "]\n\t<p>After</p>\n</section>", 'section-content' ],
+	'the arrow before the row'										=> [ "<section id=\"a\" class=\"nino-section\">\n\t[". $arrowName. "]\n\t". $row. "\n</section>", 'no-row' ],
+	'the arrow of a loop of sections with a target'			=> [ "[sections /services id=\"news\"]\n". $loopRow. "\n\t[". $arrowName. ' '. $arrowTo. "=\"b\"]\n[/sections]", 'sections-content' ],
+	'a second arrow in a loop of sections'						=> [ "[sections /services id=\"news\"]\n". $loopRow. "\n\t[". $arrowName. "]\n\t[". $arrowName. "]\n[/sections]", 'sections-content' ],
 	// What a call is made of
 	'a value outside its options'					=> [ $section( '[title /template/page-x/a/title tag="h9"]' ), 'attribute-value', null, 'tag' ],
 	'an attribute the component has not'	=> [ $section( '[title /template/page-x/a/title colour="red"]' ), 'unknown-attribute', null, 'colour' ],
@@ -693,7 +742,7 @@ check( '...and what is written reads back as what was meant', ( static function(
 $styled = $blank;
 $styled['settings'] = [
 	'row' => 'narrow', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'cover' => 60, 'parallax' => true, 'dim' => true, 'padded' => true, 'contentPos' => 'bottom', 'whitespace' => 'less',
-	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'text' => 'right', 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
+	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'text' => 'right', 'arrow' => true, 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
 $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden' => [ 's' => true ], 'color' => 'dark', 'dim' => true, 'background' => [ 'slot' => '/template/page-x/a/photo', 'focus' => 8 ],
@@ -701,11 +750,13 @@ $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden'
 $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
-check( 'a section\'s settings are its classes, in one order: the colour, the border and its brand colour, the cover and its scrim, the parallax, the room around a cover, the place of the content, the whitespace, the spacing, the text, the animation, the custom ones - and its attributes the height of the cover, then the animation\'s',
-	str_contains( $once, '<section id="a" class="nino-section nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-cover-height="60" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
-check( '...and the row\'s and the column\'s: the width and the place of the row, the alignment of its columns, its padding on each side and its custom classes; of a column the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
-	str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row">' ) === true
+check( 'a section\'s settings are its classes, in one order: the colour, the border and its brand colour, the cover and its scrim, the parallax, the room around a cover, the place of the content, the whitespace, the spacing, the text, the custom ones - and its attribute the height of the cover; its animation is none of them',
+	str_contains( $once, '<section id="a" class="nino-section nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right my-section other" data-cover-height="60">' ) === true );
+check( '...and the row\'s and the column\'s: the width and the place of the row, the alignment of its columns, its padding on each side, the animation of the section and the custom classes - the delay and the duration of the animation the attributes of the row\'s tag; of a column the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
+	str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-row" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true
 	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
+check( '...the animation of a section stands on its row and on nothing else of it: no class and no attribute of it on the tag of the section, whatever the section is - written, read back as it was set, and written again byte for byte',
+	preg_match( '/<section [^>]*(?:vpa)/', $once ) === 0 && $write( $read( $once ) ) === $once && substr_count( $once, 'data-vpa-delay' ) === 1 && substr_count( $once, 'data-vpa-duration' ) === 1 );
 check( '...the picture behind the column is the first thing in it, a block of its own with the focus and the image of its slot with an empty alt', str_contains( $once, "my-col\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--8\">[image /template/page-x/a/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
 check( '...a background without a focus is the block and the image, with an empty alt', str_contains( $once, "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" ) === true );
 $sorted = static function( mixed $value ) use ( &$sorted ): mixed {
@@ -845,11 +896,11 @@ check( '...a second strength is a class of its own, kept: it cannot be said in a
 	&& $borderOf( 'nino-section nino-section--border-4' )['border'] === '' && $borderOf( 'nino-section nino-section--border-4' )['custom'] === 'nino-section--border-4' );
 
 // A section as a file has it: its classes, and the row's - the picture behind the section before the row, the one behind the row first in it
-$fileOf				= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): string => $page( '<section id="a" class="'. $sectionClass. "\">\n"
-	. ( $behind === true ? "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t<div class=\"". $rowClass. "\">\n"
+$fileOf				= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false, string $rowAttributes = '' ): string => $page( '<section id="a" class="'. $sectionClass. "\">\n"
+	. ( $behind === true ? "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t<div class=\"". $rowClass. "\"". $rowAttributes. ">\n"
 	. ( $inRow === true ? "\t\t<div class=\"nino-grid-row-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" : '' ). "\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>" );
-$fileRead		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): array => $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) )['blocks'][0];
-$fileSame		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false ): bool => $write( $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) ) ) === $inWrap( $fileOf( $sectionClass, $rowClass, $behind, $inRow ) );
+$fileRead		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false, string $rowAttributes = '' ): array => $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow, $rowAttributes ) )['blocks'][0];
+$fileSame		= static fn( string $sectionClass, string $rowClass = 'nino-grid-row', bool $behind = false, bool $inRow = false, string $rowAttributes = '' ): bool => $write( $read( $fileOf( $sectionClass, $rowClass, $behind, $inRow, $rowAttributes ) ) ) === $inWrap( $fileOf( $sectionClass, $rowClass, $behind, $inRow, $rowAttributes ) );
 
 // The row of a section: its width and its place are words of Nino.css and its padding a step of the space scale on each side - a class of the row apiece, read in any order and written in one
 $rowWrong = [];
@@ -880,14 +931,15 @@ check( 'the row of a section has a width - narrow, wide or full -, a place - lef
 	$rowWrong === [] && \Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide', 'full' ] && \Nino\Modules\Builder\Reader::ROW_PLACE === [ 'left', 'right' ]
 	&& \Nino\Modules\Builder\Reader::ROW_SPACING === [ 'pl' => 'rowPl', 'pr' => 'rowPr', 'pt' => 'rowPt', 'pb' => 'rowPb' ] && \Nino\Modules\Builder\Reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 
-$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row' ];
+$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row', 'rowBgPl' => '', 'rowBgPr' => '' ];
 $rowOrdered	= 'nino-grid-row nino-grid-row--wide nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row';
 $rowMade		= $blank;
 $rowMade['settings'] = $rowAll + $blank['settings'];
 
 check( 'the classes of the row stand in one order: the width, the place, the alignment of its columns, the padding on the left, on the right, above and below, then the custom ones - written from the settings, and read back as they were set',
 	$write( [ 'blocks' => [ $rowMade ] ] ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) && $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0] === $rowMade
-	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 9 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ] );
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 9 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ]
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 9, 2 ) === array_values( \Nino\Modules\Builder\Reader::ROW_BG_SPACING ) );
 
 $rowShuffled = 'nino-grid-row nino-pb-5 my-row nino-grid-bottom nino-pt-4 nino-grid-row--right nino-pr-2 nino-grid-row--wide nino-pl-1';
 check( '...whatever order the file has them in: it is the same row, written in that one order, and what is written reads as it was', $fileRead( 'nino-section', $rowShuffled ) === $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0]
@@ -928,9 +980,10 @@ check( '...the padding of the section and the padding of its row are two setting
 	&& $fileSame( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' ) === true );
 
 $rowLeft = $blank;
-unset( $rowLeft['settings']['rowPlace'], $rowLeft['settings']['rowPl'], $rowLeft['settings']['rowPr'], $rowLeft['settings']['rowPt'], $rowLeft['settings']['rowPb'] );
-check( 'a row the model says nothing of has no place and no padding: the Writer takes the defaults, which are none, and writes the row as it always was', str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n" ) === true
-	&& array_diff( [ $blank['settings']['rowPlace'], $blank['settings']['rowPl'], $blank['settings']['rowPr'], $blank['settings']['rowPt'], $blank['settings']['rowPb'] ], [ '' ] ) === [] );
+unset( $rowLeft['settings']['rowPlace'], $rowLeft['settings']['rowPl'], $rowLeft['settings']['rowPr'], $rowLeft['settings']['rowPt'], $rowLeft['settings']['rowPb'], $rowLeft['settings']['rowBgPl'], $rowLeft['settings']['rowBgPr'], $rowLeft['settings']['arrow'] );
+check( 'a row the model says nothing of has no place, no padding, no offset of its picture and no arrow: the Writer takes the defaults, which are none, and writes the row as it always was', str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n" ) === true
+	&& str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), $reader::ARROW ) === false
+	&& array_diff( [ $blank['settings']['rowPlace'], $blank['settings']['rowPl'], $blank['settings']['rowPr'], $blank['settings']['rowPt'], $blank['settings']['rowPb'], $blank['settings']['rowBgPl'], $blank['settings']['rowBgPr'] ], [ '' ] ) === [] && $blank['settings']['arrow'] === false );
 
 $custom = $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--black my-own nino-section--alt nino-cover--dim', 'nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 u-pad' ) ) )['blocks'][0];
 check( 'a class the builder does not know is a custom one, and so are a second colour and a scrim on a section that is neither a cover nor a parallax - nothing is lost',
@@ -1063,6 +1116,82 @@ check( '...the ground that sets a column off, a second ground and a scrim over n
 	&& $fileRead( 'nino-section', 'nino-grid-row nino-grid-row--alt nino-grid-row--dim' )['settings']['dim'] === false && $fileRead( 'nino-section', 'nino-grid-row nino-grid-row--alt nino-grid-row--dim' )['settings']['rowCustom'] === 'nino-grid-row--dim'
 	&& $fileSame( 'nino-section', 'nino-grid-row nino-grid-row--alt nino-grid-row--dim' ) === true );
 
+// The animation of a section stands on its row: its classes after the radius of the row, its delay and its duration as the attributes of the row's tag. The tag of the section has no part in it - a class of the
+// animation there is a class of the section like any other, an attribute of it one the builder does not keep (see the reasons above)
+$vpaOn				= [ 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s' ];
+$vpaClasses		= 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat';
+$vpaAttributes	= ' data-vpa-delay="200ms" data-vpa-duration="1.5s"';
+$vpaShuffled	= $fileOf( 'nino-section', 'my-row nino-vpa--repeat nino-grid-row nino-vpa--speed-slow nino-pl-1 nino-vpa--zoom-soft nino-vpa', false, false, ' data-vpa-duration="1.5s" data-vpa-delay="200ms"' );
+$vpaCanonical	= $fileOf( 'nino-section', 'nino-grid-row nino-pl-1 '. $vpaClasses. ' my-row', false, false, $vpaAttributes );
+$vpaRead			= $read( $vpaShuffled )['blocks'][0]['settings'];
+$vpaOld				= $read( $fileOf( 'nino-section nino-vpa nino-vpa--zoom-soft', 'nino-grid-row '. $vpaClasses, false, false, $vpaAttributes ) )['blocks'][0]['settings'];
+
+check( 'the animation of a section is read from its row: its classes among the row\'s own, in any order - the bare nino-vpa, the effect, the speed and the mode -, its delay and its duration from the attributes of the row\'s tag, in either order; what else the row has is the row\'s still, and the section keeps none of it',
+	array_intersect_key( $vpaRead, $vpaOn ) === $vpaOn && $vpaRead['rowCustom'] === 'my-row' && $vpaRead['rowPl'] === '1' && $vpaRead['custom'] === '' );
+check( '...and it is written in one order, byte for byte: after the classes of the row and before its custom ones, the delay then the duration on the tag of the row - the tag of the section holds none of it',
+	$write( $read( $vpaShuffled ) ) === $inWrap( $vpaCanonical ) && $write( $read( $vpaCanonical ) ) === $inWrap( $vpaCanonical ) && preg_match( '/<section [^>]*vpa/', $write( $read( $vpaCanonical ) ) ) === 0
+	&& substr_count( $write( $read( $vpaCanonical ) ), 'data-vpa-delay' ) === 1 && substr_count( $write( $read( $vpaCanonical ) ), 'data-vpa-duration' ) === 1 );
+check( '...on the tag of the section nino-vpa and the classes after it are classes of the section like any other - custom, kept where they stood, the section none the more animated for them - and with the row\'s own they are two things that do not touch',
+	$fileRead( 'nino-section nino-vpa nino-vpa--zoom-soft' )['settings']['vpa'] === null && $fileRead( 'nino-section nino-vpa nino-vpa--zoom-soft' )['settings']['custom'] === 'nino-vpa nino-vpa--zoom-soft' && $fileSame( 'nino-section nino-vpa nino-vpa--zoom-soft' ) === true
+	&& $vpaOld['custom'] === 'nino-vpa nino-vpa--zoom-soft' && array_intersect_key( $vpaOld, $vpaOn ) === $vpaOn && $fileSame( 'nino-section nino-vpa nino-vpa--zoom-soft', 'nino-grid-row '. $vpaClasses, false, false, $vpaAttributes ) === true );
+check( '...a section that is not animated has nothing of it on its row, one that is animated with nothing chosen has the bare class - and the delay alone, on a row, makes it that one',
+	str_contains( $coverWritten( [ 'vpa' => null ] ), 'vpa' ) === false && str_contains( $coverWritten( [ 'vpa' => '' ] ), '<div class="nino-grid-row nino-vpa">' ) === true && $fileRead( 'nino-section', 'nino-grid-row', false, false, ' data-vpa-delay="1s"' )['settings']['vpa'] === '' );
+
+// The arrow of a section is the call of the kernel's scroll hint on the line after its row, whitespace between: a setting of the section. In a column the same call is a component like any other
+$arrowCall	= '['. $reader::ARROW. ']';
+$arrowText	= $coverWritten( [ 'arrow' => true ] );
+$arrowNode	= $read( $page( $section( '['. $reader::ARROW. ' '. $arrowTo. '="next"]' ) ) )['blocks'][0];
+
+check( 'the arrow of a section is the call of the scroll hint on a line of its own, one tab in, after the row and before the closing tag - no class, no attribute, nothing else of the section changes -, written from the setting and read back as it was set; a section without it has no call and reads as off',
+	str_contains( $arrowText, "\t</div>\n\t". $arrowCall. "\n</section>" ) === true && substr_count( $arrowText, '['. $reader::ARROW ) === 1 && str_replace( "\t". $arrowCall. "\n", '', $arrowText ) === $coverWritten( [] ) && $coverBack( [ 'arrow' => true ] ) === true
+	&& str_contains( $coverWritten( [] ), $reader::ARROW ) === false && $read( $coverWritten( [] ) )['blocks'][0]['settings']['arrow'] === false && $reader::sectionDefaults()['arrow'] === false );
+check( '...whatever white space lies between the row and the call it is the arrow, and written again it is the one canonical line - with a cover, a picture and a background inside as well',
+	$read( str_replace( "\t</div>\n\t". $arrowCall, "\t</div>\n\n\t\t". $arrowCall, $arrowText ) )['blocks'][0] === $read( $arrowText )['blocks'][0] && $write( $read( $arrowText ) ) === $arrowText
+	&& $coverBack( [ 'arrow' => true, 'cover' => 60, 'dim' => true, 'row' => 'wide' ] ) === true && $pictureBack( [ 'arrow' => true ] ) === true && $pictureBack( [ 'arrow' => true, 'inner' => true ] ) === true );
+check( '...a call with a target, a second call and a call before the row are no arrow - the target is not a setting the builder keeps; each is a foreign block with its reason, see above -, and in a column the call is a component like any other, with its target',
+	$arrowNode['settings']['arrow'] === false && array_column( $arrowNode['cols'][0]['components'], 'name' ) === [ $reader::ARROW ] && $arrowNode['cols'][0]['components'][0]['attributes'][$arrowTo] === 'next'
+	&& $write( $read( $page( $section( '['. $reader::ARROW. ' '. $arrowTo. '="next"]' ) ) ) ) === $inWrap( $page( $section( '['. $reader::ARROW. ' '. $arrowTo. '="next"]' ) ) ) );
+
+// How far in from either side the picture behind an element starts: nino-bg-pl-<n> and nino-bg-pr-<n>, a step from 0 to 3 for a side, 0 being the edge. A row has them where it holds the picture, a column where it
+// has one, a card whatever it holds; on any other they move nothing, and stay custom classes as the radius of such does
+$bgRowWrong = [];
+
+foreach( $reader::BG_STEPS as $step )
+	foreach( $reader::ROW_BG_SPACING as $side => $key ) {
+
+		$classes	= 'nino-grid-row nino-bg-'. $side. '-'. $step;
+		$made			= $pictured( [ 'inner' => true, $key => $step ] );
+		$got			= $fileRead( 'nino-section', $classes, false, true )['settings'];
+
+		// Read from the class of a row that holds the picture, written back as it was, and written from the setting and read back as set
+		if( $got[$key] !== $step || $got['rowCustom'] !== '' || $fileSame( 'nino-section', $classes, false, true ) === false
+			|| $write( [ 'blocks' => [ $made ] ] ) !== $inWrap( $fileOf( 'nino-section', $classes, false, true ) ) || $read( $write( [ 'blocks' => [ $made ] ] ) )['blocks'][0] !== $made )
+			$bgRowWrong[] = $key. ' '. $step;
+	}
+
+check( 'how far in from either side the picture behind the row starts is a step from 0 to 3 for the left and for the right side - nino-bg-pl-<n> and nino-bg-pr-<n> on the row that holds the picture -, read from the class and written back byte for byte, and written from the setting and read back as set: all '
+	. count( $reader::BG_STEPS ) * count( $reader::ROW_BG_SPACING ). ' classes'. ( $bgRowWrong === [] ? '' : ' - '. implode( ', ', $bgRowWrong ) ),
+	$bgRowWrong === [] && $reader::BG_STEPS === [ '0', '1', '2', '3' ] && $reader::ROW_BG_SPACING === [ 'pl' => 'rowBgPl', 'pr' => 'rowBgPr' ] && $reader::sectionDefaults()['rowBgPl'] === '' && $reader::sectionDefaults()['rowBgPr'] === '' );
+
+$bgRowOrdered	= 'nino-grid-row nino-grid-row--wide nino-pl-1 nino-pb-2 nino-bg-pl-3 nino-bg-pr-0 '. $reader::RADIUS_CLASS['alternative']. ' my-row';
+$bgRowMade		= $pictured( [ 'inner' => true, 'row' => 'wide', 'rowPl' => '1', 'rowPb' => '2', 'rowBgPl' => '3', 'rowBgPr' => '0', 'rowRadius' => 'alternative', 'rowCustom' => 'my-row' ] );
+check( '...they stand after the padding of the row and before its radius - the left side, then the right, a step of 0 written like the others -, whatever order the file has them in: the same row, written in that one order, and what is written reads as it was set',
+	$write( [ 'blocks' => [ $bgRowMade ] ] ) === $inWrap( $fileOf( 'nino-section', $bgRowOrdered, false, true ) ) && $read( $write( [ 'blocks' => [ $bgRowMade ] ] ) )['blocks'][0] === $bgRowMade
+	&& $fileRead( 'nino-section', 'my-row '. $reader::RADIUS_CLASS['alternative']. ' nino-bg-pr-0 nino-pb-2 nino-bg-pl-3 nino-grid-row--wide nino-pl-1 nino-grid-row', false, true ) === $bgRowMade );
+
+$bgRowIdle		= $fileRead( 'nino-section', 'nino-grid-row nino-bg-pl-2 nino-bg-pr-1' )['settings'];
+$bgRowBehind	= $fileRead( 'nino-section', 'nino-grid-row nino-bg-pl-2', true )['settings'];
+$bgRowTwice		= $fileRead( 'nino-section', 'nino-grid-row nino-bg-pl-1 nino-bg-pr-3 nino-bg-pl-4 nino-bg-pr-x nino-bg-pl-2', false, true )['settings'];
+check( '...on a row that holds no picture they move nothing: the classes stay custom classes of the row, and the picture behind the section is not the row\'s; so do a step the scale has not, a word, and a second class of a side, which is a class of its own - all written back where they stood',
+	[ $bgRowIdle['rowBgPl'], $bgRowIdle['rowBgPr'], $bgRowIdle['rowCustom'] ] === [ '', '', 'nino-bg-pl-2 nino-bg-pr-1' ] && $fileSame( 'nino-section', 'nino-grid-row nino-bg-pl-2 nino-bg-pr-1' ) === true
+	&& [ $bgRowBehind['rowBgPl'], $bgRowBehind['rowCustom'] ] === [ '', 'nino-bg-pl-2' ] && $fileSame( 'nino-section', 'nino-grid-row nino-bg-pl-2', true ) === true
+	&& [ $bgRowTwice['rowBgPl'], $bgRowTwice['rowBgPr'], $bgRowTwice['rowCustom'] ] === [ '1', '3', 'nino-bg-pl-4 nino-bg-pr-x nino-bg-pl-2' ]
+	&& $fileSame( 'nino-section', 'nino-grid-row nino-bg-pl-1 nino-bg-pr-3 nino-bg-pl-4 nino-bg-pr-x nino-bg-pl-2', false, true ) === true );
+
+check( '...and the Writer leaves them out where the model sets them on a row that holds no picture - the picture behind the section is not the row\'s, and there may be none -: they would move nothing, and a file that has them reads back the settings it had',
+	str_contains( $coverWritten( [ 'rowBgPl' => '2', 'rowBgPr' => '1' ] ), 'nino-bg-' ) === false && str_contains( $pictureText( [ 'rowBgPl' => '2' ] ), 'nino-bg-' ) === false
+	&& str_contains( $pictureText( [ 'inner' => true, 'rowBgPl' => '2' ], null ), 'nino-bg-' ) === false && str_contains( $pictureText( [ 'inner' => true, 'rowBgPl' => '2' ] ), 'nino-bg-pl-2' ) === true );
+
 // A loop that makes sections: its call stands where the tag of a section does, the id and the classes after nino-section are the call's, and what a section holds is between its tags
 $loopFile		= "[sections /services sort=\"title\" limit=\"3\" id=\"news\" class=\"nino-section--alt nino-pt-2\"]\n". $loopRow. "\n[/sections]";
 $loopBlock	= $read( $page( $loopFile ) )['blocks'][0];
@@ -1082,15 +1211,24 @@ check( '...every section has the key, and a section that is a <section> has no l
 check( '...and it is written back byte for byte: the call at the margin with the attributes of the loop in the order of its schema, then the id, then the class - the row and the columns as they stand in a section, one tab in - and the closing tag where the call is',
 	$write( $read( $page( $loopFile ) ) ) === $inWrap( $page( $loopFile ) ) && $read( $write( $read( $page( $loopFile ) ) ) ) === $read( $page( $loopFile ) )
 	&& str_contains( $write( $read( $page( $loopFile ) ) ), "\n[sections /services sort=\"title\" limit=\"3\" id=\"news\" class=\"nino-section--alt nino-pt-2\"]\n\t<div class=\"nino-grid-row\">\n" ) === true );
-check( '...a call with no class of the section\'s has none: the classes are the section\'s settings in the order of a section\'s - the animation among them -, and read back as set',
+check( '...a call with no class of the section\'s has none: the classes are the section\'s settings in the order of a section\'s, and read back as set',
 	str_contains( $loopText(), "\n[sections /services sort=\"title\" limit=\"3\" id=\"news\"]\n" ) === true && $loopBack() === true
-	&& str_contains( $loopText( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'vpa' => '', 'vpaMode' => 'visible', 'custom' => 'my-own' ] ), ' id="news" class="nino-section--black nino-section--border-2 nino-mt-1 nino-text-center nino-vpa nino-vpa--visible my-own"]' ) === true
-	&& $loopBack( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'vpa' => '', 'vpaMode' => 'visible', 'custom' => 'my-own', 'whitespace' => 'more', 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ) === true
+	&& str_contains( $loopText( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'custom' => 'my-own' ] ), ' id="news" class="nino-section--black nino-section--border-2 nino-mt-1 nino-text-center my-own"]' ) === true
+	&& $loopBack( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'custom' => 'my-own', 'whitespace' => 'more', 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ) === true
 	&& str_contains( $loopText( [ 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ), "\n\t<div class=\"nino-grid-row nino-grid-row--full nino-grid-row--left nino-pl-0 nino-pr-0\">\n" ) === true );
-check( '...a cover has no height to write in a call: it is the 90 of Nino.ui.js, nino-cover with the padding and the place of the content, and no data-cover-height - and the delay and the duration of an animation have no attribute to stand in either',
+check( '...a cover has no height to write in a call: it is the 90 of Nino.ui.js, nino-cover with the padding and the place of the content, and no data-cover-height',
 	str_contains( $loopText( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ), ' id="news" class="nino-cover nino-cover--padded nino-cover-top"]' ) === true && str_contains( $loopText( [ 'cover' => 90 ] ), 'data-cover-height' ) === false
-	&& $loopBack( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ) === true && $loopBack( [ 'parallax' => true, 'dim' => true ] ) === true
-	&& str_contains( $loopText( [ 'vpa' => '', 'vpaDelay' => '200ms', 'vpaDuration' => '2s' ] ), 'data-vpa' ) === false );
+	&& $loopBack( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ) === true && $loopBack( [ 'parallax' => true, 'dim' => true ] ) === true );
+$loopAnimated = [ 'vpa' => 'slide-up-soft', 'vpaSpeed' => 'fast', 'vpaMode' => 'visible', 'vpaDelay' => '200ms', 'vpaDuration' => '2s' ];
+check( '...the animation of a section that is a loop stands on its row inside the call, as it does on any section: its classes and its delay and its duration, which the row has as attributes of its tag - the call keeps none of it - and it reads back as set',
+	str_contains( $loopText( $loopAnimated ), "\n[sections /services sort=\"title\" limit=\"3\" id=\"news\"]\n\t<div class=\"nino-grid-row nino-vpa nino-vpa--slide-up-soft nino-vpa--speed-fast nino-vpa--visible\" data-vpa-delay=\"200ms\" data-vpa-duration=\"2s\">\n" ) === true
+	&& $loopBack( $loopAnimated ) === true && $loopBack( $loopAnimated + [ 'row' => 'full', 'rowPl' => '2', 'custom' => 'my-own', 'rowCustom' => 'my-row' ] ) === true
+	&& $read( str_replace( ' class="nino-section--alt nino-pt-2"', ' class="nino-section--alt nino-pt-2 nino-vpa"', $page( $loopFile ) ) )['blocks'][0]['settings']['vpa'] === null
+	&& $read( str_replace( ' class="nino-section--alt nino-pt-2"', ' class="nino-section--alt nino-pt-2 nino-vpa"', $page( $loopFile ) ) )['blocks'][0]['settings']['custom'] === 'nino-vpa'
+	&& $read( $page( str_replace( 'id="news"', 'id="news" data-vpa-delay="1s"', $loopFile ) ) )['blocks'][0]['reason']['code'] === 'sections-attribute' );
+check( '...the arrow of a loop of sections is the line after its row inside the call, as it is in a section, and reads back as set - with the animation of its row as well',
+	str_contains( $loopText( [ 'arrow' => true ] ), "\t</div>\n\t". $arrowCall. "\n[/sections]\n" ) === true && $loopBack( [ 'arrow' => true ] ) === true && $loopBack( [ 'arrow' => true ] + $loopAnimated ) === true
+	&& str_contains( $loopText( [] ), $reader::ARROW ) === false );
 check( '...the picture behind it is the first thing between the tags, the scrim over it among the classes of the call; with the background inside it is the row\'s: the picture first in the row, the colour and the scrim on the row',
 	str_contains( $loopText( [ 'dim' => true ], $picture ), "[sections /services sort=\"title\" limit=\"3\" id=\"news\" class=\"nino-section--dim\"]\n\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">" ) === true
 	&& $loopBack( [ 'dim' => true ], $picture ) === true
@@ -1174,16 +1312,62 @@ check( '...a second class of a kind is a class of its own, as it is in a section
 	&& $columnOf( $groundOf( 'nino-grid-100 nino-p-7 nino-pt-2 nino-pb-1 nino-m-2 nino-mt-x' ) )['p'] === '' && $columnOf( $groundOf( 'nino-grid-100 nino-p-7 nino-pt-2 nino-pb-1 nino-m-2 nino-mt-x' ) )['custom'] === 'nino-p-7 nino-pt-2 nino-pb-1 nino-m-2 nino-mt-x'
 	&& $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-p-2 nino-pt-2' ) ) )['blocks'][0]['settings']['custom'] === 'nino-p-2' && $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-p-2 nino-pt-2' ) ) )['blocks'][0]['settings']['pt'] === '2' );
 
+// How far in from either side the picture behind a column starts: the same two classes, after the spacing of the column and before its radius, on a column that has a picture - without one they are custom classes
+$bgColWrong = [];
+
+foreach( $reader::BG_STEPS as $step )
+	foreach( $reader::BG_SPACING as $side => $key ) {
+
+		$source	= $groundOf( 'nino-grid-100 nino-bg-'. $side. '-'. $step, $photo. "\n\t\t\t[title /template/page-x/a/title]" );
+		$got		= $columnOf( $source );
+
+		if( $got[$key] !== $step || $got['custom'] !== '' || $got['background'] === null || $write( $read( $source ) ) !== $inWrap( $source ) || $read( $write( $read( $source ) ) ) !== $read( $source ) )
+			$bgColWrong[] = $key. ' '. $step;
+	}
+
+check( 'how far in from either side the picture behind a column starts is the same step from 0 to 3 for either side - nino-bg-pl-<n> and nino-bg-pr-<n> on a column that has a picture -, read from the class and written back byte for byte: all '
+	. count( $reader::BG_STEPS ) * count( $reader::BG_SPACING ). ' classes'. ( $bgColWrong === [] ? '' : ' - '. implode( ', ', $bgColWrong ) ),
+	$bgColWrong === [] && $reader::BG_SPACING === [ 'pl' => 'bgPl', 'pr' => 'bgPr' ] && array_intersect_key( $reader::colDefaults(), array_flip( $reader::BG_SPACING ) ) === [ 'bgPl' => '', 'bgPr' => '' ] );
+
+$bgColFile	= $groundOf( 'nino-grid-100 nino-p-2 nino-mb-1 nino-bg-pl-1 nino-bg-pr-3 '. $reader::RADIUS_CLASS['standard']. ' my-col', $photo. "\n\t\t\t[title /template/page-x/a/title]" );
+$bgColMix		= $groundOf( 'my-col '. $reader::RADIUS_CLASS['standard']. ' nino-bg-pr-3 nino-mb-1 nino-bg-pl-1 nino-p-2 nino-grid-100', $photo. "\n\t\t\t[title /template/page-x/a/title]" );
+$bgColTwice	= $columnOf( $groundOf( 'nino-grid-100 nino-bg-pl-1 nino-bg-pl-4 nino-bg-pr-x nino-bg-pl-2', $photo. "\n\t\t\t[title /template/page-x/a/title]" ) );
+$bgColIdle	= $columnOf( $groundOf( 'nino-grid-100 nino-bg-pl-2 nino-bg-pr-1' ) );
+check( '...they stand after the spacing of the column and before its radius, left then right, whatever order the file has them in; without a picture they move nothing and are custom classes, kept where they stood - and so are a step the scale has not, a word, and a second class of a side',
+	$write( $read( $bgColMix ) ) === $inWrap( $bgColFile ) && $write( $read( $bgColFile ) ) === $inWrap( $bgColFile ) && $columnOf( $bgColFile )['radius'] === 'standard' && $columnOf( $bgColFile )['custom'] === 'my-col'
+	&& [ $bgColIdle['bgPl'], $bgColIdle['bgPr'], $bgColIdle['custom'] ] === [ '', '', 'nino-bg-pl-2 nino-bg-pr-1' ] && $write( $read( $groundOf( 'nino-grid-100 nino-bg-pl-2 nino-bg-pr-1' ) ) ) === $inWrap( $groundOf( 'nino-grid-100 nino-bg-pl-2 nino-bg-pr-1' ) )
+	&& [ $bgColTwice['bgPl'], $bgColTwice['bgPr'], $bgColTwice['custom'] ] === [ '1', '', 'nino-bg-pl-4 nino-bg-pr-x nino-bg-pl-2' ] );
+
+$colWith = static fn( array $set ): string => $write( [ 'blocks' => [ array_replace( $blank, [ 'cols' => [ array_replace( $blank['cols'][0], $set ) ] ] ) ] ] );
+check( '...and the Writer leaves them out where the model sets them on a column that has no picture, whatever ground it paints: they would move nothing',
+	str_contains( $colWith( [ 'bgPl' => '2', 'bgPr' => '0' ] ), 'nino-bg-' ) === false && str_contains( $colWith( [ 'bgPl' => '2', 'color' => 'alt' ] ), 'nino-bg-' ) === false
+	&& str_contains( $colWith( [ 'bgPl' => '2', 'background' => [ 'slot' => '/template/page-x/a/photo', 'focus' => null ] ] ), 'nino-bg-pl-2' ) === true );
+
 $unspaced = $read( $fixture )['blocks'];
 foreach( $unspaced as $b => $block )
 	foreach( $block['cols'] ?? [] as $c => $col )
-		unset( $unspaced[$b]['cols'][$c]['p'], $unspaced[$b]['cols'][$c]['mt'], $unspaced[$b]['cols'][$c]['mb'] );
-check( 'a column with none of the three is written as it always was: a model without them is the example page, byte for byte, and every existing fixture is read and written as it was',
+		unset( $unspaced[$b]['cols'][$c]['p'], $unspaced[$b]['cols'][$c]['mt'], $unspaced[$b]['cols'][$c]['mb'], $unspaced[$b]['cols'][$c]['bgPl'], $unspaced[$b]['cols'][$c]['bgPr'] );
+check( 'a column with none of the three is written as it always was: a model without them - and without the offsets of its picture - is the example page, byte for byte, and every existing fixture is read and written as it was',
 	$write( [ 'name' => 'Home', 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => $unspaced ] ) === $wrapped( $fixture ) && $model['blocks'][0]['cols'][0]['p'] === '' && $model['blocks'][0]['cols'][0]['mt'] === '' && $model['blocks'][0]['cols'][0]['mb'] === ''
 	&& $write( $wrapModel ) === $wrapFixture && $write( $read( $concept ) ) === $wrapped( $fixture ) );
 
-// A card as the Writer writes it: every attribute, in the order of the schema and only where it differs from the default
-$allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'fill' => '1', 'padding' => '0', 'vertical' => 'last-bottom', 'align' => 'center', 'ground' => 'dark', 'borderless' => '1', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'class' => 'my-card' ], 'radius' => '',
+// A card as the Writer writes it: every attribute, in the order of the schema and only where it differs from the default. The attributes are the registry's, whichever the kernel declares: each is set to a
+// value other than its default - a switch to the other state, a choice to the last option that is not the default, a picture to a slot, any other to a word of its own
+$cardAway = [];
+
+foreach( $reader::defaults( $registry['components']['card'] ) as $attribute => $default ) {
+
+	$declared = $registry['components']['card']['attributes'][$attribute] ?? [];
+
+	$cardAway[$attribute] = match( $declared['type'] ?? 'string' ) {
+		'bool'								=> $default === '1' ? '0' : '1',
+		'select', 'variant'		=> implode( '', array_slice( array_diff( $declared['options'], [ $default ] ), -1 ) ),
+		'image'								=> '/template/page-x/a/backdrop',
+		default								=> 'my-'. $attribute,
+	};
+}
+
+$allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $cardAway, 'radius' => '' ] + array_fill_keys( $reader::BG_SPACING, '' ) + [
 	'components' => [
 		[ 'name' => 'card-title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => array_replace( $registry['components']['card-title']['defaults'], [ 'tag' => 'h3', 'style' => 'quiet' ] ) ],
 		[ 'name' => 'button', 'source' => '', 'text' => 'Go', 'attributes' => array_replace( $registry['components']['button']['defaults'], [ 'href' => '#top' ] ) ],
@@ -1191,18 +1375,21 @@ $allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 
 $cardBlock = $blank;
 $cardBlock['cols'][0]['components'] = [ $allSet ];
 $cardText = $write( [ 'blocks' => [ $cardBlock ] ] );
-check( 'a card with every attribute set is its call with the attributes in the order of the schema - full height, padding, vertical, horizontal, ground, border, picture, focus, dimming, class -, its children one tab deeper on a line each and its closing tag at the depth of its call',
-	str_contains( $cardText, "\t\t\t[card fill=\"1\" padding=\"0\" vertical=\"last-bottom\" align=\"center\" ground=\"dark\" borderless=\"1\" background=\"/template/page-x/a/backdrop\" focus=\"3\" dim=\"1\" class=\"my-card\"]\n"
+$cardCallAway = '[card'. implode( '', array_map( static fn( string $attribute, string $value ): string => ' '. $attribute. '="'. $value. '"', array_keys( $cardAway ), $cardAway ) ). ']';
+check( 'a card with every attribute set is its call with the attributes in the order of the schema, the ones the kernel declares and then the class, each away from its default, its children one tab deeper on a line each and its closing tag at the depth of its call',
+	count( $cardAway ) === count( $registry['components']['card']['attributes'] ) + 1 && array_keys( $cardAway ) === array_merge( array_keys( $registry['components']['card']['attributes'] ), [ 'class' ] ) && array_filter( $cardAway, static fn( string $value, string $attribute ): bool => $value === $registry['components']['card']['defaults'][$attribute], ARRAY_FILTER_USE_BOTH ) === []
+	&& str_contains( $cardText, "\t\t\t". $cardCallAway. "\n"
 		. "\t\t\t\t[card-title /template/page-x/a/title tag=\"h3\" style=\"quiet\"]\n\t\t\t\t[button text=\"Go\" href=\"#top\"]\n\t\t\t[/card]\n\t\t</div>\n" ) === true );
 check( '...and what is written reads back as what was meant: the card with its attributes and its children, node for node', $read( $cardText )['blocks'][0]['cols'][0]['components'][0] === $allSet );
 
 // In the content of a loop the card is one level deeper, and so are its children
 $looped = $blank;
 $looped['cols'][0]['stack'] = [ 'name' => 'stack', 'source' => '/services', 'attributes' => $registry['stacks']['stack']['defaults'] ];
-$looped['cols'][0]['components'] = [ [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['card']['defaults'], [ 'fill' => '1' ] ), 'radius' => '',
+$cardFirst = array_key_first( $cardAway );
+$looped['cols'][0]['components'] = [ [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['card']['defaults'], [ $cardFirst => $cardAway[$cardFirst] ] ), 'radius' => '' ] + array_fill_keys( $reader::BG_SPACING, '' ) + [
 	'components' => [ [ 'name' => 'card-title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'] ] ] ] ];
 check( '...in the content of a loop the call of the card stands one tab deeper, its children one more and its closing tag with its call - and it reads back as the loop and the card it was', str_contains( $write( [ 'blocks' => [ $looped ] ] ),
-	"\t\t\t[stack /services]\n\t\t\t\t[card fill=\"1\"]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/stack]\n" ) === true && $read( $write( [ 'blocks' => [ $looped ] ] ) )['blocks'][0] === $looped );
+	"\t\t\t[stack /services]\n\t\t\t\t[card ". $cardFirst. "=\"". $cardAway[$cardFirst]. "\"]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/stack]\n" ) === true && $read( $write( [ 'blocks' => [ $looped ] ] ) )['blocks'][0] === $looped );
 
 // A card that holds nothing, one the model gives no list of children, and a content that a card has none of
 $bare = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'alt' ] ];
@@ -1409,9 +1596,9 @@ check( '...a component says where it belongs (in) and what it draws (draws), as 
 	&& array_filter( $kernelComponents, static fn( array $schema ): bool => isset( $schema['in'] ) === true ) !== [] && array_filter( $kernelComponents, static fn( array $schema ): bool => isset( $schema['in'] ) === false ) !== []
 	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'in', $schema ) === true || array_key_exists( 'draws', $schema ) === true || array_key_exists( 'holds', $schema ) === true
 		|| array_key_exists( 'link', $schema ) === true || array_key_exists( 'by', $schema ) === true || array_key_exists( 'group', $schema ) === true ) === [] );
-check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card, is offered in a section and in a hero, and draws an article element - all three arrive as the kernel has them, and no other component carries holds, nor does a loop',
-	$registryAnswer['components']['card']['in'] === [ 'section', 'hero' ] && $registryAnswer['components']['card']['draws'] === 'article .nino-card' && $registryAnswer['components']['card']['holds'] === 'card' && $registryAnswer['components']['card']['label'] === 'Card'
-	&& $registryAnswer['components']['card']['source'] === 'content' && array_keys( $registryAnswer['components']['card']['attributes'] ) === [ 'fill', 'padding', 'vertical', 'align', 'ground', 'borderless', 'background', 'focus', 'dim' ]
+check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card and says where it is offered and what it draws - the three arrive as the kernel has them, which the check above compares, and no other component carries holds, nor does a loop',
+	array_key_exists( 'in', $registryAnswer['components']['card'] ) === true && array_key_exists( 'draws', $registryAnswer['components']['card'] ) === true && array_key_exists( 'holds', $registryAnswer['components']['card'] ) === true
+	&& $registryAnswer['components']['card']['source'] === 'content' && array_keys( $registryAnswer['components']['card']['attributes'] ) === array_keys( $kernelComponents['card']['attributes'] ) && $kernelComponents['card']['attributes'] !== []
 	&& array_keys( array_filter( $registryAnswer['components'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'card' ] && array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true || array_key_exists( 'in', $schema ) === true ) === []
 	&& array_key_exists( 'card', $registryAnswer['stacks']['stack']['defaults'] ) === false && array_key_exists( 'card', $registryAnswer['stacks']['filter']['defaults'] ) === false );
 check( '...a component says the icon it is shown by (icon), as the kernel registered it: the parts of a 24 by 24 stroke icon, each a tag and a map of its attributes, all of them strings - every component of the kernel has one, a loop has none, and the key stands right after the preview the component is drawn as',
@@ -1914,6 +2101,21 @@ $answers = [
 			[ 'name' => 'card-title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'], 'radius' => 'standard' ],
 		] ];
 	} ),
+	'a step of the picture behind the row that is a number'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowBgPl'] = 1; } ),
+	'a step of the picture behind the row outside the scale'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['rowBgPr'] = '4'; } ),
+	'a step of the picture behind a column outside the scale'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['bgPl'] = '4'; } ),
+	'a step of the picture behind a card outside the scale'		=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'bgPr' => '4', 'components' => [] ];
+	} ),
+	'a step of the picture behind a card that is a list'		=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'bgPl' => [ '1' ], 'components' => [] ];
+	} ),
+	'a step of the picture on a component that is no card'	=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['bgPr'] = '1'; } ),
+	'a step of the picture on the child of a card'				=> $shape( static function( array &$model ) use ( $registry ): void {
+		$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'components' => [
+			[ 'name' => 'card-title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'], 'bgPl' => '1' ],
+		] ];
+	} ),
 ];
 $typed = array_filter( $answers, static fn( array $answer ): bool => $answer['status'] !== 400 || $answer['code'] !== 'invalid' );
 check( 'a model of the wrong shape is refused with 400 and a problem, none of '. count( $answers ). ' ends in an error: '. implode( ', ', array_keys( $answers ) ), $typed === [] && ninoWarnings() === [] );
@@ -1932,6 +2134,22 @@ check( '...the radius is named where it is wrong: the setting of the section, of
 	&& str_contains( $radiusSaid('a radius of a card that is a list'), 'block 1 has the component "card" with a radius that is none of the two strengths' ) === true
 	&& str_contains( $radiusSaid('a radius on the child of a card'), 'block 1 has the component "card-title" with a radius, and it is no surface' ) === true
 	&& array_filter( \Nino\Modules\Builder\Document::problems( $appData, $radiusModel, $registry ), static fn( string $sentence ): bool => str_contains( $sentence, 'radius' ) === true ) === [] && ninoWarnings() === [] );
+
+// How far in from its sides the picture behind a row, a column and a card starts is a step from 0 to 3 or none - and the card is the one component to give a step
+$bgSaid = static fn( string $what ): string => implode( ' | ', $answers[$what]['problems'] ?? [] );
+$bgModel = $shaped['model'];
+$bgModel['blocks'][0]['settings']['rowBgPl'] = '0';
+$bgModel['blocks'][0]['settings']['rowBgPr'] = '3';
+$bgModel['blocks'][0]['cols'][0]['bgPl'] = '2';
+$bgModel['blocks'][0]['cols'][0]['bgPr'] = '';
+$bgModel['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'radius' => '', 'bgPl' => '0', 'bgPr' => '3', 'components' => [] ];
+check( '...how far in the picture starts is named where it is wrong - the setting of the row, of a column, of a card, and a step on a component that is no card, on the child of a card as well - and where it is a step from 0 to 3 or none in all three places, nothing is said of it',
+	str_contains( $bgSaid('a step of the picture behind the row that is a number'), 'the rowBgPl of block 1 is none of the steps 0 to 3' ) === true && str_contains( $bgSaid('a step of the picture behind the row outside the scale'), 'the rowBgPr of block 1 is none of the steps 0 to 3' ) === true
+	&& str_contains( $bgSaid('a step of the picture behind a column outside the scale'), 'the bgPl of column 1 of block 1 is none of the steps 0 to 3' ) === true
+	&& str_contains( $bgSaid('a step of the picture behind a card that is a list'), 'block 1 has the component "card" with a bgPl that is none of the steps 0 to 3' ) === true
+	&& str_contains( $bgSaid('a step of the picture on a component that is no card'), 'block 1 has the component "title" with a bgPr, and it is no card' ) === true
+	&& str_contains( $bgSaid('a step of the picture on the child of a card'), 'block 1 has the component "card-title" with a bgPl, and it is no card' ) === true
+	&& array_filter( \Nino\Modules\Builder\Document::problems( $appData, $bgModel, $registry ), static fn( string $sentence ): bool => str_contains( $sentence, 'steps 0 to 3' ) === true || str_contains( $sentence, 'no card' ) === true ) === [] && ninoWarnings() === [] );
 
 // A switch of a section is on or off - the brand colour of its border is one: anything else would be left out of the classes and read back as off, so it is refused before anything is made
 $switchBad			= [ 'a text' => 'true', 'an empty text' => '', 'a number' => 1, 'zero' => 0, 'a list' => [ true ], 'an empty list' => [] ];
@@ -2201,13 +2419,13 @@ $stepRightSource = \Nino\Modules\Builder\Document::source( $appData, $stepRight 
 $stepRight['blocks'][0]['settings']['rowPl'] = '0';
 $stepRight['blocks'][0]['settings']['rowPb'] = '';
 check( '...and every step of the eight is let through, the empty one and 0 and 6 among them: the row is written with the classes it says', $stepRightSource['status'] === 200 && str_contains( $stepRightSource['parts'][1]['source'], ' nino-pl-6 nino-pr-6 nino-pt-6 nino-pb-6' ) === true
-	&& \Nino\Modules\Builder\Document::source( $appData, $stepRight )['status'] === 200 && str_contains( \Nino\Modules\Builder\Document::source( $appData, $stepRight )['parts'][1]['source'], ' nino-pl-0 nino-pr-6 nino-pt-6">' ) === true );
+	&& \Nino\Modules\Builder\Document::source( $appData, $stepRight )['status'] === 200 && str_contains( \Nino\Modules\Builder\Document::source( $appData, $stepRight )['parts'][1]['source'], ' nino-pl-0 nino-pr-6 nino-pt-6 nino-vpa">' ) === true );
 
 // The cover and the picture behind it: two switches that are on or off like the others, and a height in percent of the window's that is a whole number or none
 $pictureSwitchRefused = [];
 
 foreach( [ 0, 3 ] as $at )
-	foreach( [ 'parallax', 'dim', 'padded', 'inner' ] as $key )
+	foreach( [ 'parallax', 'dim', 'padded', 'inner', 'arrow' ] as $key )
 		foreach( $switchBad as $what => $value ) {
 
 			$model = $loaded['model'];
@@ -2219,8 +2437,8 @@ foreach( [ 0, 3 ] as $at )
 				$pictureSwitchRefused[] = $key. ' of block '. ( $at + 1 ). ' as '. $what;
 		}
 
-check( 'a parallax, a dimming, the room around a cover or a background inside that is no bool - a text, a number, a list - is refused the way the brand colour of a border is, the switch and the block named, by a save and by the source view alike, and nothing is written: '
-	. count( $switchBad ) * 8 . ' cases'. ( $pictureSwitchRefused === [] ? '' : ' - '. implode( ', ', $pictureSwitchRefused ) ), $pictureSwitchRefused === [] );
+check( 'a parallax, a dimming, the room around a cover, a background inside or the arrow that is no bool - a text, a number, a list - is refused the way the brand colour of a border is, the switch and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $switchBad ) * 10 . ' cases'. ( $pictureSwitchRefused === [] ? '' : ' - '. implode( ', ', $pictureSwitchRefused ) ), $pictureSwitchRefused === [] );
 
 $coverBad = [
 	'zero'							=> 0,
@@ -2287,13 +2505,20 @@ check( '...the source view writes the same call, and a save that changes nothing
 	\Nino\Modules\Builder\Document::source( $appData, $loopAnswer['model'] )['status'] === 200 && str_contains( \Nino\Modules\Builder\Document::source( $appData, $loopAnswer['model'] )['parts'][1]['source'], '[sections /services sort="title" limit="3" id="news" class="nino-section--alt nino-whitespace--most nino-pt-2 nino-text-center"]' ) === true
 	&& \Nino\Modules\Builder\Document::save( $appData, 'page-loop', $loopAnswer['model'], $loopAnswer['hash'] )['hash'] === $loopAnswer['hash'] && (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-loop.tpl' ) ) === $loopOnDisk );
 
+$loopTimed = $loopLoaded['model'];
+$loopTimed['blocks'][0]['settings']['vpa'] = 'zoom-soft';
+$loopTimed['blocks'][0]['settings']['vpaDelay'] = '200ms';
+$loopTimed['blocks'][0]['settings']['vpaDuration'] = '2s';
+$loopTimedSource = \Nino\Modules\Builder\Document::source( $appData, $loopTimed );
+check( '...the delay and the duration of the animation of a loop of sections are let through as any section\'s are: they are the attributes of the tag of its row, inside the call, and the call keeps none of them',
+	$loopTimedSource['status'] === 200 && str_contains( $loopTimedSource['parts'][1]['source'], ' nino-vpa nino-vpa--zoom-soft" data-vpa-delay="200ms" data-vpa-duration="2s">' ) === true
+	&& preg_match( '/^\[sections [^\]]*data-vpa/m', $loopTimedSource['parts'][1]['source'] ) === 0 && \Nino\Modules\Builder\Document::problems( $appData, $loopTimed, $registry ) === [] );
+
 $loopBad = [
 	'a loop that makes no sections'								=> [ static function( array &$block ): void { $block['stack']['name'] = 'stack'; }, 'block 1 has the loop "stack", which makes no sections' ],
 	'a loop with components of its own'						=> [ static function( array &$block ): void { $block['stack']['components'] = []; }, 'block 1 has the loop "sections" with components, and it holds none' ],
 	'a loop that is no call'									=> [ static function( array &$block ): void { $block['stack'] = 'sections'; }, 'block 1 has a call that is none' ],
 	'a cover with a height'										=> [ static function( array &$block ): void { $block['settings']['cover'] = 60; }, 'the cover of block 1 has a height, and the call of a loop of sections has no attribute for one: a cover is as high as the page makes it' ],
-	'the delay of an animation'								=> [ static function( array &$block ): void { $block['settings']['vpa'] = ''; $block['settings']['vpaDelay'] = '200ms'; }, 'the vpaDelay of block 1 is set, and the call of a loop of sections has no attribute for it' ],
-	'the duration of an animation'							=> [ static function( array &$block ): void { $block['settings']['vpa'] = ''; $block['settings']['vpaDuration'] = '2s'; }, 'the vpaDuration of block 1 is set, and the call of a loop of sections has no attribute for it' ],
 	'a loop in a column of it'									=> [ static function( array &$block ): void { $block['cols'][0]['stack'] = [ 'name' => 'stack', 'source' => '/services', 'attributes' => [] ]; }, 'column 1 of block 1 has a loop, and it is a column of a loop of sections' ],
 ];
 $loopRefused = [];
@@ -2309,7 +2534,7 @@ foreach( $loopBad as $what => [ $change, $sentence ] ) {
 		$loopRefused[] = $what;
 }
 
-check( 'what a loop of sections cannot carry is refused with 400 (code invalid), the block named, by a save and by the source view alike, and nothing is written - a loop that makes none, one with components, one that is no call, a cover with a height, the delay and the duration of an animation, a loop in one of its columns: '
+check( 'what a loop of sections cannot carry is refused with 400 (code invalid), the block named, by a save and by the source view alike, and nothing is written - a loop that makes none, one with components, one that is no call, a cover with a height, a loop in one of its columns: '
 	. count( $loopBad ). ' cases'. ( $loopRefused === [] ? '' : ' - '. implode( ', ', $loopRefused ) ), $loopRefused === [] );
 
 $loopSources = $loopAnswer['model'];
@@ -3124,16 +3349,18 @@ $own['blocks'][3]['settings']['vpaSpeed'] = 'fast';
 $wrapEdit = $follow( $own, false );
 $wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
 $wrapText = (string) file_get_contents( $wrapPath );
-check( 'the sections that follow the switch lose their bare nino-vpa where it is turned off, the one with a kind of its own does not - and the wrap loses nino-wrap--vpa, and keeps its kind', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
-	&& str_contains( $wrapText, '<section id="hero" class="nino-section nino-section--black nino-cover nino-cover--dim" data-cover-height="100">' ) === true && str_contains( $wrapText, '<section id="services" class="nino-section">' ) === true
-	&& str_contains( $wrapText, '<section id="contact" class="nino-section nino-section--primary nino-text-center nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast">' ) === true && $wrapSave['model']['animate'] === false && $wrapSave['model']['blocks'][3]['settings']['vpa'] === 'flip-hard' );
+check( 'the sections that follow the switch lose their bare nino-vpa where it is turned off, the one with a kind of its own does not - on the row, where the animation of a section stands - and the wrap loses nino-wrap--vpa, and keeps its kind', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
+	&& str_contains( $wrapText, "<section id=\"hero\" class=\"nino-section nino-section--black nino-cover nino-cover--dim\" data-cover-height=\"100\">\n\t<div class=\"nino-section-bg nino-img-focus--5\">[image /template/page-home/hero/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row nino-grid-row--wide nino-grid-middle\">\n" ) === true
+	&& str_contains( $wrapText, "<section id=\"services\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n" ) === true
+	&& str_contains( $wrapText, "<section id=\"contact\" class=\"nino-section nino-section--primary nino-text-center\">\n\t<div class=\"nino-grid-row nino-grid-row--narrow nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast\">\n" ) === true
+	&& $wrapSave['model']['animate'] === false && $wrapSave['model']['blocks'][3]['settings']['vpa'] === 'flip-hard' );
 
 $wrapEdit = $follow( $wrapSave['model'], true );
 $wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
 $wrapText = (string) file_get_contents( $wrapPath );
-check( '...and where it is turned on again every section without an animation is given the bare nino-vpa, and the one with its own is left as it was', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
-	&& str_contains( $wrapText, 'nino-cover nino-cover--dim nino-vpa" data-cover-height="100">' ) === true && str_contains( $wrapText, '<section id="services" class="nino-section nino-vpa">' ) === true
-	&& str_contains( $wrapText, 'nino-text-center nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast">' ) === true && $wrapSave['model'] === $wrapEdit );
+check( '...and where it is turned on again every section without an animation is given the bare nino-vpa on its row, and the one with its own is left as it was', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
+	&& str_contains( $wrapText, "\t<div class=\"nino-grid-row nino-grid-row--wide nino-grid-middle nino-vpa\">\n" ) === true && str_contains( $wrapText, "<section id=\"services\" class=\"nino-section\">\n\t<div class=\"nino-grid-row nino-vpa\">\n" ) === true
+	&& str_contains( $wrapText, "\t<div class=\"nino-grid-row nino-grid-row--narrow nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast\">\n" ) === true && $wrapSave['model'] === $wrapEdit );
 
 $wrapBefore	= (string) file_get_contents( $wrapPath );
 $wrapRefused	= [];
@@ -3197,7 +3424,7 @@ unlink( $wrapPath );
 
 // A template with texts in two languages, a global one, a limit, a slot with a picture and alt texts, a block of html that names a key
 $srcFile = "<!-- nino:template-name Dup -->\n[template /templates/html-header]\n<div class=\"nino-wrap nino-wrap--vpa nino-vpa--blur-soft\">\n\n"
-	. "<section id=\"one\" class=\"nino-section nino-vpa\">\n\t<div class=\"nino-section-bg\">[image /template/page-dup/one/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-dup/one/title]\n\t\t\t[text /template/page-dup/one/text]\n\t\t</div>\n\t</div>\n</section>\n\n"
+	. "<section id=\"one\" class=\"nino-section\">\n\t<div class=\"nino-section-bg\">[image /template/page-dup/one/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row nino-vpa\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-dup/one/title]\n\t\t\t[text /template/page-dup/one/text]\n\t\t</div>\n\t</div>\n</section>\n\n"
 	. "<!-- nino:html -->\n<p>[[/template/page-dup/one/title]] stays a sentence, [[/template/page-dupx/one/title]] another</p>\n<!-- /nino:html -->\n\n</div>\n[template /templates/html-footer]\n";
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-dup.tpl', $srcFile );
 
@@ -3392,8 +3619,8 @@ echo "The kernel renders what the builder wrote\n";
 $final = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $page = \Nino\Html::renderHtml( $appData, '[template /templates/page-home]' );
 
-check( 'the page renders through the kernel with no call of a component, a stack or a template left in it', preg_match( '/\[\/?(?:title|subtitle|text|image|button|html|spacer|stack|slider|filter|list|template|osm)[ \]]/', $page ) === 0
-	&& preg_match( '/\[\[/', $page ) === 0 && $page !== '' );
+check( 'the page renders through the kernel with no call of a component, a stack or a template left in it, and no fill but the label of a control, which the texts of the kernel\'s base unit make', preg_match( '/\[\/?(?:title|subtitle|text|image|button|html|spacer|stack|slider|filter|list|template|osm|'. preg_quote( \Nino\Modules\Builder\Reader::ARROW, '/' ). ')[ \]]/', $page ) === 0
+	&& preg_match( '/\[\[/', (string) preg_replace( '/ aria-label="\[\[[^"]*\]\]"/', '', $page ) ) === 0 && $page !== '' );
 check( '...the head and the foot are the frames it names', str_contains( $page, "\n<header>Short</header>\n" ) === true && str_ends_with( trim( $page ), '<footer>Footer</footer>' ) === true );
 check( '...the components are the kernel\'s: the heading with its tag and style, the button with its address, the texts of the keys', str_contains( $page, '<h3 class="nino-section-title nino-section-title--loud">Hello</h3>' ) === true
 	&& str_contains( $page, '<a class="nino-btn nino-btn--primary" href="/contact">Contact us</a>' ) === true && str_contains( $page, '<h3 class="nino-section-title">Services</h3>' ) === true );
@@ -3406,8 +3633,12 @@ check( '...the tag the builder writes is the tag the kernel draws: a title is an
 check( '...the stack is a loop of the elements, one cell each, in the order it names', preg_match_all( '/nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 nino-autoheight/', $page ) === 2
 	&& strpos( $page, 'App' ) < strpos( $page, 'Web' ) && str_contains( $page, 'Mehr</a>' ) === true );
 check( '...and the sections are what Nino.css knows: the cover with its height, the background block, the row and its columns',
-	str_contains( $page, '<section id="start" class="nino-section nino-section--black nino-cover nino-cover--dim nino-vpa" data-cover-height="100">' ) === true
-	&& str_contains( $page, '<div class="nino-section-bg nino-img-focus--5">' ) === true && str_contains( $page, '<div class="nino-grid-row nino-grid-row--wide nino-grid-middle">' ) === true );
+	str_contains( $page, '<section id="start" class="nino-section nino-section--black nino-cover nino-cover--dim" data-cover-height="100">' ) === true
+	&& str_contains( $page, '<div class="nino-section-bg nino-img-focus--5">' ) === true && str_contains( $page, '<div class="nino-grid-row nino-grid-row--wide nino-grid-middle nino-vpa">' ) === true );
+[ $arrowTag, $arrowClass ] = explode( ' .', (string) $registry['components'][\Nino\Modules\Builder\Reader::ARROW]['draws'], 2 );
+check( '...the arrow of a section is the last thing in it, after its row: the element the registry says the scroll hint draws, once - for the one section of the page that has the setting',
+	preg_match_all( '~<'. preg_quote( $arrowTag, '~' ). ' [^>]*class="[^"]*\b'. preg_quote( $arrowClass, '~' ). '\b~', $page ) === 1
+	&& preg_match( '~\t</div>\n\t<'. preg_quote( $arrowTag, '~' ). ' [^>]*\b'. preg_quote( $arrowClass, '~' ). '\b[^>]*></'. preg_quote( $arrowTag, '~' ). '>\n</section>~', $page ) === 1 );
 check( '...a block of html written by hand is in the page as it was written', str_contains( $page, '<p>Imprint note</p>' ) === true && str_contains( $page, '<div class="map"></div>' ) === true );
 $loopDrawn = \Nino\Html::renderHtml( $appData, $inWrap( $loopFile ) );
 check( '...a loop of sections is a section for each element, one after the other where the call stood: the id and the number of the element, the classes after nino-section, the row and its columns once for each, the element the context of what is in them',

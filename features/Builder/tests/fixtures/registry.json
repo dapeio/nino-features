@@ -204,6 +204,17 @@
                     ],
                     "default": "blocks"
                 },
+                "tag": {
+                    "type": "select",
+                    "label": "HTML tag",
+                    "hint": "In the format blocks, which holds paragraphs and lists, the text is always a div.",
+                    "options": [
+                        "p",
+                        "div",
+                        "span"
+                    ],
+                    "default": "p"
+                },
                 "style": {
                     "type": "variant",
                     "label": "Style",
@@ -233,6 +244,7 @@
             "group": "global",
             "defaults": {
                 "format": "blocks",
+                "tag": "p",
                 "style": "",
                 "color": "",
                 "href": "",
@@ -834,6 +846,7 @@
                     "type": "select",
                     "label": "Background colour",
                     "hint": "",
+                    "tab": "background",
                     "options": [
                         "",
                         "counter",
@@ -852,16 +865,24 @@
                     "hint": "",
                     "default": false
                 },
+                "linked": {
+                    "type": "bool",
+                    "label": "Whole card is the link",
+                    "hint": "The link of the card's title covers the whole card; text in the card cannot be selected then.",
+                    "default": false
+                },
                 "background": {
                     "type": "image",
                     "label": "Background picture",
                     "hint": "A slot, or in a stack an image field of the element, laid behind the content.",
+                    "tab": "background",
                     "default": ""
                 },
                 "focus": {
                     "type": "select",
                     "label": "Focus",
                     "hint": "Which part of the picture survives a crop, as one of nine positions.",
+                    "tab": "background",
                     "options": [
                         "",
                         "1",
@@ -880,6 +901,7 @@
                     "type": "bool",
                     "label": "Dim the picture",
                     "hint": "",
+                    "tab": "background",
                     "default": false
                 }
             },
@@ -899,6 +921,7 @@
                 "align": "",
                 "ground": "",
                 "borderless": "0",
+                "linked": "0",
                 "background": "",
                 "focus": "",
                 "dim": "0",

@@ -2215,20 +2215,21 @@ namespace Nino\Modules\Builder {
 		 *	read: a name that is no text, a block that is no block, a switch
 		 *	that is neither on nor off (the animation of the template, the
 		 *	brand colour of the border, the parallax, the dimming, the padding
-		 *	of a cover and the background inside of a section, the dimming of
+		 *	of a cover, the background inside and the arrow of a section, the dimming of
 		 *	a column - one left out is off), a border that is no strength, a
 		 *	cover that is neither none nor a whole number from 1 to 9999, the
 		 *	ground of a column that is none of Nino.css's, the width, the place
 		 *	and the alignment of a row, the place of the content, the whitespace
 		 *	and the alignment of a text or of a stack that are none of its words,
 		 *	a loop of
-		 *	sections that is no such loop or has a cover with a height, a
-		 *	delay or a duration of an animation - which its call cannot carry - or a
-		 *	loop in one of its columns, a background that is no
+		 *	sections that is no such loop or has a cover with a height - which its
+		 *	call cannot carry - or a loop in one of its columns, a background that is no
 		 *	slot or whose focus is none of the nine places, a call that is no
 		 *	call, texts that are no text for each language, the padding of a
 		 *	row and the padding and the margins of a column that are none of the
-		 *	steps 0 to 6, a
+		 *	steps 0 to 6, how far in from its sides the picture behind a row, a
+		 *	column or a card starts where that is none of the steps 0 to 3 - or
+		 *	is asked of a component that is no card -, a
 		 *	component that holds components with a content or with children
 		 *	that are no calls - or inside another -, and children of a
 		 *	component that holds none or of a loop - what the Writer would
@@ -2290,7 +2291,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
 
 				// What is no switch would be left out of the classes, and read back as off
-				foreach( [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner' ] as $key )
+				foreach( [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner', 'arrow' ] as $key )
 					if( is_bool( $block['settings'][$key] ?? false ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
 
@@ -2311,6 +2312,11 @@ namespace Nino\Modules\Builder {
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 6';
 
+				// So is how far in from either side the picture behind the row starts, up to the third step
+				foreach( Reader::ROW_BG_SPACING as $key )
+					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::BG_STEPS ), true ) === false )
+						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 3';
+
 				// A loop of sections: the call of the stack that makes them - which has no attribute of a tag for what a section has one for
 				if( ( $block['stack'] ?? null ) !== null ) {
 
@@ -2325,10 +2331,6 @@ namespace Nino\Modules\Builder {
 
 					if( ( $block['settings']['cover'] ?? null ) !== null && (int) $block['settings']['cover'] !== 90 )
 						$problems[] = 'the cover of '. $at. ' has a height, and the call of a loop of sections has no attribute for one: a cover is as high as the page makes it';
-
-					foreach( [ 'vpaDelay', 'vpaDuration' ] as $key )
-						if( (string) ( $block['settings'][$key] ?? '' ) !== '' )
-							$problems[] = 'the '. $key. ' of '. $at. ' is set, and the call of a loop of sections has no attribute for it';
 				}
 
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
@@ -2365,6 +2367,11 @@ namespace Nino\Modules\Builder {
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none of the steps 0 to 6';
 
+					// So is how far in from either side the picture behind the column starts, up to the third step
+					foreach( Reader::BG_SPACING as $key )
+						if( in_array( $col[$key] ?? '', array_merge( [ '' ], Reader::BG_STEPS ), true ) === false )
+							$problems[] = 'the '. $key. ' of '. $of. ' is none of the steps 0 to 3';
+
 					if( ( $col['background'] ?? null ) !== null && ( is_array( $col['background'] ) === false || $text( $col['background']['slot'] ?? null ) === false ) )
 						$problems[] = $of. ' has a background that is no image slot';
 
@@ -2393,7 +2400,7 @@ namespace Nino\Modules\Builder {
 
 					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
 					foreach( $col['components'] ?? [] as $component )
-						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ) );
+						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ) );
 
 					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
 					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )
@@ -2451,6 +2458,43 @@ namespace Nino\Modules\Builder {
 
 			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
 				$problems = array_merge( $problems, self::_shapeRadius( $child, $schemas, $at ) );
+
+			return $problems;
+		}
+
+		/**
+		 *	What is wrong with how far in from either side the picture behind a component starts, and of the children it holds: a step that is none of
+		 *	0 to 3, or one on a component that is no card (see Reader::surface()) - which the Writer would write as a class of nothing, and the Reader read
+		 *	back as a custom one
+		 *
+		 *	@param		mixed			$call					A component of a column, or a child of one
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeGround( mixed $call, array $schemas, string $at ): array {
+
+			// A call that is none has been told already
+			if( is_array( $call ) === false || self::_callWrong( $call ) !== '' )
+				return [];
+
+			$name				= (string) ( $call['name'] ?? '' );
+			$card				= Reader::surface( (array) ( $schemas['components'][$name] ?? [] ), (array) ( $schemas['components'] ?? [] ) ) === 'card';
+			$problems		= [];
+
+			foreach( Reader::BG_SPACING as $key ) {
+
+				$step = $call[$key] ?? '';
+
+				if( in_array( $step, array_merge( [ '' ], Reader::BG_STEPS ), true ) === false )
+					$problems[] = $at. ' has the component "'. $name. '" with a '. $key. ' that is none of the steps 0 to 3';
+				elseif( $step !== '' && $card === false )
+					$problems[] = $at. ' has the component "'. $name. '" with a '. $key. ', and it is no card';
+			}
+
+			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
+				$problems = array_merge( $problems, self::_shapeGround( $child, $schemas, $at ) );
 
 			return $problems;
 		}

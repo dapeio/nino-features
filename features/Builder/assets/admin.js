@@ -757,7 +757,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: [ builder._newCol() ],
@@ -770,7 +770,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function() {
-			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', p : '', mt : '', mb : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', p : '', mt : '', mb : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
 		},
 
 		/**

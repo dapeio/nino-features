@@ -61,7 +61,7 @@ namespace Nino\Modules\Builder {
 	 *											say how, through the custom properties of Nino.css that
 	 *											every .nino-vpa below it inherits; every other class is kept
 	 *											as it is. The kernel reads none of it but the classes of the
-	 *											sections.
+	 *											elements that are animated: the rows of the sections, and the columns.
 	 *
 	 *											The shortcode calls are read the way \Nino\Html reads them:
 	 *											the same expression for the call and its content, the same
@@ -117,6 +117,9 @@ namespace Nino\Modules\Builder {
 	 *											    rowRadius   ''|standard|alternative   nino-radius, nino-radius-alt on the row: the radius of its ground and of its picture, the page's own
 	 *											                                      for ''. Read where the background stands inside (inner); on a row that paints nothing the two classes are idle and stay custom ones
 	 *											    rowCustom   string                classes of the row that are none of these
+	 *											    rowBgPl rowBgPr  ''|0..3        nino-bg-pl-<n> nino-bg-pr-<n>: how far in from the left and from the right the picture inside the row starts, a step
+	 *											                                      of the space scale; '' is the edge. Read where the picture stands inside (inner and a background); on a row without one the two
+	 *											                                      classes are idle and stay custom ones
 	 *											    color       ''|alt|tint|dark|black|primary|brand-alt
 	 *											    border      ''|1|2|3              nino-section--border-<n>
 	 *											    borderPrimary bool                nino-section--border-primary, with or without a strength
@@ -147,12 +150,14 @@ namespace Nino\Modules\Builder {
 	 *											                                      the scale of the page's whitespace (the Design's)
 	 *											    mt mb pt pb ''|0..6               nino-mt-<n> ...
 	 *											    text        ''|left|center|right  nino-text-<x>
-	 *											    vpa         null|string           null: none; '': nino-vpa; else the
+	 *											    arrow       bool                  [scroll-hint], the line after the row: the arrow at the foot of the section, which leads to what follows it
+	 *											    vpa         null|string           the animation of the section stands on its row - its classes among those of the row, its delay and its duration as
+	 *											                                      attributes of its tag - and on the section itself it is a class like any other. null: none; '': nino-vpa; else the
 	 *											                                      effect, nino-vpa--<x>
 	 *											    vpaSpeed    ''|fast|medium|slow   nino-vpa--speed-<x>
 	 *											    vpaMode     ''|repeat|visible|visible-once
-	 *											    vpaDelay    string                data-vpa-delay, a css time
-	 *											    vpaDuration string                data-vpa-duration
+	 *											    vpaDelay    string                data-vpa-delay of the row, a css time
+	 *											    vpaDuration string                data-vpa-duration of the row
 	 *											    custom      string                every other class of the section
 	 *											  background null|map  slot (string, a text key grammar uri), focus
 	 *											            (int 1..9|null); an image call with alt=""; create (map,
@@ -165,7 +170,7 @@ namespace Nino\Modules\Builder {
 	 *											                    the content, and the id of the section and its classes after nino-section
 	 *											                    are the call's id and class - the attributes of the map hold none of the
 	 *											                    two, they are '' - so it can carry none of the attributes of a tag: a cover
-	 *											                    is as high as Nino.ui.js makes it, and an animation has no delay and no duration
+	 *											                    is as high as Nino.ui.js makes it. The row stands inside the call, and the animation of the section is the row's, with its delay and its duration
 	 *											  cols      list    the columns of the one row
 	 *
 	 *											column
@@ -191,7 +196,9 @@ namespace Nino\Modules\Builder {
 	 *											                    padding of the column and the margin above and below it,
 	 *											                    each a step of the space scale; the first of a kind is the
 	 *											                    setting, a second is a class of its own, as in a section
-	 *											  vpa, vpaSpeed, vpaMode   as in settings
+	 *											  bgPl, bgPr ''|0..3               nino-bg-pl-<n>, nino-bg-pr-<n>: how far in from the left and from the right the picture of the column starts, a step of the
+	 *											                    space scale; read where the column has a picture (background), else the two classes are idle and stay custom ones
+	 *											  vpa, vpaSpeed, vpaMode   as the animation in settings, with the classes of the column
 	 *											  vpaDelay, vpaDuration   always ''; a column is written with its classes
 	 *											                    alone, and has no data-vpa-delay or data-vpa-duration
 	 *											  custom    string
@@ -211,6 +218,8 @@ namespace Nino\Modules\Builder {
 	 *											  radius    ''|standard|alternative   only for a component that is a surface (see surface()): the class nino-radius or nino-radius-alt of its call,
 	 *											                    the page's own for ''. The Reader takes the first of the two out of the class attribute, the Writer puts it back as the first class
 	 *											                    of the call
+	 *											  bgPl, bgPr ''|0..3   only for the card, the surface that paints a ground: the classes nino-bg-pl-<n> and nino-bg-pr-<n> of its call,
+	 *											                    taken out of the class attribute as the radius is and put back after it by the Writer, whatever the call says of a picture
 	 *											  content   string  only for a component whose source is 'content' and whose
 	 *											                    schema does not say 'holds'
 	 *											  components list  only for a component whose schema says 'holds' (a container):
@@ -264,6 +273,10 @@ namespace Nino\Modules\Builder {
 		// A column has its padding and the margin above and below it, each one of the steps of the space scale
 		public const array COL_SPACING = [ 'p', 'mt', 'mb' ];
 		public const array STEPS = [ '0', '1', '2', '3', '4', '5', '6' ];
+		// How far in from either side the picture behind a row, a column or a card starts: the word of the class and the setting that holds it, one step of the space scale from 0 to 3
+		public const array BG_STEPS = [ '0', '1', '2', '3' ];
+		public const array ROW_BG_SPACING = [ 'pl' => 'rowBgPl', 'pr' => 'rowBgPr' ];
+		public const array BG_SPACING = [ 'pl' => 'bgPl', 'pr' => 'bgPr' ];
 		// How much room a section keeps, the four rungs of the page's whitespace around the middle: nino-whitespace--<x>
 		public const array WHITESPACE = [ 'least', 'less', 'more', 'most' ];
 		/*	The radius of a surface: the two strengths the page has - the Design writes both, Nino.css has them as well -, the class that puts one
@@ -290,6 +303,9 @@ namespace Nino\Modules\Builder {
 		// The class of the wrap that makes it one, and the one that says its sections are animated
 		public const string WRAP = 'nino-wrap';
 		public const string WRAP_VPA = 'nino-wrap--vpa';
+
+		// The call of the arrow at the foot of a section: the one thing that may stand after its row
+		public const string ARROW = 'scroll-hint';
 
 		// Why a section is not read: the code of a failure, and the sentence
 		// that says it. %s is the detail, where the failure has one
@@ -348,9 +364,9 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
+				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'whitespace' => '',
-				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
+				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '', 'arrow' => false,
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
@@ -361,7 +377,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', 'p' => '', 'mt' => '', 'mb' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', 'p' => '', 'mt' => '', 'mb' => '', 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -470,6 +486,31 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $word === '' ? [ '', $class ] : [ $word, implode( ' ', $rest ) ];
+		}
+
+		/**
+		 *	How far in from either side the picture behind an element starts, out of the class attribute of a call: the first class of each side, nino-bg-pl-<n> and
+		 *	nino-bg-pr-<n>, and the rest of the classes as they were. A second class of a side is a class of its own and stays. A call with none of them keeps its
+		 *	class attribute byte for byte
+		 *
+		 *	@param		string		$class				The class attribute of the call
+		 *
+		 *	@return 	array											[ side => step for each side that has a class, the classes that are left ]
+		 */
+		private static function _offsets( string $class ): array {
+
+			$steps	= [];
+			$rest		= [];
+
+			foreach( preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token ) {
+
+				if( preg_match( '/^nino-bg-('. implode( '|', array_keys( self::BG_SPACING ) ). ')-('. implode( '|', self::BG_STEPS ). ')$/D', $token, $m ) === 1 && isset( $steps[$m[1]] ) === false )
+					$steps[$m[1]] = $m[2];
+				else
+					$rest[] = $token;
+			}
+
+			return $steps === [] ? [ [], $class ] : [ $steps, implode( ' ', $rest ) ];
 		}
 
 		/**
@@ -765,7 +806,7 @@ namespace Nino\Modules\Builder {
 			[ $attributes, $pos ] = self::_open( $body, $pos, 'section', 'not-a-section' );
 
 			foreach( array_keys( $attributes ) as $name )
-				if( in_array( $name, [ 'id', 'class', 'data-cover-height', 'data-vpa-delay', 'data-vpa-duration' ], true ) === false )
+				if( in_array( $name, [ 'id', 'class', 'data-cover-height' ], true ) === false )
 					throw self::_fail( 'section-attribute', $name, $pos );
 
 			$id = $attributes['id'] ?? '';
@@ -858,15 +899,16 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	What a section holds, wherever its tag is - the one of a <section> and the call of a loop of
-		 *	sections hold the same: the picture behind it, then its row, with the columns in it
+		 *	sections hold the same: the picture behind it, then its row, with the columns in it, then
+		 *	its arrow, the one call that may stand after the row
 		 *
 		 *	@param		string		$body					The source, or the content of the call of a loop of sections
 		 *	@param		int				$pos					Where the tag of the section ends
 		 *	@param		array			$registry
-		 *	@param		array 		&$section			The section as far as it is read: its background, its columns and the settings of its row are set in it
+		 *	@param		array 		&$section			The section as far as it is read: its background, its columns, its arrow and the settings of its row are set in it
 		 *	@param		bool			$loop					Whether the section is a loop of sections
 		 *
-		 *	@return 	int											Where the row ends
+		 *	@return 	int											Where the row ends - or the arrow after it, where there is one
 		 *
 		 *	@throws 	\RuntimeException					The failure, see _fail()
 		 */
@@ -886,8 +928,9 @@ namespace Nino\Modules\Builder {
 			if( $tag !== 'div' || in_array( 'nino-grid-row', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === false )
 				throw self::_fail( $loop === true ? 'sections-no-row' : 'no-row', '', $pos );
 
+			// The row has the animation of the section: its classes among the others, its delay and its duration as the attributes of its tag
 			foreach( array_keys( $tagAttributes ) as $name )
-				if( $name !== 'class' )
+				if( in_array( $name, [ 'class', 'data-vpa-delay', 'data-vpa-duration' ], true ) === false )
 					throw self::_fail( 'row-attribute', $name, $pos );
 
 			$rowTokens	= self::_tokens( $tagAttributes['class'], $pos );
@@ -899,7 +942,7 @@ namespace Nino\Modules\Builder {
 			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
 				[ $picture, $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-row-bg' );
 
-			self::_rowSettings( $rowTokens, $section, $picture, $rowAt );
+			self::_rowSettings( $rowTokens, $tagAttributes, $section, $picture, $rowAt );
 
 			while( true ) {
 
@@ -919,6 +962,14 @@ namespace Nino\Modules\Builder {
 
 			if( $section['cols'] === [] )
 				throw self::_fail( 'no-cols', '', $pos );
+
+			// The arrow of the section is the call after its row, whitespace between: exactly the call, one with an attribute is content the builder does not keep
+			$pos = self::_skip( $body, $pos );
+
+			if( preg_match( '~\G\['. preg_quote( self::ARROW, '~' ). '\]~', $body, $arrow, 0, $pos ) === 1 ) {
+				$section['settings']['arrow'] = true;
+				$pos += strlen( $arrow[0] );
+			}
 
 			return $pos;
 		}
@@ -1030,8 +1081,9 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The settings of a section: its classes and the attributes the
-		 *	modifiers have
+		 *	The settings of a section: its classes and the height of its cover. The
+		 *	animation is not among them: it stands on the row (see _rowSettings()), and
+		 *	a class of it on the section is a custom class like any other
 		 *
 		 *	@param		array			$tokens				The classes
 		 *	@param		array			$attributes		The attributes of the tag
@@ -1093,7 +1145,7 @@ namespace Nino\Modules\Builder {
 					$set( $m[1], $m[2], $token );
 				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 )
 					$set( 'text', $m[1], $token );
-				elseif( self::_animation( $token, $s ) === false )
+				else
 					$custom[] = $token;
 			}
 
@@ -1141,30 +1193,29 @@ namespace Nino\Modules\Builder {
 				$s['cover'] = (int) $attributes['data-cover-height'];
 			}
 
-			self::_animationAttributes( $attributes, $s, $pos );
-
 			$s['custom'] = implode( ' ', $custom );
 
 			return $s;
 		}
 
 		/**
-		 *	The classes of the row: its width and its place, the alignment of its columns, its padding, its ground, the scrim over its
-		 *	picture, and the rest. The ground and the picture are the row's where nothing of the kind is the
-		 *	section's - no colour, no picture, no cover, no parallax: then the colour, the picture and the
-		 *	scrim are the section's keys all the same, and inner says where they stand. A ground or a
-		 *	scrim that cannot be kept so is a custom class of the row, a picture is a failure
+		 *	The classes and the attributes of the row: its width and its place, the alignment of its columns, its padding, its ground, the
+		 *	scrim over its picture, how far in from either side that picture starts, the animation of the section, and the rest. The
+		 *	ground and the picture are the row's where nothing of the kind is the section's - no colour, no picture, no cover, no
+		 *	parallax: then the colour, the picture and the scrim are the section's keys all the same, and inner says where they stand.
+		 *	A ground or a scrim that cannot be kept so is a custom class of the row, a picture is a failure
 		 *
 		 *	@param		array			$tokens
+		 *	@param		array			$attributes		The attributes of the tag: the delay and the duration of the animation, the class is $tokens
 		 *	@param		array 		&$section			The section as far as it is read: its settings, and its background where it has the row's
 		 *	@param		array|null	$picture		The block behind the row, null where it has none
 		 *	@param		int				$at						Where the row starts, for a failure
 		 *
 		 *	@return 	void
 		 *
-		 *	@throws 	\RuntimeException					A picture behind the row of a section that has a colour, a picture, a cover or a parallax of its own
+		 *	@throws 	\RuntimeException					A picture behind the row of a section that has a colour, a picture, a cover or a parallax of its own, a delay or a duration that is no css time
 		 */
-		private static function _rowSettings( array $tokens, array &$section, ?array $picture, int $at ): void {
+		private static function _rowSettings( array $tokens, array $attributes, array &$section, ?array $picture, int $at ): void {
 
 			$s				= &$section['settings'];
 			$custom		= [];
@@ -1194,6 +1245,9 @@ namespace Nino\Modules\Builder {
 				// The padding of a side is the first class of its kind, a second is a class of its own as on a section
 				elseif( preg_match( '/^nino-('. implode( '|', array_keys( self::ROW_SPACING ) ). ')-([0-6])$/D', $token, $m ) === 1 && $s[self::ROW_SPACING[$m[1]]] === '' )
 					$s[self::ROW_SPACING[$m[1]]] = $m[2];
+				// The same for how far in from a side the picture starts: it has one only where the picture is inside, else the class is idle and stays a custom one
+				elseif( $picture !== null && preg_match( '/^nino-bg-('. implode( '|', array_keys( self::ROW_BG_SPACING ) ). ')-('. implode( '|', self::BG_STEPS ). ')$/D', $token, $m ) === 1 && $s[self::ROW_BG_SPACING[$m[1]]] === '' )
+					$s[self::ROW_BG_SPACING[$m[1]]] = $m[2];
 				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::COLOR ). ')$/D', $token, $m ) === 1 && $free === true && $s['color'] === '' ) {
 					$s['color']	= $m[1];
 					$s['inner']	= true;
@@ -1204,7 +1258,7 @@ namespace Nino\Modules\Builder {
 					$radii[] = $token;
 					$custom[] = $token;
 				}
-				else
+				elseif( self::_animation( $token, $s ) === false )
 					$custom[] = $token;
 			}
 
@@ -1216,6 +1270,8 @@ namespace Nino\Modules\Builder {
 			}
 
 			$s['rowCustom'] = implode( ' ', $custom );
+
+			self::_animationAttributes( $attributes, $s, $at );
 		}
 
 		/**
@@ -1434,6 +1490,7 @@ namespace Nino\Modules\Builder {
 			$custom = [];
 			$dim = false;
 			$radii = [];
+			$offsets = [];
 
 			// Nino.css is mobile-first: nino-grid-100 holds in every viewport, a
 			// prefixed width from its viewport up until a larger one takes over.
@@ -1469,6 +1526,11 @@ namespace Nino\Modules\Builder {
 				elseif( in_array( $token, self::RADIUS_CLASS, true ) === true ) {
 
 					$radii[] = $token;
+					$custom[] = $token;
+				}
+				elseif( preg_match( '/^nino-bg-('. implode( '|', array_keys( self::BG_SPACING ) ). ')-('. implode( '|', self::BG_STEPS ). ')$/D', $token, $m ) === 1 ) {
+
+					$offsets[$m[1]][] = $m[2];
 					$custom[] = $token;
 				}
 				elseif( preg_match( '/^nino-stack-('. implode( '|', self::STACK_ALIGN ). ')$/D', $token, $m ) === 1 && $col['stackAlign'] === '' )
@@ -1513,6 +1575,14 @@ namespace Nino\Modules\Builder {
 				$col['radius']	= (string) array_search( $radii[0], self::RADIUS_CLASS, true );
 				$custom					= array_values( array_diff( $custom, [ $radii[0] ] ) );
 			}
+
+			// How far in from a side the picture starts is the picture's: the first class of a side is the setting where the column has one, a second is a class of its
+			// own, and without a picture both sides stay custom classes
+			if( $col['background'] !== null )
+				foreach( $offsets as $side => $steps ) {
+					$col[self::BG_SPACING[$side]]	= $steps[0];
+					$custom												= array_values( array_diff( $custom, [ 'nino-bg-'. $side. '-'. $steps[0] ] ) );
+				}
 
 			$col['custom'] = implode( ' ', $custom );
 			$calls = [];
@@ -1671,6 +1741,15 @@ namespace Nino\Modules\Builder {
 
 			if( $surface !== '' )
 				[ $node['radius'], $node['attributes']['class'] ] = self::_radius( (string) ( $node['attributes']['class'] ?? '' ) );
+
+			// A card is the one surface that paints a ground: how far in from either side its picture starts is split off the classes as well, whatever the call says of a picture
+			if( $surface === 'card' ) {
+
+				[ $steps, $node['attributes']['class'] ] = self::_offsets( (string) ( $node['attributes']['class'] ?? '' ) );
+
+				foreach( self::BG_SPACING as $side => $key )
+					$node[$key] = $steps[$side] ?? '';
+			}
 
 			if( $isStack === true ) {
 
