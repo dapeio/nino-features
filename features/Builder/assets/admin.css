@@ -749,12 +749,13 @@ button.builder-status-item:hover {
 /* ---------------------------------------------------------------- Dialogs */
 
 /* A dialog never grows beyond the window, the pattern of the workbench's manual dialog: it is a column of its head, its content and its actions with a
-   height of at most the window less a margin, and what stands between the head and the actions is the one thing that scrolls - the dialog itself never
-   does -, so that the actions are in sight whatever the length of a form is. The form of an element is narrow, a column of fields about 400px wide
-   (the padding of the dialog is 1.25rem on each side); the lightbox that offers the components is wider and so is the dialog of a source, which stands
-   over this one in a smaller size */
+   height of at most the window less a margin, and what stands between the head and the actions is the one thing that gives way - the dialog itself never
+   does -, so that the actions are in sight whatever the length of a form is: in a form of blocks it is the body of the open block that scrolls (the
+   accordion, below), in any other the content. The form of an element is a column of fields about 560px wide (the dialog is 40rem, its padding is 1.25rem
+   on each side, and the workbench sets 15px on the root); the lightbox that offers the components is wider, and the dialog of a source stands over this one
+   in a smaller size */
 .builder-dialog {
-	width: min(29.4rem, calc(100vw - 2rem));
+	width: min(40rem, calc(100vw - 2rem));
 	max-height: calc(100vh - 2rem);
 	max-height: calc(100dvh - 2rem);
 	overflow: hidden;
@@ -800,9 +801,10 @@ button.builder-status-item:hover {
 	font-size: 1rem;
 }
 /* The content is the box that positioned elements in it - the switches and the radios of a form, which are an input laid over their label - are placed
-   in and clipped by: without it they are placed in the dialog, stay where they were when the content scrolls, and reach out of the dialog's box. Its rows
-   are as high as what is in them and no less: a box that clips its corners (the blocks of the accordion) would be shrunk by a row of its own to the room
-   the dialog has, and cut off what does not fit, where the content itself is to scroll */
+   in and clipped by: without it they are placed in the dialog, stay where they were when the content scrolls, and reach out of the dialog's box (in a form
+   of blocks the open body is that box, below). Its rows are as high as what is in them and no less: a box that clips its corners would be shrunk by a row
+   of its own to the room the dialog has, and cut off what does not fit, where the content itself is to scroll - the accordion is the one box that is to
+   be shrunk, and its rules say how */
 .builder-dialog-content {
 	display: grid;
 	position: relative;
@@ -852,12 +854,56 @@ button.builder-status-item:hover {
 }
 
 /* The blocks of a form are an accordion: a head for each - its name, and muted beside it what the block says of the element where that is not the
-   default - over a body that holds the fields. One block is open, the others are closed */
+   default - over a body that holds the fields. One block is open, the others are closed. The accordion takes the room the dialog has left and the open
+   block gives way in it - its body scrolls -, so that the heads of every block stay in sight, and so do the actions. The body keeps a floor, and the
+   accordion, while a block is open, the room for its heads and that floor: a head for each block, which the count says (the table names six blocks).
+   Where the window is lower than that the accordion stops giving way and the content scrolls as a whole - the box clips its corners, and would else be
+   shrunk below its heads and lay the body over them */
+.builder-dialog-content:has(> .builder-blocks) {
+	display: flex;
+	flex-direction: column;
+}
 .builder-blocks {
-	display: grid;
+	--builder-head: 2.4rem;
+	--builder-floor: 10rem;
+	--builder-count: 1;
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
 	border: 1px solid var(--editor-separator);
 	border-radius: var(--editor-radius-sm);
 	overflow: hidden;
+}
+/* What the heads and the floor ask for while a block is open: a head and a line for each block - the lines between the blocks and the two round the box are
+   one for each block and one more -, and the floor. The sum takes every head at --builder-head: the name of a block does not wrap and its summary is
+   cut with an ellipsis, so a head is that high at every width the editor opens a dialog at; a head that grew taller would be given too little room */
+.builder-blocks:has(> .is-open) {
+	min-height: calc(var(--builder-count) * (var(--builder-head) + 1px) + 1px + var(--builder-floor));
+}
+/* The count of the blocks the form has */
+.builder-blocks:has(> :nth-child(2)) {
+	--builder-count: 2;
+}
+.builder-blocks:has(> :nth-child(3)) {
+	--builder-count: 3;
+}
+.builder-blocks:has(> :nth-child(4)) {
+	--builder-count: 4;
+}
+.builder-blocks:has(> :nth-child(5)) {
+	--builder-count: 5;
+}
+.builder-blocks:has(> :nth-child(6)) {
+	--builder-count: 6;
+}
+.builder-block {
+	display: flex;
+	flex: 0 0 auto;
+	flex-direction: column;
+	min-height: 0;
+}
+.builder-block.is-open {
+	flex: 1 1 auto;
 }
 .builder-block + .builder-block {
 	border-top: 1px solid var(--editor-separator);
@@ -872,7 +918,7 @@ button.builder-status-item:hover {
 	align-items: center;
 	gap: .5rem;
 	width: 100%;
-	min-height: 2.4rem;
+	min-height: var(--builder-head);
 	margin: 0;
 	padding: .35rem .8rem;
 	border: 0;
@@ -925,6 +971,18 @@ button.builder-status-item:hover {
 }
 .builder-block-body[hidden] {
 	display: none;
+}
+/* The open body is what scrolls: auto, not scroll, so that a block that fits shows no empty track, and with the room of the bar kept, so that the width
+   does not jump when the bar comes. It is the box that the positioned elements in it are placed in (see the content), its rows are as high as what is in
+   them whatever height it is given, and under its floor it does not give way - a body shorter than that is as high as the floor, its rows at the top */
+.builder-block.is-open > .builder-block-body {
+	position: relative;
+	flex: 1 1 auto;
+	grid-auto-rows: max-content;
+	align-content: start;
+	min-height: var(--builder-floor);
+	overflow-y: auto;
+	scrollbar-gutter: stable;
 }
 /* The form of the loop of a section or a column: its choice and, where it runs one, its groups */
 .builder-loop {

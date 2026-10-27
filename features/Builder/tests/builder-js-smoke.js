@@ -125,7 +125,11 @@
  *												element, the box of the six sides, the offsets of a picture,
  *												the question mark that carries what a field has to say - wired
  *												to its tip by aria, closed by Escape - and no sentence under a
- *												field.
+ *												field; and the stylesheet that gives the dialog its width and
+ *												lets the accordion give way in it: the open block grows and its
+ *												body scrolls, so that the heads and the actions stay in sight,
+ *												the room the accordion keeps for its heads and the floor of its
+ *												body, and what is placed in the box that scrolls.
  *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
@@ -4321,10 +4325,10 @@ check( 'the errors of the panel, and an editor that is opened and fails to load'
 	} );
 } ) && builder._doc !== null && builder._doc.hash === 'h9' && builder._doc.usedBy.length === 1 );
 
-check( 'the stylesheet keeps what the script hides hidden (a button with display set is shown all the same), paints the sections in grey levels, shows the tools of the frame the pointer is over and of the selected one, gives the dialog of a form 29.4rem - a column of fields about 400px wide -, the wide one of the lightbox and the editors 52rem and the dialog of a source 34rem - and has no picture of its own: the icons are the sprite\'s', ( function() {
+check( 'the stylesheet keeps what the script hides hidden (a button with display set is shown all the same), paints the sections in grey levels, shows the tools of the frame the pointer is over and of the selected one, gives the dialog of a form 40rem - a column of fields about 560px wide -, the wide one of the lightbox and the editors 52rem and the dialog of a source 34rem - and has no picture of its own: the icons are the sprite\'s', ( function() {
 	const colours = stylesheet.split( '.builder-frame.builder-color-' ).slice( 1 ).map( function( rule ) { return rule.slice( 0, rule.indexOf( '}' ) ) } );
 	return stylesheet.indexOf( '.builder-icon-btn[hidden] {\n\tdisplay: none;' ) !== -1 && colours.length === 6 && colours.every( function( rule ) { return /var\(--editor-(blue|orange)/.test( rule ) === false } )
-		&& stylesheet.indexOf( '.builder-pick.is-hover > header > .builder-tools' ) !== -1 && stylesheet.indexOf( '.builder-pick.is-selected > .builder-tools' ) !== -1 && stylesheet.indexOf( 'width: min(29.4rem, calc(100vw - 2rem));' ) !== -1 && stylesheet.indexOf( 'width: min(52rem, calc(100vw - 2rem));' ) !== -1
+		&& stylesheet.indexOf( '.builder-pick.is-hover > header > .builder-tools' ) !== -1 && stylesheet.indexOf( '.builder-pick.is-selected > .builder-tools' ) !== -1 && stylesheet.indexOf( 'width: min(40rem, calc(100vw - 2rem));' ) !== -1 && stylesheet.indexOf( 'width: min(52rem, calc(100vw - 2rem));' ) !== -1
 		&& stylesheet.indexOf( 'width: min(34rem, calc(100vw - 2rem));' ) !== -1 && stylesheet.indexOf( 'data:' ) === -1 && stylesheet.indexOf( 'url(' ) === -1;
 } )() );
 check( 'the template holds a fragment for everything the script clones, and the script clones everything the template holds - and none for a tree', ( function() {
@@ -4719,7 +4723,7 @@ check( 'what the Builder draws over the page is not the page\'s: the title of a 
 	return stylesheet.indexOf( chip ) !== -1 && ruleOf('.builder-pcol-head').indexOf('opacity') === -1 && ruleOf('.builder-card-head').indexOf('opacity') === -1
 		&& grounds.every( function( ground ) { return sets( '.builder-card.builder-color-'+ ground ) && sets( '.builder-pcol.builder-color-'+ ground ) } );
 } )() );
-check( 'a dialog is never taller than the window and has one region that scrolls: it is a column of its head, its content and its actions, limited to the height of the window less a margin - the plain height first, the dynamic one after it for a browser that has it - and clipping, and the content is the one thing that may shrink and scroll - its rows as high as what is in them, so that no box in it is shrunk and cuts off the rest - so that the actions stay in sight', ( function() {
+check( 'a dialog is never taller than the window and has one region that scrolls: it is a column of its head, its content and its actions, limited to the height of the window less a margin - the plain height first, the dynamic one after it for a browser that has it - and clipping, and the content is what may shrink and scroll where the form has no blocks - its rows as high as what is in them, so that no box in it is shrunk and cuts off the rest - so that the actions stay in sight', ( function() {
 
 	const dialog = ruleOf('.builder-dialog').split('\n');
 	const limits = dialog.filter( function( line ) { return /^\tmax-height: calc\(100d?vh - 2rem\);$/.test( line ) } );
@@ -4730,6 +4734,43 @@ check( 'a dialog is never taller than the window and has one region that scrolls
 		&& lines('.builder-dialog .nino-admin-dialog-body').indexOf( '\tmin-height: 0;' ) !== -1
 		&& lines('.builder-dialog-content').indexOf( '\tflex: 1 1 auto;' ) !== -1 && lines('.builder-dialog-content').indexOf( '\tmin-height: 0;' ) !== -1 && lines('.builder-dialog-content').indexOf( '\toverflow: auto;' ) !== -1
 		&& lines('.builder-dialog-content').indexOf( '\tgrid-auto-rows: max-content;' ) !== -1;
+} )() );
+
+// What a rule of the stylesheet says: whether it has every one of the declarations given, each as the line it is written on
+const ruleHas = function( selector, declarations ) {
+
+	const lines = ruleOf( selector ).split('\n');
+
+	return lines.length > 1 && declarations.every( function( declaration ) { return lines.indexOf( '\t'+ declaration+ ';' ) !== -1 } );
+};
+// The width a dialog's rule gives it, in rem: the first number of its min()
+const widthOf = function( selector ) {
+
+	const found = /\twidth: min\(([0-9.]+)rem, calc\(100vw - 2rem\)\);/.exec( ruleOf( selector ) );
+
+	return found === null ? NaN : Number( found[1] );
+};
+
+check( 'the dialog of a form is 40rem wide, the wide one of the lightbox and the editors stays 52rem, and the dialog of a source - 34rem - stands over the form smaller than it, as the label column of the fields stays what it was and the controls take the room', widthOf('.builder-dialog') === 40
+	&& widthOf('.builder-dialog.is-wide') === 52 && widthOf('.builder-picker-dialog') === 34 && widthOf('.builder-picker-dialog') < widthOf('.builder-dialog') && widthOf('.builder-dialog') < widthOf('.builder-dialog.is-wide')
+	&& ruleHas( '.builder-block-body', [ '--builder-label: 8.25rem' ] ) );
+check( 'the content of a form of blocks is a column - the problems of a refused save over the accordion, each at the height it has - that keeps scrolling as a whole where nothing else gives way, and the accordion takes what is left of it, a column of its blocks that keeps its border and its rounded corners', ruleHas( '.builder-dialog-content:has(> .builder-blocks)', [ 'display: flex', 'flex-direction: column' ] )
+	&& ruleHas( '.builder-dialog-content', [ 'flex: 1 1 auto', 'min-height: 0', 'overflow: auto', 'position: relative' ] )
+	&& ruleHas( '.builder-blocks', [ 'display: flex', 'flex: 1 1 auto', 'flex-direction: column', 'border: 1px solid var(--editor-separator)', 'border-radius: var(--editor-radius-sm)', 'overflow: hidden' ] ) );
+check( 'the blocks of the accordion keep their heads whatever the room is - each a column that does not grow, may be shrunk to nothing and so lets its body give way - and the open one grows: its body is what scrolls - auto, and not scroll, with the room of the bar kept and a floor under which it does not give way, its rows as high as what is in them - and is the box that the switches and the radios in it are placed in, while the bodies of the others stay hidden', ruleHas( '.builder-block', [ 'display: flex', 'flex: 0 0 auto', 'flex-direction: column', 'min-height: 0' ] )
+	&& ruleHas( '.builder-block.is-open', [ 'flex: 1 1 auto' ] ) && ruleHas( '.builder-block.is-open > .builder-block-body', [ 'position: relative', 'flex: 1 1 auto', 'grid-auto-rows: max-content', 'align-content: start', 'min-height: var(--builder-floor)', 'overflow-y: auto', 'scrollbar-gutter: stable' ] )
+	&& ruleHas( '.builder-block-body[hidden]', [ 'display: none' ] ) );
+check( 'the accordion keeps the room for what it must not lose while a block is open - the head of every block and the floor of the open body, 2.4rem a head and 10rem a floor, the one head of the stylesheet for the rule of the head and for the sum - a head and a line for each block and one line more: the count has a rule for each number of blocks a form can have, which is as many as the table has different ones, and the box of the accordion asks for none of it while every block is closed - so that a window too low for it makes the content scroll as a whole', ( function() {
+
+	const named = {};
+
+	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { named[block.id] = true } ) } );
+
+	const counted = Array.from( { length : Object.keys( named ).length - 1 }, function( unused, at ) { return at + 2 } );
+
+	return ruleHas( '.builder-blocks', [ '--builder-head: 2.4rem', '--builder-floor: 10rem', '--builder-count: 1' ] ) && ruleHas( '.builder-block-head', [ 'min-height: var(--builder-head)' ] )
+		&& ruleHas( '.builder-blocks:has(> .is-open)', [ 'min-height: calc(var(--builder-count) * (var(--builder-head) + 1px) + 1px + var(--builder-floor))' ] )
+		&& counted.every( function( count ) { return ruleHas( '.builder-blocks:has(> :nth-child('+ count+ '))', [ '--builder-count: '+ count ] ) } ) && /\tmin-height: (?!0;)/.test( ruleOf('.builder-blocks') ) === false;
 } )() );
 check( 'the options of a choice wear the colours of the knob strips of the Design feature: the elevated ground and the quiet ink, the ink of the text for one that is pointed at and not chosen - in a segment that takes a choice, not in a disabled one - and for the one that is chosen the blue and the ink of an active tab - without the ring and the soft blue it had', ( function() {
 
