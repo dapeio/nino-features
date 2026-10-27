@@ -18,7 +18,8 @@ namespace Nino\Modules\Design {
 	 *										palette over them, the type, the roles those tokens are
 	 *										assigned to, the root size, the width, the whitespace, the
 	 *										radius of its surfaces and the animation of the page, the
-	 *										chosen frames, the five chosen sets, the block that says
+	 *										chosen frames, the five chosen sets, the variants the
+	 *										features that bring some are given, the block that says
 	 *										which step of every ladder is live, and last the css of the
 	 *										theme, as it was typed.
 	 *
@@ -76,7 +77,8 @@ namespace Nino\Modules\Design {
 		private const array HALVES = [ '/* ---- 1. ', '/* ---- 2. ' ];
 
 		/**
-		 *	The stylesheet a setup produces, in fifteen numbered sections:
+		 *	The stylesheet a setup produces, in fifteen numbered sections - and one more for each feature
+		 *	that has a variant chosen, after the sets (see below):
 		 *
 		 *	  1 the tokens          base.css, the --nino-* defaults
 		 *	  2 the palette         solved over them, in the shape the mode asks for
@@ -90,7 +92,21 @@ namespace Nino\Modules\Design {
 		 *	  15 the theme          the custom css, as it was typed
 		 *
 		 *	A frame or a set the library does not have is left out and noted, and
-		 *	the sections after it take the numbers that are free. The theme's css
+		 *	the sections after it take the numbers that are free. So do the sections of the
+		 *	features: one for each feature that is active and has an entry in the setup, in the
+		 *	order of the catalogue (see Setup::features()), holding the stylesheet of the variant
+		 *	chosen for it, titled "feature forms: loud (size more)" for the variant loud of the
+		 *	feature forms - after the sets and before the knob positions, which then number from
+		 *	the next. The lines of the knobs a variant declares go into the one block of the knob
+		 *	positions, after those of the parts: a ladder is selected as the ladders of a set are,
+		 *	a ground is written as the surface and every part the palette publishes of it, each
+		 *	the var() of the token of the palette, a colour as its light half, and its dark half
+		 *	in the dark blocks the palette's own are written in (see Colours::dark()) - where the
+		 *	palette has them, which is the mode auto. An ink is the var() of a token of the page
+		 *	on every element, since the sections of Nino.css point those tokens elsewhere on their
+		 *	own ground and a property declared on the root alone would keep the value the root
+		 *	gave it. An entry of a feature that is not in the catalogue is told once and writes
+		 *	nothing. The theme's css
 		 *	is the last section, and only where there is some: it follows the knob
 		 *	positions so that it wins against everything before it, a rung of a
 		 *	ladder re-declared in it included - the selection line of the knob then
@@ -216,10 +232,119 @@ namespace Nino\Modules\Design {
 					}
 			}
 
-			if( $selection !== [] ) {
-				ksort( $selection );
-				$parts[] = sprintf( self::SECTION, $number++, 'the knob positions' ). "\n:root {\n". implode( "\n", $selection ). "\n}";
+			/*	The variants of the features, after the seven parts so that a feature that restyles what a part
+				drew has the last word - and the stylesheet the feature itself loads on the site comes after
+				this whole sheet, so that what a variant sets is set on what that one declares. In the order
+				of the catalogue. A feature that has an entry and is not in the catalogue is told, once -
+				normalising told it already where this setup was read - and compiles nothing	*/
+			$catalogue 	= Setup::features( $appData );
+			$featured 	= [];
+			$lines 			= [];
+			$inks 			= [];
+			$dark 			= [];
+
+			foreach( array_keys( (array) ( $setup['features'] ?? [] ) ) as $key ) {
+
+				$told = Setup::inactive( (string) $key );
+
+				if( isset( $catalogue[$key] ) === false && in_array( $told, $notes, true ) === false )
+					$notes[] = $told;
 			}
+
+			foreach( $catalogue as $key => $feature ) {
+
+				$entry = $setup['features'][$key] ?? null;
+
+				if( is_array( $entry ) === false )
+					continue;
+
+				$set 		= (string) ( $entry['set'] ?? '' );
+				$file 	= Setup::featureFile( $appData, $key, $set );
+
+				if( $file === '' ) {
+					$notes[] = 'no stylesheet for the feature "'. $key. '" variant "'. $set. '"';
+					continue;
+				}
+
+				$where 	= [];
+				$moved 	= [];
+
+				foreach( $feature['catalogue'][$set]['knobs'] as $knob => $meta ) {
+
+					$value 	= $entry['knobs'][$knob] ?? $meta['default'];
+					$name 	= '--'. $key. '-'. $knob;
+					$step 	= in_array( $meta['kind'], Setup::LADDERS, true ) === true ? Setup::featureStep( $setup, $key, $knob, $meta['kind'] ) : '';
+
+					// What is said of the knob where it stands off the middle: the step of a ladder, the word of a ground or an ink, the two halves of a colour
+					if( $value !== $meta['default'] )
+						$moved[] = $knob. ' '. ( $step !== '' ? $step : ( is_array( $value ) === true ? implode( '/', $value ) : (string) $value ) );
+
+					switch( $meta['kind'] ) {
+
+						// The ladders of a variant are selected as the ladders of a set are
+						case 'scale':
+						case 'choice':
+
+							$where[] = $knob. ' '. $step;
+
+							foreach( $meta['ladder'] as $ladder )
+								$lines['--'. $key. '-'. $ladder] = "\t--". $key. '-'. $ladder. ': var('. sprintf( Setup::KNOB_TOKEN, $key, $ladder, $step ). ');';
+							break;
+
+						/*	A surface of the palette, and with it every part the palette publishes of it - the text the palette
+							solved for that ground, and the rest - each as the var() of the palette's own token: the dark mode
+							switches the tokens, and needs no line of its own here	*/
+						case 'ground':
+
+							foreach( Colours::parts() as $part )
+								$lines[$name. '/'. $part] = "\t". $name. ( $part === 'bg' ? '' : '-'. $part ). ': var('. Colours::token( (string) $value, $part ). ');';
+							break;
+
+						// A tone of the page, on every element, so that it is the tone of the ground the element stands on
+						case 'ink':
+
+							if( isset( Setup::INKS[ (string) $value ] ) === true )
+								$inks[$name] = "\t". $name. ': var('. Setup::INKS[ (string) $value ]. ');';
+							break;
+
+						// A colour of its own, in light and in dark. Where the palette is one mode alone, only the half of that mode is written
+						case 'colour':
+
+							$pair = is_array( $value ) === true && count( $value ) === 2 ? array_values( $value ) : $meta['default'];
+
+							$lines[$name] = "\t". $name. ': '. $pair[ $mode === 'dark' ? 1 : 0 ]. ';';
+
+							if( $mode === 'auto' )
+								$dark[$name] = $name. ': '. $pair[1]. ';';
+							break;
+					}
+				}
+
+				$featured[$key] = [ 'set' => $set, 'moved' => $moved ];
+
+				$parts[] = sprintf( self::SECTION, $number++, 'feature '. $key. ': '. $set
+					. ( $where === [] ? '' : ' ('. implode( ', ', $where ). ')' ) ). "\n". self::_read( $file );
+			}
+
+			/*	The block of the knob positions: the lines of the parts, sorted, and those of the features after them in the
+				order of the catalogue and of the heads. Then the inks, which are declared on every element (see above), and the
+				dark halves of the colours, under the selectors the palette's own dark half stands under	*/
+			ksort( $selection );
+
+			$blocks = [];
+			$all 		= array_merge( array_values( $selection ), array_values( $lines ) );
+
+			if( $all !== [] )
+				$blocks[] = ":root {\n". implode( "\n", $all ). "\n}";
+
+			if( $inks !== [] )
+				$blocks[] = ":root, :root * {\n". implode( "\n", $inks ). "\n}";
+
+			if( $dark !== [] )
+				$blocks[] = Colours::dark( static fn( int $depth ): string => str_repeat( "\t", $depth ). implode( "\n". str_repeat( "\t", $depth ), $dark ). "\n" );
+
+			if( $blocks !== [] )
+				$parts[] = sprintf( self::SECTION, $number++, 'the knob positions' ). "\n". implode( "\n\n", $blocks );
 
 			// 15. the theme's own css, the last word of the sheet. The body adds the one line break the file ends in
 			$custom = is_string( $setup['css'] ?? null ) === true ? $setup['css'] : '';
@@ -229,7 +354,7 @@ namespace Nino\Modules\Design {
 
 			$body = implode( "\n\n", $parts ). "\n";
 
-			return self::_header( $appData, $setup, $body, $answered ). $body;
+			return self::_header( $appData, $setup, $body, $answered, $featured ). $body;
 		}
 
 		/**
@@ -498,10 +623,11 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		$setup				A normalised setup
 		 *	@param		string		$body					Everything below the header
 		 *	@param		array 		$answered			The knobs each chosen set answers to, by part
+		 *	@param		array 		$featured			The variants the features were given, by key: set, and the knobs that stand off the head's default
 		 *
 		 *	@return 	string
 		 */
-		private static function _header( array &$appData, array $setup, string $body, array $answered ): string {
+		private static function _header( array &$appData, array $setup, string $body, array $answered, array $featured ): string {
 
 			$lines = [];
 
@@ -519,6 +645,10 @@ namespace Nino\Modules\Design {
 				$lines[] = ' *   '. str_pad( $part, 11 ). ( $set !== '' ? $set : '-' )
 					. ( $moved === [] ? '' : '  ('. implode( ', ', $moved ). ')' );
 			}
+
+			// A line for each feature that was given a variant, and none where no feature was
+			foreach( $featured as $key => $given )
+				$lines[] = ' *   feature '. $key. '  '. $given['set']. ( $given['moved'] === [] ? '' : '  ('. implode( ', ', $given['moved'] ). ')' );
 
 			$lines[] = ' *';
 

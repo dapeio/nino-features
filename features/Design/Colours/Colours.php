@@ -247,8 +247,10 @@ namespace Nino\Modules\Design {
 
 		// UI parts - WCAG 2.2 SC 1.4.11 asks 3:1 for them, and holding those
 		// to the text target makes every border a heavy line. The focus ring
-		// is held here at every setting: it is the one value no knob may soften
-		private const float TARGET_UI = 3.0;
+		// is held here at every setting: it is the one value no knob may soften.
+		// Public, because the panel says the same number of a colour a feature
+		// brings: below it the line under the colour says so (see Admin::_contrasts())
+		public const float TARGET_UI = 3.0;
 
 		/*	Saturation scales chroma only. Lightness stays with Contrast, or
 			the two knobs fight over the same axis and neither is predictable.
@@ -491,9 +493,11 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	One posted colour, or the fallback. Three-digit hexes are expanded
-		 *	so the rest of the class only ever sees one form.
+		 *	so the rest of the class only ever sees one form. Public: the two
+		 *	halves of a colour a feature brings are held to the same form
+		 *	(see Setup::pair()).
 		 */
-		private static function color( mixed $value, string $fallback ): string {
+		public static function color( mixed $value, string $fallback ): string {
 
 			$value = strtolower( trim( (string) $value ) );
 			$value = ltrim( $value, '#' );
@@ -1151,11 +1155,43 @@ namespace Nino\Modules\Design {
 			if( $settings['mode'] !== 'auto' )
 				return ":root {\n". self::block( $settings, $settings['mode'] ). '}';
 
-			return ":root {\n". self::block( $settings, 'light' ). "}\n"
-				. "\n@media (prefers-color-scheme: dark) {\n\t:root:not([data-nino-mode=\"light\"]) {\n"
-				. self::block( $settings, 'dark', 2 )
+			return ":root {\n". self::block( $settings, 'light' ). "}\n\n"
+				. self::dark( static fn( int $depth ): string => self::block( $settings, 'dark', $depth ) );
+		}
+
+		/**
+		 *	The dark half of a palette in the two blocks it is written in when the mode is auto: under the
+		 *	system's colour scheme - unless the attribute of the mode switch says light - and under the
+		 *	attribute that says dark. The one method for the selectors, so that whatever else has a dark half
+		 *	to write - the colours a feature brings, see Compiler - stands under the very ones the palette's
+		 *	own does. The light mode and the dark mode write their palette alone, in :root, and have no such
+		 *	block
+		 *
+		 *	@param		callable	$declarations	( int $depth ): string - the lines of the dark half, each indented by that many tabs and ended by a line break
+		 *
+		 *	@return 	string									Both blocks, without a line break at the end
+		 */
+		public static function dark( callable $declarations ): string {
+
+			return "@media (prefers-color-scheme: dark) {\n\t:root:not([data-nino-mode=\"light\"]) {\n"
+				. $declarations( 2 )
 				. "\t}\n}\n"
-				. "\n:root[data-nino-mode=\"dark\"] {\n". self::block( $settings, 'dark' ). '}';
+				. "\n:root[data-nino-mode=\"dark\"] {\n". $declarations( 1 ). '}';
+		}
+
+		/**
+		 *	The parts the palette publishes of a surface, in its order, read off the palette itself and
+		 *	typed nowhere else: bg, on, on-muted, link, border, focus, disabled and shadow. What a
+		 *	feature that paints a ground writes for the ground it is given, one property for each (see
+		 *	Compiler)
+		 *
+		 *	@return 	array									The part names
+		 */
+		public static function parts(): array {
+
+			static $parts = null;
+
+			return $parts ??= array_keys( self::palette( [] )[ self::SURFACES[0] ] );
 		}
 
 		private static function block( array $settings, string $mode, int $depth = 1 ): string {
@@ -1177,8 +1213,10 @@ namespace Nino\Modules\Design {
 		 *	The surface always follows an "on-" prefix directly, modifiers come
 		 *	last: --nino-brand, --nino-on-brand, --nino-on-brand-muted. A
 		 *	Theme reads these and assigns its own semantic names from them.
+		 *	Public: a ground a feature is given is written as the var() of them
+		 *	(see Compiler).
 		 */
-		private static function token( string $surface, string $part ): string {
+		public static function token( string $surface, string $part ): string {
 			return match( true ) {
 				$part === 'bg'					=> '--nino-'. $surface,
 				$part === 'on'					=> '--nino-on-'. $surface,

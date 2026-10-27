@@ -93,6 +93,12 @@ namespace Nino\Modules {
 		 *	them reads "saved, not applied" as well; a project that uses none
 		 *	compiles, and hashes, as it did.
 		 *
+		 *	The choices for the features are part of the setup like any other, but an empty
+		 *	one is left out of the input - a project that chose nothing for any feature hashes
+		 *	as it did - and the variant file each entry points at joins the files of the parts,
+		 *	by the bytes it has now, or by none where the feature is not active (activating it
+		 *	then changes what is compiled, and the fingerprint with it).
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalized setup
 		 *	@param		string		$library			The library directory its parts are chosen from
@@ -109,7 +115,16 @@ namespace Nino\Modules {
 				$files[$part]	= [ $set, ( $file === '' || is_file( $file ) === false ) ? '' : (string) hash_file( 'sha256', $file ) ];
 			}
 
+			foreach( (array) ( $setup['features'] ?? [] ) as $key => $entry ) {
+				$set 		= is_array( $entry ) === true ? (string) ( $entry['set'] ?? '' ) : '';
+				$file 	= Design\Setup::featureFile( $appData, (string) $key, $set );
+				$files['feature '. $key] = [ $set, $file === '' ? '' : (string) hash_file( 'sha256', $file ) ];
+			}
+
 			unset( $setup['compiled'] );
+
+			if( ( $setup['features'] ?? [] ) === [] )
+				unset( $setup['features'] );
 
 			$input = [ $setup, $files ];
 

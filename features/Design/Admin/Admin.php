@@ -238,10 +238,15 @@ namespace Nino\Modules\Design {
 				// choice is named by, and the size and the width are positions as well
 				'knobs' 	=> $setup['knobs'],
 				'kinds' 	=> Setup::KNOBS,
-				// Where the panel puts what it sets: the seven tabs, the eight objects and the
-				// table that says, for every control of the setup, its tab, its object and its
-				// place in the row - the screen draws a tab from it and from nothing else
-				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::OBJECTS, 'controls' => Setup::LAYOUT ],
+				/*	The features that bring variants of their own, each with the variants it brings - their names, their
+					descriptions and the knobs their heads declare - and with what the setup chose for it: the variant
+					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
+					not there rides along with the flag that says so, since a save has to carry it on	*/
+				'features' => self::_features( $appData, $setup ),
+				// Where the panel puts what it sets: the seven tabs, the eight objects - and one more for each feature that
+				// brings variants - and the table that says, for every control of the setup, its tab, its object and its place
+				// in the row, the rows of the features among them - the screen draws a tab from it and from nothing else
+				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::objects( $appData ), 'controls' => Setup::layout( $appData ) ],
 				/*	The setup a fresh install starts from, cut to the keys that choose something (see Themes::snapshot()): what the head of a
 					closed row is compared with, so that it names only the controls that stand elsewhere than there	*/
 				'defaults' 	=> Themes::snapshot( Setup::defaults( $library ) ),
@@ -302,12 +307,98 @@ namespace Nino\Modules\Design {
 				// named, or the one Harmony derived. The swatch standing for it
 				// shows this rather than the primary standing in for it
 				'accent'	=> Colours::accent( (array) ( $setup['colours'] ?? [] ) ),
+				/*	The words of the two choices a feature may declare out of the palette's vocabulary: the surfaces of a ground, in the
+					palette's order, and the tones of an ink. And what the colours the features were given measure on the page, as the
+					brand does	*/
+				'grounds'	=> Colours::SURFACES,
+				'inks'		=> array_keys( Setup::INKS ),
+				'contrasts' => self::_contrasts( $appData, $setup ),
 				// Whether the repository of typefaces has an address and a key to be read with:
 				// the tab offers the list only where both are set
 				'webfonts'	=> [ 'url' => Webfonts::url( $appData ) !== '', 'key' => Webfonts::key( $appData ) !== '' ],
 				'notes' 	=> $notes,
 				'target' 	=> Compiler::TARGET,
 			] + self::state( $appData, $setup, $library ) );
+		}
+
+		/**
+		 *	The features as the screen draws them: the catalogue of Setup::features() without the path of
+		 *	the feature and the names of the ladders - nothing the screen reads - and, beside the variants,
+		 *	what the setup chose for the feature. A feature the setup has an entry for and that is not in
+		 *	the catalogue follows them with its entry as it was kept, flagged as not active
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$setup				A normalised setup
+		 *
+		 *	@return 	array										key => name, active, default, catalogue, set, knobs
+		 */
+		private static function _features( array &$appData, array $setup ): array {
+
+			$chosen = (array) ( $setup['features'] ?? [] );
+			$out 		= [];
+
+			foreach( Setup::features( $appData ) as $key => $feature ) {
+
+				$catalogue = [];
+
+				foreach( $feature['catalogue'] as $variant => $one ) {
+
+					foreach( array_keys( $one['knobs'] ) as $knob )
+						unset( $one['knobs'][$knob]['ladder'] );
+
+					$catalogue[$variant] = $one;
+				}
+
+				$out[$key] = [
+					'name' 				=> $feature['name'],
+					'active' 			=> true,
+					'default' 		=> $feature['default'],
+					'catalogue' 	=> $catalogue,
+					'set' 				=> (string) ( $chosen[$key]['set'] ?? '' ),
+					'knobs' 			=> (array) ( $chosen[$key]['knobs'] ?? [] ),
+				];
+			}
+
+			foreach( $chosen as $key => $entry )
+				if( isset( $out[$key] ) === false )
+					$out[$key] = [ 'name' => (string) $key, 'active' => false, 'default' => '', 'catalogue' => [], 'set' => (string) $entry['set'], 'knobs' => (array) $entry['knobs'] ];
+
+			return $out;
+		}
+
+		/**
+		 *	What the colours the features bring measure: for each colour knob of the variant a feature was given, the ratio of each of its
+		 *	two halves against the ground of the page in the mode of the half, the ratio a mark on a page has to reach (Colours::TARGET_UI)
+		 *	and whether it does - the line under the brand's colour, said of the colours of a feature. Nothing refuses a colour: the
+		 *	screen says it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$setup				A normalised setup
+		 *
+		 *	@return 	array										key => knob => light|dark => ratio, target, safe
+		 */
+		private static function _contrasts( array &$appData, array $setup ): array {
+
+			$colours 		= Colours::normalize( (array) ( $setup['colours'] ?? [] ) );
+			$ground 		= [ 'light' => Colours::palette( $colours, 'light' )['default']['bg'], 'dark' => Colours::palette( $colours, 'dark' )['default']['bg'] ];
+			$catalogue 	= Setup::features( $appData );
+			$out 				= [];
+
+			foreach( (array) ( $setup['features'] ?? [] ) as $key => $entry )
+				foreach( (array) ( $catalogue[$key]['catalogue'][ $entry['set'] ]['knobs'] ?? [] ) as $knob => $meta ) {
+
+					$pair = $entry['knobs'][$knob] ?? null;
+
+					if( $meta['kind'] !== 'colour' || is_array( $pair ) === false )
+						continue;
+
+					foreach( [ 'light', 'dark' ] as $at => $mode ) {
+						$ratio = round( Colours::contrast( (string) $pair[$at], $ground[$mode] ), 2 );
+						$out[$key][$knob][$mode] = [ 'ratio' => $ratio, 'target' => Colours::TARGET_UI, 'safe' => $ratio >= Colours::TARGET_UI ];
+					}
+				}
+
+			return $out;
 		}
 
 		/**
@@ -575,6 +666,7 @@ namespace Nino\Modules\Design {
 				'style' 		=> self::PREVIEW_STYLE,
 				'accent' 		=> Colours::accent( $colours ),
 				'brand' 		=> Colours::brand( $colours ),
+				'contrasts' => self::_contrasts( $appData, $setup ),
 				'notes' 		=> $notes,
 			] );
 		}
@@ -1083,7 +1175,7 @@ namespace Nino\Modules\Design {
 				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 
-			foreach( [ 'radii', 'motion', 'parts', 'knobs', 'fonts', 'colours' ] as $key )
+			foreach( [ 'radii', 'motion', 'parts', 'knobs', 'features', 'fonts', 'colours' ] as $key )
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );
@@ -1338,10 +1430,11 @@ namespace Nino\Modules\Design {
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
 		 *	has none) and whether the list of the Typefaces tab has it at all.
 		 *
-		 *	And except for the colours: a file that names none - every theme the feature
-		 *	ships - chooses no brand colour, so the setup has none either, and what takes
-		 *	the setup over keeps the colours it has. A file that names them (a theme of the
-		 *	project, which a save writes with them) has them normalised as a selection's are.
+		 *	And except for the colours and the features: a file that names none - every theme
+		 *	the feature ships - chooses no brand colour and no variant of any feature, so the
+		 *	setup has none either, and what takes the setup over keeps the colours and the
+		 *	choices it has. A file that names them (a theme of the project, which a save writes
+		 *	with them) has them normalised as a selection's are.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$wanted				The setup of a file, see Themes::setup()
@@ -1349,7 +1442,7 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
 		 *	@param		array 		&$missing			(reference) slug => [ slug, name, inList ]
 		 *
-		 *	@return 	array										A normalised setup, the families of the file's roles as they are, and no colours where the file names none
+		 *	@return 	array										A normalised setup, the families of the file's roles as they are, and no colours and no features where the file names none
 		 */
 		private static function _fromFile( array &$appData, array $wanted, string $library, array &$notes, array &$missing ): array {
 
@@ -1357,6 +1450,9 @@ namespace Nino\Modules\Design {
 
 			if( is_array( $wanted['colours'] ?? null ) === false )
 				unset( $setup['colours'] );
+
+			if( is_array( $wanted['features'] ?? null ) === false )
+				unset( $setup['features'] );
 
 			$fonts 	= is_array( $wanted['fonts'] ?? null ) === true ? $wanted['fonts'] : [];
 			$names 	= array_column( Webfonts::cached( $appData )['families'] ?? [], 'family', 'slug' );

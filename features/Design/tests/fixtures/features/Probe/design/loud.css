@@ -1,0 +1,57 @@
+/*	@name			Loud
+ *	@name-de		Laut
+ *	@description	A strong line, rounded corners and the flip in a colour of its own.
+ *	@description-de	Eine kräftige Linie, runde Ecken und die Klappe in einer eigenen Farbe.
+ *
+ *	@knob	size		scale	type		Size of the text
+ *	@knob-de	size		Größe des Textes
+ *	@knob	line		choice	surfaces	Line round the probe
+ *	@knob-de	line		Linie um die Probe
+ *	@option	line	less	Light
+ *	@option	line	default	Strong
+ *	@option	line	more	Heavy
+ *	@option-de	line	less	Leicht
+ *	@option-de	line	default	Stark
+ *	@option-de	line	more	Schwer
+ *	@knob	submit		ground	colours		Ground of the send button	= brand-safe
+ *	@knob-de	submit		Fläche des Absende-Buttons
+ *	@knob	label		ink		colours		Colour of the label	= subtitle
+ *	@knob-de	label		Farbe der Beschriftung
+ *	@knob	flip		colour	colours		Colour of the flip	= #b03a2e #e8705f
+ *	@knob-de	flip		Farbe der Klappe
+ *	@knob	turn		scale	motion		Time the flip takes to turn
+ *	@knob-de	turn		Dauer des Umblätterns
+ *
+ *	Loud sets on the properties probe.css reads: the same five knobs as there, with
+ *	rungs of its own, and a sixth, the time of the turn.
+ */
+
+:root {
+	--probe-size--least: 		.9;
+	--probe-size--less: 		1;
+	--probe-size--default: 		1.15;
+	--probe-size--more: 		1.3;
+	--probe-size--most: 		1.5;
+
+	--probe-line--less: 		.15rem;
+	--probe-line--default: 		.25rem;
+	--probe-line--more: 		.5rem;
+
+	--probe-turn--least: 		.25;
+	--probe-turn--less: 		.5;
+	--probe-turn--default: 		1;
+	--probe-turn--more: 		2;
+	--probe-turn--most: 		4;
+}
+
+.probe {
+	border-radius: .75em;
+}
+
+.probe-submit {
+	border-radius: 2em;
+}
+
+.probe-flip {
+	border-radius: 50%;
+}

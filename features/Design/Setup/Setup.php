@@ -34,6 +34,15 @@ namespace Nino\Modules\Design {
 	 *										stands in the panel is LAYOUT's to say, and nothing
 	 *										else's.
 	 *
+	 *										A feature that is active and carries variants of its own
+	 *										(features/<Name>/design/<variant>.css) adds to it: the variant
+	 *										chosen for it, and a position or a value for each knob the head
+	 *										of that variant declares - a scale or a choice on a ladder, a
+	 *										ground, an ink, a colour in light and dark. They are read through
+	 *										Features::all() and head() (see features()), and what they add
+	 *										to the tables of the panel is layout() and objects(). A feature
+	 *										switched off keeps its entry, which nothing compiles.
+	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
 	 *										falls back to the set the fresh install has, and says so,
@@ -61,15 +70,18 @@ namespace Nino\Modules\Design {
 			theme and no css, which is what every project had before. So does
 			`whitespace`: a file without it stands at the middle, the air Nino.css has.
 			And so do `radius`, `radius-alt` and `radii`: a file without them stands at
-			the two strengths Nino.css has and every kind of surface on the standard one	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
+			the two strengths Nino.css has and every kind of surface on the standard one.
+			And `features`: a file without it has chosen nothing for any feature, which
+			is each feature as it is	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'features', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
 			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
 			in both text files, as a refused request's are. Every other note is one English sentence a hand-edited file earns	*/
 		public const array NOTES = [
-			'design_theme_missing' 	=> 'the theme "%s" is not there - none is active',
-			'design_set_missing' 		=> '"%s" names the set "%s", which is not in the library - using "%s"',
+			'design_theme_missing' 		=> 'the theme "%s" is not there - none is active',
+			'design_set_missing' 			=> '"%s" names the set "%s", which is not in the library - using "%s"',
+			'design_feature_inactive' => 'the feature "%s" is not active, or brings no variants - its choice is kept, and nothing is compiled for it',
 		];
 
 		/*	The parts, in the order they are compiled - which is also the order they are
@@ -316,6 +328,35 @@ namespace Nino\Modules\Design {
 			the rung of the position with it */
 		public const string KNOB_TOKEN = '--%s-%s--%s';
 
+		/*	The five kinds of knob a feature can declare in the head of a variant. A scale and a choice are ladders, as the knobs of the
+			seven parts are, with the key of the feature in the place of the part's name (KNOB_TOKEN). A ground is one of the surfaces of
+			the palette (Colours::SURFACES), an ink one of the seven tones of INKS, a colour a pair of hex colours - light, then dark	*/
+		public const array FEATURE_KINDS = [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
+
+		// ...of which these two are ladders, declared in the stylesheet of the variant and published by it (see variants())
+		public const array LADDERS = [ 'scale', 'choice' ];
+
+		/*	The seven tones the page writes with on whatever ground an element stands on, and the custom property of the kernel each is: the
+			roles Nino.css re-points inside .nino-section--alt, --tint, --dark and --black (and in the grid, the row and the card of the same
+			ground), so that an ink is the right one on every ground. The brand is one tone here - the grade the palette solves it to as a
+			text colour, which is why its quiet and its loud grade are grounds and no inks. tests/design-smoke.php holds each token to the
+			:root of the Nino.css it runs against	*/
+		public const array INKS = [
+			'ink' 			=> '--color-ink',
+			'subtitle' 	=> '--color-subtitle',
+			'title' 		=> '--color-title',
+			'accent' 		=> '--color-accent',
+			'primary' 	=> '--color-primary',
+			'border' 		=> '--color-border',
+			'focus' 		=> '--color-focus',
+		];
+
+		// How much of a stylesheet is read for its opening comment: a variant of a feature declares its knobs there, and its head is longer than a set's
+		private const int HEAD = 16384;
+
+		// What a set is called, as a file name: letters, digits and the dot, the hyphen and the underscore after the first (file() holds the name against '..' as well)
+		private const string SET_NAME = '/^[A-Za-z0-9][A-Za-z0-9._-]*$/D';
+
 		/*	The root size, as the percentage pair Nino.css wants: below the 768px
 			breakpoint, and from it. Relative, never a length - see
 			--base-size in Nino.css.
@@ -537,6 +578,8 @@ namespace Nino\Modules\Design {
 				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
 				'parts' 	=> $parts,
 				'knobs' 	=> $knobs,
+				// What was chosen for the features that bring variants: an entry for each, key => set and knobs - none is the feature as it is
+				'features' => [],
 				'fonts' 	=> Fonts::DEFAULTS,
 				// The palette half, in Colours' own vocabulary - two colours, five
 				// knobs and the mode. Its defaults are the framework's own values, so
@@ -662,7 +705,7 @@ namespace Nino\Modules\Design {
 
 			// A set name is a file name, and a file name from a stored setup is
 			// input: anything that could climb out of the library is not a set
-			if( preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]*$/D', $set ) !== 1 || str_contains( $set, '..' ) === true )
+			if( self::named( $set ) === false )
 				return '';
 
 			if( isset( self::PARTS[$part] ) === false )
@@ -680,10 +723,11 @@ namespace Nino\Modules\Design {
 		 *
 		 *	Read from the stylesheet's own opening comment - `@name` and
 		 *	`@description` on their own lines - rather than from a manifest
-		 *	beside it. A set is one file, so a second file per set would be a
-		 *	second file to keep in sync, and the person writing sets is going to
-		 *	write a lot of them. A file without a @name is offered under its own
-		 *	name, which is what a set in progress looks like.
+		 *	beside it (see head(), the one parser of it). A set is one file, so a
+		 *	second file per set would be a second file to keep in sync, and the
+		 *	person writing sets is going to write a lot of them. A file without a
+		 *	@name is offered under its own name, which is what a set in progress
+		 *	looks like.
 		 *
 		 *	The two lines of another language stand beside them - `@name-de` and
 		 *	`@description-de` for de_DE, the two letters before the underscore -
@@ -706,9 +750,54 @@ namespace Nino\Modules\Design {
 			if( $file === '' )
 				return $read;
 
+			$head = self::head( $file, $locale );
+
+			foreach( [ 'name', 'description' ] as $tag )
+				if( $head[$tag] !== '' )
+					$read[$tag] = $head[$tag];
+
+			return $read;
+		}
+
+		/**
+		 *	The opening comment of a stylesheet, read: the one parser of the head of a set of
+		 *	the library and of a variant of a feature. The first comment block only - a @name
+		 *	further down belongs to a rule somebody documented, not to the file.
+		 *
+		 *	The English lines are the plain tags, the others carry their language - `@name-de`,
+		 *	`@description-de`, `@knob-de` and `@option-de` for de_DE, the two letters before the
+		 *	underscore - and are read where the locale is not an English one; a line the file
+		 *	has not got in that language gives the English one.
+		 *
+		 *	A variant of a feature declares its knobs in its head, one line each:
+		 *
+		 *	  @knob <name> <kind> <tab> <label> [= <default>]
+		 *
+		 *	The name is letters, digits and hyphens, the kind one of FEATURE_KINDS, the tab one of
+		 *	the tabs that draw rows but the templates (type, surfaces, colours, motion), the label the
+		 *	English words. A ground, an ink and a colour need the choice they stand at before a
+		 *	person chooses - a surface of the palette, a tone of INKS, the pair of hex colours, light
+		 *	then dark - and a scale and a choice take none, their middle is the default. A choice
+		 *	has its three words, `@option <knob> <less|default|more> <label>`, all three or the
+		 *	choice is not published. A line that is none of this is dropped and named in `notes`:
+		 *	the file is somebody's work in progress, and the rest of its knobs stand.
+		 *
+		 *	The `@knob` lines of a set of the library are documentation there - the panel reads the
+		 *	ladders (see ladders()) - and in a grammar of their own; read by this, they are none of
+		 *	its lines and are named in notes that a caller for a set never looks at.
+		 *
+		 *	@param		string		$file					A path
+		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
+		 *
+		 *	@return 	array										name, description ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines) and notes
+		 */
+		public static function head( string $file, string $locale = 'en_US' ): array {
+
+			$read = [ 'name' => '', 'description' => '', 'knobs' => [], 'notes' => [] ];
+
 			// The first comment block only: a @name further down belongs to a
 			// rule somebody documented, not to the file
-			$head = (string) @file_get_contents( $file, false, null, 0, 4096 );
+			$head = (string) @file_get_contents( $file, false, null, 0, self::HEAD );
 
 			if( preg_match( '~/\*(.*?)\*/~s', $head, $block ) !== 1 )
 				return $read;
@@ -725,7 +814,161 @@ namespace Nino\Modules\Design {
 						break;
 					}
 
+			$read['knobs'] = self::declared( $block[1], $own === true ? $language : '', $read['notes'] );
+
 			return $read;
+		}
+
+		/**
+		 *	The knobs a head declares (see head()): its `@knob` and `@option` lines held to their
+		 *	grammar, each with its label and - for a choice - its three words in the language asked for
+		 *
+		 *	@param		string		$comment			The text of the opening comment
+		 *	@param		string		$language			The two letters of the language the labels are wanted in, '' for English
+		 *	@param		array 		&$notes				(reference) The lines that were dropped, each named
+		 *
+		 *	@return 	array										name => kind, tab, label, options, default
+		 */
+		private static function declared( string $comment, string $language, array &$notes ): array {
+
+			$tabs 		= array_values( array_diff( self::TABS, [ 'theme', 'templates', 'typefaces' ] ) );
+			$words 		= self::words( 'choice' );
+			$expects 	= [
+				'ground' 	=> 'a surface of the palette: '. implode( ', ', Colours::SURFACES ),
+				'ink' 		=> 'a tone of the page: '. implode( ', ', array_keys( self::INKS ) ),
+				'colour' 	=> 'two hex colours, light then dark',
+			];
+			$knobs 		= [];
+			$lines 		= [];
+			$labels 	= [];
+			$options 	= [];
+			$dropped 	= static function( string $line, string $why ) use ( &$notes ): void {
+				$notes[] = 'the line "'. self::shown( $line, 60 ). '" is dropped: '. $why;
+			};
+
+			foreach( (array) preg_split( '/\R/', $comment ) as $row ) {
+
+				// The line without the asterisk and the indent it stands behind
+				$line = trim( (string) preg_replace( '/^\s*\*/', '', (string) $row ) );
+
+				if( preg_match( '/^@(knob|option)(?:-([a-z]{2}))?(?:[ \t]+(.*))?$/', $line, $tag ) !== 1 )
+					continue;
+
+				$of 	= $tag[2] ?? '';
+				$rest = trim( $tag[3] ?? '' );
+
+				if( $tag[1] === 'option' ) {
+
+					if( preg_match( '/^(\S+)[ \t]+(\S+)[ \t]+(.+)$/', $rest, $found ) !== 1 )
+						$dropped( $line, 'it is no @option'. ( $of === '' ? '' : '-'. $of ). ' line - it takes a knob, one of '. implode( ', ', $words ). ' and a label' );
+					else if( in_array( $found[2], $words, true ) === false )
+						$dropped( $line, 'there is no word "'. self::shown( $found[2] ). '" of a choice - '. implode( ', ', $words ) );
+					else
+						$options[$of][ $found[1] ][ $found[2] ] = trim( $found[3] );
+
+					continue;
+				}
+
+				if( $of !== '' ) {
+
+					if( preg_match( '/^(\S+)[ \t]+(.+)$/', $rest, $found ) === 1 )
+						$labels[$of][ $found[1] ] = trim( $found[2] );
+					else
+						$dropped( $line, 'it is no @knob-'. $of. ' line - it takes a knob and a label' );
+
+					continue;
+				}
+
+				if( preg_match( '/^(\S+)[ \t]+(\S+)[ \t]+(\S+)[ \t]+(.+)$/', $rest, $found ) !== 1 ) {
+					$dropped( $line, 'it is no @knob line - it takes a name, a kind, a tab and a label, and after an equals sign the default of a ground, an ink or a colour' );
+					continue;
+				}
+
+				[ , $name, $kind, $tab, $tail ] = $found;
+
+				// The label is what stands before a ' = ', the default what stands after
+				$default = null;
+
+				if( preg_match( '/^(.*?)[ \t]+=[ \t]+(.+)$/', $tail, $pair ) === 1 ) {
+					$tail 		= $pair[1];
+					$default 	= trim( $pair[2] );
+				}
+
+				$value = match( $kind ) {
+					'ground' 	=> in_array( (string) $default, Colours::SURFACES, true ) === true ? $default : null,
+					'ink' 		=> isset( self::INKS[ (string) $default ] ) === true ? $default : null,
+					'colour' 	=> self::pair( preg_split( '/\s+/', (string) $default ) ?: [] ),
+					'scale', 'choice' => $default === null ? 0 : null,
+					default 	=> null,
+				};
+
+				$why = match( true ) {
+					preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $name ) !== 1 		=> 'a name is letters, digits and hyphens',
+					isset( $knobs[$name] ) === true 															=> 'the knob "'. $name. '" is declared already',
+					in_array( $kind, self::FEATURE_KINDS, true ) === false 				=> 'there is no kind "'. self::shown( $kind ). '" - '. implode( ', ', self::FEATURE_KINDS ),
+					in_array( $tab, $tabs, true ) === false 											=> 'there is no tab "'. self::shown( $tab ). '" to put a knob on - '. implode( ', ', $tabs ),
+					$value === null 																							=> 'the kind "'. $kind. '" '. ( in_array( $kind, self::LADDERS, true ) === true ? 'takes no default - its middle is the one it stands at' : 'needs a default after an equals sign - '. $expects[$kind] ),
+					trim( $tail ) === '' 																					=> 'it has no label',
+					default 																											=> '',
+				};
+
+				if( $why !== '' ) {
+					$dropped( $line, $why );
+					continue;
+				}
+
+				$knobs[$name] = [ 'kind' => $kind, 'tab' => $tab, 'label' => trim( $tail ), 'options' => [], 'default' => $value ];
+				$lines[$name] = $line;
+			}
+
+			// A ground writes one property for each part of its surface, named <knob>-<part> (see Compiler): a knob of that name in the
+			// same head would write the same property, and the later line would win in silence - so the ground keeps the name
+			foreach( $knobs as $name => $knob )
+				if( $knob['kind'] === 'ground' )
+					foreach( array_slice( Colours::parts(), 1 ) as $part )
+						if( isset( $knobs[ $name. '-'. $part ] ) === true ) {
+							$dropped( $lines[ $name. '-'. $part ], 'the ground "'. $name. '" writes '. $name. '-'. $part. ' for the '. $part. ' of its surface - a ground takes the names of its parts' );
+							unset( $knobs[ $name. '-'. $part ], $lines[ $name. '-'. $part ] );
+						}
+
+			// A choice has its three words in English, or it is not published - and its words are explained by that, not named a second time
+			$gone = [];
+
+			foreach( $knobs as $name => $knob ) {
+
+				if( $knob['kind'] !== 'choice' )
+					continue;
+
+				$missing = array_values( array_diff( $words, array_keys( $options[''][$name] ?? [] ) ) );
+
+				if( $missing !== [] ) {
+					$notes[] = 'the choice "'. $name. '" has no @option line for '. implode( ' and ', $missing ). ' - dropped';
+					unset( $knobs[$name] );
+					$gone[$name] = true;
+				}
+			}
+
+			// A line of another language, or an option, for a knob that is not there or is no choice
+			foreach( $labels as $of => $named )
+				foreach( array_keys( $named ) as $name )
+					if( isset( $knobs[$name] ) === false )
+						$notes[] = 'the label "@knob-'. $of. ' '. self::shown( $name ). '" names no knob - dropped';
+
+			foreach( $options as $of => $named )
+				foreach( array_keys( $named ) as $name )
+					if( ( $knobs[$name]['kind'] ?? '' ) !== 'choice' && isset( $gone[$name] ) === false )
+						$notes[] = 'the words "@option'. ( $of === '' ? '' : '-'. $of ). ' '. self::shown( $name ). '" name no choice - dropped';
+
+			foreach( $knobs as $name => $knob ) {
+
+				$knobs[$name]['label'] = $labels[$language][$name] ?? $knob['label'];
+
+				if( $knob['kind'] === 'choice' )
+					foreach( $words as $word )
+						$knobs[$name]['options'][$word] = $options[$language][$name][$word] ?? $options[''][$name][$word];
+			}
+
+			return $knobs;
 		}
 
 		/**
@@ -746,6 +989,205 @@ namespace Nino\Modules\Design {
 				$catalogue[$set] = self::describe( $libraryDir, $part, $set, $locale );
 
 			return $catalogue;
+		}
+
+		/**
+		 *	The features that bring variants of their own: every feature that is active and carries a
+		 *	design/ directory with a stylesheet in it, read through the kernel (\Nino\Features::all())
+		 *	and the head of each file (see head()). A feature without design/ appears nowhere, and
+		 *	so does a feature that is not active - its entry in the setup is kept, and nothing is
+		 *	compiled for it (see normalize()). A feature is called as the panel's objects are
+		 *	called - a part or the page - only by the name of a part or of the page: such a key is
+		 *	skipped with a note, since the rows of its knobs would be those of the object.
+		 *
+		 *	The answer is read once for a request and the language of the workbench, and kept in the
+		 *	app data beside the list of modules it was made for.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$notes				(reference) What the heads said that was dropped, led by the feature and the variant
+		 *
+		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, knobs - each with its ladder where it has one), sorted by name
+		 */
+		public static function features( array &$appData, array &$notes = [] ): array {
+
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
+			$modules 	= (array) ( $appData['/nino/modules'] ?? [] );
+			$dir 			= \Nino\Features::dir();
+			$kept 		= $appData['./design/features'] ?? null;
+
+			if( is_array( $kept ) === false || $kept['locale'] !== $locale || $kept['modules'] !== $modules || $kept['dir'] !== $dir ) {
+
+				$kept = [ 'locale' => $locale, 'modules' => $modules, 'dir' => $dir, 'catalogue' => [], 'notes' => [] ];
+
+				foreach( \Nino\Features::all( $appData ) as $key => $feature ) {
+
+					if( $feature['active'] !== true || is_dir( $feature['dir']. '/design' ) === false )
+						continue;
+
+					if( in_array( $key, self::OBJECTS, true ) === true ) {
+						$kept['notes'][] = 'the feature "'. $key. '" is called as an object of the panel is - its variants are not offered';
+						continue;
+					}
+
+					$variants = self::variants( $feature['dir'], $key, $locale, $kept['notes'] );
+
+					if( $variants === [] )
+						continue;
+
+					$kept['catalogue'][$key] = [
+						'name' 				=> \Nino\Features::localized( $feature['name'], $locale ) ?: $key,
+						'dir' 				=> $feature['dir'],
+						'default' 		=> isset( $variants['regular'] ) === true ? 'regular' : (string) array_key_first( $variants ),
+						'catalogue' 	=> $variants,
+					];
+				}
+
+				$names = $kept['catalogue'];
+
+				uksort( $kept['catalogue'], static fn( string $a, string $b ): int => strnatcasecmp( $names[$a]['name'], $names[$b]['name'] ) ?: strcmp( $a, $b ) );
+
+				$appData['./design/features'] = $kept;
+			}
+
+			foreach( $kept['notes'] as $note )
+				$notes[] = $note;
+
+			return $kept['catalogue'];
+		}
+
+		/**
+		 *	The variants one feature brings: a stylesheet each in its design/ directory, in the order of their
+		 *	names, with the name and the description and the knobs its head declares. A scale or a choice a
+		 *	head declares is published by its ladder, as the knobs of the parts are (see declarations()):
+		 *	one without a complete ladder is not, and says so in a note. A ladder no head declares is not
+		 *	offered - nothing says where it stands
+		 *
+		 *	@param		string		$dir					The directory of the feature
+		 *	@param		string		$key					The key of the feature, which is the part name of its ladders
+		 *	@param		string		$locale				The language of the workbench
+		 *	@param		array 		&$notes				(reference) What was dropped, led by the feature and the variant
+		 *
+		 *	@return 	array										variant => name, description, knobs
+		 */
+		private static function variants( string $dir, string $key, string $locale, array &$notes ): array {
+
+			$files = [];
+
+			foreach( glob( $dir. '/design/*.css' ) ?: [] as $file )
+				if( self::named( basename( $file, '.css' ) ) === true && is_file( $file ) === true )
+					$files[ basename( $file, '.css' ) ] = $file;
+
+			ksort( $files, SORT_NATURAL );
+
+			$variants = [];
+
+			foreach( $files as $variant => $file ) {
+
+				$head 	= self::head( $file, $locale );
+				$knobs 	= $head['knobs'];
+				$ladder = [];
+
+				foreach( $head['notes'] as $note )
+					$notes[] = $key. '/'. $variant. ': '. $note;
+
+				foreach( $knobs as $name => $knob )
+					if( in_array( $knob['kind'], self::LADDERS, true ) === true )
+						$ladder[$name] = $knob['kind'];
+
+				$found = self::declarations( self::uncomment( (string) @file_get_contents( $file ) ), $key, $ladder );
+
+				foreach( array_keys( $ladder ) as $name )
+					if( isset( $found[$name] ) === true )
+						$knobs[$name]['ladder'] = $found[$name];
+					else {
+						$notes[] = $key. '/'. $variant. ': the knob "'. $name. '" has no complete ladder - not published';
+						unset( $knobs[$name] );
+					}
+
+				$variants[$variant] = [ 'name' => $head['name'] !== '' ? $head['name'] : $variant, 'description' => $head['description'], 'knobs' => $knobs ];
+			}
+
+			return $variants;
+		}
+
+		/**
+		 *	The file a variant of a feature resolves to
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of an active feature that brings variants
+		 *	@param		string		$variant			A variant of it
+		 *
+		 *	@return 	string										A path, '' when the feature or the variant is not there
+		 */
+		public static function featureFile( array &$appData, string $key, string $variant ): string {
+
+			$feature = self::features( $appData )[$key] ?? null;
+
+			if( $feature === null || isset( $feature['catalogue'][$variant] ) === false )
+				return '';
+
+			$path = $feature['dir']. '/design/'. $variant. '.css';
+
+			return is_file( $path ) === true ? $path : '';
+		}
+
+		/**
+		 *	Where every control of the panel stands, the features' among them: the static table (LAYOUT, which stays
+		 *	complete for the keys of the setup that are no feature's) and the rows the features add. A feature has a row of
+		 *	its own under Templates - `features/<key>/set`, the choice of its variant - and a place for each knob any of
+		 *	its variants declares - `features/<key>/knobs/<knob>`, on the tab the head names, under the feature as the object,
+		 *	counted from 1 on the tab in the order of the head's lines (the variants in the order of their names, a knob
+		 *	where the first that declares it puts it). A variant that does not declare the knob has it greyed out
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										key => [ tab, object, order ]
+		 */
+		public static function layout( array &$appData ): array {
+
+			$rows = self::LAYOUT;
+
+			foreach( self::features( $appData ) as $key => $feature ) {
+
+				$rows['features/'. $key. '/set'] = [ 'templates', $key, 1 ];
+				$count = [];
+
+				foreach( $feature['catalogue'] as $variant )
+					foreach( $variant['knobs'] as $knob => $meta ) {
+
+						if( isset( $rows['features/'. $key. '/knobs/'. $knob] ) === true )
+							continue;
+
+						$count[ $meta['tab'] ] = ( $count[ $meta['tab'] ] ?? 0 ) + 1;
+						$rows['features/'. $key. '/knobs/'. $knob] = [ $meta['tab'], $key, $count[ $meta['tab'] ] ];
+					}
+			}
+
+			return $rows;
+		}
+
+		/**
+		 *	The objects the blocks of the panel are of: the eight of OBJECTS and, after the tables, one for each feature
+		 *	that brings variants, in the order of the catalogue
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										The keys of the objects
+		 */
+		public static function objects( array &$appData ): array {
+			return array_merge( self::OBJECTS, array_keys( self::features( $appData ) ) );
+		}
+
+		/**
+		 *	Whether a name can be the name of a set or of a variant: a file name of letters, digits, the dot, the hyphen and the
+		 *	underscore, with nothing in it that could climb out of the directory it is looked for in
+		 *
+		 *	@param		string		$set
+		 *
+		 *	@return 	bool
+		 */
+		private static function named( string $set ): bool {
+			return preg_match( self::SET_NAME, $set ) === 1 && str_contains( $set, '..' ) === false;
 		}
 
 		/**
@@ -872,6 +1314,8 @@ namespace Nino\Modules\Design {
 				foreach( $kinds as $knob => $kind )
 					$setup['knobs'][$part][$knob] = self::position( is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? 0 ) : 0, $kind );
 
+			$setup['features'] = self::chosen( $appData, is_array( $raw['features'] ?? null ) === true ? $raw['features'] : [], $notes );
+
 			/*	The five font roles. A family has to be one the role's select offers -
 				the code is given the monospace ones only, and the families the project
 				installed are among them - and a weight one of the three words;
@@ -920,6 +1364,128 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	What a setup chooses for the features, held against the catalogue of the features that are there (see features()).
+		 *	A feature that has an entry has its variant and a value for each knob that variant declares, every one held to
+		 *	its kind (see value()); one that has none is the feature as it is, which nothing is compiled for. A variant that
+		 *	is none of the feature's falls to the one it has before anything is chosen, and a knob the variant does not declare
+		 *	is dropped - each with a note, as a part's is.
+		 *
+		 *	An entry of a feature that is not in the catalogue - switched off, or taken away, or without variants now - is kept,
+		 *	its two keys held to their types and nothing else looked at, since nothing about the feature can be asked: the choice
+		 *	stays for the day it is back, and the note says nothing is compiled for it meanwhile
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$given				What the file held, or the screen posted, under `features`
+		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
+		 *
+		 *	@return 	array										key => [ set, knobs ], sorted by the key
+		 */
+		private static function chosen( array &$appData, array $given, array &$notes ): array {
+
+			$catalogue = self::features( $appData, $notes );
+			$chosen = [];
+
+			foreach( $given as $key => $entry ) {
+
+				$key = (string) $key;
+
+				if( preg_match( \Nino\Features::KEY_PATTERN, $key ) !== 1 ) {
+					$notes[] = 'the feature "'. self::shown( $key ). '" is no key a feature can have - its choice is dropped';
+					continue;
+				}
+
+				if( is_array( $entry ) === false ) {
+					$notes[] = 'the choice for the feature "'. self::shown( $key ). '" is no entry of a variant and its knobs - dropped';
+					continue;
+				}
+
+				foreach( array_keys( $entry ) as $name )
+					if( in_array( $name, [ 'set', 'knobs' ], true ) === false )
+						$notes[] = 'the feature "'. $key. '" has no "'. self::shown( $name ). '" - dropped';
+
+				$wanted = is_string( $entry['set'] ?? null ) === true ? $entry['set'] : '';
+				$values = is_array( $entry['knobs'] ?? null ) === true ? $entry['knobs'] : [];
+
+				if( isset( $catalogue[$key] ) === false ) {
+					$notes[] = self::inactive( $key );
+					$chosen[$key] = [ 'set' => $wanted, 'knobs' => $values ];
+					continue;
+				}
+
+				$feature = $catalogue[$key];
+				$set = isset( $feature['catalogue'][$wanted] ) === true ? $wanted : $feature['default'];
+
+				if( $wanted !== '' && $set !== $wanted )
+					$notes[] = self::note( 'design_set_missing', $key, self::shown( $wanted ), $set );
+
+				$declared = $feature['catalogue'][$set]['knobs'];
+
+				foreach( array_keys( $values ) as $knob )
+					if( isset( $declared[$knob] ) === false )
+						$notes[] = 'the variant "'. $set. '" of the feature "'. $key. '" has no knob "'. self::shown( $knob ). '" - dropped';
+
+				$knobs = [];
+
+				foreach( $declared as $knob => $meta )
+					$knobs[$knob] = self::value( $meta, $values[$knob] ?? null );
+
+				$chosen[$key] = [ 'set' => $set, 'knobs' => $knobs ];
+			}
+
+			ksort( $chosen );
+
+			return $chosen;
+		}
+
+		/**
+		 *	The value of one knob of a feature, held to its kind: a position for a scale and a choice (see position()), one of the
+		 *	surfaces of the palette for a ground, one of the tones of INKS for an ink, two hex colours for a colour (see pair()).
+		 *	What is none of that is what the head of the variant says the knob stands at
+		 *
+		 *	@param		array 		$knob					One knob of a head: kind, default
+		 *	@param		mixed			$value				Straight off the wire
+		 *
+		 *	@return 	int|string|array
+		 */
+		private static function value( array $knob, mixed $value ): int|string|array {
+
+			return match( $knob['kind'] ) {
+				'ground' 	=> is_string( $value ) === true && in_array( $value, Colours::SURFACES, true ) === true ? $value : $knob['default'],
+				'ink' 		=> is_string( $value ) === true && isset( self::INKS[$value] ) === true ? $value : $knob['default'],
+				'colour' 	=> self::pair( $value ) ?? $knob['default'],
+				default 	=> self::position( $value, $knob['kind'], (int) $knob['default'] ),
+			};
+		}
+
+		/**
+		 *	A pair of colours, light then dark, each held to what Colours::color() reads as a hex - three or six digits, the hash
+		 *	or none - and written as six digits, lower case
+		 *
+		 *	@param		mixed			$value				Straight off the wire
+		 *
+		 *	@return 	array|null								[ light, dark ]; null where it is not two colours
+		 */
+		private static function pair( mixed $value ): ?array {
+
+			if( is_array( $value ) === false || array_is_list( $value ) === false || count( $value ) !== 2 )
+				return null;
+
+			$pair = [];
+
+			foreach( $value as $color ) {
+
+				$hex = is_string( $color ) === true ? Colours::color( $color, '' ) : '';
+
+				if( $hex === '' )
+					return null;
+
+				$pair[] = $hex;
+			}
+
+			return $pair;
+		}
+
+		/**
 		 *	One position, as a number inside the range of its kind: -2 to 2 for a scale
 		 *	(the default kind - the root size, the width, the whitespace and the two
 		 *	strengths of the radius are scales as well), -1 to 1
@@ -959,6 +1525,20 @@ namespace Nino\Modules\Design {
 		 */
 		public static function step( array $setup, string $part, string $knob ): string {
 			return self::word( self::position( $setup['knobs'][$part][$knob] ?? 0, self::kind( $part, $knob ) ) );
+		}
+
+		/**
+		 *	The step a scale or a choice of a feature stands at, as the word the stylesheet of its variant declares it under
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		string		$key					The key of a feature
+		 *	@param		string		$knob					A knob of the variant chosen for it
+		 *	@param		string		$kind					'scale' or 'choice'
+		 *
+		 *	@return 	string								One of STEPS
+		 */
+		public static function featureStep( array $setup, string $key, string $knob, string $kind ): string {
+			return self::word( self::position( $setup['features'][$key]['knobs'][$knob] ?? 0, $kind ) );
 		}
 
 		/**
@@ -1005,7 +1585,20 @@ namespace Nino\Modules\Design {
 			if( $file === '' || isset( self::KNOBS[$part] ) === false )
 				return [];
 
-			$css = self::uncomment( (string) @file_get_contents( $file ) );
+			return self::declarations( self::uncomment( (string) @file_get_contents( $file ) ), $part, self::KNOBS[$part] );
+		}
+
+		/**
+		 *	The ladders a stylesheet declares for the knobs it is asked for (see ladders(), which asks
+		 *	for the knobs of a part, and variants(), which asks for those a feature's head declares)
+		 *
+		 *	@param		string		$css					Without its comments
+		 *	@param		string		$part					The part's name, or the key of a feature
+		 *	@param		array 		$kinds				knob => 'scale' or 'choice'
+		 *
+		 *	@return 	array										knob => [ name, ... ] for each knob with a complete ladder
+		 */
+		private static function declarations( string $css, string $part, array $kinds ): array {
 
 			preg_match_all( '/'. sprintf( preg_quote( self::KNOB_TOKEN, '/' ), preg_quote( $part, '/' ), '([a-z0-9]+(?:-[a-z0-9]+)*)', '('. implode( '|', self::STEPS ). ')' ). '\s*:/', $css, $found, PREG_SET_ORDER );
 
@@ -1017,7 +1610,7 @@ namespace Nino\Modules\Design {
 
 			$out = [];
 
-			foreach( self::KNOBS[$part] as $knob => $kind ) {
+			foreach( $kinds as $knob => $kind ) {
 
 				if( self::complete( $declared[$knob] ?? [], $kind ) === false )
 					continue;
@@ -1126,15 +1719,29 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	The note for a choice that is kept for a feature that is not there - switched off, taken away, or
+		 *	without variants now - and that nothing is compiled for. Made here for the two that tell it, the
+		 *	normalising of a setup and the compiler, so that they tell it alike
+		 *
+		 *	@param		string		$key					The key of the feature
+		 *
+		 *	@return 	array										error, code, params (see note())
+		 */
+		public static function inactive( string $key ): array {
+			return self::note( 'design_feature_inactive', self::shown( $key ) );
+		}
+
+		/**
 		 *	A key out of a file or a request, short enough to stand in a note.
 		 *	Whatever it is, it is shown as text and cut where it runs on
 		 *
 		 *	@param		mixed			$key
+		 *	@param		int				$length				Where it is cut
 		 *
 		 *	@return 	string
 		 */
-		private static function shown( mixed $key ): string {
-			return substr( (string) $key, 0, 40 );
+		private static function shown( mixed $key, int $length = 40 ): string {
+			return substr( (string) $key, 0, $length );
 		}
 
 	}

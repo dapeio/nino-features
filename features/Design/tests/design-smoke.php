@@ -50,7 +50,135 @@ declare(strict_types=1);
  */
 
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
-defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
+
+/**
+ *	A directory and everything below it, removed: a link in it is removed and not followed
+ *
+ *	@param		string		$path
+ *
+ *	@return 	void
+ */
+function designRemoveTree( string $path ): void {
+
+	if( is_link( $path ) === true || is_file( $path ) === true )
+		@unlink( $path );
+	else if( is_dir( $path ) === true ) {
+
+		foreach( scandir( $path ) ?: [] as $entry )
+			if( $entry !== '.' && $entry !== '..' )
+				designRemoveTree( $path. '/'. $entry );
+
+		@rmdir( $path );
+	}
+}
+
+/**
+ *	A directory and everything below it, copied
+ *
+ *	@param		string		$from
+ *	@param		string		$to
+ *
+ *	@return 	void
+ */
+function designCopyTree( string $from, string $to ): void {
+
+	mkdir( $to, 0755, true );
+
+	foreach( scandir( $from ) ?: [] as $entry ) {
+
+		if( $entry === '.' || $entry === '..' )
+			continue;
+
+		if( is_dir( $from. '/'. $entry ) === true )
+			designCopyTree( $from. '/'. $entry, $to. '/'. $entry );
+		else
+			copy( $from. '/'. $entry, $to. '/'. $entry );
+	}
+}
+
+/**
+ *	A feature of the kind the suite makes for itself where the fixture is not the thing to show: a manifest, a class of the name and
+ *	the stylesheets of its variants - none for a feature that brings no design/ directory at all
+ *
+ *	@param		string		$features			The directory the features live in
+ *	@param		string		$name					The directory of the feature, and its class
+ *	@param		string		$key					The key of the feature
+ *	@param		array 		$variants			variant => the text of its stylesheet
+ *	@param		string		$title				The name its manifest gives it; the directory's where none is given
+ *
+ *	@return 	void
+ */
+function designMakeFeature( string $features, string $name, string $key, array $variants, string $title = '' ): void {
+
+	mkdir( $features. '/'. $name. ( $variants === [] ? '' : '/design' ), 0755, true );
+
+	$manifest = [
+		'key' => $key, 'name' => [ 'en_US' => $title !== '' ? $title : $name, 'de_DE' => $title !== '' ? $title : $name ], 'description' => [ 'en_US' => 'Made by the suite.', 'de_DE' => 'Von der Suite gemacht.' ],
+		'manual' => [ 'shortcodes' => [], 'markup' => [], 'routes' => [], 'panel' => [], 'callbacks' => [], 'install' => [] ],
+		'category' => 'ui', 'maturity' => 'Fixture', 'version' => '1.0.0', 'nino' => '^1.8', 'requires' => [], 'data' => [], 'assets' => [], 'settings' => [],
+	];
+
+	file_put_contents( $features. '/'. $name. '/feature.php', "<?php\nreturn ". var_export( $manifest, true ). ";\n" );
+	file_put_contents( $features. '/'. $name. '/'. $name. ".php", "<?php\ndeclare(strict_types=1);\nnamespace Nino\\Modules {\n\tclass ". $name. " {\n\t}\n}\n" );
+
+	foreach( $variants as $variant => $css )
+		file_put_contents( $features. '/'. $name. '/design/'. $variant. '.css', $css );
+}
+
+/*	The features directory of this run, which is the one the feature lives in with five things more: the fixture feature the pins of the
+	variants a feature brings run on (fixtures/features/Probe, copied), and four features the suite makes for itself where a head is to be
+	wrong, a key is a part's, a feature has one variant only and the variants of a feature declare knobs of their own (see designMakeFeature()). A directory of its own, so that nothing is written
+	to the checkout, named before the kernel loads - the harness reads the constant when it does - and removed when the run ends	*/
+if( defined( 'NINO_FEATURES_DIR' ) === false ) {
+
+	$designTree = sys_get_temp_dir(). '/nino-design-features-'. uniqid();
+	mkdir( $designTree, 0755, true );
+
+	foreach( glob( dirname( __DIR__, 2 ). '/*', GLOB_ONLYDIR ) ?: [] as $designSibling )
+		symlink( $designSibling, $designTree. '/'. basename( $designSibling ) );
+
+	designCopyTree( __DIR__. '/fixtures/features/Probe', $designTree. '/Probe' );
+	designMakeFeature( $designTree, 'Broken', 'broken', [
+		'regular' => "/*\t@name\tBroken\n *\t@description\tA head with a line wrong for each thing a line can be wrong in.\n *\n"
+			. " *\t@knob\tsize\tscale\ttype\tSize\n"
+			. " *\t@knob\tpad\tscale\ttype\tPad, whose ladder is not there\n"
+			. " *\t@knob\ttone\tchoice\tsurfaces\tTone, with two of its three words\n *\t@option\ttone\tless\tLess\n *\t@option\ttone\tmore\tMore\n"
+			. " *\t@knob\tback\tground\tcolours\tNodefault\n"
+			. " *\t@knob\tfront\tground\tcolours\tBadsurface\t= nowhere\n"
+			. " *\t@knob\tink\tink\tcolours\tInk\t= subtitle\n"
+			. " *\t@knob\tdye\tink\tcolours\tBadtone\t= purple\n"
+			. " *\t@knob\tbase\tground\tcolours\tBase\t= brand\n"
+			. " *\t@knob\tbase-border\tscale\ttype\tClash, named for a part of the ground\n"
+			. " *\t@knob\tmark\tcolour\tcolours\tOnehalf\t= #112233\n"
+			. " *\t@knob\tsize\tscale\ttype\tTwice\n"
+			. " *\t@knob\tfixed\tscale\ttype\tFixed\t= 2\n"
+			. " *\t@knob\todd\twiggle\ttype\tNokind\n"
+			. " *\t@knob\toff\tscale\tnotab\tNotab\n"
+			. " *\t@knob\tBad_Name\tscale\ttype\tBadname\n"
+			. " *\t@knob\tbare\tscale\ttype\n"
+			. " *\t@knob-de\tghostlabel\tEin Geist\n *\t@option\tghostoption\tless\tNo knob of this name\n"
+			. " *\tnot a line of the grammar @knob\n */\n"
+			. ":root {\n\t--broken-size--least: 1;\n\t--broken-size--less: 1;\n\t--broken-size--default: 1;\n\t--broken-size--more: 1;\n\t--broken-size--most: 1;\n"
+			. "\t--broken-stray--least: 1;\n\t--broken-stray--less: 1;\n\t--broken-stray--default: 1;\n\t--broken-stray--more: 1;\n\t--broken-stray--most: 1;\n"
+			. "\t--broken-tone--less: 1;\n\t--broken-tone--default: 1;\n\t--broken-tone--more: 1;\n"
+			. "\t--broken-base-border--least: 1;\n\t--broken-base-border--less: 1;\n\t--broken-base-border--default: 1;\n\t--broken-base-border--more: 1;\n\t--broken-base-border--most: 1;\n}\n",
+	] );
+	designMakeFeature( $designTree, 'Cardish', 'card', [ 'regular' => "/*\t@name\tRegular\n *\t@knob\tsize\tscale\ttype\tSize\n */\n:root { --card-size--least: 1; --card-size--less: 1; --card-size--default: 1; --card-size--more: 1; --card-size--most: 1; }\n" ] );
+	designMakeFeature( $designTree, 'Single', 'single', [ 'plain' => "/*\t@name\tPlain\n *\t@description\tThe one look this feature has.\n *\n *\t@knob\tsize\tscale\ttype\tSize\n */\n:root { --single-size--least: 1; --single-size--less: 1; --single-size--default: 1; --single-size--more: 1; --single-size--most: 1; }\n" ], 'Alone' );
+	designMakeFeature( $designTree, 'Plain', 'plain', [] );
+	$pairStray = "/*\t@name\tStray\n *\t@knob\tgamma\tscale\ttype\tGamma\n */\n:root { --pair-gamma--least: 1; --pair-gamma--less: 1; --pair-gamma--default: 1; --pair-gamma--more: 1; --pair-gamma--most: 1; }\n";
+	designMakeFeature( $designTree, 'Pair', 'pair', [
+		'first' => "/*\t@name\tFirst\n *\t@knob\talpha\tscale\ttype\tAlpha\n */\n:root { --pair-alpha--least: 1; --pair-alpha--less: 1; --pair-alpha--default: 1; --pair-alpha--more: 1; --pair-alpha--most: 1; }\n",
+		'second' => "/*\t@name\tSecond\n *\t@knob\talpha\tscale\tmotion\tAlpha\n *\t@knob\tbeta\tscale\ttype\tBeta\n */\n:root { --pair-alpha--least: 1; --pair-alpha--less: 1; --pair-alpha--default: 1; --pair-alpha--more: 1; --pair-alpha--most: 1;"
+			. " --pair-beta--least: 1; --pair-beta--less: 1; --pair-beta--default: 1; --pair-beta--more: 1; --pair-beta--most: 1; }\n",
+		'two words' => $pairStray,
+		'a..b' => $pairStray,
+	] );
+
+	define( 'NINO_FEATURES_DIR', $designTree );
+	register_shutdown_function( static function() use ( $designTree ): void { designRemoveTree( $designTree ); } );
+}
+
 require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'design' );
@@ -128,6 +256,48 @@ function designDeclarations( string $css ): array {
 			$out[$declaration[1]] = trim( $declaration[2] );
 
 	return $out;
+}
+
+/**
+ *	The style rules of a stylesheet, in the order they stand, each with the block it stands in: its selector, the text
+ *	between its braces and - for a rule inside an @media or another block that holds rules - the prelude of that block,
+ *	'' for a rule at the top
+ *
+ *	@param		string		$css					Without comments
+ *	@param		string		$within				The prelude of the block $css is the inside of
+ *
+ *	@return 	array											[ selector, body, within ] for each rule
+ */
+function designRules( string $css, string $within = '' ): array {
+
+	$rules	= [];
+	$at			= 0;
+
+	while( $at < strlen( $css ) && ( $open = strpos( $css, '{', $at ) ) !== false ) {
+
+		$prelude	= trim( (string) preg_replace( '/\s+/', ' ', substr( $css, $at, $open - $at ) ) );
+		$depth		= 0;
+
+		for( $close = $open, $length = strlen( $css ); $close < $length; $close++ ) {
+
+			if( $css[$close] === '{' )
+				$depth++;
+
+			if( $css[$close] === '}' && --$depth === 0 )
+				break;
+		}
+
+		$body = substr( $css, $open + 1, $close - $open - 1 );
+
+		if( str_starts_with( $prelude, '@' ) === true && str_contains( $body, '{' ) === true )
+			$rules = array_merge( $rules, designRules( $body, trim( $within. ' '. $prelude ) ) );
+		else
+			$rules[] = [ 'selector' => $prelude, 'body' => $body, 'within' => $within ];
+
+		$at = $close + 1;
+	}
+
+	return $rules;
 }
 
 /**
@@ -817,6 +987,25 @@ check( '...every entry in both languages',
 // Features::manifest() holds a line of the manual to 1000 characters; it would refuse the whole file, and the first check of this suite says so
 check( '...every line of it a line and not a paragraph: at most 1000 bytes in either language, as the kernel reads a manifest',
 	array_filter( (array) ( $feature['manual']['panel'] ?? [] ), static fn( array $lines ): bool => array_filter( $lines, static fn( string $line ): bool => strlen( $line ) > 1000 ) !== [] ) === [] );
+/*	The features that bring variants have two entries, found by what they name and not by their handles: the author's names the five kinds, the tags of a head - the German line of a knob among them -, the folder and the two
+	places a default may stand; the editor's names the folder, the tab the variant is chosen on - by the word the panel draws it with - and the ratio under which the panel says a colour
+	falls short. Each in both languages, one of each	*/
+$variantEntries = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $variantLocale ) {
+
+	$texts = array_map( static fn( string $entry ): string => $says( $entry, $variantLocale ), array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) );
+	$author = array_merge( Setup::FEATURE_KINDS, [ '@name', '@description', '@knob', '@knob-de', '@option', 'design/', ':where(:root)', ':where(*)' ] );
+	$editor = [ 'design/', $panelWord( 'tab/templates/label', $variantLocale ), (int) Colours::TARGET_UI. ':1' ];
+
+	$variantEntries[$variantLocale] = [
+		count( array_filter( $texts, static fn( string $text ): bool => array_filter( $author, static fn( string $needle ): bool => str_contains( $text, $needle ) === false ) === [] ) ),
+		count( array_filter( $texts, static fn( string $text ): bool => array_filter( $editor, static fn( string $needle ): bool => str_contains( $text, $needle ) === false ) === [] ) ),
+	];
+}
+
+check( 'the manual tells the features that bring variants twice, in both languages: once for the person who chooses - the folder, the tab the variant is chosen on, the ratio below which a colour is said to fall short - and once for the person who writes a variant - the five kinds, the tags of a head with the German line of a knob among them, the two places a default may stand',
+	$variantEntries === [ 'en_US' => [ 1, 1 ], 'de_DE' => [ 1, 1 ] ] );
 check( 'the manual names the one callback the feature registers, on /nino/http/output, in both languages, and the setting that callback reads',
 	array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) ) === [ '/nino/http/output' ]
 	&& trim( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'en_US' ) ) !== '' && trim( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'de_DE' ) ) !== ''
@@ -2819,7 +3008,8 @@ unlink( $fontsDir. '/a-file' );
 
 // --- The fingerprint ----------------------------------------------------------------
 
-/*	What the fingerprint was before an installed family joined it: the setup and the bytes of the sets it names	*/
+/*	What the fingerprint was before an installed family joined it: the setup and the bytes of the sets it names - the setup as it was written before the
+	features, which had no key for what is chosen for them	*/
 $beforeFamilies = static function( array $setup ) use ( $library ): string {
 
 	$files = [];
@@ -2829,7 +3019,8 @@ $beforeFamilies = static function( array $setup ) use ( $library ): string {
 		$files[$printPart] 	= [ (string) ( $setup['parts'][$printPart] ?? '' ), ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
 
-	unset( $setup['compiled'] );
+	// ...and before the features had a key of their own in it
+	unset( $setup['compiled'], $setup['features'] );
 
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
@@ -3453,7 +3644,8 @@ $beforeRevision = static function( array $setup, string $lib ): string {
 		$printFile 					= Setup::file( $lib, $printPart, $printSet );
 		$files[$printPart] 	= [ $printSet, ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
-	unset( $setup['compiled'] );
+	// ...as it was written before the features had a key of their own in it
+	unset( $setup['compiled'], $setup['features'] );
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
 $moved = $sandboxSetup;
@@ -5663,8 +5855,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	// The keys of a setup that choose something, as a theme file keeps them: the keys of a setup but the four that are the project's
 	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) );
-	// ...and the ones a theme the feature ships chooses: all of them but the palette. A brand colour is the project's
-	$choosesShipped = array_values( array_diff( $chooses, [ 'colours' ] ) );
+	// ...and the ones a theme the feature ships chooses: all of them but the palette and the choices for the features. A brand colour is the project's, and so are the features it runs
+	$choosesShipped = array_values( array_diff( $chooses, [ 'colours', 'features' ] ) );
 	/*	The four themes the feature ships were written before the hover of the pictures was a part of the motion, and they stay as they were until the themes are looked at as a whole: they name the
 		parts of the motion they were written with, and the hover of the pictures reads as the default - what the screen holds of such a file is what normalising makes of it. $completed is a file's setup as it
 		stands once that default is put where the file names none, which is the only thing a shipped file may leave out	*/
@@ -5679,7 +5871,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	};
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
-		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ]
+		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'features', 'fonts', 'colours', 'css', 'compiled' ]
 		&& array_keys( Setup::defaults( $library ) ) === Setup::KEYS && Setup::defaults( $library )['theme'] === '' && Setup::defaults( $library )['css'] === '' );
 	check( '...and the format of the file stays 2: a file without the two keys reads as none and no css, which is what every project had, with no note and nothing migrated',
 		Setup::FORMAT === 2 && \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'size' => 1, 'width' => -1 ] ) === true
@@ -5889,11 +6081,13 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 		if( array_key_exists( 'colours', $given ) === true )
 			$problems[] = 'colours: a theme the feature ships names no palette, the brand colour is the project\'s';
+		if( array_key_exists( 'features', $given ) === true )
+			$problems[] = 'features: a theme the feature ships names no variant of any feature, the features are the project\'s';
 		if( array_keys( $given ) !== $choosesShipped )
 			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order';
 		if( $notes !== [] )
 			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
-		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $completed( $given ) )
+		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true, 'features' => true ] ) !== $completed( $given ) )
 			$problems[] = 'a setup that is not its own normalisation';
 
 		$ranged = [];
@@ -5936,7 +6130,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its seven parts in the library, every position of the thirty-seven knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation - but for the parts that came after it was written, which read as the default - with no note and no palette: the brand colour is the project\'s'
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
-		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
+		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true, 'features' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
 
 	// The compile
 	$notes = [];
@@ -6090,8 +6284,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && array_keys( $loaded ) === [ 'slug', 'name', 'description', 'shipped', 'setup', 'css', 'missing', 'notes' ] && $loaded['slug'] === $shippedFirst && $loaded['name'] === $shippedWords['de_DE'][$shippedFirst][0]
 		&& $loaded['description'] === $shippedWords['de_DE'][$shippedFirst][1] && $loaded['shipped'] === true && $loaded['setup'] === $completed( Themes::setup( $shippedOne ) ) && $loaded['css'] === Themes::css( $shippedOne )
 		&& $loaded['missing'] === [] && $loaded['notes'] === [] );
-	check( '...and no palette: a theme the feature ships has none to take over, so what answers has no colours at all and the screen keeps the ones it has',
-		array_key_exists( 'colours', $loaded['setup'] ) === false && array_keys( $loaded['setup'] ) === $choosesShipped );
+	check( '...and no palette and no choice for a feature: a theme the feature ships has none to take over, so what answers has no colours and no features at all and the screen keeps the ones it has',
+		array_key_exists( 'colours', $loaded['setup'] ) === false && array_key_exists( 'features', $loaded['setup'] ) === false && array_keys( $loaded['setup'] ) === $choosesShipped );
 	check( '...it writes nothing - not the setup, not a line of the log - and a slug that names no theme is a 404 with the code of it, whatever it is: not there, no slug, no string, a path',
 		$setupBytes() === $before && Admin::log( 'design/theme/load', [ 'slug' => $shippedFirst ] ) === ''
 		&& array_unique( array_map( static fn( array $post ): array => $codesOf( callDesignAction( $appData, 'apiThemeLoad', $post )[1] ), [ [ 'slug' => 'nowhere' ], [], [ 'slug' => [ $shippedFirst ] ], [ 'slug' => '../'. $shippedFirst ], [ 'slug' => ucfirst( $shippedFirst ) ] ] ), SORT_REGULAR ) === [ $noThemeError ]
@@ -6340,7 +6534,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	$colourImported = Themes::read( $appData, $library, 'eingespielt-mit-farben' ) ?? [];
 
 	check( '...a file that names colours is a theme of the project that keeps them, normalised, and one that names none is one that keeps none: an export of a theme the feature ships comes back without a palette',
-		array_key_exists( 'colours', $importedFile['setup'] ) === false && array_keys( $colourImported['setup'] ?? [] ) === $chooses
+		array_key_exists( 'colours', $importedFile['setup'] ) === false && array_keys( $colourImported['setup'] ?? [] ) === array_values( array_diff( $chooses, [ 'features' ] ) )
 		&& ( $colourImported['setup']['colours']['primary'] ?? '' ) === '#8b1d3f' && ( $colourImported['setup']['colours']['harmony'] ?? 0 ) === 2 && ( $colourImported['setup']['colours']['mode'] ?? '' ) === 'auto' );
 
 	Themes::remove( $appData, 'eingespielt-mit-farben' );
@@ -6610,6 +6804,15 @@ foreach( Colours::choices() as $knob => $meta ) {
 		foreach( $meta['steps'] as $position => $step )
 			$wanted[] = 'colour/'. $knob. '/'. ( $knob === 'mode' ? $step : $position + 1 );
 }
+
+// ...the surfaces a ground a feature brings is chosen from, the tones of an ink, and the two halves of a pair of colours
+foreach( Colours::SURFACES as $surface )
+	$wanted[] = 'ground/'. $surface;
+
+foreach( array_keys( Setup::INKS ) as $tone )
+	$wanted[] = 'ink/'. $tone;
+
+array_push( $wanted, 'label/light', 'label/dark' );
 
 $missingWords = [];
 foreach( [ 'en_US' => $textEn, 'de_DE' => $textDe ] as $wordLocale => $wordKeys )
@@ -6933,6 +7136,605 @@ check( '...and not one colour of the tab is a literal, nor a face but the workbe
 	$themeRules[0] !== [] && count( $themeRules[0] ) >= 14 && preg_match( '/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(|\boklch\(/i', $themeCss ) !== 1
 	&& preg_match( '/font-family:(?! var\(--nino-admin-mono\))/', $themeCss ) !== 1 );
 
+// --- Feature sets ---------------------------------------------------------------------
+//
+// A feature that is active and carries design/<variant>.css files brings variants and knobs of its own into the panel and into the one sheet. The pins run on
+// the fixture feature (tests/fixtures/features/Probe, copied into the features directory of this run, see the top of this file) and on five features that
+// this suite makes for itself, where a head is to be wrong, a key is a part's, a feature has one variant only, one has none at all and the variants of one
+// declare knobs of their own
+
+echo "\nFeature sets - a feature brings its variants and knobs with it\n";
+
+$featureFile 	= \Nino\Filesystem::path( $appData, Setup::PATH );
+$featureKept 	= is_file( $featureFile ) === true ? (string) file_get_contents( $featureFile ) : null;
+$localeKept 	= $appData['./nino/locales/current'];
+$modulesKept 	= $appData['/nino/modules'] ?? [];
+$probeDir 		= \Nino\Features::dir(). '/Probe';
+
+/** Which of the suite's features are active: their classes are listed in /nino/modules, and what the kernel and Design have read of the features is read again */
+$featuresOn = static function( array $names ) use ( &$appData ): void {
+	$appData['/nino/modules'] = array_map( static fn( string $name ): string => '\\Nino\\Modules\\'. $name, $names );
+	unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+};
+
+/** The codes of the notes that carry one */
+$codesOfNotes = static fn( array $notes ): array => array_values( array_map( static fn( array $note ): string => $note['code'], array_filter( $notes, 'is_array' ) ) );
+
+/** The sentences among the notes, those that carry no code */
+$sentencesOf = static fn( array $notes ): array => array_values( array_filter( $notes, 'is_string' ) );
+
+/** What the fixture's own file says in a line of its head: the words after the tag and the name of the knob (and the fields that stand between a knob's name and its label, $skip of them), or after the tag alone */
+$fixtureWords = static function( string $variant, string $tag, string $name = '', int $skip = 0 ) use ( $probeDir ): string {
+
+	$head = designOpening( $probeDir. '/design/'. $variant. '.css' );
+	$name = $name === '' ? '' : str_replace( ' ', '\s+', preg_quote( $name, '~' ) ). '\s+'. str_repeat( '\S+\s+', $skip );
+
+	return preg_match( '~^\s*\*?\s*'. preg_quote( $tag, '~' ). '\s+'. $name. '(.+?)(?:\s+=\s+\S.*)?$~m', $head, $found ) === 1 ? trim( $found[1] ) : '';
+};
+
+$featuresOn( [ 'Design', 'Probe', 'Plain' ] );
+
+$scanNotes 	= [];
+$scan 			= Setup::features( $appData, $scanNotes );
+$loud 			= $scan['probe']['catalogue']['loud'] ?? [];
+$regular 		= $scan['probe']['catalogue']['regular'] ?? [];
+
+check( 'the kernel reads the features directory this run was given and lists the fixture as active - and the feature the suite made without a design/ directory beside it',
+	\Nino\Features::dir() === NINO_FEATURES_DIR && ( \Nino\Features::get( $appData, 'probe' )['active'] ?? false ) === true && ( \Nino\Features::get( $appData, 'plain' )['active'] ?? false ) === true
+	&& is_file( $probeDir. '/design/regular.css' ) === true && is_dir( \Nino\Features::dir(). '/Plain/design' ) === false );
+check( 'the scan lists the features that are active and carry a design/ directory with a stylesheet in it - the fixture, by the name its manifest gives, with the variant it has before anything is chosen - and a feature without such a directory appears nowhere, nor does one that is not active',
+	array_keys( $scan ) === [ 'probe' ] && $scan['probe']['name'] === 'Probe' && $scan['probe']['default'] === 'regular' && $scan['probe']['dir'] === $probeDir
+	&& isset( $scan['plain'] ) === false && isset( $scan['broken'] ) === false && $scanNotes === [] );
+check( '...the variants are the stylesheets, in the order of their names, and a variant is described as a set of the library is: the name and the description its head gives in the language of the workbench',
+	array_keys( $scan['probe']['catalogue'] ) === [ 'loud', 'regular' ]
+	&& $loud['name'] === $fixtureWords( 'loud', '@name-de' ) && $loud['description'] === $fixtureWords( 'loud', '@description-de' )
+	&& $regular['name'] === $fixtureWords( 'regular', '@name-de' ) && $regular['description'] === $fixtureWords( 'regular', '@description-de' ) );
+check( '...and carries the knobs its head declares, in the order of its lines: a variant may answer to knobs another does not, as two sets of a part do',
+	array_keys( $regular['knobs'] ) === [ 'size', 'line', 'submit', 'label' ] && array_keys( $loud['knobs'] ) === [ 'size', 'line', 'submit', 'label', 'flip', 'turn' ] );
+check( '...each with its kind and the tab its head puts it on, the label in the language of the workbench, the default it stands at before anything is chosen - the middle of a ladder, the surface, the tone, the pair of colours - and, for a choice, the three words of its steps',
+	array_column( $loud['knobs'], 'kind' ) === [ 'scale', 'choice', 'ground', 'ink', 'colour', 'scale' ] && array_column( $loud['knobs'], 'tab' ) === [ 'type', 'surfaces', 'colours', 'colours', 'colours', 'motion' ]
+	&& $loud['knobs']['size']['label'] === $fixtureWords( 'loud', '@knob-de', 'size' ) && $loud['knobs']['flip']['label'] === $fixtureWords( 'loud', '@knob-de', 'flip' )
+	&& array_column( $loud['knobs'], 'default' ) === [ 0, 0, 'brand-safe', 'subtitle', [ '#b03a2e', '#e8705f' ], 0 ]
+	&& array_keys( $loud['knobs']['line']['options'] ) === Setup::words( 'choice' ) && $loud['knobs']['line']['options']['more'] === $fixtureWords( 'loud', '@option-de', 'line more' )
+	&& array_column( array_filter( $loud['knobs'], static fn( array $knob ): bool => $knob['kind'] !== 'choice' ), 'options' ) === array_fill( 0, 5, [] ) );
+check( '...a scale and a choice are published by their ladders, with the key of the feature in the place of the part, as the knobs of a part are - and a ground, an ink and a colour declare none: the declaration is their head\'s line',
+	$loud['knobs']['size']['ladder'] === [ 'size' ] && $loud['knobs']['line']['ladder'] === [ 'line' ] && isset( $loud['knobs']['submit']['ladder'] ) === false && isset( $loud['knobs']['label']['ladder'] ) === false && isset( $loud['knobs']['flip']['ladder'] ) === false );
+
+$appData['./nino/locales/current'] = 'en_US';
+$scanEnglish = Setup::features( $appData )['probe']['catalogue'];
+$appData['./nino/locales/current'] = 'de_DE';
+
+check( 'the words come in the language of the workbench: the lines of the other language are read where it is not English, the plain ones where it is - the name, the description, the labels of the knobs and the three words of a choice',
+	$scanEnglish['loud']['name'] === $fixtureWords( 'loud', '@name' ) && $scanEnglish['loud']['description'] === $fixtureWords( 'loud', '@description' )
+	&& $scanEnglish['loud']['knobs']['size']['label'] === $fixtureWords( 'loud', '@knob', 'size', 2 ) && $scanEnglish['loud']['knobs']['line']['options']['more'] === $fixtureWords( 'loud', '@option', 'line more' )
+	&& $scanEnglish['loud']['knobs']['size']['label'] !== $loud['knobs']['size']['label'] && $scanEnglish['loud']['name'] !== $loud['name'] );
+
+/*	A head says everything in both languages, as the head of a set of the library does: the line of the other language stands beside each English one - the name, the
+	description, each knob and each option of a choice - and the two lists of what the head names are the same, in the same order. The language smoke leaves the lines of
+	the other language out of its reading of a feature's design/ files (see tests/language-smoke.php) on the strength of this	*/
+$headKeys = static function( string $variant ) use ( $probeDir ): array {
+
+	$keys = [ '' => [], '-de' => [] ];
+
+	foreach( explode( "\n", designOpening( $probeDir. '/design/'. $variant. '.css' ) ) as $line )
+		if( preg_match( '~^[\s*/]*@(name|description|knob|option)(-de)?\b\s*(\S*)\s*(\S*)~', $line, $found ) === 1 )
+			$keys[ $found[2] ][] = $found[1]. ( in_array( $found[1], [ 'knob', 'option' ], true ) === true ? ' '. $found[3] : '' ). ( $found[1] === 'option' ? ' '. $found[4] : '' );
+
+	return $keys;
+};
+
+check( 'the head of each variant of the fixture says its name, its description, each knob and each option of a choice in both languages: the German line stands for every English one, and for nothing else',
+	$headKeys('loud')[''] !== [] && $headKeys('loud')[''] === $headKeys('loud')['-de'] && $headKeys('regular')[''] !== [] && $headKeys('regular')[''] === $headKeys('regular')['-de']
+	&& count( array_filter( $headKeys('loud')[''], static fn( string $key ): bool => str_starts_with( $key, 'knob ' ) ) ) === count( $loud['knobs'] )
+	&& count( array_filter( $headKeys('loud')[''], static fn( string $key ): bool => str_starts_with( $key, 'option ' ) ) ) === 3 );
+
+// A second feature with one variant, and one whose key is a part's
+$featuresOn( [ 'Design', 'Single', 'Probe', 'Cardish' ] );
+$twoNotes = [];
+$two = Setup::features( $appData, $twoNotes );
+$twoByKey = $two;
+$twoByName = $two;
+ksort( $twoByKey );
+uasort( $twoByName, static fn( array $a, array $b ): int => strnatcasecmp( $a['name'], $b['name'] ) );
+
+check( 'the features are sorted by the name they have, not by their directory or their key - and a feature with one variant only has it as the variant it has before anything is chosen, whatever its name is, since there is no regular one',
+	array_keys( $two ) === [ 'single', 'probe' ] && array_keys( $two ) !== array_keys( $twoByKey ) && array_column( $two, 'name' ) === array_column( $twoByName, 'name' ) && array_keys( $two['single']['catalogue'] ) === [ 'plain' ] && $two['single']['default'] === 'plain' );
+check( 'a feature whose key is the name of a part or of the page is skipped, with a note that names it: the rows of its knobs would be those of the part',
+	isset( $two['card'] ) === false && count( array_filter( $twoNotes, static fn( mixed $note ): bool => is_string( $note ) === true && str_contains( $note, '"card"' ) === true ) ) === 1 );
+check( '...and such a key is one the model knows as an object: the list of the objects has no feature in it that is called as one',
+	array_intersect( array_keys( $two ), Setup::OBJECTS ) === [] && in_array( 'card', Setup::OBJECTS, true ) === true );
+
+// The head of a variant: a line that is wrong is dropped and named, and the rest of the head stands
+$featuresOn( [ 'Design', 'Broken' ] );
+$brokenNotes = [];
+$broken = Setup::features( $appData, $brokenNotes );
+$brokenKnobs = $broken['broken']['catalogue']['regular']['knobs'] ?? [];
+
+$wrongTokens = [ 'Nodefault', 'Badsurface', 'Badtone', 'Onehalf', 'Twice', 'Fixed', 'Nokind', 'notab', 'Bad_Name', 'bare', 'Clash', '"tone"', 'ghostlabel', 'ghostoption', '"pad"' ];
+
+check( 'a head with a line wrong for each thing a line can be wrong in publishes the knobs that are right and nothing else: the first of a name that is declared twice, an ink with its default, a scale with its ladder, a ground with its surface - and not the scale named for a part of that ground, ladder or no ladder: the ground writes that property',
+	array_keys( $brokenKnobs ) === [ 'size', 'ink', 'base' ] && $brokenKnobs['size']['label'] === 'Size' && $brokenKnobs['ink']['default'] === 'subtitle' && $brokenKnobs['size']['ladder'] === [ 'size' ] && $brokenKnobs['base']['default'] === 'brand' && isset( $brokenKnobs['base-border'] ) === false );
+check( '...each line that was dropped is named, once, led by the feature and the variant it was in: a ground or an ink or a colour without a default of its kind, a scale that is given one, a name twice, a kind or a tab or a name there is none of, a line without its label, a choice without its three words, a label or the words for a knob that is not there, a knob named for a part of a ground of the same head, and a scale without a complete ladder',
+	count( $brokenNotes ) === count( $wrongTokens ) && array_filter( $brokenNotes, static fn( mixed $note ): bool => is_string( $note ) === false || str_starts_with( $note, 'broken/regular: ' ) === false ) === []
+	&& array_filter( $wrongTokens, static fn( string $token ): bool => count( array_filter( $brokenNotes, static fn( string $note ): bool => str_contains( $note, $token ) === true ) ) !== 1 ) === [] );
+check( '...the ladder no head declares is not offered - nothing says where it stands - and a knob that has no label of its language is labelled in English, as a set that has no name of its language is listed under its English one',
+	isset( $brokenKnobs['stray'] ) === false && $brokenKnobs['ink']['label'] === 'Ink' && $brokenKnobs['size']['label'] === 'Size' );
+
+// Read once for a request: the answer is kept beside the list of the modules it was made for
+$featuresOn( [ 'Design', 'Probe' ] );
+Setup::features( $appData );
+rename( $probeDir. '/design/loud.css', $probeDir. '/design/loud.off' );
+$keptScan = array_keys( Setup::features( $appData )['probe']['catalogue'] );
+$featuresOn( [ 'Design', 'Probe' ] );
+$freshScan = array_keys( Setup::features( $appData )['probe']['catalogue'] );
+rename( $probeDir. '/design/loud.off', $probeDir. '/design/loud.css' );
+$featuresOn( [ 'Design', 'Probe' ] );
+
+check( 'the scan is read once for a request and kept in the app data: a variant taken away meanwhile is still listed, until the modules are listed again',
+	$keptScan === [ 'loud', 'regular' ] && $freshScan === [ 'regular' ] );
+
+// The choices of a setup, held against the features that are there
+$featuresOn( [ 'Design', 'Probe' ] );
+
+$defaultsOf = static fn( string $variant ): array => array_column( $scan['probe']['catalogue'][$variant]['knobs'], 'default' );
+$entryOf 		= static function( array $raw, array &$notes = [] ) use ( &$appData, $library ): array {
+	return Setup::normalize( $appData, [ 'features' => $raw ], $library, $notes )['features'];
+};
+
+$goodNotes 	= [];
+$good 			= $entryOf( [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => '2', 'line' => -1, 'submit' => 'danger', 'label' => 'primary', 'flip' => [ '#ABC', '123456' ], 'turn' => 1 ] ] ], $goodNotes );
+
+check( 'a setup chooses a variant for a feature and a value for every knob that variant declares: a position for a scale and a choice, a surface for a ground, a tone for an ink, two hex colours - written as six digits, lower case - for a colour - in the order the head has them',
+	$good === [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => 2, 'line' => -1, 'submit' => 'danger', 'label' => 'primary', 'flip' => [ '#aabbcc', '#123456' ], 'turn' => 1 ] ] ] && $goodNotes === [] );
+
+$heldNotes 	= [];
+$held 			= $entryOf( [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => 9, 'line' => 2, 'submit' => 'nowhere', 'label' => [ 'x' ], 'flip' => [ '#fff', 5 ], 'turn' => 'fast' ] ] ], $heldNotes );
+$heldMore 	= $entryOf( [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => null, 'line' => 'x', 'submit' => 5, 'label' => 'ink ', 'flip' => '#fff #000', 'turn' => [ 1 ] ] ] ] );
+
+check( '...a value that is none of its kind is what the head says the knob stands at - a position out of the range of its kind, a surface or a tone that is none, a colour that is not two hex colours, whatever type it arrives in - and says nothing, as a position of a part does',
+	$held['probe']['knobs'] === array_combine( array_keys( $loud['knobs'] ), $defaultsOf( 'loud' ) ) && $heldNotes === [] && $heldMore['probe']['knobs'] === $held['probe']['knobs'] );
+
+$bareNotes 	= [];
+$bare 			= $entryOf( [ 'probe' => [ 'set' => 'regular' ] ], $bareNotes );
+$emptyOne 	= $entryOf( [ 'probe' => [] ] );
+
+check( '...an entry that names no knob has every knob of its variant at the head\'s default, and one that names no variant is the variant the feature has before anything is chosen',
+	$bare === [ 'probe' => [ 'set' => 'regular', 'knobs' => array_combine( array_keys( $regular['knobs'] ), $defaultsOf( 'regular' ) ) ] ] && $bareNotes === [] && $emptyOne === $bare );
+
+$droppedNotes = [];
+$dropped 			= $entryOf( [ 'probe' => [ 'set' => 'regular', 'knobs' => [ 'size' => 1, 'flip' => [ '#112233', '#445566' ], 'turn' => 2 ] ] ], $droppedNotes );
+
+check( 'a knob the variant does not declare is dropped, and named, each: the variant is the one that is chosen, not the one the knob was set under - the knobs it declares stand',
+	array_keys( $dropped['probe']['knobs'] ) === array_keys( $regular['knobs'] ) && $dropped['probe']['knobs']['size'] === 1
+	&& count( $droppedNotes ) === 2 && count( array_filter( $droppedNotes, static fn( mixed $note ): bool => is_string( $note ) === true && str_contains( $note, '"flip"' ) === true && str_contains( $note, '"probe"' ) === true ) ) === 1
+	&& count( array_filter( $droppedNotes, static fn( mixed $note ): bool => is_string( $note ) === true && str_contains( $note, '"turn"' ) === true ) ) === 1 );
+
+$missingNotes = [];
+$missing 			= $entryOf( [ 'probe' => [ 'set' => 'nowhere', 'knobs' => [ 'size' => 1 ] ] ], $missingNotes );
+$anyNotes 		= [];
+
+check( 'a variant that is none of the feature\'s falls to the one it has before anything is chosen, and the note says which, as the note of a part does - the code, the key, the variant that was asked for and the one that is used - and one that is no word at all falls to it silently',
+	$missing['probe']['set'] === 'regular' && $missing['probe']['knobs']['size'] === 1 && $missingNotes === [ [ 'error' => '"probe" names the set "nowhere", which is not in the library - using "regular"', 'code' => 'design_set_missing', 'params' => [ 'probe', 'nowhere', 'regular' ] ] ]
+	&& $entryOf( [ 'probe' => [ 'set' => 5 ] ], $anyNotes )['probe']['set'] === 'regular' && $anyNotes === [] );
+
+$oddNotes 	= [];
+$odd 				= $entryOf( [ 'Bad Key' => [ 'set' => 'regular' ], '7' => [], 'probe' => 'loud', 'fine' => 'text', 'extra' => null ], $oddNotes );
+
+check( 'an entry that is no entry is dropped and named: a key that no feature has, an entry that is no array',
+	$odd === [] && count( $oddNotes ) === 5 && array_filter( $oddNotes, 'is_string' ) === $oddNotes
+	&& count( array_filter( $oddNotes, static fn( string $note ): bool => str_contains( $note, '"probe"' ) === true ) ) === 1 && count( array_filter( $oddNotes, static fn( string $note ): bool => str_contains( $note, '"Bad Key"' ) === true ) ) === 1 );
+
+$strayNotes = [];
+$stray 			= $entryOf( [ 'probe' => [ 'set' => 'regular', 'zzz' => 1 ] ], $strayNotes );
+
+check( '...so is a key of an entry that is neither the variant nor the knobs; the entry has its two keys and no other',
+	array_keys( $stray['probe'] ) === [ 'set', 'knobs' ] && count( $strayNotes ) === 1 && str_contains( (string) $strayNotes[0], '"zzz"' ) === true );
+
+check( '...and the entries come in the order of their keys, whichever order they were chosen in, so that the same choices are the same file',
+	array_keys( $entryOf( [ 'zed' => [ 'set' => 'a' ], 'probe' => [], 'alpha' => [ 'set' => 'b' ] ] ) ) === [ 'alpha', 'probe', 'zed' ] );
+
+check( '...and normalising what normalising answered changes nothing and says nothing: the choices are their own normalisation, and what a file holds of them is what a request carries',
+	$entryOf( $good ) === $good && $entryOf( $held ) === $held && json_decode( (string) json_encode( $good ), true ) === $good && Setup::defaults( $library )['features'] === [] );
+
+// A feature that is not active: the choice stays for the day it is back
+$featuresOn( [ 'Design' ] );
+$inactiveNotes 	= [];
+$inactive 			= $entryOf( [ 'probe' => [ 'set' => 'whatever', 'knobs' => [ 'size' => 99, 'x' => 'y' ] ], 'other' => [ 'set' => 5, 'knobs' => 'text' ] ], $inactiveNotes );
+
+check( 'an entry of a feature that is not active - switched off, taken away - is kept as it is, nothing validated against a feature that is not there, with the note that says so: the code and the key - and one whose two keys are not what they should be is held to their types',
+	$inactive === [ 'other' => [ 'set' => '', 'knobs' => [] ], 'probe' => [ 'set' => 'whatever', 'knobs' => [ 'size' => 99, 'x' => 'y' ] ] ]
+	&& $inactiveNotes === [ Setup::inactive( 'probe' ), Setup::inactive( 'other' ) ] && $inactiveNotes[0]['code'] === 'design_feature_inactive' && $inactiveNotes[0]['params'] === [ 'probe' ] );
+check( '...the note is in the list of the notes that carry a code, with a sentence for a log, and the key of the feature is cut at 40 characters like the other keys in a note',
+	isset( Setup::NOTES['design_feature_inactive'] ) === true && substr_count( Setup::NOTES['design_feature_inactive'], '%s' ) === 1
+	&& Setup::inactive( str_repeat( 'k', 80 ) )['params'] === [ str_repeat( 'k', 40 ) ] );
+
+// ...and a feature that is there but brings no variants any more is none either
+$featuresOn( [ 'Design', 'Plain' ] );
+
+check( '...a feature that is active and brings no design/ directory is not a feature that brings variants, and its choice is kept as well',
+	$entryOf( [ 'plain' => [ 'set' => 'x' ] ] ) === [ 'plain' => [ 'set' => 'x', 'knobs' => [] ] ] );
+
+// The rows the features add to the panel
+$featuresOn( [ 'Design', 'Probe' ] );
+$layout 	= Setup::layout( $appData );
+$added 		= array_diff_key( $layout, Setup::LAYOUT );
+
+check( 'the table of the panel is the static one, complete as it was, and the rows the features add: one under Templates for the variant and one for each knob a variant of the feature declares, on the tab the head puts it on, in the object that is the feature',
+	array_diff_key( $layout, $added ) === Setup::LAYOUT && array_keys( $added ) === [ 'features/probe/set', 'features/probe/knobs/size', 'features/probe/knobs/line', 'features/probe/knobs/submit', 'features/probe/knobs/label', 'features/probe/knobs/flip', 'features/probe/knobs/turn' ]
+	&& $added['features/probe/set'] === [ 'templates', 'probe', 1 ] && $added['features/probe/knobs/size'] === [ 'type', 'probe', 1 ] && $added['features/probe/knobs/line'][0] === 'surfaces' && $added['features/probe/knobs/turn'][0] === 'motion' );
+check( '...their places count from 1 on the tab in the object, in the order of the head\'s lines - the variants in the order of their names, a knob where the first of them that declares it puts it - and a knob only one variant declares has its row for both: the variant that does not answer to it has it greyed out',
+	array_column( [ $added['features/probe/knobs/submit'], $added['features/probe/knobs/label'], $added['features/probe/knobs/flip'] ], 2 ) === [ 1, 2, 3 ] && array_unique( array_column( $added, 1 ) ) === [ 'probe' ]
+	&& isset( $regular['knobs']['flip'] ) === false && isset( $added['features/probe/knobs/flip'] ) === true );
+check( '...every row is on a tab that draws rows and in an object the panel has, and none has the key of a row of the static table',
+	array_filter( $layout, static fn( array $row ): bool => in_array( $row[0], [ 'templates', 'type', 'surfaces', 'colours', 'motion' ], true ) === false || in_array( $row[1], Setup::objects( $appData ), true ) === false ) === []
+	&& array_intersect_key( $added, Setup::LAYOUT ) === [] );
+check( '...the objects are the eight of the page and, after the tables, the features that bring variants in the order of the catalogue; with no feature active the table and the objects are the static ones',
+	Setup::objects( $appData ) === array_merge( Setup::OBJECTS, [ 'probe' ] ) && ( static function() use ( $featuresOn, &$appData ): bool {
+		$featuresOn( [ 'Design' ] );
+		$bare = Setup::layout( $appData ) === Setup::LAYOUT && Setup::objects( $appData ) === Setup::OBJECTS;
+		$featuresOn( [ 'Design', 'Probe' ] );
+		return $bare;
+	} )() );
+
+// A feature whose first variant declares the fewer knobs, and one of them on another tab than the second puts it
+$featuresOn( [ 'Design', 'Pair' ] );
+$pairRows = array_diff_key( Setup::layout( $appData ), Setup::LAYOUT );
+
+check( '...the rows are those of all the variants and not of the first: a knob only the second declares has its row, and a knob both declare is where the first puts it, with the place the first gives it',
+	array_keys( $pairRows ) === [ 'features/pair/set', 'features/pair/knobs/alpha', 'features/pair/knobs/beta' ] && $pairRows['features/pair/knobs/alpha'] === [ 'type', 'pair', 1 ] && $pairRows['features/pair/knobs/beta'] === [ 'type', 'pair', 2 ] );
+check( '...a stylesheet in design/ whose name no variant can have - a space in it, two dots in a row - is none: it is not offered, and the knobs it declares have no row',
+	array_keys( Setup::features( $appData )['pair']['catalogue'] ) === [ 'first', 'second' ] && isset( $pairRows['features/pair/knobs/gamma'] ) === false
+	&& is_file( NINO_FEATURES_DIR. '/Pair/design/two words.css' ) === true && is_file( NINO_FEATURES_DIR. '/Pair/design/a..b.css' ) === true );
+
+// The sheet: the section of the variant, the lines of the knobs, the dark halves
+$featuresOn( [ 'Design', 'Probe' ] );
+
+$chooseLoud 	= [ 'features' => [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => 1, 'line' => -1, 'submit' => 'danger', 'label' => 'primary', 'flip' => [ '#112233', '#aabbcc' ], 'turn' => 2 ] ] ] ];
+$withEntry 		= Setup::normalize( $appData, $chooseLoud, $library );
+$sheetNotes 	= [];
+$sheet 				= Compiler::compile( $appData, $withEntry, $library, $sheetNotes );
+$titles 			= [];
+
+if( preg_match_all( '~^/\* ==== (\d+)\. (.*?) ==== \*/$~m', $sheet, $titled, PREG_SET_ORDER ) > 0 )
+	$titles = array_column( $titled, 2, 1 );
+
+$ladderWords = [];
+
+foreach( $loud['knobs'] as $knob => $meta )
+	if( in_array( $meta['kind'], Setup::LADDERS, true ) === true )
+		$ladderWords[] = $knob. ' '. Setup::word( $withEntry['features']['probe']['knobs'][$knob] );
+
+$positions 	= designSection( $sheet, 15, Compiler::SECTION );
+$rootLines 	= designDeclarations( designBlock( $positions, ':root {' ) );
+
+check( 'a feature that has an entry in the setup gets a section of its own, after the five sets of the library and before the knob positions, which number on from it: "feature <key>: <variant>" and, in the brackets, the step of each of its ladders, as the section of a set has them',
+	array_keys( $titles ) === range( 1, 15 ) && str_starts_with( $titles[13], 'tables: ' ) === true && $titles[14] === 'feature probe: loud ('. implode( ', ', $ladderWords ). ')' && $titles[15] === 'the knob positions' && $sheetNotes === [] );
+check( '...and holds the stylesheet of the variant as the file has it, comments kept as for a set',
+	str_contains( designSection( $sheet, 14, Compiler::SECTION ), rtrim( (string) file_get_contents( $probeDir. '/design/loud.css' ), "\n" ) ) === true
+	&& str_contains( designSection( $sheet, 14, Compiler::SECTION ), '@knob' ) === true );
+check( '...the sections after it move down by its number: with a theme\'s css the theme is the sixteenth, and a sheet without the feature has the fifteen it had',
+	( static function() use ( &$appData, $withEntry, $library ): bool {
+		$themed = $withEntry;
+		$themed['css'] = '.x { color: red; }';
+		$sections = [];
+		preg_match_all( '~^/\* ==== (\d+)\. (.*?) ==== \*/$~m', Compiler::compile( $appData, $themed, $library ), $sections, PREG_SET_ORDER );
+		return array_column( $sections, 2, 1 )[16] === 'the theme';
+	} )() === true );
+
+// The five kinds, line by line
+$probeKeys 		= array_keys( $rootLines );
+$firstProbe 	= array_search( '--probe-size', $probeKeys, true );
+$groundParts 	= Colours::parts();
+
+check( 'the knob positions block is one block: the lines of the parts, sorted, and after them those of the features, in the order of the catalogue and of the head - a ground\'s lines together, in the order of the palette\'s parts',
+	$firstProbe !== false && array_filter( array_slice( $probeKeys, 0, (int) $firstProbe ), static fn( string $name ): bool => str_starts_with( $name, '--probe-' ) ) === []
+	&& array_slice( $probeKeys, (int) $firstProbe ) === array_merge( [ '--probe-size', '--probe-line' ], array_map( static fn( string $part ): string => '--probe-submit'. ( $part === 'bg' ? '' : '-'. $part ), $groundParts ), [ '--probe-flip', '--probe-turn' ] )
+	&& substr_count( $positions, ':root {' ) === 1 );
+check( 'a scale and a choice are selected as the ladders of a set are, by the position the setup holds: the var() of the rung, named with the key of the feature in the place of the part',
+	$rootLines['--probe-size'] === 'var('. sprintf( Setup::KNOB_TOKEN, 'probe', 'size', 'more' ). ')' && $rootLines['--probe-line'] === 'var('. sprintf( Setup::KNOB_TOKEN, 'probe', 'line', 'less' ). ')'
+	&& $rootLines['--probe-turn'] === 'var('. sprintf( Setup::KNOB_TOKEN, 'probe', 'turn', 'most' ). ')' );
+
+$paletteLines = designDeclarations( designBlock( Colours::css( [] ), ':root {' ) );
+$dangerTokens = array_keys( array_filter( $paletteLines, static fn( string $value, string $name ): bool => preg_match( '/^--nino-(on-)?danger(-muted|-link|-border|-focus|-disabled|-shadow)?$/D', $name ) === 1, ARRAY_FILTER_USE_BOTH ) );
+$groundLines 	= array_filter( $rootLines, static fn( string $name ): bool => str_starts_with( $name, '--probe-submit' ), ARRAY_FILTER_USE_KEY );
+
+check( 'a ground is written as the surface and every part the palette publishes of it - eight lines - each the var() of the palette\'s own token for that surface and that part, so that the text the palette solved for the ground stands on it: the eight tokens are all that the palette declares of that surface, read off the palette\'s own output',
+	count( $groundLines ) === count( $groundParts ) && count( $groundParts ) === 8 && count( $dangerTokens ) === 8
+	&& array_values( array_map( static fn( string $value ): string => substr( $value, 4, -1 ), $groundLines ) ) === array_map( static fn( string $part ): string => Colours::token( 'danger', $part ), $groundParts )
+	&& array_values( array_map( static fn( string $value ): string => substr( $value, 4, -1 ), $groundLines ) ) === $dangerTokens );
+
+$everySurface = [];
+
+foreach( Colours::SURFACES as $surface ) {
+
+	$eachSetup = Setup::normalize( $appData, [ 'features' => [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'submit' => $surface ] ] ] ], $library );
+	$eachLines = array_filter( designDeclarations( designBlock( designSection( Compiler::compile( $appData, $eachSetup, $library ), 15, Compiler::SECTION ), ':root {' ) ), static fn( string $name ): bool => str_starts_with( $name, '--probe-submit' ), ARRAY_FILTER_USE_KEY );
+
+	foreach( $eachLines as $value )
+		if( isset( $paletteLines[ substr( $value, 4, -1 ) ] ) === false )
+			$everySurface[] = $surface. ' '. $value;
+
+	if( count( $eachLines ) !== 8 )
+		$everySurface[] = $surface. ' has '. count( $eachLines );
+}
+
+check( '...and so it is for each of the eleven surfaces of the palette, in its order: eight lines, and every token a line points at is one the palette declares'. ( $everySurface === [] ? '' : ' - '. implode( ', ', $everySurface ) ),
+	count( Colours::SURFACES ) === 11 && $everySurface === [] );
+
+$inkBlock = designBlock( $positions, ':root, :root * {' );
+
+check( 'an ink is one line, the var() of the kernel\'s token for the tone, declared on every element: the sections of Nino.css point those tokens elsewhere on their own ground, and a property declared on the root alone would keep the value the root gave it - so the ink of an element is the ink of the ground it stands on',
+	designDeclarations( $inkBlock ) === [ '--probe-label' => 'var('. Setup::INKS['primary']. ')' ] && isset( $rootLines['--probe-label'] ) === false );
+
+$kernelRoot = designDeclarations( designBlock( $ninoCss, ':root {' ) );
+
+check( 'the seven tones of the inks are seven tokens the kernel\'s Nino.css declares on :root, in the words the panel offers them in',
+	array_keys( Setup::INKS ) === [ 'ink', 'subtitle', 'title', 'accent', 'primary', 'border', 'focus' ] && array_diff( array_values( Setup::INKS ), array_keys( $kernelRoot ) ) === [] );
+
+// A colour: its light half on the root, its dark half under the selectors the palette's own dark half stands under
+$paletteDark = Colours::css( [] );
+preg_match( '~^(@media[^\n]*\{\n\t[^\n]*\{\n)\t\t--nino-~m', $paletteDark, $mediaOpener );
+preg_match( '~^(:root\[[^\n]*\{\n)\t--nino-~m', $paletteDark, $attributeOpener );
+
+check( 'a colour is its light half on the root, and its dark half in the two blocks the palette\'s own dark half is written in - under the system\'s scheme unless the attribute says light, and under the attribute that says dark - the selectors read off the palette\'s output, and the lines of the features after the palette\'s, in the order of the sheet',
+	$rootLines['--probe-flip'] === '#112233' && isset( $mediaOpener[1], $attributeOpener[1] ) === true
+	&& str_contains( $positions, $mediaOpener[1]. "\t\t--probe-flip: #aabbcc;\n\t}\n}\n" ) === true && str_contains( $positions, "\n". $attributeOpener[1]. "\t--probe-flip: #aabbcc;\n}" ) === true
+	&& strpos( $sheet, $mediaOpener[1] ) < strpos( $sheet, $mediaOpener[1]. "\t\t--probe-flip" ) && substr_count( $sheet, $mediaOpener[1] ) === 2 && substr_count( $sheet, $attributeOpener[1] ) === 2 );
+check( '...the palette as one mode alone has no dark half to write: the light mode writes the light half and no block, the dark mode writes the dark half where the light one stands, on the root',
+	( static function() use ( &$appData, $withEntry, $library, $mediaOpener ): bool {
+		$bothHalves = [];
+		foreach( [ 'light' => '#112233', 'dark' => '#aabbcc' ] as $mode => $half ) {
+			$modal = $withEntry;
+			$modal['colours'] = Colours::normalize( [ 'mode' => $mode ] );
+			$modalPositions = designSection( Compiler::compile( $appData, $modal, $library ), 15, Compiler::SECTION );
+			$bothHalves[$mode] = designDeclarations( designBlock( $modalPositions, ':root {' ) )['--probe-flip'] === $half && str_contains( $modalPositions, '@media' ) === false && str_contains( $modalPositions, 'data-nino-mode' ) === false;
+		}
+		return $bothHalves === [ 'light' => true, 'dark' => true ];
+	} )() === true );
+check( '...a variant with no colour knob writes no dark block, and an ink is written where it stands at its default as well: what was chosen for the feature is written whole',
+	( static function() use ( &$appData, $library ): bool {
+		$plainLoud = Setup::normalize( $appData, [ 'features' => [ 'probe' => [ 'set' => 'regular' ] ] ], $library );
+		$plainPositions = designSection( Compiler::compile( $appData, $plainLoud, $library ), 15, Compiler::SECTION );
+		return str_contains( $plainPositions, '@media' ) === false && designDeclarations( designBlock( $plainPositions, ':root, :root * {' ) ) === [ '--probe-label' => 'var('. Setup::INKS['subtitle']. ')' ];
+	} )() === true );
+
+/*	The stylesheet the feature brings along, read one rule at a time: where each custom property its knobs move has its default. A default stands where the
+	line of the knob positions beats it wherever the two are, and :where() has no specificity - so each property stands in the one place of its kind, and in no
+	other: a bare :root would win over that line by order, since the bundle lists the stylesheets of the features after theme.css, and a declaration on the
+	feature's own class, or on any element, beats what the root hands down by inheritance. The kinds and the names are the scan's, read off the heads of the
+	two variants, and the dark selectors of a colour are the ones the palette's own dark half stands under, read off Colours::dark()	*/
+$probeRules 	= designRules( designPlain( (string) file_get_contents( $probeDir. '/assets/probe.css' ) ) );
+$darkPlaces 	= array_map( static fn( array $rule ): string => $rule['within']. '|:where('. $rule['selector']. ')', designRules( Colours::dark( static fn( int $depth ): string => '' ) ) );
+$knobKinds 		= array_map( static fn( array $knob ): string => $knob['kind'], array_merge( $regular['knobs'], $loud['knobs'] ) );
+$placeOfKind 	= [
+	'scale' => [ '|:where(:root)' ], 'choice' => [ '|:where(:root)' ], 'ground' => [ '|:where(:root)' ],
+	'colour' => array_merge( [ '|:where(:root)' ], $darkPlaces ), 'ink' => [ '|:where(*)' ],
+];
+
+/** The custom properties a knob of the fixture moves: its own - and, for a ground, the one of each part the palette publishes of a surface */
+$knobProperties = static fn( string $name, string $kind ): array => $kind === 'ground'
+	? array_map( static fn( string $part ): string => '--probe-'. $name. ( $part === 'bg' ? '' : '-'. $part ), Colours::parts() )
+	: [ '--probe-'. $name ];
+
+/** Where the stylesheet of the fixture declares a custom property: the block and the selector of each rule that does, in the order they stand */
+$declaredAt = static fn( string $property ): array => array_values( array_map(
+	static fn( array $rule ): string => $rule['within']. '|'. $rule['selector'],
+	array_filter( $probeRules, static fn( array $rule ): bool => preg_match( '/(?<![\w-])'. preg_quote( $property, '/' ). '\s*:/', $rule['body'] ) === 1 )
+) );
+
+/** The custom properties of the fixture a rule declares with !important - a default that would beat the line of the knob positions whatever its place */
+$importantAt = static fn( string $property ): array => array_values( array_map(
+	static fn( array $rule ): string => $rule['within']. '|'. $rule['selector'],
+	array_filter( $probeRules, static fn( array $rule ): bool => preg_match( '/(?<![\w-])'. preg_quote( $property, '/' ). '\s*:[^;{}]*!\s*important/i', $rule['body'] ) === 1 )
+) );
+
+$strayDefaults 		= [];
+$missingDefaults 	= [];
+
+foreach( $knobKinds as $name => $kind ) {
+
+	foreach( $knobProperties( $name, $kind ) as $property ) {
+
+		// A colour stands in its three places, each once and in their order - the light half first, in :where(:root) - and the others in theirs
+		foreach( $kind === 'colour' && $declaredAt( $property ) !== $placeOfKind[$kind] ? $declaredAt( $property ) : array_diff( $declaredAt( $property ), $placeOfKind[$kind] ) as $place )
+			$strayDefaults[] = $property. ' in '. trim( str_replace( '|', ' ', $place ) );
+
+		foreach( $importantAt( $property ) as $place )
+			$strayDefaults[] = $property. ' with !important in '. trim( str_replace( '|', ' ', $place ) );
+	}
+
+	if( $declaredAt( '--probe-'. $name ) === [] )
+		$missingDefaults[] = '--probe-'. $name;
+}
+
+check( 'the stylesheet of the fixture declares each custom property its knobs move in the one place of its kind and in no other, property by property, and none of them with !important: a scale, a choice, a ground - its surface and each part of it that the stylesheet sets - and the light half of a colour in :where(:root); the dark half of a colour in :where() of the selectors the palette writes its own dark half under, the three places of a colour each once and in that order; an ink in :where(*), which declares it on every element, so that each resolves the page\'s tone where it stands - in the section it is in'. ( $strayDefaults === [] ? '' : ' - '. implode( ', ', $strayDefaults ) ),
+	$strayDefaults === [] && $probeRules !== [] );
+check( '...and it is not run over nothing: the fixture has a knob of each of the five kinds, a default for each knob, the text colour of its ground, and the two halves of its colour - the light one and the dark one in each of the two places the palette\'s own dark half has',
+	array_diff( Setup::FEATURE_KINDS, $knobKinds ) === [] && $missingDefaults === [] && $declaredAt( '--probe-submit-on' ) !== [] && count( $darkPlaces ) === 2 && count( $declaredAt( '--probe-flip' ) ) === 3 );
+
+/*	The bundle of a project the wizard has set up, as the installer leaves it - the kernel's own entry, then the theme this sheet is written to and the
+	project's style.css (the installer's own list is a private constant of a class that a project may delete after the setup, so no test can read it) - and then what the boot adds	*/
+$appData['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ Compiler::TARGET, '/assets/style.css' ] ) ];
+\Nino\Features::registerAssets( $appData );
+$bundle = $appData['/nino/html/assets']['/.cache/style.css'];
+
+check( 'in a booted project the bundle lists the stylesheet of a feature after the theme.css this sheet is written to - the order the :where() of its defaults is for',
+	in_array( '/features/Probe/assets/probe.css', $bundle, true ) === true && array_search( '/features/Probe/assets/probe.css', $bundle, true ) > array_search( Compiler::TARGET, $bundle, true )
+	&& \Nino\Features::get( $appData, 'probe' )['assets'] === [ '/features/Probe/assets/probe.css' ] );
+unset( $appData['/nino/html/assets'], $appData['./nino/features/listed'] );
+
+// With no entry the feature compiles nothing; with the feature off the entry compiles nothing and is told
+$noEntry 	= Setup::normalize( $appData, [], $library );
+$sheetOn 	= Compiler::compile( $appData, $noEntry, $library );
+$sameThemes = [];
+
+foreach( Themes::SHIPPED as $slug ) {
+
+	$themeRaw 	= (array) Themes::read( $appData, $library, $slug );
+	$themeSetup = Setup::normalize( $appData, Themes::setup( $themeRaw ) + [ 'theme' => $slug, 'css' => Themes::css( $themeRaw ) ], $library );
+	$themeWith 	= Compiler::compile( $appData, $themeSetup, $library );
+	$featuresOn( [ 'Design' ] );
+	$sameThemes[] = $themeWith === Compiler::compile( $appData, $themeSetup, $library );
+	$featuresOn( [ 'Design', 'Probe' ] );
+}
+
+$featuresOn( [ 'Design' ] );
+$sheetOff = Compiler::compile( $appData, $noEntry, $library );
+$offNotes = [];
+$entryOff = Compiler::compile( $appData, $withEntry, $library, $offNotes );
+$onceNotes = [];
+Compiler::compile( $appData, Setup::normalize( $appData, $chooseLoud, $library, $onceNotes ), $library, $onceNotes );
+$featuresOn( [ 'Design', 'Probe' ] );
+
+check( 'a feature that has no entry compiles nothing: with the feature active the sheet is the sheet without it, byte for byte - and so are the sheets the shipped themes make',
+	$sheetOn === $sheetOff && str_contains( $sheetOn, 'feature probe' ) === false && $sameThemes === array_fill( 0, count( Themes::SHIPPED ), true ) && count( $sameThemes ) === 4 );
+check( 'an entry of a feature that is not active compiles nothing and is told: no section and not a line, the sheet the setup without the entry makes, and the note once however many readers of the setup told it already',
+	$entryOff === $sheetOff && $offNotes === [ Setup::inactive( 'probe' ) ] && count( $onceNotes ) === 1 && $onceNotes[0] === Setup::inactive( 'probe' ) );
+
+// The header
+$header = substr( $sheet, 0, (int) strpos( $sheet, "*/\n" ) );
+$moved = 'feature probe  loud  (size more, line less, submit danger, label primary, flip #112233/#aabbcc, turn most)';
+$restOnly = Compiler::compile( $appData, Setup::normalize( $appData, [ 'features' => [ 'probe' => [ 'set' => 'regular' ] ] ], $library ), $library );
+
+check( 'the header has a line for each feature that was given a variant, after the lines of the parts and before the blank one that leads to the fonts: the key, the variant and, in brackets, the knobs that stand off the head\'s default - the step of a ladder, the word of a ground or an ink, the two halves of a colour',
+	str_contains( $header, "\n *   tables     ". $withEntry['parts']['tables']. "\n *   ". $moved. "\n *\n *   title" ) === true );
+check( '...and nothing where no feature was: a variant with every knob at its default is its line without brackets, a sheet without entries has no such line',
+	str_contains( substr( $restOnly, 0, (int) strpos( $restOnly, "*/\n" ) ), "\n *   feature probe  regular\n *\n" ) === true && str_contains( substr( $sheetOn, 0, (int) strpos( $sheetOn, "*/\n" ) ), "\n *   feature " ) === false );
+
+// The fingerprint
+$fingerprint = static function( array $setup ) use ( &$appData, $library ): string {
+	return \Nino\Modules\Design::fingerprint( $appData, $setup, $library );
+};
+$printLoud 		= $fingerprint( $withEntry );
+$printPlain 	= $fingerprint( $noEntry );
+$loudFile 		= $probeDir. '/design/loud.css';
+$loudBytes 		= (string) file_get_contents( $loudFile );
+file_put_contents( $loudFile, $loudBytes. "\n.probe { opacity: 1; }\n" );
+$printEdited 	= $fingerprint( $withEntry );
+file_put_contents( $loudFile, $loudBytes );
+$featuresOn( [ 'Design' ] );
+$printOff 		= $fingerprint( $withEntry );
+$featuresOn( [ 'Design', 'Probe' ] );
+
+check( 'the fingerprint follows the choices for the features and the bytes of the variant files they point at: another variant is another fingerprint, so is an edit of the file of the variant in use, and so is the feature being switched off - which changes what is compiled',
+	$printLoud !== $printPlain && $printLoud !== $fingerprint( Setup::normalize( $appData, [ 'features' => [ 'probe' => [ 'set' => 'regular' ] ] ], $library ) )
+	&& $printEdited !== $printLoud && $fingerprint( $withEntry ) === $printLoud && $printOff !== $printLoud );
+check( '...and a project that chose nothing for any feature hashes as it did before there were features: the empty choices are left out of the input, whichever features are active',
+	$printPlain === $fingerprint( Setup::normalize( $appData, [ 'features' => 'x' ], $library ) ) && $printPlain === $beforeFamilies( $noEntry ) );
+
+// The panel's side: what design/list and design/preview answer, what a save keeps - for the account that may manage the design
+$featuresOn( [ 'Design', 'Probe' ] );
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+
+$stored = Setup::normalize( $appData, [ 'features' => $chooseLoud['features'] + [ 'gone' => [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ] ] ], $library );
+Setup::write( $appData, $stored );
+
+[ $status, $listedFeatures ] = callDesignAction( $appData, 'apiList' );
+$answerFeature = $listedFeatures['features']['probe'] ?? [];
+
+check( 'design/list answers the features that bring variants: for each its name, that it is active, the variant it has before anything is chosen and its variants with their knobs - the kind, the tab, the label, the words of a choice, the default - and what the setup chose for it: the variant and the value of each knob',
+	$status === 200 && array_keys( $answerFeature ) === [ 'name', 'active', 'default', 'catalogue', 'set', 'knobs' ] && $answerFeature['name'] === 'Probe' && $answerFeature['active'] === true && $answerFeature['default'] === 'regular'
+	&& array_keys( $answerFeature['catalogue'] ) === [ 'loud', 'regular' ] && array_keys( $answerFeature['catalogue']['loud'] ) === [ 'name', 'description', 'knobs' ]
+	&& array_keys( $answerFeature['catalogue']['loud']['knobs']['line'] ) === [ 'kind', 'tab', 'label', 'options', 'default' ] && $answerFeature['catalogue']['loud']['knobs']['flip']['default'] === [ '#b03a2e', '#e8705f' ]
+	&& $answerFeature['set'] === 'loud' && $answerFeature['knobs'] === $stored['features']['probe']['knobs'] );
+check( '...nothing of the server in it that the screen does not read: not the directory of the feature, not the names of the ladders',
+	str_contains( (string) json_encode( $listedFeatures['features'] ), $probeDir ) === false && str_contains( (string) json_encode( $listedFeatures['features'] ), 'ladder' ) === false );
+check( '...a choice kept for a feature that is not in the catalogue follows them, flagged as not active and as it was kept - so that a save carries it on - and the order is the catalogue\'s, then the kept ones by their keys',
+	array_keys( $listedFeatures['features'] ) === [ 'probe', 'gone' ] && $listedFeatures['features']['gone'] === [ 'name' => 'gone', 'active' => false, 'default' => '', 'catalogue' => [], 'set' => 'x', 'knobs' => [ 'a' => 1 ] ] );
+check( '...the table of the controls and the objects are the merged ones: the page\'s own and the rows of the feature, the object after the tables',
+	$listedFeatures['layout'] === [ 'tabs' => Setup::TABS, 'objects' => Setup::objects( $appData ), 'controls' => Setup::layout( $appData ) ] && end( $listedFeatures['layout']['objects'] ) === 'probe'
+	&& $listedFeatures['layout']['controls']['features/probe/knobs/flip'][0] === 'colours' );
+check( '...and the words of the two choices out of the palette\'s vocabulary: the surfaces of a ground in the palette\'s order and the tones of an ink',
+	$listedFeatures['grounds'] === Colours::SURFACES && $listedFeatures['inks'] === array_keys( Setup::INKS ) );
+
+$groundOf = static fn( string $mode ): string => Colours::palette( [], $mode )['default']['bg'];
+$measured = $listedFeatures['contrasts']['probe']['flip'] ?? [];
+
+check( 'design/list says what the colours of the features measure on the page, as the brand does: for each half of a colour the ratio against the ground of the palette in that mode, the ratio a mark has to reach, and whether it does - for the colours of the variant that is chosen, and for nothing else',
+	array_keys( $listedFeatures['contrasts'] ) === [ 'probe' ] && array_keys( $listedFeatures['contrasts']['probe'] ) === [ 'flip' ] && array_keys( $measured ) === [ 'light', 'dark' ]
+	&& $measured['light'] === [ 'ratio' => round( Colours::contrast( '#112233', $groundOf( 'light' ) ), 2 ), 'target' => Colours::TARGET_UI, 'safe' => round( Colours::contrast( '#112233', $groundOf( 'light' ) ), 2 ) >= Colours::TARGET_UI ]
+	&& $measured['dark'] === [ 'ratio' => round( Colours::contrast( '#aabbcc', $groundOf( 'dark' ) ), 2 ), 'target' => Colours::TARGET_UI, 'safe' => round( Colours::contrast( '#aabbcc', $groundOf( 'dark' ) ), 2 ) >= Colours::TARGET_UI ]
+	&& $measured['light']['safe'] === true && $measured['dark']['safe'] === true );
+
+$postedLoud = $withEntry;
+unset( $postedLoud['format'], $postedLoud['compiled'] );
+$weakFeatures = [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'flip' => [ '#eeeeee', '#222222' ] ] ] ];
+[ $weakStatus ] = callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => $weakFeatures ] ) );
+$weakMeasured = callDesignAction( $appData, 'apiList' )[1]['contrasts']['probe']['flip'];
+
+check( '...a colour that does not reach the ratio on its page is said so and refused nowhere: both halves are below the target, and the save that holds them is a save like any other',
+	$weakStatus === 200 && $weakMeasured['light']['safe'] === false && $weakMeasured['dark']['safe'] === false && $weakMeasured['light']['ratio'] < Colours::TARGET_UI && Setup::read( $appData, $library )['features']['probe']['knobs']['flip'] === [ '#eeeeee', '#222222' ] );
+
+Setup::write( $appData, Setup::normalize( $appData, [ 'features' => [ 'probe' => [ 'set' => 'regular' ] ] ], $library ) );
+$regularAnswer = callDesignAction( $appData, 'apiList' )[1];
+Setup::write( $appData, Setup::normalize( $appData, [], $library ) );
+$noEntryAnswer = callDesignAction( $appData, 'apiList' )[1];
+$featuresOn( [ 'Design' ] );
+$noneAnswer = callDesignAction( $appData, 'apiList' )[1];
+$featuresOn( [ 'Design', 'Probe' ] );
+
+check( '...a variant with no colour measures nothing, a feature that has no entry has no variant and no value in the answer, and with no feature active the answer is the page\'s own: no features, the eight objects and the static table',
+	$regularAnswer['contrasts'] === [] && $noEntryAnswer['features']['probe']['set'] === '' && $noEntryAnswer['features']['probe']['knobs'] === []
+	&& $noneAnswer['features'] === [] && $noneAnswer['layout']['objects'] === Setup::OBJECTS && $noneAnswer['layout']['controls'] === Setup::LAYOUT && $noneAnswer['contrasts'] === [] );
+
+// design/preview answers the same measure, for the setup it is sent, and tells what it dropped
+[ $status, $previewed ] = callDesignAction( $appData, 'apiPreview', array_merge( $postedLoud, [ 'features' => $withEntry['features'] + [ 'gone' => [ 'set' => 'x' ] ] ] ) );
+
+check( 'design/preview answers what the colours of the features measure for the setup it is sent - with every change of the screen, beside the brand - and the notes of what it replaced: the choice kept for a feature that is not there',
+	$status === 200 && isset( $previewed['contrasts']['probe']['flip']['light'] ) === true && $previewed['contrasts']['probe']['flip']['light']['ratio'] === $measured['light']['ratio']
+	&& array_keys( $previewed ) === [ 'css', 'document', 'style', 'accent', 'brand', 'contrasts', 'notes' ]
+	&& $previewed['notes'] === [ Setup::inactive( 'gone' ) ] && str_contains( $previewed['css'], '/* ==== 14. feature probe: loud (' ) === true );
+
+// design/save keeps the choices, and the ones kept for a feature that is not there
+[ $status, $savedFeatures ] = callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => $withEntry['features'] + [ 'gone' => [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ] ] ] ) );
+$afterSave = Setup::read( $appData, $library );
+
+check( 'design/save stores the choices for the features, normalised, with the choice kept for a feature that is not there - the note says it - and in the order of the keys',
+	$status === 200 && array_keys( $afterSave['features'] ) === [ 'gone', 'probe' ] && $afterSave['features']['probe'] === $withEntry['features']['probe'] && $afterSave['features']['gone'] === [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ]
+	&& $savedFeatures['notes'] === [ Setup::inactive( 'gone' ) ] );
+check( '...and a save of the screen that chooses nothing for the features takes the choices away, and so does a request that carries a key that is no array',
+	( static function() use ( &$appData, $postedLoud, $library ): bool {
+		callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => [] ] ) );
+		$cleared = Setup::read( $appData, $library )['features'] === [];
+		callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => 'loud' ] ) );
+		return $cleared === true && Setup::read( $appData, $library )['features'] === [];
+	} )() === true );
+
+// Themes: a theme of the project is the whole setup, and holds the choices for the features
+callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => $withEntry['features'] ] ) );
+$snapshot = Themes::snapshot( Setup::read( $appData, $library ) );
+[ $status, $made ] = callDesignAction( $appData, 'apiThemeCreate', array_merge( $postedLoud, [ 'name' => 'Mit Features', 'features' => $withEntry['features'] ] ) );
+$madeFile = Themes::read( $appData, $library, (string) ( $made['slug'] ?? '' ) ) ?? [];
+[ , $reloaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => (string) ( $made['slug'] ?? '' ) ] );
+
+check( 'a snapshot of a setup keeps the choices for the features as a key that chooses something, between the knobs and the fonts, where Setup::KEYS puts it - and a theme of the project made from the screen holds them in its file and gives them back on a load',
+	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'knobs', array_keys( $snapshot ), true ) + 1
+	&& $snapshot['features'] === $withEntry['features'] && $status === 200 && ( $madeFile['setup']['features'] ?? null ) === $withEntry['features'] && ( $reloaded['setup']['features'] ?? null ) === $withEntry['features'] );
+
+Themes::remove( $appData, (string) ( $made['slug'] ?? '' ) );
+
+// The answer the screen is drawn from, for design-js-smoke.js: the real one, with the fixture active and a choice for it and for a feature that is not there
+Setup::write( $appData, $stored );
+[ , $forFeatures ] = callDesignAction( $appData, 'apiList' );
+$featuresListing = ninoSandboxDir( $appData ). '/design-features.json';
+file_put_contents( $featuresListing, json_encode( $forFeatures, JSON_THROW_ON_ERROR ) );
+
+check( 'the answer that is written down for the screen has what the screen reads of the features: the variants with their knobs of every kind, the choice, the choice kept for a feature that is not there, the merged table, the words of the two choices and the measure of the colours',
+	array_keys( $forFeatures['features'] ) === [ 'probe', 'gone' ] && isset( $forFeatures['layout']['controls']['features/probe/set'] ) === true && $forFeatures['grounds'] === Colours::SURFACES && isset( $forFeatures['contrasts']['probe']['flip'] ) === true );
+
+// Put the sandbox back as the sections after this one found it
+if( $featureKept === null )
+	@unlink( $featureFile );
+else
+	file_put_contents( $featureFile, $featureKept );
+
+$appData['./nino/locales/current'] = $localeKept;
+$appData['/nino/modules'] = $modulesKept;
+unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+
 // --- The panel's script, where node is on the path ------------------------------
 //
 // design-js-smoke.js beside this file draws the screen over a dom stand-in and
@@ -6946,7 +7748,7 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: design-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_FEATURES='. escapeshellarg( $featuresListing ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
 
 	// A run that failed says what failed: the checks that did not hold, or what node stopped on

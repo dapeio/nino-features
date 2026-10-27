@@ -1,0 +1,36 @@
+/*	@name			Regular
+ *	@name-de		Regulär
+ *	@description	The probe as it is: the middle of every ladder, the send button on the brand and the label in the subtitle's ink.
+ *	@description-de	Die Probe, wie sie ist: die Mitte jeder Leiter, der Absende-Button auf der Marke und die Beschriftung in der Tinte des Untertitels.
+ *
+ *	@knob	size		scale	type		Size of the text
+ *	@knob-de	size		Größe des Textes
+ *	@knob	line		choice	surfaces	Line round the probe
+ *	@knob-de	line		Linie um die Probe
+ *	@option	line	less	Hairline
+ *	@option	line	default	As it is
+ *	@option	line	more	Strong
+ *	@option-de	line	less	Haarlinie
+ *	@option-de	line	default	Wie sie ist
+ *	@option-de	line	more	Kräftig
+ *	@knob	submit		ground	colours		Ground of the send button	= brand-safe
+ *	@knob-de	submit		Fläche des Absende-Buttons
+ *	@knob	label		ink		colours		Colour of the label	= subtitle
+ *	@knob-de	label		Farbe der Beschriftung
+ *
+ *	Regular is the starting point of this feature: every value it declares is the
+ *	one probe.css has as its own default, so the probe under it looks as it does
+ *	without Design.
+ */
+
+:root {
+	--probe-size--least: 		.8;
+	--probe-size--less: 		.9;
+	--probe-size--default: 		1;
+	--probe-size--more: 		1.15;
+	--probe-size--most: 		1.3;
+
+	--probe-line--less: 		0;
+	--probe-line--default: 		.1rem;
+	--probe-line--more: 		.3rem;
+}

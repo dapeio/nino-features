@@ -25,7 +25,12 @@ declare(strict_types=1);
  *											next patch.
  *
  *											A feature's tests are left out: a test of german
- *											content is german on purpose, and so is a fixture.
+ *											content is german on purpose, and so is a fixture - but for
+ *											the heads of the variants a fixture brings, the .css files
+ *											of a design/ directory in the tests/fixtures/features/<Dir>/
+ *											of a feature: they are read like the heads of a feature's
+ *											variants anywhere, so that the rule below is seen at work
+ *											on them.
  *
  *											A template's name and description in another language
  *											are left out as well: a line that starts with '@name-de'
@@ -33,7 +38,10 @@ declare(strict_types=1);
  *											a .css file whose path contains '/library/' - the library
  *											of a feature that brings templates - is what the panel
  *											shows, the text of a locale in the file that names the
- *											template. Only such a line is left out; the rest of the
+ *											template. So is the head of a variant a feature brings,
+ *											a .css file below a '/design/' directory: there the lines
+ *											of '@knob-de' and '@option-de' are the labels of its
+ *											knobs. Only such a line is left out; the rest of the
  *											comment is read as everywhere, and so is the same line in
  *											any other file.
  *
@@ -74,6 +82,10 @@ $walk			= static function( string $dir ) use ( &$walk, &$sources ): void {
 };
 $walk( $root. '/features' );
 
+// The heads of the variants a fixture brings are read all the same (see above)
+foreach( (array) glob( $root. '/features/*/tests/fixtures/features/*/design/*.css' ) as $fixture )
+	$sources[] = (string) $fixture;
+
 $offenders = [];
 
 foreach( $sources as $file ) {
@@ -111,9 +123,12 @@ foreach( $sources as $file ) {
 
 		// A template's name or description in another language is the text of a
 		// locale, not commentary on the file that carries it - in a library, the
-		// one place the panel reads it from; the same line anywhere else is read
-		// like any other
-		if( str_contains( $below, '/library/' ) === true && str_ends_with( $file, '.css' ) === true && preg_match( '/^\s*\*?\s*@(?:name|description)-[a-z]{2}\s/', $line ) === 1 )
+		// one place the panel reads it from, and in the head of a variant a feature
+		// brings, where the labels of its knobs are such lines too; the same line
+		// anywhere else is read like any other
+		$tags = str_contains( $below, '/library/' ) === true ? 'name|description' : ( str_contains( $below, '/design/' ) === true ? 'name|description|knob|option' : '' );
+
+		if( $tags !== '' && str_ends_with( $file, '.css' ) === true && preg_match( '/^\s*\*?\s*@(?:'. $tags. ')-[a-z]{2}\s/', $line ) === 1 )
 			continue;
 
 		foreach( $allowed as $name )

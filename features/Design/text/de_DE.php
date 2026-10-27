@@ -387,6 +387,29 @@ return [
 	'[[/_admin/design/colour/mode/light]]'						=> 'nur hell',
 	'[[/_admin/design/colour/mode/dark]]'						=> 'nur dunkel',
 
+	// Features mit Varianten: die Flächen, aus denen ein Grund gewählt wird, in der Reihenfolge der Palette, die Töne, aus denen eine Tinte gewählt wird, und die beiden Hälften einer Farbe
+	'[[/_admin/design/ground/default]]'						=> 'Seite',
+	'[[/_admin/design/ground/alt]]'						=> 'Seite alternativ',
+	'[[/_admin/design/ground/tint]]'						=> 'Marke getönt',
+	'[[/_admin/design/ground/dark]]'						=> 'Dunkel',
+	'[[/_admin/design/ground/black]]'						=> 'Schwarz',
+	'[[/_admin/design/ground/brand]]'						=> 'Marke pur',
+	'[[/_admin/design/ground/brand-safe]]'						=> 'Marke',
+	'[[/_admin/design/ground/accent-safe]]'						=> 'Akzent',
+	'[[/_admin/design/ground/success]]'						=> 'Erfolg',
+	'[[/_admin/design/ground/warning]]'						=> 'Warnung',
+	'[[/_admin/design/ground/danger]]'						=> 'Gefahr',
+	'[[/_admin/design/ink/ink]]'							=> 'Text',
+	'[[/_admin/design/ink/subtitle]]'							=> 'Text leise',
+	'[[/_admin/design/ink/title]]'							=> 'Text laut',
+	'[[/_admin/design/ink/accent]]'							=> 'Akzent',
+	'[[/_admin/design/ink/primary]]'							=> 'Marke',
+	'[[/_admin/design/ink/border]]'							=> 'Rand',
+	'[[/_admin/design/ink/focus]]'							=> 'Fokus',
+	'[[/_admin/design/label/light]]'						=> 'Hell',
+	'[[/_admin/design/label/dark]]'						=> 'Dunkel',
+	'[[/_admin/design/label/contrast]]'						=> 'Gegen die Seite messen die beiden Hälften %s:1 im Hellen und %s:1 im Dunklen – eine Markierung braucht %s:1. Die Farben bleiben, wie sie sind.',
+
 	// Die Fehler, die ein Mensch auslösen kann, nach ihrem Code (siehe Themes::REFUSALS und die Theme-Aktionen des Panels)
 	'[[/_admin/error/design_import]]'	=> 'Das CSS darf kein @import enthalten – eine fremde Datei gehört nicht ins Theme.',
 	'[[/_admin/error/design_script]]'	=> 'Das CSS darf kein javascript: und kein Script enthalten.',
@@ -401,4 +424,5 @@ return [
 	// Was beim Lesen eines Setups ersetzt wurde, nach dem Code der Notiz und mit ihren Parametern (siehe Setup::NOTES): das Panel sagt eine Notiz so, wie es eine Ablehnung sagt
 	'[[/_admin/error/design_theme_missing]]'	=> 'Das Theme „%s“ gibt es nicht – es ist keines aktiv.',
 	'[[/_admin/error/design_set_missing]]'		=> '%s: „%s“ gibt es nicht – verwendet wird „%s“.',
+	'[[/_admin/error/design_feature_inactive]]'	=> 'Das Feature „%s“ ist nicht aktiv oder bringt keine Varianten mit – Deine Wahl dafür bleibt erhalten, kompiliert wird dafür nichts.',
 ];

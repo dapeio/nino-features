@@ -57,6 +57,16 @@
  *												which waits for the page in it where the tab, or the answer to a
  *												change, changed the stage's height.
  *
+ *												A feature that brings variants (Setup::features()) has a block on the
+ *												Templates tab, after the seven of the parts - the select of its variants,
+ *												and none for a feature with one - and one on each tab its knobs are put on
+ *												by their heads, after the blocks of the objects: a scale and a choice as
+ *												the knobs of the parts are, a ground and an ink as a select of the surfaces
+ *												and of the tones of the palette, a colour as two inputs, a light half and a
+ *												dark half, with the line of what they measure; a knob the variant that is
+ *												chosen does not declare is greyed out, a choice kept for a feature that is
+ *												not active is drawn nowhere and posted all the same.
+ *
  *												A preview says what a design looks like and nothing
  *												about which selection produced it, and nothing stands
  *												under the frame to say it: the checks here read what the
@@ -75,8 +85,10 @@
  *												node when node is on the path, so bin/check.sh and
  *												CI cover it - and hands it the answers design/list
  *												(DESIGN_LISTING), design/webfonts/list
- *												(DESIGN_WEBFONTS) and the actions of the Theme tab
- *												(DESIGN_THEMES) really gave, which the screen is
+ *												(DESIGN_WEBFONTS), the actions of the Theme tab
+ *												(DESIGN_THEMES) and - with a feature that brings variants
+ *												active - the answer of design/list for it (DESIGN_FEATURES)
+ *												really gave, which the screen is
  *												then drawn from as well; it also runs on its own.
  *
  *	Usage: node features/Design/tests/design-js-smoke.js
@@ -467,6 +479,97 @@ const THEMES = [
 	{ slug : 'mein-theme', name : 'My theme', description : 'The theme of this project', shipped : false },
 ];
 
+/**
+ *	The words a ground is chosen among and the tones an ink is chosen among, as design/list hands them over (Colours::SURFACES and the keys of Setup::INKS): the
+ *	panel has a word under each of them in its texts, and the lists are read off those
+ */
+function vocabulary( prefix ) {
+	return Object.keys( TEXT ).filter( function( key ) { return key.indexOf( prefix ) === 0 } ).map( function( key ) { return key.slice( prefix.length ) } );
+}
+
+const GROUNDS = vocabulary('/_admin/design/ground/');
+const INKS = vocabulary('/_admin/design/ink/');
+
+/** A knob a head declares, as design/list answers it (Setup::declared()): its kind, the tab the head puts it on, its label, the words of the three positions of a choice - a list on the wire for the other kinds - and where it stands before anything is chosen */
+function featureKnob( kind, tab, label, standard, options ) {
+	return { kind : kind, tab : tab, label : label, options : options || [], 'default' : standard };
+}
+
+/**
+ *	The features that bring variants, as design/list answers them (Admin::_features()), in the order of the catalogue - by their names - with what the setup chose
+ *	for them: `chosen` is key => { set, knobs }, and a key the catalogue does not have is a feature that is not active, which rides along with its entry. Two are made
+ *	up here. The first, Zinc, whose key sorts before the other's, has two variants: the regular one a knob of each of four kinds - a scale on the Type tab, a choice
+ *	on Surfaces, a ground and an ink on Colours - and the loud one the same and two more, a pair of colours and a scale on Motion. The second, Tiles, has the one
+ *	variant and a knob on the Type tab
+ */
+function featuresAnswer( chosen ) {
+
+	const picked = chosen || {};
+	const regular = {
+		size 		: featureKnob( 'scale', 'type', 'Size', 0 ),
+		line 		: featureKnob( 'choice', 'surfaces', 'Line', 0, { less : 'Thin', 'default' : 'Normal', more : 'Thick' } ),
+		submit 	: featureKnob( 'ground', 'colours', 'Submit', 'brand-safe' ),
+		label 	: featureKnob( 'ink', 'colours', 'Label', 'subtitle' ),
+	};
+	const loud = Object.assign( {}, regular, {
+		flip 		: featureKnob( 'colour', 'colours', 'Flip', [ '#b03a2e', '#e8705f' ] ),
+		turn 		: featureKnob( 'scale', 'motion', 'Turn', 0 ),
+	} );
+	const answer = {
+		tiles 	: { name : 'Tiles', active : true, 'default' : 'regular', catalogue : { regular : { name : 'Plain', description : 'Tiles as they come', knobs : { grid : featureKnob( 'scale', 'type', 'Grid', 0 ) } } }, set : '', knobs : [] },
+		awning 	: { name : 'Zinc', active : true, 'default' : 'regular', catalogue : {
+			regular : { name : 'Regular', description : 'The awning as it hangs', knobs : regular },
+			loud 		: { name : 'Loud', description : 'The awning, louder', knobs : loud },
+		}, set : '', knobs : [] },
+	};
+
+	Object.keys( picked ).forEach( function( key ) {
+		answer[key] = Object.assign( answer[key] || { name : key, active : false, 'default' : '', catalogue : {} }, { set : picked[key].set, knobs : picked[key].knobs } );
+	} );
+
+	return JSON.parse( JSON.stringify( answer ) );
+}
+
+/** The table of the stand-in with the rows the features add (Setup::layout(), Setup::objects()): one object for each feature that has variants, after the eight, a row for the choice of the variant on Templates and a place for each knob the variants declare, on the tab its head names - counted from 1 on the tab, a knob placed where the first variant that declares it puts it */
+function layoutWith( features ) {
+
+	const table = layoutTable();
+
+	Object.keys( features ).forEach( function( key ) {
+
+		const catalogue = features[key].catalogue;
+
+		if( Object.keys( catalogue ).length === 0 )
+			return;
+
+		const count = {};
+
+		table.objects.push( key );
+		table.controls['features/'+ key+ '/set'] = [ 'templates', key, 1 ];
+
+		Object.keys( catalogue ).forEach( function( set ) {
+			Object.keys( catalogue[set].knobs ).forEach( function( knob ) {
+
+				if( table.controls['features/'+ key+ '/knobs/'+ knob] !== undefined )
+					return;
+
+				count[ catalogue[set].knobs[knob].tab ] = ( count[ catalogue[set].knobs[knob].tab ] || 0 ) + 1;
+				table.controls['features/'+ key+ '/knobs/'+ knob] = [ catalogue[set].knobs[knob].tab, key, count[ catalogue[set].knobs[knob].tab ] ];
+			} );
+		} );
+	} );
+
+	return table;
+}
+
+/** The answer of design/list with the two features of the stand-in in it - their catalogue, the rows of the table - and what is chosen for them; `over` has what a test wants different, as in listing() */
+function featured( chosen, over ) {
+
+	const features = featuresAnswer( chosen );
+
+	return Object.assign( { features : features, layout : layoutWith( features ) }, over || {} );
+}
+
 /** The whole answer of design/list, with whatever a test wants different in it */
 function listing( over ) {
 
@@ -499,6 +602,7 @@ function listing( over ) {
 		radii 			: { cover : 'standard', row : 'standard', column : 'standard', card : 'standard', image : 'standard' },
 		motion 			: { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' },
 		parts 			: { header : 'first', footer : 'first', section : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first' },
+		features 	: [],
 		knobs 			: JSON.parse( JSON.stringify( knobs ) ),
 		fonts 			: JSON.parse( JSON.stringify( fonts ) ),
 		colours 		: { primary : '#4faae8', secondary : '', harmony : 1, temperature : 3, saturation : 3, contrast : 3, depth : 3, mode : 'auto' },
@@ -541,6 +645,11 @@ function listing( over ) {
 			} ),
 		],
 		kinds 		: JSON.parse( JSON.stringify( KINDS ) ),
+		// The features that bring variants: none here, a list on the wire; the words a ground and an ink are chosen among; what the colours of the features measure - a list on the wire, where none does
+		features 	: [],
+		grounds 	: GROUNDS.slice(),
+		inks 			: INKS.slice(),
+		contrasts : [],
 		layout 		: layoutTable(),
 		defaults 	: fresh,
 		knobs 		: knobs,
@@ -3103,7 +3212,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -4260,6 +4369,325 @@ check( 'a frame answers to the knobs its stylesheet declares ladders for, as a s
 	&& offRows( fg ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/header/height'
 	&& byTag( controlOf( fg, 'knobs/header/space' ), 'button' ).every( function( button ) { return button.disabled === false } ) && byTag( controlOf( fg, 'knobs/header/ground' ), 'button' ).every( function( button ) { return button.disabled === false } )
 	&& ( fg.show( 'type' ), offRows( fg ).length === 0 ) );
+
+console.log('');
+
+
+// --- The features that bring variants ------------------------------------------------------------
+//
+// An active feature that ships stylesheets in a design/ directory of its own brings variants and knobs into the panel
+// (Setup::features()). The variant is chosen on the Templates tab, in a block of the feature after the blocks of the seven
+// parts, and the knobs of the variant stand on the tab their head names, in a block of the feature after the blocks of the
+// objects - all of it drawn from the table design/list hands over, as the rest of the screen is. The checks read the stand-in's
+// answer (featured()) and the controls drawn from it: the names are the features' own - the manifest's for a feature, the head's
+// for a variant and for a knob - and every other word is the panel's, read by its key
+
+console.log( 'Features' );
+
+const fx = panel( featured() );
+const fxData = fx.design._data.features;
+const fxOrder = Object.keys( fxData );
+const fxZinc = fxData.awning;
+const fxLoud = fxZinc.catalogue.loud.knobs;
+const fxRegular = fxZinc.catalogue.regular.knobs;
+const fxPlace = function( screen, key, knob ) { return screen.design._data.layout.controls[ knob === undefined ? 'features/'+ key+ '/set' : 'features/'+ key+ '/knobs/'+ knob ] };
+
+/** The control of a feature on the tab the table puts it on, which is opened for it: the choice of the variant, or a knob of it */
+const fxControl = function( screen, key, knob ) {
+	screen.show( fxPlace( screen, key, knob )[0] );
+	return controlOf( screen, 'features/'+ key+ ( knob === undefined ? '/set' : '/knobs/'+ knob ) );
+};
+const fxBlock = function( screen, key ) { return blocksOf( screen.form ).filter( function( card ) { return card.dataset.object === key } )[0] || null };
+const fxObjects = function( screen ) { return blocksOf( screen.form ).map( function( card ) { return card.dataset.object } ) };
+const fxSelect = function( screen, key ) { return byTag( fxControl( screen, key ), 'select' )[0] || null };
+/** What the head of the block of a feature says on a tab, with the block closed - another block opened in its place */
+const fxSaid = function( screen, tab, key ) {
+	screen.show( tab );
+	openBlock( blocksOf( screen.form ).filter( function( card ) { return card.dataset.object !== key } )[0] );
+	return byClass( fxBlock( screen, key ), 'design-accordion-summary' )[0].textContent;
+};
+const fxFeatures = function( screen ) { return JSON.stringify( screen.design._edit.features ) };
+const fxLastPayload = function( screen ) { screen.design._previewNow(); return screen.requests[screen.requests.length - 1].payload };
+
+const fxByName = fxOrder.slice().sort( function( a, b ) { return fxData[a].name.localeCompare( fxData[b].name ) } );
+
+check( 'a feature that brings variants has a block of its own on the Templates tab, after the blocks of the parts: the table has one object more for it, after the eight, in the order of the answer - by the names of the features, not by their keys - and the tab is drawn from it',
+	fxOrder.join() === fxByName.join() && fxOrder.join() !== fxOrder.slice().sort().join() && fxOrder.length === 2
+	&& JSON.stringify( fx.design._data.layout.objects ) === JSON.stringify( OBJECTS.concat( fxOrder ) )
+	&& JSON.stringify( drawnRows( fx ) ) === JSON.stringify( tableRows( fx.design._data.layout, 'templates' ) )
+	&& fxObjects( fx ).join() === tplRows.map( function( row ) { return row.object } ).concat( fxOrder ).join() );
+check( '...each block is named by the feature: the name its manifest gives it, which is no text of the panel, and every block of the tab is one of the accordion',
+	fxOrder.every( function( key ) { return byClass( fxBlock( fx, key ), 'design-accordion-name' )[0].textContent === fxData[key].name && TEXT['/_admin/design/object/'+ key+ '/label'] === undefined } )
+	&& blocksOf( fx.form ).every( function( card ) { return card.dataset.tab === 'templates' && hasClass( card, 'design-accordion' ) } ) );
+
+const fxSet = fxSelect( fx, 'awning' );
+
+check( '...the variant of a feature that brings two is chosen by a select of them - the names the heads give them - with the one word of label/template over it and the description of the chosen one under it, as for a part: it stands on the variant the feature has before anything is chosen',
+	fxSet !== null && JSON.stringify( offered( fxSet ) ) === JSON.stringify( Object.keys( fxZinc.catalogue ).map( function( set ) { return [ set, fxZinc.catalogue[set].name ] } ) )
+	&& shown( fxSet ) === fxZinc['default'] && fxSet.id === 'design-feature-awning' && fxSet.parent.dataset.control === 'features/awning/set'
+	&& byTag( fxSet.parent, 'label' )[0].textContent === TEXT['/_admin/design/label/template'] && byTag( fxSet.parent, 'label' )[0].getAttribute('for') === fxSet.id
+	&& byTag( fxSet.parent, 'small' )[0].textContent === fxZinc.catalogue[ fxZinc['default'] ].description
+	&& byTag( cardOf( fxSet ), 'select' ).length === 1 && cardOf( fxSet ).dataset.object === 'awning' );
+check( '...a feature with one variant only has nothing to choose: its block shows the description of the variant and no select',
+	fxSelect( fx, 'tiles' ) === null && byTag( fxBlock( fx, 'tiles' ), 'select' ).length === 0
+	&& byTag( controlOf( fx, 'features/tiles/set' ), 'small' )[0].textContent === fxData.tiles.catalogue.regular.description );
+
+// The heads of the closed blocks of the features say nothing while the variant is the one the feature has before anything is chosen, and name the variant otherwise
+const fxHeadsAtStart = fxOrder.map( function( key ) { return fxSaid( fx, 'templates', key ) } );
+
+choose( fxSelect( fx, 'awning' ), 'loud' );
+
+check( 'choosing a variant is the selection on screen: the choice for the feature has the variant and no knob yet, the description under the select follows, the screen is no longer the stored one - the way back is shown - and the select stands where it was',
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'loud', knobs : {} } } ) && fxSelect( fx, 'awning' ).value === 'loud'
+	&& byTag( fxSelect( fx, 'awning' ).parent, 'small' )[0].textContent === fxZinc.catalogue.loud.description
+	&& fx.design._isDirty() === true && fx.byId('design-reset').hidden === false );
+check( '...the preview is asked for with the choices for the features beside the rest of the selection: an object of entries, the variant and the position of each knob that was moved',
+	JSON.stringify( fxLastPayload( fx ).features ) === JSON.stringify( { awning : { set : 'loud', knobs : {} } } ) && fx.requests[fx.requests.length - 1].endpoint === 'preview' );
+check( '...and the head of the closed block names the variant, as the catalogue of the answer has it: nothing at the start, and nothing of the feature that has the one variant',
+	fxHeadsAtStart.join() === ',' && fxSaid( fx, 'templates', 'awning' ) === fxZinc.catalogue.loud.name && fxSaid( fx, 'templates', 'tiles' ) === '' );
+
+choose( fxSelect( fx, 'awning' ), 'regular' );
+
+check( '...the variant the feature has before anything is chosen, chosen again, is no choice: the entry is gone, the screen is the stored one, the way back is hidden, and the next preview carries no feature',
+	fxFeatures( fx ) === '{}' && fx.design._isDirty() === false && fx.byId('design-reset').hidden === true && JSON.stringify( fxLastPayload( fx ).features ) === '{}'
+	&& fxSaid( fx, 'templates', 'awning' ) === '' );
+
+// The knobs stand on the tab their head names, in a block of the feature after the blocks of the objects
+const fxTabs = [ 'type', 'surfaces', 'colours', 'motion' ];
+const fxTabProblems = fxTabs.filter( function( tab ) {
+	fx.show( tab );
+	const objects = fxObjects( fx );
+	const own = objects.filter( function( object ) { return fxOrder.indexOf( object ) !== -1 } );
+	return own.length === 0 || objects.slice( objects.length - own.length ).join() !== own.join() || own.join() !== fxOrder.filter( function( key ) { return own.indexOf( key ) !== -1 } ).join()
+		|| JSON.stringify( drawnRows( fx ) ) !== JSON.stringify( tableRows( fx.design._data.layout, tab ) );
+} );
+const fxKnobsAgree = fxOrder.every( function( key ) {
+	return Object.keys( fxData[key].catalogue ).every( function( set ) {
+		return Object.keys( fxData[key].catalogue[set].knobs ).every( function( knob ) { return fxPlace( fx, key, knob )[0] === fxData[key].catalogue[set].knobs[knob].tab && fxPlace( fx, key, knob )[1] === key } );
+	} );
+} );
+
+check( 'the knobs of a feature stand on the tab their head names, each of those tabs having a block of the feature after the blocks of the objects, in the order of the features - and the rows of a tab are the rows the table gives it, in its order'
+	+ ( fxTabProblems.length === 0 ? '' : ' - not so for '+ fxTabProblems.join() ), fxTabProblems.length === 0 && fxKnobsAgree === true );
+check( '...a knob is placed where the first variant that declares it puts it, and a knob only one variant declares has its row for all of them: the table has the knobs of the loud variant too',
+	Object.keys( fxLoud ).every( function( knob ) { return fxPlace( fx, 'awning', knob ) !== undefined } ) && Object.keys( fxRegular ).length < Object.keys( fxLoud ).length
+	&& Object.keys( fxLoud ).filter( function( knob ) { return fxRegular[knob] === undefined } ).every( function( knob ) { return fxControl( fx, 'awning', knob ) !== null } ) );
+
+// A scale and a choice are strips, as the knobs of the parts are
+const fxSizeKey = 'features/awning/knobs/size';
+const fxSizeRow = fxControl( fx, 'awning', 'size' );
+
+check( 'a scale a feature brings is a strip of five positions, −2 to +2, under the label its head gives it, the middle one lit while nothing is chosen - the row says which control it is and which knob',
+	fxSizeRow.dataset.control === fxSizeKey && fxSizeRow.dataset.knob === 'size' && rowName( fxSizeRow ) === fxRegular.size.label && hasClass( fxSizeRow, 'design-knob-row--off' ) === false
+	&& byTag( fxSizeRow, 'button' ).map( function( button ) { return button.textContent } ).join() === SIGNED.join() && pressedKey( fx, fxSizeKey ) === 'false,false,true,false,false' );
+
+pressKey( fx, fxSizeKey, 1 );
+
+check( '...pressing a position chooses it: the feature is chosen at the variant it stands at, with the position of the knob - the strip lights it - and the preview carries it',
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1 } } } ) && pressedKey( fx, fxSizeKey ) === 'false,false,false,true,false'
+	&& fx.design._isDirty() === true && JSON.stringify( fxLastPayload( fx ).features ) === fxFeatures( fx ) );
+
+pressKey( fx, fxSizeKey, 0 );
+
+check( '...and the position put back is no choice: a feature at its variant with every knob at the position its head says is the feature as it is, and has no entry - the screen is the stored one again',
+	fxFeatures( fx ) === '{}' && fx.design._isDirty() === false && pressedKey( fx, fxSizeKey ) === 'false,false,true,false,false' );
+
+pressKey( fx, fxSizeKey, 1 );
+
+const fxLineRow = fxControl( fx, 'awning', 'line' );
+const fxLineKey = 'features/awning/knobs/line';
+
+check( 'a choice a feature brings is a strip of three, the words its head gives the positions - less, the default and more - under its label, the middle one lit while nothing is chosen',
+	rowName( fxLineRow ) === fxRegular.line.label && byTag( fxLineRow, 'button' ).map( function( button ) { return button.textContent } ).join() === [ fxRegular.line.options.less, fxRegular.line.options['default'], fxRegular.line.options.more ].join()
+	&& pressedKey( fx, fxLineKey ) === 'false,true,false' );
+
+pressKey( fx, fxLineKey, 1 );
+
+check( '...and a position of it is chosen as one of a scale is: the entry holds the knobs that were moved, in the order they were moved',
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1, line : 1 } } } ) && pressedKey( fx, fxLineKey ) === 'false,false,true' );
+
+// A ground is a select of the surfaces of the palette, an ink one of the tones of its text and lines
+const fxGroundSelect = function() { return byTag( fxControl( fx, 'awning', 'submit' ), 'select' )[0] };
+const fxInkSelect = function() { return byTag( fxControl( fx, 'awning', 'label' ), 'select' )[0] };
+const fxWordsOf = function( words, kind ) { return words.map( function( word ) { return [ word, TEXT['/_admin/design/'+ kind+ '/'+ word] ] } ) };
+
+check( 'a ground a feature brings is a select of the surfaces of the palette - the words the panel has for them, in the palette\'s order, as the answer lists them - under the label its head gives it, standing on the surface its head says',
+	fxGroundSelect() !== null && fxGroundSelect().id === 'design-feature-awning_submit' && JSON.stringify( offered( fxGroundSelect() ) ) === JSON.stringify( fxWordsOf( fx.design._data.grounds, 'ground' ) )
+	&& fx.design._data.grounds.length > 1 && offered( fxGroundSelect() ).every( function( pair ) { return typeof pair[1] === 'string' && pair[1] !== '' && pair[1].indexOf('/_admin/') !== 0 } )
+	&& shown( fxGroundSelect() ) === fxRegular.submit['default'] && byTag( fxGroundSelect().parent, 'label' )[0].textContent === fxRegular.submit.label && fxGroundSelect().disabled === false );
+check( '...an ink one of the tones - the words of the panel for them, as the answer lists them - the same way',
+	fxInkSelect() !== null && fxInkSelect().id === 'design-feature-awning_label' && JSON.stringify( offered( fxInkSelect() ) ) === JSON.stringify( fxWordsOf( fx.design._data.inks, 'ink' ) )
+	&& fx.design._data.inks.length > 1 && offered( fxInkSelect() ).every( function( pair ) { return typeof pair[1] === 'string' && pair[1] !== '' && pair[1].indexOf('/_admin/') !== 0 } )
+	&& shown( fxInkSelect() ) === fxRegular.label['default'] && byTag( fxInkSelect().parent, 'label' )[0].textContent === fxRegular.label.label );
+
+const fxOtherGround = fx.design._data.grounds.filter( function( word ) { return word !== fxRegular.submit['default'] } )[0];
+const fxOtherInk = fx.design._data.inks.filter( function( word ) { return word !== fxRegular.label['default'] } )[0];
+
+choose( fxGroundSelect(), fxOtherGround );
+choose( fxInkSelect(), fxOtherInk );
+
+check( '...choosing a surface or a tone chooses it for the knob: the entry holds the word, and the preview carries it',
+	JSON.stringify( fx.design._edit.features.awning.knobs ) === JSON.stringify( { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk } ) && fx.design._edit.features.awning.set === 'regular'
+	&& fxGroundSelect().value === fxOtherGround && fxInkSelect().value === fxOtherInk && JSON.stringify( fxLastPayload( fx ).features ) === fxFeatures( fx ) );
+
+// The knobs of the loud variant that the regular one does not declare are drawn, greyed out and switched off, in the words of a knob of a part that its template does not answer to
+const fxFlipRow = function() { return fxControl( fx, 'awning', 'flip' ) };
+const fxHalf = function( half ) { return fx.byId('design-feature-awning_flip_'+ half) };
+const fxUnanswered = function( knob ) { return say( '/_admin/design/hint/unanswered', knob.label ) };
+
+check( 'a knob the chosen variant does not declare has its row all the same, greyed out and switched off - the strip of a scale, the two colours of a pair - with the sentence a knob of a part has, naming the knob',
+	hasClass( fxControl( fx, 'awning', 'turn' ), 'design-knob-row--off' ) === true && byTag( fxControl( fx, 'awning', 'turn' ), 'button' ).every( function( button ) { return button.disabled === true && button.getAttribute('aria-pressed') === 'false' } )
+	&& byTag( byClass( fxControl( fx, 'awning', 'turn' ), 'design-knob-text' )[0], 'small' )[0].textContent === fxUnanswered( fxLoud.turn )
+	&& byTag( fxFlipRow(), 'input' ).length === 2 && byTag( fxFlipRow(), 'input' ).every( function( input ) { return input.disabled === true } )
+	&& byTag( byClass( fxFlipRow(), 'design-knob-text' )[0], 'small' )[0].textContent === fxUnanswered( fxLoud.flip )
+	&& byTag( fxControl( fx, 'awning', 'submit' ), 'select' )[0].disabled === false );
+
+fx.show( 'templates' );
+choose( fxSelect( fx, 'awning' ), 'loud' );
+
+check( '...the loud variant chosen, the same rows are live: the entry keeps the knobs that were moved, since the loud variant declares them too',
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'loud', knobs : { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk } } } )
+	&& hasClass( fxControl( fx, 'awning', 'turn' ), 'design-knob-row--off' ) === false && byTag( fxControl( fx, 'awning', 'turn' ), 'button' ).every( function( button ) { return button.disabled === false } )
+	&& byTag( fxFlipRow(), 'input' ).every( function( input ) { return input.disabled === false } ) );
+
+// A ground and an ink that only the loud variant declares: their selects go the way the strips and the colours do
+const fxLateAnswer = featuresAnswer();
+
+fxLateAnswer.awning.catalogue.loud.knobs.edge = featureKnob( 'ground', 'colours', 'Edge', 'brand-safe' );
+fxLateAnswer.awning.catalogue.loud.knobs.stripe = featureKnob( 'ink', 'colours', 'Stripe', 'subtitle' );
+
+const fxLate = panel( { features : fxLateAnswer, layout : layoutWith( fxLateAnswer ) } );
+const fxLateSelect = function( knob ) { return byTag( fxControl( fxLate, 'awning', knob ), 'select' )[0] };
+const fxLateOff = [ fxLateSelect('edge').disabled, fxLateSelect('stripe').disabled, byTag( fxControl( fxLate, 'awning', 'edge' ), 'small' ).map( function( small ) { return small.textContent } ).join() ];
+
+choose( fxSelect( fxLate, 'awning' ), 'loud' );
+
+check( '...a ground and an ink that only the loud variant declares have their selects switched off, with the sentence of a knob the variant does not answer to under the label, while the regular one is chosen - and the loud one switches them on and takes the sentence away',
+	JSON.stringify( fxLateOff ) === JSON.stringify( [ true, true, fxUnanswered( fxLateAnswer.awning.catalogue.loud.knobs.edge ) ] )
+	&& fxLateSelect('edge').disabled === false && fxLateSelect('stripe').disabled === false && byTag( fxControl( fxLate, 'awning', 'edge' ), 'small' ).length === 0 );
+
+// A pair of colours: the label over two colour inputs, a light half and a dark half
+check( 'a pair of colours is the label its head gives over two colour inputs, the light half and the dark half, each under the word of its half, standing at the pair its head says - and under them the line of what they measure, which is hidden while nothing was measured against them',
+	rowName( fxFlipRow() ) === fxLoud.flip.label && fxFlipRow().dataset.knob === 'flip' && fxFlipRow().dataset.control === 'features/awning/knobs/flip'
+	&& fxHalf('light') !== null && fxHalf('dark') !== null && fxHalf('light').type === 'color' && fxHalf('dark').type === 'color'
+	&& fxHalf('light').value === fxLoud.flip['default'][0] && fxHalf('dark').value === fxLoud.flip['default'][1]
+	&& byClass( fxFlipRow(), 'design-colour-half' ).map( function( box ) { return byTag( box, 'small' )[0].textContent } ).join() === [ TEXT['/_admin/design/label/light'], TEXT['/_admin/design/label/dark'] ].join()
+	&& fx.byId('design-feature-awning_flip_contrast').hidden === true );
+
+check( '...each colour input has a name of its own that says which colour and which half: the word that is drawn beside it, and after it the label of the knob - what a person is told who reaches the input alone, and what a voice control matches by the word it sees',
+	[ 'light', 'dark' ].every( function( half ) {
+		const word = TEXT['/_admin/design/label/'+ half];
+		return fxHalf( half ).getAttribute('aria-label') === word+ ' - '+ fxLoud.flip.label && byClass( fxFlipRow(), 'design-colour-half' ).some( function( box ) { return byTag( box, 'small' )[0].textContent === word && byTag( box, 'input' )[0] === fxHalf( half ) } );
+	} ) );
+
+/*	The ids of the controls of a feature: a key and a knob are letters, digits and hyphens, so a hyphen between the parts of an id would make the light half of
+	the colour "x" and a knob that is called "x-light" one id - in the one block of the feature, where both of them stand at once	*/
+const fxClashData = featuresAnswer();
+fxClashData.a = { name : 'Single', active : true, 'default' : 'regular', catalogue : { regular : { name : 'Regular', description : '', knobs : {
+	x : featureKnob( 'colour', 'colours', 'X', [ '#b03a2e', '#e8705f' ] ),
+	'x-light' : featureKnob( 'ink', 'colours', 'X light', 'subtitle' ),
+} } }, set : '', knobs : [] };
+
+const fxClash = panel( { features : fxClashData, layout : layoutWith( fxClashData ) } );
+const fxClashHalf = byTag( fxControl( fxClash, 'a', 'x' ), 'input' )[0];
+const fxClashInk = byTag( controlOf( fxClash, 'features/a/knobs/x-light' ), 'select' )[0];
+
+check( 'the controls of a feature have ids that no knob can make equal: the light half of the colour "x" and the ink "x-light" stand in one block as two elements with two ids, each found by its own - and the label of the ink points at the ink',
+	fxClashHalf !== undefined && fxClashInk !== undefined && fxClashHalf.id !== fxClashInk.id
+	&& fxClash.byId( fxClashHalf.id ) === fxClashHalf && fxClash.byId( fxClashInk.id ) === fxClashInk && byTag( fxClashInk.parent, 'label' )[0].getAttribute('for') === fxClashInk.id );
+
+fxHalf('light').value = '#112233';
+fxHalf('light').fire('change');
+fxHalf('dark').value = '#aabbcc';
+fxHalf('dark').fire('change');
+
+check( '...a colour put into one half is the pair with the other as it stood, in the order light and dark - and the preview carries the pair',
+	JSON.stringify( fx.design._edit.features.awning.knobs.flip ) === JSON.stringify( [ '#112233', '#aabbcc' ] ) && fx.design._edit.features.awning.set === 'loud'
+	&& JSON.stringify( fxLastPayload( fx ).features.awning.knobs.flip ) === JSON.stringify( [ '#112233', '#aabbcc' ] ) );
+
+fxControl( fx, 'awning', 'turn' );
+pressKey( fx, 'features/awning/knobs/turn', 2 );
+
+// The heads of the closed blocks say what stands off the defaults: the label and the word of the value
+check( 'the head of a closed block of a feature says the knobs on its tab that stand elsewhere than its head says they do - the label and the word of the value, a position as its strip shows it, a surface or a tone by the panel\'s word, a pair by its two colours - joined as the heads of the objects are',
+	[ fxSaid( fx, 'type', 'awning' ) ].concat( [ fxSaid( fx, 'surfaces', 'awning' ), fxSaid( fx, 'colours', 'awning' ), fxSaid( fx, 'motion', 'awning' ) ] ).join('|')
+		=== [ fxRegular.size.label+ ' +1', fxRegular.line.label+ ' '+ fxRegular.line.options.more,
+			[ fxRegular.submit.label+ ' '+ TEXT['/_admin/design/ground/'+ fxOtherGround], fxRegular.label.label+ ' '+ TEXT['/_admin/design/ink/'+ fxOtherInk], fxLoud.flip.label+ ' #112233 / #aabbcc' ].join(' · '),
+			fxLoud.turn.label+ ' +2' ].join('|') );
+
+// Another variant: the knobs it does not declare go, as the position of a knob a template does not answer to goes back to the middle
+fx.show( 'templates' );
+choose( fxSelect( fx, 'awning' ), 'regular' );
+
+check( 'another variant is the knobs it declares: those the last one declared and this one does not are not this one\'s - they go from the entry - and the rows of them are greyed out',
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk } } } )
+	&& byTag( fxFlipRow(), 'input' ).every( function( input ) { return input.disabled === true } ) && hasClass( fxControl( fx, 'awning', 'turn' ), 'design-knob-row--off' ) === true );
+
+choose( fxSelect( fx, 'awning' ), 'loud' );
+
+check( '...and the variant chosen again brings them back at the position their head says: what was taken from the entry is not kept to give back',
+	fx.design._edit.features.awning.knobs.flip === undefined && fx.design._edit.features.awning.knobs.turn === undefined
+	&& ( fxFlipRow(), fxHalf('light').value === fxLoud.flip['default'][0] && fxHalf('dark').value === fxLoud.flip['default'][1] )
+	&& ( fxControl( fx, 'awning', 'turn' ), pressedKey( fx, 'features/awning/knobs/turn' ) === 'false,false,true,false,false' ) );
+
+// The way back takes the choices back with the rest of the selection
+fx.byId('design-reset').fire('click');
+
+check( 'the way back puts the choices for the features back to the stored ones, with the rest of the selection: none here - the entry, the select and the strips are what they were',
+	fxFeatures( fx ) === '{}' && fx.design._isDirty() === false && shown( fxSelect( fx, 'awning' ) ) === fxZinc['default']
+	&& ( fxControl( fx, 'awning', 'size' ), pressedKey( fx, fxSizeKey ) === 'false,false,true,false,false' ) );
+
+// What the colours of a feature measure on the page: the numbers are the server's - design/list and every preview carry them -, the words the panel's
+const fxMeasure = function( light, dark ) { return { awning : { flip : { light : { ratio : light, target : 3, safe : light >= 3 }, dark : { ratio : dark, target : 3, safe : dark >= 3 } } } } };
+const fxWeak = panel( featured( { awning : { set : 'loud', knobs : { flip : [ '#eeeeee', '#222222' ] } } }, { contrasts : fxMeasure( 1.2, 1.3 ) } ) );
+const fxWeakLine = function() { fxControl( fxWeak, 'awning', 'flip' ); return fxWeak.byId('design-feature-awning_flip_contrast') };
+
+check( 'a colour of a feature that does not reach the ratio a mark on a page needs is said under the pair, in the panel\'s words with the numbers of the server: the two ratios and the one the mark needs - the colours stay as they are, nothing refuses them',
+	fxWeakLine().hidden === false && fxWeakLine().textContent === say( '/_admin/design/label/contrast', 1.2, 1.3, 3 ) && hasClass( fxWeakLine(), 'nino-admin-hint' ) && hasClass( fxWeakLine(), 'design-colour-warning' )
+	&& fxWeak.byId('design-feature-awning_flip_light').value === '#eeeeee' && fxWeak.byId('design-feature-awning_flip_dark').value === '#222222' );
+
+fxWeak.design._previewNow();
+fxWeak.answer( 200, Object.assign( previewed( ':root{}', '<!doctype html>' ), { contrasts : fxMeasure( 4.5, 1.3 ) } ) );
+
+check( '...every preview brings the measure again and the line is written in place, without the column being drawn again: one half below the ratio is enough to say it, both above it say nothing',
+	fxWeakLine().hidden === false && fxWeakLine().textContent === say( '/_admin/design/label/contrast', 4.5, 1.3, 3 ) && fxWeak.byId('design-feature-awning_flip_contrast') === fxWeakLine()
+	&& ( fxWeak.design._previewNow(), fxWeak.answer( 200, Object.assign( previewed( ':root{}', '<!doctype html>' ), { contrasts : fxMeasure( 4.5, 5 ) } ) ), fxWeakLine().hidden === true ) );
+
+// A choice kept for a feature that is not active has no block and no row, and rides along
+const fxGhost = panel( featured( { awning : { set : 'loud', knobs : { size : 1 } }, ghost : { set : 'x', knobs : { a : 1 } } } ) );
+
+check( 'a choice kept for a feature that is not active - the answer lists it, flagged - has no object in the table, no block on any tab and no row: nothing of it is drawn',
+	fxGhost.design._data.features.ghost.active === false && fxGhost.design._data.layout.objects.indexOf('ghost') === -1 && Object.keys( fxGhost.design._data.layout.controls ).every( function( key ) { return key.indexOf('features/ghost/') === -1 } )
+	&& [ 'templates', 'type', 'surfaces', 'colours', 'motion' ].every( function( tab ) { fxGhost.show( tab ); return fxObjects( fxGhost ).indexOf('ghost') === -1 } ) );
+check( '...and it is still the screen\'s choice: it is posted with the rest, so that a save keeps it, and a screen that did not touch it is the stored one',
+	JSON.stringify( fxGhost.design._edit.features.ghost ) === JSON.stringify( { set : 'x', knobs : { a : 1 } } ) && JSON.stringify( fxLastPayload( fxGhost ).features.ghost ) === JSON.stringify( { set : 'x', knobs : { a : 1 } } )
+	&& fxGhost.design._isDirty() === false && fxFeatures( fxGhost ).indexOf('"awning":{"set":"loud","knobs":{"size":1}}') !== -1 );
+
+// What the server dropped or replaced on the way is told in the panel's words, the feature by the name its manifest gives it
+const fxNoted = panel( featured( {}, { notes : [
+	{ error : 'a sentence in English', code : 'design_set_missing', params : [ 'awning', 'gone', 'regular' ] },
+	{ error : 'a sentence in English', code : 'design_feature_inactive', params : [ 'ghost' ] },
+] } ) );
+
+check( 'a note about a feature is said in the words of the panel as a note about a part is: a variant that is not there is told by the name of the feature and of the variant that stands in its place, a choice kept for a feature that is not active by its key',
+	JSON.stringify( noteLines( fxNoted ) ) === JSON.stringify( [
+		say( '/_admin/error/design_set_missing', fxZinc.name, 'gone', fxZinc.catalogue.regular.name ),
+		say( '/_admin/error/design_feature_inactive', 'ghost' ),
+	] ) && noteLines( fxNoted ).every( function( line ) { return line.indexOf('%s') === -1 && line.indexOf('design_') === -1 } ) );
+
+// Every word of the rows of the features is one of the panel's or the feature's own: no key stands on the screen for a text nobody wrote
+const fxUnsaid = [];
+
+[ 'templates', 'type', 'surfaces', 'colours', 'motion' ].forEach( function( tab ) {
+	fx.show( tab );
+	eachBlock( fx.form, function() {
+		descendants( fx.pane ).forEach( function( el ) {
+			[ el.textContent, el.getAttribute('title'), el.getAttribute('aria-label') ].forEach( function( text ) { if( typeof text === 'string' && text.indexOf('/_admin/') === 0 ) fxUnsaid.push( text ) } );
+		} );
+	} );
+} );
+
+check( '...and every word the blocks of the features show is one the texts carry'+ ( fxUnsaid.length === 0 ? '' : ' - missing: '+ fxUnsaid.slice( 0, 4 ).join() ), fxUnsaid.length === 0 );
 
 console.log('');
 
@@ -5826,8 +6254,8 @@ const asked = panel();
 asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
-check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
+check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the choices for the features, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
 	&& first.payload.parts.header === 'first' && first.payload.parts.tables === 'first' && first.payload.knobs.section['hero-title'] === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
@@ -6211,12 +6639,26 @@ check( '...while a discard draws the stored selection again, so a leave that doe
 
 console.log( 'The Theme tab' );
 
-/** The eleven keys a theme keeps, out of an answer of design/list: the setup without the theme it names and the css it carries */
+/** The twelve keys a theme keeps, out of an answer of design/list: the setup without the theme it names and the css it carries */
 function snapshotOf( data ) {
 	const copy = JSON.parse( JSON.stringify( data ) );
 	const parts = {};
 	copy.parts.forEach( function( row ) { parts[row.part] = row.set } );
-	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, radius : copy.radius, 'radius-alt' : copy['radius-alt'], radii : copy.radii, motion : copy.motion, parts : parts, knobs : copy.knobs, fonts : copy.fonts, colours : copy.colours };
+	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, radius : copy.radius, 'radius-alt' : copy['radius-alt'], radii : copy.radii, motion : copy.motion, parts : parts, knobs : copy.knobs, features : chosenOf( copy.features ), fonts : copy.fonts, colours : copy.colours };
+}
+
+/** What the setup chose for the features, out of the features of an answer of design/list: key => { set, knobs } for each that has a variant chosen - and none, an empty list on the wire, where nothing is chosen */
+function chosenOf( features ) {
+
+	const given = Array.isArray( features ) === true ? {} : ( features || {} );
+	const entries = {};
+
+	Object.keys( given ).forEach( function( key ) {
+		if( given[key].set !== '' )
+			entries[key] = { set : given[key].set, knobs : given[key].knobs };
+	} );
+
+	return Object.keys( entries ).length === 0 ? [] : entries;
 }
 
 /** A theme as design/list gives the active one: its row of the list and what its file holds - the setup of the stand-in's own listing unless it is given */
@@ -6770,6 +7212,44 @@ check( 'a theme that names colours - one of the project, written from the screen
 	brandOf( adopting ) === '#2e7d32' && adopting.design._active.setup.colours.primary === '#2e7d32' && adopting.design._themeChanged() === false
 	&& ( adopting.design._edit.colours.primary = '#112233', adopting.design._themeChanged() ) === true );
 
+/*	The choices for the features are the project's the way the brand colour is. A theme that names none - every theme the feature ships - is taken over with the choices the
+	screen has, and the record the chip "changed" compares with has none either, so a choice moved afterwards is no change of it; a theme of the project, written from the
+	screen with them, takes them over - and takes them away again where it was written with none	*/
+const chosenFeatures = { awning : { set : 'loud', knobs : { size : 1 } } };
+const withoutFeatures = function( setup ) {
+	const copy = JSON.parse( JSON.stringify( setup ) );
+	delete copy.features;
+	return copy;
+};
+const holding = themed( featured( chosenFeatures ) );
+holding.byId('design-theme-load-magazine').fire('click');
+holding.answer( 200, themeLoad( 'magazine', withoutFeatures( themeSetup() ), [] ) );
+
+check( 'a theme that names no choices for the features is taken over with the choices the screen has - the choices are the project\'s - and with everything else the theme chooses',
+	JSON.stringify( holding.design._edit.features ) === JSON.stringify( chosenFeatures ) && holding.design._edit.theme === 'magazine' && holding.design._edit.parts.header === 'second' && holding.design._edit.size === -1 );
+check( '...the record of the theme the chip compares with has none either, so the screen is the theme: a choice for a feature moved afterwards is no change of it, and a knob of a template is',
+	Object.prototype.hasOwnProperty.call( holding.design._active.setup, 'features' ) === false && holding.design._themeChanged() === false
+	&& ( holding.design._edit.features.awning.knobs.size = -1, holding.design._themeChanged() ) === false
+	&& ( holding.design._edit.size = 1, holding.design._themeChanged() ) === true );
+
+const recalled = themeSetup();
+recalled.features = { awning : { set : 'regular', knobs : { line : 1 } } };
+const recalling = themed( featured( chosenFeatures ) );
+recalling.byId('design-theme-load-magazine').fire('click');
+recalling.answer( 200, themeLoad( 'magazine', recalled, [] ) );
+
+check( 'a theme that names choices for the features - one of the project, written from the screen with them - takes them over in place of the screen\'s, and its record has them: the compare reads them again',
+	JSON.stringify( recalling.design._edit.features ) === JSON.stringify( recalled.features ) && JSON.stringify( recalling.design._active.setup.features ) === JSON.stringify( recalled.features )
+	&& recalling.design._themeChanged() === false && ( recalling.design._edit.features.awning.knobs.line = -1, recalling.design._themeChanged() ) === true );
+
+const clearing = themed( featured( chosenFeatures ) );
+clearing.byId('design-theme-load-magazine').fire('click');
+clearing.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
+
+check( '...and one written with none - an empty list on the wire - takes the screen\'s choices away, and is the theme the screen is: no chip, no entry left',
+	Array.isArray( themeSetup().features ) === true && themeSetup().features.length === 0 && JSON.stringify( clearing.design._edit.features ) === '{}' && clearing.design._themeChanged() === false
+	&& ( clearing.show( 'theme', 'properties' ), clearing.byId('design-theme-changed') === null ) );
+
 /*	The chips of a row. "Active" is the theme the website runs - the one of the last apply -, and a theme the screen was taken from that the website does not run says
 	so: loaded, not applied. The theme that is both is told once, as the one the website runs	*/
 const chipsOf = function( screen, slug ) {
@@ -6858,14 +7338,25 @@ making.byId('design-theme-new').value = 'Mein Name';
 making.byId('design-theme-new').fire('input');
 making.byId('design-theme-create').fire('click');
 
-check( 'Create posts design/theme/create with the name that is typed, an empty description and the working copy: the templates, the knobs, the size, the width, the animation, the fonts, the palette, the theme and the css',
+check( 'Create posts design/theme/create with the name that is typed, an empty description and the working copy: the templates, the knobs, the choices for the features, the size, the width, the animation, the fonts, the palette, the theme and the css',
 	making.requests.length === 1 && making.requests[0].endpoint === 'theme/create'
-	&& Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,radii,radius,radius-alt,size,theme,whitespace,width'
+	&& Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,features,fonts,knobs,motion,name,parts,radii,radius,radius-alt,size,theme,whitespace,width'
 	&& making.requests[0].payload.name === 'Mein Name' && making.requests[0].payload.description === '' && making.requests[0].payload.theme === '' && making.requests[0].payload.css === ''
 	&& JSON.stringify( making.requests[0].payload.parts ) === JSON.stringify( making.design._edit.parts ) && JSON.stringify( making.requests[0].payload.knobs ) === JSON.stringify( making.design._edit.knobs )
 	&& themeControls( making ).every( function( control ) { return control.disabled === true } ) );
 
 making.answer( 200, { slug : 'mein-name', themes : withTheme( 'mein-name', 'Mein Name', '' ), active : activeOf( 'mein-name', 'Mein Name', '', false, '' ) } );
+
+// What the screen chose for a feature goes into the theme that is made of it
+const makingFx = panel( featured( { awning : { set : 'loud', knobs : { size : 1, line : -1 } } } ) );
+makingFx.show( 'theme', 'properties' );
+makingFx.byId('design-theme-new').value = 'Mein Name';
+makingFx.byId('design-theme-new').fire('input');
+makingFx.byId('design-theme-create').fire('click');
+
+check( '...with the choices for the features as the screen has them: the variant of a feature and its knobs are in the theme that is made, which is how a theme keeps them',
+	makingFx.requests.length === 1 && makingFx.requests[0].endpoint === 'theme/create' && Object.keys( makingFx.design._edit.features ).length === 1
+	&& JSON.stringify( makingFx.requests[0].payload.features ) === JSON.stringify( makingFx.design._edit.features ) && makingFx.requests[0].payload.features.awning.set === 'loud' && makingFx.requests[0].payload.features.awning.knobs.size === 1 );
 
 check( 'the answer makes the draft name the theme - the way back is shown, for nothing is stored - and the card of the active theme shows its name, with its fields: the name it was given and no description; no chip, the screen is the theme',
 	making.design._edit.theme === 'mein-name' && making.design._active.slug === 'mein-name' && making.design._data.theme === '' && making.design._isDirty() === true && making.byId('design-reset').hidden === false
@@ -6895,7 +7386,7 @@ making.byId('design-theme-save').fire('click');
 check( 'Save theme posts design/theme/save with the slug, the two fields as they are typed and the working copy - the name does not change the slug',
 	making.requests.length === 1 && making.requests[0].endpoint === 'theme/save' && making.requests[0].payload.slug === 'mein-name'
 	&& making.requests[0].payload.name === 'Neuer Name' && making.requests[0].payload.description === 'Neue Beschreibung' && making.requests[0].payload.theme === 'mein-name'
-	&& making.requests[0].payload.knobs.section['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,radii,radius,radius-alt,size,slug,theme,whitespace,width' );
+	&& making.requests[0].payload.knobs.section['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,features,fonts,knobs,motion,name,parts,radii,radius,radius-alt,size,slug,theme,whitespace,width' );
 
 making.answer( 200, {
 	themes : withTheme( 'mein-name', 'Neuer Name', 'Neue Beschreibung' ),
@@ -7474,7 +7965,7 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width && sent.payload.whitespace === real.whitespace
@@ -7549,7 +8040,7 @@ else {
 		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length > 0 && none.themes[0].shipped === true
 		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
 		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
-		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,fonts,colours'
+		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,features,fonts,colours'
 		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,fonts'
 		&& answered.load.notes.every( function( note ) { return typeof note === 'string' || ( typeof note.error === 'string' && typeof note.code === 'string' && Array.isArray( note.params ) ) } )
 		&& typeof none.running === 'string' && typeof activeList.running === 'string'
@@ -7690,6 +8181,165 @@ else {
 				} );
 			} );
 		} ) );
+}
+
+console.log('');
+
+// --- The answer of design/list with a feature in it --------------------------------------------------
+//
+// The server's own answer for a project with an active feature that brings variants - the fixture of the PHP suite, with a choice for it and a choice kept for a
+// feature that is not there: the screen drawn from it, and nothing but it. The features, their variants and knobs are whatever the answer says; the checks hold the
+// screen to the answer and the answer to the shape the screen reads
+
+console.log( 'The answer of design/list with a feature' );
+
+const featuresFile = process.env.DESIGN_FEATURES || '';
+
+if( featuresFile === '' || fs.existsSync( featuresFile ) === false )
+	console.log( '  --  no answer of design/list with a feature in it was handed to this run (DESIGN_FEATURES), so the blocks of the features are not drawn from the real one' );
+else {
+
+	const realFx = JSON.parse( fs.readFileSync( featuresFile, 'utf8' ) );
+	const kinds = [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
+	const live = Object.keys( realFx.features ).filter( function( key ) { return realFx.features[key].active === true } );
+	const kept = Object.keys( realFx.features ).filter( function( key ) { return realFx.features[key].active === false } );
+	const realScreen = panel( realFx, { whole : true } );
+	const hex = /^#[0-9a-f]{6}$/i;
+	const range = { scale : 2, choice : 1 };
+
+	/** What the buttons of a strip say is pressed when it stands at a position */
+	const litAt = function( kind, position ) {
+		const out = [];
+		for( let at = 0; at <= range[kind] * 2; at++ )
+			out.push( String( at === position + range[kind] ) );
+		return out.join();
+	};
+	const entryOf = function( key ) {
+		const feature = realFx.features[key];
+		return { set : feature.set === '' ? feature['default'] : feature.set, knobs : Array.isArray( feature.knobs ) === true ? {} : feature.knobs };
+	};
+	const knobsOf = function( key ) {
+		const catalogue = realFx.features[key].catalogue;
+		return Object.keys( catalogue ).reduce( function( all, set ) { return Object.keys( catalogue[set].knobs ).map( function( knob ) { return [ set, knob, catalogue[set].knobs[knob] ] } ).concat( all ) }, [] );
+	};
+
+	check( 'the server\'s answer with a feature in it is in the shape the screen draws: the features that are active have a name, a variant they start from and the variants with their names, descriptions and knobs - each knob of one of the five kinds, on a tab the table draws, with a label and a position, a surface, a tone or a pair of colours it stands at before anything is chosen',
+		live.length >= 1 && live.every( function( key ) {
+			const feature = realFx.features[key];
+			return typeof feature.name === 'string' && feature.name !== '' && feature.catalogue[ feature['default'] ] !== undefined && Object.keys( feature.catalogue ).length >= 1
+				&& Object.keys( feature.catalogue ).every( function( set ) {
+					const variant = feature.catalogue[set];
+					return typeof variant.name === 'string' && variant.name !== '' && typeof variant.description === 'string'
+						&& Object.keys( variant.knobs ).every( function( knob ) {
+							const meta = variant.knobs[knob];
+							return kinds.indexOf( meta.kind ) !== -1 && [ 'templates', 'type', 'surfaces', 'colours', 'motion' ].indexOf( meta.tab ) !== -1 && typeof meta.label === 'string' && meta.label !== ''
+								&& ( meta.kind === 'scale' ? Number.isInteger( meta['default'] ) && Math.abs( meta['default'] ) <= range.scale
+									: meta.kind === 'choice' ? Number.isInteger( meta['default'] ) && Math.abs( meta['default'] ) <= range.choice && [ 'less', 'default', 'more' ].every( function( word ) { return typeof meta.options[word] === 'string' && meta.options[word] !== '' } )
+									: meta.kind === 'ground' ? realFx.grounds.indexOf( meta['default'] ) !== -1
+									: meta.kind === 'ink' ? realFx.inks.indexOf( meta['default'] ) !== -1
+									: Array.isArray( meta['default'] ) === true && meta['default'].length === 2 && meta['default'].every( function( colour ) { return hex.test( colour ) } ) );
+						} );
+				} );
+		} ) );
+	check( '...the knobs of every kind among them, the surfaces and the tones the panel has a word for, and the table has the object and the rows of each feature: the choice of its variant on Templates and a place for each knob on the tab its head names',
+		kinds.every( function( kind ) { return live.some( function( key ) { return knobsOf( key ).some( function( found ) { return found[2].kind === kind } ) } ) } )
+		&& realFx.grounds.length > 1 && realFx.grounds.every( function( word ) { return typeof TEXT['/_admin/design/ground/'+ word] === 'string' } )
+		&& realFx.inks.length > 1 && realFx.inks.every( function( word ) { return typeof TEXT['/_admin/design/ink/'+ word] === 'string' } )
+		&& JSON.stringify( realFx.layout.objects ) === JSON.stringify( OBJECTS.concat( live ) )
+		&& live.every( function( key ) {
+			return JSON.stringify( realFx.layout.controls['features/'+ key+ '/set'] ) === JSON.stringify( [ 'templates', key, 1 ] )
+				&& knobsOf( key ).every( function( found ) { const at = realFx.layout.controls['features/'+ key+ '/knobs/'+ found[1]]; return at !== undefined && at[0] === found[2].tab && at[1] === key && at[2] >= 1 } );
+		} ) );
+	check( '...a choice kept for a feature that is not there rides along flagged, with the variant and the knobs as they were chosen, and has no object in the table',
+		kept.length >= 1 && kept.every( function( key ) {
+			const feature = realFx.features[key];
+			return feature.active === false && typeof feature.set === 'string' && feature.set !== '' && realFx.layout.objects.indexOf( key ) === -1 && Object.keys( realFx.layout.controls ).every( function( place ) { return place.indexOf('features/'+ key+ '/') !== 0 } );
+		} ) );
+
+	// Every tab is drawn from the table the server gave, the blocks of the features after those of the objects
+	const realProblems = [ 'templates', 'type', 'surfaces', 'colours', 'motion' ].filter( function( tab ) {
+		realScreen.show( tab );
+		const objects = fxObjects( realScreen );
+		const own = objects.filter( function( object ) { return live.indexOf( object ) !== -1 } );
+		return JSON.stringify( drawnRows( realScreen ) ) !== JSON.stringify( tableRows( realFx.layout, tab ) ) || objects.slice( objects.length - own.length ).join() !== own.join()
+			|| ( tab === 'templates' && own.join() !== live.join() );
+	} );
+
+	check( 'each tab is drawn from the table the server gave and from nothing else, the blocks of the features after the blocks of the objects'+ ( realProblems.length === 0 ? '' : ' - not so for '+ realProblems.join() ), realProblems.length === 0 );
+
+	/*	Each feature stands as the answer says: the variant that is chosen, and every knob of it at its value - the position a strip lights, the surface or the tone a select
+		shows, the two colours of a pair - and at the default its head says where nothing was chosen	*/
+	const standing = [];
+
+	live.forEach( function( key ) {
+
+		const entry = entryOf( key );
+		const feature = realFx.features[key];
+		const select = byTag( fxControl( realScreen, key ), 'select' )[0] || null;
+
+		if( Object.keys( feature.catalogue ).length > 1 && ( select === null || shown( select ) !== entry.set ) )
+			standing.push( key );
+
+		Object.keys( feature.catalogue[entry.set].knobs ).forEach( function( knob ) {
+
+			const meta = feature.catalogue[entry.set].knobs[knob];
+			const value = entry.knobs[knob] === undefined ? meta['default'] : entry.knobs[knob];
+			const control = fxControl( realScreen, key, knob );
+			const path = 'features/'+ key+ '/knobs/'+ knob;
+			let fine = control !== null;
+
+			if( fine === true && ( meta.kind === 'scale' || meta.kind === 'choice' ) )
+				fine = rowName( control ) === meta.label && pressedKey( realScreen, path ) === litAt( meta.kind, value )
+					&& byTag( control, 'button' ).length === range[meta.kind] * 2 + 1 && ( meta.kind === 'scale' || byTag( control, 'button' ).map( function( button ) { return button.textContent } ).join() === [ meta.options.less, meta.options['default'], meta.options.more ].join() );
+			else if( fine === true && ( meta.kind === 'ground' || meta.kind === 'ink' ) )
+				fine = shown( byTag( control, 'select' )[0] ) === value && offered( byTag( control, 'select' )[0] ).length === realFx[ meta.kind === 'ground' ? 'grounds' : 'inks' ].length
+					&& byTag( control, 'label' )[0].textContent === meta.label;
+			else if( fine === true )
+				fine = byTag( control, 'input' ).map( function( input ) { return input.value } ).join() === value.join() && byClass( control, 'design-knob-text' )[0].textContent === meta.label;
+
+			if( fine === false )
+				standing.push( key+ '/'+ knob );
+		} );
+	} );
+
+	check( 'the screen stands as the answer says for every feature: the variant that is chosen on its select, every knob of it at its value - a strip lit at the position, a select on the surface or the tone, a pair of colours in its two inputs - under the label its head gave it'
+		+ ( standing.length === 0 ? '' : ' - not so for '+ standing.slice( 0, 4 ).join() ), standing.length === 0 && realScreen.design._isDirty() === false );
+	check( '...the choice kept for a feature that is not there is the screen\'s still, and goes out with the next preview, and with the choices that are there as the answer gave them',
+		kept.every( function( key ) { return JSON.stringify( realScreen.design._edit.features[key] ) === JSON.stringify( { set : realFx.features[key].set, knobs : realFx.features[key].knobs } ) } )
+		&& live.filter( function( key ) { return realFx.features[key].set !== '' } ).every( function( key ) { return JSON.stringify( fxLastPayload( realScreen ).features[key] ) === JSON.stringify( { set : realFx.features[key].set, knobs : realFx.features[key].knobs } ) } )
+		&& kept.every( function( key ) { return fxLastPayload( realScreen ).features[key] !== undefined } ) );
+
+	// What the colours of the feature measure on the page is the server's: the line under a pair says it where a half falls short
+	const measured = realFx.contrasts;
+	const lines = [];
+
+	Object.keys( measured ).forEach( function( key ) {
+		Object.keys( measured[key] ).forEach( function( knob ) {
+			const found = measured[key][knob];
+			const unsafe = found.light.safe === false || found.dark.safe === false;
+			fxControl( realScreen, key, knob );
+			const line = realScreen.byId('design-feature-'+ key+ '_'+ knob+ '_contrast');
+			if( line === null || line.hidden !== ( unsafe === false ) || ( unsafe === true && line.textContent !== say( '/_admin/design/label/contrast', found.light.ratio, found.dark.ratio, found.light.target ) ) )
+				lines.push( key+ '/'+ knob );
+		} );
+	} );
+
+	check( 'what the colours of a feature measure is the answer\'s: the line under each pair is hidden where both halves reach the ratio, and says the two ratios and the one a mark needs where one does not'+ ( lines.length === 0 ? '' : ' - not so for '+ lines.join() ),
+		lines.length === 0 && Object.keys( measured ).length >= 1 );
+
+	// Every word the screen shows for the features is one the panel's texts carry
+	const missing = [];
+
+	[ 'templates', 'type', 'surfaces', 'colours', 'motion' ].forEach( function( tab ) {
+		realScreen.show( tab );
+		eachBlock( realScreen.form, function() {
+			descendants( realScreen.pane ).forEach( function( el ) {
+				[ el.textContent, el.getAttribute('title'), el.getAttribute('aria-label') ].forEach( function( text ) { if( typeof text === 'string' && text.indexOf('/_admin/') === 0 ) missing.push( text ) } );
+			} );
+		} );
+	} );
+
+	check( '...and every word the screen shows for them is one the texts carry'+ ( missing.length === 0 ? '' : ' - missing: '+ missing.slice( 0, 4 ).join() ), missing.length === 0 );
 }
 
 console.log('');

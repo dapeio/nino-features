@@ -387,6 +387,29 @@ return [
 	'[[/_admin/design/colour/mode/light]]'						=> 'light only',
 	'[[/_admin/design/colour/mode/dark]]'						=> 'dark only',
 
+	// Features that bring variants: the surfaces a ground is chosen from, in the palette's order, the tones an ink is chosen from, and the two halves of a colour
+	'[[/_admin/design/ground/default]]'						=> 'Page',
+	'[[/_admin/design/ground/alt]]'						=> 'Page, alternate',
+	'[[/_admin/design/ground/tint]]'						=> 'Brand, tinted',
+	'[[/_admin/design/ground/dark]]'						=> 'Dark',
+	'[[/_admin/design/ground/black]]'						=> 'Black',
+	'[[/_admin/design/ground/brand]]'						=> 'Brand, pure',
+	'[[/_admin/design/ground/brand-safe]]'						=> 'Brand',
+	'[[/_admin/design/ground/accent-safe]]'						=> 'Accent',
+	'[[/_admin/design/ground/success]]'						=> 'Success',
+	'[[/_admin/design/ground/warning]]'						=> 'Warning',
+	'[[/_admin/design/ground/danger]]'						=> 'Danger',
+	'[[/_admin/design/ink/ink]]'							=> 'Text',
+	'[[/_admin/design/ink/subtitle]]'							=> 'Text, quiet',
+	'[[/_admin/design/ink/title]]'							=> 'Text, loud',
+	'[[/_admin/design/ink/accent]]'							=> 'Accent',
+	'[[/_admin/design/ink/primary]]'							=> 'Brand',
+	'[[/_admin/design/ink/border]]'							=> 'Border',
+	'[[/_admin/design/ink/focus]]'							=> 'Focus',
+	'[[/_admin/design/label/light]]'						=> 'Light',
+	'[[/_admin/design/label/dark]]'						=> 'Dark',
+	'[[/_admin/design/label/contrast]]'						=> 'Against the page the two halves measure %s:1 in light and %s:1 in dark - a mark needs %s:1. The colours stay as they are.',
+
 	// The failures a person can cause, by their code (see Themes::REFUSALS and the theme actions of the panel)
 	'[[/_admin/error/design_import]]'	=> 'The css must not carry an @import - a foreign file is no part of a theme.',
 	'[[/_admin/error/design_script]]'	=> 'The css must not carry javascript: or a script.',
@@ -401,4 +424,5 @@ return [
 	// What reading a setup replaced, by the code of the note and with its params (see Setup::NOTES): the screen says a note the way it says a refusal
 	'[[/_admin/error/design_theme_missing]]'	=> 'The theme "%s" is not there - none is active.',
 	'[[/_admin/error/design_set_missing]]'		=> '%s: "%s" is not there - "%s" is used instead.',
+	'[[/_admin/error/design_feature_inactive]]'	=> 'The feature "%s" is not active, or brings no variants - what was chosen for it is kept, and nothing is compiled for it.',
 ];

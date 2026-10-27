@@ -30,6 +30,13 @@
  *													the palette is solved from under the page, and under a section,
  *													a card and the tables the one knob each has of its own, and Motion the
  *													animation of the page and the hover of a card and of the buttons.
+ *													A feature that brings variants of its own (Setup::features()) has a block
+ *													after those of the objects: on Templates the choice of its variant, on each
+ *													tab its knobs are put on by their heads the knobs of the chosen variant - a
+ *													scale and a choice as the knobs of a part are, a ground and an ink as a
+ *													select of the surfaces and of the tones of the palette, a colour as two
+ *													inputs, a light half and a dark half. The choices are part of the setup,
+ *													and of a theme of the project.
  *													Typefaces, the loader, is a tab
  *													of its own and keeps nothing in the setup - the families the
  *													project has installed, and the signed list of those it can
@@ -461,7 +468,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, knobs, features, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -481,6 +488,7 @@
 			return {
 				parts 	: parts,
 				knobs 	: knobs,
+				features : Nino.admin.design._entriesOf( data.features ),
 				size 		: data.size,
 				width 	: data.width,
 				whitespace : data.whitespace,
@@ -630,10 +638,19 @@
 			const design = Nino.admin.design;
 			const params = Array.isArray( note.params ) === true ? note.params.slice() : [];
 
-			// design_set_missing: the part, the set the file named, the set that stands in its place
+			// design_set_missing: the part - or the feature -, the set the file named, the set that stands in its place
 			if( note.code === 'design_set_missing' && params.length === 3 ) {
-				params[2] = design._setName( params[0], params[2] );
-				params[0] = Nino.content.getText('/_admin/design/part/'+ params[0] ) || params[0];
+
+				const feature = design._featuresOf()[ params[0] ];
+
+				if( feature !== undefined ) {
+					params[2] = ( ( feature.catalogue || {} )[ params[2] ] || {} ).name || params[2];
+					params[0] = feature.name;
+				}
+				else {
+					params[2] = design._setName( params[0], params[2] );
+					params[0] = Nino.content.getText('/_admin/design/part/'+ params[0] ) || params[0];
+				}
 			}
 
 			return Nino.adminUi.api.errorText( 0, { code : note.code, params : params, error : note.error }, '' );
@@ -1691,10 +1708,11 @@
 		 *	The setup of a working copy as a theme keeps it: the keys that choose something, without
 		 *	the theme it names and the css it carries - the screen's side of the compare the chip makes
 		 *	with the file's (see _themeChanged()). The colours are among them where the theme names
-		 *	colours: a theme that names none - every theme the feature ships - has no say over them
+		 *	colours, and the choices for the features where it names those: a theme that names none - every
+		 *	theme the feature ships - has no say over them
 		 *
 		 *	@param		{Object}	edit
-		 *	@param		{Object}	[theme]		The setup of the theme it is compared with; with no colours in it the snapshot has none either
+		 *	@param		{Object}	[theme]		The setup of the theme it is compared with; with no colours in it the snapshot has none either, and none of the features without theirs
 		 *
 		 *	@return		{Object}
 		 */
@@ -1705,6 +1723,9 @@
 
 			if( theme === undefined || theme.colours !== undefined )
 				snapshot.colours = edit.colours;
+
+			if( theme === undefined || theme.features !== undefined )
+				snapshot.features = edit.features;
 
 			return snapshot;
 		},
@@ -1955,7 +1976,8 @@
 
 			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace,
 				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
-				colours : setup.colours === undefined ? design._edit.colours : setup.colours, theme : response.slug, css : response.css };
+				colours : setup.colours === undefined ? design._edit.colours : setup.colours,
+				features : setup.features === undefined ? design._edit.features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
 			design._themeText = { name : response.name, description : response.description };
@@ -2364,7 +2386,7 @@
 			const name = dc.createElement('span');
 			name.id = id+ '-name';
 			name.className = 'design-accordion-name';
-			name.textContent = Nino.content.getText('/_admin/design/object/'+ row.object+ '/label');
+			name.textContent = design._objectName( row.object );
 
 			const summary = dc.createElement('span');
 			summary.id = id+ '-summary';
@@ -2538,7 +2560,12 @@
 
 				const path = keys[0].split('/');
 
-				lines = lines.concat( path[0] === 'parts' ? [ design._setName( path[1], design._edit.parts[ path[1] ] ) ] : design._deviations( keys, row.object ) );
+				if( path[0] === 'parts' )
+					lines.push( design._setName( path[1], design._edit.parts[ path[1] ] ) );
+				else if( path[0] === 'features' && path[2] === 'set' )
+					lines = lines.concat( design._variantSaid( path[1] ) );
+				else
+					lines = lines.concat( design._deviations( keys, row.object ) );
 			} );
 
 			return lines.join(' · ');
@@ -2578,6 +2605,22 @@
 				const strip = design._knobStrip( path[1], path[2] );
 
 				return chosen === ( ( ( normal.knobs || {} )[path[1]] || {} )[path[2]] || 0 ) ? [] : [ design._said( strip.name, strip.options, chosen ) ];
+			}
+
+			// A knob a feature brings: said as the knobs of a part are, by the label its head gives it and the word of its value - a variant says it in its own row (see _variantSaid())
+			if( path[0] === 'features' ) {
+
+				if( path[2] !== 'knobs' )
+					return [];
+
+				const found = design._featureKnob( path[1], path[3] );
+
+				if( found.answered === false )
+					return [];
+
+				const value = design._featureValue( path[1], path[3], found.meta );
+
+				return JSON.stringify( value ) === JSON.stringify( found.meta['default'] ) ? [] : [ design._featureSaid( found.meta, value ) ];
 			}
 
 			if( path[0] === 'radii' ) {
@@ -2723,6 +2766,10 @@
 
 				if( path[0] === 'parts' )
 					return put( design._partField( design._row( path[1] ) ) );
+
+				// A feature that brings variants: the choice of the variant on Templates, a knob of the variant on the tab its head names
+				if( path[0] === 'features' )
+					return put( path[2] === 'set' ? design._featureField( path[1] ) : design._featureKnobRow( path[1], path[3] ) );
 
 				if( path[0] === 'knobs' )
 					return put( design._knobRow( path[1], path[2], design._answered( path[1] ).indexOf( path[2] ) !== -1 ) );
@@ -3007,6 +3054,487 @@
 
 			design._target = design._anchorOf( 'parts/'+ part );
 			design._preview();
+		},
+
+		/**
+		 *	The features that bring variants, as design/list answered them: key => { name, active, default, catalogue, set, knobs }. An
+		 *	empty answer is an empty list on the wire, since php has no empty object - and no feature here
+		 *
+		 *	@param		{Object}	[data]		design/list's answer; the one the screen is drawn from where none is given
+		 *
+		 *	@return		{Object}
+		 */
+		_featuresOf : function( data ) {
+
+			const given = ( data === undefined ? Nino.admin.design._data : data ) || {};
+
+			return given.features === undefined || given.features === null || Array.isArray( given.features ) === true ? {} : given.features;
+		},
+
+		/**
+		 *	The choices for the features out of an answer - design/list's, or the setup of a theme: for each feature that has a variant chosen,
+		 *	the variant and the value of each knob of it, as a copy of its own. A feature that chose none has no entry
+		 *
+		 *	@param		{(Object|Array)}	given		key => { set, knobs, ... }, or an empty list
+		 *
+		 *	@return		{Object}									key => { set, knobs }
+		 */
+		_entriesOf : function( given ) {
+
+			const entries = {};
+
+			if( given === undefined || given === null || Array.isArray( given ) === true )
+				return entries;
+
+			Object.keys( given ).forEach( function( key ) {
+
+				const entry = given[key] || {};
+
+				if( typeof entry.set === 'string' && entry.set !== '' )
+					entries[key] = { set : entry.set, knobs : entry.knobs === undefined || entry.knobs === null || Array.isArray( entry.knobs ) === true ? {} : JSON.parse( JSON.stringify( entry.knobs ) ) };
+			} );
+
+			return entries;
+		},
+
+		/**
+		 *	What an object of the panel is called at the head of its block: its word in the panel's texts for the page and the parts, and for
+		 *	a feature the name its manifest gives it, which is the feature's own and no text of this panel
+		 *
+		 *	@param		{string}	object		A key of the table's objects
+		 *
+		 *	@return		{string}
+		 */
+		_objectName : function( object ) {
+
+			const feature = Nino.admin.design._featuresOf()[object];
+
+			return feature !== undefined ? feature.name : Nino.content.getText('/_admin/design/object/'+ object+ '/label');
+		},
+
+		/**
+		 *	The variant a feature stands at on the screen: the one chosen for it, else the one it has before anything is chosen
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *
+		 *	@return		{string}
+		 */
+		_chosenSet : function( key ) {
+
+			const feature = Nino.admin.design._featuresOf()[key] || {};
+			const entry = ( Nino.admin.design._edit.features || {} )[key];
+
+			return entry !== undefined && ( feature.catalogue || {} )[entry.set] !== undefined ? entry.set : ( feature['default'] || '' );
+		},
+
+		/**
+		 *	A knob of a feature as the variant chosen has it, else - where that variant does not declare it - as the first variant
+		 *	that does, in the order of the catalogue: the row is drawn, greyed out, since the table gives the knobs of every variant
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *	@param		{string}	knob
+		 *
+		 *	@return		{Object}					{ meta : kind, tab, label, options, default; answered : whether the chosen variant declares it }
+		 */
+		_featureKnob : function( key, knob ) {
+
+			const catalogue = ( Nino.admin.design._featuresOf()[key] || {} ).catalogue || {};
+			const chosen = ( ( catalogue[ Nino.admin.design._chosenSet( key ) ] || {} ).knobs || {} )[knob];
+
+			if( chosen !== undefined )
+				return { meta : chosen, answered : true };
+
+			return {
+				meta : Object.keys( catalogue ).map( function( set ) { return ( catalogue[set].knobs || {} )[knob] } ).filter( function( meta ) { return meta !== undefined } )[0],
+				answered : false,
+			};
+		},
+
+		/**
+		 *	The value a knob of a feature stands at on the screen: the one chosen, else the one its head says it stands at
+		 *
+		 *	@param		{string}	key
+		 *	@param		{string}	knob
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *
+		 *	@return		{*}								A position, a surface, a tone or a pair of hex colours
+		 */
+		_featureValue : function( key, knob, meta ) {
+
+			const entry = ( Nino.admin.design._edit.features || {} )[key];
+			const value = entry !== undefined ? ( entry.knobs || {} )[knob] : undefined;
+
+			return value === undefined ? meta['default'] : value;
+		},
+
+		/**
+		 *	What the strip of a scale or a choice a feature brings is made of: the label its head gives it and its options, from the least to
+		 *	the most - the numbers -2 to +2 of a scale, the three words the head gives a choice
+		 *
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *
+		 *	@return		{Object}						{ name, options }, the options as { value, label, title }
+		 */
+		_featureStrip : function( meta ) {
+
+			const design = Nino.admin.design;
+			const positions = design._positions( meta.kind );
+
+			return {
+				name 		: meta.label,
+				options	: meta.kind === 'choice'
+					? positions.map( function( position ) {
+						const label = ( meta.options || {} )[ design._word( position ) ];
+						return { value : position, label : label, title : label };
+					} )
+					: design._numbered( positions, 0 ),
+			};
+		},
+
+		/**
+		 *	What a head says of a knob of a feature where it stands elsewhere than at the default: its label and the word of the value - the
+		 *	position of a ladder as its strip shows it, a surface or a tone by the word of the panel's texts, a colour by its two halves
+		 *
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *	@param		{*}				value
+		 *
+		 *	@return		{string}
+		 */
+		_featureSaid : function( meta, value ) {
+
+			const design = Nino.admin.design;
+
+			if( meta.kind === 'scale' || meta.kind === 'choice' ) {
+				const strip = design._featureStrip( meta );
+				return design._said( strip.name, strip.options, value );
+			}
+
+			if( meta.kind === 'colour' )
+				return meta.label+ ' '+ value.join(' / ');
+
+			return meta.label+ ' '+ Nino.content.getText('/_admin/design/'+ meta.kind+ '/'+ value );
+		},
+
+		/**
+		 *	What the head of the block of a feature on Templates says: the name of the variant chosen, where it is not the one the feature
+		 *	has before anything is chosen
+		 *
+		 *	@param		{string}	key
+		 *
+		 *	@return		{Array}						The line, none where the variant is the feature's own
+		 */
+		_variantSaid : function( key ) {
+
+			const feature = Nino.admin.design._featuresOf()[key] || {};
+			const set = Nino.admin.design._chosenSet( key );
+
+			return set === feature['default'] ? [] : [ ( ( feature.catalogue || {} )[set] || {} ).name || set ];
+		},
+
+		/**
+		 *	The id of a control of a feature - the select of its variants, a knob of it, a half of a colour or the line that says what the colour
+		 *	measures - for the label that names it and for the line that is painted in place. The parts are joined by an underscore, which neither
+		 *	a key nor a knob has: joined by a hyphen, the light half of a colour "x" and a knob that is called "x-light" would be one id
+		 *
+		 *	@param		{string}		key				The key of a feature
+		 *	@param		{string}		[knob]
+		 *	@param		{string}		[part]		light, dark or contrast, for what stands with a colour
+		 *
+		 *	@return		{string}
+		 */
+		_featureId : function( key, knob, part ) {
+			return 'design-feature-'+ key+ ( knob === undefined ? '' : '_'+ knob+ ( part === undefined ? '' : '_'+ part ) );
+		},
+
+		/**
+		 *	The choice of the variant of a feature, in the block of the feature on Templates: the select of its variants with the description of the
+		 *	chosen one under it - the label is the one word the selects of the parts have - and, for a feature with one variant only, the
+		 *	description alone: there is nothing to choose
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *
+		 *	@return		{Element}
+		 */
+		_featureField : function( key ) {
+
+			const design = Nino.admin.design;
+			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
+			const variants = Object.keys( catalogue );
+			const describe = function( set ) { return ( catalogue[set] || {} ).description || '' };
+
+			if( variants.length < 2 ) {
+
+				const only = dc.createElement('div');
+				only.className = 'design-field';
+
+				const small = dc.createElement('small');
+				small.textContent = describe( variants[0] );
+				only.appendChild( small );
+
+				return only;
+			}
+
+			const field = design._select(
+				design._featureId( key ), Nino.content.getText('/_admin/design/label/template'),
+				variants.map( function( set ) { return { value : set, label : catalogue[set].name || set } } ),
+				design._chosenSet( key ), function( value ) {
+					design._setFeatureSet( key, value, field );
+				}, describe( design._chosenSet( key ) ) );
+
+			return field;
+		},
+
+		/**
+		 *	One knob of a feature, in the block of the feature on the tab its head puts it on: the strip of a scale or a choice, the select of
+		 *	the eleven surfaces of a ground or of the seven tones of an ink, the two colours of a pair. Greyed out where the variant chosen does
+		 *	not declare it, in the words of a knob of a part that its template does not answer to
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *	@param		{string}	knob
+		 *
+		 *	@return		{Element}
+		 */
+		_featureKnobRow : function( key, knob ) {
+
+			const design = Nino.admin.design;
+			const found = design._featureKnob( key, knob );
+			const meta = found.meta;
+			const value = design._featureValue( key, knob, meta );
+			const note = found.answered === true ? '' : design._text( '/_admin/design/hint/unanswered', meta.label );
+			let field;
+
+			if( meta.kind === 'colour' )
+				field = design._featureColours( key, knob, meta, value, found.answered );
+			else if( meta.kind === 'ground' || meta.kind === 'ink' ) {
+
+				field = design._select( design._featureId( key, knob ), meta.label,
+					( ( design._data || {} )[ meta.kind === 'ground' ? 'grounds' : 'inks' ] || [] ).map( function( word ) {
+						return { value : word, label : Nino.content.getText('/_admin/design/'+ meta.kind+ '/'+ word ) };
+					} ), value, function( chosen ) { design._setFeatureKnob( key, knob, chosen ) }, note );
+
+				field.querySelector('select').disabled = found.answered === false;
+				field.classList.add('design-feature-select');
+			}
+			else {
+
+				const strip = design._featureStrip( meta );
+
+				field = design._stripRow( 'features/'+ key+ '/'+ knob, strip.name, note, strip.options, value, function( position ) {
+					design._setFeatureKnob( key, knob, position );
+				}, found.answered === false );
+			}
+
+			field.dataset.knob = knob;
+
+			return field;
+		},
+
+		/**
+		 *	A colour a feature brings: the name of the knob over two colours, the light one and the dark one, each a swatch under the word of its
+		 *	half, and under them the line that says what the two measure on the page where one of them does not reach the ratio a mark on a page
+		 *	needs (see _paintContrast()) - the row of the brand colour and the line under it, said of a colour of a feature. Nothing refuses a colour
+		 *
+		 *	@param		{string}	key
+		 *	@param		{string}	knob
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *	@param		{Array}		value			[ light, dark ]
+		 *	@param		{boolean}	answered	Whether the variant chosen declares the knob
+		 *
+		 *	@return		{Element}
+		 */
+		_featureColours : function( key, knob, meta, value, answered ) {
+
+			const design = Nino.admin.design;
+
+			const wrap = dc.createElement('div');
+			wrap.className = 'design-colour-feature';
+
+			const field = dc.createElement('div');
+			field.className = 'design-colour-row design-colour-pair';
+
+			const label = dc.createElement('span');
+			label.className = 'design-colour-label design-knob-label';
+			design._labelContent( label, 'features/'+ key+ '/'+ knob, meta.label, answered === true ? '' : design._text( '/_admin/design/hint/unanswered', meta.label ) );
+			field.appendChild( label );
+
+			[ 'light', 'dark' ].forEach( function( half, at ) {
+
+				const box = dc.createElement('label');
+				box.className = 'design-colour-half';
+
+				const caption = dc.createElement('small');
+				caption.textContent = Nino.content.getText('/_admin/design/label/'+ half );
+				box.appendChild( caption );
+
+				const input = dc.createElement('input');
+				input.type = 'color';
+				input.id = design._featureId( key, knob, half );
+				input.setAttribute( 'aria-label', caption.textContent+ ' - '+ meta.label );
+				input.className = 'design-colour-input';
+				input.value = String( value[at] );
+				input.disabled = answered === false;
+				input.addEventListener( 'change', function() {
+
+					const pair = design._featureValue( key, knob, meta ).slice();
+
+					pair[at] = this.value;
+					design._setFeatureKnob( key, knob, pair );
+				} );
+				box.appendChild( input );
+
+				field.appendChild( box );
+			} );
+
+			wrap.appendChild( field );
+
+			const line = dc.createElement('p');
+			line.id = design._featureId( key, knob, 'contrast' );
+			line.className = 'nino-admin-hint design-colour-warning';
+			design._paintContrast( line, key, knob );
+			wrap.appendChild( line );
+
+			return wrap;
+		},
+
+		/**
+		 *	What the two halves of a colour of a feature measure on the page, said under the colour where one of them is below the ratio a mark
+		 *	needs - the number is the server's (design/list and every preview carry it), the words the panel's. Written in place: the column holds
+		 *	colour pickers somebody may have open
+		 *
+		 *	@param		{?Element}	line			The line itself
+		 *	@param		{string}		key
+		 *	@param		{string}		knob
+		 *
+		 *	@return		void
+		 */
+		_paintContrast : function( line, key, knob ) {
+
+			if( line === null || line === undefined )
+				return;
+
+			const measured = ( ( ( Nino.admin.design._data || {} ).contrasts || {} )[key] || {} )[knob] || null;
+			const unsafe = measured !== null && ( measured.light.safe === false || measured.dark.safe === false );
+
+			line.hidden = unsafe === false;
+
+			if( unsafe === true )
+				line.textContent = Nino.admin.design._text( '/_admin/design/label/contrast', measured.light.ratio, measured.dark.ratio, measured.light.target );
+		},
+
+		/**
+		 *	Paint the line of every colour of a feature that is on the screen, from what the last answer measured. Runs after every preview, beside
+		 *	the brand's (see _absorb())
+		 *
+		 *	@return		void
+		 */
+		_paintContrasts : function() {
+
+			const design = Nino.admin.design;
+			const features = design._featuresOf();
+
+			Object.keys( features ).forEach( function( key ) {
+
+				const painted = {};
+
+				Object.keys( features[key].catalogue || {} ).forEach( function( set ) {
+
+					const knobs = features[key].catalogue[set].knobs || {};
+
+					Object.keys( knobs ).forEach( function( knob ) {
+
+						if( knobs[knob].kind !== 'colour' || painted[knob] === true )
+							return;
+
+						painted[knob] = true;
+						design._paintContrast( dc.getElementById( design._featureId( key, knob, 'contrast' ) ), key, knob );
+					} );
+				} );
+			} );
+		},
+
+		/**
+		 *	Choose a variant for a feature. The knobs the last one declared and this one does not are not this one's: they go, as the position of
+		 *	a knob a template does not answer to goes back to the middle - the screen never holds a choice the stored one could not be. A choice
+		 *	that comes to the feature as it is leaves no entry (see _pruneFeature()). The description under the select is written in place
+		 *
+		 *	@param		{string}		key
+		 *	@param		{string}		set				A variant of the feature
+		 *	@param		{Element}		[field]		The select field of the feature, whose note is the description of the variant
+		 *
+		 *	@return		void
+		 */
+		_setFeatureSet : function( key, set, field ) {
+
+			const design = Nino.admin.design;
+			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
+			const declared = ( catalogue[set] || {} ).knobs || {};
+			const entry = design._edit.features[key] || { set : set, knobs : {} };
+			const note = field ? field.querySelector('small') : null;
+
+			entry.set = set;
+
+			Object.keys( entry.knobs ).forEach( function( knob ) {
+				if( declared[knob] === undefined )
+					delete entry.knobs[knob];
+			} );
+
+			design._edit.features[key] = entry;
+			design._pruneFeature( key );
+
+			if( note )
+				note.textContent = ( catalogue[set] || {} ).description || '';
+
+			design._target = design._anchorOf( 'features/'+ key+ '/set' );
+			design._preview();
+		},
+
+		/**
+		 *	Move a knob of a feature: a position, a surface, a tone or a pair of colours. The feature is chosen at the variant it stands at, if
+		 *	nothing was chosen for it yet; a choice that comes to the feature as it is leaves no entry (see _pruneFeature())
+		 *
+		 *	@param		{string}	key
+		 *	@param		{string}	knob
+		 *	@param		{*}				value
+		 *
+		 *	@return		void
+		 */
+		_setFeatureKnob : function( key, knob, value ) {
+
+			const design = Nino.admin.design;
+			const entry = design._edit.features[key] || { set : design._chosenSet( key ), knobs : {} };
+
+			entry.knobs[knob] = value;
+			design._edit.features[key] = entry;
+			design._pruneFeature( key );
+
+			design._target = design._anchorOf( 'features/'+ key+ '/knobs/'+ knob );
+			design._preview();
+		},
+
+		/**
+		 *	Take the entry of a feature away where it says what the feature is without it: the variant it has before anything is chosen, and
+		 *	every knob at the default its head gives it. The server holds no entry for such a feature either, so the screen that was put back
+		 *	is the stored one
+		 *
+		 *	@param		{string}	key
+		 *
+		 *	@return		void
+		 */
+		_pruneFeature : function( key ) {
+
+			const design = Nino.admin.design;
+			const feature = design._featuresOf()[key];
+			const entry = design._edit.features[key];
+
+			if( feature === undefined || entry === undefined || entry.set !== feature['default'] )
+				return;
+
+			const declared = ( ( feature.catalogue || {} )[entry.set] || {} ).knobs || {};
+
+			if( Object.keys( entry.knobs ).every( function( knob ) {
+				return declared[knob] === undefined || JSON.stringify( entry.knobs[knob] ) === JSON.stringify( declared[knob]['default'] );
+			} ) === true )
+				delete design._edit.features[key];
 		},
 
 		/**
@@ -4654,6 +5182,9 @@
 			if( response.brand )
 				data.brand = response.brand;
 
+			if( response.contrasts !== undefined )
+				data.contrasts = response.contrasts;
+
 			const second = dc.getElementById('design-colour-secondary');
 
 			// Only while it stands for a colour nobody chose. One that was
@@ -4662,6 +5193,7 @@
 				second.value = String( data.accent || second.value );
 
 			Nino.admin.design._paintBrandWarning();
+			Nino.admin.design._paintContrasts();
 		},
 
 		/**
@@ -4669,7 +5201,9 @@
 		 *
 		 *	Canonical rather than JSON.stringify() on both: a knob moved and
 		 *	then put back leaves a key behind in a different order, and a bar
-		 *	offering to undo nothing is worse than no bar
+		 *	offering to undo nothing is worse than no bar. An empty list and an
+		 *	empty object are one thing: php has no empty object, and answers the
+		 *	choices for the features of a project that chose none as a list
 		 *
 		 *	@param		{*}	value
 		 *
@@ -4681,7 +5215,7 @@
 				return JSON.stringify( value === undefined ? null : value );
 
 			if( Array.isArray( value ) === true )
-				return '['+ value.map( Nino.admin.design._canonical ).join(',')+ ']';
+				return value.length === 0 ? '{}' : '['+ value.map( Nino.admin.design._canonical ).join(',')+ ']';
 
 			return '{'+ Object.keys( value ).sort().map( function( key ) {
 				return JSON.stringify( key )+ ':'+ Nino.admin.design._canonical( value[key] );

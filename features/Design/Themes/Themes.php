@@ -22,10 +22,12 @@ namespace Nino\Modules\Design {
 	 *										own, the custom css. Loading one puts it on the screen as
 	 *										a draft; saving puts the screen into it.
 	 *
-	 *										The palette is the one part a theme may leave out. A brand
-	 *										colour is the project's, so the themes the feature ships name
-	 *										no colours, and loading one takes everything but them; a theme
-	 *										of the project is written from the screen with its colours and
+	 *										The palette and the choices for the features are the two parts
+	 *										a theme may leave out. A brand colour is the project's, and so
+	 *										are the features it runs, so the themes the feature ships name
+	 *										no colours and no variant of a feature, and loading one takes
+	 *										everything but them; a theme of the project is written from the
+	 *										screen with its colours and its choices for the features, and
 	 *										loads with them.
 	 *
 	 *										One php file for each, an array as data/design.php is:
@@ -354,12 +356,14 @@ namespace Nino\Modules\Design {
 		/**
 		 *	A setup cut down to the keys that choose something - the size, the
 		 *	width, the whitespace, the two strengths of the radius and the radii, the
-		 *	animation, the parts, the knobs, the fonts and the palette - in
-		 *	the order of Setup::KEYS, and only those the setup has: a theme that names no
-		 *	colours (see the class) has none. The format, the theme, the css and the record of
-		 *	what was compiled are not a theme's setup: the css stands beside it in the
-		 *	file, and the other three are the project's. What a created, saved or
-		 *	duplicated theme keeps, and what the chip "changed" compares
+		 *	animation, the parts, the knobs, the choices for the features, the fonts and the
+		 *	palette - in the order of Setup::KEYS, and only those the setup has: a theme that
+		 *	names no colours (see the class) has none, and a theme that names no features
+		 *	- every theme the feature ships - leaves the choices for them as they are. The
+		 *	format, the theme, the css and the record of what was compiled are not a theme's
+		 *	setup: the css stands beside it in the file, and the other three are the
+		 *	project's. What a created, saved or duplicated theme keeps, and what the chip
+		 *	"changed" compares
 		 *
 		 *	@param		array 		$setup				A normalised setup
 		 *

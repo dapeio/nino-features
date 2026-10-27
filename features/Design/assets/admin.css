@@ -1108,6 +1108,27 @@
 	border-radius: var(--editor-radius-sm);
 }
 
+/*	A colour a feature brings: the two halves of it, light and dark, each a swatch under the word of its half, at the far end of the line of the name.
+	The line that says what they measure on the page is the brand's, said under the pair */
+.nino-admin .design-colour-pair {
+	justify-content: space-between;
+}
+.nino-admin .design-colour-half {
+	display: grid;
+	flex: 0 0 auto;
+	justify-items: center;
+	gap: .15rem;
+}
+.nino-admin .design-colour-half > small {
+	color: var(--editor-text-secondary);
+	font-size: .68rem;
+}
+
+/*	The selects of a ground and of an ink a feature brings, one under the other in its block: the room between them that the rows of the strips have */
+.nino-admin .design-feature-select + .design-feature-select {
+	margin-top: .6rem;
+}
+
 /*	The mode: a select under a small heading, across the whole card */
 .nino-admin .design-colour-mode .design-field {
 	margin-top: .3rem;
