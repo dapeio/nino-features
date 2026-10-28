@@ -1,0 +1,111 @@
+/*	@name			Line
+ *	@name-de		Linie
+ *	@description	A field is a rule under the words: no box, no fill, no corner, and the rule doubles in the colour of the focus when the field is typed in.
+ *	@description-de	Ein Feld ist eine Linie unter den Wörtern: kein Kasten, keine Füllung, keine Ecke, und die Linie verdoppelt sich in der Farbe des Fokus, wenn im Feld getippt wird.
+ *
+ *	@knob	scale		scale	type		Size of the fields' text
+ *	@knob-de	scale		Schriftgröße der Felder
+ *	@knob	space		scale	surfaces	Space inside a field and under it
+ *	@knob-de	space		Raum im Feld und darunter
+ *	@knob	line		scale	surfaces	Weight of the line of a field
+ *	@knob-de	line		Stärke der Linie eines Feldes
+ *	@knob	labels		choice	surfaces	Where the label of a field stands
+ *	@knob-de	labels		Wo die Beschriftung eines Feldes steht
+ *	@option	labels	less	Beside
+ *	@option	labels	default	Above
+ *	@option	labels	more	Floating
+ *	@option-de	labels	less	Daneben
+ *	@option-de	labels	default	Darüber
+ *	@option-de	labels	more	Schwebend
+ *	@knob	edge		ink	colours		Colour of the lines	= border
+ *	@knob-de	edge		Farbe der Linien
+ *	@knob	label		ink	colours		Colour of the labels	= ink
+ *	@knob-de	label		Farbe der Beschriftungen
+ *
+ *	A field with no box has no visible target before it is clicked, which is fine for three fields under a heading and wrong
+ *	for a checkout. There is no corner left to round, so there is no corners knob; the focus rule is a pixel heavier than the
+ *	rule at rest and takes the colour of the focus, since it is the only thing that marks the field being typed in. The rule
+ *	is never thinner than half a pixel - a hairline where the screen can draw one - however far the line knob is turned down.
+ *	A label that floats lifts by .4em and needs no ground to cut: a field with no box has no edge to lie on.
+ */
+
+:root {
+	--forms-scale--least:	.87;
+	--forms-scale--less:	.94;
+	--forms-scale--default:	1;
+	--forms-scale--more:	1.15;
+	--forms-scale--most:	1.32;
+
+	--forms-space--least:	calc( var(--space-1) * .4 );
+	--forms-space--less:	calc( var(--space-1) * .7 );
+	--forms-space--default:	var(--space-1);
+	--forms-space--more:	calc( var(--space-1) * 1.5 );
+	--forms-space--most:	calc( var(--space-1) * 2.2 );
+
+	--forms-line--least:	0px;
+	--forms-line--less:		.5px;
+	--forms-line--default:	1px;
+	--forms-line--more:		2px;
+	--forms-line--most:		3px;
+
+	/*	Where a label stands. Above the field is Nino.css: the form is a block and the label a line of text. Beside, the
+		form is a grid of a column for the labels and a column for the fields, this far apart. Floating, the label is
+		lifted a little over its field and made smaller; with no box there is no edge to lie on, so it needs no ground
+		to cut	*/
+	--forms-labels--less:		var(--space-2);
+	--forms-labels--default:	normal;
+	--forms-labels--more:		normal;
+
+	--forms-labels-form--less:		grid;
+	--forms-labels-form--default:	block;
+	--forms-labels-form--more:		block;
+
+	--forms-labels-cols--less:		max-content minmax(0, 1fr);
+	--forms-labels-cols--default:	none;
+	--forms-labels-cols--more:		none;
+
+	--forms-labels-align--less:		baseline;
+	--forms-labels-align--default:	normal;
+	--forms-labels-align--more:		normal;
+
+	--forms-labels-wide--less:		1 / -1;
+	--forms-labels-wide--default:	auto;
+	--forms-labels-wide--more:		auto;
+
+	--forms-labels-start--less:		start;
+	--forms-labels-start--default:	auto;
+	--forms-labels-start--more:		auto;
+
+	--forms-labels-block--less:		inline;
+	--forms-labels-block--default:	inline;
+	--forms-labels-block--more:		table;
+
+	--forms-labels-pos--less:		static;
+	--forms-labels-pos--default:	static;
+	--forms-labels-pos--more:		relative;
+
+	--forms-labels-lift--less:		0em;
+	--forms-labels-lift--default:	0em;
+	--forms-labels-lift--more:		.4em;
+
+	--forms-labels-cut--less:		transparent;
+	--forms-labels-cut--default:	transparent;
+	--forms-labels-cut--more:		transparent;
+
+	/*	What makes it a rule: the width of the line under the words, and doubled in focus, with no ring and no corner; the
+		room of a field above the line and under it, and the status line square	*/
+	--forms-corners:		0;
+	--forms-width:		0 0 max( .5px, var(--forms-line) );
+	--forms-width-focus:	0 0 calc( max( .5px, var(--forms-line) ) + 1px );
+	--forms-ring:		0px;
+	--forms-pad:		var(--forms-space) 0;
+	--forms-gap:		calc( var(--forms-space) * 2 );
+	--forms-message-corners:	0;
+}
+
+/*	The colours are declared where they are used, on every element (see forms.css): no fill, and the line takes the colour of
+	the focus when the field is typed in	*/
+:root, :root * {
+	--forms-fill:		transparent;
+	--forms-edge-focus:	var(--color-focus);
+}

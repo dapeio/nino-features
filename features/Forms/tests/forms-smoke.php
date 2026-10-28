@@ -10,13 +10,19 @@ declare(strict_types=1);
  *										So what is checked here is only what the feature adds -
  *										the [form] shortcode over a definition the kernel reads,
  *										the guards on the kernel's own route callback at priority
- *										1, and the builder that writes '/nino/form/forms' into
- *										config.php - plus the thing that matters most about a
- *										feature like this: that switching it on changes nothing
- *										about a submission that should go through, and switching
- *										it off leaves every form working - and, where node is on
- *										the path, forms-js-smoke.js beside it, the panel's script
- *										over a dom stand-in.
+ *										1, the builder that writes '/nino/form/forms' into
+ *										config.php, the stylesheet that draws the kernel's form
+ *										family from properties of its own (what it declares and
+ *										where, what reads them, what it is set on and what it
+ *										leaves alone) and the four looks in design/ that the
+ *										Design feature offers (read by their grammar and, where
+ *										that feature is beside this one, as its own parser and
+ *										compiler take them) - plus the thing that matters most
+ *										about a feature like this: that switching it on changes
+ *										nothing about a submission that should go through, and
+ *										switching it off leaves every form working - and, where
+ *										node is on the path, forms-js-smoke.js beside it, the
+ *										panel's script over a dom stand-in.
  *
  *										Travels with the feature and runs against the checkout
  *										three levels up, or the one NINO_ROOT names (see
@@ -91,6 +97,198 @@ function submitForm( array &$appData, array $post ): array {
 /** What the forms of config.php are right now, as the engine reads them */
 function definedForms( array &$appData ): array {
 	return array_column( \Nino\Form::forms( $appData ), 'key' );
+}
+
+
+/**
+ *	The rules of a stylesheet, its comments left out: for each the at-rule it stands in ('' for none, '@media (pointer: coarse)'
+ *	for one), its selector with the whitespace folded, and the text of its body. One level of at-rule is read, which is as deep
+ *	as the stylesheets of this feature go
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array<int, array{at: string, selector: string, body: string}>
+ */
+function formsRules( string $css ): array {
+
+	$rules	= [];
+	$read		= static function( string $text, string $at ) use ( &$read, &$rules ): void {
+
+		$offset = 0;
+
+		while( ( $open = strpos( $text, '{', $offset ) ) !== false ) {
+
+			$depth	= 1;
+			$close	= $open + 1;
+
+			for( ; $close < strlen( $text ) && $depth > 0; $close++ )
+				$depth += $text[$close] === '{' ? 1 : ( $text[$close] === '}' ? -1 : 0 );
+
+			$selector	= trim( (string) preg_replace( '/\s+/', ' ', substr( $text, $offset, $open - $offset ) ) );
+			$body			= substr( $text, $open + 1, $close - $open - 2 );
+
+			if( str_starts_with( $selector, '@' ) === true )
+				$read( $body, $selector );
+			else
+				$rules[] = [ 'at' => $at, 'selector' => $selector, 'body' => $body ];
+
+			$offset = $close;
+		}
+	};
+
+	$read( (string) preg_replace( '#/\*.*?\*/#s', '', $css ), '' );
+
+	return $rules;
+}
+
+/**
+ *	The declarations in the body of a rule, in the order they stand, the whitespace of each value folded
+ *
+ *	@param		string		$body
+ *
+ *	@return 	array<int, array{property: string, value: string}>
+ */
+function formsDeclarations( string $body ): array {
+
+	preg_match_all( '/(?:^|;)\s*(-{0,2}[a-z][a-z0-9-]*)\s*:\s*([^;]*)/i', $body, $found, PREG_SET_ORDER );
+
+	return array_map( static fn( array $match ): array => [ 'property' => $match[1], 'value' => trim( (string) preg_replace( '/\s+/', ' ', $match[2] ) ) ], $found );
+}
+
+/**
+ *	A selector taken apart at its :not() groups: what stands outside them - what a rule is set on, since the classes it leaves out are
+ *	none it touches - and what stands in each of them
+ *
+ *	@param		string		$selector
+ *
+ *	@return 	array{0: string, 1: array<int, string>}
+ */
+function formsNot( string $selector ): array {
+
+	$inside = [];
+
+	while( ( $start = strpos( $selector, ':not(' ) ) !== false ) {
+		for( $end = $start + 4, $depth = 0; $end < strlen( $selector ); $end++ ) {
+			$depth += $selector[$end] === '(' ? 1 : ( $selector[$end] === ')' ? -1 : 0 );
+
+			if( $depth === 0 )
+				break;
+		}
+
+		$inside[]		= substr( $selector, $start + 5, $end - $start - 5 );
+		$selector		= substr( $selector, 0, $start ). substr( $selector, $end + 1 );
+	}
+
+	return [ $selector, $inside ];
+}
+
+/**
+ *	What a selector is set on, as one chain: what stands outside its :not() groups (see formsNot()), the spaces round a combinator and
+ *	between the compounds made one, so that two spellings of a chain compare as one
+ *
+ *	@param		string		$selector
+ *
+ *	@return 	string
+ */
+function formsChain( string $selector ): string {
+
+	return trim( (string) preg_replace( [ '/\s+/', '/\s*>\s*/' ], [ ' ', ' > ' ], formsNot( $selector )[0] ) );
+}
+
+/**
+ *	The selectors of a list, split at the commas that stand in no parenthesis and no bracket
+ *
+ *	@param		string		$selector
+ *
+ *	@return 	array<int, string>
+ */
+function formsItems( string $selector ): array {
+
+	$items	= [];
+	$depth	= 0;
+	$from		= 0;
+
+	for( $at = 0; $at < strlen( $selector ); $at++ ) {
+		$depth += in_array( $selector[$at], [ '(', '[' ], true ) ? 1 : ( in_array( $selector[$at], [ ')', ']' ], true ) ? -1 : 0 );
+
+		if( $selector[$at] === ',' && $depth === 0 ) {
+			$items[]	= trim( substr( $selector, $from, $at - $from ) );
+			$from			= $at + 1;
+		}
+	}
+
+	$items[] = trim( substr( $selector, $from ) );
+
+	return $items;
+}
+
+/**
+ *	The colours a stylesheet writes as a literal in the value of a declaration: a hex colour, a colour function or the name of a
+ *	colour. What a value reads of the kernel - var(--color-ink) - is a name of a property and none of these; transparent and
+ *	color-mix() of the kernel's tokens are none either
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array<int, string>				property: literal, for each
+ */
+function formsColourLiterals( string $css ): array {
+
+	$names = explode( ' ', 'aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen' );
+	$literal = '/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|(?<![\w-])(?:'. implode( '|', $names ). ')(?![\w-])/i';
+	$found = [];
+
+	foreach( formsRules( $css ) as $rule )
+		foreach( formsDeclarations( $rule['body'] ) as $declaration )
+			if( preg_match( $literal, (string) preg_replace( '/--[a-z0-9-]+/i', '', $declaration['value'] ), $match ) === 1 )
+				$found[] = $declaration['property']. ': '. $match[0];
+
+	return $found;
+}
+
+/**
+ *	A variant of the Design feature, read by its grammar: the tags of its head, the knobs and options they declare, and the
+ *	rules and declarations after it. Nothing is compared with what a head says - that is the file's to say
+ *
+ *	@param		string		$file
+ *
+ *	@return 	array											tags (tag => texts), knobs (name => [ fields, kind, tab, label, default ] for each line), knobsDe (name => labels),
+ *																		options and optionsDe (knob => step => labels), rules (as formsRules()), declared (property => [ selector, value ] for each)
+ */
+function formsLook( string $file ): array {
+
+	$css	= (string) file_get_contents( $file );
+	$tags	= [];
+
+	preg_match( '#^\s*/\*(.*?)\*/#s', $css, $comment );
+
+	foreach( (array) preg_split( '/\R/', $comment[1] ?? '' ) as $line )
+		if( preg_match( '/^\s*\*?\s*(@[a-z]+(?:-de)?)\s+(\S.*?)\s*$/', (string) $line, $found ) === 1 )
+			$tags[ $found[1] ][] = $found[2];
+
+	$look = [ 'tags' => $tags, 'knobs' => [], 'knobsDe' => [], 'options' => [], 'optionsDe' => [], 'rules' => formsRules( $css ), 'declared' => [] ];
+
+	foreach( $tags['@knob'] ?? [] as $text ) {
+		$fields = (array) preg_split( '/\s+/', $text, 4 );
+		preg_match( '/^(.*?)(?:\s+=\s+(\S+))?$/', (string) ( $fields[3] ?? '' ), $label );
+		$look['knobs'][ (string) $fields[0] ][] = [ 'fields' => count( $fields ), 'kind' => (string) ( $fields[1] ?? '' ), 'tab' => (string) ( $fields[2] ?? '' ), 'label' => (string) ( $label[1] ?? '' ), 'default' => $label[2] ?? null ];
+	}
+
+	foreach( $tags['@knob-de'] ?? [] as $text ) {
+		$fields = (array) preg_split( '/\s+/', $text, 2 );
+		$look['knobsDe'][ (string) $fields[0] ][] = (string) ( $fields[1] ?? '' );
+	}
+
+	foreach( [ '@option' => 'options', '@option-de' => 'optionsDe' ] as $tag => $into )
+		foreach( $tags[$tag] ?? [] as $text ) {
+			$fields = (array) preg_split( '/\s+/', $text, 3 );
+			$look[$into][ (string) $fields[0] ][ (string) ( $fields[1] ?? '' ) ][] = (string) ( $fields[2] ?? '' );
+		}
+
+	foreach( $look['rules'] as $rule )
+		foreach( formsDeclarations( $rule['body'] ) as $declaration )
+			$look['declared'][ $declaration['property'] ][] = [ 'selector' => $rule['selector'], 'value' => $declaration['value'] ];
+
+	return $look;
 }
 
 
@@ -277,22 +475,173 @@ $fieldTemplates = [ 'form-label', 'form-input', 'form-textarea', 'form-select', 
 $paragraphs = array_filter( $fieldTemplates, static fn( string $name ): bool => preg_match( '/<(p|button)[\s>]/i', (string) file_get_contents( dirname( __DIR__ ). '/templates/'. $name. '.tpl' ) ) === 1 );
 check( 'no field template carries a <p> or a <button>'. ( $paragraphs === [] ? '' : ' - '. implode( ', ', $paragraphs ) ), $paragraphs === [] );
 
-/*	The stylesheet joins Nino.css in one bundle, and .nino-form-* is the
-	kernel's family. The classes the new templates and the stylesheet write are
-	this feature's own - read as selectors, not as the comments that talk about
-	the other family	*/
-$uncommented = static fn( string $file ): string => (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
-$ninoCss = $uncommented( $root. '/_nino/Nino.css' );
-$written = [];
-foreach( [ 'form-checkbox', 'form-radio', 'form-radio-option' ] as $name ) {
-	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( dirname( __DIR__ ). '/templates/'. $name. '.tpl' ), $found );
-	foreach( $found[1] as $list )
-		$written = array_merge( $written, (array) preg_split( '/\s+/', trim( $list ) ) );
+/*	The stylesheet joins Nino.css in one bundle and draws the kernel's form family from properties of its own - the ones the Design
+	feature moves, see the head of the file. Read as the rules it has, not as the comments that talk about them: what it declares
+	and where, what reads it, and what it sets its rules on	*/
+$uncommented	= static fn( string $file ): string => (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
+$ninoCss			= $uncommented( $root. '/_nino/Nino.css' );
+$stylesheet		= (string) file_get_contents( $dir. '/assets/forms.css' );
+$baseCode			= $uncommented( $dir. '/assets/forms.css' );
+$baseRules		= formsRules( $stylesheet );
+$kernelStyles	= static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1;
+
+// Each --forms- property with the places it is declared in - the selector, and the at-rule where it stands in one - and the value
+$baseDeclared = [];
+
+foreach( $baseRules as $rule )
+	foreach( formsDeclarations( $rule['body'] ) as $declaration )
+		if( str_starts_with( $declaration['property'], '--forms-' ) === true )
+			$baseDeclared[ $declaration['property'] ][] = [ 'place' => ( $rule['at'] === '' ? '' : $rule['at']. ' ' ). $rule['selector'], 'value' => $declaration['value'] ];
+
+$misplaced = [];
+
+foreach( $baseDeclared as $property => $declarations ) {
+	$places = array_column( $declarations, 'place' );
+	sort( $places );
+
+	if( in_array( $places, $property === '--forms-floor' ? [ [ ':where(:root)', '@media (pointer: coarse) :where(:root)' ] ] : [ [ ':where(:root)' ], [ ':where(*)' ] ], true ) === false )
+		$misplaced[] = $property. ' in '. implode( ' and ', $places );
 }
-preg_match_all( '/\.(nino-[a-z0-9-]+)/', $uncommented( dirname( __DIR__ ). '/assets/forms.css' ), $found );
-$written = array_values( array_unique( array_merge( $written, $found[1] ) ) );
-$styledByKernel = array_values( array_filter( $written, static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1 ) );
-check( 'no class the new templates or the stylesheet write is one Nino.css styles', $written !== [] && $styledByKernel === [] );
+
+$knobProperties	= [ '--forms-scale', '--forms-space', '--forms-corners', '--forms-line', '--forms-labels', '--forms-edge', '--forms-label' ];
+$onRoot					= array_filter( $baseDeclared, static fn( array $declarations ): bool => array_filter( $declarations, static fn( array $declaration ): bool => $declaration['place'] === ':where(:root)' && str_contains( $declaration['value'], '--color-' ) === true ) !== [] );
+$unread					= array_values( array_filter( array_keys( $baseDeclared ), static fn( string $property ): bool => preg_match( '/var\(\s*'. preg_quote( $property, '/' ). '\s*[,)]/', $baseCode ) !== 1 ) );
+$literals				= formsColourLiterals( $stylesheet );
+
+check( 'forms.css declares each --forms- property it reads in the one place of its kind and in no other: lengths, numbers and keywords in :where(:root), the floor of a field\'s size there and again under pointer: coarse, the colours in :where(*)'. ( $misplaced === [] ? '' : ' - '. implode( ', ', $misplaced ) ),
+	$misplaced === [] && array_diff( $knobProperties, array_keys( $baseDeclared ) ) === [] );
+check( '...a colour token is read in :where(*) alone - read on :root it would be the page\'s on every ground, and a field in a dark section would keep a light fill - and the two inks stand there'. ( $onRoot === [] ? '' : ' - '. implode( ', ', array_keys( $onRoot ) ) ),
+	$onRoot === [] && ( $baseDeclared['--forms-edge'][0]['place'] ?? '' ) === ':where(*)' && ( $baseDeclared['--forms-label'][0]['place'] ?? '' ) === ':where(*)' );
+check( '...each property it declares is read by a var() in a declaration, since one that nothing reads is a knob that moves nothing'. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ), $unread === [] );
+check( '...no colour is written as a literal - a hex colour, a function, a name - and nothing is declared !important'. ( $literals === [] ? '' : ' - '. implode( ', ', $literals ) ), $literals === [] && stripos( $baseCode, '!important' ) === false );
+
+/*	What the rules are set on is what stands outside the :not() of a selector: the classes a rule leaves out are none it touches. The
+	kernel's form family is the one thing of the kernel's that is styled; the feature's own classes are none the kernel styles	*/
+$family	= [ 'nino-form', 'nino-form-input', 'nino-form-textarea', 'nino-form-select', 'nino-form-message', 'nino-is-error', 'nino-is-success' ];
+$setOn	= [];
+
+foreach( $baseRules as $rule ) {
+	preg_match_all( '/\.(nino-[a-z0-9-]+)/', formsNot( $rule['selector'] )[0], $found );
+	$setOn = array_merge( $setOn, $found[1] );
+}
+
+$setOn	= array_values( array_unique( $setOn ) );
+$styled	= array_values( array_filter( $setOn, $kernelStyles ) );
+$own		= array_values( array_filter( $setOn, static fn( string $class ): bool => str_starts_with( $class, 'nino-forms-' ) ) );
+
+check( 'its rules are set on the kernel\'s form family - the form, its three kinds of field, the status line with its two states - and on no other class Nino.css styles, and on the feature\'s own classes, which the kernel styles none of'. ( array_diff( $styled, $family ) === [] ? '' : ' - '. implode( ', ', array_diff( $styled, $family ) ) ),
+	array_diff( $styled, $family ) === [] && array_diff( $family, $setOn ) === [] && array_diff( [ 'nino-forms-check', 'nino-forms-group' ], $own ) === [] && array_filter( $own, $kernelStyles ) === [] );
+
+$templated = [];
+
+foreach( [ 'form-checkbox', 'form-radio', 'form-radio-option' ] as $name ) {
+	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( $dir. '/templates/'. $name. '.tpl' ), $found );
+
+	foreach( $found[1] as $list )
+		$templated = array_merge( $templated, (array) preg_split( '/\s+/', trim( $list ) ) );
+}
+
+check( '...and no class the feature\'s own templates write is one Nino.css styles', $templated !== [] && array_filter( $templated, $kernelStyles ) === [] );
+
+/*	Where a label stands is the block form's alone: the inline form and the newsletter's are flex boxes of their own, and a label that is
+	the words of a check or one a screen reader alone reads is no label of a field	*/
+$layout		= array_filter( $baseRules, static fn( array $rule ): bool => str_contains( $rule['body'], 'var(--forms-labels' ) === true
+	&& array_filter( formsDeclarations( $rule['body'] ), static fn( array $declaration ): bool => str_starts_with( $declaration['property'], '--' ) === false ) !== [] );
+$unscoped	= array_filter( $layout, static fn( array $rule ): bool => preg_match( '/:not\(\s*\.nino-form--inline\s*,\s*\.nino-newsletter-inline\s*\)/', $rule['selector'] ) !== 1 );
+$labelled	= array_filter( $baseRules, static fn( array $rule ): bool => preg_match( '/(?<![\w-])label(?![\w-])(?!:not\(\s*\.nino-forms-check\s*,\s*\.nino-sr-only\s*\))/', $rule['selector'] ) === 1 );
+
+check( 'the layout of the labels is scoped to the block form: every rule that reads where a label stands leaves out the inline form and the newsletter\'s'. ( $unscoped === [] ? '' : ' - '. implode( ' | ', array_column( $unscoped, 'selector' ) ) ),
+	count( $layout ) >= 4 && $unscoped === [] );
+check( '...and no rule names a label without leaving out the words of a check and the label a screen reader reads'. ( $labelled === [] ? '' : ' - '. implode( ' | ', array_column( $labelled, 'selector' ) ) ),
+	$labelled === [] && array_filter( $baseRules, static fn( array $rule ): bool => preg_match( '/(?<![\w-])label(?![\w-])/', $rule['selector'] ) === 1 ) !== [] );
+
+/*	The cut of a lifted label is a colour or, left initial by a variant, the fill of the field read where the label stands: a colour
+	a variant writes for it is read on :root, the page's on every ground, and on a dark section the label would be a light box	*/
+$lifted	= array_values( array_filter( $layout, static fn( array $rule ): bool => str_contains( $rule['body'], 'var(--forms-labels-lift)' ) === true ) );
+$cut		= array_column( formsDeclarations( $lifted[0]['body'] ?? '' ), 'value', 'property' )['background-color'] ?? '';
+
+check( '...and the cut of a lifted label is its own property with the fill of the field as its fallback - left initial by a variant, the label reads the fill where it stands, on a dark section the fill of that section',
+	count( $lifted ) === 1 && preg_match( '/^var\(\s*--forms-labels-cut\s*,\s*var\(\s*--forms-fill\s*\)\s*\)$/', $cut ) === 1 );
+
+/*	A field set under 1rem makes the browser of a phone zoom into it when it is focused: the size of a field is a max() of the floor
+	and the scale, the floor is nothing on a pointer and 1rem under pointer: coarse	*/
+$coarse	= array_values( array_filter( $baseRules, static fn( array $rule ): bool => $rule['at'] === '@media (pointer: coarse)' ) );
+$sized	= array_values( array_filter( $baseRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-form-input' ) === true && str_contains( $rule['body'], 'font-size' ) === true ) );
+$size		= array_column( formsDeclarations( $sized[0]['body'] ?? '' ), 'value', 'property' )['font-size'] ?? '';
+
+check( 'the floor of the size of a field is 1rem under pointer: coarse and nothing without it, and the size of a field is a max() of the floor and the scale',
+	count( $coarse ) === 1 && $coarse[0]['selector'] === ':where(:root)' && formsDeclarations( $coarse[0]['body'] ) === [ [ 'property' => '--forms-floor', 'value' => '1rem' ] ]
+	&& preg_match( '/^0(?:rem|px)?$/', (string) ( $baseDeclared['--forms-floor'][0]['value'] ?? '1rem' ) ) === 1
+	&& preg_match( '/^max\(\s*var\(--forms-floor\)\s*,\s*calc\(\s*1rem\s*\*\s*var\(--forms-scale\)\s*\)\s*\)$/', $size ) === 1 );
+
+/*	The paddings and the margin of a field give way to the spacing classes of Nino.css: a box that names a padding or a margin of its
+	own is left alone, on whichever side. The stylesheet comes after Nino.css in the bundle and a rule of it has the specificity of those
+	classes, so without the guard its rule - the later one - would win. Which classes reach a property is read off Nino.css, off the
+	utilities it ends with: a family it adds is one the guard has to leave out. The select keeps the room of its arrow	*/
+$utilities	= [];
+
+foreach( formsRules( $ninoCss ) as $rule )
+	if( $rule['at'] === '' && preg_match( '/^\.nino-([a-z]+)-(?:\d+|auto)$/', $rule['selector'], $found ) === 1 )
+		foreach( formsDeclarations( $rule['body'] ) as $declaration )
+			$utilities[ $found[1] ][] = $declaration['property'];
+
+/*	What a utility sets that reaches a property of the field, for the shorthand and the four sides of a padding and of a margin: a
+	shorthand reaches every side, a side is reached by the shorthand and by itself	*/
+$reached		= [];
+
+foreach( [ 'padding', 'margin' ] as $box ) {
+	$reached[ $box ] = [ $box, $box. '-top', $box. '-right', $box. '-bottom', $box. '-left' ];
+
+	foreach( [ 'top', 'right', 'bottom', 'left' ] as $side )
+		$reached[ $box. '-'. $side ] = [ $box, $box. '-'. $side ];
+}
+
+$unguarded	= [];
+$spaced			= [ 'padding' => 0, 'padding-right' => 0, 'margin-bottom' => 0 ];
+
+foreach( $baseRules as $rule )
+	foreach( formsDeclarations( $rule['body'] ) as $declaration )
+		foreach( formsItems( $rule['selector'] ) as $item ) {
+			if( isset( $reached[ $declaration['property'] ] ) === false || preg_match( '/\.nino-form-(?:input|textarea|select)/', $item ) !== 1 )
+				continue;
+
+			$spaced[ $declaration['property'] ] = ( $spaced[ $declaration['property'] ] ?? 0 ) + 1;
+			$guard = implode( ' ', formsNot( $item )[1] );
+
+			foreach( $utilities as $prefix => $properties )
+				if( array_intersect( $properties, $reached[ $declaration['property'] ] ) !== [] && str_contains( $guard, '[class*="nino-'. $prefix. '-"]' ) === false )
+					$unguarded[] = $declaration['property']. ' on '. $item. ' lets nino-'. $prefix. '- lose';
+		}
+
+check( 'a rule that sets a padding or a margin of a field, the shorthand or a side, leaves out the box that names its own spacing - every class of Nino.css that reaches the property, on whichever side - and the select keeps the room of its arrow'. ( $unguarded === [] ? '' : ' - '. implode( ', ', $unguarded ) ),
+	$unguarded === [] && isset( $utilities['p'], $utilities['m'] ) === true && min( $spaced ) > 0 );
+
+/*	A display of an author rule - read from a property or written as a word - beats the browser's own display: none for the hidden
+	attribute, whatever its specificity. So for each element the stylesheet gives a display - the selector outside its :not() groups,
+	the whole chain of it - a rule after it says display: none again for the element when it is hidden	*/
+$displayed	= [];
+$rehiding		= [];
+
+foreach( $baseRules as $number => $rule ) {
+	$display	= array_column( formsDeclarations( $rule['body'] ), 'value', 'property' )['display'] ?? '';
+	$items		= formsItems( (string) preg_replace( '/^:where\((.*)\)$/s', '$1', $rule['selector'] ) );
+
+	if( $display !== '' && $display !== 'none' )
+		foreach( $items as $item )
+			$displayed[] = [ $number, formsChain( $item ) ];
+	elseif( $display === 'none' )
+		$rehiding[$number] = $items;
+}
+
+$shown = [];
+
+foreach( $displayed as [ $number, $subject ] )
+	if( array_filter( $rehiding, static fn( array $items, int $at ): bool => $at > $number && array_filter( $items, static fn( string $item ): bool => str_ends_with( formsChain( $item ), $subject. '[hidden]' ) ) !== [], ARRAY_FILTER_USE_BOTH ) === [] )
+		$shown[] = $subject;
+
+check( 'a form, a label or a check that is hidden stays hidden: for each element the stylesheet gives a display, a rule after it says display: none for the element with the hidden attribute'. ( $shown === [] ? '' : ' - '. implode( ', ', $shown ) ),
+	$shown === [] && count( $displayed ) >= 3 );
+
 // The manifest's 'assets', which \Nino\init() registers ahead of every module's init(): the path
 // that calls callModules( 'init' ) alone does not
 \Nino\Features::registerAssets( $appData );
@@ -704,6 +1053,390 @@ echo "Components - [form] as the Builder offers it\n";
 		&& str_contains( $before['[form key="quote"]'], '<form class="nino-form" id="form-quote"' ) === true );
 
 } )( $appData );
+
+echo "\n";
+
+
+// --- The look ----------------------------------------------------------------
+
+echo "Forms - the look of the kernel's form family: the variants the Design feature offers\n";
+
+/*	Four stylesheets in design/, each a variant of the feature for the Design feature (its manual, under Templates, says what a variant
+	is): a head of lines "@tag words" and, after it, nothing but :root declarations. The base stylesheet owns every rule, the variants
+	move what it reads. Read here by their grammar - which tags, which fields, which names - and what a head says is never compared	*/
+$looks = [];
+
+foreach( glob( $dir. '/design/*.css' ) ?: [] as $file )
+	$looks[ basename( $file, '.css' ) ] = formsLook( $file );
+
+ksort( $looks );
+
+$kinds			= [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
+$tabs				= [ 'type', 'surfaces', 'colours', 'motion' ];
+$inkWords		= [ 'ink', 'subtitle', 'title', 'accent', 'primary', 'border', 'focus' ];
+$stepsOf		= [ 'scale' => [ 'least', 'less', 'default', 'more', 'most' ], 'choice' => [ 'less', 'default', 'more' ] ];
+$knobTable	= [ 'scale' => [ 'scale', 'type' ], 'space' => [ 'scale', 'surfaces' ], 'corners' => [ 'scale', 'surfaces' ], 'line' => [ 'scale', 'surfaces' ], 'labels' => [ 'choice', 'surfaces' ], 'edge' => [ 'ink', 'colours' ], 'label' => [ 'ink', 'colours' ] ];
+$stepSuffix	= '/--(?:least|less|default|more|most)$/';
+
+/** The ladders a variant declares for its knobs: the property each rung is named after, without its step - a choice carries one for every aspect the base declares of it, besides its own */
+$stemsOf = static function( array $look ) use ( $baseDeclared, $stepsOf ): array {
+
+	$stems = [];
+
+	foreach( $look['knobs'] as $name => $lines )
+		if( isset( $stepsOf[ $lines[0]['kind'] ] ) === true )
+			$stems[ $name ] = $lines[0]['kind'] === 'choice'
+				? array_merge( [ '--forms-'. $name ], array_values( array_filter( array_keys( $baseDeclared ), static fn( string $property ): bool => str_starts_with( $property, '--forms-'. $name. '-' ) ) ) )
+				: [ '--forms-'. $name ];
+
+	return $stems;
+};
+
+check( 'the feature brings four variants of the Design feature, a stylesheet each in design/ - and regular, which is the feature as it stands, is one of them', array_keys( $looks ) === [ 'contrast', 'filled', 'line', 'regular' ] );
+
+$headless = [];
+
+foreach( $looks as $variant => $look )
+	foreach( [ '@name', '@name-de', '@description', '@description-de' ] as $tag )
+		if( count( $look['tags'][$tag] ?? [] ) !== 1 )
+			$headless[] = $variant. ' '. $tag;
+
+check( 'each head names and describes its variant in both languages, once each: @name, @name-de, @description, @description-de'. ( $headless === [] ? '' : ' - '. implode( ', ', $headless ) ), $headless === [] && $looks !== [] );
+
+$knobProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	foreach( $look['knobs'] as $name => $lines ) {
+		$line = $lines[0];
+
+		if( count( $lines ) !== 1 || $line['fields'] !== 4 || in_array( $line['kind'], $kinds, true ) === false || in_array( $line['tab'], $tabs, true ) === false || $line['label'] === '' )
+			$knobProblems[] = $variant. ' @knob '. $name;
+
+		if( count( $look['knobsDe'][$name] ?? [] ) !== 1 || trim( $look['knobsDe'][$name][0] ) === '' )
+			$knobProblems[] = $variant. ' @knob-de '. $name;
+	}
+
+	foreach( array_diff( array_keys( $look['knobsDe'] ), array_keys( $look['knobs'] ) ) as $name )
+		$knobProblems[] = $variant. ' @knob-de '. $name. ' names no knob';
+}
+
+$usedKinds	= [];
+$usedTabs		= [];
+
+foreach( $looks as $look )
+	foreach( $look['knobs'] as $lines ) {
+		$usedKinds[]	= $lines[0]['kind'];
+		$usedTabs[]		= $lines[0]['tab'];
+	}
+
+check( 'each @knob line has its five fields - the tag, the name, a kind, a tab, the words - once, and a @knob-de beside it'. ( $knobProblems === [] ? '' : ' - '. implode( ', ', $knobProblems ) ), $knobProblems === [] );
+check( '...and the kinds are a scale, a choice and an ink, on the tabs Type, Surfaces and Colours: no ground, no colour pair, no motion', $usedKinds !== [] && array_diff( $usedKinds, [ 'scale', 'choice', 'ink' ] ) === [] && array_diff( $usedTabs, [ 'type', 'surfaces', 'colours' ] ) === [] );
+
+$ladderProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	$stems = [];
+
+	foreach( $stemsOf( $look ) as $name => $list )
+		foreach( $list as $stem ) {
+			$stems[] = $stem;
+
+			foreach( $stepsOf[ $look['knobs'][$name][0]['kind'] ] as $step )
+				if( isset( $look['declared'][ $stem. '--'. $step ] ) === false )
+					$ladderProblems[] = $variant. ' lacks '. $stem. '--'. $step;
+		}
+
+	foreach( array_keys( $look['declared'] ) as $property )
+		if( preg_match( $stepSuffix, $property ) === 1 && in_array( (string) preg_replace( $stepSuffix, '', $property ), $stems, true ) === false )
+			$ladderProblems[] = $variant. ' has a ladder no knob of its head moves: '. $property;
+}
+
+check( 'a scale declares its five rungs in the file and a choice its three - the choice for every aspect of where a label stands the base declares, its own gap among them - and a ladder belongs to a knob the head declares'. ( $ladderProblems === [] ? '' : ' - '. implode( ', ', $ladderProblems ) ), $ladderProblems === [] );
+
+$optionProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	foreach( [ 'options', 'optionsDe' ] as $field ) {
+		foreach( $look['knobs'] as $name => $lines )
+			if( $lines[0]['kind'] === 'choice' )
+				foreach( $stepsOf['choice'] as $step )
+					if( count( $look[$field][$name][$step] ?? [] ) !== 1 || trim( $look[$field][$name][$step][0] ) === '' )
+						$optionProblems[] = $variant. ' '. $field. ' '. $name. ' '. $step;
+
+		foreach( array_keys( $look[$field] ) as $name )
+			if( ( $look['knobs'][$name][0]['kind'] ?? '' ) !== 'choice' )
+				$optionProblems[] = $variant. ' '. $field. ' '. $name. ' is no choice';
+	}
+
+	foreach( $look['knobs'] as $name => $lines )
+		if( ( $lines[0]['kind'] === 'ink' ) !== ( $lines[0]['default'] !== null ) || ( $lines[0]['default'] !== null && in_array( $lines[0]['default'], $inkWords, true ) === false ) )
+			$optionProblems[] = $variant. ' default of '. $name;
+}
+
+check( 'a choice has an @option and an @option-de for each of its three steps, and an ink a default that is one of the seven tones of the kernel\'s tokens'. ( $optionProblems === [] ? '' : ' - '. implode( ', ', $optionProblems ) ), $optionProblems === [] );
+
+$kindsOf = [];
+
+foreach( $looks as $variant => $look )
+	foreach( $look['knobs'] as $name => $lines )
+		$kindsOf[$name][ $lines[0]['kind']. ' '. $lines[0]['tab'] ] = true;
+
+check( 'the same knob is of the same kind and on the same tab in every variant that declares it', $kindsOf !== [] && array_filter( $kindsOf, static fn( array $seen ): bool => count( $seen ) !== 1 ) === [] );
+
+/*	A variant writes no rule: its :root, which beats the defaults of the base wherever the two stand, and where the base declares a
+	colour on every element (:where(*)), the :root, :root * the compiler writes the inks under. It moves what the base declares and
+	invents no property, and nothing it says is a repetition of what the base says	*/
+$ruleProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	foreach( $look['rules'] as $rule ) {
+		if( $rule['at'] !== '' || in_array( $rule['selector'], [ ':root', ':root, :root *' ], true ) === false ) {
+			$ruleProblems[] = $variant. ' writes a rule on '. $rule['selector'];
+			continue;
+		}
+
+		foreach( formsDeclarations( $rule['body'] ) as $declaration ) {
+			$property	= $declaration['property'];
+			$stem			= (string) preg_replace( $stepSuffix, '', $property );
+			$rung			= $stem !== $property;
+			$place		= $baseDeclared[$stem][0]['place'] ?? '';
+
+			if( str_starts_with( $property, '--forms-' ) === false || $place === '' )
+				$ruleProblems[] = $variant. ' sets '. $property. ', which the base does not declare';
+			elseif( $rung === true && $rule['selector'] !== ':root' )
+				$ruleProblems[] = $variant. ' sets the rung '. $property. ' under '. $rule['selector'];
+			elseif( $rung === false && $place !== ( $rule['selector'] === ':root' ? ':where(:root)' : ':where(*)' ) )
+				$ruleProblems[] = $variant. ' sets '. $property. ' under '. $rule['selector']. ', where the base does not declare it';
+			elseif( $rung === false && $declaration['value'] === $baseDeclared[$property][0]['value'] )
+				$ruleProblems[] = $variant. ' repeats the base: '. $property;
+		}
+	}
+
+	foreach( $look['declared'] as $property => $places )
+		if( count( $places ) !== 1 )
+			$ruleProblems[] = $variant. ' declares '. $property. ' '. count( $places ). ' times';
+}
+
+check( 'a variant is a head and :root declarations - no rule on an element - of properties the base declares, in the place it declares them, each once, and none of them a repetition of the base\'s own default'. ( $ruleProblems === [] ? '' : ' - '. implode( ', ', $ruleProblems ) ), $ruleProblems === [] && count( $looks ) === 4 );
+
+/*	A custom property that reads another is resolved where it is declared: what a variant declares on :root alone is read with the
+	colours of the page, whatever section the field stands in. A colour a look needs is declared on every element, or left initial
+	where the base has a fallback - the cut of a lifted label on a dark section would otherwise be a light box	*/
+$perElement	= array_keys( array_filter( $baseDeclared, static fn( array $declarations ): bool => ( $declarations[0]['place'] ?? '' ) === ':where(*)' ) );
+$readsColour	= '/var\(\s*(?:--color-[a-z0-9-]+|'. implode( '|', array_map( static fn( string $property ): string => preg_quote( $property, '/' ), $perElement ) ). ')\s*[,)]/';
+$rootColours	= [];
+
+foreach( $looks as $variant => $look )
+	foreach( $look['rules'] as $rule )
+		if( $rule['selector'] === ':root' )
+			foreach( formsDeclarations( $rule['body'] ) as $declaration )
+				if( preg_match( $readsColour, $declaration['value'] ) === 1 )
+					$rootColours[] = $variant. ' '. $declaration['property']. ': '. $declaration['value'];
+
+check( '...and nothing it declares on :root alone reads a colour - the page\'s on every ground, where a lifted label on a dark section would be a light box'. ( $rootColours === [] ? '' : ' - '. implode( ', ', $rootColours ) ), $rootColours === [] && $perElement !== [] );
+
+$colourProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	$code = (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $dir. '/design/'. $variant. '.css' ) );
+
+	foreach( formsColourLiterals( $code ) as $literal )
+		$colourProblems[] = $variant. ' '. $literal;
+
+	if( stripos( $code, '!important' ) !== false )
+		$colourProblems[] = $variant. ' !important';
+}
+
+check( '...and none writes a colour as a literal or declares anything !important'. ( $colourProblems === [] ? '' : ' - '. implode( ', ', $colourProblems ) ), $colourProblems === [] );
+
+/*	Regular is the feature as it stands: the ladders and nothing else, the middle of each the value the base has as its default,
+	and the tone of its inks the colour the base reads	*/
+$regular	= $looks['regular'] ?? [ 'declared' => [], 'knobs' => [] ];
+$middles	= [];
+$unequal	= [];
+
+foreach( $regular['declared'] as $property => $places )
+	if( preg_match( '/^(.+)--default$/', $property, $stem ) === 1 ) {
+		$middles[] = $stem[1];
+
+		if( ( $baseDeclared[ $stem[1] ][0]['value'] ?? null ) !== $places[0]['value'] )
+			$unequal[] = $property;
+	}
+
+foreach( $regular['knobs'] as $name => $lines )
+	if( $lines[0]['kind'] === 'ink' && ( $baseDeclared[ '--forms-'. $name ][0]['value'] ?? null ) !== 'var(--color-'. $lines[0]['default'] .')' )
+		$unequal[] = $name;
+
+check( 'Regular declares ladders and nothing else, and the middle of each is the default the base declares - so a form under it looks as the kernel draws it - and so is the tone of each of its inks'. ( $unequal === [] ? '' : ' - '. implode( ', ', $unequal ) ),
+	$regular['declared'] !== [] && array_filter( array_keys( $regular['declared'] ), static fn( string $property ): bool => preg_match( '/--(?:least|less|default|more|most)$/', $property ) !== 1 ) === []
+	&& $unequal === [] && count( $middles ) === count( array_merge( ...array_values( $stemsOf( $regular ) ) ) ) && $middles !== [] );
+
+// --- The manual: the base's properties, and the looks the Design feature offers
+$manual = (array) ( $manifest['manual'] ?? [] );
+$manualProblems = [];
+
+foreach( [ 'markup' => 'Custom properties', 'panel' => 'Design: the look of the forms' ] as $section => $title )
+	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+		$text = $manual[$section][$title][$locale] ?? null;
+
+		if( is_string( $text ) === false || trim( $text ) === '' || max( array_map( 'strlen', explode( "\n", $text ) ) ) >= 1000 )
+			$manualProblems[] = $section. ' / '. $title. ' / '. $locale;
+	}
+
+check( 'the manual names the properties of the stylesheet under markup and the looks of the Design feature under panel, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
+
+echo "\n";
+
+
+// --- The looks, run through the Design feature ------------------------------------
+
+echo "Forms - the variants as the Design feature compiles them\n";
+
+$designSetup			= '\\Nino\\Modules\\Design\\Setup';
+$designCompiler		= '\\Nino\\Modules\\Design\\Compiler';
+
+if( class_exists( $designSetup ) === false || class_exists( $designCompiler ) === false )
+	echo "  note - there is no Design feature beside this one: the variants are not run through it here, bin/check.sh runs them with it in the checkout\n";
+else {
+	$library			= \Nino\Features::dir(). '/Design/library';
+	$modulesKept	= (array) ( $appData['/nino/modules'] ?? [] );
+	$localeKept		= $appData['./nino/locales/current'];
+
+	/** Which of the two features are on: their classes are listed in /nino/modules, and what the kernel and the Design feature have read of the features is read again */
+	$featuresOn = static function( array $names ) use ( &$appData, $modulesKept ): void {
+		$appData['/nino/modules'] = array_merge( array_values( array_diff( $modulesKept, [ '\\Nino\\Modules\\Forms', '\\Nino\\Modules\\Design' ] ) ), array_map( static fn( string $name ): string => '\\Nino\\Modules\\'. $name, $names ) );
+		unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+	};
+
+	/** The sheet a setup makes of the raw entry given */
+	$compile = static function( array $raw, array &$notes = [] ) use ( &$appData, $designSetup, $designCompiler, $library ): string {
+		$setup = $designSetup::normalize( $appData, $raw, $library, $notes );
+
+		return $designCompiler::compile( $appData, $setup, $library, $notes );
+	};
+
+	/** The words a head says in a language, by its position: the name and the description, once the language of the workbench is chosen */
+	$described = static function( array $catalogue, string $suffix ) use ( $looks ): array {
+		return array_filter( array_keys( $looks ), static fn( string $variant ): bool => ( $catalogue[$variant]['name'] ?? null ) !== $looks[$variant]['tags']['@name'. $suffix][0]
+			|| ( $catalogue[$variant]['description'] ?? null ) !== $looks[$variant]['tags']['@description'. $suffix][0] );
+	};
+
+	ninoWarnings();
+	$featuresOn( [ 'Forms', 'Design' ] );
+
+	$scanNotes	= [];
+	$scan				= $designSetup::features( $appData, $scanNotes );
+	$feature		= $scan['forms'] ?? [];
+	$catalogue	= $feature['catalogue'] ?? [];
+
+	check( 'with the Design feature on, the scan lists this feature by its variants - the four, regular the one it has before anything is chosen - and has nothing to say of any of them',
+		isset( $scan['forms'] ) === true && realpath( (string) $feature['dir'] ) === realpath( $dir ) && array_keys( $catalogue ) === array_keys( $looks ) && $feature['default'] === 'regular' && $scanNotes === [] );
+
+	$appData['./nino/locales/current'] = 'en_US';
+	$english = $designSetup::features( $appData )['forms']['catalogue'] ?? [];
+	$appData['./nino/locales/current'] = 'de_DE';
+	$german = $designSetup::features( $appData )['forms']['catalogue'] ?? [];
+
+	check( '...each described in the language of the workbench by the lines of its head, the name and the description - the English ones or the ones with -de', $described( $english, '' ) === [] && $described( $german, '-de' ) === [] && count( $english ) === 4 );
+
+	$offTable = [];
+
+	foreach( $catalogue as $variant => $look )
+		foreach( $look['knobs'] as $name => $knob )
+			if( ( $knobTable[$name] ?? null ) !== [ $knob['kind'], $knob['tab'] ] )
+				$offTable[] = $variant. ' '. $name;
+
+	check( 'every knob of a variant is one of the seven, with its kind and its tab: the size of the text on Type; space, corners, the weight of the line and where the label stands on Surfaces; the colour of the lines and of the labels on Colours'. ( $offTable === [] ? '' : ' - '. implode( ', ', $offTable ) ),
+		$offTable === [] && array_keys( $catalogue['regular']['knobs'] ?? [] ) === array_keys( $knobTable ) );
+	check( '...Regular, Filled and Contrast answer to all seven, Line to six - a field with no box has no corner to round',
+		array_keys( $catalogue['filled']['knobs'] ?? [] ) === array_keys( $knobTable ) && array_keys( $catalogue['contrast']['knobs'] ?? [] ) === array_keys( $knobTable )
+		&& array_keys( $catalogue['line']['knobs'] ?? [] ) === array_values( array_diff( array_keys( $knobTable ), [ 'corners' ] ) ) );
+
+	$optionless = [];
+	$tones			= [];
+
+	foreach( $catalogue as $variant => $look ) {
+		$words = $look['knobs']['labels']['options'] ?? [];
+
+		if( array_keys( $words ) !== $designSetup::words( 'choice' ) || count( array_unique( $words ) ) !== 3 || in_array( '', $words, true ) === true )
+			$optionless[] = $variant;
+
+		foreach( [ 'edge', 'label' ] as $ink )
+			$tones[$variant][$ink] = $look['knobs'][$ink]['default'] ?? null;
+	}
+
+	check( 'the choice of where a label stands has its three words, each its own, and the inks stand at the tone of their heads: the lines at the border in three variants and at the ink in Contrast, the labels at the ink in all four'. ( $optionless === [] ? '' : ' - '. implode( ', ', $optionless ) ),
+		$optionless === [] && array_keys( $designSetup::INKS ) === $inkWords
+		&& array_column( $tones, 'edge' ) === [ 'ink', 'border', 'border', 'border' ] && array_column( $tones, 'label' ) === [ 'ink', 'ink', 'ink', 'ink' ] );
+	check( '...and a scale and a choice are published by their ladders: the scales by their own, the choice by its ten - its gap and the nine aspects the base declares, which are the ones every variant carries',
+		$catalogue !== [] && array_filter( $catalogue, static fn( array $look ): bool => ( $look['knobs']['scale']['ladder'] ?? [] ) !== [ 'scale' ] || count( $look['knobs']['labels']['ladder'] ?? [] ) !== 10 || in_array( 'labels', $look['knobs']['labels']['ladder'] ?? [], true ) === false
+			|| array_diff( array_map( static fn( string $ladder ): string => '--forms-'. $ladder, $look['knobs']['labels']['ladder'] ?? [] ), array_keys( $baseDeclared ) ) !== [] ) === [] );
+
+	// The sheet: the section of the variant after the seven parts, the line of every ladder, the tone of every ink
+	$featuresOn( [ 'Forms', 'Design' ] );
+	$withNone	= $compile( [] );
+	$featuresOn( [ 'Design' ] );
+	$withOff	= $compile( [] );
+	$featuresOn( [ 'Forms', 'Design' ] );
+
+	check( 'with no variant chosen the feature compiles nothing: the sheet of a project that has the feature on is the sheet of one that has it off, byte for byte', $withNone === $withOff && str_contains( $withNone, 'feature forms' ) === false );
+
+	$sheetProblems = [];
+
+	foreach( $catalogue as $variant => $look ) {
+		$sheetNotes	= [];
+		$sheet			= $compile( [ 'features' => [ 'forms' => [ 'set' => $variant ] ] ], $sheetNotes );
+		$ladders		= [];
+
+		foreach( $look['knobs'] as $name => $knob ) {
+			if( in_array( $knob['kind'], [ 'scale', 'choice' ], true ) === true ) {
+				$ladders[] = $name. ' default';
+
+				foreach( $knob['ladder'] ?? [] as $ladder )
+					if( str_contains( $sheet, "\n\t--forms-". $ladder. ': var('. sprintf( $designSetup::KNOB_TOKEN, 'forms', $ladder, 'default' ). ");\n" ) === false )
+						$sheetProblems[] = $variant. ' selects no '. $ladder;
+			}
+			elseif( preg_match( '~\n:root, :root \* \{\n(?:\t[^\n]*\n)*?\t--forms-'. preg_quote( $name, '~' ). ': var\('. preg_quote( $designSetup::INKS[ (string) $knob['default'] ] ?? '', '~' ). '\);\n~', $sheet ) !== 1 )
+				$sheetProblems[] = $variant. ' writes no ink '. $name;
+		}
+
+		if( preg_match( '~^/\* ==== \d+\. feature forms: '. preg_quote( $variant, '~' ). ' \((.*)\) ==== \*/$~m', $sheet, $title ) !== 1 || $title[1] !== implode( ', ', $ladders ) )
+			$sheetProblems[] = $variant. ' has no section of its own, or one that does not say its ladders';
+		elseif( str_contains( $sheet, rtrim( (string) file_get_contents( $dir. '/design/'. $variant. '.css' ), "\n" ) ) === false )
+			$sheetProblems[] = $variant. ' is not in its section as the file has it';
+
+		if( $sheetNotes !== [] )
+			$sheetProblems[] = $variant. ' compiled with a note';
+	}
+
+	check( '...and with a variant chosen the sheet carries its section, its stylesheet as the file has it, a line for every ladder of every knob it declares - the choice\'s ten among them - and the tone of every ink under the selector the compiler writes the inks under'. ( $sheetProblems === [] ? '' : ' - '. implode( ', ', $sheetProblems ) ), $sheetProblems === [] && $catalogue !== [] );
+
+	$selects	= static fn( string $sheet, string $ladder, string $step ): bool => str_contains( $sheet, "\n\t--forms-". $ladder. ': var('. sprintf( $designSetup::KNOB_TOKEN, 'forms', $ladder, $step ). ");\n" );
+	$moved	= $compile( [ 'features' => [ 'forms' => [ 'set' => 'regular', 'knobs' => [ 'scale' => -2, 'space' => 2, 'corners' => -1, 'line' => 1, 'labels' => -1, 'edge' => 'accent', 'label' => 'subtitle' ] ] ] ] );
+	$wider	= $compile( [ 'features' => [ 'forms' => [ 'set' => 'filled', 'knobs' => [ 'labels' => 1 ] ] ] ] );
+	$ladder	= $catalogue['regular']['knobs']['labels']['ladder'] ?? [];
+
+	check( 'a position moved reaches the sheet as the rung it stands for, a tone chosen as the kernel\'s token of that tone, and the choice at less and at more as the rung of each of its ten ladders',
+		$selects( $moved, 'scale', 'least' ) && $selects( $moved, 'space', 'most' ) && $selects( $moved, 'corners', 'less' ) && $selects( $moved, 'line', 'more' )
+		&& array_filter( $ladder, static fn( string $each ) => $selects( $moved, $each, 'less' ) === false ) === [] && count( $ladder ) === 10
+		&& array_filter( $ladder, static fn( string $each ) => $selects( $wider, $each, 'more' ) === false ) === []
+		&& str_contains( $moved, "\n\t--forms-edge: var(". $designSetup::INKS['accent']. ");\n" ) === true && str_contains( $moved, "\n\t--forms-label: var(". $designSetup::INKS['subtitle']. ");\n" ) === true );
+
+	// The bundle of a project the wizard has set up lists the sheet of the feature after the theme the Design feature writes
+	$bundled = $appData;
+	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ $designCompiler::TARGET, '/assets/style.css' ] ) ];
+	\Nino\Features::registerAssets( $bundled );
+	$bundle = $bundled['/nino/html/assets']['/.cache/style.css'];
+
+	check( 'in a booted project the bundle lists forms.css after the theme.css the Design feature writes its sheet to - the order the :where() of its defaults is for, and the reason a variant writes no rule',
+		in_array( '/features/Forms/assets/forms.css', $bundle, true ) === true && array_search( '/features/Forms/assets/forms.css', $bundle, true ) > array_search( $designCompiler::TARGET, $bundle, true ) );
+
+	$appData['/nino/modules']					= $modulesKept;
+	$appData['./nino/locales/current']	= $localeKept;
+	unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+
+	check( 'and none of it raised a warning', ninoWarnings() === [] );
+}
 
 echo "\n";
 

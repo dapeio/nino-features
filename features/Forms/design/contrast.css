@@ -1,0 +1,113 @@
+/*	@name			Contrast
+ *	@name-de		Kontrast
+ *	@description	Lines in the colour of the text, labels in spaced capitals at four fifths of their size, square at the least position, and a ring that stands off the line when the field is typed in.
+ *	@description-de	Linien in der Textfarbe, Beschriftungen in gesperrten Versalien auf vier Fünftel ihrer Größe, eckig auf der untersten Stellung und ein Ring, der von der Linie absteht, wenn im Feld getippt wird.
+ *
+ *	@knob	scale		scale	type		Size of the fields' text
+ *	@knob-de	scale		Schriftgröße der Felder
+ *	@knob	space		scale	surfaces	Space inside a field and under it
+ *	@knob-de	space		Raum im Feld und darunter
+ *	@knob	corners		scale	surfaces	Corners of a field
+ *	@knob-de	corners		Ecken eines Feldes
+ *	@knob	line		scale	surfaces	Weight of the line of a field
+ *	@knob-de	line		Stärke der Linie eines Feldes
+ *	@knob	labels		choice	surfaces	Where the label of a field stands
+ *	@knob-de	labels		Wo die Beschriftung eines Feldes steht
+ *	@option	labels	less	Beside
+ *	@option	labels	default	Above
+ *	@option	labels	more	Floating
+ *	@option-de	labels	less	Daneben
+ *	@option-de	labels	default	Darüber
+ *	@option-de	labels	more	Schwebend
+ *	@knob	edge		ink	colours		Colour of the lines	= ink
+ *	@knob-de	edge		Farbe der Linien
+ *	@knob	label		ink	colours		Colour of the labels	= ink
+ *	@knob-de	label		Farbe der Beschriftungen
+ *
+ *	Lines in the ink. A field is drawn in the ink of the ground it stands on and not in the colour of the border role: that is
+ *	the default of the edge knob here, the one place this look differs from the other three in a colour. A label is set in
+ *	spaced capitals at four fifths of its size, in whichever place the labels knob puts it. The corners are the knob's, and
+ *	the least position is square. The focus is a ring of 2px in the colour of the focus, standing off the line, which keeps
+ *	its colour.
+ */
+
+:root {
+	--forms-scale--least:	.87;
+	--forms-scale--less:	.94;
+	--forms-scale--default:	1;
+	--forms-scale--more:	1.15;
+	--forms-scale--most:	1.32;
+
+	--forms-space--least:	calc( var(--space-1) * .4 );
+	--forms-space--less:	calc( var(--space-1) * .7 );
+	--forms-space--default:	var(--space-1);
+	--forms-space--more:	calc( var(--space-1) * 1.5 );
+	--forms-space--most:	calc( var(--space-1) * 2.2 );
+
+	--forms-corners--least:		0rem;
+	--forms-corners--less:		0rem;
+	--forms-corners--default:	var(--radius-small);
+	--forms-corners--more:		var(--radius-large);
+	--forms-corners--most:		1rem;
+
+	--forms-line--least:	0px;
+	--forms-line--less:		.5px;
+	--forms-line--default:	1px;
+	--forms-line--more:		2px;
+	--forms-line--most:		3px;
+
+	/*	Where a label stands. Above the field is Nino.css: the form is a block and the label a line of text. Beside, the
+		form is a grid of a column for the labels and a column for the fields, this far apart. Floating, the label is
+		lifted onto the top edge of its field, a little smaller, and cut out of the fill of its field: the cut is left
+		initial there, so that the label reads the fill where it stands - a colour written here would be read on :root,
+		the page's ground on a dark section too	*/
+	--forms-labels--less:		var(--space-2);
+	--forms-labels--default:	normal;
+	--forms-labels--more:		normal;
+
+	--forms-labels-form--less:		grid;
+	--forms-labels-form--default:	block;
+	--forms-labels-form--more:		block;
+
+	--forms-labels-cols--less:		max-content minmax(0, 1fr);
+	--forms-labels-cols--default:	none;
+	--forms-labels-cols--more:		none;
+
+	--forms-labels-align--less:		baseline;
+	--forms-labels-align--default:	normal;
+	--forms-labels-align--more:		normal;
+
+	--forms-labels-wide--less:		1 / -1;
+	--forms-labels-wide--default:	auto;
+	--forms-labels-wide--more:		auto;
+
+	--forms-labels-start--less:		start;
+	--forms-labels-start--default:	auto;
+	--forms-labels-start--more:		auto;
+
+	--forms-labels-block--less:		inline;
+	--forms-labels-block--default:	inline;
+	--forms-labels-block--more:		table;
+
+	--forms-labels-pos--less:		static;
+	--forms-labels-pos--default:	static;
+	--forms-labels-pos--more:		relative;
+
+	--forms-labels-lift--less:		0em;
+	--forms-labels-lift--default:	0em;
+	--forms-labels-lift--more:		.8em;
+
+	--forms-labels-cut--less:		transparent;
+	--forms-labels-cut--default:	transparent;
+	--forms-labels-cut--more:		initial;
+
+	/*	What makes it contrast: a label in spaced capitals at four fifths of its size, whether it floats or not	*/
+	--forms-label-case:	uppercase;
+	--forms-label-tracking:	.08em;
+	--forms-label-size:		.8em;
+}
+
+/*	The colour of the line kept in focus, declared where it is used (see forms.css)	*/
+:root, :root * {
+	--forms-edge-focus:	var(--forms-edge);
+}
