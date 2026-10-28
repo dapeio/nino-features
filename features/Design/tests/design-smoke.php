@@ -40,7 +40,10 @@ declare(strict_types=1);
  *											panel brings and the words of the strip - over a setup in
  *											six views, the manual, which has an entry for each tab, each
  *											view and each part of the themes and is a line in both
- *											languages, and the answers the panel's script is drawn from.
+ *											languages, the answers the panel's script is drawn from, the
+ *											stylesheets of the active features that the preview links after
+ *											the compiled sheet, and the anchor a variant's head names - the
+ *											place of the specimen the variant is looked at in.
  *											Travels with the feature and
  *											runs against the checkout three levels up, or the one
  *											NINO_ROOT names (see tests/harness.php there). What the
@@ -129,7 +132,7 @@ function designMakeFeature( string $features, string $name, string $key, array $
 
 /*	The features directory of this run, which is the one the feature lives in with five things more: the fixture feature the pins of the
 	variants a feature brings run on (fixtures/features/Probe, copied), and four features the suite makes for itself where a head is to be
-	wrong, a key is a part's, a feature has one variant only and the variants of a feature declare knobs of their own (see designMakeFeature()). A directory of its own, so that nothing is written
+	wrong - one line of it, the anchor, wrong in the way a line can be and a second one beside it -, a key is a part's, a feature has one variant only and the variants of a feature declare knobs of their own (see designMakeFeature()). A directory of its own, so that nothing is written
 	to the checkout, named before the kernel loads - the harness reads the constant when it does - and removed when the run ends	*/
 if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 
@@ -145,7 +148,7 @@ if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 
 	designCopyTree( __DIR__. '/fixtures/features/Probe', $designTree. '/Probe' );
 	designMakeFeature( $designTree, 'Broken', 'broken', [
-		'regular' => "/*\t@name\tBroken\n *\t@description\tA head with a line wrong for each thing a line can be wrong in.\n *\n"
+		'regular' => "/*\t@name\tBroken\n *\t@description\tA head with a line wrong for each thing a line can be wrong in.\n *\t@anchor\tForm Section\n *\n"
 			. " *\t@knob\tsize\tscale\ttype\tSize\n"
 			. " *\t@knob\tpad\tscale\ttype\tPad, whose ladder is not there\n"
 			. " *\t@knob\ttone\tchoice\tsurfaces\tTone, with two of its three words\n *\t@option\ttone\tless\tLess\n *\t@option\ttone\tmore\tMore\n"
@@ -178,8 +181,8 @@ if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 	designMakeFeature( $designTree, 'Plain', 'plain', [] );
 	$pairStray = "/*\t@name\tStray\n *\t@knob\tgamma\tscale\ttype\tGamma\n */\n:root { --pair-gamma--least: 1; --pair-gamma--less: 1; --pair-gamma--default: 1; --pair-gamma--more: 1; --pair-gamma--most: 1; }\n";
 	designMakeFeature( $designTree, 'Pair', 'pair', [
-		'first' => "/*\t@name\tFirst\n *\t@knob\talpha\tscale\ttype\tAlpha\n */\n:root { --pair-alpha--least: 1; --pair-alpha--less: 1; --pair-alpha--default: 1; --pair-alpha--more: 1; --pair-alpha--most: 1; }\n",
-		'second' => "/*\t@name\tSecond\n *\t@knob\talpha\tscale\tmotion\tAlpha\n *\t@knob\tbeta\tscale\ttype\tBeta\n */\n:root { --pair-alpha--least: 1; --pair-alpha--less: 1; --pair-alpha--default: 1; --pair-alpha--more: 1; --pair-alpha--most: 1;"
+		'first' => "/*\t@name\tFirst\n *\t@anchor\tfirst-place\n *\t@anchor\tsecond-place\n *\t@knob\talpha\tscale\ttype\tAlpha\n */\n:root { --pair-alpha--least: 1; --pair-alpha--less: 1; --pair-alpha--default: 1; --pair-alpha--more: 1; --pair-alpha--most: 1; }\n",
+		'second' => "/*\t@name\tSecond\n *\t@anchor-de\tgerman-place\n *\t@knob\talpha\tscale\tmotion\tAlpha\n *\t@knob\tbeta\tscale\ttype\tBeta\n */\n:root { --pair-alpha--least: 1; --pair-alpha--less: 1; --pair-alpha--default: 1; --pair-alpha--more: 1; --pair-alpha--most: 1;"
 			. " --pair-beta--least: 1; --pair-beta--less: 1; --pair-beta--default: 1; --pair-beta--more: 1; --pair-beta--most: 1; }\n",
 		'two words' => $pairStray,
 		'a..b' => $pairStray,
@@ -885,6 +888,8 @@ check( '...and no 1.6 can run it, a 1.7 pre-release can', \Nino\Features::satisf
 check( 'it is Design 2.1: the model of 2.0 with the typefaces and the five knobs of round 4, and the version says so', ( $feature['version'] ?? '' ) === '2.1.0' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
+// The line as the file has it, with no fallback to another language: what a check of both languages reads
+$said = static fn( string $entry, string $locale ): string => trim( (string) ( $feature['manual']['panel'][$entry][$locale] ?? '' ) );
 
 /*	The words of the panel, taken from the text files themselves: the views the manual has to
 	have an entry for are the views the model has, by the word the panel draws them with	*/
@@ -1002,7 +1007,7 @@ check( '...every screen has its word in both languages and is named by it in the
 check( '...and one for each part of the themes - what its buttons do (load, create, duplicate, save, delete, export), the import - and the css of a theme, which is the view CSS',
 	count( $themeParts ) === 8 && array_filter( $themeParts, static fn( string $part ): bool => $handled( $part ) === false ) === [] );
 check( '...every entry in both languages',
-	array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => trim( $says( $entry, 'en_US' ) ) === '' || trim( $says( $entry, 'de_DE' ) ) === '' ) === [] );
+	array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => $said( $entry, 'en_US' ) === '' || $said( $entry, 'de_DE' ) === '' ) === [] );
 // Features::manifest() holds a line of the manual to 1000 characters; it would refuse the whole file, and the first check of this suite says so
 check( '...every line of it a line and not a paragraph: at most 1000 bytes in either language, as the kernel reads a manifest',
 	array_filter( (array) ( $feature['manual']['panel'] ?? [] ), static fn( array $lines ): bool => array_filter( $lines, static fn( string $line ): bool => strlen( $line ) > 1000 ) !== [] ) === [] );
@@ -5201,6 +5206,26 @@ check( 'the page ends in an anchor of its own, id="footer", once: an empty block
 	substr_count( $specimen, ' id="footer"' ) === 1 && preg_match( '#</section>\s*<div id="footer"></div>\s*$#', $specimen ) === 1
 	&& (int) strpos( $specimen, ' id="footer"' ) > (int) strrpos( $specimen, '<section ' ) );
 
+/*	...and one that no tab, no object and no control of the script looks at: the form, which a variant of a feature may name in the line of its head that says where it is looked at
+	(see Setup::head()) - the section around the form and the fields a feature's look is seen on, after the buttons and before the tables	*/
+check( 'the Form section carries id="form", once, with an accessible name of its own, around the form and its field - after the buttons and before the tables - and the script of the panel looks at it nowhere: a place of the specimen for a feature that brings markup, named by a variant and by no table',
+	substr_count( $specimen, ' id="form"' ) === 1 && preg_match( '/<section id="form" class="nino-section" aria-label="[^"]+">(.*?)<\/section>/s', $specimen, $formSection ) === 1
+	&& str_contains( $formSection[1], 'class="nino-form"' ) === true && str_contains( $formSection[1], 'class="nino-form-input"' ) === true
+	&& (int) strpos( $specimen, 'id="buttons"' ) < (int) strpos( $specimen, 'id="form"' ) && (int) strpos( $specimen, 'id="form"' ) < (int) strpos( $specimen, 'id="tables"' )
+	&& in_array( 'form', $scriptAnchors, true ) === false );
+
+// The places of the specimen are the elements with an id that a block of it starts at; the manual tells a variant where it is looked at in one entry of each language, found by the line of the head it names, which names each of them
+preg_match_all( '/<(?:div|section) id="([a-z]+)"/', $specimen, $placeIds );
+
+$placeEntries = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $placeLocale )
+	$placeEntries[$placeLocale] = array_values( array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => str_contains( $says( $entry, $placeLocale ), '@anchor' ) === true ) );
+
+check( 'the manual tells where a variant is looked at in one entry, the same one in both languages, found by the line of the head that names it - and the entry names every place of the specimen by its id, the ids the page has, read from the template',
+	count( $placeIds[1] ) >= 9 && in_array( 'form', $placeIds[1], true ) === true && count( $placeEntries['en_US'] ) === 1 && $placeEntries['en_US'] === $placeEntries['de_DE']
+	&& array_filter( $placeIds[1], static fn( string $id ): bool => str_contains( $said( $placeEntries['en_US'][0], 'en_US' ), $id ) === false || str_contains( $said( $placeEntries['de_DE'][0], 'de_DE' ), $id ) === false ) === [] );
+
 $oldWords = [];
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ), FilesystemIterator::SKIP_DOTS ) ) as $file ) {
 
@@ -7364,15 +7389,59 @@ $brokenNotes = [];
 $broken = Setup::features( $appData, $brokenNotes );
 $brokenKnobs = $broken['broken']['catalogue']['regular']['knobs'] ?? [];
 
-$wrongTokens = [ 'Nodefault', 'Badsurface', 'Badtone', 'Onehalf', 'Twice', 'Fixed', 'Nokind', 'notab', 'Nocss', 'Notemplates', 'Bad_Name', 'bare', 'Clash', '"tone"', 'ghostlabel', 'ghostoption', '"pad"' ];
+$wrongTokens = [ 'Nodefault', 'Badsurface', 'Badtone', 'Onehalf', 'Twice', 'Fixed', 'Nokind', 'notab', 'Nocss', 'Notemplates', 'Bad_Name', 'bare', 'Clash', '"tone"', 'ghostlabel', 'ghostoption', '"pad"', 'Form Section' ];
 
 check( 'a head with a line wrong for each thing a line can be wrong in publishes the knobs that are right and nothing else: the first of a name that is declared twice, an ink with its default, a scale with its ladder, a ground with its surface - and not the scale named for a part of that ground, ladder or no ladder: the ground writes that property',
 	array_keys( $brokenKnobs ) === [ 'size', 'ink', 'base' ] && $brokenKnobs['size']['label'] === 'Size' && $brokenKnobs['ink']['default'] === 'subtitle' && $brokenKnobs['size']['ladder'] === [ 'size' ] && $brokenKnobs['base']['default'] === 'brand' && isset( $brokenKnobs['base-border'] ) === false );
-check( '...each line that was dropped is named, once, led by the feature and the variant it was in: a ground or an ink or a colour without a default of its kind, a scale that is given one, a name twice, a kind or a tab or a name there is none of - the views that have no knobs, the templates and the css, are no tab for one -, a line without its label, a choice without its three words, a label or the words for a knob that is not there, a knob named for a part of a ground of the same head, and a scale without a complete ladder',
+check( '...each line that was dropped is named, once, led by the feature and the variant it was in: a ground or an ink or a colour without a default of its kind, a scale that is given one, a name twice, a kind or a tab or a name there is none of - the views that have no knobs, the templates and the css, are no tab for one -, a line without its label, a choice without its three words, a label or the words for a knob that is not there, a knob named for a part of a ground of the same head, a scale without a complete ladder, and an anchor that is no id',
 	count( $brokenNotes ) === count( $wrongTokens ) && array_filter( $brokenNotes, static fn( mixed $note ): bool => is_string( $note ) === false || str_starts_with( $note, 'broken/regular: ' ) === false ) === []
 	&& array_filter( $wrongTokens, static fn( string $token ): bool => count( array_filter( $brokenNotes, static fn( string $note ): bool => str_contains( $note, $token ) === true ) ) !== 1 ) === [] );
 check( '...the ladder no head declares is not offered - nothing says where it stands - and a knob that has no label of its language is labelled in English, as a set that has no name of its language is listed under its English one',
 	isset( $brokenKnobs['stray'] ) === false && $brokenKnobs['ink']['label'] === 'Ink' && $brokenKnobs['size']['label'] === 'Size' );
+
+// The anchor of a variant: one line of its head, "@anchor <id>", the id of the element of the specimen its block is looked at in
+$headAt 			= static fn( string $file ): array => Setup::head( $file, 'en_US' );
+$anchorsIn 		= static function( string $file ): array {
+
+	preg_match_all( '~^[\s*]*@anchor[ \t]+(\S.*?)[ \t]*$~m', designOpening( $file ), $found );
+
+	return $found[1];
+};
+$isAnchor 		= static fn( string $word ): bool => preg_match( '/^[a-z][a-z0-9-]*$/D', $word ) === 1;
+$headLoud 		= $headAt( $probeDir. '/design/loud.css' );
+$headRegular 	= $headAt( $probeDir. '/design/regular.css' );
+$headBroken 	= $headAt( NINO_FEATURES_DIR. '/Broken/design/regular.css' );
+$headFirst 		= $headAt( NINO_FEATURES_DIR. '/Pair/design/first.css' );
+$headSecond 	= $headAt( NINO_FEATURES_DIR. '/Pair/design/second.css' );
+$brokenWords 	= $anchorsIn( NINO_FEATURES_DIR. '/Broken/design/regular.css' );
+$firstWords 	= $anchorsIn( NINO_FEATURES_DIR. '/Pair/design/first.css' );
+$brokenNote 	= array_values( array_filter( $headBroken['notes'], static fn( string $note ): bool => str_contains( $note, '@anchor' ) === true ) );
+
+check( 'a head may name the place of the specimen its block is looked at in, with one line, "@anchor <id>": head() answers the id the line carries - the word in the file, letters, digits and hyphens - and an empty string for a head without the line, and names neither; the knob lines round it are read as they are without it',
+	$anchorsIn( $probeDir. '/design/loud.css' ) === [ $headLoud['anchor'] ] && $isAnchor( $headLoud['anchor'] ) === true && $anchorsIn( $probeDir. '/design/regular.css' ) === [] && $headRegular['anchor'] === ''
+	&& $headLoud['notes'] === [] && $headRegular['notes'] === []
+	&& array_keys( $headLoud['knobs'] ) === array_keys( $loud['knobs'] ) && array_keys( $headRegular['knobs'] ) === array_keys( $regular['knobs'] ) );
+check( 'an anchor that is no id - a space and capitals in it - is dropped and named, once, with the line as it stands in the file: the variant has none, and the variant that is published says so',
+	count( $brokenWords ) === 1 && $isAnchor( $brokenWords[0] ) === false && $headBroken['anchor'] === ''
+	&& count( $brokenNote ) === 1 && str_contains( $brokenNote[0], $brokenWords[0] ) === true && ( $broken['broken']['catalogue']['regular']['anchor'] ?? null ) === '' );
+check( 'a head has one anchor, a variant being looked at in one place: of two lines the first stands, and the second is dropped and named, once, with the line as it stands in the file',
+	count( $firstWords ) === 2 && $isAnchor( $firstWords[0] ) === true && $isAnchor( $firstWords[1] ) === true && $firstWords[0] !== $firstWords[1]
+	&& $headFirst['anchor'] === $firstWords[0] && count( $headFirst['notes'] ) === 1 && str_contains( $headFirst['notes'][0], $firstWords[1] ) === true && str_contains( $headFirst['notes'][0], $firstWords[0] ) === false );
+check( 'the line has no twin in another language, an id being no word: "@anchor-de" is no line of the grammar - not read and not named - and a head that has that line and no other has no anchor, whatever language the workbench speaks',
+	count( (array) preg_grep( '~@anchor-de\b~', explode( "\n", designOpening( NINO_FEATURES_DIR. '/Pair/design/second.css' ) ) ) ) === 1 && $anchorsIn( NINO_FEATURES_DIR. '/Pair/design/second.css' ) === []
+	&& $headSecond['anchor'] === '' && $headSecond['notes'] === [] && Setup::head( NINO_FEATURES_DIR. '/Pair/design/second.css', 'de_DE' )['anchor'] === ''
+	&& array_keys( $headSecond['knobs'] ) === [ 'alpha', 'beta' ] );
+
+$unanchored = [];
+
+foreach( [ $scan, $broken ] as $scanned )
+	foreach( $scanned as $scannedKey => $scannedFeature )
+		foreach( $scannedFeature['catalogue'] as $scannedVariant => $scannedEntry )
+			if( is_string( $scannedEntry['anchor'] ?? null ) === false )
+				$unanchored[] = $scannedKey. '/'. $scannedVariant;
+
+check( 'the scan publishes the anchor with each variant as its head says it - the id of the line, and an empty string where the head has none - and with every variant of every feature, so that the screen reads it without asking whether it is there'. ( $unanchored === [] ? '' : ' - none for '. implode( ', ', $unanchored ) ),
+	$unanchored === [] && $loud['anchor'] === $headLoud['anchor'] && $loud['anchor'] !== '' && $regular['anchor'] === '' );
 
 // Read once for a request: the answer is kept beside the list of the modules it was made for
 $featuresOn( [ 'Design', 'Probe' ] );
@@ -7499,6 +7568,8 @@ check( '...the rows are those of all the variants and not of the first: a knob o
 check( '...a stylesheet in design/ whose name no variant can have - a space in it, two dots in a row - is none: it is not offered, and the knobs it declares have no row',
 	array_keys( Setup::features( $appData )['pair']['catalogue'] ) === [ 'first', 'second' ] && isset( $pairRows['features/pair/knobs/gamma'] ) === false
 	&& is_file( NINO_FEATURES_DIR. '/Pair/design/two words.css' ) === true && is_file( NINO_FEATURES_DIR. '/Pair/design/a..b.css' ) === true );
+check( '...and a variant is published with the anchor its head names: the first of two lines where there are two, and none where the only line is one of another language',
+	array_column( Setup::features( $appData )['pair']['catalogue'], 'anchor' ) === [ $firstWords[0], '' ] );
 
 // The sheet: the section of the variant, the lines of the knobs, the dark halves
 $featuresOn( [ 'Design', 'Probe' ] );
@@ -7749,9 +7820,11 @@ $answerFeature = $listedFeatures['features']['probe'] ?? [];
 
 check( 'design/list answers the features that bring variants: for each its name, that it is active, the variant it has before anything is chosen and its variants with their knobs - the kind, the tab, the label, the words of a choice, the default - and what the setup chose for it: the variant and the value of each knob',
 	$status === 200 && array_keys( $answerFeature ) === [ 'name', 'active', 'default', 'catalogue', 'set', 'knobs' ] && $answerFeature['name'] === 'Probe' && $answerFeature['active'] === true && $answerFeature['default'] === 'regular'
-	&& array_keys( $answerFeature['catalogue'] ) === [ 'loud', 'regular' ] && array_keys( $answerFeature['catalogue']['loud'] ) === [ 'name', 'description', 'knobs' ]
+	&& array_keys( $answerFeature['catalogue'] ) === [ 'loud', 'regular' ] && array_keys( $answerFeature['catalogue']['loud'] ) === [ 'name', 'description', 'anchor', 'knobs' ]
 	&& array_keys( $answerFeature['catalogue']['loud']['knobs']['line'] ) === [ 'kind', 'tab', 'label', 'options', 'default' ] && $answerFeature['catalogue']['loud']['knobs']['flip']['default'] === [ '#b03a2e', '#e8705f' ]
 	&& $answerFeature['set'] === 'loud' && $answerFeature['knobs'] === $stored['features']['probe']['knobs'] );
+check( '...with each variant the place of the specimen its head says it is looked at in, as the file has it: the id of its anchor line, and an empty string for the variant that has none',
+	$answerFeature['catalogue']['loud']['anchor'] === $fixtureWords( 'loud', '@anchor' ) && $answerFeature['catalogue']['loud']['anchor'] !== '' && $answerFeature['catalogue']['regular']['anchor'] === '' );
 check( '...nothing of the server in it that the screen does not read: not the directory of the feature, not the names of the ladders',
 	str_contains( (string) json_encode( $listedFeatures['features'] ), $probeDir ) === false && str_contains( (string) json_encode( $listedFeatures['features'] ), 'ladder' ) === false );
 check( '...a choice kept for a feature that is not in the catalogue follows them, flagged as not active and as it was kept - so that a save carries it on - and the order is the catalogue\'s, then the kept ones by their keys',
@@ -7799,6 +7872,93 @@ check( 'design/preview answers what the colours of the features measure for the 
 	$status === 200 && isset( $previewed['contrasts']['probe']['flip']['light'] ) === true && $previewed['contrasts']['probe']['flip']['light']['ratio'] === $measured['light']['ratio']
 	&& array_keys( $previewed ) === [ 'css', 'document', 'style', 'accent', 'brand', 'contrasts', 'notes' ]
 	&& $previewed['notes'] === [ Setup::inactive( 'gone' ) ] && str_contains( $previewed['css'], '/* ==== 14. feature probe: loud (' ) === true );
+
+// The preview links the stylesheets of the active features after the compiled sheet, as a bundle of its own (Admin::document()): the paths below /features/ of the list of stylesheets
+// the site is built from, in its order, each once - the order of the site, so that what such a sheet sets by default gives way to what the compiled sheet moves
+$siteWith = static function( array $sheets ) use ( &$appData ): void {
+	$appData['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ Compiler::TARGET, '/assets/style.css' ], $sheets ) ];
+};
+$pageOfPreview = static function() use ( &$appData ): string {
+	unset( $appData['/nino/html/assets'][ Admin::FEATURES_CSS ] );
+	[ $answered, $answer ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [], 'full' => true ] );
+	return $answered === 200 ? (string) ( $answer['document'] ?? '' ) : '';
+};
+$bundleOf = static fn(): string => (string) @file_get_contents( \Nino\Filesystem::path( $appData, Admin::FEATURES_CSS ) );
+$sheetFile 		= $probeDir. '/assets/probe.css';
+$sheetOriginal = (string) file_get_contents( $sheetFile );
+$sheetText 		= trim( $sheetOriginal );
+
+// A project booted with the fixture active: the list the installer leaves, then what the boot adds
+$siteWith( [] );
+\Nino\Features::registerAssets( $appData );
+$siteList 	= array_values( \Nino\Html::getAssets( $appData, '/.cache/style.css' ) );
+$pageOn 		= $pageOfPreview();
+$sourcesOn 	= array_values( \Nino\Html::getAssets( $appData, Admin::FEATURES_CSS ) );
+$bundleOn 	= $bundleOf();
+
+preg_match( '#<link[^>]*href="[^"]*design-preview-features\.css(?:\?v=([a-f0-9]+))?"[^>]*>#', $pageOn, $linkOn, PREG_OFFSET_CAPTURE );
+
+$orderOn = [ strpos( $pageOn, 'design-preview.css' ), strpos( $pageOn, 'id="'. Admin::PREVIEW_STYLE. '"' ), $linkOn[0][1] ?? false, strpos( $pageOn, '</head>' ) ];
+$sortedOn = $orderOn;
+sort( $sortedOn );
+
+check( 'with a feature active that brings a stylesheet the preview links it after the compiled sheet, as a bundle of its own: the framework, the sheet inline and then the stylesheets of the features, in that order and all in the head - the order of the site, which lets what a feature sets by default give way to what the compiled sheet moves',
+	in_array( false, $orderOn, true ) === false && $orderOn === $sortedOn && count( array_unique( $orderOn ) ) === 4
+	&& substr_count( $pageOn, 'design-preview-features' ) === 1 && Admin::FEATURES_CSS === '/_admin/.cache/design-preview-features.css' );
+check( '...the bundle is written and carries the stylesheet of the feature as its file has it, and its sources are the paths the manifests of the active features name and nothing else of the list the site is built from: not the kernel\'s entry, not the theme the compiled sheet stands for, not the project\'s own style.css',
+	$bundleOn !== '' && str_contains( $bundleOn, $sheetText ) === true && $sourcesOn === \Nino\Features::get( $appData, 'probe' )['assets']
+	&& in_array( Compiler::TARGET, $siteList, true ) === true && in_array( '/assets/style.css', $siteList, true ) === true && in_array( '/_nino/Nino.css', $siteList, true ) === true && array_diff( $sourcesOn, $siteList ) === [] );
+
+// The address carries the hash of the bundle, which follows its sources: a byte more in the stylesheet and the next preview writes the bundle again
+file_put_contents( $sheetFile, $sheetOriginal. "\n" );
+clearstatcache();
+$pageTouched 		= $pageOfPreview();
+$bundleTouched 	= $bundleOf();
+file_put_contents( $sheetFile, $sheetOriginal );
+clearstatcache();
+
+preg_match( '#design-preview-features\.css\?v=([a-f0-9]+)#', $pageTouched, $linkTouched );
+
+check( '...and the address carries the hash of the bundle, which follows its sources: a byte more in the stylesheet of a feature and the next preview writes the bundle again and links another address',
+	( $linkOn[1][0] ?? '' ) !== '' && ( $linkTouched[1] ?? '' ) !== '' && $linkTouched[1] !== $linkOn[1][0] && strlen( $bundleTouched ) === strlen( $bundleOn ) + 1 );
+
+// The list in the order of the site, a path listed twice, and a project that lists the stylesheet of a feature that is no manifest's
+$otherSheet = NINO_FEATURES_DIR. '/Pair/assets/pair.css';
+mkdir( dirname( $otherSheet ), 0755, true );
+file_put_contents( $otherSheet, ".pair-sheet { color: red; }\n" );
+
+[ $probePath, $pairPath ] = [ $sourcesOn[0], '/features/Pair/assets/pair.css' ];
+
+$siteWith( [ $pairPath, $probePath, $probePath ] );
+$pageOrder 		= $pageOfPreview();
+$sourcesOrder = array_values( \Nino\Html::getAssets( $appData, Admin::FEATURES_CSS ) );
+$bundleOrder 	= $bundleOf();
+$siteWith( [ $probePath, '/assets/more.css', $pairPath ] );
+$pageBack 		= $pageOfPreview();
+$sourcesBack 	= array_values( \Nino\Html::getAssets( $appData, Admin::FEATURES_CSS ) );
+$bundleBack 	= $bundleOf();
+unlink( $otherSheet );
+rmdir( dirname( $otherSheet ) );
+
+$pairAt = [ strpos( $bundleOrder, '.pair-sheet' ), strpos( $bundleOrder, $sheetText ), strpos( $bundleBack, '.pair-sheet' ), strpos( $bundleBack, $sheetText ) ];
+
+check( 'the stylesheets are those of the list the site is built from, in its order and each once: a path listed twice is in the bundle once, a path that is none below /features/ is not in it, and the bundle follows the list when the list is the other way round',
+	$sourcesOrder === [ $pairPath, $probePath ] && $sourcesBack === [ $probePath, $pairPath ] && str_contains( $pageOrder, 'design-preview-features' ) === true && str_contains( $pageBack, 'design-preview-features' ) === true
+	&& array_filter( $pairAt, 'is_int' ) === $pairAt && $pairAt[0] < $pairAt[1] && $pairAt[3] < $pairAt[2] && substr_count( $bundleOrder, $sheetText ) === 1 );
+
+// A project with no feature that brings a stylesheet: Design alone
+$featuresOn( [ 'Design' ] );
+$siteWith( [] );
+\Nino\Features::registerAssets( $appData );
+$siteOff 	= array_values( \Nino\Html::getAssets( $appData, '/.cache/style.css' ) );
+$pageOff 	= $pageOfPreview();
+$featuresOn( [ 'Design', 'Probe' ] );
+
+check( 'with no stylesheet of a feature in the list - Design alone, which brings none - the preview has no link to the bundle of the features: a bundle over nothing is never written, and a link to it would ask for a file that is not there',
+	array_filter( $siteOff, static fn( string $path ): bool => str_starts_with( $path, '/features/' ) === true ) === [] && str_contains( $pageOff, 'design-preview.css' ) === true
+	&& str_contains( $pageOff, 'id="'. Admin::PREVIEW_STYLE. '"' ) === true && str_contains( $pageOff, 'design-preview-features' ) === false && \Nino\Html::getAssets( $appData, Admin::FEATURES_CSS ) === [] );
+
+unset( $appData['/nino/html/assets'] );
 
 // design/save keeps the choices, and the ones kept for a feature that is not there
 [ $status, $savedFeatures ] = callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => $withEntry['features'] + [ 'gone' => [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ] ] ] ) );

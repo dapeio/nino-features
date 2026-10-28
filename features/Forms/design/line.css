@@ -2,6 +2,7 @@
  *	@name-de		Linie
  *	@description	A field is a rule under the words: no box, no fill, no corner, and the rule doubles in the colour of the focus when the field is typed in.
  *	@description-de	Ein Feld ist eine Linie unter den Wörtern: kein Kasten, keine Füllung, keine Ecke, und die Linie verdoppelt sich in der Farbe des Fokus, wenn im Feld getippt wird.
+ *	@anchor			form
  *
  *	@knob	scale		scale	type		Size of the fields' text
  *	@knob-de	scale		Schriftgröße der Felder

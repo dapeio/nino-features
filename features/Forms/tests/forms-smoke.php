@@ -15,9 +15,10 @@ declare(strict_types=1);
  *										family from properties of its own (what it declares and
  *										where, what reads them, what it is set on and what it
  *										leaves alone) and the four looks in design/ that the
- *										Design feature offers (read by their grammar and, where
- *										that feature is beside this one, as its own parser and
- *										compiler take them) - plus the thing that matters most
+ *										Design feature offers (read by their grammar - the place
+ *										of the specimen each is looked at in among it - and,
+ *										where that feature is beside this one, as its own parser
+ *										and compiler take them) - plus the thing that matters most
  *										about a feature like this: that switching it on changes
  *										nothing about a submission that should go through, and
  *										switching it off leaves every form working - and, where
@@ -251,21 +252,24 @@ function formsColourLiterals( string $css ): array {
  *
  *	@param		string		$file
  *
- *	@return 	array											tags (tag => texts), knobs (name => [ fields, kind, tab, label, default ] for each line), knobsDe (name => labels),
+ *	@return 	array											tags (tag => texts), order (the tags in the order of the lines of the head), knobs (name => [ fields, kind, tab, label, default ] for each line), knobsDe (name => labels),
  *																		options and optionsDe (knob => step => labels), rules (as formsRules()), declared (property => [ selector, value ] for each)
  */
 function formsLook( string $file ): array {
 
 	$css	= (string) file_get_contents( $file );
 	$tags	= [];
+	$order	= [];
 
 	preg_match( '#^\s*/\*(.*?)\*/#s', $css, $comment );
 
 	foreach( (array) preg_split( '/\R/', $comment[1] ?? '' ) as $line )
-		if( preg_match( '/^\s*\*?\s*(@[a-z]+(?:-de)?)\s+(\S.*?)\s*$/', (string) $line, $found ) === 1 )
+		if( preg_match( '/^\s*\*?\s*(@[a-z]+(?:-de)?)\s+(\S.*?)\s*$/', (string) $line, $found ) === 1 ) {
 			$tags[ $found[1] ][] = $found[2];
+			$order[] = $found[1];
+		}
 
-	$look = [ 'tags' => $tags, 'knobs' => [], 'knobsDe' => [], 'options' => [], 'optionsDe' => [], 'rules' => formsRules( $css ), 'declared' => [] ];
+	$look = [ 'tags' => $tags, 'order' => $order, 'knobs' => [], 'knobsDe' => [], 'options' => [], 'optionsDe' => [], 'rules' => formsRules( $css ), 'declared' => [] ];
 
 	foreach( $tags['@knob'] ?? [] as $text ) {
 		$fields = (array) preg_split( '/\s+/', $text, 4 );
@@ -1103,6 +1107,31 @@ foreach( $looks as $variant => $look )
 
 check( 'each head names and describes its variant in both languages, once each: @name, @name-de, @description, @description-de'. ( $headless === [] ? '' : ' - '. implode( ', ', $headless ) ), $headless === [] && $looks !== [] );
 
+// The place of the specimen of the Design preview that the look is seen in: one line, an id, the same in the four
+$anchorProblems	= [];
+$anchorWords		= [];
+
+foreach( $looks as $variant => $look ) {
+
+	$lines	= $look['tags']['@anchor'] ?? [];
+	$at			= array_search( '@anchor', $look['order'], true );
+	$first	= array_search( '@knob', $look['order'], true );
+
+	if( count( $lines ) !== 1 || preg_match( '/^[a-z][a-z0-9-]*$/D', $lines[0] ) !== 1 )
+		$anchorProblems[] = $variant. ' @anchor';
+	else
+		$anchorWords[] = $lines[0];
+
+	if( isset( $look['tags']['@anchor-de'] ) === true )
+		$anchorProblems[] = $variant. ' @anchor-de';
+
+	if( $at === false || $first === false || $at > $first )
+		$anchorProblems[] = $variant. ' @anchor after the first @knob';
+}
+
+check( 'each head says where in the specimen of the Design preview its look is seen, in one line: @anchor, once, with an id - letters, digits and hyphens - before the first @knob line, and no line of another language for it - and it is the same place in all four'. ( $anchorProblems === [] ? '' : ' - '. implode( ', ', $anchorProblems ) ),
+	$anchorProblems === [] && count( $anchorWords ) === count( $looks ) && $looks !== [] && count( array_unique( $anchorWords ) ) === 1 );
+
 $knobProblems = [];
 
 foreach( $looks as $variant => $look ) {
@@ -1338,6 +1367,15 @@ else {
 	$german = $designSetup::features( $appData )['forms']['catalogue'] ?? [];
 
 	check( '...each described in the language of the workbench by the lines of its head, the name and the description - the English ones or the ones with -de', $described( $english, '' ) === [] && $described( $german, '-de' ) === [] && count( $english ) === 4 );
+
+	// The place the heads name is a place of the specimen the Design preview draws, and the scan publishes it with each variant
+	$place			= $anchorWords[0] ?? '';
+	$specimen		= (string) @file_get_contents( \Nino\Features::dir(). '/Design/templates/preview-specimen.tpl' );
+	$placeSection	= $place !== '' && preg_match( '~<section id="'. preg_quote( $place, '~' ). '"[^>]*>(.*?)</section>~s', $specimen, $placeMatch ) === 1 ? $placeMatch[1] : null;
+
+	check( 'the place the heads name is on the specimen of the Design preview, once, on the section that holds the form of the kernel\'s family: the look is seen where it is looked at, and the scan publishes it with each of the four variants, without a word to say of it',
+		$place !== '' && substr_count( $specimen, ' id="'. $place. '"' ) === 1 && $placeSection !== null && str_contains( $placeSection, 'class="nino-form"' ) === true
+		&& count( $catalogue ) === 4 && array_unique( array_column( $catalogue, 'anchor' ) ) === [ $place ] && $scanNotes === [] );
 
 	$offTable = [];
 

@@ -2,6 +2,7 @@
  *	@name-de		Regulär
  *	@description	The form as the kernel draws it: a line round the field, the label above it, the middle of every ladder.
  *	@description-de	Das Formular, wie der Kernel es zeichnet: eine Linie um das Feld, die Beschriftung darüber, die Mitte jeder Leiter.
+ *	@anchor			form
  *
  *	@knob	scale		scale	type		Size of the fields' text
  *	@knob-de	scale		Schriftgröße der Felder

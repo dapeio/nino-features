@@ -22,8 +22,10 @@ namespace Nino\Modules\Design {
 	 *										page produces, with the chosen header and footer around it
 	 *										and the compiled stylesheet over it. Each tab and each
 	 *										object has an anchor on it, an element with an id the panel
-	 *										scrolls the frame to; the cards have one, and the end of the
-	 *										page has one for the footer.
+	 *										scrolls the frame to; the cards have one, the end of the
+	 *										page has one for the footer, and the section of the fields
+	 *										and their messages has one that no tab and no object looks
+	 *										at but a variant of a feature may name (see Setup::head()).
 	 *										Nothing here writes: a preview is a question, and the answer
 	 *										to it must not already be the answer on disk.
 	 *
@@ -159,8 +161,9 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The page around the render: the shell, with the head the caller
-		 *	hands in - the panel's links the framework from a bundle and
-		 *	carries the compiled sheet inline (see Admin::document())
+		 *	hands in - the panel's links the framework from a bundle, carries
+		 *	the compiled sheet inline and links the stylesheets of the active
+		 *	features after it (see Admin::document())
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$locale				The render's locale - its first two letters

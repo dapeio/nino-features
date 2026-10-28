@@ -2,6 +2,7 @@
  *	@name-de		Gefüllt
  *	@description	Tinted fields without a line; the line under a field comes from the position above the middle, and the tint drops to the ground when the field is typed in.
  *	@description-de	Getönte Felder ohne Linie; die Linie unter einem Feld kommt von der Stellung über der Mitte, und die Tönung fällt auf den Grund zurück, wenn im Feld getippt wird.
+ *	@anchor			form
  *
  *	@knob	scale		scale	type		Size of the fields' text
  *	@knob-de	scale		Schriftgröße der Felder

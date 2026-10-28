@@ -789,14 +789,27 @@ namespace Nino\Modules\Design {
 		 *	ladders (see ladders()) - and in a grammar of their own; read by this, they are none of
 		 *	its lines and are named in notes that a caller for a set never looks at.
 		 *
+		 *	A variant of a feature also says in which place of the specimen its block is looked at, in one line:
+		 *
+		 *	  @anchor <id>
+		 *
+		 *	The id is that of an element of the specimen the preview draws (see
+		 *	Preview::specimen()), a letter and then letters, digits and hyphens - and nothing more
+		 *	is held to: the specimen is a template a project may replace, and whether its page has
+		 *	the id is for the panel to find out, which goes to the anchor of the tab where it has
+		 *	not. An id is no word of a language, so the line has no twin of another. The first line
+		 *	that is an id stands; a later one and a line that is none are dropped and named in
+		 *	`notes`, as the knob lines are. A set of the library that carries the line has it read
+		 *	and published by nothing.
+		 *
 		 *	@param		string		$file					A path
 		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
 		 *
-		 *	@return 	array										name, description ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines) and notes
+		 *	@return 	array										name, description ('' for none), anchor ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines) and notes
 		 */
 		public static function head( string $file, string $locale = 'en_US' ): array {
 
-			$read = [ 'name' => '', 'description' => '', 'knobs' => [], 'notes' => [] ];
+			$read = [ 'name' => '', 'description' => '', 'anchor' => '', 'knobs' => [], 'notes' => [] ];
 
 			// The first comment block only: a @name further down belongs to a
 			// rule somebody documented, not to the file
@@ -817,9 +830,47 @@ namespace Nino\Modules\Design {
 						break;
 					}
 
+			$read['anchor'] = self::anchored( $block[1], $read['notes'] );
 			$read['knobs'] = self::declared( $block[1], $own === true ? $language : '', $read['notes'] );
 
 			return $read;
+		}
+
+		/**
+		 *	The anchor a head declares (see head()): the id its `@anchor` line names, the first line that is an id.
+		 *	Only the plain tag is a line of the grammar - `@anchor-de` and the like are none, and are not read
+		 *
+		 *	@param		string		$comment			The text of the opening comment
+		 *	@param		array 		&$notes				(reference) The lines that were dropped, each named
+		 *
+		 *	@return 	string										The id, '' for none
+		 */
+		private static function anchored( string $comment, array &$notes ): string {
+
+			$anchor = '';
+
+			foreach( (array) preg_split( '/\R/', $comment ) as $row ) {
+
+				// The line without the asterisk and the indent it stands behind
+				$line = trim( (string) preg_replace( '/^\s*\*/', '', (string) $row ) );
+
+				if( preg_match( '/^@anchor(?:[ \t]+(.*))?$/', $line, $tag ) !== 1 )
+					continue;
+
+				$id 	= trim( $tag[1] ?? '' );
+				$why 	= match( true ) {
+					preg_match( '/^[a-z][a-z0-9-]*$/D', $id ) !== 1 	=> 'an anchor is the id of an element of the specimen - letters, digits and hyphens, starting with a letter',
+					$anchor !== '' 																		=> 'the anchor is declared already',
+					default 																					=> '',
+				};
+
+				if( $why === '' )
+					$anchor = $id;
+				else
+					$notes[] = 'the line "'. self::shown( $line, 60 ). '" is dropped: '. $why;
+			}
+
+			return $anchor;
 		}
 
 		/**
@@ -1009,7 +1060,7 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$notes				(reference) What the heads said that was dropped, led by the feature and the variant
 		 *
-		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, knobs - each with its ladder where it has one), sorted by name
+		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, anchor, knobs - each with its ladder where it has one), sorted by name
 		 */
 		public static function features( array &$appData, array &$notes = [] ): array {
 
@@ -1060,7 +1111,7 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The variants one feature brings: a stylesheet each in its design/ directory, in the order of their
-		 *	names, with the name and the description and the knobs its head declares. A scale or a choice a
+		 *	names, with the name, the description, the anchor and the knobs its head declares. A scale or a choice a
 		 *	head declares is published by its ladder, as the knobs of the parts are (see declarations()):
 		 *	one without a complete ladder is not, and says so in a note. A ladder no head declares is not
 		 *	offered - nothing says where it stands
@@ -1070,7 +1121,7 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$locale				The language of the workbench
 		 *	@param		array 		&$notes				(reference) What was dropped, led by the feature and the variant
 		 *
-		 *	@return 	array										variant => name, description, knobs
+		 *	@return 	array										variant => name, description, anchor ('' for none), knobs
 		 */
 		private static function variants( string $dir, string $key, string $locale, array &$notes ): array {
 
@@ -1107,7 +1158,7 @@ namespace Nino\Modules\Design {
 						unset( $knobs[$name] );
 					}
 
-				$variants[$variant] = [ 'name' => $head['name'] !== '' ? $head['name'] : $variant, 'description' => $head['description'], 'knobs' => $knobs ];
+				$variants[$variant] = [ 'name' => $head['name'] !== '' ? $head['name'] : $variant, 'description' => $head['description'], 'anchor' => $head['anchor'], 'knobs' => $knobs ];
 			}
 
 			return $variants;

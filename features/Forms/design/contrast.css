@@ -2,6 +2,7 @@
  *	@name-de		Kontrast
  *	@description	Lines in the colour of the text, labels in spaced capitals at four fifths of their size, square at the least position, and a ring that stands off the line when the field is typed in.
  *	@description-de	Linien in der Textfarbe, Beschriftungen in gesperrten Versalien auf vier Fünftel ihrer Größe, eckig auf der untersten Stellung und ein Ring, der von der Linie absteht, wenn im Feld getippt wird.
+ *	@anchor			form
  *
  *	@knob	scale		scale	type		Size of the fields' text
  *	@knob-de	scale		Schriftgröße der Felder

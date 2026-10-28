@@ -109,10 +109,12 @@ namespace Nino\Modules\Design {
 		private static array $_made = [];
 
 		/*	The framework under the preview, as its own two bundles beside the
-			workbench's. Its own rather than the workbench's: /_admin/.cache/script.js
+			workbench's, and the stylesheets of the active features after it, as a third.
+			Their own rather than the workbench's: /_admin/.cache/script.js
 			carries the panels' scripts as well, and a preview is a site, not a tool */
 		public const string FRAMEWORK_CSS = '/_admin/.cache/design-preview.css';
 		public const string FRAMEWORK_JS 	= '/_admin/.cache/design-preview.js';
+		public const string FEATURES_CSS 	= '/_admin/.cache/design-preview-features.css';
 
 		public static function perm(): string {
 			return self::MANAGE_PERM;
@@ -264,7 +266,8 @@ namespace Nino\Modules\Design {
 				'knobs' 	=> $setup['knobs'],
 				'kinds' 	=> Setup::KNOBS,
 				/*	The features that bring variants of their own, each with the variants it brings - their names, their
-					descriptions and the knobs their heads declare - and with what the setup chose for it: the variant
+					descriptions, the place of the specimen each is looked at in and the knobs their heads declare - and
+					with what the setup chose for it: the variant
 					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
@@ -349,13 +352,14 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The features as the screen draws them: the catalogue of Setup::features() without the path of
 		 *	the feature and the names of the ladders - nothing the screen reads - and, beside the variants,
-		 *	what the setup chose for the feature. A feature the setup has an entry for and that is not in
-		 *	the catalogue follows them with its entry as it was kept, flagged as not active
+		 *	what the setup chose for the feature. A variant keeps whole what its head says: its name, its
+		 *	description, its anchor - '' where it names none - and its knobs. A feature the setup has an entry
+		 *	for and that is not in the catalogue follows them with its entry as it was kept, flagged as not active
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalised setup
 		 *
-		 *	@return 	array										key => name, active, default, catalogue, set, knobs
+		 *	@return 	array										key => name, active, default, catalogue (variant => name, description, anchor, knobs), set, knobs
 		 */
 		private static function _features( array &$appData, array $setup ): array {
 
@@ -1136,16 +1140,28 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The whole page the frame shows: the framework, the compiled sheet,
-		 *	the specimen with its frames, and the behaviour a header set is half
-		 *	made of - the site as a visitor sees it, in the language a visitor of
-		 *	this browser is served (\Nino\Locales::getVisitorLocale()), which is not
-		 *	the language the workbench speaks: the texts of the frames, the lang of
-		 *	the document. The compiled sheet is inline, under PREVIEW_STYLE's id, so
-		 *	the panel can swap it in a frame that is already standing and no
-		 *	url of this design is written or reachable; the framework, the
-		 *	same for every design, is linked from its two bundles (see
-		 *	_bundle() for why it is not inlined)
+		 *	The whole page the frame shows: the framework, the compiled sheet, the
+		 *	stylesheets of the active features, the specimen with its frames, and
+		 *	the behaviour a header set is half made of - the site as a visitor sees
+		 *	it, in the language a visitor of this browser is served
+		 *	(\Nino\Locales::getVisitorLocale()), which is not the language the
+		 *	workbench speaks: the texts of the frames, the lang of the document.
+		 *	The compiled sheet is inline, under PREVIEW_STYLE's id, so the panel can
+		 *	swap it in a frame that is already standing and no url of this design
+		 *	is written or reachable; the framework, the same for every design, is
+		 *	linked from its two bundles (see _bundle() for why it is not inlined).
+		 *
+		 *	The stylesheets of the features follow the compiled sheet, linked from
+		 *	a third bundle, FEATURES_CSS: the order of the site, Nino.css, then
+		 *	theme.css - which the compiled sheet stands for - and then the features'
+		 *	sheets, so that the :where() defaults of a feature's stylesheet lose to
+		 *	the :root the compiled sheet writes, as they do on the site. Which sheets
+		 *	they are is the site's own bundle list, '/.cache/style.css', that the
+		 *	manifests fill at every boot (\Nino\Features::registerAssets()): its
+		 *	paths below /features/, in its order - the theme and the project's own
+		 *	style.css are not the preview's, a preview shows a design and not what a
+		 *	project added to it. No list is kept here, and with no such path in the
+		 *	list there is no link, since a bundle over nothing is never written
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$library			The feature's library
@@ -1159,11 +1175,19 @@ namespace Nino\Modules\Design {
 
 			$style = str_replace( [ '[[id]]', '[[css]]' ], [ self::PREVIEW_STYLE, $css ], self::$_html['style'] );
 			$main	= str_replace( '[[body]]', self::_specimen( $appData, $library, $setup, $notes ), self::$_html['main'] );
+			$head	= self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] ). "\n". $style;
+			$sheets = array_values( array_filter(
+				array_map( 'strval', \Nino\Html::getAssets( $appData, '/.cache/style.css' ) ),
+				static fn( string $path ): bool => str_starts_with( $path, '/features/' ) === true
+			) );
+
+			if( $sheets !== [] )
+				$head .= "\n". self::_bundle( $appData, self::FEATURES_CSS, $sheets );
 
 			return Preview::document(
 				$appData,
 				\Nino\Locales::getVisitorLocale( $appData ),
-				self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] ). "\n". $style,
+				$head,
 				$main,
 				self::_bundle( $appData, self::FRAMEWORK_JS, [ '/_nino/Nino.js', '/_nino/Nino.ui.js' ] )
 			);
@@ -1218,18 +1242,23 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The framework's own two halves, as a tag pointing at a bundle.
+		 *	A bundle of the preview, as a tag pointing at it: the framework's own
+		 *	two halves, and the stylesheets of the active features.
 		 *
 		 *	Not inlined, for two reasons. The workbench sends a
 		 *	Content-Security-Policy with `script-src 'self'` and a nonce, and an
 		 *	iframe built from srcdoc inherits it - an inline <script> in there is
 		 *	refused, a same-origin src is not. And Nino.css and the two scripts
 		 *	together are the larger half of this answer while being the half
-		 *	that never changes: as a bundle they are written once, hashed, and
-		 *	fetched from the browser's cache on every preview after the first.
+		 *	that never changes, and the sheets of the features change only with a
+		 *	feature or one of its files: as a bundle they are written once, hashed,
+		 *	and fetched from the browser's cache on every preview after the first.
 		 *
 		 *	Built by the same Modules\Assets the workbench builds its own two
-		 *	bundles with, into the same directory
+		 *	bundles with, into the same directory. It hashes the path, the size and
+		 *	the time of change of every source, so that a feature switched on or off
+		 *	or a stylesheet edited writes the bundle again at the next preview, and
+		 *	the address carries the new hash
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$target				The bundle to write
