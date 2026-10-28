@@ -12,12 +12,17 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: seven tabs over one setup, in two axes -
-	 *										Theme, in three screens - the list of themes, the loaded theme
-	 *										with the row that makes another, and the css of its own - where
-	 *										the whole setup is kept under a name (see Themes); Templates,
-	 *										the seven choices of a set; Type, Surfaces, Colours and Motion,
-	 *										each a block for every object that has a control on the tab -
+	 *	Design\Admin			The "Design" panel: a pane of four tabs - Themes, Design,
+	 *										Schriftarten and, last, the Settings tab the registry attaches
+	 *										- over one setup, which has one preview and one bar.
+	 *										The panel's own screen is the one the strip names Themes
+	 *										(see tab()): the library of the themes, in two screens - the
+	 *										list of themes, and the loaded theme with the row that makes
+	 *										another - where the whole setup is kept under a name (see
+	 *										Themes). The tab Design (see Setup\Tab) holds the setup in six
+	 *										views, over the same preview and bar - Templates, the seven
+	 *										choices of a set; Type, Surfaces, Colours and Motion, each a
+	 *										block for every object that has a control on the view -
 	 *										the page, the header, the footer, a section, a card, the
 	 *										buttons, the lists and the tables - with the controls of that
 	 *										object: on Colours, the two colours, the five knobs and the
@@ -25,15 +30,21 @@ namespace Nino\Modules\Design {
 	 *										dimming of a section, the tone of the shadow of a card and the
 	 *										stripes of a table, and on Motion the animation of the page,
 	 *										the hover of its pictures and what a card and a button do
-	 *										under the pointer - compiled
+	 *										under the pointer - and CSS, a view with no objects: the css
+	 *										of the theme in a field of its own, compiled with the rest
 	 *										together into assets/theme.css. Where a control stands is
 	 *										Setup::LAYOUT's and nobody else's: the list hands the table
-	 *										over and the screen is drawn from it. The loader, the
-	 *										Typefaces tab, shows the typefaces a project has installed
+	 *										over and the screen is drawn from it. The loader, the tab
+	 *										Typefaces (see Webfonts\Tab), has neither preview nor bar and
+	 *										shows the typefaces a project has installed
 	 *										and the signed list of those it can install (see Webfonts),
 	 *										which belongs to the setup only as far as the selects of
 	 *										the roles list what is installed. Installing and removing
 	 *										happen when they are pressed - they are not a draft.
+	 *
+	 *										The two tabs bring no action of their own: every design/* action
+	 *										stays on this panel, whichever tab asks for it, and the tabs
+	 *										share its permission.
 	 *
 	 *										A theme is a draft too, until it is saved: design/theme/load
 	 *										answers what the screen takes over and writes nothing, and
@@ -133,6 +144,20 @@ namespace Nino\Modules\Design {
 			group stays a bounded grant */
 		public static function nav(): array {
 			return [ 'design', '/_admin/nav/design', 10 ];
+		}
+
+		/*	What the strip on top of the pane calls the panel's own screen: the library of the themes, which is
+			Themes where the rail says Design. The kernel draws the panel's own screen first, whatever the
+			weights of the tabs are (see \Nino\Admin\Panels::collect()), so the pane opens on it */
+		public static function tab(): string {
+			return '/_admin/nav/themes';
+		}
+
+		/*	The two tabs of the pane, in the order of their weights: the setup in six views, and the loader of the typefaces.
+			The Settings tab the registry attaches comes after them. Each is a panel of the kernel's own kind, with its
+			uri, its words, its script and its mounts - and no actions: they are this panel's */
+		public static function tabs(): array {
+			return [ Setup\Tab::class, Webfonts\Tab::class ];
 		}
 
 		public static function icon(): string {
@@ -243,9 +268,9 @@ namespace Nino\Modules\Design {
 					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
-				// Where the panel puts what it sets: the seven tabs, the eight objects - and one more for each feature that
-				// brings variants - and the table that says, for every control of the setup, its tab, its object and its place
-				// in the row, the rows of the features among them - the screen draws a tab from it and from nothing else
+				// Where the panel puts what it sets: the six views, the eight objects - and one more for each feature that
+				// brings variants - and the table that says, for every control of the setup, its view, its object and its place
+				// in the row, the rows of the features among them - the screen draws a view from it and from nothing else
 				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::objects( $appData ), 'controls' => Setup::layout( $appData ) ],
 				/*	The setup a fresh install starts from, cut to the keys that choose something (see Themes::snapshot()): what the head of a
 					closed row is compared with, so that it names only the controls that stand elsewhere than there	*/
@@ -260,7 +285,7 @@ namespace Nino\Modules\Design {
 				'radius-alt' => (int) ( $setup['radius-alt'] ?? 1 ),
 				'radii' 	=> (array) ( $setup['radii'] ?? [] ),
 				'radiusWords' => Setup::RADIUS_WORDS,
-				/*	The Theme tab: the slug of the theme the stored setup was taken from and
+				/*	The screen of the themes: the slug of the theme the stored setup was taken from and
 					its own css, the list of the themes there are - the shipped ones first -
 					and the active one as its file holds it, normalised against the library
 					and cut to the keys that choose something - no colours where the
@@ -717,8 +742,8 @@ namespace Nino\Modules\Design {
 		/**
 		 *	Install a family of the list, or update it: the whole family, from the
 		 *	archive the signed list names. The answer is the one the list gives, after
-		 *	the change, with the sentence for the action bar. The screen asks design/list
-		 *	again, for the selects of the roles on the Type tab
+		 *	the change, with the sentence the loader says it in. The screen asks design/list
+		 *	again, for the selects of the roles in the view Type
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -1257,7 +1282,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What the Typefaces tab is drawn from, the same after every action
+		 *	What the loader is drawn from, the same after every action
 		 *	of it: the list as far as there is one, and the families the project has
 		 *	installed - with what each is set in its own face from, who uses it, and
 		 *	the directories that are none. The slugs of the families the feature brings
@@ -1428,7 +1453,7 @@ namespace Nino\Modules\Design {
 		 *	family (Webfonts::SLUG), so that the screen can offer to install it before it
 		 *	takes the theme over. The families that stay unoffered are told in $missing,
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
-		 *	has none) and whether the list of the Typefaces tab has it at all.
+		 *	has none) and whether the list of the loader has it at all.
 		 *
 		 *	And except for the colours and the features: a file that names none - every theme
 		 *	the feature ships - chooses no brand colour and no variant of any feature, so the

@@ -4,6 +4,10 @@
 // Schlüssel und dieselbe Form wie text/<locale>.php der Workbench
 return [
 	'[[/_admin/nav/design]]'										=> 'Design',
+	// Die Leiste oben im Pane: Themes ist der eigene Bildschirm des Panels (die Bibliothek der Themes), Design der Tab mit den sechs Ansichten, Schriftarten der Loader
+	'[[/_admin/nav/themes]]'										=> 'Themes',
+	'[[/_admin/nav/design-setup]]'									=> 'Design',
+	'[[/_admin/nav/design-typefaces]]'								=> 'Schriftarten',
 	'[[/_admin/design/label/title]]'								=> 'Design',
 
 	'[[/_admin/design/label/save]]'								=> 'Entwurf speichern',
@@ -12,14 +16,13 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Vorversion wiederherstellen',
 	'[[/_admin/design/label/state]]'								=> 'Angewendete Datei',
 
-	// Die sieben Tabs – die Eigenschaften des Designs – und die acht Objekte, mit denen die Blöcke der Tabs überschrieben sind
-	'[[/_admin/design/tab/theme/label]]'							=> 'Theme',
+	// Die sechs Ansichten des Tabs Design – die Eigenschaften des Designs – und die acht Objekte, mit denen die Blöcke ihrer Ansichten überschrieben sind
 	'[[/_admin/design/tab/templates/label]]'						=> 'Vorlagen',
-	'[[/_admin/design/tab/typefaces/label]]'						=> 'Schriftarten',
 	'[[/_admin/design/tab/type/label]]'								=> 'Schrift',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Flächen',
 	'[[/_admin/design/tab/colours/label]]'							=> 'Farben',
 	'[[/_admin/design/tab/motion/label]]'							=> 'Bewegung',
+	'[[/_admin/design/tab/css/label]]'								=> 'CSS',
 	'[[/_admin/design/object/page/label]]'							=> 'Seite',
 	'[[/_admin/design/object/header/label]]'						=> 'Kopf',
 	'[[/_admin/design/object/footer/label]]'						=> 'Fuß',
@@ -29,12 +32,11 @@ return [
 	'[[/_admin/design/object/lists/label]]'							=> 'Listen',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tabellen',
 
-	// Die Bildschirme des Tabs Theme: eine Leiste von Tabs unter der Leiste der Tabs, und darunter der Bildschirm, der offen ist
+	// Die Bildschirme der Themes: eine Leiste von Tabs unter der Leiste oben im Pane, und darunter der Bildschirm, der offen ist
 	'[[/_admin/design/group/theme/load/label]]'					=> 'Laden',
 	'[[/_admin/design/group/theme/properties/label]]'			=> 'Eigenschaften',
-	'[[/_admin/design/group/theme/css/label]]'					=> 'Eigenes CSS',
 
-	// Der Theme-Tab in drei Bildschirmen: die Liste der Themes mit dem Import, das geladene mit Name und Beschreibung und die Zeile, die ein weiteres macht, das eigene CSS - und was ein Theme von sich sagt
+	// Die Themes in zwei Bildschirmen: die Liste der Themes mit dem Import, das geladene mit Name und Beschreibung und die Zeile, die ein weiteres macht – und was ein Theme von sich sagt. Das eigene CSS eines Themes ist die Ansicht CSS des Tabs Design
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'mitgeliefert',
 	'[[/_admin/design/theme/active]]'				=> 'aktiv',
@@ -152,9 +154,9 @@ return [
 	'[[/_admin/design/weight/bold]]'								=> 'Fett',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Der Tab Schriftarten: die Familien, die das Projekt installiert hat, und die signierte Liste derer, die es installieren kann – der Loader. Installieren und Löschen melden sich in der Zeile der Aktionsleiste
+	// Der Tab Schriftarten: die Familien, die das Projekt installiert hat, und die signierte Liste derer, die es installieren kann – der Loader. Installieren und Löschen melden sich in der Zeile über den Karten
 	'[[/_admin/design/typefaces/installed/title]]'				=> 'Installiert',
-	'[[/_admin/design/typefaces/installed/empty]]'				=> 'Noch keine Schriftart installiert. Lade unten die verfügbaren Schriftarten und installiere eine: Sie landet mit ihrer Lizenz in assets/fonts/ Deines Projekts.',
+	'[[/_admin/design/typefaces/installed/empty]]'				=> 'Noch keine Schriftart installiert. Lade die verfügbaren Schriftarten und installiere eine: Sie landet mit ihrer Lizenz in assets/fonts/ Deines Projekts.',
 	'[[/_admin/design/typefaces/installed/used]]'				=> 'genutzt von %s',
 	'[[/_admin/design/typefaces/installed/broken]]'			=> 'Keine Schriftart: %s',
 	'[[/_admin/design/typefaces/installed/remove]]'			=> 'Löschen',

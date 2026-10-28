@@ -34,11 +34,13 @@ declare(strict_types=1);
  *											setup gained, the model of a theme file and the css it is
  *											refused for, the themes the feature ships held to what a
  *											theme is (the first of them the defaults), the fifteenth
- *											section of the compile, the seven actions of the Theme tab
- *											with the codes they answer, the manual, which has an entry
- *											for each tab and each part of the Theme tab and is a line
- *											in both languages, and the answers the panel's script is
- *											drawn from.
+ *											section of the compile, the seven actions of the themes
+ *											with the codes they answer, the pane in four tabs - the
+ *											order the registry lists them in, the classes of the two the
+ *											panel brings and the words of the strip - over a setup in
+ *											six views, the manual, which has an entry for each tab, each
+ *											view and each part of the themes and is a line in both
+ *											languages, and the answers the panel's script is drawn from.
  *											Travels with the feature and
  *											runs against the checkout three levels up, or the one
  *											NINO_ROOT names (see tests/harness.php there). What the
@@ -137,6 +139,10 @@ if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 	foreach( glob( dirname( __DIR__, 2 ). '/*', GLOB_ONLYDIR ) ?: [] as $designSibling )
 		symlink( $designSibling, $designTree. '/'. basename( $designSibling ) );
 
+	// Design itself is a copy and no link: the registry tells the panel of a feature by where its class file really is (see \Nino\Admin\Panels), and only the panel of a feature gets the Settings tab of that feature
+	unlink( $designTree. '/'. basename( dirname( __DIR__ ) ) );
+	designCopyTree( dirname( __DIR__ ), $designTree. '/'. basename( dirname( __DIR__ ) ) );
+
 	designCopyTree( __DIR__. '/fixtures/features/Probe', $designTree. '/Probe' );
 	designMakeFeature( $designTree, 'Broken', 'broken', [
 		'regular' => "/*\t@name\tBroken\n *\t@description\tA head with a line wrong for each thing a line can be wrong in.\n *\n"
@@ -154,6 +160,8 @@ if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 			. " *\t@knob\tfixed\tscale\ttype\tFixed\t= 2\n"
 			. " *\t@knob\todd\twiggle\ttype\tNokind\n"
 			. " *\t@knob\toff\tscale\tnotab\tNotab\n"
+			. " *\t@knob\tstyle\tscale\tcss\tNocss\n"
+			. " *\t@knob\tparts\tscale\ttemplates\tNotemplates\n"
 			. " *\t@knob\tBad_Name\tscale\ttype\tBadname\n"
 			. " *\t@knob\tbare\tscale\ttype\n"
 			. " *\t@knob-de\tghostlabel\tEin Geist\n *\t@option\tghostoption\tless\tNo knob of this name\n"
@@ -161,6 +169,8 @@ if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 			. ":root {\n\t--broken-size--least: 1;\n\t--broken-size--less: 1;\n\t--broken-size--default: 1;\n\t--broken-size--more: 1;\n\t--broken-size--most: 1;\n"
 			. "\t--broken-stray--least: 1;\n\t--broken-stray--less: 1;\n\t--broken-stray--default: 1;\n\t--broken-stray--more: 1;\n\t--broken-stray--most: 1;\n"
 			. "\t--broken-tone--less: 1;\n\t--broken-tone--default: 1;\n\t--broken-tone--more: 1;\n"
+			. "\t--broken-style--least: 1;\n\t--broken-style--less: 1;\n\t--broken-style--default: 1;\n\t--broken-style--more: 1;\n\t--broken-style--most: 1;\n"
+			. "\t--broken-parts--least: 1;\n\t--broken-parts--less: 1;\n\t--broken-parts--default: 1;\n\t--broken-parts--more: 1;\n\t--broken-parts--most: 1;\n"
 			. "\t--broken-base-border--least: 1;\n\t--broken-base-border--less: 1;\n\t--broken-base-border--default: 1;\n\t--broken-base-border--more: 1;\n\t--broken-base-border--most: 1;\n}\n",
 	] );
 	designMakeFeature( $designTree, 'Cardish', 'card', [ 'regular' => "/*\t@name\tRegular\n *\t@knob\tsize\tscale\ttype\tSize\n */\n:root { --card-size--least: 1; --card-size--less: 1; --card-size--default: 1; --card-size--more: 1; --card-size--most: 1; }\n" ] );
@@ -646,11 +656,11 @@ function designKnobProblems( string $library, string $part, string $set ): array
 	if( $published === [] )
 		$problems[] = $set. ': answers to no knob at all';
 
-	/*	The face, the weight and the case are the roles of the Type tab, and a colour is a role: never a literal. A
+	/*	The face, the weight and the case are the roles of the Type view, and a colour is a role: never a literal. A
 		tables template may set the case of a table head, and a lists template the weight of a mark - that is what they
 		are built as, and the roles are the title's and the text's, not these - so the rules whose selectors all end in
 		one are read without it, and one set anywhere else in it is reported like the others. A frame is no set of
-		the Type tab's: the bar and the footer set the ink and the type a bar has, and are held to their ladders alone	*/
+		the Type view's: the bar and the footer set the ink and the type a bar has, and are held to their ladders alone	*/
 	if( ( Setup::PARTS[$part] ?? 'set' ) === 'frame' )
 		return $problems;
 
@@ -876,8 +886,8 @@ check( 'it is Design 2.1: the model of 2.0 with the typefaces and the five knobs
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
 
-/*	The words of the panel, taken from the text files themselves: the tabs the manual has to
-	have an entry for are the tabs the model has, by the word the panel draws them with	*/
+/*	The words of the panel, taken from the text files themselves: the views the manual has to
+	have an entry for are the views the model has, by the word the panel draws them with	*/
 $panelWord = static fn( string $key, string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/'. $key. ']]'] ?? '' );
 
 /*	A sentence of the panel's texts with its %s filled in turn, as the panel's own _text() does it: what a check says of a sentence the server answers with
@@ -892,14 +902,20 @@ $panelText = static function( string $key, string $locale, string ...$values ) u
 	return $text;
 };
 
+
+/*	What the strip on top of the pane is drawn from: the panel's own screen by what tab() answers - the library of the themes, which the strip calls Themes where the rail calls the
+	panel Design - and each tab the panel brings by the label its nav() names. All three are fills of the kernel's own list (/_admin/nav/...), the text files have a word for each in
+	both languages, and what is held here is that there is one: the words are the owner's, and they are read by their keys	*/
+$stripFills = array_merge( [ Admin::tab() ], array_map( static fn( string $tab ): string => (string) ( $tab::nav()[1] ?? '' ), Admin::tabs() ) );
+$stripWords = static fn( string $locale ): array => array_map( static fn( string $fill ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[['. $fill. ']]'] ?? '' ), $stripFills );
 $panelTabs = array_values( array_map(
 	static fn( string $key ): string => (string) preg_replace( '~^\[\[/_admin/design/tab/([a-z0-9-]+)/label\]\]$~', '$1', $key ),
 	array_filter( array_keys( (array) include __DIR__. '/../text/en_US.php' ), static fn( string $key ): bool => preg_match( '~^\[\[/_admin/design/tab/[a-z0-9-]+/label\]\]$~', $key ) === 1 )
 ) );
 
-/*	The tabs the model names are the tabs the panel draws - the script holds none of them, it takes them from the table - and the tabs it cuts
-	into screens, with the keys of their screens in the order the strip under the tabs shows them, are read out of the script itself, which is where
-	the panel has them: a test that typed them again would hold the script to nothing (the chips of the loader are read the same way, further down)	*/
+/*	The views the model names are the views the panel draws - the script holds none of them, it takes them from the table - and the screens it cuts a tab into, with the keys of
+	their screens in the order the strip under the tab shows them, are read out of the script itself, which is where the panel has them: a test that typed them again would hold
+	the script to nothing (the chips of the loader are read the same way, further down)	*/
 $panelScript = (string) file_get_contents( __DIR__. '/../assets/admin.js' );
 preg_match( '/^\s*SCREENS\s*:\s*\{(.*)\}\s*,\s*$/m', $panelScript, $scriptScreensFound );
 preg_match_all( '/([a-z]+)\s*:\s*\[([^\]]*)\]/', $scriptScreensFound[1] ?? '', $scriptScreenPairs, PREG_SET_ORDER );
@@ -910,23 +926,26 @@ foreach( $scriptScreenPairs as $pair )
 	$scriptScreens[$pair[1]] = $scriptWords( $pair[2] );
 
 /*	The manual is the feature's only documentation, and what is held of it is its shape and not
-	its words: that every tab of the panel and every part of the Theme tab has an entry, in both
+	its words: that every tab of the pane, every view of the tab Design and every part of the themes has an entry, in both
 	languages, and that an entry is a line - what a sentence of it says is for whoever writes it.
-	An entry is found by its handle, which names the tab or the button by the word the panel
+	An entry is found by its handle, which names the tab, the view or the button by the word the panel
 	draws it with	*/
 $handles = array_map( 'mb_strtolower', array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) );
 $handled = static fn( string $word ): bool => $word !== '' && array_filter( $handles, static fn( string $handle ): bool => str_contains( $handle, mb_strtolower( $word ) ) ) !== [];
 $themeParts = array_map( static fn( string $key ): string => strtok( $panelWord( $key, 'en_US' ), ' ' ), [ 'theme/load', 'theme/create', 'theme/duplicate', 'theme/save', 'theme/delete', 'theme/export', 'theme/css/title' ] );
 $themeParts[] = 'import';
 
-check( 'the panel has seven tabs - the ones the model names, in its order, are the ones its text files name - and the manual has an entry for each, found in the handles of the manual by the word the panel draws them with',
-	count( Setup::TABS ) === 7 && $panelTabs === Setup::TABS
-	&& array_filter( Setup::TABS, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab. '/label', 'en_US' ) ) === false ) === []
-	&& $handled( 'Design' ) === true );
-check( '...one of them is cut into screens - the Theme tab into load, properties and css - and the script cuts no other: the loader of the typefaces is a tab of its own, with no strip of screens, and the blocks of the other tabs are no screens',
-	$scriptScreens === [ 'theme' => [ 'load', 'properties', 'css' ] ] && array_diff( array_keys( $scriptScreens ), Setup::TABS ) === [] );
+check( 'the pane has four tabs on top - the strip of the kernel reads the panel\'s own screen, the two tabs the panel brings and the Settings tab the registry attaches - and the manual has an entry for each of the three the feature draws, found by the word the strip draws it with: both text files have that word, by key',
+	count( $stripFills ) === 3 && array_filter( $stripFills, static fn( string $fill ): bool => preg_match( '~^/_admin/nav/[a-z-]+$~', $fill ) !== 1 ) === []
+	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => in_array( '', $stripWords( $locale ), true ) === true ) === []
+	&& array_filter( $stripWords( 'en_US' ), static fn( string $word ): bool => in_array( mb_strtolower( $word ), $handles, true ) === false ) === [] );
+check( 'the tab Design has six views - the ones the model names, in its order, are the ones its text files name - and the manual has an entry for each, found in the handles of the manual by the word the panel draws them with',
+	count( Setup::TABS ) === 6 && $panelTabs === Setup::TABS
+	&& array_filter( Setup::TABS, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab. '/label', 'en_US' ) ) === false ) === [] );
+check( '...the themes are cut into two screens - load and properties - and the script cuts nothing else: a view of the setup is no screen, its blocks are no screens, and the loader of the typefaces is a tab with no strip of screens',
+	$scriptScreens === [ 'theme' => [ 'load', 'properties' ] ] && array_intersect( array_keys( $scriptScreens ), Setup::TABS ) === [] );
 
-// The two axes of the panel are told in one entry: the overview names the seven tabs and the blocks of the tabs name the eight objects, so only the entry on the axes names both - each by the word the panel draws it with, and in both languages by the same entry
+// The two axes of the setup are told in one entry: the overview names the six views and the blocks of the views name the eight objects, so only the entry on the axes names both - each by the word the panel draws it with, and in both languages by the same entry
 $namedIn = static function( array $words, string $locale ) use ( $feature, $says ): array {
 	return array_values( array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => array_filter( $words, static fn( string $word ): bool => $word === '' || str_contains( $says( $entry, $locale ), $word ) === false ) === [] ) );
 };
@@ -940,8 +959,8 @@ foreach( [ 'en_US', 'de_DE' ] as $axisLocale )
 
 $axisEntries = array_values( array_intersect( $axisNamed['en_US'], $axisNamed['de_DE'] ) );
 
-check( '...the two axes are told in one entry of the manual: the same entry names all seven tabs and all eight objects in both languages, by the words the panel draws them with'. ( $axisEntries === [] ? ' - no entry does in both: '. count( $axisNamed['en_US'] ). ' in English, '. count( $axisNamed['de_DE'] ). ' in German' : '' ),
-	$axisEntries !== [] && count( Setup::TABS ) === 7 && count( Setup::OBJECTS ) === 8 );
+check( '...the two axes are told in one entry of the manual: the same entry names all six views and all eight objects in both languages, by the words the panel draws them with'. ( $axisEntries === [] ? ' - no entry does in both: '. count( $axisNamed['en_US'] ). ' in English, '. count( $axisNamed['de_DE'] ). ' in German' : '' ),
+	$axisEntries !== [] && count( Setup::TABS ) === 6 && count( Setup::OBJECTS ) === 8 );
 
 // The hover of the pictures is told in an entry of its own, which names the class that makes a picture take part and the two controls by the words the panel draws them with - the same entry in both languages
 $hoverNamed = [];
@@ -954,18 +973,18 @@ $hoverEntries = array_values( array_intersect( $hoverNamed['en_US'], $hoverNamed
 check( '...and so is the hover of the pictures: one entry names the class a picture says to take part and the two controls of the page\'s block, by the words the panel draws them with, in both languages'. ( $hoverEntries === [] ? ' - no entry does in both: '. count( $hoverNamed['en_US'] ). ' in English, '. count( $hoverNamed['de_DE'] ). ' in German' : '' ),
 	count( $hoverEntries ) === 1 && $panelWord( 'motion/hover/label', 'en_US' ) !== '' && $panelWord( 'motion/hover-strength/label', 'de_DE' ) !== '' );
 
-// The description is the line the feature is listed by: it names the seven tabs, each by the word the panel draws it with and as a word of its own - Type is no part of Typefaces
+// The description is the line the feature is listed by: it names the six views of the setup and the three tabs the strip on top of the pane draws, each by the word the panel draws it with and as a word of its own - Type is no part of Typefaces
 $describedGaps = [];
 
 foreach( [ 'en_US', 'de_DE' ] as $describedLocale )
-	foreach( Setup::TABS as $describedTab )
-		if( preg_match( '/(?<!\p{L})'. preg_quote( $panelWord( 'tab/'. $describedTab. '/label', $describedLocale ), '/' ). '(?!\p{L})/u', \Nino\Features::localized( (array) ( $feature['description'] ?? [] ), $describedLocale ) ) !== 1 )
-			$describedGaps[] = $describedLocale. ' '. $describedTab;
+	foreach( array_merge( array_map( static fn( string $tab ): string => $panelWord( 'tab/'. $tab. '/label', $describedLocale ), Setup::TABS ), $stripWords( $describedLocale ) ) as $describedWord )
+		if( preg_match( '/(?<!\p{L})'. preg_quote( $describedWord, '/' ). '(?!\p{L})/u', \Nino\Features::localized( (array) ( $feature['description'] ?? [] ), $describedLocale ) ) !== 1 )
+			$describedGaps[] = $describedLocale. ' '. $describedWord;
 
-check( '...and the description of the feature names the seven tabs in both languages, each by the word the panel draws it with'. ( $describedGaps === [] ? '' : ' - missing: '. implode( ', ', $describedGaps ) ),
-	$describedGaps === [] && count( Setup::TABS ) === 7 );
+check( '...and the description of the feature names the six views and the three tabs in both languages, each by the word the panel draws it with'. ( $describedGaps === [] ? '' : ' - missing: '. implode( ', ', $describedGaps ) ),
+	$describedGaps === [] && count( Setup::TABS ) === 6 && count( $stripFills ) === 3 );
 
-// A screen is named by a word of its own, group/<tab>/<screen>/label - and the manual names it by that word, in the entry of the Theme tab, which is the one that has screens
+// A screen is named by a word of its own, group/<tab>/<screen>/label - and the manual names it by that word, in the entry of the panel's own screen, which is the one that has screens
 $screenGaps = [];
 
 foreach( $scriptScreens as $screenTab => $screenKeys )
@@ -974,13 +993,13 @@ foreach( $scriptScreens as $screenTab => $screenKeys )
 
 			$screenWord = $panelWord( 'group/'. $screenTab. '/'. $screenKey. '/label', $screenLocale );
 
-			if( $screenWord === '' || str_contains( $says( 'Theme', $screenLocale ), $screenWord ) === false )
+			if( $screenWord === '' || str_contains( $says( $stripWords( 'en_US' )[0], $screenLocale ), $screenWord ) === false )
 				$screenGaps[] = $screenLocale. ' '. $screenTab. '/'. $screenKey;
 		}
 
 check( '...every screen has its word in both languages and is named by it in the manual'. ( $screenGaps === [] ? '' : ' - missing: '. implode( ', ', $screenGaps ) ),
 	$screenGaps === [] && $scriptScreens !== [] );
-check( '...and one for each part of the Theme tab - what its buttons do (load, create, duplicate, save, delete, export), the import and the css of a theme',
+check( '...and one for each part of the themes - what its buttons do (load, create, duplicate, save, delete, export), the import - and the css of a theme, which is the view CSS',
 	count( $themeParts ) === 8 && array_filter( $themeParts, static fn( string $part ): bool => $handled( $part ) === false ) === [] );
 check( '...every entry in both languages',
 	array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => trim( $says( $entry, 'en_US' ) ) === '' || trim( $says( $entry, 'de_DE' ) ) === '' ) === [] );
@@ -988,7 +1007,7 @@ check( '...every entry in both languages',
 check( '...every line of it a line and not a paragraph: at most 1000 bytes in either language, as the kernel reads a manifest',
 	array_filter( (array) ( $feature['manual']['panel'] ?? [] ), static fn( array $lines ): bool => array_filter( $lines, static fn( string $line ): bool => strlen( $line ) > 1000 ) !== [] ) === [] );
 /*	The features that bring variants have two entries, found by what they name and not by their handles: the author's names the five kinds, the tags of a head - the German line of a knob among them -, the folder and the two
-	places a default may stand; the editor's names the folder, the tab the variant is chosen on - by the word the panel draws it with - and the ratio under which the panel says a colour
+	places a default may stand; the editor's names the folder, the view the variant is chosen on - by the word the panel draws it with - and the ratio under which the panel says a colour
 	falls short. Each in both languages, one of each	*/
 $variantEntries = [];
 
@@ -1004,14 +1023,14 @@ foreach( [ 'en_US', 'de_DE' ] as $variantLocale ) {
 	];
 }
 
-check( 'the manual tells the features that bring variants twice, in both languages: once for the person who chooses - the folder, the tab the variant is chosen on, the ratio below which a colour is said to fall short - and once for the person who writes a variant - the five kinds, the tags of a head with the German line of a knob among them, the two places a default may stand',
+check( 'the manual tells the features that bring variants twice, in both languages: once for the person who chooses - the folder, the view the variant is chosen on, the ratio below which a colour is said to fall short - and once for the person who writes a variant - the five kinds, the tags of a head with the German line of a knob among them, the two places a default may stand',
 	$variantEntries === [ 'en_US' => [ 1, 1 ], 'de_DE' => [ 1, 1 ] ] );
 check( 'the manual names the one callback the feature registers, on /nino/http/output, in both languages, and the setting that callback reads',
 	array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) ) === [ '/nino/http/output' ]
 	&& trim( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'en_US' ) ) !== '' && trim( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'de_DE' ) ) !== ''
 	&& isset( $feature['settings']['webfontsUrl']['label']['en_US'], $feature['settings']['webfontsUrl']['label']['de_DE'] ) === true );
 
-// The Theme tab: where the themes of the project are kept
+// The themes: where the themes of the project are kept
 check( 'the themes of the project are in the backup: /data/themes is declared under data, and a theme the class writes - one file below it - is in the manifest of what a backup carries, as data/themes/<slug>.php',
 	in_array( Themes::DIR, (array) ( $feature['data'] ?? [] ), true ) === true
 	&& Themes::write( $appData, 'backup-probe', Themes::record( 'Backup probe', '', Setup::defaults( $library ), '' ) ) === true
@@ -1059,7 +1078,7 @@ check( 'a set name that is not a set name resolves to nothing', Setup::file( $li
 	the selected knob of another part overrides the template chosen there, one
 	that reads a knob or a step of another part follows a position that
 	template may not publish, and a template that writes the face, the weight
-	or the case of the text contradicts the Type tab. A frame is held to the
+	or the case of the text contradicts the Type view. A frame is held to the
 	same but for that last rule - it is the construction of a bar or of a
 	footer, with the ink and the type a bar has - and it answers to every knob
 	of its part and to none of another, since the panel greys nothing in the
@@ -1426,7 +1445,7 @@ foreach( Setup::available( $library, 'footer' ) as $set ) {
 
 check( 'every footer whose logo stands in a link writes the name of the company after it, in the span of the frame of the kernel, and the same name for whoever listens beside it, and its stylesheet takes the span away where the link holds a picture - so that the link has a name to read with no logo in it and a name to hear with or without one'. ( $footerProblems === [] ? '' : ' - '. implode( ', ', $footerProblems ) ), $footerLinks > 0 && $footerProblems === [] );
 
-/*	The whitespace position of the Surfaces tab is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
+/*	The whitespace position of the Surfaces view is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
 	a card by --whitespace-scale, the room under a text by --whitespace-text. A section set and a card set say that spacing again, after Nino.css, so each has to
 	say it with the same factors - a section's padding with the first, a card's padding with the first and the room under its texts with the second -, or the
 	position stops at the set: a section as high at +2 as at -2. Read from the library's own list of the two families, so that a set that is added without them
@@ -1443,7 +1462,7 @@ foreach( [ 'section' => [ '--whitespace-scale' ], 'card' => [ '--whitespace-scal
 				$whitespaceProblems[] = $whitespacePart. '/'. $set. ': '. $token;
 	}
 
-check( 'every section set scales the space of a section with --whitespace-scale, and every card set the space of a card with it and the room under a text with --whitespace-text, as Nino.css does, so that the whitespace position of the Surfaces tab does not stop at the set'. ( $whitespaceProblems === [] ? '' : ' - '. implode( ', ', $whitespaceProblems ) ), $whitespaceProblems === [] );
+check( 'every section set scales the space of a section with --whitespace-scale, and every card set the space of a card with it and the room under a text with --whitespace-text, as Nino.css does, so that the whitespace position of the Surfaces view does not stop at the set'. ( $whitespaceProblems === [] ? '' : ' - '. implode( ', ', $whitespaceProblems ) ), $whitespaceProblems === [] );
 
 /*	And the one thing reading the files cannot say: that each of them survives
 	the compiler. Every template of every part, one at a time, because a single
@@ -1629,8 +1648,9 @@ check( 'no selection token is a custom property that the kernel\'s Nino.css or t
 	table - the list hands it over, and design-js-smoke.js holds the screen to what the list answers. Nothing of it is stored: a setup and a theme file keep every choice by
 	its key, as they did. What the table is held to here is the model - it names every key of the setup that a person chooses, once, and no other; each entry names a tab
 	and an object the model has; a row counts from 1 without a gap; and the keys that share a place are the ones that are one control	*/
-check( 'the panel has seven tabs - Theme, Templates, Typefaces, Type, Surfaces, Colours, Motion - and its blocks are of eight objects - the page, the header, the footer, a section, a card, the buttons, the lists and the tables - in the order they are shown in',
-	Setup::TABS === [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ] && Setup::OBJECTS === [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ] );
+check( 'the setup has six views - Templates, Type, Surfaces, Colours, Motion and CSS - and names neither the themes nor the typefaces, which the pane draws as a screen of its own and as a tab of its own - and its blocks are of eight objects - the page, the header, the footer, a section, a card, the buttons, the lists and the tables - in the order they are shown in',
+	Setup::TABS === [ 'templates', 'type', 'surfaces', 'colours', 'motion', 'css' ] && Setup::OBJECTS === [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ]
+	&& array_intersect( [ 'theme', 'typefaces' ], Setup::TABS ) === [] );
 
 // ...and the two text files have a word for each of them: by key, which is what the panel reads, and never by what the word says
 $unworded = [];
@@ -1644,11 +1664,11 @@ foreach( [ 'en_US', 'de_DE' ] as $wordedLocale ) {
 			$unworded[] = $wordedLocale. ' '. $wordedKey;
 }
 
-check( '...and both text files have a word for each of the seven tabs and the eight objects, by key'. ( $unworded === [] ? '' : ' - missing: '. implode( ', ', array_slice( $unworded, 0, 4 ) ) ), $unworded === [] && count( Setup::TABS ) + count( Setup::OBJECTS ) === 15 );
+check( '...and both text files have a word for each of the six views and the eight objects, by key'. ( $unworded === [] ? '' : ' - missing: '. implode( ', ', array_slice( $unworded, 0, 4 ) ) ), $unworded === [] && count( Setup::TABS ) + count( Setup::OBJECTS ) === 14 );
 
 $chosen = [];
 
-// The keys of a fresh setup that are a choice of the panel: a key by itself, the entries of a list under the key of the list, the knobs under their part as well. The version of the model, the theme it was taken from, the custom css (a screen of the Theme tab) and the record of the compile are none
+// The keys of a fresh setup that are a choice of the panel: a key by itself, the entries of a list under the key of the list, the knobs under their part as well. The version of the model, the theme it was taken from, the custom css (the view CSS) and the record of the compile are none
 foreach( Setup::defaults( $library ) as $key => $value ) {
 
 	if( in_array( $key, [ 'format', 'theme', 'css', 'compiled' ], true ) === true )
@@ -1684,8 +1704,8 @@ foreach( Setup::LAYOUT as $key => $place ) {
 
 	[ $tab, $object, $order ] = $place;
 
-	// The Theme tab is the screens of its own and the Typefaces tab is the loader: neither has a control in the table. Every other entry stands under one of the objects - the templates too, each under the object it is the template of
-	if( in_array( $tab, Setup::TABS, true ) === false || in_array( $tab, [ 'theme', 'typefaces' ], true ) === true )
+	// The screens of the themes, the view CSS and the loader of the typefaces have no control in the table: the first and the last are no views of the setup, and the view CSS is the one field of the css. Every other entry stands under one of the objects - the templates too, each under the object it is the template of
+	if( in_array( $tab, Setup::TABS, true ) === false || $tab === 'css' )
 		$entryProblems[] = $key. ' stands on "'. ( is_string( $tab ) === true ? $tab : '?' ). '"';
 	else if( in_array( $object, Setup::OBJECTS, true ) === false )
 		$entryProblems[] = $key. ' stands under "'. ( is_string( $object ) === true ? $object : '?' ). '"';
@@ -1713,7 +1733,7 @@ foreach( Setup::TABS as $tab )
 		$laidOut[ $tab. '/'. $object ] = array_map( static fn( array $keys ): string => implode( ' ', $keys ), array_values( $rows[ $tab. '/'. $object ] ) );
 	}
 
-check( 'every entry of the table names one of the seven tabs - the Theme tab is its own screens and the Typefaces tab the loader, and neither has a control - and one of the eight objects, the templates too, and a row counts its controls from 1 without a gap'
+check( 'every entry of the table names one of the five views that have objects - the sixth, CSS, is the one field of the css and has no control in the table - and one of the eight objects, the templates too, and a row counts its controls from 1 without a gap'
 	. ( $entryProblems === [] && $gaps === [] ? '' : ' - '. implode( ', ', array_slice( array_merge( $entryProblems, $gaps ), 0, 4 ) ) ),
 	$entryProblems === [] && $gaps === [] && count( $laidOut ) === count( $rows ) );
 
@@ -1767,8 +1787,8 @@ check( '...kind() says which - the quiet and the loud variant of a section are a
 	&& Setup::range( 'scale' ) === 2 && Setup::range( 'choice' ) === 1 && Setup::range( 'nothing' ) === 0
 	&& Setup::words( 'scale' ) === [ 'least', 'less', 'default', 'more', 'most' ] && Setup::words( 'choice' ) === [ 'less', 'default', 'more' ] );
 
-/*	Every tab that the table draws is drawn as an accordion, the ones with one block as much as the ones with several - design-js-smoke.js holds the screen to that - and the manual says so
-	where it is drawn: in the entry of each such tab, found by the word the panel draws the tab with, a sentence that the entries of all of them have in common, in both languages. What is held
+/*	Every view that the table draws is drawn as an accordion, the ones with one block as much as the ones with several - design-js-smoke.js holds the screen to that - and the manual says so
+	where it is drawn: in the entry of each such view, found by the word the panel draws the view with, a sentence that the entries of all of them have in common, in both languages. What is held
 	of it is its shape and not its words, as of every entry: a sentence is what stands between two full stops	*/
 $accordionTabs = array_values( array_filter( Setup::TABS, static fn( string $tab ): bool => count( array_filter( array_keys( $laidOut ), static fn( string $row ): bool => str_starts_with( $row, $tab. '/' ) ) ) > 0 ) );
 $sentencesOf = static fn( string $entry, string $locale ): array => array_values( array_filter( array_map( 'trim', (array) preg_split( '/(?<=\.)\s+(?=\p{Lu})/u', $says( $entry, $locale ) ) ) ) );
@@ -1780,8 +1800,8 @@ foreach( [ 'en_US', 'de_DE' ] as $accordionLocale ) {
 	$accordionSaid[$accordionLocale] = $accordionLists === [] ? [] : array_values( array_intersect( ...$accordionLists ) );
 }
 
-check( 'every tab the table draws - Templates, Type, Surfaces, Colours and Motion, and no other: Theme is its screens and Typefaces the loader - is told as an accordion in the manual: the entries of all five have a sentence in common, in English and in German',
-	$accordionTabs === [ 'templates', 'type', 'surfaces', 'colours', 'motion' ] && array_values( array_diff( Setup::TABS, $accordionTabs ) ) === [ 'theme', 'typefaces' ] && $accordionSaid['en_US'] !== [] && $accordionSaid['de_DE'] !== [] );
+check( 'every view the table draws - Templates, Type, Surfaces, Colours and Motion, and no other: CSS is the one field - is told as an accordion in the manual: the entries of all five have a sentence in common, in English and in German',
+	$accordionTabs === [ 'templates', 'type', 'surfaces', 'colours', 'motion' ] && array_values( array_diff( Setup::TABS, $accordionTabs ) ) === [ 'css' ] && $accordionSaid['en_US'] !== [] && $accordionSaid['de_DE'] !== [] );
 
 /*	A knob is a position of its own part, held to the range of its kind: -2 to +2 for a scale, -1 to +1 for a choice.
 	Whatever else arrives - a word, an array, a number beyond the ends - is the middle, which is the template as it is	*/
@@ -3502,7 +3522,7 @@ check( '...and one that declares a buttons knob again in a nested selector as de
 	&& designKnobProblems( $stray, 'tables', 'fourth' ) === [ 'fourth: declares --buttons-size, a ladder of the buttons part' ] );
 check( '...and a set the library does not have is reported rather than read', designKnobProblems( $stray, 'tables', 'absent' ) === [ 'absent: has no stylesheet' ] );
 
-/*	...and the roles of the Type tab and the colours of the palette: a template that writes a face, a weight or a case of
+/*	...and the roles of the Type view and the colours of the palette: a template that writes a face, a weight or a case of
 	its own is reported, and so is one that writes a colour as a literal - a hex, an rgb() or an hsl(). A tables template
 	may set the case of a table head, which is what it is built as and no role of the type - but of that
 	and of nothing else	*/
@@ -3525,7 +3545,7 @@ file_put_contents( $roles. '/lists/first.css', "/*\t@name Marks\n *\t@descriptio
 file_put_contents( $roles. '/lists/second.css', "/*\t@name Items\n *\t@description A lists template that sets the weight of an item and the case of a mark.\n *\t@knob marker\n */\n:root {\n". $ownMarker. "}\n.nino-list li { font-weight: bold; }\n.nino-list li::before { text-transform: uppercase; }\n" );
 file_put_contents( $roles. '/tables/fifth.css', "/*\t@name Both\n *\t@description A tables template that sets the case of a table head and of a button.\n *\t@knob scale\n */\n:root {\n". $ownScale. "}\n.nino-table th, .nino-btn { text-transform: uppercase; }\n" );
 
-check( 'the library check reports a buttons template that sets a case or a colour of its own, and one that sets a face, a weight or a colour - the roles of the type are the Type tab\'s and the colours the palette\'s',
+check( 'the library check reports a buttons template that sets a case or a colour of its own, and one that sets a face, a weight or a colour - the roles of the type are the Type view\'s and the colours the palette\'s',
 	designKnobProblems( $roles, 'buttons', 'first' ) === [ 'first: writes the face, the weight or the case of a role', 'first: writes a colour as a literal' ]
 	&& designKnobProblems( $roles, 'buttons', 'second' ) === [ 'second: writes the face, the weight or the case of a role', 'second: writes a colour as a literal' ] );
 check( '...and a tables template that sets the case of a table head - in a rule of its own, in a list of selectors that all end in one, in a selector full of brackets, or in a media query - is none of them, nor is a colour that is mixed out of the roles, while one that sets a weight or writes an hsl() is',
@@ -4112,6 +4132,81 @@ check( 'the feature activates through \\Nino\\Features', $result === true );
 check( '...and lists its class in /nino/modules', in_array( '\\Nino\\Modules\\Design', (array) $appData['/nino/modules'], true ) === true );
 check( '...and brings its panel along', \Nino\Modules\Design::adminPanels( $appData ) === [ \Nino\Modules\Design\Admin::class ] );
 
+/*	The pane is four tabs on top. The kernel draws the strip - the panel's own screen first, the tabs the panel brings by their weights, and the Settings tab of a feature that has settings last
+	(see \Nino\Admin\Panels::collect()) - so what the feature holds is the order of the three it brings and what each of them is: a panel of the kernel's own kind, with its uri, its words, its mount
+	and the permission of the panel, and no action of its own - every design/ action stays on the panel, whichever tab asks for it. Read from the registry of this copy, where the feature is active;
+	the uris are the classes' own, never typed here	*/
+$paneRegistry	= \Nino\Admin\Admin::panels( $appData );
+$paneEntry		= $paneRegistry[ Admin::nav()[0] ] ?? [ 'tabs' => [] ];
+$paneClasses	= Admin::tabs();
+$paneUris			= array_merge( [ Admin::nav()[0] ], array_map( static fn( string $tab ): string => (string) $tab::nav()[0], $paneClasses ) );
+$paneListed		= array_keys( array_filter( \Nino\Admin\Admin::allPanels( $appData ), static fn( array $panel ): bool => $panel['uri'] === $paneUris[0] || $panel['parent'] === $paneUris[0] ) );
+$paneWeights	= array_column( $paneEntry['tabs'], 'weight' );
+$paneSorted		= $paneWeights;
+sort( $paneSorted );
+
+check( 'the registry lists the pane as the strip on top reads - the panel\'s own screen, the setup, the loader and, last, the Settings tab the registry attaches - the tabs the panel brings by their weights',
+	count( $paneClasses ) === 2 && count( array_unique( $paneUris ) ) === 3
+	&& $paneListed === array_merge( $paneUris, [ $paneUris[0]. '-settings' ] ) && array_keys( $paneEntry['tabs'] ) === array_slice( $paneListed, 1 )
+	&& $paneWeights === $paneSorted && count( array_unique( $paneWeights ) ) === count( $paneWeights )
+	&& ( $paneEntry['tabs'][ $paneUris[0]. '-settings' ]['feature'] ?? '' ) === $feature['key'] );
+check( '...the panel\'s own screen is called in the strip by a word other than the one the rail has for the panel - tab() answers a fill, which nav() does not - and it keeps the panel\'s permission and its own mount',
+	( $paneEntry['tab'] ?? '' ) === Admin::tab() && Admin::tab() !== ( $paneEntry['label'] ?? '' ) && preg_match( '~^/_admin/nav/[a-z-]+$~', Admin::tab() ) === 1
+	&& ( $paneEntry['own'] ?? false ) === true && ( $paneEntry['perm'] ?? '?' ) === Admin::MANAGE_PERM && ( $paneEntry['panes'] ?? [] ) !== [] );
+
+$paneMounts		= $paneEntry['panes'] ?? [];
+$paneProblems	= [];
+
+foreach( $paneClasses as $paneClass ) {
+
+	$paneTab = $paneEntry['tabs'][ $paneClass::nav()[0] ] ?? [];
+
+	foreach( [ 'actions', 'nav', 'perm', 'panes', 'assets', 'text' ] as $paneMethod )
+		if( method_exists( $paneClass, $paneMethod ) === false )
+			$paneProblems[] = $paneClass. ' has no '. $paneMethod. '()';
+
+	if( ( $paneTab['class'] ?? '' ) !== $paneClass )
+		$paneProblems[] = $paneClass. ' is not on the pane';
+	else {
+
+		if( $paneTab['parent'] !== $paneUris[0] || $paneTab['group'] !== $paneEntry['group'] )
+			$paneProblems[] = $paneClass. ' does not sit with its panel';
+
+		if( $paneTab['perm'] !== $paneEntry['perm'] )
+			$paneProblems[] = $paneClass. ' has a permission of its own';
+
+		if( $paneTab['assets'] !== $paneEntry['assets'] || $paneTab['text'] !== $paneEntry['text'] || $paneTab['text'] === '' || $paneTab['assets'] === [] )
+			$paneProblems[] = $paneClass. ' does not share the panel\'s script, stylesheet and words';
+
+		if( $paneTab['panes'] === [] || array_intersect( $paneTab['panes'], $paneMounts ) !== [] )
+			$paneProblems[] = $paneClass. ' has no mount of its own';
+
+		if( preg_match( '~^/_admin/nav/[a-z-]+$~', $paneTab['label'] ) !== 1 )
+			$paneProblems[] = $paneClass. ' is labelled by no fill';
+
+		$paneMounts = array_merge( $paneMounts, $paneTab['panes'] );
+	}
+
+	if( $paneClass::actions() !== [] )
+		$paneProblems[] = $paneClass. ' brings an action of its own';
+}
+
+$paneActions = \Nino\Admin\Admin::actions( $appData );
+
+check( '...each of the two tabs is a panel of the kernel\'s own kind - actions(), nav(), perm(), panes(), assets() and text() - that sits with its panel, has its permission, shares its script, its stylesheet and its words, and draws into a mount of its own, no two the same'
+	. ( $paneProblems === [] ? '' : ' - '. implode( ', ', array_slice( $paneProblems, 0, 3 ) ) ),
+	$paneProblems === [] && count( $paneMounts ) === count( array_unique( $paneMounts ) ) && count( $paneMounts ) === 3 );
+check( '...and brings no action: every design/ action is the panel\'s, whichever tab asks for it - the registry maps the actions of the pane to the panel\'s class and to nothing else',
+	array_filter( $paneActions, static fn( array $handler ): bool => in_array( $handler[0], $paneClasses, true ) ) === []
+	&& array_filter( array_keys( Admin::actions() ), static fn( string $action ): bool => ( $paneActions[$action][0] ?? '' ) !== Admin::class ) === [] );
+
+// ...and the script keeps one namespace for each of the three, by the uri of its tab - the shell asks Nino.admin[<uri>] for the screen of a tab - and draws into the mounts they name
+preg_match_all( '/^\tNino\.admin(?:\.([a-z]+)|\[\'([a-z-]+)\'\])\s*=\s*\{/m', $panelScript, $scriptSpaces, PREG_SET_ORDER );
+
+check( 'the script keeps one namespace for the panel and one for each of its two tabs - the uris the registry lists, in their order - and every mount the three name is a literal of it',
+	array_map( static fn( array $found ): string => ( $found[2] ?? '' ) !== '' ? $found[2] : $found[1], $scriptSpaces ) === $paneUris
+	&& array_filter( $paneMounts, static fn( string $mount ): bool => str_contains( $panelScript, "'". $mount. "'" ) === false ) === [] );
+
 // A fresh install has the delivered theme.css in place, and apply() must not
 // walk over it without being told to
 \Nino\Filesystem::putFileContent( $appData, '/assets/theme.css', "/* delivered */\n" );
@@ -4290,7 +4385,7 @@ check( 'and the screen is handed the vocabulary it draws: the parts with the kin
 	&& ( $listed['motion'] ?? null ) === [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ]
 	&& ( $listed['effects'] ?? null ) === array_keys( Setup::EFFECTS ) && ( $listed['hovers'] ?? null ) === array_keys( Setup::HOVERS ) && ( $listed['strengths'] ?? null ) === Setup::STRENGTHS
 	&& ( $listed['speeds'] ?? null ) === array_keys( Setup::SPEEDS ) );
-check( '...and where every control of the panel stands: the table of the model with the seven tabs and the eight objects it is made of - the screen is drawn from it and from nothing else',
+check( '...and where every control of the panel stands: the table of the model with the six views and the eight objects it is made of - the screen is drawn from it and from nothing else',
 	( $listed['layout'] ?? null ) === [ 'tabs' => Setup::TABS, 'objects' => Setup::OBJECTS, 'controls' => Setup::LAYOUT ] );
 check( '...where every knob stands, the five font roles with what each has and what each can be given, and the bounds of a typed size with the one Nino.css gives a role - no list of steps',
 	( $listed['knobs'] ?? null ) === $onFile['knobs'] && $onFile['knobs'] === Setup::defaults( $library )['knobs']
@@ -5084,6 +5179,10 @@ foreach( [ 'ANCHORS', 'OBJECT_ANCHORS', 'CONTROL_ANCHORS' ] as $anchorTable )
 		$scriptAnchors = array_merge( $scriptAnchors, $tableTargets[1] );
 	}
 
+// ...and the one the screen of the themes looks at, which is no table of its own: a theme is all of the page (THEMES_ANCHOR)
+if( preg_match( "/\bTHEMES_ANCHOR\s*:\s*'([a-z]+)'/", $panelScript, $themesFound ) === 1 )
+	$scriptAnchors[] = $themesFound[1];
+
 $scriptAnchors	= array_values( array_unique( $scriptAnchors ) );
 $anchorless			= array_values( array_filter( $scriptAnchors, static fn( string $id ): bool => substr_count( $specimen, ' id="'. $id. '"' ) !== 1 ) );
 
@@ -5214,7 +5313,7 @@ check( 'the first row of cards frames its pictures for the hover of the pictures
 check( '...and a card after them keeps the picture bare, an img with the class nino-card-img, so that the specimen shows a picture with the hover and one without',
 	array_filter( $byClass( $xpath, 'nino-card-img', $sections[1] ), static fn( DOMNode $node ): bool => $node->nodeName === 'img' ) !== [] );
 
-/*	The animation of the page is a choice of the Motion tab, and a page that
+/*	The animation of the page is a choice of the Motion view, and a page that
 	carries no viewport animation shows none of it: the cell of the hero, the
 	cards at the head of the page, the pricing items and the figures carry
 	nino-vpa, and repeat, so that each time the frame scrolls to them they play
@@ -5712,7 +5811,7 @@ check( '...and nobody uses it yet', $done['uses'] === [ 'inter' => [] ] && $done
 
 [ , $relisted ] = callDesignAction( $appData, 'apiList' );
 
-check( 'design/list has it after an install: among the families the Type tab chooses from, by its name, and in the options of the roles - the code is offered the monospace ones only',
+check( 'design/list has it after an install: among the families the Type view chooses from, by its name, and in the options of the roles - the code is offered the monospace ones only',
 	( $relisted['families']['inter'] ?? null ) === [ 'name' => 'Inter', 'category' => 'sans', 'system' => false ] && in_array( 'inter', $relisted['options']['title'], true ) === true
 	&& in_array( 'inter', $relisted['options']['code'], true ) === false );
 
@@ -5764,7 +5863,7 @@ check( 'a removal of a family a role uses is refused as a conflict, and says whi
 $usedBy( [] );
 [ $status, $removed ] = callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] );
 
-check( 'one that nothing uses is removed: the sentence for the bar and the state after it - the family is gone from the installed ones, with its directory, and from what the Type tab chooses from',
+check( 'one that nothing uses is removed: the sentence for the bar and the state after it - the family is gone from the installed ones, with its directory, and from what the Type view chooses from',
 	$status === 200 && array_keys( $removed ) === array_merge( [ 'msg' ], $shelfKeys ) && $removed['msg'] === $panelText( 'typefaces/msg/removed', 'en_US', 'Inter' ) && isset( $removed['installed']['inter'] ) === false
 	&& isset( $removed['installed']['roboto-flex'] ) === true && is_dir( $fontsDir. '/inter' ) === false
 	&& isset( callDesignAction( $appData, 'apiList' )[1]['families']['inter'] ) === false );
@@ -6170,7 +6269,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		&& $withCss === \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => "a {}" ], $library ), $library )
 		&& $withCss !== \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => "a {} " ], $library ), $library ) );
 
-	// The actions of the Theme tab, over callDesignAction() as the panel's own are, in a sandbox with the six themes the feature ships and the project's own
+	// The actions of the themes, over callDesignAction() as the panel's own are, in a sandbox with the six themes the feature ships and the project's own
 	$themesClean = static function() use ( &$appData, $themesDir ): void {
 
 		\Nino\Filesystem::removeDir( $themesDir );
@@ -6316,7 +6415,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$inkyListed['missing'] === [ [ 'slug' => 'inter', 'name' => $entryInter['family'], 'inList' => true ], [ 'slug' => 'nowhere-sans', 'name' => 'nowhere-sans', 'inList' => false ] ] && $entryInter['family'] !== 'inter' );
 
 	/*	The record of the list for a theme that names typefaces the project lacks: a family the screen takes over as '' on a
-		load that installs nothing (see _takeTheme() in admin.js) is '' in the record too, so that the chip of the Theme tab
+		load that installs nothing (see _takeTheme() in admin.js) is '' in the record too, so that the chip on the strip's Themes button
 		stays quiet when the panel is opened again - the stored setup names the theme for one list, and is put back	*/
 	$storedBefore = Setup::read( $appData, $library );
 	$inkyStored = $storedBefore;
@@ -6736,7 +6835,7 @@ foreach( Webfonts::REFUSALS as $refusal )
 	$wanted[] = 'typefaces/available/'. $refusal;
 array_push( $wanted, 'typefaces/msg/installed', 'typefaces/msg/updated', 'typefaces/msg/removed' );
 
-/*	The Theme tab names its three buttons of a row by a variable, which is no literal for the check below to find, and the word of a
+/*	The screen of the themes names its three buttons of a row by a variable, which is no literal for the check below to find, and the word of a
 	copy is the server's: it names the theme a duplicate makes (see Admin::apiThemeDuplicate())	*/
 array_push( $wanted, 'theme/load', 'theme/duplicate', 'theme/delete', 'theme/copy' );
 
@@ -6857,9 +6956,9 @@ check( 'the note under a scale says which way it goes, with U+2194 between the t
 	. ( $undirected === [] ? '' : ' - not so for '. implode( ', ', array_slice( $undirected, 0, 4 ) ) ), $undirected === [] );
 
 /*	The words of the choices. The three words of a choice knob - the keys under /_admin/design/knob/<tab>/<knob>/ that are
-	less, default and more - begin with a capital letter in both languages, as the words of the choices of the Colours tab do
+	less, default and more - begin with a capital letter in both languages, as the words of the choices of the Colours view do
 	(/_admin/design/colour/<knob>/<n>). Only the first letter of a word is the point of it: nothing else of the word
-	changed, and the options of a select stay as they are, in lower case - the mode of the palette, as the Colours tab keeps
+	changed, and the options of a select stay as they are, in lower case - the mode of the palette, as the Colours view keeps
 	its select lower case and capitalises its choices. The words of a scale are gone: it shows numbers. And the one middle
 	word of the model before - Normal in German and Default in English, for every knob but the choices - has nothing left to
 	check: the only knobs that still have words are the seven choices, each with a middle of its own	*/
@@ -6898,7 +6997,7 @@ foreach( Setup::KNOBS as $part => $kinds )
 check( 'a scale has no word for a position in either language: thirty knobs with a name and a note, and none of the 150 words of five steps left - a strip of five shows -2 to +2'
 	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 30 );
 
-/*	The Colours tab: the choices have names, each capitalised, and the three scales say nothing of their positions - a strip of five shows
+/*	The Colours view: the choices have names, each capitalised, and the three scales say nothing of their positions - a strip of five shows
 	numbers, the 0 the framework's own. The names the server publishes for the choices (Colours::choices(), the last fallback of
 	the panel) are the English words of the text file	*/
 $colourChoices = array_filter( array_diff_key( $choices, [ 'mode' => 1 ] ), static fn( array $knob ): bool => $knob['kind'] === 'choice' );
@@ -6916,7 +7015,7 @@ foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
 			if( $panelWord( 'colour/'. $knob. '/'. $position, $stepLocale ) !== '' )
 				$colourScaleWords[] = $stepLocale. ' '. $knob. '/'. $position;
 
-check( 'the Colours tab names the positions of its two choices, each word capitalised, in both languages - and the three scales have none',
+check( 'the Colours view names the positions of its two choices, each word capitalised, in both languages - and the three scales have none',
 	array_keys( $colourChoices ) === [ 'harmony', 'temperature' ] && array_keys( $colourDrawn ) === [ 'en_US', 'de_DE' ]
 	&& array_filter( $colourDrawn, static fn( array $knobs ): bool => array_filter( array_merge( ...array_values( $knobs ) ), static fn( string $word ): bool => $isCapital( $word ) === false ) !== [] ) === []
 	&& $colourScaleWords === [] );
@@ -7097,7 +7196,7 @@ check( 'the controls of the bar over the preview are a hit area of 24px at least
 	&& $pixels( $coarseRule( '.design-viewport' ), 'min-height' ) >= 44 && $pixels( $coarseRule( '.design-viewport' ), 'min-width' ) >= 44
 	&& $pixels( $cssRule( '.nino-admin .design-preview-follow' ), 'min-height' ) >= 24 && $pixels( $coarseRule( '.nino-admin .design-preview-follow' ), 'min-height' ) >= 44 );
 
-/*	The blocks of the accordion on every tab the table draws (see admin.js): the head is a button the width of its card and a hit area of 44px at the least, whatever the
+/*	The blocks of the accordion on every view the table draws (see admin.js): the head is a button the width of its card and a hit area of 44px at the least, whatever the
 	pointer is, and what it says of a closed block - the controls that stand off the defaults - is one line that the card cuts with an ellipsis where the head is short of
 	room, never a second line; the chevron is turned over while the block is open	*/
 check( 'the head of a block of the accordion is the width of its card and 44px high at the least and draws the hover of the workbench itself, the line it says of a closed block is cut with an ellipsis and never wraps, and the chevron is turned over while the block is open',
@@ -7107,9 +7206,9 @@ check( 'the head of a block of the accordion is the width of its card and 44px h
 	&& $cssHas( '.nino-admin .design-accordion-summary', [ 'flex: 1 1 0;', 'min-width: 0;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;' ] ) === true
 	&& $cssHas( '.nino-admin .design-accordion-head[aria-expanded="true"] .design-accordion-chevron', [ 'transform: rotate(180deg);' ] ) === true );
 
-/*	The Theme tab: the list is rows, each the name over its description and at its far end the buttons that can be pressed on it,
+/*	The screens of the themes: the list is rows, each the name over its description and at its far end the buttons that can be pressed on it,
 	which stand under the words where the room is short and always from 768px down; the row that makes a theme is a field and its
-	button on one line; the css is a field in the monospace face of the workbench, whose label is kept for whoever hears the field
+	button on one line; the css, which is the view CSS of the tab Design, is a tall field in the monospace face of the workbench, whose label is kept for whoever hears the field
 	and drawn out of sight. The chips are the workbench's own, so not one colour in the rules of the tab is a literal	*/
 preg_match_all( '/[^{}]*design-theme[^{}]*\{[^}]*\}/', $panelCss, $themeRules );
 $themeCss = implode( '', $themeRules[0] );
@@ -7127,11 +7226,26 @@ check( '...the row that makes a theme, in a card of its own on Properties, is th
 	$cssHas( '.nino-admin .design-theme-new', [ 'display: flex;', 'align-items: flex-end;' ] ) === true
 	&& $cssHas( '.nino-admin .design-theme-new > .nino-admin-field', [ 'flex: 1 1 auto;', 'min-width: 0;', 'margin: 0;' ] ) === true
 	&& $cssHas( '.nino-admin .design-theme-import', [ 'margin: 0;', 'border-top: 1px solid var(--editor-separator);' ] ) === true );
-check( '...the css is a block in the monospace face of the workbench - its width, its resizing and its colours the workbench\'s own for a textarea - and its label is out of sight but there: not display none, which a screen reader skips',
-	$cssHas( '.nino-admin .design-theme-css', [ 'display: block;', 'font-family: var(--nino-admin-mono);' ] ) === true
-	&& str_contains( $cssRule( '.nino-admin .design-theme-css' ), 'width' ) === false && str_contains( $cssRule( '.nino-admin .design-theme-css' ), 'resize' ) === false
+check( '...the css is a block in the monospace face of the workbench, much taller than a field of a form and resizable up and down only - a height in rem that shows about thirty lines of its own type at most and gives way to a lower window, never under ten lines: the least of two rems, the greater of which is the height of the window less the rem the chrome of the pane takes, and a floor -, the width the workbench\'s own for a textarea - and its label is out of sight but there: not display none, which a screen reader skips',
+	$cssHas( '.nino-admin .design-theme-css', [ 'display: block;', 'font-family: var(--nino-admin-mono);', 'resize: vertical;' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin .design-theme-css' ), 'width' ) === false
+	&& preg_match( '/(?:^| )height: min\(\s*([0-9.]+)rem,\s*max\(\s*([0-9.]+)rem,\s*calc\(\s*100vh\s*-\s*([0-9.]+)rem\s*\)\s*\)\s*\);/', $cssRule( '.nino-admin .design-theme-css' ), $fieldHeight ) === 1
+	&& preg_match( '/font-size: ([0-9.]+)rem;/', $cssRule( '.nino-admin .design-theme-css' ), $fieldSize ) === 1 && preg_match( '/line-height: ([0-9.]+);/', $cssRule( '.nino-admin .design-theme-css' ), $fieldLine ) === 1
+	&& (float) $fieldHeight[1] / ( (float) $fieldSize[1] * (float) $fieldLine[1] ) >= 28 && (float) $fieldHeight[1] / ( (float) $fieldSize[1] * (float) $fieldLine[1] ) <= 34
+	&& (float) $fieldHeight[2] / ( (float) $fieldSize[1] * (float) $fieldLine[1] ) >= 10 && (float) $fieldHeight[2] < (float) $fieldHeight[1] && (float) $fieldHeight[3] > 0
 	&& $cssHas( '.nino-admin .design-theme-css-name', [ 'position: absolute;', 'width: 1px;', 'height: 1px;', 'overflow: hidden;', 'clip-path: inset(50%);' ] ) === true
 	&& str_contains( $cssRule( '.nino-admin .design-theme-css-name' ), 'display' ) === false );
+
+/*	The loader has no preview to take the right of the pane, so its two cards stand side by side where the pane is as wide as the layout of the preview and the controls wants - above the width that
+	layout stacks at - and one over the other below it; the columns may shrink. The line over them that says what an install did is a sentence of the pane: it keeps its height while it is empty, so that
+	the cards do not move when it has something to say, and a failure is red as the one in the bar is	*/
+preg_match( '/@media \(max-width: ([0-9.]+)rem\) \{ #design-layout \{/', $panelCss, $layoutStacks );
+
+check( 'the two cards of the loader stand one over the other and, from the width above the one the layout of the preview stacks at, side by side - the columns may shrink - and the line over them that says an action is a sentence that keeps its height when it is empty and is red for a failure',
+	$cssHas( '.nino-admin .design-faces-cards', [ 'display: grid;', 'grid-template-columns: minmax(0, 1fr);' ] ) === true
+	&& isset( $layoutStacks[1] ) === true
+	&& preg_match( '/@media \(min-width: '. preg_quote( $layoutStacks[1], '/' ). '\.001rem\) \{ \.nino-admin \.design-faces-cards \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, [0-9.]+fr\); \} \}/', $panelCss ) === 1
+	&& $cssHas( '#design-faces-msg', [ 'min-height:', 'color: var(--editor-text-secondary);' ] ) === true && $cssHas( '#design-faces-msg.nino-admin-error', [ 'color: var(--editor-red);' ] ) === true );
 check( '...and not one colour of the tab is a literal, nor a face but the workbench\'s: the chips and the buttons are the workbench\'s own, the rest takes its tokens',
 	$themeRules[0] !== [] && count( $themeRules[0] ) >= 14 && preg_match( '/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(|\boklch\(/i', $themeCss ) !== 1
 	&& preg_match( '/font-family:(?! var\(--nino-admin-mono\))/', $themeCss ) !== 1 );
@@ -7250,11 +7364,11 @@ $brokenNotes = [];
 $broken = Setup::features( $appData, $brokenNotes );
 $brokenKnobs = $broken['broken']['catalogue']['regular']['knobs'] ?? [];
 
-$wrongTokens = [ 'Nodefault', 'Badsurface', 'Badtone', 'Onehalf', 'Twice', 'Fixed', 'Nokind', 'notab', 'Bad_Name', 'bare', 'Clash', '"tone"', 'ghostlabel', 'ghostoption', '"pad"' ];
+$wrongTokens = [ 'Nodefault', 'Badsurface', 'Badtone', 'Onehalf', 'Twice', 'Fixed', 'Nokind', 'notab', 'Nocss', 'Notemplates', 'Bad_Name', 'bare', 'Clash', '"tone"', 'ghostlabel', 'ghostoption', '"pad"' ];
 
 check( 'a head with a line wrong for each thing a line can be wrong in publishes the knobs that are right and nothing else: the first of a name that is declared twice, an ink with its default, a scale with its ladder, a ground with its surface - and not the scale named for a part of that ground, ladder or no ladder: the ground writes that property',
 	array_keys( $brokenKnobs ) === [ 'size', 'ink', 'base' ] && $brokenKnobs['size']['label'] === 'Size' && $brokenKnobs['ink']['default'] === 'subtitle' && $brokenKnobs['size']['ladder'] === [ 'size' ] && $brokenKnobs['base']['default'] === 'brand' && isset( $brokenKnobs['base-border'] ) === false );
-check( '...each line that was dropped is named, once, led by the feature and the variant it was in: a ground or an ink or a colour without a default of its kind, a scale that is given one, a name twice, a kind or a tab or a name there is none of, a line without its label, a choice without its three words, a label or the words for a knob that is not there, a knob named for a part of a ground of the same head, and a scale without a complete ladder',
+check( '...each line that was dropped is named, once, led by the feature and the variant it was in: a ground or an ink or a colour without a default of its kind, a scale that is given one, a name twice, a kind or a tab or a name there is none of - the views that have no knobs, the templates and the css, are no tab for one -, a line without its label, a choice without its three words, a label or the words for a knob that is not there, a knob named for a part of a ground of the same head, and a scale without a complete ladder',
 	count( $brokenNotes ) === count( $wrongTokens ) && array_filter( $brokenNotes, static fn( mixed $note ): bool => is_string( $note ) === false || str_starts_with( $note, 'broken/regular: ' ) === false ) === []
 	&& array_filter( $wrongTokens, static fn( string $token ): bool => count( array_filter( $brokenNotes, static fn( string $note ): bool => str_contains( $note, $token ) === true ) ) !== 1 ) === [] );
 check( '...the ladder no head declares is not offered - nothing says where it stands - and a knob that has no label of its language is labelled in English, as a set that has no name of its language is listed under its English one',

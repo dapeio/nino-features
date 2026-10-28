@@ -4,6 +4,10 @@
 // workbench's own text/<locale>.php has
 return [
 	'[[/_admin/nav/design]]'										=> 'Design',
+	// The strip on top of the pane: Themes is the panel's own screen (the library of the themes), Design the tab with the six views, Typefaces the loader
+	'[[/_admin/nav/themes]]'										=> 'Themes',
+	'[[/_admin/nav/design-setup]]'									=> 'Design',
+	'[[/_admin/nav/design-typefaces]]'								=> 'Typefaces',
 	'[[/_admin/design/label/title]]'								=> 'Design',
 
 	'[[/_admin/design/label/save]]'								=> 'Save draft',
@@ -12,14 +16,13 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The seven tabs - the properties of the design - and the eight objects that the blocks of the tabs are headed with
-	'[[/_admin/design/tab/theme/label]]'							=> 'Theme',
+	// The six views of the tab Design - the properties of the design - and the eight objects that the blocks of their views are headed with
 	'[[/_admin/design/tab/templates/label]]'						=> 'Templates',
-	'[[/_admin/design/tab/typefaces/label]]'						=> 'Typefaces',
 	'[[/_admin/design/tab/type/label]]'								=> 'Type',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surfaces',
 	'[[/_admin/design/tab/colours/label]]'							=> 'Colours',
 	'[[/_admin/design/tab/motion/label]]'							=> 'Motion',
+	'[[/_admin/design/tab/css/label]]'								=> 'CSS',
 	'[[/_admin/design/object/page/label]]'							=> 'Page',
 	'[[/_admin/design/object/header/label]]'						=> 'Header',
 	'[[/_admin/design/object/footer/label]]'						=> 'Footer',
@@ -29,12 +32,11 @@ return [
 	'[[/_admin/design/object/lists/label]]'							=> 'Lists',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tables',
 
-	// The screens of the Theme tab: a strip of tabs under the strip of the tabs, and under it the screen that is open
+	// The screens of the themes: a strip of tabs under the strip on top of the pane, and under it the screen that is open
 	'[[/_admin/design/group/theme/load/label]]'					=> 'Load',
 	'[[/_admin/design/group/theme/properties/label]]'			=> 'Properties',
-	'[[/_admin/design/group/theme/css/label]]'					=> 'Custom CSS',
 
-	// The Theme tab, in three screens: the list of themes with the import, the loaded one with its name and description and the row that makes another, the css of its own - and what a theme says of itself
+	// The themes, in two screens: the list of themes with the import, the loaded one with its name and description and the row that makes another - and what a theme says of itself. The css of a theme is the view CSS of the tab Design
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'shipped',
 	'[[/_admin/design/theme/active]]'				=> 'active',
@@ -152,9 +154,9 @@ return [
 	'[[/_admin/design/weight/bold]]'								=> 'Bold',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// The Typefaces tab: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line of the action bar
+	// The tab Typefaces: the families the project has installed, and the signed list of those it can install - the loader. Installing and removing report in the line over the cards
 	'[[/_admin/design/typefaces/installed/title]]'				=> 'Installed',
-	'[[/_admin/design/typefaces/installed/empty]]'				=> 'No typeface is installed yet. Load the available typefaces below and install one: it lands in assets/fonts/ of your project, with its licence.',
+	'[[/_admin/design/typefaces/installed/empty]]'				=> 'No typeface is installed yet. Load the available typefaces and install one: it lands in assets/fonts/ of your project, with its licence.',
 	'[[/_admin/design/typefaces/installed/used]]'				=> 'used by %s',
 	'[[/_admin/design/typefaces/installed/broken]]'			=> 'Not a typeface: %s',
 	'[[/_admin/design/typefaces/installed/remove]]'			=> 'Remove',

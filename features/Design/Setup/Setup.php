@@ -18,7 +18,7 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
-	 *										One model for the panel (the Typefaces tab installs
+	 *										One model for the panel (the loader of the typefaces installs
 	 *										families and keeps nothing here): the seven
 	 *										templates (header and footer bring markup and a stylesheet,
 	 *										section, card, buttons, lists and tables are one stylesheet
@@ -27,7 +27,7 @@ namespace Nino\Modules\Design {
 	 *										each kind of surface, the one it takes -, its animation and
 	 *										the hover of its pictures, a position for every named knob
 	 *										of the seven templates, the five font roles and the
-	 *										palette - and, for the Theme tab,
+	 *										palette - and, for the screen of the themes and the view CSS,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
 	 *										this whole setup kept under a name). Where each of them
@@ -66,7 +66,7 @@ namespace Nino\Modules\Design {
 		public const int FORMAT = 2;
 
 		/*	The keys of the file, in the order they are written. `theme` and `css` came
-			with the Theme tab and need no new format: a file without them reads as no
+			with the themes and need no new format: a file without them reads as no
 			theme and no css, which is what every project had before. So does
 			`whitespace`: a file without it stands at the middle, the air Nino.css has.
 			And so do `radius`, `radius-alt` and `radii`: a file without them stands at
@@ -174,22 +174,24 @@ namespace Nino\Modules\Design {
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
 		];
 
-		/*	The panel in two axes. A tab is a property of the design - the theme it was
-			taken from, the templates, the typefaces, the type, the surfaces, the colours, the
-			motion - and an object is what a property is set on: the page, the header, the
-			footer, a section, a card, the buttons, the lists and the tables. TABS are the seven
-			tabs in the order they are shown in and OBJECTS the eight objects in the order their
-			rows follow one another on a tab that draws rows, which is every tab but the theme and
-			the typefaces: the templates, the type, the surfaces, the colours and the motion, each
-			an accordion of one block for each object that has a control on it. The panel's words
-			for them are /_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label.
+		/*	The setup in two axes. A tab is a property of the design - the templates, the type,
+			the surfaces, the colours, the motion, and the css of the theme - and an object is what
+			a property is set on: the page, the header, the footer, a section, a card, the buttons,
+			the lists and the tables. TABS are the six views of the tab Design of the pane, in the
+			order they are shown in, and OBJECTS the eight objects in the order their rows follow one
+			another on a view that draws rows, which is every view but the last: the templates, the
+			type, the surfaces, the colours and the motion, each an accordion of one block for each
+			object that has a control on it - the css is one field with no object. The themes and the
+			typefaces are no views of the setup: the library of the themes is the pane's own screen,
+			and the loader of the typefaces a tab of its own. The panel's words for the views and the
+			objects are /_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label.
 
 			Every part but the page has an object of its own, named as the part is: the header and
 			the footer, the section, the card, the buttons, the lists and the tables. The page is
 			the one object that is no part - its controls are the root size, the width, the
 			whitespace, the radius, the five font roles, the palette, the animation and the
 			hover of the pictures	*/
-		public const array TABS = [ 'theme', 'templates', 'typefaces', 'type', 'surfaces', 'colours', 'motion' ];
+		public const array TABS = [ 'templates', 'type', 'surfaces', 'colours', 'motion', 'css' ];
 
 		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ];
 
@@ -212,9 +214,10 @@ namespace Nino\Modules\Design {
 			or of motion of its own has a control there: the dimming of a section, the tone of
 			the shadow of a card and the stripes of a table on the colours, the hover of a card
 			and of a button on the motion.
-			The Theme tab and the Typefaces tab have no control in the table: the screens of the
-			first work on `theme` and `css`, which a theme file is kept with and which are no
-			choice of a design, and the second is the loader, which keeps nothing in the setup.
+			The screen of the themes, the view CSS and the loader of the typefaces have no control
+			in the table: the first works on `theme`, and the view is the one field of `css`, which
+			a theme file is kept with and which are no choice of a design, and the loader keeps
+			nothing in the setup. Every row of the table names one of the five views that have objects.
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
@@ -831,7 +834,7 @@ namespace Nino\Modules\Design {
 		 */
 		private static function declared( string $comment, string $language, array &$notes ): array {
 
-			$tabs 		= array_values( array_diff( self::TABS, [ 'theme', 'templates', 'typefaces' ] ) );
+			$tabs 		= array_values( array_diff( self::TABS, [ 'templates', 'css' ] ) );
 			$words 		= self::words( 'choice' );
 			$expects 	= [
 				'ground' 	=> 'a surface of the palette: '. implode( ', ', Colours::SURFACES ),

@@ -1,62 +1,58 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": seven tabs over one setup,
- *													in two axes - the properties of the design, which are the tabs,
- *													and the objects they are set on, which are the blocks of five of
- *													them. Theme, the first, keeps the whole setup under a name with a
- *													css of its own, in three screens: Load, the list of the themes to
- *													load, duplicate and delete, with the field that takes a theme file
- *													in; Properties, the loaded theme with its name and its
- *													description, saved and exported from the screen, and under it the
- *													row that creates a theme out of the screen; and Custom CSS, the
- *													field of the css, which every input mirrors into the preview.
- *													Templates, Type, Surfaces, Colours and Motion draw a block for
- *													each object that has a control on the tab, in one fixed order -
- *													the page, the header, the footer, a section, a card, the
- *													buttons, the lists and the tables - the blocks of an accordion,
- *													one open: the head of a closed one names, small and muted, the
- *													controls that stand elsewhere than at the defaults, and on
- *													Templates the template that is chosen. A block of Templates has
- *													the choice of the set of its part - the header, the footer, the
- *													section, the card, the buttons, the lists or the tables - with its name, its
- *													description and the word of the one chosen; one of Type the root
- *													size and the five font roles under the page and the sizes of the
- *													titles under the others; one of Surfaces the width, the whitespace
- *													and the two radii under the page and the space, the corners and
- *													the lines under the others, a strip of five positions or of three
- *													words for each knob, greyed out where the chosen template does not
- *													answer to it - the header and the footer have knobs like the
- *													others; Colours has the two colours, the five knobs and the mode
- *													the palette is solved from under the page, and under a section,
- *													a card and the tables the one knob each has of its own, and Motion the
- *													animation of the page and the hover of a card and of the buttons.
- *													A feature that brings variants of its own (Setup::features()) has a block
- *													after those of the objects: on Templates the choice of its variant, on each
- *													tab its knobs are put on by their heads the knobs of the chosen variant - a
- *													scale and a choice as the knobs of a part are, a ground and an ink as a
- *													select of the surfaces and of the tones of the palette, a colour as two
- *													inputs, a light half and a dark half. The choices are part of the setup,
- *													and of a theme of the project.
- *													Typefaces, the loader, is a tab
- *													of its own and keeps nothing in the setup - the families the
- *													project has installed, and the signed list of those it can
- *													install, which is read when its button is pressed: an install or a
- *													removal happens when it is pressed, and is no part of the draft.
- *													The compile turns all of it into assets/theme.css (see
- *													Modules\Design\Admin beside this file). Which tab, which object
- *													and which place in its row a control has is the table's (the
- *													`layout` design/list hands over, see Setup::LAYOUT): the script
- *													draws from it and decides nothing of the kind. A tab with screens
- *													draws their strip under the strip of the tabs, and the screen that
- *													is open under it.
- *													Beside the controls is one specimen page of the selection,
- *													under a head with the viewport switch, the switch that lets the
- *													frame follow and the reload; the frame fills the window down to
- *													the action bar and scrolls to the open tab's anchor, or to
- *													where a change of a control shows. The bar holds what the panel
- *													says - what a save or an apply did, or why not - and the state
- *													of the files in a word. Ships with the feature and is loaded
- *													exactly while it is active.
+ *	Modules\Design					The feature's /_admin panel, "Design": a pane of four tabs - Themes, Design, Typefaces
+ *													and the Settings tab the kernel attaches - over one setup, drawn by one script of three
+ *													namespaces, one for each tab the feature brings, as the shell asks for a screen by the
+ *													uri of its tab (Nino.admin[<uri>]): Nino.admin.design is the panel's own screen, which
+ *													the strip calls Themes, and holds what the tabs have in common - the state, the preview
+ *													and the bar -, Nino.admin['design-setup'] is the tab Design and
+ *													Nino.admin['design-typefaces'] the loader.
+ *													Themes keeps the whole setup under a name with a css of its own, in two screens: Load,
+ *													the list of the themes to load, duplicate and delete, with the field that takes a theme
+ *													file in; and Properties, the loaded theme with its name and its description, saved and
+ *													exported from the screen, and under it the row that creates a theme out of the screen.
+ *													The chip "changed", which says that the screen differs from the loaded theme, stands in
+ *													the kernel's button of the strip that reads Themes.
+ *													Design draws the setup in six views, in two axes - the properties of the design, which
+ *													are the views, and the objects they are set on, which are the blocks of five of them.
+ *													Templates, Type, Surfaces, Colours and Motion draw a block for each object that has a
+ *													control in the view, in one fixed order - the page, the header, the footer, a section, a
+ *													card, the buttons, the lists and the tables - the blocks of an accordion, one open: the
+ *													head of a closed one names, small and muted, the controls that stand elsewhere than at
+ *													the defaults, and in Templates the template that is chosen. A block of Templates has the
+ *													choice of the set of its part - the header, the footer, the section, the card, the
+ *													buttons, the lists or the tables - with its name, its description and the word of the
+ *													one chosen; one of Type the root size and the five font roles under the page and the
+ *													sizes of the titles under the others; one of Surfaces the width, the whitespace and the
+ *													two radii under the page and the space, the corners and the lines under the others, a
+ *													strip of five positions or of three words for each knob, greyed out where the chosen
+ *													template does not answer to it - the header and the footer have knobs like the others;
+ *													Colours has the two colours, the five knobs and the mode the palette is solved from
+ *													under the page, and under a section, a card and the tables the one knob each has of its
+ *													own, and Motion the animation of the page and the hover of a card and of the buttons.
+ *													CSS, the sixth view, is one field with no object: the css of the theme, which every
+ *													input mirrors into the preview and which is saved with the draft and with the theme.
+ *													A feature that brings variants of its own (Setup::features()) has a block after those of
+ *													the objects: in Templates the choice of its variant, and in each view its knobs are put
+ *													on by their heads the knobs of the chosen variant - a scale and a choice as the knobs of
+ *													a part are, a ground and an ink as a select of the surfaces and of the tones of the
+ *													palette, a colour as two inputs, a light half and a dark half. The choices are part of
+ *													the setup, and of a theme of the project.
+ *													Typefaces, the loader, has no preview and no bar and keeps nothing in the setup - the
+ *													families the project has installed, and the signed list of those it can install, which
+ *													is read when its button is pressed: an install or a removal happens when it is pressed,
+ *													and is no part of the draft.
+ *													The compile turns all of it into assets/theme.css (see Modules\Design\Admin beside this
+ *													file). Which view, which object and which place in its row a control has is the table's
+ *													(the `layout` design/list hands over, see Setup::LAYOUT): the script draws from it and
+ *													decides nothing of the kind. A tab with screens draws their strip under the strip of the
+ *													tab, and the screen that is open under it.
+ *													Beside the controls of Themes and of Design is one specimen page of the selection, under
+ *													a head with the viewport switch, the switch that lets the frame follow and the reload;
+ *													the frame fills the window down to the action bar and scrolls to the anchor of the open
+ *													view, or to where a change of a control shows. The bar holds what the panel says - what
+ *													a save or an apply did, or why not - and the state of the files in a word. Ships with
+ *													the feature and is loaded exactly while it is active.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -67,9 +63,21 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
+	/*	The panel: Design, in the rail, and the screen of its own, which the strip on top of the pane calls Themes. It holds
+		what the three screens of the pane have in common - the state, which is one: the data the library and the stored
+		setup gave, the working copy the screens edit, the theme it was taken from, the draft - and the preview and the
+		bar, which the screen of the themes and the tab Design (Nino.admin['design-setup']) stand on one at a time,
+		and the screen of the themes itself: the library of the themes, in two screens, and the chip that says the screen
+		differs from the theme that is loaded. The loader of the typefaces (Nino.admin['design-typefaces']) has none of the
+		two and keeps nothing here but what it reads. The shell asks each of the three for its screen by the uri of its tab
+		(see script.js, show())	*/
 	Nino.admin.design = {
 
 		_ready	: false,
+		/*	Which of the two screens that carry the preview and the bar is drawn: 'themes', the panel's own, or 'setup', the tab
+			Design. There is one preview and one bar and their ids are the document's, so the other screen's mount is emptied
+			when one is drawn (see _render()); the loader, which has neither, leaves this as it was and the draft with it	*/
+		_screen	: 'themes',
 		// What the library offers and what is chosen - the answer of design/list
 		_data		: null,
 		// The working copy the screen edits. Leaving without saving changes
@@ -80,13 +88,13 @@
 			draws them, and a theme that is loaded or a draft that is reset gives them anew: they belong to what was read	*/
 		_notes		: [],
 
-		/*	The Theme tab. The theme the working copy was taken from or kept in, as the
+		/*	The screen of the themes. The theme the working copy was taken from or kept in, as the
 			server describes it - slug, name, description, shipped, setup, css - against
 			which the chip "changed" compares the screen, and null where it has none. The
-			name and the description as they are typed on the tab, which a switch of the tab
+			name and the description as they are typed on the screen, which a switch of the tab
 			or of the screen keeps and which belong to no draft: the button of the theme saves
 			them. The name typed into the field of the row that makes a theme, and whether an action
-			of the tab is on its way with the count that tells which one is the latest, the
+			of the screen is on its way with the count that tells which one is the latest, the
 			way the loader holds its own	*/
 		_active		: null,
 		_themeText	: { name : '', description : '' },
@@ -94,20 +102,22 @@
 		_themeBusy	: false,
 		_themeStamp	: 0,
 
-		/*	The tabs that are cut into screens, and the screens of each in the order they are shown in: a strip of
-			them under the strip of the tabs - the tabs themselves, and what stands on them, are the table's (see
-			Setup::LAYOUT) - and under it the screen that is open, one at a time, drawn again whenever it is opened
-			(see _renderScreens()). The screens are the panel's own: the Theme tab is the one that has them, its three.
-			The loader, the Typefaces tab, is a tab of its own with none, and the blocks of the other tabs are no screens	*/
-		SCREENS	: { theme : [ 'load', 'properties', 'css' ] },
+		/*	What is cut into screens, and the keys of its screens in the order they are shown in: a strip of them
+			over the screen that is open, one at a time, drawn again whenever it is opened (see _renderScreens()). The screen of the
+			themes is the one that has them, its two: Load and Properties. The six views of the tab Design are views of one setup,
+			whose blocks are the table's (see Setup::LAYOUT), and the loader has no screens either	*/
+		SCREENS	: { theme : [ 'load', 'properties' ] },
 
-		/*	The id of the element on the specimen page each tab scrolls the frame to when it is opened (see _jump()). The
-			page is templates/preview-specimen.tpl, which carries the same ids: Theme, Templates, Surfaces and Motion are the
-			top of the page - a theme is all of it, a header is looked at there, and so are the width and the whitespace of
-			the page and its animation -, Typefaces and Type the typography block - a typeface shows where the type is -,
-			Colours the grounds. The page has an id at its end, footer, which no tab has: a footer that is chosen is looked
-			at there (see OBJECT_ANCHORS)	*/
-		ANCHORS	: { theme : 'global', templates : 'global', typefaces : 'type', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global' },
+		/*	The id of the element on the specimen page each view of the tab Design scrolls the frame to when it is opened (see
+			_jump()). The page is templates/preview-specimen.tpl, which carries the same ids: Templates, Surfaces, Motion and CSS are the
+			top of the page - a header is looked at there, and so are the width and the whitespace of the page and its animation,
+			and the css of a theme is all of it -, Type the typography block - a typeface shows where the type is -, Colours the
+			grounds. The page has an id at its end, footer, which no view has: a footer that is chosen is looked at there (see
+			OBJECT_ANCHORS). The screen of the themes has none of its own: a theme is all of the page, and THEMES_ANCHOR is its top	*/
+		ANCHORS	: { templates : 'global', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global', css : 'global' },
+
+		// Where the screen of the themes is looked at: the top of the page, where a loaded theme shows all of what it is
+		THEMES_ANCHOR	: 'global',
 
 		/*	Where a change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
 			top of it (#global) - the root size and the roles of the fonts as much as the width, the corners and the
@@ -133,16 +143,6 @@
 			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
 			Setup::range()). The root size, the width, the whitespace and the two radii of the page are scales	*/
 		RANGE		: { scale : 2, choice : 1 },
-
-		/*	The word the label and the hint of a strip of the page stand under (/_admin/design/label/<word> and
-			/_admin/design/hint/<word>), by the key the table has the strip under	*/
-		PAGE_WORDS	: { size : 'size', width : 'pagewidth', whitespace : 'whitespace', radius : 'radius', 'radius-alt' : 'radius-alt' },
-
-		/*	The parts of the motion that wait for another, by the part: the part it follows and the values of that part at which it
-			means nothing. The strength and the speed of the animation mean something once there is an effect, the strength of the hover
-			once there is a kind of it that has one - not the empty kind, which is Nino.css's own, and not none. Until then their selects
-			are switched off (see _motionOff()) and their heads say nothing	*/
-		MOTION_FOLLOWS	: { strength : [ 'effect', [ '' ] ], speed : [ 'effect', [ '' ] ], 'hover-strength' : [ 'hover', [ '', 'none' ] ] },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
@@ -276,7 +276,7 @@
 			and the pictures take by default; and the rows of the palette - the brand
 			colour, the second colour, which is the row of Harmony, temperature,
 			saturation, contrast, depth and the mode: all of them have one, so that every
-			name of the Colours tab starts at the same left edge. A row of the loader,
+			name of the Colours view starts at the same left edge. A row of the loader,
 			an installed family and an available one, opens with the text size as
 			well. A row with no entry has no icon, and no stand-in shape takes its
 			place	*/
@@ -357,15 +357,9 @@
 		// element the last change of a control is looked at in (see _anchorOf()). null is the
 		// tab's own, which is where opening a tab puts it back to
 		_target	: null,
-		// The tab that is open - the Theme tab at the start of a visit: the first thing a person does is pick a theme
-		_tab		: 'theme',
 		// The screen that a tab with screens shows, by the tab; a tab with no entry shows its first. Kept
 		// while the panel lives and no part of the selection: another screen changes nothing but the screen
 		_group	: {},
-		/*	The row that is open on a tab that draws its rows as an accordion (see _renderRows()), by the tab: the object it is the
-			row of, or null once the person has closed it. A tab with no entry has its first row open. Kept while the panel lives, like
-			the screen of a tab, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
-		_open	: {},
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
 		_frames	: null,
@@ -376,38 +370,19 @@
 		_bound	: false,
 		_fitTimer	: null,
 
-		// The categories of the typefaces the Available half is told apart by, as the chips
-		// of its strip, and how many families a page of it holds
-		FACE_CATEGORIES	: [ 'all', 'sans', 'serif', 'display', 'handwriting', 'mono', 'other' ],
-		FACES_PER_PAGE	: 24,
-
-		/*	The loader, the Typefaces tab. The last answer of design/webfonts/* - families (the list),
-			fetched, url, key, builtin, installed, broken, uses, refusal, refusalKind - from
-			which both halves are drawn; null until the first has come. Beside it what the
-			Available half looks at, the counter that tells which of the requests asked is
-			the latest, whether an action of the screen is on its way, and the faces the names
-			have been set in: the FontFace of every family by the font-family it was added to
-			the document under, and the observer that loads those of the rows that come into
-			view	*/
-		_faces			: null,
-		_facesQuery		: '',
-		_facesCategory	: 'all',
-		_facesPage		: 0,
-		_facesStamp		: 0,
-		_facesBusy		: false,
-		_facesLoaded	: {},
-		_facesObserver	: null,
-
 		/**
-		 *	Load the library and the stored setup, then draw
+		 *	Load the library and the stored setup, then draw the screen that carries the preview and the bar - unless it
+		 *	was the loader that asked, which has neither: the screens that have are drawn when they are shown
 		 *
-		 *	@param		{Function}	[then]			Run once the screen is back
+		 *	@param		{Function}	[then]			Run once the state is there (and the screen drawn, where one was asked for)
+		 *	@param		{Element}		[wrap]			Where a failure is said - the mount of the screen that asked, the loader's where it did;
+		 *																	else the one of the screen that is drawn
 		 *
 		 *	@return		void
 		 */
-		init : function( then ) {
+		init : function( then, wrap ) {
 
-			const wrap = dc.getElementById('design-form');
+			wrap = wrap || Nino.admin.design._mount();
 			if( wrap === null )
 				return;
 
@@ -419,24 +394,77 @@
 				Nino.admin.design._data		= response;
 				Nino.admin.design._takeStored( response );
 				Nino.admin.design._ready	= true;
-				Nino.admin.design._render();
+
+				// A preview and a bar drawn behind the loader would be a request for nothing, in a mount nobody sees
+				if( wrap === Nino.admin.design._mount() )
+					Nino.admin.design._render();
 
 				if( typeof then === 'function' )
 					then();
 			} );
 		},
 
+		/**
+		 *	The shell shows the panel's own screen, which the strip on top of the pane calls Themes
+		 *
+		 *	@return		void
+		 */
 		showCurrent : function() {
-			if( Nino.admin.design._ready === false )
-				return Nino.admin.design.init();
+			Nino.admin.design._show('themes');
+		},
 
-			// The shell brings the panel on screen again after a Save it asked
-			// for failed: drawn anew, the reason the save gave would be gone,
-			// and so would the selection nobody has stored
-			if( Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
-				return;
+		/**
+		 *	Put one of the two screens that carry the preview and the bar on screen: the panel's own, Themes, and the tab
+		 *	Design, each of which asks for it from its own showCurrent(). They are drawn from one state - the draft that was
+		 *	changed under Design stands as it is on Themes, and what Themes loaded is what Design draws - and one of them at a
+		 *	time, since there is one preview and one bar: the frame is built anew where the screen moves
+		 *
+		 *	@param		{string}	screen		'themes' or 'setup'
+		 *
+		 *	@return		void
+		 */
+		_show : function( screen ) {
 
-			Nino.admin.design._render();
+			const design = Nino.admin.design;
+
+			// The loader is left, if it was the tab that was shown: what it held is let go of
+			Nino.admin['design-typefaces']._leave();
+
+			if( design._ready === false ) {
+				design._screen = screen;
+				return design.init();
+			}
+
+			// The shell brings the screen on again after a Save it asked for failed: drawn anew, the reason the
+			// save gave would be gone, and so would the selection nobody has stored
+			if( Nino.admin.dirty.isDirty( [ design._entryOf( screen ) ] ) === true )
+				return design._refreshThemeChip();
+
+			design._screen = screen;
+			design._render();
+		},
+
+		/**
+		 *	The mount a screen that carries the preview and the bar is drawn in: one of the two the panes of the tabs
+		 *	hold (see Admin::panes() and Setup\Tab::panes())
+		 *
+		 *	@param		{string}	[screen]		'themes' or 'setup'; the screen that is drawn where it is left out
+		 *
+		 *	@return		{?Element}
+		 */
+		_mount : function( screen ) {
+			return dc.getElementById( ( screen || Nino.admin.design._screen ) === 'setup' ? 'design-setup-form' : 'design-form' );
+		},
+
+		/**
+		 *	The name a screen is registered under in the shell's account of unsaved input: the uri of its tab
+		 *
+		 *	@param		{string}	screen		'themes' or 'setup'
+		 *
+		 *	@return		{string}
+		 */
+		_entryOf : function( screen ) {
+			return screen === 'setup' ? 'design-setup' : 'design';
 		},
 
 		/**
@@ -506,7 +534,7 @@
 		/**
 		 *	Make the stored selection the screen's: the working copy, the theme it names as the
 		 *	server describes it and the name and the description of that theme as the fields of
-		 *	the Theme tab have them. An action of that tab that is still on its way answers over
+		 *	the screen of the themes have them. An action of that screen that is still on its way answers over
 		 *	a state it does not know any more, so what it brings is let go of (see _themeStamp)
 		 *
 		 *	@param		{Object}	data			The answer of design/list
@@ -552,19 +580,6 @@
 		 */
 		_setLabel : function( set, named ) {
 			return named && named.name && named.name !== set ? named.name : set;
-		},
-
-		/**
-		 *	The knobs the template chosen for a part answers to. The rest of the
-		 *	part's knobs are drawn, greyed out
-		 *
-		 *	@param		{string}	part			A part with knobs: a key of design/list's `kinds`
-		 *
-		 *	@return		{Array}
-		 */
-		_answered : function( part ) {
-			const row = Nino.admin.design._row( part );
-			return ( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[part] ] || {} ).knobs || [];
 		},
 
 		/**
@@ -843,107 +858,62 @@
 		},
 
 		/**
-		 *	The options of a strip of numbers: one for each value, written as its
-		 *	distance from the middle - "−2", "−1", "0", "+1", "+2". The minus is U+2212, the
-		 *	one a number is set with, and not the hyphen; the title is the label
-		 *
-		 *	@param		{Array}			values			From the least to the most
-		 *	@param		{number}		middle			The value that is 0
-		 *
-		 *	@return		{Array}								{ value, label, title }
-		 */
-		_numbered : function( values, middle ) {
-
-			return values.map( function( value ) {
-				const distance = value - middle;
-				const label = distance === 0 ? '0' : ( distance < 0 ? '\u2212' : '+' )+ String( Math.abs( distance ) );
-				return { value : value, label : label, title : label };
-			} );
-		},
-
-		/**
-		 *	The positions of a kind of knob, from the least to the most: -2 to +2 for a
-		 *	scale, -1 to +1 for a choice (see RANGE)
-		 *
-		 *	@param		{string}	kind				'scale' or 'choice'
-		 *
-		 *	@return		{Array}
-		 */
-		_positions : function( kind ) {
-
-			const range = Nino.admin.design.RANGE[kind] || 0;
-			const positions = [];
-
-			for( let position = -range; position <= range; position++ )
-				positions.push( position );
-
-			return positions;
-		},
-
-		/**
-		 *	The word a position is declared under in a stylesheet - the middle one of
-		 *	the five design/list handed over is the position 0 (see Setup::word()). A
-		 *	choice knob names its three positions by these words
-		 *
-		 *	@param		{number}	position
-		 *
-		 *	@return		{string}					least, less, default, more or most
-		 */
-		_word : function( position ) {
-
-			const steps = ( Nino.admin.design._data || {} ).steps || [];
-
-			return steps[ Math.max( 0, Math.min( steps.length - 1, position + Nino.admin.design.RANGE.scale ) ) ];
-		},
-
-		/**
 		 *	The head of the pane the screen stands in: the row the shell
-		 *	renders over every panel, with the panel's name in it (see
-		 *	Nino.adminUi.panelHead()).
+		 *	renders over every panel, with the panel's name and the strip of
+		 *	the tabs in it (see Nino.adminUi.panelHead()).
 		 *
 		 *	null where there is none - the script drawn somewhere other than its
-		 *	pane - and the strip then opens the column of controls, where it
-		 *	stood before there was a head to put it in
+		 *	pane - and the strip of the views of the tab Design then opens the
+		 *	column of controls, where it stood before there was a head to put it in
 		 *
 		 *	@return		{Object|null}			{ element, title, actions, tabs( strip ) }
 		 */
 		_head : function() {
-			const wrap = dc.getElementById('design-form');
+			const wrap = Nino.admin.design._mount();
 			return wrap !== null ? Nino.adminUi.panelHead( wrap ) : null;
 		},
 
 		/**
-		 *	The whole screen: the open tab in one column, a preview of the lot in
-		 *	the other.
+		 *	The whole screen that carries the preview: what the screen has in one column,
+		 *	a preview of the lot in the other, and the bar under both.
 		 *
-		 *	A tab at a time rather than seven blocks at once, because seven blocks is
-		 *	a list to read and one tab is a decision to make. The strip in the
-		 *	pane's head says which one is open; the preview beside it is the
-		 *	whole page either way, scrolled to where the open tab is
+		 *	The screen of the themes is the library, in two screens; the tab Design is one
+		 *	view of its six at a time, because six blocks of blocks is a list to read and
+		 *	one view is a decision to make. The strip above the view says which one is
+		 *	open; the preview beside it is the whole page either way, scrolled to where
+		 *	the open view is
 		 *
 		 *	@return		void
 		 */
 		_render : function() {
 
-			const wrap = dc.getElementById('design-form');
-			const data = Nino.admin.design._data;
+			const design = Nino.admin.design;
+			const wrap = design._mount();
+			const data = design._data;
 			if( wrap === null || data === null )
 				return;
 
+			// One preview and one bar, and their ids are the document's: the other screen is emptied
+			const other = design._mount( design._screen === 'setup' ? 'themes' : 'setup' );
+
+			if( other !== null )
+				other.innerHTML = '';
+
 			wrap.innerHTML = '';
 
-			/*	No heading of its own: the pane's head names the panel. The
-				strip goes into that row beside the name, the way the Features
-				panel's does, rather than over the column - it switches the
-				controls on the left and nothing else, so it belongs with the
-				name of the screen and not above one of its two halves. Handed
-				over on every render; tabs() takes the place of the strip
-				drawn before it, so coming back to the panel does not stack a
-				second one	*/
-			const head = Nino.admin.design._head();
+			/*	No heading of its own: the pane's head names the panel, and the strip of the
+				tabs on top of the pane is the shell's. The strip of the six views goes to the
+				top of the pane of the tab Design, under the shell's, the way the
+				Features panel's strip goes to the top of its tab - it switches the controls
+				on the left and nothing else, so it belongs with the name of the screen and
+				not above one of its two halves. Handed over on every render; tabs() takes
+				the place of the strip drawn before it, so coming back to the tab does not
+				stack a second one. The screen of the themes draws the strip of its two
+				screens in the column itself (see _renderScreens())	*/
+			const head = design._head();
 
-			if( head !== null )
-				head.tabs( Nino.admin.design._renderTabs() );
+			if( head !== null && design._screen === 'setup' )
+				head.tabs( Nino.admin['design-setup']._renderTabs() );
 
 			// Controls on one side, what they mean on the other. One column
 			// below the breakpoint, where a preview beside a select would be
@@ -1040,13 +1010,13 @@
 		},
 
 		/**
-		 *	The controls column, on its own so a tab switch can redraw it
-		 *	without touching the frame beside it - or the strip in the pane's
-		 *	head, which is the element the switch was made on, and keeps the
-		 *	focus an arrow key put on it.
+		 *	The controls column, on its own so a switch of the view can redraw it
+		 *	without touching the frame beside it - or the strip of the views, which is
+		 *	the element the switch was made on, and keeps the focus an arrow key put
+		 *	on it.
 		 *
 		 *	What the server dropped or replaced on the way stands first, over the
-		 *	open tab: it is true whichever tab is open. The state of the files is
+		 *	screen that is open: it is true whichever it is. The state of the files is
 		 *	not here, it is the chip in the action bar
 		 *
 		 *	@return		{HTMLElement}
@@ -1056,10 +1026,10 @@
 			const controls = dc.createElement('div');
 			controls.id = 'design-controls';
 
-			// Only where there is no head does the strip open the column (see
+			// Only where there is no head does the strip of the views open the column (see
 			// _head()) - and is drawn again with it on every switch
-			if( Nino.admin.design._head() === null )
-				controls.appendChild( Nino.admin.design._renderTabs() );
+			if( Nino.admin.design._screen === 'setup' && Nino.admin.design._head() === null )
+				controls.appendChild( Nino.admin['design-setup']._renderTabs() );
 
 			Nino.admin.design._notes.forEach( function( note ) {
 				const p = dc.createElement('p');
@@ -1078,9 +1048,9 @@
 		},
 
 		/**
-		 *	The tabs of the panel, in the order the table gives them
+		 *	The views of the tab Design, in the order the table gives them
 		 *
-		 *	@return		{Array}					Keys of the tabs
+		 *	@return		{Array}					Keys of the views
 		 */
 		_tabKeys : function() {
 			return ( ( Nino.admin.design._data || {} ).layout || {} ).tabs || [];
@@ -1098,42 +1068,9 @@
 		},
 
 		/**
-		 *	The rows a tab is drawn in, out of the table and nothing else: for each object that has a control on
-		 *	the tab, in the order the table gives the objects, the controls of it in the order of their numbers. A
-		 *	control is the keys that stand at one place: the cover, the row and the column of a section are one,
-		 *	and so are the second colour and the row of Harmony it ends. An object with no control on the tab has
-		 *	no row
-		 *
-		 *	@param		{string}	tab				A key of the table's tabs
-		 *
-		 *	@return		{Array}						{ object, controls : [ [ key, ... ], ... ] } for each row; empty for a tab with no control
-		 */
-		_rows : function( tab ) {
-
-			const layout = ( Nino.admin.design._data || {} ).layout || {};
-			const controls = layout.controls || {};
-
-			return ( layout.objects || [] ).map( function( object ) {
-
-				const places = {};
-
-				Object.keys( controls ).forEach( function( key ) {
-
-					if( controls[key][0] === tab && controls[key][1] === object )
-						( places[ controls[key][2] ] = places[ controls[key][2] ] || [] ).push( key );
-				} );
-
-				return {
-					object 		: object,
-					controls 	: Object.keys( places ).sort( function( a, b ) { return a - b } ).map( function( order ) { return places[order] } ),
-				};
-			} ).filter( function( row ) { return row.controls.length > 0 } );
-		},
-
-		/**
-		 *	What the open tab holds, into the box the column keeps for it: the strip of its screens and the
-		 *	screen that is open where it has some, the two cards of the loader on the Typefaces tab, else its
-		 *	blocks
+		 *	What the screen that is drawn holds, into the box the column keeps for it: on the screen of the themes
+		 *	the strip of its screens and the one that is open, on the tab Design the view that is open (see
+		 *	Nino.admin['design-setup']._renderView())
 		 *
 		 *	@param		{Element}	body
 		 *
@@ -1141,47 +1078,16 @@
 		 */
 		_fillBody : function( body ) {
 
-			const tab = Nino.admin.design._tab;
+			if( Nino.admin.design._screen === 'themes' )
+				return Nino.admin.design._renderScreens( 'theme', body );
 
-			if( Nino.admin.design.SCREENS[tab] !== undefined )
-				return Nino.admin.design._renderScreens( tab, body );
-
-			if( tab === 'typefaces' )
-				return Nino.admin.design._renderTypefaces( body );
-
-			Nino.admin.design._renderRows( tab, body );
-		},
-
-		/**
-		 *	The seven tabs, the ones the table names. A tablist rather than a button group, because these
-		 *	really are seven panels: aria-selected, not aria-pressed. The label of
-		 *	the Theme tab carries the chip "changed" while the screen differs from its
-		 *	theme, so a strip that is drawn anew is drawn with it (see _refreshThemeChip())
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_renderTabs : function() {
-
-			const design = Nino.admin.design;
-
-			const strip = design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-tabs', 'tab',
-				design._tabKeys().map( function( key ) {
-					return { key : key, label : Nino.content.getText('/_admin/design/tab/'+ key+ '/label') };
-				} ), design._tab, function( key ) {
-					design._switchTab( key );
-				} );
-
-			// Found again by its id when a change asks for the chip (the strip is mounted by then)
-			strip.id = 'design-tabs';
-			design._refreshThemeChip( null, strip );
-
-			return strip;
+			Nino.admin['design-setup']._renderView( Nino.admin['design-setup']._tab, body );
 		},
 
 		/**
 		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
-		 *	keeps that, with the arrow keys and the one tab stop of a strip. The seven tabs of the
-		 *	panel are drawn with it, and so are the screens of Theme (see _renderScreens())
+		 *	keeps that, with the arrow keys and the one tab stop of a strip. The six views of the
+		 *	tab Design are drawn with it, and so are the screens of the themes (see _renderScreens())
 		 *
 		 *	@param		{string}		name				What the strip is called by assistive technology
 		 *	@param		{string}		className		The class the strip has beside the workbench's own
@@ -1218,57 +1124,6 @@
 			Nino.adminUi.buttonRow( buttons, active, onSwitch, 'aria-selected' );
 
 			return bar;
-		},
-
-		/**
-		 *	Open another tab.
-		 *
-		 *	Only the column is redrawn, never the frame beside it: the page in
-		 *	it is the same page under every tab, so rebuilding it would cost a
-		 *	request and a flash for a click that changed which controls are on
-		 *	screen and nothing at all about the design. What the frame does is
-		 *	scroll, smoothly, to the anchor of the tab that was opened - once the
-		 *	page in it stands at the height the stage has for that tab.
-		 *
-		 *	Nor the strip in the pane's head. The tab the switch was made on is
-		 *	the one the keyboard is on, and the strip used to be drawn again
-		 *	with the column: an arrow key opened the next tab and dropped the
-		 *	focus onto the page, so the next arrow went nowhere.
-		 *
-		 *	@param		{string}	key			A key of the table's tabs
-		 *
-		 *	@return		void
-		 */
-		_switchTab : function( key ) {
-
-			if( key === Nino.admin.design._tab )
-				return;
-
-			// The faces the names of the typefaces were set in are the loader's: gone with it
-			if( Nino.admin.design._onInstall() === true )
-				Nino.admin.design._dropFaces();
-
-			Nino.admin.design._tab = key;
-
-			// Where a change was looked at belonged to the tab that was left: the
-			// frame goes to the anchor of this one
-			Nino.admin.design._target = null;
-
-			const column = dc.getElementById('design-controls');
-
-			if( column === null )
-				return Nino.admin.design._render();
-
-			column.replaceWith( Nino.admin.design._renderControls() );
-
-			// In one column the stage stands under the controls, so a column of another
-			// height moves it: fitted again, and the jump waits for the page in the frame
-			// (see _jumpFitted())
-			const frame = dc.getElementById('design-frame');
-			const was = frame === null ? '' : frame.parentNode.style.height;
-
-			Nino.admin.design._fit();
-			Nino.admin.design._jumpFitted( frame, was );
 		},
 
 		/**
@@ -1335,14 +1190,12 @@
 		},
 
 		/**
-		 *	The Theme tab, the screen that is open of its three: Load, with the card of the list of
-		 *	themes and the file field that takes one in; Properties, with the card of the loaded
+		 *	The screen of the themes, the screen that is open of its two: Load, with the card of the list of
+		 *	themes and the file field that takes one in; and Properties, with the card of the loaded
 		 *	theme - its name and description, the chip that says the screen differs from it and the
 		 *	buttons that keep the screen in it and take it out as a file - and the card of the row
-		 *	that makes a theme out of the screen; and Custom CSS, with the card of the css of its own,
-		 *	which every input mirrors into the preview. The cards of the first two are drawn again
-		 *	by what the tab does (see _paintTheme()), the css once each time its screen is opened:
-		 *	it holds what is being typed
+		 *	that makes a theme out of the screen. The cards are drawn again by what the screen does (see
+		 *	_paintTheme()). The css of a theme is a view of the tab Design, with the rest of the setup the theme keeps
 		 *
 		 *	@param		{Element}	body		The box the screen is drawn into
 		 *
@@ -1361,19 +1214,12 @@
 				return;
 			}
 
-			if( screen === 'properties' ) {
-				const current = design._card('design-theme-current');
-				const make = design._card('design-theme-make');
-				body.appendChild( current );
-				body.appendChild( make );
-				design._paintCurrent( current );
-				design._paintMake( make );
-				return;
-			}
-
-			const css = design._card('design-theme-css-card');
-			body.appendChild( css );
-			design._paintCustomCss( css );
+			const current = design._card('design-theme-current');
+			const make = design._card('design-theme-make');
+			body.appendChild( current );
+			body.appendChild( make );
+			design._paintCurrent( current );
+			design._paintMake( make );
 		},
 
 		/**
@@ -1394,9 +1240,7 @@
 		},
 
 		/**
-		 *	Draw the cards the actions of the tab change again - those of the screen that is open -
-		 *	and put the css of the working copy into its field in place: a load changes it, and
-		 *	the field is left alone otherwise, so that the caret of what is being typed stays
+		 *	Draw the cards the actions of the screen change again - those of the screen that is open
 		 *
 		 *	@return		void
 		 */
@@ -1406,7 +1250,6 @@
 			const themes = dc.getElementById('design-themes');
 			const current = dc.getElementById('design-theme-current');
 			const make = dc.getElementById('design-theme-make');
-			const css = dc.getElementById('design-theme-css');
 
 			if( themes !== null )
 				design._paintThemes( themes );
@@ -1417,10 +1260,7 @@
 			if( make !== null )
 				design._paintMake( make );
 
-			if( css !== null && design._edit !== null && css.value !== design._edit.css )
-				css.value = design._edit.css;
-
-			// The label of the tab says what an action did to the theme whichever screen is open
+			// The label of the screen says what an action did to the theme whichever of its screens is open
 			design._refreshThemeChip();
 		},
 
@@ -1666,45 +1506,6 @@
 		},
 
 		/**
-		 *	The card of the Custom CSS screen: the css of the theme, in a field of its own. Every
-		 *	input sets it in the working copy and asks for a preview - the debounce of 350 ms every
-		 *	control has - which compiles it as the last section of the sheet. The label is the
-		 *	card's title again, for whoever hears the field and not the heading
-		 *
-		 *	@param		{Element}	card
-		 *
-		 *	@return		void
-		 */
-		_paintCustomCss : function( card ) {
-
-			const design = Nino.admin.design;
-			const ui = Nino.adminUi;
-			const title = Nino.content.getText('/_admin/design/theme/css/title');
-
-			card.innerHTML = '';
-			card.appendChild( design._sectionLabel( title ) );
-
-			const label = ui.el( 'label', 'nino-admin-field' );
-			label.appendChild( ui.el( 'span', 'design-theme-css-name', title ) );
-
-			const box = ui.el( 'textarea', 'nino-admin-input design-theme-css' );
-			box.id = 'design-theme-css';
-			box.rows = 14;
-			box.spellcheck = false;
-			box.setAttribute( 'autocapitalize', 'off' );
-			box.setAttribute( 'wrap', 'off' );
-			box.value = design._edit === null ? '' : design._edit.css;
-			box.addEventListener( 'input', function() {
-				design._edit.css = box.value;
-				design._preview();
-			} );
-
-			label.appendChild( box );
-			card.appendChild( label );
-			card.appendChild( ui.hint( Nino.content.getText('/_admin/design/theme/css/hint') ) );
-		},
-
-		/**
 		 *	The setup of a working copy as a theme keeps it: the keys that choose something, without
 		 *	the theme it names and the css it carries - the screen's side of the compare the chip makes
 		 *	with the file's (see _themeChanged()). The colours are among them where the theme names
@@ -1750,36 +1551,39 @@
 		},
 
 		/**
-		 *	Draw the chip "changed" in the head of the active theme and on the label of the Theme tab, or take
-		 *	it away: it is there while the screen differs from the theme (see _themeChanged()), in both places
-		 *	or in neither, whichever tab and screen are open. Asked for after every change of a control, beside
-		 *	the way back, by everything that draws the card of the theme and by the strip of the tabs when it is drawn
+		 *	Draw the chip "changed" in the head of the active theme and on the button of the panel's own screen in
+		 *	the strip on top of the pane, which says Themes, or take it away: it is there while the screen differs from
+		 *	the theme (see _themeChanged()), in both places or in neither, whichever tab and screen are open. The
+		 *	button is the shell's (see Panels::panesHtml(), id admin-tabbutton-<uri>): the kernel has no place in a
+		 *	tab's label for a word of the panel's, so the script appends the chip to the button - and has to do it
+		 *	again whenever the strip may have been drawn anew, which is each time one of the tabs is shown (see _show()
+		 *	and Nino.admin['design-typefaces'].showCurrent()). Asked for after every change of a control, beside the
+		 *	way back, and by everything that draws the card of the theme
 		 *
 		 *	@param		{?Element}	[head]		The head, for one that is built and not mounted yet
-		 *	@param		{?Element}	[strip]		The strip of the tabs, for one that is built and not mounted yet
 		 *
 		 *	@return		void
 		 */
-		_refreshThemeChip : function( head, strip ) {
+		_refreshThemeChip : function( head ) {
 
 			const design = Nino.admin.design;
 			const changed = design._themeChanged();
 
 			head = head || dc.getElementById('design-theme-current-head');
-			strip = strip || dc.getElementById('design-tabs');
+			const tab = dc.getElementById('admin-tabbutton-design');
 
 			if( head !== null )
 				design._flagChanged( head.firstChild, 'design-theme-changed', changed, 'design-theme-changed' );
 
-			if( strip !== null )
-				design._flagChanged( strip.children[ design._tabKeys().indexOf('theme') ], 'design-tab-changed', changed );
+			if( tab !== null )
+				design._flagChanged( tab, 'design-tab-changed', changed );
 		},
 
 		/**
 		 *	The chip "changed" in a place: drawn there while `on` and it is not, taken away while not `on` and it
 		 *	is, and left as it is otherwise - one chip at most, found by its class
 		 *
-		 *	@param		{Element}		host			What the chip stands in: the title of the box of the theme, or the label of the tab
+		 *	@param		{Element}		host			What the chip stands in: the title of the box of the theme, or the button of the screen of the themes
 		 *	@param		{string}		className	The class the chip has beside the workbench's own
 		 *	@param		{boolean}		on
 		 *	@param		{string}		[id]
@@ -2284,779 +2088,6 @@
 		},
 
 		/**
-		 *	The rows of a tab into a box, one card each, in the order the table gives them: the blocks of an accordion on
-		 *	every tab that is drawn from the table, the templates, the type, the surfaces, the colours and the motion alike.
-		 *	The head of a block is a button with the word of its object, and the row itself, the body of the block, is drawn
-		 *	while the block is open and not before. One block is open, the one the person left open on the tab and the first
-		 *	where there is none (see _blockOf()). A tab that has one row - the colours and the motion are the page's alone -
-		 *	is an accordion of one block, open to begin with and to be closed like any other
-		 *
-		 *	@param		{string}	tab				A key of the table's tabs
-		 *	@param		{Element}	box
-		 *
-		 *	@return		void
-		 */
-		_renderRows : function( tab, box ) {
-
-			const design = Nino.admin.design;
-			const rows = design._rows( tab );
-			const open = design._blockOf( tab, rows );
-
-			rows.forEach( function( row ) {
-				box.appendChild( design._renderRow( tab, row, row.object === open ) );
-			} );
-		},
-
-		/**
-		 *	The block of a tab that is open: the one the person left open on it, else - where nothing was chosen on
-		 *	the tab yet - its first
-		 *
-		 *	@param		{string}	tab				A key of the table's tabs
-		 *	@param		{Array}		rows			The rows of the tab, see _rows()
-		 *
-		 *	@return		{?string}						The object of the row that is open; null where the person closed it, and for a tab with no rows
-		 */
-		_blockOf : function( tab, rows ) {
-
-			const chosen = Nino.admin.design._open[tab];
-			const objects = rows.map( function( row ) { return row.object } );
-
-			if( chosen === null || objects.length === 0 )
-				return null;
-
-			return objects.indexOf( chosen ) !== -1 ? chosen : objects[0];
-		},
-
-		/**
-		 *	The id of the card of a row: where it stands, so that a change finds the card it redraws
-		 *
-		 *	@param		{string}	tab
-		 *	@param		{string}	object
-		 *
-		 *	@return		{string}
-		 */
-		_rowId : function( tab, object ) {
-			return 'design-row-'+ tab+ '-'+ object;
-		},
-
-		/**
-		 *	One row: a card of the controls the table gives an object on a tab, a block of the accordion - the head and, while the
-		 *	block is open, the body under it (see _setBlock()). The card says which tab and which object it is the row of, and every
-		 *	control in it says which keys it is (see _fillRow()), so that what is drawn can be read against the table
-		 *
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *	@param		{boolean}	[open]		Whether the block is open
-		 *
-		 *	@return		{Element}
-		 */
-		_renderRow : function( tab, row, open ) {
-
-			const design = Nino.admin.design;
-
-			const card = dc.createElement('div');
-			card.id = design._rowId( tab, row.object );
-			card.className = 'nino-admin-card design-form-section design-accordion';
-			card.dataset.tab = tab;
-			card.dataset.object = row.object;
-
-			card.appendChild( design._renderHead( tab, row ) );
-			design._setBlock( card, tab, row, open === true );
-
-			return card;
-		},
-
-		/**
-		 *	The head of a block: a button that opens and closes it, with the word of its object, the line that names what
-		 *	stands elsewhere than at the defaults while the block is closed (see _paintHead()) and a chevron, which is
-		 *	decoration. The word is the button's name and the line its description; aria-expanded says whether the block
-		 *	is open and, while it is, aria-controls which body it is the head of (see _paintHead()) - a closed block has no
-		 *	body in the document, and its head names none
-		 *
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *
-		 *	@return		{Element}
-		 */
-		_renderHead : function( tab, row ) {
-
-			const design = Nino.admin.design;
-			const id = design._rowId( tab, row.object );
-
-			const name = dc.createElement('span');
-			name.id = id+ '-name';
-			name.className = 'design-accordion-name';
-			name.textContent = design._objectName( row.object );
-
-			const summary = dc.createElement('span');
-			summary.id = id+ '-summary';
-			summary.className = 'design-accordion-summary';
-
-			const chevron = design._svg('chevron-down');
-			chevron.classList.add('design-accordion-chevron');
-
-			const head = dc.createElement('button');
-			head.type = 'button';
-			head.className = 'design-accordion-head';
-			head.setAttribute( 'aria-labelledby', name.id );
-			head.setAttribute( 'aria-describedby', summary.id );
-			head.addEventListener( 'click', function() { design._toggleBlock( tab, row.object, head ) } );
-
-			head.appendChild( name );
-			head.appendChild( summary );
-			head.appendChild( chevron );
-
-			return head;
-		},
-
-		/**
-		 *	The body of a block: the controls of its row (see _fillRow()), in the box the head names in aria-controls
-		 *
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *
-		 *	@return		{Element}
-		 */
-		_renderBody : function( tab, row ) {
-
-			const body = dc.createElement('div');
-			body.id = Nino.admin.design._rowId( tab, row.object )+ '-body';
-			body.className = 'design-accordion-body';
-
-			Nino.admin.design._fillRow( body, row );
-
-			return body;
-		},
-
-		/**
-		 *	Put a block in the state it is to be in, where it stands: the body is drawn when the block is opened and taken away
-		 *	when it is closed - the controls of a closed block are not drawn - and the head is painted for it. Nothing else is
-		 *	drawn again, so that the head that was pressed is still the element the focus is on
-		 *
-		 *	@param		{Element}	card			The card of the row
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *	@param		{boolean}	open
-		 *
-		 *	@return		void
-		 */
-		_setBlock : function( card, tab, row, open ) {
-
-			const design = Nino.admin.design;
-			const body = card.querySelector('.design-accordion-body');
-
-			if( open === true && body === null )
-				card.appendChild( design._renderBody( tab, row ) );
-
-			if( open === false && body !== null )
-				body.remove();
-
-			design._paintHead( card.querySelector('.design-accordion-head'), row, open );
-		},
-
-		/**
-		 *	The head of a block as the state of the block has it: aria-expanded says whether it is open, and the line says -
-		 *	while it is closed - which of the controls of its row stand elsewhere than at the defaults (see _summary()): nothing
-		 *	where none does, and nothing while the block is open, where the controls themselves are in view. The line is
-		 *	cut with dots where the head is too narrow, so its whole text is its title
-		 *
-		 *	@param		{Element}	head
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *	@param		{boolean}	open
-		 *
-		 *	@return		void
-		 */
-		_paintHead : function( head, row, open ) {
-
-			const summary = head.querySelector('.design-accordion-summary');
-			const line = open === true ? '' : Nino.admin.design._summary( row );
-
-			head.setAttribute( 'aria-expanded', open === true ? 'true' : 'false' );
-
-			// The body is in the document while the block is open and nowhere while it is closed: the head names it only then
-			if( open === true )
-				head.setAttribute( 'aria-controls', head.parentNode.id+ '-body' );
-			else
-				head.removeAttribute('aria-controls');
-
-			summary.textContent = line;
-			summary.title = line;
-		},
-
-		/**
-		 *	Open a block, or close it where it is the open one. Opening a block closes the one that was open; which of them is
-		 *	open is kept for the tab (see _open). It is a matter of the column and of nothing else: the selection stays as it is, no
-		 *	preview is asked for and the frame is not moved - a change inside a block jumps, as it did, and this does not. The head
-		 *	that was pressed stays where it stood in the window (see _holdHead())
-		 *
-		 *	@param		{string}	tab
-		 *	@param		{string}	object		The object whose head was pressed
-		 *	@param		{Element}	head			That head
-		 *
-		 *	@return		void
-		 */
-		_toggleBlock : function( tab, object, head ) {
-
-			const design = Nino.admin.design;
-			const rows = design._rows( tab );
-			const was = design._blockOf( tab, rows );
-			const top = head.getBoundingClientRect().top;
-
-			design._open[tab] = was === object ? null : object;
-
-			rows.forEach( function( row ) {
-
-				const card = row.object === was || row.object === object ? dc.getElementById( design._rowId( tab, row.object ) ) : null;
-
-				if( card !== null )
-					design._setBlock( card, tab, row, design._open[tab] === row.object );
-			} );
-
-			design._holdHead( head, top );
-		},
-
-		/**
-		 *	Keep the head that was pressed where it stood. The block that was open can stand above it, and its body goes with the
-		 *	press: the head, and with it what the person was looking at, would move up the window by the height of that body - off
-		 *	the top of it where the body is the taller. The page is scrolled by what the head moved, by whatever scrolls the column:
-		 *	the pane in a wide window, the window itself in a narrow one (see _scrolled())
-		 *
-		 *	@param		{Element}	head			The head that was pressed
-		 *	@param		{number}	top				Where its top stood in the window before the blocks were changed
-		 *
-		 *	@return		void
-		 */
-		_holdHead : function( head, top ) {
-
-			const by = head.getBoundingClientRect().top - top;
-
-			if( by === 0 )
-				return;
-
-			let box = head.parentNode;
-
-			while( box !== null && box !== bd && box !== dE && ( box.scrollHeight <= box.clientHeight || [ 'auto', 'scroll' ].indexOf( wn.getComputedStyle( box ).overflowY ) === -1 ) )
-				box = box.parentNode;
-
-			( box === null || box === bd || box === dE ? dc.scrollingElement || dE : box ).scrollTop += by;
-		},
-
-		/**
-		 *	What a closed block says of its row: the controls that stand elsewhere than a fresh setup has them (design/list
-		 *	hands that setup over as `defaults`), each as its label and the word of its position, joined by a middle dot. Nothing
-		 *	for a row that stands at the defaults - but for a template, which is a choice and no position: the block of a part
-		 *	says the word of the set that is chosen, whichever it is, so that a person sees which one is on
-		 *
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *
-		 *	@return		{string}
-		 */
-		_summary : function( row ) {
-
-			const design = Nino.admin.design;
-			let lines = [];
-
-			row.controls.forEach( function( keys ) {
-
-				const path = keys[0].split('/');
-
-				if( path[0] === 'parts' )
-					lines.push( design._setName( path[1], design._edit.parts[ path[1] ] ) );
-				else if( path[0] === 'features' && path[2] === 'set' )
-					lines = lines.concat( design._variantSaid( path[1] ) );
-				else
-					lines = lines.concat( design._deviations( keys, row.object ) );
-			} );
-
-			return lines.join(' · ');
-		},
-
-		/**
-		 *	What one control says where it stands elsewhere than at the default: its label and the word of the position it is at,
-		 *	as its strip shows them - made of the very texts and options the strip is drawn from (see _knobStrip(), _radiiStrip()
-		 *	and _pageName()). A font role says it for each of the four cells of its row that differs, by the name of the cell
-		 *	and the word it shows. A knob the chosen template does not answer to is greyed out, and no part of what the design
-		 *	is: it says nothing. The corners of a section - one choice for the cover, the row and the column - count once, and
-		 *	say the word the strip shows, which is the cover's. A part of the palette says its hex - the brand colour, and the
-		 *	second colour where one is set, which stands for the Harmony it ends - or its label and the word of its position,
-		 *	the mode too (see _colourSaid()); a part of the motion says its label and the word it is set to, the strength and the
-		 *	speed of the animation only while there is an effect and the strength of the hover of the pictures only while there is
-		 *	a kind of it that has one, since their selects are switched off until then (see MOTION_FOLLOWS). A template says
-		 *	nothing here: it is no position, and the head of its block names it whatever it is (see _summary())
-		 *
-		 *	@param		{Array}		keys			The keys of the control, as _rows() has them
-		 *	@param		{string}	object		The object the control stands under
-		 *
-		 *	@return		{Array}							The lines, none where the control stands at the default
-		 */
-		_deviations : function( keys, object ) {
-
-			const design = Nino.admin.design;
-			const edit = design._edit;
-			const normal = ( design._data || {} ).defaults || {};
-			const path = keys[0].split('/');
-
-			if( path[0] === 'knobs' ) {
-
-				if( design._answered( path[1] ).indexOf( path[2] ) === -1 )
-					return [];
-
-				const chosen = ( edit.knobs[path[1]] || {} )[path[2]] || 0;
-				const strip = design._knobStrip( path[1], path[2] );
-
-				return chosen === ( ( ( normal.knobs || {} )[path[1]] || {} )[path[2]] || 0 ) ? [] : [ design._said( strip.name, strip.options, chosen ) ];
-			}
-
-			// A knob a feature brings: said as the knobs of a part are, by the label its head gives it and the word of its value - a variant says it in its own row (see _variantSaid())
-			if( path[0] === 'features' ) {
-
-				if( path[2] !== 'knobs' )
-					return [];
-
-				const found = design._featureKnob( path[1], path[3] );
-
-				if( found.answered === false )
-					return [];
-
-				const value = design._featureValue( path[1], path[3], found.meta );
-
-				return JSON.stringify( value ) === JSON.stringify( found.meta['default'] ) ? [] : [ design._featureSaid( found.meta, value ) ];
-			}
-
-			if( path[0] === 'radii' ) {
-
-				const strip = design._radiiStrip( keys, object );
-				const given = normal.radii || {};
-
-				return strip.kinds.some( function( kind ) { return edit.radii[kind] !== given[kind] } ) === true ? [ design._said( strip.name, strip.options, edit.radii[ strip.kinds[0] ] ) ] : [];
-			}
-
-			if( path[0] === 'fonts' ) {
-
-				const role = path[1];
-				const chosen = edit.fonts[role] || {};
-				const given = ( normal.fonts || {} )[role] || {};
-				const lines = [];
-
-				if( ( chosen.family || '' ) !== ( given.family || '' ) )
-					lines.push( design._fontLabel( role, 'family' )+ ' '+ design._familyLabel( role, chosen.family || '' ) );
-
-				if( ( chosen.weight || 'normal' ) !== ( given.weight || 'normal' ) )
-					lines.push( design._fontLabel( role, 'weight' )+ ' '+ Nino.content.getText('/_admin/design/weight/'+ ( chosen.weight || 'normal' ) ) );
-
-				if( ( chosen.uppercase === true ) !== ( given.uppercase === true ) )
-					lines.push( design._fontLabel( role, 'uppercase' )+ ' '+ Nino.content.getText('/_admin/common/label/'+ ( chosen.uppercase === true ? 'on' : 'off' ) ) );
-
-				if( String( chosen.size || '' ) !== String( given.size || '' ) )
-					lines.push( design._fontLabel( role, 'size' )+ ' '+ design._sizeInForce( role )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit') );
-
-				return lines;
-			}
-
-			if( path[0] === 'colours' )
-				return keys.map( function( key ) { return design._colourSaid( key.split('/')[1] ) } ).filter( function( line ) { return line !== '' } );
-
-			if( path[0] === 'motion' ) {
-
-				const part = path[1];
-				const value = ( edit.motion || {} )[part] || '';
-				const follows = design.MOTION_FOLLOWS[part];
-
-				// A part that waits for another means something once that has a value (MOTION_FOLLOWS): until then its select is switched off, and it says nothing
-				if( value === ( ( normal.motion || {} )[part] || '' ) || ( follows !== undefined && follows[1].indexOf( ( edit.motion || {} )[ follows[0] ] || '' ) !== -1 ) )
-					return [];
-
-				return [ design._said( Nino.content.getText('/_admin/design/motion/'+ part+ '/label'), design._motionOptions( part ), value ) ];
-			}
-
-			if( design.PAGE_WORDS[ keys[0] ] === undefined )
-				return [];
-
-			return edit[ keys[0] ] === normal[ keys[0] ] ? [] : [ design._said( design._pageName( keys[0] ), design._numbered( design._positions('scale'), 0 ), edit[ keys[0] ] ) ];
-		},
-
-		/**
-		 *	A label and the word of a position, as a head says them: the label of the strip and the label of the option that
-		 *	holds the value
-		 *
-		 *	@param		{string}	name			The label of the strip
-		 *	@param		{Array}		options		{ value, label, title }, the options of the strip
-		 *	@param		{*}				value			The value the strip stands at
-		 *
-		 *	@return		{string}
-		 */
-		_said : function( name, options, value ) {
-
-			const found = options.filter( function( option ) { return String( option.value ) === String( value ) } )[0];
-
-			return name+ ' '+ ( found === undefined ? String( value ) : found.label );
-		},
-
-		/**
-		 *	What a head says of one part of the palette where it stands elsewhere than at the default: the brand colour and the
-		 *	second colour by their label and their hex - an empty second colour is the one Harmony derives and says nothing -, a
-		 *	knob by its label and the word its strip shows for the position (see _colourStrip()), the mode by its label and the word
-		 *	of its select. Harmony says nothing while a second colour is set, since its strip lights no position then
-		 *
-		 *	@param		{string}	knob			primary, secondary, harmony, temperature, saturation, contrast, depth or mode
-		 *
-		 *	@return		{string}						'' where it stands at the default
-		 */
-		_colourSaid : function( knob ) {
-
-			const design = Nino.admin.design;
-			const chosen = ( design._edit || {} ).colours || {};
-			const given = ( ( design._data || {} ).defaults || {} ).colours || {};
-			const meta = ( ( design._data || {} ).palette || {} )[knob];
-
-			if( knob === 'primary' )
-				return String( chosen.primary || '' ) !== String( given.primary || '' ) ? Nino.content.getText('/_admin/design/label/primary')+ ' '+ chosen.primary : '';
-
-			if( knob === 'secondary' )
-				return String( chosen.secondary || '' ) !== '' ? Nino.content.getText('/_admin/design/label/secondary')+ ' '+ chosen.secondary : '';
-
-			if( meta === undefined || ( knob === 'harmony' && String( chosen.secondary || '' ) !== '' ) )
-				return '';
-
-			const value = chosen[knob] || meta['default'];
-
-			if( String( value ) === String( given[knob] || meta['default'] ) )
-				return '';
-
-			if( knob === 'mode' )
-				return design._said( Nino.content.getText('/_admin/design/colour/mode/label'), design._modeOptions( meta ), value );
-
-			const strip = design._colourStrip( knob, meta );
-
-			return design._said( strip.name, strip.options, value );
-		},
-
-		/**
-		 *	The controls of a row into the body of its block, in the order of the table. What a control is drawn as
-		 *	follows from the first segment of its key: a template (parts), a knob (knobs), the corners of a kind of
-		 *	surface (radii), a font role (fonts), a part of the motion of the page (motion), a part of the palette (colours) - and a
-		 *	strip of the page for the rest: the root size, the width, the whitespace and the two radii. Every control
-		 *	carries the keys it stands for in data-control, joined by a space. The five roles are the rows of one table
-		 *	under the heading of the fonts, the five parts of the motion of the page the fields of one grid, and the palette's
-		 *	knobs follow the brand colour under the heading Tuning
-		 *
-		 *	@param		{Element}	card			The body of the block
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
-		 *
-		 *	@return		void
-		 */
-		_fillRow : function( card, row ) {
-
-			const design = Nino.admin.design;
-			const palette = ( design._data || {} ).palette || {};
-			const fields = {};
-			let table = null;
-			let grid = null;
-			let tuned = false;
-
-			row.controls.forEach( function( keys ) {
-
-				const path = keys[0].split('/');
-
-				// A control is put where it stands and told what it is
-				const put = function( node, into ) {
-					node.dataset.control = keys.join(' ');
-					( into || card ).appendChild( node );
-				};
-
-				if( path[0] === 'parts' )
-					return put( design._partField( design._row( path[1] ) ) );
-
-				// A feature that brings variants: the choice of the variant on Templates, a knob of the variant on the tab its head names
-				if( path[0] === 'features' )
-					return put( path[2] === 'set' ? design._featureField( path[1] ) : design._featureKnobRow( path[1], path[3] ) );
-
-				if( path[0] === 'knobs' )
-					return put( design._knobRow( path[1], path[2], design._answered( path[1] ).indexOf( path[2] ) !== -1 ) );
-
-				if( path[0] === 'radii' )
-					return put( design._radiiRow( keys, row.object ) );
-
-				if( path[0] === 'fonts' ) {
-
-					if( table === null ) {
-						card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/label/fonts') ) );
-						table = design._rolesTable();
-						card.appendChild( table.table );
-					}
-
-					return put( design._fontRow( path[1] ), table.body );
-				}
-
-				if( path[0] === 'motion' ) {
-
-					if( grid === null ) {
-						grid = dc.createElement('div');
-						grid.className = 'design-form-grid';
-						card.appendChild( grid );
-					}
-
-					fields[ path[1] ] = design._motionField( path[1] );
-					return put( fields[ path[1] ], grid );
-				}
-
-				if( path[0] === 'colours' ) {
-
-					if( path[1] === 'primary' ) {
-						put( design._primaryField() );
-						return card.appendChild( design._brandWarning() );
-					}
-
-					// The knobs under the colour the palette is solved from stand under a small heading, as a block of rows does
-					if( tuned === false ) {
-						card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/label/tuning') ) );
-						tuned = true;
-					}
-
-					// Harmony *is* the second colour: the swatch that overrides its four positions ends its row
-					if( keys.indexOf('colours/harmony') !== -1 )
-						return put( design._colourKnobRow( 'harmony', palette.harmony, design._secondField() ) );
-
-					if( path[1] === 'mode' )
-						return put( design._modeField( palette.mode ) );
-
-					return put( design._colourKnobRow( path[1], palette[ path[1] ], null ) );
-				}
-
-				put( design._pageStrip( keys[0] ) );
-			} );
-
-			// A part of the motion that waits for another only means something once that has a value
-			const selects = {};
-
-			Object.keys( fields ).forEach( function( key ) { selects[key] = fields[key].querySelector('select') } );
-			design._motionOff( selects );
-		},
-
-		/**
-		 *	The label of one of the strips of the page: what it is called, by the key the table has it under
-		 *
-		 *	@param		{string}	key				size, width, whitespace, radius or radius-alt
-		 *
-		 *	@return		{string}
-		 */
-		_pageName : function( key ) {
-			return Nino.content.getText('/_admin/design/label/'+ Nino.admin.design.PAGE_WORDS[key] );
-		},
-
-		/**
-		 *	One of the strips of the page: the root size, the width, the whitespace or one of the two radii - five
-		 *	positions, -2 to +2. What the ends of a strip are is the line under its name
-		 *
-		 *	@param		{string}	key				size, width, whitespace, radius or radius-alt
-		 *
-		 *	@return		{Element}
-		 */
-		_pageStrip : function( key ) {
-
-			const design = Nino.admin.design;
-			const edit = design._edit;
-			const word = design.PAGE_WORDS[key];
-
-			return design._stripRow(
-				'page/'+ key, design._pageName( key ), Nino.content.getText('/_admin/design/hint/'+ word ),
-				design._numbered( design._positions('scale'), 0 ), edit[key], function( position ) {
-					edit[key] = position;
-					design._target = design._anchorOf( key );
-					design._preview();
-				} );
-		},
-
-		/**
-		 *	What a strip of corners is made of: the kinds of surface its keys stand for, the word its label is under - the
-		 *	kind, or the object where the choice is one for several kinds -, its label and its two words
-		 *
-		 *	@param		{Array}		keys			The keys of the control: 'radii/<kind>', one or more
-		 *	@param		{string}	object		The object the control stands under
-		 *
-		 *	@return		{Object}						{ kinds, word, name, options }, the options as { value, label, title }
-		 */
-		_radiiStrip : function( keys, object ) {
-
-			const kinds = keys.map( function( key ) { return key.split('/')[1] } );
-			const word = kinds.length > 1 ? object : kinds[0];
-
-			return {
-				kinds 	: kinds,
-				word 		: word,
-				name 		: Nino.content.getText('/_admin/design/radii/'+ word ),
-				options	: ( Nino.admin.design._data.radiusWords || [] ).map( function( radius ) {
-					const label = Nino.content.getText('/_admin/design/radii/'+ radius );
-					return { value : radius, label : label, title : label };
-				} ),
-			};
-		},
-
-		/**
-		 *	The corners a kind of surface takes where nothing chooses: a strip of the two words the radius has. A
-		 *	control of several kinds - the cover, the row and the column of a section - is one choice that writes
-		 *	them all the same. It reads as the word the kinds agree on; where they differ it shows the first one's
-		 *	and says in its note that they do until it is chosen once. The label is the word of the kind, or - for
-		 *	a choice of several - of the object they are the surfaces of
-		 *
-		 *	@param		{Array}		keys			The keys of the control: 'radii/<kind>', one or more
-		 *	@param		{string}	object		The object the control stands under
-		 *
-		 *	@return		{Element}
-		 */
-		_radiiRow : function( keys, object ) {
-
-			const design = Nino.admin.design;
-			const edit = design._edit;
-			const strip = design._radiiStrip( keys, object );
-			const kinds = strip.kinds;
-			const differ = kinds.some( function( kind ) { return edit.radii[kind] !== edit.radii[ kinds[0] ] } );
-
-			const field = design._stripRow(
-				'page/radii-'+ strip.word, strip.name, differ === true ? Nino.content.getText('/_admin/design/hint/radii') : '',
-				strip.options, edit.radii[ kinds[0] ], function( word ) {
-
-					kinds.forEach( function( kind ) { edit.radii[kind] = word } );
-
-					// The three agree now: nothing is left to say
-					field.querySelector('small').textContent = '';
-
-					design._target = design._anchorOf( keys[0] );
-					design._preview();
-				} );
-
-			return field;
-		},
-
-		/**
-		 *	One of the five parts of the motion of the page, as a select: the effect, the strength and the speed of its animation, the kind and
-		 *	the strength of the hover of its pictures. '' is what Nino.css does by itself, and is what a fresh setup has
-		 *
-		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
-		 *
-		 *	@return		{Element}
-		 */
-		_motionField : function( key ) {
-
-			const design = Nino.admin.design;
-
-			return design._select(
-				'design-motion-'+ key, Nino.content.getText('/_admin/design/motion/'+ key+ '/label'), design._motionOptions( key ), design._edit.motion[key] || '',
-				function( value ) { design._setMotion( key, value ) } );
-		},
-
-		/**
-		 *	What the select of one of the five parts of the motion offers, and what the head of its block says a value
-		 *	of it is: the default first, then a word for each value of the answer - the strength of the hover has the three
-		 *	of the animation
-		 *
-		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
-		 *
-		 *	@return		{Array}						{ value, label }
-		 */
-		_motionOptions : function( key ) {
-
-			const design = Nino.admin.design;
-			const values = { effect : design._data.effects, strength : design._data.strengths, speed : design._data.speeds, hover : design._data.hovers, 'hover-strength' : design._data.strengths }[key] || [];
-
-			return [ { value : '', label : Nino.content.getText('/_admin/design/motion/default') } ].concat( values.map( function( value ) {
-				return { value : value, label : Nino.content.getText('/_admin/design/motion/'+ key+ '/'+ value ) };
-			} ) );
-		},
-
-		/**
-		 *	The parts of the motion that wait for another only mean something once that has a value (MOTION_FOLLOWS): the strength and
-		 *	the speed of the animation once there is an effect, the strength of the hover once there is a kind of it that has one. Until
-		 *	then their selects are switched off rather than left to say nothing
-		 *
-		 *	@param		{Object}	selects			The selects that are drawn, by the part: one that is not there is left out
-		 *
-		 *	@return		void
-		 */
-		_motionOff : function( selects ) {
-
-			const design = Nino.admin.design;
-
-			Object.keys( design.MOTION_FOLLOWS ).forEach( function( part ) {
-
-				const select = selects[part];
-				const follows = design.MOTION_FOLLOWS[part];
-
-				if( select !== null && select !== undefined )
-					select.disabled = follows[1].indexOf( design._edit.motion[ follows[0] ] || '' ) !== -1;
-			} );
-		},
-
-		/**
-		 *	The select a template is chosen in: the one word of its label over it - the head of its block says which part it
-		 *	is, and the object a second time would be too much -, the catalogue as its options and the description of the
-		 *	chosen one as the line under it. The same for each of the five, in the block of its object on the Templates tab
-		 *
-		 *	@param		{Object}	row			One part, as design/list answered it
-		 *
-		 *	@return		{Element}
-		 */
-		_partField : function( row ) {
-
-			const field = Nino.admin.design._select(
-				'design-set-'+ row.part, Nino.content.getText('/_admin/design/label/template'),
-				Object.keys( row.catalogue || {} ).map( function( set ) {
-					return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
-				} ), Nino.admin.design._edit.parts[row.part], function( value ) {
-					Nino.admin.design._setPart( row.part, value, field );
-				},
-				( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[row.part] ] || {} ).description || ''
-			);
-
-			return field;
-		},
-
-		/**
-		 *	Choose a template for a part.
-		 *
-		 *	A template brings its own knobs, and the ones the last one had are not
-		 *	this one's: a position the new template does not answer to goes back
-		 *	to the middle, the way the server holds it anyway - so the screen
-		 *	never shows a setup the stored one could not be. The rows of the knobs
-		 *	stand on Type and Surfaces and are drawn when those are opened, with
-		 *	the knobs this template does not answer to greyed out.
-		 *
-		 *	The line under the select says what the template chosen is, written in
-		 *	place: nothing else of the tab changes. The head of the block says the
-		 *	word of the set that is chosen once the block is closed - which paints
-		 *	it from the selection as it stands then (see _paintHead()), so that no
-		 *	redraw is needed for it. The frame goes to where the template is looked
-		 *	at (OBJECT_ANCHORS) - a header at the top of the page, a footer at its foot
-		 *
-		 *	@param		{string}		part
-		 *	@param		{string}		set
-		 *	@param		{Element}		[field]		The select field of the part, whose note is the template's description
-		 *
-		 *	@return		void
-		 */
-		_setPart : function( part, set, field ) {
-
-			const design = Nino.admin.design;
-			const edit = design._edit;
-			const row = design._row( part );
-			const answered = ( ( row.catalogue || {} )[set] || {} ).knobs || [];
-			const note = field ? field.querySelector('small') : null;
-
-			edit.parts[part] = set;
-
-			Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
-				if( answered.indexOf( knob ) === -1 )
-					edit.knobs[part][knob] = 0;
-			} );
-
-			if( note )
-				note.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
-
-			design._target = design._anchorOf( 'parts/'+ part );
-			design._preview();
-		},
-
-		/**
 		 *	The features that bring variants, as design/list answered them: key => { name, active, default, catalogue, set, knobs }. An
 		 *	empty answer is an empty list on the wire, since php has no empty object - and no feature here
 		 *
@@ -3098,1550 +2129,6 @@
 		},
 
 		/**
-		 *	What an object of the panel is called at the head of its block: its word in the panel's texts for the page and the parts, and for
-		 *	a feature the name its manifest gives it, which is the feature's own and no text of this panel
-		 *
-		 *	@param		{string}	object		A key of the table's objects
-		 *
-		 *	@return		{string}
-		 */
-		_objectName : function( object ) {
-
-			const feature = Nino.admin.design._featuresOf()[object];
-
-			return feature !== undefined ? feature.name : Nino.content.getText('/_admin/design/object/'+ object+ '/label');
-		},
-
-		/**
-		 *	The variant a feature stands at on the screen: the one chosen for it, else the one it has before anything is chosen
-		 *
-		 *	@param		{string}	key				The key of a feature
-		 *
-		 *	@return		{string}
-		 */
-		_chosenSet : function( key ) {
-
-			const feature = Nino.admin.design._featuresOf()[key] || {};
-			const entry = ( Nino.admin.design._edit.features || {} )[key];
-
-			return entry !== undefined && ( feature.catalogue || {} )[entry.set] !== undefined ? entry.set : ( feature['default'] || '' );
-		},
-
-		/**
-		 *	A knob of a feature as the variant chosen has it, else - where that variant does not declare it - as the first variant
-		 *	that does, in the order of the catalogue: the row is drawn, greyed out, since the table gives the knobs of every variant
-		 *
-		 *	@param		{string}	key				The key of a feature
-		 *	@param		{string}	knob
-		 *
-		 *	@return		{Object}					{ meta : kind, tab, label, options, default; answered : whether the chosen variant declares it }
-		 */
-		_featureKnob : function( key, knob ) {
-
-			const catalogue = ( Nino.admin.design._featuresOf()[key] || {} ).catalogue || {};
-			const chosen = ( ( catalogue[ Nino.admin.design._chosenSet( key ) ] || {} ).knobs || {} )[knob];
-
-			if( chosen !== undefined )
-				return { meta : chosen, answered : true };
-
-			return {
-				meta : Object.keys( catalogue ).map( function( set ) { return ( catalogue[set].knobs || {} )[knob] } ).filter( function( meta ) { return meta !== undefined } )[0],
-				answered : false,
-			};
-		},
-
-		/**
-		 *	The value a knob of a feature stands at on the screen: the one chosen, else the one its head says it stands at
-		 *
-		 *	@param		{string}	key
-		 *	@param		{string}	knob
-		 *	@param		{Object}	meta			The knob, see _featureKnob()
-		 *
-		 *	@return		{*}								A position, a surface, a tone or a pair of hex colours
-		 */
-		_featureValue : function( key, knob, meta ) {
-
-			const entry = ( Nino.admin.design._edit.features || {} )[key];
-			const value = entry !== undefined ? ( entry.knobs || {} )[knob] : undefined;
-
-			return value === undefined ? meta['default'] : value;
-		},
-
-		/**
-		 *	What the strip of a scale or a choice a feature brings is made of: the label its head gives it and its options, from the least to
-		 *	the most - the numbers -2 to +2 of a scale, the three words the head gives a choice
-		 *
-		 *	@param		{Object}	meta			The knob, see _featureKnob()
-		 *
-		 *	@return		{Object}						{ name, options }, the options as { value, label, title }
-		 */
-		_featureStrip : function( meta ) {
-
-			const design = Nino.admin.design;
-			const positions = design._positions( meta.kind );
-
-			return {
-				name 		: meta.label,
-				options	: meta.kind === 'choice'
-					? positions.map( function( position ) {
-						const label = ( meta.options || {} )[ design._word( position ) ];
-						return { value : position, label : label, title : label };
-					} )
-					: design._numbered( positions, 0 ),
-			};
-		},
-
-		/**
-		 *	What a head says of a knob of a feature where it stands elsewhere than at the default: its label and the word of the value - the
-		 *	position of a ladder as its strip shows it, a surface or a tone by the word of the panel's texts, a colour by its two halves
-		 *
-		 *	@param		{Object}	meta			The knob, see _featureKnob()
-		 *	@param		{*}				value
-		 *
-		 *	@return		{string}
-		 */
-		_featureSaid : function( meta, value ) {
-
-			const design = Nino.admin.design;
-
-			if( meta.kind === 'scale' || meta.kind === 'choice' ) {
-				const strip = design._featureStrip( meta );
-				return design._said( strip.name, strip.options, value );
-			}
-
-			if( meta.kind === 'colour' )
-				return meta.label+ ' '+ value.join(' / ');
-
-			return meta.label+ ' '+ Nino.content.getText('/_admin/design/'+ meta.kind+ '/'+ value );
-		},
-
-		/**
-		 *	What the head of the block of a feature on Templates says: the name of the variant chosen, where it is not the one the feature
-		 *	has before anything is chosen
-		 *
-		 *	@param		{string}	key
-		 *
-		 *	@return		{Array}						The line, none where the variant is the feature's own
-		 */
-		_variantSaid : function( key ) {
-
-			const feature = Nino.admin.design._featuresOf()[key] || {};
-			const set = Nino.admin.design._chosenSet( key );
-
-			return set === feature['default'] ? [] : [ ( ( feature.catalogue || {} )[set] || {} ).name || set ];
-		},
-
-		/**
-		 *	The id of a control of a feature - the select of its variants, a knob of it, a half of a colour or the line that says what the colour
-		 *	measures - for the label that names it and for the line that is painted in place. The parts are joined by an underscore, which neither
-		 *	a key nor a knob has: joined by a hyphen, the light half of a colour "x" and a knob that is called "x-light" would be one id
-		 *
-		 *	@param		{string}		key				The key of a feature
-		 *	@param		{string}		[knob]
-		 *	@param		{string}		[part]		light, dark or contrast, for what stands with a colour
-		 *
-		 *	@return		{string}
-		 */
-		_featureId : function( key, knob, part ) {
-			return 'design-feature-'+ key+ ( knob === undefined ? '' : '_'+ knob+ ( part === undefined ? '' : '_'+ part ) );
-		},
-
-		/**
-		 *	The choice of the variant of a feature, in the block of the feature on Templates: the select of its variants with the description of the
-		 *	chosen one under it - the label is the one word the selects of the parts have - and, for a feature with one variant only, the
-		 *	description alone: there is nothing to choose
-		 *
-		 *	@param		{string}	key				The key of a feature
-		 *
-		 *	@return		{Element}
-		 */
-		_featureField : function( key ) {
-
-			const design = Nino.admin.design;
-			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
-			const variants = Object.keys( catalogue );
-			const describe = function( set ) { return ( catalogue[set] || {} ).description || '' };
-
-			if( variants.length < 2 ) {
-
-				const only = dc.createElement('div');
-				only.className = 'design-field';
-
-				const small = dc.createElement('small');
-				small.textContent = describe( variants[0] );
-				only.appendChild( small );
-
-				return only;
-			}
-
-			const field = design._select(
-				design._featureId( key ), Nino.content.getText('/_admin/design/label/template'),
-				variants.map( function( set ) { return { value : set, label : catalogue[set].name || set } } ),
-				design._chosenSet( key ), function( value ) {
-					design._setFeatureSet( key, value, field );
-				}, describe( design._chosenSet( key ) ) );
-
-			return field;
-		},
-
-		/**
-		 *	One knob of a feature, in the block of the feature on the tab its head puts it on: the strip of a scale or a choice, the select of
-		 *	the eleven surfaces of a ground or of the seven tones of an ink, the two colours of a pair. Greyed out where the variant chosen does
-		 *	not declare it, in the words of a knob of a part that its template does not answer to
-		 *
-		 *	@param		{string}	key				The key of a feature
-		 *	@param		{string}	knob
-		 *
-		 *	@return		{Element}
-		 */
-		_featureKnobRow : function( key, knob ) {
-
-			const design = Nino.admin.design;
-			const found = design._featureKnob( key, knob );
-			const meta = found.meta;
-			const value = design._featureValue( key, knob, meta );
-			const note = found.answered === true ? '' : design._text( '/_admin/design/hint/unanswered', meta.label );
-			let field;
-
-			if( meta.kind === 'colour' )
-				field = design._featureColours( key, knob, meta, value, found.answered );
-			else if( meta.kind === 'ground' || meta.kind === 'ink' ) {
-
-				field = design._select( design._featureId( key, knob ), meta.label,
-					( ( design._data || {} )[ meta.kind === 'ground' ? 'grounds' : 'inks' ] || [] ).map( function( word ) {
-						return { value : word, label : Nino.content.getText('/_admin/design/'+ meta.kind+ '/'+ word ) };
-					} ), value, function( chosen ) { design._setFeatureKnob( key, knob, chosen ) }, note );
-
-				field.querySelector('select').disabled = found.answered === false;
-				field.classList.add('design-feature-select');
-			}
-			else {
-
-				const strip = design._featureStrip( meta );
-
-				field = design._stripRow( 'features/'+ key+ '/'+ knob, strip.name, note, strip.options, value, function( position ) {
-					design._setFeatureKnob( key, knob, position );
-				}, found.answered === false );
-			}
-
-			field.dataset.knob = knob;
-
-			return field;
-		},
-
-		/**
-		 *	A colour a feature brings: the name of the knob over two colours, the light one and the dark one, each a swatch under the word of its
-		 *	half, and under them the line that says what the two measure on the page where one of them does not reach the ratio a mark on a page
-		 *	needs (see _paintContrast()) - the row of the brand colour and the line under it, said of a colour of a feature. Nothing refuses a colour
-		 *
-		 *	@param		{string}	key
-		 *	@param		{string}	knob
-		 *	@param		{Object}	meta			The knob, see _featureKnob()
-		 *	@param		{Array}		value			[ light, dark ]
-		 *	@param		{boolean}	answered	Whether the variant chosen declares the knob
-		 *
-		 *	@return		{Element}
-		 */
-		_featureColours : function( key, knob, meta, value, answered ) {
-
-			const design = Nino.admin.design;
-
-			const wrap = dc.createElement('div');
-			wrap.className = 'design-colour-feature';
-
-			const field = dc.createElement('div');
-			field.className = 'design-colour-row design-colour-pair';
-
-			const label = dc.createElement('span');
-			label.className = 'design-colour-label design-knob-label';
-			design._labelContent( label, 'features/'+ key+ '/'+ knob, meta.label, answered === true ? '' : design._text( '/_admin/design/hint/unanswered', meta.label ) );
-			field.appendChild( label );
-
-			[ 'light', 'dark' ].forEach( function( half, at ) {
-
-				const box = dc.createElement('label');
-				box.className = 'design-colour-half';
-
-				const caption = dc.createElement('small');
-				caption.textContent = Nino.content.getText('/_admin/design/label/'+ half );
-				box.appendChild( caption );
-
-				const input = dc.createElement('input');
-				input.type = 'color';
-				input.id = design._featureId( key, knob, half );
-				input.setAttribute( 'aria-label', caption.textContent+ ' - '+ meta.label );
-				input.className = 'design-colour-input';
-				input.value = String( value[at] );
-				input.disabled = answered === false;
-				input.addEventListener( 'change', function() {
-
-					const pair = design._featureValue( key, knob, meta ).slice();
-
-					pair[at] = this.value;
-					design._setFeatureKnob( key, knob, pair );
-				} );
-				box.appendChild( input );
-
-				field.appendChild( box );
-			} );
-
-			wrap.appendChild( field );
-
-			const line = dc.createElement('p');
-			line.id = design._featureId( key, knob, 'contrast' );
-			line.className = 'nino-admin-hint design-colour-warning';
-			design._paintContrast( line, key, knob );
-			wrap.appendChild( line );
-
-			return wrap;
-		},
-
-		/**
-		 *	What the two halves of a colour of a feature measure on the page, said under the colour where one of them is below the ratio a mark
-		 *	needs - the number is the server's (design/list and every preview carry it), the words the panel's. Written in place: the column holds
-		 *	colour pickers somebody may have open
-		 *
-		 *	@param		{?Element}	line			The line itself
-		 *	@param		{string}		key
-		 *	@param		{string}		knob
-		 *
-		 *	@return		void
-		 */
-		_paintContrast : function( line, key, knob ) {
-
-			if( line === null || line === undefined )
-				return;
-
-			const measured = ( ( ( Nino.admin.design._data || {} ).contrasts || {} )[key] || {} )[knob] || null;
-			const unsafe = measured !== null && ( measured.light.safe === false || measured.dark.safe === false );
-
-			line.hidden = unsafe === false;
-
-			if( unsafe === true )
-				line.textContent = Nino.admin.design._text( '/_admin/design/label/contrast', measured.light.ratio, measured.dark.ratio, measured.light.target );
-		},
-
-		/**
-		 *	Paint the line of every colour of a feature that is on the screen, from what the last answer measured. Runs after every preview, beside
-		 *	the brand's (see _absorb())
-		 *
-		 *	@return		void
-		 */
-		_paintContrasts : function() {
-
-			const design = Nino.admin.design;
-			const features = design._featuresOf();
-
-			Object.keys( features ).forEach( function( key ) {
-
-				const painted = {};
-
-				Object.keys( features[key].catalogue || {} ).forEach( function( set ) {
-
-					const knobs = features[key].catalogue[set].knobs || {};
-
-					Object.keys( knobs ).forEach( function( knob ) {
-
-						if( knobs[knob].kind !== 'colour' || painted[knob] === true )
-							return;
-
-						painted[knob] = true;
-						design._paintContrast( dc.getElementById( design._featureId( key, knob, 'contrast' ) ), key, knob );
-					} );
-				} );
-			} );
-		},
-
-		/**
-		 *	Choose a variant for a feature. The knobs the last one declared and this one does not are not this one's: they go, as the position of
-		 *	a knob a template does not answer to goes back to the middle - the screen never holds a choice the stored one could not be. A choice
-		 *	that comes to the feature as it is leaves no entry (see _pruneFeature()). The description under the select is written in place
-		 *
-		 *	@param		{string}		key
-		 *	@param		{string}		set				A variant of the feature
-		 *	@param		{Element}		[field]		The select field of the feature, whose note is the description of the variant
-		 *
-		 *	@return		void
-		 */
-		_setFeatureSet : function( key, set, field ) {
-
-			const design = Nino.admin.design;
-			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
-			const declared = ( catalogue[set] || {} ).knobs || {};
-			const entry = design._edit.features[key] || { set : set, knobs : {} };
-			const note = field ? field.querySelector('small') : null;
-
-			entry.set = set;
-
-			Object.keys( entry.knobs ).forEach( function( knob ) {
-				if( declared[knob] === undefined )
-					delete entry.knobs[knob];
-			} );
-
-			design._edit.features[key] = entry;
-			design._pruneFeature( key );
-
-			if( note )
-				note.textContent = ( catalogue[set] || {} ).description || '';
-
-			design._target = design._anchorOf( 'features/'+ key+ '/set' );
-			design._preview();
-		},
-
-		/**
-		 *	Move a knob of a feature: a position, a surface, a tone or a pair of colours. The feature is chosen at the variant it stands at, if
-		 *	nothing was chosen for it yet; a choice that comes to the feature as it is leaves no entry (see _pruneFeature())
-		 *
-		 *	@param		{string}	key
-		 *	@param		{string}	knob
-		 *	@param		{*}				value
-		 *
-		 *	@return		void
-		 */
-		_setFeatureKnob : function( key, knob, value ) {
-
-			const design = Nino.admin.design;
-			const entry = design._edit.features[key] || { set : design._chosenSet( key ), knobs : {} };
-
-			entry.knobs[knob] = value;
-			design._edit.features[key] = entry;
-			design._pruneFeature( key );
-
-			design._target = design._anchorOf( 'features/'+ key+ '/knobs/'+ knob );
-			design._preview();
-		},
-
-		/**
-		 *	Take the entry of a feature away where it says what the feature is without it: the variant it has before anything is chosen, and
-		 *	every knob at the default its head gives it. The server holds no entry for such a feature either, so the screen that was put back
-		 *	is the stored one
-		 *
-		 *	@param		{string}	key
-		 *
-		 *	@return		void
-		 */
-		_pruneFeature : function( key ) {
-
-			const design = Nino.admin.design;
-			const feature = design._featuresOf()[key];
-			const entry = design._edit.features[key];
-
-			if( feature === undefined || entry === undefined || entry.set !== feature['default'] )
-				return;
-
-			const declared = ( ( feature.catalogue || {} )[entry.set] || {} ).knobs || {};
-
-			if( Object.keys( entry.knobs ).every( function( knob ) {
-				return declared[knob] === undefined || JSON.stringify( entry.knobs[knob] ) === JSON.stringify( declared[knob]['default'] );
-			} ) === true )
-				delete design._edit.features[key];
-		},
-
-		/**
-		 *	Choose one thing of the motion of the page: a part of its animation or of the hover of its pictures
-		 *
-		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
-		 *	@param		{string}	value			'' is what Nino.css does by itself
-		 *
-		 *	@return		void
-		 */
-		_setMotion : function( key, value ) {
-
-			const design = Nino.admin.design;
-			const selects = {};
-
-			design._edit.motion[key] = value;
-			design._target = design._anchorOf( 'motion/'+ key );
-
-			// A change of the animation plays it again; the hover of the pictures is seen under the pointer, and nothing is played
-			if( key.indexOf('hover') !== 0 )
-				design._replays = true;
-
-			Object.keys( design.MOTION_FOLLOWS ).forEach( function( part ) { selects[part] = dc.getElementById( 'design-motion-'+ part ) } );
-			design._motionOff( selects );
-			design._preview();
-		},
-
-		/**
-		 *	The table of the five roles of Nino.css, without its rows: the head of four columns - the family, the
-		 *	weight, the case and the size - and the body the rows of the roles are put into one by one, as the table
-		 *	gives them to the page (see _fillRow() and _fontRow()). The controls stand bare in the cells and the words
-		 *	are in the column heads, which is what keeps the table readable in a third of the screen; each control
-		 *	still carries its role and its column as its accessible name
-		 *
-		 *	@return		{Object}					{ table, body }: the table and the box of its rows
-		 */
-		_rolesTable : function() {
-
-			// The roles of a table are said out loud: the stylesheet lays the rows
-			// out as grids, and a display other than a table's takes the
-			// semantics of the element away
-			const table = dc.createElement('table');
-			table.className = 'design-fonts';
-			table.setAttribute( 'role', 'table' );
-
-			const thead = dc.createElement('thead');
-			thead.setAttribute( 'role', 'rowgroup' );
-			const heads = dc.createElement('tr');
-			heads.setAttribute( 'role', 'row' );
-
-			[ 'role', 'family', 'weight', 'uppercase', 'size' ].forEach( function( key ) {
-				const th = dc.createElement('th');
-				th.setAttribute( 'scope', 'col' );
-				th.setAttribute( 'role', 'columnheader' );
-				th.textContent = key === 'role' ? '' : Nino.content.getText('/_admin/design/font/head/'+ key );
-				heads.appendChild( th );
-			} );
-
-			thead.appendChild( heads );
-			table.appendChild( thead );
-
-			const tbody = dc.createElement('tbody');
-			tbody.setAttribute( 'role', 'rowgroup' );
-			table.appendChild( tbody );
-
-			return { table : table, body : tbody };
-		},
-
-		/**
-		 *	What a cell of a role is called: the role and the column, "Title - Weight" - the name of its control, and the
-		 *	label of the case switch
-		 *
-		 *	@param		{string}	role			A key of data.roles
-		 *	@param		{string}	column		family, weight, uppercase or size
-		 *
-		 *	@return		{string}
-		 */
-		_fontLabel : function( role, column ) {
-			return Nino.content.getText('/_admin/design/font/role/'+ role )+ ' - '+ Nino.content.getText('/_admin/design/font/head/'+ column );
-		},
-
-		/**
-		 *	One row of the table: a role, and the four things a role is given
-		 *
-		 *	@param		{string}	role			A key of data.roles
-		 *
-		 *	@return		{Element}
-		 */
-		_fontRow : function( role ) {
-
-			const data = Nino.admin.design._data;
-			const chosen = Nino.admin.design._edit.fonts[role] || {};
-			const name = Nino.content.getText('/_admin/design/font/role/'+ role );
-
-			const row = dc.createElement('tr');
-			row.dataset.role = role;
-			row.setAttribute( 'role', 'row' );
-
-			const head = dc.createElement('th');
-			head.setAttribute( 'scope', 'row' );
-			head.setAttribute( 'role', 'rowheader' );
-			head.textContent = name;
-			row.appendChild( head );
-
-			// A cell around a control that names itself: "Title - Weight"
-			const cell = function( control, column ) {
-				const td = dc.createElement('td');
-				td.setAttribute( 'role', 'cell' );
-				control.setAttribute( 'aria-label', Nino.admin.design._fontLabel( role, column ) );
-				td.appendChild( control );
-				row.appendChild( td );
-				return td;
-			};
-
-			const select = function( key, options, current ) {
-				const control = dc.createElement('select');
-				control.id = 'design-font-'+ role+ '-'+ key;
-				control.dataset.role = role;
-				control.dataset.key = key;
-				options.forEach( function( option ) {
-					const node = dc.createElement('option');
-					node.value = option.value;
-					node.textContent = option.label;
-					if( option.value === current )
-						node.selected = true;
-					control.appendChild( node );
-				} );
-				control.addEventListener( 'change', function() { Nino.admin.design._setFont( role, key, control.value ) } );
-				return cell( control, key );
-			};
-
-			select( 'family', ( ( data.options || {} )[role] || [ '' ] ).map( function( slug ) {
-				return { value : slug, label : Nino.admin.design._familyLabel( role, slug ) };
-			} ), chosen.family || '' );
-
-			select( 'weight', ( data.weights || [] ).map( function( weight ) {
-				return { value : weight, label : Nino.content.getText('/_admin/design/weight/'+ weight ) };
-			} ), chosen.weight || 'normal' );
-
-			// The code has no case switch: capitals in a block of code are not a
-			// choice anybody makes. Its cell says so rather than staying empty
-			if( role === 'code' ) {
-				const none = dc.createElement('td');
-				none.setAttribute( 'role', 'cell' );
-				none.className = 'design-fonts-none';
-				none.textContent = '—';
-				row.appendChild( none );
-			}
-			else {
-				const field = Nino.adminUi.switchField( {
-					key 		: 'design-font-'+ role+ '-uppercase',
-					label 	: Nino.admin.design._fontLabel( role, 'uppercase' ),
-					checked	: chosen.uppercase === true,
-				} );
-				const input = field.querySelector('input');
-				input.id = 'design-font-'+ role+ '-uppercase';
-				input.dataset.role = role;
-				input.dataset.key = 'uppercase';
-				input.addEventListener( 'change', function() { Nino.admin.design._setFont( role, 'uppercase', input.checked ) } );
-				const td = dc.createElement('td');
-				td.setAttribute( 'role', 'cell' );
-				td.className = 'design-fonts-switch';
-				td.appendChild( field );
-				row.appendChild( td );
-			}
-
-			/*	The size is typed, in rem, and the field shows the size that is in
-				force: the one that was chosen, else the one Nino.css gives the role.
-				It is the field's value and not its placeholder, so that the spinner
-				counts from the size the page has - from an empty field it begins at
-				the least of the role. The number is the one the field shows and
-				takes, with the point: a number field drops a typed comma. What is typed
-				is held inside the bounds of the role the way the server holds it, and
-				the field then shows what was kept; a size that comes to the one
-				Nino.css gives the role is kept as empty, and the role goes on following
-				its default. The field steps by a tenth, which every bound is on: that
-				is the spinner's step and the browser's own hint of what is valid, and
-				not the model's - a typed 1.25 stays 1.25	*/
-			const bounds = ( data.bounds || {} )[role] || [];
-			const size = dc.createElement('input');
-			size.type = 'number';
-			size.id = 'design-font-'+ role+ '-size';
-			size.dataset.role = role;
-			size.dataset.key = 'size';
-			size.setAttribute( 'inputmode', 'decimal' );
-			size.setAttribute( 'step', '.1' );
-			size.setAttribute( 'min', String( bounds[0] ) );
-			size.setAttribute( 'max', String( bounds[1] ) );
-			size.value = Nino.admin.design._sizeInForce( role );
-			size.addEventListener( 'change', function() {
-				Nino.admin.design._setFont( role, 'size', Nino.admin.design._keepSize( role, size.value ) );
-				size.value = Nino.admin.design._sizeInForce( role );
-			} );
-
-			const td = cell( size, 'size' );
-			td.className = 'design-fonts-size';
-
-			const unit = dc.createElement('span');
-			unit.className = 'design-fonts-unit';
-			unit.textContent = Nino.content.getText('/_admin/design/fontsize/unit');
-			td.appendChild( unit );
-
-			return row;
-		},
-
-		/**
-		 *	A family as a select names it: a system stack in the words of the
-		 *	workbench, a webface by its own name
-		 *
-		 *	@param		{string}	role
-		 *	@param		{string}	slug				'' is the system's own, for the code the monospace
-		 *
-		 *	@return		{string}
-		 */
-		_familyLabel : function( role, slug ) {
-
-			if( slug === '' )
-				return Nino.content.getText('/_admin/design/family/'+ ( role === 'code' ? 'default-code' : 'default' ) );
-
-			const family = ( ( Nino.admin.design._data || {} ).families || {} )[slug] || {};
-
-			return family.system === true ? Nino.content.getText('/_admin/design/family/'+ slug ) : String( family.name || slug );
-		},
-
-		/**
-		 *	What was typed in a size, as the model keeps it: a number of rem held
-		 *	inside the bounds of the role, rounded to three decimals and written
-		 *	as short as it can be - what Fonts::size() answers to the same input.
-		 *	'' is the default, and so is whatever is no number
-		 *
-		 *	@param		{string}	role
-		 *	@param		{string}	typed				The value of the field
-		 *
-		 *	@return		{string}							'2.4', or '' for the default
-		 */
-		_clampSize : function( role, typed ) {
-
-			const bounds = ( ( Nino.admin.design._data || {} ).bounds || {} )[role];
-			const number = String( typed ).trim() === '' ? NaN : Number( typed );
-
-			if( bounds === undefined || isFinite( number ) === false )
-				return '';
-
-			return String( Math.round( Math.max( bounds[0], Math.min( bounds[1], number ) ) * 1000 ) / 1000 );
-		},
-
-		/**
-		 *	What was typed in a size, as the model keeps it: what _clampSize() makes
-		 *	of it, and '' where that comes to the size Nino.css gives the role. A role
-		 *	set to its default and a role left alone are one thing, and the model has
-		 *	one word for it
-		 *
-		 *	@param		{string}	role
-		 *	@param		{string}	typed				The value of the field
-		 *
-		 *	@return		{string}							'2.4', or '' for the default
-		 */
-		_keepSize : function( role, typed ) {
-
-			const kept = Nino.admin.design._clampSize( role, typed );
-			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
-
-			return kept !== '' && Number( kept ) === Number( given ) ? '' : kept;
-		},
-
-		/**
-		 *	The size of a role that is in force: the one that was chosen, else the one
-		 *	Nino.css gives the role. What its field shows
-		 *
-		 *	@param		{string}	role
-		 *
-		 *	@return		{string}							'1.6'
-		 */
-		_sizeInForce : function( role ) {
-
-			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
-
-			return ( Nino.admin.design._edit.fonts[role] || {} ).size || ( given === undefined ? '' : String( given ) );
-		},
-
-		/**
-		 *	Change one thing of one role
-		 *
-		 *	@param		{string}		role
-		 *	@param		{string}		key				family, weight, uppercase or size
-		 *	@param		{*}					value
-		 *
-		 *	@return		void
-		 */
-		_setFont : function( role, key, value ) {
-
-			Nino.admin.design._edit.fonts[role][key] = value;
-			Nino.admin.design._target = Nino.admin.design._anchorOf( 'fonts/'+ role );
-			Nino.admin.design._preview();
-		},
-
-		/**
-		 *	The Typefaces tab, the loader: two cards. The first holds the families the
-		 *	project has installed, each with its name set in its own face, its weights, its
-		 *	version and licence, and the button that removes it; the second the list of those
-		 *	the repository offers, read when its button is pressed, with a search field, the
-		 *	categories as a strip and pages of FACES_PER_PAGE.
-		 *
-		 *	Both halves are drawn from the answer the server gives after each action of the
-		 *	tab, kept in _faces. The cached list is asked for whenever the tab is opened -
-		 *	design/webfonts/list answers from data/ without a request of its own, and not
-		 *	while an action is on its way, whose answer is the state - and the repository
-		 *	only by the button. An install and a removal are made when their button is
-		 *	pressed, and are no part of the draft: the line of the action bar says what they
-		 *	did, and Reset has nothing to bring back.
-		 *
-		 *	@param		{Element}	body		The box the column keeps for the tab
-		 *
-		 *	@return		void
-		 */
-		_renderTypefaces : function( body ) {
-
-			const installed = dc.createElement('div');
-			installed.id = 'design-faces-installed';
-			installed.className = 'nino-admin-card design-block';
-
-			const available = dc.createElement('div');
-			available.id = 'design-faces-available';
-			available.className = 'nino-admin-card design-block';
-
-			body.appendChild( installed );
-			body.appendChild( available );
-
-			// By the node, not by its id: this column is not in the document yet on the first render
-			Nino.admin.design._paintInstalled( installed );
-			Nino.admin.design._paintAvailable( available );
-
-			// An action that is on its way answers with the state it leaves, and that answer draws the screen: a list read now could be older than it
-			if( Nino.admin.design._facesBusy === false )
-				Nino.admin.design._loadFaces( false );
-		},
-
-		/**
-		 *	Draw both halves of the loader again, where the tab is open
-		 *
-		 *	@return		void
-		 */
-		_paintFaces : function() {
-
-			const installed = dc.getElementById('design-faces-installed');
-			const available = dc.getElementById('design-faces-available');
-
-			if( installed !== null )
-				Nino.admin.design._paintInstalled( installed );
-
-			if( available !== null )
-				Nino.admin.design._paintAvailable( available );
-		},
-
-		/**
-		 *	Ask for the list. Without `refresh` the server answers with the list it kept, which is what
-		 *	opening the tab does; with it the repository is asked, which only the button does
-		 *
-		 *	@param		{boolean}	refresh
-		 *
-		 *	@return		void
-		 */
-		_loadFaces : function( refresh ) {
-
-			const design = Nino.admin.design;
-			const stamp = ++design._facesStamp;
-
-			if( refresh === true ) {
-				design._facesBusy = true;
-				design._say( dc.getElementById('design-msg'), '' );
-				design._paintFaces();
-			}
-
-			design._apiCall( 'webfonts/list', { refresh : refresh }, function( status, response ) {
-
-				const line = dc.getElementById('design-msg');
-
-				if( refresh === true )
-					design._facesBusy = false;
-
-				if( status !== 200 || response === null ) {
-					design._paintFaces();
-					return design._say( line, Nino.adminUi.api.errorText( status, response, '/_admin/design/typefaces/error/list' ), 'nino-admin-error' );
-				}
-
-				// Only the latest answer is the state: one asked for before an install is the state before it
-				if( stamp === design._facesStamp ) {
-					design._faces = response;
-					design._facesPage = 0;
-
-					// A list loaded again starts at its first page, and that page at the top of its box: what the
-					// box before was scrolled to was another list's (_paintAvailable() carries the scroll over)
-					const box = dc.getElementById('design-faces-results');
-
-					if( box !== null )
-						box.scrollTop = 0;
-				}
-
-				design._paintFaces();
-
-				if( refresh === true )
-					design._say( line, response.refusal !== ''
-						? design._refusal( response )
-						: design._text( '/_admin/design/typefaces/msg/loaded', response.families.length ), response.refusal !== '' ? 'nino-admin-error' : '', response.refusal );
-			} );
-		},
-
-		/**
-		 *	Install a family of the list, or update it
-		 *
-		 *	@param		{string}	slug
-		 *
-		 *	@return		void
-		 */
-		_installFace : function( slug ) {
-			Nino.admin.design._faceAction( 'webfonts/install', slug, '/_admin/design/typefaces/error/install' );
-		},
-
-		/**
-		 *	Remove an installed family
-		 *
-		 *	@param		{string}	slug
-		 *
-		 *	@return		void
-		 */
-		_removeFace : function( slug ) {
-			Nino.admin.design._faceAction( 'webfonts/remove', slug, '/_admin/design/typefaces/error/remove' );
-		},
-
-		/**
-		 *	One action of the tab on one family. The buttons are switched off while it is on
-		 *	its way, and the server's answer - the same as the list gives, after the change -
-		 *	draws both halves again; the line of the action bar says what happened, or why not.
-		 *	The selects of the roles list the families too, so design/list is asked again
-		 *
-		 *	@param		{string}	endpoint		webfonts/install or webfonts/remove
-		 *	@param		{string}	slug
-		 *	@param		{string}	failure			The text of what a refusal is told as: the reason is its %s
-		 *
-		 *	@return		void
-		 */
-		_faceAction : function( endpoint, slug, failure ) {
-
-			const design = Nino.admin.design;
-
-			if( design._facesBusy === true )
-				return;
-
-			const stamp = ++design._facesStamp;
-
-			design._facesBusy = true;
-			design._say( dc.getElementById('design-msg'), '' );
-			design._paintFaces();
-
-			design._apiCall( endpoint, { slug : slug }, function( status, response ) {
-
-				const line = dc.getElementById('design-msg');
-
-				design._facesBusy = false;
-
-				if( status !== 200 || response === null ) {
-					design._paintFaces();
-
-					// A family a role still uses is told with the roles, in the words of the workbench (the
-					// server names them as the params of the code); what else the server refused for, in its
-					// own words; a failure that has none is told the way the workbench tells one
-					const roles = response !== null && response.code === 'used' && Array.isArray( response.params )
-						? response.params.map( function( role ) { return Nino.content.getText( '/_admin/design/font/role/'+ role ) } ).join( ', ' ) : null;
-					const reason = response !== null && typeof response.error === 'string' && response.error !== ''
-						? response.error : Nino.adminUi.api.errorText( status, response, '' );
-
-					return design._say( line, roles !== null ? design._text( '/_admin/design/typefaces/error/used', roles ) : design._text( failure, reason ), 'nino-admin-error' );
-				}
-
-				if( stamp === design._facesStamp )
-					design._faces = response;
-
-				design._paintFaces();
-				design._say( line, response.msg );
-				design._relist();
-			} );
-		},
-
-		/**
-		 *	Take over what design/list says now of the families - after an install or a removal
-		 *	the selects of the roles have one more or one less, and the state of the files
-		 *	may be another one, since a family a role uses can have been updated. The selection
-		 *	being edited is not touched; the Typefaces tab, where it is open, is drawn
-		 *	again, since the roles and the settings of the repository it reads are what
-		 *	design/list says
-		 *
-		 *	@param		{Function}	[then]		Called when the answer is taken over, and when it could not be: whoever
-		 *																waits for the list goes on with the one it has
-		 *
-		 *	@return		void
-		 */
-		_relist : function( then ) {
-
-			Nino.admin.design._apiCall( 'list', {}, function( status, response ) {
-
-				if( status === 200 && response !== null && Nino.admin.design._data !== null ) {
-					Nino.admin.design._data = response;
-					Nino.admin.design._paintState();
-					Nino.admin.design._paintFaces();
-				}
-
-				if( typeof then === 'function' )
-					then();
-			} );
-		},
-
-		/**
-		 *	The roles that have a family: those of the saved setup, as the server says, and those the selection
-		 *	being edited gives it - a family one has been chosen for and not yet saved is as little to be removed
-		 *
-		 *	@param		{string}	slug
-		 *
-		 *	@return		{Array}						Keys of data.roles, in their order
-		 */
-		_rolesOf : function( slug ) {
-
-			const saved = ( ( Nino.admin.design._faces || {} ).uses || {} )[slug] || [];
-			const edit = ( Nino.admin.design._edit || {} ).fonts || {};
-
-			return ( ( Nino.admin.design._data || {} ).roles || [] ).filter( function( role ) {
-				return saved.indexOf( role ) !== -1 || ( edit[role] || {} ).family === slug;
-			} );
-		},
-
-		/**
-		 *	The first half: the families the project has installed, one row each, then the
-		 *	directories that are none - greyed, with the reason, and a button that removes them
-		 *
-		 *	@param		{Element}	card
-		 *
-		 *	@return		void
-		 */
-		_paintInstalled : function( card ) {
-
-			const design = Nino.admin.design;
-			const faces = design._faces;
-
-			card.innerHTML = '';
-			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/installed/title') ) );
-
-			if( faces === null )
-				return;
-
-			const slugs = Object.keys( faces.installed || {} );
-			const broken = Object.keys( faces.broken || {} );
-
-			if( slugs.length === 0 && broken.length === 0 )
-				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/installed/empty') ) );
-
-			slugs.forEach( function( slug ) {
-				card.appendChild( design._installedRow( slug, faces.installed[slug] ) );
-			} );
-
-			broken.forEach( function( slug ) {
-				card.appendChild( design._brokenRow( slug, faces.broken[slug] ) );
-			} );
-		},
-
-		/**
-		 *	One installed family. Its name is set in the face of its first normal file, which
-		 *	the project serves itself and so is loaded as the row is drawn. The button that removes
-		 *	it is off while a role uses it, and its title names the roles - and so does the line
-		 *	under the name
-		 *
-		 *	@param		{string}	slug
-		 *	@param		{Object}	family			One entry of the answer's `installed`
-		 *
-		 *	@return		{Element}
-		 */
-		_installedRow : function( slug, family ) {
-
-			const design = Nino.admin.design;
-			const roles = design._rolesOf( slug );
-			const used = design._text( '/_admin/design/typefaces/installed/used', roles.map( function( role ) {
-				return Nino.content.getText('/_admin/design/font/role/'+ role );
-			} ).join(', ') );
-
-			const notes = [ design._note( [ design._weights( family.weights, family.axis ), family.version, family.license ].join(' · ') ) ];
-
-			if( roles.length > 0 )
-				notes.push( design._note( used ) );
-
-			const row = design._faceRow( slug, family.name, notes );
-
-			design._setFace( 'installed', slug, family.face, row.name );
-
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/design/typefaces/installed/remove');
-			remove.title = roles.length > 0 ? used : remove.textContent;
-			// A row of buttons that all say Remove is read out with the name of its family
-			remove.setAttribute( 'aria-label', remove.textContent+ ' - '+ family.name );
-			remove.disabled = roles.length > 0 || design._facesBusy === true;
-			remove.addEventListener( 'click', function() { design._removeFace( slug ) } );
-			row.element.appendChild( remove );
-
-			return row.element;
-		},
-
-		/**
-		 *	A directory below assets/fonts/ that is no family: greyed out, with the reason - and the
-		 *	button that removes it, which works whatever the reason is
-		 *
-		 *	@param		{string}	slug				The name of the directory
-		 *	@param		{string}	reason
-		 *
-		 *	@return		{Element}
-		 */
-		_brokenRow : function( slug, reason ) {
-
-			const design = Nino.admin.design;
-			const row = design._faceRow( slug, slug, [ design._note( design._text( '/_admin/design/typefaces/installed/broken', reason ) ) ] );
-
-			row.element.classList.add('design-face-row--off');
-
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/design/typefaces/installed/remove');
-			remove.setAttribute( 'aria-label', remove.textContent+ ' - '+ slug );
-			remove.disabled = design._facesBusy === true;
-			remove.addEventListener( 'click', function() { design._removeFace( slug ) } );
-			row.element.appendChild( remove );
-
-			return row.element;
-		},
-
-		/**
-		 *	The weights of a family as a row says them: the numbers, or 'variable 100-900' for a weight axis
-		 *
-		 *	@param		{Array}		weights			Numbers, and the axis of a file as '100 900'
-		 *	@param		{Array}		[axis]			[ from, to ], where the family has one
-		 *
-		 *	@return		{string}
-		 */
-		_weights : function( weights, axis ) {
-
-			if( Array.isArray( axis ) === true && axis.length === 2 )
-				return Nino.admin.design._text( '/_admin/design/typefaces/weights/variable', axis[0]+ '-'+ axis[1] );
-
-			return ( weights || [] ).map( function( weight ) {
-				return String( weight ).indexOf(' ') === -1 ? String( weight )
-					: Nino.admin.design._text( '/_admin/design/typefaces/weights/variable', String( weight ).replace( ' ', '-' ) );
-			} ).join(', ');
-		},
-
-		/**
-		 *	A row of the screen: the label a knob row has - the icon, and a box with the name over its
-		 *	notes - and, on its far side, whatever button the caller puts there
-		 *
-		 *	@param		{string}	slug
-		 *	@param		{string}	name
-		 *	@param		{Array}		notes			Elements, see _note()
-		 *
-		 *	@return		{{element: Element, name: Element}}		The row, and the element the name is in: the one that is set in the face
-		 */
-		_faceRow : function( slug, name, notes ) {
-
-			const row = dc.createElement('div');
-			row.className = 'design-face-row';
-			row.dataset.slug = slug;
-
-			const label = dc.createElement('span');
-			label.className = 'design-knob-label design-face-label';
-
-			const icon = Nino.admin.design._icon('typefaces/family');
-
-			if( icon !== null )
-				label.appendChild( icon );
-
-			const box = dc.createElement('span');
-			box.className = 'design-knob-text';
-
-			const title = dc.createElement('span');
-			title.className = 'design-face-name';
-			title.textContent = name;
-			box.appendChild( title );
-
-			notes.forEach( function( note ) { box.appendChild( note ) } );
-
-			label.appendChild( box );
-			row.appendChild( label );
-
-			return { element : row, name : title };
-		},
-
-		/**
-		 *	The line under the name of a row
-		 *
-		 *	@param		{string}	text
-		 *
-		 *	@return		{Element}
-		 */
-		_note : function( text ) {
-
-			const small = dc.createElement('small');
-			small.className = 'design-face-note';
-			small.textContent = text;
-
-			return small;
-		},
-
-		/**
-		 *	A sentence where there is nothing to draw
-		 *
-		 *	@param		{string}	text
-		 *	@param		{boolean}	[failure]		The sentence is why there is nothing
-		 *
-		 *	@return		{Element}
-		 */
-		_hint : function( text, failure ) {
-
-			const p = dc.createElement('p');
-			p.className = failure === true ? 'nino-admin-error' : 'nino-admin-hint';
-			p.textContent = text;
-
-			return p;
-		},
-
-		/**
-		 *	The second half: the button that loads the list, and what the list is. Where the repository is switched
-		 *	off, or has no key to be read with, it is one sentence; where it could not be read, a sentence of the
-		 *	kind of refusal stands in the place of the list, and the reason is its title. With a list there are a
-		 *	search field, the categories as a strip and the families, a page at a time, in a box that scrolls.
-		 *	A card that is drawn again - after an install or a removal, or a list that was loaded - has its box
-		 *	scrolled to where the box before it was
-		 *
-		 *	@param		{Element}	card
-		 *
-		 *	@return		void
-		 */
-		_paintAvailable : function( card ) {
-
-			const design = Nino.admin.design;
-			const faces = design._faces;
-
-			/*	What design/list said when the panel was opened, until the screen has an answer of its own: the settings
-				of the repository are changed in another panel of the same page, and the answer is read on every visit	*/
-			const web = faces === null ? ( ( design._data || {} ).webfonts || {} ) : { url : faces.url !== '', key : faces.key === true };
-
-			const before = dc.getElementById('design-faces-results');
-			const scrolled = before === null ? 0 : before.scrollTop;
-
-			card.innerHTML = '';
-			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/available/title') ) );
-
-			if( web.url !== true )
-				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/off') ) );
-
-			if( web.key !== true )
-				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/nokey') ) );
-
-			const bar = dc.createElement('div');
-			bar.className = 'design-faces-load';
-
-			const load = dc.createElement('button');
-			load.type = 'button';
-			load.id = 'design-faces-load';
-			load.className = 'nino-admin-btn-secondary';
-			load.textContent = Nino.content.getText('/_admin/design/typefaces/available/load');
-			load.disabled = design._facesBusy === true;
-			load.addEventListener( 'click', function() { design._loadFaces( true ) } );
-			bar.appendChild( load );
-
-			if( faces !== null && faces.fetched > 0 ) {
-				const when = dc.createElement('span');
-				when.className = 'design-faces-when';
-				when.textContent = design._text( '/_admin/design/typefaces/available/loaded', design._when( new Date( faces.fetched * 1000 ).toISOString() ) );
-				// Where the list came from
-				when.title = faces.url;
-				bar.appendChild( when );
-			}
-
-			card.appendChild( bar );
-
-			if( faces === null )
-				return;
-
-			if( faces.refusal !== '' ) {
-
-				const refusal = design._hint( design._refusal( faces ), true );
-
-				// The reason is the server's, in English: what stands behind the sentence
-				refusal.title = faces.refusal;
-
-				return card.appendChild( refusal );
-			}
-
-			if( faces.fetched === 0 )
-				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/unloaded') ) );
-
-			if( ( faces.families || [] ).length === 0 )
-				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/none') ) );
-
-			const search = dc.createElement('input');
-			search.type = 'search';
-			search.id = 'design-faces-search';
-			search.className = 'design-faces-search';
-			search.placeholder = Nino.content.getText('/_admin/design/typefaces/available/search');
-			search.setAttribute( 'aria-label', search.placeholder );
-			search.value = design._facesQuery;
-			search.addEventListener( 'input', function() {
-				design._facesQuery = search.value;
-				design._facesPage = 0;
-				design._paintResults();
-			} );
-			card.appendChild( search );
-
-			const categories = design._stripRow( 'typefaces/category', Nino.content.getText('/_admin/design/typefaces/available/category'), '',
-				design.FACE_CATEGORIES.map( function( key ) {
-					return { value : key, label : Nino.content.getText('/_admin/design/typefaces/category/'+ key ) };
-				} ), design._facesCategory, function( key ) {
-					design._facesCategory = key;
-					design._facesPage = 0;
-					design._paintResults();
-				} );
-
-			// Seven names are one row of the strip in a third of the screen, every word whole (see .design-faces-categories)
-			categories.classList.add('design-faces-categories');
-			card.appendChild( categories );
-
-			// The rows of a page scroll in this box, and the pager stands after it in the card (see _paintResults())
-			const results = dc.createElement('div');
-			results.id = 'design-faces-results';
-			card.appendChild( results );
-
-			design._paintResults( results );
-			results.scrollTop = scrolled;
-		},
-
-		/**
-		 *	The sentence for a list that could not be loaded, in the words of the workbench: one for
-		 *	each thing a refusal can be about (see Webfonts::REFUSALS in the feature's class). The
-		 *	reason the server gives is English and goes beside it, as the title of what says it
-		 *
-		 *	@param		{Object}	faces			An answer of design/webfonts/list with a refusal
-		 *
-		 *	@return		{string}
-		 */
-		_refusal : function( faces ) {
-			return Nino.content.getText('/_admin/design/typefaces/available/'+ faces.refusalKind );
-		},
-
-		/**
-		 *	The families of the list that the search and the category let through, a page of them in
-		 *	the box, and the pager after the box in the card - not in it: the box scrolls and the pager
-		 *	does not, so Previous and Next are always in reach. The box is fitted to the window once it
-		 *	has its rows (see _fitFaces()). Drawn alone as the words are typed, so that the field keeps
-		 *	its focus
-		 *
-		 *	@param		{Element}	[results]		The box, for one that is built and not mounted yet
-		 *
-		 *	@return		void
-		 */
-		_paintResults : function( results ) {
-
-			const design = Nino.admin.design;
-
-			results = results || dc.getElementById('design-faces-results');
-
-			if( results === null || results === undefined || design._faces === null )
-				return;
-
-			results.innerHTML = '';
-
-			// A page starts at the top of its box, whatever the page before was scrolled to
-			results.scrollTop = 0;
-
-			// The pager of the page before goes with its rows
-			const before = results.parentNode.querySelector('.design-faces-pager');
-
-			if( before !== null )
-				before.remove();
-
-			// The rows of the page before are gone: what watched them has nothing left to watch
-			if( design._facesObserver !== null )
-				design._facesObserver.disconnect();
-
-			const query = design._facesQuery.trim().toLowerCase();
-
-			const found = ( design._faces.families || [] ).filter( function( entry ) {
-				return ( design._facesCategory === 'all' || entry.category === design._facesCategory )
-					&& ( query === '' || entry.family.toLowerCase().indexOf( query ) !== -1 );
-			} );
-
-			if( found.length === 0 ) {
-				results.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/nomatch') ) );
-
-				// A sentence has no rows to fit the window to: the box lets go of the height it had
-				return design._fitFaces();
-			}
-
-			const pages = Math.ceil( found.length / design.FACES_PER_PAGE );
-
-			design._facesPage = Math.max( 0, Math.min( pages - 1, design._facesPage ) );
-
-			found.slice( design._facesPage * design.FACES_PER_PAGE, ( design._facesPage + 1 ) * design.FACES_PER_PAGE ).forEach( function( entry ) {
-				results.appendChild( design._availableRow( entry ) );
-			} );
-
-			if( pages > 1 )
-				results.insertAdjacentElement( 'afterend', design._pager( pages ) );
-
-			design._fitFaces();
-		},
-
-		/**
-		 *	One family the repository offers: its name, which is set in its own face once the row is in
-		 *	view, its weights and its licence - a link to where the files came from -, and on the far side
-		 *	what can be done about it: install it; or, where the same version is there, that it is
-		 *	installed; or, where another version is, update to the one of the list. A family the feature
-		 *	brings itself is installed, in a way - the answer names those, and design/list does not: what
-		 *	it says of the families has the installed ones among them
-		 *
-		 *	@param		{Object}	entry				One family of the list
-		 *
-		 *	@return		{Element}
-		 */
-		_availableRow : function( entry ) {
-
-			const design = Nino.admin.design;
-			const installed = ( ( design._faces || {} ).installed || {} )[entry.slug] || null;
-			const brought = ( ( design._faces || {} ).builtin || [] ).indexOf( entry.slug ) !== -1;
-
-			const licence = dc.createElement('a');
-			licence.href = entry.source;
-			licence.target = '_blank';
-			licence.rel = 'noopener noreferrer';
-			licence.title = entry.source;
-			licence.textContent = entry.license;
-
-			const separator = dc.createElement('span');
-			separator.textContent = ' · ';
-
-			const weights = dc.createElement('span');
-			weights.textContent = design._weights( entry.weights );
-
-			const note = dc.createElement('small');
-			note.className = 'design-face-note';
-			note.appendChild( weights );
-			note.appendChild( separator );
-			note.appendChild( licence );
-
-			const row = design._faceRow( entry.slug, entry.family, [ note ] );
-
-			// Set in its own face when the row comes into view: one file for a family, the preview the repository publishes
-			row.element.dataset.preview = entry.preview;
-			design._observe().observe( row.element );
-
-			if( installed !== null && installed.version === entry.version || brought === true ) {
-				const state = dc.createElement('span');
-				state.className = 'design-face-state';
-				state.textContent = Nino.content.getText('/_admin/design/typefaces/available/installed');
-				row.element.appendChild( state );
-
-				return row.element;
-			}
-
-			const install = dc.createElement('button');
-			install.type = 'button';
-			install.className = 'nino-admin-btn-primary';
-			install.textContent = installed === null ? Nino.content.getText('/_admin/design/typefaces/available/install')
-				: design._text( '/_admin/design/typefaces/available/update', entry.version );
-			install.setAttribute( 'aria-label', install.textContent+ ' - '+ entry.family );
-			install.disabled = design._facesBusy === true;
-			install.addEventListener( 'click', function() { design._installFace( entry.slug ) } );
-			row.element.appendChild( install );
-
-			return row.element;
-		},
-
-		/**
-		 *	Previous, the place in the pages, Next
-		 *
-		 *	@param		{number}	pages
-		 *
-		 *	@return		{Element}
-		 */
-		_pager : function( pages ) {
-
-			const design = Nino.admin.design;
-
-			const pager = dc.createElement('div');
-			pager.className = 'design-faces-pager';
-
-			const step = function( label, towards ) {
-				const button = dc.createElement('button');
-				button.type = 'button';
-				button.className = 'nino-admin-btn-secondary';
-				button.textContent = Nino.content.getText('/_admin/design/typefaces/page/'+ label );
-				button.disabled = design._facesPage + towards < 0 || design._facesPage + towards > pages - 1;
-				button.addEventListener( 'click', function() {
-					design._facesPage += towards;
-					design._paintResults();
-				} );
-				return button;
-			};
-
-			const place = dc.createElement('span');
-			place.className = 'design-faces-place';
-			place.textContent = design._text( '/_admin/design/typefaces/page/of', design._facesPage + 1, pages );
-
-			pager.appendChild( step( 'previous', -1 ) );
-			pager.appendChild( place );
-			pager.appendChild( step( 'next', 1 ) );
-
-			return pager;
-		},
-
-		/**
-		 *	What loads the face of a row of the list when the row comes into view: one observer for the visit,
-		 *	made when the first row is drawn. A row that enters the view is not watched any more, and sets
-		 *	its name in the preview of its family
-		 *
-		 *	@return		{IntersectionObserver}
-		 */
-		_observe : function() {
-
-			const design = Nino.admin.design;
-
-			if( design._facesObserver === null )
-				design._facesObserver = new wn.IntersectionObserver( function( entries ) {
-
-					entries.forEach( function( seen ) {
-
-						if( seen.isIntersecting !== true )
-							return;
-
-						design._facesObserver.unobserve( seen.target );
-
-						design._setFace( 'available', seen.target.dataset.slug, seen.target.dataset.preview, seen.target.querySelector('.design-face-name') );
-					} );
-				} );
-
-			return design._facesObserver;
-		},
-
-		/**
-		 *	Set a name in the face of the family it is the name of. The face is a FontFace the document gets
-		 *	once for each family of a kind, however often the row is drawn again - a page turned back
-		 *	to, a search emptied - and it loads from the url it is given: the project's own file for an
-		 *	installed family, the preview the repository publishes for one on offer
-		 *
-		 *	@param		{string}	kind				installed or available: the same family is two faces
-		 *	@param		{string}	slug
-		 *	@param		{string}	url
-		 *	@param		{Element}	name				The element the name stands in
-		 *
-		 *	@return		void
-		 */
-		_setFace : function( kind, slug, url, name ) {
-
-			const design = Nino.admin.design;
-			const family = 'design-'+ kind+ '-'+ slug;
-
-			if( design._facesLoaded[family] === undefined ) {
-
-				const face = new wn.FontFace( family, 'url('+ JSON.stringify( url )+ ')' );
-
-				design._facesLoaded[family] = face;
-				dc.fonts.add( face );
-
-				// A file that is not there, or not to be read from here, leaves the name in the face of the page
-				face.load().catch( function() {} );
-			}
-
-			name.style.fontFamily = '"'+ family+ '", system-ui, sans-serif';
-		},
-
-		/**
-		 *	Let go of the faces the names were set in, and of what watched the rows: the tab is left, and
-		 *	a face is a file the browser holds
-		 *
-		 *	@return		void
-		 */
-		_dropFaces : function() {
-
-			const design = Nino.admin.design;
-
-			if( design._facesObserver !== null ) {
-				design._facesObserver.disconnect();
-				design._facesObserver = null;
-			}
-
-			Object.keys( design._facesLoaded ).forEach( function( family ) {
-				dc.fonts.delete( design._facesLoaded[family] );
-			} );
-
-			design._facesLoaded = {};
-		},
-
-		/**
-		 *	Whether the loader is on show: the Typefaces tab is the one that is open
-		 *
-		 *	@return		{boolean}
-		 */
-		_onInstall : function() {
-			return Nino.admin.design._tab === 'typefaces';
-		},
-
-		/**
 		 *	A tab with screens (see SCREENS): the strip of them and under it the box the screen that is open is
 		 *	drawn into. The strip is the element a switch is made on, and it stays where it is while the screen
 		 *	under it is drawn again (see _switchGroup())
@@ -4665,7 +2152,7 @@
 		},
 
 		/**
-		 *	The screen that is open of a tab with screens, into the box that is kept for it: the Theme tab's, which is
+		 *	The screen that is open of what is cut into screens, into the box that is kept for it: the themes', which is
 		 *	the one that has them (see SCREENS). A screen is drawn again whenever it is opened, from what is known
 		 *	then: the theme a create has just made is in the list
 		 *
@@ -4692,7 +2179,7 @@
 		 */
 		_groupStrip : function( tab, keys ) {
 
-			return Nino.admin.design._tabs( Nino.content.getText('/_admin/design/tab/'+ tab+ '/label'), 'design-groups', 'group',
+			return Nino.admin.design._tabs( Nino.content.getText('/_admin/nav/themes'), 'design-groups', 'group',
 				keys.map( function( key ) {
 					return { key : key, label : Nino.content.getText('/_admin/design/group/'+ tab+ '/'+ key+ '/label') };
 				} ), Nino.admin.design._groupOf( tab ), function( key ) {
@@ -4767,393 +2254,31 @@
 		},
 
 		/**
-		 *	What the strip of a knob is made of: its label and its options, from the least to the most - the numbers
-		 *	-2 to +2 of a scale, the three words that knob has for a choice. The kind is what design/list says of the
-		 *	knob in its part
+		 *	Take over what design/list says now of the families - after an install or a removal
+		 *	of the loader, or of the typefaces a theme that is loaded asked for, the selects of the
+		 *	roles have one more or one less, and the state of the files may be another one, since a
+		 *	family a role uses can have been updated. The selection being edited is not touched; the
+		 *	loader, where it is open, is drawn again, since the roles and the settings of the
+		 *	repository it reads are what design/list says
 		 *
-		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
-		 *	@param		{string}		knob
-		 *
-		 *	@return		{Object}							{ name, options }, the options as { value, label, title }
-		 */
-		_knobStrip : function( part, knob ) {
-
-			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
-			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
-			const positions = Nino.admin.design._positions( kind );
-
-			return {
-				name 		: Nino.content.getText( base+ '/label' ),
-				options	: kind === 'choice'
-					? positions.map( function( position ) {
-						const label = Nino.content.getText( base+ '/'+ Nino.admin.design._word( position ) );
-						return { value : position, label : label, title : label };
-					} )
-					: Nino.admin.design._numbered( positions, 0 ),
-			};
-		},
-
-		/**
-		 *	One knob, as a strip. A scale is five numbers, -2 to +2, and the note under
-		 *	its name says which way they go; a choice is three alternatives, each in the
-		 *	words that knob has for it - "tight, normal, airy" is not the same sentence
-		 *	as "sharp, normal, round". The kind is what design/list says of the knob
-		 *	in its part
-		 *
-		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
-		 *	@param		{string}		knob
-		 *	@param		{boolean}		answered		Whether the chosen template declares it
-		 *
-		 *	@return		{Element}
-		 */
-		_knobRow : function( part, knob, answered ) {
-
-			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
-			const strip = Nino.admin.design._knobStrip( part, knob );
-			const name = strip.name;
-
-			/*	The knob's own name and the terse note under it, both out of the
-				panel's text files: a knob is one key in every locale. Where the
-				template does not answer to it the note is the reason it is grey.
-				An icon stands before them, for what the knob sets	*/
-			const field = Nino.admin.design._stripRow( part+ '/'+ knob, name,
-				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ),
-				strip.options, ( Nino.admin.design._edit.knobs[part] || {} )[knob] || 0, function( position ) {
-					Nino.admin.design._setStep( part, knob, position );
-				}, answered === false );
-
-			field.dataset.knob = knob;
-
-			return field;
-		},
-
-		/**
-		 *	Move a knob
-		 *
-		 *	@param		{string}		part			The part the knob belongs to
-		 *	@param		{string}		knob			A knob of that part
-		 *	@param		{number}		position	-2 to +2 for a scale, -1 to +1 for a choice
+		 *	@param		{Function}	[then]		Called when the answer is taken over, and when it could not be: whoever
+		 *																waits for the list goes on with the one it has
 		 *
 		 *	@return		void
 		 */
-		_setStep : function( part, knob, position ) {
+		_relist : function( then ) {
 
-			Nino.admin.design._edit.knobs[part][knob] = position;
-			// A change is looked at where it shows: one target for it, which the jump
-			// that follows the preview goes to
-			Nino.admin.design._target = Nino.admin.design._anchorOf( 'knobs/'+ part+ '/'+ knob );
-			Nino.admin.design._preview();
-		},
+			Nino.admin.design._apiCall( 'list', {}, function( status, response ) {
 
-		/**
-		 *	The element a change of one control is looked at in: the id CONTROL_ANCHORS names for its key, else the one
-		 *	OBJECT_ANCHORS names for the object it stands under, else the anchor of its tab. Where the control stands is
-		 *	the table's (see _place()); how many rows its tab has is no part of it
-		 *
-		 *	@param		{string}		key				The key the control has in the table: 'size', 'knobs/section/quiet' ...
-		 *
-		 *	@return		{string}							The id of an element of the specimen
-		 */
-		_anchorOf : function( key ) {
+				if( status === 200 && response !== null && Nino.admin.design._data !== null ) {
+					Nino.admin.design._data = response;
+					Nino.admin.design._paintState();
+					Nino.admin['design-typefaces']._paintFaces();
+				}
 
-			const design = Nino.admin.design;
-			const place = design._place( key );
-
-			return design.CONTROL_ANCHORS[key] || design.OBJECT_ANCHORS[ place[1] ] || design.ANCHORS[ place[0] ];
-		},
-
-		/**
-		 *	What the brand as picked measures, as a line of its own under the row that picked it. Always
-		 *	built, shown only while it applies: every colour knob moves the number in it, and the answer to
-		 *	a preview updates the line in place rather than rebuilding a column that holds an open colour
-		 *	picker - see _absorb().
-		 *
-		 *	brand and accent are the two surfaces with no contrast promise - they are the hex the picker
-		 *	returned, byte for byte, so there is no lightness left to solve with. Everything a theme writes on
-		 *	uses the -safe roles instead, and this is the one place the panel can say that the colour as
-		 *	picked is not one of them
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_brandWarning : function() {
-
-			const warn = dc.createElement('p');
-			warn.id = 'design-brand-warning';
-			warn.className = 'nino-admin-hint design-colour-warning';
-
-			// By the node, not by its id: this column is not in the document yet on the first render
-			Nino.admin.design._paintBrandWarning( warn );
-
-			return warn;
-		},
-
-		/**
-		 *	The brand colour: a row of its own, because it is the one value the
-		 *	whole palette is solved out of
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_primaryField : function() {
-
-			const edit = Nino.admin.design._edit;
-
-			const field = dc.createElement('div');
-			field.className = 'design-colour-row';
-
-			const label = dc.createElement('label');
-			label.className = 'design-colour-label design-knob-label';
-			label.setAttribute( 'for', 'design-colour-primary' );
-			Nino.admin.design._labelContent( label, 'colours/primary', Nino.content.getText('/_admin/design/label/primary'),
-				Nino.content.getText('/_admin/design/hint/primary') );
-
-			field.appendChild( label );
-
-			const input = dc.createElement('input');
-			input.type = 'color';
-			input.id = 'design-colour-primary';
-			input.className = 'design-colour-input';
-			input.value = String( ( edit.colours || {} ).primary || '#4faae8' );
-			input.addEventListener( 'change', function() { Nino.admin.design._setColour( 'primary', this.value ) } );
-			field.appendChild( input );
-
-			return field;
-		},
-
-		/**
-		 *	The second colour, at the end of the Harmony row it belongs to.
-		 *
-		 *	It has a state the brand does not: empty, which is the ordinary
-		 *	answer rather than a missing one - it means "let Harmony put it on
-		 *	the wheel". An <input type="color"> cannot be empty, so while it is
-		 *	empty the swatch shows the colour the wheel actually produced, as
-		 *	the server computed it, and is drawn quietly to say that nobody
-		 *	chose it. Opening it is how you stop deriving it; the way back is
-		 *	the reset beside it, or any of the four positions to its left
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_secondField : function() {
-
-			const edit		= Nino.admin.design._edit;
-			const value		= String( ( edit.colours || {} ).secondary || '' );
-			const derived	= value === '';
-
-			const box = dc.createElement('div');
-			box.className = 'design-colour-second'+ ( derived === true ? ' design-colour-row--derived' : '' );
-
-			const input = dc.createElement('input');
-			input.type = 'color';
-			input.id = 'design-colour-secondary';
-			input.className = 'design-colour-input';
-			input.value = derived === true
-				? String( ( Nino.admin.design._data || {} ).accent || ( edit.colours || {} ).primary || '#4faae8' )
-				: value;
-			input.title = Nino.content.getText('/_admin/design/label/secondary');
-			input.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/secondary') );
-			input.addEventListener( 'change', function() { Nino.admin.design._setColour( 'secondary', this.value ) } );
-			box.appendChild( input );
-
-			if( derived === false ) {
-				const reset = dc.createElement('button');
-				reset.type = 'button';
-				reset.className = 'design-knob-reset';
-				reset.textContent = '\u21ba';
-				reset.title = Nino.content.getText('/_admin/design/hint/derived');
-				reset.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/hint/derived') );
-				reset.addEventListener( 'click', function() { Nino.admin.design._setColour( 'secondary', '' ) } );
-				box.appendChild( reset );
-			}
-
-			return box;
-		},
-
-		/**
-		 *	What the strip of a knob of the palette is made of: its label and its options, from the least to the most - the
-		 *	numbers -2 to +2 of a scale, which stand at distance from where it starts so that the framework's own is the 0, and
-		 *	the names of the positions of a choice like Harmony, which are not a track
-		 *
-		 *	@param		{string}	key				harmony, temperature, saturation, contrast or depth
-		 *	@param		{Object}	meta			One entry of Colours::choices()
-		 *
-		 *	@return		{Object}						{ name, options }, the options as { value, label, title }
-		 */
-		_colourStrip : function( key, meta ) {
-
-			const base = '/_admin/design/colour/'+ key;
-
-			let options;
-
-			if( meta.kind === 'scale' ) {
-				const positions = [];
-
-				for( let position = 1; position <= meta.steps; position++ )
-					positions.push( position );
-
-				options = Nino.admin.design._numbered( positions, meta['default'] );
-			}
-			else
-				// The position's own name is the label here, not a step word:
-				// "Monochrom" and "Triadisch" are not less and more of anything
-				options = ( meta.steps || [] ).map( function( name, index ) {
-					const label = Nino.content.getText( base+ '/'+ ( index + 1 ) ) || name;
-					return { value : index + 1, label : label, title : label };
-				} );
-
-			return { name : Nino.content.getText( base+ '/label' ), options : options };
-		},
-
-		/**
-		 *	One colour knob. The same strip as a part's knob, over as many positions as
-		 *	the knob publishes (see _colourStrip())
-		 *
-		 *	@param		{string}	key
-		 *	@param		{Object}	meta		One entry of Colours::choices()
-		 *	@param		{?Element}	[extra]	Drawn after the positions. Harmony's is the
-		 *														second colour itself, which is what those
-		 *														positions are for
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_colourKnobRow : function( key, meta, extra ) {
-
-			const colours = Nino.admin.design._edit.colours || {};
-			const strip = Nino.admin.design._colourStrip( key, meta );
-
-			/*	A hex somebody typed overrides the whole knob - Colours::palette()
-				takes the Secondary as given and never reaches for Harmony at all.
-				So no position is lit while one is set: an active button there
-				would claim a derivation that is not happening	*/
-			const active = key === 'harmony' && String( colours.secondary || '' ) !== ''
-				? null
-				: ( colours[key] || meta['default'] );
-
-			const field = Nino.admin.design._stripRow( 'colours/'+ key, strip.name, Nino.content.getText( '/_admin/design/colour/'+ key+ '/note' ),
-				strip.options, active, function( position ) { Nino.admin.design._setColourKnob( key, position ) } );
-
-			// What the stylesheet takes a row of the palette by: the row itself, not the place the table gives it
-			field.classList.add('design-colour-knob');
-
-			if( extra )
-				field.appendChild( extra );
-
-			return field;
-		},
-
-		/**
-		 *	The mode of the palette: follow the visitor's setting, or be light, or
-		 *	be dark - one select under a heading with its icon
-		 *
-		 *	@param		{Object}	meta		The mode entry of Colours::choices()
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_modeField : function( meta ) {
-
-			const edit = Nino.admin.design._edit;
-			const mode = dc.createElement('div');
-			mode.className = 'design-colour-mode';
-
-			mode.appendChild( Nino.admin.design._sectionLabel(
-				Nino.content.getText('/_admin/design/colour/mode/label'),
-				Nino.admin.design._icon('colours/mode') ) );
-
-			const field = Nino.admin.design._select(
-				'design-colour-mode', '', Nino.admin.design._modeOptions( meta ), String( ( edit.colours || {} ).mode || meta['default'] ),
-				function( value ) {
-					Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
-					Nino.admin.design._edit.colours.mode = value;
-					Nino.admin.design._target = Nino.admin.design._anchorOf( 'colours/mode' );
-					Nino.admin.design._preview();
-				} );
-
-			field.querySelector('select').setAttribute( 'aria-label', Nino.content.getText('/_admin/design/colour/mode/label') );
-			mode.appendChild( field );
-
-			return mode;
-		},
-
-		/**
-		 *	What the select of the mode offers, and what the head of the block of the palette says a mode is: a word for each
-		 *	of the modes the palette has
-		 *
-		 *	@param		{Object}	meta		The mode entry of Colours::choices()
-		 *
-		 *	@return		{Array}					{ value, label }
-		 */
-		_modeOptions : function( meta ) {
-
-			return ( meta.steps || [] ).map( function( name ) {
-				return { value : name, label : Nino.content.getText('/_admin/design/colour/mode/'+ name ) };
+				if( typeof then === 'function' )
+					then();
 			} );
-		},
-
-		_setColour : function( key, value ) {
-			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
-			Nino.admin.design._edit.colours[key] = value;
-			Nino.admin.design._target = Nino.admin.design._anchorOf( 'colours/'+ key );
-			Nino.admin.design._redrawColours();
-		},
-
-		_setColourKnob : function( key, position ) {
-
-			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
-			Nino.admin.design._edit.colours[key] = parseInt( position, 10 );
-			Nino.admin.design._target = Nino.admin.design._anchorOf( 'colours/'+ key );
-
-			/*	Choosing where the second colour sits is choosing to let Harmony
-				put it there. A hex left over from before would override the very
-				knob that was just moved, and the knob would look moved and do
-				nothing - which is the worst of the three possible states	*/
-			if( key === 'harmony' ) {
-				Nino.admin.design._edit.colours.secondary = '';
-				return Nino.admin.design._redrawColours();
-			}
-
-			Nino.admin.design._preview();
-		},
-
-		/*	A colour change redraws its own rows - whether the second colour is
-			derived decides how it is drawn and whether the reset is beside it -
-			where a knob only ever moves the frame. The row is the one the table
-			puts the second colour in, with the Harmony it ends. Both then ask for
-			a new stylesheet */
-		_redrawColours : function() {
-
-			const design = Nino.admin.design;
-			const place = design._place('colours/secondary');
-			const rows = design._rows( place[0] );
-			const row = rows.filter( function( each ) { return each.object === place[1] } )[0];
-			const old = dc.getElementById( design._rowId( place[0], place[1] ) );
-
-			if( old !== null && row !== undefined )
-				old.replaceWith( design._renderRow( place[0], row, design._blockOf( place[0], rows ) === row.object ) );
-
-			design._preview();
-		},
-
-		/**
-		 *	What the brand as picked measures, under the row that picked it -
-		 *	written in place rather than redrawn, because the column it sits in
-		 *	holds a colour picker somebody may have open
-		 *
-		 *	@param		{Element}	[node]		The line itself, for a column that is
-		 *															built but not mounted yet
-		 *
-		 *	@return		void
-		 */
-		_paintBrandWarning : function( node ) {
-
-			const line = node || dc.getElementById('design-brand-warning');
-
-			if( line === null || line === undefined )
-				return;
-
-			const brand = ( ( Nino.admin.design._data || {} ).brand || {} ).light || null;
-
-			line.hidden = brand === null || brand.safe !== false;
-
-			if( line.hidden === false )
-				line.textContent = Nino.admin.design._text( '/_admin/design/msg/brand-unsafe', brand.ratio, brand.target );
 		},
 
 		/**
@@ -5192,8 +2317,8 @@
 			if( second !== null && String( ( Nino.admin.design._edit.colours || {} ).secondary || '' ) === '' )
 				second.value = String( data.accent || second.value );
 
-			Nino.admin.design._paintBrandWarning();
-			Nino.admin.design._paintContrasts();
+			Nino.admin['design-setup']._paintBrandWarning();
+			Nino.admin['design-setup']._paintContrasts();
 		},
 
 		/**
@@ -5724,7 +2849,7 @@
 		 *	Play the animation of the page again in the frame.
 		 *
 		 *	A viewport animation plays when an element comes into view, so the ones
-		 *	that stand in view already - the hero, on the Motion tab where the
+		 *	that stand in view already - the hero, on the Motion view where the
 		 *	animation is chosen - would show nothing of a choice made while they are
 		 *	there. Each of them goes back to where it starts, without a transition,
 		 *	and is let in again with the one the page has now. The classes are put
@@ -5817,8 +2942,9 @@
 				if( doc === null || doc.body === null )
 					return;
 
-				const tab = Nino.admin.design._tab;
-				const aim = Nino.admin.design._target || Nino.admin.design.ANCHORS[tab];
+				// Where no change was looked at: the screen of the themes at the top of the page, a view of the tab Design at its own anchor
+				const aim = Nino.admin.design._target
+					|| ( Nino.admin.design._screen === 'setup' ? Nino.admin.design.ANCHORS[ Nino.admin['design-setup']._tab ] : Nino.admin.design.THEMES_ANCHOR );
 				const target = doc.getElementById( aim );
 				const view = doc.defaultView;
 
@@ -5886,17 +3012,17 @@
 		 *	and watches the port with a ResizeObserver - so the frame follows
 		 *	the rail folding away without anything here having to hear about it
 		 *
-		 *	The list of the typefaces on offer is fitted after the stage, for the same
-		 *	reasons (see _fitFaces()): a screen that is drawn, a window that is resized
-		 *	and a tab, or a screen of a tab, that is opened give it the room the window has left under it, as
-		 *	they give the stage its own
+		 *	The list of the typefaces on offer has its own room to take, for the same
+		 *	reasons (see Nino.admin['design-typefaces']._fitFaces()): a window that is
+		 *	resized gives it the room the window has left under it, as it gives the stage
+		 *	its own - and the loader stands on no stage, so it is asked for first
 		 *
 		 *	It is asked for wherever the stage may have moved or the window changed: as
 		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
-		 *	viewport is chosen, when a tab is opened, when another screen of a tab
+		 *	viewport is chosen, when a view is opened, when another screen of the themes
 		 *	is shown and when a preview has come back. The last three are for one column,
 		 *	where the controls stand over the stage and a column of another height -
-		 *	another tab or screen, the brand warning of the colours -
+		 *	another view or screen, the brand warning of the colours -
 		 *	moves it; beside the controls the pane sticks, and the stage stays where it is
 		 *
 		 *	The frame is the last thing on the page, and the page clears its foot for
@@ -5907,6 +3033,8 @@
 		 *	@return		void
 		 */
 		_fit : function() {
+
+			Nino.admin['design-typefaces']._fitFaces();
 
 			const frame = dc.getElementById('design-frame');
 
@@ -5929,81 +3057,6 @@
 			// Asked afresh every time: the width is a choice, and scaleFrame
 			// closes over the one it was given
 			Nino.adminUi.scaleFrame( frame, frame.parentNode, Nino.admin.design._width );
-
-			Nino.admin.design._fitFaces();
-		},
-
-		/**
-		 *	Fit the list of the typefaces on offer to the window, the way the stage is: the box
-		 *	the rows of a page stand in is as tall as the window has room for under it, and the
-		 *	rows that are more than that scroll in the box - not the page, which a page of 24 rows
-		 *	would otherwise be scrolled for. The room is the height of the window less the top of
-		 *	the box with the page scrolled to the top, less the action bar, less the pager, which
-		 *	stands after the box and so stays in reach, and less the gap the stack of the preview
-		 *	keeps from the bar: the pager ends that gap above the bar, where the stage does (see
-		 *	_room(), whose bar, gap and scroll of the page these are).
-		 *
-		 *	Never under five rows: five times the height of the first, and the four hairlines
-		 *	between them - 11 rem where the row has no height to measure. Beside the preview, in
-		 *	two columns, that is all a low window gets: five rows, and the page scrolls by what
-		 *	they overhang - the whole page scrolled for the list is what the box is there to
-		 *	spare. In one column the box stands under the controls and may be far down: where
-		 *	the room is less than five rows there, the box is made for the window it fills when
-		 *	the page is scrolled to its card, with the top of the card at the top of the window -
-		 *	the window less how far the box stands inside the card, so that the search and the
-		 *	categories are in view with it, less the bar, the gap and the pager. That is the rule
-		 *	_room() has for the stage, with the card for the pane.
-		 *
-		 *	A box that holds the sentence of no match has no rows to fit the window to: its height
-		 *	is cleared, and the least the stylesheet gives it is what it has. A screen that is not
-		 *	open has no box to give room to. Asked for wherever the box has new rows
-		 *	(_paintResults()) and by _fit(), so that a box that was drawn before the column was in
-		 *	the document is fitted once it is
-		 *
-		 *	@return		void
-		 */
-		_fitFaces : function() {
-
-			const design = Nino.admin.design;
-			const box = dc.getElementById('design-faces-results');
-
-			if( box === null )
-				return;
-
-			const first = box.querySelector('.design-face-row');
-
-			if( first === null ) {
-				box.style.height = '';
-				return;
-			}
-
-			const rect = box.getBoundingClientRect();
-
-			// A pane that is not shown has no box to give room to
-			if( rect.width === 0 && rect.height === 0 )
-				return;
-
-			const card = box.parentNode;
-			const pager = card.querySelector('.design-faces-pager');
-			const frame = dc.getElementById('design-frame');
-			const pane = dc.getElementById('design-preview');
-			// Beside the preview the pane sticks (see #design-preview in admin.css); under the controls it does not
-			const beside = pane !== null && wn.getComputedStyle( pane ).position === 'sticky';
-			const row = first.getBoundingClientRect().height;
-			const bar = design._bar().height;
-			const gap = frame === null || frame.parentNode === null ? 0 : design._gap( frame.parentNode );
-			const least = row > 0 ? 5 * row + 4 : 11 * ( parseFloat( wn.getComputedStyle( dE ).fontSize ) || 16 );
-
-			// What stands under the box up to the foot of the pager, and the room the card keeps between them
-			const foot = pager === null ? rect : pager.getBoundingClientRect();
-			const under = foot.top + foot.height - rect.top - rect.height;
-
-			// How far the box stands inside its card, for the card to be brought to the top of the window
-			const inside = rect.top - card.getBoundingClientRect().top;
-
-			const room = wn.innerHeight - ( rect.top + design._scrolled( box ) ) - bar - gap - under;
-
-			box.style.height = Math.max( least, room >= least || beside === true ? room : wn.innerHeight - inside - bar - gap - under )+ 'px';
 		},
 
 		/**
@@ -6132,70 +3185,6 @@
 		_fitLater : function() {
 			wn.clearTimeout( Nino.admin.design._fitTimer );
 			Nino.admin.design._fitTimer = wn.setTimeout( Nino.admin.design._fit, 150 );
-		},
-
-		/**
-		 *	A labelled select that reports its own changes
-		 *
-		 *	@param		{string}		id
-		 *	@param		{string}		label			'' draws none
-		 *	@param		{Array}			options		{ value, label }
-		 *	@param		{string}		current
-		 *	@param		{Function}	onChange
-		 *	@param		{string}		[note]		What the control is for, as the line under it.
-		 *															It used to be the title attribute, because three
-		 *															controls in a column with a sentence under each
-		 *															were more of the screen than the controls were -
-		 *															in the field grid they stand side by side, and a
-		 *															hint a hand has to hover for is one nobody reads
-		 *
-		 *	@return		{Element}
-		 */
-		_select : function( id, label, options, current, onChange, note ) {
-
-			/*	A label over the control and a small under it. The name is a
-				<label for>: the control is a real one with an id, and a label
-				that names it is what a screen reader reads out	*/
-			const field = dc.createElement('div');
-			field.className = 'design-field';
-
-			if( label !== '' ) {
-				const tag = dc.createElement('label');
-				tag.setAttribute( 'for', id );
-				tag.textContent = label;
-				field.appendChild( tag );
-			}
-
-			const select = dc.createElement('select');
-			select.id = id;
-
-			if( options.length === 0 ) {
-				const empty = dc.createElement('option');
-				empty.value = '';
-				empty.textContent = '—';
-				select.appendChild( empty );
-				select.disabled = true;
-			}
-
-			options.forEach( function( option ) {
-				const node = dc.createElement('option');
-				node.value = option.value;
-				node.textContent = option.label;
-				if( option.value === current )
-					node.selected = true;
-				select.appendChild( node );
-			} );
-
-			select.addEventListener( 'change', function() { onChange( select.value ) } );
-			field.appendChild( select );
-
-			if( note ) {
-				const small = dc.createElement('small');
-				small.textContent = note;
-				field.appendChild( small );
-			}
-
-			return field;
 		},
 
 		/**
@@ -6563,34 +3552,3262 @@
 				} );
 			} );
 		},
+
+	};
+
+	/*	The tab Design: the setup in six views - Templates, Type, Surfaces, Colours, Motion and CSS, the ones Setup::TABS names -, one
+		at a time, with the preview beside it and the bar under it, which are the panel's (see Nino.admin.design). It is drawn from
+		the state of the panel and writes through it: the working copy, the selection and the draft are not copied here, only which
+		view is open and which block of it. Five of the views draw a block for each object that has a control on them, from the
+		table (see Setup::LAYOUT); the sixth, CSS, has no objects - it is the one field of the css of the theme	*/
+	Nino.admin['design-setup'] = {
+
+		/*	The word the label and the hint of a strip of the page stand under (/_admin/design/label/<word> and
+			/_admin/design/hint/<word>), by the key the table has the strip under	*/
+		PAGE_WORDS	: { size : 'size', width : 'pagewidth', whitespace : 'whitespace', radius : 'radius', 'radius-alt' : 'radius-alt' },
+
+		/*	The parts of the motion that wait for another, by the part: the part it follows and the values of that part at which it
+			means nothing. The strength and the speed of the animation mean something once there is an effect, the strength of the hover
+			once there is a kind of it that has one - not the empty kind, which is Nino.css's own, and not none. Until then their selects
+			are switched off (see _motionOff()) and their heads say nothing	*/
+		MOTION_FOLLOWS	: { strength : [ 'effect', [ '' ] ], speed : [ 'effect', [ '' ] ], 'hover-strength' : [ 'hover', [ '', 'none' ] ] },
+
+		// The view that is open - Templates at the start of a visit, the first of the six
+		_tab		: 'templates',
+		/*	The row that is open on a view that draws its rows as an accordion (see _renderRows()), by the view: the object it is the
+			row of, or null once the person has closed it. A view with no entry has its first row open. Kept while the panel lives, like
+			the screen of the themes, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
+		_open	: {},
+
+		/**
+		 *	The shell shows the tab Design
+		 *
+		 *	@return		void
+		 */
+		showCurrent : function() {
+			Nino.admin.design._show('setup');
+		},
+
+		/**
+		 *	The knobs the template chosen for a part answers to. The rest of the
+		 *	part's knobs are drawn, greyed out
+		 *
+		 *	@param		{string}	part			A part with knobs: a key of design/list's `kinds`
+		 *
+		 *	@return		{Array}
+		 */
+		_answered : function( part ) {
+			const row = Nino.admin.design._row( part );
+			return ( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[part] ] || {} ).knobs || [];
+		},
+
+		/**
+		 *	The options of a strip of numbers: one for each value, written as its
+		 *	distance from the middle - "−2", "−1", "0", "+1", "+2". The minus is U+2212, the
+		 *	one a number is set with, and not the hyphen; the title is the label
+		 *
+		 *	@param		{Array}			values			From the least to the most
+		 *	@param		{number}		middle			The value that is 0
+		 *
+		 *	@return		{Array}								{ value, label, title }
+		 */
+		_numbered : function( values, middle ) {
+
+			return values.map( function( value ) {
+				const distance = value - middle;
+				const label = distance === 0 ? '0' : ( distance < 0 ? '\u2212' : '+' )+ String( Math.abs( distance ) );
+				return { value : value, label : label, title : label };
+			} );
+		},
+
+		/**
+		 *	The positions of a kind of knob, from the least to the most: -2 to +2 for a
+		 *	scale, -1 to +1 for a choice (see RANGE)
+		 *
+		 *	@param		{string}	kind				'scale' or 'choice'
+		 *
+		 *	@return		{Array}
+		 */
+		_positions : function( kind ) {
+
+			const range = Nino.admin.design.RANGE[kind] || 0;
+			const positions = [];
+
+			for( let position = -range; position <= range; position++ )
+				positions.push( position );
+
+			return positions;
+		},
+
+		/**
+		 *	The word a position is declared under in a stylesheet - the middle one of
+		 *	the five design/list handed over is the position 0 (see Setup::word()). A
+		 *	choice knob names its three positions by these words
+		 *
+		 *	@param		{number}	position
+		 *
+		 *	@return		{string}					least, less, default, more or most
+		 */
+		_word : function( position ) {
+
+			const steps = ( Nino.admin.design._data || {} ).steps || [];
+
+			return steps[ Math.max( 0, Math.min( steps.length - 1, position + Nino.admin.design.RANGE.scale ) ) ];
+		},
+
+		/**
+		 *	The rows a tab is drawn in, out of the table and nothing else: for each object that has a control on
+		 *	the tab, in the order the table gives the objects, the controls of it in the order of their numbers. A
+		 *	control is the keys that stand at one place: the cover, the row and the column of a section are one,
+		 *	and so are the second colour and the row of Harmony it ends. An object with no control on the tab has
+		 *	no row
+		 *
+		 *	@param		{string}	tab				A key of the table's tabs
+		 *
+		 *	@return		{Array}						{ object, controls : [ [ key, ... ], ... ] } for each row; empty for a tab with no control
+		 */
+		_rows : function( tab ) {
+
+			const layout = ( Nino.admin.design._data || {} ).layout || {};
+			const controls = layout.controls || {};
+
+			return ( layout.objects || [] ).map( function( object ) {
+
+				const places = {};
+
+				Object.keys( controls ).forEach( function( key ) {
+
+					if( controls[key][0] === tab && controls[key][1] === object )
+						( places[ controls[key][2] ] = places[ controls[key][2] ] || [] ).push( key );
+				} );
+
+				return {
+					object 		: object,
+					controls 	: Object.keys( places ).sort( function( a, b ) { return a - b } ).map( function( order ) { return places[order] } ),
+				};
+			} ).filter( function( row ) { return row.controls.length > 0 } );
+		},
+
+		/**
+		 *	The six views, the ones the table names. A tablist rather than a button group, because these
+		 *	really are six panels: aria-selected, not aria-pressed. The strip stands at the top of the pane of
+		 *	the tab, under the strip of the shell (see Nino.admin.design._render())
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_renderTabs : function() {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+
+			const strip = design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-tabs', 'tab',
+				design._tabKeys().map( function( key ) {
+					return { key : key, label : Nino.content.getText('/_admin/design/tab/'+ key+ '/label') };
+				} ), views._tab, function( key ) {
+					views._switchTab( key );
+				} );
+
+			strip.id = 'design-tabs';
+
+			return strip;
+		},
+
+		/**
+		 *	What the view that is open holds, into the box the column keeps for it: the field of the css on the view
+		 *	CSS, which has no objects, else the blocks of its objects (see _renderRows())
+		 *
+		 *	@param		{string}	key			A key of the table's tabs
+		 *	@param		{Element}	body		The box the column keeps for the view
+		 *
+		 *	@return		void
+		 */
+		_renderView : function( key, body ) {
+
+			if( key !== 'css' )
+				return Nino.admin['design-setup']._renderRows( key, body );
+
+			// By the node, not by its id: this column is not in the document yet on the first render
+			const card = Nino.admin.design._card('design-theme-css-card');
+
+			body.appendChild( card );
+			Nino.admin['design-setup']._paintCustomCss( card );
+		},
+
+		/**
+		 *	Open another view.
+		 *
+		 *	Only the column is redrawn, never the frame beside it: the page in
+		 *	it is the same page under every view, so rebuilding it would cost a
+		 *	request and a flash for a click that changed which controls are on
+		 *	screen and nothing at all about the design. What the frame does is
+		 *	scroll, smoothly, to the anchor of the view that was opened - once the
+		 *	page in it stands at the height the stage has for that view.
+		 *
+		 *	Nor the strip of the views. The view the switch was made on is
+		 *	the one the keyboard is on, and the strip used to be drawn again
+		 *	with the column: an arrow key opened the next view and dropped the
+		 *	focus onto the page, so the next arrow went nowhere.
+		 *
+		 *	@param		{string}	key			A key of the table's tabs
+		 *
+		 *	@return		void
+		 */
+		_switchTab : function( key ) {
+
+			if( key === Nino.admin['design-setup']._tab )
+				return;
+
+			Nino.admin['design-setup']._tab = key;
+
+			// Where a change was looked at belonged to the tab that was left: the
+			// frame goes to the anchor of this one
+			Nino.admin.design._target = null;
+
+			const column = dc.getElementById('design-controls');
+
+			if( column === null )
+				return Nino.admin.design._render();
+
+			column.replaceWith( Nino.admin.design._renderControls() );
+
+			// In one column the stage stands under the controls, so a column of another
+			// height moves it: fitted again, and the jump waits for the page in the frame
+			// (see _jumpFitted())
+			const frame = dc.getElementById('design-frame');
+			const was = frame === null ? '' : frame.parentNode.style.height;
+
+			Nino.admin.design._fit();
+			Nino.admin.design._jumpFitted( frame, was );
+		},
+
+		/**
+		 *	The card of the view CSS: the css of the theme, in a field of its own, as tall as the stylesheet makes it - the
+		 *	view has nothing else. Every input sets it in the working copy and asks for a preview - the debounce of 350 ms every
+		 *	control has - which compiles it as the last section of the sheet; the draft and the theme keep it with the rest of
+		 *	the setup. The label is the card's title again, for whoever hears the field and not the heading
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintCustomCss : function( card ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+			const title = Nino.content.getText('/_admin/design/theme/css/title');
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( title ) );
+
+			const label = ui.el( 'label', 'nino-admin-field' );
+			label.appendChild( ui.el( 'span', 'design-theme-css-name', title ) );
+
+			const box = ui.el( 'textarea', 'nino-admin-input design-theme-css' );
+			box.id = 'design-theme-css';
+			box.rows = 30;
+			box.spellcheck = false;
+			box.setAttribute( 'autocapitalize', 'off' );
+			box.setAttribute( 'wrap', 'off' );
+			box.value = design._edit === null ? '' : design._edit.css;
+			box.addEventListener( 'input', function() {
+				design._edit.css = box.value;
+				design._preview();
+			} );
+
+			label.appendChild( box );
+			card.appendChild( label );
+			card.appendChild( ui.hint( Nino.content.getText('/_admin/design/theme/css/hint') ) );
+		},
+
+		/**
+		 *	The rows of a tab into a box, one card each, in the order the table gives them: the blocks of an accordion on
+		 *	every tab that is drawn from the table, the templates, the type, the surfaces, the colours and the motion alike.
+		 *	The head of a block is a button with the word of its object, and the row itself, the body of the block, is drawn
+		 *	while the block is open and not before. One block is open, the one the person left open on the tab and the first
+		 *	where there is none (see _blockOf()). A tab that has one row - the colours and the motion are the page's alone -
+		 *	is an accordion of one block, open to begin with and to be closed like any other
+		 *
+		 *	@param		{string}	tab				A key of the table's tabs
+		 *	@param		{Element}	box
+		 *
+		 *	@return		void
+		 */
+		_renderRows : function( tab, box ) {
+
+			const views = Nino.admin['design-setup'];
+			const rows = views._rows( tab );
+			const open = views._blockOf( tab, rows );
+
+			rows.forEach( function( row ) {
+				box.appendChild( views._renderRow( tab, row, row.object === open ) );
+			} );
+		},
+
+		/**
+		 *	The block of a tab that is open: the one the person left open on it, else - where nothing was chosen on
+		 *	the tab yet - its first
+		 *
+		 *	@param		{string}	tab				A key of the table's tabs
+		 *	@param		{Array}		rows			The rows of the tab, see _rows()
+		 *
+		 *	@return		{?string}						The object of the row that is open; null where the person closed it, and for a tab with no rows
+		 */
+		_blockOf : function( tab, rows ) {
+
+			const chosen = Nino.admin['design-setup']._open[tab];
+			const objects = rows.map( function( row ) { return row.object } );
+
+			if( chosen === null || objects.length === 0 )
+				return null;
+
+			return objects.indexOf( chosen ) !== -1 ? chosen : objects[0];
+		},
+
+		/**
+		 *	The id of the card of a row: where it stands, so that a change finds the card it redraws
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{string}	object
+		 *
+		 *	@return		{string}
+		 */
+		_rowId : function( tab, object ) {
+			return 'design-row-'+ tab+ '-'+ object;
+		},
+
+		/**
+		 *	One row: a card of the controls the table gives an object on a tab, a block of the accordion - the head and, while the
+		 *	block is open, the body under it (see _setBlock()). The card says which tab and which object it is the row of, and every
+		 *	control in it says which keys it is (see _fillRow()), so that what is drawn can be read against the table
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{boolean}	[open]		Whether the block is open
+		 *
+		 *	@return		{Element}
+		 */
+		_renderRow : function( tab, row, open ) {
+
+			const views = Nino.admin['design-setup'];
+
+			const card = dc.createElement('div');
+			card.id = views._rowId( tab, row.object );
+			card.className = 'nino-admin-card design-form-section design-accordion';
+			card.dataset.tab = tab;
+			card.dataset.object = row.object;
+
+			card.appendChild( views._renderHead( tab, row ) );
+			views._setBlock( card, tab, row, open === true );
+
+			return card;
+		},
+
+		/**
+		 *	The head of a block: a button that opens and closes it, with the word of its object, the line that names what
+		 *	stands elsewhere than at the defaults while the block is closed (see _paintHead()) and a chevron, which is
+		 *	decoration. The word is the button's name and the line its description; aria-expanded says whether the block
+		 *	is open and, while it is, aria-controls which body it is the head of (see _paintHead()) - a closed block has no
+		 *	body in the document, and its head names none
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		{Element}
+		 */
+		_renderHead : function( tab, row ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const id = views._rowId( tab, row.object );
+
+			const name = dc.createElement('span');
+			name.id = id+ '-name';
+			name.className = 'design-accordion-name';
+			name.textContent = views._objectName( row.object );
+
+			const summary = dc.createElement('span');
+			summary.id = id+ '-summary';
+			summary.className = 'design-accordion-summary';
+
+			const chevron = design._svg('chevron-down');
+			chevron.classList.add('design-accordion-chevron');
+
+			const head = dc.createElement('button');
+			head.type = 'button';
+			head.className = 'design-accordion-head';
+			head.setAttribute( 'aria-labelledby', name.id );
+			head.setAttribute( 'aria-describedby', summary.id );
+			head.addEventListener( 'click', function() { views._toggleBlock( tab, row.object, head ) } );
+
+			head.appendChild( name );
+			head.appendChild( summary );
+			head.appendChild( chevron );
+
+			return head;
+		},
+
+		/**
+		 *	The body of a block: the controls of its row (see _fillRow()), in the box the head names in aria-controls
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		{Element}
+		 */
+		_renderBody : function( tab, row ) {
+
+			const body = dc.createElement('div');
+			body.id = Nino.admin['design-setup']._rowId( tab, row.object )+ '-body';
+			body.className = 'design-accordion-body';
+
+			Nino.admin['design-setup']._fillRow( body, row );
+
+			return body;
+		},
+
+		/**
+		 *	Put a block in the state it is to be in, where it stands: the body is drawn when the block is opened and taken away
+		 *	when it is closed - the controls of a closed block are not drawn - and the head is painted for it. Nothing else is
+		 *	drawn again, so that the head that was pressed is still the element the focus is on
+		 *
+		 *	@param		{Element}	card			The card of the row
+		 *	@param		{string}	tab
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{boolean}	open
+		 *
+		 *	@return		void
+		 */
+		_setBlock : function( card, tab, row, open ) {
+
+			const views = Nino.admin['design-setup'];
+			const body = card.querySelector('.design-accordion-body');
+
+			if( open === true && body === null )
+				card.appendChild( views._renderBody( tab, row ) );
+
+			if( open === false && body !== null )
+				body.remove();
+
+			views._paintHead( card.querySelector('.design-accordion-head'), row, open );
+		},
+
+		/**
+		 *	The head of a block as the state of the block has it: aria-expanded says whether it is open, and the line says -
+		 *	while it is closed - which of the controls of its row stand elsewhere than at the defaults (see _summary()): nothing
+		 *	where none does, and nothing while the block is open, where the controls themselves are in view. The line is
+		 *	cut with dots where the head is too narrow, so its whole text is its title
+		 *
+		 *	@param		{Element}	head
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{boolean}	open
+		 *
+		 *	@return		void
+		 */
+		_paintHead : function( head, row, open ) {
+
+			const summary = head.querySelector('.design-accordion-summary');
+			const line = open === true ? '' : Nino.admin['design-setup']._summary( row );
+
+			head.setAttribute( 'aria-expanded', open === true ? 'true' : 'false' );
+
+			// The body is in the document while the block is open and nowhere while it is closed: the head names it only then
+			if( open === true )
+				head.setAttribute( 'aria-controls', head.parentNode.id+ '-body' );
+			else
+				head.removeAttribute('aria-controls');
+
+			summary.textContent = line;
+			summary.title = line;
+		},
+
+		/**
+		 *	Open a block, or close it where it is the open one. Opening a block closes the one that was open; which of them is
+		 *	open is kept for the tab (see _open). It is a matter of the column and of nothing else: the selection stays as it is, no
+		 *	preview is asked for and the frame is not moved - a change inside a block jumps, as it did, and this does not. The head
+		 *	that was pressed stays where it stood in the window (see _holdHead())
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{string}	object		The object whose head was pressed
+		 *	@param		{Element}	head			That head
+		 *
+		 *	@return		void
+		 */
+		_toggleBlock : function( tab, object, head ) {
+
+			const views = Nino.admin['design-setup'];
+			const rows = views._rows( tab );
+			const was = views._blockOf( tab, rows );
+			const top = head.getBoundingClientRect().top;
+
+			views._open[tab] = was === object ? null : object;
+
+			rows.forEach( function( row ) {
+
+				const card = row.object === was || row.object === object ? dc.getElementById( views._rowId( tab, row.object ) ) : null;
+
+				if( card !== null )
+					views._setBlock( card, tab, row, views._open[tab] === row.object );
+			} );
+
+			views._holdHead( head, top );
+		},
+
+		/**
+		 *	Keep the head that was pressed where it stood. The block that was open can stand above it, and its body goes with the
+		 *	press: the head, and with it what the person was looking at, would move up the window by the height of that body - off
+		 *	the top of it where the body is the taller. The page is scrolled by what the head moved, by whatever scrolls the column:
+		 *	the pane in a wide window, the window itself in a narrow one (see _scrolled())
+		 *
+		 *	@param		{Element}	head			The head that was pressed
+		 *	@param		{number}	top				Where its top stood in the window before the blocks were changed
+		 *
+		 *	@return		void
+		 */
+		_holdHead : function( head, top ) {
+
+			const by = head.getBoundingClientRect().top - top;
+
+			if( by === 0 )
+				return;
+
+			let box = head.parentNode;
+
+			while( box !== null && box !== bd && box !== dE && ( box.scrollHeight <= box.clientHeight || [ 'auto', 'scroll' ].indexOf( wn.getComputedStyle( box ).overflowY ) === -1 ) )
+				box = box.parentNode;
+
+			( box === null || box === bd || box === dE ? dc.scrollingElement || dE : box ).scrollTop += by;
+		},
+
+		/**
+		 *	What a closed block says of its row: the controls that stand elsewhere than a fresh setup has them (design/list
+		 *	hands that setup over as `defaults`), each as its label and the word of its position, joined by a middle dot. Nothing
+		 *	for a row that stands at the defaults - but for a template, which is a choice and no position: the block of a part
+		 *	says the word of the set that is chosen, whichever it is, so that a person sees which one is on
+		 *
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		{string}
+		 */
+		_summary : function( row ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			let lines = [];
+
+			row.controls.forEach( function( keys ) {
+
+				const path = keys[0].split('/');
+
+				if( path[0] === 'parts' )
+					lines.push( design._setName( path[1], design._edit.parts[ path[1] ] ) );
+				else if( path[0] === 'features' && path[2] === 'set' )
+					lines = lines.concat( views._variantSaid( path[1] ) );
+				else
+					lines = lines.concat( views._deviations( keys, row.object ) );
+			} );
+
+			return lines.join(' · ');
+		},
+
+		/**
+		 *	What one control says where it stands elsewhere than at the default: its label and the word of the position it is at,
+		 *	as its strip shows them - made of the very texts and options the strip is drawn from (see _knobStrip(), _radiiStrip()
+		 *	and _pageName()). A font role says it for each of the four cells of its row that differs, by the name of the cell
+		 *	and the word it shows. A knob the chosen template does not answer to is greyed out, and no part of what the design
+		 *	is: it says nothing. The corners of a section - one choice for the cover, the row and the column - count once, and
+		 *	say the word the strip shows, which is the cover's. A part of the palette says its hex - the brand colour, and the
+		 *	second colour where one is set, which stands for the Harmony it ends - or its label and the word of its position,
+		 *	the mode too (see _colourSaid()); a part of the motion says its label and the word it is set to, the strength and the
+		 *	speed of the animation only while there is an effect and the strength of the hover of the pictures only while there is
+		 *	a kind of it that has one, since their selects are switched off until then (see MOTION_FOLLOWS). A template says
+		 *	nothing here: it is no position, and the head of its block names it whatever it is (see _summary())
+		 *
+		 *	@param		{Array}		keys			The keys of the control, as _rows() has them
+		 *	@param		{string}	object		The object the control stands under
+		 *
+		 *	@return		{Array}							The lines, none where the control stands at the default
+		 */
+		_deviations : function( keys, object ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const edit = design._edit;
+			const normal = ( design._data || {} ).defaults || {};
+			const path = keys[0].split('/');
+
+			if( path[0] === 'knobs' ) {
+
+				if( views._answered( path[1] ).indexOf( path[2] ) === -1 )
+					return [];
+
+				const chosen = ( edit.knobs[path[1]] || {} )[path[2]] || 0;
+				const strip = views._knobStrip( path[1], path[2] );
+
+				return chosen === ( ( ( normal.knobs || {} )[path[1]] || {} )[path[2]] || 0 ) ? [] : [ views._said( strip.name, strip.options, chosen ) ];
+			}
+
+			// A knob a feature brings: said as the knobs of a part are, by the label its head gives it and the word of its value - a variant says it in its own row (see _variantSaid())
+			if( path[0] === 'features' ) {
+
+				if( path[2] !== 'knobs' )
+					return [];
+
+				const found = views._featureKnob( path[1], path[3] );
+
+				if( found.answered === false )
+					return [];
+
+				const value = views._featureValue( path[1], path[3], found.meta );
+
+				return JSON.stringify( value ) === JSON.stringify( found.meta['default'] ) ? [] : [ views._featureSaid( found.meta, value ) ];
+			}
+
+			if( path[0] === 'radii' ) {
+
+				const strip = views._radiiStrip( keys, object );
+				const given = normal.radii || {};
+
+				return strip.kinds.some( function( kind ) { return edit.radii[kind] !== given[kind] } ) === true ? [ views._said( strip.name, strip.options, edit.radii[ strip.kinds[0] ] ) ] : [];
+			}
+
+			if( path[0] === 'fonts' ) {
+
+				const role = path[1];
+				const chosen = edit.fonts[role] || {};
+				const given = ( normal.fonts || {} )[role] || {};
+				const lines = [];
+
+				if( ( chosen.family || '' ) !== ( given.family || '' ) )
+					lines.push( views._fontLabel( role, 'family' )+ ' '+ views._familyLabel( role, chosen.family || '' ) );
+
+				if( ( chosen.weight || 'normal' ) !== ( given.weight || 'normal' ) )
+					lines.push( views._fontLabel( role, 'weight' )+ ' '+ Nino.content.getText('/_admin/design/weight/'+ ( chosen.weight || 'normal' ) ) );
+
+				if( ( chosen.uppercase === true ) !== ( given.uppercase === true ) )
+					lines.push( views._fontLabel( role, 'uppercase' )+ ' '+ Nino.content.getText('/_admin/common/label/'+ ( chosen.uppercase === true ? 'on' : 'off' ) ) );
+
+				if( String( chosen.size || '' ) !== String( given.size || '' ) )
+					lines.push( views._fontLabel( role, 'size' )+ ' '+ views._sizeInForce( role )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit') );
+
+				return lines;
+			}
+
+			if( path[0] === 'colours' )
+				return keys.map( function( key ) { return views._colourSaid( key.split('/')[1] ) } ).filter( function( line ) { return line !== '' } );
+
+			if( path[0] === 'motion' ) {
+
+				const part = path[1];
+				const value = ( edit.motion || {} )[part] || '';
+				const follows = views.MOTION_FOLLOWS[part];
+
+				// A part that waits for another means something once that has a value (MOTION_FOLLOWS): until then its select is switched off, and it says nothing
+				if( value === ( ( normal.motion || {} )[part] || '' ) || ( follows !== undefined && follows[1].indexOf( ( edit.motion || {} )[ follows[0] ] || '' ) !== -1 ) )
+					return [];
+
+				return [ views._said( Nino.content.getText('/_admin/design/motion/'+ part+ '/label'), views._motionOptions( part ), value ) ];
+			}
+
+			if( views.PAGE_WORDS[ keys[0] ] === undefined )
+				return [];
+
+			return edit[ keys[0] ] === normal[ keys[0] ] ? [] : [ views._said( views._pageName( keys[0] ), views._numbered( views._positions('scale'), 0 ), edit[ keys[0] ] ) ];
+		},
+
+		/**
+		 *	A label and the word of a position, as a head says them: the label of the strip and the label of the option that
+		 *	holds the value
+		 *
+		 *	@param		{string}	name			The label of the strip
+		 *	@param		{Array}		options		{ value, label, title }, the options of the strip
+		 *	@param		{*}				value			The value the strip stands at
+		 *
+		 *	@return		{string}
+		 */
+		_said : function( name, options, value ) {
+
+			const found = options.filter( function( option ) { return String( option.value ) === String( value ) } )[0];
+
+			return name+ ' '+ ( found === undefined ? String( value ) : found.label );
+		},
+
+		/**
+		 *	What a head says of one part of the palette where it stands elsewhere than at the default: the brand colour and the
+		 *	second colour by their label and their hex - an empty second colour is the one Harmony derives and says nothing -, a
+		 *	knob by its label and the word its strip shows for the position (see _colourStrip()), the mode by its label and the word
+		 *	of its select. Harmony says nothing while a second colour is set, since its strip lights no position then
+		 *
+		 *	@param		{string}	knob			primary, secondary, harmony, temperature, saturation, contrast, depth or mode
+		 *
+		 *	@return		{string}						'' where it stands at the default
+		 */
+		_colourSaid : function( knob ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const chosen = ( design._edit || {} ).colours || {};
+			const given = ( ( design._data || {} ).defaults || {} ).colours || {};
+			const meta = ( ( design._data || {} ).palette || {} )[knob];
+
+			if( knob === 'primary' )
+				return String( chosen.primary || '' ) !== String( given.primary || '' ) ? Nino.content.getText('/_admin/design/label/primary')+ ' '+ chosen.primary : '';
+
+			if( knob === 'secondary' )
+				return String( chosen.secondary || '' ) !== '' ? Nino.content.getText('/_admin/design/label/secondary')+ ' '+ chosen.secondary : '';
+
+			if( meta === undefined || ( knob === 'harmony' && String( chosen.secondary || '' ) !== '' ) )
+				return '';
+
+			const value = chosen[knob] || meta['default'];
+
+			if( String( value ) === String( given[knob] || meta['default'] ) )
+				return '';
+
+			if( knob === 'mode' )
+				return views._said( Nino.content.getText('/_admin/design/colour/mode/label'), views._modeOptions( meta ), value );
+
+			const strip = views._colourStrip( knob, meta );
+
+			return views._said( strip.name, strip.options, value );
+		},
+
+		/**
+		 *	The controls of a row into the body of its block, in the order of the table. What a control is drawn as
+		 *	follows from the first segment of its key: a template (parts), a knob (knobs), the corners of a kind of
+		 *	surface (radii), a font role (fonts), a part of the motion of the page (motion), a part of the palette (colours) - and a
+		 *	strip of the page for the rest: the root size, the width, the whitespace and the two radii. Every control
+		 *	carries the keys it stands for in data-control, joined by a space. The five roles are the rows of one table
+		 *	under the heading of the fonts, the five parts of the motion of the page the fields of one grid, and the palette's
+		 *	knobs follow the brand colour under the heading Tuning
+		 *
+		 *	@param		{Element}	card			The body of the block
+		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *
+		 *	@return		void
+		 */
+		_fillRow : function( card, row ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const palette = ( design._data || {} ).palette || {};
+			const fields = {};
+			let table = null;
+			let grid = null;
+			let tuned = false;
+
+			row.controls.forEach( function( keys ) {
+
+				const path = keys[0].split('/');
+
+				// A control is put where it stands and told what it is
+				const put = function( node, into ) {
+					node.dataset.control = keys.join(' ');
+					( into || card ).appendChild( node );
+				};
+
+				if( path[0] === 'parts' )
+					return put( views._partField( design._row( path[1] ) ) );
+
+				// A feature that brings variants: the choice of the variant on Templates, a knob of the variant on the tab its head names
+				if( path[0] === 'features' )
+					return put( path[2] === 'set' ? views._featureField( path[1] ) : views._featureKnobRow( path[1], path[3] ) );
+
+				if( path[0] === 'knobs' )
+					return put( views._knobRow( path[1], path[2], views._answered( path[1] ).indexOf( path[2] ) !== -1 ) );
+
+				if( path[0] === 'radii' )
+					return put( views._radiiRow( keys, row.object ) );
+
+				if( path[0] === 'fonts' ) {
+
+					if( table === null ) {
+						card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/label/fonts') ) );
+						table = views._rolesTable();
+						card.appendChild( table.table );
+					}
+
+					return put( views._fontRow( path[1] ), table.body );
+				}
+
+				if( path[0] === 'motion' ) {
+
+					if( grid === null ) {
+						grid = dc.createElement('div');
+						grid.className = 'design-form-grid';
+						card.appendChild( grid );
+					}
+
+					fields[ path[1] ] = views._motionField( path[1] );
+					return put( fields[ path[1] ], grid );
+				}
+
+				if( path[0] === 'colours' ) {
+
+					if( path[1] === 'primary' ) {
+						put( views._primaryField() );
+						return card.appendChild( views._brandWarning() );
+					}
+
+					// The knobs under the colour the palette is solved from stand under a small heading, as a block of rows does
+					if( tuned === false ) {
+						card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/label/tuning') ) );
+						tuned = true;
+					}
+
+					// Harmony *is* the second colour: the swatch that overrides its four positions ends its row
+					if( keys.indexOf('colours/harmony') !== -1 )
+						return put( views._colourKnobRow( 'harmony', palette.harmony, views._secondField() ) );
+
+					if( path[1] === 'mode' )
+						return put( views._modeField( palette.mode ) );
+
+					return put( views._colourKnobRow( path[1], palette[ path[1] ], null ) );
+				}
+
+				put( views._pageStrip( keys[0] ) );
+			} );
+
+			// A part of the motion that waits for another only means something once that has a value
+			const selects = {};
+
+			Object.keys( fields ).forEach( function( key ) { selects[key] = fields[key].querySelector('select') } );
+			views._motionOff( selects );
+		},
+
+		/**
+		 *	The label of one of the strips of the page: what it is called, by the key the table has it under
+		 *
+		 *	@param		{string}	key				size, width, whitespace, radius or radius-alt
+		 *
+		 *	@return		{string}
+		 */
+		_pageName : function( key ) {
+			return Nino.content.getText('/_admin/design/label/'+ Nino.admin['design-setup'].PAGE_WORDS[key] );
+		},
+
+		/**
+		 *	One of the strips of the page: the root size, the width, the whitespace or one of the two radii - five
+		 *	positions, -2 to +2. What the ends of a strip are is the line under its name
+		 *
+		 *	@param		{string}	key				size, width, whitespace, radius or radius-alt
+		 *
+		 *	@return		{Element}
+		 */
+		_pageStrip : function( key ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const edit = design._edit;
+			const word = views.PAGE_WORDS[key];
+
+			return design._stripRow(
+				'page/'+ key, views._pageName( key ), Nino.content.getText('/_admin/design/hint/'+ word ),
+				views._numbered( views._positions('scale'), 0 ), edit[key], function( position ) {
+					edit[key] = position;
+					design._target = views._anchorOf( key );
+					design._preview();
+				} );
+		},
+
+		/**
+		 *	What a strip of corners is made of: the kinds of surface its keys stand for, the word its label is under - the
+		 *	kind, or the object where the choice is one for several kinds -, its label and its two words
+		 *
+		 *	@param		{Array}		keys			The keys of the control: 'radii/<kind>', one or more
+		 *	@param		{string}	object		The object the control stands under
+		 *
+		 *	@return		{Object}						{ kinds, word, name, options }, the options as { value, label, title }
+		 */
+		_radiiStrip : function( keys, object ) {
+
+			const kinds = keys.map( function( key ) { return key.split('/')[1] } );
+			const word = kinds.length > 1 ? object : kinds[0];
+
+			return {
+				kinds 	: kinds,
+				word 		: word,
+				name 		: Nino.content.getText('/_admin/design/radii/'+ word ),
+				options	: ( Nino.admin.design._data.radiusWords || [] ).map( function( radius ) {
+					const label = Nino.content.getText('/_admin/design/radii/'+ radius );
+					return { value : radius, label : label, title : label };
+				} ),
+			};
+		},
+
+		/**
+		 *	The corners a kind of surface takes where nothing chooses: a strip of the two words the radius has. A
+		 *	control of several kinds - the cover, the row and the column of a section - is one choice that writes
+		 *	them all the same. It reads as the word the kinds agree on; where they differ it shows the first one's
+		 *	and says in its note that they do until it is chosen once. The label is the word of the kind, or - for
+		 *	a choice of several - of the object they are the surfaces of
+		 *
+		 *	@param		{Array}		keys			The keys of the control: 'radii/<kind>', one or more
+		 *	@param		{string}	object		The object the control stands under
+		 *
+		 *	@return		{Element}
+		 */
+		_radiiRow : function( keys, object ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const edit = design._edit;
+			const strip = views._radiiStrip( keys, object );
+			const kinds = strip.kinds;
+			const differ = kinds.some( function( kind ) { return edit.radii[kind] !== edit.radii[ kinds[0] ] } );
+
+			const field = design._stripRow(
+				'page/radii-'+ strip.word, strip.name, differ === true ? Nino.content.getText('/_admin/design/hint/radii') : '',
+				strip.options, edit.radii[ kinds[0] ], function( word ) {
+
+					kinds.forEach( function( kind ) { edit.radii[kind] = word } );
+
+					// The three agree now: nothing is left to say
+					field.querySelector('small').textContent = '';
+
+					design._target = views._anchorOf( keys[0] );
+					design._preview();
+				} );
+
+			return field;
+		},
+
+		/**
+		 *	One of the five parts of the motion of the page, as a select: the effect, the strength and the speed of its animation, the kind and
+		 *	the strength of the hover of its pictures. '' is what Nino.css does by itself, and is what a fresh setup has
+		 *
+		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
+		 *
+		 *	@return		{Element}
+		 */
+		_motionField : function( key ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+
+			return views._select(
+				'design-motion-'+ key, Nino.content.getText('/_admin/design/motion/'+ key+ '/label'), views._motionOptions( key ), design._edit.motion[key] || '',
+				function( value ) { views._setMotion( key, value ) } );
+		},
+
+		/**
+		 *	What the select of one of the five parts of the motion offers, and what the head of its block says a value
+		 *	of it is: the default first, then a word for each value of the answer - the strength of the hover has the three
+		 *	of the animation
+		 *
+		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
+		 *
+		 *	@return		{Array}						{ value, label }
+		 */
+		_motionOptions : function( key ) {
+
+			const design = Nino.admin.design;
+			const values = { effect : design._data.effects, strength : design._data.strengths, speed : design._data.speeds, hover : design._data.hovers, 'hover-strength' : design._data.strengths }[key] || [];
+
+			return [ { value : '', label : Nino.content.getText('/_admin/design/motion/default') } ].concat( values.map( function( value ) {
+				return { value : value, label : Nino.content.getText('/_admin/design/motion/'+ key+ '/'+ value ) };
+			} ) );
+		},
+
+		/**
+		 *	The parts of the motion that wait for another only mean something once that has a value (MOTION_FOLLOWS): the strength and
+		 *	the speed of the animation once there is an effect, the strength of the hover once there is a kind of it that has one. Until
+		 *	then their selects are switched off rather than left to say nothing
+		 *
+		 *	@param		{Object}	selects			The selects that are drawn, by the part: one that is not there is left out
+		 *
+		 *	@return		void
+		 */
+		_motionOff : function( selects ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+
+			Object.keys( views.MOTION_FOLLOWS ).forEach( function( part ) {
+
+				const select = selects[part];
+				const follows = views.MOTION_FOLLOWS[part];
+
+				if( select !== null && select !== undefined )
+					select.disabled = follows[1].indexOf( design._edit.motion[ follows[0] ] || '' ) !== -1;
+			} );
+		},
+
+		/**
+		 *	The select a template is chosen in: the one word of its label over it - the head of its block says which part it
+		 *	is, and the object a second time would be too much -, the catalogue as its options and the description of the
+		 *	chosen one as the line under it. The same for each of the five, in the block of its object on the Templates view
+		 *
+		 *	@param		{Object}	row			One part, as design/list answered it
+		 *
+		 *	@return		{Element}
+		 */
+		_partField : function( row ) {
+
+			const field = Nino.admin['design-setup']._select(
+				'design-set-'+ row.part, Nino.content.getText('/_admin/design/label/template'),
+				Object.keys( row.catalogue || {} ).map( function( set ) {
+					return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
+				} ), Nino.admin.design._edit.parts[row.part], function( value ) {
+					Nino.admin['design-setup']._setPart( row.part, value, field );
+				},
+				( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[row.part] ] || {} ).description || ''
+			);
+
+			return field;
+		},
+
+		/**
+		 *	Choose a template for a part.
+		 *
+		 *	A template brings its own knobs, and the ones the last one had are not
+		 *	this one's: a position the new template does not answer to goes back
+		 *	to the middle, the way the server holds it anyway - so the screen
+		 *	never shows a setup the stored one could not be. The rows of the knobs
+		 *	stand on Type and Surfaces and are drawn when those are opened, with
+		 *	the knobs this template does not answer to greyed out.
+		 *
+		 *	The line under the select says what the template chosen is, written in
+		 *	place: nothing else of the tab changes. The head of the block says the
+		 *	word of the set that is chosen once the block is closed - which paints
+		 *	it from the selection as it stands then (see _paintHead()), so that no
+		 *	redraw is needed for it. The frame goes to where the template is looked
+		 *	at (OBJECT_ANCHORS) - a header at the top of the page, a footer at its foot
+		 *
+		 *	@param		{string}		part
+		 *	@param		{string}		set
+		 *	@param		{Element}		[field]		The select field of the part, whose note is the template's description
+		 *
+		 *	@return		void
+		 */
+		_setPart : function( part, set, field ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const edit = design._edit;
+			const row = design._row( part );
+			const answered = ( ( row.catalogue || {} )[set] || {} ).knobs || [];
+			const note = field ? field.querySelector('small') : null;
+
+			edit.parts[part] = set;
+
+			Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
+				if( answered.indexOf( knob ) === -1 )
+					edit.knobs[part][knob] = 0;
+			} );
+
+			if( note )
+				note.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
+
+			design._target = views._anchorOf( 'parts/'+ part );
+			design._preview();
+		},
+
+		/**
+		 *	What an object of the panel is called at the head of its block: its word in the panel's texts for the page and the parts, and for
+		 *	a feature the name its manifest gives it, which is the feature's own and no text of this panel
+		 *
+		 *	@param		{string}	object		A key of the table's objects
+		 *
+		 *	@return		{string}
+		 */
+		_objectName : function( object ) {
+
+			const feature = Nino.admin.design._featuresOf()[object];
+
+			return feature !== undefined ? feature.name : Nino.content.getText('/_admin/design/object/'+ object+ '/label');
+		},
+
+		/**
+		 *	The variant a feature stands at on the screen: the one chosen for it, else the one it has before anything is chosen
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *
+		 *	@return		{string}
+		 */
+		_chosenSet : function( key ) {
+
+			const feature = Nino.admin.design._featuresOf()[key] || {};
+			const entry = ( Nino.admin.design._edit.features || {} )[key];
+
+			return entry !== undefined && ( feature.catalogue || {} )[entry.set] !== undefined ? entry.set : ( feature['default'] || '' );
+		},
+
+		/**
+		 *	A knob of a feature as the variant chosen has it, else - where that variant does not declare it - as the first variant
+		 *	that does, in the order of the catalogue: the row is drawn, greyed out, since the table gives the knobs of every variant
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *	@param		{string}	knob
+		 *
+		 *	@return		{Object}					{ meta : kind, tab, label, options, default; answered : whether the chosen variant declares it }
+		 */
+		_featureKnob : function( key, knob ) {
+
+			const catalogue = ( Nino.admin.design._featuresOf()[key] || {} ).catalogue || {};
+			const chosen = ( ( catalogue[ Nino.admin['design-setup']._chosenSet( key ) ] || {} ).knobs || {} )[knob];
+
+			if( chosen !== undefined )
+				return { meta : chosen, answered : true };
+
+			return {
+				meta : Object.keys( catalogue ).map( function( set ) { return ( catalogue[set].knobs || {} )[knob] } ).filter( function( meta ) { return meta !== undefined } )[0],
+				answered : false,
+			};
+		},
+
+		/**
+		 *	The value a knob of a feature stands at on the screen: the one chosen, else the one its head says it stands at
+		 *
+		 *	@param		{string}	key
+		 *	@param		{string}	knob
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *
+		 *	@return		{*}								A position, a surface, a tone or a pair of hex colours
+		 */
+		_featureValue : function( key, knob, meta ) {
+
+			const entry = ( Nino.admin.design._edit.features || {} )[key];
+			const value = entry !== undefined ? ( entry.knobs || {} )[knob] : undefined;
+
+			return value === undefined ? meta['default'] : value;
+		},
+
+		/**
+		 *	What the strip of a scale or a choice a feature brings is made of: the label its head gives it and its options, from the least to
+		 *	the most - the numbers -2 to +2 of a scale, the three words the head gives a choice
+		 *
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *
+		 *	@return		{Object}						{ name, options }, the options as { value, label, title }
+		 */
+		_featureStrip : function( meta ) {
+
+			const views = Nino.admin['design-setup'];
+			const positions = views._positions( meta.kind );
+
+			return {
+				name 		: meta.label,
+				options	: meta.kind === 'choice'
+					? positions.map( function( position ) {
+						const label = ( meta.options || {} )[ views._word( position ) ];
+						return { value : position, label : label, title : label };
+					} )
+					: views._numbered( positions, 0 ),
+			};
+		},
+
+		/**
+		 *	What a head says of a knob of a feature where it stands elsewhere than at the default: its label and the word of the value - the
+		 *	position of a ladder as its strip shows it, a surface or a tone by the word of the panel's texts, a colour by its two halves
+		 *
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *	@param		{*}				value
+		 *
+		 *	@return		{string}
+		 */
+		_featureSaid : function( meta, value ) {
+
+			const views = Nino.admin['design-setup'];
+
+			if( meta.kind === 'scale' || meta.kind === 'choice' ) {
+				const strip = views._featureStrip( meta );
+				return views._said( strip.name, strip.options, value );
+			}
+
+			if( meta.kind === 'colour' )
+				return meta.label+ ' '+ value.join(' / ');
+
+			return meta.label+ ' '+ Nino.content.getText('/_admin/design/'+ meta.kind+ '/'+ value );
+		},
+
+		/**
+		 *	What the head of the block of a feature on Templates says: the name of the variant chosen, where it is not the one the feature
+		 *	has before anything is chosen
+		 *
+		 *	@param		{string}	key
+		 *
+		 *	@return		{Array}						The line, none where the variant is the feature's own
+		 */
+		_variantSaid : function( key ) {
+
+			const feature = Nino.admin.design._featuresOf()[key] || {};
+			const set = Nino.admin['design-setup']._chosenSet( key );
+
+			return set === feature['default'] ? [] : [ ( ( feature.catalogue || {} )[set] || {} ).name || set ];
+		},
+
+		/**
+		 *	The id of a control of a feature - the select of its variants, a knob of it, a half of a colour or the line that says what the colour
+		 *	measures - for the label that names it and for the line that is painted in place. The parts are joined by an underscore, which neither
+		 *	a key nor a knob has: joined by a hyphen, the light half of a colour "x" and a knob that is called "x-light" would be one id
+		 *
+		 *	@param		{string}		key				The key of a feature
+		 *	@param		{string}		[knob]
+		 *	@param		{string}		[part]		light, dark or contrast, for what stands with a colour
+		 *
+		 *	@return		{string}
+		 */
+		_featureId : function( key, knob, part ) {
+			return 'design-feature-'+ key+ ( knob === undefined ? '' : '_'+ knob+ ( part === undefined ? '' : '_'+ part ) );
+		},
+
+		/**
+		 *	The choice of the variant of a feature, in the block of the feature on Templates: the select of its variants with the description of the
+		 *	chosen one under it - the label is the one word the selects of the parts have - and, for a feature with one variant only, the
+		 *	description alone: there is nothing to choose
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *
+		 *	@return		{Element}
+		 */
+		_featureField : function( key ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
+			const variants = Object.keys( catalogue );
+			const describe = function( set ) { return ( catalogue[set] || {} ).description || '' };
+
+			if( variants.length < 2 ) {
+
+				const only = dc.createElement('div');
+				only.className = 'design-field';
+
+				const small = dc.createElement('small');
+				small.textContent = describe( variants[0] );
+				only.appendChild( small );
+
+				return only;
+			}
+
+			const field = views._select(
+				views._featureId( key ), Nino.content.getText('/_admin/design/label/template'),
+				variants.map( function( set ) { return { value : set, label : catalogue[set].name || set } } ),
+				views._chosenSet( key ), function( value ) {
+					views._setFeatureSet( key, value, field );
+				}, describe( views._chosenSet( key ) ) );
+
+			return field;
+		},
+
+		/**
+		 *	One knob of a feature, in the block of the feature on the tab its head puts it on: the strip of a scale or a choice, the select of
+		 *	the eleven surfaces of a ground or of the seven tones of an ink, the two colours of a pair. Greyed out where the variant chosen does
+		 *	not declare it, in the words of a knob of a part that its template does not answer to
+		 *
+		 *	@param		{string}	key				The key of a feature
+		 *	@param		{string}	knob
+		 *
+		 *	@return		{Element}
+		 */
+		_featureKnobRow : function( key, knob ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const found = views._featureKnob( key, knob );
+			const meta = found.meta;
+			const value = views._featureValue( key, knob, meta );
+			const note = found.answered === true ? '' : design._text( '/_admin/design/hint/unanswered', meta.label );
+			let field;
+
+			if( meta.kind === 'colour' )
+				field = views._featureColours( key, knob, meta, value, found.answered );
+			else if( meta.kind === 'ground' || meta.kind === 'ink' ) {
+
+				field = views._select( views._featureId( key, knob ), meta.label,
+					( ( design._data || {} )[ meta.kind === 'ground' ? 'grounds' : 'inks' ] || [] ).map( function( word ) {
+						return { value : word, label : Nino.content.getText('/_admin/design/'+ meta.kind+ '/'+ word ) };
+					} ), value, function( chosen ) { views._setFeatureKnob( key, knob, chosen ) }, note );
+
+				field.querySelector('select').disabled = found.answered === false;
+				field.classList.add('design-feature-select');
+			}
+			else {
+
+				const strip = views._featureStrip( meta );
+
+				field = design._stripRow( 'features/'+ key+ '/'+ knob, strip.name, note, strip.options, value, function( position ) {
+					views._setFeatureKnob( key, knob, position );
+				}, found.answered === false );
+			}
+
+			field.dataset.knob = knob;
+
+			return field;
+		},
+
+		/**
+		 *	A colour a feature brings: the name of the knob over two colours, the light one and the dark one, each a swatch under the word of its
+		 *	half, and under them the line that says what the two measure on the page where one of them does not reach the ratio a mark on a page
+		 *	needs (see _paintContrast()) - the row of the brand colour and the line under it, said of a colour of a feature. Nothing refuses a colour
+		 *
+		 *	@param		{string}	key
+		 *	@param		{string}	knob
+		 *	@param		{Object}	meta			The knob, see _featureKnob()
+		 *	@param		{Array}		value			[ light, dark ]
+		 *	@param		{boolean}	answered	Whether the variant chosen declares the knob
+		 *
+		 *	@return		{Element}
+		 */
+		_featureColours : function( key, knob, meta, value, answered ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+
+			const wrap = dc.createElement('div');
+			wrap.className = 'design-colour-feature';
+
+			const field = dc.createElement('div');
+			field.className = 'design-colour-row design-colour-pair';
+
+			const label = dc.createElement('span');
+			label.className = 'design-colour-label design-knob-label';
+			design._labelContent( label, 'features/'+ key+ '/'+ knob, meta.label, answered === true ? '' : design._text( '/_admin/design/hint/unanswered', meta.label ) );
+			field.appendChild( label );
+
+			[ 'light', 'dark' ].forEach( function( half, at ) {
+
+				const box = dc.createElement('label');
+				box.className = 'design-colour-half';
+
+				const caption = dc.createElement('small');
+				caption.textContent = Nino.content.getText('/_admin/design/label/'+ half );
+				box.appendChild( caption );
+
+				const input = dc.createElement('input');
+				input.type = 'color';
+				input.id = views._featureId( key, knob, half );
+				input.setAttribute( 'aria-label', caption.textContent+ ' - '+ meta.label );
+				input.className = 'design-colour-input';
+				input.value = String( value[at] );
+				input.disabled = answered === false;
+				input.addEventListener( 'change', function() {
+
+					const pair = views._featureValue( key, knob, meta ).slice();
+
+					pair[at] = this.value;
+					views._setFeatureKnob( key, knob, pair );
+				} );
+				box.appendChild( input );
+
+				field.appendChild( box );
+			} );
+
+			wrap.appendChild( field );
+
+			const line = dc.createElement('p');
+			line.id = views._featureId( key, knob, 'contrast' );
+			line.className = 'nino-admin-hint design-colour-warning';
+			views._paintContrast( line, key, knob );
+			wrap.appendChild( line );
+
+			return wrap;
+		},
+
+		/**
+		 *	What the two halves of a colour of a feature measure on the page, said under the colour where one of them is below the ratio a mark
+		 *	needs - the number is the server's (design/list and every preview carry it), the words the panel's. Written in place: the column holds
+		 *	colour pickers somebody may have open
+		 *
+		 *	@param		{?Element}	line			The line itself
+		 *	@param		{string}		key
+		 *	@param		{string}		knob
+		 *
+		 *	@return		void
+		 */
+		_paintContrast : function( line, key, knob ) {
+
+			if( line === null || line === undefined )
+				return;
+
+			const measured = ( ( ( Nino.admin.design._data || {} ).contrasts || {} )[key] || {} )[knob] || null;
+			const unsafe = measured !== null && ( measured.light.safe === false || measured.dark.safe === false );
+
+			line.hidden = unsafe === false;
+
+			if( unsafe === true )
+				line.textContent = Nino.admin.design._text( '/_admin/design/label/contrast', measured.light.ratio, measured.dark.ratio, measured.light.target );
+		},
+
+		/**
+		 *	Paint the line of every colour of a feature that is on the screen, from what the last answer measured. Runs after every preview, beside
+		 *	the brand's (see _absorb())
+		 *
+		 *	@return		void
+		 */
+		_paintContrasts : function() {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const features = design._featuresOf();
+
+			Object.keys( features ).forEach( function( key ) {
+
+				const painted = {};
+
+				Object.keys( features[key].catalogue || {} ).forEach( function( set ) {
+
+					const knobs = features[key].catalogue[set].knobs || {};
+
+					Object.keys( knobs ).forEach( function( knob ) {
+
+						if( knobs[knob].kind !== 'colour' || painted[knob] === true )
+							return;
+
+						painted[knob] = true;
+						views._paintContrast( dc.getElementById( views._featureId( key, knob, 'contrast' ) ), key, knob );
+					} );
+				} );
+			} );
+		},
+
+		/**
+		 *	Choose a variant for a feature. The knobs the last one declared and this one does not are not this one's: they go, as the position of
+		 *	a knob a template does not answer to goes back to the middle - the screen never holds a choice the stored one could not be. A choice
+		 *	that comes to the feature as it is leaves no entry (see _pruneFeature()). The description under the select is written in place
+		 *
+		 *	@param		{string}		key
+		 *	@param		{string}		set				A variant of the feature
+		 *	@param		{Element}		[field]		The select field of the feature, whose note is the description of the variant
+		 *
+		 *	@return		void
+		 */
+		_setFeatureSet : function( key, set, field ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
+			const declared = ( catalogue[set] || {} ).knobs || {};
+			const entry = design._edit.features[key] || { set : set, knobs : {} };
+			const note = field ? field.querySelector('small') : null;
+
+			entry.set = set;
+
+			Object.keys( entry.knobs ).forEach( function( knob ) {
+				if( declared[knob] === undefined )
+					delete entry.knobs[knob];
+			} );
+
+			design._edit.features[key] = entry;
+			views._pruneFeature( key );
+
+			if( note )
+				note.textContent = ( catalogue[set] || {} ).description || '';
+
+			design._target = views._anchorOf( 'features/'+ key+ '/set' );
+			design._preview();
+		},
+
+		/**
+		 *	Move a knob of a feature: a position, a surface, a tone or a pair of colours. The feature is chosen at the variant it stands at, if
+		 *	nothing was chosen for it yet; a choice that comes to the feature as it is leaves no entry (see _pruneFeature())
+		 *
+		 *	@param		{string}	key
+		 *	@param		{string}	knob
+		 *	@param		{*}				value
+		 *
+		 *	@return		void
+		 */
+		_setFeatureKnob : function( key, knob, value ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const entry = design._edit.features[key] || { set : views._chosenSet( key ), knobs : {} };
+
+			entry.knobs[knob] = value;
+			design._edit.features[key] = entry;
+			views._pruneFeature( key );
+
+			design._target = views._anchorOf( 'features/'+ key+ '/knobs/'+ knob );
+			design._preview();
+		},
+
+		/**
+		 *	Take the entry of a feature away where it says what the feature is without it: the variant it has before anything is chosen, and
+		 *	every knob at the default its head gives it. The server holds no entry for such a feature either, so the screen that was put back
+		 *	is the stored one
+		 *
+		 *	@param		{string}	key
+		 *
+		 *	@return		void
+		 */
+		_pruneFeature : function( key ) {
+
+			const design = Nino.admin.design;
+			const feature = design._featuresOf()[key];
+			const entry = design._edit.features[key];
+
+			if( feature === undefined || entry === undefined || entry.set !== feature['default'] )
+				return;
+
+			const declared = ( ( feature.catalogue || {} )[entry.set] || {} ).knobs || {};
+
+			if( Object.keys( entry.knobs ).every( function( knob ) {
+				return declared[knob] === undefined || JSON.stringify( entry.knobs[knob] ) === JSON.stringify( declared[knob]['default'] );
+			} ) === true )
+				delete design._edit.features[key];
+		},
+
+		/**
+		 *	Choose one thing of the motion of the page: a part of its animation or of the hover of its pictures
+		 *
+		 *	@param		{string}	key				effect, strength, speed, hover or hover-strength
+		 *	@param		{string}	value			'' is what Nino.css does by itself
+		 *
+		 *	@return		void
+		 */
+		_setMotion : function( key, value ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const selects = {};
+
+			design._edit.motion[key] = value;
+			design._target = views._anchorOf( 'motion/'+ key );
+
+			// A change of the animation plays it again; the hover of the pictures is seen under the pointer, and nothing is played
+			if( key.indexOf('hover') !== 0 )
+				design._replays = true;
+
+			Object.keys( views.MOTION_FOLLOWS ).forEach( function( part ) { selects[part] = dc.getElementById( 'design-motion-'+ part ) } );
+			views._motionOff( selects );
+			design._preview();
+		},
+
+		/**
+		 *	The table of the five roles of Nino.css, without its rows: the head of four columns - the family, the
+		 *	weight, the case and the size - and the body the rows of the roles are put into one by one, as the table
+		 *	gives them to the page (see _fillRow() and _fontRow()). The controls stand bare in the cells and the words
+		 *	are in the column heads, which is what keeps the table readable in a third of the screen; each control
+		 *	still carries its role and its column as its accessible name
+		 *
+		 *	@return		{Object}					{ table, body }: the table and the box of its rows
+		 */
+		_rolesTable : function() {
+
+			// The roles of a table are said out loud: the stylesheet lays the rows
+			// out as grids, and a display other than a table's takes the
+			// semantics of the element away
+			const table = dc.createElement('table');
+			table.className = 'design-fonts';
+			table.setAttribute( 'role', 'table' );
+
+			const thead = dc.createElement('thead');
+			thead.setAttribute( 'role', 'rowgroup' );
+			const heads = dc.createElement('tr');
+			heads.setAttribute( 'role', 'row' );
+
+			[ 'role', 'family', 'weight', 'uppercase', 'size' ].forEach( function( key ) {
+				const th = dc.createElement('th');
+				th.setAttribute( 'scope', 'col' );
+				th.setAttribute( 'role', 'columnheader' );
+				th.textContent = key === 'role' ? '' : Nino.content.getText('/_admin/design/font/head/'+ key );
+				heads.appendChild( th );
+			} );
+
+			thead.appendChild( heads );
+			table.appendChild( thead );
+
+			const tbody = dc.createElement('tbody');
+			tbody.setAttribute( 'role', 'rowgroup' );
+			table.appendChild( tbody );
+
+			return { table : table, body : tbody };
+		},
+
+		/**
+		 *	What a cell of a role is called: the role and the column, "Title - Weight" - the name of its control, and the
+		 *	label of the case switch
+		 *
+		 *	@param		{string}	role			A key of data.roles
+		 *	@param		{string}	column		family, weight, uppercase or size
+		 *
+		 *	@return		{string}
+		 */
+		_fontLabel : function( role, column ) {
+			return Nino.content.getText('/_admin/design/font/role/'+ role )+ ' - '+ Nino.content.getText('/_admin/design/font/head/'+ column );
+		},
+
+		/**
+		 *	One row of the table: a role, and the four things a role is given
+		 *
+		 *	@param		{string}	role			A key of data.roles
+		 *
+		 *	@return		{Element}
+		 */
+		_fontRow : function( role ) {
+
+			const data = Nino.admin.design._data;
+			const chosen = Nino.admin.design._edit.fonts[role] || {};
+			const name = Nino.content.getText('/_admin/design/font/role/'+ role );
+
+			const row = dc.createElement('tr');
+			row.dataset.role = role;
+			row.setAttribute( 'role', 'row' );
+
+			const head = dc.createElement('th');
+			head.setAttribute( 'scope', 'row' );
+			head.setAttribute( 'role', 'rowheader' );
+			head.textContent = name;
+			row.appendChild( head );
+
+			// A cell around a control that names itself: "Title - Weight"
+			const cell = function( control, column ) {
+				const td = dc.createElement('td');
+				td.setAttribute( 'role', 'cell' );
+				control.setAttribute( 'aria-label', Nino.admin['design-setup']._fontLabel( role, column ) );
+				td.appendChild( control );
+				row.appendChild( td );
+				return td;
+			};
+
+			const select = function( key, options, current ) {
+				const control = dc.createElement('select');
+				control.id = 'design-font-'+ role+ '-'+ key;
+				control.dataset.role = role;
+				control.dataset.key = key;
+				options.forEach( function( option ) {
+					const node = dc.createElement('option');
+					node.value = option.value;
+					node.textContent = option.label;
+					if( option.value === current )
+						node.selected = true;
+					control.appendChild( node );
+				} );
+				control.addEventListener( 'change', function() { Nino.admin['design-setup']._setFont( role, key, control.value ) } );
+				return cell( control, key );
+			};
+
+			select( 'family', ( ( data.options || {} )[role] || [ '' ] ).map( function( slug ) {
+				return { value : slug, label : Nino.admin['design-setup']._familyLabel( role, slug ) };
+			} ), chosen.family || '' );
+
+			select( 'weight', ( data.weights || [] ).map( function( weight ) {
+				return { value : weight, label : Nino.content.getText('/_admin/design/weight/'+ weight ) };
+			} ), chosen.weight || 'normal' );
+
+			// The code has no case switch: capitals in a block of code are not a
+			// choice anybody makes. Its cell says so rather than staying empty
+			if( role === 'code' ) {
+				const none = dc.createElement('td');
+				none.setAttribute( 'role', 'cell' );
+				none.className = 'design-fonts-none';
+				none.textContent = '—';
+				row.appendChild( none );
+			}
+			else {
+				const field = Nino.adminUi.switchField( {
+					key 		: 'design-font-'+ role+ '-uppercase',
+					label 	: Nino.admin['design-setup']._fontLabel( role, 'uppercase' ),
+					checked	: chosen.uppercase === true,
+				} );
+				const input = field.querySelector('input');
+				input.id = 'design-font-'+ role+ '-uppercase';
+				input.dataset.role = role;
+				input.dataset.key = 'uppercase';
+				input.addEventListener( 'change', function() { Nino.admin['design-setup']._setFont( role, 'uppercase', input.checked ) } );
+				const td = dc.createElement('td');
+				td.setAttribute( 'role', 'cell' );
+				td.className = 'design-fonts-switch';
+				td.appendChild( field );
+				row.appendChild( td );
+			}
+
+			/*	The size is typed, in rem, and the field shows the size that is in
+				force: the one that was chosen, else the one Nino.css gives the role.
+				It is the field's value and not its placeholder, so that the spinner
+				counts from the size the page has - from an empty field it begins at
+				the least of the role. The number is the one the field shows and
+				takes, with the point: a number field drops a typed comma. What is typed
+				is held inside the bounds of the role the way the server holds it, and
+				the field then shows what was kept; a size that comes to the one
+				Nino.css gives the role is kept as empty, and the role goes on following
+				its default. The field steps by a tenth, which every bound is on: that
+				is the spinner's step and the browser's own hint of what is valid, and
+				not the model's - a typed 1.25 stays 1.25	*/
+			const bounds = ( data.bounds || {} )[role] || [];
+			const size = dc.createElement('input');
+			size.type = 'number';
+			size.id = 'design-font-'+ role+ '-size';
+			size.dataset.role = role;
+			size.dataset.key = 'size';
+			size.setAttribute( 'inputmode', 'decimal' );
+			size.setAttribute( 'step', '.1' );
+			size.setAttribute( 'min', String( bounds[0] ) );
+			size.setAttribute( 'max', String( bounds[1] ) );
+			size.value = Nino.admin['design-setup']._sizeInForce( role );
+			size.addEventListener( 'change', function() {
+				Nino.admin['design-setup']._setFont( role, 'size', Nino.admin['design-setup']._keepSize( role, size.value ) );
+				size.value = Nino.admin['design-setup']._sizeInForce( role );
+			} );
+
+			const td = cell( size, 'size' );
+			td.className = 'design-fonts-size';
+
+			const unit = dc.createElement('span');
+			unit.className = 'design-fonts-unit';
+			unit.textContent = Nino.content.getText('/_admin/design/fontsize/unit');
+			td.appendChild( unit );
+
+			return row;
+		},
+
+		/**
+		 *	A family as a select names it: a system stack in the words of the
+		 *	workbench, a webface by its own name
+		 *
+		 *	@param		{string}	role
+		 *	@param		{string}	slug				'' is the system's own, for the code the monospace
+		 *
+		 *	@return		{string}
+		 */
+		_familyLabel : function( role, slug ) {
+
+			if( slug === '' )
+				return Nino.content.getText('/_admin/design/family/'+ ( role === 'code' ? 'default-code' : 'default' ) );
+
+			const family = ( ( Nino.admin.design._data || {} ).families || {} )[slug] || {};
+
+			return family.system === true ? Nino.content.getText('/_admin/design/family/'+ slug ) : String( family.name || slug );
+		},
+
+		/**
+		 *	What was typed in a size, as the model keeps it: a number of rem held
+		 *	inside the bounds of the role, rounded to three decimals and written
+		 *	as short as it can be - what Fonts::size() answers to the same input.
+		 *	'' is the default, and so is whatever is no number
+		 *
+		 *	@param		{string}	role
+		 *	@param		{string}	typed				The value of the field
+		 *
+		 *	@return		{string}							'2.4', or '' for the default
+		 */
+		_clampSize : function( role, typed ) {
+
+			const bounds = ( ( Nino.admin.design._data || {} ).bounds || {} )[role];
+			const number = String( typed ).trim() === '' ? NaN : Number( typed );
+
+			if( bounds === undefined || isFinite( number ) === false )
+				return '';
+
+			return String( Math.round( Math.max( bounds[0], Math.min( bounds[1], number ) ) * 1000 ) / 1000 );
+		},
+
+		/**
+		 *	What was typed in a size, as the model keeps it: what _clampSize() makes
+		 *	of it, and '' where that comes to the size Nino.css gives the role. A role
+		 *	set to its default and a role left alone are one thing, and the model has
+		 *	one word for it
+		 *
+		 *	@param		{string}	role
+		 *	@param		{string}	typed				The value of the field
+		 *
+		 *	@return		{string}							'2.4', or '' for the default
+		 */
+		_keepSize : function( role, typed ) {
+
+			const kept = Nino.admin['design-setup']._clampSize( role, typed );
+			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
+
+			return kept !== '' && Number( kept ) === Number( given ) ? '' : kept;
+		},
+
+		/**
+		 *	The size of a role that is in force: the one that was chosen, else the one
+		 *	Nino.css gives the role. What its field shows
+		 *
+		 *	@param		{string}	role
+		 *
+		 *	@return		{string}							'1.6'
+		 */
+		_sizeInForce : function( role ) {
+
+			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
+
+			return ( Nino.admin.design._edit.fonts[role] || {} ).size || ( given === undefined ? '' : String( given ) );
+		},
+
+		/**
+		 *	Change one thing of one role
+		 *
+		 *	@param		{string}		role
+		 *	@param		{string}		key				family, weight, uppercase or size
+		 *	@param		{*}					value
+		 *
+		 *	@return		void
+		 */
+		_setFont : function( role, key, value ) {
+
+			Nino.admin.design._edit.fonts[role][key] = value;
+			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'fonts/'+ role );
+			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	What the strip of a knob is made of: its label and its options, from the least to the most - the numbers
+		 *	-2 to +2 of a scale, the three words that knob has for a choice. The kind is what design/list says of the
+		 *	knob in its part
+		 *
+		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
+		 *	@param		{string}		knob
+		 *
+		 *	@return		{Object}							{ name, options }, the options as { value, label, title }
+		 */
+		_knobStrip : function( part, knob ) {
+
+			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
+			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
+			const positions = Nino.admin['design-setup']._positions( kind );
+
+			return {
+				name 		: Nino.content.getText( base+ '/label' ),
+				options	: kind === 'choice'
+					? positions.map( function( position ) {
+						const label = Nino.content.getText( base+ '/'+ Nino.admin['design-setup']._word( position ) );
+						return { value : position, label : label, title : label };
+					} )
+					: Nino.admin['design-setup']._numbered( positions, 0 ),
+			};
+		},
+
+		/**
+		 *	One knob, as a strip. A scale is five numbers, -2 to +2, and the note under
+		 *	its name says which way they go; a choice is three alternatives, each in the
+		 *	words that knob has for it - "tight, normal, airy" is not the same sentence
+		 *	as "sharp, normal, round". The kind is what design/list says of the knob
+		 *	in its part
+		 *
+		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
+		 *	@param		{string}		knob
+		 *	@param		{boolean}		answered		Whether the chosen template declares it
+		 *
+		 *	@return		{Element}
+		 */
+		_knobRow : function( part, knob, answered ) {
+
+			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
+			const strip = Nino.admin['design-setup']._knobStrip( part, knob );
+			const name = strip.name;
+
+			/*	The knob's own name and the terse note under it, both out of the
+				panel's text files: a knob is one key in every locale. Where the
+				template does not answer to it the note is the reason it is grey.
+				An icon stands before them, for what the knob sets	*/
+			const field = Nino.admin.design._stripRow( part+ '/'+ knob, name,
+				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ),
+				strip.options, ( Nino.admin.design._edit.knobs[part] || {} )[knob] || 0, function( position ) {
+					Nino.admin['design-setup']._setStep( part, knob, position );
+				}, answered === false );
+
+			field.dataset.knob = knob;
+
+			return field;
+		},
+
+		/**
+		 *	Move a knob
+		 *
+		 *	@param		{string}		part			The part the knob belongs to
+		 *	@param		{string}		knob			A knob of that part
+		 *	@param		{number}		position	-2 to +2 for a scale, -1 to +1 for a choice
+		 *
+		 *	@return		void
+		 */
+		_setStep : function( part, knob, position ) {
+
+			Nino.admin.design._edit.knobs[part][knob] = position;
+			// A change is looked at where it shows: one target for it, which the jump
+			// that follows the preview goes to
+			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'knobs/'+ part+ '/'+ knob );
+			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	The element a change of one control is looked at in: the id CONTROL_ANCHORS names for its key, else the one
+		 *	OBJECT_ANCHORS names for the object it stands under, else the anchor of its tab. Where the control stands is
+		 *	the table's (see _place()); how many rows its tab has is no part of it
+		 *
+		 *	@param		{string}		key				The key the control has in the table: 'size', 'knobs/section/quiet' ...
+		 *
+		 *	@return		{string}							The id of an element of the specimen
+		 */
+		_anchorOf : function( key ) {
+
+			const design = Nino.admin.design;
+			const place = design._place( key );
+
+			return design.CONTROL_ANCHORS[key] || design.OBJECT_ANCHORS[ place[1] ] || design.ANCHORS[ place[0] ];
+		},
+
+		/**
+		 *	What the brand as picked measures, as a line of its own under the row that picked it. Always
+		 *	built, shown only while it applies: every colour knob moves the number in it, and the answer to
+		 *	a preview updates the line in place rather than rebuilding a column that holds an open colour
+		 *	picker - see _absorb().
+		 *
+		 *	brand and accent are the two surfaces with no contrast promise - they are the hex the picker
+		 *	returned, byte for byte, so there is no lightness left to solve with. Everything a theme writes on
+		 *	uses the -safe roles instead, and this is the one place the panel can say that the colour as
+		 *	picked is not one of them
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_brandWarning : function() {
+
+			const warn = dc.createElement('p');
+			warn.id = 'design-brand-warning';
+			warn.className = 'nino-admin-hint design-colour-warning';
+
+			// By the node, not by its id: this column is not in the document yet on the first render
+			Nino.admin['design-setup']._paintBrandWarning( warn );
+
+			return warn;
+		},
+
+		/**
+		 *	The brand colour: a row of its own, because it is the one value the
+		 *	whole palette is solved out of
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_primaryField : function() {
+
+			const edit = Nino.admin.design._edit;
+
+			const field = dc.createElement('div');
+			field.className = 'design-colour-row';
+
+			const label = dc.createElement('label');
+			label.className = 'design-colour-label design-knob-label';
+			label.setAttribute( 'for', 'design-colour-primary' );
+			Nino.admin.design._labelContent( label, 'colours/primary', Nino.content.getText('/_admin/design/label/primary'),
+				Nino.content.getText('/_admin/design/hint/primary') );
+
+			field.appendChild( label );
+
+			const input = dc.createElement('input');
+			input.type = 'color';
+			input.id = 'design-colour-primary';
+			input.className = 'design-colour-input';
+			input.value = String( ( edit.colours || {} ).primary || '#4faae8' );
+			input.addEventListener( 'change', function() { Nino.admin['design-setup']._setColour( 'primary', this.value ) } );
+			field.appendChild( input );
+
+			return field;
+		},
+
+		/**
+		 *	The second colour, at the end of the Harmony row it belongs to.
+		 *
+		 *	It has a state the brand does not: empty, which is the ordinary
+		 *	answer rather than a missing one - it means "let Harmony put it on
+		 *	the wheel". An <input type="color"> cannot be empty, so while it is
+		 *	empty the swatch shows the colour the wheel actually produced, as
+		 *	the server computed it, and is drawn quietly to say that nobody
+		 *	chose it. Opening it is how you stop deriving it; the way back is
+		 *	the reset beside it, or any of the four positions to its left
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_secondField : function() {
+
+			const edit		= Nino.admin.design._edit;
+			const value		= String( ( edit.colours || {} ).secondary || '' );
+			const derived	= value === '';
+
+			const box = dc.createElement('div');
+			box.className = 'design-colour-second'+ ( derived === true ? ' design-colour-row--derived' : '' );
+
+			const input = dc.createElement('input');
+			input.type = 'color';
+			input.id = 'design-colour-secondary';
+			input.className = 'design-colour-input';
+			input.value = derived === true
+				? String( ( Nino.admin.design._data || {} ).accent || ( edit.colours || {} ).primary || '#4faae8' )
+				: value;
+			input.title = Nino.content.getText('/_admin/design/label/secondary');
+			input.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/secondary') );
+			input.addEventListener( 'change', function() { Nino.admin['design-setup']._setColour( 'secondary', this.value ) } );
+			box.appendChild( input );
+
+			if( derived === false ) {
+				const reset = dc.createElement('button');
+				reset.type = 'button';
+				reset.className = 'design-knob-reset';
+				reset.textContent = '\u21ba';
+				reset.title = Nino.content.getText('/_admin/design/hint/derived');
+				reset.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/hint/derived') );
+				reset.addEventListener( 'click', function() { Nino.admin['design-setup']._setColour( 'secondary', '' ) } );
+				box.appendChild( reset );
+			}
+
+			return box;
+		},
+
+		/**
+		 *	What the strip of a knob of the palette is made of: its label and its options, from the least to the most - the
+		 *	numbers -2 to +2 of a scale, which stand at distance from where it starts so that the framework's own is the 0, and
+		 *	the names of the positions of a choice like Harmony, which are not a track
+		 *
+		 *	@param		{string}	key				harmony, temperature, saturation, contrast or depth
+		 *	@param		{Object}	meta			One entry of Colours::choices()
+		 *
+		 *	@return		{Object}						{ name, options }, the options as { value, label, title }
+		 */
+		_colourStrip : function( key, meta ) {
+
+			const base = '/_admin/design/colour/'+ key;
+
+			let options;
+
+			if( meta.kind === 'scale' ) {
+				const positions = [];
+
+				for( let position = 1; position <= meta.steps; position++ )
+					positions.push( position );
+
+				options = Nino.admin['design-setup']._numbered( positions, meta['default'] );
+			}
+			else
+				// The position's own name is the label here, not a step word:
+				// "Monochrom" and "Triadisch" are not less and more of anything
+				options = ( meta.steps || [] ).map( function( name, index ) {
+					const label = Nino.content.getText( base+ '/'+ ( index + 1 ) ) || name;
+					return { value : index + 1, label : label, title : label };
+				} );
+
+			return { name : Nino.content.getText( base+ '/label' ), options : options };
+		},
+
+		/**
+		 *	One colour knob. The same strip as a part's knob, over as many positions as
+		 *	the knob publishes (see _colourStrip())
+		 *
+		 *	@param		{string}	key
+		 *	@param		{Object}	meta		One entry of Colours::choices()
+		 *	@param		{?Element}	[extra]	Drawn after the positions. Harmony's is the
+		 *														second colour itself, which is what those
+		 *														positions are for
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_colourKnobRow : function( key, meta, extra ) {
+
+			const colours = Nino.admin.design._edit.colours || {};
+			const strip = Nino.admin['design-setup']._colourStrip( key, meta );
+
+			/*	A hex somebody typed overrides the whole knob - Colours::palette()
+				takes the Secondary as given and never reaches for Harmony at all.
+				So no position is lit while one is set: an active button there
+				would claim a derivation that is not happening	*/
+			const active = key === 'harmony' && String( colours.secondary || '' ) !== ''
+				? null
+				: ( colours[key] || meta['default'] );
+
+			const field = Nino.admin.design._stripRow( 'colours/'+ key, strip.name, Nino.content.getText( '/_admin/design/colour/'+ key+ '/note' ),
+				strip.options, active, function( position ) { Nino.admin['design-setup']._setColourKnob( key, position ) } );
+
+			// What the stylesheet takes a row of the palette by: the row itself, not the place the table gives it
+			field.classList.add('design-colour-knob');
+
+			if( extra )
+				field.appendChild( extra );
+
+			return field;
+		},
+
+		/**
+		 *	The mode of the palette: follow the visitor's setting, or be light, or
+		 *	be dark - one select under a heading with its icon
+		 *
+		 *	@param		{Object}	meta		The mode entry of Colours::choices()
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_modeField : function( meta ) {
+
+			const edit = Nino.admin.design._edit;
+			const mode = dc.createElement('div');
+			mode.className = 'design-colour-mode';
+
+			mode.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/colour/mode/label'),
+				Nino.admin.design._icon('colours/mode') ) );
+
+			const field = Nino.admin['design-setup']._select(
+				'design-colour-mode', '', Nino.admin['design-setup']._modeOptions( meta ), String( ( edit.colours || {} ).mode || meta['default'] ),
+				function( value ) {
+					Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
+					Nino.admin.design._edit.colours.mode = value;
+					Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'colours/mode' );
+					Nino.admin.design._preview();
+				} );
+
+			field.querySelector('select').setAttribute( 'aria-label', Nino.content.getText('/_admin/design/colour/mode/label') );
+			mode.appendChild( field );
+
+			return mode;
+		},
+
+		/**
+		 *	What the select of the mode offers, and what the head of the block of the palette says a mode is: a word for each
+		 *	of the modes the palette has
+		 *
+		 *	@param		{Object}	meta		The mode entry of Colours::choices()
+		 *
+		 *	@return		{Array}					{ value, label }
+		 */
+		_modeOptions : function( meta ) {
+
+			return ( meta.steps || [] ).map( function( name ) {
+				return { value : name, label : Nino.content.getText('/_admin/design/colour/mode/'+ name ) };
+			} );
+		},
+
+		_setColour : function( key, value ) {
+			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
+			Nino.admin.design._edit.colours[key] = value;
+			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'colours/'+ key );
+			Nino.admin['design-setup']._redrawColours();
+		},
+
+		_setColourKnob : function( key, position ) {
+
+			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
+			Nino.admin.design._edit.colours[key] = parseInt( position, 10 );
+			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'colours/'+ key );
+
+			/*	Choosing where the second colour sits is choosing to let Harmony
+				put it there. A hex left over from before would override the very
+				knob that was just moved, and the knob would look moved and do
+				nothing - which is the worst of the three possible states	*/
+			if( key === 'harmony' ) {
+				Nino.admin.design._edit.colours.secondary = '';
+				return Nino.admin['design-setup']._redrawColours();
+			}
+
+			Nino.admin.design._preview();
+		},
+
+		/*	A colour change redraws its own rows - whether the second colour is
+			derived decides how it is drawn and whether the reset is beside it -
+			where a knob only ever moves the frame. The row is the one the table
+			puts the second colour in, with the Harmony it ends. Both then ask for
+			a new stylesheet */
+		_redrawColours : function() {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin['design-setup'];
+			const place = design._place('colours/secondary');
+			const rows = views._rows( place[0] );
+			const row = rows.filter( function( each ) { return each.object === place[1] } )[0];
+			const old = dc.getElementById( views._rowId( place[0], place[1] ) );
+
+			if( old !== null && row !== undefined )
+				old.replaceWith( views._renderRow( place[0], row, views._blockOf( place[0], rows ) === row.object ) );
+
+			design._preview();
+		},
+
+		/**
+		 *	What the brand as picked measures, under the row that picked it -
+		 *	written in place rather than redrawn, because the column it sits in
+		 *	holds a colour picker somebody may have open
+		 *
+		 *	@param		{Element}	[node]		The line itself, for a column that is
+		 *															built but not mounted yet
+		 *
+		 *	@return		void
+		 */
+		_paintBrandWarning : function( node ) {
+
+			const line = node || dc.getElementById('design-brand-warning');
+
+			if( line === null || line === undefined )
+				return;
+
+			const brand = ( ( Nino.admin.design._data || {} ).brand || {} ).light || null;
+
+			line.hidden = brand === null || brand.safe !== false;
+
+			if( line.hidden === false )
+				line.textContent = Nino.admin.design._text( '/_admin/design/msg/brand-unsafe', brand.ratio, brand.target );
+		},
+
+		/**
+		 *	A labelled select that reports its own changes
+		 *
+		 *	@param		{string}		id
+		 *	@param		{string}		label			'' draws none
+		 *	@param		{Array}			options		{ value, label }
+		 *	@param		{string}		current
+		 *	@param		{Function}	onChange
+		 *	@param		{string}		[note]		What the control is for, as the line under it.
+		 *															It used to be the title attribute, because three
+		 *															controls in a column with a sentence under each
+		 *															were more of the screen than the controls were -
+		 *															in the field grid they stand side by side, and a
+		 *															hint a hand has to hover for is one nobody reads
+		 *
+		 *	@return		{Element}
+		 */
+		_select : function( id, label, options, current, onChange, note ) {
+
+			/*	A label over the control and a small under it. The name is a
+				<label for>: the control is a real one with an id, and a label
+				that names it is what a screen reader reads out	*/
+			const field = dc.createElement('div');
+			field.className = 'design-field';
+
+			if( label !== '' ) {
+				const tag = dc.createElement('label');
+				tag.setAttribute( 'for', id );
+				tag.textContent = label;
+				field.appendChild( tag );
+			}
+
+			const select = dc.createElement('select');
+			select.id = id;
+
+			if( options.length === 0 ) {
+				const empty = dc.createElement('option');
+				empty.value = '';
+				empty.textContent = '—';
+				select.appendChild( empty );
+				select.disabled = true;
+			}
+
+			options.forEach( function( option ) {
+				const node = dc.createElement('option');
+				node.value = option.value;
+				node.textContent = option.label;
+				if( option.value === current )
+					node.selected = true;
+				select.appendChild( node );
+			} );
+
+			select.addEventListener( 'change', function() { onChange( select.value ) } );
+			field.appendChild( select );
+
+			if( note ) {
+				const small = dc.createElement('small');
+				small.textContent = note;
+				field.appendChild( small );
+			}
+
+			return field;
+		},
+
+	};
+
+	/*	The loader of the typefaces: the tab Schriftarten of the pane, with no preview and no bar - two cards, the
+		families the project has installed and the list of those it can install. It keeps nothing in the setup: an
+		install or a removal happens when it is pressed and is no part of the draft, so what it says of it stands over
+		the cards and not in the bar of a screen that has one. What it reads of the panel is the data of design/list - the
+		families the roles list, the settings of the repository - and the working copy, to tell which roles use a family (see
+		Nino.admin.design)	*/
+	Nino.admin['design-typefaces'] = {
+
+		// The categories of the typefaces the Available half is told apart by, as the chips
+		// of its strip, and how many families a page of it holds
+		FACE_CATEGORIES	: [ 'all', 'sans', 'serif', 'display', 'handwriting', 'mono', 'other' ],
+		FACES_PER_PAGE	: 24,
+
+		/*	The loader, the tab Schriftarten. The last answer of design/webfonts/* - families (the list),
+			fetched, url, key, builtin, installed, broken, uses, refusal, refusalKind - from
+			which both halves are drawn; null until the first has come. Beside it what the
+			Available half looks at, the counter that tells which of the requests asked is
+			the latest, whether an action of the screen is on its way, and the faces the names
+			have been set in: the FontFace of every family by the font-family it was added to
+			the document under, and the observer that loads those of the rows that come into
+			view	*/
+		_faces			: null,
+		_facesQuery		: '',
+		_facesCategory	: 'all',
+		_facesPage		: 0,
+		_facesStamp		: 0,
+		_facesBusy		: false,
+		_facesLoaded	: {},
+		_facesObserver	: null,
+
+		/**
+		 *	The shell shows the tab: the loader is drawn afresh whenever it is opened, from what is known then - the
+		 *	list the server kept, which is asked for again where no action is on its way. Where the list of the panel is
+		 *	not there yet - the tab is the first screen of the pane that was asked for - it is waited for, and a
+		 *	failure of it is said in the mount of this tab
+		 *
+		 *	The chip "changed" stands on the button of the screen of the themes, which every tab of the pane has in the
+		 *	strip on top of it, so it is drawn here too (see Nino.admin.design._refreshThemeChip())
+		 *
+		 *	@return		void
+		 */
+		showCurrent : function() {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const wrap = loader._mount();
+
+			if( wrap === null )
+				return;
+
+			const draw = function() {
+				loader._render();
+				design._refreshThemeChip();
+			};
+
+			if( design._ready === false )
+				return design.init( draw, wrap );
+
+			draw();
+		},
+
+		/**
+		 *	The mount of the tab: the one its pane holds (see Webfonts\Tab::panes())
+		 *
+		 *	@return		{?Element}
+		 */
+		_mount : function() {
+			return dc.getElementById('design-typefaces-form');
+		},
+
+		/**
+		 *	The tab is left: another screen of the pane is shown (see Nino.admin.design._show()). The faces the names were
+		 *	set in are let go of and the mount is emptied, so that the answer of a request that outlived the tab is kept and
+		 *	draws nothing - there are no cards for it to draw into - and the tab is drawn again from what is known when it
+		 *	is opened. A tab that is not drawn has nothing to let go of
+		 *
+		 *	@return		void
+		 */
+		_leave : function() {
+
+			const loader = Nino.admin['design-typefaces'];
+			const wrap = loader._mount();
+
+			loader._dropFaces();
+
+			if( wrap !== null )
+				wrap.innerHTML = '';
+		},
+
+		/**
+		 *	The loader, drawn into its mount: what it said last, which an action has to say, and the two cards under it
+		 *
+		 *	@return		void
+		 */
+		_render : function() {
+
+			const loader = Nino.admin['design-typefaces'];
+			const wrap = loader._mount();
+
+			if( wrap === null )
+				return;
+
+			wrap.innerHTML = '';
+			loader._renderTypefaces( wrap );
+
+			// The box of the list is in the document now: it takes the room the window has under it
+			loader._fitFaces();
+		},
+
+		/**
+		 *	The two cards of the loader: the first holds the families the
+		 *	project has installed, each with its name set in its own face, its weights, its
+		 *	version and licence, and the button that removes it; the second the list of those
+		 *	the repository offers, read when its button is pressed, with a search field, the
+		 *	categories as a strip and pages of FACES_PER_PAGE. Over them the line the loader says what its
+		 *	actions did in, which is empty until one has.
+		 *
+		 *	Both halves are drawn from the answer the server gives after each action of the
+		 *	tab, kept in _faces. The cached list is asked for whenever the tab is opened -
+		 *	design/webfonts/list answers from data/ without a request of its own, and not
+		 *	while an action is on its way, whose answer is the state - and the repository
+		 *	only by the button. An install and a removal are made when their button is
+		 *	pressed, and are no part of the draft: the line over the cards says what they
+		 *	did, and there is no bar, so no Reset to bring anything back.
+		 *
+		 *	@param		{Element}	body		The box the tab keeps for it
+		 *
+		 *	@return		void
+		 */
+		_renderTypefaces : function( body ) {
+
+			const loader = Nino.admin['design-typefaces'];
+
+			const line = dc.createElement('p');
+			line.id = 'design-faces-msg';
+			line.setAttribute( 'aria-live', 'polite' );
+			body.appendChild( line );
+
+			const cards = dc.createElement('div');
+			cards.className = 'design-faces-cards';
+			body.appendChild( cards );
+
+			const installed = dc.createElement('div');
+			installed.id = 'design-faces-installed';
+			installed.className = 'nino-admin-card design-block';
+
+			const available = dc.createElement('div');
+			available.id = 'design-faces-available';
+			available.className = 'nino-admin-card design-block';
+
+			cards.appendChild( installed );
+			cards.appendChild( available );
+
+			loader._paintInstalled( installed );
+			loader._paintAvailable( available );
+
+			// An action that is on its way answers with the state it leaves, and that answer draws the screen: a list read now could be older than it
+			if( loader._facesBusy === false )
+				loader._loadFaces( false );
+		},
+
+		/**
+		 *	Say something in the line over the cards, the way the bar's line says it (see Nino.admin.design._say())
+		 *
+		 *	@param		{string}		text			'' empties the line
+		 *	@param		{string}		[kind]		nino-admin-error for a failure, none for the answer itself
+		 *	@param		{string}		[detail]	What stands behind the sentence, the server's words
+		 *
+		 *	@return		void
+		 */
+		_tell : function( text, kind, detail ) {
+			Nino.admin.design._say( dc.getElementById('design-faces-msg'), text, kind, detail );
+		},
+
+		/**
+		 *	Draw both halves of the loader again, where the tab is open
+		 *
+		 *	@return		void
+		 */
+		_paintFaces : function() {
+
+			const installed = dc.getElementById('design-faces-installed');
+			const available = dc.getElementById('design-faces-available');
+
+			if( installed !== null )
+				Nino.admin['design-typefaces']._paintInstalled( installed );
+
+			if( available !== null )
+				Nino.admin['design-typefaces']._paintAvailable( available );
+		},
+
+		/**
+		 *	Ask for the list. Without `refresh` the server answers with the list it kept, which is what
+		 *	opening the tab does; with it the repository is asked, which only the button does
+		 *
+		 *	@param		{boolean}	refresh
+		 *
+		 *	@return		void
+		 */
+		_loadFaces : function( refresh ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const stamp = ++loader._facesStamp;
+
+			if( refresh === true ) {
+				loader._facesBusy = true;
+				loader._tell('');
+				loader._paintFaces();
+			}
+
+			design._apiCall( 'webfonts/list', { refresh : refresh }, function( status, response ) {
+
+				if( refresh === true )
+					loader._facesBusy = false;
+
+				if( status !== 200 || response === null ) {
+					loader._paintFaces();
+					return loader._tell( Nino.adminUi.api.errorText( status, response, '/_admin/design/typefaces/error/list' ), 'nino-admin-error' );
+				}
+
+				// Only the latest answer is the state: one asked for before an install is the state before it
+				if( stamp === loader._facesStamp ) {
+					loader._faces = response;
+					loader._facesPage = 0;
+
+					// A list loaded again starts at its first page, and that page at the top of its box: what the
+					// box before was scrolled to was another list's (_paintAvailable() carries the scroll over)
+					const box = dc.getElementById('design-faces-results');
+
+					if( box !== null )
+						box.scrollTop = 0;
+				}
+
+				loader._paintFaces();
+
+				if( refresh === true )
+					loader._tell( response.refusal !== ''
+						? loader._refusal( response )
+						: design._text( '/_admin/design/typefaces/msg/loaded', response.families.length ), response.refusal !== '' ? 'nino-admin-error' : '', response.refusal );
+			} );
+		},
+
+		/**
+		 *	Install a family of the list, or update it
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_installFace : function( slug ) {
+			Nino.admin['design-typefaces']._faceAction( 'webfonts/install', slug, '/_admin/design/typefaces/error/install' );
+		},
+
+		/**
+		 *	Remove an installed family
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_removeFace : function( slug ) {
+			Nino.admin['design-typefaces']._faceAction( 'webfonts/remove', slug, '/_admin/design/typefaces/error/remove' );
+		},
+
+		/**
+		 *	One action of the tab on one family. The buttons are switched off while it is on
+		 *	its way, and the server's answer - the same as the list gives, after the change -
+		 *	draws both halves again; the line over the cards says what happened, or why not.
+		 *	The selects of the roles list the families too, so design/list is asked again
+		 *
+		 *	@param		{string}	endpoint		webfonts/install or webfonts/remove
+		 *	@param		{string}	slug
+		 *	@param		{string}	failure			The text of what a refusal is told as: the reason is its %s
+		 *
+		 *	@return		void
+		 */
+		_faceAction : function( endpoint, slug, failure ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+
+			if( loader._facesBusy === true )
+				return;
+
+			const stamp = ++loader._facesStamp;
+
+			loader._facesBusy = true;
+			loader._tell('');
+			loader._paintFaces();
+
+			design._apiCall( endpoint, { slug : slug }, function( status, response ) {
+
+				loader._facesBusy = false;
+
+				if( status !== 200 || response === null ) {
+					loader._paintFaces();
+
+					// A family a role still uses is told with the roles, in the words of the workbench (the
+					// server names them as the params of the code); what else the server refused for, in its
+					// own words; a failure that has none is told the way the workbench tells one
+					const roles = response !== null && response.code === 'used' && Array.isArray( response.params )
+						? response.params.map( function( role ) { return Nino.content.getText( '/_admin/design/font/role/'+ role ) } ).join( ', ' ) : null;
+					const reason = response !== null && typeof response.error === 'string' && response.error !== ''
+						? response.error : Nino.adminUi.api.errorText( status, response, '' );
+
+					return loader._tell( roles !== null ? design._text( '/_admin/design/typefaces/error/used', roles ) : design._text( failure, reason ), 'nino-admin-error' );
+				}
+
+				if( stamp === loader._facesStamp )
+					loader._faces = response;
+
+				loader._paintFaces();
+				loader._tell( response.msg );
+				design._relist();
+			} );
+		},
+
+		/**
+		 *	The roles that have a family: those of the saved setup, as the server says, and those the selection
+		 *	being edited gives it - a family one has been chosen for and not yet saved is as little to be removed
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		{Array}						Keys of data.roles, in their order
+		 */
+		_rolesOf : function( slug ) {
+
+			const saved = ( ( Nino.admin['design-typefaces']._faces || {} ).uses || {} )[slug] || [];
+			const edit = ( Nino.admin.design._edit || {} ).fonts || {};
+
+			return ( ( Nino.admin.design._data || {} ).roles || [] ).filter( function( role ) {
+				return saved.indexOf( role ) !== -1 || ( edit[role] || {} ).family === slug;
+			} );
+		},
+
+		/**
+		 *	The first half: the families the project has installed, one row each, then the
+		 *	directories that are none - greyed, with the reason, and a button that removes them
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintInstalled : function( card ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const faces = loader._faces;
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/installed/title') ) );
+
+			if( faces === null )
+				return;
+
+			const slugs = Object.keys( faces.installed || {} );
+			const broken = Object.keys( faces.broken || {} );
+
+			if( slugs.length === 0 && broken.length === 0 )
+				return card.appendChild( loader._hint( Nino.content.getText('/_admin/design/typefaces/installed/empty') ) );
+
+			slugs.forEach( function( slug ) {
+				card.appendChild( loader._installedRow( slug, faces.installed[slug] ) );
+			} );
+
+			broken.forEach( function( slug ) {
+				card.appendChild( loader._brokenRow( slug, faces.broken[slug] ) );
+			} );
+		},
+
+		/**
+		 *	One installed family. Its name is set in the face of its first normal file, which
+		 *	the project serves itself and so is loaded as the row is drawn. The button that removes
+		 *	it is off while a role uses it, and its title names the roles - and so does the line
+		 *	under the name
+		 *
+		 *	@param		{string}	slug
+		 *	@param		{Object}	family			One entry of the answer's `installed`
+		 *
+		 *	@return		{Element}
+		 */
+		_installedRow : function( slug, family ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const roles = loader._rolesOf( slug );
+			const used = design._text( '/_admin/design/typefaces/installed/used', roles.map( function( role ) {
+				return Nino.content.getText('/_admin/design/font/role/'+ role );
+			} ).join(', ') );
+
+			const notes = [ loader._note( [ loader._weights( family.weights, family.axis ), family.version, family.license ].join(' · ') ) ];
+
+			if( roles.length > 0 )
+				notes.push( loader._note( used ) );
+
+			const row = loader._faceRow( slug, family.name, notes );
+
+			loader._setFace( 'installed', slug, family.face, row.name );
+
+			const remove = dc.createElement('button');
+			remove.type = 'button';
+			remove.className = 'nino-admin-btn-danger';
+			remove.textContent = Nino.content.getText('/_admin/design/typefaces/installed/remove');
+			remove.title = roles.length > 0 ? used : remove.textContent;
+			// A row of buttons that all say Remove is read out with the name of its family
+			remove.setAttribute( 'aria-label', remove.textContent+ ' - '+ family.name );
+			remove.disabled = roles.length > 0 || loader._facesBusy === true;
+			remove.addEventListener( 'click', function() { loader._removeFace( slug ) } );
+			row.element.appendChild( remove );
+
+			return row.element;
+		},
+
+		/**
+		 *	A directory below assets/fonts/ that is no family: greyed out, with the reason - and the
+		 *	button that removes it, which works whatever the reason is
+		 *
+		 *	@param		{string}	slug				The name of the directory
+		 *	@param		{string}	reason
+		 *
+		 *	@return		{Element}
+		 */
+		_brokenRow : function( slug, reason ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const row = loader._faceRow( slug, slug, [ loader._note( design._text( '/_admin/design/typefaces/installed/broken', reason ) ) ] );
+
+			row.element.classList.add('design-face-row--off');
+
+			const remove = dc.createElement('button');
+			remove.type = 'button';
+			remove.className = 'nino-admin-btn-danger';
+			remove.textContent = Nino.content.getText('/_admin/design/typefaces/installed/remove');
+			remove.setAttribute( 'aria-label', remove.textContent+ ' - '+ slug );
+			remove.disabled = loader._facesBusy === true;
+			remove.addEventListener( 'click', function() { loader._removeFace( slug ) } );
+			row.element.appendChild( remove );
+
+			return row.element;
+		},
+
+		/**
+		 *	The weights of a family as a row says them: the numbers, or 'variable 100-900' for a weight axis
+		 *
+		 *	@param		{Array}		weights			Numbers, and the axis of a file as '100 900'
+		 *	@param		{Array}		[axis]			[ from, to ], where the family has one
+		 *
+		 *	@return		{string}
+		 */
+		_weights : function( weights, axis ) {
+
+			if( Array.isArray( axis ) === true && axis.length === 2 )
+				return Nino.admin.design._text( '/_admin/design/typefaces/weights/variable', axis[0]+ '-'+ axis[1] );
+
+			return ( weights || [] ).map( function( weight ) {
+				return String( weight ).indexOf(' ') === -1 ? String( weight )
+					: Nino.admin.design._text( '/_admin/design/typefaces/weights/variable', String( weight ).replace( ' ', '-' ) );
+			} ).join(', ');
+		},
+
+		/**
+		 *	A row of the screen: the label a knob row has - the icon, and a box with the name over its
+		 *	notes - and, on its far side, whatever button the caller puts there
+		 *
+		 *	@param		{string}	slug
+		 *	@param		{string}	name
+		 *	@param		{Array}		notes			Elements, see _note()
+		 *
+		 *	@return		{{element: Element, name: Element}}		The row, and the element the name is in: the one that is set in the face
+		 */
+		_faceRow : function( slug, name, notes ) {
+
+			const row = dc.createElement('div');
+			row.className = 'design-face-row';
+			row.dataset.slug = slug;
+
+			const label = dc.createElement('span');
+			label.className = 'design-knob-label design-face-label';
+
+			const icon = Nino.admin.design._icon('typefaces/family');
+
+			if( icon !== null )
+				label.appendChild( icon );
+
+			const box = dc.createElement('span');
+			box.className = 'design-knob-text';
+
+			const title = dc.createElement('span');
+			title.className = 'design-face-name';
+			title.textContent = name;
+			box.appendChild( title );
+
+			notes.forEach( function( note ) { box.appendChild( note ) } );
+
+			label.appendChild( box );
+			row.appendChild( label );
+
+			return { element : row, name : title };
+		},
+
+		/**
+		 *	The line under the name of a row
+		 *
+		 *	@param		{string}	text
+		 *
+		 *	@return		{Element}
+		 */
+		_note : function( text ) {
+
+			const small = dc.createElement('small');
+			small.className = 'design-face-note';
+			small.textContent = text;
+
+			return small;
+		},
+
+		/**
+		 *	A sentence where there is nothing to draw
+		 *
+		 *	@param		{string}	text
+		 *	@param		{boolean}	[failure]		The sentence is why there is nothing
+		 *
+		 *	@return		{Element}
+		 */
+		_hint : function( text, failure ) {
+
+			const p = dc.createElement('p');
+			p.className = failure === true ? 'nino-admin-error' : 'nino-admin-hint';
+			p.textContent = text;
+
+			return p;
+		},
+
+		/**
+		 *	The second half: the button that loads the list, and what the list is. Where the repository is switched
+		 *	off, or has no key to be read with, it is one sentence; where it could not be read, a sentence of the
+		 *	kind of refusal stands in the place of the list, and the reason is its title. With a list there are a
+		 *	search field, the categories as a strip and the families, a page at a time, in a box that scrolls.
+		 *	A card that is drawn again - after an install or a removal, or a list that was loaded - has its box
+		 *	scrolled to where the box before it was
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintAvailable : function( card ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const faces = loader._faces;
+
+			/*	What design/list said when the panel was opened, until the screen has an answer of its own: the settings
+				of the repository are changed in another panel of the same page, and the answer is read on every visit	*/
+			const web = faces === null ? ( ( design._data || {} ).webfonts || {} ) : { url : faces.url !== '', key : faces.key === true };
+
+			const before = dc.getElementById('design-faces-results');
+			const scrolled = before === null ? 0 : before.scrollTop;
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/available/title') ) );
+
+			if( web.url !== true )
+				return card.appendChild( loader._hint( Nino.content.getText('/_admin/design/typefaces/available/off') ) );
+
+			if( web.key !== true )
+				return card.appendChild( loader._hint( Nino.content.getText('/_admin/design/typefaces/available/nokey') ) );
+
+			const bar = dc.createElement('div');
+			bar.className = 'design-faces-load';
+
+			const load = dc.createElement('button');
+			load.type = 'button';
+			load.id = 'design-faces-load';
+			load.className = 'nino-admin-btn-secondary';
+			load.textContent = Nino.content.getText('/_admin/design/typefaces/available/load');
+			load.disabled = loader._facesBusy === true;
+			load.addEventListener( 'click', function() { loader._loadFaces( true ) } );
+			bar.appendChild( load );
+
+			if( faces !== null && faces.fetched > 0 ) {
+				const when = dc.createElement('span');
+				when.className = 'design-faces-when';
+				when.textContent = design._text( '/_admin/design/typefaces/available/loaded', design._when( new Date( faces.fetched * 1000 ).toISOString() ) );
+				// Where the list came from
+				when.title = faces.url;
+				bar.appendChild( when );
+			}
+
+			card.appendChild( bar );
+
+			if( faces === null )
+				return;
+
+			if( faces.refusal !== '' ) {
+
+				const refusal = loader._hint( loader._refusal( faces ), true );
+
+				// The reason is the server's, in English: what stands behind the sentence
+				refusal.title = faces.refusal;
+
+				return card.appendChild( refusal );
+			}
+
+			if( faces.fetched === 0 )
+				return card.appendChild( loader._hint( Nino.content.getText('/_admin/design/typefaces/available/unloaded') ) );
+
+			if( ( faces.families || [] ).length === 0 )
+				return card.appendChild( loader._hint( Nino.content.getText('/_admin/design/typefaces/available/none') ) );
+
+			const search = dc.createElement('input');
+			search.type = 'search';
+			search.id = 'design-faces-search';
+			search.className = 'design-faces-search';
+			search.placeholder = Nino.content.getText('/_admin/design/typefaces/available/search');
+			search.setAttribute( 'aria-label', search.placeholder );
+			search.value = loader._facesQuery;
+			search.addEventListener( 'input', function() {
+				loader._facesQuery = search.value;
+				loader._facesPage = 0;
+				loader._paintResults();
+			} );
+			card.appendChild( search );
+
+			const categories = design._stripRow( 'typefaces/category', Nino.content.getText('/_admin/design/typefaces/available/category'), '',
+				loader.FACE_CATEGORIES.map( function( key ) {
+					return { value : key, label : Nino.content.getText('/_admin/design/typefaces/category/'+ key ) };
+				} ), loader._facesCategory, function( key ) {
+					loader._facesCategory = key;
+					loader._facesPage = 0;
+					loader._paintResults();
+				} );
+
+			// Seven names are one row of the strip in a third of the screen, every word whole (see .design-faces-categories)
+			categories.classList.add('design-faces-categories');
+			card.appendChild( categories );
+
+			// The rows of a page scroll in this box, and the pager stands after it in the card (see _paintResults())
+			const results = dc.createElement('div');
+			results.id = 'design-faces-results';
+			card.appendChild( results );
+
+			loader._paintResults( results );
+			results.scrollTop = scrolled;
+		},
+
+		/**
+		 *	The sentence for a list that could not be loaded, in the words of the workbench: one for
+		 *	each thing a refusal can be about (see Webfonts::REFUSALS in the feature's class). The
+		 *	reason the server gives is English and goes beside it, as the title of what says it
+		 *
+		 *	@param		{Object}	faces			An answer of design/webfonts/list with a refusal
+		 *
+		 *	@return		{string}
+		 */
+		_refusal : function( faces ) {
+			return Nino.content.getText('/_admin/design/typefaces/available/'+ faces.refusalKind );
+		},
+
+		/**
+		 *	The families of the list that the search and the category let through, a page of them in
+		 *	the box, and the pager after the box in the card - not in it: the box scrolls and the pager
+		 *	does not, so Previous and Next are always in reach. The box is fitted to the window once it
+		 *	has its rows (see _fitFaces()). Drawn alone as the words are typed, so that the field keeps
+		 *	its focus
+		 *
+		 *	@param		{Element}	[results]		The box, for one that is built and not mounted yet
+		 *
+		 *	@return		void
+		 */
+		_paintResults : function( results ) {
+
+			const loader = Nino.admin['design-typefaces'];
+
+			results = results || dc.getElementById('design-faces-results');
+
+			if( results === null || results === undefined || loader._faces === null )
+				return;
+
+			results.innerHTML = '';
+
+			// A page starts at the top of its box, whatever the page before was scrolled to
+			results.scrollTop = 0;
+
+			// The pager of the page before goes with its rows
+			const before = results.parentNode.querySelector('.design-faces-pager');
+
+			if( before !== null )
+				before.remove();
+
+			// The rows of the page before are gone: what watched them has nothing left to watch
+			if( loader._facesObserver !== null )
+				loader._facesObserver.disconnect();
+
+			const query = loader._facesQuery.trim().toLowerCase();
+
+			const found = ( loader._faces.families || [] ).filter( function( entry ) {
+				return ( loader._facesCategory === 'all' || entry.category === loader._facesCategory )
+					&& ( query === '' || entry.family.toLowerCase().indexOf( query ) !== -1 );
+			} );
+
+			if( found.length === 0 ) {
+				results.appendChild( loader._hint( Nino.content.getText('/_admin/design/typefaces/available/nomatch') ) );
+
+				// A sentence has no rows to fit the window to: the box lets go of the height it had
+				return loader._fitFaces();
+			}
+
+			const pages = Math.ceil( found.length / loader.FACES_PER_PAGE );
+
+			loader._facesPage = Math.max( 0, Math.min( pages - 1, loader._facesPage ) );
+
+			found.slice( loader._facesPage * loader.FACES_PER_PAGE, ( loader._facesPage + 1 ) * loader.FACES_PER_PAGE ).forEach( function( entry ) {
+				results.appendChild( loader._availableRow( entry ) );
+			} );
+
+			if( pages > 1 )
+				results.insertAdjacentElement( 'afterend', loader._pager( pages ) );
+
+			loader._fitFaces();
+		},
+
+		/**
+		 *	One family the repository offers: its name, which is set in its own face once the row is in
+		 *	view, its weights and its licence - a link to where the files came from -, and on the far side
+		 *	what can be done about it: install it; or, where the same version is there, that it is
+		 *	installed; or, where another version is, update to the one of the list. A family the feature
+		 *	brings itself is installed, in a way - the answer names those, and design/list does not: what
+		 *	it says of the families has the installed ones among them
+		 *
+		 *	@param		{Object}	entry				One family of the list
+		 *
+		 *	@return		{Element}
+		 */
+		_availableRow : function( entry ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+			const installed = ( ( loader._faces || {} ).installed || {} )[entry.slug] || null;
+			const brought = ( ( loader._faces || {} ).builtin || [] ).indexOf( entry.slug ) !== -1;
+
+			const licence = dc.createElement('a');
+			licence.href = entry.source;
+			licence.target = '_blank';
+			licence.rel = 'noopener noreferrer';
+			licence.title = entry.source;
+			licence.textContent = entry.license;
+
+			const separator = dc.createElement('span');
+			separator.textContent = ' · ';
+
+			const weights = dc.createElement('span');
+			weights.textContent = loader._weights( entry.weights );
+
+			const note = dc.createElement('small');
+			note.className = 'design-face-note';
+			note.appendChild( weights );
+			note.appendChild( separator );
+			note.appendChild( licence );
+
+			const row = loader._faceRow( entry.slug, entry.family, [ note ] );
+
+			// Set in its own face when the row comes into view: one file for a family, the preview the repository publishes
+			row.element.dataset.preview = entry.preview;
+			loader._observe().observe( row.element );
+
+			if( installed !== null && installed.version === entry.version || brought === true ) {
+				const state = dc.createElement('span');
+				state.className = 'design-face-state';
+				state.textContent = Nino.content.getText('/_admin/design/typefaces/available/installed');
+				row.element.appendChild( state );
+
+				return row.element;
+			}
+
+			const install = dc.createElement('button');
+			install.type = 'button';
+			install.className = 'nino-admin-btn-primary';
+			install.textContent = installed === null ? Nino.content.getText('/_admin/design/typefaces/available/install')
+				: design._text( '/_admin/design/typefaces/available/update', entry.version );
+			install.setAttribute( 'aria-label', install.textContent+ ' - '+ entry.family );
+			install.disabled = loader._facesBusy === true;
+			install.addEventListener( 'click', function() { loader._installFace( entry.slug ) } );
+			row.element.appendChild( install );
+
+			return row.element;
+		},
+
+		/**
+		 *	Previous, the place in the pages, Next
+		 *
+		 *	@param		{number}	pages
+		 *
+		 *	@return		{Element}
+		 */
+		_pager : function( pages ) {
+
+			const design = Nino.admin.design;
+			const loader = Nino.admin['design-typefaces'];
+
+			const pager = dc.createElement('div');
+			pager.className = 'design-faces-pager';
+
+			const step = function( label, towards ) {
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.className = 'nino-admin-btn-secondary';
+				button.textContent = Nino.content.getText('/_admin/design/typefaces/page/'+ label );
+				button.disabled = loader._facesPage + towards < 0 || loader._facesPage + towards > pages - 1;
+				button.addEventListener( 'click', function() {
+					loader._facesPage += towards;
+					loader._paintResults();
+				} );
+				return button;
+			};
+
+			const place = dc.createElement('span');
+			place.className = 'design-faces-place';
+			place.textContent = design._text( '/_admin/design/typefaces/page/of', loader._facesPage + 1, pages );
+
+			pager.appendChild( step( 'previous', -1 ) );
+			pager.appendChild( place );
+			pager.appendChild( step( 'next', 1 ) );
+
+			return pager;
+		},
+
+		/**
+		 *	What loads the face of a row of the list when the row comes into view: one observer for the visit,
+		 *	made when the first row is drawn. A row that enters the view is not watched any more, and sets
+		 *	its name in the preview of its family
+		 *
+		 *	@return		{IntersectionObserver}
+		 */
+		_observe : function() {
+
+			const loader = Nino.admin['design-typefaces'];
+
+			if( loader._facesObserver === null )
+				loader._facesObserver = new wn.IntersectionObserver( function( entries ) {
+
+					entries.forEach( function( seen ) {
+
+						if( seen.isIntersecting !== true )
+							return;
+
+						loader._facesObserver.unobserve( seen.target );
+
+						loader._setFace( 'available', seen.target.dataset.slug, seen.target.dataset.preview, seen.target.querySelector('.design-face-name') );
+					} );
+				} );
+
+			return loader._facesObserver;
+		},
+
+		/**
+		 *	Set a name in the face of the family it is the name of. The face is a FontFace the document gets
+		 *	once for each family of a kind, however often the row is drawn again - a page turned back
+		 *	to, a search emptied - and it loads from the url it is given: the project's own file for an
+		 *	installed family, the preview the repository publishes for one on offer
+		 *
+		 *	@param		{string}	kind				installed or available: the same family is two faces
+		 *	@param		{string}	slug
+		 *	@param		{string}	url
+		 *	@param		{Element}	name				The element the name stands in
+		 *
+		 *	@return		void
+		 */
+		_setFace : function( kind, slug, url, name ) {
+
+			const loader = Nino.admin['design-typefaces'];
+			const family = 'design-'+ kind+ '-'+ slug;
+
+			if( loader._facesLoaded[family] === undefined ) {
+
+				const face = new wn.FontFace( family, 'url('+ JSON.stringify( url )+ ')' );
+
+				loader._facesLoaded[family] = face;
+				dc.fonts.add( face );
+
+				// A file that is not there, or not to be read from here, leaves the name in the face of the page
+				face.load().catch( function() {} );
+			}
+
+			name.style.fontFamily = '"'+ family+ '", system-ui, sans-serif';
+		},
+
+		/**
+		 *	Fit the list of the typefaces on offer to the window: the box the rows of a page stand in is as
+		 *	tall as the window has room for under it, and the rows that are more than that scroll in the box -
+		 *	not the page, which a page of 24 rows would otherwise be scrolled for. The room is the height of the
+		 *	window less the top of the box with the page scrolled to the top, less the pager, which stands after the
+		 *	box and so stays in reach, less the foot of the card - its padding and the space between two cards,
+		 *	1.5 rem - and less the room every pane of the workbench keeps under its content for a bar (see
+		 *	_bar(), whose declared height it is): the tab has no bar, but the pane's padding is the same, and a
+		 *	list that ended at the foot of the window would be scrolled for the padding.
+		 *
+		 *	Never under five rows: five times the height of the first, and the four hairlines between them -
+		 *	11 rem where the row has no height to measure. Where the box stands far down - the two cards stand one
+		 *	over the other in a narrow window - and the room is less than five rows there, the box is made for the
+		 *	window it fills when the page is scrolled to its card, with the top of the card at the top of the
+		 *	window: the window less how far the box stands inside the card, so that the search and the categories
+		 *	are in view with it, less the pager, the foot of the card and the bar's room.
+		 *
+		 *	A box that holds the sentence of no match has no rows to fit the window to: its height is cleared, and
+		 *	the least the stylesheet gives it is what it has. A tab that is not open has no box to give room to.
+		 *	Asked for wherever the box has new rows (_paintResults()), when the tab is drawn and when the window is
+		 *	resized (see Nino.admin.design._fit())
+		 *
+		 *	@return		void
+		 */
+		_fitFaces : function() {
+
+			const box = dc.getElementById('design-faces-results');
+
+			if( box === null )
+				return;
+
+			const first = box.querySelector('.design-face-row');
+
+			if( first === null ) {
+				box.style.height = '';
+				return;
+			}
+
+			const rect = box.getBoundingClientRect();
+
+			// A pane that is not shown has no box to give room to
+			if( rect.width === 0 && rect.height === 0 )
+				return;
+
+			const card = box.parentNode;
+			const pager = card.querySelector('.design-faces-pager');
+			const rem = parseFloat( wn.getComputedStyle( dE ).fontSize ) || 16;
+			const row = first.getBoundingClientRect().height;
+			const least = row > 0 ? 5 * row + 4 : 11 * rem;
+
+			// What stands under the box up to the foot of the pager, and what the card keeps under that: its padding
+			// and the space the cards have between them - and the room the pane keeps for a bar
+			const foot = pager === null ? rect : pager.getBoundingClientRect();
+			const under = foot.top + foot.height - rect.top - rect.height + 1.5 * rem + Nino.admin.design._bar().declared;
+
+			// How far the box stands inside its card, for the card to be brought to the top of the window
+			const inside = rect.top - card.getBoundingClientRect().top;
+
+			const room = wn.innerHeight - ( rect.top + Nino.admin.design._scrolled( box ) ) - under;
+
+			box.style.height = Math.max( least, room >= least ? room : wn.innerHeight - inside - under )+ 'px';
+		},
+
+		/**
+		 *	Let go of the faces the names were set in, and of what watched the rows: the tab is left, and
+		 *	a face is a file the browser holds
+		 *
+		 *	@return		void
+		 */
+		_dropFaces : function() {
+
+			const loader = Nino.admin['design-typefaces'];
+
+			if( loader._facesObserver !== null ) {
+				loader._facesObserver.disconnect();
+				loader._facesObserver = null;
+			}
+
+			Object.keys( loader._facesLoaded ).forEach( function( family ) {
+				dc.fonts.delete( loader._facesLoaded[family] );
+			} );
+
+			loader._facesLoaded = {};
+		},
+
 	};
 
 	/*	The shell asks Save, Discard or Cancel before a log out or a language
 		change would lose a selection nobody has stored, and a reload gets
 		the browser's own question. Save stores the draft - applying it is its
-		own question	*/
-	Nino.admin.dirty.register( 'design', {
-		isDirty : function() { return Nino.admin.design._isDirty() },
-		save : function( done ) {
+		own question. The draft is one, and the two screens that carry the bar
+		each have their place in the shell's account of what is unsaved, under
+		the uri of their tab: the one that is drawn is the one that answers, so
+		that the question is asked once - and a Save that failed brings the
+		screen on, where the reason it gave is said (see _show())	*/
+	[ 'themes', 'setup' ].forEach( function( screen ) {
 
-			const btn = dc.getElementById('design-save');
-			const msg = dc.getElementById('design-msg');
+		Nino.admin.dirty.register( Nino.admin.design._entryOf( screen ), {
+			isDirty : function() { return Nino.admin.design._screen === screen && Nino.admin.design._isDirty() },
+			save : function( done ) {
 
-			if( btn === null || msg === null )
-				return done( false );
+				const btn = dc.getElementById('design-save');
+				const msg = dc.getElementById('design-msg');
 
-			Nino.admin.design._save( false, btn, msg, done );
-		},
-		// Drawn again with the stored selection: if the exit then does not
-		// leave the page, the controls show what the model holds
-		discard : function() {
+				if( btn === null || msg === null )
+					return done( false );
 
-			if( Nino.admin.design._data === null )
-				return;
+				Nino.admin.design._save( false, btn, msg, done );
+			},
+			// Drawn again with the stored selection: if the exit then does not
+			// leave the page, the controls show what the model holds
+			discard : function() {
 
-			Nino.admin.design._takeStored( Nino.admin.design._data );
-			Nino.admin.design._render();
-		},
+				if( Nino.admin.design._data === null )
+					return;
+
+				Nino.admin.design._takeStored( Nino.admin.design._data );
+				Nino.admin.design._render();
+			},
+		} );
 	} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.design.init );

@@ -7,11 +7,13 @@
  *													animation is chosen in, the cards the rows of the objects
  *													and the strips of the page stand in, the row per knob and
  *													per colour with the icon before its name, the table of the
- *													five font roles, the two cards of the typeface loader, the
- *													cards of the Theme tab's three screens (the list of the
- *													themes, the loaded one with the row that makes another, the
- *													css), the strip of the screens of a tab, and the two
- *													columns the screen is - the controls on one side
+ *													five font roles, the two cards of the typeface loader - side
+ *													by side where the tab has the room, with the line over them
+ *													that says what an install did -, the cards of the screens
+ *													of the themes (the list of the themes, the loaded one with
+ *													the row that makes another), the field of the css, the
+ *													strip of the screens, and the two
+ *													columns the screens with a preview are - the controls on one side
  *													(a third of the width, 24rem at the least), a sticky
  *													preview pane on the other (two thirds) - a head of one
  *													row with the heading and the bar of the frame's controls,
@@ -43,24 +45,25 @@
 
 @layer nino.tool {
 
-/*	The seven tabs. In the pane's head the strip stands beside the panel's name
-	and the head lays it out; this is the column it opens where there is no
-	head (see _head() in admin.js). A margin below rather than a
-	border: the card under it already draws one, and two lines a row apart
-	read as a box nobody meant to draw. Seven tabs side by side are wider than a
-	phone: the strip scrolls in its own box, and the page does not scroll with it */
+/*	The six views of the tab Design. The strip stands at the top of the tab's pane,
+	under the strip the shell draws on top of the pane (see Nino.adminUi.panelHead());
+	this is the column it opens where there is no head (see _head() in admin.js). A
+	margin below rather than a border: the card under it already draws one, and two
+	lines a row apart read as a box nobody meant to draw. Six views side by side are
+	wider than a phone: the strip scrolls in its own box, and the page does not scroll
+	with it */
 .nino-admin .design-tabs {
 	margin: 0 0 1rem;
 	overflow-x: auto;
 	scrollbar-width: none;
 }
 
-/*	The screens of Theme: the same strip as the tabs. It stands in the
+/*	The screens of the themes: the same strip as the views. It stands in the
 	column itself, over the cards of the screen that is open, and has the room of a
-	card's gap under it. Three short words are one line of the column - with a
-	little less air round each than the seven tabs have, so that the German ones are
+	card's gap under it. Two short words are one line of the column - with a
+	little less air round each than the views have, so that the German ones are
 	too at the width of a phone; where they are not, the strip scrolls in its own
-	box like the seven tabs do, and the card does not scroll with it */
+	box like the views do, and the card does not scroll with it */
 .nino-admin .design-groups {
 	margin: 0 0 .75rem;
 	overflow-x: auto;
@@ -71,9 +74,9 @@
 	padding-right: 1rem;
 }
 
-/*	The chip on the label of the Theme tab: the workbench's pill, a little away from the word it
-	follows. It says the screen differs from the loaded theme, as the one in the head of that
-	theme's box does (see _refreshThemeChip() in admin.js) */
+/*	The chip on the button of the panel's own screen in the strip on top of the pane, which says Themes: the
+	workbench's pill, a little away from the word it follows. It says the screen differs from the loaded theme,
+	as the one in the head of that theme's box does (see _refreshThemeChip() in admin.js) */
 .nino-admin .design-tab-changed {
 	margin-left: .45rem;
 }
@@ -505,6 +508,34 @@
 .nino-admin .design-face-row--off .design-face-label {
 	opacity: .5;
 }
+/*	The two cards of the loader. The tab has no preview taking the right-hand side, so where the pane is wide - the width
+	the panel puts its preview beside the controls at - they stand side by side, the list on offer the wider of the two: its
+	rows carry a name, the weights and a button. Below that they are one over the other, as the column is. The cards keep
+	the gap under them the cards of the column have, and the columns the gap of the layout */
+.nino-admin .design-faces-cards {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0 1.5rem;
+	align-items: start;
+}
+@media (min-width: 64.001rem) {
+	.nino-admin .design-faces-cards {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+	}
+}
+/*	What the loader says of an action, over its cards - the tab has no bar to say it in. The bar's line is one line cut by an
+	ellipsis; this one is a sentence of the pane, which wraps where it is long, in the type the bar's line has. A line that is
+	empty keeps its height, so that the cards do not move down when it has something to say; a failure is red, as it is in the bar */
+#design-faces-msg {
+	min-height: 1.4rem;
+	margin: 0 0 .55rem;
+	color: var(--editor-text-secondary);
+	font-size: .78rem;
+	line-height: 1.4;
+}
+#design-faces-msg.nino-admin-error {
+	color: var(--editor-red);
+}
 .nino-admin .design-faces-load {
 	display: flex;
 	flex-wrap: wrap;
@@ -570,14 +601,16 @@
 
 /* ---- the themes ----
 
-   The Theme tab: three screens. The first has a card with a list in the manner of the
-   loader's - a row is the name, bold, with its chips behind it, over the description, small
-   and muted, and at its far end the buttons that can be pressed on it - and under the list
-   the field that takes a theme in. The chips are the workbench's own (.nino-admin-badge),
-   whose colour the state it is given decides. The second has two cards: the loaded theme,
-   whose head says its name and, while the screen differs from it, the chip, and under it
-   its two fields and its buttons - and the row that makes a theme out of the screen. The
-   third is the field of the css, in the face of the code editors of the workbench. The
+   The panel's own screen, which the strip on top of the pane calls Themes: two screens. The
+   first has a card with a list in the manner of the loader's - a row is the name, bold, with
+   its chips behind it, over the description, small and muted, and at its far end the buttons
+   that can be pressed on it - and under the list the field that takes a theme in. The chips
+   are the workbench's own (.nino-admin-badge), whose colour the state it is given decides.
+   The second has two cards: the loaded theme, whose head says its name and, while the screen
+   differs from it, the chip, and under it its two fields and its buttons - and the row that
+   makes a theme out of the screen. The css of a theme is no screen of them but the view CSS
+   of the tab Design: the field of the css, in the face of the code editors of the
+   workbench, which stands with the rest of the theme's rules below. The
    words of a row have 16rem to start from and the buttons are as wide as they are: where
    the card has room for both they stand at the far end, and where it has not - in the third
    of the screen that holds the column beside the preview, for every row alike - they stand
@@ -690,14 +723,21 @@
 	gap: .5rem;
 	margin-top: .35rem;
 }
-/*	The field of the css: the width of the card (the workbench gives a textarea that), the height
-	the person pulls it to (that too), and the monospace face of the workbench. It does not wrap a
-	line - wrap="off" - so that a long selector list or a data address scrolls inside the field
-	instead of breaking where it should not. A block, so that the line box under a textarea does
-	not leave a gap below it */
+/*	The field of the css: the width of the card (the workbench gives a textarea that), a height of
+	at most 36rem - about thirty lines of the type it is set in, where it was fourteen rows - which
+	the person pulls up and down and no other way (resize: vertical, never under 8rem), and the
+	monospace face of the workbench. The view has nothing else in its column, so what the window
+	leaves under the chrome of the pane (23rem: the head, the strips, the title and the hint of the
+	card, the gap and the bar) is the field's, down to 14rem: the field, the preview beside it and
+	the bar under both fit a window 800px high and 1280px wide, and a window of 900px or more has
+	the thirty lines. It does not wrap a line - wrap="off" - so that a long selector list or a data
+	address scrolls inside the field instead of breaking where it should not. A block, so that the
+	line box under a textarea does not leave a gap below it */
 .nino-admin .design-theme-css {
 	display: block;
 	min-height: 8rem;
+	height: min(36rem, max(14rem, calc(100vh - 23rem)));
+	resize: vertical;
 	font-family: var(--nino-admin-mono);
 	font-size: .78rem;
 	line-height: 1.5;
