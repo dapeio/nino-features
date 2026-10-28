@@ -182,6 +182,9 @@ Object.assign( words, {
 	'/_admin/common/error/save' : 'Failed to save.',
 } );
 
+// A word of the panel by its key under /_admin/builder/: a sentence is pinned by where it stands and what it is filled with, never by what it says
+const word = function( key ) { return words['/_admin/builder/'+ key] };
+
 // ------------------------------------------------------------ A small stand-in of the page
 
 const VOID = [ 'input', 'br', 'hr', 'img', 'link', 'meta' ];
@@ -1939,7 +1942,7 @@ check( 'the dialog of the template has no tabs and no name in its title; its fie
 check( '...the fields in the groups: the name and the file, the header and the footer, the switch of the animation, and in the fold the effect, its strength and the speed - one under the other', labelsIn( templateBody ) === 'Name,File,Header,Footer,Animate the sections,Effect,Strength,Speed'
 	&& templateBody.querySelectorAll('.builder-line').length === 0 && labelsIn( fold ) === 'Effect,Strength,Speed' );
 check( '...the file is text that cannot be changed, with the slug the text keys of the page are made of in its hint; the name is a field', controlOf( templateBody, 'File' ).el.readOnly === true && valueAt( templateBody, 'File' ) === 'page-home.tpl' && controlOf( templateBody, 'Name' ).el.readOnly === false && valueAt( templateBody, 'Name' ) === 'Home'
-	&& tipOf( controlOf( templateBody, 'File' ) ) === 'The slug is "home". The name of the file is the category of the text keys of the page (/template/page-home/...), so it does not change.' );
+	&& tipOf( controlOf( templateBody, 'File' ) ) === word('hint/file').replace( '%s', 'home' ).replace( '%s', 'page-home' ) );
 check( '...the effect is a select with words - the plain one first, the others in the order of Nino.css, the four slides named for the motion the visitor sees: slide-left starts at a positive translateX, to the right of its place, and ends at 0, so it slides left; slide-up starts below its place and slides up -, the strength a group of radio buttons, the speed a select whose first word is the frame', controlOf( templateBody, 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
 	=== '=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,slide-up=Slides up,slide-down=Slides down,flip=Flip,blur=Blur'
 	&& controlOf( templateBody, 'Speed' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like the frame,fast=Fast,medium=Medium,slow=Slow'
@@ -2033,7 +2036,6 @@ builder._renderEditor();
 builder._lastBlock = {};
 builder._openSettings( [ 0 ] );
 const settingsOf = function() { return builder._doc.model.blocks[0].settings };
-const word = function( key ) { return words['/_admin/builder/'+ key] };
 // The name a select of the box of the spacing has: its side and whether it is outside or inside
 const sideLabel = function( side, place ) { return word('section/spacing-cell').replace( '%s', word('section/'+ side) ).replace( '%s', word('spacing/'+ place) ) };
 const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
@@ -4459,7 +4461,7 @@ const contentPane = function() { return blockOf('content') };
 const field = function() { return controlOf( contentPane(), lineLabel ) };
 check( 'a component with a text key has the text of its key under its source, in the language the editor works in: a line of text for a key of the plain format, with the limit of the key, a sentence behind the question mark that says when it is written - and no editor of the workbench', field().kind === 'text'
 	&& field().el.localName === 'input' && field().el.value === 'Welcome' && field().el.maxLength === 160 && field().el.spellcheck === true && contentPane().children[1].className === 'builder-content-extra'
-	&& tipOf( field() ) === 'Written to the key when the template is saved.' && contentPane().querySelector('.nino-admin-hint') === null && textEditors.length === 0 );
+	&& tipOf( field() ) === word('value/hint') && contentPane().querySelector('.nino-admin-hint') === null && textEditors.length === 0 );
 change( contentPane(), lineLabel, 'Hello' );
 check( 'what is typed is kept in the model, under the language - a change, and nothing is sent: the key is written when the document is saved - and the preview behind shows it', JSON.stringify( heroTitle().values ) === '{"en_US":"Hello"}' && changes === 1
 	&& builder._unsaved( builder._doc ) === true && requests.length === 0 && lines()[0] === 'Hello' && builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title' );
@@ -4637,8 +4639,55 @@ builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source :
 builder._renderPreview();
 const madeAt = function() { return preview().querySelector('[data-path="0.0.3"]') };
 check( '...a key the save is going to make has none until one is typed for it: the placeholder says the label of the component and is no text - no title, no mark - and the text typed for it is the line, as for a key that is there', lines()[3] === titleLabel && madeAt().title === '' && madeAt().classList.contains('has-line') === false
-	&& ( builder._doc.model.blocks[0].cols[0].components[3].values = { en_US : 'Made when saved' }, builder._renderPreview(), lines()[3] === 'Made when saved' && madeAt().title === titleLabel && madeAt().classList.contains('has-line') === true )
-	&& ( builder._setLocale('de_DE'), lines()[3] === titleLabel && madeAt().title === '' && madeAt().classList.contains('has-line') === false ) && ( builder._setLocale('en_US'), true ) );
+	&& ( builder._doc.model.blocks[0].cols[0].components[3].values = { en_US : 'Made when saved' }, builder._renderPreview(), lines()[3] === 'Made when saved' && madeAt().title === titleLabel && madeAt().classList.contains('has-line') === true ) );
+check( '...and a language it has no text typed in says the text the page shows there, the native language\'s, as a text with a mark: the label of the component only stands where no language has one', ( builder._setLocale('de_DE'), lines()[3] === 'Made when saved' && madeAt().title === titleLabel && madeAt().classList.contains('has-line') === true )
+	&& ( builder._doc.model.blocks[0].cols[0].components[3].values = { de_DE : 'Beim Speichern gemacht' }, builder._renderPreview(), lines()[3] === 'Beim Speichern gemacht' )
+	&& ( builder._setLocale('en_US'), lines()[3] === 'Beim Speichern gemacht' ) && ( delete builder._doc.model.blocks[0].cols[0].components[3].values, builder._renderPreview(), lines()[3] === titleLabel ) );
+
+// A language that has no text of its own is shown the text the site fills it with: the kernel's chain, which the preview says in the same order - the text every language shares, then the native
+// language's, then the others' as the site lists them. A site of three languages whose native one is German tells the order apart; the text typed and not saved counts as the one a key holds
+const sayIn = function( locale, values, typed, global ) {
+
+	const three = Object.assign( registry(), { locales : [ { locale : 'en_US', name : '' }, { locale : 'de_DE', name : '' }, { locale : 'fr_FR', name : '' } ], native : 'de_DE' } );
+	const model = JSON.parse( JSON.stringify( builder._doc.model ) );
+	const key = '/template/page-home/hero/chain';
+
+	model.blocks[0].cols[0].components = [ Object.assign( { name : 'title', source : key, text : null, attributes : { tag : 'h3', style : '', 'class' : '' } }, typed === undefined ? {} : { values : typed } ) ];
+
+	return builder._preview( model, three, 'l', { locale : locale, keys : [ { key : key, global : global === true, format : 'plain', maxlength : 160, values : values } ] } )[0].cols[0].components[0].line;
+};
+check( '...the text of a language that has none is the one every language shares, else the native language\'s - ahead of the languages listed before it -, else the first of the others the site lists, else none: the label stands',
+	sayIn( 'de_DE', { fr_FR : 'Français', en_US : 'English', '*' : 'Shared' } ) === 'Shared' && sayIn( 'fr_FR', { en_US : 'English', de_DE : 'Deutsch' } ) === 'Deutsch'
+	&& sayIn( 'de_DE', { fr_FR : 'Français', en_US : 'English' } ) === 'English' && sayIn( 'en_US', { fr_FR : 'Français' } ) === 'Français' && sayIn( 'en_US', {} ) === '' && sayIn( 'en_US', { fr_FR : '' } ) === '' );
+check( '...a language that has a text says its own, whatever the others have, and so does one that has the text typed and not saved - a text cleared is none, and the language falls back as the page does once it is saved',
+	sayIn( 'fr_FR', { fr_FR : 'Français', de_DE : 'Deutsch' } ) === 'Français' && sayIn( 'en_US', { en_US : 'English', de_DE : 'Deutsch' }, { en_US : 'Typed' } ) === 'Typed'
+	&& sayIn( 'en_US', { en_US : 'English', de_DE : 'Deutsch' }, { en_US : '' } ) === 'Deutsch' && sayIn( 'de_DE', { de_DE : 'Deutsch', en_US : 'English' }, { de_DE : '' } ) === 'English'
+	&& sayIn( 'en_US', {}, { de_DE : 'Getippt' } ) === 'Getippt' );
+check( '...a text of nothing but white space is none, as the site counts it: the language falls back from it, held or typed, and a language that holds nothing else is passed over',
+	sayIn( 'en_US', { en_US : ' \n\t', de_DE : 'Deutsch' } ) === 'Deutsch' && sayIn( 'en_US', { en_US : 'English', de_DE : 'Deutsch' }, { en_US : '   ' } ) === 'Deutsch'
+	&& sayIn( 'fr_FR', { de_DE : '  ', en_US : 'English' } ) === 'English' && sayIn( 'fr_FR', { de_DE : '  ' } ) === '' );
+check( '...a key every language shares has the one text in each, and a language falls back to nothing for it: cleared, it is none', sayIn( 'fr_FR', { '*' : 'Shared' }, undefined, true ) === 'Shared'
+	&& sayIn( 'fr_FR', { '*' : 'Shared' }, { fr_FR : '' }, true ) === '' );
+
+// A key with a text in one language only: the page shows that text in every other, and so does the preview
+const keysBefore = builder._keys;
+const heroPlaces = builder._doc.model.blocks[0].cols[0].components;
+const placed = heroPlaces.length;
+builder._keys = keysBefore.concat( [
+	{ key : '/template/page-home/hero/only-german', global : false, format : 'plain', maxlength : 160, values : { de_DE : 'Nur Deutsch' } },
+	{ key : '/template/page-home/hero/only-english', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Only English' } },
+] );
+[ 'only-german', 'only-english' ].forEach( function( name ) { heroPlaces.push( { name : 'title', source : '/template/page-home/hero/'+ name, text : null, attributes : { tag : 'h3', style : '', 'class' : '' } } ) } );
+builder._renderPreview();
+check( 'a key with a text in German alone is previewed in English with that text and not with the label, and one with a text in English alone is previewed in German with the English one - the texts the page shows there', lines()[placed] === 'Nur Deutsch' && lines()[placed + 1] === 'Only English'
+	&& preview().querySelector('[data-path="0.0.'+ placed +'"]').classList.contains('has-line') === true && ( builder._setLocale('de_DE'), lines()[placed] === 'Nur Deutsch' && lines()[placed + 1] === 'Only English' ) && ( builder._setLocale('en_US'), true ) );
+builder._openSettings( [ 0, 0, placed ] );
+check( '...the field of the component is the text of its own language and nothing else: empty, with the label of the component for its placeholder - the fallback is the preview\'s, never a value that would be written', valueAt( contentPane(), lineLabel ) === ''
+	&& controlOf( contentPane(), lineLabel ).el.getAttribute('placeholder') === labelIn( 'title', 'en_US' ) && builder._doc.model.blocks[0].cols[0].components[placed].values === undefined );
+builder._closeDialog();
+heroPlaces.length = placed;
+builder._keys = keysBefore;
+builder._renderPreview();
 check( 'the preview that is told no language and no keys says what a component is, as it did: no line, no picture', builder._preview( builder._doc.model, builder._registry, 'l' )[0].cols[0].components.every( function( component ) { return component.line === '' && component.picture === '' } )
 	&& builder._preview( builder._doc.model, builder._registry, 'l', { locale : 'en_US', keys : builder._keys } )[0].cols[0].components[0].line === 'Welcome' );
 
@@ -4814,10 +4863,10 @@ const image = function() { return builder._get( builder._doc.model, imageAt ) };
 builder._openSettings( imageAt );
 changes = 0;
 check( 'the content of a picture is its slot, and under it the picture: a thumbnail that is out of sight where the slot has none, the choice of a file that has the words for its label and the limits an upload runs into above it, what is done with the first picture, and the alt text', fileField( contentPane() ).getAttribute('aria-label') === 'Upload a picture'
-	&& thumbOf( contentPane() ).hidden === true && contentPane().querySelector('.builder-picture-controls .builder-help-tip').textContent === 'The first picture makes the slot and is stored at once. At most 8 MB and 20 megapixels.'
+	&& thumbOf( contentPane() ).hidden === true && contentPane().querySelector('.builder-picture-controls .builder-help-tip').textContent === word('picture/hint-made') +' At most 8 MB and 20 megapixels.'
 	&& contentPane().querySelector('.builder-picture-controls small') === null && noteOf( contentPane() ).hidden === true );
 check( '...the alt text is the one of the language the editor works in - at first the placeholder the picture was made with in that language, the label of the component -; a slot that is not there yet cannot take it, so it waits in the mark that makes the slot and is said so', valueAt( contentPane(), altLabel ) === labelIn( 'image', 'en_US' )
-	&& controlOf( contentPane(), altLabel ).el.disabled === false && tipOf( controlOf( contentPane(), altLabel ) ) === 'Stored with the slot as soon as it is made.' );
+	&& controlOf( contentPane(), altLabel ).el.disabled === false && tipOf( controlOf( contentPane(), altLabel ) ) === word('picture/alt-hint-made') );
 change( contentPane(), altLabel, 'A house' );
 check( '...what is typed goes into the mark of the slot, under the language, as a change - and nothing is sent - and the other language keeps its placeholder', JSON.stringify( image().create ) === JSON.stringify( { label : 'Image', width : 1600, height : 900, alt : { en_US : 'A house', de_DE : labelIn( 'image', 'de_DE' ) } } ) && changes === 1 && requests.length === 0 );
 builder._closeDialog();
@@ -4842,7 +4891,7 @@ check( '...the alt text that was waiting is written once the picture is stored, 
 requests[2].callback( 200, { alt : { en_US : 'A house', de_DE : 'Ein Haus' } } );
 check( '...and the form shows it: the thumbnail, a note that the picture is stored, the alt text of the slot with the hint that it is stored at once - and the preview has the picture in the placeholder of the component', thumbOf( contentPane() ).hidden === false && thumbOf( contentPane() ).src.indexOf( '/uploads/image.jpg?t=' ) === 0
 	&& noteOf( contentPane() ).textContent === 'The picture is stored.' && noteOf( contentPane() ).classList.contains('is-error') === false && fileField( contentPane() ).disabled === false && valueAt( contentPane(), altLabel ) === 'A house'
-	&& tipOf( controlOf( contentPane(), altLabel ) ) === 'Stored at once, with the slot.' && preview().querySelector('[data-path="0.0.3"] .builder-ph-picture').src.indexOf( '/uploads/image.jpg' ) === 0
+	&& tipOf( controlOf( contentPane(), altLabel ) ) === word('picture/alt-hint') && preview().querySelector('[data-path="0.0.3"] .builder-ph-picture').src.indexOf( '/uploads/image.jpg' ) === 0
 	&& builder._slotOf( '/template/page-home/hero/image' ).hasImage === true && builder._altOf( builder._slotOf( '/template/page-home/hero/image' ) ).de_DE === 'Ein Haus' );
 
 choose( contentPane(), house );
@@ -4925,7 +4974,7 @@ builder._renderEditor();
 builder._openSettings( [ 1 ] );
 builder._openBlock('surface');
 check( 'the picture behind a section has the same under its source: the upload and the alt text - and where the section has none the alt text has no slot to wait in, and says that a picture comes first', fileField( dialogContent() ) !== null && thumbOf( dialogContent() ).hidden === true
-	&& controlOf( dialogContent(), altLabel ).el.disabled === true && tipOf( controlOf( dialogContent(), altLabel ) ) === 'Upload a picture first, or choose a slot with the Source button.' );
+	&& controlOf( dialogContent(), altLabel ).el.disabled === true && tipOf( controlOf( dialogContent(), altLabel ) ) === word('picture/alt-hint-none') );
 requests = [];
 changes = 0;
 choose( dialogContent(), house );
@@ -4973,7 +5022,7 @@ builder._openSettings( [ 1, 0 ] );
 builder._openBlock('surface');
 const columnAt = function( at ) { return builder._doc.model.blocks[1].cols[at] };
 check( 'the picture behind a column has what the one behind a section has under its source: the upload and the alt text - which has no slot to wait in while there is no picture, and says that a picture comes first - and not whether the picture is a parallax, which is the section\'s alone', fileField( dialogContent() ) !== null && thumbOf( dialogContent() ).hidden === true
-	&& controlOf( dialogContent(), altLabel ).el.disabled === true && tipOf( controlOf( dialogContent(), altLabel ) ) === 'Upload a picture first, or choose a slot with the Source button.'
+	&& controlOf( dialogContent(), altLabel ).el.disabled === true && tipOf( controlOf( dialogContent(), altLabel ) ) === word('picture/alt-hint-none')
 	&& dialogContent().querySelector('.builder-source-current').textContent === 'none' && labelList( dialogContent() ).indexOf('Parallax effect') === -1 );
 requests = [];
 changes = 0;

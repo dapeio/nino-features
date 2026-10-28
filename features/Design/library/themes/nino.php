@@ -1,7 +1,8 @@
 <?php
-// features/Design/library/themes/nino.php - a theme the feature ships: loaded and duplicated in the panel, never written
+// features/Design/library/themes/nino.php - the theme the feature ships: loaded and duplicated in the panel, never written
 // or deleted. The shape of the file is described in features/Design/Themes/Themes.php. It names no colours: the brand colour
-// of a project is the project's, and loading the theme leaves it as it is
+// of a project is the project's, and loading the theme leaves it as it is. It names no feature either, and that is a choice
+// like the rest - `features` is empty, so that loading the theme puts every feature back to the look it has of its own
 return [
 	'format'			=> 1,
 	'name'				=> 'Nino',
@@ -25,6 +26,7 @@ return [
 			'lists' 		=> [ 'scale' => 0, 'space' => 0, 'marker' => 0 ],
 			'tables' 		=> [ 'scale' => 0, 'space' => 0, 'border' => 0, 'zebra' => 0, 'stripes' => 0 ],
 		],
+		'features'	=> [],
 		'fonts'		=> [
 			'title'		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
 			'subtitle'	=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],

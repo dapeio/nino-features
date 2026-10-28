@@ -139,11 +139,17 @@
 /*	The hover, as the ladder says it: the row rises and takes the shadow. Only for the card the pointer
 	can mean as a whole (.nino-card--linked), and only where the visitor has not asked for less motion.
 	The transition is the hover's own, so that the one a viewport animation has on the card is not
-	taken from it while it is at rest. A borderless card has no shadow to lift	*/
+	taken from it while it is at rest - and it carries the animation's: its three properties with the
+	time and the easing Nino.css gives them (the easing is written out, Nino.css names no custom
+	property for it), so that a card hovered while it arrives goes on arriving. A borderless card has
+	no shadow to lift	*/
 @media (prefers-reduced-motion: no-preference) {
 	.nino-card--linked:hover {
 		translate: var(--card-hover);
-		transition: translate .2s ease, box-shadow .2s ease;
+		transition: translate .2s ease, box-shadow .2s ease,
+			opacity var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
 	}
 	.nino-card--linked:where(:not(.nino-card--borderless)):hover {
 		box-shadow: var(--card-hover-shadow);

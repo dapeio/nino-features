@@ -1759,8 +1759,9 @@
 		 *	widths and visibility; all of them at once (g) is drawn at the widths of
 		 *	the widest, with no column greyed - which viewports hide a column is
 		 *	what it says in its head. Where it is told the language and the keys, the
-		 *	placeholder of a component that has a text says its first line, and that of a
-		 *	picture has the picture of its slot, where the slot has one. A component that holds
+		 *	placeholder of a component that has a text says its first line - in that language, or
+		 *	in the one the site shows in its place where the language has none (see _shownText()) -
+		 *	and that of a picture has the picture of its slot, where the slot has one. A component that holds
 		 *	components is a frame with its children in it, in the ground it paints and whether it
 		 *	has a picture behind it (see _look())
 		 *
@@ -1786,7 +1787,7 @@
 					name		: component.name,
 					label		: schema.label || component.name,
 					image		: builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview,
-					line		: text === null ? '' : builder._firstLine( text.value, builder.LINE_MAX ),
+					line		: text === null ? '' : builder._firstLine( builder._shownText( component, text, texts.keys, registry ), builder.LINE_MAX ),
 					picture	: slot !== undefined && typeof slot.url === 'string' ? slot.url : '',
 					draws		: builder._draws( schema, component ),
 					// A component that is a link and has an address to go to
@@ -8636,6 +8637,46 @@
 			info.value = info.staged === true ? given : info.stored;
 
 			return info;
+		},
+
+		/**
+		 *	The text the page shows for a component in a language, which is what the preview says of it. A language that has no text of its own for the key - none, or one of nothing but
+		 *	white space, which the site counts as none - is shown the text the site fills it with, in the order the site fills it: the text every language shares, else the native language's,
+		 *	else the others' in the order the site lists them. A text typed and not saved counts for the language it was typed in as the one the key holds does. The field under the source
+		 *	(see _valueField()) does not fall back: it is the text of the language, empty where it has none, and says what the component is for in its place
+		 *
+		 *	Two places where what the preview shows is not what the site shows, both with keys that only a file by hand makes: a key that has a text every language shares and texts of languages
+		 *	beside it - the Text panel keeps one or the other - where the site gives a language that has none of its own the text of another, the native one first, ahead of the shared text, and
+		 *	the preview the shared text first; and a language that has a text file and is not one of the site's, which the site asks last and the preview not at all
+		 *
+		 *	@param		{Object}		component
+		 *	@param		{Object}		info							As _textOf() answers it for the language shown
+		 *	@param		{Array|null}	keys							The keys of the project, as text/keys answers them
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{string}									'' where no language has a text: the preview then shows the label of the component
+		 */
+		_shownText : function( component, info, keys, registry ) {
+
+			// A key every language shares has the one text, and a language that has one has no use for another
+			if( info.value.trim() !== '' || info.global === true )
+				return info.value;
+
+			const builder = Nino.admin.builder;
+			const entry = builder._keyEntry( keys, component.source );
+			const typed = component.values ?? {};
+			const held = entry === null ? {} : entry.values;
+			const textIn = function( code ) {
+
+				const given = typed[code];
+				const stored = held[code];
+
+				return typeof given === 'string' ? given : ( typeof stored === 'string' ? stored : '' );
+			};
+			const chain = [ '*', builder._nativeLocale( registry ) ].concat( ( registry.locales || [] ).map( function( language ) { return language.locale } ) );
+			const found = chain.find( function( code ) { return textIn( code ).trim() !== '' } );
+
+			return found === undefined ? '' : textIn( found );
 		},
 
 		/**

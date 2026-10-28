@@ -155,11 +155,17 @@
 }
 
 /*	The hover, as the ladder says it - regular says where it does not apply. The text
-	variants rise and cast no shadow	*/
+	variants rise and cast no shadow. The transition adds the transform and the filter of the
+	viewport animation, with the time and the easing Nino.css gives them (the easing is
+	written out, Nino.css names no custom property for it), to the framework's list: the
+	opacity keeps the .3s of the framework, the brand buttons dim under the pointer - so
+	that a button hovered while it arrives goes on arriving	*/
 @media (prefers-reduced-motion: no-preference) {
 	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
 		translate: var(--buttons-hover);
-		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease;
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease,
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
 	}
 	.nino-btn:where(:not(.nino-btn--outline, .nino-btn--light, .nino-btn--dark, .nino-btn--brand-alt, :focus-visible, :disabled, [aria-disabled="true"])):hover {
 		box-shadow: var(--buttons-hover-shadow);

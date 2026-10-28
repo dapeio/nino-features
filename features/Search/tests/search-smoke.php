@@ -1024,10 +1024,72 @@ $released['.meta']['format'] = 1;
 check( '...and so is the index the release before made: it said format 1, and the words in it are not the ones the query is made of now',
 	( $stateOf()['/accents']['stale'] ?? null ) === true );
 
+// ...and the release before that stamped it 2: a language in it holds the elements it has a text of itself, not those its page shows
+$languages = (array) $accentsIndex;
+$languages['.meta']['format'] = 2;
+\Nino\Filesystem::putFileContent( $appData, '/data/index-accents.php', $languages );
+
+check( '...and so is the index the release before that made: it said format 2, and a language in it holds only the elements it has a text of itself',
+	( $stateOf()['/accents']['stale'] ?? null ) === true && \Nino\Modules\Search::META_FORMAT > 2 );
+
 \Nino\Modules\Search::createIndexes( $appData, 'accents' );
 
 check( '...and the rebuild makes it right: the format of the file is the current one and it is not stale', ( $stateOf()['/accents']['stale'] ?? null ) === false
 	&& ( ( @include $accentsIndexPath )['.meta']['format'] ?? null ) === \Nino\Modules\Search::META_FORMAT );
+
+echo "\nThe index of a language holds what its page shows\n";
+
+/*	The page of a language shows an element that only another language has: each field it has no text for in the
+	language is taken from the native language, then from the others in the order the site lists them
+	(\Nino\Elements::getElementWithFallback()). The index of the language holds the same, so that the search of a
+	language finds what its page shows - a post that is German alone is a hit of the English search	*/
+check( 'a type of elements with a text in one language alone, in both, and in part of its fields can be made', \Nino\Elements::insertElementType( $appData, '/chain', [
+	'title'		=> [ 'type' => 'string', 'locale' => true ],
+	'summary'	=> [ 'type' => 'string', 'locale' => true ],
+] ) === true );
+$appData['/nino/elements/index']['chain'] = [ 0 => 'title', 1 => 'summary' ];
+
+\Nino\Elements::insertElement( $appData, '/chain/german-only', [ 'title' => 'Nurdeutsch', 'summary' => 'Gibt es auf Deutsch allein' ], 'de_DE' );
+\Nino\Elements::insertElement( $appData, '/chain/english-only', [ 'title' => 'Englishalone', 'summary' => 'Exists in English alone' ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/chain/both', [ 'title' => 'Beidedeutsch', 'summary' => 'Deutsche Zusammenfassung' ], 'de_DE' );
+\Nino\Elements::updateElement( $appData, '/chain/both', [ 'title' => 'Bothenglish', 'summary' => 'English summary' ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/chain/half', [ 'title' => 'Halbdeutsch', 'summary' => 'Halbe Zusammenfassung' ], 'de_DE' );
+\Nino\Elements::updateElement( $appData, '/chain/half', [ 'title' => 'Halfenglish' ], 'en_US' );
+
+$chainResult	= \Nino\Modules\Search::createIndexes( $appData, 'chain' );
+$chainIndex		= @include \Nino\Filesystem::path( $appData, '/data/index-chain.php' );
+$chainIndex		= is_array( $chainIndex ) === true ? $chainIndex : [];
+
+check( 'an element that has a text in German alone is in the English index, with that text', ( $chainIndex['en_US']['/chain/german-only'][0] ?? null ) === 'nurdeutsch'
+	&& ( $chainIndex['en_US']['/chain/german-only'][1] ?? null ) === 'gibt es auf deutsch allein' );
+check( '...and one that has a text in English alone is in the German index, with that text', ( $chainIndex['de_DE']['/chain/english-only'][0] ?? null ) === 'englishalone'
+	&& ( $chainIndex['de_DE']['/chain/english-only'][1] ?? null ) === 'exists in english alone' );
+check( '...and one that has both is in each index with its own text', ( $chainIndex['de_DE']['/chain/both'][0] ?? null ) === 'beidedeutsch' && ( $chainIndex['en_US']['/chain/both'][0] ?? null ) === 'bothenglish'
+	&& ( $chainIndex['de_DE']['/chain/both'][1] ?? null ) === 'deutsche zusammenfassung' && ( $chainIndex['en_US']['/chain/both'][1] ?? null ) === 'english summary' );
+check( '...and what a language has no text for is taken from the other one field by field, as its page shows it: the English document of an element with a German summary alone', ( $chainIndex['en_US']['/chain/half'] ?? null ) === [ 0 => 'halfenglish', 1 => 'halbe zusammenfassung' ]
+	&& ( $chainIndex['de_DE']['/chain/half'] ?? null ) === [ 0 => 'halbdeutsch', 1 => 'halbe zusammenfassung' ] );
+check( '...every language holds every element of the type, and the file counts an element once whatever the languages it is in', array_keys( $chainIndex['en_US'] ?? [] ) === array_keys( $chainIndex['de_DE'] ?? [ 'x' ] )
+	&& count( $chainIndex['en_US'] ?? [] ) === 4 && ( $chainIndex['.meta']['elements'] ?? null ) === 4 && ( $chainResult['elements'] ?? null ) === 4 );
+
+$appData['./nino/locales/current'] = 'en_US';
+check( 'the search of a language finds an element that has a text in another language alone: the English one the German post, found by its German word', in_array( '/chain/german-only', searchUris( $appData, 'chain', 'Nurdeutsch' ), true ) === true
+	&& \Nino\Modules\Search::getHits( $appData, 'chain', 'Nurdeutsch' )[0]['uri'] === '/chain/german-only' );
+$appData['./nino/locales/current'] = 'de_DE';
+check( '...and the German one the English post', in_array( '/chain/english-only', searchUris( $appData, 'chain', 'Englishalone' ), true ) === true );
+
+// A hit is drawn as the page draws it: the element a hit leads to has the text of the language that has one, with that language beside it
+$appData['./nino/locales/current'] = 'en_US';
+$chainHit = \Nino\Modules\Search::getElements( $appData, 'chain', 'Nurdeutsch' )[0] ?? [];
+check( 'a hit that is German alone is read with its German text in the English result list, and says its language - never an element without a title', ( $chainHit['title'] ?? null ) === 'Nurdeutsch'
+	&& ( $chainHit['.lang'] ?? null ) === 'de-DE' && ( $chainHit['.locale'] ?? null ) === 'en_US' && ( $chainHit['.uri'] ?? null ) === '/chain/german-only' );
+$appData['/nino/features']['search']['settings']['api'] = true;
+\Nino\Modules\Search::init( $appData );
+$chainJson = searchJson( $appData, '/.search?q=Nurdeutsch&type=/chain' );
+unset( $appData['/nino/features']['search']['settings']['api'], $appData['/nino/http/routes']['GET://.search'], $appData['./nino/callbacks']['/nino/http/response/GET://.search'] );
+check( '...and so is it in the endpoint, whose hit has the indexed field it was found by, and in the probe of the panel, which labels it by its title and not by its address',
+	( $chainJson['hits'][0]['uri'] ?? null ) === '/chain/german-only' && ( $chainJson['hits'][0]['fields']['title'] ?? null ) === 'Nurdeutsch'
+	&& ( ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'types' => [ 'chain' ], 'query' => 'Nurdeutsch', 'locale' => 'en_US' ] )[1]['hits'][0]['label'] ?? null ) === 'Nurdeutsch' );
+$appData['./nino/locales/current'] = 'de_DE';
 
 // --- The panel's script, where node is on the path ----------------------------
 //

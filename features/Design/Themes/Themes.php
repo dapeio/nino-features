@@ -22,13 +22,14 @@ namespace Nino\Modules\Design {
 	 *										own, the custom css. Loading one puts it on the screen as
 	 *										a draft; saving puts the screen into it.
 	 *
-	 *										The palette and the choices for the features are the two parts
-	 *										a theme may leave out. A brand colour is the project's, and so
-	 *										are the features it runs, so the themes the feature ships name
-	 *										no colours and no variant of a feature, and loading one takes
-	 *										everything but them; a theme of the project is written from the
-	 *										screen with its colours and its choices for the features, and
-	 *										loads with them.
+	 *										The palette is the one part a theme may leave out: a brand
+	 *										colour is the project's, so the theme the feature ships names
+	 *										none, and loading it takes everything but it; a theme of the
+	 *										project is written from the screen with its colours, and loads
+	 *										with them. The choices for the features are in every theme:
+	 *										loading one sets each feature to what the theme says - the
+	 *										variant and the knobs of one it names, its own look for the
+	 *										rest - and a file that names none is the empty choice.
 	 *
 	 *										One php file for each, an array as data/design.php is:
 	 *
@@ -39,21 +40,24 @@ namespace Nino\Modules\Design {
 	 *										  'setup'           the keys of a setup that choose something
 	 *										                    (see snapshot()) - the colours not always:
 	 *										                    a theme that has none leaves the colours of
-	 *										                    the project as they are
+	 *										                    the project as they are, while the choices
+	 *										                    for the features are always there: a file
+	 *										                    without them has none chosen
 	 *										  'css'             the stylesheet of the theme
 	 *										  'presets'         [] - the Builder's presets come later,
 	 *										                    and the key is here from the first day so
 	 *										                    that a file never changes shape for them
 	 *
 	 *										The themes the feature ships are files of its library
-	 *										(library/themes/<slug>.php) and are loaded and duplicated,
-	 *										never written or deleted. The project's own are
-	 *										data/themes/<slug>.php, declared in the manifest so a backup
-	 *										carries them, each replaced whole by one atomic write: no
-	 *										theme file is ever read, changed and written back, so none
-	 *										needs a lock. A project theme shadows nothing - a slug that
-	 *										is shipped is read from the library, and a theme cannot be
-	 *										made under it.
+	 *										(library/themes/<slug>.php) - the framework as it is, which
+	 *										SHIPPED names, and any other file of that directory - and are
+	 *										loaded and duplicated, never written or deleted. The
+	 *										project's own are data/themes/<slug>.php, declared in the
+	 *										manifest so a backup carries them, each replaced whole by one
+	 *										atomic write: no theme file is ever read, changed and written
+	 *										back, so none needs a lock. A project theme shadows nothing -
+	 *										a slug that is shipped is read from the library, and a theme
+	 *										cannot be made under it.
 	 *
 	 *										A slug names a file, so every method that takes one holds it
 	 *										to SLUG first: what is none is no theme and never reaches a
@@ -76,10 +80,11 @@ namespace Nino\Modules\Design {
 		// The shape's own version. A file of another one is no theme
 		public const int FORMAT = 1;
 
-		/*	The themes the feature ships, in the order the list shows them in: the first is
-			the framework as it is, and the one Setup::defaults() takes its sets from. Any
-			other file of library/themes/ is listed after them, sorted (see shipped())	*/
-		public const array SHIPPED = [ 'nino', 'corporate-loud', 'corporate-cozy', 'portfolio-cozy' ];
+		/*	The theme the feature ships: the framework as it is, and the one Setup::defaults()
+			takes its sets from. It is listed first - any other file of library/themes/ is
+			listed after it, sorted (see shipped()), so that a library that grows needs no
+			constant	*/
+		public const array SHIPPED = [ 'nino' ];
 
 		// How long a css, a name and a description may be: the size keeps data/design.php and every preview request sane
 		public const int MAX_CSS = 65536;
@@ -331,7 +336,10 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The setup a theme's file holds, as it is - the keys that choose
-		 *	something, and whatever else somebody wrote there: the caller normalises it
+		 *	something, and whatever else somebody wrote there: the caller normalises it.
+		 *	Every theme has the choices for the features - a file without them has none
+		 *	chosen, and normalising makes that [] - so a theme loaded sets each feature to
+		 *	what the theme says and not to what the screen had
 		 *
 		 *	@param		array 		$raw					The array of a theme's file
 		 *
@@ -358,8 +366,8 @@ namespace Nino\Modules\Design {
 		 *	width, the whitespace, the two strengths of the radius and the radii, the
 		 *	animation, the parts, the knobs, the choices for the features, the fonts and the
 		 *	palette - in the order of Setup::KEYS, and only those the setup has: a theme that
-		 *	names no colours (see the class) has none, and a theme that names no features
-		 *	- every theme the feature ships - leaves the choices for them as they are. The
+		 *	names no colours (see the class) has none, and the choices for the features are
+		 *	the setup's like the rest, which a normalised setup always has. The
 		 *	format, the theme, the css and the record of what was compiled are not a theme's
 		 *	setup: the css stands beside it in the file, and the other three are the
 		 *	project's. What a created, saved or duplicated theme keeps, and what the chip

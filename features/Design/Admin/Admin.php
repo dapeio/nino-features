@@ -807,7 +807,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	A theme, to put on the screen: its setup as the screen holds one - normalised
-		 *	against the library, except the families of the fonts (see _fromFile()) - its
+		 *	against the library, except the families of the fonts (see _fromFile()), and with
+		 *	the choices for the features the theme's own and not what the screen held - its
 		 *	css, its name and its description in the language of the workbench, and the
 		 *	families it names that this project has not installed. Nothing is written:
 		 *	loading is looking, and what the screen takes over stays a draft until it is
@@ -1123,7 +1124,7 @@ namespace Nino\Modules\Design {
 
 			$notes 		= [];
 			$missing 	= [];
-			$setup 		= self::_fromFile( $appData, Themes::setup( $data ), $library, $notes, $missing );
+			$setup 		= self::_fromFile( $appData, Themes::setup( $data ), $library, $notes, $missing, true );
 			$theme 		= Themes::record( $name, \Nino\Admin\Admin::postString( $data, 'description' ), $setup, Themes::css( $data ), Themes::lines( $data ) );
 
 			if( Themes::write( $appData, $slug, $theme ) === false ) {
@@ -1484,29 +1485,48 @@ namespace Nino\Modules\Design {
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
 		 *	has none) and whether the list of the loader has it at all.
 		 *
-		 *	And except for the colours and the features: a file that names none - every theme
-		 *	the feature ships - chooses no brand colour and no variant of any feature, so the
-		 *	setup has none either, and what takes the setup over keeps the colours and the
-		 *	choices it has. A file that names them (a theme of the project, which a save writes
-		 *	with them) has them normalised as a selection's are.
+		 *	And except for the colours: a file that names none - the theme the feature ships -
+		 *	chooses no brand colour, so the setup has none either, and what takes the setup
+		 *	over keeps the colours it has. A file that names them (a theme of the project, which
+		 *	a save writes with them) has them normalised as a selection's are.
+		 *
+		 *	The choices for the features are the theme's, whatever the file says: a file that names
+		 *	none has the empty choice, which puts every feature back to its own look, and a feature
+		 *	it names gets that variant and those knobs. An entry for a feature that is not in the
+		 *	catalogue - not active, or without variants - is dropped and said in $notes: nothing is
+		 *	compiled for it, and the theme is taken over for the features the project has.
+		 *	$keep says it is not taken over but written down - the import of a file - and keeps
+		 *	such an entry as the setup keeps one, for the day the feature is back.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$wanted				The setup of a file, see Themes::setup()
 		 *	@param		string		$library			The feature's library
 		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
 		 *	@param		array 		&$missing			(reference) slug => [ slug, name, inList ]
+		 *	@param		bool			$keep					Whether the choices for features that are not there stay
 		 *
-		 *	@return 	array										A normalised setup, the families of the file's roles as they are, and no colours and no features where the file names none
+		 *	@return 	array										A normalised setup, the families of the file's roles as they are, and no colours where the file names none
 		 */
-		private static function _fromFile( array &$appData, array $wanted, string $library, array &$notes, array &$missing ): array {
+		private static function _fromFile( array &$appData, array $wanted, string $library, array &$notes, array &$missing, bool $keep = false ): array {
 
+			$given = is_array( $wanted['features'] ?? null ) === true ? $wanted['features'] : [];
+
+			if( $keep === false ) {
+
+				$catalogue = Setup::features( $appData );
+
+				foreach( $given as $key => $entry )
+					if( is_array( $entry ) === true && preg_match( \Nino\Features::KEY_PATTERN, (string) $key ) === 1 && isset( $catalogue[(string) $key] ) === false ) {
+						$notes[] = 'the feature "'. Setup::shown( $key ). '" is not active, or brings no variants - its choice in the theme is dropped';
+						unset( $given[$key] );
+					}
+			}
+
+			$wanted['features'] = $given;
 			$setup 	= self::_selection( $appData, $wanted, $library, $notes );
 
 			if( is_array( $wanted['colours'] ?? null ) === false )
 				unset( $setup['colours'] );
-
-			if( is_array( $wanted['features'] ?? null ) === false )
-				unset( $setup['features'] );
 
 			$fonts 	= is_array( $wanted['fonts'] ?? null ) === true ? $wanted['fonts'] : [];
 			$names 	= array_column( Webfonts::cached( $appData )['families'] ?? [], 'family', 'slug' );

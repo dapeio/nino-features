@@ -1510,11 +1510,12 @@
 		 *	The setup of a working copy as a theme keeps it: the keys that choose something, without
 		 *	the theme it names and the css it carries - the screen's side of the compare the chip makes
 		 *	with the file's (see _themeChanged()). The colours are among them where the theme names
-		 *	colours, and the choices for the features where it names those: a theme that names none - every
-		 *	theme the feature ships - has no say over them
+		 *	colours - the theme the feature ships names none and has no say over them. The choices for
+		 *	the features are always among them: they are the theme's own whatever its file says, and
+		 *	the server answers them for every theme (see Themes::setup())
 		 *
 		 *	@param		{Object}	edit
-		 *	@param		{Object}	[theme]		The setup of the theme it is compared with; with no colours in it the snapshot has none either, and none of the features without theirs
+		 *	@param		{Object}	[theme]		The setup of the theme it is compared with; with no colours in it the snapshot has none either
 		 *
 		 *	@return		{Object}
 		 */
@@ -1526,8 +1527,7 @@
 			if( theme === undefined || theme.colours !== undefined )
 				snapshot.colours = edit.colours;
 
-			if( theme === undefined || theme.features !== undefined )
-				snapshot.features = edit.features;
+			snapshot.features = edit.features;
 
 			return snapshot;
 		},
@@ -1782,7 +1782,7 @@
 			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace,
 				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
 				colours : setup.colours === undefined ? design._edit.colours : setup.colours,
-				features : setup.features === undefined ? design._edit.features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
+				features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
 			design._themeText = { name : response.name, description : response.description };

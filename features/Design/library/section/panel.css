@@ -16,10 +16,10 @@
  *	makes a run of them read as a stack of things instead of one long scroll:
  *	inset by the gutter, cut at the standard radius of the page, padded on all
  *	four sides, and casting the shadow the shadow knob of the card gives it.
- *	Two plain bands in a row are a stack instead: the second has the hairline
- *	as its top edge and neither rounding nor shadow of its own, as the
- *	continuation of the first. The opening is the first article rather than a
- *	poster: text left, a rule down its left edge, nothing centred.
+ *	Two bands in a row are two panels with room between them, whatever ground
+ *	each has: a band that follows a section keeps a gap of one gutter above
+ *	it. The opening is the first article rather than a poster: text left, a
+ *	rule down its left edge, nothing centred.
  *
  *	The shadow of a band is the one dependency of this set on the card family:
  *	the rule of the band reads --card-shadow, the ladder of the shadow knob,
@@ -173,13 +173,13 @@
 	padding-bottom: calc( var(--section-space) * var(--whitespace-scale, 1) );
 }
 
-/*	Two plain bands in a row would have nothing between them, so the second gets
-	the one hairline this template draws, as its top edge - and, as the
-	continuation of the first, it is not round and casts no shadow of its own	*/
-.nino-section:where(:not([class*="nino-section--"])) + .nino-section:where(:not([class*="nino-section--"])) {
-	border-top: 1px solid var(--color-border);
-	border-radius: 0;
-	box-shadow: none;
+/*	A band that is a panel and follows a section keeps a gap of one gutter above
+	it, so that two bands in a row are two panels with room between them - each
+	rounded and casting its shadow - whatever ground each has. The conditions
+	are those of the panel above, and a margin of its own - nino-mt-<n>, nino-m-<n> -
+	is the page's to decide, as the padding is	*/
+.nino-section + .nino-section:where(:not(.nino-hero, .nino-cover, .nino-pt-0.nino-pb-0, .nino-pl-0.nino-pr-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0), [class*="nino-mt-"], [class*="nino-m-"])) {
+	margin-top: var(--grid-gutter);
 }
 
 /*	The scrim, as the ladder of the dimming says it: the ::before of a dimmed cover and of a

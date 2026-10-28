@@ -63,13 +63,15 @@ namespace Nino\Modules {
 		/*	The index file's own entry, beside the locales. A dot-prefixed key is
 			never a locale, so an older index without it still reads.
 
-			The format is what the words in the file were made with: 1 folded the German
-			umlauts and the sharp s, 2 folds every letter the kernel's table knows
-			(see _normalize()). A read never builds or repairs an index, so an index
+			The format is what the file was made with: 1 folded the German umlauts
+			and the sharp s, 2 folds every letter the kernel's table knows (see
+			_normalize()), 3 holds in the index of a language every element the site
+			shows in it, one that has a text in another language alone with that
+			text (see _createIndex()). A read never builds or repairs an index, so an index
 			of another format is not rebuilt where the update lands - it is said to be
 			stale (see _indexFileState()), and the panel's Rebuild makes it again	*/
 		public const string META = '.meta';
-		public const int META_FORMAT = 2;
+		public const int META_FORMAT = 3;
 
 		/*	The model field types a priority slot may be given. 'image' carries a
 			path, 'element' a reference and 'boolean' a flag - none of them is text
@@ -80,7 +82,7 @@ namespace Nino\Modules {
 		/*	The one name a slot may be given that is not a field of the model:
 			the Element's own address, '/products/lampe-xl'. A visitor who knows
 			a product code or a slug types that, and no field of the model
-			carries it - queryElements() hands it out as '.uri' beside the
+			carries it - the Elements hand it out as '.uri' beside the
 			fields, which is where _createIndex() reads it, as text like any
 			other. The panel offers it first, and config.php may name it	*/
 		public const string URI_FIELD = '.uri';
@@ -179,7 +181,8 @@ namespace Nino\Modules {
 
 			foreach( array_slice( $all, $offset, $limit ) as $found ) {
 
-				$element = \Nino\Elements::getElement( $appData, $found['uri'], $locale );
+				// The element as the page of the language shows it - what the index holds (see _createIndex())
+				$element = \Nino\Elements::getElementWithFallback( $appData, $found['uri'], $locale );
 				if( is_array( $element ) === false )
 					continue;
 
@@ -380,7 +383,10 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The same search, with the Elements read. Every returned Element
+		 *	The same search, with the Elements read - each as the page of the
+		 *	language shows it, which is what the index holds: an Element that has
+		 *	a text in another language alone has that text, with '.lang' beside it
+		 *	(see \Nino\Elements::getElementWithFallback()). Every returned Element
 		 *	carries its '.score' and '.type' beside the '.uri' and '.locale' it
 		 *	always had - a result list that cannot say how well something matched
 		 *	cannot sort or explain itself
@@ -391,7 +397,7 @@ namespace Nino\Modules {
 		 *	@param		int				$limit				0 for everything - a page should say a number
 		 *	@param		int				$offset				How many of the best to skip
 		 *
-		 *	@return 	array										Canonical Elements, best score first
+		 *	@return 	array										Elements, best score first
 		 */
 		public static function getElements( array &$appData, string|array $elementType, string $searchString, int $limit = 0, int $offset = 0 ): array {
 
@@ -400,7 +406,8 @@ namespace Nino\Modules {
 
 			foreach( self::getHits( $appData, $elementType, $searchString, $limit, $offset ) as $hit ) {
 
-				$element = \Nino\Elements::getElement( $appData, $hit['uri'], $locale );
+				// ...as the page of the language shows it, which is what the index holds (see _createIndex())
+				$element = \Nino\Elements::getElementWithFallback( $appData, $hit['uri'], $locale );
 
 				if( is_array( $element ) === true )
 					$elements[] = $element + [ '.score' => $hit['score'], '.type' => $hit['type'] ];
@@ -605,10 +612,11 @@ namespace Nino\Modules {
 				comparison: the type file has been written since the index was (an
 				element changed while the feature was switched off, a restored backup,
 				a hand edit), the configuration names other fields than the ones it
-				was built from, or the words in it were made another way - an index
-				of the format before META_FORMAT folds fewer letters than the query
-				does now. Counting elements would be a fourth and is not needed - a
-				changed element changes the file's mtime */
+				was built from, or the file was made another way - an index of the
+				format before META_FORMAT folds fewer letters than the query does now
+				and holds fewer elements in a language than its page shows. Counting
+				elements would be a fourth and is not needed - a changed element
+				changes the file's mtime */
 			$stale = ( is_file( $typePath ) === true && filemtime( $typePath ) > filemtime( $path ) )
 				|| ( $fields !== [] && ( $meta['fields'] ?? null ) !== $fields )
 				|| ( $meta['format'] ?? null ) !== self::META_FORMAT;
@@ -643,6 +651,14 @@ namespace Nino\Modules {
 		/**
 		 *	Create the complete locale index for one configured type.
 		 *
+		 *	The index of a language holds what the page of that language shows: each
+		 *	element of the list the language lists, as
+		 *	\Nino\Elements::getElementWithFallback() answers it for the language - what
+		 *	the language has no text for taken from the native language, then from the
+		 *	others in the order the site lists them. An element that exists in German
+		 *	alone is in the English index with its German text, as it is on the English
+		 *	page, and the English search finds it
+		 *
 		 *	@return int|false Number of distinct indexed Elements, or false on write failure
 		 */
 		private static function _createIndex( array &$appData, string $typeUri, array $fields ): int|false {
@@ -661,6 +677,13 @@ namespace Nino\Modules {
 					$uri = $element['.uri'] ?? null;
 					if( is_string( $uri ) === false )
 						continue;
+
+					/*	The element as the page of the language shows it: each field it has no
+						text for in the language taken from the native language, then from the
+						others in the order the site lists them (the kernel's chain). An element
+						with a text in another language alone is in this index with that text */
+					$shown = \Nino\Elements::getElementWithFallback( $appData, $uri, $locale );
+					$element = $shown !== false ? $shown : $element;
 
 					$document = [];
 					foreach( $fields as $priority => $field ) {

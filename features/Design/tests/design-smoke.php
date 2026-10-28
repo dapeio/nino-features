@@ -1549,6 +1549,97 @@ else {
 	check( 'every fill a frame reads is one the base unit ships or the kernel fills'. ( $unshipped === [] ? '' : ' - '. implode( ', ', $unshipped ) ), $unshipped === [] );
 }
 
+/*	The bands of the Panel set, and the hover of the card sets and the button sets: two things a stylesheet of the library says in a rule and a person sees only in a browser, so they are
+	read as rules - the way a browser reads them, with no comment between - against the kernel's own Nino.css where the library is to agree with it	*/
+
+// The simple selectors of the :where(:not(...)) list a rule ends in, split where a comma stands outside of every bracket - the conditions the rule is made on
+$splitCommas = static function( string $list ): array {
+
+	$items 	= [];
+	$depth 	= 0;
+	$item 	= '';
+
+	foreach( str_split( $list ) as $character ) {
+
+		$depth += $character === '(' || $character === '[' ? 1 : ( $character === ')' || $character === ']' ? -1 : 0 );
+
+		if( $character === ',' && $depth === 0 ) {
+			$items[] = trim( $item );
+			$item = '';
+			continue;
+		}
+
+		$item .= $character;
+	}
+
+	$items[] = trim( $item );
+
+	return array_values( array_filter( $items, static fn( string $entry ): bool => $entry !== '' ) );
+};
+$notList = static fn( string $selector ): array => preg_match( '/:where\(:not\((.*)\)\)$/', $selector, $found ) === 1 ? $splitCommas( $found[1] ) : [];
+
+$panelRules 	= designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', 'panel' ) ) ) );
+$panelBand 		= array_values( array_filter( $panelRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '+' ) === false && preg_match( '/(?<![\w-])border-radius\s*:\s*var\(--radius-surface\)/', $rule['body'] ) === 1 ) );
+$stacking 		= array_filter( $panelRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '+' ) === true && preg_match( '/(?<![\w-])border-radius\s*:\s*0(?:px)?\s*(?:;|$)/', $rule['body'] ) === 1 );
+$gapRules 		= array_values( array_filter( $panelRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '+' ) === true && preg_match( '/(?<![\w-])margin-top\s*:\s*var\(--grid-gutter\)\s*(?:;|$)/', $rule['body'] ) === 1 ) );
+$gapSelector 	= $gapRules[0]['selector'] ?? '';
+$sameBand 		= preg_match( '/^(\.[\w-]+) \+ \1:where\(/', $gapSelector, $bandClass ) === 1 && str_starts_with( $panelBand[0]['selector'] ?? '', $bandClass[1]. ':where(' );
+
+check( 'the bands of the Panel set are two panels with room between them, whatever ground each has: no rule with a + in its selector takes the radius away from the second - there is no stack - and one rule gives a band that follows a section a margin of one gutter above it',
+	count( $panelBand ) === 1 && $stacking === [] && count( $gapRules ) === 1 && $sameBand === true );
+check( '...on the conditions of the rule that makes a band a panel - the opening and the bands that run the full width are left as the page has them - and one more: a margin the page gave the band itself, a nino-mt-<n> or a nino-m-<n>, is the page\'s',
+	$notList( $panelBand[0]['selector'] ?? '' ) !== [] && array_diff( $notList( $panelBand[0]['selector'] ?? '' ), $notList( $gapSelector ) ) === []
+	&& in_array( '[class*="nino-mt-"]', $notList( $gapSelector ), true ) === true && in_array( '[class*="nino-m-"]', $notList( $gapSelector ), true ) === true );
+
+/*	A hover keeps the transition of the viewport animation. Nino.css makes the animation a transition - the rule of .nino-vpa names its properties, its time and its easing - and a hover
+	rule of a set writes the list of a transition for itself, which takes the animation's away from the element for as long as it is hovered: a card that is still arriving stops where it
+	is. So the list of every hover rule of the card sets and the button sets names the properties of the animation, and gives the ones the hover does not change its time and its easing. The
+	default set of each part is left as it is - a project starts from the delivered theme.css of the kernel, byte for byte, and no set of this library can differ from it. The opacity of a
+	button is the framework's own: the kernel dims the brand buttons under the pointer, and a dimming is no arrival	*/
+$kernelRules = designRules( designPlain( (string) file_get_contents( $root. '/_nino/Nino.css' ) ) );
+$vpaRule 		= array_values( array_filter( $kernelRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-vpa' ) === true && preg_match( '/(?<![\w-])transition-property\s*:/', $rule['body'] ) === 1 ) )[0]['body'] ?? '';
+$vpaValue 		= static fn( string $property ): string => preg_match( '/(?<![\w-])'. $property. '\s*:\s*([^;]+);/', $vpaRule, $found ) === 1 ? trim( (string) preg_replace( '/\s+/', ' ', $found[1] ) ) : '';
+$vpaProperties 	= array_map( 'trim', explode( ',', $vpaValue( 'transition-property' ) ) );
+$vpaDuration 	= $vpaValue( 'transition-duration' );
+$vpaEasing 		= $vpaValue( 'transition-timing-function' );
+$buttonsDim 	= array_filter( $kernelRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-btn' ) === true && str_contains( $rule['selector'], ':hover' ) === true && preg_match( '/(?<![\w-])opacity\s*:/', $rule['body'] ) === 1 ) !== [];
+
+$hoverLists = [];
+
+foreach( [ 'card', 'buttons' ] as $part )
+	foreach( array_diff( Setup::available( $library, $part ), [ $defaultSets[$part] ] ) as $set )
+		foreach( designRules( designPlain( (string) file_get_contents( Setup::file( $library, $part, $set ) ) ) ) as $rule )
+			if( str_contains( $rule['selector'], ':hover' ) === true && preg_match( '/(?<![\w-])transition\s*:\s*([^;]+);/', $rule['body'], $found ) === 1 )
+				$hoverLists[$part][$set][] = array_map( static fn( string $entry ): string => trim( (string) preg_replace( '/\s+/', ' ', $entry ) ), $splitCommas( $found[1] ) );
+
+$leftOut 			= [];
+$ownTime 			= [];
+$entriesChecked = 0;
+
+foreach( $hoverLists as $part => $sets )
+	foreach( $sets as $set => $lists )
+		foreach( $lists as $entries ) {
+
+			foreach( array_diff( $vpaProperties, array_map( static fn( string $entry ): string => explode( ' ', $entry )[0], $entries ) ) as $property )
+				$leftOut[] = $part. '/'. $set. ' '. $property;
+
+			foreach( $entries as $entry )
+				if( in_array( explode( ' ', $entry )[0], $vpaProperties, true ) === true && ( $part === 'buttons' && $buttonsDim === true && str_starts_with( $entry, 'opacity ' ) === true ) === false ) {
+
+					$entriesChecked++;
+
+					if( str_contains( $entry, $vpaDuration ) === false || str_contains( $entry, $vpaEasing ) === false )
+						$ownTime[] = $part. '/'. $set. ' '. $entry;
+				}
+		}
+
+check( 'a hover keeps the transition of the viewport animation: the list of each hover rule of the card sets and of the button sets - the default of each part left as it is - names every property the animation transitions'
+	. ( $leftOut === [] ? '' : ' - not so for '. implode( ', ', $leftOut ) ),
+	count( $vpaProperties ) >= 2 && $leftOut === [] && isset( $hoverLists['card'], $hoverLists['buttons'] ) === true && array_sum( array_map( 'count', $hoverLists['card'] ) ) >= 1 && array_sum( array_map( 'count', $hoverLists['buttons'] ) ) >= 1 );
+check( '...and gives each of them the time and the easing the animation has - its custom property for the duration and the easing as Nino.css writes it - but for the opacity of a button, which the kernel dims under the pointer'
+	. ( $ownTime === [] ? '' : ' - not so for '. implode( ' | ', $ownTime ) ),
+	$vpaDuration !== '' && $vpaEasing !== '' && $entriesChecked >= 3 && $ownTime === [] );
+
 
 echo "\nThe setup, held against the library that is there\n";
 
@@ -5979,10 +6070,10 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	// The keys of a setup that choose something, as a theme file keeps them: the keys of a setup but the four that are the project's
 	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) );
-	// ...and the ones a theme the feature ships chooses: all of them but the palette and the choices for the features. A brand colour is the project's, and so are the features it runs
-	$choosesShipped = array_values( array_diff( $chooses, [ 'colours', 'features' ] ) );
-	/*	The four themes the feature ships were written before the hover of the pictures was a part of the motion, and they stay as they were until the themes are looked at as a whole: they name the
-		parts of the motion they were written with, and the hover of the pictures reads as the default - what the screen holds of such a file is what normalising makes of it. $completed is a file's setup as it
+	// ...and the ones a theme the feature ships chooses: all of them but the palette. A brand colour is the project's - the choices for the features are the theme's, an empty list where it names none
+	$choosesShipped = array_values( array_diff( $chooses, [ 'colours' ] ) );
+	/*	The theme the feature ships was written before the hover of the pictures was a part of the motion, and it stays as it was until the themes are looked at as a whole: it names the
+		parts of the motion it was written with, and the hover of the pictures reads as the default - what the screen holds of such a file is what normalising makes of it. $completed is a file's setup as it
 		stands once that default is put where the file names none, which is the only thing a shipped file may leave out	*/
 	$later = [ 'hover', 'hover-strength' ];
 	$completed = static function( array $given ) use ( $later, $library ): array {
@@ -6205,13 +6296,13 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 		if( array_key_exists( 'colours', $given ) === true )
 			$problems[] = 'colours: a theme the feature ships names no palette, the brand colour is the project\'s';
-		if( array_key_exists( 'features', $given ) === true )
-			$problems[] = 'features: a theme the feature ships names no variant of any feature, the features are the project\'s';
+		if( is_array( $given['features'] ?? null ) === false )
+			$problems[] = 'features: a theme has the choices for the features, an empty list where it names none';
 		if( array_keys( $given ) !== $choosesShipped )
 			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order';
 		if( $notes !== [] )
 			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
-		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true, 'features' => true ] ) !== $completed( $given ) )
+		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $completed( $given ) )
 			$problems[] = 'a setup that is not its own normalisation';
 
 		$ranged = [];
@@ -6254,7 +6345,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its seven parts in the library, every position of the thirty-seven knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation - but for the parts that came after it was written, which read as the default - with no note and no palette: the brand colour is the project\'s'
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
-		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true, 'features' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
+		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
 
 	// The compile
 	$notes = [];
@@ -6294,7 +6385,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		&& $withCss === \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => "a {}" ], $library ), $library )
 		&& $withCss !== \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => "a {} " ], $library ), $library ) );
 
-	// The actions of the themes, over callDesignAction() as the panel's own are, in a sandbox with the six themes the feature ships and the project's own
+	// The actions of the themes, over callDesignAction() as the panel's own are, in a sandbox with the themes the feature ships and the project's own
 	$themesClean = static function() use ( &$appData, $themesDir ): void {
 
 		\Nino\Filesystem::removeDir( $themesDir );
@@ -6408,8 +6499,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && array_keys( $loaded ) === [ 'slug', 'name', 'description', 'shipped', 'setup', 'css', 'missing', 'notes' ] && $loaded['slug'] === $shippedFirst && $loaded['name'] === $shippedWords['de_DE'][$shippedFirst][0]
 		&& $loaded['description'] === $shippedWords['de_DE'][$shippedFirst][1] && $loaded['shipped'] === true && $loaded['setup'] === $completed( Themes::setup( $shippedOne ) ) && $loaded['css'] === Themes::css( $shippedOne )
 		&& $loaded['missing'] === [] && $loaded['notes'] === [] );
-	check( '...and no palette and no choice for a feature: a theme the feature ships has none to take over, so what answers has no colours and no features at all and the screen keeps the ones it has',
-		array_key_exists( 'colours', $loaded['setup'] ) === false && array_key_exists( 'features', $loaded['setup'] ) === false && array_keys( $loaded['setup'] ) === $choosesShipped );
+	check( '...no palette - the brand colour is the project\'s, so what answers has no colours and the screen keeps its own - and the choices for the features as the theme has them, an empty list where it names none, which the screen takes in place of its own',
+		array_key_exists( 'colours', $loaded['setup'] ) === false && is_array( $loaded['setup']['features'] ?? null ) === true && array_keys( $loaded['setup'] ) === $choosesShipped );
 	check( '...it writes nothing - not the setup, not a line of the log - and a slug that names no theme is a 404 with the code of it, whatever it is: not there, no slug, no string, a path',
 		$setupBytes() === $before && Admin::log( 'design/theme/load', [ 'slug' => $shippedFirst ] ) === ''
 		&& array_unique( array_map( static fn( array $post ): array => $codesOf( callDesignAction( $appData, 'apiThemeLoad', $post )[1] ), [ [ 'slug' => 'nowhere' ], [], [ 'slug' => [ $shippedFirst ] ], [ 'slug' => '../'. $shippedFirst ], [ 'slug' => ucfirst( $shippedFirst ) ] ] ), SORT_REGULAR ) === [ $noThemeError ]
@@ -6658,7 +6749,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	$colourImported = Themes::read( $appData, $library, 'eingespielt-mit-farben' ) ?? [];
 
 	check( '...a file that names colours is a theme of the project that keeps them, normalised, and one that names none is one that keeps none: an export of a theme the feature ships comes back without a palette',
-		array_key_exists( 'colours', $importedFile['setup'] ) === false && array_keys( $colourImported['setup'] ?? [] ) === array_values( array_diff( $chooses, [ 'features' ] ) )
+		array_key_exists( 'colours', $importedFile['setup'] ) === false && array_keys( $colourImported['setup'] ?? [] ) === $chooses
 		&& ( $colourImported['setup']['colours']['primary'] ?? '' ) === '#8b1d3f' && ( $colourImported['setup']['colours']['harmony'] ?? 0 ) === 2 && ( $colourImported['setup']['colours']['mode'] ?? '' ) === 'auto' );
 
 	Themes::remove( $appData, 'eingespielt-mit-farben' );
@@ -7772,7 +7863,7 @@ Compiler::compile( $appData, Setup::normalize( $appData, $chooseLoud, $library, 
 $featuresOn( [ 'Design', 'Probe' ] );
 
 check( 'a feature that has no entry compiles nothing: with the feature active the sheet is the sheet without it, byte for byte - and so are the sheets the shipped themes make',
-	$sheetOn === $sheetOff && str_contains( $sheetOn, 'feature probe' ) === false && $sameThemes === array_fill( 0, count( Themes::SHIPPED ), true ) && count( $sameThemes ) === 4 );
+	$sheetOn === $sheetOff && str_contains( $sheetOn, 'feature probe' ) === false && $sameThemes === array_fill( 0, count( Themes::SHIPPED ), true ) && $sameThemes !== [] );
 check( 'an entry of a feature that is not active compiles nothing and is told: no section and not a line, the sheet the setup without the entry makes, and the note once however many readers of the setup told it already',
 	$entryOff === $sheetOff && $offNotes === [ Setup::inactive( 'probe' ) ] && count( $onceNotes ) === 1 && $onceNotes[0] === Setup::inactive( 'probe' ) );
 
@@ -7987,6 +8078,39 @@ check( 'a snapshot of a setup keeps the choices for the features as a key that c
 	&& $snapshot['features'] === $withEntry['features'] && $status === 200 && ( $madeFile['setup']['features'] ?? null ) === $withEntry['features'] && ( $reloaded['setup']['features'] ?? null ) === $withEntry['features'] );
 
 Themes::remove( $appData, (string) ( $made['slug'] ?? '' ) );
+
+// A theme sets the choices for the features: what it names is what the screen has after a load, every other feature is back at its own look, and an entry for a feature that is not there is left out and said
+$byHand 			= static fn( string $name, array $features ): array => [ 'format' => Themes::FORMAT, 'name' => $name, 'setup' => [ 'features' => $features ] ];
+$choiceGone 	= [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ];
+callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => $withEntry['features'] ] ) );
+[ $status, $overShipped ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => Themes::SHIPPED[0] ] );
+Themes::write( $appData, 'by-hand', $byHand( 'By hand', [ 'probe' => [ 'set' => 'loud' ] ] ) );
+Themes::write( $appData, 'one-gone', $byHand( 'One gone', [ 'probe' => [ 'set' => 'loud' ], 'gone' => $choiceGone ] ) );
+[ , $fromHand ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'by-hand' ] );
+[ , $oneGone ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'one-gone' ] );
+
+check( 'a theme sets the choices for the features: loaded over a setup that chooses a variant of a feature, the theme the feature ships answers its own choices and not the setup\'s - the key is there, between the knobs and the fonts, with no entry for that feature, so it is back at its own look - and says nothing, and writes nothing',
+	$status === 200 && array_key_exists( 'features', $overShipped['setup'] ) === true && array_key_exists( 'probe', $overShipped['setup']['features'] ) === false && $overShipped['notes'] === []
+	&& array_search( 'features', array_keys( $overShipped['setup'] ), true ) === array_search( 'knobs', array_keys( $overShipped['setup'] ), true ) + 1
+	&& array_key_exists( 'probe', Setup::read( $appData, $library )['features'] ) === true );
+check( '...and a theme that names a feature the project has gives it: the variant, with the knobs of the variant at the positions its head gives them - a file by hand names the variant alone - and nothing said',
+	( $fromHand['setup']['features']['probe']['set'] ?? '' ) === 'loud' && array_keys( $fromHand['setup']['features']['probe']['knobs'] ?? [] ) === array_keys( Setup::features( $appData )['probe']['catalogue']['loud']['knobs'] )
+	&& $fromHand['setup']['features']['probe']['knobs'] === Setup::normalize( $appData, [ 'features' => [ 'probe' => [ 'set' => 'loud' ] ] ], $library )['features']['probe']['knobs'] && $fromHand['notes'] === [] );
+check( '...and an entry for a feature that is not there - not active, or without variants - is left out of the answer and said once, in a sentence that names the feature: the choice for the feature that is there stays',
+	array_keys( $oneGone['setup']['features'] ) === [ 'probe' ] && count( $oneGone['notes'] ) === 1 && is_string( $oneGone['notes'][0] ) === true && str_contains( $oneGone['notes'][0], '"gone"' ) === true );
+
+callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'theme' => 'one-gone', 'features' => $withEntry['features'] ] ) );
+[ , $listedGone ] = callDesignAction( $appData, 'apiList' );
+[ $status, $brought ] = callDesignAction( $appData, 'apiThemeImport', [ 'json' => Themes::json( $byHand( 'Brought in', [ 'gone' => $choiceGone ] ) ) ] );
+$broughtFile = Themes::read( $appData, $library, 'brought-in' ) ?? [];
+[ , $broughtLoaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'brought-in' ] );
+
+check( '...the record the screen is compared with is the setup of the load, the entry for the feature that is not there out of it as well - and an import is no taking over but a writing down: it keeps such a choice in the file, as the setup keeps one, for the day the feature is back, where a load of that file leaves it out',
+	( $listedGone['active']['slug'] ?? '' ) === 'one-gone' && $listedGone['active']['setup']['features'] === $oneGone['setup']['features']
+	&& $status === 200 && ( $broughtFile['setup']['features']['gone'] ?? null ) === $choiceGone && $broughtLoaded['setup']['features'] === [] && count( $broughtLoaded['notes'] ) === 1 );
+
+foreach( [ 'by-hand', 'one-gone', 'brought-in' ] as $removeSlug )
+	Themes::remove( $appData, $removeSlug );
 
 // The answer the screen is drawn from, for design-js-smoke.js: the real one, with the fixture active and a choice for it and for a feature that is not there
 Setup::write( $appData, $stored );

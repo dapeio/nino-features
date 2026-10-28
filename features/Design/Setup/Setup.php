@@ -1794,7 +1794,7 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@return 	string
 		 */
-		private static function shown( mixed $key, int $length = 40 ): string {
+		public static function shown( mixed $key, int $length = 40 ): string {
 			return substr( (string) $key, 0, $length );
 		}
 

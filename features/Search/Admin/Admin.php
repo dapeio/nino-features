@@ -318,7 +318,8 @@ namespace Nino\Modules\Search {
 
 			foreach( \Nino\Modules\Search::getHits( $appData, $types, $query, self::PROBE_LIMIT ) as $hit ) {
 
-				$element 	= \Nino\Elements::getElement( $appData, $hit['uri'], \Nino\Locales::getCurrentLocale( $appData ) );
+				// The element as the page of the language shows it - what the index holds
+				$element 	= \Nino\Elements::getElementWithFallback( $appData, $hit['uri'], \Nino\Locales::getCurrentLocale( $appData ) );
 				$fields 	= $configured[$hit['type']]['fields'] ?? [];
 				$label 		= '';
 

@@ -7675,25 +7675,9 @@ check( 'a theme that names colours - one of the project, written from the screen
 	brandOf( adopting ) === '#2e7d32' && adopting.design._active.setup.colours.primary === '#2e7d32' && adopting.design._themeChanged() === false
 	&& ( adopting.design._edit.colours.primary = '#112233', adopting.design._themeChanged() ) === true );
 
-/*	The choices for the features are the project's the way the brand colour is. A theme that names none - every theme the feature ships - is taken over with the choices the
-	screen has, and the record the chip "changed" compares with has none either, so a choice moved afterwards is no change of it; a theme of the project, written from the
-	screen with them, takes them over - and takes them away again where it was written with none	*/
+/*	The choices for the features are the theme's: the server answers them for every theme, an empty list where it names none, and the screen takes them in place of its own. A theme of the
+	project, written from the screen with them, takes them over and its record has them, so a choice moved afterwards is a change of it; one written with none takes the screen's away again	*/
 const chosenFeatures = { awning : { set : 'loud', knobs : { size : 1 } } };
-const withoutFeatures = function( setup ) {
-	const copy = JSON.parse( JSON.stringify( setup ) );
-	delete copy.features;
-	return copy;
-};
-const holding = themed( featured( chosenFeatures ) );
-holding.byId('design-theme-load-magazine').fire('click');
-holding.answer( 200, themeLoad( 'magazine', withoutFeatures( themeSetup() ), [] ) );
-
-check( 'a theme that names no choices for the features is taken over with the choices the screen has - the choices are the project\'s - and with everything else the theme chooses',
-	JSON.stringify( holding.design._edit.features ) === JSON.stringify( chosenFeatures ) && holding.design._edit.theme === 'magazine' && holding.design._edit.parts.header === 'second' && holding.design._edit.size === -1 );
-check( '...the record of the theme the chip compares with has none either, so the screen is the theme: a choice for a feature moved afterwards is no change of it, and a knob of a template is',
-	Object.prototype.hasOwnProperty.call( holding.design._active.setup, 'features' ) === false && holding.design._themeChanged() === false
-	&& ( holding.design._edit.features.awning.knobs.size = -1, holding.design._themeChanged() ) === false
-	&& ( holding.design._edit.size = 1, holding.design._themeChanged() ) === true );
 
 const recalled = themeSetup();
 recalled.features = { awning : { set : 'regular', knobs : { line : 1 } } };
@@ -8504,7 +8488,7 @@ else {
 		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
 		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
 		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,features,fonts,colours'
-		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,fonts'
+		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,features,fonts'
 		&& answered.load.notes.every( function( note ) { return typeof note === 'string' || ( typeof note.error === 'string' && typeof note.code === 'string' && Array.isArray( note.params ) ) } )
 		&& typeof none.running === 'string' && typeof activeList.running === 'string'
 		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'

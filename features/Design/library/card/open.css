@@ -153,14 +153,23 @@
 /*	The hover, as the ladder says it: the card rises, and its picture takes the shadow - there is no box
 	to cast one. Only for the card the pointer can mean as a whole (.nino-card--linked), and only where the
 	visitor has not asked for less motion. The transition is the hover's own, so that the one a viewport
-	animation has on the card is not taken from it while it is at rest	*/
+	animation has on the card is not taken from it while it is at rest - and it carries the animation's:
+	its three properties with the time and the easing Nino.css gives them (the easing is written out,
+	Nino.css names no custom property for it), so that a card hovered while it arrives goes on arriving,
+	and so does a picture that has an animation of its own	*/
 @media (prefers-reduced-motion: no-preference) {
 	.nino-card--linked:hover {
 		translate: var(--card-hover);
-		transition: translate .2s ease;
+		transition: translate .2s ease,
+			opacity var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
 	}
 	.nino-card--linked:hover .nino-card-img {
 		box-shadow: var(--card-hover-shadow);
-		transition: box-shadow .2s ease;
+		transition: box-shadow .2s ease,
+			opacity var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
 	}
 }
