@@ -20,7 +20,7 @@ return [
 		'knobs'		=> [
 			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'ground' => 0 ],
 			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'ground' => 0 ],
-			'section' 		=> [ 'hero-title' => 0, 'hero-text' => 0, 'quiet' => 0, 'loud' => 0, 'title' => 0, 'subtitle' => 0, 'space' => 0, 'rule' => 0, 'dim' => 0 ],
+			'section' 		=> [ 'quiet' => 0, 'loud' => 0, 'title' => 0, 'subtitle' => 0, 'space' => 0, 'rule' => 0, 'dim' => 0 ],
 			'card' 			=> [ 'title' => 0, 'subtitle' => 0, 'space' => 0, 'border' => 0, 'shadow' => 0, 'tone' => 0, 'hover' => 0 ],
 			'buttons' 		=> [ 'size' => 0, 'spread' => 0, 'space' => 0, 'corners' => 0, 'hover' => 0 ],
 			'lists' 		=> [ 'scale' => 0, 'space' => 0, 'marker' => 0 ],

@@ -130,14 +130,13 @@
 		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' },
 
 		/*	The controls that are looked at elsewhere than their object is, by the key the table has them under: the
-			two variants, quiet and loud, which are sizes of the type of a section and are looked at where the specimen
-			sets every title three times, in the typography block (#type); and the eight controls of the palette,
-			which are the page's and are looked at in the grounds (#colours), where the page's own anchor is the top of
-			the page; and the two controls of the hover of the pictures, which are the page's as well and are looked at in
-			the cards (#cards), whose first row of pictures says nino-hover. The templates have none: a template is looked at
-			where its object is (OBJECT_ANCHORS)	*/
-		CONTROL_ANCHORS	: { 'knobs/section/quiet' : 'type', 'knobs/section/loud' : 'type',
-			'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
+			eight controls of the palette, which are the page's and are looked at in the grounds (#colours), where the
+			page's own anchor is the top of the page; and the two controls of the hover of the pictures, which are the
+			page's as well and are looked at in the cards (#cards), whose first row of pictures says nino-hover. The
+			templates have none: a template is looked at where its object is (OBJECT_ANCHORS). Nor have the quiet and
+			the loud variant of a section: the loud one sizes the hero, and the two are looked at in the first section
+			(#content) with the other knobs of the section	*/
+		CONTROL_ANCHORS	: { 'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
 			'motion/hover' : 'cards', 'motion/hover-strength' : 'cards' },
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
@@ -299,8 +298,6 @@
 			'footer/height' : 'move-vertical',
 			'footer/space' : 'align-vertical-space-around',
 			'footer/ground' : 'contrast',
-			'section/hero-title' : 'a-large-small',
-			'section/hero-text' : 'a-large-small',
 			'section/quiet' : 'a-large-small',
 			'section/loud' : 'a-large-small',
 			'section/title' : 'a-large-small',
@@ -2905,12 +2902,12 @@
 		 *
 		 *	Three maps say where, all of them the panel's and the ids the page's. Opening a tab goes to the
 		 *	anchor of the tab (ANCHORS). A change of a control goes to the place that control is looked at in,
-		 *	which follows from the table (see _anchorOf()): the id CONTROL_ANCHORS names for its key - the quiet
-		 *	and the loud variant to the typography block (#type), the controls of the palette to the grounds
-		 *	(#colours) -, else the id OBJECT_ANCHORS names for the object it stands under - the page's and the
-		 *	header's to the top of the page (#global), the footer's to its foot, a section's to the first section
-		 *	(#content), a card's to the cards (#cards), the buttons', the lists' and the tables' to their blocks -,
-		 *	else the anchor of its tab. A control of a feature stands in no map; it goes to the id the variant chosen
+		 *	which follows from the table (see _anchorOf()): the id CONTROL_ANCHORS names for its key - the controls
+		 *	of the palette to the grounds (#colours) -, else the id OBJECT_ANCHORS names for the object it stands
+		 *	under - the page's and the header's to the top of the page (#global), the footer's to its foot, a
+		 *	section's, the quiet and the loud variant of its titles among them, to the first section (#content), a
+		 *	card's to the cards (#cards), the buttons', the lists' and the tables' to their blocks -, else the
+		 *	anchor of its tab. A control of a feature stands in no map; it goes to the id the variant chosen
 		 *	for the feature names in the line @anchor of its head, else to the anchor of its tab. The place of a change is _target,
 		 *	one for each change - it is put back to the tab's own when a tab is opened, and it is what is jumped to
 		 *	until then.

@@ -2,8 +2,6 @@
  *	@description	The opening on a rail at the left, every band inset and rounded against the page.
  *	@description-de	Der Hero an einer Leiste links, jedes Band eingerückt und gerundet gegen die Seite.
  *
- *	@knob	hero-title			Size of the title of a hero
- *	@knob	hero-text			Size of the text of a hero
  *	@knob	quiet				Size of a quiet title, subtitle and text
  *	@knob	loud				Size of a loud title, subtitle and text
  *	@knob	title				Size of the title of a band
@@ -32,18 +30,6 @@
 
 /*	The ladders are Nino's, value for value - section regular says what each of them is	*/
 :root {
-	--section-hero-title--least: 		.896;
-	--section-hero-title--less: 		1.12;
-	--section-hero-title--default: 	1.4;
-	--section-hero-title--more: 		1.75;
-	--section-hero-title--most: 		2.1875;
-
-	--section-hero-text--least: 		.768;
-	--section-hero-text--less: 			.96;
-	--section-hero-text--default: 	1.2;
-	--section-hero-text--more: 			1.5;
-	--section-hero-text--most: 			1.875;
-
 	--section-quiet--least: 				.6;
 	--section-quiet--less: 					.75;
 	--section-quiet--default: 			.85;
@@ -89,18 +75,6 @@
 
 @media (min-width: 768px) {
 	:root {
-		--section-hero-title--least: 		.928;
-		--section-hero-title--less: 		1.16;
-		--section-hero-title--default: 	1.45;
-		--section-hero-title--more: 		1.8125;
-		--section-hero-title--most: 		2.2656;
-
-		--section-hero-text--least: 		calc(.64 * 10 / 9);
-		--section-hero-text--less: 			calc(.8 * 10 / 9);
-		--section-hero-text--default: 	calc(10 / 9);
-		--section-hero-text--more: 			calc(1.25 * 10 / 9);
-		--section-hero-text--most: 			calc(1.5625 * 10 / 9);
-
 		--section-space--least: 	var(--space-3);
 		--section-space--less: 		var(--space-4);
 		--section-space--default: var(--space-5);
@@ -110,8 +84,6 @@
 }
 
 :root {
-	--hero-title-scale: var(--section-hero-title);
-	--hero-text-scale: var(--section-hero-text);
 	--section-title-scale: var(--section-title);
 	--section-subtitle-scale: var(--section-subtitle);
 	--section-line: var(--section-rule);

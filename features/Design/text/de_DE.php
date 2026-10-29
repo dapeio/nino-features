@@ -223,10 +223,6 @@ return [
 	'[[/_admin/design/knob/footer/ground/default]]'							=> 'Vorlage',
 	'[[/_admin/design/knob/footer/ground/more]]'							=> 'Dunkel',
 
-	'[[/_admin/design/knob/section/hero-title/label]]'							=> 'Hero-Titel, Textgröße',
-	'[[/_admin/design/knob/section/hero-title/note]]'							=> 'kleiner ↔ größer',
-	'[[/_admin/design/knob/section/hero-text/label]]'							=> 'Hero-Untertitel, Textgröße',
-	'[[/_admin/design/knob/section/hero-text/note]]'							=> 'kleiner ↔ größer',
 	'[[/_admin/design/knob/section/quiet/label]]'							=> 'Leise Variante, Textgröße',
 	'[[/_admin/design/knob/section/quiet/note]]'							=> 'kleiner ↔ größer',
 	'[[/_admin/design/knob/section/loud/label]]'							=> 'Laute Variante, Textgröße',

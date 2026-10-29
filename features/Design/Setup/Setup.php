@@ -141,8 +141,7 @@ namespace Nino\Modules\Design {
 							height				the space above and below its content
 							space				the space between its columns, its lines and its links
 							ground				what it stands on (a choice)
-				section		hero-title, hero-text	the size of the hero's title and text
-							quiet, loud			the size of the --quiet and --loud variants
+				section		quiet, loud			the size of the --quiet and --loud variants - the title and the subtitle of a hero are the loud variant
 							title, subtitle	the size of the title and of the subtitle of a section
 							space				the vertical space of a section
 							rule				the rule under the title of a section
@@ -167,7 +166,7 @@ namespace Nino\Modules\Design {
 		public const array KNOBS = [
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
-			'section' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale' ],
+			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale' ],
 			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
@@ -239,12 +238,10 @@ namespace Nino\Modules\Design {
 			'fonts/code' 							=> [ 'type', 'page', 6 ],
 			'knobs/header/nav' 						=> [ 'type', 'header', 1 ],
 			'knobs/footer/scale' 					=> [ 'type', 'footer', 1 ],
-			'knobs/section/hero-title' 				=> [ 'type', 'section', 1 ],
-			'knobs/section/hero-text' 				=> [ 'type', 'section', 2 ],
-			'knobs/section/title' 					=> [ 'type', 'section', 3 ],
-			'knobs/section/subtitle' 				=> [ 'type', 'section', 4 ],
-			'knobs/section/quiet' 					=> [ 'type', 'section', 5 ],
-			'knobs/section/loud' 					=> [ 'type', 'section', 6 ],
+			'knobs/section/title' 					=> [ 'type', 'section', 1 ],
+			'knobs/section/subtitle' 				=> [ 'type', 'section', 2 ],
+			'knobs/section/quiet' 					=> [ 'type', 'section', 3 ],
+			'knobs/section/loud' 					=> [ 'type', 'section', 4 ],
 			'knobs/card/title' 						=> [ 'type', 'card', 1 ],
 			'knobs/card/subtitle' 					=> [ 'type', 'card', 2 ],
 			'knobs/buttons/size' 					=> [ 'type', 'buttons', 1 ],

@@ -223,10 +223,6 @@ return [
 	'[[/_admin/design/knob/footer/ground/default]]'							=> 'Template',
 	'[[/_admin/design/knob/footer/ground/more]]'							=> 'Dark',
 
-	'[[/_admin/design/knob/section/hero-title/label]]'							=> 'Hero title, text size',
-	'[[/_admin/design/knob/section/hero-title/note]]'							=> 'smaller ↔ larger',
-	'[[/_admin/design/knob/section/hero-text/label]]'							=> 'Hero subtitle, text size',
-	'[[/_admin/design/knob/section/hero-text/note]]'							=> 'smaller ↔ larger',
 	'[[/_admin/design/knob/section/quiet/label]]'							=> 'Quiet variant, text size',
 	'[[/_admin/design/knob/section/quiet/note]]'							=> 'smaller ↔ larger',
 	'[[/_admin/design/knob/section/loud/label]]'							=> 'Loud variant, text size',

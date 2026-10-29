@@ -116,12 +116,17 @@
 	motion, and not for a button that is off or that the keyboard has: the ring of the
 	focus is the framework's and is never covered. The transition is the hover's own -
 	the framework's, which it replaces while the pointer is on the button, with the
-	rise and the shadow added - so that the ones a viewport animation or the button's
-	variants have on it at rest are not taken from it. The outline casts no shadow	*/
+	rise and the shadow added - and the transform and the filter of the viewport
+	animation, with the time and the easing Nino.css gives them (the easing is written
+	out, Nino.css names no custom property for it): the opacity keeps the .3s of the
+	framework, the brand buttons dim under the pointer, and a button hovered while it
+	arrives goes on arriving. The outline casts no shadow	*/
 @media (prefers-reduced-motion: no-preference) {
 	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
 		translate: var(--buttons-hover);
-		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease;
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease,
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
 	}
 	.nino-btn:where(:not(.nino-btn--outline, :focus-visible, :disabled, [aria-disabled="true"])):hover {
 		box-shadow: var(--buttons-hover-shadow);
