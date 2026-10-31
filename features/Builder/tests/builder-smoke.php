@@ -129,6 +129,29 @@ check( '...and names the class a picture takes for the hover of the page in a li
 check( '...and has a line of its own for the tools of a frame - how the toolbar is named and how large a tool is to hit - in both languages',
 	isset( $manifest['manual']['panel']['The tools of a frame'] ) === true && array_diff( [ 'en_US', 'de_DE' ], array_keys( $manifest['manual']['panel']['The tools of a frame'] ) ) === []
 	&& \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'en_US' ) );
+check( '...and names the seven blocks of a dialog - the loop is one of them - and the entries this patch rewrites, each in both languages and a line under a thousand bytes, in a manual of at most forty entries of the panel', ( static function() use ( $manifest ): bool {
+	$names = [ 'The seven blocks', 'The dialog of a section', 'The spacing and width of a section', 'Properties of a card', 'Loop', 'Placeholders', 'The card', 'Heads of the frames', 'Pictures of the slots' ];
+	foreach( $names as $name )
+		foreach( [ 'en_US', 'de_DE' ] as $locale )
+			if( isset( $manifest['manual']['panel'][$name][$locale] ) === false || strlen( $manifest['manual']['panel'][$name][$locale] ) >= 1000 )
+				return false;
+	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['The seven blocks']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The seven blocks']['de_DE'], 'Loop:' ) === true
+		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'title' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true;
+} )() );
+check( 'the words of the patch are in both languages: the block Loop, the group Background image, the three hints of the width, the line of a card without the child the kernel stretches, the row of a picture in its group - and the place of the content of a cover is called Content in the cover', ( static function() use ( $dir ): bool {
+	$words = [ 'block/loop/label', 'group/background-image', 'hint/content-pos', 'hint/text', 'hint/row-align', 'link/no-stretched', 'section/content-pos', 'source/picture' ];
+	$texts = [ 'en_US' => (array) include $dir. '/text/en_US.php', 'de_DE' => (array) include $dir. '/text/de_DE.php' ];
+	foreach( $texts as $list )
+		foreach( $words as $word )
+			if( trim( (string) ( $list['[[/_admin/builder/'. $word. ']]'] ?? '' ) ) === '' )
+				return false;
+	return $texts['en_US']['[[/_admin/builder/section/content-pos]]'] === 'Content in the cover' && $texts['de_DE']['[[/_admin/builder/section/content-pos]]'] === 'Inhalt im Cover'
+		&& str_contains( $texts['de_DE']['[[/_admin/builder/hint/content-pos]]'], 'Zeile in einem Cover oder Parallax' ) === true;
+} )() );
+check( 'the head of the editor is as tall as the heads of the workbench - the rail\'s brand row and the head of a panel, 52px, as a plain value - with the line under it kept', ( static function() use ( $dir ): bool {
+	$css = (string) file_get_contents( $dir. '/assets/admin.css' );
+	return preg_match( '/\n\.builder-editor-head \{[^}]*\n\tbox-sizing: border-box;\n\tmin-height: 52px;[^}]*\n\tborder-bottom: 1px solid var\(--editor-separator\);\n\}/', $css ) === 1;
+} )() );
 
 check( 'the feature brings its panel along, and registers nothing on the site', \Nino\Modules\Builder::adminPanels( $appData ) === [ \Nino\Modules\Builder\Admin::class ] && ( static function() use ( &$appData ): bool {
 	$before = $appData;

@@ -911,6 +911,7 @@
             ],
             "draws": "article .nino-card",
             "holds": "card",
+            "stretches": "card-title",
             "link": false,
             "by": "nino",
             "group": "card",
@@ -1373,7 +1374,14 @@
             "label": "Sections",
             "grid": false,
             "preview": "cells",
-            "attributes": [],
+            "attributes": {
+                "alternate": {
+                    "type": "bool",
+                    "label": "Mirror every second",
+                    "hint": "Every second section shows its columns in the opposite order, from tablet width up.",
+                    "default": false
+                }
+            },
             "defaults": {
                 "sort": "",
                 "offset": "0",
@@ -1382,6 +1390,7 @@
                 "callback": "",
                 "locale": "",
                 "id": "",
+                "alternate": "0",
                 "class": ""
             },
             "cell": "section"

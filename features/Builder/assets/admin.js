@@ -10,7 +10,7 @@
  *													HTML+) -, every level ends in a button that adds to it,
  *													and the settings of a frame open in a dialog of blocks, an
  *													accordion of the ones the element has - content, link,
- *													surface, spacing, width and properties - drawn from one
+ *													surface, spacing, width, loop and properties - drawn from one
  *													table. A component that holds
  *													components is a frame of its own among the components of
  *													its column, with its children in it and a form of its own.
@@ -201,26 +201,31 @@
 		// The preview images the registry may name, and the one for the rest
 		PREVIEWS	: [ 'title', 'text', 'image', 'button', 'block', 'cells' ],
 
-		// What the dialog of an element shows, and the one place that says it: for each kind of element the blocks it has, in the order they are drawn in - the same six for every kind, in
-		// this order: content, link, surface, spacing, width and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
+		// What the dialog of an element shows, and the one place that says it: for each kind of element the blocks it has, in the order they are drawn in - the same seven for every kind, in
+		// this order: content, link, surface, spacing, width, loop and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
 		// control that writes several settings stands under each of them and is drawn once, at the first (the box of the six sides, the two offsets of a ground, the width of a column and where
 		// it is hidden); one that is no setting of its own stands under its own name (the width of the row of a section, which is the maximum width, the padding at its sides and the full
 		// width in one choice). _blocksOf() draws what stands here and nothing else: a control that is moved is drawn in its new block, one that is struck out is not drawn at all, and a
 		// block none of whose controls the element has is not drawn (a card has no content: its title, its text and its picture are components with a form of their own). The controls of
 		// a section and of a column are made by _sectionControls() and _colControls(). A component has the controls of its schema, by group - the source, the attributes that are a
-		// link, those on the tab of the background, the variants and the other attributes, each group a control - and the settings every component has (_componentControls())
+		// link, those on the tab of the background, the variants and the other attributes, each group a control - and the settings every component has (_componentControls()). The
+		// surface of a section and of a column is the colours and the lines first and then, from the picture on, one group of its own, the picture behind it with what depends on it
+		// (the table lists the controls of the group in a row and each of them builds into it, see _groupIn()); the loop of a section and of a column is a block of its own, which a
+		// card has no control for
 		BLOCKS		: {
 			section : [
-				{ id : 'surface', controls : [ 'color', 'border', 'borderPrimary', 'background', 'cover', 'parallax', 'dim', 'inner', 'padded', 'radius', 'rowRadius', 'rowBgPl', 'rowBgPr', 'arrow' ] },
+				{ id : 'surface', controls : [ 'border', 'borderPrimary', 'color', 'inner', 'radius', 'rowRadius', 'background', 'cover', 'parallax', 'dim', 'padded', 'rowBgPl', 'rowBgPr', 'arrow' ] },
 				{ id : 'spacing', controls : [ 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
-				{ id : 'properties', controls : [ 'stack', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
+				{ id : 'loop', controls : [ 'stack' ] },
+				{ id : 'properties', controls : [ 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
 			],
 			column : [
-				{ id : 'surface', controls : [ 'color', 'background', 'dim', 'bgPl', 'bgPr', 'radius' ] },
+				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'bgPl', 'bgPr' ] },
 				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
-				{ id : 'properties', controls : [ 'stack', 'vpa', 'vpaSpeed', 'vpaMode', 'custom' ] },
+				{ id : 'loop', controls : [ 'stack' ] },
+				{ id : 'properties', controls : [ 'vpa', 'vpaSpeed', 'vpaMode', 'custom' ] },
 			],
 			component : [
 				{ id : 'content', controls : [ 'source' ] },
@@ -446,7 +451,7 @@
 		 *	section can be edited as HTML+, a node moves where it has a neighbour
 		 *	in its level, and the one column of a section is not deleted - a
 		 *	section has at least one. A loop is no frame and has no tools: it is
-		 *	set in the Loop tab of its column
+		 *	set in the block Loop of its column
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -3191,7 +3196,7 @@
 				if( block.whitespace !== '' )
 					status.appendChild( builder._statusItem( 'whitespace', 'move-vertical', Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/whitespace'), builder._optionLabel( 'whitespace', block.whitespace ) ), '' ) );
 
-				// A section that makes a section of every element says so as a column that runs a loop does: it is a button, which opens the properties of the section, where the loop is
+				// A section that makes a section of every element says so as a column that runs a loop does: it is a button, which opens the block Loop of the section
 				if( block.loop !== null ) {
 
 					const says = Nino.content.getText('/_admin/builder/stack/sections')+ ' · '+ block.loop.type;
@@ -3379,7 +3384,7 @@
 		 *	One column of the preview, at the width and the visibility of the
 		 *	viewport, in the ground it paints. Its head has the width for a title;
 		 *	what it says of the column is a picture behind it, the loop it runs - a
-		 *	button, which opens the Loop tab -, an alignment that is not the default
+		 *	button, which opens the block Loop -, an alignment that is not the default
 		 *	- the icon of the choice, a button that opens the Layout tab - and that it
 		 *	is hidden: where the view is one viewport, in that one, else in which
 		 *	ones. A column with a loop has the components of its cell in it, as one
@@ -3511,7 +3516,10 @@
 		 *	or, where the component has a text, that stands in the place of the label, and
 		 *	where its slot has a picture, the picture in the place of the image. What it
 		 *	is then is told by its title, the label. A component that says what it draws
-		 *	has it under the label, as a line of its own: the tag and the class
+		 *	has it under the label, as a line of its own: the tag and the class. The
+		 *	stylesheet grades the label by what the component draws and never by its name:
+		 *	the image of the registry is data-image, and the tag the component draws - the
+		 *	first word of its draws, in lower case, where that is a tag name - data-tag
 		 *
 		 *	@param		{Object}		component			{ path, label, image, line, picture, draws }
 		 *	@param		{string}		how						tools: a frame of its own, with its tools; none: a frame that has
@@ -3528,9 +3536,17 @@
 			const draws = component.draws ?? '';
 			const second = builder._one( ph, '.builder-ph-draws' );
 
+			// The first word of what it draws is the tag, where it is one: ' .nino-card' (a tag left empty) and a word of something else say none
+			const tag = draws.trim().split( /\s+/ )[0].toLowerCase();
+
 			builder._one( ph, '.builder-ph-label' ).textContent = line === '' ? component.label : line;
 			builder._one( ph, 'use' ).setAttribute( 'href', '#builder-ph-'+ component.image );
 			ph.dataset.path = component.path.join('.');
+			ph.dataset.image = component.image;
+
+			if( /^[a-z][a-z0-9]*$/.test( tag ) === true )
+				ph.dataset.tag = tag;
+
 			second.textContent = draws;
 			second.hidden = draws === '';
 
@@ -4100,8 +4116,19 @@
 				part.body.innerHTML = '';
 				part.spec.build( part.body );
 
-				if( at !== -1 && controls()[at] !== undefined )
-					controls()[at].focus();
+				if( at === -1 )
+					return;
+
+				// The control that had the focus is where it was - or, where it sleeps now (the arrow that was switched off in a section that is no cover), the nearest awake one
+				// before it, else after it, else the head of the block: a focus on a control that cannot have it falls to the page. A question mark is no place for it - it
+				// would open the hint of another field
+				const now = controls();
+				const awake = function( control ) { return control !== undefined && control.disabled === false && control.classList.contains('builder-help-btn') === false };
+				const before = now.slice( 0, at ).reverse().find( awake );
+				const after = now.slice( at + 1 ).find( awake );
+				const target = awake( now[at] ) ? now[at] : ( before ?? after ?? part.head );
+
+				target.focus();
 			} );
 
 			builder._saySummaries();
@@ -5774,10 +5801,11 @@
 		},
 
 		/**
-		 *	The form of a section, in the blocks the table has for it (BLOCKS.section): its surface - the ground and the line, the picture, the cover and what stands inside it - its
+		 *	The form of a section, in the blocks the table has for it (BLOCKS.section): its surface - the line and the ground, the background inside and the radius, and then, in a
+		 *	group of its own, the background image: the picture with its focus, the cover and what stands inside it, the parallax, the dimming, the offset and the arrow - its
 		 *	spacing - the whitespace of the page and the box of its sides, with the box of its row under it -, its width and its alignment - how wide the row is and where it stands,
-		 *	where the text and the columns are put - and its properties: the loop that makes a section of every element, the animation, the classes of its own and the id. The name
-		 *	of the section stands in the title as well, where it is changed too. Each field writes into the model at once
+		 *	where the text and the columns are put and where the row stands in a cover -, its loop, which makes a section of every element, and its properties: the animation, the
+		 *	classes of its own and the id. The name of the section stands in the title as well, where it is changed too. Each field writes into the model at once
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{string}		[block]						The block to open: the one that was open last in a dialog of a section, by default
@@ -5824,6 +5852,8 @@
 			const fields = {};
 			// A choice that other controls show: the blocks are drawn again
 			const again = function() { builder._refreshControls() };
+			// Where the picture behind the section and what depends on it stand: one group under its heading, made once per body however many controls build into it
+			const picture = function( body ) { return builder._groupIn( body, 'background-image' ) };
 			// There is nothing to put inside where the section has neither a colour nor a picture, and a cover or a parallax is the section's own picture
 			const possible = function() { return settings.cover === null && settings.parallax !== true && ( settings.color !== '' || has() === true ) };
 			// What is on with none of that is no more than the file can say, and it goes off - and with it the corners are the cover's again, not the row's
@@ -5886,7 +5916,7 @@
 					const inset = builder._offsetField( settings, [ 'rowBgPl', 'rowBgPr' ], word('section/offset'), word('hint/offset') );
 
 					inset.setDisabled( settings.inner !== true || has() === false );
-					body.appendChild( inset );
+					picture( body ).appendChild( inset );
 				},
 				says	: function() { return builder._offsetSaid( settings, [ 'rowBgPl', 'rowBgPr' ], word('section/offset') ) },
 			};
@@ -5925,7 +5955,7 @@
 				},
 				background : {
 					keys	: [ 'background' ],
-					build	: function( body ) { body.appendChild( builder._backgroundField( path, again ) ) },
+					build	: function( body ) { picture( body ).appendChild( builder._backgroundField( path, again ) ) },
 					says	: function() { return has() === true ? word('source/background-image') : '' },
 				},
 				cover : {
@@ -5974,8 +6004,8 @@
 						} );
 						builder._one( height, 'input' ).disabled = settings.cover === null || looping === true;
 						builder._keyed( height, 'cover' );
-						body.appendChild( cover );
-						body.appendChild( height );
+						picture( body ).appendChild( cover );
+						picture( body ).appendChild( height );
 					},
 					says	: function() { return settings.cover === null ? '' : word('section/cover')+ ' '+ settings.cover+ ' %' },
 				},
@@ -6004,7 +6034,7 @@
 
 						// A switch that is on can be switched off whatever the picture: a parallax a template wrote without one, or that lost its picture, must not be stuck
 						builder._one( parallax, 'input' ).disabled = has() === false && settings.parallax !== true;
-						body.appendChild( parallax );
+						picture( body ).appendChild( parallax );
 					},
 					says	: function() { return settings.parallax === true ? word('section/parallax') : '' },
 				},
@@ -6023,7 +6053,7 @@
 
 						builder._one( dim, 'input' ).addEventListener( 'change', advise );
 						advise();
-						body.appendChild( dim );
+						picture( body ).appendChild( dim );
 					},
 					says	: function() { return settings.dim === true ? word('section/dim') : '' },
 				},
@@ -6046,7 +6076,7 @@
 						const padded = setting( { key : 'padded', type : 'bool', label : '/_admin/builder/section/padded', hint : '/_admin/builder/hint/padded' }, again );
 
 						builder._one( padded, 'input' ).disabled = settings.cover === null && settings.parallax !== true && settings.padded !== true;
-						body.appendChild( padded );
+						picture( body ).appendChild( padded );
 					},
 					says	: function() { return settings.padded === true ? word('section/padded') : '' },
 				},
@@ -6075,14 +6105,16 @@
 					build	: function( body ) {
 
 						// The arrow at the foot of a cover: a section that is none has no use for it, and one that has it keeps it
-						const arrow = builder._checkField( word('section/arrow'), word('hint/arrow'), settings.arrow === true, function( on ) {
+						const arrow = builder._switchField( word('section/arrow'), word('hint/arrow'), settings.arrow === true, function( on ) {
 							settings.arrow = on;
 							builder._changed();
+							// With the cover off the switch is only there to be turned off: once it is, it sleeps
+							again();
 						} );
 
 						builder._keyed( arrow, 'arrow' );
 						builder._one( arrow, 'input' ).disabled = settings.cover === null && settings.arrow !== true;
-						body.appendChild( arrow );
+						picture( body ).appendChild( arrow );
 					},
 					says	: function() { return settings.arrow === true ? word('section/arrow') : '' },
 				},
@@ -6147,12 +6179,12 @@
 				},
 				text : {
 					keys	: [ 'text' ],
-					build	: function( body ) { body.appendChild( setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) ) },
+					build	: function( body ) { body.appendChild( setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', hint : '/_admin/builder/hint/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) ) },
 					says	: function() { return alignSaid( 'text', 'text' ) },
 				},
 				rowAlign : {
 					keys	: [ 'rowAlign' ],
-					build	: function( body ) { body.appendChild( setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ) ) },
+					build	: function( body ) { body.appendChild( setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', hint : '/_admin/builder/hint/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ) ) },
 					says	: function() { return alignSaid( 'rowAlign', 'row-align' ) },
 				},
 				contentPos : {
@@ -6160,7 +6192,7 @@
 					build	: function( body ) {
 
 						// Where the row of a cover or a parallax stands in it: elsewhere the row stands in the flow of the page
-						const content = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
+						const content = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', hint : '/_admin/builder/hint/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
 
 						builder._one( content, 'select' ).disabled = settings.cover === null && settings.parallax !== true;
 						body.appendChild( content );
@@ -6692,10 +6724,10 @@
 		// ---------------------------------------------------- Columns and loops
 
 		/**
-		 *	The form of a column, in the blocks the table has for it (BLOCKS.column): its surface - the colour it paints, the picture behind it and how far in from the sides
-		 *	that starts, whether the picture is dimmed and the radius of what it paints -, its spacing - the gap between its components and the box of its sides -, its width and its
-		 *	alignment - how wide it is and whether it is hidden in each viewport, where its components and its text are put - and its properties: the loop it runs, its animation
-		 *	and the classes of its own
+		 *	The form of a column, in the blocks the table has for it (BLOCKS.column): its surface - the colour it paints and the radius of what it paints and then, in a group of its
+		 *	own, the background image: the picture behind it, whether it is dimmed and how far in from the sides it starts -, its spacing - the gap between its components and the box of
+		 *	its sides -, its width and its alignment - how wide it is and whether it is hidden in each viewport, where its components and its text are put -, its loop and its
+		 *	properties: its animation and the classes of its own
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{string}		[block]						The block to open: the one that was open last in a dialog of a column, by default
@@ -6738,6 +6770,8 @@
 			const fields = {};
 			// A choice that other controls show: the blocks are drawn again
 			const again = function() { builder._refreshControls() };
+			// Where the picture behind the column and what depends on it stand: one group under its heading (see _sectionControls())
+			const picture = function( body ) { return builder._groupIn( body, 'background-image' ) };
 			const animated = function( key ) {
 				return {
 					keys	: [ key ],
@@ -6758,7 +6792,7 @@
 					const inset = builder._offsetField( col, [ 'bgPl', 'bgPr' ], word('section/offset'), word('hint/offset') );
 
 					inset.setDisabled( has() === false );
-					body.appendChild( inset );
+					picture( body ).appendChild( inset );
 				},
 				says	: function() { return builder._offsetSaid( col, [ 'bgPl', 'bgPr' ], word('section/offset') ) },
 			};
@@ -6796,7 +6830,7 @@
 				},
 				background : {
 					keys	: [ 'background' ],
-					build	: function( body ) { body.appendChild( builder._backgroundField( path, again ) ) },
+					build	: function( body ) { picture( body ).appendChild( builder._backgroundField( path, again ) ) },
 					says	: function() { return has() === true ? word('source/background-image') : '' },
 				},
 				dim : {
@@ -6807,7 +6841,7 @@
 
 						// There is a picture to darken, or there is none
 						builder._one( dim, 'input' ).disabled = has() === false;
-						body.appendChild( dim );
+						picture( body ).appendChild( dim );
 					},
 					says	: function() { return col.dim === true && has() === true ? word('section/dim') : '' },
 				},
@@ -7185,7 +7219,7 @@
 		/**
 		 *	The form of a component, in the blocks the table has for it (BLOCKS.component) and its schema fills: its content - the source of its text or its picture and, under it,
 		 *	the text of the key in the language the editor works in or the picture of the slot with its alt text; for [html] the editor of the blocks profile instead -, its
-		 *	link - the address and the window it opens in, and whether all of it is the link -, its surface - the attributes the schema puts on the tab of the background, and the
+		 *	link - the address and the window it opens in, and whether all of it is the link, with the address and the window of its title under that switch -, its surface - the attributes the schema puts on the tab of the background, and the
 		 *	toggle of its radius and the one of its hover, which a picture has -, its spacing - the box of its sides - and its properties: the variants and the other attributes, in the order of the schema, and the classes of its
 		 *	own. A component that holds components has no content: its children are edited where they stand, each in the form every component has. A block the component has
 		 *	nothing for is not drawn
@@ -7280,11 +7314,7 @@
 			Object.keys( declared ).forEach( function( name ) { groups[builder._groupOf( name, declared[name] )][name] = declared[name] } );
 
 			// An address and the window it opens in are what a component that is a link has besides the attributes it declares, which the schema does not declare for it
-			if( schema.link === true )
-				groups.link = Object.assign( {
-					href		: { type : 'href', label : word('link/href'), hint : word('hint/link-href') },
-					target	: { type : 'select', options : builder.LINK_TARGETS, label : word('link/target') },
-				}, groups.link );
+			groups.link = builder._linkFields( schema );
 
 			const context = function( name ) {
 				return { fields : fields, section : section, around : builder._surface( section, col ), roles : roles, node : component, path : path, redraw : function() { builder._refreshControls( name ) } };
@@ -7296,7 +7326,25 @@
 			const attributes = function( group ) {
 				return {
 					keys	: Object.keys( groups[group] ),
-					build	: function( body ) { builder._attributeFields( body, groups[group], component.attributes, context( group ) ) },
+					build	: function( body ) {
+
+						const here = context( group );
+
+						// Whether all of a card is the link: the switch turned draws the block again, and on it shows where the link goes (see _stretchedLink())
+						if( group === 'link' && groups.link.linked !== undefined ) {
+
+							here.after = function( changed ) {
+								if( changed === 'linked' )
+									builder._refreshControls( group );
+							};
+							builder._attributeFields( body, groups[group], component.attributes, here );
+							builder._stretchedLink( body, path, here );
+
+							return;
+						}
+
+						builder._attributeFields( body, groups[group], component.attributes, here );
+					},
 					says	: function() { return said( groups[group] ) },
 				};
 			};
@@ -7357,6 +7405,85 @@
 			};
 
 			return controls;
+		},
+
+		/**
+		 *	The attributes of a component that are its link, by name: the ones its schema declares in that group (see _groupOf()) and - for a component the registry marks as a
+		 *	link - the address and the window it opens in, which the schema does not declare for it and which every link has
+		 *
+		 *	@param		{Object}		schema						The component's entry of the registry
+		 *
+		 *	@return		{Object}									name => the entry of the schema, or its stand-in for the two a link has
+		 */
+		_linkFields : function( schema ) {
+
+			const builder = Nino.admin.builder;
+			const declared = builder._declared( schema );
+			const found = {};
+
+			Object.keys( declared ).forEach( function( name ) {
+				if( builder._groupOf( name, declared[name] ) === 'link' )
+					found[name] = declared[name];
+			} );
+
+			if( schema.link !== true )
+				return found;
+
+			return Object.assign( {
+				href		: { type : 'href', label : Nino.content.getText('/_admin/builder/link/href'), hint : Nino.content.getText('/_admin/builder/hint/link-href') },
+				target	: { type : 'select', options : builder.LINK_TARGETS, label : Nino.content.getText('/_admin/builder/link/target') },
+			}, found );
+		},
+
+		/**
+		 *	Where the link of a card goes, under the switch that makes all of the card the link: the address and the window of the child the kernel stretches over the card - the
+		 *	component the schema of the card names ('stretches'; the Builder knows none by name) -, as fields of the attributes of that child, the same fields its own form has.
+		 *	Nothing while the switch is off, and nothing where the schema of the card names no component (a kernel that has no such key); a card that does not hold the one it
+		 *	names says so in a line of its own, which names it by its label. The card keeps no address of its own: the link is that child's, as the kernel draws it
+		 *
+		 *	@param		{Element}		body							The block of the link
+		 *	@param		{Array}			path							The card
+		 *	@param		{Object}		context						As the card's own fields have it (see _attributeFields())
+		 *
+		 *	@return		void
+		 */
+		_stretchedLink : function( body, path, context ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
+			const card = builder._get( builder._doc.model, path );
+
+			if( String( card.attributes.linked ?? '' ) !== '1' )
+				return;
+
+			const children = card.components ?? [];
+			const stretched = ( ( registry.components || {} )[card.name] || {} ).stretches;
+
+			// A schema that names none - a kernel that has no such key - leaves nothing to say under the switch: the card is linked as it was, and the block is the switch alone
+			if( typeof stretched !== 'string' )
+				return;
+
+			const at = children.findIndex( function( child ) { return child.name === stretched } );
+
+			// The schema names a component and the card does not hold it: the line says which one to add, by the label the registry gives it
+			if( at === -1 ) {
+
+				const named = ( registry.components || {} )[stretched] || {};
+
+				body.appendChild( builder._el( 'p', 'nino-admin-hint', Nino.adminUi.format( Nino.content.getText('/_admin/builder/link/no-stretched'), named.label || stretched ) ) );
+				return;
+			}
+
+			const title = children[at];
+
+			builder._attributeFields( body, builder._linkFields( registry.components[title.name] ), title.attributes, {
+				fields	: context.fields,
+				section	: context.section,
+				around	: context.around,
+				node		: title,
+				path		: path.concat( [ at ] ),
+				redraw	: context.redraw,
+			} );
 		},
 
 		/**
@@ -7558,7 +7685,8 @@
 		 *																the attributes are in; the component they belong to and its path, where they are a component's; the ground the
 		 *																column paints (see _surface()), for the grounds an attribute names; what draws the form again, for a
 		 *																picture that is changed - its focus and its dimming follow it; and what the attributes are to a picture (see _roles()), where
-		 *																the form shows only some of the attributes of the schema - by default the roles of the attributes it is given
+		 *																the form shows only some of the attributes of the schema - by default the roles of the attributes it is given; and
+		 *																after( name, value ), called once a field has written its value, for a form that draws something else for the choice
 		 *
 		 *	@return		void
 		 */
@@ -7614,8 +7742,13 @@
 			const label = declared.label || name;
 			const hint = declared.hint || '';
 			const write = function( value ) {
+
 				attributes[name] = value;
 				builder._changed();
+
+				// A form that has to draw something else for the choice says so
+				if( typeof context.after === 'function' )
+					context.after( name, value );
 			};
 			const value = attributes[name] === undefined || attributes[name] === null ? '' : String( attributes[name] );
 			const role = ( context.roles ?? {} )[name];
@@ -7700,7 +7833,8 @@
 		/**
 		 *	An attribute of the type image of a component: the picture behind a card. Its source is a slot or - in a loop - an
 		 *	image field of the element, as the source of a picture is; and it has what the picture behind a column has: the upload
-		 *	that stores a picture at once and makes the slot, and the way to take the picture away again. The mark of a slot that is
+		 *	button that stores a picture at once and makes the slot, and beside it the button that takes the picture away again - alone
+		 *	in a row of its own where the picture is a field of the element, which is not stored here. The mark of a slot that is
 		 *	made when the document is saved is kept on the component, under the name of the attribute (slots). It has no alt text: the
 		 *	picture behind a content is decoration. Its focus and its dimming follow it in the schema, and the form is drawn again
 		 *	when the picture changes. A picture that is gone leaves nothing to dim and no place to focus on, so the dimming is off and
@@ -7721,7 +7855,17 @@
 			const label = declared.label || name;
 			const value = String( attributes[name] ?? '' );
 			const wrap = builder._el( 'div', 'builder-background' );
-			const remove = builder._el( 'button', 'nino-admin-btn-secondary', Nino.content.getText('/_admin/builder/source/remove-background') );
+			// The button that takes the picture away: the same as the one of a background
+			const remove = {
+				label		: Nino.content.getText('/_admin/builder/source/remove-background'),
+				disabled	: value === '',
+				onClick	: function() {
+
+					put( '', undefined );
+					builder._changed();
+					again();
+				},
+			};
 			// What the picture is called where nothing else names it: the label of a slot it makes, and the name of it
 			const words = ( schema.label || node.name )+ ' - '+ label;
 			const slug = node.name+ '-'+ name;
@@ -7790,17 +7934,18 @@
 					seed		: context.section.id+ ': '+ words,
 					alt			: false,
 					redraw	: again,
+					remove	: remove,
 				} ) );
+			else {
 
-			remove.type = 'button';
-			remove.disabled = value === '';
-			remove.addEventListener( 'click', function() {
+				const buttons = builder._el( 'div', 'builder-picture-buttons' );
+				const away = builder._el( 'button', 'nino-admin-btn-secondary builder-picture-remove', remove.label );
 
-				put( '', undefined );
-				builder._changed();
-				again();
-			} );
-			wrap.appendChild( remove );
+				away.type = 'button';
+				away.addEventListener( 'click', remove.onClick );
+				buttons.appendChild( away );
+				wrap.appendChild( buttons );
+			}
 
 			return wrap;
 		},
@@ -8352,10 +8497,10 @@
 		},
 
 		/**
-		 *	The picture behind a section or a column: its slot, the picture it has with the upload that stores one and the alt text in the language the editor works in, its
-		 *	focus and the way to take it away again. The slot is the source of the row, which is changed in the dialog of the sources. A column that loses its picture
-		 *	loses the dimming with it, a section the parallax and the dimming. What else the picture decides - the switches of a section, the offsets of a column - is the
-		 *	block's: it is told when the picture changes
+		 *	The picture behind a section or a column: its slot, the picture it has with the buttons that store one and take it away again - side by side, in the row of the
+		 *	question mark that says what the upload takes - and the alt text in the language the editor works in, and its focus. The slot is the source of the row, which is changed
+		 *	in the dialog of the sources. A column that loses its picture loses the dimming with it, a section the parallax and the dimming. What else the picture decides - the
+		 *	switches of a section, the offsets of a column - is the block's: it is told when the picture changes
 		 *
 		 *	@param		{Array}			path							A section, or a column
 		 *	@param		{Function}	redraw						Draws the blocks that follow the picture again
@@ -8370,7 +8515,6 @@
 			const holder = column === true ? section.cols[path[1]] : section;
 			const has = holder.background !== null && holder.background !== undefined;
 			const wrap = builder._el( 'div', 'builder-background' );
-			const remove = builder._el( 'button', 'nino-admin-btn-secondary', Nino.content.getText('/_admin/builder/source/remove-background') );
 			// What it is called where nothing else names it: the background of the section, or of a column of it
 			const words = column === true ? Nino.adminUi.format( Nino.content.getText('/_admin/builder/source/column-background'), path[1] + 1 ) : Nino.content.getText('/_admin/builder/source/background');
 
@@ -8380,7 +8524,8 @@
 				fixed		: false,
 				create	: true,
 				fields	: null,
-				label		: Nino.content.getText('/_admin/builder/source/background-image'),
+				// Inside the group Background image the row is the picture: the heading says the rest
+				label		: Nino.content.getText('/_admin/builder/source/picture'),
 				value		: has === true ? holder.background.slot : '',
 				text		: null,
 				section	: section,
@@ -8419,34 +8564,34 @@
 				// A slot made by an upload has no form to name it: it is the background of this section, or of this column of it
 				seed		: section.id+ ': '+ words,
 				redraw	: redraw,
+				remove	: {
+					label		: Nino.content.getText('/_admin/builder/source/remove-background'),
+					disabled	: has === false,
+					onClick	: function() {
+
+						holder.background = null;
+
+						// There is nothing left to darken, and no picture to move slower than the page - and no picture to stand inside, where the section has no colour either
+						if( column === true )
+							holder.dim = false;
+						else {
+							section.settings.parallax = false;
+							section.settings.dim = false;
+
+							if( section.settings.color === '' )
+								section.settings.inner = false;
+						}
+
+						builder._changed();
+						redraw();
+					},
+				},
 			} ) );
 
 			wrap.appendChild( builder._focusField( has === true ? holder.background.focus : null, has, function( focus ) {
 				holder.background.focus = focus;
 				builder._changed();
 			} ) );
-
-			remove.type = 'button';
-			remove.disabled = has === false;
-			remove.addEventListener( 'click', function() {
-
-				holder.background = null;
-
-				// There is nothing left to darken, and no picture to move slower than the page - and no picture to stand inside, where the section has no colour either
-				if( column === true )
-					holder.dim = false;
-				else {
-					section.settings.parallax = false;
-					section.settings.dim = false;
-
-					if( section.settings.color === '' )
-						section.settings.inner = false;
-				}
-
-				builder._changed();
-				redraw();
-			} );
-			wrap.appendChild( remove );
 
 			return wrap;
 		},
@@ -8853,11 +8998,15 @@
 		_pictureNote : null,
 
 		/**
-		 *	The picture of a slot in a form: the picture it has, the choice of a file that stores
-		 *	one - at once, not when the document is saved - and beside it the alt text in the
-		 *	language the editor works in. The first picture makes the slot where there is none
-		 *	yet; an alt text goes to the slot at once where it is there, and into the mark of one
-		 *	that is made when the document is saved, where it is not
+		 *	The picture of a slot in a form: the picture it has at the left, and at its right the
+		 *	buttons - the one that stores a picture, at once and not when the document is saved,
+		 *	and where the caller has one the one that takes the picture away, the two alike, and
+		 *	the question mark that says what the upload is and what the server takes of it - and
+		 *	under the picture the alt text in the language the editor works in. The upload is the
+		 *	button of the row: it opens the file field, which is hidden from the eye and not from
+		 *	the keyboard. The first picture makes the slot where there is none yet; an alt text
+		 *	goes to the slot at once where it is there, and into the mark of one that is made when
+		 *	the document is saved, where it is not
 		 *
 		 *	@param		{Object}		options
 		 *	@param		{Object}		options.owner			{ get(), put( uri, create ) }: the source in the model - { uri, create } - and
@@ -8867,6 +9016,7 @@
 		 *	@param		{string}		options.seed			The label a new slot is made with
 		 *	@param		{Function}	options.redraw		Draws the form again, once the model has changed under it
 		 *	@param		{boolean}		[options.alt]		false for a picture that has no alt text to give - the one behind a content, which is decoration
+		 *	@param		{Object}		[options.remove]	{ label, disabled, onClick }: the button that takes the picture away, beside the upload; none for a picture that is not taken away here
 		 *
 		 *	@return		{Element}
 		 */
@@ -8899,23 +9049,40 @@
 			if( thumb.hidden === false )
 				thumb.src = slot.url;
 
+			// What the upload is and what the server takes of it is said behind the mark by its name
+			const limits = Nino.adminUi.uploadHint();
+			const buttons = builder._el( 'div', 'builder-picture-buttons' );
+			const upload = Nino.content.getText('/_admin/builder/picture/upload');
+			const choose = builder._el( 'button', 'nino-admin-btn-secondary builder-picture-upload', upload );
+
+			// The file field is there for the keyboard and the screen reader, hidden from the eye (a field that is not displayed has neither): the button opens it
 			file.type = 'file';
 			file.accept = 'image/*';
-			file.setAttribute( 'aria-label', Nino.content.getText('/_admin/builder/picture/upload') );
+			file.className = 'nino-admin-sr-only';
+			file.setAttribute( 'aria-label', upload );
 			file.addEventListener( 'change', function() {
 				if( file.files.length > 0 )
 					builder._upload( options, file.files[0], file, say );
 			} );
 
-			// What the upload is and what the server takes of it is said behind the mark by its name
-			const limits = Nino.adminUi.uploadHint();
-			const caption = builder._el( 'div', 'builder-label-row' );
-			const upload = Nino.content.getText('/_admin/builder/picture/upload');
+			choose.type = 'button';
+			choose.addEventListener( 'click', function() { file.click() } );
+			buttons.appendChild( choose );
+			// The field follows the button it belongs to, so that the keyboard passes Upload, the field - which shows its ring on the button - and then Remove and the question mark
+			buttons.appendChild( file );
 
-			caption.appendChild( builder._el( 'span', 'builder-label', upload ) );
-			caption.appendChild( builder._help( Nino.content.getText( slot === null ? '/_admin/builder/picture/hint-made' : '/_admin/builder/picture/hint' )+ ( limits === null ? '' : ' '+ limits.textContent ), upload ) );
-			controls.appendChild( caption );
-			controls.appendChild( file );
+			if( options.remove !== undefined ) {
+
+				const remove = builder._el( 'button', 'nino-admin-btn-secondary builder-picture-remove', options.remove.label );
+
+				remove.type = 'button';
+				remove.disabled = options.remove.disabled === true;
+				remove.addEventListener( 'click', options.remove.onClick );
+				buttons.appendChild( remove );
+			}
+
+			buttons.appendChild( builder._help( Nino.content.getText( slot === null ? '/_admin/builder/picture/hint-made' : '/_admin/builder/picture/hint' )+ ( limits === null ? '' : ' '+ limits.textContent ), upload ) );
+			controls.appendChild( buttons );
 			controls.appendChild( message );
 			view.appendChild( thumb );
 			view.appendChild( controls );

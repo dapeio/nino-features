@@ -13,7 +13,7 @@ declare(strict_types=1);
 //   /_admin/builder/hint/...      the sentence a field of a form has to say, which stands behind its question mark
 //   /_admin/builder/tree/...      what a frame is called, what the add buttons say, and why a source is red
 //   /_admin/builder/menu/...      the titles of the buttons on a frame
-//   /_admin/builder/block/...     the names of the six blocks every form is drawn in, as block/<name>/label
+//   /_admin/builder/block/...     the names of the seven blocks every form is drawn in, as block/<name>/label
 //   /_admin/builder/group/...     the headings of the groups of a form
 //   /_admin/builder/section/...   the fields of the section and row forms
 //   /_admin/builder/template/...  the fields of the template form
@@ -192,11 +192,13 @@ return [
 
 	// The words of the forms
 	'[[/_admin/builder/group/custom]]'						=> 'CSS classes',
+	'[[/_admin/builder/group/background-image]]'	=> 'Background image',
 	'[[/_admin/builder/block/content/label]]'	=> 'Content',
 	'[[/_admin/builder/block/link/label]]'	=> 'Link',
 	'[[/_admin/builder/block/surface/label]]'	=> 'Surface',
 	'[[/_admin/builder/block/spacing/label]]'	=> 'Spacing',
 	'[[/_admin/builder/block/width/label]]'	=> 'Width and alignment',
+	'[[/_admin/builder/block/loop/label]]'	=> 'Loop',
 	'[[/_admin/builder/block/properties/label]]'	=> 'Properties',
 	'[[/_admin/builder/spacing/outside]]'	=> 'outside',
 	'[[/_admin/builder/spacing/inside]]'	=> 'inside',
@@ -225,7 +227,7 @@ return [
 	'[[/_admin/builder/section/arrow]]'	=> 'Arrow down',
 	'[[/_admin/builder/section/cover]]'						=> 'Cover',
 	'[[/_admin/builder/section/cover-height]]'				=> 'Height (%)',
-	'[[/_admin/builder/section/content-pos]]'				=> 'Place of the content',
+	'[[/_admin/builder/section/content-pos]]'				=> 'Content in the cover',
 	'[[/_admin/builder/section/text]]'						=> 'Horizontal text alignment',
 	'[[/_admin/builder/section/row-align]]'					=> 'Vertical content alignment',
 	'[[/_admin/builder/section/row-place]]'					=> 'Place of the row',
@@ -285,6 +287,7 @@ return [
 	'[[/_admin/builder/pick/features]]'	=> 'Features',
 	'[[/_admin/builder/link/href]]'	=> 'Link',
 	'[[/_admin/builder/link/target]]'	=> 'Opens in',
+	'[[/_admin/builder/link/no-stretched]]'	=> 'The card has no component whose link it can take. Add a %s and give it the target.',
 	'[[/_admin/builder/html/title]]'						=> 'Edit as HTML+',
 	'[[/_admin/builder/html/title-new]]'					=> 'New HTML+ block',
 	'[[/_admin/builder/html/apply]]'						=> 'Apply',
@@ -325,6 +328,7 @@ return [
 	'[[/_admin/builder/source/column-background]]'			=> 'Column %s: background',
 	'[[/_admin/builder/source/focus]]'						=> 'Manual focus',
 	'[[/_admin/builder/source/no-focus]]'					=> 'Automatic focus',
+	'[[/_admin/builder/source/picture]]'						=> 'Picture',
 	'[[/_admin/builder/source/background-image]]'			=> 'Background picture',
 	'[[/_admin/builder/source/remove-background]]'			=> 'Remove the picture',
 	'[[/_admin/builder/source/view-note]]'					=> 'The file as it would be saved. Blocks of HTML+ - the ones the Builder keeps as they are - are marked; nothing can be changed here.',
@@ -360,6 +364,9 @@ return [
 	'[[/_admin/builder/hint/spacing-row]]'	=> 'The padding of the row inside the section - the area a background inside paints - in steps from 0 to 6. Left and right at 0 together are what the width To the edge sets.',
 	'[[/_admin/builder/hint/offset]]'	=> 'How far in from the left and from the right the background of this element starts, in steps from 0 to 3. The content stays where it is; only the picture or colour behind it is drawn narrower.',
 	'[[/_admin/builder/hint/arrow]]'	=> 'Puts a small arrow at the bottom of the cover. When a visitor clicks it, the page scrolls to the section that follows. It is for covers, so it can be chosen only while the Cover switch is on.',
+	'[[/_admin/builder/hint/content-pos]]'				=> 'Where the row stands in a cover or a parallax: at the top, in the middle or at the bottom. Without a cover or a parallax the row stands in the flow of the page, and the choice has no effect.',
+	'[[/_admin/builder/hint/text]]'						=> 'How the text of the section runs: left, centred or right. A column with an alignment of its own keeps it for its text.',
+	'[[/_admin/builder/hint/row-align]]'				=> 'Where the columns of a row stand when they differ in height: aligned at the top, in the middle or at the bottom.',
 	'[[/_admin/builder/hint/row-place]]'					=> 'Where a row that is narrower than the page stands in its section: at the left, in the middle or at the right. It applies to Content width only, because a row as wide as the page has no room to move.',
 	'[[/_admin/builder/hint/padded]]'	=> 'The picture of the cover or the parallax keeps the room of the page around it instead of running to the edge of the window, like a framed panel. Its corners can then be rounded.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'How much air this section has: its padding, the gaps between its pieces and the room under its texts grow or shrink together. As the page follows the Design; the other steps make this section narrower or wider than the page.',

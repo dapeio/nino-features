@@ -136,7 +136,11 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: .5rem 1.25rem;
-	padding: .65rem var(--nino-admin-content-inline);
+	/* As tall as the heads of the workbench - the rail's brand row and the head of a panel - with the line under it, so that the three edges are one: 52px, a plain value
+	   because the kernel's custom property for it comes with 1.9.0 and the floor of the Builder is 1.8 */
+	box-sizing: border-box;
+	min-height: 52px;
+	padding: .4rem var(--nino-admin-content-inline);
 	border-bottom: 1px solid var(--editor-separator);
 }
 .builder-editor-title {
@@ -563,21 +567,37 @@ button.builder-status-item:hover {
 }
 /* What the Builder says over the page is the Builder's and not the page's: the title of a head, each thing that is said of the frame and its tools stand on a chip of their
    own - solid, in the colours of the workbench - so that they read on every ground the preview paints under them: a section of a black ground, a dark one, the brand's and a light
-   one, and a card of a light ground inside one of them. The preview itself stays the page's grey levels */
+   one, and a card of a light ground inside one of them. The preview itself stays the page's grey levels. In a section of a dark ground - dark, black and the
+   brand colour, the grounds that have a light ink - the chips are inverted: a dark, half transparent ground, the ink of the frame and a light line, so that they sit on the
+   section as a part of it and not as a white patch on it, and the hover of a button of the status lightens instead of darkening. The chips read their colours from custom
+   properties, which a ground sets on its own element, so that the nearest ground decides: a card of a light ground inside a dark section has the chips of the workbench's colours
+   again, for its ink is dark again */
+:is(.builder-color-dark, .builder-color-black, .builder-color-primary) {
+	--builder-chip-bg: color-mix(in srgb, #000 35%, transparent);
+	--builder-chip-ink: currentColor;
+	--builder-chip-line: color-mix(in srgb, currentColor 30%, transparent);
+	--builder-chip-hover: color-mix(in srgb, #fff 18%, color-mix(in srgb, #000 35%, transparent));
+}
+:is(.builder-color-alt, .builder-color-tint, .builder-color-brand-alt, .builder-color-plain) {
+	--builder-chip-bg: initial;
+	--builder-chip-ink: initial;
+	--builder-chip-line: initial;
+	--builder-chip-hover: initial;
+}
 .builder-head-title,
 .builder-head-status .builder-status-item,
 .builder-tools {
-	border: 1px solid var(--editor-border);
+	border: 1px solid var(--builder-chip-line, var(--editor-border));
 	border-radius: var(--editor-radius-sm);
-	background: var(--editor-bg-elevated);
-	color: var(--editor-text);
+	background: var(--builder-chip-bg, var(--editor-bg-elevated));
+	color: var(--builder-chip-ink, var(--editor-text));
 }
 .builder-head-title,
 .builder-head-status .builder-status-item {
 	padding: .05rem .4rem;
 }
 .builder-head-status button.builder-status-item:hover {
-	background: color-mix(in srgb, var(--editor-text) 10%, var(--editor-bg-elevated));
+	background: var(--builder-chip-hover, color-mix(in srgb, var(--editor-text) 10%, var(--editor-bg-elevated)));
 }
 /* The tools of a frame: in the head of a frame and of a column, at the end of a component.
    They are there, so that Tab reaches them, and seen where the pointer is over the frame
@@ -603,6 +623,10 @@ button.builder-status-item:hover {
 	/* The icon is the size it was: what is made larger is the area that takes the click - 24px at least each way, 44px where the pointer is a finger */
 	min-width: 24px;
 	min-height: 24px;
+	color: inherit;
+}
+.builder-tools .builder-icon-btn:hover:not(:disabled) {
+	background: var(--builder-chip-hover, var(--editor-blue-soft));
 	color: inherit;
 }
 @media (pointer: coarse) {
@@ -635,14 +659,20 @@ button.builder-status-item:hover {
 	flex-wrap: wrap;
 	gap: var(--builder-gap);
 	min-height: 2rem;
-	padding: .7rem;
+	padding: 0 .7rem .7rem;
 	justify-content: center;
 }
+/* A column has no frame until the pointer is over it or it is selected: it keeps the room of the line, so that nothing moves when the line comes (the selection
+   draws its outline besides it) */
 .builder-pcol {
 	flex: 0 0 calc(var(--builder-w, 100) * 1% - var(--builder-gap) * (1 - var(--builder-w, 100) / 100));
 	min-width: 0;
-	border: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+	border: 1px dashed transparent;
 	border-radius: var(--editor-radius-sm);
+}
+.builder-pcol.is-hover,
+.builder-pcol.is-selected {
+	border-color: color-mix(in srgb, currentColor 35%, transparent);
 }
 .builder-pcol.is-hidden {
 	opacity: .45;
@@ -655,14 +685,14 @@ button.builder-status-item:hover {
 .builder-col-body {
 	display: grid;
 	gap: .3rem;
-	padding: .5rem;
+	padding: 0 .5rem .5rem;
 }
-/* A component that holds components has a frame of its own in its column, lighter than the column's: a thin solid line in the
-   colour of the frame it stands in, and a smaller head */
+/* A component that holds components has a frame of its own in its column, lighter than the column's: no line, a tint of grey over the ground it
+   stands on, and a smaller head. A card that paints a ground of its own keeps that colour: the rules of the grounds (above) are more specific */
 .builder-card {
 	min-width: 0;
-	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
 	border-radius: var(--editor-radius-sm);
+	background: rgba(155, 155, 155, .15);
 }
 .builder-card-head {
 	display: flex;
@@ -682,7 +712,7 @@ button.builder-status-item:hover {
 	align-items: center;
 	gap: .4rem;
 	min-width: 0;
-	padding: .5rem;
+	padding: .35rem .5rem;
 	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
 	border-radius: var(--editor-radius-sm);
 	background: color-mix(in srgb, currentColor 6%, transparent);
@@ -701,8 +731,8 @@ button.builder-status-item:hover {
 }
 .builder-ph-icon {
 	flex: 0 0 auto;
-	width: 2rem;
-	height: 1.35rem;
+	width: 3rem;
+	height: 2rem;
 	fill: none;
 	stroke: currentColor;
 	stroke-width: 2;
@@ -718,9 +748,40 @@ button.builder-status-item:hover {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-/* The tag and the class it draws: the code of the page, in the code font of the workbench */
+/* The label is graded by what the component draws and never by what it is called (the script sets data-image, the image of the registry, and data-tag, the tag it draws): a
+   title of a section, a hero or a card - a heading, h1 to h6 - is larger and bold, a button half bold, a subtitle - a title that draws no heading - is as the text is, and a picture or
+   a block - an image, a spacer, a piece of HTML, the scroll hint - is in italics. In a card it is one step smaller than in the column: section, then card */
+.builder-ph[data-tag="h1"] .builder-ph-label,
+.builder-ph[data-tag="h2"] .builder-ph-label,
+.builder-ph[data-tag="h3"] .builder-ph-label,
+.builder-ph[data-tag="h4"] .builder-ph-label,
+.builder-ph[data-tag="h5"] .builder-ph-label,
+.builder-ph[data-tag="h6"] .builder-ph-label {
+	font-size: 1.3em;
+	font-weight: 750;
+}
+.builder-ph[data-image="button"] .builder-ph-label {
+	font-weight: 600;
+}
+.builder-ph[data-image="image"] .builder-ph-label,
+.builder-ph[data-image="block"] .builder-ph-label {
+	font-style: italic;
+}
+.builder-card .builder-ph-label {
+	font-size: .92em;
+}
+.builder-card .builder-ph[data-tag="h1"] .builder-ph-label,
+.builder-card .builder-ph[data-tag="h2"] .builder-ph-label,
+.builder-card .builder-ph[data-tag="h3"] .builder-ph-label,
+.builder-card .builder-ph[data-tag="h4"] .builder-ph-label,
+.builder-card .builder-ph[data-tag="h5"] .builder-ph-label,
+.builder-card .builder-ph[data-tag="h6"] .builder-ph-label {
+	font-size: 1.15em;
+}
+/* The tag and the class it draws: the code of the page, in the code font of the workbench, smaller than any label */
 .builder-ph-draws {
 	font-family: var(--nino-admin-mono);
+	font-size: .85em;
 	opacity: .5;
 }
 .builder-ph-draws[hidden] {
@@ -856,7 +917,7 @@ button.builder-status-item:hover {
 /* The blocks of a form are an accordion: a head for each - its name, and muted beside it what the block says of the element where that is not the
    default - over a body that holds the fields. One block is open, the others are closed. The accordion takes the room the dialog has left and the open
    block gives way in it - its body scrolls -, so that the heads of every block stay in sight, and so do the actions. The body keeps a floor, and the
-   accordion, while a block is open, the room for its heads and that floor: a head for each block, which the count says (the table names six blocks).
+   accordion, while a block is open, the room for its heads and that floor: a head for each block, which the count says (the table names seven blocks).
    Where the window is lower than that the accordion stops giving way and the content scrolls as a whole - the box clips its corners, and would else be
    shrunk below its heads and lay the body over them */
 .builder-dialog-content:has(> .builder-blocks) {
@@ -895,6 +956,9 @@ button.builder-status-item:hover {
 }
 .builder-blocks:has(> :nth-child(6)) {
 	--builder-count: 6;
+}
+.builder-blocks:has(> :nth-child(7)) {
+	--builder-count: 7;
 }
 .builder-block {
 	display: flex;
@@ -1019,6 +1083,21 @@ button.builder-status-item:hover {
 	font-weight: 500;
 	line-height: 1.3;
 }
+/* Every name of a field in a block is in the ink of the workbench, whatever the control: the field, the choice of buttons, the offsets, the switch, the box, the name of a source.
+   What is said beside a field as a hint stays muted */
+.builder-block-body .nino-admin-field > span:first-child,
+.builder-block-body .builder-segment-label,
+.builder-block-body .builder-offset-label,
+.builder-block-body .nino-admin-switch-copy,
+.builder-block-body .builder-check > span,
+.builder-block-body .builder-box-name,
+.builder-block-body .builder-label {
+	color: var(--editor-text);
+}
+.builder-block-body .nino-admin-switch-copy small,
+.builder-block-body .nino-admin-field small {
+	color: var(--editor-text-secondary);
+}
 .builder-block-body .nino-admin-field > :not(span:first-child),
 .builder-block-body .builder-segment,
 .builder-block-body .builder-offset-steps,
@@ -1135,12 +1214,12 @@ button.builder-status-item:hover {
 }
 .builder-box-frame {
 	display: grid;
-	grid-template-columns: repeat( 3, 3.9rem );
+	grid-template-columns: repeat( 3, 3.1rem );
 	grid-template-areas: ". top ." "left core right" ". bottom .";
-	gap: .35rem .5rem;
+	gap: .25rem .35rem;
 	justify-items: center;
 	align-items: center;
-	padding: .55rem;
+	padding: .4rem;
 	border: 1px dashed var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 }
@@ -1160,8 +1239,8 @@ button.builder-status-item:hover {
 	grid-area: bottom;
 }
 .builder-box-core {
-	width: 3.6rem;
-	height: 1.7rem;
+	width: 2.9rem;
+	height: 1.5rem;
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 	background: var(--nino-admin-surface-muted);
@@ -1171,6 +1250,16 @@ button.builder-status-item:hover {
 	padding-inline: .3rem;
 	text-align: center;
 	text-align-last: center;
+}
+/* The selects of the box are the small fields of the workbench: as high as they, and the width of the compact box */
+.builder-block-body .builder-box .builder-step {
+	width: 3.1rem;
+	height: var(--nino-admin-control-height-sm, 1.9rem);
+	min-height: 0;
+	padding-inline: .45rem 1.15rem;
+	font-size: .78rem;
+	text-align: start;
+	text-align-last: start;
 }
 /* How far in from the sides the ground of a row, a column or a card starts: the two steps side by side under one name */
 .builder-offset-steps {
@@ -1204,13 +1293,6 @@ button.builder-status-item:hover {
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 	background: var(--editor-bg-elevated);
-}
-/* Where the controls of a picture stand under the line of its source - behind a section, a column or a card, and under an [image] -
-   the two are one box: the line gives up its bottom edge and its lower corners, the controls (further down) their top edge */
-.builder-source:has(+ .builder-picture) .builder-source-line,
-.builder-source:has(+ .builder-content-extra > .builder-picture) .builder-source-line {
-	border-bottom: 0;
-	border-radius: var(--editor-radius-sm) var(--editor-radius-sm) 0 0;
 }
 /* The row of a source that has a name of its own and no picture under it is a field like the others: the name at the left, the row at the right */
 .builder-block-body .builder-source:has(> .builder-source-name:not([hidden])):not(:has(+ .builder-picture)) {
@@ -1290,22 +1372,28 @@ button.builder-status-item:hover {
 .builder-picture-thumb[hidden] {
 	display: none;
 }
+/* The picture is at the left and its controls beside it, with no frame of their own: the buttons that store a picture and take it away - two of one kind, side by side - and the
+   question mark that says what the upload takes, then what the upload said. The file field the upload button opens is hidden from the eye, not from the keyboard, and the ring
+   of its focus is drawn on the button */
 .builder-picture-controls {
 	display: grid;
 	flex: 1 1 14rem;
 	gap: .35rem;
 	min-width: 0;
-	border: 1px solid var(--editor-border);
-	border-radius: 0 0 var(--editor-radius) var(--editor-radius);
-	padding: .3rem .6rem;
-	margin-top: -.75rem;
-	border-top: 0;
 }
 .builder-picture-controls > * {
 	margin: 0;
 }
-.builder-picture-controls .builder-label {
-	font-weight: normal;
+.builder-picture-buttons {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+}
+.builder-picture-buttons:has(input:focus-visible) .builder-picture-upload {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: 2px;
 }
 .builder-picture-message[hidden] {
 	display: none;
@@ -1476,6 +1564,10 @@ button.builder-status-item:hover {
 	padding-top: .8rem;
 	border-top: 1px solid var(--editor-separator);
 }
+.builder-block-body > .builder-group[data-group="background-image"]:not(:first-child) {
+	padding-top: .8rem;
+	border-top: 1px solid var(--editor-separator);
+}
 .builder-group-title {
 	margin: 0;
 	color: var(--editor-text-secondary);
@@ -1600,7 +1692,7 @@ button.builder-status-item:hover {
 	--builder-ground: var(--builder-ground-brand-alt);
 }
 
-/* The focus of a picture: a switch for none, and nine radio buttons in a grid, one for each place */
+/* The focus of a picture: a switch for none, and nine radio buttons in a grid, one for each place - the grid is not there while the focus is automatic, or while there is no picture */
 .builder-focus {
 	display: grid;
 	justify-items: start;
@@ -1616,9 +1708,6 @@ button.builder-status-item:hover {
 }
 .builder-block-body .builder-focus > .builder-focus-grid {
 	grid-column: 2;
-}
-.builder-block-body .builder-background > .nino-admin-btn-secondary {
-	justify-self: start;
 }
 .builder-focus-grid {
 	display: grid;
@@ -1658,11 +1747,7 @@ button.builder-status-item:hover {
 	outline: 2px solid var(--editor-blue);
 }
 .builder-focus-grid.is-disabled {
-	opacity: .45;
-}
-.builder-focus-grid.is-disabled .builder-focus-place,
-.builder-focus-grid.is-disabled input {
-	cursor: default;
+	display: none;
 }
 
 /* ------------------------------------------------------------- Responsive */
