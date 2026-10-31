@@ -43,7 +43,11 @@ declare(strict_types=1);
  *											languages, the answers the panel's script is drawn from, the
  *											stylesheets of the active features that the preview links after
  *											the compiled sheet, and the anchor a variant's head names - the
- *											place of the specimen the variant is looked at in.
+ *											place of the specimen the variant is looked at in - and the styles a template
+ *											brings: the @style lines of a head, the css files beside the template and the
+ *											option each is, the choice held to the template that is chosen, the file written
+ *											behind the css of the template and named in its section, the fingerprint, the
+ *											answers of design/list, design/save and design/preview, and a theme that keeps them.
  *											Travels with the feature and
  *											runs against the checkout three levels up, or the one
  *											NINO_ROOT names (see tests/harness.php there). What the
@@ -128,6 +132,74 @@ function designMakeFeature( string $features, string $name, string $key, array $
 
 	foreach( $variants as $variant => $css )
 		file_put_contents( $features. '/'. $name. '/design/'. $variant. '.css', $css );
+}
+
+/**
+ *	The css a template's styles are made of, planted in a library the suite may write to: the head of the floating header and of the regular section
+ *	declare the styles they bring, and the files stand where the library keeps them - beside the frame, and in the directory named like the one file of a
+ *	set. Among them what a library of somebody's work in progress holds: a file of a style no head declares, a file whose name is none, a declared style
+ *	without a file, an option with no head of its own and options whose names sort apart in natural order
+ *
+ *	@param		string		$lib					A copy of the library
+ *
+ *	@return 	array											made (the paths that were not there), kept (path => the bytes of a file that was changed)
+ */
+function designPlantStyles( string $lib ): array {
+
+	$kept = [];
+	$made = [];
+	$put 	= static function( string $file, string $bytes ) use ( &$kept, &$made, $lib ): void {
+
+		$path = $lib. '/'. $file;
+
+		if( is_file( $path ) === true )
+			$kept[$path] = (string) file_get_contents( $path );
+		else {
+			$made[] = $path;
+
+			if( is_dir( dirname( $path ) ) === false )
+				mkdir( dirname( $path ), 0755, true );
+		}
+
+		file_put_contents( $path, $bytes );
+	};
+	$declare = static fn( string $file, string $lines ): string => (string) preg_replace( '~^/\*~', "/*". $lines. "\n *", (string) file_get_contents( $lib. '/'. $file ), 1 );
+
+	$put( 'header/floating/style.css', $declare( 'header/floating/style.css', "\t@style\tnav\tNavigation\n *\t@style-de\tnav\tNavigation, deutsch\n *\t@style\tnav-hover\tHover of the links\n *\t@style-de\tnav-hover\tHover der Links\n *\t@style\tspare\tA style without a file\n *\t@style\t0\tA name of digits alone" ) );
+	$put( 'header/floating/nav-compact.css', "/*\t@name\tCompact\n *\t@description\tCloser links.\n */\n.nino-frame-header .nino-nav-content li a { padding: .25rem; }\n" );
+	$put( 'header/floating/nav-hover-glow.css', "/*\t@name\tGlow\n *\t@name-de\tLeuchten\n *\t@description\tA soft glow under the pointer.\n *\t@description-de\tEin weiches Leuchten unter dem Zeiger.\n */\n.nino-frame-header .nino-nav-content li a:hover { text-shadow: 0 0 .5rem currentColor; }\n" );
+	$put( 'header/floating/nav-hover-glow-2.css', "/*\t@name\tGlow, twice\n */\n.nino-frame-header .nino-nav-content li a:hover { text-shadow: 0 0 1rem currentColor; }\n" );
+	$put( 'header/floating/nav-hover-glow-10.css', "/*\t@name\tGlow, tenfold\n */\n.nino-frame-header .nino-nav-content li a:hover { text-shadow: 0 0 5rem currentColor; }\n" );
+	$put( 'header/floating/nav-hover-soft-glow.css', "/*\t@name\tSoft glow\n *\t@description\tThe style is called nav-hover and the option soft-glow.\n */\n.nino-frame-header .nino-nav-content li a:hover { text-shadow: 0 0 .2rem currentColor; }\n" );
+	$put( 'header/floating/nav-hover-plain.css', ".nino-frame-header .nino-nav-content li a:hover { opacity: .8; }\n" );
+	$put( 'header/floating/spare.css', ".nino-frame-header { filter: none; }\n" );
+	$put( 'header/floating/0-a.css', ".nino-frame-header { filter: none; }\n" );
+	$put( 'header/floating/tone-dark.css', ".nino-frame-header { filter: brightness(.8); }\n" );
+	$put( 'header/floating/Nav-Hover.css', ".nino-frame-header { filter: none; }\n" );
+
+	$put( 'section/regular.css', $declare( 'section/regular.css', "\t@style\trhythm\tRhythm\n *\t@style-de\trhythm\tRhythmus" ) );
+	$put( 'section/regular/rhythm-loose.css', "/*\t@name\tLoose\n *\t@description\tMore air between the sections.\n */\n.nino-section { margin-block: 3rem; }\n" );
+
+	return [ 'made' => $made, 'kept' => $kept ];
+}
+
+/**
+ *	What designPlantStyles() planted, taken away again: the files that were changed have their bytes back, the files that were made are gone, and the directory made for a set
+ *
+ *	@param		array 		$planted			designPlantStyles()'s answer
+ *
+ *	@return 	void
+ */
+function designUnplantStyles( array $planted ): void {
+
+	foreach( $planted['kept'] as $path => $bytes )
+		file_put_contents( $path, $bytes );
+
+	foreach( $planted['made'] as $path )
+		@unlink( $path );
+
+	foreach( $planted['made'] as $path )
+		@rmdir( dirname( $path ) );
 }
 
 /*	The features directory of this run, which is the one the feature lives in with five things more: the fixture feature the pins of the
@@ -1825,7 +1897,8 @@ $chosen = [];
 // The keys of a fresh setup that are a choice of the panel: a key by itself, the entries of a list under the key of the list, the knobs under their part as well. The version of the model, the theme it was taken from, the custom css (the view CSS) and the record of the compile are none
 foreach( Setup::defaults( $library ) as $key => $value ) {
 
-	if( in_array( $key, [ 'format', 'theme', 'css', 'compiled' ], true ) === true )
+	// ...and the styles of the templates: a template declares its own, so they stand by the select of the template and have no place in the table
+	if( in_array( $key, [ 'format', 'theme', 'css', 'compiled', 'styles' ], true ) === true )
 		continue;
 
 	if( is_array( $value ) === false )
@@ -3226,8 +3299,8 @@ $beforeFamilies = static function( array $setup ) use ( $library ): string {
 		$files[$printPart] 	= [ (string) ( $setup['parts'][$printPart] ?? '' ), ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
 
-	// ...and before the features had a key of their own in it
-	unset( $setup['compiled'], $setup['features'] );
+	// ...and before the features and the styles of the templates had a key of their own in it
+	unset( $setup['compiled'], $setup['features'], $setup['styles'] );
 
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
@@ -3895,8 +3968,8 @@ $beforeRevision = static function( array $setup, string $lib ): string {
 		$printFile 					= Setup::file( $lib, $printPart, $printSet );
 		$files[$printPart] 	= [ $printSet, ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
-	// ...as it was written before the features had a key of their own in it
-	unset( $setup['compiled'], $setup['features'] );
+	// ...as it was written before the features and the styles of the templates had a key of their own in it
+	unset( $setup['compiled'], $setup['features'], $setup['styles'] );
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
 $moved = $sandboxSetup;
@@ -6385,11 +6458,26 @@ $themesSection = static function( array &$appData, string $library, array $entry
 				if( $kind === 'toggle' && is_array( $given['knobs'][$part] ?? null ) === true && array_key_exists( $knob, $given['knobs'][$part] ) === false )
 					$given['knobs'][$part][$knob] = Setup::defaults( $library )['knobs'][$part][$knob];
 
+		// ...and the styles of the templates, which came after the file was written as well: a file that names none has none chosen, an empty entry for each part
+		if( array_key_exists( 'styles', $given ) === false ) {
+
+			$withStyles = [];
+
+			foreach( $given as $key => $value ) {
+				$withStyles[$key] = $value;
+
+				if( $key === 'knobs' )
+					$withStyles['styles'] = Setup::defaults( $library )['styles'];
+			}
+
+			$given = $withStyles;
+		}
+
 		return $given;
 	};
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
-		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'features', 'fonts', 'colours', 'css', 'compiled' ]
+		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ]
 		&& array_keys( Setup::defaults( $library ) ) === Setup::KEYS && Setup::defaults( $library )['theme'] === '' && Setup::defaults( $library )['css'] === '' );
 	check( '...and the format of the file stays 2: a file without the two keys reads as none and no css, which is what every project had, with no note and nothing migrated',
 		Setup::FORMAT === 2 && \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'size' => 1, 'width' => -1 ] ) === true
@@ -6601,7 +6689,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$problems[] = 'colours: a theme the feature ships names no palette, the brand colour is the project\'s';
 		if( is_array( $given['features'] ?? null ) === false )
 			$problems[] = 'features: a theme has the choices for the features, an empty list where it names none';
-		if( array_keys( $given ) !== $choosesShipped )
+		// The styles of the templates came after the file was written: it may name none, and then has none chosen (see $completed)
+		if( in_array( array_keys( $given ), [ $choosesShipped, array_values( array_diff( $choosesShipped, [ 'styles' ] ) ) ], true ) === false )
 			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order';
 		if( $notes !== [] )
 			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
@@ -8449,8 +8538,8 @@ $made = [ 'slug' => 'mit-features' ];
 $madeFile = Themes::read( $appData, $library, 'mit-features' ) ?? [];
 [ , $reloaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'mit-features' ] );
 
-check( 'a snapshot of a setup keeps the choices for the features as a key that chooses something, between the knobs and the fonts, where Setup::KEYS puts it - and a theme of the project the screen was saved into holds them in its file and gives them back on a load',
-	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'knobs', array_keys( $snapshot ), true ) + 1
+check( 'a snapshot of a setup keeps the choices for the features as a key that chooses something, between the styles and the fonts, where Setup::KEYS puts it - and a theme of the project the screen was saved into holds them in its file and gives them back on a load',
+	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'styles', array_keys( $snapshot ), true ) + 1
 	&& $snapshot['features'] === $withEntry['features'] && $status === 200 && ( $madeFile['setup']['features'] ?? null ) === $withEntry['features'] && ( $reloaded['setup']['features'] ?? null ) === $withEntry['features'] );
 
 Themes::remove( $appData, (string) ( $made['slug'] ?? '' ) );
@@ -8465,9 +8554,9 @@ Themes::write( $appData, 'one-gone', $byHand( 'One gone', [ 'probe' => [ 'set' =
 [ , $fromHand ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'by-hand' ] );
 [ , $oneGone ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'one-gone' ] );
 
-check( 'a theme sets the choices for the features: loaded over a setup that chooses a variant of a feature, the theme the feature ships answers its own choices and not the setup\'s - the key is there, between the knobs and the fonts, with no entry for that feature, so it is back at its own look - and says nothing, and writes nothing',
+check( 'a theme sets the choices for the features: loaded over a setup that chooses a variant of a feature, the theme the feature ships answers its own choices and not the setup\'s - the key is there, between the styles and the fonts, with no entry for that feature, so it is back at its own look - and says nothing, and writes nothing',
 	$status === 200 && array_key_exists( 'features', $overShipped['setup'] ) === true && array_key_exists( 'probe', $overShipped['setup']['features'] ) === false && $overShipped['notes'] === []
-	&& array_search( 'features', array_keys( $overShipped['setup'] ), true ) === array_search( 'knobs', array_keys( $overShipped['setup'] ), true ) + 1
+	&& array_search( 'features', array_keys( $overShipped['setup'] ), true ) === array_search( 'styles', array_keys( $overShipped['setup'] ), true ) + 1
 	&& array_key_exists( 'probe', Setup::read( $appData, $library )['features'] ) === true );
 check( '...and a theme that names a feature the project has gives it: the variant, with the knobs of the variant at the positions its head gives them - a file by hand names the variant alone - and nothing said',
 	( $fromHand['setup']['features']['probe']['set'] ?? '' ) === 'loud' && array_keys( $fromHand['setup']['features']['probe']['knobs'] ?? [] ) === array_keys( Setup::features( $appData )['probe']['catalogue']['loud']['knobs'] )
@@ -8509,6 +8598,276 @@ unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $app
 \Nino\Auth::logoutUser( $appData );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 
+// --- The styles a template brings ----------------------------------------------------
+//
+// A template declares the styles it brings in its head and keeps the css of their options beside it; a person chooses one option of a
+// style, and the compile writes that file behind the template's own css. The fixtures are planted in the copy of the library this run
+// has of its own (designPlantStyles()) - the library of the feature brings no style - and taken away again
+
+echo "\nThe styles a template brings: a select of css files beside it, the one chosen compiled behind it\n";
+
+$styleLib 		= \Nino\Modules\Design::libraryDir();
+$styleCopy 		= str_starts_with( (string) realpath( $styleLib ), (string) realpath( sys_get_temp_dir() ) );
+
+check( 'the suite plants its fixtures in the copy of the library it runs on, and never in the library of the repository', $styleCopy === true && realpath( $styleLib ) !== realpath( $library ) );
+
+if( $styleCopy === true ) {
+
+	$styleSetupFile = \Nino\Filesystem::path( $appData, Setup::PATH );
+	$styleSetupKept = is_file( $styleSetupFile ) === true ? (string) file_get_contents( $styleSetupFile ) : null;
+	$planted 				= designPlantStyles( $styleLib );
+	$headFile 			= ninoSandboxDir( $appData ). '/head-with-styles.css';
+	$headBytes 			= "/*\t@name\tProbe\n *\t@style\tnav-hover\tHover of the links\n *\t@style-de\tnav-hover\tHover der Links\n *\t@style\tbare\tNo German line\n"
+		. " *\t@style\tNav_Hover\tBad name\n *\t@style\t0\tDigits alone\n *\t@style\tnolabel\n *\t@style\tnav-hover\tTwice\n *\t@style-de\tghost\tEin Geist\n *\t@style-de\tbare\tErst\n *\t@style-de\tbare\tZweimal\n"
+		. " *\t@knob\tsize\tSize\n */\n/*\t@style\tlater\tNot in the first comment\n */\n";
+
+	file_put_contents( $headFile, $headBytes );
+
+	$headEn = Setup::head( $headFile, 'en_US' );
+	$headDe = Setup::head( $headFile, 'de_DE' );
+
+	check( 'the head of a template declares its styles, one @style line each with a name and a label and the @style-de line beside it for German: read in the order of the lines, in the language asked for and in English where the line of that language is not there - and only from the first comment',
+		$headEn['styles'] === [ 'nav-hover' => 'Hover of the links', 'bare' => 'No German line' ] && $headDe['styles'] === [ 'nav-hover' => 'Hover der Links', 'bare' => 'Erst' ]
+		&& Setup::head( $headFile, 'fr_FR' )['styles'] === $headEn['styles'] && Setup::head( ninoSandboxDir( $appData ). '/nowhere.css' )['styles'] === [] );
+	check( '...a line that is no line of the grammar is dropped and named, the way a @knob line is: a name that is no slug or starts with a digit, a style with no label, a style declared twice, a second line for German, a line of another language for a style that is not there - and the knob line beside them is named in notes alone, where styleNotes keeps what styles() hands on',
+		count( $headEn['styleNotes'] ) === 6 && count( $headEn['notes'] ) === 7 && $headEn['notes'] === $headDe['notes'] && array_diff( $headEn['styleNotes'], $headEn['notes'] ) === []
+		&& preg_grep( '/Nav_Hover/', $headEn['styleNotes'] ) !== [] && preg_grep( '/@style\t0|@style 0/', $headEn['styleNotes'] ) !== [] && preg_grep( '/starts with a letter/', $headEn['styleNotes'] ) !== [] && preg_grep( '/nolabel/', $headEn['styleNotes'] ) !== [] && preg_grep( '/Twice/', $headEn['styleNotes'] ) !== []
+		&& preg_grep( '/ghost/', $headEn['styleNotes'] ) !== [] && preg_grep( '/Zweimal/', $headEn['styleNotes'] ) !== [] && preg_grep( '/@knob/', $headEn['styleNotes'] ) === [] && preg_grep( '/@knob/', $headEn['notes'] ) !== [] );
+
+	// What a frame brings: the files beside template.tpl, the style of each by the longest name the head declares that the name of the file starts with
+	$styleNotes = [];
+	$floating 	= Setup::styles( $styleLib, 'header', 'floating', 'en_US', $styleNotes );
+	$floatingDe = Setup::styles( $styleLib, 'header', 'floating', 'de_DE' );
+	$optionsOf 	= static fn( array $styles, string $style ): array => array_keys( $styles[$style]['options'] ?? [] );
+
+	check( 'styles() lists the styles a template declares in the order of its head, each with its label in the language asked for and its options: the files of the template\'s directory named <style>-<option>.css - the stylesheet of the frame is none of them',
+		array_keys( $floating ) === [ 'nav', 'nav-hover', 'spare' ] && $floating['nav']['label'] === 'Navigation' && $floating['nav-hover']['label'] === 'Hover of the links'
+		&& $floatingDe['nav']['label'] === 'Navigation, deutsch' && $floatingDe['nav-hover']['label'] === 'Hover der Links' && $floatingDe['spare']['label'] === 'A style without a file'
+		&& $optionsOf( $floating, 'nav' ) === [ 'compact' ] && preg_grep( '/^style$|template/', array_merge( $optionsOf( $floating, 'nav' ), $optionsOf( $floating, 'nav-hover' ) ) ) === []
+		&& str_ends_with( $floating['nav-hover']['options']['glow']['file'], '/header/floating/nav-hover-glow.css' ) && is_file( $floating['nav-hover']['options']['glow']['file'] ) === true );
+	check( '...the style of a file is the longest name the head declares that its name starts with: nav-hover-soft-glow.css is the option soft-glow of the style nav-hover and not the option hover-soft-glow of the style nav - and the options are in the natural order of their names',
+		$optionsOf( $floating, 'nav-hover' ) === [ 'glow', 'glow-2', 'glow-10', 'plain', 'soft-glow' ] && isset( $floating['nav']['options']['hover-soft-glow'] ) === false && $optionsOf( $floating, 'nav' ) === [ 'compact' ] );
+	check( '...an option is called by the name its own head gives it, in the language asked for and in English where the file has no line of that language - and by its slug where it has no head at all; the line under it is its description',
+		$floating['nav-hover']['options']['glow']['name'] === 'Glow' && $floating['nav-hover']['options']['glow']['description'] === 'A soft glow under the pointer.'
+		&& $floatingDe['nav-hover']['options']['glow']['name'] === 'Leuchten' && $floatingDe['nav-hover']['options']['glow']['description'] === 'Ein weiches Leuchten unter dem Zeiger.'
+		&& $floatingDe['nav-hover']['options']['soft-glow']['name'] === 'Soft glow' && $floating['nav-hover']['options']['plain']['name'] === 'plain' && $floating['nav-hover']['options']['plain']['description'] === '' );
+	check( '...work in progress is not offered and is named, led by the part and the template: a file whose name is no <style>-<option>.css, a file of a style no @style line declares, a declared style that has no file - which is a select with None alone',
+		$floating['spare']['options'] === [] && count( $styleNotes ) === 6 && preg_grep( '/^header\/floating: .*Nav-Hover\.css/', $styleNotes ) !== [] && preg_grep( '/^header\/floating: .*tone-dark\.css/', $styleNotes ) !== []
+		&& preg_grep( '/^header\/floating: .*"spare" has no file/', $styleNotes ) !== [] && isset( $floating['tone'] ) === false );
+
+	check( '...a style starts with a letter, since a name of digits alone is an integer key and a template whose one style is such a name would be answered as a list: the line that declares one is dropped and named, and a file of that name - 0-a.css - belongs to no style; the file of a style by itself, with no option - spare.css - says that it names no option and not that its style is undeclared',
+		isset( $floating['0'] ) === false && preg_grep( '/^header\/floating: .*starts with a letter/', $styleNotes ) !== [] && preg_grep( '/^header\/floating: .*"0-a\.css" belongs to no style/', $styleNotes ) !== []
+		&& preg_grep( '/^header\/floating: .*"spare\.css" names no option - the file of a style is style-option\.css/', $styleNotes ) !== [] && preg_grep( '/"spare\.css" belongs to no style/', $styleNotes ) === []
+		&& $floating['spare']['options'] === [] );
+
+	// A template of one file keeps its styles in a directory named like the file, beside it
+	$regular = Setup::styles( $styleLib, 'section', 'regular', 'de_DE' );
+
+	check( 'a template of one file has its styles in the directory named like the file, beside it: library/section/regular/<style>-<option>.css - and a template that declares none, a template that is not there and a part that is none have no styles',
+		array_keys( $regular ) === [ 'rhythm' ] && $regular['rhythm']['label'] === 'Rhythmus' && array_keys( $regular['rhythm']['options'] ) === [ 'loose' ] && $regular['rhythm']['options']['loose']['name'] === 'Loose'
+		&& str_ends_with( $regular['rhythm']['options']['loose']['file'], '/section/regular/rhythm-loose.css' )
+		&& Setup::styles( $styleLib, 'section', 'open' ) === [] && Setup::styles( $styleLib, 'section', 'nowhere' ) === [] && Setup::styles( $styleLib, 'nowhere', 'regular' ) === [] );
+
+	$glowFile = $styleLib. '/header/floating/nav-hover-glow.css';
+
+	check( 'styleFile() resolves a style and an option to the file, and to nothing for a name that could climb out of the template\'s directory or that is none: a path, an upper-case name, a style or an option that has no file, a set that is not there',
+		Setup::styleFile( $styleLib, 'header', 'floating', 'nav-hover', 'glow' ) === $glowFile && Setup::styleFile( $styleLib, 'section', 'regular', 'rhythm', 'loose' ) === $styleLib. '/section/regular/rhythm-loose.css'
+		&& Setup::styleFile( $styleLib, 'header', 'floating', '../floating/nav-hover', 'glow' ) === '' && Setup::styleFile( $styleLib, 'header', 'floating', 'nav-hover', '../floating/nav-hover-glow' ) === ''
+		&& Setup::styleFile( $styleLib, 'header', 'floating', 'Nav-Hover', '' ) === '' && Setup::styleFile( $styleLib, 'header', 'floating', 'nav-hover', 'missing' ) === '' && Setup::styleFile( $styleLib, 'header', 'floating', 'nav-hover', '' ) === ''
+		&& Setup::styleFile( $styleLib, 'header', 'nowhere', 'nav-hover', 'glow' ) === '' && Setup::styleFile( $styleLib, 'nowhere', 'floating', 'nav-hover', 'glow' ) === '' );
+
+	// The setup: a choice stays where the template that is chosen declares the style and has a file for the option
+	$styleNotes = [];
+	$wanted 		= [ 'parts' => [ 'header' => 'floating', 'section' => 'regular' ], 'styles' => [ 'header' => [ 'nav-hover' => 'soft-glow', 'nav' => 'compact' ], 'section' => [ 'rhythm' => 'loose' ] ] ];
+	$styled 		= Setup::normalize( $appData, $wanted, $styleLib, $styleNotes );
+	$defaulted 	= Setup::normalize( $appData, [], $styleLib );
+
+	check( 'a setup keeps a style chosen for the template that is chosen: an entry for every part, the pairs in the order the head declares the styles in, an empty list for a part that chose none - and a fresh setup chooses none',
+		array_keys( $styled['styles'] ) === array_keys( Setup::PARTS ) && $styled['styles']['header'] === [ 'nav' => 'compact', 'nav-hover' => 'soft-glow' ] && array_keys( $styled['styles']['header'] ) === [ 'nav', 'nav-hover' ]
+		&& $styled['styles']['section'] === [ 'rhythm' => 'loose' ] && $styled['styles']['footer'] === [] && $styled['styles']['tables'] === []
+		&& Setup::defaults( $styleLib )['styles'] === array_fill_keys( array_keys( Setup::PARTS ), [] ) && $defaulted['styles'] === Setup::defaults( $styleLib )['styles'] );
+
+	$rawStyles = [
+		'header' => [ 'nav-hover' => 'nowhere', 'tone' => 'dark', 'spare' => 'x', 'nav' => 5 ],
+		'nowhere' => [ 'a' => 'b' ],
+	];
+	$droppedNotes = [];
+	$dropped = Setup::normalize( $appData, [ 'parts' => [ 'header' => 'floating' ], 'styles' => $rawStyles ], $styleLib, $droppedNotes );
+
+	check( 'a choice that cannot be honoured is dropped and named: an option that has no file, a style the template does not declare, a style it declares and has no file for, an option that is no word, a part that is none - the rest of the setup stands',
+		$dropped['styles']['header'] === [] && array_keys( $dropped['styles'] ) === array_keys( Setup::PARTS ) && $dropped['parts']['header'] === 'floating'
+		&& preg_grep( '/option "nowhere"/', $droppedNotes ) !== [] && preg_grep( '/declares no style "tone"/', $droppedNotes ) !== [] && preg_grep( '/option "x"/', $droppedNotes ) !== []
+		&& preg_grep( '/"nav" of "header" is not given an option/', $droppedNotes ) !== [] && preg_grep( '/part "nowhere" with styles/', $droppedNotes ) !== [] );
+
+	$otherNotes = [];
+	$other = Setup::normalize( $appData, [ 'parts' => [ 'header' => 'regular', 'section' => 'open' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ], 'section' => [ 'rhythm' => 'loose' ] ] ], $styleLib, $otherNotes );
+
+	check( 'a choice belongs to the template it was made for: for another template of the part - one that does not declare the style - it is dropped and named, and so is the choice for the set a part falls back to when the set it names is not in the library',
+		$other['styles']['header'] === [] && $other['styles']['section'] === [] && preg_grep( '/template "regular" of "header" declares no style "nav-hover"/', $otherNotes ) !== []
+		&& preg_grep( '/template "open" of "section" declares no style "rhythm"/', $otherNotes ) !== []
+		&& Setup::normalize( $appData, [ 'parts' => [ 'header' => 'nowhere' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ] ] ], $styleLib )['styles']['header'] === []
+		&& Setup::normalize( $appData, [ 'styles' => 'x' ], $styleLib )['styles'] === $defaulted['styles'] && Setup::normalize( $appData, [ 'styles' => [ 'header' => 'x' ] ], $styleLib )['styles'] === $defaulted['styles']
+		&& Setup::normalize( $appData, [ 'parts' => [ 'header' => 'floating' ], 'styles' => [ 'header' => [ 'nav-hover' => '' ] ] ], $styleLib )['styles']['header'] === [] );
+	$shapeNotes = [];
+	Setup::normalize( $appData, [ 'parts' => [ 'header' => 'floating' ], 'styles' => [ 'header' => 'x', 'footer' => 5 ] ], $styleLib, $shapeNotes );
+
+	check( '...the styles of a part that are no list of styles with an option each - a string, a number - are dropped and named, like every other choice that cannot be honoured, and not in silence',
+		preg_grep( '/styles of "header" are no list/', $shapeNotes ) !== [] && preg_grep( '/styles of "footer" are no list/', $shapeNotes ) !== [] && preg_grep( '/styles of "section" are no list/', $shapeNotes ) === [] );
+	check( '...and the work in progress of the template that is chosen is named wherever the setup is read - the notes of styles() - and the notes of a template that is not chosen are not',
+		preg_grep( '/^header\/floating: .*tone-dark\.css/', $styleNotes ) !== [] && preg_grep( '/^header\/floating: /', $otherNotes ) === [] && preg_grep( '/^header\/regular: /', $otherNotes ) === [] );
+
+	// The compile: the file behind the css of the template, in its section, under a line that names the style and the option
+	$plainSetup = $styled;
+	$plainSetup['styles'] = $defaulted['styles'];
+	$compileNotes = [];
+	$sheet = Compiler::compile( $appData, $styled, $styleLib, $compileNotes );
+	$plain = Compiler::compile( $appData, $plainSetup, $styleLib );
+	$frameCss = rtrim( (string) file_get_contents( $styleLib. '/header/floating/style.css' ), "\n" ). "\n";
+	$softCss 	= rtrim( (string) file_get_contents( $styleLib. '/header/floating/nav-hover-soft-glow.css' ), "\n" ). "\n";
+	$compactCss = rtrim( (string) file_get_contents( $styleLib. '/header/floating/nav-compact.css' ), "\n" ). "\n";
+	$rhythmCss = rtrim( (string) file_get_contents( $styleLib. '/section/regular/rhythm-loose.css' ), "\n" ). "\n";
+	$headerPart = designSection( $sheet, 7, Compiler::SECTION );
+	$sectionPart = designSection( $sheet, 9, Compiler::SECTION );
+
+	check( 'the css of the option chosen is written behind the css of its template, in the same section of the part, under a line that names the style and the option - the file as it stands, its head comment too, as the head of the template\'s own file stays; the styles in the order of the head',
+		str_contains( $headerPart, $frameCss. "\n/* -- style nav: compact -- */\n". $compactCss. "\n/* -- style nav-hover: soft-glow -- */\n". $softCss ) === true
+		&& str_contains( $sectionPart, "\n/* -- style rhythm: loose -- */\n". $rhythmCss ) === true && str_contains( $softCss, '@name' ) === true
+		&& substr_count( $sheet, $softCss ) === 1 && substr_count( $sheet, $compactCss ) === 1 && substr_count( $sheet, $rhythmCss ) === 1
+		&& substr_count( $sheet, '/* -- style ' ) === 3 && $compileNotes === [] );
+	check( '...the title of the section names the styles after the knobs of the template, and the header of the sheet after the knobs of its line',
+		preg_match( '/^\/\* ==== 7\. header: floating \(nav default, .*, nav compact, nav-hover soft-glow\) ==== \*\/$/m', $sheet ) === 1 && preg_match( '/^\/\* ==== 9\. section: regular \(.*, rhythm loose\) ==== \*\/$/m', $sheet ) === 1
+		&& preg_match( '/^ \*   header     floating  \(position more, .*nav compact, nav-hover soft-glow\)$/m', $sheet ) === 1 && preg_match( '/^ \*   section    regular  \(.*rhythm loose\)$/m', $sheet ) === 1
+		&& preg_match( '/^ \*   header     floating  \(.*(?:nav compact|nav-hover soft)/m', $plain ) === 0 && preg_match( '/^ \*   section    regular  \(.*rhythm/m', $plain ) === 0 && str_contains( $plain, 'nav-hover soft-glow' ) === false );
+	$movedSections = array_filter( array_merge( range( 1, 6 ), [ 8 ], range( 10, 14 ) ), static fn( int $number ): bool => designSection( $sheet, $number, Compiler::SECTION ) !== designSection( $plain, $number, Compiler::SECTION ) );
+
+	check( '...a style is no ladder: the block of the knob positions has no line for it and is the block of the sheet without it, the sections are numbered as they were, and no section but the two of the templates moved',
+		designSection( $sheet, 14, Compiler::SECTION ) === designSection( $plain, 14, Compiler::SECTION ) && designSection( $sheet, 14, Compiler::SECTION ) !== '' && $movedSections === []
+		&& preg_match_all( '/\/\* ==== (\d+)\. /', $sheet ) === preg_match_all( '/\/\* ==== (\d+)\. /', $plain ) && designSection( $sheet, 7, Compiler::SECTION ) !== designSection( $plain, 7, Compiler::SECTION )
+		&& str_contains( designSection( $sheet, 14, Compiler::SECTION ), 'nav-hover' ) === false );
+
+	$unstyled = $styled;
+	unset( $unstyled['styles'] );
+
+	check( 'at the defaults nothing is written for a style: a setup that chose none compiles to the bytes of one that has no key for them - the sheet is the sheet it was',
+		Compiler::compile( $appData, $plainSetup, $styleLib ) === Compiler::compile( $appData, $unstyled, $styleLib ) && substr_count( $plain, '/* -- style ' ) === 0 && str_contains( $plain, 'nav-hover soft-glow' ) === false );
+
+	$goneNotes = [];
+	$softFile = $styleLib. '/header/floating/nav-hover-soft-glow.css';
+	rename( $softFile, $softFile. '.kept' );
+	$goneSheet = Compiler::compile( $appData, $styled, $styleLib, $goneNotes );
+	rename( $softFile. '.kept', $softFile );
+
+	check( 'a choice whose file is gone since the setup was read is told and left out: no comment and no css for it, the other styles stand',
+		preg_grep( '/no stylesheet for the style "nav-hover" option "soft-glow" of "header" set "floating"/', $goneNotes ) !== [] && str_contains( $goneSheet, 'nav-hover: soft-glow' ) === false
+		&& str_contains( $goneSheet, "/* -- style nav: compact -- */\n" ) === true && str_contains( $goneSheet, "/* -- style rhythm: loose -- */\n" ) === true );
+
+	// What the sheet was compiled from: the fingerprint follows the files of the options chosen
+	$print = static fn( array $setup ): string => \Nino\Modules\Design::fingerprint( $appData, $setup, $styleLib );
+	$printPlain = $print( $plainSetup );
+	$printSoft = $print( $styled );
+	$printGlow = $print( Setup::normalize( $appData, [ 'parts' => $wanted['parts'], 'styles' => [ 'header' => [ 'nav-hover' => 'glow', 'nav' => 'compact' ], 'section' => [ 'rhythm' => 'loose' ] ] ], $styleLib ) );
+	$softBytes = (string) file_get_contents( $softFile );
+	file_put_contents( $softFile, $softBytes. ".edited { color: inherit; }\n" );
+	$printEdited = $print( $styled );
+	file_put_contents( $softFile, $softBytes );
+	$printBack = $print( $styled );
+
+	check( 'the fingerprint follows the styles: another option is another fingerprint, so is an edit of the file of the option in use, and a style taken away is the fingerprint of the setup without',
+		$printSoft !== $printPlain && $printSoft !== $printGlow && $printEdited !== $printSoft && $printBack === $printSoft && $print( $plainSetup ) === $printPlain );
+	check( '...and a setup that chose no style fingerprints as it did before the templates had styles: the empty choices are left out of the input',
+		$printPlain === $print( $unstyled + [ 'styles' => $defaulted['styles'] ] ) && $printPlain === $print( array_diff_key( $plainSetup, [ 'styles' => true ] ) ) );
+
+	// The panel: design/list says what each template brings and what is chosen, design/save keeps what holds, design/preview compiles it
+	\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+	unset( $appData['./nino/filesystem/cache'][Setup::PATH] );
+	Setup::write( $appData, $styled );
+
+	$localeWas = $appData['./nino/locales/current'];
+	$appData['./nino/locales/current'] = 'en_US';
+	[ $status, $listedEn ] = callDesignAction( $appData, 'apiList' );
+	$appData['./nino/locales/current'] = 'de_DE';
+	[ , $listedDe ] = callDesignAction( $appData, 'apiList' );
+	$appData['./nino/locales/current'] = $localeWas;
+
+	$rowOf = static fn( array $listed, string $part ): array => array_values( array_filter( $listed['parts'], static fn( array $row ): bool => $row['part'] === $part ) )[0] ?? [];
+	$floatingListed = $rowOf( $listedEn, 'header' )['catalogue']['floating']['styles'] ?? [];
+
+	check( 'design/list says what each template brings: for every template of every part its styles - the label, and for every option the name and the description in the language of the workbench - and nothing of the server in them: no path',
+		$status === 200 && array_keys( $floatingListed ) === [ 'nav', 'nav-hover', 'spare' ] && array_keys( $floatingListed['nav-hover'] ) === [ 'label', 'options' ] && array_keys( $floatingListed['nav-hover']['options'] ) === [ 'glow', 'glow-2', 'glow-10', 'plain', 'soft-glow' ]
+		&& array_keys( $floatingListed['nav-hover']['options']['glow'] ) === [ 'name', 'description' ] && $floatingListed['nav-hover']['options']['glow']['name'] === 'Glow' && $floatingListed['spare']['options'] === []
+		&& ( $rowOf( $listedDe, 'header' )['catalogue']['floating']['styles']['nav-hover']['options']['glow']['name'] ?? '' ) === 'Leuchten' && ( $rowOf( $listedDe, 'header' )['catalogue']['floating']['styles']['nav-hover']['label'] ?? '' ) === 'Hover der Links'
+		&& str_contains( (string) json_encode( $listedEn['parts'], JSON_UNESCAPED_SLASHES ), $styleLib ) === false && ( $rowOf( $listedEn, 'section' )['catalogue']['regular']['styles']['rhythm']['options']['loose']['name'] ?? '' ) === 'Loose' );
+	check( '...a template that brings none has an empty list, and so has a part that chose none; what is chosen is the setup\'s, per part, in the order of the head',
+		$rowOf( $listedEn, 'header' )['catalogue']['regular']['styles'] === [] && $rowOf( $listedEn, 'section' )['catalogue']['open']['styles'] === []
+		&& array_keys( $listedEn['styles'] ) === array_keys( Setup::PARTS ) && $listedEn['styles']['header'] === [ 'nav' => 'compact', 'nav-hover' => 'soft-glow' ] && $listedEn['styles']['footer'] === []
+		&& $listedEn['defaults']['styles'] === array_fill_keys( array_keys( Setup::PARTS ), [] ) );
+	check( '...and the work in progress of every template is named once in the notes, however many times it is asked for - the files that are none, the file of a style nobody declared, the style without a file',
+		count( preg_grep( '/^header\/floating: /', $listedEn['notes'] ) ) === 6 && count( $listedEn['notes'] ) === count( array_unique( array_map( 'json_encode', $listedEn['notes'] ) ) ) );
+
+	[ $status, $saved ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => 'floating', 'section' => 'regular' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow', 'tone' => 'dark', 'nav' => 'nowhere' ], 'footer' => [ 'x' => 'y' ], 'section' => [ 'rhythm' => 'loose' ] ] ] );
+	$readBack = Setup::read( $appData, $styleLib );
+
+	check( 'design/save keeps a choice that holds and drops one that does not, saying so in the notes: what is stored is what normalising makes of the request',
+		$status === 200 && $readBack['styles']['header'] === [ 'nav-hover' => 'glow' ] && $readBack['styles']['section'] === [ 'rhythm' => 'loose' ] && $readBack['styles']['footer'] === []
+		&& preg_grep( '/declares no style "tone"/', $saved['notes'] ) !== [] && preg_grep( '/option "nowhere"/', $saved['notes'] ) !== [] );
+
+	[ $status, $savedOther ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => 'regular', 'section' => 'open' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ], 'section' => [ 'rhythm' => 'loose' ] ] ] );
+	$readOther = Setup::read( $appData, $styleLib );
+
+	check( '...a choice sent with another template is not kept, and a request with no styles stores none: saving the screen as it is takes a style away',
+		$status === 200 && $readOther['styles']['header'] === [] && $readOther['styles']['section'] === [] && preg_grep( '/declares no style/', $savedOther['notes'] ) !== []
+		&& callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => 'floating' ] ] )[0] === 200 && Setup::read( $appData, $styleLib )['styles'] === $defaulted['styles'] );
+
+	[ $status, $previewed ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [ 'header' => 'floating' ], 'styles' => [ 'header' => [ 'nav-hover' => 'soft-glow' ] ] ] );
+	[ , $previewedNone ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [ 'header' => 'floating' ] ] );
+
+	check( 'design/preview compiles the style that is posted with the selection, as the sheet it would write: the comment and the css of the option are in it, and not in the preview of the same selection with none',
+		$status === 200 && str_contains( $previewed['css'], "/* -- style nav-hover: soft-glow -- */\n". $softCss ) === true && str_contains( $previewedNone['css'], '/* -- style ' ) === false );
+
+	// A theme keeps the styles with the rest of the setup: in its file, back on a load, through an export and an import
+	$themeIn = Themes::json( [ 'format' => 1, 'name' => 'Styled', 'description' => '', 'setup' => [ 'parts' => [ 'header' => 'floating' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow', 'tone' => 'dark' ] ] ], 'css' => '' ] );
+	[ $status, $madeTheme ] = callDesignAction( $appData, 'apiThemeImport', [ 'json' => $themeIn ] );
+	$themeFile = Themes::read( $appData, $styleLib, 'styled' ) ?? [];
+	[ , $themeLoaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'styled' ] );
+
+	check( 'a theme file keeps the styles, between the knobs and the choices for the features: written normalised, with an entry for every part, and read back by a load - the style the template of the file does not declare is dropped and named',
+		$status === 200 && ( $themeFile['setup']['styles']['header'] ?? null ) === [ 'nav-hover' => 'glow' ] && array_keys( $themeFile['setup']['styles'] ?? [] ) === array_keys( Setup::PARTS )
+		&& array_search( 'styles', array_keys( $themeFile['setup'] ), true ) === array_search( 'knobs', array_keys( $themeFile['setup'] ), true ) + 1
+		&& ( $themeLoaded['setup']['styles']['header'] ?? null ) === [ 'nav-hover' => 'glow' ] && ( $themeLoaded['setup']['styles']['footer'] ?? null ) === [] );
+	check( '...it comes back out of an export and into an import as it went in, and a theme file that names no styles - the one the feature ships - loads with none chosen and says nothing',
+		( Themes::fromJson( callDesignAction( $appData, 'apiThemeExport', [ 'slug' => 'styled' ] )[1]['json'] ?? '' )['setup']['styles']['header'] ?? null ) === [ 'nav-hover' => 'glow' ]
+		&& ( $shippedLoaded = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => Themes::SHIPPED[0] ] )[1] )['setup']['styles'] === $defaulted['styles'] && $shippedLoaded['notes'] === [] );
+
+	// ...and the screen saves into it what it holds
+	[ $status ] = callDesignAction( $appData, 'apiThemeSave', [ 'slug' => 'styled', 'parts' => [ 'header' => 'floating' ], 'styles' => [ 'header' => [ 'nav-hover' => 'soft-glow', 'nav' => 'compact' ] ] ] );
+	$themeSaved = Themes::read( $appData, $styleLib, 'styled' ) ?? [];
+	[ , $listedActive ] = callDesignAction( $appData, 'apiList' );
+
+	check( 'a theme of the project is saved from the screen with the styles on it, in the order of the head, and the record the screen is compared with is the same as the file has it',
+		$status === 200 && ( $themeSaved['setup']['styles']['header'] ?? null ) === [ 'nav' => 'compact', 'nav-hover' => 'soft-glow' ] && Themes::snapshot( $styled )['styles'] === $styled['styles'] && array_key_exists( 'styles', Themes::snapshot( $styled ) ) === true
+		&& array_search( 'styles', array_keys( Themes::snapshot( $styled ) ), true ) === array_search( 'knobs', array_keys( Themes::snapshot( $styled ) ), true ) + 1 );
+
+	Themes::remove( $appData, 'styled' );
+
+	// The answer the screen is drawn from, for design-js-smoke.js: the real one, with a template that brings styles chosen and a choice made
+	Setup::write( $appData, $styled );
+	[ , $forStyles ] = callDesignAction( $appData, 'apiList' );
+	$stylesListing = ninoSandboxDir( $appData ). '/design-styles.json';
+	file_put_contents( $stylesListing, json_encode( $forStyles, JSON_THROW_ON_ERROR ) );
+
+	// Put the sandbox back as the sections after this one found it
+	designUnplantStyles( $planted );
+
+	if( $styleSetupKept === null )
+		@unlink( $styleSetupFile );
+	else
+		file_put_contents( $styleSetupFile, $styleSetupKept );
+
+	unset( $appData['./nino/filesystem/cache'][Setup::PATH], $appData['./design/features'] );
+	\Nino\Auth::logoutUser( $appData );
+	\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+}
+
 // --- The panel's script, where node is on the path ------------------------------
 //
 // design-js-smoke.js beside this file draws the screen over a dom stand-in and
@@ -8522,7 +8881,7 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: design-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_FEATURES='. escapeshellarg( $featuresListing ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_FEATURES='. escapeshellarg( $featuresListing ). ' DESIGN_STYLES='. escapeshellarg( $stylesListing ?? '' ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
 
 	// A run that failed says what failed: the checks that did not hold, or what node stopped on

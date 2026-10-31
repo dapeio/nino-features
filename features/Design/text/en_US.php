@@ -69,6 +69,8 @@ return [
 
 	// Templates: the choice of a set, a select in the block of its object with the one word of its label. A part is named by the word of its own in the note of a template that is not in the library. Type and Surfaces: the strips of the page - the root size, the width, the whitespace and the two radii - and of its surfaces
 	'[[/_admin/design/label/template]]'							=> 'Template',
+	// The styles a template brings: the select of a style has this first, and chosen it is the template as it is
+	'[[/_admin/design/style/none]]'								=> 'None',
 	'[[/_admin/design/part/header]]'							=> 'Header template',
 	'[[/_admin/design/part/footer]]'							=> 'Footer template',
 	'[[/_admin/design/part/section]]'							=> 'Section template',

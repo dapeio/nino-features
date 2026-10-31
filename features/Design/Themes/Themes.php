@@ -14,7 +14,7 @@ namespace Nino\Modules\Design {
 	/**
 	 *	Nino							A compact filesystembased php framework
 	 *	Themes						A theme is the face of a site: the whole setup of the panel -
-	 *										the seven templates, the position of every knob, the root
+	 *										the seven templates, the styles chosen for them, the position of every knob, the root
 	 *										size, the width, the whitespace, the radius of the surfaces
 	 *										(the two strengths and the one each kind of surface takes),
 	 *										the animation, the five font roles and the palette - kept
@@ -29,7 +29,9 @@ namespace Nino\Modules\Design {
 	 *										with them. The choices for the features are in every theme:
 	 *										loading one sets each feature to what the theme says - the
 	 *										variant and the knobs of one it names, its own look for the
-	 *										rest - and a file that names none is the empty choice.
+	 *										rest - and a file that names none is the empty choice. So
+	 *										are the styles of the templates: a file that names none
+	 *										has no style chosen, and the shipped theme names none.
 	 *
 	 *										One php file for each, an array as data/design.php is:
 	 *
@@ -364,7 +366,7 @@ namespace Nino\Modules\Design {
 		/**
 		 *	A setup cut down to the keys that choose something - the size, the
 		 *	width, the whitespace, the two strengths of the radius and the radii, the
-		 *	animation, the parts, the knobs, the choices for the features, the fonts and the
+		 *	animation, the parts, the knobs, the styles of the templates, the choices for the features, the fonts and the
 		 *	palette - in the order of Setup::KEYS, and only those the setup has: a theme that
 		 *	names no colours (see the class) has none, and the choices for the features are
 		 *	the setup's like the rest, which a normalised setup always has. The

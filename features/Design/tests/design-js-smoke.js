@@ -74,6 +74,15 @@
  *												and to the anchor of the tab where the variant names none or the page in the
  *												frame has no such id.
  *
+ *												A template that brings styles - css files beside it, each style declared in
+ *												the head of the template - has a select for each in the block of its part,
+ *												under the select of the template: None first and the options by the names of
+ *												their files, the description of the one chosen under it. A choice is a key of
+ *												the working copy that goes with every request, is taken over from a stored
+ *												selection and from a theme, is compared by the chip, is the template's and
+ *												is gone with a change of the template, and the head of the closed block names
+ *												the options chosen.
+ *
  *												A preview says what a design looks like and nothing about which selection
  *												produced it, and nothing stands under the frame to say it: the checks here
  *												read what the screen says off the controls that are drawn, after every kind
@@ -90,7 +99,9 @@
  *												it the answers design/list (DESIGN_LISTING), design/webfonts/list
  *												(DESIGN_WEBFONTS), the actions of the themes (DESIGN_THEMES) and - with a
  *												feature that brings variants active - the answer of design/list for it
- *												(DESIGN_FEATURES) really gave, which the screen is then drawn from as well;
+ *												(DESIGN_FEATURES) and - with a template that brings styles - the answer of
+ *												design/list for that (DESIGN_STYLES) really gave, which the screen is then
+ *												drawn from as well;
  *												it also runs on its own.
  *
  *	Usage: node features/Design/tests/design-js-smoke.js
@@ -633,6 +644,8 @@ function listing( over ) {
 		parts 			: { header : 'first', footer : 'first', section : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first' },
 		features 	: [],
 		knobs 			: JSON.parse( JSON.stringify( knobs ) ),
+		// No style is chosen for any template: an empty list for each part, as the server hands it over
+		styles 			: { header : [], footer : [], section : [], card : [], buttons : [], lists : [], tables : [] },
 		fonts 			: JSON.parse( JSON.stringify( fonts ) ),
 		colours 		: { primary : '#4faae8', secondary : '', harmony : 1, temperature : 3, saturation : 3, contrast : 3, depth : 3, mode : 'auto' },
 	};
@@ -667,7 +680,11 @@ function listing( over ) {
 			} ),
 			part( 'lists', 'set', 'first', {
 				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.lists.slice() },
-				second : { name : 'Ruled', description : 'A line between the items', knobs : KNOBS.lists.slice() },
+				// The one template of the stand-in that brings styles: two, each with its label and the options by the names of their files
+				second : { name : 'Ruled', description : 'A line between the items', knobs : KNOBS.lists.slice(), styles : {
+					rule : { label : 'Line between the items', options : { dashed : { name : 'Dashed', description : 'A dashed line' }, dotted : { name : 'Dotted', description : 'A dotted line' } } },
+					tone : { label : 'Tone of the line', options : { quiet : { name : 'Quiet', description : '' }, strong : { name : 'Strong', description : 'The line in the ink of the page' } } },
+				} },
 			} ),
 			part( 'tables', 'set', 'first', {
 				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.tables.slice() },
@@ -683,6 +700,7 @@ function listing( over ) {
 		layout 		: layoutTable(),
 		defaults 	: fresh,
 		knobs 		: knobs,
+		styles 		: JSON.parse( JSON.stringify( fresh.styles ) ),
 		steps 		: [ 'least', 'less', 'default', 'more', 'most' ],
 		size 			: 0,
 		width 		: 0,
@@ -2286,6 +2304,182 @@ check( '...a choice taken back is taken back in the head: the set of the first c
 
 console.log('');
 
+// --- The styles of a template ----------------------------------------------------------------
+//
+// A template brings css files beside it that a person chooses one of, a select for each style its head declares. The select stands in the block of its
+// part under the select of the template and its description, before the strips; it has None first and the options by the names their files give them, and
+// the description of the one chosen under it. A choice is a key of the working copy, goes with every request the selection goes with, and is the
+// template's: another template starts on None. The head of the closed block names the options chosen
+
+console.log( 'The styles of a template' );
+
+const styCatalogue = function() { return listing().parts.filter( function( row ) { return row.part === 'lists' } )[0].catalogue };
+const styDefs = styCatalogue().second.styles;
+const styKeys = Object.keys( styDefs );
+const sty = panel();
+const styField = function( style ) { return sty.byId( 'design-style-lists-'+ style ) };
+const styBlock = function() { return cardOf( setSelect( sty, 'lists' ) ) };
+// The block as it stands, opened or not: setSelect() opens it
+const styCard = function() { return blocksOf( sty.form ).filter( function( card ) { return card.dataset.object === 'lists' } )[0] };
+const styBody = function() { return byClass( styBlock(), 'design-accordion-body' )[0] };
+const stySelects = function() { return byClass( styBody(), 'design-style-select' ) };
+const styNone = TEXT['/_admin/design/style/none'];
+const styLast = function() { return sty.requests[sty.requests.length - 1] };
+
+check( 'a template that brings no style has no select for one: none in the block of its part, with the select of the template alone in it',
+	stySelects().length === 0 && byTag( styBody(), 'select' ).length === 1 && styKeys.length === 2 && styCatalogue().first.styles === undefined && sty.design._edit.styles.lists !== undefined );
+
+choose( setSelect( sty, 'lists' ), 'second' );
+
+check( 'a template that brings styles has a select for each, in the order its head declares them, under the select of the template and before the strips of the part: no control of the table, so none of them stands for a key',
+	stySelects().length === 2 && styKeys.every( function( style, at ) { return stySelects()[at] === styField( style ).parent } )
+	&& styBody().children.indexOf( stySelects()[0] ) === styBody().children.indexOf( setSelect( sty, 'lists' ).parent ) + 1 && styBody().children.indexOf( stySelects()[1] ) === styBody().children.indexOf( stySelects()[0] ) + 1
+	&& stySelects().every( function( field ) { return field.dataset.control === undefined && hasClass( field, 'design-field' ) } ) && tableRows( sty.design._data.layout, 'templates' ).every( function( row ) { return row.controls.every( function( key ) { return key.indexOf('styles') === -1 } ) } ) );
+check( '...each headed with the label its head gives the style, over a select that has None first - the word the texts have for it - and the options after it by the names their files give them, in the order of the answer: it stands on None, with no line under it',
+	styKeys.every( function( style ) {
+		const select = styField( style );
+		return select !== null && JSON.stringify( offered( select ) ) === JSON.stringify( [ [ '', styNone ] ].concat( Object.keys( styDefs[style].options ).map( function( option ) { return [ option, styDefs[style].options[option].name ] } ) ) )
+			&& shown( select ) === '' && byTag( select.parent, 'label' )[0].textContent === styDefs[style].label && byTag( select.parent, 'label' )[0].getAttribute('for') === select.id
+			&& byTag( select.parent, 'small' ).length === 0 && select.parent.dataset.style === style;
+	} ) && styNone !== undefined && styNone !== '' && styKeys.every( function( style ) { return styField( style ).id === 'design-style-lists-'+ style } ) );
+
+sty.design._target = null;
+choose( styField('rule'), 'dotted' );
+
+check( 'choosing an option writes it into the working copy under the part and the style, and the line under the select says what the option is: the description its file gives it',
+	JSON.stringify( sty.design._edit.styles.lists ) === JSON.stringify( { rule : 'dotted' } ) && styField('rule').value === 'dotted'
+	&& ( byTag( styField('rule').parent, 'small' )[0] || { textContent : null } ).textContent === styDefs.rule.options.dotted.description && byTag( styField('tone').parent, 'small' ).length === 0
+	&& sty.byId('design-reset').hidden === false && sty.design._isDirty() === true );
+
+sty.design._previewNow();
+
+check( '...it asks for the preview with the selection - the styles in it, as the working copy has them - and the frame goes to where the template is looked at: the object of the part',
+	styLast().endpoint === 'preview' && JSON.stringify( styLast().payload.styles.lists ) === JSON.stringify( { rule : 'dotted' } ) && styLast().payload.parts.lists === 'second'
+	&& JSON.stringify( Object.keys( styLast().payload.styles ) ) === JSON.stringify( Object.keys( listing().styles ) ) && sty.design._target === sty.design.OBJECT_ANCHORS.lists );
+
+choose( styField('tone'), 'quiet' );
+
+check( '...a second style is a key of its own beside the first, and an option with no description has no line under its select',
+	JSON.stringify( sty.design._edit.styles.lists ) === JSON.stringify( { rule : 'dotted', tone : 'quiet' } ) && ( byTag( styField('tone').parent, 'small' )[0] || { textContent : '' } ).textContent === '' );
+
+choose( styField('tone'), 'strong' );
+choose( styField('rule'), '' );
+
+check( '...None is the template as it is: the style has no entry then, the other stays, and the line under the select is gone',
+	JSON.stringify( sty.design._edit.styles.lists ) === JSON.stringify( { tone : 'strong' } ) && ( byTag( styField('rule').parent, 'small' )[0] || { textContent : '' } ).textContent === ''
+	&& ( byTag( styField('tone').parent, 'small' )[0] || { textContent : null } ).textContent === styDefs.tone.options.strong.description );
+
+choose( styField('rule'), 'dashed' );
+toggle( styCard() );
+
+check( 'the head of the block, once it is closed, names the template and after it the option of each style chosen, as the select shows it - and just the template where none is chosen',
+	isOpen( styCard() ) === false && byClass( styCard(), 'design-accordion-summary' )[0].textContent === [ styCatalogue().second.name, styDefs.rule.options.dashed.name, styDefs.tone.options.strong.name ].join(' · ')
+	&& ( openBlock( styCard() ), choose( styField('tone'), '' ), choose( styField('rule'), '' ), toggle( styCard() ), isOpen( styCard() ) === false && byClass( styCard(), 'design-accordion-summary' )[0].textContent === styCatalogue().second.name ) );
+
+openBlock( styCard() );
+choose( styField('rule'), 'dashed' );
+choose( styField('tone'), 'strong' );
+choose( setSelect( sty, 'lists' ), 'first' );
+
+check( 'another template starts on None: the styles of the part are the old template\'s and are gone from the working copy, and the select of a style the new template does not bring is gone with them',
+	JSON.stringify( sty.design._edit.styles.lists ) === '{}' && stySelects().length === 0 && sty.design._edit.parts.lists === 'first' );
+
+sty.design._previewNow();
+
+check( '...and the preview is asked for with the part\'s styles empty, in the selection like every part\'s',
+	styLast().endpoint === 'preview' && JSON.stringify( styLast().payload.styles.lists ) === '{}' && styLast().payload.parts.lists === 'first' );
+
+choose( setSelect( sty, 'lists' ), 'second' );
+
+check( '...and the template chosen again brings its selects, on None as before: nothing of the choice made earlier comes back',
+	stySelects().length === 2 && styKeys.every( function( style ) { return shown( styField(style) ) === '' } ) && JSON.stringify( sty.design._edit.styles.lists ) === '{}' );
+
+// Saved, put back, compared with a theme
+choose( styField('rule'), 'dotted' );
+sty.byId('design-save').fire('click');
+
+check( 'the save posts the styles with the rest of the selection',
+	styLast().endpoint === 'save' && JSON.stringify( styLast().payload.styles.lists ) === JSON.stringify( { rule : 'dotted' } ) && Object.keys( styLast().payload.styles ).join() === Object.keys( listing().styles ).join() );
+
+const styBack = panel();
+choose( setSelect( styBack, 'lists' ), 'second' );
+choose( styBack.byId('design-style-lists-rule'), 'dotted' );
+styBack.byId('design-reset').fire('click');
+
+check( 'the way back puts the stored selection back, the styles with it: the working copy is the stored one and the select is on None',
+	JSON.stringify( styBack.design._edit.styles.lists ) === '{}' && styBack.design._isDirty() === false && styBack.byId('design-reset').hidden === true && styBack.design._edit.parts.lists === 'first' );
+
+// A stored choice is on the screen: the answer says the template and the style chosen for it
+const styStored = panel( { parts : listing().parts.map( function( row ) { return row.part === 'lists' ? Object.assign( {}, row, { set : 'second' } ) : row } ), styles : Object.assign( listing().styles, { lists : { rule : 'dashed', tone : 'strong' } } ) } );
+const styStoredBlock = cardOf( setSelect( styStored, 'lists' ) );
+
+check( 'a stored choice is drawn as the answer says it: the selects stand on the options, the lines under them are the descriptions, and the screen is the stored selection - nothing to go back to',
+	shown( styStored.byId('design-style-lists-rule') ) === 'dashed' && shown( styStored.byId('design-style-lists-tone') ) === 'strong'
+	&& byTag( styStored.byId('design-style-lists-rule').parent, 'small' )[0].textContent === styDefs.rule.options.dashed.description && styStored.design._isDirty() === false && styStored.byId('design-reset').hidden === true
+	&& ( toggle( styStoredBlock ), byClass( styStoredBlock, 'design-accordion-summary' )[0].textContent === [ styCatalogue().second.name, styDefs.rule.options.dashed.name, styDefs.tone.options.strong.name ].join(' · ') ) );
+check( '...and a choice the answer holds for a style the template does not bring is not said in the head, and no select is drawn for it',
+	( function() {
+		const stray = panel( { styles : Object.assign( listing().styles, { header : { nowhere : 'x' } } ) } );
+		const head = cardOf( setSelect( stray, 'header' ) );
+		return stray.byId('design-style-header-nowhere') === null && byClass( head, 'design-style-select' ).length === 0 && ( toggle( head ), byClass( head, 'design-accordion-summary' )[0].textContent === listing().parts[0].catalogue.first.name );
+	} )() );
+
+// The answer of the server with a template that brings styles
+const stylesFile = process.env.DESIGN_STYLES || '';
+
+if( stylesFile === '' || fs.existsSync( stylesFile ) === false )
+	console.log( '  --  no answer of design/list with a template that brings styles was handed to this run (DESIGN_STYLES), so the selects of the styles are not drawn from the real one' );
+else {
+
+	const realSt = JSON.parse( fs.readFileSync( stylesFile, 'utf8' ) );
+	const realRow = realSt.parts.filter( function( row ) { return Object.keys( row.catalogue ).some( function( set ) { return Object.keys( realSt.parts[0].catalogue ).length > 0 && Object.keys( row.catalogue[set].styles ).length > 0 } ) } )[0];
+	const realSet = realRow.set;
+	const realStyles = realRow.catalogue[realSet].styles;
+	const realKeys = Object.keys( realStyles );
+	const realScreen = panel( realSt );
+	const realField = function( style ) { return realScreen.byId( 'design-style-'+ realRow.part+ '-'+ style ) };
+
+	// A select for each style the real answer brings, drawn on the options it chose
+	setSelect( realScreen, realRow.part );
+
+	check( 'the server\'s answer is in the shape the screen draws: every template brings its styles as a list or an object of styles with a label and the options with a name and a description, and a template that brings none an empty list - and no file of the server in them',
+		realSt.parts.every( function( row ) {
+			return Object.keys( row.catalogue ).every( function( set ) {
+				const styles = row.catalogue[set].styles;
+				return styles !== undefined && ( Array.isArray( styles ) ? styles.length === 0 : Object.keys( styles ).every( function( style ) {
+					return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( style ) && typeof styles[style].label === 'string' && styles[style].label !== '' && Object.keys( styles[style] ).join() === 'label,options'
+						&& ( Array.isArray( styles[style].options ) ? true : Object.keys( styles[style].options ).every( function( option ) { return Object.keys( styles[style].options[option] ).join() === 'name,description' && typeof styles[style].options[option].name === 'string' } ) );
+				} ) );
+			} );
+		} ) && realKeys.length >= 2 && JSON.stringify( realSt.parts ).indexOf('"file"') === -1 && Object.keys( realSt.styles ).join() === Object.keys( listing().styles ).join() );
+	check( '...the screen draws a select for each style of the template chosen - None first, then the options in the order of the answer - on the option the setup chose, with the line of its description under it',
+		realKeys.every( function( style ) {
+			const chosen = ( Array.isArray( realSt.styles[realRow.part] ) ? {} : realSt.styles[realRow.part] )[style] || '';
+			return realField( style ) !== null && JSON.stringify( offered( realField( style ) ).map( function( pair ) { return pair[0] } ) ) === JSON.stringify( [ '' ].concat( Object.keys( realStyles[style].options ) ) )
+				&& offered( realField( style ) )[0][1] === styNone && shown( realField( style ) ) === chosen && byTag( realField( style ).parent, 'label' )[0].textContent === realStyles[style].label
+				&& ( chosen === '' ? byTag( realField( style ).parent, 'small' ).length === 0 : byTag( realField( style ).parent, 'small' )[0].textContent === realStyles[style].options[chosen].description );
+		} ) );
+
+	// Every option of every style is chosen once, and the preview is asked for with it
+	const realProblems = [];
+
+	realKeys.forEach( function( style ) {
+		Object.keys( realStyles[style].options ).forEach( function( option ) {
+			choose( realField( style ), option );
+			realScreen.design._previewNow();
+			const asked = realScreen.requests[realScreen.requests.length - 1];
+
+			if( asked.payload.styles[realRow.part][style] !== option || realScreen.design._edit.styles[realRow.part][style] !== option )
+				realProblems.push( style+ '/'+ option );
+		} );
+	} );
+
+	check( 'each option of each style the server brings can be chosen, and goes with the preview as it is named'+ ( realProblems.length === 0 ? '' : ' - not so for '+ realProblems.join() ), realProblems.length === 0 && realKeys.length >= 2 );
+}
+
+console.log('');
+
+
 
 // --- The rows: what the table gives a tab ----------------------------------------------------------
 //
@@ -3490,7 +3684,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -6757,8 +6951,8 @@ const asked = panel();
 asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
-check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the choices for the features, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
+check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the styles of the templates, the choices for the features, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
 	&& first.payload.parts.header === 'first' && first.payload.parts.tables === 'first' && first.payload.knobs.section.title === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
@@ -7187,7 +7381,7 @@ function snapshotOf( data ) {
 	const copy = JSON.parse( JSON.stringify( data ) );
 	const parts = {};
 	copy.parts.forEach( function( row ) { parts[row.part] = row.set } );
-	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, radius : copy.radius, 'radius-alt' : copy['radius-alt'], radii : copy.radii, motion : copy.motion, parts : parts, knobs : copy.knobs, features : chosenOf( copy.features ), fonts : copy.fonts, colours : copy.colours };
+	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, radius : copy.radius, 'radius-alt' : copy['radius-alt'], radii : copy.radii, motion : copy.motion, parts : parts, knobs : copy.knobs, styles : copy.styles, features : chosenOf( copy.features ), fonts : copy.fonts, colours : copy.colours };
 }
 
 /** What the setup chose for the features, out of the features of an answer of design/list: key => { set, knobs } for each that has a variant chosen - and none, an empty list on the wire, where nothing is chosen */
@@ -7912,6 +8106,36 @@ check( '...and one written with none - an empty list on the wire - takes the scr
 	Array.isArray( themeSetup().features ) === true && themeSetup().features.length === 0 && JSON.stringify( clearing.design._edit.features ) === '{}' && clearing.design._themeChanged() === false
 	&& tabChips( clearing ).length === 0 );
 
+// A theme brings the styles of the templates with the rest of its setup: taken over on a load, compared by the chip
+const styTheme = themed();
+const styThemeSetup = themeSetup();
+styThemeSetup.parts.lists = 'second';
+styThemeSetup.styles.lists = { rule : 'dashed' };
+styTheme.byId('design-theme-load-magazine').fire('click');
+styTheme.answer( 200, themeLoad( 'magazine', styThemeSetup, [] ) );
+
+check( 'a theme that is loaded sets the styles of the screen to its own - the template it names and the option it chose - and the screen is that theme: no chip, nothing to go back to',
+	JSON.stringify( styTheme.design._edit.styles.lists ) === JSON.stringify( { rule : 'dashed' } ) && styTheme.design._edit.styles.header !== undefined && Object.keys( styTheme.design._edit.styles ).join() === Object.keys( listing().styles ).join()
+	&& styTheme.design._themeChanged() === false && tabChips( styTheme ).length === 0 );
+
+styTheme.byId('design-theme-edit-magazine').fire('click');
+setSelect( styTheme, 'lists' );
+
+check( '...its option stands in the select of the template in the views, and another option is a change against the theme - the chip says so - which put back is none',
+	shown( styTheme.byId('design-style-lists-rule') ) === 'dashed' && ( choose( styTheme.byId('design-style-lists-rule'), 'dotted' ), styTheme.design._themeChanged() === true && tabChips( styTheme ).length === 1 )
+	&& ( choose( styTheme.byId('design-style-lists-rule'), 'dashed' ), styTheme.design._themeChanged() === false && tabChips( styTheme ).length === 0 ) );
+
+check( '...and a theme that names no styles - an empty list for each part on the wire - puts the screen back to none: nothing of the choice the screen had is kept',
+	( function() {
+		const load = themed();
+		load.design._edit.parts.lists = 'second';
+		load.design._edit.styles.lists = { rule : 'dotted' };
+		load.byId('design-theme-load-magazine').fire('click');
+		load.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
+		return load.design._edit.parts.lists === 'first' && JSON.stringify( load.design._edit.styles.lists ) === '{}' && load.design._themeChanged() === false;
+	} )() );
+
+
 /*	The chips of a row. "Active" is the theme the website runs - the one of the last apply -, and a theme the screen was taken from that the website does not run says
 	so: loaded, not applied. The theme that is both is told once, as the one the website runs	*/
 const chipsOf = function( screen, slug ) {
@@ -8020,7 +8244,7 @@ focused = null;
 check( 'Save theme posts design/theme/save with the slug and the working copy and no name and no description - the theme keeps its own - and switches the buttons off, its own among them, until it is answered',
 	saving.requests.length === 1 && saving.requests[0].endpoint === 'theme/save' && saving.requests[0].payload.slug === 'mein-theme' && saving.requests[0].payload.theme === 'mein-theme'
 	&& saving.requests[0].payload.knobs.section !== undefined && saving.requests[0].payload.size === 1
-	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,parts,radii,radius,radius-alt,size,slug,theme,whitespace,width'
+	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,parts,radii,radius,radius-alt,size,slug,styles,theme,whitespace,width'
 	&& saving.byId('design-theme-save').disabled === true && saving.design._themeBusy === true );
 
 saving.byId('design-theme-save').fire('click');
@@ -8775,7 +8999,7 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width && sent.payload.whitespace === real.whitespace
@@ -8849,8 +9073,8 @@ else {
 		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length > 0 && none.themes[0].shipped === true
 		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
 		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
-		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,features,fonts,colours'
-		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,features,fonts'
+		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,styles,features,fonts,colours'
+		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,styles,features,fonts'
 		&& answered.load.notes.every( function( note ) { return typeof note === 'string' || ( typeof note.error === 'string' && typeof note.code === 'string' && Array.isArray( note.params ) ) } )
 		&& typeof none.running === 'string' && typeof activeList.running === 'string'
 		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'

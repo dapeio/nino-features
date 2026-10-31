@@ -69,6 +69,8 @@ return [
 
 	// Vorlagen: die Wahl eines Sets, eine Auswahl im Block ihres Objekts mit dem einen Wort ihres Labels. Ein Teil trägt sein eigenes Wort in der Notiz einer Vorlage, die es in der Bibliothek nicht gibt. Schrift und Flächen: die Leisten der Seite – Grundgröße, Breite, Weißraum und die beiden Radien – und ihrer Flächen
 	'[[/_admin/design/label/template]]'							=> 'Vorlage',
+	// Die Stile, die eine Vorlage mitbringt: die Auswahl eines Stils hat dies als Erstes, und gewählt ist es die Vorlage, wie sie ist
+	'[[/_admin/design/style/none]]'								=> 'Keiner',
 	'[[/_admin/design/part/header]]'							=> 'Vorlage Header',
 	'[[/_admin/design/part/footer]]'							=> 'Vorlage Footer',
 	'[[/_admin/design/part/section]]'							=> 'Vorlage Sektion',

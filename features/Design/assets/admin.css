@@ -1195,6 +1195,14 @@
 	font-size: .68rem;
 }
 
+/*	The selects of the styles a template brings, under the select of the template and one under the other: the room between them that the rows of the strips have */
+.nino-admin .design-style-select {
+	margin-top: .6rem;
+}
+.nino-admin .design-style-select > small:empty {
+	display: none;
+}
+
 /*	The selects of a ground and of an ink a feature brings, one under the other in its block: the room between them that the rows of the strips have */
 .nino-admin .design-feature-select + .design-feature-select {
 	margin-top: .6rem;

@@ -23,7 +23,8 @@ namespace Nino\Modules\Design {
 	 *										edit, and a pencil that renames a theme of the project in its
 	 *										row - and, reached by Edit on a row and left by Back to list,
 	 *										the setup in six views, over the same preview and bar -
-	 *										Templates, the seven choices of a set; Type, Surfaces, Colours
+	 *										Templates, the seven choices of a set - and under it a select
+	 *										for each style the set brings (see Setup::styles()); Type, Surfaces, Colours
 	 *										and Motion, each a block for every object that has a control
 	 *										on the view - the page, the header, the footer, a section, a
 	 *										card, the buttons, the lists and the tables - with the controls
@@ -240,6 +241,27 @@ namespace Nino\Modules\Design {
 				foreach( array_keys( $catalogue ) as $set )
 					$catalogue[$set]['knobs'] = Setup::knobs( $library, $part, $set );
 
+				/*	The styles each template brings, for the same reason: the select of a style stands under the select of the
+					template, and choosing another template draws the ones of that. Each with its label and its options - the
+					name and the description - in the language of the workbench, and not the path of a file. What a template
+					does not offer and the notes name is told once, however many times it is asked	*/
+				foreach( array_keys( $catalogue ) as $set ) {
+
+					$found = [];
+
+					foreach( Setup::styles( $library, $part, $set, $locale, $found ) as $style => $declared )
+						$catalogue[$set]['styles'][$style] = [
+							'label' 	=> $declared['label'],
+							'options' => array_map( static fn( array $option ): array => [ 'name' => $option['name'], 'description' => $option['description'] ], $declared['options'] ),
+						];
+
+					$catalogue[$set]['styles'] ??= [];
+
+					foreach( $found as $note )
+						if( in_array( $note, $notes, true ) === false )
+							$notes[] = $note;
+				}
+
 				$parts[] = [
 					'part' 				=> $part,
 					'kind' 				=> $kind,
@@ -267,6 +289,8 @@ namespace Nino\Modules\Design {
 				// to. The five words are the steps a choice is named by, and the size and
 				// the width are positions as well
 				'knobs' 	=> $setup['knobs'],
+				// The styles chosen for the templates, per part: style => option, an empty list for a part that chose none. What each template offers is in its entry of the catalogue above
+				'styles' 	=> $setup['styles'],
 				'kinds' 	=> Setup::KNOBS,
 				/*	The features that bring variants of their own, each with the variants it brings - their names, their
 					descriptions, the place of the specimen each is looked at in and the knobs their heads declare - and
@@ -1208,7 +1232,10 @@ namespace Nino\Modules\Design {
 		 *	template that answers to it: one the chosen template does not declare
 		 *	is back where the defaults put it, so a setup does not carry the positions of a
 		 *	template somebody moved away from long ago - normalize() cannot do
-		 *	this, since it holds no library file open.
+		 *	this, since it holds no library file open. A style belongs to the template that
+		 *	declares it in the same way, and normalize() does hold the library open for
+		 *	it: only the styles the chosen template declares, with an option that has a
+		 *	file, are taken, and the rest is dropped and named.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$posted				What the request carried
@@ -1229,7 +1256,7 @@ namespace Nino\Modules\Design {
 				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 
-			foreach( [ 'radii', 'motion', 'parts', 'knobs', 'features', 'fonts', 'colours' ] as $key )
+			foreach( [ 'radii', 'motion', 'parts', 'knobs', 'styles', 'features', 'fonts', 'colours' ] as $key )
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );

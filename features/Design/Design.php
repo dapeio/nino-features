@@ -99,6 +99,10 @@ namespace Nino\Modules {
 		 *	by the bytes it has now, or by none where the feature is not active (activating it
 		 *	then changes what is compiled, and the fingerprint with it).
 		 *
+		 *	The styles chosen for the templates are part of the setup like any other, and an empty choice is left out of the
+		 *	input as that of the features is: a project that chose no style hashes as it did. The file of each option chosen
+		 *	joins the files of the parts, by the bytes it has now, or by none where it is gone.
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalized setup
 		 *	@param		string		$library			The library directory its parts are chosen from
@@ -115,6 +119,12 @@ namespace Nino\Modules {
 				$files[$part]	= [ $set, ( $file === '' || is_file( $file ) === false ) ? '' : (string) hash_file( 'sha256', $file ) ];
 			}
 
+			foreach( array_keys( Design\Setup::PARTS ) as $part )
+				foreach( (array) ( $setup['styles'][$part] ?? [] ) as $style => $option ) {
+					$file = Design\Setup::styleFile( $library, $part, (string) ( $setup['parts'][$part] ?? '' ), $style, $option );
+					$files['style '. $part. ' '. $style] = [ $option, $file === '' ? '' : (string) hash_file( 'sha256', $file ) ];
+				}
+
 			foreach( (array) ( $setup['features'] ?? [] ) as $key => $entry ) {
 				$set 		= is_array( $entry ) === true ? (string) ( $entry['set'] ?? '' ) : '';
 				$file 	= Design\Setup::featureFile( $appData, (string) $key, $set );
@@ -125,6 +135,9 @@ namespace Nino\Modules {
 
 			if( ( $setup['features'] ?? [] ) === [] )
 				unset( $setup['features'] );
+
+			if( array_filter( (array) ( $setup['styles'] ?? [] ) ) === [] )
+				unset( $setup['styles'] );
 
 			$input = [ $setup, $files ];
 

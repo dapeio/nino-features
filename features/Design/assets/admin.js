@@ -29,7 +29,7 @@
  *													the defaults, and in Templates the template that is chosen. A block of Templates has the
  *													choice of the set of its part - the header, the footer, the section, the card, the
  *													buttons, the lists or the tables - with its name, its description and the word of the
- *													one chosen; one of Type the root size and the five font roles under the page, and
+ *													one chosen, and under it a select for each style the template brings - "None" first, then the css files that stand beside the template, each under its name, and the description of the one chosen under it; one of Type the root size and the five font roles under the page, and
  *													under the others the sizes of the titles and a switch for the case of the thing - the
  *													navigation, a title, a subtitle, a button -, which is a knob of two positions;
  *													one of Surfaces the width, the whitespace and the
@@ -483,7 +483,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, features, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, knobs, styles, features, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -503,6 +503,7 @@
 			return {
 				parts 	: parts,
 				knobs 	: knobs,
+				styles 	: Nino.admin.design._stylesOf( data.styles, Object.keys( parts ) ),
 				features : Nino.admin.design._entriesOf( data.features ),
 				size 		: data.size,
 				width 	: data.width,
@@ -516,6 +517,30 @@
 				theme 	: String( data.theme || '' ),
 				css 		: String( data.css || '' ),
 			};
+		},
+
+		/**
+		 *	The styles chosen for the templates out of an answer - design/list's, or the setup of a theme: for each part the style =>
+		 *	option pairs, as a copy of its own, and an entry for every part, an empty one where it chose none: the server answers a
+		 *	part with none as an empty list, and the screen holds the same for it as for the server's own
+		 *
+		 *	@param		{(Object|Array)}	given		part => { style : option }, or an empty list
+		 *	@param		{Array}						parts		The keys of the parts
+		 *
+		 *	@return		{Object}									part => { style : option }
+		 */
+		_stylesOf : function( given, parts ) {
+
+			const styles = {};
+
+			parts.forEach( function( part ) {
+
+				const chosen = given === undefined || given === null || Array.isArray( given ) === true ? undefined : given[part];
+
+				styles[part] = chosen === undefined || chosen === null || Array.isArray( chosen ) === true ? {} : Object.assign( {}, chosen );
+			} );
+
+			return styles;
 		},
 
 		/**
@@ -1446,7 +1471,8 @@
 		 *	The setup of a working copy as a theme keeps it: the keys that choose something, without
 		 *	the theme it names and the css it carries - the screen's side of the compare the chip makes
 		 *	with the file's (see _themeChanged()). The colours are among them where the theme names
-		 *	colours - the theme the feature ships names none and has no say over them. The choices for
+		 *	colours - the theme the feature ships names none and has no say over them. The styles of the templates
+		 *	and the choices for
 		 *	the features are always among them: they are the theme's own whatever its file says, and
 		 *	the server answers them for every theme (see Themes::setup())
 		 *
@@ -1458,7 +1484,7 @@
 		_snapshotOf : function( edit, theme ) {
 
 			const snapshot = { size : edit.size, width : edit.width, whitespace : edit.whitespace, radius : edit.radius, 'radius-alt' : edit['radius-alt'], radii : edit.radii,
-				motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts };
+				motion : edit.motion, parts : edit.parts, knobs : edit.knobs, styles : edit.styles, fonts : edit.fonts };
 
 			if( theme === undefined || theme.colours !== undefined )
 				snapshot.colours = edit.colours;
@@ -1739,7 +1765,7 @@
 				return ( response.missing || [] ).filter( function( entry ) { return entry.slug === family } ).map( function( entry ) { return entry.name } )[0] || family;
 			} );
 
-			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace,
+			design._edit = { parts : setup.parts, knobs : setup.knobs, styles : design._stylesOf( setup.styles, Object.keys( setup.parts ) ), size : setup.size, width : setup.width, whitespace : setup.whitespace,
 				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
 				colours : setup.colours === undefined ? design._edit.colours : setup.colours,
 				features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
@@ -4071,7 +4097,7 @@
 		 *	What a closed block says of its row: the controls that stand elsewhere than a fresh setup has them (design/list
 		 *	hands that setup over as `defaults`), each as its label and the word of its position, joined by a middle dot. Nothing
 		 *	for a row that stands at the defaults - but for a template, which is a choice and no position: the block of a part
-		 *	says the word of the set that is chosen, whichever it is, so that a person sees which one is on
+		 *	says the word of the set that is chosen, whichever it is, so that a person sees which one is on, and after it the name of each option of a style chosen for it
 		 *
 		 *	@param		{Object}	row				{ object, controls }, one of _rows()
 		 *
@@ -4088,7 +4114,7 @@
 				const path = keys[0].split('/');
 
 				if( path[0] === 'parts' )
-					lines.push( design._setName( path[1], design._edit.parts[ path[1] ] ) );
+					lines = lines.concat( [ design._setName( path[1], design._edit.parts[ path[1] ] ) ], views._stylesSaid( path[1] ) );
 				else if( path[0] === 'features' && path[2] === 'set' )
 					lines = lines.concat( views._variantSaid( path[1] ) );
 				else
@@ -4291,8 +4317,11 @@
 					( into || card ).appendChild( node );
 				};
 
-				if( path[0] === 'parts' )
-					return put( views._partField( design._row( path[1] ) ) );
+				// The select of the template and, under it, one for each style the template brings: no control of the table, so no key to stand for
+				if( path[0] === 'parts' ) {
+					put( views._partField( design._row( path[1] ) ) );
+					return views._styleFields( path[1] ).forEach( function( field ) { card.appendChild( field ) } );
+				}
 
 				// A feature that brings variants: the choice of the variant on Templates, a knob of the variant on the tab its head names
 				if( path[0] === 'features' )
@@ -4543,14 +4572,128 @@
 		},
 
 		/**
+		 *	The styles the template chosen for a part brings, as design/list answered them
+		 *
+		 *	@param		{string}	part
+		 *
+		 *	@return		{Object}					style => { label, options : option => { name, description } }; {} where the template brings none
+		 */
+		_stylesOfPart : function( part ) {
+
+			const design = Nino.admin.design;
+			const styles = ( ( design._row( part ).catalogue || {} )[ design._edit.parts[part] ] || {} ).styles;
+
+			return styles === undefined || styles === null || Array.isArray( styles ) === true ? {} : styles;
+		},
+
+		/**
+		 *	The selects of the styles of a template, in the order its head declares them: each headed with the label the head gives
+		 *	the style, "None" first and the files beside the template under the names their heads give them, with the description
+		 *	of the one chosen under it. They stand under the select of the template, in its block (see _fillRow())
+		 *
+		 *	@param		{string}	part
+		 *
+		 *	@return		{Array}						The fields, none where the template brings no style
+		 */
+		_styleFields : function( part ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin.design.views;
+			const styles = views._stylesOfPart( part );
+
+			return Object.keys( styles ).map( function( style ) {
+
+				const meta = styles[style];
+				const options = meta.options || {};
+				const chosen = ( design._edit.styles[part] || {} )[style];
+				const current = options[chosen] === undefined ? '' : chosen;
+
+				const field = views._select(
+					'design-style-'+ part+ '-'+ style, meta.label,
+					[ { value : '', label : Nino.content.getText('/_admin/design/style/none') } ].concat( Object.keys( options ).map( function( option ) {
+						return { value : option, label : options[option].name };
+					} ) ), current, function( value ) {
+						views._setStyle( part, style, value, field );
+					}, current === '' ? '' : options[current].description );
+
+				field.classList.add('design-style-select');
+				field.dataset.style = style;
+
+				return field;
+			} );
+		},
+
+		/**
+		 *	Choose an option of a style of a part: None is the template as it is and leaves no entry, as a feature that is as it is
+		 *	leaves none. The description under the select is written in place, and the frame goes to where the template is looked at
+		 *	(see OBJECT_ANCHORS), as for a change of the template
+		 *
+		 *	@param		{string}		part
+		 *	@param		{string}		style			A style the template declares
+		 *	@param		{string}		option		An option of it, '' for None
+		 *	@param		{Element}		[field]		The select field of the style, whose note is the description of the option
+		 *
+		 *	@return		void
+		 */
+		_setStyle : function( part, style, option, field ) {
+
+			const design = Nino.admin.design;
+			const views = Nino.admin.design.views;
+			const options = ( views._stylesOfPart( part )[style] || {} ).options || {};
+			const description = option === '' || options[option] === undefined ? '' : options[option].description;
+			let note = field ? field.querySelector('small') : null;
+
+			design._edit.styles[part] = design._edit.styles[part] || {};
+
+			if( option === '' )
+				delete design._edit.styles[part][style];
+			else
+				design._edit.styles[part][style] = option;
+
+			// A select on None has no line under it: it is made when there is something to say
+			if( field && note === null && description !== '' ) {
+				note = dc.createElement('small');
+				field.appendChild( note );
+			}
+
+			if( note !== null )
+				note.textContent = description;
+
+			design._target = views._anchorOf( 'parts/'+ part );
+			design._preview();
+		},
+
+		/**
+		 *	What the head of a closed block says of the styles chosen for its template: the name of each option chosen, as the select
+		 *	shows it. A choice the template chosen does not have is none (it cannot be made on this screen, and the server drops it)
+		 *
+		 *	@param		{string}	part
+		 *
+		 *	@return		{Array}						The names, none where no style is chosen
+		 */
+		_stylesSaid : function( part ) {
+
+			const views = Nino.admin.design.views;
+			const styles = views._stylesOfPart( part );
+			const chosen = Nino.admin.design._edit.styles[part] || {};
+
+			return Object.keys( styles ).filter( function( style ) {
+				return ( styles[style].options || {} )[ chosen[style] ] !== undefined;
+			} ).map( function( style ) {
+				return styles[style].options[ chosen[style] ].name;
+			} );
+		},
+
+		/**
 		 *	Choose a template for a part.
 		 *
 		 *	A template brings its own knobs, and the ones the last one had are not
 		 *	this one's: a position the new template does not answer to goes back
 		 *	to the default's position, the way the server holds it anyway - so the
-		 *	screen never shows a setup the stored one could not be. The rows of the
-		 *	knobs stand on several tabs and are drawn when those are opened, with
-		 *	the knobs this template does not answer to greyed out.
+		 *	screen never shows a setup the stored one could not be. The same goes for
+		 *	the styles: they are the old template's, and the new one's start on None.
+		 *	The rows of the knobs stand on several tabs and are drawn when those are
+		 *	opened, with the knobs this template does not answer to greyed out.
 		 *
 		 *	The whole column of controls of the view that is open is drawn anew, as a
 		 *	switch of the view draws it, so that it shows what the model holds - the line
@@ -4577,6 +4720,9 @@
 			const normal = ( ( design._data || {} ).defaults || {} ).knobs || {};
 
 			edit.parts[part] = set;
+
+			// The styles are the old template's: the new one brings its own, and starts on None
+			edit.styles[part] = {};
 
 			Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
 				if( answered.indexOf( knob ) === -1 )

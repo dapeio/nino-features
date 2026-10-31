@@ -34,6 +34,12 @@ namespace Nino\Modules\Design {
 	 *										stands in the panel is LAYOUT's to say, and nothing
 	 *										else's.
 	 *
+	 *										A template brings styles of its own along (see styles()): the
+	 *										css files beside it that a person chooses from, one select for
+	 *										each style the head of the template declares. The choice is part
+	 *										of the setup, kept per part and per style, and is held to the
+	 *										template that is chosen for the part.
+	 *
 	 *										A feature that is active and carries variants of its own
 	 *										(features/<Name>/design/<variant>.css) adds to it: the variant
 	 *										chosen for it, and a position or a value for each knob the head
@@ -72,8 +78,9 @@ namespace Nino\Modules\Design {
 			And so do `radius`, `radius-alt` and `radii`: a file without them stands at
 			the two strengths Nino.css has and every kind of surface on the standard one.
 			And `features`: a file without it has chosen nothing for any feature, which
-			is each feature as it is	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'features', 'fonts', 'colours', 'css', 'compiled' ];
+			is each feature as it is. And `styles`: a file without it has chosen no style
+			of any template, which is each template as it is	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
 			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
@@ -388,6 +395,12 @@ namespace Nino\Modules\Design {
 		// What a set is called, as a file name: letters, digits and the dot, the hyphen and the underscore after the first (file() holds the name against '..' as well)
 		private const string SET_NAME = '/^[A-Za-z0-9][A-Za-z0-9._-]*$/D';
 
+		/*	What a style and an option are called, and so a style file (<style>-<option>.css): a slug each, the pattern a text key's words have. A style
+			starts with a letter: a name of digits alone is an integer key in a php array, and an array that has only such keys is a list - which the wire
+			answers as one, and which the screen takes for none. An option is the slug of the file's name, as it was, and a file name is held to it as a whole	*/
+		private const string STYLE_NAME = '/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/D';
+		private const string OPTION_NAME = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D';
+
 		/*	The root size, as the percentage pair Nino.css wants: below the 768px
 			breakpoint, and from it. Relative, never a length - see
 			--base-size in Nino.css.
@@ -613,6 +626,8 @@ namespace Nino\Modules\Design {
 				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
 				'parts' 	=> $parts,
 				'knobs' 	=> $knobs,
+				// The styles of the templates that are chosen: for each part the style => option pairs, none is the template as it is
+				'styles' 	=> array_fill_keys( array_keys( self::PARTS ), [] ),
 				// What was chosen for the features that bring variants: an entry for each, key => set and knobs - none is the feature as it is
 				'features' => [],
 				'fonts' 	=> Fonts::DEFAULTS,
@@ -821,6 +836,16 @@ namespace Nino\Modules\Design {
 		 *	ladders (see ladders()) - and in a grammar of their own; read by this, they are none of
 		 *	its lines and are named in notes that a caller for a set never looks at.
 		 *
+		 *	A template of the library declares the styles it brings, one line each, and the same line of another language beside it:
+		 *
+		 *	  @style <name> <label>
+		 *	  @style-de <name> <label>
+		 *
+		 *	The name is letters, digits and hyphens and starts with a letter, the label the words the select of the style is headed with. The files of a style
+		 *	stand beside the template and are read by styles(). A line that is none of this - no name, no label, a name twice, a line of
+		 *	another language for a style that is not declared - is dropped and named in `notes`, and in `styleNotes` alone, which is
+		 *	what styles() hands on: the other notes of a set are the ones its @knob lines earn, which are documentation there.
+		 *
 		 *	A variant of a feature also says in which place of the specimen its block is looked at, in one line:
 		 *
 		 *	  @anchor <id>
@@ -837,11 +862,11 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$file					A path
 		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
 		 *
-		 *	@return 	array										name, description ('' for none), anchor ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines) and notes
+		 *	@return 	array										name, description ('' for none), anchor ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines), styles (name => label, in the order of the lines), notes and styleNotes (the ones of the style lines alone)
 		 */
 		public static function head( string $file, string $locale = 'en_US' ): array {
 
-			$read = [ 'name' => '', 'description' => '', 'anchor' => '', 'knobs' => [], 'notes' => [] ];
+			$read = [ 'name' => '', 'description' => '', 'anchor' => '', 'knobs' => [], 'styles' => [], 'notes' => [], 'styleNotes' => [] ];
 
 			// The first comment block only: a @name further down belongs to a
 			// rule somebody documented, not to the file
@@ -864,6 +889,8 @@ namespace Nino\Modules\Design {
 
 			$read['anchor'] = self::anchored( $block[1], $read['notes'] );
 			$read['knobs'] = self::declared( $block[1], $own === true ? $language : '', $read['notes'] );
+			$read['styles'] = self::styled( $block[1], $own === true ? $language : '', $read['styleNotes'] );
+			$read['notes'] = array_merge( $read['notes'], $read['styleNotes'] );
 
 			return $read;
 		}
@@ -903,6 +930,73 @@ namespace Nino\Modules\Design {
 			}
 
 			return $anchor;
+		}
+
+		/**
+		 *	The styles a head declares (see head()): its `@style` lines held to their grammar, each with its label in the language asked
+		 *	for, else in English. The English line is the plain tag and is the one that declares the style; a line of another language
+		 *	only gives it its words
+		 *
+		 *	@param		string		$comment			The text of the opening comment
+		 *	@param		string		$language			The two letters of the language the labels are wanted in, '' for English
+		 *	@param		array 		&$notes				(reference) The lines that were dropped, each named
+		 *
+		 *	@return 	array										name => label
+		 */
+		private static function styled( string $comment, string $language, array &$notes ): array {
+
+			$styles 	= [];
+			$labels 	= [];
+			$dropped 	= static function( string $line, string $why ) use ( &$notes ): void {
+				$notes[] = 'the line "'. self::shown( $line, 60 ). '" is dropped: '. $why;
+			};
+
+			foreach( (array) preg_split( '/\R/', $comment ) as $row ) {
+
+				// The line without the asterisk and the indent it stands behind
+				$line = trim( (string) preg_replace( '/^\s*\*/', '', (string) $row ) );
+
+				if( preg_match( '/^@style(?:-([a-z]{2}))?(?:[ \t]+(.*))?$/', $line, $tag ) !== 1 )
+					continue;
+
+				$of 	= $tag[1] ?? '';
+				$rest = trim( $tag[2] ?? '' );
+
+				if( preg_match( '/^(\S+)[ \t]+(.+)$/', $rest, $found ) !== 1 ) {
+					$dropped( $line, 'it is no @style'. ( $of === '' ? '' : '-'. $of ). ' line - it takes a name and a label' );
+					continue;
+				}
+
+				[ , $name, $label ] = $found;
+
+				$why = match( true ) {
+					preg_match( self::STYLE_NAME, $name ) !== 1 							=> 'a name is letters, digits and hyphens, and starts with a letter',
+					$of === '' && isset( $styles[$name] ) === true 				=> 'the style "'. $name. '" is declared already',
+					$of !== '' && isset( $labels[$of][$name] ) === true 	=> 'the style "'. $name. '" has its @style-'. $of. ' line already',
+					default 																							=> '',
+				};
+
+				if( $why !== '' ) {
+					$dropped( $line, $why );
+					continue;
+				}
+
+				if( $of === '' )
+					$styles[$name] = trim( $label );
+				else
+					$labels[$of][$name] = trim( $label );
+			}
+
+			// A line of another language for a style that is not there
+			foreach( $labels as $of => $named )
+				foreach( array_keys( $named ) as $name )
+					if( isset( $styles[$name] ) === false )
+						$notes[] = 'the label "@style-'. $of. ' '. self::shown( $name ). '" names no style - dropped';
+
+			foreach( $styles as $name => $label )
+				$styles[$name] = $labels[$language][$name] ?? $label;
+
+			return $styles;
 		}
 
 		/**
@@ -1075,6 +1169,141 @@ namespace Nino\Modules\Design {
 				$catalogue[$set] = self::describe( $libraryDir, $part, $set, $locale );
 
 			return $catalogue;
+		}
+
+		/**
+		 *	The styles a template brings: the css files beside it that a person chooses one of, for each style its head declares
+		 *	(`@style <name> <label>`, see head()). A frame's files stand in its directory, next to template.tpl and style.css
+		 *	(library/header/floating/nav-hover-glow.css); a set of one file has a directory named like the file, beside it
+		 *	(library/section/regular/<style>-<option>.css, beside regular.css). A file is named <style>-<option>.css, the style
+		 *	and the option a slug each: the style is the longest name the head declares that the file name starts with, so a style
+		 *	may be called nav-hover and an option soft-glow. The options are listed by the name of their file, in natural order,
+		 *	each under the name and the description their own head gives it (`@name`, `@description` and their twins of another
+		 *	language) and under the slug where it gives none.
+		 *
+		 *	What is work in progress is not offered and is named in $notes, led by the part and the set: a file whose name is no
+		 *	<style>-<option>.css, a file of a style the head does not declare, and a declared style that has no file - which is a
+		 *	select with "None" alone - as well as the lines of the head that were dropped (see head())
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$set					A set name
+		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
+		 *	@param		array 		&$notes				(reference) What was not offered, and why
+		 *
+		 *	@return 	array										style => label, options (option => name, description, file), in the order of the head's lines
+		 */
+		public static function styles( string $libraryDir, string $part, string $set, string $locale = 'en_US', array &$notes = [] ): array {
+
+			$file = self::file( $libraryDir, $part, $set );
+			$dir 	= self::styleDir( $libraryDir, $part, $set );
+
+			if( $file === '' )
+				return [];
+
+			$head 	= self::head( $file, $locale );
+			$led 		= $part. '/'. $set. ': ';
+			$styles = [];
+
+			foreach( $head['styleNotes'] as $note )
+				$notes[] = $led. $note;
+
+			foreach( $head['styles'] as $name => $label )
+				$styles[$name] = [ 'label' => $label, 'options' => [] ];
+
+			foreach( $dir === '' ? [] : ( glob( $dir. '/*.css' ) ?: [] ) as $path ) {
+
+				$base = basename( $path, '.css' );
+
+				// The stylesheet of a frame is the frame's own, and no style
+				if( self::PARTS[$part] === 'frame' && $base === 'style' )
+					continue;
+
+				if( is_file( $path ) === false )
+					continue;
+
+				if( preg_match( self::OPTION_NAME, $base ) !== 1 ) {
+					$notes[] = $led. 'the file "'. self::shown( basename( $path ), 60 ). '" is named for no style and option (style-option.css, letters, digits and hyphens each) - not offered';
+					continue;
+				}
+
+				$style = '';
+
+				foreach( array_keys( $styles ) as $declared )
+					if( str_starts_with( $base, $declared. '-' ) === true && strlen( $declared ) > strlen( $style ) )
+						$style = $declared;
+
+				if( $style === '' ) {
+
+					// The file of a style by itself has no option, and says what it lacks rather than that its style is not declared
+					$notes[] = $led. 'the file "'. self::shown( basename( $path ), 60 ). ( isset( $styles[$base] ) === true
+						? '" names no option - the file of a style is style-option.css - not offered'
+						: '" belongs to no style the head declares with @style - not offered' );
+					continue;
+				}
+
+				// A name that is a slug and starts with the style and a hyphen has a slug after it
+				$option = substr( $base, strlen( $style ) + 1 );
+				$own 		= self::head( $path, $locale );
+
+				$styles[$style]['options'][$option] = [ 'name' => $own['name'] !== '' ? $own['name'] : $option, 'description' => $own['description'], 'file' => $path ];
+			}
+
+			foreach( $styles as $name => $style ) {
+
+				uksort( $styles[$name]['options'], static fn( int|string $a, int|string $b ): int => strnatcmp( (string) $a, (string) $b ) );
+
+				if( $style['options'] === [] )
+					$notes[] = $led. 'the style "'. $name. '" has no file - only "None" is offered';
+			}
+
+			return $styles;
+		}
+
+		/**
+		 *	The directory the files of a template's styles stand in: the template's own for a frame, and for a set of one file the
+		 *	directory named like the file, beside it (see styles())
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$set					A set name
+		 *
+		 *	@return 	string								A path, '' where the set or the directory is not there
+		 */
+		private static function styleDir( string $libraryDir, string $part, string $set ): string {
+
+			if( self::named( $set ) === false || isset( self::PARTS[$part] ) === false )
+				return '';
+
+			$dir = rtrim( $libraryDir, '/' ). '/'. $part. '/'. $set;
+
+			return is_dir( $dir ) === true ? $dir : '';
+		}
+
+		/**
+		 *	The file an option of a style resolves to
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$set					A set name
+		 *	@param		string		$style				A style the head of the set declares
+		 *	@param		string		$option				An option of it
+		 *
+		 *	@return 	string								A path, '' when the choice does not exist
+		 */
+		public static function styleFile( string $libraryDir, string $part, string $set, string $style, string $option ): string {
+
+			// The names are file names, and a name from a stored setup is input: anything but a slug (a style one that starts with a letter) is no style and no option
+			if( preg_match( self::STYLE_NAME, $style ) !== 1 || preg_match( self::OPTION_NAME, $option ) !== 1 )
+				return '';
+
+			if( self::file( $libraryDir, $part, $set ) === '' )
+				return '';
+
+			$dir = self::styleDir( $libraryDir, $part, $set );
+			$path = $dir. '/'. $style. '-'. $option. '.css';
+
+			return $dir !== '' && is_file( $path ) === true ? $path : '';
 		}
 
 		/**
@@ -1400,6 +1629,7 @@ namespace Nino\Modules\Design {
 				foreach( $kinds as $knob => $kind )
 					$setup['knobs'][$part][$knob] = self::position( is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? $setup['knobs'][$part][$knob] ) : $setup['knobs'][$part][$knob], $kind );
 
+			$setup['styles'] = self::picked( $libraryDir, $setup['parts'], is_array( $raw['styles'] ?? null ) === true ? $raw['styles'] : [], $notes );
 			$setup['features'] = self::chosen( $appData, is_array( $raw['features'] ?? null ) === true ? $raw['features'] : [], $notes );
 
 			/*	The five font roles. A family has to be one the role's select offers -
@@ -1446,6 +1676,57 @@ namespace Nino\Modules\Design {
 			$setup['compiled'] = is_array( $raw['compiled'] ?? null ) ? $raw['compiled'] : [];
 
 			return $setup;
+		}
+
+		/**
+		 *	What a setup chooses for the styles of the templates, held against the template that is chosen for each part (see styles()):
+		 *	a pair of a style and an option stays where the template declares the style and has a file for the option, and is dropped
+		 *	and named where it does not - so a choice never outlives the template it was made for, and a part has an entry whether it
+		 *	chose something or not. An option that is '' is the template as it is and no choice. What is work in progress in the files
+		 *	of the chosen templates is named as well (see styles())
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		array 		$parts				part => the set chosen for it, normalised
+		 *	@param		array 		$given				What the file held, or the screen posted, under `styles`
+		 *	@param		array 		&$notes				(reference) What had to be dropped
+		 *
+		 *	@return 	array										part => style => option, a part with none chosen an empty list
+		 */
+		private static function picked( string $libraryDir, array $parts, array $given, array &$notes ): array {
+
+			foreach( array_keys( $given ) as $part )
+				if( isset( self::PARTS[$part] ) === false )
+					$notes[] = 'there is no part "'. self::shown( $part ). '" with styles - dropped';
+
+			$picked = [];
+
+			foreach( array_keys( self::PARTS ) as $part ) {
+
+				$set 			= (string) ( $parts[$part] ?? '' );
+				$declared = self::styles( $libraryDir, $part, $set, 'en_US', $notes );
+				$values 	= is_array( $given[$part] ?? null ) === true ? $given[$part] : [];
+				$chosen 	= [];
+
+				if( array_key_exists( $part, $given ) === true && is_array( $given[$part] ) === false )
+					$notes[] = 'the styles of "'. $part. '" are no list of styles with an option each - dropped';
+
+				foreach( $values as $style => $option ) {
+
+					if( isset( $declared[$style] ) === false )
+						$notes[] = 'the template "'. $set. '" of "'. $part. '" declares no style "'. self::shown( $style ). '" - dropped';
+					else if( is_string( $option ) === false )
+						$notes[] = 'the style "'. $style. '" of "'. $part. '" is not given an option - dropped';
+					else if( $option !== '' && isset( $declared[$style]['options'][$option] ) === false )
+						$notes[] = 'the style "'. $style. '" of the template "'. $set. '" has no option "'. self::shown( $option ). '" - dropped';
+					else if( $option !== '' )
+						$chosen[$style] = $option;
+				}
+
+				// In the order the head declares them: the same choice is the same bytes
+				$picked[$part] = array_intersect_key( array_replace( array_fill_keys( array_keys( $declared ), '' ), $chosen ), $chosen );
+			}
+
+			return $picked;
 		}
 
 		/**

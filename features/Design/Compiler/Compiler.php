@@ -33,7 +33,10 @@ namespace Nino\Modules\Design {
 	 *										cannot compose a variable name, which is why that block
 	 *										exists at all. A frame declares its ladders in its
 	 *										style.css as a set does in its file, and is compiled and
-	 *										selected the same way.
+	 *										selected the same way. A style a template brings along (see
+	 *										Setup::styles()) is the css file of the option chosen, written
+	 *										as it stands behind the css of the template, in the same
+	 *										section, under a line that names the style and the option.
 	 *
 	 *										write() refuses a file it did not write. The delivered
 	 *										theme.css is explicitly editable by hand, so a project may
@@ -70,6 +73,10 @@ namespace Nino\Modules\Design {
 			install unit delivers are the ones this writes over - and refuses to,
 			by the same stamp, when they are not ours */
 		public const string FRAME_TARGET = '/templates/frame-%s.tpl';
+
+		/*	The line a chosen style's css stands under, behind the css of its template: the style and the option. One line, the form the
+			other marks of the sheet have (a comment on a line of its own)	*/
+		public const string STYLE = '/* -- style %s: %s -- */';
 
 		/*	The two lines base.css falls into its two halves by: the tokens follow
 			the first, the roles the second. What stands above the first - the
@@ -114,6 +121,13 @@ namespace Nino\Modules\Design {
 		 *	reads the rung the theme gave. It is written byte for byte, not rewritten,
 		 *	prefixed or minified.
 		 *
+		 *	The styles chosen for a template are written behind its css, in its section: each file as it
+		 *	stands - its head comment too, as the head of the template's own file stays - under the line
+		 *	STYLE makes of the style and the option, in the order the template's head declares the
+		 *	styles. The title of the section names them after the knobs ("header: floating (nav default,
+		 *	nav-hover soft-glow)"). A style is no ladder, so the block of the knob positions has no
+		 *	line for it.
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data - the families a project installed are read off its disk
 		 *	@param		array 		$setup				A normalised setup (see Setup::normalize())
 		 *	@param		string		$libraryDir		The feature's library
@@ -127,6 +141,7 @@ namespace Nino\Modules\Design {
 			$parts 			= [];
 			$selection 	= [];
 			$answered 	= [];
+			$styled 		= [];
 
 			// 1. and 4. the tokens and the roles they are assigned to, which
 			// base.css holds as its two halves. The feature's own copy:
@@ -214,6 +229,22 @@ namespace Nino\Modules\Design {
 
 				foreach( $knobs as $knob )
 					$where[] = $knob. ' '. Setup::step( $setup, $part, $knob );
+
+				/*	The css of each style chosen, behind the css of the set and in its section. The choice was held to the
+					files of the set when the setup was normalised; a file that is gone since is told, and left out	*/
+				foreach( (array) ( $setup['styles'][$part] ?? [] ) as $style => $option ) {
+
+					$extra = Setup::styleFile( $libraryDir, $part, $set, $style, $option );
+
+					if( $extra === '' ) {
+						$notes[] = 'no stylesheet for the style "'. $style. '" option "'. $option. '" of "'. $part. '" set "'. $set. '"';
+						continue;
+					}
+
+					$css 		.= "\n". sprintf( self::STYLE, $style, $option ). "\n". self::_read( $extra );
+					$where[] = $style. ' '. $option;
+					$styled[$part][] = $style. ' '. $option;
+				}
 
 				$parts[] = sprintf( self::SECTION, $number++, $part. ': '. $set
 					. ( $where === [] ? '' : ' ('. implode( ', ', $where ). ')' ) ). "\n". $css;
@@ -355,7 +386,7 @@ namespace Nino\Modules\Design {
 
 			$body = implode( "\n\n", $parts ). "\n";
 
-			return self::_header( $appData, $setup, $body, $answered, $featured ). $body;
+			return self::_header( $appData, $setup, $body, $answered, $featured, $styled ). $body;
 		}
 
 		/**
@@ -625,10 +656,11 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$body					Everything below the header
 		 *	@param		array 		$answered			The knobs each chosen set answers to, by part
 		 *	@param		array 		$featured			The variants the features were given, by key: set, and the knobs that stand off the head's default
+		 *	@param		array 		$styled				The styles written behind each chosen part, by part: "<style> <option>" each
 		 *
 		 *	@return 	string
 		 */
-		private static function _header( array &$appData, array $setup, string $body, array $answered, array $featured ): string {
+		private static function _header( array &$appData, array $setup, string $body, array $answered, array $featured, array $styled = [] ): string {
 
 			$lines = [];
 
@@ -642,6 +674,9 @@ namespace Nino\Modules\Design {
 				foreach( $answered[$part] ?? [] as $knob )
 					if( Setup::step( $setup, $part, $knob ) !== 'default' )
 						$moved[] = $knob. ' '. Setup::step( $setup, $part, $knob );
+
+				// The styles follow the knobs of their part
+				$moved = array_merge( $moved, $styled[$part] ?? [] );
 
 				$lines[] = ' *   '. str_pad( $part, 11 ). ( $set !== '' ? $set : '-' )
 					. ( $moved === [] ? '' : '  ('. implode( ', ', $moved ). ')' );
