@@ -316,8 +316,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The lines in another language a file carries, as they are kept when it is
-		 *	copied in: name-<lang> and description-<lang>, the language two letters of
-		 *	the alphabet, the text a string
+		 *	copied in or saved over: name-<lang> and description-<lang>, the language two
+		 *	letters of the alphabet, the text a string
 		 *
 		 *	@param		array 		$raw					The array of a theme's file
 		 *
@@ -370,7 +370,7 @@ namespace Nino\Modules\Design {
 		 *	the setup's like the rest, which a normalised setup always has. The
 		 *	format, the theme, the css and the record of what was compiled are not a theme's
 		 *	setup: the css stands beside it in the file, and the other three are the
-		 *	project's. What a created, saved or duplicated theme keeps, and what the chip
+		 *	project's. What a saved or duplicated theme keeps, and what the chip
 		 *	"changed" compares
 		 *
 		 *	@param		array 		$setup				A normalised setup
@@ -451,6 +451,34 @@ namespace Nino\Modules\Design {
 				return false;
 
 			return \Nino\Filesystem::putFileContent( $appData, self::DIR. '/'. $slug. '.php', self::_shape( $theme ) );
+		}
+
+		/**
+		 *	Change a theme of the project in one step: its file is read and written back under one lock, so that
+		 *	two requests that change it - a save and a rename - cannot each write over what the other read. The
+		 *	callback gets the array of the file as it is under the lock and answers the record to write (see
+		 *	record(), which carries what the change keeps); a file that is not a theme of this shape, or no
+		 *	file, is none to change and nothing is written. As with write(), whether a slug may be written is
+		 *	for the action to decide
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$slug
+		 *	@param		callable	$change				function( array $raw ): array - the file's array in, the record out
+		 *
+		 *	@return 	bool										Whether the record was written
+		 */
+		public static function change( array &$appData, string $slug, callable $change ): bool {
+
+			if( preg_match( self::SLUG, $slug ) !== 1 )
+				return false;
+
+			return \Nino\Filesystem::mutate( $appData, self::DIR. '/'. $slug. '.php', static function( mixed $state ) use ( $change ): ?array {
+
+				if( is_array( $state ) === false || ( $state['format'] ?? null ) !== self::FORMAT || is_string( $state['name'] ?? null ) === false )
+					return null;
+
+				return self::_shape( $change( $state ) );
+			}, null );
 		}
 
 		/**

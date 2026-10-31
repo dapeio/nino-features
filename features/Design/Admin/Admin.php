@@ -12,23 +12,25 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: a pane of four tabs - Themes, Design,
-	 *										Schriftarten and, last, the Settings tab the registry attaches
-	 *										- over one setup, which has one preview and one bar.
+	 *	Design\Admin			The "Design" panel: a pane of three tabs - Themes, Typefaces
+	 *										and, last, the Settings tab the registry attaches - over
+	 *										one setup, which has one preview and one bar.
 	 *										The panel's own screen is the one the strip names Themes
-	 *										(see tab()): the library of the themes, in two screens - the
-	 *										list of themes, and the loaded theme with the row that makes
-	 *										another - where the whole setup is kept under a name (see
-	 *										Themes). The tab Design (see Setup\Tab) holds the setup in six
-	 *										views, over the same preview and bar - Templates, the seven
-	 *										choices of a set; Type, Surfaces, Colours and Motion, each a
-	 *										block for every object that has a control on the view -
-	 *										the page, the header, the footer, a section, a card, the
-	 *										buttons, the lists and the tables - with the controls of that
-	 *										object: on Colours, the two colours, the five knobs and the
-	 *										mode the palette is solved from, which are the page's, and the
-	 *										dimming of a section, the tone of the shadow of a card and the
-	 *										stripes of a table, and on Motion the animation of the page,
+	 *										(see tab()), and it is the one screen of the setup, in two
+	 *										modes: the library of the themes, where the whole setup is
+	 *										kept under a name (see Themes) - one row for each theme, with
+	 *										what can be done with it: load, duplicate, export, delete and
+	 *										edit, and a pencil that renames a theme of the project in its
+	 *										row - and, reached by Edit on a row and left by Back to list,
+	 *										the setup in six views, over the same preview and bar -
+	 *										Templates, the seven choices of a set; Type, Surfaces, Colours
+	 *										and Motion, each a block for every object that has a control
+	 *										on the view - the page, the header, the footer, a section, a
+	 *										card, the buttons, the lists and the tables - with the controls
+	 *										of that object: on Colours, the two colours, the five knobs and
+	 *										the mode the palette is solved from, which are the page's, and
+	 *										the dimming of a section, the tone of the shadow of a card and
+	 *										the stripes of a table, and on Motion the animation of the page,
 	 *										the hover of its pictures and what a card and a button do
 	 *										under the pointer - and CSS, a view with no objects: the css
 	 *										of the theme in a field of its own, compiled with the rest
@@ -42,9 +44,9 @@ namespace Nino\Modules\Design {
 	 *										the roles list what is installed. Installing and removing
 	 *										happen when they are pressed - they are not a draft.
 	 *
-	 *										The two tabs bring no action of their own: every design/* action
-	 *										stays on this panel, whichever tab asks for it, and the tabs
-	 *										share its permission.
+	 *										The tab brings no action of its own: every design/* action
+	 *										stays on this panel, whichever tab asks for it, and the tab
+	 *										shares its permission.
 	 *
 	 *										A theme is a draft too, until it is saved: design/theme/load
 	 *										answers what the screen takes over and writes nothing, and
@@ -132,8 +134,8 @@ namespace Nino\Modules\Design {
 				'design/webfonts/install' => [ self::class, 'apiWebfontsInstall' ],
 				'design/webfonts/remove' 	=> [ self::class, 'apiWebfontsRemove' ],
 				'design/theme/load' 			=> [ self::class, 'apiThemeLoad' ],
-				'design/theme/create' 		=> [ self::class, 'apiThemeCreate' ],
 				'design/theme/save' 			=> [ self::class, 'apiThemeSave' ],
+				'design/theme/rename' 		=> [ self::class, 'apiThemeRename' ],
 				'design/theme/duplicate' 	=> [ self::class, 'apiThemeDuplicate' ],
 				'design/theme/delete' 		=> [ self::class, 'apiThemeDelete' ],
 				'design/theme/export' 		=> [ self::class, 'apiThemeExport' ],
@@ -148,18 +150,18 @@ namespace Nino\Modules\Design {
 			return [ 'design', '/_admin/nav/design', 10 ];
 		}
 
-		/*	What the strip on top of the pane calls the panel's own screen: the library of the themes, which is
-			Themes where the rail says Design. The kernel draws the panel's own screen first, whatever the
-			weights of the tabs are (see \Nino\Admin\Panels::collect()), so the pane opens on it */
+		/*	What the strip on top of the pane calls the panel's own screen: the library of the themes - and the setup
+			behind its Edit - which is Themes where the rail says Design. The kernel draws the panel's own screen
+			first, whatever the weights of the tabs are (see \Nino\Admin\Panels::collect()), so the pane opens on it */
 		public static function tab(): string {
 			return '/_admin/nav/themes';
 		}
 
-		/*	The two tabs of the pane, in the order of their weights: the setup in six views, and the loader of the typefaces.
-			The Settings tab the registry attaches comes after them. Each is a panel of the kernel's own kind, with its
-			uri, its words, its script and its mounts - and no actions: they are this panel's */
+		/*	The one tab the panel brings: the loader of the typefaces. The Settings tab the registry attaches comes after it.
+			It is a panel of the kernel's own kind, with its uri, its words, its script and its mount - and no actions:
+			they are this panel's. The themes and the setup in six views are the panel's own screen, not a tab */
 		public static function tabs(): array {
-			return [ Setup\Tab::class, Webfonts\Tab::class ];
+			return [ Webfonts\Tab::class ];
 		}
 
 		public static function icon(): string {
@@ -188,8 +190,8 @@ namespace Nino\Modules\Design {
 				'design/restore'=> 'Restore previous Design version',
 				'design/webfonts/install' => 'Install webfont '. self::_slug( $data ),
 				'design/webfonts/remove' 	=> 'Remove webfont '. self::_slug( $data ),
-				'design/theme/create' 		=> 'Create Design theme '. self::_made( $action, $data ),
 				'design/theme/save' 			=> 'Save Design theme '. self::_slug( $data, Themes::SLUG ),
+				'design/theme/rename' 		=> 'Rename Design theme '. self::_slug( $data, Themes::SLUG ),
 				'design/theme/duplicate' 	=> 'Duplicate Design theme '. self::_slug( $data, Themes::SLUG ). ' as '. self::_made( $action, $data ),
 				'design/theme/delete' 		=> 'Delete Design theme '. self::_slug( $data, Themes::SLUG ),
 				'design/theme/import' 		=> 'Import Design theme '. self::_made( $action, $data ),
@@ -288,7 +290,7 @@ namespace Nino\Modules\Design {
 				'radius-alt' => (int) ( $setup['radius-alt'] ?? 1 ),
 				'radii' 	=> (array) ( $setup['radii'] ?? [] ),
 				'radiusWords' => Setup::RADIUS_WORDS,
-				/*	The screen of the themes: the slug of the theme the stored setup was taken from and
+				/*	The list of the themes: the slug of the theme the stored setup was taken from and
 					its own css, the list of the themes there are - the shipped ones first -
 					and the active one as its file holds it, normalised against the library
 					and cut to the keys that choose something - no colours where the
@@ -852,61 +854,13 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	Keep the screen as a new theme of the project, under the name it was given
-		 *	- the slug of its file is made of the name here, and is refused where it is
-		 *	a theme already, shipped or the project's
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		&$request			(reference) Current server request
-		 *
-		 *	@return 	void
-		 */
-		public static function apiThemeCreate( array &$appData, array &$request ): void {
-
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
-				return;
-
-			$library 	= \Nino\Modules\Design::libraryDir();
-			$posted 	= \Nino\Admin\Admin::postData();
-			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
-			$name 		= Themes::name( \Nino\Admin\Admin::postString( $posted, 'name' ) );
-			$slug 		= Themes::slug( $name );
-
-			if( $slug === '' ) {
-				\Nino\Http::fail( $request, 400, 'the name has no letter or digit in it', 'design_name' );
-				return;
-			}
-
-			if( Themes::exists( $appData, $library, $slug ) === true ) {
-				\Nino\Http::fail( $request, 409, 'a theme with the slug "'. $slug. '" exists already', 'design_taken', [ $slug ] );
-				return;
-			}
-
-			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
-				return;
-
-			$notes 	= [];
-			$setup 	= self::_selection( $appData, $posted, $library, $notes );
-			$theme 	= Themes::record( $name, \Nino\Admin\Admin::postString( $posted, 'description' ), $setup, $setup['css'] );
-
-			if( Themes::write( $appData, $slug, $theme ) === false ) {
-				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $slug. '.php' );
-				return;
-			}
-
-			self::$_made['design/theme/create'] = $slug;
-
-			\Nino\Http::ok( $request, [
-				'slug' 		=> $slug,
-				'themes' 	=> Themes::all( $appData, $library, $locale ),
-				'active' 	=> self::_active( $appData, $library, $locale, $slug ),
-			] );
-		}
-
-		/**
-		 *	Put the screen into a theme of the project, with the name and the
-		 *	description it was given. The slug stays what it is: a rename changes the
-		 *	name and never the file, which the setup and the exports refer to
+		 *	Put the screen into a theme of the project: its setup and its css, from the
+		 *	selection a request carries. Its name and its description stay what the file has
+		 *	them - the lines in other languages among them, which this record keeps as they
+		 *	are, so that a save never turns a name-de into a plain name: a rename is the
+		 *	other action (see apiThemeRename()). The file is read and written back under
+		 *	one lock (see Themes::change()). The slug stays what it is, which the setup
+		 *	and the exports refer to
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -922,7 +876,58 @@ namespace Nino\Modules\Design {
 			$posted 	= \Nino\Admin\Admin::postData();
 			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
 			$slug 		= self::_slug( $posted, Themes::SLUG );
+			if( Themes::read( $appData, $library, $slug ) === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
+				return;
+			}
 
+			if( Themes::isShipped( $library, $slug ) === true ) {
+				\Nino\Http::fail( $request, 409, 'a shipped theme cannot be changed or deleted - duplicate it', 'design_shipped' );
+				return;
+			}
+
+			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
+				return;
+
+			$notes 	= [];
+			$setup 	= self::_selection( $appData, $posted, $library, $notes );
+
+			// Read again under the lock the write takes: what the file has by then is what is kept of it
+			$changed = Themes::change( $appData, $slug, static fn( array $file ): array => Themes::record(
+				is_string( $file['name'] ?? null ) === true ? $file['name'] : '', is_string( $file['description'] ?? null ) === true ? $file['description'] : '', $setup, $setup['css'], Themes::lines( $file ) ) );
+
+			if( $changed === false ) {
+				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $slug. '.php' );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [
+				'themes' 	=> Themes::all( $appData, $library, $locale ),
+				'active' 	=> self::_active( $appData, $library, $locale, $slug ),
+			] );
+		}
+
+		/**
+		 *	Give a theme of the project another name and description - and nothing else: its
+		 *	setup and its css are the file's own, read and written back as they are under one lock. The lines
+		 *	in other languages go (a name is a name, the one that was typed), and the slug
+		 *	stays what it is, which the setup and the exports refer to. The answer is the
+		 *	list and the theme as design/list would give it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeRename( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$posted 	= \Nino\Admin\Admin::postData();
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
+			$slug 		= self::_slug( $posted, Themes::SLUG );
 			if( Themes::read( $appData, $library, $slug ) === null ) {
 				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
 				return;
@@ -935,19 +940,17 @@ namespace Nino\Modules\Design {
 
 			$name = Themes::name( \Nino\Admin\Admin::postString( $posted, 'name' ) );
 
-			if( $name === '' ) {
-				\Nino\Http::fail( $request, 400, 'the name is empty', 'design_name' );
+			if( Themes::slug( $name ) === '' ) {
+				\Nino\Http::fail( $request, 400, 'the name has no letter or digit in it', 'design_name' );
 				return;
 			}
 
-			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
-				return;
+			$description = Themes::description( \Nino\Admin\Admin::postString( $posted, 'description' ) );
 
-			$notes 	= [];
-			$setup 	= self::_selection( $appData, $posted, $library, $notes );
-			$theme 	= Themes::record( $name, \Nino\Admin\Admin::postString( $posted, 'description' ), $setup, $setup['css'] );
+			// Read again under the lock the write takes: its setup and its css are the file's as they are by then
+			$changed = Themes::change( $appData, $slug, static fn( array $file ): array => Themes::record( $name, $description, Themes::setup( $file ), Themes::css( $file ) ) );
 
-			if( Themes::write( $appData, $slug, $theme ) === false ) {
+			if( $changed === false ) {
 				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $slug. '.php' );
 				return;
 			}
@@ -1552,7 +1555,7 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The slug a theme action made, for its line of the log: the one it wrote down
 		 *	when it ran, or - where the line is asked for on its own - what the posted data
-		 *	alone says: the slug of the name that was posted, or of the file's
+		 *	alone says: the slug of the name of the file an import was given
 		 *
 		 *	@param		string		$action				A theme action that makes a theme
 		 *	@param		array 		$data					What the request posted
@@ -1564,9 +1567,9 @@ namespace Nino\Modules\Design {
 			if( isset( self::$_made[$action] ) === true )
 				return self::$_made[$action];
 
-			$file = $action === 'design/theme/import' ? Themes::fromJson( \Nino\Admin\Admin::postString( $data, 'json' ) ) : $data;
+			$file = $action === 'design/theme/import' ? Themes::fromJson( \Nino\Admin\Admin::postString( $data, 'json' ) ) : null;
 
-			return is_array( $file ) === true && $action !== 'design/theme/duplicate' ? Themes::slug( Themes::name( \Nino\Admin\Admin::postString( $file, 'name' ) ) ) : '';
+			return is_array( $file ) === true ? Themes::slug( Themes::name( \Nino\Admin\Admin::postString( $file, 'name' ) ) ) : '';
 		}
 
 		/**

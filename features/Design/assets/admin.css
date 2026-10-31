@@ -9,11 +9,11 @@
  *													per colour with the icon before its name, the table of the
  *													five font roles, the two cards of the typeface loader - side
  *													by side where the tab has the room, with the line over them
- *													that says what an install did -, the cards of the screens
- *													of the themes (the list of the themes, the loaded one with
- *													the row that makes another), the field of the css, the
- *													strip of the screens, and the two
- *													columns the screens with a preview are - the controls on one side
+ *													that says what an install did -, the card of the list
+ *													of the themes (the rows of the list, with the pencil and the
+ *													fields that rename a theme in its row), the field of the css,
+ *													the bar of the views with Back to list, and the two
+ *													columns the screen with a preview is - the controls on one side
  *													(a third of the width, 24rem at the least), a sticky
  *													preview pane on the other (two thirds) - a head of one
  *													row with the heading and the bar of the frame's controls,
@@ -45,33 +45,40 @@
 
 @layer nino.tool {
 
-/*	The six views of the tab Design. The strip stands at the top of the tab's pane,
-	under the strip the shell draws on top of the pane (see Nino.adminUi.panelHead());
-	this is the column it opens where there is no head (see _head() in admin.js). A
-	margin below rather than a border: the card under it already draws one, and two
-	lines a row apart read as a box nobody meant to draw. Six views side by side are
-	wider than a phone: the strip scrolls in its own box, and the page does not scroll
-	with it */
+/*	The bar of the views of the setup: Back to list, and the strip of the six views after it. It stands at the top
+	of the pane of the tab, under the strip the shell draws on top of the pane (see Nino.adminUi.panelHead());
+	this is the column it opens where there is no head (see _head() in admin.js). A margin below rather than a
+	border: the card under it already draws one, and two lines a row apart read as a box nobody meant to draw.
+	Back to list and six views side by side are wider than a phone: the bar scrolls in its own box, and the page
+	does not scroll with it. The way back is a button, not a tab: quiet, with an arrow before its words and a
+	hairline between it and the views, which are a strip of their own with the rule of the bar under them */
 .nino-admin .design-tabs {
+	align-items: flex-end;
 	margin: 0 0 1rem;
 	overflow-x: auto;
 	scrollbar-width: none;
 }
-
-/*	The screens of the themes: the same strip as the views. It stands in the
-	column itself, over the cards of the screen that is open, and has the room of a
-	card's gap under it. Two short words are one line of the column - with a
-	little less air round each than the views have, so that the German ones are
-	too at the width of a phone; where they are not, the strip scrolls in its own
-	box like the views do, and the card does not scroll with it */
-.nino-admin .design-groups {
-	margin: 0 0 .75rem;
-	overflow-x: auto;
-	scrollbar-width: none;
+.nino-admin .design-tabs > .design-views {
+	display: flex;
+	flex: 0 0 auto;
+	gap: .25rem;
+	margin: 0;
+	border-bottom: 0;
 }
-.nino-admin .design-groups .nino-admin-tab {
-	padding-left: 1rem;
+.nino-admin .design-tabs > .design-back {
+	margin-right: .5rem;
+	padding-left: .9rem;
 	padding-right: 1rem;
+	border-right: 1px solid var(--editor-separator);
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+}
+.nino-admin .design-tabs > .design-back::before {
+	content: "\2190";
+	margin-right: .4rem;
+}
+.nino-admin .design-tabs > .design-back:hover {
+	color: var(--editor-text);
 }
 
 /*	The chip on the button of the panel's own screen in the strip on top of the pane, which says Themes: the
@@ -601,20 +608,18 @@
 
 /* ---- the themes ----
 
-   The panel's own screen, which the strip on top of the pane calls Themes: two screens. The
-   first has a card with a list in the manner of the loader's - a row is the name, bold, with
-   its chips behind it, over the description, small and muted, and at its far end the buttons
-   that can be pressed on it - and under the list the field that takes a theme in. The chips
-   are the workbench's own (.nino-admin-badge), whose colour the state it is given decides.
-   The second has two cards: the loaded theme, whose head says its name and, while the screen
-   differs from it, the chip, and under it its two fields and its buttons - and the row that
-   makes a theme out of the screen. The css of a theme is no screen of them but the view CSS
-   of the tab Design: the field of the css, in the face of the code editors of the
-   workbench, which stands with the rest of the theme's rules below. The
-   words of a row have 16rem to start from and the buttons are as wide as they are: where
-   the card has room for both they stand at the far end, and where it has not - in the third
-   of the screen that holds the column beside the preview, for every row alike - they stand
-   under the words. From 768px down a row is a column in any case */
+   The panel's own screen, which the strip on top of the pane calls Themes, in its first mode: one
+   card with a list in the manner of the loader's - a row is the name, bold, with its chips behind
+   it and the pencil that renames a theme of the project, over the description, small and muted, and
+   at its far end the buttons that can be pressed on it - and under the list the field that takes a
+   theme in. The chips are the workbench's own (.nino-admin-badge), whose colour the state it is
+   given decides. The css of a theme is no part of the list but the view CSS of the setup: the field
+   of the css, in the face of the code editors of the workbench, which stands with the rest of the
+   theme's rules below. The words of a row have 16rem to start from and the buttons are as wide as
+   they are: where the card has room for both they stand at the far end, and where it has not - in
+   the third of the screen that holds the column beside the preview, for every row alike - they
+   stand under the words. Five buttons wrap as three did. From 768px down a row is a column in any
+   case */
 .nino-admin .design-theme-list {
 	margin: 0 0 .35rem;
 	padding: 0;
@@ -655,11 +660,13 @@
 }
 .nino-admin .design-theme-buttons {
 	display: flex;
-	flex: none;
+	flex: 0 1 auto;
 	flex-wrap: wrap;
 	gap: .35rem;
+	min-width: 0;
+	max-width: 100%;
 }
-.nino-admin :is(.design-theme-buttons, .design-theme-actions, .design-theme-new) > button {
+.nino-admin .design-theme-buttons > button {
 	flex: none;
 	min-height: 0;
 	padding: .3rem .7rem;
@@ -677,21 +684,50 @@
 		flex: none;
 	}
 }
-/*	A name, a button: on one line, the button at the foot of the field it belongs to, in a card
-	of its own under the loaded theme. The field of the workbench has a margin below, which is
-	a gap between two fields and not wanted here */
-.nino-admin .design-theme-new {
-	display: flex;
-	align-items: flex-end;
-	gap: .5rem;
+/*	The pencil after the chips of a theme of the project: an icon alone, as quiet as the row it stands in -
+	the secondary colour of the workbench, the ink where the pointer is or the keyboard is - on a hit area of
+	the same size the buttons of the viewport switch have. Its name is its title and its label (see _themeRow()
+	in admin.js) */
+.nino-admin .design-theme-pencil {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 1.6rem;
+	min-width: 1.6rem;
+	height: 1.6rem;
+	min-height: 1.6rem;
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--editor-text-secondary);
 }
-.nino-admin .design-theme-new > .nino-admin-field {
-	flex: 1 1 auto;
-	min-width: 0;
-	margin: 0;
+.nino-admin .design-theme-pencil:hover {
+	background: none;
+	color: var(--editor-text);
 }
-.nino-admin .design-theme-new > button {
-	min-height: 2.35rem;
+.nino-admin .design-theme-pencil .design-icon {
+	width: .9rem;
+	height: .9rem;
+}
+@media (pointer: coarse) {
+	.nino-admin .design-theme-pencil {
+		width: 2.75rem;
+		min-width: 2.75rem;
+		height: 2.75rem;
+		min-height: 2.75rem;
+	}
+}
+/*	The row of the theme that is renamed: its name and its description are two fields, one under the other, the
+	width of the words' room, and Save and Cancel are under them wherever the card is - the buttons of the row
+	do not stand beside two fields. The field of the workbench has a margin below, which is a gap between two
+	fields and is wanted between these two, not under the last */
+.nino-admin .design-theme-row--renaming .design-theme-text {
+	flex: 1 0 100%;
+}
+.nino-admin .design-theme-row--renaming .design-theme-text > .nino-admin-field:last-child {
+	margin-bottom: 0;
 }
 .nino-admin .design-theme-import {
 	margin: 0;
@@ -708,20 +744,6 @@
 	border-color: transparent;
 	background: var(--editor-green);
 	color: var(--nino-admin-active-text);
-}
-/*	The head of the active theme: its title, the name of the theme and the chip, on one line
-	that wraps rather than runs off the card */
-.nino-admin #design-theme-current-head > strong {
-	flex-wrap: wrap;
-}
-.nino-admin .design-theme-current-name {
-	font-weight: 400;
-}
-.nino-admin .design-theme-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: .5rem;
-	margin-top: .35rem;
 }
 /*	The field of the css: the width of the card (the workbench gives a textarea that), a height of
 	at most 36rem - about thirty lines of the type it is set in, where it was fourteen rows - which
@@ -838,9 +860,13 @@
 	line of fixed width - they would run off its edge. It takes a row above them
 	instead, the way the workbench's bars give the mark of unsaved input one. The
 	row is its own while Reset is hidden; while Reset is shown the two share it,
-	at its start, Reset taking the room that is left over. The bar is then the row
-	of the line, the row of the quiet buttons, the row of the mark and the row of
-	Save and Apply - never a fifth */
+	at its start, Reset taking the room that is left over. Save theme, which
+	stands in the bar while the views are open and a theme of the project is
+	loaded, is of the same kind as the way back to the previous version and takes
+	the quiet row with Reset: it is a longer word than Save draft and Apply
+	allow beside it. The bar is then the row of the line, the row of the quiet
+	buttons - the previous version, Save theme, Reset -, the row of the mark and
+	the row of Save draft and Apply - never a fifth */
 @media (max-width: 38rem) {
 	.nino-admin .nino-admin-actionbar > #design-msg {
 		display: block;
@@ -853,6 +879,9 @@
 		max-width: 10rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	.nino-admin .nino-admin-actionbar > #design-theme-save {
+		order: -3;
 	}
 	.nino-admin .nino-admin-actionbar > #design-restore {
 		flex: 1 0 100%;

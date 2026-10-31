@@ -43,7 +43,7 @@ namespace Nino\Modules\Design\Webfonts {
 			return [];
 		}
 
-		// A tab of the Design pane (see \Nino\Modules\Design\Admin::tabs()): after the setup, before the Settings tab. No
+		// The tab of the Design pane (see \Nino\Modules\Design\Admin::tabs()): after the panel's own screen, before the Settings tab. No
 		// group is named: a feature's tab sits in 'features' like its panel
 		public static function nav(): array {
 			return [ 'design-typefaces', '/_admin/nav/design-typefaces', 20 ];
@@ -57,7 +57,7 @@ namespace Nino\Modules\Design\Webfonts {
 			return [ 'design-typefaces-form' ];
 		}
 
-		// The script and the stylesheet of the tab are the panel's: one file holds the three namespaces of the pane
+		// The script and the stylesheet of the tab are the panel's: one file holds the namespaces of the pane
 		// (a file named twice is bundled once)
 		public static function assets(): array {
 			return \Nino\Modules\Design\Admin::assets();

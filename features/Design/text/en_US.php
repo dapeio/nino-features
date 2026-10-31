@@ -4,9 +4,8 @@
 // workbench's own text/<locale>.php has
 return [
 	'[[/_admin/nav/design]]'										=> 'Design',
-	// The strip on top of the pane: Themes is the panel's own screen (the library of the themes), Design the tab with the six views, Typefaces the loader
+	// The strip on top of the pane: Themes is the panel's own screen (the library of the themes, and the setup in six views behind its Edit), Typefaces the loader
 	'[[/_admin/nav/themes]]'										=> 'Themes',
-	'[[/_admin/nav/design-setup]]'									=> 'Design',
 	'[[/_admin/nav/design-typefaces]]'								=> 'Typefaces',
 	'[[/_admin/design/label/title]]'								=> 'Design',
 
@@ -16,7 +15,7 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The six views of the tab Design - the properties of the design - and the eight objects that the blocks of their views are headed with
+	// The six views of the setup - the properties of the design - and the eight objects that the blocks of their views are headed with
 	'[[/_admin/design/tab/templates/label]]'						=> 'Templates',
 	'[[/_admin/design/tab/type/label]]'								=> 'Type',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surfaces',
@@ -32,11 +31,7 @@ return [
 	'[[/_admin/design/object/lists/label]]'							=> 'Lists',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tables',
 
-	// The screens of the themes: a strip of tabs under the strip on top of the pane, and under it the screen that is open
-	'[[/_admin/design/group/theme/load/label]]'					=> 'Load',
-	'[[/_admin/design/group/theme/properties/label]]'			=> 'Properties',
-
-	// The themes, in two screens: the list of themes with the import, the loaded one with its name and description and the row that makes another - and what a theme says of itself. The css of a theme is the view CSS of the tab Design
+	// The themes: the list with a row for each, its buttons and the import - and what a theme says of itself. The css of a theme is the view CSS of the setup
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'shipped',
 	'[[/_admin/design/theme/active]]'				=> 'active',
@@ -44,16 +39,11 @@ return [
 	'[[/_admin/design/theme/load]]'					=> 'Load',
 	'[[/_admin/design/theme/duplicate]]'			=> 'Duplicate',
 	'[[/_admin/design/theme/delete]]'				=> 'Delete',
-	'[[/_admin/design/theme/create]]'				=> 'Create',
-	'[[/_admin/design/theme/new/label]]'			=> 'New theme from the current state',
-	'[[/_admin/design/theme/new/placeholder]]'		=> 'Name',
 	'[[/_admin/design/theme/import/label]]'			=> 'Import a theme file',
 	'[[/_admin/design/theme/export]]'				=> 'Export',
+	'[[/_admin/design/theme/edit]]'					=> 'Edit',
 	'[[/_admin/design/theme/save]]'					=> 'Save theme',
-	'[[/_admin/design/theme/current/title]]'		=> 'Theme',
-	'[[/_admin/design/theme/current/none]]'			=> 'No theme - the current state belongs to none. Create one from it or load one from the list.',
 	'[[/_admin/design/theme/current/changed]]'		=> 'changed',
-	'[[/_admin/design/theme/current/shipped]]'		=> 'Shipped - duplicate it to change it.',
 	'[[/_admin/design/theme/field/name]]'			=> 'Name',
 	'[[/_admin/design/theme/field/description]]'	=> 'Description',
 	'[[/_admin/design/theme/css/title]]'			=> 'Custom CSS',
@@ -63,15 +53,15 @@ return [
 	'[[/_admin/design/theme/confirm/fonts]]'		=> 'The theme uses typefaces that are not installed: %s. Install them now?',
 	'[[/_admin/design/theme/msg/loaded]]'			=> 'Theme "%s" loaded - save the draft or apply it.',
 	'[[/_admin/design/theme/msg/unavailable]]'		=> 'Not available: %s - the role keeps Nino\'s face.',
-	'[[/_admin/design/theme/msg/created]]'			=> 'Theme "%s" created.',
 	'[[/_admin/design/theme/msg/saved]]'			=> 'Theme "%s" saved.',
+	'[[/_admin/design/theme/msg/renamed]]'			=> 'Theme "%s" renamed.',
 	'[[/_admin/design/theme/msg/duplicated]]'		=> 'Theme "%s" duplicated as "%s".',
 	'[[/_admin/design/theme/msg/deleted]]'			=> 'Theme "%s" deleted.',
 	'[[/_admin/design/theme/msg/exported]]'			=> 'Theme "%s" exported.',
 	'[[/_admin/design/theme/msg/imported]]'			=> 'Theme "%s" imported.',
 	'[[/_admin/design/theme/error/load]]'			=> 'The theme could not be loaded.',
-	'[[/_admin/design/theme/error/create]]'			=> 'The theme could not be created.',
 	'[[/_admin/design/theme/error/save]]'			=> 'The theme could not be saved.',
+	'[[/_admin/design/theme/error/rename]]'			=> 'The theme could not be renamed.',
 	'[[/_admin/design/theme/error/duplicate]]'		=> 'The theme could not be duplicated.',
 	'[[/_admin/design/theme/error/delete]]'			=> 'The theme could not be deleted.',
 	'[[/_admin/design/theme/error/export]]'			=> 'The theme could not be exported.',

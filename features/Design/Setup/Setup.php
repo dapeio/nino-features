@@ -27,7 +27,7 @@ namespace Nino\Modules\Design {
 	 *										each kind of surface, the one it takes -, its animation and
 	 *										the hover of its pictures, a position for every named knob
 	 *										of the seven templates, the five font roles and the
-	 *										palette - and, for the screen of the themes and the view CSS,
+	 *										palette - and, for the list of the themes and the view CSS,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
 	 *										this whole setup kept under a name). Where each of them
@@ -180,7 +180,7 @@ namespace Nino\Modules\Design {
 		/*	The setup in two axes. A tab is a property of the design - the templates, the type,
 			the surfaces, the colours, the motion, and the css of the theme - and an object is what
 			a property is set on: the page, the header, the footer, a section, a card, the buttons,
-			the lists and the tables. TABS are the six views of the tab Design of the pane, in the
+			the lists and the tables. TABS are the six views of the panel's setup screen, in the
 			order they are shown in, and OBJECTS the eight objects in the order their rows follow one
 			another on a view that draws rows, which is every view but the last: the templates, the
 			type, the surfaces, the colours and the motion, each an accordion of one block for each
@@ -217,7 +217,7 @@ namespace Nino\Modules\Design {
 			or of motion of its own has a control there: the dimming of a section, the tone of
 			the shadow of a card and the stripes of a table on the colours, the hover of a card
 			and of a button on the motion.
-			The screen of the themes, the view CSS and the loader of the typefaces have no control
+			The list of the themes, the view CSS and the loader of the typefaces have no control
 			in the table: the first works on `theme`, and the view is the one field of `css`, which
 			a theme file is kept with and which are no choice of a design, and the loader keeps
 			nothing in the setup. Every row of the table names one of the five views that have objects.

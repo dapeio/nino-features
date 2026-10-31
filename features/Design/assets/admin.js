@@ -1,19 +1,26 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": a pane of four tabs - Themes, Design, Typefaces
- *													and the Settings tab the kernel attaches - over one setup, drawn by one script of three
- *													namespaces, one for each tab the feature brings, as the shell asks for a screen by the
- *													uri of its tab (Nino.admin[<uri>]): Nino.admin.design is the panel's own screen, which
- *													the strip calls Themes, and holds what the tabs have in common - the state, the preview
- *													and the bar -, Nino.admin['design-setup'] is the tab Design and
- *													Nino.admin['design-typefaces'] the loader.
- *													Themes keeps the whole setup under a name with a css of its own, in two screens: Load,
- *													the list of the themes to load, duplicate and delete, with the field that takes a theme
- *													file in; and Properties, the loaded theme with its name and its description, saved and
- *													exported from the screen, and under it the row that creates a theme out of the screen.
- *													The chip "changed", which says that the screen differs from the loaded theme, stands in
- *													the kernel's button of the strip that reads Themes.
- *													Design draws the setup in six views, in two axes - the properties of the design, which
+ *	Modules\Design					The feature's /_admin panel, "Design": a pane of three tabs - Themes, Typefaces and the
+ *													Settings tab the kernel attaches - over one setup, drawn by one script of two namespaces,
+ *													as the shell asks for a screen by the uri of its tab (Nino.admin[<uri>]):
+ *													Nino.admin.design is the panel's own screen, which the strip calls Themes, and holds what
+ *													the screen has in common with the setup - the state, the preview and the bar -,
+ *													Nino.admin.design.views is the setup in its six views, which the shell never asks for,
+ *													and Nino.admin['design-typefaces'] is the loader.
+ *													The panel's screen has two modes. The first is the list of the themes, the library
+ *													that keeps the whole setup under a name with a css of its own: one row for each theme,
+ *													with its chips, its description and the buttons Load, Duplicate, Export, Delete (a theme
+ *													of the project) and Edit, a pencil on the row of a theme of the project that turns its
+ *													name and description into two fields to rename it, and under the list the field that takes
+ *													a theme file in. Edit opens the second mode, the setup in six views, of the theme of the
+ *													row - at once for the theme that is loaded, whose draft stays as it is, else after it was
+ *													loaded -, and the bar on top of the pane begins with Back to list, which returns to the
+ *													list and discards nothing: the draft stays, and the chip says so. Which of the two was
+ *													open is remembered while the panel lives. The chip "changed", which says that the screen
+ *													differs from the loaded theme, stands in the kernel's button of the strip that reads
+ *													Themes, in both modes; Save theme, which puts the screen into the loaded theme of the
+ *													project, stands in the action bar while the views are open.
+ *													The views draw the setup in six, in two axes - the properties of the design, which
  *													are the views, and the objects they are set on, which are the blocks of five of them.
  *													Templates, Type, Surfaces, Colours and Motion draw a block for each object that has a
  *													control in the view, in one fixed order - the page, the header, the footer, a section, a
@@ -45,9 +52,9 @@
  *													The compile turns all of it into assets/theme.css (see Modules\Design\Admin beside this
  *													file). Which view, which object and which place in its row a control has is the table's
  *													(the `layout` design/list hands over, see Setup::LAYOUT): the script draws from it and
- *													decides nothing of the kind. A tab with screens draws their strip under the strip of the
- *													tab, and the screen that is open under it.
- *													Beside the controls of Themes and of Design is one specimen page of the selection, under
+ *													decides nothing of the kind. The bar of the views, with Back to list and the strip of the
+ *													six, stands at the top of the pane of the tab, under the strip of the shell.
+ *													Beside the list and the views is one specimen page of the selection, under
  *													a head with the viewport switch, the switch that lets the frame follow and the reload;
  *													the frame fills the window down to the action bar and scrolls to the anchor of the open
  *													view, or to where a change of a control shows. The bar holds what the panel says - what
@@ -64,19 +71,17 @@
 	wn.Nino.admin = wn.Nino.admin || {};
 
 	/*	The panel: Design, in the rail, and the screen of its own, which the strip on top of the pane calls Themes. It holds
-		what the three screens of the pane have in common - the state, which is one: the data the library and the stored
-		setup gave, the working copy the screens edit, the theme it was taken from, the draft - and the preview and the
-		bar, which the screen of the themes and the tab Design (Nino.admin['design-setup']) stand on one at a time,
-		and the screen of the themes itself: the library of the themes, in two screens, and the chip that says the screen
-		differs from the theme that is loaded. The loader of the typefaces (Nino.admin['design-typefaces']) has none of the
-		two and keeps nothing here but what it reads. The shell asks each of the three for its screen by the uri of its tab
-		(see script.js, show())	*/
+		the state, which is one: the data the library and the stored setup gave, the working copy the screen edits, the theme
+		it was taken from, the draft - and the preview and the bar, which the screen stands on in both of its modes: the list
+		of the themes, and the setup in six views (Nino.admin.design.views). The loader of the typefaces
+		(Nino.admin['design-typefaces']) has neither and keeps nothing here but what it reads. The shell asks each of the
+		two for its screen by the uri of its tab (see script.js, show())	*/
 	Nino.admin.design = {
 
 		_ready	: false,
-		/*	Which of the two screens that carry the preview and the bar is drawn: 'themes', the panel's own, or 'setup', the tab
-			Design. There is one preview and one bar and their ids are the document's, so the other screen's mount is emptied
-			when one is drawn (see _render()); the loader, which has neither, leaves this as it was and the draft with it	*/
+		/*	Which of the two modes of the screen is drawn: 'themes', the list of the themes, or 'setup', the setup in six views.
+			There is one preview and one bar and one mount, and the mode is remembered while the panel lives - the first
+			time the screen is shown it is the list. The loader, which has neither, leaves this as it was and the draft with it	*/
 		_screen	: 'themes',
 		// What the library offers and what is chosen - the answer of design/list
 		_data		: null,
@@ -88,35 +93,30 @@
 			draws them, and a theme that is loaded or a draft that is reset gives them anew: they belong to what was read	*/
 		_notes		: [],
 
-		/*	The screen of the themes. The theme the working copy was taken from or kept in, as the
+		/*	The list of the themes. The theme the working copy was taken from or kept in, as the
 			server describes it - slug, name, description, shipped, setup, css - against
-			which the chip "changed" compares the screen, and null where it has none. The
-			name and the description as they are typed on the screen, which a switch of the tab
-			or of the screen keeps and which belong to no draft: the button of the theme saves
-			them. The name typed into the field of the row that makes a theme, and whether an action
-			of the screen is on its way with the count that tells which one is the latest, the
-			way the loader holds its own	*/
+			which the chip "changed" compares the screen, and null where it has none. The slug of
+			the theme whose row is a pair of fields for its name and its description, '' where none
+			is, and what is typed in them, which a redraw of the list keeps. Whether an action of
+			the list is on its way, with the count that tells which one is the latest, the way
+			the loader holds its own	*/
 		_active		: null,
-		_themeText	: { name : '', description : '' },
-		_themeNew		: '',
+		_themeRename	: '',
+		_themeFields	: { name : '', description : '' },
 		_themeBusy	: false,
 		_themeStamp	: 0,
+		// The id of the control that had the focus when the controls were switched off: a disabled control drops it, and has it back when they are on again (see _themeWork())
+		_busyFocus	: '',
 
-		/*	What is cut into screens, and the keys of its screens in the order they are shown in: a strip of them
-			over the screen that is open, one at a time, drawn again whenever it is opened (see _renderScreens()). The screen of the
-			themes is the one that has them, its two: Load and Properties. The six views of the tab Design are views of one setup,
-			whose blocks are the table's (see Setup::LAYOUT), and the loader has no screens either	*/
-		SCREENS	: { theme : [ 'load', 'properties' ] },
-
-		/*	The id of the element on the specimen page each view of the tab Design scrolls the frame to when it is opened (see
+		/*	The id of the element on the specimen page each view scrolls the frame to when it is opened (see
 			_jump()). The page is templates/preview-specimen.tpl, which carries the same ids: Templates, Surfaces, Motion and CSS are the
 			top of the page - a header is looked at there, and so are the width and the whitespace of the page and its animation,
 			and the css of a theme is all of it -, Type the typography block - a typeface shows where the type is -, Colours the
 			grounds. The page has an id at its end, footer, which no view has: a footer that is chosen is looked at there (see
-			OBJECT_ANCHORS). The screen of the themes has none of its own: a theme is all of the page, and THEMES_ANCHOR is its top	*/
+			OBJECT_ANCHORS). The list of the themes has none of its own: a theme is all of the page, and THEMES_ANCHOR is its top	*/
 		ANCHORS	: { templates : 'global', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global', css : 'global' },
 
-		// Where the screen of the themes is looked at: the top of the page, where a loaded theme shows all of what it is
+		// Where the list of the themes is looked at: the top of the page, where a loaded theme shows all of what it is
 		THEMES_ANCHOR	: 'global',
 
 		/*	Where a change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
@@ -266,6 +266,11 @@
 			'chevron-down' : [
 				[ 'path', { d : 'm6 9 6 6 6-6' } ],
 			],
+			// The pencil on the row of a theme of the project, which opens its name and its description for a change: Lucide's pencil
+			'pencil' : [
+				[ 'path', { d : 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z' } ],
+				[ 'path', { d : 'm15 5 4 4' } ],
+			],
 		},
 
 		/*	Which icon a row opens with, by the part and the knob it sets - so that what
@@ -359,9 +364,6 @@
 		// element the last change of a control is looked at in (see _anchorOf()). null is the
 		// tab's own, which is where opening a tab puts it back to
 		_target	: null,
-		// The screen that a tab with screens shows, by the tab; a tab with no entry shows its first. Kept
-		// while the panel lives and no part of the selection: another screen changes nothing but the screen
-		_group	: {},
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
 		_frames	: null,
@@ -407,66 +409,46 @@
 		},
 
 		/**
-		 *	The shell shows the panel's own screen, which the strip on top of the pane calls Themes
+		 *	The shell shows the panel's own screen, which the strip on top of the pane calls Themes: the mode that was
+		 *	open, the list of the themes the first time (see _screen)
 		 *
 		 *	@return		void
 		 */
 		showCurrent : function() {
-			Nino.admin.design._show('themes');
+			Nino.admin.design._show();
 		},
 
 		/**
-		 *	Put one of the two screens that carry the preview and the bar on screen: the panel's own, Themes, and the tab
-		 *	Design, each of which asks for it from its own showCurrent(). They are drawn from one state - the draft that was
-		 *	changed under Design stands as it is on Themes, and what Themes loaded is what Design draws - and one of them at a
-		 *	time, since there is one preview and one bar: the frame is built anew where the screen moves
-		 *
-		 *	@param		{string}	screen		'themes' or 'setup'
+		 *	Put the screen on show, in the mode it is in. The preview and the bar are drawn with it, and one at a time,
+		 *	since there is one of each: the frame is built anew where the screen is drawn
 		 *
 		 *	@return		void
 		 */
-		_show : function( screen ) {
+		_show : function() {
 
 			const design = Nino.admin.design;
 
 			// The loader is left, if it was the tab that was shown: what it held is let go of
 			Nino.admin['design-typefaces']._leave();
 
-			if( design._ready === false ) {
-				design._screen = screen;
+			if( design._ready === false )
 				return design.init();
-			}
 
 			// The shell brings the screen on again after a Save it asked for failed: drawn anew, the reason the
 			// save gave would be gone, and so would the selection nobody has stored
-			if( Nino.admin.dirty.isDirty( [ design._entryOf( screen ) ] ) === true )
+			if( Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
 				return design._refreshThemeChip();
 
-			design._screen = screen;
 			design._render();
 		},
 
 		/**
-		 *	The mount a screen that carries the preview and the bar is drawn in: one of the two the panes of the tabs
-		 *	hold (see Admin::panes() and Setup\Tab::panes())
-		 *
-		 *	@param		{string}	[screen]		'themes' or 'setup'; the screen that is drawn where it is left out
+		 *	The mount the screen is drawn in: the one the pane of the panel holds (see Admin::panes())
 		 *
 		 *	@return		{?Element}
 		 */
-		_mount : function( screen ) {
-			return dc.getElementById( ( screen || Nino.admin.design._screen ) === 'setup' ? 'design-setup-form' : 'design-form' );
-		},
-
-		/**
-		 *	The name a screen is registered under in the shell's account of unsaved input: the uri of its tab
-		 *
-		 *	@param		{string}	screen		'themes' or 'setup'
-		 *
-		 *	@return		{string}
-		 */
-		_entryOf : function( screen ) {
-			return screen === 'setup' ? 'design-setup' : 'design';
+		_mount : function() {
+			return dc.getElementById('design-form');
 		},
 
 		/**
@@ -534,9 +516,8 @@
 		},
 
 		/**
-		 *	Make the stored selection the screen's: the working copy, the theme it names as the
-		 *	server describes it and the name and the description of that theme as the fields of
-		 *	the screen of the themes have them. An action of that screen that is still on its way answers over
+		 *	Make the stored selection the screen's: the working copy and the theme it names as the
+		 *	server describes it. An action of the list that is still on its way answers over
 		 *	a state it does not know any more, so what it brings is let go of (see _themeStamp)
 		 *
 		 *	@param		{Object}	data			The answer of design/list
@@ -550,7 +531,6 @@
 			design._edit = design._selection( data );
 			design._notes = Array.isArray( data.notes ) === true ? data.notes : [];
 			design._active = data.active || null;
-			design._themeText = data.active ? { name : data.active.name, description : data.active.description } : { name : '', description : '' };
 
 			++design._themeStamp;
 			design._themeBusy = false;
@@ -865,8 +845,8 @@
 		 *	the tabs in it (see Nino.adminUi.panelHead()).
 		 *
 		 *	null where there is none - the script drawn somewhere other than its
-		 *	pane - and the strip of the views of the tab Design then opens the
-		 *	column of controls, where it stood before there was a head to put it in
+		 *	pane - and the bar of the views then opens the column of controls,
+		 *	where it stood before there was a head to put it in
 		 *
 		 *	@return		{Object|null}			{ element, title, actions, tabs( strip ) }
 		 */
@@ -879,11 +859,11 @@
 		 *	The whole screen that carries the preview: what the screen has in one column,
 		 *	a preview of the lot in the other, and the bar under both.
 		 *
-		 *	The screen of the themes is the library, in two screens; the tab Design is one
-		 *	view of its six at a time, because six blocks of blocks is a list to read and
-		 *	one view is a decision to make. The strip above the view says which one is
-		 *	open; the preview beside it is the whole page either way, scrolled to where
-		 *	the open view is
+		 *	The list of the themes is the library; the setup is one view of its six at
+		 *	a time, because six blocks of blocks is a list to read and one view is a
+		 *	decision to make. The bar above the view says which one is open and takes
+		 *	the way back to the list; the preview beside it is the whole page either way,
+		 *	scrolled to where the open view is
 		 *
 		 *	@return		void
 		 */
@@ -895,27 +875,32 @@
 			if( wrap === null || data === null )
 				return;
 
-			// One preview and one bar, and their ids are the document's: the other screen is emptied
-			const other = design._mount( design._screen === 'setup' ? 'themes' : 'setup' );
-
-			if( other !== null )
-				other.innerHTML = '';
-
 			wrap.innerHTML = '';
 
 			/*	No heading of its own: the pane's head names the panel, and the strip of the
-				tabs on top of the pane is the shell's. The strip of the six views goes to the
-				top of the pane of the tab Design, under the shell's, the way the
-				Features panel's strip goes to the top of its tab - it switches the controls
-				on the left and nothing else, so it belongs with the name of the screen and
-				not above one of its two halves. Handed over on every render; tabs() takes
-				the place of the strip drawn before it, so coming back to the tab does not
-				stack a second one. The screen of the themes draws the strip of its two
-				screens in the column itself (see _renderScreens())	*/
+				tabs on top of the pane is the shell's. The bar of the views - Back to list and
+				the strip of the six - goes to the top of the pane of the tab, under the shell's,
+				the way the Features panel's strip goes to the top of its tab: it switches the
+				controls on the left and nothing else, so it belongs with the name of the screen
+				and not above one of its two halves. Handed over on every render; tabs() takes
+				the place of the bar drawn before it, so coming back to the views does not
+				stack a second one. The list of the themes has no bar: the one drawn
+				before it is taken away	*/
 			const head = design._head();
 
-			if( head !== null && design._screen === 'setup' )
-				head.tabs( Nino.admin['design-setup']._renderTabs() );
+			if( design._screen === 'setup' && head !== null ) {
+
+				head.tabs( design.views._renderTabs() );
+
+				// A bar wider than the pane scrolls in its own box: the view that is open is brought into sight, behind Back to list where the pane is narrow
+				const selected = dc.getElementById( 'design-tab-'+ design.views._tab );
+
+				if( selected !== null && typeof selected.scrollIntoView === 'function' )
+					selected.scrollIntoView( { block : 'nearest', inline : 'nearest' } );
+			}
+
+			if( design._screen !== 'setup' && dc.getElementById('design-tabs') !== null )
+				dc.getElementById('design-tabs').remove();
 
 			// Controls on one side, what they mean on the other. One column
 			// below the breakpoint, where a preview beside a select would be
@@ -989,6 +974,14 @@
 				actions.appendChild( restore );
 			}
 
+			/*	Save theme: the screen into the theme that is loaded, with the draft and the website left alone. It stands
+				with the views, where the setup is edited, and while the theme is one of the project's - a shipped theme is a
+				file of the feature and has no way to be saved into, and with none loaded there is nothing to save into. Before
+				the way back in the document, as the buttons that keep stand in front of the one that lets go	*/
+			if( design._screen === 'setup' && design._active !== null && design._active.shipped === false )
+				actions.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/design/theme/save'), function() { design._saveTheme() },
+					{ id : 'design-theme-save', disabled : design._themeBusy } ) );
+
 			actions.appendChild( reset );
 			actions.appendChild( save );
 			actions.appendChild( apply );
@@ -1013,7 +1006,7 @@
 
 		/**
 		 *	The controls column, on its own so a switch of the view can redraw it
-		 *	without touching the frame beside it - or the strip of the views, which is
+		 *	without touching the frame beside it - or the bar of the views, whose strip is
 		 *	the element the switch was made on, and keeps the focus an arrow key put
 		 *	on it.
 		 *
@@ -1028,10 +1021,10 @@
 			const controls = dc.createElement('div');
 			controls.id = 'design-controls';
 
-			// Only where there is no head does the strip of the views open the column (see
+			// Only where there is no head does the bar of the views open the column (see
 			// _head()) - and is drawn again with it on every switch
 			if( Nino.admin.design._screen === 'setup' && Nino.admin.design._head() === null )
-				controls.appendChild( Nino.admin['design-setup']._renderTabs() );
+				controls.appendChild( Nino.admin.design.views._renderTabs() );
 
 			Nino.admin.design._notes.forEach( function( note ) {
 				const p = dc.createElement('p');
@@ -1050,7 +1043,7 @@
 		},
 
 		/**
-		 *	The views of the tab Design, in the order the table gives them
+		 *	The views of the setup, in the order the table gives them
 		 *
 		 *	@return		{Array}					Keys of the views
 		 */
@@ -1070,9 +1063,8 @@
 		},
 
 		/**
-		 *	What the screen that is drawn holds, into the box the column keeps for it: on the screen of the themes
-		 *	the strip of its screens and the one that is open, on the tab Design the view that is open (see
-		 *	Nino.admin['design-setup']._renderView())
+		 *	What the screen that is drawn holds, into the box the column keeps for it: in the list mode the card of the
+		 *	themes, in the setup the view that is open (see Nino.admin.design.views._renderView())
 		 *
 		 *	@param		{Element}	body
 		 *
@@ -1080,16 +1072,22 @@
 		 */
 		_fillBody : function( body ) {
 
-			if( Nino.admin.design._screen === 'themes' )
-				return Nino.admin.design._renderScreens( 'theme', body );
+			const design = Nino.admin.design;
 
-			Nino.admin['design-setup']._renderView( Nino.admin['design-setup']._tab, body );
+			if( design._screen === 'setup' )
+				return design.views._renderView( design.views._tab, body );
+
+			// By the node, not by its id: this column is not in the document yet on the first render
+			const themes = design._card('design-themes');
+
+			body.appendChild( themes );
+			design._paintThemes( themes );
 		},
 
 		/**
 		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
 		 *	keeps that, with the arrow keys and the one tab stop of a strip. The six views of the
-		 *	tab Design are drawn with it, and so are the screens of the themes (see _renderScreens())
+		 *	setup are drawn with it (see Nino.admin.design.views._renderTabs())
 		 *
 		 *	@param		{string}		name				What the strip is called by assistive technology
 		 *	@param		{string}		className		The class the strip has beside the workbench's own
@@ -1118,6 +1116,7 @@
 				button.className = 'nino-admin-tab';
 				button.setAttribute( 'role', 'tab' );
 				button.dataset[attribute] = tab.key;
+				button.id = 'design-tab-'+ tab.key;
 				button.textContent = tab.label;
 				buttons[tab.key] = button;
 				bar.appendChild( button );
@@ -1133,7 +1132,7 @@
 		 *	height the stage was just fitted to.
 		 *
 		 *	In one column the stage stands under the controls, so a column of another
-		 *	height moves it - another tab or screen, the brand warning
+		 *	height moves it - another view, the brand warning
 		 *	of the colours - and the fit gives the frame another height. The page in it
 		 *	lays itself out again only after its window has heard the resize: the covers
 		 *	take their height from the window's, in an animation frame that follows it
@@ -1146,10 +1145,7 @@
 		 *	height as it was, or the frame cannot be reached, the jump is made at once
 		 *
 		 *	Asked for by whatever fits the stage and then jumps: a tab that is opened
-		 *	(_switchTab()), another screen of a tab (_switchGroup(), which asks only
-		 *	where the fit changed the height: the page is the same under every screen, and
-		 *	a stage as tall as it was leaves nothing to put back) and the answer of a
-		 *	preview whose stylesheet was swapped in (_previewNow())
+		 *	(_switchTab()) and the answer of a preview whose stylesheet was swapped in (_previewNow())
 		 *
 		 *	@param		{?Element}	frame		The frame, as found before the fit; null where there is none
 		 *	@param		{string}		was			The height of its stage before the fit
@@ -1192,41 +1188,8 @@
 		},
 
 		/**
-		 *	The screen of the themes, the screen that is open of its two: Load, with the card of the list of
-		 *	themes and the file field that takes one in; and Properties, with the card of the loaded
-		 *	theme - its name and description, the chip that says the screen differs from it and the
-		 *	buttons that keep the screen in it and take it out as a file - and the card of the row
-		 *	that makes a theme out of the screen. The cards are drawn again by what the screen does (see
-		 *	_paintTheme()). The css of a theme is a view of the tab Design, with the rest of the setup the theme keeps
-		 *
-		 *	@param		{Element}	body		The box the screen is drawn into
-		 *
-		 *	@return		void
-		 */
-		_renderTheme : function( body ) {
-
-			const design = Nino.admin.design;
-			const screen = design._groupOf('theme');
-
-			// By the node, not by its id: this column is not in the document yet on the first render
-			if( screen === 'load' ) {
-				const themes = design._card('design-themes');
-				body.appendChild( themes );
-				design._paintThemes( themes );
-				return;
-			}
-
-			const current = design._card('design-theme-current');
-			const make = design._card('design-theme-make');
-			body.appendChild( current );
-			body.appendChild( make );
-			design._paintCurrent( current );
-			design._paintMake( make );
-		},
-
-		/**
-		 *	A card of the column, the workbench's in the measures of this panel, under the id the actions of a
-		 *	tab find it by
+		 *	A card of the column, the workbench's in the measures of this panel, under the id the actions of the
+		 *	list find it by
 		 *
 		 *	@param		{string}	id
 		 *
@@ -1242,7 +1205,8 @@
 		},
 
 		/**
-		 *	Draw the cards the actions of the screen change again - those of the screen that is open
+		 *	Draw the list of the themes again, which the actions of the screen change - where the list is on screen -
+		 *	and the chip "changed" beside it
 		 *
 		 *	@return		void
 		 */
@@ -1250,19 +1214,11 @@
 
 			const design = Nino.admin.design;
 			const themes = dc.getElementById('design-themes');
-			const current = dc.getElementById('design-theme-current');
-			const make = dc.getElementById('design-theme-make');
 
 			if( themes !== null )
 				design._paintThemes( themes );
 
-			if( current !== null )
-				design._paintCurrent( current );
-
-			if( make !== null )
-				design._paintMake( make );
-
-			// The label of the screen says what an action did to the theme whichever of its screens is open
+			// The label of the screen says what an action did to the theme whichever of its modes is open
 			design._refreshThemeChip();
 		},
 
@@ -1288,7 +1244,7 @@
 		},
 
 		/**
-		 *	The card of the Load screen: the themes there are, one row each, and under them the
+		 *	The card of the list of the themes: the themes there are, one row each, and under them the
 		 *	file that takes another one in
 		 *
 		 *	@param		{Element}	card
@@ -1327,51 +1283,14 @@
 		},
 
 		/**
-		 *	The card of the Properties screen under the box of the loaded theme: the row that makes a
-		 *	theme out of the screen - a name, and the button that keeps the current state under it, as
-		 *	Save theme keeps it in the loaded theme. It stands whether or not a theme is loaded
-		 *
-		 *	@param		{Element}	card
-		 *
-		 *	@return		void
-		 */
-		_paintMake : function( card ) {
-
-			const design = Nino.admin.design;
-			const ui = Nino.adminUi;
-
-			card.innerHTML = '';
-
-			const make = ui.el( 'div', 'design-theme-new' );
-
-			const field = ui.textField( {
-				id 					: 'design-theme-new',
-				label 			: Nino.content.getText('/_admin/design/theme/new/label'),
-				placeholder : Nino.content.getText('/_admin/design/theme/new/placeholder'),
-				value 			: design._themeNew,
-				maxLength 	: 80,
-				onInput 		: function( value ) { design._themeNew = value },
-			} );
-
-			field.querySelector('input').addEventListener( 'keydown', function( event ) {
-				if( event.key === 'Enter' ) {
-					event.preventDefault();
-					design._createTheme();
-				}
-			} );
-
-			make.appendChild( field );
-			make.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/create'), function() { design._createTheme() },
-				{ id : 'design-theme-create', className : 'nino-admin-btn-primary', disabled : design._themeBusy } ) );
-			card.appendChild( make );
-		},
-
-		/**
 		 *	One theme of the list: its name with the chips it has - shipped; active where the website
 		 *	runs it, which is the theme of the last apply; and loaded, not applied where the working
-		 *	copy was taken from it and the website does not run it - the description under it, and what
-		 *	can be done with it: load, duplicate and, for a theme of the project only, delete. A button
-		 *	says which theme it is about to the ones who hear it read out
+		 *	copy was taken from it and the website does not run it - and, for a theme of the project,
+		 *	the pencil that renames it; the description under it, and what can be done with it: load,
+		 *	duplicate, export, delete (a theme of the project only) and edit, in that order. A button
+		 *	says which theme it is about to the ones who hear it read out. While the theme is the one
+		 *	that is renamed (_themeRename) its name and its description are two fields instead, and
+		 *	the buttons are Save and Cancel - Enter in a field saves, Escape cancels
 		 *
 		 *	@param		{Object}	entry			One of design/list's `themes`: slug, name, description, shipped
 		 *
@@ -1383,14 +1302,25 @@
 			const ui = Nino.adminUi;
 			const draft = design._edit !== null && design._edit.theme === entry.slug;
 			const running = ( design._data || {} ).running === entry.slug;
+			const renaming = design._themeRename === entry.slug && entry.shipped === false;
 
-			const row = ui.el( 'li', 'design-theme-row'+ ( draft === true ? ' design-theme-row--active' : '' ) );
+			const row = ui.el( 'li', 'design-theme-row'+ ( draft === true ? ' design-theme-row--active' : '' )+ ( renaming === true ? ' design-theme-row--renaming' : '' ) );
 			row.dataset.slug = entry.slug;
 
 			if( draft === true )
 				row.setAttribute( 'aria-current', 'true' );
 
 			const text = ui.el( 'div', 'design-theme-text' );
+			const buttons = ui.el( 'div', 'design-theme-buttons' );
+
+			row.appendChild( text );
+			row.appendChild( buttons );
+
+			if( renaming === true ) {
+				design._renameFields( text, buttons, entry );
+				return row;
+			}
+
 			const head = ui.el( 'div', 'design-theme-head' );
 			head.appendChild( ui.el( 'span', 'design-theme-name', entry.name ) );
 
@@ -1403,17 +1333,28 @@
 			if( draft === true && running === false )
 				head.appendChild( design._chip( 'design-theme-loaded', Nino.content.getText('/_admin/design/theme/loaded'), 'warn' ) );
 
+			if( entry.shipped === false ) {
+
+				const word = Nino.content.getText('/_admin/common/label/rename');
+				const pencil = ui.button( '', function() { design._renameTheme( entry.slug ) }, {
+					id 				: 'design-theme-rename-'+ entry.slug,
+					className : 'design-theme-pencil',
+					name 			: word+ ' - '+ entry.name,
+					disabled 	: design._themeBusy,
+				} );
+
+				pencil.appendChild( design._svg('pencil') );
+				head.appendChild( pencil );
+			}
+
 			text.appendChild( head );
 
 			if( entry.description !== '' )
 				text.appendChild( ui.el( 'small', 'design-theme-description', entry.description ) );
 
-			row.appendChild( text );
-
-			const buttons = ui.el( 'div', 'design-theme-buttons' );
-
 			[ [ 'load', function() { design._loadTheme( entry.slug ) } ], [ 'duplicate', function() { design._duplicateTheme( entry.slug ) } ],
-				[ 'delete', function() { design._deleteTheme( entry.slug ) } ] ].forEach( function( button ) {
+				[ 'export', function() { design._exportTheme( entry.slug ) } ], [ 'delete', function() { design._deleteTheme( entry.slug ) } ],
+				[ 'edit', function() { design._editTheme( entry.slug ) } ] ].forEach( function( button ) {
 
 				if( button[0] === 'delete' && entry.shipped === true )
 					return;
@@ -1428,83 +1369,74 @@
 				} ) );
 			} );
 
-			row.appendChild( buttons );
-
 			return row;
 		},
 
 		/**
-		 *	The box of the Properties screen: the loaded theme - the one the working copy was taken
-		 *	from or kept in. With none there is a sentence and nothing else. With one, its head
-		 *	says its name and, while the screen differs from it, the chip (see _refreshThemeChip());
-		 *	under it stand its name and its description as they are typed - those of a shipped theme
-		 *	are read-only and say why - and the buttons that put the screen into it and take it out
-		 *	as a file. A shipped theme is a file of the feature: there is no way to save into it
+		 *	The row of the theme that is renamed: its name and its description as two fields, held to the lengths
+		 *	the server cuts them to and keeping what is typed in them when the list is drawn again, and Save and
+		 *	Cancel in the place of the buttons. Enter in a field saves, Escape cancels
 		 *
-		 *	@param		{Element}	card
+		 *	@param		{Element}	text			Where the words of the row stand
+		 *	@param		{Element}	buttons		Where its buttons stand
+		 *	@param		{Object}	entry			The row of design/list's `themes`
 		 *
 		 *	@return		void
 		 */
-		_paintCurrent : function( card ) {
+		_renameFields : function( text, buttons, entry ) {
 
 			const design = Nino.admin.design;
 			const ui = Nino.adminUi;
-			const slug = design._edit === null ? '' : design._edit.theme;
-			const active = design._active !== null && design._active.slug === slug ? design._active : null;
-			const title = Nino.content.getText('/_admin/design/theme/current/title');
 
-			card.innerHTML = '';
+			const keys = function( field ) {
+				field.querySelector('input').addEventListener( 'keydown', function( event ) {
 
-			if( slug === '' || active === null ) {
-				card.appendChild( design._sectionLabel( title ) );
-				card.appendChild( ui.hint( Nino.content.getText('/_admin/design/theme/current/none') ) );
-				return;
-			}
+					if( event.key === 'Enter' ) {
+						event.preventDefault();
+						design._saveRename();
+					}
 
-			const head = design._sectionLabel( title );
-			head.id = 'design-theme-current-head';
-			head.firstChild.appendChild( ui.el( 'span', 'design-theme-current-name', active.name ) );
-			card.appendChild( head );
-
-			const shipped = active.shipped === true;
+					if( event.key === 'Escape' ) {
+						event.preventDefault();
+						design._cancelRename();
+					}
+				} );
+			};
 
 			const name = ui.textField( {
 				id 				: 'design-theme-name',
 				label 		: Nino.content.getText('/_admin/design/theme/field/name'),
-				value 		: design._themeText.name,
+				value 		: design._themeFields.name,
 				maxLength : 80,
-				hint 			: shipped === true ? Nino.content.getText('/_admin/design/theme/current/shipped') : undefined,
-				onInput 	: function( value ) { design._themeText.name = value },
+				required 	: true,
+				onInput 	: function( value ) { design._themeFields.name = value },
 			} );
 
 			const description = ui.textField( {
 				id 				: 'design-theme-description',
 				label 		: Nino.content.getText('/_admin/design/theme/field/description'),
-				value 		: design._themeText.description,
+				value 		: design._themeFields.description,
 				maxLength : 400,
-				onInput 	: function( value ) { design._themeText.description = value },
+				onInput 	: function( value ) { design._themeFields.description = value },
 			} );
 
-			if( shipped === true ) {
-				name.querySelector('input').disabled = true;
-				description.querySelector('input').disabled = true;
-			}
+			keys( name );
+			keys( description );
+			text.appendChild( name );
+			text.appendChild( description );
 
-			card.appendChild( name );
-			card.appendChild( description );
+			[ [ 'save', 'rename-save', function() { design._saveRename() }, 'nino-admin-btn-primary' ],
+				[ 'cancel', 'rename-cancel', function() { design._cancelRename() }, '' ] ].forEach( function( button ) {
 
-			const buttons = ui.el( 'div', 'design-theme-actions' );
+				const word = Nino.content.getText('/_admin/common/label/'+ button[0] );
 
-			if( shipped === false )
-				buttons.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/save'), function() { design._saveTheme() },
-					{ id : 'design-theme-save', className : 'nino-admin-btn-primary', disabled : design._themeBusy } ) );
-
-			buttons.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/export'), function() { design._exportTheme() },
-				{ id : 'design-theme-export', disabled : design._themeBusy } ) );
-
-			card.appendChild( buttons );
-
-			design._refreshThemeChip( head );
+				buttons.appendChild( ui.button( word, button[2], {
+					id 				: 'design-theme-'+ button[1],
+					className : button[3],
+					name 			: word+ ' - '+ entry.name,
+					disabled 	: design._themeBusy,
+				} ) );
+			} );
 		},
 
 		/**
@@ -1553,53 +1485,31 @@
 		},
 
 		/**
-		 *	Draw the chip "changed" in the head of the active theme and on the button of the panel's own screen in
-		 *	the strip on top of the pane, which says Themes, or take it away: it is there while the screen differs from
-		 *	the theme (see _themeChanged()), in both places or in neither, whichever tab and screen are open. The
-		 *	button is the shell's (see Panels::panesHtml(), id admin-tabbutton-<uri>): the kernel has no place in a
-		 *	tab's label for a word of the panel's, so the script appends the chip to the button - and has to do it
-		 *	again whenever the strip may have been drawn anew, which is each time one of the tabs is shown (see _show()
-		 *	and Nino.admin['design-typefaces'].showCurrent()). Asked for after every change of a control, beside the
-		 *	way back, and by everything that draws the card of the theme
-		 *
-		 *	@param		{?Element}	[head]		The head, for one that is built and not mounted yet
+		 *	Draw the chip "changed" on the button of the panel's own screen in the strip on top of the pane, which says
+		 *	Themes, or take it away: it is there while the screen differs from the loaded theme (see _themeChanged()),
+		 *	whichever tab and mode are open. The button is the shell's (see Panels::panesHtml(), id admin-tabbutton-<uri>):
+		 *	the kernel has no place in a tab's label for a word of the panel's, so the script appends the chip to the
+		 *	button - and has to do it again whenever the strip may have been drawn anew, which is each time one of the tabs
+		 *	is shown (see _show() and Nino.admin['design-typefaces'].showCurrent()). Asked for after every change of a
+		 *	control, beside the way back, and by everything that draws the list again
 		 *
 		 *	@return		void
 		 */
-		_refreshThemeChip : function( head ) {
+		_refreshThemeChip : function() {
 
 			const design = Nino.admin.design;
 			const changed = design._themeChanged();
-
-			head = head || dc.getElementById('design-theme-current-head');
 			const tab = dc.getElementById('admin-tabbutton-design');
 
-			if( head !== null )
-				design._flagChanged( head.firstChild, 'design-theme-changed', changed, 'design-theme-changed' );
+			if( tab === null )
+				return;
 
-			if( tab !== null )
-				design._flagChanged( tab, 'design-tab-changed', changed );
-		},
+			const chip = tab.querySelector('.design-tab-changed');
 
-		/**
-		 *	The chip "changed" in a place: drawn there while `on` and it is not, taken away while not `on` and it
-		 *	is, and left as it is otherwise - one chip at most, found by its class
-		 *
-		 *	@param		{Element}		host			What the chip stands in: the title of the box of the theme, or the button of the screen of the themes
-		 *	@param		{string}		className	The class the chip has beside the workbench's own
-		 *	@param		{boolean}		on
-		 *	@param		{string}		[id]
-		 *
-		 *	@return		void
-		 */
-		_flagChanged : function( host, className, on, id ) {
+			if( changed === true && chip === null )
+				tab.appendChild( design._chip( 'design-tab-changed', Nino.content.getText('/_admin/design/theme/current/changed'), 'warn' ) );
 
-			const chip = host.querySelector('.'+ className );
-
-			if( on === true && chip === null )
-				host.appendChild( Nino.admin.design._chip( className, Nino.content.getText('/_admin/design/theme/current/changed'), 'warn', id ) );
-
-			if( on === false && chip !== null )
+			if( changed === false && chip !== null )
 				chip.remove();
 		},
 
@@ -1618,31 +1528,58 @@
 		},
 
 		/**
-		 *	Switch the buttons and the file field of the tab off while one of its requests is on its way, and
-		 *	on again when it is back: a second action over the first would answer over a state the screen
-		 *	does not have any more
+		 *	Switch the buttons and the file field of the list off - and the button Save theme of the action bar - while one of
+		 *	its requests is on its way, and on again when it is back: a second action over the first would answer over a
+		 *	state the screen does not have any more
 		 *
 		 *	@param		{boolean}	on
 		 *
-		 *	@return		void
+		 *	@return		{string}					Switching on: ''. Switching off: the id of the control that had the focus when the work began, '' for none
 		 */
 		_themeWork : function( on ) {
 
-			Nino.admin.design._themeBusy = on;
+			const design = Nino.admin.design;
+			const had = dc.activeElement;
 
-			[ 'design-themes', 'design-theme-current', 'design-theme-make' ].forEach( function( id ) {
+			design._themeBusy = on;
 
-				const card = dc.getElementById( id );
+			if( on === true )
+				design._busyFocus = had !== null && had !== undefined && typeof had.id === 'string' ? had.id : '';
 
-				if( card === null )
-					return;
+			const card = dc.getElementById('design-themes');
 
+			if( card !== null )
 				card.querySelectorAll('button, input[type="file"]').forEach( function( control ) { control.disabled = on } );
-			} );
+
+			const save = dc.getElementById('design-theme-save');
+
+			if( save !== null )
+				save.disabled = on;
+
+			if( on === true )
+				return '';
+
+			/*	A control that is switched off drops the focus to the page: it has it back with the control, the Save theme of
+				the bar among them - where the focus fell, and not where somebody moved it on meanwhile. The id is answered
+				for an action that draws the list anew, whose control is then another element (see _takeTheme())	*/
+			const pressed = design._busyFocus;
+			const now = dc.activeElement;
+
+			design._busyFocus = '';
+
+			if( pressed !== '' && ( now === null || now === undefined || now === dc.body ) ) {
+
+				const back = dc.getElementById( pressed );
+
+				if( back !== null && back.disabled !== true )
+					design._focus( back.id );
+			}
+
+			return pressed;
 		},
 
 		/**
-		 *	A failure of an action of the tab, told in the line of the action bar in red: the sentence of its
+		 *	A failure of an action of the list, told in the line of the action bar in red: the sentence of its
 		 *	code where it has one, else the sentence of the action with the status in front
 		 *
 		 *	@param		{string}	failure			The text of what was being done
@@ -1656,17 +1593,35 @@
 		},
 
 		/**
+		 *	Give the focus to an element of the screen that was drawn anew - the press that had it is gone with the
+		 *	drawing, and the focus falls to the page
+		 *
+		 *	@param		{string}	id
+		 *
+		 *	@return		void
+		 */
+		_focus : function( id ) {
+
+			const control = dc.getElementById( id );
+
+			if( control !== null && typeof control.focus === 'function' )
+				control.focus();
+		},
+
+		/**
 		 *	Put a theme on the screen as a draft. The server answers what the screen takes over and which of
 		 *	the typefaces the theme names the project has not installed. Those the list of the Typefaces tab
 		 *	has are named in one question - with a yes they are installed, one after the other, and the list of
 		 *	design/list is read again, for the selects of the roles, before anything is drawn. Nothing is
 		 *	stored: the Reset button appears, the shell asks before it loses the draft and Save draft keeps it
 		 *
-		 *	@param		{string}	slug
+		 *	@param		{string}		slug
+		 *	@param		{boolean}		[edit]			Open the views of the setup once the theme is taken over, in the one drawing of
+		 *																	the screen: what Edit does for a theme that is not the loaded one
 		 *
 		 *	@return		void
 		 */
-		_loadTheme : function( slug ) {
+		_loadTheme : function( slug, edit ) {
 
 			const design = Nino.admin.design;
 
@@ -1692,10 +1647,10 @@
 
 				if( offered.length > 0 && wn.confirm( design._text( '/_admin/design/theme/confirm/fonts', offered.map( function( entry ) { return entry.name } ).join(', ') ) ) === true )
 					return design._installMissing( offered, function( said, failure ) {
-						design._relist( function() { design._takeTheme( response, said, failure, stamp ) } );
+						design._relist( function() { design._takeTheme( response, said, failure, stamp, edit === true ) } );
 					} );
 
-				design._takeTheme( response, [], '', stamp );
+				design._takeTheme( response, [], '', stamp, edit === true );
 			} );
 		},
 
@@ -1739,28 +1694,29 @@
 		 *	The theme that was asked for becomes the screen: the working copy is the theme's setup with its
 		 *	slug and its css - and the colours it already had, where the theme names none: a brand colour is
 		 *	the project's - the active theme is its record - the setup of it as it was taken over, which
-		 *	is what the chip compares the screen with - and the name and description fields are its own.
+		 *	is what the chip compares the screen with.
 		 *	What reading the theme replaced is told in the list over the tab, replacing the notes of what was
 		 *	on the screen before.
 		 *	A family the role is not offered here - not in the list, declined, or not installed after all -
 		 *	is set to the face of Nino and told in the line of the bar with the rest. The screen is drawn
-		 *	again whole, the preview with it
+		 *	again whole, the preview with it - on the setup in six views where the theme was loaded to be edited
 		 *
 		 *	@param		{Object}		response		design/theme/load's answer
 		 *	@param		{Array}			said				What the installs before it said
 		 *	@param		{string}		failure			Why an install failed, '' where none did
 		 *	@param		{number}		stamp				The count of the request, against a newer state
+		 *	@param		{boolean}		[edit]			Draw the views of the setup, not the list
 		 *
 		 *	@return		void
 		 */
-		_takeTheme : function( response, said, failure, stamp ) {
+		_takeTheme : function( response, said, failure, stamp, edit ) {
 
 			const design = Nino.admin.design;
 
 			if( stamp !== design._themeStamp )
 				return;
 
-			design._themeWork( false );
+			const pressed = design._themeWork( false );
 
 			const setup = JSON.parse( JSON.stringify( response.setup ) );
 			const options = ( design._data || {} ).options || {};
@@ -1786,9 +1742,20 @@
 				features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
-			design._themeText = { name : response.name, description : response.description };
 			design._notes = Array.isArray( response.notes ) === true ? response.notes : [];
+
+			if( edit === true ) {
+				design._screen = 'setup';
+				design._target = null;
+			}
+
 			design._render();
+
+			// The press that asked is gone with the drawing: the focus goes to the open view's tab where the theme is edited, else back to the row's button
+			if( edit === true )
+				design._focusViews();
+			else
+				design._focus( pressed );
 
 			const lines = said.slice();
 
@@ -1804,49 +1771,8 @@
 		},
 
 		/**
-		 *	Keep the screen as a theme of the project under the name in the field of the row that makes
-		 *	one, in the card under the loaded theme on Properties. The draft then names it - unsaved,
-		 *	so that the way back takes it away again, which is right - and the name and description
-		 *	fields are the theme's, the chip none
-		 *
-		 *	@return		void
-		 */
-		_createTheme : function() {
-
-			const design = Nino.admin.design;
-
-			if( design._themeBusy === true || design._edit === null )
-				return;
-
-			const stamp = ++design._themeStamp;
-
-			design._themeWork( true );
-			design._say( dc.getElementById('design-msg'), '' );
-
-			design._apiCall( 'theme/create', Object.assign( {}, design._edit, { name : design._themeNew, description : '' } ), function( status, response ) {
-
-				if( stamp !== design._themeStamp )
-					return;
-
-				design._themeWork( false );
-
-				if( status !== 200 || response === null )
-					return design._themeFail( '/_admin/design/theme/error/create', status, response );
-
-				design._data.themes = response.themes;
-				design._active = response.active;
-				design._edit.theme = response.slug;
-				design._themeText = { name : response.active.name, description : response.active.description };
-				design._themeNew = '';
-				design._paintTheme();
-				design._refreshDirty();
-				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/created', response.active.name ) );
-			} );
-		},
-
-		/**
-		 *	Put the screen into the active theme - the working copy, its css, and the name and description
-		 *	as they are typed. The answer is the theme as the server holds it now, and the list
+		 *	Put the screen into the loaded theme - the working copy and its css, with the name and the description the
+		 *	theme has: a rename is the pencil of its row. The answer is the theme as the server holds it now, and the list
 		 *
 		 *	@return		void
 		 */
@@ -1863,7 +1789,7 @@
 			design._themeWork( true );
 			design._say( dc.getElementById('design-msg'), '' );
 
-			design._apiCall( 'theme/save', Object.assign( {}, design._edit, { slug : slug, name : design._themeText.name, description : design._themeText.description } ), function( status, response ) {
+			design._apiCall( 'theme/save', Object.assign( {}, design._edit, { slug : slug } ), function( status, response ) {
 
 				if( stamp !== design._themeStamp )
 					return;
@@ -1875,7 +1801,6 @@
 
 				design._data.themes = response.themes;
 				design._active = response.active;
-				design._themeText = { name : response.active.name, description : response.active.description };
 
 				// The theme the stored setup was taken from is what the way back goes back to
 				if( design._data.theme === slug )
@@ -1884,6 +1809,176 @@
 				design._paintTheme();
 				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/saved', response.active.name ) );
 			} );
+		},
+
+		/**
+		 *	Open the name and the description of a theme of the project as two fields in its row, with what it has now in
+		 *	them. One row at a time: another that was open is closed without a word, and what was typed in it is let go of
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_renameTheme : function( slug ) {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true )
+				return;
+
+			const entry = design._themeEntry( slug );
+
+			design._themeRename = slug;
+			design._themeFields = { name : entry.name, description : entry.description };
+			design._paintTheme();
+
+			const field = dc.getElementById('design-theme-name');
+
+			if( field !== null )
+				field.focus();
+		},
+
+		/**
+		 *	Close the fields of the row without a request: the name and the description are what they were
+		 *
+		 *	@return		void
+		 */
+		_cancelRename : function() {
+
+			const design = Nino.admin.design;
+			const slug = design._themeRename;
+
+			if( slug === '' )
+				return;
+
+			design._themeRename = '';
+			design._paintTheme();
+
+			const pencil = dc.getElementById('design-theme-rename-'+ slug );
+
+			if( pencil !== null )
+				pencil.focus();
+		},
+
+		/**
+		 *	Give the theme whose fields are open the name and the description that are typed in them. Only those two:
+		 *	its setup and its css are the file's. The answer is the list and the theme, which the list shows with the
+		 *	new words; where it is the loaded theme the record the chip compares with takes the new words and keeps
+		 *	its setup and its css, which are the ones the screen was taken from
+		 *
+		 *	@return		void
+		 */
+		_saveRename : function() {
+
+			const design = Nino.admin.design;
+			const slug = design._themeRename;
+
+			if( design._themeBusy === true || slug === '' )
+				return;
+
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			// What an earlier refusal put under the field goes: this one has its own
+			if( dc.getElementById('design-themes') !== null )
+				Nino.adminUi.clearFieldErrors( dc.getElementById('design-themes') );
+
+			design._apiCall( 'theme/rename', { slug : slug, name : design._themeFields.name, description : design._themeFields.description }, function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null ) {
+
+					design._themeFail( '/_admin/design/theme/error/rename', status, response );
+
+					// A name the server refuses is said under its field as well, and the focus goes there: the line of the bar says that something is wrong, the field says what
+					const field = dc.getElementById('design-theme-name');
+
+					if( response !== null && typeof response === 'object' && response.code === 'design_name' && field !== null ) {
+						Nino.adminUi.fieldError( field.parentNode, field, 'design-theme-name-error', Nino.adminUi.api.errorText( status, response, '/_admin/design/theme/error/rename' ) );
+						field.focus();
+					}
+
+					return;
+				}
+
+				design._data.themes = response.themes;
+				design._themeRename = '';
+
+				if( design._data.theme === slug )
+					design._data.active = response.active;
+
+				if( design._active !== null && design._active.slug === slug )
+					design._active = Object.assign( {}, design._active, { name : response.active.name, description : response.active.description } );
+
+				design._paintTheme();
+				design._focus( 'design-theme-rename-'+ slug );
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/renamed', response.active.name ) );
+			} );
+		},
+
+		/**
+		 *	Edit a theme: open the setup in six views, on the view that was open last. The loaded theme opens at once, without
+		 *	a request, and the draft with it - what was changed and not stored stays; any other is loaded first, as Load
+		 *	does, and the views open in the one drawing that takes it over
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_editTheme : function( slug ) {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true )
+				return;
+
+			if( design._edit === null || design._edit.theme !== slug )
+				return design._loadTheme( slug, true );
+
+			design._screen = 'setup';
+			design._target = null;
+			design._render();
+			design._focusViews();
+		},
+
+		/**
+		 *	The focus after the views were opened by a press on Edit, which the list took with it: on the view that is open, the one
+		 *	tab of the strip that is a tab stop, else on Back to list
+		 *
+		 *	@return		void
+		 */
+		_focusViews : function() {
+
+			const design = Nino.admin.design;
+
+			design._focus( dc.getElementById( 'design-tab-'+ design.views._tab ) !== null ? 'design-tab-'+ design.views._tab : 'design-back' );
+		},
+
+		/**
+		 *	Back to the list of the themes from the views. Nothing is discarded: the draft stays as it is, and the chip on the
+		 *	button of Themes says that it differs from the theme
+		 *
+		 *	@return		void
+		 */
+		_back : function() {
+
+			const design = Nino.admin.design;
+
+			design._screen = 'themes';
+			design._target = null;
+			design._render();
+
+			// The press that had the focus went with the views: it goes to the Edit of the theme that is loaded - the first row's where none is
+			const loaded = design._edit !== null && design._edit.theme !== '' ? design._edit.theme : ( ( ( design._data || {} ).themes || [] )[0] || {} ).slug;
+
+			if( typeof loaded === 'string' )
+				design._focus( 'design-theme-edit-'+ loaded );
 		},
 
 		/**
@@ -1912,13 +2007,14 @@
 				if( stamp !== design._themeStamp )
 					return;
 
-				design._themeWork( false );
+				const pressed = design._themeWork( false );
 
 				if( status !== 200 || response === null )
 					return design._themeFail( '/_admin/design/theme/error/duplicate', status, response );
 
 				design._data.themes = response.themes;
 				design._paintTheme();
+				design._focus( pressed );
 				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/duplicated', from, design._themeEntry( response.slug ).name ) );
 			} );
 		},
@@ -1967,7 +2063,6 @@
 				if( design._edit.theme === slug ) {
 					design._edit.theme = '';
 					design._active = null;
-					design._themeText = { name : '', description : '' };
 				}
 
 				design._paintTheme();
@@ -1977,20 +2072,21 @@
 		},
 
 		/**
-		 *	Take the active theme out as a file: the answer is its text and the name to save it under, and
+		 *	Take the theme of a row out as a file: the answer is its text and the name to save it under, and
 		 *	becomes a download the way the Language panel's export does - a blob, a link clicked and removed,
 		 *	the address revoked
 		 *
+		 *	@param		{string}	slug
+		 *
 		 *	@return		void
 		 */
-		_exportTheme : function() {
+		_exportTheme : function( slug ) {
 
 			const design = Nino.admin.design;
 
-			if( design._themeBusy === true || design._edit === null || design._edit.theme === '' )
+			if( design._themeBusy === true )
 				return;
 
-			const slug = design._edit.theme;
 			const stamp = ++design._themeStamp;
 
 			design._themeWork( true );
@@ -2078,13 +2174,14 @@
 				if( stamp !== design._themeStamp )
 					return;
 
-				design._themeWork( false );
+				const pressed = design._themeWork( false );
 
 				if( status !== 200 || response === null )
 					return design._themeFail( '/_admin/design/theme/error/import', status, response );
 
 				design._data.themes = response.themes;
 				design._paintTheme();
+				design._focus( pressed );
 				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/imported', design._themeEntry( response.slug ).name ) );
 			} );
 		},
@@ -2128,131 +2225,6 @@
 			} );
 
 			return entries;
-		},
-
-		/**
-		 *	A tab with screens (see SCREENS): the strip of them and under it the box the screen that is open is
-		 *	drawn into. The strip is the element a switch is made on, and it stays where it is while the screen
-		 *	under it is drawn again (see _switchGroup())
-		 *
-		 *	@param		{string}	tab				A key of SCREENS
-		 *	@param		{Element}	body			The box the column keeps for the open tab
-		 *
-		 *	@return		void
-		 */
-		_renderScreens : function( tab, body ) {
-
-			const design = Nino.admin.design;
-
-			body.appendChild( design._groupStrip( tab, design.SCREENS[tab] ) );
-
-			const screen = dc.createElement('div');
-			screen.id = 'design-screen';
-			body.appendChild( screen );
-
-			design._fillScreen( screen, tab );
-		},
-
-		/**
-		 *	The screen that is open of what is cut into screens, into the box that is kept for it: the themes', which is
-		 *	the one that has them (see SCREENS). A screen is drawn again whenever it is opened, from what is known
-		 *	then: the theme a create has just made is in the list
-		 *
-		 *	@param		{Element}	box
-		 *	@param		{string}	tab				A key of SCREENS
-		 *
-		 *	@return		void
-		 */
-		_fillScreen : function( box, tab ) {
-
-			if( tab === 'theme' )
-				Nino.admin.design._renderTheme( box );
-		},
-
-		/**
-		 *	The strip of the screens of a tab: a tablist of the workbench's make, one tab for each, the open
-		 *	one selected, named by the tab it belongs to as the strip in the head is by the panel. A press on one
-		 *	switches to it (see _switchGroup())
-		 *
-		 *	@param		{string}	tab				A key of SCREENS
-		 *	@param		{Array}		keys			The screens, in the order they stand in
-		 *
-		 *	@return		{HTMLElement}
-		 */
-		_groupStrip : function( tab, keys ) {
-
-			return Nino.admin.design._tabs( Nino.content.getText('/_admin/nav/themes'), 'design-groups', 'group',
-				keys.map( function( key ) {
-					return { key : key, label : Nino.content.getText('/_admin/design/group/'+ tab+ '/'+ key+ '/label') };
-				} ), Nino.admin.design._groupOf( tab ), function( key ) {
-					Nino.admin.design._switchGroup( tab, key );
-				} );
-		},
-
-		/**
-		 *	The screen of a tab with screens that is shown: the one chosen since the panel was opened, else
-		 *	the first
-		 *
-		 *	@param		{string}	tab				A key of SCREENS
-		 *
-		 *	@return		{string}						'' for a tab that has none
-		 */
-		_groupOf : function( tab ) {
-
-			const keys = Nino.admin.design.SCREENS[tab] || [];
-			const chosen = Nino.admin.design._group[tab];
-
-			return keys.indexOf( chosen ) !== -1 ? chosen : ( keys[0] || '' );
-		},
-
-		/**
-		 *	Show another screen of a tab that has some. Only what stands under the strip is drawn again - the
-		 *	screen, made afresh from what is known (see _fillScreen()): the strip is the element the switch was
-		 *	made on, and the focus an arrow key put on a tab of it stays there (see _switchTab() for the strip in
-		 *	the head).
-		 *
-		 *	A screen belongs to what is on screen and not to the selection, so nothing is marked as changed and
-		 *	no preview is asked for - the page in the frame is the same under every screen, and the frame stays
-		 *	on the place it showed. The screen is another height, which in one column moves the stage that stands
-		 *	under it: the stage is fitted again. Where that gave the frame another height the page in it lays
-		 *	itself out again and the place it showed moves, so it is put back there - the place of the last
-		 *	change, else the anchor of the tab - once the page has heard the resize, as it is after a tab (see
-		 *	_jumpFitted()). A screen that leaves the stage as tall as it was has nothing to put back and scrolls
-		 *	nothing. The screen that is open already is not opened again, as the tab that is open is not (see
-		 *	_switchTab())
-		 *
-		 *	@param		{string}	tab				A key of SCREENS
-		 *	@param		{string}	group			A key of the screens of that tab
-		 *
-		 *	@return		void
-		 */
-		_switchGroup : function( tab, group ) {
-
-			const design = Nino.admin.design;
-
-			if( group === design._groupOf( tab ) )
-				return;
-
-			design._group[tab] = group;
-
-			const screen = dc.getElementById('design-screen');
-
-			if( screen === null )
-				return;
-
-			screen.innerHTML = '';
-			design._fillScreen( screen, tab );
-
-			// The stage stands under the screen in one column, so a screen of another height moves it: fitted
-			// again, and the page in the frame is put back once it has laid itself out at the height
-			// the fit gave it (see _jumpFitted())
-			const frame = dc.getElementById('design-frame');
-			const was = frame === null ? '' : frame.parentNode.style.height;
-
-			design._fit();
-
-			if( frame !== null && frame.parentNode !== null && frame.parentNode.style.height !== was )
-				design._jumpFitted( frame, was );
 		},
 
 		/**
@@ -2319,8 +2291,8 @@
 			if( second !== null && String( ( Nino.admin.design._edit.colours || {} ).secondary || '' ) === '' )
 				second.value = String( data.accent || second.value );
 
-			Nino.admin['design-setup']._paintBrandWarning();
-			Nino.admin['design-setup']._paintContrasts();
+			Nino.admin.design.views._paintBrandWarning();
+			Nino.admin.design.views._paintContrasts();
 		},
 
 		/**
@@ -2949,8 +2921,8 @@
 				if( doc === null || doc.body === null )
 					return;
 
-				// Where no change was looked at: the screen of the themes at the top of the page, a view of the tab Design at its own anchor
-				const tab = Nino.admin.design._screen === 'setup' ? Nino.admin.design.ANCHORS[ Nino.admin['design-setup']._tab ] : Nino.admin.design.THEMES_ANCHOR;
+				// Where no change was looked at: the list of the themes at the top of the page, a view of the setup at its own anchor
+				const tab = Nino.admin.design._screen === 'setup' ? Nino.admin.design.ANCHORS[ Nino.admin.design.views._tab ] : Nino.admin.design.THEMES_ANCHOR;
 				let aim = Nino.admin.design._target || tab;
 				let target = doc.getElementById( aim );
 				const view = doc.defaultView;
@@ -3032,10 +3004,9 @@
 		 *
 		 *	It is asked for wherever the stage may have moved or the window changed: as
 		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
-		 *	viewport is chosen, when a view is opened, when another screen of the themes
-		 *	is shown and when a preview has come back. The last three are for one column,
-		 *	where the controls stand over the stage and a column of another height -
-		 *	another view or screen, the brand warning of the colours -
+		 *	viewport is chosen, when a view is opened and when a preview has come back.
+		 *	The last two are for one column, where the controls stand over the stage and
+		 *	a column of another height - another view, the brand warning of the colours -
 		 *	moves it; beside the controls the pane sticks, and the stage stays where it is
 		 *
 		 *	The frame is the last thing on the page, and the page clears its foot for
@@ -3568,12 +3539,13 @@
 
 	};
 
-	/*	The tab Design: the setup in six views - Templates, Type, Surfaces, Colours, Motion and CSS, the ones Setup::TABS names -, one
-		at a time, with the preview beside it and the bar under it, which are the panel's (see Nino.admin.design). It is drawn from
-		the state of the panel and writes through it: the working copy, the selection and the draft are not copied here, only which
-		view is open and which block of it. Five of the views draw a block for each object that has a control on them, from the
-		table (see Setup::LAYOUT); the sixth, CSS, has no objects - it is the one field of the css of the theme	*/
-	Nino.admin['design-setup'] = {
+	/*	The setup in six views - Templates, Type, Surfaces, Colours, Motion and CSS, the ones Setup::TABS names -, one at a time, with
+		the preview beside it and the bar under it, which are the panel's (see Nino.admin.design): the second mode of its screen, reached
+		by Edit on a row of the list of the themes and left by Back to list. The shell does not ask for it, the screen of the panel draws
+		it. It is drawn from the state of the panel and writes through it: the working copy, the selection and the draft are not copied
+		here, only which view is open and which block of it. Five of the views draw a block for each object that has a control on them,
+		from the table (see Setup::LAYOUT); the sixth, CSS, has no objects - it is the one field of the css of the theme	*/
+	Nino.admin.design.views = {
 
 		/*	The word the label and the hint of a strip of the page stand under (/_admin/design/label/<word> and
 			/_admin/design/hint/<word>), by the key the table has the strip under	*/
@@ -3589,17 +3561,8 @@
 		_tab		: 'templates',
 		/*	The row that is open on a view that draws its rows as an accordion (see _renderRows()), by the view: the object it is the
 			row of, or null once the person has closed it. A view with no entry has its first row open. Kept while the panel lives, like
-			the screen of the themes, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
+			the mode of the screen, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
 		_open	: {},
-
-		/**
-		 *	The shell shows the tab Design
-		 *
-		 *	@return		void
-		 */
-		showCurrent : function() {
-			Nino.admin.design._show('setup');
-		},
 
 		/**
 		 *	The knobs the template chosen for a part answers to. The rest of the
@@ -3702,27 +3665,36 @@
 		},
 
 		/**
-		 *	The six views, the ones the table names. A tablist rather than a button group, because these
-		 *	really are six panels: aria-selected, not aria-pressed. The strip stands at the top of the pane of
-		 *	the tab, under the strip of the shell (see Nino.admin.design._render())
+		 *	The bar of the views: a row of Back to list and the tablist of the six views, the ones the table names. Back
+		 *	to list is a button of its own, no tab - it opens no view, it leaves them - and stands outside the tablist,
+		 *	so that the arrow keys walk the six and nothing else. The tablist is a tablist rather than a button group,
+		 *	because these really are six panels: aria-selected, not aria-pressed. The bar stands at the top of the pane
+		 *	of the tab, under the strip of the shell (see Nino.admin.design._render())
 		 *
 		 *	@return		{HTMLElement}
 		 */
 		_renderTabs : function() {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = design.views;
 
-			const strip = design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-tabs', 'tab',
+			const bar = Nino.adminUi.el( 'div', 'nino-admin-tabs nino-admin-tabs--bar design-tabs' );
+			bar.id = 'design-tabs';
+
+			const back = Nino.adminUi.el( 'button', 'nino-admin-tab design-back', Nino.content.getText('/_admin/common/label/back') );
+			back.type = 'button';
+			back.id = 'design-back';
+			back.addEventListener( 'click', function() { design._back() } );
+
+			bar.appendChild( back );
+			bar.appendChild( design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-views', 'tab',
 				design._tabKeys().map( function( key ) {
 					return { key : key, label : Nino.content.getText('/_admin/design/tab/'+ key+ '/label') };
 				} ), views._tab, function( key ) {
 					views._switchTab( key );
-				} );
+				} ) );
 
-			strip.id = 'design-tabs';
-
-			return strip;
+			return bar;
 		},
 
 		/**
@@ -3737,13 +3709,13 @@
 		_renderView : function( key, body ) {
 
 			if( key !== 'css' )
-				return Nino.admin['design-setup']._renderRows( key, body );
+				return Nino.admin.design.views._renderRows( key, body );
 
 			// By the node, not by its id: this column is not in the document yet on the first render
 			const card = Nino.admin.design._card('design-theme-css-card');
 
 			body.appendChild( card );
-			Nino.admin['design-setup']._paintCustomCss( card );
+			Nino.admin.design.views._paintCustomCss( card );
 		},
 
 		/**
@@ -3767,10 +3739,10 @@
 		 */
 		_switchTab : function( key ) {
 
-			if( key === Nino.admin['design-setup']._tab )
+			if( key === Nino.admin.design.views._tab )
 				return;
 
-			Nino.admin['design-setup']._tab = key;
+			Nino.admin.design.views._tab = key;
 
 			// Where a change was looked at belonged to the tab that was left: the
 			// frame goes to the anchor of this one
@@ -3847,7 +3819,7 @@
 		 */
 		_renderRows : function( tab, box ) {
 
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const rows = views._rows( tab );
 			const open = views._blockOf( tab, rows );
 
@@ -3867,7 +3839,7 @@
 		 */
 		_blockOf : function( tab, rows ) {
 
-			const chosen = Nino.admin['design-setup']._open[tab];
+			const chosen = Nino.admin.design.views._open[tab];
 			const objects = rows.map( function( row ) { return row.object } );
 
 			if( chosen === null || objects.length === 0 )
@@ -3901,7 +3873,7 @@
 		 */
 		_renderRow : function( tab, row, open ) {
 
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 
 			const card = dc.createElement('div');
 			card.id = views._rowId( tab, row.object );
@@ -3930,7 +3902,7 @@
 		_renderHead : function( tab, row ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const id = views._rowId( tab, row.object );
 
 			const name = dc.createElement('span');
@@ -3970,10 +3942,10 @@
 		_renderBody : function( tab, row ) {
 
 			const body = dc.createElement('div');
-			body.id = Nino.admin['design-setup']._rowId( tab, row.object )+ '-body';
+			body.id = Nino.admin.design.views._rowId( tab, row.object )+ '-body';
 			body.className = 'design-accordion-body';
 
-			Nino.admin['design-setup']._fillRow( body, row );
+			Nino.admin.design.views._fillRow( body, row );
 
 			return body;
 		},
@@ -3992,7 +3964,7 @@
 		 */
 		_setBlock : function( card, tab, row, open ) {
 
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const body = card.querySelector('.design-accordion-body');
 
 			if( open === true && body === null )
@@ -4019,7 +3991,7 @@
 		_paintHead : function( head, row, open ) {
 
 			const summary = head.querySelector('.design-accordion-summary');
-			const line = open === true ? '' : Nino.admin['design-setup']._summary( row );
+			const line = open === true ? '' : Nino.admin.design.views._summary( row );
 
 			head.setAttribute( 'aria-expanded', open === true ? 'true' : 'false' );
 
@@ -4047,7 +4019,7 @@
 		 */
 		_toggleBlock : function( tab, object, head ) {
 
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const rows = views._rows( tab );
 			const was = views._blockOf( tab, rows );
 			const top = head.getBoundingClientRect().top;
@@ -4104,7 +4076,7 @@
 		_summary : function( row ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			let lines = [];
 
 			row.controls.forEach( function( keys ) {
@@ -4143,7 +4115,7 @@
 		_deviations : function( keys, object ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const edit = design._edit;
 			const normal = ( design._data || {} ).defaults || {};
 			const path = keys[0].split('/');
@@ -4257,7 +4229,7 @@
 		_colourSaid : function( knob ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const chosen = ( design._edit || {} ).colours || {};
 			const given = ( ( design._data || {} ).defaults || {} ).colours || {};
 			const meta = ( ( design._data || {} ).palette || {} )[knob];
@@ -4301,7 +4273,7 @@
 		_fillRow : function( card, row ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const palette = ( design._data || {} ).palette || {};
 			const fields = {};
 			let table = null;
@@ -4395,7 +4367,7 @@
 		 *	@return		{string}
 		 */
 		_pageName : function( key ) {
-			return Nino.content.getText('/_admin/design/label/'+ Nino.admin['design-setup'].PAGE_WORDS[key] );
+			return Nino.content.getText('/_admin/design/label/'+ Nino.admin.design.views.PAGE_WORDS[key] );
 		},
 
 		/**
@@ -4409,7 +4381,7 @@
 		_pageStrip : function( key ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const edit = design._edit;
 			const word = views.PAGE_WORDS[key];
 
@@ -4462,7 +4434,7 @@
 		_radiiRow : function( keys, object ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const edit = design._edit;
 			const strip = views._radiiStrip( keys, object );
 			const kinds = strip.kinds;
@@ -4495,7 +4467,7 @@
 		_motionField : function( key ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 
 			return views._select(
 				'design-motion-'+ key, Nino.content.getText('/_admin/design/motion/'+ key+ '/label'), views._motionOptions( key ), design._edit.motion[key] || '',
@@ -4533,7 +4505,7 @@
 		_motionOff : function( selects ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 
 			Object.keys( views.MOTION_FOLLOWS ).forEach( function( part ) {
 
@@ -4556,12 +4528,12 @@
 		 */
 		_partField : function( row ) {
 
-			const field = Nino.admin['design-setup']._select(
+			const field = Nino.admin.design.views._select(
 				'design-set-'+ row.part, Nino.content.getText('/_admin/design/label/template'),
 				Object.keys( row.catalogue || {} ).map( function( set ) {
 					return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
 				} ), Nino.admin.design._edit.parts[row.part], function( value ) {
-					Nino.admin['design-setup']._setPart( row.part, value );
+					Nino.admin.design.views._setPart( row.part, value );
 				},
 				( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[row.part] ] || {} ).description || ''
 			);
@@ -4579,11 +4551,11 @@
 		 *	knobs stand on several tabs and are drawn when those are opened, with
 		 *	the knobs this template does not answer to greyed out.
 		 *
-		 *	The row of the part on the tab that is open - on Templates, the block of
-		 *	the object, whose strips are knobs of the part - is drawn anew, so that
-		 *	it shows what the model holds and the line under the select says what the
-		 *	template chosen is, and the focus stays on the select, which is a new one.
-		 *	The head of the block says the word of the set that
+		 *	The whole column of controls of the view that is open is drawn anew, as a
+		 *	switch of the view draws it, so that it shows what the model holds - the line
+		 *	under the select says what the template chosen is, and the strips of the part
+		 *	are the knobs the set answers to - and the focus stays on the select, which is
+		 *	a new one; the block that is open stays open. The head of the block says the word of the set that
 		 *	is chosen once the block is closed, painted from the selection as it
 		 *	stands then (see _paintHead()). The frame goes to where the template is
 		 *	looked at (OBJECT_ANCHORS) - a header at the top of the page, a footer at
@@ -4597,7 +4569,7 @@
 		_setPart : function( part, set ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const edit = design._edit;
 			const row = design._row( part );
 			const answered = ( ( row.catalogue || {} )[set] || {} ).knobs || [];
@@ -4610,18 +4582,18 @@
 					edit.knobs[part][knob] = ( normal[part] || {} )[knob] || 0;
 			} );
 
-			// The card of the part on the tab that is open: the select, its line and the strips of the knobs, from the model
-			const place = design._place( 'parts/'+ part );
-			const rows = views._rows( place[0] );
-			const shown = rows.filter( function( each ) { return each.object === place[1] } )[0];
-			const old = dc.getElementById( views._rowId( place[0], place[1] ) );
+			/*	The whole column of controls, drawn from the model the way a switch of the view draws it (see _switchTab()): the
+				select with its line, the strips of the knobs of the part - and every other view, which is drawn from the model
+				when it is opened, shows the knobs of the set that is chosen as well. The block that is open stays open (it is
+				the view's, see _open), and the select that was pressed is part of the column that is replaced: the focus follows
+				it to the new one	*/
+			const column = dc.getElementById('design-controls');
 
-			// The select that was pressed is part of the card that is replaced: the focus follows it to the new one
-			if( old !== null && shown !== undefined ) {
+			if( column !== null ) {
 
-				const had = old.contains( dc.activeElement );
+				const had = dc.activeElement !== null && dc.activeElement === dc.getElementById( 'design-set-'+ part );
 
-				old.replaceWith( views._renderRow( place[0], shown, views._blockOf( place[0], rows ) === shown.object ) );
+				column.replaceWith( design._renderControls() );
 
 				const again = had === true ? dc.getElementById( 'design-set-'+ part ) : null;
 
@@ -4675,7 +4647,7 @@
 		_featureKnob : function( key, knob ) {
 
 			const catalogue = ( Nino.admin.design._featuresOf()[key] || {} ).catalogue || {};
-			const chosen = ( ( catalogue[ Nino.admin['design-setup']._chosenSet( key ) ] || {} ).knobs || {} )[knob];
+			const chosen = ( ( catalogue[ Nino.admin.design.views._chosenSet( key ) ] || {} ).knobs || {} )[knob];
 
 			if( chosen !== undefined )
 				return { meta : chosen, answered : true };
@@ -4713,7 +4685,7 @@
 		 */
 		_featureStrip : function( meta ) {
 
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const positions = views._positions( meta.kind );
 
 			return {
@@ -4738,7 +4710,7 @@
 		 */
 		_featureSaid : function( meta, value ) {
 
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 
 			if( meta.kind === 'scale' || meta.kind === 'choice' ) {
 				const strip = views._featureStrip( meta );
@@ -4762,7 +4734,7 @@
 		_variantSaid : function( key ) {
 
 			const feature = Nino.admin.design._featuresOf()[key] || {};
-			const set = Nino.admin['design-setup']._chosenSet( key );
+			const set = Nino.admin.design.views._chosenSet( key );
 
 			return set === feature['default'] ? [] : [ ( ( feature.catalogue || {} )[set] || {} ).name || set ];
 		},
@@ -4794,7 +4766,7 @@
 		_featureField : function( key ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
 			const variants = Object.keys( catalogue );
 			const describe = function( set ) { return ( catalogue[set] || {} ).description || '' };
@@ -4834,7 +4806,7 @@
 		_featureKnobRow : function( key, knob ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const found = views._featureKnob( key, knob );
 			const meta = found.meta;
 			const value = views._featureValue( key, knob, meta );
@@ -4883,7 +4855,7 @@
 		_featureColours : function( key, knob, meta, value, answered ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 
 			const wrap = dc.createElement('div');
 			wrap.className = 'design-colour-feature';
@@ -4969,7 +4941,7 @@
 		_paintContrasts : function() {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const features = design._featuresOf();
 
 			Object.keys( features ).forEach( function( key ) {
@@ -5007,7 +4979,7 @@
 		_setFeatureSet : function( key, set, field ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
 			const declared = ( catalogue[set] || {} ).knobs || {};
 			const entry = design._edit.features[key] || { set : set, knobs : {} };
@@ -5044,7 +5016,7 @@
 		_setFeatureKnob : function( key, knob, value ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const entry = design._edit.features[key] || { set : views._chosenSet( key ), knobs : {} };
 
 			entry.knobs[knob] = value;
@@ -5092,7 +5064,7 @@
 		_setMotion : function( key, value ) {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const selects = {};
 
 			design._edit.motion[key] = value;
@@ -5188,7 +5160,7 @@
 			const cell = function( control, column ) {
 				const td = dc.createElement('td');
 				td.setAttribute( 'role', 'cell' );
-				control.setAttribute( 'aria-label', Nino.admin['design-setup']._fontLabel( role, column ) );
+				control.setAttribute( 'aria-label', Nino.admin.design.views._fontLabel( role, column ) );
 				td.appendChild( control );
 				row.appendChild( td );
 				return td;
@@ -5207,12 +5179,12 @@
 						node.selected = true;
 					control.appendChild( node );
 				} );
-				control.addEventListener( 'change', function() { Nino.admin['design-setup']._setFont( role, key, control.value ) } );
+				control.addEventListener( 'change', function() { Nino.admin.design.views._setFont( role, key, control.value ) } );
 				return cell( control, key );
 			};
 
 			select( 'family', ( ( data.options || {} )[role] || [ '' ] ).map( function( slug ) {
-				return { value : slug, label : Nino.admin['design-setup']._familyLabel( role, slug ) };
+				return { value : slug, label : Nino.admin.design.views._familyLabel( role, slug ) };
 			} ), chosen.family || '' );
 
 			select( 'weight', ( data.weights || [] ).map( function( weight ) {
@@ -5231,14 +5203,14 @@
 			else {
 				const field = Nino.adminUi.switchField( {
 					key 		: 'design-font-'+ role+ '-uppercase',
-					label 	: Nino.admin['design-setup']._fontLabel( role, 'uppercase' ),
+					label 	: Nino.admin.design.views._fontLabel( role, 'uppercase' ),
 					checked	: chosen.uppercase === true,
 				} );
 				const input = field.querySelector('input');
 				input.id = 'design-font-'+ role+ '-uppercase';
 				input.dataset.role = role;
 				input.dataset.key = 'uppercase';
-				input.addEventListener( 'change', function() { Nino.admin['design-setup']._setFont( role, 'uppercase', input.checked ) } );
+				input.addEventListener( 'change', function() { Nino.admin.design.views._setFont( role, 'uppercase', input.checked ) } );
 				const td = dc.createElement('td');
 				td.setAttribute( 'role', 'cell' );
 				td.className = 'design-fonts-switch';
@@ -5268,10 +5240,10 @@
 			size.setAttribute( 'step', '.1' );
 			size.setAttribute( 'min', String( bounds[0] ) );
 			size.setAttribute( 'max', String( bounds[1] ) );
-			size.value = Nino.admin['design-setup']._sizeInForce( role );
+			size.value = Nino.admin.design.views._sizeInForce( role );
 			size.addEventListener( 'change', function() {
-				Nino.admin['design-setup']._setFont( role, 'size', Nino.admin['design-setup']._keepSize( role, size.value ) );
-				size.value = Nino.admin['design-setup']._sizeInForce( role );
+				Nino.admin.design.views._setFont( role, 'size', Nino.admin.design.views._keepSize( role, size.value ) );
+				size.value = Nino.admin.design.views._sizeInForce( role );
 			} );
 
 			const td = cell( size, 'size' );
@@ -5339,7 +5311,7 @@
 		 */
 		_keepSize : function( role, typed ) {
 
-			const kept = Nino.admin['design-setup']._clampSize( role, typed );
+			const kept = Nino.admin.design.views._clampSize( role, typed );
 			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
 
 			return kept !== '' && Number( kept ) === Number( given ) ? '' : kept;
@@ -5372,7 +5344,7 @@
 		_setFont : function( role, key, value ) {
 
 			Nino.admin.design._edit.fonts[role][key] = value;
-			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'fonts/'+ role );
+			Nino.admin.design._target = Nino.admin.design.views._anchorOf( 'fonts/'+ role );
 			Nino.admin.design._preview();
 		},
 
@@ -5390,16 +5362,16 @@
 
 			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
 			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
-			const positions = Nino.admin['design-setup']._positions( kind );
+			const positions = Nino.admin.design.views._positions( kind );
 
 			return {
 				name 		: Nino.content.getText( base+ '/label' ),
 				options	: kind === 'choice'
 					? positions.map( function( position ) {
-						const label = Nino.content.getText( base+ '/'+ Nino.admin['design-setup']._word( position ) );
+						const label = Nino.content.getText( base+ '/'+ Nino.admin.design.views._word( position ) );
 						return { value : position, label : label, title : label };
 					} )
-					: Nino.admin['design-setup']._numbered( positions, 0 ),
+					: Nino.admin.design.views._numbered( positions, 0 ),
 			};
 		},
 
@@ -5419,7 +5391,7 @@
 		_knobRow : function( part, knob, answered ) {
 
 			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
-			const strip = Nino.admin['design-setup']._knobStrip( part, knob );
+			const strip = Nino.admin.design.views._knobStrip( part, knob );
 			const name = strip.name;
 
 			/*	The knob's own name and the terse note under it, both out of the
@@ -5429,7 +5401,7 @@
 			const field = Nino.admin.design._stripRow( part+ '/'+ knob, name,
 				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ),
 				strip.options, ( Nino.admin.design._edit.knobs[part] || {} )[knob] || 0, function( position ) {
-					Nino.admin['design-setup']._setStep( part, knob, position );
+					Nino.admin.design.views._setStep( part, knob, position );
 				}, answered === false );
 
 			field.dataset.knob = knob;
@@ -5451,7 +5423,7 @@
 			Nino.admin.design._edit.knobs[part][knob] = position;
 			// A change is looked at where it shows: one target for it, which the jump
 			// that follows the preview goes to
-			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'knobs/'+ part+ '/'+ knob );
+			Nino.admin.design._target = Nino.admin.design.views._anchorOf( 'knobs/'+ part+ '/'+ knob );
 			Nino.admin.design._preview();
 		},
 
@@ -5477,7 +5449,7 @@
 			if( key.indexOf('features/') === 0 ) {
 
 				const feature = design._featuresOf()[ place[1] ] || {};
-				const named = ( ( feature.catalogue || {} )[ Nino.admin['design-setup']._chosenSet( place[1] ) ] || {} ).anchor;
+				const named = ( ( feature.catalogue || {} )[ Nino.admin.design.views._chosenSet( place[1] ) ] || {} ).anchor;
 
 				return typeof named === 'string' && named !== '' ? named : design.ANCHORS[ place[0] ];
 			}
@@ -5505,7 +5477,7 @@
 			warn.className = 'nino-admin-hint design-colour-warning';
 
 			// By the node, not by its id: this column is not in the document yet on the first render
-			Nino.admin['design-setup']._paintBrandWarning( warn );
+			Nino.admin.design.views._paintBrandWarning( warn );
 
 			return warn;
 		},
@@ -5536,7 +5508,7 @@
 			input.id = 'design-colour-primary';
 			input.className = 'design-colour-input';
 			input.value = String( ( edit.colours || {} ).primary || '#4faae8' );
-			input.addEventListener( 'change', function() { Nino.admin['design-setup']._setColour( 'primary', this.value ) } );
+			input.addEventListener( 'change', function() { Nino.admin.design.views._setColour( 'primary', this.value ) } );
 			field.appendChild( input );
 
 			return field;
@@ -5573,7 +5545,7 @@
 				: value;
 			input.title = Nino.content.getText('/_admin/design/label/secondary');
 			input.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/secondary') );
-			input.addEventListener( 'change', function() { Nino.admin['design-setup']._setColour( 'secondary', this.value ) } );
+			input.addEventListener( 'change', function() { Nino.admin.design.views._setColour( 'secondary', this.value ) } );
 			box.appendChild( input );
 
 			if( derived === false ) {
@@ -5583,7 +5555,7 @@
 				reset.textContent = '\u21ba';
 				reset.title = Nino.content.getText('/_admin/design/hint/derived');
 				reset.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/hint/derived') );
-				reset.addEventListener( 'click', function() { Nino.admin['design-setup']._setColour( 'secondary', '' ) } );
+				reset.addEventListener( 'click', function() { Nino.admin.design.views._setColour( 'secondary', '' ) } );
 				box.appendChild( reset );
 			}
 
@@ -5612,7 +5584,7 @@
 				for( let position = 1; position <= meta.steps; position++ )
 					positions.push( position );
 
-				options = Nino.admin['design-setup']._numbered( positions, meta['default'] );
+				options = Nino.admin.design.views._numbered( positions, meta['default'] );
 			}
 			else
 				// The position's own name is the label here, not a step word:
@@ -5640,7 +5612,7 @@
 		_colourKnobRow : function( key, meta, extra ) {
 
 			const colours = Nino.admin.design._edit.colours || {};
-			const strip = Nino.admin['design-setup']._colourStrip( key, meta );
+			const strip = Nino.admin.design.views._colourStrip( key, meta );
 
 			/*	A hex somebody typed overrides the whole knob - Colours::palette()
 				takes the Secondary as given and never reaches for Harmony at all.
@@ -5651,7 +5623,7 @@
 				: ( colours[key] || meta['default'] );
 
 			const field = Nino.admin.design._stripRow( 'colours/'+ key, strip.name, Nino.content.getText( '/_admin/design/colour/'+ key+ '/note' ),
-				strip.options, active, function( position ) { Nino.admin['design-setup']._setColourKnob( key, position ) } );
+				strip.options, active, function( position ) { Nino.admin.design.views._setColourKnob( key, position ) } );
 
 			// What the stylesheet takes a row of the palette by: the row itself, not the place the table gives it
 			field.classList.add('design-colour-knob');
@@ -5680,12 +5652,12 @@
 				Nino.content.getText('/_admin/design/colour/mode/label'),
 				Nino.admin.design._icon('colours/mode') ) );
 
-			const field = Nino.admin['design-setup']._select(
-				'design-colour-mode', '', Nino.admin['design-setup']._modeOptions( meta ), String( ( edit.colours || {} ).mode || meta['default'] ),
+			const field = Nino.admin.design.views._select(
+				'design-colour-mode', '', Nino.admin.design.views._modeOptions( meta ), String( ( edit.colours || {} ).mode || meta['default'] ),
 				function( value ) {
 					Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
 					Nino.admin.design._edit.colours.mode = value;
-					Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'colours/mode' );
+					Nino.admin.design._target = Nino.admin.design.views._anchorOf( 'colours/mode' );
 					Nino.admin.design._preview();
 				} );
 
@@ -5713,15 +5685,15 @@
 		_setColour : function( key, value ) {
 			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
 			Nino.admin.design._edit.colours[key] = value;
-			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'colours/'+ key );
-			Nino.admin['design-setup']._redrawColours();
+			Nino.admin.design._target = Nino.admin.design.views._anchorOf( 'colours/'+ key );
+			Nino.admin.design.views._redrawColours();
 		},
 
 		_setColourKnob : function( key, position ) {
 
 			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
 			Nino.admin.design._edit.colours[key] = parseInt( position, 10 );
-			Nino.admin.design._target = Nino.admin['design-setup']._anchorOf( 'colours/'+ key );
+			Nino.admin.design._target = Nino.admin.design.views._anchorOf( 'colours/'+ key );
 
 			/*	Choosing where the second colour sits is choosing to let Harmony
 				put it there. A hex left over from before would override the very
@@ -5729,7 +5701,7 @@
 				nothing - which is the worst of the three possible states	*/
 			if( key === 'harmony' ) {
 				Nino.admin.design._edit.colours.secondary = '';
-				return Nino.admin['design-setup']._redrawColours();
+				return Nino.admin.design.views._redrawColours();
 			}
 
 			Nino.admin.design._preview();
@@ -5743,7 +5715,7 @@
 		_redrawColours : function() {
 
 			const design = Nino.admin.design;
-			const views = Nino.admin['design-setup'];
+			const views = Nino.admin.design.views;
 			const place = design._place('colours/secondary');
 			const rows = views._rows( place[0] );
 			const row = rows.filter( function( each ) { return each.object === place[1] } )[0];
@@ -5882,7 +5854,7 @@
 		 *	not there yet - the tab is the first screen of the pane that was asked for - it is waited for, and a
 		 *	failure of it is said in the mount of this tab
 		 *
-		 *	The chip "changed" stands on the button of the screen of the themes, which every tab of the pane has in the
+		 *	The chip "changed" stands on the button of the panel's own screen, which every tab of the pane has in the
 		 *	strip on top of it, so it is drawn here too (see Nino.admin.design._refreshThemeChip())
 		 *
 		 *	@return		void
@@ -6824,36 +6796,32 @@
 	/*	The shell asks Save, Discard or Cancel before a log out or a language
 		change would lose a selection nobody has stored, and a reload gets
 		the browser's own question. Save stores the draft - applying it is its
-		own question. The draft is one, and the two screens that carry the bar
-		each have their place in the shell's account of what is unsaved, under
-		the uri of their tab: the one that is drawn is the one that answers, so
-		that the question is asked once - and a Save that failed brings the
+		own question. The draft is one, and so is the screen that carries it:
+		it has its place in the shell's account of what is unsaved under the uri
+		of its tab, in both of its modes, and a Save that failed brings the
 		screen on, where the reason it gave is said (see _show())	*/
-	[ 'themes', 'setup' ].forEach( function( screen ) {
+	Nino.admin.dirty.register( 'design', {
+		isDirty : function() { return Nino.admin.design._isDirty() },
+		save : function( done ) {
 
-		Nino.admin.dirty.register( Nino.admin.design._entryOf( screen ), {
-			isDirty : function() { return Nino.admin.design._screen === screen && Nino.admin.design._isDirty() },
-			save : function( done ) {
+			const btn = dc.getElementById('design-save');
+			const msg = dc.getElementById('design-msg');
 
-				const btn = dc.getElementById('design-save');
-				const msg = dc.getElementById('design-msg');
+			if( btn === null || msg === null )
+				return done( false );
 
-				if( btn === null || msg === null )
-					return done( false );
+			Nino.admin.design._save( false, btn, msg, done );
+		},
+		// Drawn again with the stored selection: if the exit then does not
+		// leave the page, the controls show what the model holds
+		discard : function() {
 
-				Nino.admin.design._save( false, btn, msg, done );
-			},
-			// Drawn again with the stored selection: if the exit then does not
-			// leave the page, the controls show what the model holds
-			discard : function() {
+			if( Nino.admin.design._data === null )
+				return;
 
-				if( Nino.admin.design._data === null )
-					return;
-
-				Nino.admin.design._takeStored( Nino.admin.design._data );
-				Nino.admin.design._render();
-			},
-		} );
+			Nino.admin.design._takeStored( Nino.admin.design._data );
+			Nino.admin.design._render();
+		},
 	} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.design.init );

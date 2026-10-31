@@ -4,9 +4,8 @@
 // Schlüssel und dieselbe Form wie text/<locale>.php der Workbench
 return [
 	'[[/_admin/nav/design]]'										=> 'Design',
-	// Die Leiste oben im Pane: Themes ist der eigene Bildschirm des Panels (die Bibliothek der Themes), Design der Tab mit den sechs Ansichten, Schriftarten der Loader
+	// Die Leiste oben im Pane: Themes ist der eigene Bildschirm des Panels (die Bibliothek der Themes und dahinter über Bearbeiten das Setup in sechs Ansichten), Schriftarten der Loader
 	'[[/_admin/nav/themes]]'										=> 'Themes',
-	'[[/_admin/nav/design-setup]]'									=> 'Design',
 	'[[/_admin/nav/design-typefaces]]'								=> 'Schriftarten',
 	'[[/_admin/design/label/title]]'								=> 'Design',
 
@@ -16,7 +15,7 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Vorversion wiederherstellen',
 	'[[/_admin/design/label/state]]'								=> 'Angewendete Datei',
 
-	// Die sechs Ansichten des Tabs Design – die Eigenschaften des Designs – und die acht Objekte, mit denen die Blöcke ihrer Ansichten überschrieben sind
+	// Die sechs Ansichten des Setups – die Eigenschaften des Designs – und die acht Objekte, mit denen die Blöcke ihrer Ansichten überschrieben sind
 	'[[/_admin/design/tab/templates/label]]'						=> 'Vorlagen',
 	'[[/_admin/design/tab/type/label]]'								=> 'Schrift',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Flächen',
@@ -32,11 +31,7 @@ return [
 	'[[/_admin/design/object/lists/label]]'							=> 'Listen',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tabellen',
 
-	// Die Bildschirme der Themes: eine Leiste von Tabs unter der Leiste oben im Pane, und darunter der Bildschirm, der offen ist
-	'[[/_admin/design/group/theme/load/label]]'					=> 'Laden',
-	'[[/_admin/design/group/theme/properties/label]]'			=> 'Eigenschaften',
-
-	// Die Themes in zwei Bildschirmen: die Liste der Themes mit dem Import, das geladene mit Name und Beschreibung und die Zeile, die ein weiteres macht – und was ein Theme von sich sagt. Das eigene CSS eines Themes ist die Ansicht CSS des Tabs Design
+	// Die Themes: die Liste mit einer Zeile je Theme, ihren Knöpfen und dem Import – und was ein Theme von sich sagt. Das eigene CSS eines Themes ist die Ansicht CSS des Setups
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'mitgeliefert',
 	'[[/_admin/design/theme/active]]'				=> 'aktiv',
@@ -44,16 +39,11 @@ return [
 	'[[/_admin/design/theme/load]]'					=> 'Laden',
 	'[[/_admin/design/theme/duplicate]]'			=> 'Duplizieren',
 	'[[/_admin/design/theme/delete]]'				=> 'Löschen',
-	'[[/_admin/design/theme/create]]'				=> 'Erstellen',
-	'[[/_admin/design/theme/new/label]]'			=> 'Neues Theme aus dem aktuellen Stand',
-	'[[/_admin/design/theme/new/placeholder]]'		=> 'Name',
 	'[[/_admin/design/theme/import/label]]'			=> 'Theme-Datei importieren',
 	'[[/_admin/design/theme/export]]'				=> 'Exportieren',
+	'[[/_admin/design/theme/edit]]'					=> 'Bearbeiten',
 	'[[/_admin/design/theme/save]]'					=> 'Theme speichern',
-	'[[/_admin/design/theme/current/title]]'		=> 'Theme',
-	'[[/_admin/design/theme/current/none]]'			=> 'Kein Theme – der aktuelle Stand gehört zu keinem. Erstelle eines daraus oder lade eines aus der Liste.',
 	'[[/_admin/design/theme/current/changed]]'		=> 'geändert',
-	'[[/_admin/design/theme/current/shipped]]'		=> 'Mitgeliefert – zum Ändern duplizieren.',
 	'[[/_admin/design/theme/field/name]]'			=> 'Name',
 	'[[/_admin/design/theme/field/description]]'	=> 'Beschreibung',
 	'[[/_admin/design/theme/css/title]]'			=> 'Eigenes CSS',
@@ -63,15 +53,15 @@ return [
 	'[[/_admin/design/theme/confirm/fonts]]'		=> 'Das Theme nutzt Schriftarten, die nicht installiert sind: %s. Jetzt installieren?',
 	'[[/_admin/design/theme/msg/loaded]]'			=> 'Theme „%s“ geladen – speichere den Entwurf oder wende ihn an.',
 	'[[/_admin/design/theme/msg/unavailable]]'		=> 'Nicht verfügbar: %s – die Rolle bleibt bei der Schrift von Nino.',
-	'[[/_admin/design/theme/msg/created]]'			=> 'Theme „%s“ erstellt.',
 	'[[/_admin/design/theme/msg/saved]]'			=> 'Theme „%s“ gespeichert.',
+	'[[/_admin/design/theme/msg/renamed]]'			=> 'Theme „%s“ umbenannt.',
 	'[[/_admin/design/theme/msg/duplicated]]'		=> 'Theme „%s“ dupliziert als „%s“.',
 	'[[/_admin/design/theme/msg/deleted]]'			=> 'Theme „%s“ gelöscht.',
 	'[[/_admin/design/theme/msg/exported]]'			=> 'Theme „%s“ exportiert.',
 	'[[/_admin/design/theme/msg/imported]]'			=> 'Theme „%s“ importiert.',
 	'[[/_admin/design/theme/error/load]]'			=> 'Das Theme konnte nicht geladen werden.',
-	'[[/_admin/design/theme/error/create]]'			=> 'Das Theme konnte nicht erstellt werden.',
 	'[[/_admin/design/theme/error/save]]'			=> 'Das Theme konnte nicht gespeichert werden.',
+	'[[/_admin/design/theme/error/rename]]'			=> 'Das Theme konnte nicht umbenannt werden.',
 	'[[/_admin/design/theme/error/duplicate]]'		=> 'Das Theme konnte nicht dupliziert werden.',
 	'[[/_admin/design/theme/error/delete]]'			=> 'Das Theme konnte nicht gelöscht werden.',
 	'[[/_admin/design/theme/error/export]]'			=> 'Das Theme konnte nicht exportiert werden.',
