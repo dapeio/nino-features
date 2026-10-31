@@ -294,6 +294,10 @@
 			'header/height' : 'move-vertical',
 			'header/space' : 'align-vertical-space-around',
 			'header/ground' : 'contrast',
+			'header/border-size' : 'minus',
+			'header/border-color' : 'palette',
+			'header/position' : 'move-horizontal',
+			'header/cta' : 'square-round-corner',
 			'footer/scale' : 'a-large-small',
 			'footer/height' : 'move-vertical',
 			'footer/space' : 'align-vertical-space-around',
@@ -4557,7 +4561,7 @@
 				Object.keys( row.catalogue || {} ).map( function( set ) {
 					return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
 				} ), Nino.admin.design._edit.parts[row.part], function( value ) {
-					Nino.admin['design-setup']._setPart( row.part, value, field );
+					Nino.admin['design-setup']._setPart( row.part, value );
 				},
 				( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[row.part] ] || {} ).description || ''
 			);
@@ -4570,42 +4574,60 @@
 		 *
 		 *	A template brings its own knobs, and the ones the last one had are not
 		 *	this one's: a position the new template does not answer to goes back
-		 *	to the middle, the way the server holds it anyway - so the screen
-		 *	never shows a setup the stored one could not be. The rows of the knobs
-		 *	stand on Type and Surfaces and are drawn when those are opened, with
+		 *	to the default's position, the way the server holds it anyway - so the
+		 *	screen never shows a setup the stored one could not be. The rows of the
+		 *	knobs stand on several tabs and are drawn when those are opened, with
 		 *	the knobs this template does not answer to greyed out.
 		 *
-		 *	The line under the select says what the template chosen is, written in
-		 *	place: nothing else of the tab changes. The head of the block says the
-		 *	word of the set that is chosen once the block is closed - which paints
-		 *	it from the selection as it stands then (see _paintHead()), so that no
-		 *	redraw is needed for it. The frame goes to where the template is looked
-		 *	at (OBJECT_ANCHORS) - a header at the top of the page, a footer at its foot
+		 *	The row of the part on the tab that is open - on Templates, the block of
+		 *	the object, whose strips are knobs of the part - is drawn anew, so that
+		 *	it shows what the model holds and the line under the select says what the
+		 *	template chosen is, and the focus stays on the select, which is a new one.
+		 *	The head of the block says the word of the set that
+		 *	is chosen once the block is closed, painted from the selection as it
+		 *	stands then (see _paintHead()). The frame goes to where the template is
+		 *	looked at (OBJECT_ANCHORS) - a header at the top of the page, a footer at
+		 *	its foot
 		 *
 		 *	@param		{string}		part
 		 *	@param		{string}		set
-		 *	@param		{Element}		[field]		The select field of the part, whose note is the template's description
 		 *
 		 *	@return		void
 		 */
-		_setPart : function( part, set, field ) {
+		_setPart : function( part, set ) {
 
 			const design = Nino.admin.design;
 			const views = Nino.admin['design-setup'];
 			const edit = design._edit;
 			const row = design._row( part );
 			const answered = ( ( row.catalogue || {} )[set] || {} ).knobs || [];
-			const note = field ? field.querySelector('small') : null;
+			const normal = ( ( design._data || {} ).defaults || {} ).knobs || {};
 
 			edit.parts[part] = set;
 
 			Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
 				if( answered.indexOf( knob ) === -1 )
-					edit.knobs[part][knob] = 0;
+					edit.knobs[part][knob] = ( normal[part] || {} )[knob] || 0;
 			} );
 
-			if( note )
-				note.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
+			// The card of the part on the tab that is open: the select, its line and the strips of the knobs, from the model
+			const place = design._place( 'parts/'+ part );
+			const rows = views._rows( place[0] );
+			const shown = rows.filter( function( each ) { return each.object === place[1] } )[0];
+			const old = dc.getElementById( views._rowId( place[0], place[1] ) );
+
+			// The select that was pressed is part of the card that is replaced: the focus follows it to the new one
+			if( old !== null && shown !== undefined ) {
+
+				const had = old.contains( dc.activeElement );
+
+				old.replaceWith( views._renderRow( place[0], shown, views._blockOf( place[0], rows ) === shown.object ) );
+
+				const again = had === true ? dc.getElementById( 'design-set-'+ part ) : null;
+
+				if( again !== null )
+					again.focus();
+			}
 
 			design._target = views._anchorOf( 'parts/'+ part );
 			design._preview();

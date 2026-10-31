@@ -1,7 +1,7 @@
 		<header class="nino-frame-header">
-			<div class="nino-frame-header-shell nino-scroll-header">
-				<div class="nino-grid-row">
-					<div class="nino-grid-100 nino-frame-header-inner">
+			<div class="nino-scroll-header">
+				<div class="nino-grid-row nino-grid-middle">
+					<div class="nino-grid-100">
 						<a href="[[/nino/dir]]/" class="nino-logo">
 							[image /logo alt=""]
 							<span aria-hidden="true">[[/project/company/general/name]]</span>
@@ -10,6 +10,9 @@
 						<nav class="nino-frame-header-nav" aria-label="[[/template/frame-header/navigation/label]]">
 							[template /templates/html-header-nav]
 						</nav>
+						<div class="nino-frame-header-cta">
+							[button /template/frame-header/button/label href="/template/frame-header/button/link" style="primary"]
+						</div>
 					</div>
 				</div>
 			</div>

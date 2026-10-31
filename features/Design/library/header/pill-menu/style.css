@@ -6,13 +6,17 @@
  *	@knob	height		How tall the bar is
  *	@knob	space		Space between the logo, the links and the edges
  *	@knob	ground		What the bar stands on
+ *	@knob	border-size	Width of the border
+ *	@knob	border-color	Colour of the border
+ *	@knob	position	Where the navigation stands
+ *	@knob	cta		Visibility and size of the button of the header
  *
  *	The menu is a control rather than a list of links, which is what makes the
  *	current page obvious without an underline to read: it is the filled one.
  *	Only above the tablet - below it the navigation is the framework's own
  *	burger panel, and a pill around a panel is a pill around the screen.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -22,6 +26,13 @@
  *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
  *	header as the roles Nino.css reads - so the bar is legible on each of the
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	The other four: border-size is the width of the border the bar has, border-color a
+ *	choice of three for its colour - the ink of the page, the border of the page and the
+ *	brand -, position a choice of three for where the navigation stands - left, centre or
+ *	right of the bar - and cta a choice of three for the button of the header - hidden,
+ *	small, or as large as a button is. The button is scaled by --header-cta-scale, the
+ *	factor its font, its padding and its corners are drawn with.
  */
 
 :root {
@@ -71,17 +82,39 @@
 	--header-ground-focus--default:	var(--color-focus);
 	--header-ground-focus--more:	var(--color-focus-dark);
 
-	/*	The line under it	*/
-	--header-ground-border--less:	var(--color-border);
-	--header-ground-border--default:	var(--color-border);
-	--header-ground-border--more:	var(--color-border-dark);
+	--header-border-size--least:	0;
+	--header-border-size--less:	.5px;
+	--header-border-size--default: 1px;
+	--header-border-size--more:	2px;
+	--header-border-size--most:	6px;
+
+	--header-border-color--less:	var(--color-text);
+	--header-border-color--default:	var(--color-border);
+	--header-border-color--more:	var(--color-primary);
+
+	--header-position--less: 0 auto 0 0;
+	--header-position--default: 0 auto;
+	--header-position--more: 0 0 0 auto;
+
+	--header-position-cta--less: 0;
+	--header-position-cta--default: clamp(7rem, 9vw, 9rem);
+	--header-position-cta--more: 0;
+
+	--header-cta--less: none;
+	--header-cta--default: block;
+	--header-cta--more: block;
+
+
+	--header-cta-scale--less: .7;
+	--header-cta-scale--default: .7;
+	--header-cta-scale--more: 1;
 }
 
 .nino-frame-header {
+	border: solid var(--header-border-color) var(--header-border-size);
 	--color-title: var(--header-ground-title);
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
-	--color-border: var(--header-ground-border);
 }
 
 .nino-frame-header .nino-grid-row {
@@ -109,9 +142,19 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	margin: 0;
 	background-image: none;
 }
+.nino-frame-header-cta {
+	display: var(--header-cta);
+	min-width: var(--header-position-cta);
+}
+.nino-frame-header-cta a {
+	display: block;
+	font-size: calc( var(--font-button-size) * var(--header-cta-scale) );
+	padding: calc( var(--space-1) * var(--header-cta-scale) ) calc( var(--space-2) * var(--header-cta-scale) );
+	border-radius: calc( var(--radius) * var(--header-cta-scale) );
+}
 
 .nino-frame-header .nino-frame-header-nav {
-	margin-left: auto;
+	margin: var(--header-position);
 }
 
 .nino-frame-header .nino-nav-burger > button > svg {

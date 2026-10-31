@@ -6,12 +6,14 @@
  *	@knob	height		How tall the bar is
  *	@knob	space		Space between the logo, the links and the edges
  *	@knob	ground		What the bar stands on
+ *	@knob	border-size	Width of the border
+ *	@knob	border-color	Colour of the border
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	The six knobs this set answers to are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -21,6 +23,8 @@
  *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
  *	header as the roles Nino.css reads - so the bar is legible on each of the
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	border-size is the width of the line under the bar and border-color a choice of three for its colour. The set leaves the position of the navigation and the button out: the menu is an overlay.
  *
  *	One ladder is this set's own: the ground of the bar before the page is scrolled up
  *	(--header-ground-rest), which is none at the middle - the mark lies on the page - and the page's
@@ -86,6 +90,16 @@
 	--header-ground-rest--less:	var(--color-background);
 	--header-ground-rest--default:	transparent;
 	--header-ground-rest--more:	var(--color-section-dark-bg);
+
+	--header-border-size--least:	0;
+	--header-border-size--less:	.5px;
+	--header-border-size--default: 1px;
+	--header-border-size--more:	2px;
+	--header-border-size--most:	6px;
+
+	--header-border-color--less:	var(--color-text);
+	--header-border-color--default:	var(--color-border);
+	--header-border-color--more:	var(--color-primary);
 }
 
 .nino-frame-header {
@@ -93,6 +107,7 @@
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
 	--color-border: var(--header-ground-border);
+	border-bottom: solid var(--header-border-color) var(--header-border-size);
 }
 
 .nino-frame-header .nino-grid-row {

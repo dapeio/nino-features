@@ -137,6 +137,10 @@ namespace Nino\Modules\Design {
 							height				how tall the bar is, and how far main starts below a fixed one
 							space				the space between the logo, the links and the edges
 							ground				what the bar stands on (a choice)
+							border-size			the weight of the line under the bar
+							border-color		the colour of that line (a choice)
+							position			where the navigation stands: left, centre or right (a choice)
+							cta					the button of the header: hidden, small or large (a choice)
 				footer		scale				the type size of the footer
 							height				the space above and below its content
 							space				the space between its columns, its lines and its links
@@ -164,7 +168,7 @@ namespace Nino\Modules\Design {
 							zebra				the stripes of a table that asks for them (a choice)
 							stripes				how strong the stripes are	*/
 		public const array KNOBS = [
-			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
+			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'cta' => 'choice' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
 			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale' ],
 			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice' ],
@@ -222,6 +226,8 @@ namespace Nino\Modules\Design {
 		public const array LAYOUT = [
 			// The templates: the choice of a set for each of the seven parts, under the object it is the template of
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
+			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
+			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
 			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
 			'parts/section' 						=> [ 'templates', 'section', 1 ],
 			'parts/card' 							=> [ 'templates', 'card', 1 ],
@@ -249,7 +255,7 @@ namespace Nino\Modules\Design {
 			'knobs/lists/scale' 					=> [ 'type', 'lists', 1 ],
 			'knobs/tables/scale' 					=> [ 'type', 'tables', 1 ],
 
-			// The surfaces: the space, the corners, the lines and the shadows of each object, the height and the ground of the frames and the marker of a list. The three kinds of a section share one place: they are one choice
+			// The surfaces: the space, the corners, the lines and the shadows of each object, the height and the line of the frames and the marker of a list. The three kinds of a section share one place: they are one choice
 			'width' 								=> [ 'surfaces', 'page', 1 ],
 			'whitespace' 							=> [ 'surfaces', 'page', 2 ],
 			'radius' 								=> [ 'surfaces', 'page', 3 ],
@@ -257,10 +263,9 @@ namespace Nino\Modules\Design {
 			'radii/image' 							=> [ 'surfaces', 'page', 5 ],
 			'knobs/header/height' 					=> [ 'surfaces', 'header', 1 ],
 			'knobs/header/space' 					=> [ 'surfaces', 'header', 2 ],
-			'knobs/header/ground' 					=> [ 'surfaces', 'header', 3 ],
+			'knobs/header/border-size' 				=> [ 'surfaces', 'header', 3 ],
 			'knobs/footer/height' 					=> [ 'surfaces', 'footer', 1 ],
 			'knobs/footer/space' 					=> [ 'surfaces', 'footer', 2 ],
-			'knobs/footer/ground' 					=> [ 'surfaces', 'footer', 3 ],
 			'knobs/section/space' 					=> [ 'surfaces', 'section', 1 ],
 			'knobs/section/rule' 					=> [ 'surfaces', 'section', 2 ],
 			'radii/cover' 							=> [ 'surfaces', 'section', 3 ],
@@ -278,7 +283,7 @@ namespace Nino\Modules\Design {
 			'knobs/tables/border' 					=> [ 'surfaces', 'tables', 2 ],
 			'knobs/tables/zebra' 					=> [ 'surfaces', 'tables', 3 ],
 
-			// The colours: the palette is the page's, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, the frames have the ground of their bar and the header the colour of its line, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -287,6 +292,9 @@ namespace Nino\Modules\Design {
 			'colours/contrast' 						=> [ 'colours', 'page', 5 ],
 			'colours/depth' 						=> [ 'colours', 'page', 6 ],
 			'colours/mode' 							=> [ 'colours', 'page', 7 ],
+			'knobs/header/ground' 					=> [ 'colours', 'header', 1 ],
+			'knobs/header/border-color' 			=> [ 'colours', 'header', 2 ],
+			'knobs/footer/ground' 					=> [ 'colours', 'footer', 1 ],
 			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
@@ -533,14 +541,17 @@ namespace Nino\Modules\Design {
 		/**
 		 *	Everything a fresh install starts from: the seven sets of the first
 		 *	theme the feature ships (see Themes::SHIPPED - the theme that is the
-		 *	framework as it is), every knob in the middle, the delivered root
+		 *	framework as it is), every knob where that theme puts it, which is the
+		 *	middle but for the navigation of the header on the right and its button
+		 *	hidden, the delivered root
 		 *	size, the width, the whitespace, the radius, the animation and the
 		 *	hover of the pictures of Nino.css, the face the base unit delivers,
 		 *	the framework's own colours, no theme and no css of its own
 		 *
-		 *	The seven sets are read out of that theme's file, which is a php array
-		 *	and is included the way Themes::read() includes a shipped file - only
-		 *	the names of the sets are taken from it, as they stand, and not a
+		 *	The seven sets and the positions of the knobs are read out of that
+		 *	theme's file, which is a php array and is included the way
+		 *	Themes::read() includes a shipped file - only the names of the sets
+		 *	and the positions are taken from it, as they stand, and not a
 		 *	call into Themes::setup() and the normalisation of a theme, which
 		 *	itself starts from these defaults
 		 *
@@ -561,7 +572,8 @@ namespace Nino\Modules\Design {
 			$knobs = [];
 
 			foreach( self::KNOBS as $part => $kinds )
-				$knobs[$part] = array_fill_keys( array_keys( $kinds ), 0 );
+				foreach( $kinds as $knob => $kind )
+					$knobs[$part][$knob] = self::position( $theme['setup']['knobs'][$part][$knob] ?? 0, $kind );
 
 			return [
 				'format' 	=> self::FORMAT,
@@ -1346,7 +1358,7 @@ namespace Nino\Modules\Design {
 				the range of its kind, and a name that is none of the part's - or a part that
 				is none of the seven - is dropped with a note rather than carried: a
 				position nothing reads is a position nobody can find again. One that is
-				missing is 0	*/
+				missing stands where the defaults put it, which is where the shipped theme does	*/
 			$given = is_array( $raw['knobs'] ?? null ) === true ? $raw['knobs'] : [];
 
 			foreach( $given as $part => $values ) {
@@ -1363,7 +1375,7 @@ namespace Nino\Modules\Design {
 
 			foreach( self::KNOBS as $part => $kinds )
 				foreach( $kinds as $knob => $kind )
-					$setup['knobs'][$part][$knob] = self::position( is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? 0 ) : 0, $kind );
+					$setup['knobs'][$part][$knob] = self::position( is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? $setup['knobs'][$part][$knob] ) : $setup['knobs'][$part][$knob], $kind );
 
 			$setup['features'] = self::chosen( $appData, is_array( $raw['features'] ?? null ) === true ? $raw['features'] : [], $notes );
 

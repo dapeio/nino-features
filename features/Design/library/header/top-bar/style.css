@@ -1,17 +1,21 @@
-/*	@name				Classic, big
- *	@description	A bar on the page ground, the logo to the left and the navigation and a button to the right, every link as tall as the bar.
- *	@description-de	Eine Leiste auf dem Grund der Seite, links das Logo, rechts die Navigation und ein Button, jeder Link so hoch wie die Leiste.
+/*	@name				Top bar
+ *	@description	A utility strip above the bar with the phone, the mail and the social links, and under it a bar on the page ground with a rule, five rem tall.
+ *	@description-de	Ein schmaler Streifen über der Leiste mit Telefon, E-Mail und den Links zu den sozialen Netzen, darunter eine Leiste auf dem Grund der Seite mit einer Linie, fünf rem hoch.
  *
  *	@knob	nav		Size of the links of the navigation
  *	@knob	height		How tall the bar is
  *	@knob	space		Space between the logo, the links and the edges
  *	@knob	ground		What the bar stands on
+ *	@knob	border-size	Width of the border
+ *	@knob	border-color	Colour of the border
+ *	@knob	position	Where the navigation stands
+ *	@knob	cta		Visibility and size of the button of the header
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -21,6 +25,13 @@
  *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
  *	header as the roles Nino.css reads - so the bar is legible on each of the
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	The other four: border-size is the width of the border the bar has, border-color a
+ *	choice of three for its colour - the ink of the page, the border of the page and the
+ *	brand -, position a choice of three for where the navigation stands - left, centre or
+ *	right of the bar - and cta a choice of three for the button of the header - hidden,
+ *	small, or as large as a button is. The button is scaled by --header-cta-scale, the
+ *	factor its font, its padding and its corners are drawn with.
  */
 
 :root {
@@ -31,12 +42,13 @@
 	--header-nav--more:	1.1;
 	--header-nav--most:	1.2;
 
-	/*	The height of the bar, of every link in it and of the room main leaves under it: --space-5	*/
-	--header-height--least:	calc( var(--space-5) * .7 );
-	--header-height--less:	calc( var(--space-5) * .85 );
-	--header-height--default:	var(--space-5);
-	--header-height--more:	calc( var(--space-5) * 1.25 );
-	--header-height--most:	calc( var(--space-5) * 1.5 );
+	/*	The height of the bar, once: the bar is that tall, and main, which the fixed
+			header would cover, starts below it. The middle is five rem	*/
+	--header-height--least:	calc( 5rem * .7 );
+	--header-height--less:	calc( 5rem * .85 );
+	--header-height--default:	5rem;
+	--header-height--more:	calc( 5rem * 1.25 );
+	--header-height--most:	calc( 5rem * 1.5 );
 
 	/*	The gaps between the logo, the links and the edges, as a factor of what this set has	*/
 	--header-space--least:	.5;
@@ -74,15 +86,63 @@
 	--header-ground-border--less:	var(--color-border);
 	--header-ground-border--default:	var(--color-border);
 	--header-ground-border--more:	var(--color-border-dark);
+
+	--header-border-size--least:	0;
+	--header-border-size--less:	.5px;
+	--header-border-size--default: 1px;
+	--header-border-size--more:	2px;
+	--header-border-size--most:	6px;
+
+	--header-border-color--less:	var(--color-text);
+	--header-border-color--default:	var(--color-border);
+	--header-border-color--more:	var(--color-primary);
+
+	--header-position--less: 0 auto 0 0;
+	--header-position--default: 0 auto;
+	--header-position--more: 0 0 0 auto;
+
+	--header-position-topbar--less: flex-end;
+	--header-position-topbar--default: center;
+	--header-position-topbar--more: flex-start;
+
+	/*	The height of the strip above the bar, shown from 768px: main starts below it as well as below the bar	*/
+	--topbar-utility: 2.25rem;
+
+	--header-position-cta--less: 0;
+	--header-position-cta--default: clamp(7rem, 9vw, 9rem);
+	--header-position-cta--more: 0;
+
+	--header-cta--less: none;
+	--header-cta--default: block;
+	--header-cta--more: block;
+
+	--header-cta-scale--less: .7;
+	--header-cta-scale--default: .7;
+	--header-cta-scale--more: 1;
 }
 
 .nino-frame-header {
+	border-bottom: solid var(--header-border-color) var(--header-border-size);
 	--color-title: var(--header-ground-title);
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
 	--color-border: var(--header-ground-border);
 }
-
+.nino-frame-header .nino-frame-header-utility {
+	background-color: var(--color-section-black-bg);
+	color: var(--color-section-black-text);
+	font-size: var(--fontsize-small);
+	height: var(--topbar-utility);
+	overflow: hidden;
+}
+.nino-frame-header .nino-frame-header-utility-inner {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	height: 100%;
+	flex-direction: row-reverse;
+	justify-content: var(--header-position-topbar);
+}
 .nino-frame-header .nino-grid-row {
 	padding-right: calc( var(--grid-gutter) * var(--header-space) );
 	padding-left: calc( var(--grid-gutter) * var(--header-space) );
@@ -93,7 +153,7 @@
 	opacity: 1;
 	color: var(--header-ground-ink);
 	background-color: var(--header-ground);
-	display:flex;
+	display: flex;
 }
 
 body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
@@ -109,8 +169,19 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	background-image: none;
 }
 
+.nino-frame-header-cta {
+	display: var(--header-cta);
+	min-width: var(--header-position-cta);
+}
+.nino-frame-header-cta a {
+	display: block;
+	font-size: calc( var(--font-button-size) * var(--header-cta-scale) );
+	padding: calc( var(--space-1) * var(--header-cta-scale) ) calc( var(--space-2) * var(--header-cta-scale) );
+	border-radius: calc( var(--radius) * var(--header-cta-scale) );
+}
+
 .nino-frame-header .nino-frame-header-nav {
-	margin-left: auto;
+	margin: var(--header-position);
 }
 
 .nino-frame-header .nino-nav-burger > button > svg {
@@ -121,19 +192,15 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	fill: var(--color-title-default);
 }
 
-/*	The navigation sits to the right, but at a phone's width the burger stands over the middle of the open list's first
-	line - the list starts at the top of the page, the button above it - so the list starts under the bar. The room is
-	there while the button is shown and not only while the list is open, so that nothing jumps while the kernel folds the
-	list	*/
-@media (max-width: 767px) {
-	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
-		padding-top: var(--header-height);
-	}
-}
-
 
 body main {
 	padding-top: var(--header-height);
+}
+
+@media (min-width: 768px) {
+	body main {
+		padding-top: calc( var(--header-height) + var(--topbar-utility) );
+	}
 }
 
 body main:has(> .nino-cover:first-child),
@@ -142,35 +209,46 @@ body main:has(> .nino-parallex:first-child),
 body main:has(> .nino-wrap > .nino-parallex:first-child) {
 	padding-top: 0;
 }
-
-
+@media (max-width: 767px) {
+	.nino-frame-header .nino-frame-header-utility {
+		display: none;
+	}
+}
 @media (min-width: 768px) {
 	.nino-frame-header .nino-nav-content li a {
 		position: relative;
-		display: flex;
-    align-items: center;
-		height: var(--header-height);
-		padding: 0 calc( var(--space-2) * var(--header-space) );
+		padding: calc( var(--space-1) * var(--header-space) );
 		font-size: calc( var(--fontsize-btn) * var(--header-nav) );
 		letter-spacing: .04em;
-		transition: color .2s;
 	}
 
 	.nino-frame-header .nino-nav-content ul {
 		gap: calc( var(--space-2) * var(--header-space) );
 	}
 
-	.nino-frame-header .nino-nav-content li a.nino-is-active,
-	.nino-frame-header .nino-nav-content li a.nino-is-active:hover {
-		color: var(--color-accent);
+	.nino-frame-header .nino-nav-content li a::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: 100%;
+		height: 2px;
+		background-color: var(--color-secondary);
+		transform: scaleX(0);
+		transform-origin: right;
+		transition: transform .2s ease;
 	}
-	.nino-frame-header .nino-nav-content li a:hover {
-		color: var(--color-accent);
+
+	.nino-frame-header .nino-nav-content li a:hover::after,
+	.nino-frame-header .nino-nav-content li a:focus::after,
+	.nino-frame-header .nino-nav-content li a.nino-is-active::after {
+		transform: scaleX(1);
+		transform-origin: left;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.nino-frame-header .nino-nav-content li a {
+	.nino-frame-header .nino-nav-content li a::after {
 		transition: none;
 	}
 }

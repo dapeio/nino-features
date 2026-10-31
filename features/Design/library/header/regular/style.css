@@ -1,17 +1,21 @@
-/*	@name				Stacked bar
- *	@description	The mark over the navigation rather than beside it, in a shell with a rule under it. For a long name, or a menu with many entries.
- *	@description-de	Das Zeichen über der Navigation statt daneben, in einer Hülle mit einer Linie darunter. Für einen langen Namen oder ein Menü mit vielen Einträgen.
+/*	@name				Regular
+ *	@description	A bar on the page ground with a rule under it, five rem tall. The one a fresh Nino installs.
+ *	@description-de	Eine Leiste auf dem Grund der Seite mit einer Linie darunter, fünf rem hoch. Die, die ein frisches Nino mitbringt.
  *
  *	@knob	nav		Size of the links of the navigation
  *	@knob	height		How tall the bar is
  *	@knob	space		Space between the logo, the links and the edges
  *	@knob	ground		What the bar stands on
+ *	@knob	border-size	Width of the border
+ *	@knob	border-color	Colour of the border
+ *	@knob	position	Where the navigation stands
+ *	@knob	cta		Visibility and size of the button of the header
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -21,6 +25,13 @@
  *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
  *	header as the roles Nino.css reads - so the bar is legible on each of the
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	The other four: border-size is the width of the border the bar has, border-color a
+ *	choice of three for its colour - the ink of the page, the border of the page and the
+ *	brand -, position a choice of three for where the navigation stands - left, centre or
+ *	right of the bar - and cta a choice of three for the button of the header - hidden,
+ *	small, or as large as a button is. The button is scaled by --header-cta-scale, the
+ *	factor its font, its padding and its corners are drawn with.
  */
 
 :root {
@@ -31,13 +42,13 @@
 	--header-nav--more:	1.1;
 	--header-nav--most:	1.2;
 
-	/*	What this bar has instead of a height of its own: the room above and below the mark and the menu, --space-1.
-			The bar is as tall as they are, and this is what its height moves; main starts as much lower as the two sides together	*/
-	--header-height--least:	calc( var(--space-1) * .7 );
-	--header-height--less:	calc( var(--space-1) * .85 );
-	--header-height--default:	var(--space-1);
-	--header-height--more:	calc( var(--space-1) * 1.25 );
-	--header-height--most:	calc( var(--space-1) * 1.5 );
+	/*	The height of the bar, once: the bar is that tall, and main, which the fixed
+			header would cover, starts below it. The middle is five rem	*/
+	--header-height--least:	calc( 5rem * .7 );
+	--header-height--less:	calc( 5rem * .85 );
+	--header-height--default:	5rem;
+	--header-height--more:	calc( 5rem * 1.25 );
+	--header-height--most:	calc( 5rem * 1.5 );
 
 	/*	The gaps between the logo, the links and the edges, as a factor of what this set has	*/
 	--header-space--least:	.5;
@@ -75,9 +86,36 @@
 	--header-ground-border--less:	var(--color-border);
 	--header-ground-border--default:	var(--color-border);
 	--header-ground-border--more:	var(--color-border-dark);
+
+	--header-border-size--least:	0;
+	--header-border-size--less:	.5px;
+	--header-border-size--default: 1px;
+	--header-border-size--more:	2px;
+	--header-border-size--most:	6px;
+
+	--header-border-color--less:	var(--color-text);
+	--header-border-color--default:	var(--color-border);
+	--header-border-color--more:	var(--color-primary);
+
+	--header-position--less: 0 auto 0 0;
+	--header-position--default: 0 auto;
+	--header-position--more: 0 0 0 auto;
+
+	--header-position-cta--less: 0;
+	--header-position-cta--default: clamp(7rem, 9vw, 9rem);
+	--header-position-cta--more: 0;
+
+	--header-cta--less: none;
+	--header-cta--default: block;
+	--header-cta--more: block;
+
+	--header-cta-scale--less: .7;
+	--header-cta-scale--default: .7;
+	--header-cta-scale--more: 1;
 }
 
 .nino-frame-header {
+	border-bottom: solid var(--header-border-color) var(--header-border-size);
 	--color-title: var(--header-ground-title);
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
@@ -89,36 +127,39 @@
 	padding-left: calc( var(--grid-gutter) * var(--header-space) );
 }
 
-.nino-frame-header .nino-frame-header-shell {
-	padding: var(--header-height) 0;
+.nino-frame-header .nino-scroll-header {
+	min-height: var(--header-height);
 	opacity: 1;
 	color: var(--header-ground-ink);
 	background-color: var(--header-ground);
-	border-bottom: 1px solid var(--color-border);
+	display: flex;
 }
 
-body.nino-scroll-atf .nino-frame-header .nino-frame-header-shell {
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	background-color: var(--header-ground);
 }
 
-.nino-frame-header .nino-frame-header-inner {
-	flex-direction: column;
-	justify-content: center;
-	gap: calc( var(--space-1) * var(--header-space) );
-}
-
 .nino-frame-header .nino-logo {
-	width: clamp(8rem, 12vw, 11rem);
+	width: clamp(7.5rem, 10vw, 10rem);
 	height: auto;
 	min-width: 0;
 	min-height: 0;
-	margin: 0 auto;
+	margin: 0;
 	background-image: none;
 }
+.nino-frame-header-cta {
+	display: var(--header-cta);
+	min-width: var(--header-position-cta);
+}
+.nino-frame-header-cta a {
+	display: block;
+	font-size: calc( var(--font-button-size) * var(--header-cta-scale) );
+	padding: calc( var(--space-1) * var(--header-cta-scale) ) calc( var(--space-2) * var(--header-cta-scale) );
+	border-radius: calc( var(--radius) * var(--header-cta-scale) );
+}
 
-.nino-frame-header .nino-frame-header-nav,
-.nino-frame-header .nino-nav-wrap {
-	width: 100%;
+.nino-frame-header .nino-frame-header-nav {
+	margin: var(--header-position);
 }
 
 .nino-frame-header .nino-nav-burger > button > svg {
@@ -129,8 +170,9 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-shell {
 	fill: var(--color-title-default);
 }
 
+
 body main {
-	padding-top: calc( clamp(7rem, calc(var(--space-6) + var(--space-2)), 10rem) + 2 * ( var(--header-height) - var(--header-height--default) ) );
+	padding-top: var(--header-height);
 }
 
 body main:has(> .nino-cover:first-child),
@@ -141,35 +183,40 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 }
 
 @media (min-width: 768px) {
-	.nino-frame-header .nino-nav-content ul {
-		justify-content: center;
-		gap: calc( var(--space-3) * var(--header-space) );
-	}
-
 	.nino-frame-header .nino-nav-content li a {
-		padding: calc( .25rem * var(--header-space) ) calc( .2rem * var(--header-space) );
-		font-size: calc( .82rem * var(--header-nav) );
-		letter-spacing: .14em;
-		text-transform: uppercase;
+		position: relative;
+		padding: calc( var(--space-1) * var(--header-space) );
+		font-size: calc( var(--fontsize-btn) * var(--header-nav) );
+		letter-spacing: .04em;
 	}
 
-	.nino-frame-header .nino-nav-content li a.nino-is-active {
-		color: var(--color-accent);
+	.nino-frame-header .nino-nav-content ul {
+		gap: calc( var(--space-2) * var(--header-space) );
+	}
+
+	.nino-frame-header .nino-nav-content li a::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: 100%;
+		height: 2px;
+		background-color: var(--color-secondary);
+		transform: scaleX(0);
+		transform-origin: right;
+		transition: transform .2s ease;
+	}
+
+	.nino-frame-header .nino-nav-content li a:hover::after,
+	.nino-frame-header .nino-nav-content li a:focus::after,
+	.nino-frame-header .nino-nav-content li a.nino-is-active::after {
+		transform: scaleX(1);
+		transform-origin: left;
 	}
 }
 
-@media (max-width: 767px) {
-	.nino-frame-header .nino-frame-header-inner {
-		flex-direction: row;
-		justify-content: space-between;
-	}
-
-	.nino-frame-header .nino-logo {
-		margin: 0;
-	}
-
-	.nino-frame-header .nino-frame-header-nav,
-	.nino-frame-header .nino-nav-wrap {
-		width: auto;
+@media (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-nav-content li a::after {
+		transition: none;
 	}
 }

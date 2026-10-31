@@ -6,8 +6,8 @@
 return [
 	'format'			=> 1,
 	'name'				=> 'Nino',
-	'description'		=> 'The framework as it is: every template the default one, every knob in the middle, no css of its own.',
-	'description-de'	=> 'Das Framework, wie es ist: jede Vorlage die Standardvorlage, jeder Regler in der Mitte, kein eigenes CSS.',
+	'description'		=> 'The framework as it is: every template the default one, every knob in the middle but the navigation of the header on the right and its button hidden, no css of its own.',
+	'description-de'	=> 'Das Framework, wie es ist: jede Vorlage die Standardvorlage, jeder Regler in der Mitte bis auf die Navigation des Headers rechts und seinen Button unsichtbar, kein eigenes CSS.',
 	'setup'				=> [
 		'size'		=> 0,
 		'width'		=> 0,
@@ -16,9 +16,9 @@ return [
 		'radius-alt'	=> 1,
 		'radii'		=> [ 'cover' => 'standard', 'row' => 'standard', 'column' => 'standard', 'card' => 'standard', 'image' => 'standard' ],
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
-		'parts'		=> [ 'header' => 'classic-default', 'footer' => 'one-legal-row', 'section' => 'regular', 'card' => 'regular', 'buttons' => 'regular', 'lists' => 'regular', 'tables' => 'regular' ],
+		'parts'		=> [ 'header' => 'regular', 'footer' => 'one-legal-row', 'section' => 'regular', 'card' => 'regular', 'buttons' => 'regular', 'lists' => 'regular', 'tables' => 'regular' ],
 		'knobs'		=> [
-			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'ground' => 0 ],
+			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'position' => 1, 'cta' => -1 ],
 			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'ground' => 0 ],
 			'section' 		=> [ 'quiet' => 0, 'loud' => 0, 'title' => 0, 'subtitle' => 0, 'space' => 0, 'rule' => 0, 'dim' => 0 ],
 			'card' 			=> [ 'title' => 0, 'subtitle' => 0, 'space' => 0, 'border' => 0, 'shadow' => 0, 'tone' => 0, 'hover' => 0 ],

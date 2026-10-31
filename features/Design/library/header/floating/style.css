@@ -1,4 +1,4 @@
-/*	@name				Floating bar
+/*	@name				Floating
  *	@description	A rounded, slightly translucent bar with air around it, capped at 92rem. Reads as current rather than as a frame.
  *	@description-de	Eine abgerundete, leicht durchscheinende Leiste mit Luft ringsum, auf 92 rem begrenzt. Wirkt zeitgemäß statt wie ein Rahmen.
  *
@@ -6,12 +6,16 @@
  *	@knob	height		How tall the bar is
  *	@knob	space		Space between the logo, the links and the edges
  *	@knob	ground		What the bar stands on
+ *	@knob	border-size	Width of the border
+ *	@knob	border-color	Colour of the border
+ *	@knob	position	Where the navigation stands
+ *	@knob	cta		Visibility and size of the button of the header
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -21,6 +25,13 @@
  *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
  *	header as the roles Nino.css reads - so the bar is legible on each of the
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	The other four: border-size is the width of the border the bar has, border-color a
+ *	choice of three for its colour - the ink of the page, the border of the page and the
+ *	brand -, position a choice of three for where the navigation stands - left, centre or
+ *	right of the bar - and cta a choice of three for the button of the header - hidden,
+ *	small, or as large as a button is. The button is scaled by --header-cta-scale, the
+ *	factor its font, its padding and its corners are drawn with.
  *
  *	The bar is see-through, so the ring of the focus is the ink of the page rather than the role solved against the page's ground: what stands behind the bar darkens it, and the ring is the colour the text on it is read in, which clears 4.5:1 on any surface the bar can be.
  */
@@ -76,6 +87,32 @@
 	--header-ground-border--less:	var(--color-border);
 	--header-ground-border--default:	var(--color-border);
 	--header-ground-border--more:	var(--color-border-dark);
+
+	--header-border-size--least:	0;
+	--header-border-size--less:	.5px;
+	--header-border-size--default: 1px;
+	--header-border-size--more:	2px;
+	--header-border-size--most:	6px;
+
+	--header-border-color--less:	var(--color-text);
+	--header-border-color--default:	var(--color-border);
+	--header-border-color--more:	var(--color-primary);
+
+	--header-position--less: 0 auto 0 0;
+	--header-position--default: 0 auto;
+	--header-position--more: 0 0 0 auto;
+
+	--header-position-cta--less: 0;
+	--header-position-cta--default: clamp(7rem, 9vw, 9rem);
+	--header-position-cta--more: 0;
+
+	--header-cta--less: none;
+	--header-cta--default: block;
+	--header-cta--more: block;
+
+	--header-cta-scale--less: .7;
+	--header-cta-scale--default: .7;
+	--header-cta-scale--more: 1;
 }
 
 .nino-frame-header {
@@ -99,7 +136,7 @@
 	opacity: 1;
 	color: var(--header-ground-ink);
 	background-color: color-mix(in srgb, var(--header-ground) 88%, transparent);
-	border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+	border: var(--header-border-size) solid var(--header-border-color);
 	border-radius: max(var(--radius), 1rem);
 	box-shadow: 0 .75rem 2.5rem rgb(0 0 0 / 10%);
 }
@@ -116,9 +153,19 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	margin: 0;
 	background-image: none;
 }
+.nino-frame-header-cta {
+	display: var(--header-cta);
+	min-width: var(--header-position-cta);
+}
+.nino-frame-header-cta a {
+	display: block;
+	font-size: calc( var(--font-button-size) * var(--header-cta-scale) );
+	padding: calc( var(--space-1) * var(--header-cta-scale) ) calc( var(--space-2) * var(--header-cta-scale) );
+	border-radius: calc( var(--radius) * var(--header-cta-scale) );
+}
 
 .nino-frame-header .nino-frame-header-nav {
-	margin-left: auto;
+	margin: var(--header-position);
 }
 
 .nino-frame-header .nino-nav-burger > button > svg {

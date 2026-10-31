@@ -1202,7 +1202,7 @@ namespace Nino\Modules\Design {
 		 *	warning the runtime treats as fatal - the theme and the css are a string
 		 *	each, and what is none is ''. A knob's position belongs to the
 		 *	template that answers to it: one the chosen template does not declare
-		 *	is back in the middle, so a setup does not carry the positions of a
+		 *	is back where the defaults put it, so a setup does not carry the positions of a
 		 *	template somebody moved away from long ago - normalize() cannot do
 		 *	this, since it holds no library file open.
 		 *
@@ -1229,6 +1229,7 @@ namespace Nino\Modules\Design {
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );
+			$normal = Setup::defaults( $library );
 
 			foreach( Setup::KNOBS as $part => $kinds ) {
 
@@ -1236,7 +1237,7 @@ namespace Nino\Modules\Design {
 
 				foreach( array_keys( $kinds ) as $knob )
 					if( in_array( $knob, $answered, true ) === false )
-						$setup['knobs'][$part][$knob] = 0;
+						$setup['knobs'][$part][$knob] = $normal['knobs'][$part][$knob];
 			}
 
 			return $setup;

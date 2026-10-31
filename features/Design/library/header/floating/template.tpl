@@ -10,7 +10,7 @@
 						[template /templates/html-header-nav]
 					</nav>
 					<div class="nino-frame-header-cta">
-						<a href="[[/template/frame-header/button/link]]" class="nino-btn nino-btn--primary">[[/template/frame-header/button/label]]</a>
+						[button /template/frame-header/button/label href="/template/frame-header/button/link" style="primary"]
 					</div>
 				</div>
 			</div>
