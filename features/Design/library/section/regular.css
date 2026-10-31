@@ -9,6 +9,8 @@
  *	@knob	space				Space above and below the content of a section
  *	@knob	rule				Rule under the title of a section
  *	@knob	dim					How dark the scrim of a dimmed cover is
+ *	@knob	title-case		Capitals in the title of a section
+ *	@knob	subtitle-case	Capitals in the subtitle of a section
  *
  *	Regular is the starting point, not a design. Every value it declares is the
  *	framework's own, so a page under it looks as it does under Nino.css alone -
@@ -40,7 +42,9 @@
  *	of a dimmed cover is the one thing that does: its rule reads the ladder
  *	of the dimming, on the two pseudo-elements Nino.css draws it with and on
  *	the block of a picture behind a section, a row and a column, which carry
- *	one of their own. The card family has the same four names (Regular,
+ *	one of their own. The two cases are toggles of two rungs, none and uppercase,
+ *	and read by a rule each: the title of a section and the hero's, the subtitle
+ *	of a section and the hero's. The card family has the same four names (Regular,
  *	Open, Panel, Box) and a theme names a sensible pair. Copy this file
  *	under a name of your own and start there.
  */
@@ -109,6 +113,13 @@
 	--section-dim--default: 	var(--color-background-dim);
 	--section-dim--more: 		color-mix( in srgb, var(--color-background-dim) 75%, var(--color-section-black-bg) );
 	--section-dim--most: 		color-mix( in srgb, var(--color-background-dim) 50%, var(--color-section-black-bg) );
+
+	/*	The case of the title and of the subtitle: as they are written, or in capitals	*/
+	--section-title-case--default: 		none;
+	--section-title-case--more: 			uppercase;
+
+	--section-subtitle-case--default: 	none;
+	--section-subtitle-case--more: 		uppercase;
 }
 
 @media (min-width: 768px) {
@@ -128,6 +139,16 @@
 	--section-line: var(--section-rule);
 	--scale-quiet: var(--section-quiet);
 	--scale-loud: var(--section-loud);
+}
+
+/*	The case of the titles and of the subtitles, the hero's with them: the hero is the loud variant of the same	*/
+.nino-section-title,
+.nino-hero-title {
+	text-transform: var(--section-title-case);
+}
+.nino-section-subtitle,
+.nino-hero-subtitle {
+	text-transform: var(--section-subtitle-case);
 }
 
 /*	The space of a section, unless the section says its own: the spacing

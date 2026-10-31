@@ -7,6 +7,7 @@
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
  *	@knob	hover		What a button does under the pointer
+ *	@knob	case		Capitals in the label of a button
  *
  *	Regular is the starting point, not a design. Every value it declares is the
  *	framework's own, so a button under it looks as it does under Nino.css
@@ -18,10 +19,11 @@
  *
  *	  - Only the classes of this template: the button and its variants. A
  *	    button set does not touch a section title, however tempting.
- *	  - Colours through the roles, never as literals. Nor the font: the face,
- *	    the weight and the case of a button are the button role of the type
- *	    tab (--font-button-*), and a set that wrote its own would contradict
- *	    the panel.
+ *	  - Colours through the roles, never as literals. Nor the font: the face
+ *	    and the weight of a button are the button role of the type tab
+ *	    (--font-button-*), and a set that wrote its own would contradict the
+ *	    panel. The case is the knob's: a toggle of two rungs, none and
+ *	    uppercase, which the set reads.
  *
  *	The size is what the padding, the type and the radius of a button are
  *	multiplied by. The variants are that size times a number, in Nino.css as
@@ -86,6 +88,10 @@
 	--buttons-hover-shadow--less: 		none;
 	--buttons-hover-shadow--default: 	none;
 	--buttons-hover-shadow--more: 		0 .25rem .5rem var(--nino-default-shadow);
+
+	/*	The case of the label: as it is written, or in capitals	*/
+	--buttons-case--default: 	none;
+	--buttons-case--more: 		uppercase;
 }
 
 /*	Not where the button names a padding of its own: the spacing classes of
@@ -96,6 +102,7 @@
 .nino-btn {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
+	text-transform: var(--buttons-case);
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );

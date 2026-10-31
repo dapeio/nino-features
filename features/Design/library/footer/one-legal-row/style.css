@@ -6,12 +6,13 @@
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
  *	@knob	ground		What the footer stands on
+ *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
+ *	The five knobs are ladders, declared below, the middle of each this set as it
  *	was before it had any: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -19,7 +20,9 @@
  *	the text, the links and the lines of the footer are read in comes with it, as
  *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
  *	and -border), and is put on the footer as the roles Nino.css reads - so the
- *	footer is legible on each of the three.
+ *	footer is legible on each of the three. The fifth, nav-case, is a toggle: two
+ *	rungs, none and uppercase, and the links of the navigation and the legal links
+ *	are set in the one its position picks.
  */
 
 :root {
@@ -78,6 +81,10 @@
 	--footer-ground-border--less:	var(--color-border);
 	--footer-ground-border--default:	var(--color-border);
 	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The case of the links of the navigation: as they are written, or in capitals	*/
+	--footer-nav-case--default: none;
+	--footer-nav-case--more: uppercase;
 }
 
 footer {
@@ -97,6 +104,9 @@ footer {
 
 .nino-footer-nav .nino-footer-title {
 	display:none;
+}
+.nino-footer-nav .nino-nav-content li a {
+	text-transform: var(--footer-nav-case);
 }
 .nino-footer-nav {
 	display:flex;

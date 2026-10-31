@@ -9,6 +9,8 @@
  *	@knob	shadow		Shadow of a card
  *	@knob	tone		Colour the shadow is drawn in
  *	@knob	hover		What a card does under the pointer
+ *	@knob	title-case	Capitals in the title of a card
+ *	@knob	subtitle-case	Capitals in the subtitle of a card
  *
  *	Regular is the starting point, not a design. Every value it declares is the
  *	framework's own, so a page under it looks as it does under Nino.css alone -
@@ -48,7 +50,9 @@
  *	it does not move. This set does nothing under the pointer by itself, so the
  *	middle is as little as the first position; the third lifts the card by a
  *	quarter of a rem with the strongest step of the shadow, and only where the
- *	visitor has not asked for less motion. The section family has the same four
+ *	visitor has not asked for less motion. The two cases are toggles of two rungs,
+ *	none and uppercase, read by a rule each: the title and the subtitle of a card.
+ *	The section family has the same four
  *	names (Regular, Open, Panel, Box) and a theme names a sensible pair.
  *	Copy this file under a name of your own and start there.
  */
@@ -117,6 +121,13 @@
 	--card-hover-shadow--less: 			var(--shadow-card);
 	--card-hover-shadow--default: 	var(--shadow-card);
 	--card-hover-shadow--more: 			0 .25rem 1.5rem var(--card-tone), 0 .0625rem .25rem var(--card-tone);
+
+	/*	The case of the title and of the subtitle: as they are written, or in capitals	*/
+	--card-title-case--default: 		none;
+	--card-title-case--more: 			uppercase;
+
+	--card-subtitle-case--default: 	none;
+	--card-subtitle-case--more: 		uppercase;
 }
 
 @media (min-width: 768px) {
@@ -134,6 +145,13 @@
 	--card-title-scale: var(--card-title);
 	--card-subtitle-scale: var(--card-subtitle);
 	--shadow-card: var(--card-shadow);
+}
+
+.nino-card-title {
+	text-transform: var(--card-title-case);
+}
+.nino-card-subtitle {
+	text-transform: var(--card-subtitle-case);
 }
 
 .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {

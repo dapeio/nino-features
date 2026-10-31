@@ -29,8 +29,10 @@
  *													the defaults, and in Templates the template that is chosen. A block of Templates has the
  *													choice of the set of its part - the header, the footer, the section, the card, the
  *													buttons, the lists or the tables - with its name, its description and the word of the
- *													one chosen; one of Type the root size and the five font roles under the page and the
- *													sizes of the titles under the others; one of Surfaces the width, the whitespace and the
+ *													one chosen; one of Type the root size and the five font roles under the page, and
+ *													under the others the sizes of the titles and a switch for the case of the thing - the
+ *													navigation, a title, a subtitle, a button -, which is a knob of two positions;
+ *													one of Surfaces the width, the whitespace and the
  *													two radii under the page and the space, the corners and the lines under the others, a
  *													strip of five positions or of three words for each knob, greyed out where the chosen
  *													template does not answer to it - the header and the footer have knobs like the others;
@@ -139,10 +141,11 @@
 		CONTROL_ANCHORS	: { 'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
 			'motion/hover' : 'cards', 'motion/hover-strength' : 'cards' },
 
-		/*	How far from the middle a position of a knob can be, by the kind of the knob:
-			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
-			Setup::range()). The root size, the width, the whitespace and the two radii of the page are scales	*/
-		RANGE		: { scale : 2, choice : 1 },
+		/*	The positions of a knob, by the kind of the knob, as the least and the most of them: a
+			scale has the five positions -2 to +2, a choice the three -1 to +1, a toggle the two 0 and
+			1, off and on (see Setup::positions()). The root size, the width, the whitespace and the two
+			radii of the page are scales	*/
+		RANGE		: { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ] },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
@@ -3598,18 +3601,18 @@
 
 		/**
 		 *	The positions of a kind of knob, from the least to the most: -2 to +2 for a
-		 *	scale, -1 to +1 for a choice (see RANGE)
+		 *	scale, -1 to +1 for a choice, 0 and 1 for a toggle (see RANGE)
 		 *
-		 *	@param		{string}	kind				'scale' or 'choice'
+		 *	@param		{string}	kind				'scale', 'choice' or 'toggle'
 		 *
 		 *	@return		{Array}
 		 */
 		_positions : function( kind ) {
 
-			const range = Nino.admin.design.RANGE[kind] || 0;
+			const range = Nino.admin.design.RANGE[kind] || [ 0, 0 ];
 			const positions = [];
 
-			for( let position = -range; position <= range; position++ )
+			for( let position = range[0]; position <= range[1]; position++ )
 				positions.push( position );
 
 			return positions;
@@ -3618,7 +3621,8 @@
 		/**
 		 *	The word a position is declared under in a stylesheet - the middle one of
 		 *	the five design/list handed over is the position 0 (see Setup::word()). A
-		 *	choice knob names its three positions by these words
+		 *	choice knob names its three positions by these words, a toggle its two by the
+		 *	middle and the one after it
 		 *
 		 *	@param		{number}	position
 		 *
@@ -3628,7 +3632,7 @@
 
 			const steps = ( Nino.admin.design._data || {} ).steps || [];
 
-			return steps[ Math.max( 0, Math.min( steps.length - 1, position + Nino.admin.design.RANGE.scale ) ) ];
+			return steps[ Math.max( 0, Math.min( steps.length - 1, position + Nino.admin.design.RANGE.scale[1] ) ) ];
 		},
 
 		/**
@@ -4097,7 +4101,7 @@
 		/**
 		 *	What one control says where it stands elsewhere than at the default: its label and the word of the position it is at,
 		 *	as its strip shows them - made of the very texts and options the strip is drawn from (see _knobStrip(), _radiiStrip()
-		 *	and _pageName()). A font role says it for each of the four cells of its row that differs, by the name of the cell
+		 *	and _pageName()). A font role says it for each of the three cells of its row that differs, by the name of the cell
 		 *	and the word it shows. A knob the chosen template does not answer to is greyed out, and no part of what the design
 		 *	is: it says nothing. The corners of a section - one choice for the cover, the row and the column - count once, and
 		 *	say the word the strip shows, which is the cover's. A part of the palette says its hex - the brand colour, and the
@@ -4167,9 +4171,6 @@
 
 				if( ( chosen.weight || 'normal' ) !== ( given.weight || 'normal' ) )
 					lines.push( views._fontLabel( role, 'weight' )+ ' '+ Nino.content.getText('/_admin/design/weight/'+ ( chosen.weight || 'normal' ) ) );
-
-				if( ( chosen.uppercase === true ) !== ( given.uppercase === true ) )
-					lines.push( views._fontLabel( role, 'uppercase' )+ ' '+ Nino.content.getText('/_admin/common/label/'+ ( chosen.uppercase === true ? 'on' : 'off' ) ) );
 
 				if( String( chosen.size || '' ) !== String( given.size || '' ) )
 					lines.push( views._fontLabel( role, 'size' )+ ' '+ views._sizeInForce( role )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit') );
@@ -5080,8 +5081,8 @@
 		},
 
 		/**
-		 *	The table of the five roles of Nino.css, without its rows: the head of four columns - the family, the
-		 *	weight, the case and the size - and the body the rows of the roles are put into one by one, as the table
+		 *	The table of the five roles of Nino.css, without its rows: the head of three columns - the family, the
+		 *	weight and the size - and the body the rows of the roles are put into one by one, as the table
 		 *	gives them to the page (see _fillRow() and _fontRow()). The controls stand bare in the cells and the words
 		 *	are in the column heads, which is what keeps the table readable in a third of the screen; each control
 		 *	still carries its role and its column as its accessible name
@@ -5102,7 +5103,7 @@
 			const heads = dc.createElement('tr');
 			heads.setAttribute( 'role', 'row' );
 
-			[ 'role', 'family', 'weight', 'uppercase', 'size' ].forEach( function( key ) {
+			[ 'role', 'family', 'weight', 'size' ].forEach( function( key ) {
 				const th = dc.createElement('th');
 				th.setAttribute( 'scope', 'col' );
 				th.setAttribute( 'role', 'columnheader' );
@@ -5121,11 +5122,10 @@
 		},
 
 		/**
-		 *	What a cell of a role is called: the role and the column, "Title - Weight" - the name of its control, and the
-		 *	label of the case switch
+		 *	What a cell of a role is called: the role and the column, "Title - Weight" - the name of its control
 		 *
 		 *	@param		{string}	role			A key of data.roles
-		 *	@param		{string}	column		family, weight, uppercase or size
+		 *	@param		{string}	column		family, weight or size
 		 *
 		 *	@return		{string}
 		 */
@@ -5134,7 +5134,7 @@
 		},
 
 		/**
-		 *	One row of the table: a role, and the four things a role is given
+		 *	One row of the table: a role, and the three things a role is given
 		 *
 		 *	@param		{string}	role			A key of data.roles
 		 *
@@ -5190,33 +5190,6 @@
 			select( 'weight', ( data.weights || [] ).map( function( weight ) {
 				return { value : weight, label : Nino.content.getText('/_admin/design/weight/'+ weight ) };
 			} ), chosen.weight || 'normal' );
-
-			// The code has no case switch: capitals in a block of code are not a
-			// choice anybody makes. Its cell says so rather than staying empty
-			if( role === 'code' ) {
-				const none = dc.createElement('td');
-				none.setAttribute( 'role', 'cell' );
-				none.className = 'design-fonts-none';
-				none.textContent = '—';
-				row.appendChild( none );
-			}
-			else {
-				const field = Nino.adminUi.switchField( {
-					key 		: 'design-font-'+ role+ '-uppercase',
-					label 	: Nino.admin.design.views._fontLabel( role, 'uppercase' ),
-					checked	: chosen.uppercase === true,
-				} );
-				const input = field.querySelector('input');
-				input.id = 'design-font-'+ role+ '-uppercase';
-				input.dataset.role = role;
-				input.dataset.key = 'uppercase';
-				input.addEventListener( 'change', function() { Nino.admin.design.views._setFont( role, 'uppercase', input.checked ) } );
-				const td = dc.createElement('td');
-				td.setAttribute( 'role', 'cell' );
-				td.className = 'design-fonts-switch';
-				td.appendChild( field );
-				row.appendChild( td );
-			}
 
 			/*	The size is typed, in rem, and the field shows the size that is in
 				force: the one that was chosen, else the one Nino.css gives the role.
@@ -5336,7 +5309,7 @@
 		 *	Change one thing of one role
 		 *
 		 *	@param		{string}		role
-		 *	@param		{string}		key				family, weight, uppercase or size
+		 *	@param		{string}		key				family, weight or size
 		 *	@param		{*}					value
 		 *
 		 *	@return		void
@@ -5350,8 +5323,9 @@
 
 		/**
 		 *	What the strip of a knob is made of: its label and its options, from the least to the most - the numbers
-		 *	-2 to +2 of a scale, the three words that knob has for a choice. The kind is what design/list says of the
-		 *	knob in its part
+		 *	-2 to +2 of a scale, the three words that knob has for a choice, the words off and on for a toggle, which the
+		 *	panel draws as a switch and says in the head of a closed block by these two. The kind is what design/list says
+		 *	of the knob in its part
 		 *
 		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
 		 *	@param		{string}		knob
@@ -5364,14 +5338,19 @@
 			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
 			const positions = Nino.admin.design.views._positions( kind );
 
+			// An option that says a position in the words of a text key
+			const said = function( key, position ) {
+				const label = Nino.content.getText( key );
+				return { value : position, label : label, title : label };
+			};
+
 			return {
 				name 		: Nino.content.getText( base+ '/label' ),
-				options	: kind === 'choice'
-					? positions.map( function( position ) {
-						const label = Nino.content.getText( base+ '/'+ Nino.admin.design.views._word( position ) );
-						return { value : position, label : label, title : label };
-					} )
-					: Nino.admin.design.views._numbered( positions, 0 ),
+				options	: kind === 'toggle'
+					? positions.map( function( position ) { return said( '/_admin/common/label/'+ ( position === 1 ? 'on' : 'off' ), position ) } )
+					: ( kind === 'choice'
+						? positions.map( function( position ) { return said( base+ '/'+ Nino.admin.design.views._word( position ), position ) } )
+						: Nino.admin.design.views._numbered( positions, 0 ) ),
 			};
 		},
 
@@ -5379,7 +5358,12 @@
 		 *	One knob, as a strip. A scale is five numbers, -2 to +2, and the note under
 		 *	its name says which way they go; a choice is three alternatives, each in the
 		 *	words that knob has for it - "tight, normal, airy" is not the same sentence
-		 *	as "sharp, normal, round". The kind is what design/list says of the knob
+		 *	as "sharp, normal, round". A toggle is no strip but the workbench's switch,
+		 *	with the name of the knob for its label and the note for its hint: on at the
+		 *	position 1, a change moves the knob to 1 or to 0 (see _setStep()), and the
+		 *	whole row, the switch with it, is greyed out and switched off where the
+		 *	template does not answer to it, with the line that says so in the place
+		 *	of the note, as a strip is. The kind is what design/list says of the knob
 		 *	in its part
 		 *
 		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
@@ -5393,6 +5377,10 @@
 			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
 			const strip = Nino.admin.design.views._knobStrip( part, knob );
 			const name = strip.name;
+
+			if( Nino.admin.design._data.kinds[part][knob] === 'toggle' )
+				return Nino.admin.design.views._knobSwitch( part, knob, answered, name,
+					answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ) );
 
 			/*	The knob's own name and the terse note under it, both out of the
 				panel's text files: a knob is one key in every locale. Where the
@@ -5410,11 +5398,49 @@
 		},
 
 		/**
+		 *	One toggle, as a row of its own: the workbench's switch (Nino.adminUi.switchField()) in the box a strip's row is,
+		 *	so that a row is a row whatever it is drawn as. The switch is on at the position 1 and moves the knob to 1 and to
+		 *	0; where the template does not answer to the knob it is off and switched off, whatever the model holds, and the
+		 *	row is greyed out the way a strip's is
+		 *
+		 *	@param		{string}		part			The part the knob belongs to
+		 *	@param		{string}		knob			A toggle of that part
+		 *	@param		{boolean}		answered	Whether the chosen template declares it
+		 *	@param		{string}		name			The label of the switch
+		 *	@param		{string}		note			The hint under it
+		 *
+		 *	@return		{Element}
+		 */
+		_knobSwitch : function( part, knob, answered, name, note ) {
+
+			const views = Nino.admin.design.views;
+
+			const field = Nino.adminUi.switchField( {
+				key 		: 'design-knob-'+ part+ '-'+ knob,
+				label 	: name,
+				hint 		: note,
+				checked	: answered === true && ( ( Nino.admin.design._edit.knobs[part] || {} )[knob] || 0 ) === 1,
+			} );
+
+			const input = field.querySelector('input');
+			input.id = 'design-knob-'+ part+ '-'+ knob;
+			input.disabled = answered === false;
+			input.addEventListener( 'change', function() { views._setStep( part, knob, input.checked === true ? 1 : 0 ) } );
+
+			const row = dc.createElement('div');
+			row.className = 'design-knob-row design-knob-row--switch'+ ( answered === false ? ' design-knob-row--off' : '' );
+			row.dataset.knob = knob;
+			row.appendChild( field );
+
+			return row;
+		},
+
+		/**
 		 *	Move a knob
 		 *
 		 *	@param		{string}		part			The part the knob belongs to
 		 *	@param		{string}		knob			A knob of that part
-		 *	@param		{number}		position	-2 to +2 for a scale, -1 to +1 for a choice
+		 *	@param		{number}		position	-2 to +2 for a scale, -1 to +1 for a choice, 0 or 1 for a toggle
 		 *
 		 *	@return		void
 		 */

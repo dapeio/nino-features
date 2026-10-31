@@ -132,7 +132,6 @@ return [
 	'[[/_admin/design/font/role/code]]'							=> 'Code',
 	'[[/_admin/design/font/head/family]]'						=> 'Schriftart',
 	'[[/_admin/design/font/head/weight]]'						=> 'Gewicht',
-	'[[/_admin/design/font/head/uppercase]]'						=> 'Uppercase',
 	'[[/_admin/design/font/head/size]]'							=> 'Größe',
 	'[[/_admin/design/family/default]]'							=> 'System (Vorgabe)',
 	'[[/_admin/design/family/default-code]]'						=> 'System-Monospace',
@@ -217,6 +216,8 @@ return [
 	'[[/_admin/design/knob/header/border-color/more]]'							=> 'Marke',
 	'[[/_admin/design/knob/header/border-size/label]]'							=> 'Linie',
 	'[[/_admin/design/knob/header/border-size/note]]'							=> 'keine ↔ kräftig',
+	'[[/_admin/design/knob/header/nav-case/label]]'							=> 'Navigation, Großbuchstaben',
+	'[[/_admin/design/knob/header/nav-case/note]]'							=> 'Großbuchstaben an oder aus',
 
 	'[[/_admin/design/knob/footer/scale/label]]'							=> 'Textgröße',
 	'[[/_admin/design/knob/footer/scale/note]]'							=> 'kleiner ↔ größer',
@@ -229,6 +230,8 @@ return [
 	'[[/_admin/design/knob/footer/ground/less]]'							=> 'Seite',
 	'[[/_admin/design/knob/footer/ground/default]]'							=> 'Vorlage',
 	'[[/_admin/design/knob/footer/ground/more]]'							=> 'Dunkel',
+	'[[/_admin/design/knob/footer/nav-case/label]]'							=> 'Navigation, Großbuchstaben',
+	'[[/_admin/design/knob/footer/nav-case/note]]'							=> 'Großbuchstaben an oder aus',
 
 	'[[/_admin/design/knob/section/quiet/label]]'							=> 'Leise Variante, Textgröße',
 	'[[/_admin/design/knob/section/quiet/note]]'							=> 'kleiner ↔ größer',
@@ -244,6 +247,10 @@ return [
 	'[[/_admin/design/knob/section/rule/note]]'							=> 'keine ↔ kräftig',
 	'[[/_admin/design/knob/section/dim/label]]'							=> 'Abdunkeln',
 	'[[/_admin/design/knob/section/dim/note]]'							=> 'heller ↔ dunkler',
+	'[[/_admin/design/knob/section/title-case/label]]'							=> 'Titel, Großbuchstaben',
+	'[[/_admin/design/knob/section/title-case/note]]'							=> 'Großbuchstaben an oder aus',
+	'[[/_admin/design/knob/section/subtitle-case/label]]'							=> 'Untertitel, Großbuchstaben',
+	'[[/_admin/design/knob/section/subtitle-case/note]]'							=> 'Großbuchstaben an oder aus',
 
 	'[[/_admin/design/knob/card/title/label]]'							=> 'Titel, Textgröße',
 	'[[/_admin/design/knob/card/title/note]]'							=> 'kleiner ↔ größer',
@@ -265,6 +272,10 @@ return [
 	'[[/_admin/design/knob/card/hover/less]]'							=> 'Nichts',
 	'[[/_admin/design/knob/card/hover/default]]'							=> 'Vorlage',
 	'[[/_admin/design/knob/card/hover/more]]'							=> 'Anheben',
+	'[[/_admin/design/knob/card/title-case/label]]'							=> 'Titel, Großbuchstaben',
+	'[[/_admin/design/knob/card/title-case/note]]'							=> 'Großbuchstaben an oder aus',
+	'[[/_admin/design/knob/card/subtitle-case/label]]'							=> 'Untertitel, Großbuchstaben',
+	'[[/_admin/design/knob/card/subtitle-case/note]]'							=> 'Großbuchstaben an oder aus',
 
 	'[[/_admin/design/knob/buttons/size/label]]'							=> 'Größe',
 	'[[/_admin/design/knob/buttons/size/note]]'							=> 'kleiner ↔ größer',
@@ -279,6 +290,8 @@ return [
 	'[[/_admin/design/knob/buttons/hover/less]]'							=> 'Nichts',
 	'[[/_admin/design/knob/buttons/hover/default]]'							=> 'Vorlage',
 	'[[/_admin/design/knob/buttons/hover/more]]'							=> 'Anheben',
+	'[[/_admin/design/knob/buttons/case/label]]'							=> 'Großbuchstaben',
+	'[[/_admin/design/knob/buttons/case/note]]'							=> 'Großbuchstaben an oder aus',
 
 	'[[/_admin/design/knob/lists/scale/label]]'							=> 'Textgröße',
 	'[[/_admin/design/knob/lists/scale/note]]'							=> 'kleiner ↔ größer',

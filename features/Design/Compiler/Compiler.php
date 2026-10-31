@@ -24,15 +24,16 @@ namespace Nino\Modules\Design {
 	 *										theme, as it was typed.
 	 *
 	 *										A set declares what the steps of a knob *are* - the five
-	 *										values of a scale, the three of a choice - rather than a
-	 *										value a knob then modifies: +1rem behaves differently on
-	 *										a default of 5rem than on 2rem, and some scales are not
-	 *										linear at all. So the knob never computes: it picks, and
-	 *										what it picks is one selection line per token, gathered
-	 *										into a single block at the end. CSS cannot compose a
-	 *										variable name, which is why that block exists at all. A
-	 *										frame declares its ladders in its style.css as a set does
-	 *										in its file, and is compiled and selected the same way.
+	 *										values of a scale, the three of a choice, the two of a
+	 *										toggle - rather than a value a knob then modifies: +1rem
+	 *										behaves differently on a default of 5rem than on 2rem, and
+	 *										some scales are not linear at all. So the knob never
+	 *										computes: it picks, and what it picks is one selection line
+	 *										per token, gathered into a single block at the end. CSS
+	 *										cannot compose a variable name, which is why that block
+	 *										exists at all. A frame declares its ladders in its
+	 *										style.css as a set does in its file, and is compiled and
+	 *										selected the same way.
 	 *
 	 *										write() refuses a file it did not write. The delivered
 	 *										theme.css is explicitly editable by hand, so a project may
@@ -663,7 +664,6 @@ namespace Nino\Modules\Design {
 				$lines[] = ' *   '. str_pad( $role, 11 )
 					. ( isset( $families[$family] ) === true ? $families[$family]['name'] : 'the system stack' )
 					. ', '. (string) ( $chosen['weight'] ?? 'normal' )
-					. ( ( $chosen['uppercase'] ?? false ) === true ? ', uppercase' : '' )
 					. ( $size === '' ? '' : ', '. $size. 'rem' );
 			}
 

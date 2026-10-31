@@ -261,10 +261,11 @@ namespace Nino\Modules\Design {
 			\Nino\Http::ok( $request, [
 				'parts' 	=> $parts,
 				// Where every knob stands, per part, and which knobs a part has and of what
-				// kind - a scale of five positions or a choice of three, by name: the
-				// screen draws a row for each of them, and the parts above say which
-				// of the rows its template answers to. The five words are the steps a
-				// choice is named by, and the size and the width are positions as well
+				// kind - a scale of five positions, a choice of three or a toggle of two, by
+				// name: the screen draws a row for each of them - a strip, or a switch for a
+				// toggle -, and the parts above say which of the rows its template answers
+				// to. The five words are the steps a choice is named by, and the size and
+				// the width are positions as well
 				'knobs' 	=> $setup['knobs'],
 				'kinds' 	=> Setup::KNOBS,
 				/*	The features that bring variants of their own, each with the variants it brings - their names, their

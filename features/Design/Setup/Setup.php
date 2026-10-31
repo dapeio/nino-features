@@ -116,7 +116,8 @@ namespace Nino\Modules\Design {
 			under. The model keeps -2 to +2 and the library keeps these five words;
 			word() is the one place that maps one to the other. A choice has three
 			alternatives and declares them under the inner three - less, default, more -
-			so that there is one vocabulary and no word of its own	*/
+			and a toggle two, default and more, so that there is one vocabulary and no
+			word of its own	*/
 		public const array STEPS = [ 'least', 'less', 'default', 'more', 'most' ];
 
 		/*	The knobs, per part, and the kind of each - and nothing else. A knob belongs
@@ -131,7 +132,9 @@ namespace Nino\Modules\Design {
 			A scale is a track of five positions, -2 to +2, the middle the template as it
 			is: a size, a space, a corner, a line. A choice is a few alternatives that
 			are no more or less of anything - the stripes of a table, the marker of a
-			list - and has three, which the panel names by words:
+			list - and has three, which the panel names by words. A toggle is a switch of
+			two positions, 0 and 1, off and on - the case of a thing, the template as it is
+			or in capitals - and the panel draws it as a switch and no strip:
 
 				header		nav					the size of the links of the navigation
 							height				how tall the bar is, and how far main starts below a fixed one
@@ -141,24 +144,31 @@ namespace Nino\Modules\Design {
 							border-color		the colour of that line (a choice)
 							position			where the navigation stands: left, centre or right (a choice)
 							cta					the button of the header: hidden, small or large (a choice)
+							nav-case			the links of the navigation in capitals (a toggle)
 				footer		scale				the type size of the footer
 							height				the space above and below its content
 							space				the space between its columns, its lines and its links
 							ground				what it stands on (a choice)
+							nav-case			the links of the navigation in capitals (a toggle)
 				section		quiet, loud			the size of the --quiet and --loud variants - the title and the subtitle of a hero are the loud variant
 							title, subtitle	the size of the title and of the subtitle of a section
 							space				the vertical space of a section
 							rule				the rule under the title of a section
 							dim					how dark the scrim of a dimmed cover is
+							title-case			the title of a section, the hero's among them, in capitals (a toggle)
+							subtitle-case		the subtitle of a section, the hero's among them, in capitals (a toggle)
 				card		title, subtitle	the size of the title and of the subtitle of a card
 							space				the space inside a card and between its parts
 							border, shadow		the line and the shadow of a card
 							tone				the colour the shadow is drawn in (a choice)
 							hover				what a card does under the pointer (a choice)
+							title-case			the title of a card in capitals (a toggle)
+							subtitle-case		the subtitle of a card in capitals (a toggle)
 				buttons		size				the size of .nino-btn
 							spread				how far .nino-btn--small and --big stand from it
 							space, corners		the padding and the radius
 							hover				what a button does under the pointer (a choice)
+							case				the label of a button in capitals (a toggle)
 				lists		scale				the type size of a list
 							space				the space between its items
 							marker				the marker of a check list and of a numbered list (a choice)
@@ -168,11 +178,11 @@ namespace Nino\Modules\Design {
 							zebra				the stripes of a table that asks for them (a choice)
 							stripes				how strong the stripes are	*/
 		public const array KNOBS = [
-			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'cta' => 'choice' ],
-			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice' ],
-			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale' ],
-			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice' ],
-			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice' ],
+			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'cta' => 'choice', 'nav-case' => 'toggle' ],
+			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'nav-case' => 'toggle' ],
+			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
+			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
+			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
 		];
@@ -235,7 +245,7 @@ namespace Nino\Modules\Design {
 			'parts/lists' 							=> [ 'templates', 'lists', 1 ],
 			'parts/tables' 						=> [ 'templates', 'tables', 1 ],
 
-			// The type: the root size and the five roles are the page's; the size of the links of the header, the type of the footer, the sizes of the titles and the type of a list and of a table are the object's own
+			// The type: the root size and the five roles are the page's; the size of the links of the header, the type of the footer, the sizes of the titles and the type of a list and of a table are the object's own, and so is the case of a thing, a switch under the sizes of its object
 			'size' 									=> [ 'type', 'page', 1 ],
 			'fonts/title' 							=> [ 'type', 'page', 2 ],
 			'fonts/subtitle' 						=> [ 'type', 'page', 3 ],
@@ -243,15 +253,22 @@ namespace Nino\Modules\Design {
 			'fonts/button' 							=> [ 'type', 'page', 5 ],
 			'fonts/code' 							=> [ 'type', 'page', 6 ],
 			'knobs/header/nav' 						=> [ 'type', 'header', 1 ],
+			'knobs/header/nav-case' 				=> [ 'type', 'header', 2 ],
 			'knobs/footer/scale' 					=> [ 'type', 'footer', 1 ],
+			'knobs/footer/nav-case' 				=> [ 'type', 'footer', 2 ],
 			'knobs/section/title' 					=> [ 'type', 'section', 1 ],
 			'knobs/section/subtitle' 				=> [ 'type', 'section', 2 ],
 			'knobs/section/quiet' 					=> [ 'type', 'section', 3 ],
 			'knobs/section/loud' 					=> [ 'type', 'section', 4 ],
+			'knobs/section/title-case' 				=> [ 'type', 'section', 5 ],
+			'knobs/section/subtitle-case' 			=> [ 'type', 'section', 6 ],
 			'knobs/card/title' 						=> [ 'type', 'card', 1 ],
 			'knobs/card/subtitle' 					=> [ 'type', 'card', 2 ],
+			'knobs/card/title-case' 				=> [ 'type', 'card', 3 ],
+			'knobs/card/subtitle-case' 				=> [ 'type', 'card', 4 ],
 			'knobs/buttons/size' 					=> [ 'type', 'buttons', 1 ],
 			'knobs/buttons/spread' 					=> [ 'type', 'buttons', 2 ],
+			'knobs/buttons/case' 					=> [ 'type', 'buttons', 3 ],
 			'knobs/lists/scale' 					=> [ 'type', 'lists', 1 ],
 			'knobs/tables/scale' 					=> [ 'type', 'tables', 1 ],
 
@@ -315,11 +332,14 @@ namespace Nino\Modules\Design {
 			  --section-space--least / --less / --default / --more / --most
 
 			A ladder is the five values of a scale, the middle of them the template as it
-			is, or the three of a choice, which are declared under less, default and more.
+			is, the three of a choice, which are declared under less, default and more, or
+			the two of a toggle, under default and more: off, which is the template as it is,
+			and on.
 			Declaring the ladder *is* publishing the knob - the panel offers exactly what
 			a set declares and greys out what it does not, so a handle the stylesheet
 			does not answer to can never be offered. A scale with three of its five, and a
-			choice with five of its three, have published nothing. The @knob line in a
+			choice with five of its three, have published nothing - nor has a toggle with
+			three of its two. The @knob line in a
 			set's own opening comment is documentation for whoever reads the file; the
 			panel reads the declarations.
 
@@ -329,7 +349,9 @@ namespace Nino\Modules\Design {
 			knob's too: they are selected where it stands, and are as long as it is. A
 			stylesheet that declares one without the ladder of the knob itself has
 			published nothing, and one with another length than its knob's has not
-			published the knob.
+			published the knob. A name that is a knob of its own is no aspect of another:
+			--section-title-case is the toggle of that name and not an aspect of the
+			size --section-title.
 
 			The name of a rung is KNOB_TOKEN filled with the part, the name and the
 			word: ladders() reads the declarations with it, and the compiler asks
@@ -341,8 +363,9 @@ namespace Nino\Modules\Design {
 			the palette (Colours::SURFACES), an ink one of the seven tones of INKS, a colour a pair of hex colours - light, then dark	*/
 		public const array FEATURE_KINDS = [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
 
-		// ...of which these two are ladders, declared in the stylesheet of the variant and published by it (see variants())
-		public const array LADDERS = [ 'scale', 'choice' ];
+		/*	...of which these two are ladders, declared in the stylesheet of the variant and published by it (see variants()). A
+			toggle is a ladder too, of two rungs, and is the parts' alone: a feature cannot declare one (see FEATURE_KINDS)	*/
+		public const array LADDERS = [ 'scale', 'choice', 'toggle' ];
 
 		/*	The seven tones the page writes with on whatever ground an element stands on, and the custom property of the kernel each is: the
 			roles Nino.css re-points inside .nino-section--alt, --tint, --dark and --black (and in the grid, the row and the card of the same
@@ -631,7 +654,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What a knob is: 'scale' or 'choice' (see KNOBS)
+		 *	What a knob is: 'scale', 'choice' or 'toggle' (see KNOBS)
 		 *
 		 *	@param		string		$part					A key of KNOBS
 		 *	@param		string		$knob					A name in KNOBS[$part]
@@ -643,35 +666,35 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	How far a kind of knob reaches from the middle: two positions to each side
-		 *	for a scale, one for a choice. A kind there is none of reaches nowhere
+		 *	The positions a kind of knob can stand at, from the least to the most: two to
+		 *	each side of the middle for a scale, one for a choice, and for a toggle off,
+		 *	which is the middle, and on. A kind there is none of has the middle alone
 		 *
-		 *	@param		string		$kind					'scale' or 'choice'
+		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
 		 *
-		 *	@return 	int
+		 *	@return 	array										Integers, eg. [ -1, 0, 1 ]
 		 */
-		public static function range( string $kind ): int {
+		public static function positions( string $kind ): array {
 
 			return match( $kind ) {
-				'scale' 	=> 2,
-				'choice' 	=> 1,
-				default 	=> 0,
+				'scale' 	=> [ -2, -1, 0, 1, 2 ],
+				'choice' 	=> [ -1, 0, 1 ],
+				'toggle' 	=> [ 0, 1 ],
+				default 	=> [ 0 ],
 			};
 		}
 
 		/**
-		 *	The words a ladder of that kind is declared under: all five of STEPS for a
-		 *	scale, the inner three for a choice
+		 *	The words a ladder of that kind is declared under, the words of its positions: all
+		 *	five of STEPS for a scale, the inner three for a choice, default and more for a toggle
 		 *
-		 *	@param		string		$kind					'scale' or 'choice'
+		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
 		 *
 		 *	@return 	array
 		 */
 		public static function words( string $kind ): array {
 
-			$range = self::range( $kind );
-
-			return array_slice( self::STEPS, 2 - $range, 2 * $range + 1 );
+			return array_map( self::word( ... ), self::positions( $kind ) );
 		}
 
 		/**
@@ -1384,8 +1407,8 @@ namespace Nino\Modules\Design {
 				installed are among them - and a weight one of the three words;
 				anything else is what the role starts from. A size is a number of rem
 				held inside the bounds of the role, and what is no number is the default
-				(see Fonts::size()). The code has no case switch: capitals in a block of
-				code are not a choice anybody makes	*/
+				(see Fonts::size()). A role has these three and nothing else, a key of
+				any other - the case of a role was one, once - is dropped and named	*/
 			$given = is_array( $raw['fonts'] ?? null ) === true ? $raw['fonts'] : [];
 
 			foreach( array_keys( $given ) as $role )
@@ -1406,7 +1429,6 @@ namespace Nino\Modules\Design {
 				$setup['fonts'][$role] = [
 					'family' 		=> is_string( $family ) === true && in_array( $family, Fonts::options( $appData, $role ), true ) === true ? $family : Fonts::DEFAULTS[$role]['family'],
 					'weight' 		=> is_string( $weight ) === true && in_array( $weight, Fonts::WEIGHTS, true ) === true ? $weight : Fonts::DEFAULTS[$role]['weight'],
-					'uppercase' => $role !== 'code' && ( $stored['uppercase'] ?? false ) === true,
 					'size' 			=> Fonts::size( $role, $stored['size'] ?? '' ),
 				];
 			}
@@ -1549,15 +1571,15 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	One position, as a number inside the range of its kind: -2 to 2 for a scale
-		 *	(the default kind - the root size, the width, the whitespace and the two
-		 *	strengths of the radius are scales as well), -1 to 1
-		 *	for a choice. Anything else - a word, an array, and a number past the ends -
-		 *	is the middle, which is the template as it is, or the position the caller
-		 *	says is the one to stand at where there is no choice made
+		 *	One position, as a number among the positions of its kind (see positions()): -2 to 2
+		 *	for a scale (the default kind - the root size, the width, the whitespace and the two
+		 *	strengths of the radius are scales as well), -1 to 1 for a choice, 0 or 1 for a
+		 *	toggle. Anything else - a word, a boolean, an array, and a number past the ends - is
+		 *	the middle, which is the template as it is, or the position the caller says is the
+		 *	one to stand at where there is no choice made
 		 *
 		 *	@param		mixed			$value				Straight off the wire
-		 *	@param		string		$kind					'scale' or 'choice'
+		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
 		 *	@param		int				$fallback			What anything else is
 		 *
 		 *	@return 	int
@@ -1571,9 +1593,8 @@ namespace Nino\Modules\Design {
 				return $fallback;
 
 			$position = (int) round( (float) $value );
-			$range = self::range( $kind );
 
-			return $position >= -$range && $position <= $range ? $position : $fallback;
+			return in_array( $position, self::positions( $kind ), true ) === true ? $position : $fallback;
 		}
 
 		/**
@@ -1630,7 +1651,7 @@ namespace Nino\Modules\Design {
 		 *	it (see KNOB_TOKEN). What the compiler writes a selection line for.
 		 *
 		 *	A ladder is complete when it is declared under every word of its kind - the
-		 *	five of a scale, the three of a choice (see words()) - and a knob is
+		 *	five of a scale, the three of a choice, the two of a toggle (see words()) - and a knob is
 		 *	published when its own ladder is and so is each of its aspects. A knob with
 		 *	less or more words than its kind has, or with an aspect that has, is not in
 		 *	the answer: the panel greys it out
@@ -1657,7 +1678,7 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@param		string		$css					Without its comments
 		 *	@param		string		$part					The part's name, or the key of a feature
-		 *	@param		array 		$kinds				knob => 'scale' or 'choice'
+		 *	@param		array 		$kinds				knob => 'scale', 'choice' or 'toggle'
 		 *
 		 *	@return 	array										knob => [ name, ... ] for each knob with a complete ladder
 		 */
@@ -1680,8 +1701,9 @@ namespace Nino\Modules\Design {
 
 				$names = [ $knob ];
 
+				// A name that is a knob of its own - title-case beside title - is that knob's and no aspect of this one
 				foreach( array_keys( $declared ) as $name )
-					if( str_starts_with( $name, $knob. '-' ) === true )
+					if( str_starts_with( $name, $knob. '-' ) === true && isset( $kinds[$name] ) === false )
 						$names[] = $name;
 
 				foreach( $names as $name )
@@ -1699,7 +1721,7 @@ namespace Nino\Modules\Design {
 		 *	kind: every one of them and no other
 		 *
 		 *	@param		array 		$declared			word => true
-		 *	@param		string		$kind					'scale' or 'choice'
+		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
 		 *
 		 *	@return 	bool
 		 */

@@ -16,16 +16,17 @@ namespace Nino\Modules\Design {
 	 *	Fonts							The five font roles of Nino.css - title, subtitle, text,
 	 *										button and code - and the families a role can be given.
 	 *
-	 *										Nino.css reads a role as a family, a weight, a transform
-	 *										and a size (--fontfamily-<role>, --font-<role>-weight,
-	 *										-transform and -size) and sets every one of them to what
-	 *										its rules had before there were roles. This class decides
-	 *										what the compiler writes over those defaults: the
-	 *										@font-face rules of every family a role uses, and the
-	 *										lines of :root that say which family, which weight, which
-	 *										case and which size - only where the setup chose one. A
-	 *										role with no family writes no family line, and Nino.css
-	 *										keeps the system stack it has for it.
+	 *										Nino.css reads a role as a family, a weight and a size
+	 *										(--fontfamily-<role>, --font-<role>-weight and -size) and
+	 *										sets every one of them to what its rules had before there
+	 *										were roles. This class decides what the compiler writes
+	 *										over those defaults: the @font-face rules of every family
+	 *										a role uses, and the lines of :root that say which family,
+	 *										which weight and which size - only where the setup chose
+	 *										one. A role with no family writes no family line, and
+	 *										Nino.css keeps the system stack it has for it. The case of
+	 *										a thing is no role's: it is a switch of the object (see
+	 *										Setup::KNOBS), which a set of the library reads.
 	 *
 	 *										The families are Open Sans, which the setup wizard's base
 	 *										unit delivers as woff2 files in 300, 400 and 700, and
@@ -63,11 +64,11 @@ namespace Nino\Modules\Design {
 			Sans: the title and the button in bold, the rest in normal, and the code
 			in the system's monospace, which is the empty family	*/
 		public const array DEFAULTS = [
-			'title' 		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
-			'subtitle' 	=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
-			'text' 			=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
-			'button' 		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
-			'code' 			=> [ 'family' => '', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
+			'title' 		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'size' => '' ],
+			'subtitle' 	=> [ 'family' => 'open-sans', 'weight' => 'normal', 'size' => '' ],
+			'text' 			=> [ 'family' => 'open-sans', 'weight' => 'normal', 'size' => '' ],
+			'button' 		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'size' => '' ],
+			'code' 			=> [ 'family' => '', 'weight' => 'normal', 'size' => '' ],
 		];
 
 		/*	The size Nino.css gives each role from 768px, in rem: --font-title-size
@@ -471,7 +472,7 @@ namespace Nino\Modules\Design {
 		 *
 		 *	A family used by two roles is declared once. Nothing is written for a
 		 *	role that chose nothing: no family line for the empty family, no
-		 *	transform line unless it is uppercase, no size line for the default.
+		 *	size line for the default.
 		 *	The weight is always written - it is a choice every role has - as the
 		 *	number or keyword weight() makes of it.
 		 *
@@ -483,7 +484,7 @@ namespace Nino\Modules\Design {
 		 *	title and the variants" in Nino's design manual).
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$fonts				The setup's fonts, a role => [ family, weight, uppercase, size ]
+		 *	@param		array 		$fonts				The setup's fonts, a role => [ family, weight, size ]
 		 *
 		 *	@return 	string
 		 */
@@ -508,9 +509,6 @@ namespace Nino\Modules\Design {
 					$lines[] = "\t--fontfamily-". $role. ': '. $line. ';';
 
 				$lines[] = "\t--font-". $role. '-weight: '. self::_weight( $family, (string) ( $chosen['weight'] ?? 'normal' ) ). ';';
-
-				if( ( $chosen['uppercase'] ?? false ) === true )
-					$lines[] = "\t--font-". $role. '-transform: uppercase;';
 
 				$size = (string) ( $chosen['size'] ?? '' );
 

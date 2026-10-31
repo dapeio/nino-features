@@ -10,12 +10,13 @@
  *	@knob	border-color	Colour of the border
  *	@knob	position	Where the navigation stands
  *	@knob	cta		Visibility and size of the button of the header
+ *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The eight knobs are ladders, declared below, the middle of each this set as it
+ *	The nine knobs are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -32,6 +33,10 @@
  *	right of the bar - and cta a choice of three for the button of the header - hidden,
  *	small, or as large as a button is. The button is scaled by --header-cta-scale, the
  *	factor its font, its padding and its corners are drawn with.
+ *
+ *	The ninth, nav-case, is a toggle: two rungs, none and uppercase, and the links
+ *	of the navigation - in the bar, and in the menu that opens over the page - are
+ *	set in the one its position picks.
  */
 
 :root {
@@ -112,6 +117,10 @@
 	--header-cta-scale--less: .7;
 	--header-cta-scale--default: .7;
 	--header-cta-scale--more: 1;
+
+	/*	The case of the links of the navigation: as they are written, or in capitals	*/
+	--header-nav-case--default: none;
+	--header-nav-case--more: uppercase;
 }
 
 .nino-frame-header {
@@ -160,6 +169,10 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 
 .nino-frame-header .nino-frame-header-nav {
 	margin: var(--header-position);
+}
+
+.nino-frame-header .nino-nav-content li a {
+	text-transform: var(--header-nav-case);
 }
 
 .nino-frame-header .nino-nav-burger > button > svg {

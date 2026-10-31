@@ -335,6 +335,33 @@
 	cursor: not-allowed;
 }
 
+/*	A toggle is the workbench's switch in the box of a row: the track, the name with
+	its note and the word of the state, set in the type a strip's label has, so that a
+	row of either kind reads alike. The switch keeps no padding of its own - the row has
+	it. Greyed out, the switch is switched off and its name and note fade with the
+	row, and the label stops pretending it can be pressed */
+.nino-admin .design-knob-row--switch .nino-admin-switch {
+	min-height: 0;
+	padding: 0;
+}
+.nino-admin .design-knob-row--switch .nino-admin-switch-copy {
+	font-size: .8rem;
+	font-weight: 500;
+	line-height: 1.35;
+}
+.nino-admin .design-knob-row--switch .nino-admin-switch-copy small {
+	color: var(--editor-text-secondary);
+	font-size: .75rem;
+	font-weight: 450;
+}
+.nino-admin .design-knob-row--off .nino-admin-switch {
+	cursor: not-allowed;
+}
+.nino-admin .design-knob-row--off .nino-admin-switch-copy,
+.nino-admin .design-knob-row--off .nino-admin-switch-state {
+	opacity: .5;
+}
+
 /* The way back to the colour the wheel derives, beside the second colour */
 .nino-admin .design-knob-reset {
 	flex: 0 0 auto;
@@ -354,11 +381,11 @@
 
 /* ---- the fonts ----
 
-   Five rows and four columns in a third of the screen. The controls stand bare
+   Five rows and three columns in a third of the screen. The controls stand bare
    in the cells and the words are in the column heads, so the table stays
    readable at the width of the column; each control carries its own accessible
-   name, which is the role and the column. A row is a grid of the four cells
-   with the role's name on a line above them - a row of five cells would give
+   name, which is the role and the column. A row is a grid of the three cells
+   with the role's name on a line above them - a row of four cells would give
    a family and a size no more than a few letters each. The roles of a table
    are set on the elements in the script, since a display other than a table's
    takes the semantics away from them */
@@ -370,7 +397,7 @@
 }
 .nino-admin .design-fonts tr {
 	display: grid;
-	grid-template-columns: minmax(0, 1.5fr) 4rem 3.8rem minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1.5fr) 6rem minmax(0, 1fr);
 	column-gap: .3rem;
 	align-items: center;
 }
@@ -437,31 +464,6 @@
 	flex: none;
 	color: var(--editor-text-secondary);
 	font-size: .68rem;
-}
-/*	The case switch in a cell: the track alone - its label is the control's
-	accessible name and its word is what the track already says */
-.nino-admin .design-fonts .nino-admin-switch {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	background: none;
-}
-.design-fonts-switch > .nino-admin-switch {
-	align-items: center;
-	justify-content: center;
-}
-.nino-admin .design-fonts .nino-admin-switch-copy,
-.nino-admin .design-fonts .nino-admin-switch-state {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
-}
-.nino-admin .design-fonts .design-fonts-none {
-	color: var(--editor-text-secondary);
-	text-align: center;
 }
 
 /* ---- the typefaces ----

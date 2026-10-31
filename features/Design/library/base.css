@@ -284,9 +284,9 @@
 	--color-warning-text: var(--nino-on-warning);
 
 	/* The type is the compiler's: the five font roles (--fontfamily-<role>,
-	   --font-<role>-weight, -transform and -size) and the @font-face rules
-	   behind them are written from the setup's fonts, a section of their own
-	   before this one. A webface is a file this unit ships, not a value
+	   --font-<role>-weight and -size) and the @font-face rules behind them
+	   are written from the setup's fonts, a section of their own before
+	   this one. A webface is a file this unit ships, not a value
 	   anything can generate */
 
 	/* Sizes are assignments too. The raster is section 1's: the framework's

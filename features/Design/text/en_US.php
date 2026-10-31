@@ -132,7 +132,6 @@ return [
 	'[[/_admin/design/font/role/code]]'							=> 'Code',
 	'[[/_admin/design/font/head/family]]'						=> 'Family',
 	'[[/_admin/design/font/head/weight]]'						=> 'Weight',
-	'[[/_admin/design/font/head/uppercase]]'						=> 'Uppercase',
 	'[[/_admin/design/font/head/size]]'							=> 'Size',
 	'[[/_admin/design/family/default]]'							=> 'System (default)',
 	'[[/_admin/design/family/default-code]]'						=> 'System monospace',
@@ -217,6 +216,8 @@ return [
 	'[[/_admin/design/knob/header/border-color/more]]'							=> 'Brand',
 	'[[/_admin/design/knob/header/border-size/label]]'							=> 'Line',
 	'[[/_admin/design/knob/header/border-size/note]]'							=> 'none ↔ heavy',
+	'[[/_admin/design/knob/header/nav-case/label]]'							=> 'Navigation, uppercase',
+	'[[/_admin/design/knob/header/nav-case/note]]'							=> 'uppercase on or off',
 
 	'[[/_admin/design/knob/footer/scale/label]]'							=> 'Text size',
 	'[[/_admin/design/knob/footer/scale/note]]'							=> 'smaller ↔ larger',
@@ -229,6 +230,8 @@ return [
 	'[[/_admin/design/knob/footer/ground/less]]'							=> 'Page',
 	'[[/_admin/design/knob/footer/ground/default]]'							=> 'Template',
 	'[[/_admin/design/knob/footer/ground/more]]'							=> 'Dark',
+	'[[/_admin/design/knob/footer/nav-case/label]]'							=> 'Navigation, uppercase',
+	'[[/_admin/design/knob/footer/nav-case/note]]'							=> 'uppercase on or off',
 
 	'[[/_admin/design/knob/section/quiet/label]]'							=> 'Quiet variant, text size',
 	'[[/_admin/design/knob/section/quiet/note]]'							=> 'smaller ↔ larger',
@@ -244,6 +247,10 @@ return [
 	'[[/_admin/design/knob/section/rule/note]]'							=> 'none ↔ strong',
 	'[[/_admin/design/knob/section/dim/label]]'							=> 'Darken',
 	'[[/_admin/design/knob/section/dim/note]]'							=> 'lighter ↔ darker',
+	'[[/_admin/design/knob/section/title-case/label]]'							=> 'Title, uppercase',
+	'[[/_admin/design/knob/section/title-case/note]]'							=> 'uppercase on or off',
+	'[[/_admin/design/knob/section/subtitle-case/label]]'							=> 'Subtitle, uppercase',
+	'[[/_admin/design/knob/section/subtitle-case/note]]'							=> 'uppercase on or off',
 
 	'[[/_admin/design/knob/card/title/label]]'							=> 'Title, text size',
 	'[[/_admin/design/knob/card/title/note]]'							=> 'smaller ↔ larger',
@@ -265,6 +272,10 @@ return [
 	'[[/_admin/design/knob/card/hover/less]]'							=> 'Nothing',
 	'[[/_admin/design/knob/card/hover/default]]'							=> 'Template',
 	'[[/_admin/design/knob/card/hover/more]]'							=> 'Lift',
+	'[[/_admin/design/knob/card/title-case/label]]'							=> 'Title, uppercase',
+	'[[/_admin/design/knob/card/title-case/note]]'							=> 'uppercase on or off',
+	'[[/_admin/design/knob/card/subtitle-case/label]]'							=> 'Subtitle, uppercase',
+	'[[/_admin/design/knob/card/subtitle-case/note]]'							=> 'uppercase on or off',
 
 	'[[/_admin/design/knob/buttons/size/label]]'							=> 'Size',
 	'[[/_admin/design/knob/buttons/size/note]]'							=> 'smaller ↔ larger',
@@ -279,6 +290,8 @@ return [
 	'[[/_admin/design/knob/buttons/hover/less]]'							=> 'Nothing',
 	'[[/_admin/design/knob/buttons/hover/default]]'							=> 'Template',
 	'[[/_admin/design/knob/buttons/hover/more]]'							=> 'Lift',
+	'[[/_admin/design/knob/buttons/case/label]]'							=> 'Uppercase',
+	'[[/_admin/design/knob/buttons/case/note]]'							=> 'uppercase on or off',
 
 	'[[/_admin/design/knob/lists/scale/label]]'							=> 'Text size',
 	'[[/_admin/design/knob/lists/scale/note]]'							=> 'smaller ↔ larger',

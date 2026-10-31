@@ -329,9 +329,14 @@ function type( input, text ) {
 	input.fire('change');
 }
 
-/** The name a knob row carries: the first line of the box that stands beside its icon */
+/** The name a knob row carries: the first line of the box that stands beside its icon - or, in the row of a toggle, the label of its switch */
 function rowName( row ) {
-	return ( byClass( row, 'design-knob-text' )[0] || {} ).textContent;
+	return ( byClass( row, 'design-knob-text' )[0] || byClass( row, 'nino-admin-switch-copy' )[0] || {} ).textContent;
+}
+
+/** Whether a knob row is a switch: the row of a toggle, which has no strip of buttons */
+function isSwitch( row ) {
+	return hasClass( row, 'design-knob-row--switch' );
 }
 
 /** Run a function and say whether it threw */
@@ -357,13 +362,13 @@ const OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lis
 /** The tabs of the pane in the order the shell's strip shows them, by uri: the panel's own screen, which says Themes, the loader and the Settings tab the registry attaches */
 const PANE = [ 'design', 'design-typefaces', 'design-settings' ];
 
-/** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1 */
+/** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1, a toggle two, 0 and 1 */
 const KINDS = {
-	header 		: { nav : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', position : 'choice', cta : 'choice' },
-	footer 		: { scale : 'scale', height : 'scale', space : 'scale', ground : 'choice' },
-	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', space : 'scale', rule : 'scale', dim : 'scale' },
-	card 			: { title : 'scale', subtitle : 'scale', space : 'scale', border : 'scale', shadow : 'scale', tone : 'choice', hover : 'choice' },
-	buttons 	: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale', hover : 'choice' },
+	header 		: { nav : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', position : 'choice', cta : 'choice', 'nav-case' : 'toggle' },
+	footer 		: { scale : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'nav-case' : 'toggle' },
+	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', space : 'scale', rule : 'scale', dim : 'scale', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
+	card 			: { title : 'scale', subtitle : 'scale', space : 'scale', border : 'scale', shadow : 'scale', tone : 'choice', hover : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
+	buttons 	: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale', hover : 'choice', case : 'toggle' },
 	lists 		: { scale : 'scale', space : 'scale', marker : 'choice' },
 	tables 		: { scale : 'scale', space : 'scale', border : 'scale', zebra : 'choice', stripes : 'scale' },
 };
@@ -395,15 +400,22 @@ const LAYOUT = {
 	'fonts/button'                    : [ 'type', 'page', 5 ],
 	'fonts/code'                      : [ 'type', 'page', 6 ],
 	'knobs/header/nav'                : [ 'type', 'header', 1 ],
+	'knobs/header/nav-case'           : [ 'type', 'header', 2 ],
 	'knobs/footer/scale'              : [ 'type', 'footer', 1 ],
+	'knobs/footer/nav-case'           : [ 'type', 'footer', 2 ],
 	'knobs/section/title'             : [ 'type', 'section', 1 ],
 	'knobs/section/subtitle'          : [ 'type', 'section', 2 ],
 	'knobs/section/quiet'             : [ 'type', 'section', 3 ],
 	'knobs/section/loud'              : [ 'type', 'section', 4 ],
+	'knobs/section/title-case'        : [ 'type', 'section', 5 ],
+	'knobs/section/subtitle-case'     : [ 'type', 'section', 6 ],
 	'knobs/card/title'                : [ 'type', 'card', 1 ],
 	'knobs/card/subtitle'             : [ 'type', 'card', 2 ],
+	'knobs/card/title-case'           : [ 'type', 'card', 3 ],
+	'knobs/card/subtitle-case'        : [ 'type', 'card', 4 ],
 	'knobs/buttons/size'              : [ 'type', 'buttons', 1 ],
 	'knobs/buttons/spread'            : [ 'type', 'buttons', 2 ],
+	'knobs/buttons/case'              : [ 'type', 'buttons', 3 ],
 	'knobs/lists/scale'               : [ 'type', 'lists', 1 ],
 	'knobs/tables/scale'              : [ 'type', 'tables', 1 ],
 
@@ -589,11 +601,11 @@ function listing( over ) {
 	const roles = [ 'title', 'subtitle', 'text', 'button', 'code' ];
 	const fonts = {};
 	const defaults = {
-		title 		: { family : 'open-sans', weight : 'bold', uppercase : false, size : '' },
-		subtitle 	: { family : 'open-sans', weight : 'normal', uppercase : false, size : '' },
-		text 			: { family : 'open-sans', weight : 'normal', uppercase : false, size : '' },
-		button 		: { family : 'open-sans', weight : 'bold', uppercase : false, size : '' },
-		code 			: { family : '', weight : 'normal', uppercase : false, size : '' },
+		title 		: { family : 'open-sans', weight : 'bold', size : '' },
+		subtitle 	: { family : 'open-sans', weight : 'normal', size : '' },
+		text 			: { family : 'open-sans', weight : 'normal', size : '' },
+		button 		: { family : 'open-sans', weight : 'bold', size : '' },
+		code 			: { family : '', weight : 'normal', size : '' },
 	};
 	roles.forEach( function( role ) { fonts[role] = Object.assign( {}, defaults[role] ) } );
 
@@ -641,12 +653,12 @@ function listing( over ) {
 				Cards leaves the shadow out - what a library of somebody else's can hold, and what the screen has to draw all the same	*/
 			part( 'section', 'set', 'first', {
 				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.section.slice() },
-				second : { name : 'Box', description : 'A centred opening with tight lines', knobs : KNOBS.section.slice() },
+				second : { name : 'Box', description : 'A centred opening with tight lines', knobs : without( KNOBS.section, [ 'title-case', 'subtitle-case' ] ) },
 				third : { name : 'Foreign', description : 'Large type, no dimming', knobs : without( KNOBS.section, [ 'dim' ] ) },
 			} ),
 			part( 'card', 'set', 'first', {
 				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.card.slice() },
-				second : { name : 'Panel', description : 'A ground and a line', knobs : KNOBS.card.slice() },
+				second : { name : 'Panel', description : 'A ground and a line', knobs : without( KNOBS.card, [ 'title-case', 'subtitle-case' ] ) },
 				third : { name : 'Foreign', description : 'Large type, no shadow', knobs : without( KNOBS.card, [ 'shadow' ] ) },
 			} ),
 			part( 'buttons', 'set', 'first', {
@@ -1209,7 +1221,18 @@ function panel( over, shell ) {
 				const copy = element('span');
 				copy.className = 'nino-admin-switch-copy';
 				copy.textContent = options.label;
+				// ...with the hint beside the label and the word of the state after it, which the kernel draws as well
+				if( options.hint ) {
+					const hint = element('small');
+					hint.textContent = options.hint;
+					copy.appendChild( hint );
+				}
 				label.appendChild( copy );
+				const state = element('span');
+				state.className = 'nino-admin-switch-state';
+				state.textContent = TEXT[ input.checked ? '/_admin/common/label/on' : '/_admin/common/label/off' ];
+				input.addEventListener( 'change', function() { state.textContent = TEXT[ input.checked ? '/_admin/common/label/on' : '/_admin/common/label/off' ] } );
+				label.appendChild( state );
 				return label;
 			},
 		},
@@ -1418,7 +1441,7 @@ function panel( over, shell ) {
 
 			eachBlock( live(), function( card ) {
 				said = said.concat( byClass( card, 'design-knob-row' ).filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) === false } ).map( function( row ) {
-					return [ rowName( row ), byTag( row, 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).map( function( button ) { return button.textContent } ).join() ];
+					return [ rowName( row ), litOf( row ) ];
 				} ) );
 			} );
 
@@ -1725,6 +1748,21 @@ function pressKey( screen, key, value ) {
 	byTag( controlOf( screen, key ), 'button' ).filter( function( button ) { return button.dataset.value === String( value ) } ).forEach( function( button ) { button.fire('click') } );
 }
 
+/** Move a knob by the key the table has it under, the way a hand does: press the button of a strip that holds the position, or turn a switch on at 1 and off at 0 */
+function moveKey( screen, key, position ) {
+
+	const row = controlOf( screen, key );
+
+	if( row !== null && isSwitch( row ) === true ) {
+		const input = byTag( row, 'input' )[0];
+		input.checked = position === 1;
+		input.fire('change');
+		return;
+	}
+
+	pressKey( screen, key, position );
+}
+
 /** What the buttons of a strip say is pressed, in order, the strip found by the key the table has the control under - where knobs of two objects go by the same label, as the space of a section and of a card do, the label does not tell them apart */
 function pressedKey( screen, key ) {
 	return byTag( controlOf( screen, key ), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join();
@@ -1745,11 +1783,20 @@ function knobLit( screen ) {
 		said = said.concat( byClass( card, 'design-knob-row' ).filter( function( row ) {
 			return typeof row.dataset.control === 'string' && row.dataset.control.indexOf('knobs/') === 0 && hasClass( row, 'design-knob-row--off' ) === false;
 		} ).map( function( row ) {
-			return [ rowName( row ), byTag( row, 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).map( function( button ) { return button.textContent } ).join() ];
+			return [ rowName( row ), litOf( row ) ];
 		} ) );
 	} );
 
 	return said;
+}
+
+/** What a knob row says it stands at: the word on the button of a strip that is lit, the word of the state of a switch - on or off */
+function litOf( row ) {
+
+	if( isSwitch( row ) === true )
+		return byTag( row, 'input' )[0].checked === true ? TEXT['/_admin/common/label/on'] : TEXT['/_admin/common/label/off'];
+
+	return byTag( row, 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).map( function( button ) { return button.textContent } ).join();
 }
 
 /** The knob rows of the open tab that are greyed out, in every block - each opened in turn, and the tab as it was after it */
@@ -2481,24 +2528,21 @@ const acOtherFamily = offered( acFamily ).map( function( option ) { return optio
 choose( acFamily, acOtherFamily );
 choose( acWeight, 'light' );
 type( ac.byId('design-font-title-size'), '2.4' );
-ac.byId('design-font-title-uppercase').checked = true;
-ac.byId('design-font-title-uppercase').fire('change');
 pressKey( ac, 'size', 1 );
 
 const acSizeSays = acSays( TEXT['/_admin/design/label/size'], controlOf( ac, 'size' ), 1 );
 const acRoleSays = function( column, word ) { return TEXT['/_admin/design/font/role/title']+ ' - '+ TEXT['/_admin/design/font/head/'+ column]+ ' '+ word };
 const acFamilySays = acRoleSays( 'family', acOption( acFamily, acOtherFamily ) );
 const acWeightSays = acRoleSays( 'weight', acOption( acWeight, 'light' ) );
-const acUppercaseSays = acRoleSays( 'uppercase', TEXT['/_admin/common/label/on'] );
 const acRemSays = acRoleSays( 'size', ac.byId('design-font-title-size').value+ ' '+ TEXT['/_admin/design/fontsize/unit'] );
 
 toggle( acCard('buttons') );
 
-check( 'a font role is named by the cells of its table that differ - the role and the column, "Title - Weight", and the word the cell shows: the family and the weight as their selects say them, the case switch as it says its state, the size as it is typed with its unit - after the size of the page, which stands before the table, and in the order of the columns',
-	acLine('page') === [ acSizeSays, acFamilySays, acWeightSays, acUppercaseSays, acRemSays ].join( acSeparator ) && acFamilySays.slice( -acOption( acFamily, acOtherFamily ).length ) === acOption( acFamily, acOtherFamily ) && acWeightSays === TEXT['/_admin/design/font/role/title']+ ' - '+ TEXT['/_admin/design/font/head/weight']+ ' '+ TEXT['/_admin/design/weight/light']
+check( 'a font role is named by the cells of its table that differ - the role and the column, "Title - Weight", and the word the cell shows: the family and the weight as their selects say them, the size as it is typed with its unit - after the size of the page, which stands before the table, and in the order of the columns',
+	acLine('page') === [ acSizeSays, acFamilySays, acWeightSays, acRemSays ].join( acSeparator ) && acFamilySays.slice( -acOption( acFamily, acOtherFamily ).length ) === acOption( acFamily, acOtherFamily ) && acWeightSays === TEXT['/_admin/design/font/role/title']+ ' - '+ TEXT['/_admin/design/font/head/weight']+ ' '+ TEXT['/_admin/design/weight/light']
 	&& acRemSays.slice( -4 ) === ' '+ TEXT['/_admin/design/fontsize/unit'] && acOption( acWeight, 'light' ) === TEXT['/_admin/design/weight/light'] );
-check( '...the roles that stand at the defaults are not named, nor the cells of a role that do: no code row, no subtitle, no cell of the title that stands where it stood - five lines, and no other',
-	acLine('page').indexOf( TEXT['/_admin/design/font/role/code'] ) === -1 && acLine('page').indexOf( TEXT['/_admin/design/font/role/subtitle'] ) === -1 && acLine('page').split( acSeparator ).length === 5
+check( '...the roles that stand at the defaults are not named, nor the cells of a role that do: no code row, no subtitle, no cell of the title that stands where it stood - four lines, and no other',
+	acLine('page').indexOf( TEXT['/_admin/design/font/role/code'] ) === -1 && acLine('page').indexOf( TEXT['/_admin/design/font/role/subtitle'] ) === -1 && acLine('page').split( acSeparator ).length === 4
 	&& ac.design._edit.fonts.code.family === '' && ac.design._edit.fonts.subtitle.weight === 'normal' );
 
 // A knob the chosen template does not answer to is greyed out, and no part of what the design is: it is never named
@@ -2670,7 +2714,8 @@ console.log('');
 // --- The knobs: a strip each, in the row and on the tab the table gives them ----------------------
 //
 // A strip for every knob of a template: five numbers, -2 to +2, the 0 the template as it is, or for a choice
-// the three words that knob has for them - with the icon of what it sets. The thirty-nine of them stand
+// the three words that knob has for them - with the icon of what it sets - and for a toggle, the case of a
+// thing, no strip but the switch of the workbench, off and on. The forty-six of them stand
 // in the rows of Type, Surfaces, Colours and Motion, each under the object it sets (the table says which): the
 // sizes of the titles on Type, the space, the lines and the shadows on Surfaces, the dimming, the tone and the
 // stripes on Colours, what a card and a button do under the pointer on Motion. A knob the chosen template does
@@ -2678,7 +2723,7 @@ console.log('');
 
 console.log( 'The knobs' );
 
-/** What the rows of a tab say, from the positions its knobs stand at and the order the table gives them: [ label, word of the button that is lit ] for each knob */
+/** What the rows of a tab say, from the positions its knobs stand at and the order the table gives them: [ label, word of the button that is lit - or of the state of the switch ] for each knob */
 function knobWords( layout, tab, positions ) {
 
 	const words = [];
@@ -2693,11 +2738,20 @@ function knobWords( layout, tab, positions ) {
 
 			const position = positions[ path[1] ][ path[2] ];
 
-			words.push( [ knobWord( path[1], path[2] ), KINDS[ path[1] ][ path[2] ] === 'scale' ? SIGNED[position + 2] : TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/'+ [ 'less', 'default', 'more' ][position + 1]] ] );
+			words.push( [ knobWord( path[1], path[2] ), knobStands( path[1], path[2], position ) ] );
 		} );
 	} );
 
 	return words;
+}
+
+/** The word a position of a knob is said with: the signed number of a scale, the word of the knob for a choice, on or off for a toggle */
+function knobStands( part, knob, position ) {
+
+	if( KINDS[part][knob] === 'toggle' )
+		return TEXT['/_admin/common/label/'+ ( position === 1 ? 'on' : 'off' )];
+
+	return KINDS[part][knob] === 'scale' ? SIGNED[position + 2] : TEXT['/_admin/design/knob/'+ part+ '/'+ knob+ '/'+ [ 'less', 'default', 'more' ][position + 1]];
 }
 
 const kindCount = function( kind ) {
@@ -2721,6 +2775,7 @@ const wordProblems = [];
 let wordRows = 0;
 let scaleRows = 0;
 let choiceRows = 0;
+let toggleRows = 0;
 const worded = panel();
 const knobKeys = Object.keys( worded.design._data.layout.controls ).filter( function( key ) { return key.indexOf('knobs/') === 0 } );
 
@@ -2734,6 +2789,23 @@ knobKeys.forEach( function( key ) {
 
 	if( row === null || hasClass( row, 'design-knob-row' ) === false ) {
 		wordProblems.push( key+ ': not drawn' );
+		return;
+	}
+
+	// A toggle is a switch: a checkbox of the workbench with the name of the knob for its label and the note for its hint, off at the position the defaults put it, and no button at all
+	if( worded.design._data.kinds[ path[1] ][ path[2] ] === 'toggle' ) {
+
+		const input = byTag( row, 'input' )[0];
+		const state = byClass( row, 'nino-admin-switch-state' )[0];
+
+		wordRows++;
+		toggleRows++;
+
+		if( isSwitch( row ) === false || byTag( row, 'button' ).length !== 0 || input === undefined || input.type !== 'checkbox' || input.disabled !== false
+			|| input.checked !== ( worded.design._data.defaults.knobs[ path[1] ][ path[2] ] === 1 ) || state === undefined || state.textContent !== TEXT['/_admin/common/label/off']
+			|| ( byTag( row, 'small' )[0] || {} ).textContent !== TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/note'] || rowName( row ) !== knobWord( path[1], path[2] ) )
+			wordProblems.push( key+ ': a switch that is none' );
+
 		return;
 	}
 
@@ -2756,10 +2828,10 @@ knobKeys.forEach( function( key ) {
 		wordProblems.push( key+ ': '+ drawn );
 } );
 
-check( 'a scale is five numbers and a choice the three words of the knob, each capitalised - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
+check( 'a scale is five numbers, a choice the three words of the knob, each capitalised, and a toggle a switch - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
-	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && choiceRows > 0 && wordProblems.length === 0 );
+	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && choiceRows > 0 && toggleRows === 7 && scaleRows === 29 && wordProblems.length === 0 );
 check( '...the ten choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
 	Object.keys( CHOICE_WORDS ).length === 10 && Object.keys( CHOICE_WORDS ).every( function( at ) {
 		const key = 'knobs/'+ at;
@@ -2809,12 +2881,12 @@ const knTitlePressed = ( kn.tab( tabWord('type') ), kn.pressed( sectionTitle ) )
 const knShadowPressed = ( kn.tab( tabWord('surfaces') ), pressedKey( kn, 'knobs/card/shadow' ) );
 
 check( '...a group of buttons, not a tablist - the one it stands at is pressed and the others are not: the middle for a knob nobody moved, the +1 the shadow stands at',
-	knobRows( kn ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
+	knobRows( kn ).filter( function( row ) { return isSwitch( row ) === false } ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
 	&& knTitlePressed === 'false,false,true,false,false' && knShadowPressed === 'false,false,false,true,false' );
 check( 'a template that answers to every knob greys none of them out, on whichever tab',
 	[ 'templates', 'type', 'surfaces', 'colours', 'motion' ].every( function( tab ) {
 		kn.show( tab );
-		return offRows( kn ).length === 0 && knobRows( kn ).every( function( row ) { return byTag( row, 'button' ).every( function( button ) { return button.disabled === false } ) } );
+		return offRows( kn ).length === 0 && knobRows( kn ).every( function( row ) { return byTag( row, 'button' ).concat( byTag( row, 'input' ) ).every( function( control ) { return control.disabled === false } ) } );
 	} ) );
 
 kn.tab( tabWord('type') );
@@ -2851,8 +2923,7 @@ const knMiddles = Object.keys( CHOICE_WORDS ).map( function( at ) { return TEXT[
 
 const knStands = function( key ) {
 	const at = key.split('/');
-	const position = kn.design._data.defaults.knobs[ at[1] ][ at[2] ];
-	return KINDS[ at[1] ][ at[2] ] === 'scale' ? SIGNED[position + 2] : TEXT['/_admin/design/knob/'+ at[1]+ '/'+ at[2]+ '/'+ [ 'less', 'default', 'more' ][position + 1]];
+	return knobStands( at[1], at[2], kn.design._data.defaults.knobs[ at[1] ][ at[2] ] );
 };
 
 check( '...in numbers: −2 for the title of a section, +2 for its subtitle, −1 for the corners of the buttons, +1 for the shadow of a card and, for the knobs nobody moved, the word of the position the defaults put them at - 0 for a scale, the middle word for a choice but for the navigation and the button of the header',
@@ -2970,9 +3041,10 @@ check( '...a group of buttons as the knob rows are, named by what it sets, and u
 	&& ( pg.tab( tabWord('surfaces') ), byTag( pg.knobRow( widthStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/pagewidth'] ) && TEXT['/_admin/design/hint/pagewidth'] !== ''
 	&& byTag( pg.knobRow( whitespaceStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/whitespace'] && TEXT['/_admin/design/hint/whitespace'] !== ''
 	&& byTag( pg.knobRow( radiusStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/radius'] && byTag( pg.knobRow( radiusAltStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/radius-alt'] );
-check( '...the script keeps no list of the widths and no step to read a word off any more: PAGE_WIDTHS and _stepOf are gone, and a position of a scale reaches two to each side, a choice one',
-	pg.design.PAGE_WIDTHS === undefined && pg.design._stepOf === undefined && JSON.stringify( pg.design.RANGE ) === JSON.stringify( { scale : 2, choice : 1 } )
-	&& JSON.stringify( pg.setup._positions('scale') ) === '[-2,-1,0,1,2]' && JSON.stringify( pg.setup._positions('choice') ) === '[-1,0,1]' );
+check( '...the script keeps no list of the widths and no step to read a word off any more: PAGE_WIDTHS and _stepOf are gone, and a position of a scale reaches two to each side, a choice one, a toggle the middle and the one after it (the same answer Setup::positions() gives), the middle being the word default and the one after it more',
+	pg.design.PAGE_WIDTHS === undefined && pg.design._stepOf === undefined && JSON.stringify( pg.design.RANGE ) === JSON.stringify( { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ] } )
+	&& JSON.stringify( pg.setup._positions('scale') ) === '[-2,-1,0,1,2]' && JSON.stringify( pg.setup._positions('choice') ) === '[-1,0,1]' && JSON.stringify( pg.setup._positions('toggle') ) === '[0,1]'
+	&& JSON.stringify( pg.setup._positions('nothing') ) === '[0]' && pg.setup._word( 0 ) === 'default' && pg.setup._word( 1 ) === 'more' && pg.setup._word( -2 ) === 'least' && pg.setup._word( 2 ) === 'most' );
 
 pg.move( widthStrip, 1 );
 pg.move( whitespaceStrip, -1 );
@@ -3338,9 +3410,9 @@ fonts.tab( tabWord('type') );
 const table = byTag( fonts.form, 'table' )[0] || element('table');
 const fontRows = byTag( table, 'tbody' )[0] ? byTag( byTag( table, 'tbody' )[0], 'tr' ) : [];
 
-check( 'the Page card of Type holds one table of the roles, said to be one: a header of four columns over five rows, one for each role of Nino.css',
+check( 'the Page card of Type holds one table of the roles, said to be one: a header of four columns - the role and the family, the weight and the size - over five rows, one for each role of Nino.css',
 	tabOf( fonts ) === 'type' && cardOf( table ).dataset.object === 'page' && cardOf( table ).dataset.tab === 'type' && table.getAttribute('role') === 'table'
-	&& byTag( byTag( table, 'thead' )[0], 'th' ).map( function( th ) { return th.textContent } ).join() === ','+ [ 'family', 'weight', 'uppercase', 'size' ].map( columnWord ).join()
+	&& byTag( byTag( table, 'thead' )[0], 'th' ).map( function( th ) { return th.textContent } ).join() === ','+ [ 'family', 'weight', 'size' ].map( columnWord ).join()
 	&& byTag( byTag( table, 'thead' )[0], 'th' ).every( function( th ) { return th.getAttribute('role') === 'columnheader' } )
 	&& fontRows.map( function( row ) { return row.dataset.role } ).join() === 'title,subtitle,text,button,code'
 	&& fontRows.map( function( row ) { return byTag( row, 'th' )[0].textContent } ).join() === [ 'title', 'subtitle', 'text', 'button', 'code' ].map( roleWord ).join()
@@ -3380,9 +3452,9 @@ check( '...and the unit stands after it as a small word of its own, in the same 
 check( '...every control names itself by its role and its column, since the cells carry no words',
 	weight('title').getAttribute('aria-label') === roleWord('title')+ ' - '+ columnWord('weight') && family('code').getAttribute('aria-label') === roleWord('code')+ ' - '+ columnWord('family')
 	&& size('button').getAttribute('aria-label') === roleWord('button')+ ' - '+ columnWord('size') );
-check( 'the case is a switch for the four roles of running text, off to begin with - and the code has none, a dash in its place',
-	[ 'title', 'subtitle', 'text', 'button' ].every( function( role ) { return fonts.byId('design-font-'+ role+ '-uppercase') !== null && fonts.byId('design-font-'+ role+ '-uppercase').checked === false } )
-	&& fonts.byId('design-font-code-uppercase') === null && byClass( fontRows[4], 'design-fonts-none' )[0].textContent === '—' );
+check( 'a role has no case: no checkbox anywhere in the table - the three cells of a row are the family, the weight and the size',
+	byTag( table, 'input' ).filter( function( input ) { return input.type === 'checkbox' } ).length === 0
+	&& fontRows.every( function( row ) { return byTag( row, 'td' ).length === 3 && byTag( row, 'td' ).map( function( td ) { return byTag( td, 'select' ).concat( byTag( td, 'input' ) )[0].dataset.key } ).join() === 'family,weight,size' } ) );
 
 /*	Changing one thing of one role: through _setFont(), which stores it and
 	asks for a preview - and the preview carries the role	*/
@@ -3394,27 +3466,22 @@ choose( family('title'), 'system-serif' );
 choose( weight('title'), 'light' );
 type( size('title'), '2.4' );
 
-const upper = fonts.byId('design-font-title-uppercase');
-upper.checked = true;
-upper.fire('change');
-
 choose( family('subtitle'), '' );
 
-check( 'a change goes through _setFont() with the role, the key and the value - the case as a boolean, the rest as the words the model keeps',
-	JSON.stringify( setFontCalls ) === JSON.stringify( [ [ 'title', 'family', 'system-serif' ], [ 'title', 'weight', 'light' ], [ 'title', 'size', '2.4' ], [ 'title', 'uppercase', true ], [ 'subtitle', 'family', '' ] ] )
-	&& JSON.stringify( fonts.design._edit.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
+check( 'a change goes through _setFont() with the role, the key and the value - the words the model keeps',
+	JSON.stringify( setFontCalls ) === JSON.stringify( [ [ 'title', 'family', 'system-serif' ], [ 'title', 'weight', 'light' ], [ 'title', 'size', '2.4' ], [ 'subtitle', 'family', '' ] ] )
+	&& JSON.stringify( fonts.design._edit.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', size : '2.4' } )
 	&& fonts.design._edit.fonts.subtitle.family === '' && fonts.byId('design-reset').hidden === false );
 fonts.tab( tabWord('colours') );
 fonts.tab( tabWord('type') );
 
-check( 'the table drawn again shows each role as it was set, in words: the family, the weight, the case where it is upper, and the size - the one that was typed, else the one the listing says is in force',
+check( 'the table drawn again shows each role as it was set, in words: the family, the weight and the size - the one that was typed, else the one the listing says is in force',
 	[ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) {
-		const upperCase = fonts.byId('design-font-'+ role+ '-uppercase');
-		return [ wordOf( family( role ) ), wordOf( weight( role ) ), upperCase === null ? null : upperCase.checked, size( role ).value ].join(', ');
+		return [ wordOf( family( role ) ), wordOf( weight( role ) ), size( role ).value ].join(', ');
 	} ).join(' | ')
 		=== [
-			[ familyWord('system-serif'), weightWord('light'), true, '2.4' ], [ familyWord('default'), weightWord('normal'), false, '1.125' ],
-			[ 'Open Sans', weightWord('normal'), false, '1' ], [ 'Open Sans', weightWord('bold'), false, '1' ], [ familyWord('default-code'), weightWord('normal'), null, '0.875' ],
+			[ familyWord('system-serif'), weightWord('light'), '2.4' ], [ familyWord('default'), weightWord('normal'), '1.125' ],
+			[ 'Open Sans', weightWord('normal'), '1' ], [ 'Open Sans', weightWord('bold'), '1' ], [ familyWord('default-code'), weightWord('normal'), '0.875' ],
 		].map( function( cells ) { return cells.join(', ') } ).join(' | ')
 	&& fonts.byId('design-summary') === null );
 
@@ -3422,7 +3489,7 @@ fonts.design._previewNow();
 const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
-	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
+	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', size : '2.4' } )
 	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,theme,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
@@ -3519,6 +3586,131 @@ check( 'the spinner counts from the size in force: from 1.6 it goes up to 1.7 - 
 console.log('');
 
 
+// --- Type: the case of a thing, a switch under the sizes of its object ----------------------------------
+//
+// The seven toggles of the model - the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the
+// buttons - are the workbench's switch, one for each, on the Type view under the sizes of their object: on at the position 1, off at 0, and
+// greyed out and switched off like any knob where the chosen template does not answer to it. The closed head of the block says one that is on
+
+console.log( 'The case switches' );
+
+const sw = panel();
+
+sw.tab( tabWord('type') );
+
+const swOrder = {};
+
+drawnRows( sw ).forEach( function( row ) { swOrder[row.object] = row.controls } );
+
+check( 'the seven switches stand on the Type view, each under the sizes of its object and after them: the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the buttons',
+	JSON.stringify( swOrder.header ) === JSON.stringify( [ 'knobs/header/nav', 'knobs/header/nav-case' ] ) && JSON.stringify( swOrder.footer ) === JSON.stringify( [ 'knobs/footer/scale', 'knobs/footer/nav-case' ] )
+	&& JSON.stringify( swOrder.section ) === JSON.stringify( [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/section/quiet', 'knobs/section/loud', 'knobs/section/title-case', 'knobs/section/subtitle-case' ] )
+	&& JSON.stringify( swOrder.card ) === JSON.stringify( [ 'knobs/card/title', 'knobs/card/subtitle', 'knobs/card/title-case', 'knobs/card/subtitle-case' ] )
+	&& JSON.stringify( swOrder.buttons ) === JSON.stringify( [ 'knobs/buttons/size', 'knobs/buttons/spread', 'knobs/buttons/case' ] )
+	&& knobRows( sw ).filter( isSwitch ).length === 7 && knobRows( sw ).filter( isSwitch ).every( function( row ) { return LAYOUT[ row.dataset.control ][0] === 'type' } ) );
+
+const swKeys = knobRows( sw ).filter( isSwitch ).map( function( row ) { return row.dataset.control } );
+const swInput = function( key ) { return byTag( controlOf( sw, key ), 'input' )[0] };
+const swState = function( key ) { return byClass( controlOf( sw, key ), 'nino-admin-switch-state' )[0].textContent };
+
+check( 'a switch is the workbench\'s own: a checkbox with the label of the knob, its note for the hint and the word of its state after it - off to begin with, since the defaults put every one of the seven at 0',
+	swKeys.length === 7 && swKeys.every( function( key ) {
+		const at = key.split('/');
+		return swInput( key ).type === 'checkbox' && swInput( key ).checked === false && swState( key ) === TEXT['/_admin/common/label/off'] && swInput( key ).disabled === false
+			&& hasClass( controlOf( sw, key ), 'design-knob-row' ) && hasClass( controlOf( sw, key ), 'design-knob-row--off' ) === false
+			&& rowName( controlOf( sw, key ) ) === knobWord( at[1], at[2] ) && byTag( controlOf( sw, key ), 'small' )[0].textContent === TEXT['/_admin/design/knob/'+ at[1]+ '/'+ at[2]+ '/note'];
+	} ) && sw.design._data.defaults.knobs.section['title-case'] === 0 );
+
+// On: the knob is 1, a number, the word of the switch says it, a change is a change like any other
+swInput('knobs/section/title-case').checked = true;
+swInput('knobs/section/title-case').fire('change');
+
+check( 'turned on, a switch moves its knob to 1 - a number - and no other knob: the title of a section is in capitals, the subtitle is not, and the sizes stand where they stood',
+	sw.design._edit.knobs.section['title-case'] === 1 && typeof sw.design._edit.knobs.section['title-case'] === 'number' && sw.design._edit.knobs.section['subtitle-case'] === 0
+	&& sw.design._edit.knobs.section.title === 0 && swState('knobs/section/title-case') === TEXT['/_admin/common/label/on'] && swState('knobs/section/subtitle-case') === TEXT['/_admin/common/label/off']
+	&& sw.byId('design-reset').hidden === false && sw.design._target === 'content' );
+
+sw.design._previewNow();
+
+const swPreviewOn = sw.requests[sw.requests.length - 1];
+
+check( '...and a preview is asked for with the knob at 1 in the selection it carries, the rest of the selection beside it',
+	swPreviewOn.endpoint === 'preview' && swPreviewOn.payload.knobs.section['title-case'] === 1 && swPreviewOn.payload.knobs.section['subtitle-case'] === 0 && swPreviewOn.payload.knobs.card['title-case'] === 0 );
+
+swInput('knobs/section/title-case').checked = false;
+swInput('knobs/section/title-case').fire('change');
+sw.design._previewNow();
+
+const swPreviewOff = sw.requests[sw.requests.length - 1];
+
+check( 'turned off again, it is 0 - and the preview carries 0, the selection is the one it was and there is nothing to save',
+	sw.design._edit.knobs.section['title-case'] === 0 && swPreviewOff.payload.knobs.section['title-case'] === 0 && swState('knobs/section/title-case') === TEXT['/_admin/common/label/off']
+	&& sw.design._isDirty() === false );
+
+// The closed head says what is on, as it says what stands elsewhere than at the defaults: the label of the switch and the word of its state
+sw.design._edit.knobs.section['title-case'] = 0;
+swInput('knobs/card/title-case').checked = true;
+swInput('knobs/card/title-case').fire('change');
+swInput('knobs/card/subtitle-case').checked = true;
+swInput('knobs/card/subtitle-case').fire('change');
+swInput('knobs/buttons/case').checked = true;
+swInput('knobs/buttons/case').fire('change');
+sw.tab( tabWord('surfaces') );
+sw.tab( tabWord('type') );
+// The head of the block that is open says nothing, the controls themselves being in view: every block is closed
+blocksOf( sw.form ).filter( isOpen ).forEach( toggle );
+
+const swLine = function( object ) { return byClass( blocksOf( sw.form ).filter( function( card ) { return card.dataset.object === object } )[0], 'design-accordion-summary' )[0].textContent };
+
+check( 'the closed head of a block names a switch that is on by its label and the word of its state, after the sizes that were moved, and a block whose switches are off says nothing of them',
+	swLine('card') === knobWord( 'card', 'title-case' )+ ' '+ TEXT['/_admin/common/label/on']+ ' · '+ knobWord( 'card', 'subtitle-case' )+ ' '+ TEXT['/_admin/common/label/on']
+	&& swLine('buttons') === knobWord( 'buttons', 'case' )+ ' '+ TEXT['/_admin/common/label/on']
+	&& swLine('section') === '' && swLine('header') === '' && swLine('footer') === '' );
+
+// ...and a template that does not answer to it: the switch is off, switched off and grey, the note says whose decision that is - a position the old template held goes back to 0
+const swOff = panel();
+
+swOff.tab( tabWord('templates') );
+swOff.design._edit.knobs.card['title-case'] = 1;
+swOff.design._edit.knobs.section['subtitle-case'] = 1;
+choose( setSelect( swOff, 'card' ), 'second' );
+choose( setSelect( swOff, 'section' ), 'second' );
+swOff.tab( tabWord('type') );
+
+const swOffRow = function( key ) { return controlOf( swOff, key ) };
+
+check( 'where the chosen template does not answer to a switch it is a row greyed out and not hidden: the switch is off and switched off, the line under its name says whose decision that is in place of the note, and a position the earlier template held is 0 again',
+	[ 'knobs/card/title-case', 'knobs/card/subtitle-case', 'knobs/section/title-case', 'knobs/section/subtitle-case' ].every( function( key ) {
+		const at = key.split('/');
+		const row = swOffRow( key );
+		return row !== null && isSwitch( row ) && hasClass( row, 'design-knob-row--off' ) && byTag( row, 'input' )[0].disabled === true && byTag( row, 'input' )[0].checked === false
+			&& byTag( row, 'small' )[0].textContent === say( '/_admin/design/hint/unanswered', knobWord( at[1], at[2] ) ) && swOff.design._edit.knobs[ at[1] ][ at[2] ] === 0;
+	} )
+	&& hasClass( swOffRow('knobs/buttons/case'), 'design-knob-row--off' ) === false && byTag( swOffRow('knobs/buttons/case'), 'input' )[0].disabled === false
+	&& hasClass( swOffRow('knobs/card/title'), 'design-knob-row--off' ) === false && offRows( swOff ).length === 4 );
+check( '...and a row that is greyed out says nothing in the head of its block, and the template that answers again takes the grey away - the switch is off, as it was left',
+	byClass( blocksOf( swOff.form ).filter( function( card ) { return card.dataset.object === 'card' } )[0], 'design-accordion-summary' )[0].textContent.indexOf( knobWord( 'card', 'title-case' ) ) === -1
+	&& ( swOff.tab( tabWord('templates') ), choose( setSelect( swOff, 'card' ), 'first' ), swOff.tab( tabWord('type') ), offRows( swOff ).length === 2 )
+	&& byTag( swOffRow('knobs/card/title-case'), 'input' )[0].disabled === false && byTag( swOffRow('knobs/card/title-case'), 'input' )[0].checked === false
+	&& swOff.design._edit.knobs.card['title-case'] === 0 );
+
+// The model can hold a 1 for a knob the template does not answer to - a file written by hand, a theme that was imported - and the switch does not light it: a thing the page does not do is not on
+const swHeld = listing();
+
+swHeld.knobs.card['title-case'] = 1;
+swHeld.parts.filter( function( row ) { return row.part === 'card' } )[0].set = 'second';
+
+const swHeldPanel = panel( swHeld );
+
+swHeldPanel.tab( tabWord('type') );
+
+check( 'a switch whose knob holds 1 while the template chosen does not answer to it is off and switched off, and the head of its block does not say it is on',
+	byTag( controlOf( swHeldPanel, 'knobs/card/title-case' ), 'input' )[0].checked === false && byTag( controlOf( swHeldPanel, 'knobs/card/title-case' ), 'input' )[0].disabled === true
+	&& swHeldPanel.design._edit.knobs.card['title-case'] === 1 && ( blocksOf( swHeldPanel.form ).filter( isOpen ).forEach( toggle ), byClass( blocksOf( swHeldPanel.form ).filter( function( card ) { return card.dataset.object === 'card' } )[0], 'design-accordion-summary' )[0].textContent.indexOf( knobWord( 'card', 'title-case' ) ) === -1 ) );
+
+console.log('');
+
+
 // --- Type: the quiet and the loud variant ----------------------------------------------------------
 //
 // Two knobs of the section set the size of type, the text of a quiet and of a loud title. The table puts them with the other sizes of a
@@ -3536,9 +3728,10 @@ const variedRows = [ 'quiet', 'loud' ].map( function( knob ) { return controlOf(
 const variedBody = variedRows[0] === null ? null : variedRows[0].parent;
 const variedCard = variedBody === null ? null : cardOf( variedBody );
 
-check( 'the quiet and the loud variant are the last two rows of the block of the section on Type, in that order, named by the texts of their keys - the table puts them there with the other sizes of a section',
+check( 'the quiet and the loud variant are the last two sizes of the block of the section on Type, in that order, named by the texts of their keys, and the two switches of its case follow them - the table puts them there with the other sizes of a section',
 	variedCard !== null && variedRows[1].parent === variedBody && variedCard.dataset.object === 'section' && variedCard.dataset.tab === 'type'
-	&& variedBody.children[variedBody.children.length - 2] === variedRows[0] && variedBody.children[variedBody.children.length - 1] === variedRows[1]
+	&& variedBody.children[variedBody.children.length - 4] === variedRows[0] && variedBody.children[variedBody.children.length - 3] === variedRows[1]
+	&& variedBody.children.slice( -2 ).every( function( row ) { return isSwitch( row ) } ) && variedBody.children.slice( -2 ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/section/title-case,knobs/section/subtitle-case'
 	&& variedRows.map( rowName ).join() === [ 'quiet', 'loud' ].map( variedName ).join() );
 check( '...each a strip of five positions signed from −2 to +2 like every scale, the middle one lit',
 	[ 'quiet', 'loud' ].every( function( knob ) {
@@ -5042,6 +5235,7 @@ function markupOf( svg ) {
 const icons = panel();
 const iconProblems = [];
 let iconRows = 0;
+let switchRows = 0;
 
 /** The tab a control stands on, by its key in the table */
 const iconTab = function( key ) { return LAYOUT[key][0] };
@@ -5053,6 +5247,15 @@ const iconTab = function( key ) { return LAYOUT[key][0] };
 	knobRows( icons ).forEach( function( row ) {
 
 		const key = row.dataset.control.split('/').slice( 1 ).join('/');
+
+		// The row of a toggle is the workbench's switch and draws no icon: the track comes first in it, and the name after the track
+		if( isSwitch( row ) === true ) {
+			switchRows++;
+			if( byTag( row, 'svg' ).length !== 0 || ICON_OF[key] !== undefined )
+				iconProblems.push( key );
+			return;
+		}
+
 		const label = byClass( row, 'design-knob-label' )[0];
 		const svg = byTag( label, 'svg' )[0];
 		const box = byClass( label, 'design-knob-text' )[0];
@@ -5065,8 +5268,8 @@ const iconTab = function( key ) { return LAYOUT[key][0] };
 	} );
 } );
 
-check( 'every knob row of Templates, Type, Surfaces, Colours and Motion - one for each knob the table has - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim'
-	+ ( iconProblems.length === 0 ? '' : ' - not so for '+ iconProblems.join() ), iconRows === knobKeys.length && iconRows > 0 && iconProblems.length === 0 );
+check( 'every knob row of Templates, Type, Surfaces, Colours and Motion - one for each knob the table has - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim - but the seven switches of the case, which are the workbench\'s switch and have no icon, and the table has none for them'
+	+ ( iconProblems.length === 0 ? '' : ' - not so for '+ iconProblems.join() ), iconRows + switchRows === knobKeys.length && switchRows === kindCount('toggle') && iconRows > 0 && iconProblems.length === 0 );
 
 icons.show( 'type' );
 const iconRow = controlOf( icons, 'knobs/section/title' );
@@ -6179,14 +6382,15 @@ const jpKnobs = Object.keys( LAYOUT ).filter( function( key ) { return key.index
 jpKnobs.forEach( function( key ) {
 	jp.show( LAYOUT[key][0] );
 	jp.design._target = null;
-	pressKey( jp, key, -1 );
+	moveKey( jp, key, KINDS[ key.split('/')[1] ][ key.split('/')[2] ] === 'toggle' ? 1 : -1 );
 	jpWhere[key] = jp.design._target;
 } );
 
-check( 'each knob has its place, by the object its row is of: the sizes, the two variants, the space, the rule and the dimming of a section the first section, which the hero is - a card\'s and the sizes of its title the cards, the buttons\', the lists\' and the tables\' their blocks, the header\'s the top of the page and the footer\'s its foot',
-	jpKnobs.length === kindCount('scale') + kindCount('choice') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
+check( 'each knob has its place - a switch as much as a strip - by the object its row is of: the sizes, the two variants, the space, the rule, the dimming and the case of a section the first section, which the hero is - a card\'s and the sizes of its title the cards, the buttons\', the lists\' and the tables\' their blocks, the header\'s the top of the page and the footer\'s its foot',
+	jpKnobs.length === kindCount('scale') + kindCount('choice') + kindCount('toggle') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
 	&& jpWhere['knobs/section/title'] === 'content' && jpWhere['knobs/section/space'] === 'content' && jpWhere['knobs/section/dim'] === 'content' && jpWhere['knobs/section/quiet'] === 'content' && jpWhere['knobs/section/loud'] === 'content'
 	&& jpWhere['knobs/card/subtitle'] === 'cards' && jpWhere['knobs/card/tone'] === 'cards' && jpWhere['knobs/card/hover'] === 'cards' && jpWhere['knobs/buttons/corners'] === 'buttons' && jpWhere['knobs/buttons/hover'] === 'buttons'
+	&& jpWhere['knobs/section/title-case'] === 'content' && jpWhere['knobs/card/title-case'] === 'cards' && jpWhere['knobs/buttons/case'] === 'buttons' && jpWhere['knobs/footer/nav-case'] === 'footer' && jpWhere['knobs/header/nav-case'] === 'global'
 	&& jpWhere['knobs/lists/marker'] === 'lists' && jpWhere['knobs/tables/zebra'] === 'tables' && jpWhere['knobs/tables/stripes'] === 'tables'
 	&& jpWhere['knobs/header/nav'] === 'global' && jpWhere['knobs/header/height'] === 'global' && jpWhere['knobs/footer/scale'] === 'footer' && jpWhere['knobs/footer/ground'] === 'footer' );
 
@@ -8325,7 +8529,8 @@ else {
 				const part = rowOf( path[1] );
 				const answered = ( ( part.catalogue[part.set] || {} ).knobs || [] ).indexOf( path[2] ) !== -1;
 				const position = real.knobs[ path[1] ][ path[2] ];
-				const word = real.kinds[ path[1] ][ path[2] ] === 'scale' ? at( position ) : TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/'+ [ 'less', 'default', 'more' ][position + 1]];
+				const kind = real.kinds[ path[1] ][ path[2] ];
+				const word = kind === 'scale' ? at( position ) : ( kind === 'toggle' ? TEXT['/_admin/common/label/'+ ( position === 1 ? 'on' : 'off' )] : TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/'+ [ 'less', 'default', 'more' ][position + 1]] );
 				if( answered === true && position !== real.defaults.knobs[ path[1] ][ path[2] ] )
 					lines.push( knobWord( path[1], path[2] )+ ' '+ word );
 			}
@@ -8345,8 +8550,6 @@ else {
 				}
 				if( chosen.weight !== given.weight )
 					lines.push( label('weight')+ ' '+ TEXT['/_admin/design/weight/'+ chosen.weight] );
-				if( chosen.uppercase !== given.uppercase && path[1] !== 'code' )
-					lines.push( label('uppercase')+ ' '+ TEXT['/_admin/common/label/'+ ( chosen.uppercase === true ? 'on' : 'off' )] );
 				if( chosen.size !== given.size )
 					lines.push( label('size')+ ' '+ chosen.size+ ' '+ TEXT['/_admin/design/fontsize/unit'] );
 			}
@@ -8489,7 +8692,7 @@ else {
 				&& whole.byId('design-font-'+ role+ '-size').value === ( chosen.size || real.inherited[role] )
 				&& whole.byId('design-font-'+ role+ '-size').getAttribute('min') === String( real.bounds[role][0] ) && whole.byId('design-font-'+ role+ '-size').getAttribute('max') === String( real.bounds[role][1] )
 				&& whole.byId('design-font-'+ role+ '-size').getAttribute('placeholder') === null
-				&& ( role === 'code' ? whole.byId('design-font-code-uppercase') === null : whole.byId('design-font-'+ role+ '-uppercase').checked === chosen.uppercase );
+				&& Object.keys( chosen ).join() === 'family,weight,size';
 		} ) );
 
 	/*	Every knob of the table has its strip, on the tab and in the row the table gives it: five buttons for a scale, three for a choice, lit on the position stored - and grey
@@ -8506,7 +8709,8 @@ else {
 			const path = row.dataset.control.split('/');
 			const part = rowOf( path[1] );
 			const off = ( ( part.catalogue[part.set] || {} ).knobs || [] ).indexOf( path[2] ) === -1;
-			const reach = real.kinds[ path[1] ][ path[2] ] === 'scale' ? [ -2, -1, 0, 1, 2 ] : [ -1, 0, 1 ];
+			const kind = real.kinds[ path[1] ][ path[2] ];
+			const reach = kind === 'scale' ? [ -2, -1, 0, 1, 2 ] : [ -1, 0, 1 ];
 			const lit = reach.map( function( at ) { return String( at === real.knobs[ path[1] ][ path[2] ] ) } ).join();
 
 			knobsDrawn++;
@@ -8515,6 +8719,20 @@ else {
 				tabProblems.push( row.dataset.control+ ': not on '+ tab );
 			if( hasClass( row, 'design-knob-row--off' ) !== off )
 				tabProblems.push( row.dataset.control+ ': grey is '+ String( hasClass( row, 'design-knob-row--off' ) ) );
+
+			// A toggle is a switch and no strip: on at the position 1, and switched off together with its row where the template does not answer to it
+			if( kind === 'toggle' ) {
+
+				const input = byTag( row, 'input' )[0];
+
+				if( isSwitch( row ) === false || byTag( row, 'button' ).length !== 0 || input === undefined || input.type !== 'checkbox' )
+					tabProblems.push( row.dataset.control+ ': not a switch' );
+				else if( input.disabled !== off || input.checked !== ( off === false && real.knobs[ path[1] ][ path[2] ] === 1 ) )
+					tabProblems.push( row.dataset.control+ ': the switch does not stand at the position stored' );
+
+				return;
+			}
+
 			if( off === false && byTag( row, 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() !== lit )
 				tabProblems.push( row.dataset.control+ ': a step is lit that the knob does not stand at' );
 			if( byTag( row, 'button' ).length !== reach.length )
@@ -8522,7 +8740,7 @@ else {
 		} );
 	} );
 
-	check( 'each knob is a strip in the row the table gives it, grey where the template chosen for its part does not answer to it, and the others lit on the position stored - on five buttons for a scale, three for a choice'
+	check( 'each knob is a strip in the row the table gives it - or a switch, for a toggle -, grey where the template chosen for its part does not answer to it, and the others lit on the position stored - on five buttons for a scale, three for a choice'
 		+ ( tabProblems.length === 0 ? '' : ' - '+ tabProblems.join(' | ') ),
 		tabProblems.length === 0 && knobsDrawn === Object.keys( real.layout.controls ).filter( function( key ) { return key.indexOf('knobs/') === 0 } ).length && knobsDrawn > 0 );
 	check( '...and every template the library ships has a name and answers to knobs of its own part, in the order of the part - a template that leaves one out is a grey row for it, as the check above holds - and the one that is chosen is one of the catalogue',
