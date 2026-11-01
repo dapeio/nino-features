@@ -1,10 +1,17 @@
 <?php return [
 
+	'[[/_nino/webpage/.newsletter/name]]' => 'Newsletter',
+	'[[/_nino/webpage/.newsletter/title]]' => 'Newsletter',
+	'[[/_nino/webpage/.newsletter/description]]' => 'Bestätige Deine Newsletter-Anmeldung oder melde Dich ab.',
+	'[[/_nino/webpage/.newsletter/unsubscribe/name]]' => 'Newsletter-Abmeldung',
+	'[[/_nino/webpage/.newsletter/unsubscribe/title]]' => 'Vom Newsletter abmelden',
+	'[[/_nino/webpage/.newsletter/unsubscribe/description]]' => 'Fordere einen Link an, um Dich vom Newsletter abzumelden.',
+
 	'[[/feature/newsletter/label/submit]]' => 'Anmelden',
 	'[[/feature/newsletter/info/required]]' => 'Bitte gib eine E-Mail-Adresse ein.',
 	'[[/feature/newsletter/info/email]]' => 'Bitte gib eine gültige E-Mail-Adresse ein.',
 	'[[/feature/newsletter/info/success]]' => 'Vielen Dank – bitte bestätige Deine Anmeldung über den Link in Deinem Postfach.',
-	'[[/feature/newsletter/info/error]]' => 'Die Anmeldung konnte nicht versendet werden. Bitte probiere es später noch einmal.',
+	'[[/feature/newsletter/info/error]]' => 'Die Mail konnte gerade nicht versendet werden. Bitte versuche es später noch einmal.',
 
 	'[[/feature/newsletter/subject/confirm]]' => 'Bitte bestätige Deine Newsletter-Anmeldung | [[/project/website/general/url]]',
 	'[[/template/mail-newsletter-confirm/intro/title]]' => 'Fast geschafft!',

@@ -656,12 +656,16 @@ namespace Nino\Modules {
 		 *	so a twice-clicked mail link doesn't scare the visitor with an
 		 *	error. A pending entry gets the date of the confirmation; a legacy
 		 *	one - a token but no status, from before the double opt-in flow -
-		 *	keeps the date it signed up on, and only its status is set
+		 *	keeps the date it signed up on, and only its status is set. A
+		 *	pending entry that has waited longer than the pending days is not
+		 *	confirmed either: its token is as unknown as one never issued (the
+		 *	entry stays until the next signup sweeps it, _prunePending()), and
+		 *	so is the token of one whose date cannot be read
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$token				Token from the visited link
 		 *
-		 *	@return 	bool										False for an unknown/empty token or a failed write
+		 *	@return 	bool										False for an unknown/empty/expired token or a failed write
 		 */
 		private static function _confirm( array &$appData, string $token ): bool {
 
@@ -671,13 +675,24 @@ namespace Nino\Modules {
 			try {
 
 				$found = false;
+				$now = time();
+				$keepSeconds = max( 1, (int) ( $appData[ self::PENDING_DAYS ] ?? 7 ) ) * 86400;
 
-				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $token, &$found ): ?array {
+				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $token, $now, $keepSeconds, &$found ): ?array {
 
 					foreach( $entries as $entryKey => $entry ) {
 
 						if( hash_equals( (string) ( $entry['token'] ?? '' ), $token ) === false )
 							continue;
+
+						// The same reading _prunePending() applies: a pending entry past
+						// its days, or with no date to count them from, is gone as far as
+						// a visitor can tell - it is only not yet swept
+						if( ( $entry['status'] ?? '' ) === 'pending' ) {
+							$at = strtotime( (string) ( $entry['date'] ?? '' ) );
+							if( $at === false || $at + $keepSeconds <= $now )
+								continue;
+						}
 
 						$found = true;
 

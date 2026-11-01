@@ -5,7 +5,7 @@
 		<div class="nino-grid-100">
 			<h2 class="nino-hero-title">[[/feature/newsletter/page/title]]</h2>
 			<p class="nino-hero-subtitle">[[/feature/newsletter/page/text]]</p>
-			<a href="[[/_nino/webpage/home/uri]]" class="nino-btn nino-btn--primary">[[/_nino/webpage/home/name]]</a>
+			<a href="[[/nino/dir]][[/_nino/webpage/home/uri]]" class="nino-btn nino-btn--primary">[[/_nino/webpage/home/name]]</a>
 		</div>
 		</div>
 	</div>

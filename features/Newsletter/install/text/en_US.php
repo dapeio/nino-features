@@ -1,10 +1,17 @@
 <?php return [
 
+	'[[/_nino/webpage/.newsletter/name]]' => 'Newsletter',
+	'[[/_nino/webpage/.newsletter/title]]' => 'Newsletter',
+	'[[/_nino/webpage/.newsletter/description]]' => 'Confirm your newsletter signup or unsubscribe.',
+	'[[/_nino/webpage/.newsletter/unsubscribe/name]]' => 'Newsletter unsubscribe',
+	'[[/_nino/webpage/.newsletter/unsubscribe/title]]' => 'Unsubscribe from the newsletter',
+	'[[/_nino/webpage/.newsletter/unsubscribe/description]]' => 'Ask for a link to unsubscribe from the newsletter.',
+
 	'[[/feature/newsletter/label/submit]]' => 'Subscribe',
 	'[[/feature/newsletter/info/required]]' => 'Please enter an email address.',
 	'[[/feature/newsletter/info/email]]' => 'Please enter a valid email address.',
 	'[[/feature/newsletter/info/success]]' => 'Thank you – please confirm your signup via the link in your inbox.',
-	'[[/feature/newsletter/info/error]]' => 'The signup could not be sent. Please try again later.',
+	'[[/feature/newsletter/info/error]]' => 'The mail could not be sent just now. Please try again later.',
 
 	'[[/feature/newsletter/subject/confirm]]' => 'Please confirm your newsletter signup | [[/project/website/general/url]]',
 	'[[/template/mail-newsletter-confirm/intro/title]]' => 'Almost there!',

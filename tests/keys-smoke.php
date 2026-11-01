@@ -88,10 +88,14 @@ const KEYS_WORKBENCH = '#^/_admin/elements/field/[a-z0-9-]+/[a-z0-9-]+$#';
 // ...and the other: the details of the page the feature's own routes make, the system's
 // /_nino/webpage<uri>/<name|title|description> keys of an Element-URI the feature chooses and keeps for
 // itself, as the unit of Nino's Legal module brings those of its two pages. Posts routes the list page of
-// its default section at /blog, whose title is the key as it stands until a project has written one.
+// its default section at /blog, whose title is the key as it stands until a project has written one;
+// Newsletter routes /.newsletter and /.newsletter/unsubscribe, the two pages its own links and form land on.
 // By the key of the feature, and an entry that no unit uses fails the suite, so the list cannot outlive
 // what it was for. A unit never brings these for a page of the library, whose Element-URI is the project's
-const KEYS_PAGE_DETAILS = [ 'posts' => '#^/_nino/webpage/blog/(name|title|description)$#' ];
+const KEYS_PAGE_DETAILS = [
+	'posts'			=> '#^/_nino/webpage/blog/(name|title|description)$#',
+	'newsletter'	=> '#^/_nino/webpage/\.newsletter(?:/unsubscribe)?/(name|title|description)$#',
+];
 
 /**
  *	@param		string		$key
@@ -304,15 +308,16 @@ foreach( $features as $feature )
 		foreach( [ 'de_DE', 'en_US' ] as $file )
 			foreach( array_keys( $feature['text'][$file] ) as $key )
 				if( preg_match( KEYS_PAGE_DETAILS[$feature['key']], $key ) === 1 )
-					$pageDetails[$feature['key']][$file][] = substr( $key, strrpos( $key, '/' ) + 1 );
+					$pageDetails[$feature['key']][$file][ substr( $key, 0, (int) strrpos( $key, '/' ) ) ][] = substr( $key, (int) strrpos( $key, '/' ) + 1 );
 $sorted = static function( array $names ): array {
 	sort( $names );
 	return $names;
 };
-keysCheck( 'a feature that brings the details of its page brings the three of it, name, title and description, in both languages - and no exception is kept that a unit does not use'
+keysCheck( 'a feature that brings the details of a page brings the three of it, name, title and description, for every page it brings, in both languages - and no exception is kept that a unit does not use'
 	. ( array_diff( array_keys( KEYS_PAGE_DETAILS ), array_keys( $pageDetails ) ) === [] ? '' : ' - unused: '. implode( ', ', array_diff( array_keys( KEYS_PAGE_DETAILS ), array_keys( $pageDetails ) ) ) ),
-	array_keys( $pageDetails ) === array_keys( KEYS_PAGE_DETAILS )
-	&& array_filter( $pageDetails, static fn( array $files ): bool => array_keys( $files ) !== [ 'de_DE', 'en_US' ] || $sorted( $files['de_DE'] ) !== [ 'description', 'name', 'title' ] || $sorted( $files['en_US'] ) !== [ 'description', 'name', 'title' ] ) === [] );
+	$sorted( array_keys( $pageDetails ) ) === $sorted( array_keys( KEYS_PAGE_DETAILS ) )
+	&& array_filter( $pageDetails, static fn( array $files ): bool => array_keys( $files ) !== [ 'de_DE', 'en_US' ] || $sorted( array_keys( $files['de_DE'] ) ) !== $sorted( array_keys( $files['en_US'] ) )
+		|| array_filter( $files, static fn( array $pages ): bool => array_filter( $pages, static fn( array $names ): bool => $sorted( $names ) !== [ 'description', 'name', 'title' ] ) !== [] ) !== [] ) === [] );
 
 $numbered = [];
 foreach( $features as $feature )

@@ -373,9 +373,10 @@ $legacyConfirm = visitNewsletterLink( $appData, [ 'confirm' => (string) $legacyN
 $legacyConfirmed = $readList( $appData );
 check( 'confirming a legacy entry\'s token records it as subscribed', $legacyConfirm['/nino/http/response']['statusCode'] === 200 && ( $legacyConfirmed[0]['status'] ?? '' ) === 'subscribed' );
 check( '...and keeps the date it signed up on', ( $legacyConfirmed[0]['date'] ?? '' ) === $legacyDate && $legacyConfirmed[0]['token'] === $legacyNow[0]['token'] );
-$writeList( $appData, [ [ 'email' => 'waiting@example.com', 'token' => 'f00dfeed', 'status' => 'pending', 'date' => $legacyDate, 'ip' => '127.0.0.1' ] ] );
+$pendingDate = date( 'Y-m-d H:i:s', time() - 3 * 86400 );
+$writeList( $appData, [ [ 'email' => 'waiting@example.com', 'token' => 'f00dfeed', 'status' => 'pending', 'date' => $pendingDate, 'ip' => '127.0.0.1' ] ] );
 visitNewsletterLink( $appData, [ 'confirm' => 'f00dfeed' ] );
-check( '...while a pending entry gets the date of its confirmation', ( $readList( $appData )[0]['date'] ?? $legacyDate ) !== $legacyDate && ( $readList( $appData )[0]['status'] ?? '' ) === 'subscribed' );
+check( '...while a pending entry gets the date of its confirmation', ( $readList( $appData )[0]['date'] ?? $pendingDate ) !== $pendingDate && ( $readList( $appData )[0]['status'] ?? '' ) === 'subscribed' );
 $writeList( $appData, [ [ 'email' => 'legacy@example.com', 'date' => $legacyDate ] ] );
 $answer( $appData, 'legacy@example.com' );
 
@@ -813,6 +814,84 @@ check( '...and what went is the oldest of them, not the newest', in_array( 'floo
 	&& in_array( 'last@example.com', array_column( $afterFlood, 'email' ), true ) === true );
 check( '...while the subscriber is still there - a ceiling on unconfirmed entries is not a ceiling on the list', in_array( 'keeper@example.com', array_column( $afterFlood, 'email' ), true ) === true );
 check( 'the stored list is a list again, with no gaps left by what was removed', array_keys( $afterFlood ) === range( 0, count( $afterFlood ) - 1 ) );
+
+echo "\n";
+
+
+// --- A signup that waited too long is not confirmed ---------------------------
+
+echo "Modules\\Newsletter - a pending signup past its days is not confirmed\n";
+
+/*	The privacy section promises that an unconfirmed signup expires after the
+	pending days; the sweep only runs when somebody signs up, so until then the
+	entry is still on the list - and its link must not work. The token is as
+	unknown as one never issued (404, the same page), the entry is left for the
+	next sweep, and a signup inside the window is confirmed as ever	*/
+$staleAt = date( 'Y-m-d H:i:s', time() - 8 * 86400 );
+$writeList( $appData, [
+	[ 'email' => 'stale@example.com', 'token' => 'stale0token', 'status' => 'pending', 'date' => $staleAt, 'ip' => '127.0.0.1' ],
+	[ 'email' => 'recent@example.com', 'token' => 'recent0token', 'status' => 'pending', 'date' => date( 'Y-m-d H:i:s', time() - 6 * 86400 ), 'ip' => '127.0.0.1' ],
+	[ 'email' => 'undated@example.com', 'token' => 'undated0token', 'status' => 'pending', 'ip' => '127.0.0.1' ],
+] );
+$staleVisit = visitNewsletterLink( $appData, [ 'confirm' => 'stale0token' ] );
+check( 'the link of a pending signup eight days old answers 404, as an unknown token does', $staleVisit['/nino/http/response']['statusCode'] === 404
+	&& $staleVisit['/nino/http/response']['statusCode'] === visitNewsletterLink( $appData, [ 'confirm' => 'never0issued' ] )['/nino/http/response']['statusCode'] );
+check( '...the entry is not confirmed, and it stays until the next sweep', $readList( $appData )[0] === [ 'email' => 'stale@example.com', 'token' => 'stale0token', 'status' => 'pending', 'date' => $staleAt, 'ip' => '127.0.0.1' ] );
+$recentVisit = visitNewsletterLink( $appData, [ 'confirm' => 'recent0token' ] );
+check( 'the link of one six days old is confirmed (200)', $recentVisit['/nino/http/response']['statusCode'] === 200 && ( $readList( $appData )[1]['status'] ?? '' ) === 'subscribed' );
+check( 'one with no date to count from is not confirmed either - the sweep drops it too', visitNewsletterLink( $appData, [ 'confirm' => 'undated0token' ] )['/nino/http/response']['statusCode'] === 404
+	&& ( $readList( $appData )[2]['status'] ?? '' ) === 'pending' );
+
+// The days are a project's to set, here as well as in the sweep
+$appData[ \Nino\Modules\Newsletter::PENDING_DAYS ] = 30;
+check( 'a longer window confirms what the default would have refused', visitNewsletterLink( $appData, [ 'confirm' => 'stale0token' ] )['/nino/http/response']['statusCode'] === 200
+	&& ( $readList( $appData )[0]['status'] ?? '' ) === 'subscribed' );
+unset( $appData[ \Nino\Modules\Newsletter::PENDING_DAYS ] );
+
+// An entry that is subscribed is confirmed as many times as the link is clicked, however old
+$writeList( $appData, [ $entryAt( 'old-member@example.com', 'subscribed', date( 'Y-m-d H:i:s', time() - 400 * 86400 ) ) ] );
+check( 'the link of a subscriber stays good, however old the entry', visitNewsletterLink( $appData, [ 'confirm' => (string) $readList( $appData )[0]['token'] ] )['/nino/http/response']['statusCode'] === 200 );
+
+echo "\n";
+
+
+// --- The pages carry their names, and the home button its directory -----------
+
+echo "Modules\\Newsletter - the details of its two pages, the home button, the refusal\n";
+
+// The unit's words, as the activation merged them into the project's files
+$pageKeys = [];
+foreach( [ '.newsletter', '.newsletter/unsubscribe' ] as $pageUri )
+	foreach( [ 'name', 'title', 'description' ] as $detail )
+		$pageKeys[] = '[[/_nino/webpage/'. $pageUri. '/'. $detail. ']]';
+$projectText = [];
+foreach( [ 'en_US', 'de_DE' ] as $textLocale )
+	$projectText[$textLocale] = \Nino\Filesystem::getFileContent( $appData, '/text/'. $textLocale. '.php', [] );
+$missingDetails = [];
+foreach( $projectText as $textLocale => $words )
+	foreach( $pageKeys as $pageKey )
+		if( trim( (string) ( $words[$pageKey] ?? '' ) ) === '' )
+			$missingDetails[] = $textLocale. ' '. $pageKey;
+check( 'the unit brings name, title and description of /.newsletter and of /.newsletter/unsubscribe in both languages'. ( $missingDetails === [] ? '' : ' - missing: '. implode( ', ', $missingDetails ) ), $missingDetails === [] );
+check( '...in words, none of them the key as it stands', array_filter( $projectText, static fn( array $words ): bool => array_filter( $pageKeys, static fn( string $pageKey ): bool => str_starts_with( (string) ( $words[$pageKey] ?? '' ), '[[/' ) === true || str_starts_with( (string) ( $words[$pageKey] ?? '' ), '/_nino/' ) === true ) !== [] ) === [] );
+check( '...the German ones are German: the description of both pages and the name and title of the unsubscribe page differ from the English', array_filter( [ '.newsletter/description', '.newsletter/unsubscribe/name', '.newsletter/unsubscribe/title', '.newsletter/unsubscribe/description' ],
+	static fn( string $detail ): bool => $projectText['de_DE']['[[/_nino/webpage/'. $detail. ']]'] === $projectText['en_US']['[[/_nino/webpage/'. $detail. ']]'] ) === [] );
+
+// The home button: the address of the page is the home page's uri below the directory of the site
+$pageTemplate = (string) \Nino\Filesystem::getFileContent( $appData, '/templates/page-newsletter.tpl', '' );
+\Nino\Html::addFills( $appData, [ '[[/_nino/webpage/home/uri]]' => '/', '[[/_nino/webpage/home/name]]' => 'Home' ], '*' );
+$appData['/nino/dir'] = '/sub';
+\Nino\Html::addFills( $appData, \Nino\Html::bootFills( $appData ), '*' );
+$homeButton = \Nino\Html::renderHtml( $appData, $pageTemplate );
+$appData['/nino/dir'] = '';
+\Nino\Html::addFills( $appData, \Nino\Html::bootFills( $appData ), '*' );
+$homeButtonRoot = \Nino\Html::renderHtml( $appData, $pageTemplate );
+check( 'the home button of the page leads to the home page below the website\'s directory', str_contains( $homeButton, '<a href="/sub/" class="nino-btn nino-btn--primary">Home</a>' ) === true );
+check( '...and to / where the site stands at the root', str_contains( $homeButtonRoot, '<a href="/" class="nino-btn nino-btn--primary">Home</a>' ) === true );
+
+// The refusal says which mail it was, and that the address is kept
+check( 'the sentence of a refused signup names the mail, in both languages', ( $projectText['en_US']['[[/feature/newsletter/info/error]]'] ?? '' ) === 'The mail could not be sent just now. Please try again later.'
+	&& ( $projectText['de_DE']['[[/feature/newsletter/info/error]]'] ?? '' ) === 'Die Mail konnte gerade nicht versendet werden. Bitte versuche es später noch einmal.' );
 
 echo "\n";
 

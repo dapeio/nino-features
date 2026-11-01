@@ -30,8 +30,8 @@ return [
 				'de_DE' => 'Die Anmeldung: email und der Honigtopf location, der leer bleiben muss, mit [csrf] im Formular. 200, sobald die Bestätigungsmail raus ist – gleich für eine neue, eine ausstehende und eine bestätigte Adresse – sonst 400, 418, 429 oder 500.',
 			],
 			'/.newsletter?confirm=<token> and ?unsubscribe=<token>' => [
-				'en_US' => 'Confirms a pending address, or removes an entry and records the removal. An unknown token answers 404.',
-				'de_DE' => 'Bestätigt eine ausstehende Adresse, beziehungsweise entfernt einen Eintrag und vermerkt die Entfernung. Ein unbekannter Token antwortet 404.',
+				'en_US' => 'Confirms a pending address, or removes an entry and records the removal. An unknown token answers 404, and so does the token of a pending signup that has waited longer than /nino/newsletter/pending-days (seven by default): the entry stays until the next signup sweeps it.',
+				'de_DE' => 'Bestätigt eine ausstehende Adresse, beziehungsweise entfernt einen Eintrag und vermerkt die Entfernung. Ein unbekannter Token antwortet 404, ebenso der Token einer ausstehenden Anmeldung, die länger als /nino/newsletter/pending-days (standardmäßig sieben) wartet: Der Eintrag bleibt, bis die nächste Anmeldung ihn aufräumt.',
 			],
 		],
 		'panel' => [
@@ -48,8 +48,8 @@ return [
 		],
 		'install' => [
 			'templates/page-newsletter.tpl' => [
-				'en_US' => 'What /.newsletter renders.',
-				'de_DE' => 'Was /.newsletter rendert.',
+				'en_US' => 'What /.newsletter renders; its home button leads to the home page under the website\'s directory.',
+				'de_DE' => 'Was /.newsletter rendert; sein Home-Knopf führt zur Startseite unterhalb des Verzeichnisses der Website.',
 			],
 			'templates/page-newsletter-unsubscribe.tpl' => [
 				'en_US' => 'What /.newsletter/unsubscribe renders: the form that asks for the address.',
@@ -64,16 +64,16 @@ return [
 				'de_DE' => 'Die Mail, die den Abmeldelink trägt.',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'Its words, into the Text panel.',
-				'de_DE' => 'Seine Worte, ins Panel Texte.',
+				'en_US' => 'Its words, into the Text panel - among them the name, the title and the description of its two pages, /_nino/webpage/.newsletter/... and /_nino/webpage/.newsletter/unsubscribe/..., which the Routes panel changes like those of any page and which never replace a word the project wrote.',
+				'de_DE' => 'Seine Worte, ins Panel Texte – darunter Name, Titel und Beschreibung seiner beiden Seiten, /_nino/webpage/.newsletter/... und /_nino/webpage/.newsletter/unsubscribe/..., die das Panel Routen wie die jeder Seite ändert und die ein Wort des Projekts nie ersetzen.',
 			],
 			'elements/privacy.php' => [
 				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice. It names seven days, the default of /nino/newsletter/pending-days in config.php: whoever changes the key changes the section in the Elements panel too.',
 				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung. Er nennt sieben Tage, den Standard von /nino/newsletter/pending-days in der config.php: Wer den Wert ändert, passt den Abschnitt im Panel Elemente mit an.',
 			],
 			'templates/mail-header.tpl, templates/mail-footer.tpl' => [
-				'en_US' => 'The mail frame, the Form module\'s two files byte for byte: whichever unit is applied first provides them.',
-				'de_DE' => 'Der Mailrahmen, die beiden Dateien des Form-Moduls Byte für Byte: Welche Einheit zuerst angewendet wird, liefert sie.',
+				'en_US' => 'The mail frame, the Form module\'s two files byte for byte: whichever unit is applied first provides them. The logo of the header is the content form of [image], which carries the website\'s directory once.',
+				'de_DE' => 'Der Mailrahmen, die beiden Dateien des Form-Moduls Byte für Byte: Welche Einheit zuerst angewendet wird, liefert sie. Das Logo im Kopf ist die Inhaltsform von [image], die das Verzeichnis der Website einmal trägt.',
 			],
 		],
 	],
