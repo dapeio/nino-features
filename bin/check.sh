@@ -53,6 +53,7 @@ done
 
 NINO_ROOT="$root" php "$here/tests/keys-smoke.php"
 NINO_ROOT="$root" php "$here/tests/legal-smoke.php"
+NINO_ROOT="$root" php "$here/tests/components-smoke.php"
 php "$here/tests/markup-smoke.php"
 php "$here/tests/language-smoke.php"
 php "$here/tests/escaping-smoke.php"

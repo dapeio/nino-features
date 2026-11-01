@@ -135,7 +135,7 @@ return [
 					],
 				],
 				'size' => [
-					'type'		=> 'select',
+					'type'		=> 'variant',
 					'options'	=> [ '', 'small', 'large' ],
 					'default'	=> '',
 					'label'		=> [ 'en_US' => 'Size', 'de_DE' => 'Größe' ],
@@ -146,6 +146,15 @@ return [
 				],
 			],
 			'preview'		=> 'block',
+			'draws'			=> 'ul .nino-social',
+			'in'			=> [ 'section', 'card', 'hero' ],
+			'icon'			=> [
+				[ 'circle', [ 'cx' => '18', 'cy' => '5', 'r' => '3' ] ],
+				[ 'circle', [ 'cx' => '6', 'cy' => '12', 'r' => '3' ] ],
+				[ 'circle', [ 'cx' => '18', 'cy' => '19', 'r' => '3' ] ],
+				[ 'line', [ 'x1' => '8.59', 'x2' => '15.42', 'y1' => '13.51', 'y2' => '17.49' ] ],
+				[ 'line', [ 'x1' => '15.41', 'x2' => '8.59', 'y1' => '6.51', 'y2' => '10.49' ] ],
+			],
 		],
 		'social-link' => [
 			'label'			=> [ 'en_US' => 'Social link', 'de_DE' => 'Social-Link' ],
@@ -172,6 +181,12 @@ return [
 				],
 			],
 			'preview'		=> 'button',
+			'draws'			=> 'a .nino-social-link',
+			'in'			=> [ 'section', 'card', 'hero' ],
+			'icon'			=> [
+				[ 'path', [ 'd' => 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' ] ],
+				[ 'path', [ 'd' => 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' ] ],
+			],
 		],
 		'social-icon' => [
 			'label'			=> [ 'en_US' => 'Social icon', 'de_DE' => 'Social-Icon' ],
@@ -188,6 +203,12 @@ return [
 				],
 			],
 			'preview'		=> 'block',
+			'draws'			=> 'span .nino-social-icon',
+			'in'			=> [ 'section', 'card', 'hero' ],
+			'icon'			=> [
+				[ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '4' ] ],
+				[ 'path', [ 'd' => 'M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8' ] ],
+			],
 		],
 	],
 ];

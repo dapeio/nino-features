@@ -89,7 +89,9 @@ return [
 		markup of one hit, with [[field]] for what it holds, and the Builder can neither
 		carry that markup nor edit it as it is: it reads a [[title]] as a call of the title
 		component and its editor for a body would flatten the record. It stays a
-		shortcode, like [consent]	*/
+		shortcode, like [consent]. The count is a bare number in the line it stands
+		in, with no element round it, so the component says no draws - the one that
+		does not (tests/components-smoke.php)	*/
 	'components'	=> [
 		'search-count' => [
 			'label'			=> [ 'en_US' => 'Number of hits', 'de_DE' => 'Anzahl der Treffer' ],
@@ -116,6 +118,13 @@ return [
 				],
 			],
 			'preview'		=> 'text',
+			'in'			=> [ 'section', 'card', 'hero' ],
+			'icon'			=> [
+				[ 'line', [ 'x1' => '4', 'x2' => '20', 'y1' => '9', 'y2' => '9' ] ],
+				[ 'line', [ 'x1' => '4', 'x2' => '20', 'y1' => '15', 'y2' => '15' ] ],
+				[ 'line', [ 'x1' => '10', 'x2' => '8', 'y1' => '3', 'y2' => '21' ] ],
+				[ 'line', [ 'x1' => '16', 'x2' => '14', 'y1' => '3', 'y2' => '21' ] ],
+			],
 		],
 	],
 ];

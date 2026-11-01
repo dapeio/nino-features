@@ -83,6 +83,12 @@ return [
 				],
 			],
 			'preview'		=> 'block',
+			'draws'			=> 'div .nino-progress',
+			'in'			=> [ 'section', 'card', 'hero' ],
+			'icon'			=> [
+				[ 'path', [ 'd' => 'm12 14 4-4' ] ],
+				[ 'path', [ 'd' => 'M3.34 19a10 10 0 1 1 17.32 0' ] ],
+			],
 		],
 	],
 ];

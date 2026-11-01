@@ -333,6 +333,14 @@ echo "Components - [social], [social-link], [social-icon] as the Builder offers 
 
 	ninoWarnings();
 
+	// The size is a modifier of the list's class, so it is a variant: a tool draws it as a row of buttons, and each word is
+	// the class the list is written with
+	$size = $declared['social']['attributes']['size'] ?? [];
+	check( 'the size is a variant, the empty word and the modifiers the list is written with, and the empty one is the default',
+		( $size['type'] ?? null ) === 'variant' && ( $size['options'] ?? null ) === [ '', 'small', 'large' ] && ( $size['default'] ?? null ) === '' );
+	check( '...and each of its words is the class nino-social-- and the word, which is what a variant is',
+		array_filter( (array) ( $size['options'] ?? [] ), static fn( string $word ): bool => $word !== '' && str_contains( \Nino\Html::renderHtml( $probe, '[social size="'. $word. '"]' ), '<ul class="nino-social nino-social--'. $word. '">' ) === false ) === [] );
+
 	check( 'every attribute written out at its default is the call without it',
 		\Nino\Html::renderHtml( $probe, '[social only="" exclude="" show="icon" size=""]' ) === $before['[social]']
 		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube" show="both"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' ) );
