@@ -99,8 +99,8 @@ body {
 	--header-border-size--more:	2px;
 	--header-border-size--most:	6px;
 
-	--header-border-color--less:	var(--color-text);
-	--header-border-color--default:	var(--color-border);
+	--header-border-color--less:	var(--header-ground-ink);
+	--header-border-color--default:	var(--header-ground-border);
 	--header-border-color--more:	var(--color-primary);
 
 }

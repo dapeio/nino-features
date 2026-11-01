@@ -1541,6 +1541,38 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'no header colours a text with --nino-default-focus, and a header whose bar is see-through declares the focus role of its own surface, on the bar or on the header that holds it'. ( $roleProblems === [] ? '' : ' - '. implode( ', ', $roleProblems ) ), $roleProblems === [] );
 
+/*	The line of a header follows its ground. The selection line of a knob - --header-border-color: var(--header-border-color--default) - stands on :root, where a value is
+	computed, and a role the header remaps further down (--color-border on .nino-frame-header) comes too late for it: a rung that names --color-border or --color-text
+	is the page's colour even where the ground is the dark pair. A rung of the line that is to follow the ground names a role of the ground - var(--header-ground-...) -
+	which is a selection line on :root of its own, taking its rung from the knob of the ground. Held for the rungs less and default, with the ground at more and the line at
+	default, for each header the library lists: the rung is a role of the ground, and the compile selects that role. Read from the library's own list of headers, so that a
+	header that is added with its line on a role of the page fails here rather than on a site	*/
+$lineProblems = [];
+
+foreach( Setup::available( $library, 'header' ) as $set ) {
+
+	// A set may leave a knob out; the pin is about the sets that answer both
+	if( array_diff( [ 'ground', 'border-color' ], array_keys( Setup::ladders( $library, 'header', $set ) ) ) !== [] )
+		continue;
+
+	$lineRaw	= [ 'parts' => [ 'header' => $set ], 'knobs' => [ 'header' => [ 'ground' => 1, 'border-color' => 0 ] ] ];
+	$lineCss	= designPlain( Compiler::compile( $appData, Setup::normalize( $appData, $lineRaw, $library ), $library ) );
+	$lineRung	= designLadderValues( $lineCss, 'header' )['base']['border-color'] ?? [];
+
+	if( str_contains( $lineCss, '--header-ground: var(--header-ground--more);' ) === false || str_contains( $lineCss, '--header-border-color: var(--header-border-color--default);' ) === false )
+		$lineProblems[] = $set. ': the compile does not select the ground at more and the line at default';
+
+	foreach( [ 'less', 'default' ] as $step ) {
+
+		if( preg_match( '/^var\(\s*(--header-ground-[a-z0-9-]+)\s*\)$/', $lineRung[$step] ?? '', $role ) !== 1 )
+			$lineProblems[] = $set. ': the rung '. $step. ' of the line is not a role of the ground';
+		elseif( preg_match( '/\s'. preg_quote( $role[1], '/' ). ':\s*var\(\s*'. preg_quote( $role[1], '/' ). '--more\s*\)/', $lineCss ) !== 1 )
+			$lineProblems[] = $set. ': the role '. $role[1]. ' that the rung '. $step. ' names is not selected from the ground at more';
+	}
+}
+
+check( 'the rungs less and default of the line of every header name a role of its ground, and with the ground at more the compile selects that role at the rung more'. ( $lineProblems === [] ? '' : ' - '. implode( ', ', $lineProblems ) ), count( Setup::available( $library, 'header' ) ) > 1 && $lineProblems === [] );
+
 /*	The burger of the kernel is a button: .nino-nav-burger > button with aria-expanded and aria-controls, the icon in it, the list beside it, the open
 	state on the button (and nino-is-open on the wrapper). A header that styles what the burger was - a label under it, the checkbox in it, input:checked
 	and input:focus-visible with the icon beside them - styles nothing, and its menu opens as the kernel's own and looks as no header meant it. The old
