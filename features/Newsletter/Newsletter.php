@@ -16,11 +16,15 @@ namespace Nino\Modules {
 	 *	Newsletter				Double opt-in newsletter signup, everything under the
 	 *										/.newsletter uri: POST /.newsletter validates the address
 	 *										and mails a confirmation link - nothing is subscribed
-	 *										until GET /.newsletter?confirm=<token> is visited. The
-	 *										same per-subscriber token drives the self-service
-	 *										unsubscribe (GET /.newsletter?unsubscribe=<token>, url
-	 *										via getUnsubscribeLink() - append it to any outgoing
-	 *										mail). A subscriber who lost the link asks for it again
+	 *										until the visitor presses the button of the page that link
+	 *										opens (GET /.newsletter?confirm=<token> only reads the
+	 *										token, POST /.newsletter/action does what the button
+	 *										says: a mail scanner that opens links ahead of the reader
+	 *										changes nothing). The same per-subscriber token drives
+	 *										the self-service unsubscribe (GET /.newsletter
+	 *										?unsubscribe=<token>, url via getUnsubscribeLink() -
+	 *										append it to any outgoing mail). A subscriber who lost
+	 *										the link asks for it again
 	 *										at /.newsletter/unsubscribe: an address in, a mail with
 	 *										the link out, the same answer for every address.
 	 *										Persisted as one growing, email-deduped
@@ -116,8 +120,16 @@ namespace Nino\Modules {
 			$appData['/nino/http/routes']['POST://.newsletter/unsubscribe']	= [ 'uri' => '/.newsletter/unsubscribe' ];
 			$appData['/nino/http/routes']['GET://.newsletter/unsubscribe']		= [ 'uri' => '/.newsletter/unsubscribe', 'body' => '[template '. ( $appData['/nino/newsletter/unsubscribe-template'] ?? '/templates/page-newsletter-unsubscribe' ). ']' ];
 
+			// The second step of a link: the page a link opens only reads its
+			// token and offers a button, and the button posts here. Nothing
+			// answers a GET at this uri, and what the post answers with is a page
+			// of /.newsletter (see callbackPerform()) - so this uri has no
+			// details of a page of its own
+			$appData['/nino/http/routes']['POST://.newsletter/action']	= [ 'uri' => '/.newsletter/action' ];
+
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/POST://.newsletter', [ self::class, 'callbackResponse' ] );
-			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/GET://.newsletter', [ self::class, 'callbackAction' ] );
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/GET://.newsletter', [ self::class, 'callbackLink' ] );
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/POST://.newsletter/action', [ self::class, 'callbackPerform' ] );
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/POST://.newsletter/unsubscribe', [ self::class, 'callbackUnsubscribeRequest' ] );
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/GET://.newsletter/unsubscribe', [ self::class, 'callbackUnsubscribeForm' ] );
 
@@ -134,8 +146,9 @@ namespace Nino\Modules {
 
 		/**
 		 *	Validate a signup request and mail the confirmation link - the
-		 *	actual subscription only happens once that link is visited
-		 *	(double opt-in, see callbackAction()). The answer follows the
+		 *	actual subscription only happens once the button of the page that
+		 *	link opens is pressed (double opt-in, see callbackLink() and
+		 *	callbackPerform()). The answer follows the
 		 *	delivery and nothing else: 200 when the mail went out, 429 when
 		 *	the per-ip mail cap refused it, 500 when it could not be sent (a
 		 *	site without an address has no link to send) or the entry could not
@@ -194,39 +207,94 @@ namespace Nino\Modules {
 
 		/**
 		 *	Handle a visited confirm/unsubscribe link (GET /.newsletter
-		 *	?confirm=<token> / ?unsubscribe=<token>) and prepare the fills
-		 *	the page template renders the outcome with. An unknown or
-		 *	missing token answers 404 - the page stays a friendly html page
-		 *	either way
+		 *	?confirm=<token> / ?unsubscribe=<token>): it changes nothing. A link
+		 *	is opened by whoever holds the mail and by whatever reads it ahead
+		 *	of them - a scanner follows every link - so the visit only checks
+		 *	the token, with the reading the post below will give it, and offers
+		 *	the one step that does the deed: a button in a form that posts to
+		 *	/.newsletter/action. An unknown, expired or missing token answers
+		 *	404 - the page stays a friendly html page either way - and the
+		 *	token of a signup that is confirmed already answers the page of the
+		 *	confirmation, without a button: there is nothing left to press
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
 		 *
 		 *	@return 	void
 		 */
-		public static function callbackAction( array &$appData, array &$request ): void {
+		public static function callbackLink( array &$appData, array &$request ): void {
 
-			$query 	= $request['/nino/http/request']['query'] ?? [];
+			$query = $request['/nino/http/request']['query'] ?? [];
+
+			[ $action, $token ] = self::_asked( is_array( $query ) === true ? $query : [] );
+
+			$known = $action === null ? null : self::_known( $appData, $action, $token );
+
+			if( $known === null ) {
+				$request['/nino/http/response']['statusCode'] = 404;
+				self::_fillPage( $appData, 'invalid' );
+				return;
+			}
+
+			if( $known === 'done' ) {
+				self::_fillPage( $appData, 'confirmed' );
+				return;
+			}
+
+			// The token is the one the list holds, and is escaped anyway: it
+			// goes into a fill, and a fill is read for fills and shortcodes
+			// once more
+			\Nino\Html::addFills( $appData, [
+				'[[/feature/newsletter/action/field]]'	=> $action,
+				'[[/feature/newsletter/action/token]]'	=> \Nino\Modules\Components::escape( $token ),
+				'[[/feature/newsletter/action/button]]'	=> '[[/feature/newsletter/action/'. $action. ']]',
+			], '*' );
+
+			self::_fillPage( $appData, 'pending-'. $action, '[template '. ( $appData['/nino/newsletter/action-template'] ?? '/templates/newsletter-action' ). ']' );
+		}
+
+		/**
+		 *	POST /.newsletter/action: what the button of the page a link opens
+		 *	does - confirms the signup or removes the entry the token belongs
+		 *	to, and answers with the page of the outcome (200), or with the
+		 *	invalid page (404) for a token that is unknown, expired or not
+		 *	there, and for a post that carries both fields or neither. Nothing
+		 *	happens without the csrf token the form carries: the kernel's guard
+		 *	has answered 403 with the body false, which a visitor whose session
+		 *	is gone would read as a bare "false" - the status stays, and the body
+		 *	is the page that says the page has expired (a body that is a string
+		 *	is rendered whatever the status is, Http only encodes the others).
+		 *	Every answer is a page of /.newsletter: the response's uri is that of
+		 *	the page template's details (its title and description are read from
+		 *	/_nino/webpage<uri>/...), and this route has none
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackPerform( array &$appData, array &$request ): void {
+
+			$request['/nino/http/response']['uri']		= '/.newsletter';
+			$request['/nino/http/response']['body']	= '[template '. ( $appData['/nino/newsletter/page-template'] ?? '/templates/page-newsletter' ). ']';
+
+			if( \Nino\Form::blocked( $request ) === true ) {
+				self::_fillPage( $appData, 'expired' );
+				return;
+			}
+
+			[ $action, $token ] = self::_asked( $_POST );
 			$result = 'invalid';
 
-			// A query variable is whatever the address carried, arrays included
-			// ('?confirm[]=x') - so it is read as a string or not at all, the
-			// same reading callbackResponse() gives the post above. A token
-			// that is not a string is no token, which is the 'invalid' page
-			if( isset( $query['confirm'] ) === true )
-				$result = ( is_string( $query['confirm'] ) === true && self::_confirm( $appData, $query['confirm'] ) === true ) ? 'confirmed' : 'invalid';
-			else if( isset( $query['unsubscribe'] ) === true )
-				$result = ( is_string( $query['unsubscribe'] ) === true && self::_unsubscribe( $appData, $query['unsubscribe'] ) === true ) ? 'unsubscribed' : 'invalid';
+			if( $action === 'confirm' && self::_confirm( $appData, $token ) === true )
+				$result = 'confirmed';
+			else if( $action === 'unsubscribe' && self::_unsubscribe( $appData, $token ) === true )
+				$result = 'unsubscribed';
 
 			if( $result === 'invalid' )
 				$request['/nino/http/response']['statusCode'] = 404;
 
-			// Nested fills - the outer key is what the page template uses,
-			// the inner one resolves per-locale from text/*.php
-			\Nino\Html::addFills( $appData, [
-				'[[/feature/newsletter/page/title]]'	=> '[[/feature/newsletter/result-'. $result. '/title]]',
-				'[[/feature/newsletter/page/text]]'		=> '[[/feature/newsletter/result-'. $result. '/text]]',
-			], '*' );
+			self::_fillPage( $appData, $result );
 		}
 
 		/**
@@ -297,10 +365,7 @@ namespace Nino\Modules {
 			// but that it was refused
 			$answer = static function( array &$appData, array &$request ) use ( $page ): void {
 
-				\Nino\Html::addFills( $appData, [
-					'[[/feature/newsletter/page/title]]'	=> '[[/feature/newsletter/result-unsubscribe-requested/title]]',
-					'[[/feature/newsletter/page/text]]'		=> '[[/feature/newsletter/result-unsubscribe-requested/text]]',
-				], '*' );
+				self::_fillPage( $appData, 'unsubscribe-requested' );
 
 				$request['/nino/http/response']['body'] = $page;
 			};
@@ -322,6 +387,108 @@ namespace Nino\Modules {
 
 			$request['/nino/http/response']['statusCode'] = 200;
 			$answer( $appData, $request );
+		}
+
+		/**
+		 *	The fills the page template renders an outcome with. The outer key
+		 *	is what the template uses, the inner one resolves per locale from
+		 *	the text files; the form is the page's one place for a button, and
+		 *	empty wherever the page has none to offer
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$result				The outcome: the name behind /feature/newsletter/result-
+		 *	@param		string		$form					What the page draws as its form, '' for none
+		 *
+		 *	@return 	void
+		 */
+		private static function _fillPage( array &$appData, string $result, string $form = '' ): void {
+
+			\Nino\Html::addFills( $appData, [
+				'[[/feature/newsletter/page/title]]'	=> '[[/feature/newsletter/result-'. $result. '/title]]',
+				'[[/feature/newsletter/page/text]]'		=> '[[/feature/newsletter/result-'. $result. '/text]]',
+				'[[/feature/newsletter/page/form]]'		=> $form,
+			], '*' );
+		}
+
+		/**
+		 *	Which link a visit or a post carries: exactly one of confirm and
+		 *	unsubscribe, as a string. Both, none or an array ('?confirm[]=x')
+		 *	is no token, which is the invalid page - an array least of all may
+		 *	reach a string cast, see _posted()
+		 *
+		 *	@param		array 		$source				The query or the post
+		 *
+		 *	@return 	array										[ 'confirm' | 'unsubscribe' | null, the token ]
+		 */
+		private static function _asked( array $source ): array {
+
+			$actions = array_values( array_filter( [ 'confirm', 'unsubscribe' ], static fn( string $action ): bool => isset( $source[$action] ) === true ) );
+
+			if( count( $actions ) !== 1 || is_string( $source[ $actions[0] ] ) === false )
+				return [ null, '' ];
+
+			return [ $actions[0], $source[ $actions[0] ] ];
+		}
+
+		/**
+		 *	What a token opens, without touching the list - the question
+		 *	_confirm() and _unsubscribe() answer by doing it: a confirm token
+		 *	belongs to an entry that is still live, an unsubscribe token to any
+		 *	entry, pending or not. A confirm token of an entry that is subscribed
+		 *	has nothing left to do: 'done'. An entry from before the double
+		 *	opt-in flow has no status, and its confirmation still records one
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$action				'confirm' or 'unsubscribe'
+		 *	@param		string		$token				Token from the visited link
+		 *
+		 *	@return 	string|null							'open' when the button has something to do, 'done' for a signup that is confirmed already, null for no token
+		 */
+		private static function _known( array &$appData, string $action, string $token ): ?string {
+
+			if( $token === '' )
+				return null;
+
+			$now 					= time();
+			$keepSeconds 	= self::_keepSeconds( $appData );
+
+			foreach( \Nino\Filesystem::getFileContent( $appData, self::PATH, [] ) as $entry )
+				if( is_array( $entry ) === true && hash_equals( (string) ( $entry['token'] ?? '' ), $token ) === true && ( $action === 'unsubscribe' || self::_live( $entry, $now, $keepSeconds ) === true ) )
+					return $action === 'confirm' && ( $entry['status'] ?? '' ) === 'subscribed' ? 'done' : 'open';
+
+			return null;
+		}
+
+		/**
+		 *	Whether an entry can still be confirmed: one that is not pending
+		 *	always, a pending one while it is within the pending days. The
+		 *	reading _prunePending() applies - a pending entry past its days, or
+		 *	with no date to count them from, is gone as far as a visitor can
+		 *	tell, it is only not yet swept
+		 *
+		 *	@param		array 		$entry				A stored entry
+		 *	@param		int				$now					Now, as a timestamp
+		 *	@param		int				$keepSeconds	How long an unconfirmed entry lives
+		 *
+		 *	@return 	bool
+		 */
+		private static function _live( array $entry, int $now, int $keepSeconds ): bool {
+
+			if( ( $entry['status'] ?? '' ) !== 'pending' )
+				return true;
+
+			$at = strtotime( (string) ( $entry['date'] ?? '' ) );
+
+			return $at !== false && $at + $keepSeconds > $now;
+		}
+
+		/**
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	int											How long an unconfirmed entry lives, in seconds
+		 */
+		private static function _keepSeconds( array &$appData ): int {
+			return max( 1, (int) ( $appData[ self::PENDING_DAYS ] ?? 7 ) ) * 86400;
 		}
 
 		/**
@@ -478,7 +645,7 @@ namespace Nino\Modules {
 				// address a visitor counts as depends on the proxy list in it
 				// (see \Nino\Http::getClientIp())
 				$ip 				= \Nino\Http::getClientIp( $appData );
-				$keepSeconds = max( 1, (int) ( $appData[ self::PENDING_DAYS ] ?? 7 ) ) * 86400;
+				$keepSeconds = self::_keepSeconds( $appData );
 
 				$written = \Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $email, $ip, $keepSeconds, &$ran, &$subscribed, &$token ): array {
 
@@ -651,7 +818,7 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Flip a pending entry to subscribed for a visited confirm link.
+		 *	Flip a pending entry to subscribed for a posted confirm token.
 		 *	Idempotent - confirming an already-subscribed token stays true,
 		 *	so a twice-clicked mail link doesn't scare the visitor with an
 		 *	error. A pending entry gets the date of the confirmation; a legacy
@@ -663,7 +830,7 @@ namespace Nino\Modules {
 		 *	so is the token of one whose date cannot be read
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$token				Token from the visited link
+		 *	@param		string		$token				Token from the link, as the post carries it
 		 *
 		 *	@return 	bool										False for an unknown/empty/expired token or a failed write
 		 */
@@ -676,7 +843,7 @@ namespace Nino\Modules {
 
 				$found = false;
 				$now = time();
-				$keepSeconds = max( 1, (int) ( $appData[ self::PENDING_DAYS ] ?? 7 ) ) * 86400;
+				$keepSeconds = self::_keepSeconds( $appData );
 
 				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $token, $now, $keepSeconds, &$found ): ?array {
 
@@ -685,14 +852,10 @@ namespace Nino\Modules {
 						if( hash_equals( (string) ( $entry['token'] ?? '' ), $token ) === false )
 							continue;
 
-						// The same reading _prunePending() applies: a pending entry past
-						// its days, or with no date to count them from, is gone as far as
-						// a visitor can tell - it is only not yet swept
-						if( ( $entry['status'] ?? '' ) === 'pending' ) {
-							$at = strtotime( (string) ( $entry['date'] ?? '' ) );
-							if( $at === false || $at + $keepSeconds <= $now )
-								continue;
-						}
+						// A pending entry past its days is gone as far as a visitor can
+						// tell - it is only not yet swept
+						if( self::_live( $entry, $now, $keepSeconds ) === false )
+							continue;
 
 						$found = true;
 
@@ -724,11 +887,11 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Remove the entry a visited unsubscribe link's token belongs to -
+		 *	Remove the entry a posted unsubscribe token belongs to -
 		 *	works for subscribed and still-pending entries alike
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$token				Token from the visited link
+		 *	@param		string		$token				Token from the link, as the post carries it
 		 *
 		 *	@return 	bool										False for an unknown/empty token or a failed write
 		 */

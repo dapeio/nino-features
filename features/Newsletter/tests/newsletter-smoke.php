@@ -45,8 +45,82 @@ function submitUnsubscribe( array &$appData, array $post ): array {
 // What it does beyond ninoVisit(): the page's own callback runs on the request, which is what the GET route's response round does
 function visitNewsletterLink( array &$appData, array $query ): array {
 	$request = ninoVisit( $appData, '/.newsletter'. ( $query === [] ? '' : '?'. http_build_query( $query ) ) );
-	\Nino\Modules\Newsletter::callbackAction( $appData, $request );
+	\Nino\Modules\Newsletter::callbackLink( $appData, $request );
 	return $request;
+}
+
+/*	What the button of the page does: the post to /.newsletter/action, its csrf
+	check first (the global callback at its place) and the route's own callback
+	after it - the round Http::response() makes. $csrf false posts without the
+	token the form carries	*/
+function performNewsletterLink( array &$appData, array $post, bool $csrf = true ): array {
+	$_POST = $post + ( $csrf === true ? [ '_csrf' => \Nino\Csrf::getToken( $appData ) ] : [] );
+	$request = ninoVisit( $appData, '/.newsletter/action', 'POST' );
+	\Nino\Csrf::callbackResponse( $appData, $request );
+	\Nino\Modules\Newsletter::callbackPerform( $appData, $request );
+	$_POST = [];
+	return $request;
+}
+
+/*	A request the way the site serves it: the route resolved, the global and the route's callbacks, then
+	the body rendered into html - the page a visitor is shown, to be read as a document. The sandbox has
+	no modules, so the two shortcodes the pages draw with and the kernel's csrf guard are put in on a copy
+	of the app data, which leaves the mails of the suite as they are (their template calls stay unrendered);
+	what the page filled in is handed back, for the checks that read the fills. Posts carry the csrf token
+	unless $csrf is false. The head of the page is the kernel's in its one line that matters here - the title and the
+	description read from the details of the response's uri - written for the length of the request, and the
+	fills of the request (the response's uri among them) are put in the way \Nino\request() does after the routing	*/
+function serveNewsletter( array &$appData, string $uri, ?array $post = null, bool $csrf = true ): array {
+	$headFile = \Nino\Filesystem::path( $appData, '/templates/html-header.tpl' );
+	file_put_contents( $headFile, '<title>[[/_nino/webpage[[/nino/http/response/uri]]/title]]</title><meta name="description" content="[[/_nino/webpage[[/nino/http/response/uri]]/description]]">' );
+	$site = $appData;
+	\Nino\Csrf::init( $site );
+	\Nino\Html::init( $site );
+	\Nino\Modules\Template::init( $site );
+	\Nino\Modules\Csrf::init( $site );
+	$_POST = $post === null ? [] : $post + ( $csrf === true ? [ '_csrf' => \Nino\Csrf::getToken( $site ) ] : [] );
+	$request = ninoVisit( $site, $uri, $post === null ? 'GET' : 'POST' );
+	\Nino\Http::response( $site, $request );
+	\Nino\Html::addFills( $site, \Nino\Html::requestFills( $request, '' ), '*' );
+	\Nino\Html::response( $site, $request );
+	$_POST = [];
+	unlink( $headFile );
+	$appData['./nino/html/fills'] = $site['./nino/html/fills'] ?? [];
+	return [ 'status' => $request['/nino/http/response']['statusCode'], 'html' => (string) $request['/nino/http/response']['body'], 'uri' => (string) $request['/nino/http/response']['uri'] ];
+}
+
+// The head of a served page: [ title, description ] as the document reads them
+function newsletterHead( string $html ): array {
+	$document = new DOMDocument();
+	libxml_use_internal_errors( true );
+	$document->loadHTML( '<?xml encoding="UTF-8">'. $html );
+	libxml_clear_errors();
+	$title = $document->getElementsByTagName( 'title' )->item( 0 );
+	$description = '';
+	foreach( $document->getElementsByTagName( 'meta' ) as $meta )
+		if( $meta->getAttribute( 'name' ) === 'description' )
+			$description = $meta->getAttribute( 'content' );
+	return [ $title === null ? null : $title->textContent, $description ];
+}
+
+// The forms of a served page, as a document: [ [ 'method', 'action', 'fields' => name => value, 'buttons' ], ... ]
+function newsletterForms( string $html ): array {
+	$document = new DOMDocument();
+	libxml_use_internal_errors( true );
+	$document->loadHTML( '<?xml encoding="UTF-8">'. $html );
+	libxml_clear_errors();
+	$forms = [];
+	foreach( $document->getElementsByTagName( 'form' ) as $form ) {
+		$entry = [ 'method' => strtolower( $form->getAttribute( 'method' ) ), 'action' => $form->getAttribute( 'action' ), 'fields' => [], 'buttons' => 0 ];
+		foreach( $form->getElementsByTagName( 'input' ) as $input )
+			if( $input->getAttribute( 'type' ) === 'hidden' )
+				$entry['fields'][ $input->getAttribute( 'name' ) ] = $input->getAttribute( 'value' );
+		foreach( $form->getElementsByTagName( 'button' ) as $button )
+			if( $button->getAttribute( 'type' ) === 'submit' )
+				$entry['buttons']++;
+		$forms[] = $entry;
+	}
+	return $forms;
 }
 
 // The workbench's entry point, which ninoCall() hands a panel action
@@ -73,7 +147,7 @@ check( 'the Features registry lists it, inactive', ( \Nino\Features::get( $appDa
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'newsletter' ) === true );
 check( 'the class is listed in /nino/modules and the version recorded', in_array( '\\Nino\\Modules\\Newsletter', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'newsletter' )['installed'] === $manifest['version'] );
-check( 'the unit copied the pages and the mail templates, the unsubscribe form and mail among them', array_filter( [ 'page-newsletter.tpl', 'page-newsletter-unsubscribe.tpl', 'mail-newsletter-confirm.tpl', 'mail-newsletter-unsubscribe.tpl', 'mail-header.tpl', 'mail-footer.tpl' ],
+check( 'the unit copied the pages and the mail templates, the unsubscribe form and mail and the form with the button among them', array_filter( [ 'page-newsletter.tpl', 'newsletter-action.tpl', 'page-newsletter-unsubscribe.tpl', 'mail-newsletter-confirm.tpl', 'mail-newsletter-unsubscribe.tpl', 'mail-header.tpl', 'mail-footer.tpl' ],
 	static fn( string $tpl ): bool => \Nino\Filesystem::fileExists( $appData, '/templates/'. $tpl ) === false ) === [] );
 check( 'the unit merged the fills for the available locales', \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/template/mail-newsletter-confirm/intro/title]]'] === 'Fast geschafft!'
 	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/newsletter/label/submit]]'] === 'Subscribe' );
@@ -89,6 +163,9 @@ check( 'init registers the GET route (confirm/unsubscribe page) under /.newslett
 check( 'init registers the unsubscribe form (GET) and its post under /.newsletter/unsubscribe', isset( $appData['/nino/http/routes']['GET://.newsletter/unsubscribe'] ) === true
 	&& isset( $appData['/nino/http/routes']['POST://.newsletter/unsubscribe'] ) === true
 	&& isset( $appData['./nino/callbacks']['/nino/http/response/POST://.newsletter/unsubscribe'] ) === true );
+check( 'init registers the second step of a link as a post under /.newsletter/action, with its own callback, and no page to get there', isset( $appData['/nino/http/routes']['POST://.newsletter/action'] ) === true
+	&& isset( $appData['./nino/callbacks']['/nino/http/response/POST://.newsletter/action'] ) === true
+	&& \Nino\Http::requestRoute( $appData, '/.newsletter/action', 'GET' ) === null );
 check( '...the form with its own template as the body, not the page the links land on', ( $appData['/nino/http/routes']['GET://.newsletter/unsubscribe']['body'] ?? '' ) === '[template /templates/page-newsletter-unsubscribe]' );
 check( 'init registers the restore merge on /nino/admin/restore', isset( $appData['./nino/callbacks']['/nino/admin/restore'] ) === true );
 
@@ -210,18 +287,95 @@ check( 'a confirm link whose token is an array answers 404, not a 500', ninoWarn
 $arrayUnsubscribeRequest = visitNewsletterLink( $appData, [ 'unsubscribe' => [ 'x' ] ] );
 check( '...and so does an unsubscribe link', ninoWarnings() === [] && $arrayUnsubscribeRequest['/nino/http/response']['statusCode'] === 404 );
 
+$arrayPerformRequest = performNewsletterLink( $appData, [ 'confirm' => [ 'x' ] ] );
+check( '...and the post of the button, for either field', ninoWarnings() === [] && $arrayPerformRequest['/nino/http/response']['statusCode'] === 404
+	&& performNewsletterLink( $appData, [ 'unsubscribe' => [ 'x' ] ] )['/nino/http/response']['statusCode'] === 404 && ninoWarnings() === [] );
+
 $wrongTokenRequest = visitNewsletterLink( $appData, [ 'confirm' => 'not-the-token' ] );
 check( 'a confirm link with an unknown token answers 404', $wrongTokenRequest['/nino/http/response']['statusCode'] === 404 );
 check( 'and leaves the entry pending', \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
-check( 'and prepares the "invalid" page fills', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-invalid/title]]' );
+check( 'and prepares the "invalid" page fills, with no form on it', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-invalid/title]]'
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/form]]'] ?? 'unset' ) === '' );
 
-$confirmRequest = visitNewsletterLink( $appData, [ 'confirm' => $pendingToken ] );
-check( 'a confirm link with the mailed token answers 200', $confirmRequest['/nino/http/response']['statusCode'] === 200 );
+/*	The link is the first step and it changes nothing. A mail scanner opens every link of a mail
+	ahead of the reader - a GET that confirmed or removed made it the one who decides. What the visit
+	answers instead is a page with a form: it posts to /.newsletter/action, carries the csrf token
+	and the token of the link in hidden fields and has the button that is the second step	*/
+$linkPage = serveNewsletter( $appData, '/.newsletter?confirm='. $pendingToken );
+$linkForms = newsletterForms( $linkPage['html'] );
+check( 'a confirm link with the mailed token answers 200 and shows a page with a form: a post to /.newsletter/action, one submit button', $linkPage['status'] === 200
+	&& count( $linkForms ) === 1 && $linkForms[0]['method'] === 'post' && str_ends_with( $linkForms[0]['action'], '/.newsletter/action' ) === true && $linkForms[0]['buttons'] === 1 );
+check( '...the token of the link in a hidden field named confirm, and the csrf token in _csrf - nothing else is posted', $linkForms[0]['fields'] === [ '_csrf' => \Nino\Csrf::getToken( $appData ), 'confirm' => $pendingToken ] );
+check( '...and the visit confirmed nothing: the entry is still pending', \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+check( '...the page asks for the click: the "pending confirm" title and text, not the outcome', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-pending-confirm/title]]'
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/text]]'] ?? '' ) === '[[/feature/newsletter/result-pending-confirm/text]]'
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/action/button]]'] ?? '' ) === '[[/feature/newsletter/action/confirm]]' );
+check( '...the same page for the visit that scanners make, as often as they make it', serveNewsletter( $appData, '/.newsletter?confirm='. $pendingToken )['status'] === 200
+	&& \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+
+$withoutToken = performNewsletterLink( $appData, [ 'confirm' => $pendingToken ], false );
+check( 'the post without the csrf token does nothing (403)', $withoutToken['/nino/http/response']['statusCode'] === 403 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+$wrongCsrf = performNewsletterLink( $appData, [ 'confirm' => $pendingToken, '_csrf' => 'wrong-token' ], false );
+check( '...nor with a wrong one', $wrongCsrf['/nino/http/response']['statusCode'] === 403 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+
+/*	The kernel's guard answers a post without its token 403 with the body false, which is json: a
+	visitor whose session cookie is gone saw a bare "false". The status stays, the body is the page -
+	Http only encodes a body that is no string, whatever the status is - and the page says what is true:
+	this one has expired, and the link of the mail opens it again	*/
+$expiredPage = serveNewsletter( $appData, '/.newsletter/action', [ 'confirm' => $pendingToken ], false );
+check( 'a post without the csrf token keeps its 403 and answers with a page, not the bare false - the page that says it has expired, with no form', $expiredPage['status'] === 403 && $expiredPage['html'] !== ''
+	&& newsletterForms( $expiredPage['html'] ) === [] && ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-expired/title]]'
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/text]]'] ?? '' ) === '[[/feature/newsletter/result-expired/text]]' );
+check( '...and changes nothing: the entry is still pending', \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+$expiredWrong = serveNewsletter( $appData, '/.newsletter/action', [ 'unsubscribe' => $pendingToken, '_csrf' => 'wrong-token' ], false );
+check( '...the same for a wrong token, and for the unsubscribe field: the page, 403, the entry still on the list', $expiredWrong['status'] === 403 && $expiredWrong['html'] !== '' && newsletterForms( $expiredWrong['html'] ) === []
+	&& count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1 );
+
+$unknownPost = performNewsletterLink( $appData, [ 'confirm' => 'not-the-token' ] );
+check( 'a post with an unknown token answers 404 and leaves the entry pending', $unknownPost['/nino/http/response']['statusCode'] === 404 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending'
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-invalid/title]]' );
+check( 'a post with both fields is the invalid page - the entry stays pending and stays listed', performNewsletterLink( $appData, [ 'confirm' => $pendingToken, 'unsubscribe' => $pendingToken ] )['/nino/http/response']['statusCode'] === 404
+	&& \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+check( '...and so is one with neither', performNewsletterLink( $appData, [] )['/nino/http/response']['statusCode'] === 404 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+check( '...and a visit with both of them in the query', visitNewsletterLink( $appData, [ 'confirm' => $pendingToken, 'unsubscribe' => $pendingToken ] )['/nino/http/response']['statusCode'] === 404 );
+check( 'a GET of /.newsletter/action is the site\'s 404: there is no page there', serveNewsletter( $appData, '/.newsletter/action?confirm='. $pendingToken )['status'] === 404 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
+
+$confirmPage = serveNewsletter( $appData, '/.newsletter/action', [ 'confirm' => $pendingToken ] );
+check( 'the post of the button with the mailed token answers 200', $confirmPage['status'] === 200 );
 check( 'and flips the entry to subscribed', \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'subscribed' );
-check( 'and prepares the "confirmed" page fills', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-confirmed/title]]' );
+check( 'and prepares the "confirmed" page fills, with no form left on it', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-confirmed/title]]'
+	&& newsletterForms( $confirmPage['html'] ) === [] );
 
-$reconfirmRequest = visitNewsletterLink( $appData, [ 'confirm' => $pendingToken ] );
+/*	The head of the page reads the title and the description of the response's uri - the page template
+	starts with the frame that does. The route of the post has no details of a page of its own, and the
+	answer is a page of /.newsletter, so the response says that uri and the head has the words of that page
+	in every answer, not the key as it stands	*/
+$detailWords = static function( string $detail ) use ( $appData ): array {
+	return array_map( static fn( string $textLocale ): string => (string) ( \Nino\Filesystem::getFileContent( $appData, '/text/'. $textLocale. '.php', [] )['[[/_nino/webpage/.newsletter/'. $detail. ']]'] ?? '' ), [ 'en_US', 'de_DE' ] );
+};
+$answers = [ 'the outcome' => $confirmPage, 'the invalid page' => serveNewsletter( $appData, '/.newsletter/action', [ 'confirm' => 'not-the-token' ] ), 'the expired page' => $expiredPage ];
+foreach( $answers as $answerName => $answer ) {
+	[ $headTitle, $headDescription ] = newsletterHead( $answer['html'] );
+	check( "$answerName of the post is a page of /.newsletter: that response uri, and the title and the description of its head are the words of that page", $answer['uri'] === '/.newsletter'
+		&& in_array( $headTitle, $detailWords( 'title' ), true ) === true && in_array( $headDescription, $detailWords( 'description' ), true ) === true );
+}
+
+$reconfirmRequest = performNewsletterLink( $appData, [ 'confirm' => $pendingToken ] );
 check( 'confirming twice stays a friendly 200, not an error', $reconfirmRequest['/nino/http/response']['statusCode'] === 200 );
+
+/*	A confirm token is not consumed - the entry keeps it, and the mail of a signup that is made again
+	carries it - so the link opened a second time still answers. What it shows is the page of the
+	confirmation, with no button: there is nothing left to press, and the visit changes nothing	*/
+$secondVisit = serveNewsletter( $appData, '/.newsletter?confirm='. $pendingToken );
+check( 'the link opened again after the confirmation answers 200 with the page of the confirmation and no button', $secondVisit['status'] === 200 && newsletterForms( $secondVisit['html'] ) === []
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-confirmed/title]]'
+	&& \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'subscribed' );
+$listWithJo = \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] );
+\Nino\Filesystem::putFileContent( $appData, $subscribersPath, [ [ 'email' => 'old@example.com', 'token' => 'old0token', 'date' => '2025-05-06 07:08:09' ] ] );
+$legacyVisit = serveNewsletter( $appData, '/.newsletter?confirm=old0token' );
+check( '...an entry from before the double opt-in flow - a token and no status - is not confirmed yet: it gets the button, and the visit gives it no status', $legacyVisit['status'] === 200 && count( newsletterForms( $legacyVisit['html'] ) ) === 1
+	&& isset( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] ) === false );
+\Nino\Filesystem::putFileContent( $appData, $subscribersPath, $listWithJo );
 
 $freshMailWindow( $appData );
 $mails = [];
@@ -243,11 +397,31 @@ check( 'getUnsubscribeLink returns false for an unknown email', \Nino\Modules\Ne
 
 $badUnsubscribeRequest = visitNewsletterLink( $appData, [ 'unsubscribe' => 'not-the-token' ] );
 check( 'an unsubscribe link with an unknown token answers 404 and removes nothing', $badUnsubscribeRequest['/nino/http/response']['statusCode'] === 404 && count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1 );
+check( '...and so does the post of the button', performNewsletterLink( $appData, [ 'unsubscribe' => 'not-the-token' ] )['/nino/http/response']['statusCode'] === 404 && count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1 );
 
-$unsubscribeRequest = visitNewsletterLink( $appData, [ 'unsubscribe' => $pendingToken ] );
-check( 'an unsubscribe link with the subscriber\'s token answers 200', $unsubscribeRequest['/nino/http/response']['statusCode'] === 200 );
+$unsubscribeLinkPage = serveNewsletter( $appData, '/.newsletter?unsubscribe='. $pendingToken );
+$unsubscribeForms = newsletterForms( $unsubscribeLinkPage['html'] );
+check( 'an unsubscribe link with the subscriber\'s token answers 200 and shows a page with a form posting it to /.newsletter/action, in a hidden field named unsubscribe', $unsubscribeLinkPage['status'] === 200
+	&& count( $unsubscribeForms ) === 1 && $unsubscribeForms[0]['method'] === 'post' && str_ends_with( $unsubscribeForms[0]['action'], '/.newsletter/action' ) === true && $unsubscribeForms[0]['buttons'] === 1
+	&& $unsubscribeForms[0]['fields'] === [ '_csrf' => \Nino\Csrf::getToken( $appData ), 'unsubscribe' => $pendingToken ] );
+check( '...with the "pending unsubscribe" words and the unsubscribe button', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-pending-unsubscribe/title]]'
+	&& ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/action/button]]'] ?? '' ) === '[[/feature/newsletter/action/unsubscribe]]' );
+check( '...and the visit removed nothing: the entry is on the list, no removal is recorded', count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1
+	&& \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ) === [] );
+
+$unsubscribeWithoutCsrf = performNewsletterLink( $appData, [ 'unsubscribe' => $pendingToken ], false );
+check( 'the post without the csrf token removes nothing (403)', $unsubscribeWithoutCsrf['/nino/http/response']['statusCode'] === 403 && count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1
+	&& \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ) === [] );
+
+$unsubscribePage = serveNewsletter( $appData, '/.newsletter/action', [ 'unsubscribe' => $pendingToken ] );
+check( 'the post of the button with the subscriber\'s token answers 200', $unsubscribePage['status'] === 200 );
 check( 'and removes the entry from the list', count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 0 );
-check( 'and prepares the "unsubscribed" page fills', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-unsubscribed/title]]' );
+check( 'and prepares the "unsubscribed" page fills, with no form left on it', ( $appData['./nino/html/fills']['*']['[[/feature/newsletter/page/title]]'] ?? '' ) === '[[/feature/newsletter/result-unsubscribed/title]]'
+	&& newsletterForms( $unsubscribePage['html'] ) === [] );
+
+// An unsubscribe token goes with its entry: the link opened a second time is a link like any unknown one
+$secondUnsubscribeVisit = serveNewsletter( $appData, '/.newsletter?unsubscribe='. $pendingToken );
+check( 'the link opened again after the unsubscribe is the invalid page (404), without a form', $secondUnsubscribeVisit['status'] === 404 && newsletterForms( $secondUnsubscribeVisit['html'] ) === [] );
 
 // callbackRestore() relies on this record surviving every unsubscribe - see
 // the restore section below. A sha256 of the address, not the address itself
@@ -352,7 +526,7 @@ $memberNow = array_values( array_filter( $readList( $appData ), static fn( array
 check( 'a subscribed address that signs up again is mailed the confirm link with the token it already has',
 	$sentLink( 'confirm' ) === $siteUrl. '/.newsletter?confirm='. rawurlencode( $memberToken ) && count( $mails ) === 1 );
 check( '...and stays what it was: one entry, subscribed, the same token and date', count( $memberNow ) === 1 && $memberNow[0] === $memberEntry );
-check( '...and visiting that link changes nothing', visitNewsletterLink( $appData, [ 'confirm' => $memberToken ] )['/nino/http/response']['statusCode'] === 200
+check( '...and pressing the button of that link changes nothing', performNewsletterLink( $appData, [ 'confirm' => $memberToken ] )['/nino/http/response']['statusCode'] === 200
 	&& array_values( array_filter( $readList( $appData ), static fn( array $e ): bool => $e['email'] === 'member@example.com' ) ) === [ $memberEntry ] );
 check( '...and a removal recorded for the address is not cleared by it', in_array( $memberHash, \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === true );
 \Nino\Filesystem::putFileContent( $appData, '/data/newsletter-removed.php', [] );
@@ -369,13 +543,13 @@ check( '...its status and date left as they were - it is still subscribed', arra
 
 // Confirming that token is the first confirmation the entry has: the status is
 // recorded, and the date is still the day it signed up on, not the day it clicked
-$legacyConfirm = visitNewsletterLink( $appData, [ 'confirm' => (string) $legacyNow[0]['token'] ] );
+$legacyConfirm = performNewsletterLink( $appData, [ 'confirm' => (string) $legacyNow[0]['token'] ] );
 $legacyConfirmed = $readList( $appData );
 check( 'confirming a legacy entry\'s token records it as subscribed', $legacyConfirm['/nino/http/response']['statusCode'] === 200 && ( $legacyConfirmed[0]['status'] ?? '' ) === 'subscribed' );
 check( '...and keeps the date it signed up on', ( $legacyConfirmed[0]['date'] ?? '' ) === $legacyDate && $legacyConfirmed[0]['token'] === $legacyNow[0]['token'] );
 $pendingDate = date( 'Y-m-d H:i:s', time() - 3 * 86400 );
 $writeList( $appData, [ [ 'email' => 'waiting@example.com', 'token' => 'f00dfeed', 'status' => 'pending', 'date' => $pendingDate, 'ip' => '127.0.0.1' ] ] );
-visitNewsletterLink( $appData, [ 'confirm' => 'f00dfeed' ] );
+performNewsletterLink( $appData, [ 'confirm' => 'f00dfeed' ] );
 check( '...while a pending entry gets the date of its confirmation', ( $readList( $appData )[0]['date'] ?? $pendingDate ) !== $pendingDate && ( $readList( $appData )[0]['status'] ?? '' ) === 'subscribed' );
 $writeList( $appData, [ [ 'email' => 'legacy@example.com', 'date' => $legacyDate ] ] );
 $answer( $appData, 'legacy@example.com' );
@@ -521,8 +695,8 @@ $before = $readList( $appData );
 unset( $_POST['_csrf'] );
 check( 'a csrf-blocked post is refused (403), sends nothing and writes nothing', $blockedAsk['/nino/http/response']['statusCode'] === 403 && $mails === [] && $readList( $appData ) === $before );
 
-// Only the link takes anybody off the list
-check( 'visiting the link the mail carried removes the entry and records the removal', visitNewsletterLink( $appData, [ 'unsubscribe' => $knownToken ] )['/nino/http/response']['statusCode'] === 200
+// Only the button of the link takes anybody off the list
+check( 'pressing the button of the link the mail carried removes the entry and records the removal', performNewsletterLink( $appData, [ 'unsubscribe' => $knownToken ] )['/nino/http/response']['statusCode'] === 200
 	&& in_array( 'member@example.com', array_column( $readList( $appData ), 'email' ), true ) === false
 	&& in_array( hash( 'sha256', 'member@example.com' ), \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === true );
 
@@ -633,7 +807,7 @@ check( 'with both signups unconfirmed the count and the Dashboard tile say 0', \
 check( '...and every row of the list says it is pending', array_column( $body['entries'], 'status' ) === [ 'pending', 'pending' ] && $body['counts'] === [ 'subscribed' => 0, 'pending' => 2 ] );
 
 $annaToken = array_column( \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ), 'token', 'email' )['anna@example.com'];
-visitNewsletterLink( $appData, [ 'confirm' => $annaToken ] );
+performNewsletterLink( $appData, [ 'confirm' => $annaToken ] );
 check( 'a confirmed signup is counted, and the tile with it', \Nino\Modules\Newsletter\Admin::count( $appData ) === 1
 	&& \Nino\Modules\Newsletter\Admin::summary( $appData )['value'] === 1 );
 
@@ -825,32 +999,47 @@ echo "Modules\\Newsletter - a pending signup past its days is not confirmed\n";
 /*	The privacy section promises that an unconfirmed signup expires after the
 	pending days; the sweep only runs when somebody signs up, so until then the
 	entry is still on the list - and its link must not work. The token is as
-	unknown as one never issued (404, the same page), the entry is left for the
-	next sweep, and a signup inside the window is confirmed as ever	*/
+	unknown as one never issued (404, the same page - and no button on it, for
+	a link that opens the page is a link the button would be refused for), the
+	entry is left for the next sweep, and a signup inside the window is
+	confirmed as ever	*/
 $staleAt = date( 'Y-m-d H:i:s', time() - 8 * 86400 );
 $writeList( $appData, [
 	[ 'email' => 'stale@example.com', 'token' => 'stale0token', 'status' => 'pending', 'date' => $staleAt, 'ip' => '127.0.0.1' ],
 	[ 'email' => 'recent@example.com', 'token' => 'recent0token', 'status' => 'pending', 'date' => date( 'Y-m-d H:i:s', time() - 6 * 86400 ), 'ip' => '127.0.0.1' ],
 	[ 'email' => 'undated@example.com', 'token' => 'undated0token', 'status' => 'pending', 'ip' => '127.0.0.1' ],
 ] );
-$staleVisit = visitNewsletterLink( $appData, [ 'confirm' => 'stale0token' ] );
-check( 'the link of a pending signup eight days old answers 404, as an unknown token does', $staleVisit['/nino/http/response']['statusCode'] === 404
-	&& $staleVisit['/nino/http/response']['statusCode'] === visitNewsletterLink( $appData, [ 'confirm' => 'never0issued' ] )['/nino/http/response']['statusCode'] );
+$staleVisit = serveNewsletter( $appData, '/.newsletter?confirm=stale0token' );
+check( 'the link of a pending signup eight days old answers 404, as an unknown token does, with no button on the page', $staleVisit['status'] === 404 && newsletterForms( $staleVisit['html'] ) === []
+	&& $staleVisit['status'] === serveNewsletter( $appData, '/.newsletter?confirm=never0issued' )['status'] );
+check( '...and so does the post of the button, if one is made', performNewsletterLink( $appData, [ 'confirm' => 'stale0token' ] )['/nino/http/response']['statusCode'] === 404 );
 check( '...the entry is not confirmed, and it stays until the next sweep', $readList( $appData )[0] === [ 'email' => 'stale@example.com', 'token' => 'stale0token', 'status' => 'pending', 'date' => $staleAt, 'ip' => '127.0.0.1' ] );
-$recentVisit = visitNewsletterLink( $appData, [ 'confirm' => 'recent0token' ] );
-check( 'the link of one six days old is confirmed (200)', $recentVisit['/nino/http/response']['statusCode'] === 200 && ( $readList( $appData )[1]['status'] ?? '' ) === 'subscribed' );
-check( 'one with no date to count from is not confirmed either - the sweep drops it too', visitNewsletterLink( $appData, [ 'confirm' => 'undated0token' ] )['/nino/http/response']['statusCode'] === 404
+$recentVisit = serveNewsletter( $appData, '/.newsletter?confirm=recent0token' );
+check( 'the link of one six days old shows the button (200) and confirms nothing yet', $recentVisit['status'] === 200 && count( newsletterForms( $recentVisit['html'] ) ) === 1 && ( $readList( $appData )[1]['status'] ?? '' ) === 'pending' );
+$recentPost = performNewsletterLink( $appData, [ 'confirm' => 'recent0token' ] );
+check( '...its button confirms it (200)', $recentPost['/nino/http/response']['statusCode'] === 200 && ( $readList( $appData )[1]['status'] ?? '' ) === 'subscribed' );
+$undatedVisit = serveNewsletter( $appData, '/.newsletter?confirm=undated0token' );
+check( 'one with no date to count from is not confirmed either - the sweep drops it too: no page with a button, no confirmation', $undatedVisit['status'] === 404 && newsletterForms( $undatedVisit['html'] ) === []
+	&& performNewsletterLink( $appData, [ 'confirm' => 'undated0token' ] )['/nino/http/response']['statusCode'] === 404
 	&& ( $readList( $appData )[2]['status'] ?? '' ) === 'pending' );
 
 // The days are a project's to set, here as well as in the sweep
 $appData[ \Nino\Modules\Newsletter::PENDING_DAYS ] = 30;
-check( 'a longer window confirms what the default would have refused', visitNewsletterLink( $appData, [ 'confirm' => 'stale0token' ] )['/nino/http/response']['statusCode'] === 200
+check( 'a longer window shows the button for what the default would have refused, and confirms it', serveNewsletter( $appData, '/.newsletter?confirm=stale0token' )['status'] === 200
+	&& performNewsletterLink( $appData, [ 'confirm' => 'stale0token' ] )['/nino/http/response']['statusCode'] === 200
 	&& ( $readList( $appData )[0]['status'] ?? '' ) === 'subscribed' );
 unset( $appData[ \Nino\Modules\Newsletter::PENDING_DAYS ] );
 
 // An entry that is subscribed is confirmed as many times as the link is clicked, however old
 $writeList( $appData, [ $entryAt( 'old-member@example.com', 'subscribed', date( 'Y-m-d H:i:s', time() - 400 * 86400 ) ) ] );
-check( 'the link of a subscriber stays good, however old the entry', visitNewsletterLink( $appData, [ 'confirm' => (string) $readList( $appData )[0]['token'] ] )['/nino/http/response']['statusCode'] === 200 );
+check( 'the link of a subscriber stays good, however old the entry', visitNewsletterLink( $appData, [ 'confirm' => (string) $readList( $appData )[0]['token'] ] )['/nino/http/response']['statusCode'] === 200
+	&& performNewsletterLink( $appData, [ 'confirm' => (string) $readList( $appData )[0]['token'] ] )['/nino/http/response']['statusCode'] === 200 );
+
+// An unsubscribe link is read as _unsubscribe() reads it - an entry whose signup ran out of days and has not been swept yet
+// still has its link, so the page that is shown is one whose button works
+$writeList( $appData, [ [ 'email' => 'lapsed@example.com', 'token' => 'lapsed0token', 'status' => 'pending', 'date' => $staleAt, 'ip' => '127.0.0.1' ] ] );
+check( 'the unsubscribe link of an unswept expired signup shows its button, and the button removes it', serveNewsletter( $appData, '/.newsletter?unsubscribe=lapsed0token' )['status'] === 200
+	&& performNewsletterLink( $appData, [ 'unsubscribe' => 'lapsed0token' ] )['/nino/http/response']['statusCode'] === 200 && $readList( $appData ) === [] );
 
 echo "\n";
 
@@ -892,6 +1081,73 @@ check( '...and to / where the site stands at the root', str_contains( $homeButto
 // The refusal says which mail it was, and that the address is kept
 check( 'the sentence of a refused signup names the mail, in both languages', ( $projectText['en_US']['[[/feature/newsletter/info/error]]'] ?? '' ) === 'The mail could not be sent just now. Please try again later.'
 	&& ( $projectText['de_DE']['[[/feature/newsletter/info/error]]'] ?? '' ) === 'Die Mail konnte gerade nicht versendet werden. Bitte versuche es später noch einmal.' );
+
+echo "\n";
+
+
+// --- The page a link opens, and the words that lead to its button --------------
+
+echo "Modules\\Newsletter - the page a link opens: its form under the site's directory, the token written safely, the words of the mails\n";
+
+// The site stands below a directory: the form posts to the action under it, like every other link of the feature
+$appData['/nino/dir'] = '/sub';
+\Nino\Html::addFills( $appData, \Nino\Html::bootFills( $appData ), '*' );
+$writeList( $appData, [ [ 'email' => 'below@example.com', 'token' => 'below0token', 'status' => 'pending', 'date' => date( 'Y-m-d H:i:s' ), 'ip' => '127.0.0.1' ] ] );
+$belowForms = newsletterForms( serveNewsletter( $appData, '/.newsletter?confirm=below0token' )['html'] );
+check( 'the form of the page posts to /.newsletter/action below the website\'s directory', count( $belowForms ) === 1 && $belowForms[0]['action'] === '/sub/.newsletter/action' );
+$appData['/nino/dir'] = '';
+\Nino\Html::addFills( $appData, \Nino\Html::bootFills( $appData ), '*' );
+$rootForms = newsletterForms( serveNewsletter( $appData, '/.newsletter?confirm=below0token' )['html'] );
+check( '...and to /.newsletter/action where the site stands at the root', count( $rootForms ) === 1 && $rootForms[0]['action'] === '/.newsletter/action' );
+
+/*	The token is written into an attribute, and a fill is read for fills and shortcodes once more: a token
+	that is not the hex string the class makes (a hand-edited list, an import) must come out exactly as it
+	is stored, as a value and as nothing else. A "] and a [csrf] in it would end the attribute and draw a field	*/
+$oddToken = 'odd"><input name="x"> [csrf] [[/feature/newsletter/page/title]]';
+$writeList( $appData, [ [ 'email' => 'odd@example.com', 'token' => $oddToken, 'status' => 'pending', 'date' => date( 'Y-m-d H:i:s' ), 'ip' => '127.0.0.1' ] ] );
+$oddPage = serveNewsletter( $appData, '/.newsletter?confirm='. rawurlencode( $oddToken ) );
+$oddForms = newsletterForms( $oddPage['html'] );
+check( 'a token with markup, a shortcode and a fill in it is written into the hidden field exactly as stored, and draws nothing else', $oddPage['status'] === 200
+	&& count( $oddForms ) === 1 && ( $oddForms[0]['fields']['confirm'] ?? null ) === $oddToken && array_keys( $oddForms[0]['fields'] ) === [ '_csrf', 'confirm' ] && $oddForms[0]['buttons'] === 1 );
+
+// The answer to an address that asked for its link shares the page, and has no button on it
+$writeList( $appData, [ $entryAt( 'member@example.com', 'subscribed', '2026-01-02 03:04:05' ) ] );
+$freshMailWindow( $appData );
+$asked = serveNewsletter( $appData, '/.newsletter/unsubscribe', [ 'email' => 'member@example.com', 'location' => '' ] );
+check( 'the page that says a link is on its way has no form and no placeholder of one', $asked['status'] === 200 && newsletterForms( $asked['html'] ) === [] && str_contains( $asked['html'], '/feature/newsletter/page/form' ) === false );
+$writeList( $appData, [] );
+
+// What the mails say about the button: the sentence exists in both languages in the unit, the mail reads it, and it names the button the page draws
+$mailWords = [];
+foreach( [ 'en_US', 'de_DE' ] as $textLocale )
+	$mailWords[$textLocale] = \Nino\Filesystem::getFileContent( $appData, '/text/'. $textLocale. '.php', [] );
+foreach( [ 'confirm', 'unsubscribe' ] as $kind ) {
+	$step = '[[/template/mail-newsletter-'. $kind. '/action/step]]';
+	$mailTemplate = (string) \Nino\Filesystem::getFileContent( $appData, '/templates/mail-newsletter-'. $kind. '.tpl', '' );
+	check( "the $kind mail reads the sentence that names the button of the page", str_contains( $mailTemplate, $step ) === true );
+	foreach( [ 'en_US', 'de_DE' ] as $textLocale )
+		check( "...which both languages carry, and which refers to the button the page draws ($kind, $textLocale)", trim( (string) ( $mailWords[$textLocale][$step] ?? '' ) ) !== ''
+			&& str_contains( (string) $mailWords[$textLocale][$step], '[[/feature/newsletter/action/'. $kind. ']]' ) === true );
+}
+
+// The words of the page itself, in both languages: the button of each kind, and the title and text of each question
+$pageWords = [];
+foreach( [ 'confirm', 'unsubscribe' ] as $kind )
+	foreach( [ '/feature/newsletter/action/'. $kind, '/feature/newsletter/result-pending-'. $kind. '/title', '/feature/newsletter/result-pending-'. $kind. '/text' ] as $wordKey )
+		$pageWords[] = '[['. $wordKey. ']]';
+foreach( [ 'title', 'text' ] as $part )
+	$pageWords[] = '[[/feature/newsletter/result-expired/'. $part. ']]';
+$missingWords = [];
+foreach( $mailWords as $textLocale => $words )
+	foreach( $pageWords as $wordKey )
+		if( trim( (string) ( $words[$wordKey] ?? '' ) ) === '' )
+			$missingWords[] = $textLocale. ' '. $wordKey;
+check( 'the page of an opened link has its button and its title and text in both languages, for confirming and for unsubscribing, and the page that has expired has its title and text'. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', $missingWords ) ), $missingWords === [] );
+check( '...in each language their own words: none is the key as it stands, none the same in both', array_filter( $pageWords, static fn( string $wordKey ): bool => ( $mailWords['de_DE'][$wordKey] ?? '' ) === ( $mailWords['en_US'][$wordKey] ?? '' )
+	|| str_starts_with( (string) ( $mailWords['de_DE'][$wordKey] ?? '' ), '[[/' ) === true || str_starts_with( (string) ( $mailWords['en_US'][$wordKey] ?? '' ), '[[/' ) === true ) === [] );
+check( '...and the unit blacklists what the class fills in for the form, so the Text panel does not list them as gaps', array_diff(
+	[ '/feature/newsletter/page/form', '/feature/newsletter/action/field', '/feature/newsletter/action/token', '/feature/newsletter/action/button' ],
+	(array) ( \Nino\Features::readUnitManifest( dirname( __DIR__ ). '/install' )['blacklist'] ?? [] ) ) === [] );
 
 echo "\n";
 

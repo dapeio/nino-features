@@ -89,7 +89,10 @@ const KEYS_WORKBENCH = '#^/_admin/elements/field/[a-z0-9-]+/[a-z0-9-]+$#';
 // /_nino/webpage<uri>/<name|title|description> keys of an Element-URI the feature chooses and keeps for
 // itself, as the unit of Nino's Legal module brings those of its two pages. Posts routes the list page of
 // its default section at /blog, whose title is the key as it stands until a project has written one;
-// Newsletter routes /.newsletter and /.newsletter/unsubscribe, the two pages its own links and form land on.
+// Newsletter routes /.newsletter and /.newsletter/unsubscribe, the two pages its own links and form land on;
+// its third route, POST /.newsletter/action, is the second step of a link and has no page of a GET to name -
+// a GET there is the site's 404 - and what it answers with is a page of /.newsletter, whose details the head
+// reads (the response's uri is set to it), so it brings none of its own, and the pattern below would not take them.
 // By the key of the feature, and an entry that no unit uses fails the suite, so the list cannot outlive
 // what it was for. A unit never brings these for a page of the library, whose Element-URI is the project's
 const KEYS_PAGE_DETAILS = [

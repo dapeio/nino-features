@@ -22,13 +22,13 @@ return [
 	'de_DE' => [
 		'newsletter' => [
 			'title' => 'Newsletter',
-			'text' 	=> '<p>Für den Newsletter brauchen wir nur Deine E-Mail-Adresse. Nach der Anmeldung schicken wir Dir eine E-Mail mit einem Bestätigungslink; eingetragen bist Du erst, wenn Du ihn aufrufst (Double-Opt-in). Bestätigst Du nicht, verfällt die Anmeldung nach sieben Tagen und wird gelöscht, sobald sich das nächste Mal jemand anmeldet.</p><p>Als Nachweis Deiner Einwilligung speichern wir den Zeitpunkt Deiner Bestätigung und die IP-Adresse, von der aus Du Dich angemeldet hast. Rechtsgrundlage ist Deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).</p><p>Abmelden kannst Du Dich jederzeit über den Link in jeder Ausgabe. Danach löschen wir Deine Adresse und behalten nur einen Hashwert davon, damit eine ältere Datensicherung sie nicht wieder in die Liste bringt.</p>',
+			'text' 	=> '<p>Für den Newsletter brauchen wir nur Deine E-Mail-Adresse. Nach der Anmeldung schicken wir Dir eine E-Mail mit einem Bestätigungslink; eingetragen bist Du erst, wenn Du ihn aufrufst und die Anmeldung auf der Seite, die sich öffnet, mit einem Klick bestätigst (Double-Opt-in). Bestätigst Du nicht, verfällt die Anmeldung nach sieben Tagen und wird gelöscht, sobald sich das nächste Mal jemand anmeldet.</p><p>Als Nachweis Deiner Einwilligung speichern wir den Zeitpunkt Deiner Bestätigung und die IP-Adresse, von der aus Du Dich angemeldet hast. Rechtsgrundlage ist Deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).</p><p>Abmelden kannst Du Dich jederzeit über den Link in jeder Ausgabe. Danach löschen wir Deine Adresse und behalten nur einen Hashwert davon, damit eine ältere Datensicherung sie nicht wieder in die Liste bringt.</p>',
 		],
 	],
 	'en_US' => [
 		'newsletter' => [
 			'title' => 'Newsletter',
-			'text' 	=> '<p>For the newsletter we only need your email address. After you sign up, we send you an email with a confirmation link; you are only subscribed once you open it (double opt-in). If you do not confirm, the sign-up expires after seven days and is deleted the next time someone signs up.</p><p>As proof of your consent we store the time of your confirmation and the IP address you signed up from. The legal basis is your consent (Art. 6(1)(a) GDPR).</p><p>You can unsubscribe at any time using the link in every issue. We then delete your address and keep only a hash of it, so that an older backup cannot put it back on the list.</p>',
+			'text' 	=> '<p>For the newsletter we only need your email address. After you sign up, we send you an email with a confirmation link; you are only subscribed once you open it and confirm your signup with a click on the page that opens (double opt-in). If you do not confirm, the sign-up expires after seven days and is deleted the next time someone signs up.</p><p>As proof of your consent we store the time of your confirmation and the IP address you signed up from. The legal basis is your consent (Art. 6(1)(a) GDPR).</p><p>You can unsubscribe at any time using the link in every issue. We then delete your address and keep only a hash of it, so that an older backup cannot put it back on the list.</p>',
 		],
 	],
 ];
