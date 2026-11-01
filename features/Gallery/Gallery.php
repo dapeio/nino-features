@@ -83,6 +83,11 @@ namespace Nino\Modules {
 		// picture, not an essay
 		public const int MAX_CAPTION = 300;
 
+		// The lightbox groups this request has drawn, as group => true. A key of the request
+		// alone ('./'): it is not stored, and a new request starts with none (see
+		// callbackRequest())
+		public const string GROUPS = './gallery/groups';
+
 		// What an album carries in 'settings', in the order the panel draws it: the
 		// settings of the feature, which a new album starts with
 		public const array SETTINGS = [ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'keepRatio', 'columns' ];
@@ -112,6 +117,8 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/request', [ self::class, 'callbackRequest' ] );
+
 			/*	[gallery] is a component of the manifest, and the Components module
 				has registered it from there before this runs: a plain shortcode
 				here would take it back from the wrapper that fills in the defaults,
@@ -122,6 +129,51 @@ namespace Nino\Modules {
 				[gallery] of its own since	*/
 			if( \Nino\Feature::shortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] ) === false && self::_registeredFromManifest( $appData ) === true )
 				self::_offerAlbums( $appData, \Nino\Modules\Components::components( $appData )['gallery'] ?? [] );
+		}
+
+		/**
+		 *	A new request: the groups the last one drew are forgotten, so that the
+		 *	first gallery of an album is 'gallery-<album>' again (see group()).
+		 *	A request is one process where a site is served, and then there is
+		 *	nothing to forget; a run that serves several from one $appData - a
+		 *	test is one - would carry the count of the first into the second
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request that has just come in
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackRequest( array &$appData, array &$request ): void {
+			unset( $appData[self::GROUPS] );
+		}
+
+		/**
+		 *	The lightbox group of one gallery on the page: 'gallery-<album>' for the
+		 *	first of an album in this request and 'gallery-<album>-2', '-3'... for
+		 *	each of the same album after it. The Lightbox feature makes a set of
+		 *	every link that carries the same group, so a group that two galleries
+		 *	share is one set of both - 'picture 1 / 36' where each holds 18 - and
+		 *	the same album twice on a page is two galleries, each a set of its own.
+		 *	A suffix is taken only when the group is already drawn: an album whose
+		 *	key is 'trip-2' draws 'gallery-trip-2' itself, and the second 'trip'
+		 *	before or after it moves on to '-3' rather than join its set
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of the album drawn
+		 *
+		 *	@return 	string											Not yet escaped
+		 */
+		public static function group( array &$appData, string $key ): string {
+
+			$group	= 'gallery-'. $key;
+			$number	= 1;
+
+			while( isset( $appData[self::GROUPS][$group] ) === true )
+				$group = 'gallery-'. $key. '-'. ++$number;
+
+			$appData[self::GROUPS][$group] = true;
+
+			return $group;
 		}
 
 		/**
@@ -704,10 +756,11 @@ namespace Nino\Modules {
 		 *	override the count of columns the album has.
 		 *
 		 *	The markup is a list of links the Lightbox feature understands -
-		 *	its group is this album, so two galleries on one page stay two
-		 *	sets - and nothing else. An alt text and a caption are each one
-		 *	string or one string per language (see text()), either may be a
-		 *	textfill, and both are rendered as one
+		 *	its group is this album, and the same album drawn a second time on
+		 *	the page has a group of its own (see group()), so two galleries on
+		 *	one page stay two sets - and nothing else. An alt text and a caption
+		 *	are each one string or one string per language (see text()), either
+		 *	may be a textfill, and both are rendered as one
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$args					Shortcode attributes ( album, columns )
@@ -721,6 +774,10 @@ namespace Nino\Modules {
 
 			if( $album === null || $album['images'] === [] )
 				return '';
+
+			// Only a gallery that is drawn takes a group: an album with no pictures or a key
+			// nothing has leaves the count where it was
+			$group = self::group( $appData, $album['key'] );
 
 			// The call's own count where it is a whole number from 1 to 8, else the album's -
 			// which is the feature's where the album holds none (see settingsOf()). A count
@@ -782,7 +839,7 @@ namespace Nino\Modules {
 					[ '[[large]]', '[[group]]', '[[caption]]', '[[thumb]]', '[[width]]', '[[height]]', '[[alt]]' ],
 					[
 						$safe( \Nino\Images::getUrl( $appData, $image['large'] ) ),
-						$safe( 'gallery-'. $album['key'] ),
+						$safe( $group ),
 						$caption,
 						$safe( \Nino\Images::getUrl( $appData, $image['thumb'] ) ),
 						$width,

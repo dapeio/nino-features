@@ -12,8 +12,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[gallery album="trip"]' => [
-				'en_US' => 'The album\'s grid of thumbnails, in the columns set for that album. The Builder offers the albums there are as a list to choose from.',
-				'de_DE' => 'Das Raster der Vorschaubilder dieses Albums, in den Spalten, die für das Album eingestellt sind. Der Builder bietet die vorhandenen Alben als Liste zur Auswahl an.',
+				'en_US' => 'The album\'s grid of thumbnails, in the columns set for that album. The Builder offers the albums there are as a list to choose from. The same album twice on one page is two galleries and two sets in the Lightbox: each opens on its own pictures, not on both together.',
+				'de_DE' => 'Das Raster der Vorschaubilder dieses Albums, in den Spalten, die für das Album eingestellt sind. Der Builder bietet die vorhandenen Alben als Liste zur Auswahl an. Steht dasselbe Album zweimal auf einer Seite, sind das zwei Galerien und zwei Sätze in der Lightbox: Jede blättert nur durch ihre eigenen Bilder.',
 			],
 			'[gallery album="trip" columns="3"]' => [
 				'en_US' => 'The same, with the column count for this one place: a number from 1 to 8. Anything else - 9, 0, a word - is no count, and the grid takes the album\'s own.',
@@ -34,8 +34,8 @@ return [
 		],
 		'markup' => [
 			'data-lightbox="gallery-<album>"' => [
-				'en_US' => 'What each thumbnail\'s link carries, so the Lightbox feature opens it and two galleries on one page stay two sets. The caption is data-caption, the alt text the thumbnail\'s alt.',
-				'de_DE' => 'Was der Link jeder Vorschau trägt, damit das Feature Lightbox ihn öffnet und zwei Galerien auf einer Seite zwei Sätze bleiben. Die Bildunterschrift steht in data-caption, der Alternativtext im alt der Vorschau.',
+				'en_US' => 'What each thumbnail\'s link carries, so the Lightbox feature opens it and two galleries on one page stay two sets. The first gallery of an album on a page carries gallery-<album>, the same album again on that page gallery-<album>-2, then gallery-<album>-3, counted for each page request; a name already taken on the page is skipped. The caption is data-caption, the alt text the thumbnail\'s alt.',
+				'de_DE' => 'Was der Link jeder Vorschau trägt, damit das Feature Lightbox ihn öffnet und zwei Galerien auf einer Seite zwei Sätze bleiben. Die erste Galerie eines Albums auf einer Seite trägt gallery-<album>, dasselbe Album noch einmal auf dieser Seite gallery-<album>-2, dann gallery-<album>-3, gezählt je Seitenaufruf; ein auf der Seite schon vergebener Name wird übersprungen. Die Bildunterschrift steht in data-caption, der Alternativtext im alt der Vorschau.',
 			],
 			'<img width="500" height="500" alt="Trip, picture 3">' => [
 				'en_US' => 'The thumbnail carries the size its album crops its thumbnails to, so the browser knows the room of a cell before the picture has loaded, and the list carries it as --nino-gallery-thumb-w and --nino-gallery-thumb-h for the stylesheet. The alt text is the one written for the picture, else its caption, else - for a picture with neither - the album\'s name and the picture\'s place in it, so that no link is left without a name; that picture says it has no caption, so the Lightbox does not show the name under it.',
@@ -57,7 +57,12 @@ return [
 				'de_DE' => 'Mehrere Dateien auf einmal, nacheinander hochgeladen; je Bild ein Alternativtext und eine Bildunterschrift in jeder Sprache, zwei Schaltflächen zum Verschieben und eine zum Löschen, die beide Dateien mitnimmt.',
 			],
 		],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/http/request' => [
+				'en_US' => 'Forgets the lightbox groups the last request drew, so each page starts again with gallery-<album>.',
+				'de_DE' => 'Vergisst die Lightbox-Gruppen des vorigen Aufrufs, damit jede Seite wieder mit gallery-<album> beginnt.',
+			],
+		],
 		'install' => [
 			'text/<locale>.php' => [
 				'en_US' => 'The sentence that names a picture with neither an alt text nor a caption - "%s, picture %s", the album and the place - into the Text panel. It is a word of the project like its others, changed there; where a project has no word for it, the alt text shows the key.',
