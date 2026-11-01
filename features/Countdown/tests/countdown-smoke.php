@@ -15,6 +15,14 @@ declare(strict_types=1);
  *												and days are written in the language of the page, from
  *												the project's own words.
  *
+ *												What it brings the Design feature - the three looks in
+ *												design/, the style of the separator in design/styles.css
+ *												and design/styles/, the block of the preview - is held
+ *												to the grammar of the Design feature's manual: the heads,
+ *												the ladders, the knobs each look answers to, the place of
+ *												every default in countdown.css; and, where the Design
+ *												feature stands beside it, read and compiled by it.
+ *
  *												The arithmetic is the browser's, and
  *												countdown-js-smoke.js beside this file measures it;
  *												this test runs that one too where node is on the
@@ -32,6 +40,110 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'countdown' );
 $appData['/nino/dir'] = '';
 $appData['./nino/locales/current'] = 'en_US';
+
+
+/**
+ *	The rules of a stylesheet, its comments left out: for each the at-rule it stands in ('' for none), its selector with the
+ *	whitespace folded and the text of its body. One level of at-rule is read, which is as deep as the stylesheets here go
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array<int, array{at: string, selector: string, body: string}>
+ */
+function countdownRules( string $css ): array {
+
+	$rules	= [];
+	$read		= static function( string $text, string $at ) use ( &$read, &$rules ): void {
+
+		$offset = 0;
+
+		while( ( $open = strpos( $text, '{', $offset ) ) !== false ) {
+
+			$depth	= 1;
+			$close	= $open + 1;
+
+			for( ; $close < strlen( $text ) && $depth > 0; $close++ )
+				$depth += $text[$close] === '{' ? 1 : ( $text[$close] === '}' ? -1 : 0 );
+
+			$selector	= trim( (string) preg_replace( '/\s+/', ' ', substr( $text, $offset, $open - $offset ) ) );
+			$body			= substr( $text, $open + 1, $close - $open - 2 );
+
+			if( str_starts_with( $selector, '@' ) === true )
+				$read( $body, $selector );
+			else
+				$rules[] = [ 'at' => $at, 'selector' => $selector, 'body' => $body ];
+
+			$offset = $close;
+		}
+	};
+
+	$read( (string) preg_replace( '#/\*.*?\*/#s', '', $css ), '' );
+
+	return $rules;
+}
+
+/**
+ *	The declarations in the body of a rule, in the order they stand, the whitespace of each value folded
+ *
+ *	@param		string		$body
+ *
+ *	@return 	array<int, array{property: string, value: string}>
+ */
+function countdownDeclarations( string $body ): array {
+
+	preg_match_all( '/(?:^|;)\s*(-{0,2}[a-z][a-z0-9-]*)\s*:\s*([^;]*)/i', $body, $found, PREG_SET_ORDER );
+
+	return array_map( static fn( array $match ): array => [ 'property' => $match[1], 'value' => trim( (string) preg_replace( '/\s+/', ' ', $match[2] ) ) ], $found );
+}
+
+/**
+ *	A stylesheet of the Design feature's grammar, read as it is written: the tags of its head (tag => the texts after it, one
+ *	for each line), the rules after the head, and the custom property each declaration sets (property => [ selector, value ]
+ *	for each). Nothing is compared with what a head says - that is the file's to say
+ *
+ *	@param		string		$file
+ *
+ *	@return 	array{tags: array<string, array<int, string>>, rules: array<int, array{at: string, selector: string, body: string}>, declared: array<string, array<int, array{selector: string, value: string}>>}
+ */
+function countdownSheet( string $file ): array {
+
+	$css	= (string) file_get_contents( $file );
+	$tags	= [];
+
+	preg_match( '#^\s*/\*(.*?)\*/#s', $css, $comment );
+
+	foreach( (array) preg_split( '/\R/', $comment[1] ?? '' ) as $line )
+		if( preg_match( '/^\s*\*?\s*(@[a-z]+(?:-de)?)\s+(\S.*?)\s*$/', (string) $line, $found ) === 1 )
+			$tags[ $found[1] ][] = $found[2];
+
+	$sheet = [ 'tags' => $tags, 'rules' => countdownRules( $css ), 'declared' => [] ];
+
+	foreach( $sheet['rules'] as $rule )
+		foreach( countdownDeclarations( $rule['body'] ) as $declaration )
+			$sheet['declared'][ $declaration['property'] ][] = [ 'selector' => $rule['selector'], 'value' => $declaration['value'] ];
+
+	return $sheet;
+}
+
+/**
+ *	The colours a stylesheet writes as a literal in the value of a declaration: a hex colour or a colour function. What a value
+ *	reads of the kernel - var(--color-ink) - is the name of a property and none of these
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array<int, string>				property: literal, for each
+ */
+function countdownColourLiterals( string $css ): array {
+
+	$found = [];
+
+	foreach( countdownRules( $css ) as $rule )
+		foreach( countdownDeclarations( $rule['body'] ) as $declaration )
+			if( preg_match( '/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/i', (string) preg_replace( '/--[a-z0-9-]+/i', '', $declaration['value'] ), $match ) === 1 )
+				$found[] = $declaration['property']. ': '. $match[0];
+
+	return $found;
+}
 
 
 // --- The feature -------------------------------------------------------------
@@ -468,6 +580,567 @@ check( 'the numbers are tabular, so the row does not breathe once a second',
 	str_contains( $css, 'tabular-nums' ) === true );
 check( 'the stylesheet keeps the hidden counter hidden, which its own display rule would otherwise undo',
 	str_contains( $css, '.nino-countdown-parts[hidden]' ) === true );
+
+echo "\n";
+
+
+// --- The looks of the Design feature ----------------------------------------------
+
+echo "design/ - the looks, the separator and the block that the Design feature reads\n";
+
+/*	What a feature brings the Design feature as files (its manual, under Base, says what a variant, a style and a block are). Read
+	here by their grammar - which tags, which fields, which names, which rule where - and what a head says is never compared: the
+	words are the files' to say. The base stylesheet owns the layout and declares every property a look moves, the looks move them	*/
+$design 		= dirname( __DIR__ ). '/design';
+$base 			= countdownSheet( dirname( __DIR__ ). '/assets/countdown.css' );
+$looks 			= [];
+
+foreach( glob( $design. '/*.css' ) ?: [] as $file )
+	if( basename( $file ) !== 'styles.css' )
+		$looks[ basename( $file, '.css' ) ] = countdownSheet( $file );
+
+ksort( $looks );
+
+$kinds			= [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
+$tabs				= [ 'type', 'surfaces', 'colours', 'motion' ];
+$inkWords		= [ 'ink', 'subtitle', 'title', 'accent', 'primary', 'border', 'focus' ];
+$surfaces		= [ 'default', 'alt', 'tint', 'dark', 'black', 'brand', 'brand-safe', 'accent-safe', 'success', 'warning', 'danger' ];
+$steps			= [ 'scale' => [ 'least', 'less', 'default', 'more', 'most' ], 'choice' => [ 'less', 'default', 'more' ] ];
+$stepSuffix	= '/--(?:least|less|default|more|most)$/';
+$knobTable	= [ 'size' => [ 'scale', 'type' ], 'gap' => [ 'scale', 'surfaces' ], 'corners' => [ 'scale', 'surfaces' ], 'names' => [ 'choice', 'surfaces' ], 'tile' => [ 'ground', 'colours' ], 'digits' => [ 'ink', 'colours' ] ];
+
+check( 'the feature brings three looks of the Design feature, a stylesheet each in design/ - and regular, which is where a feature starts from, is the plain one - with a block for the preview, and the styles of all of them in styles.css and design/styles/',
+	array_keys( $looks ) === [ 'big', 'regular', 'tiles' ] && is_file( $design. '/preview.tpl' ) === true && is_file( $design. '/styles.css' ) === true && is_dir( $design. '/styles' ) === true );
+
+$headless = [];
+
+foreach( $looks as $variant => $look )
+	foreach( [ '@name', '@name-de', '@description', '@description-de' ] as $tag )
+		if( count( $look['tags'][$tag] ?? [] ) !== 1 || trim( $look['tags'][$tag][0] ) === '' )
+			$headless[] = $variant. ' '. $tag;
+
+check( 'each head names and describes its look in both languages, once each: @name, @name-de, @description, @description-de'. ( $headless === [] ? '' : ' - '. implode( ', ', $headless ) ), $headless === [] && $looks !== [] );
+
+/** The knobs a head declares: name => kind, tab, label, default (null where the line has none), and how often it was declared */
+$knobsOf = [];
+
+foreach( $looks as $variant => $look )
+	foreach( $look['tags']['@knob'] ?? [] as $text ) {
+		$fields = (array) preg_split( '/\s+/', $text, 4 );
+		preg_match( '/^(.*?)(?:\s+=\s+(\S+))?$/', (string) ( $fields[3] ?? '' ), $label );
+		$knobsOf[$variant][ (string) $fields[0] ][] = [ 'fields' => count( $fields ), 'kind' => (string) ( $fields[1] ?? '' ), 'tab' => (string) ( $fields[2] ?? '' ), 'label' => (string) ( $label[1] ?? '' ), 'default' => $label[2] ?? null ];
+	}
+
+$knobProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	foreach( $knobsOf[$variant] ?? [] as $name => $lines ) {
+		$line = $lines[0];
+
+		if( count( $lines ) !== 1 || $line['fields'] !== 4 || in_array( $line['kind'], $kinds, true ) === false || in_array( $line['tab'], $tabs, true ) === false || $line['label'] === '' )
+			$knobProblems[] = $variant. ' @knob '. $name;
+
+		$twins = array_filter( $look['tags']['@knob-de'] ?? [], static fn( string $text ): bool => preg_match( '/^'. preg_quote( $name, '/' ). '\s+\S/', $text ) === 1 );
+
+		if( count( $twins ) !== 1 )
+			$knobProblems[] = $variant. ' @knob-de '. $name;
+	}
+
+	foreach( $look['tags']['@knob-de'] ?? [] as $text )
+		if( isset( $knobsOf[$variant][ (string) strtok( $text, " \t" ) ] ) === false )
+			$knobProblems[] = $variant. ' @knob-de '. strtok( $text, " \t" ). ' names no knob';
+}
+
+check( 'each @knob line has its four fields - the name, a kind, a tab, the words - once, and a @knob-de beside it'. ( $knobProblems === [] ? '' : ' - '. implode( ', ', $knobProblems ) ), $knobProblems === [] && $knobsOf !== [] );
+
+$offTable = [];
+
+foreach( $knobsOf as $variant => $declared )
+	foreach( $declared as $name => $lines )
+		if( ( $knobTable[$name] ?? null ) !== [ $lines[0]['kind'], $lines[0]['tab'] ] )
+			$offTable[] = $variant. ' '. $name;
+
+check( 'every knob is one of the six, of the same kind and on the same tab in every look: the size of the digits on Text; the space between the parts, where the name stands and the corners of a tile on Surface; the ground of a tile and the colour of the digits on Colour'. ( $offTable === [] ? '' : ' - '. implode( ', ', $offTable ) ),
+	$offTable === [] && array_keys( $knobsOf['tiles'] ?? [] ) === array_keys( $knobTable ) );
+check( 'a look declares only what it answers to: Tiles all six, Big all but the corners and the ground of a tile, Plain only the size, the space and the place of the names - it paints nothing, so it has no colour for the digits either; a knob a look does not declare is greyed out in the panel, with a line that says so',
+	array_keys( $knobsOf['regular'] ?? [] ) === [ 'size', 'gap', 'names' ] && array_keys( $knobsOf['big'] ?? [] ) === [ 'size', 'gap', 'names', 'digits' ] );
+
+$optionProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	foreach( [ '@option', '@option-de' ] as $tag ) {
+		$words = [];
+
+		foreach( $look['tags'][$tag] ?? [] as $text ) {
+			$fields = (array) preg_split( '/\s+/', $text, 3 );
+
+			if( count( $fields ) !== 3 || ( $knobsOf[$variant][ $fields[0] ][0]['kind'] ?? '' ) !== 'choice' || in_array( $fields[1], $steps['choice'], true ) === false )
+				$optionProblems[] = $variant. ' '. $tag. ' '. $text;
+			else
+				$words[ $fields[0] ][ $fields[1] ][] = $fields[2];
+		}
+
+		foreach( $knobsOf[$variant] ?? [] as $name => $lines )
+			if( $lines[0]['kind'] === 'choice' ) {
+				foreach( $steps['choice'] as $step )
+					if( count( $words[$name][$step] ?? [] ) !== 1 )
+						$optionProblems[] = $variant. ' '. $tag. ' '. $name. ' '. $step;
+
+				if( count( array_unique( array_map( static fn( array $each ): string => (string) $each[0], $words[$name] ?? [] ) ) ) !== 3 )
+					$optionProblems[] = $variant. ' '. $tag. ' '. $name. ' has words that are not three';
+			}
+	}
+
+	foreach( $knobsOf[$variant] ?? [] as $name => $lines ) {
+		$default = $lines[0]['default'];
+
+		if( in_array( $lines[0]['kind'], [ 'scale', 'choice' ], true ) === true ? $default !== null : ( $lines[0]['kind'] === 'ink' ? in_array( $default, $inkWords, true ) === false : ( $lines[0]['kind'] === 'ground' && in_array( $default, $surfaces, true ) === false ) ) )
+			$optionProblems[] = $variant. ' default of '. $name;
+	}
+}
+
+check( 'a choice has an @option and an @option-de for each of its three steps, each its own words, and an ink or a ground a default that is a tone of the kernel\'s tokens or a surface of the palette - a scale and a choice none'. ( $optionProblems === [] ? '' : ' - '. implode( ', ', $optionProblems ) ), $optionProblems === [] && $looks !== [] );
+
+/** The ladders a look declares: the property each rung is named after, without its step, for the knobs of its head that are scales and choices - a choice with the aspects it declares beside its own */
+$stemsOf = static function( array $look, array $declared ) use ( $stepSuffix ): array {
+
+	$found = [];
+
+	foreach( array_keys( $look['declared'] ) as $property )
+		if( preg_match( $stepSuffix, $property ) === 1 )
+			$found[] = (string) preg_replace( $stepSuffix, '', $property );
+
+	$stems = [];
+
+	foreach( $declared as $name => $lines )
+		if( in_array( $lines[0]['kind'], [ 'scale', 'choice' ], true ) === true )
+			$stems[$name] = $lines[0]['kind'] === 'choice'
+				? array_values( array_filter( array_unique( $found ), static fn( string $stem ): bool => $stem === '--countdown-'. $name || str_starts_with( $stem, '--countdown-'. $name. '-' ) ) )
+				: [ '--countdown-'. $name ];
+
+	return $stems;
+};
+
+$ladderProblems = [];
+$aspects 				= [];
+
+foreach( $looks as $variant => $look ) {
+	$stems = [];
+
+	foreach( $stemsOf( $look, $knobsOf[$variant] ?? [] ) as $name => $list )
+		foreach( $list as $stem ) {
+			$stems[] = $stem;
+
+			foreach( $steps[ $knobsOf[$variant][$name][0]['kind'] ] as $step )
+				if( count( $look['declared'][ $stem. '--'. $step ] ?? [] ) !== 1 || $look['declared'][ $stem. '--'. $step ][0]['selector'] !== ':root' )
+					$ladderProblems[] = $variant. ' lacks '. $stem. '--'. $step. ' on :root, once';
+
+			if( $knobsOf[$variant][$name][0]['kind'] === 'choice' )
+				$aspects[$variant] = array_merge( $aspects[$variant] ?? [], [ $stem ] );
+		}
+
+	foreach( array_keys( $look['declared'] ) as $property )
+		if( preg_match( $stepSuffix, $property ) === 1 && in_array( (string) preg_replace( $stepSuffix, '', $property ), $stems, true ) === false )
+			$ladderProblems[] = $variant. ' has a ladder no knob of its head moves: '. $property;
+}
+
+check( 'a scale declares its five rungs and a choice its three - the choice for its own property and for each aspect of it, the direction and the alignment of a part - once each, on :root, and every ladder belongs to a knob the head declares'. ( $ladderProblems === [] ? '' : ' - '. implode( ', ', $ladderProblems ) ),
+	$ladderProblems === [] && count( $aspects ) === 3 && count( array_unique( array_map( 'serialize', $aspects ) ) ) === 1 && count( (array) reset( $aspects ) ) > 1 );
+
+$baseDeclared	= $base['declared'];
+$ruleProblems	= [];
+
+foreach( $looks as $variant => $look )
+	foreach( $look['rules'] as $rule ) {
+		$properties = array_column( countdownDeclarations( $rule['body'] ), 'property' );
+
+		// The ladders stand on :root, a rule is on the classes of the counter and on nothing else - no element, no id, no class of the kernel's
+		if( $rule['selector'] === ':root' ) {
+			foreach( $properties as $property )
+				if( preg_match( '/^--countdown-[a-z0-9-]+--(?:least|less|default|more|most)$/', $property ) !== 1 )
+					$ruleProblems[] = $variant. ' declares '. $property. ' on :root, which is no rung of a ladder';
+		}
+		elseif( $rule['at'] !== '' || preg_match( '/^[\s>+~,]*$/', (string) preg_replace( '/\.nino-countdown[a-z0-9-]*/', '', $rule['selector'] ) ) !== 1 || str_contains( $rule['selector'], '.nino-countdown' ) === false )
+			$ruleProblems[] = $variant. ' writes a rule on '. $rule['selector'];
+
+		foreach( countdownDeclarations( $rule['body'] ) as $declaration ) {
+			preg_match_all( '/var\(\s*(--countdown-[a-z0-9-]+)/', $declaration['value'], $reads );
+
+			foreach( $reads[1] as $read )
+				if( isset( $baseDeclared[$read] ) === false )
+					$ruleProblems[] = $variant. ' reads '. $read. ', which countdown.css does not declare';
+		}
+	}
+
+check( 'a look is a head, the rungs of its ladders on :root and rules on the counter\'s own classes - never an element, an id or a class of the kernel - and it reads only properties that countdown.css declares'. ( $ruleProblems === [] ? '' : ' - '. implode( ', ', $ruleProblems ) ), $ruleProblems === [] && count( $looks ) === 3 );
+
+$colourProblems = [];
+
+foreach( array_merge( array_map( static fn( string $variant ): string => $design. '/'. $variant. '.css', array_keys( $looks ) ), [ $design. '/styles.css', dirname( __DIR__ ). '/assets/countdown.css' ], glob( $design. '/styles/*.css' ) ?: [] ) as $file ) {
+	$code = (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
+
+	foreach( countdownColourLiterals( $code ) as $literal )
+		$colourProblems[] = basename( $file ). ' '. $literal;
+
+	if( stripos( $code, '!important' ) !== false )
+		$colourProblems[] = basename( $file ). ' !important';
+}
+
+check( '...and no stylesheet of the feature writes a colour as a literal or declares anything !important: the colours are a ground, a tone or what the page says'. ( $colourProblems === [] ? '' : ' - '. implode( ', ', $colourProblems ) ), $colourProblems === [] );
+
+/*	A tile is a ground of its own, and what stands in it - the digits and the name - is read on it: the roles the page writes with are passed on to them from the
+	roles the palette solved for the ground, as Nino.css does for its grounds, and from nowhere else - the part that holds the sign between the tiles has no such
+	rule, so the sign keeps the tone of the section. Without it a tone chosen for the digits is the section's, white on a dark one, on a light tile	*/
+$passed 	= [];
+$passedAt = [];
+
+foreach( $looks['tiles']['rules'] ?? [] as $rule )
+	foreach( countdownDeclarations( $rule['body'] ) as $declaration )
+		if( str_starts_with( $declaration['property'], '--color-' ) === true ) {
+			$passed[ $declaration['property'] ] = $declaration['value'];
+			$passedAt[ $rule['selector'] ] = true;
+		}
+
+$roles = [
+	'--color-ink' => 'var(--countdown-tile-on)', '--color-title' => 'var(--countdown-tile-on)', '--color-subtitle' => 'var(--countdown-tile-on-muted)',
+	'--color-accent' => 'var(--countdown-tile-link)', '--color-border' => 'var(--countdown-tile-border)', '--color-focus' => 'var(--countdown-tile-focus)',
+];
+
+check( 'Tiles pass the roles of their ground on to what stands in them: the ink and the title as its text colour, the subtitle as the quieter one, the accent as its link, the border and the focus - on the digits and the names and on nothing else, not on the part, which holds the sign between the tiles',
+	$passed === $roles && array_keys( $passedAt ) === [ '.nino-countdown-value, .nino-countdown-name' ]
+	&& array_filter( [ 'regular', 'big' ], static fn( string $variant ): bool => array_filter( array_keys( $looks[$variant]['declared'] ?? [] ), static fn( string $property ): bool => str_starts_with( $property, '--color-' ) ) !== [] ) === [] );
+
+/*	Where the defaults stand: lengths, numbers, keywords and grounds in :where(:root), a tone of the page in :where(*), and nowhere else - a custom
+	property is resolved where it is declared, and :where() has no specificity, so the line of the knob positions a look compiles beats it	*/
+$moved 	= [];
+
+foreach( $knobsOf as $variant => $declared ) {
+	foreach( $stemsOf( $looks[$variant], $declared ) as $list )
+		foreach( $list as $stem )
+			$moved[$stem] = ':where(:root)';
+
+	foreach( $declared as $name => $lines ) {
+		if( $lines[0]['kind'] === 'ink' )
+			$moved[ '--countdown-'. $name ] = ':where(*)';
+
+		if( $lines[0]['kind'] === 'ground' ) {
+			$moved[ '--countdown-'. $name ] = ':where(:root)';
+
+			preg_match_all( '/var\(\s*(--countdown-'. preg_quote( $name, '/' ). '-[a-z0-9-]+)/', (string) file_get_contents( $design. '/'. $variant. '.css' ), $parts );
+
+			foreach( $parts[1] as $part )
+				$moved[$part] = ':where(:root)';
+		}
+	}
+}
+
+$strayDefaults = [];
+
+foreach( $moved as $property => $place )
+	if( array_column( $baseDeclared[$property] ?? [], 'selector' ) !== [ $place ] )
+		$strayDefaults[] = $property. ' is not declared once in '. $place;
+
+foreach( $base['rules'] as $rule )
+	foreach( countdownDeclarations( $rule['body'] ) as $declaration )
+		if( str_starts_with( $declaration['property'], '--countdown-' ) === true && in_array( $rule['selector'], [ ':where(:root)', ':where(*)' ], true ) === false )
+			$strayDefaults[] = $declaration['property']. ' is declared under '. $rule['selector'];
+
+check( 'countdown.css declares every property a look moves, once, in the place of its kind and in no other: a scale, a choice with its aspects and a ground in :where(:root), the tone of the digits in :where(*) - never in a bare :root, on a class or with !important'. ( $strayDefaults === [] ? '' : ' - '. implode( ', ', $strayDefaults ) ),
+	$strayDefaults === [] && count( array_filter( $moved, static fn( string $place ): bool => $place === ':where(*)' ) ) === 1 && count( array_filter( $moved, static fn( string $place ): bool => $place === ':where(:root)' ) ) >= 8 );
+
+// Plain is the counter as it is without the Design feature: the middle of every ladder is the default countdown.css has, it paints nothing, and the digits that nothing paints are the colour of the text around the counter
+$unequal = [];
+$plain 	 = $looks['regular'] ?? [ 'declared' => [] ];
+
+foreach( $plain['declared'] as $property => $places )
+	if( preg_match( '/^(.+)--default$/', $property, $stem ) === 1 && ( $baseDeclared[ $stem[1] ][0]['value'] ?? null ) !== $places[0]['value'] )
+		$unequal[] = $property;
+
+foreach( $plain['rules'] ?? [] as $rule )
+	if( $rule['selector'] !== ':root' )
+		$unequal[] = 'a rule on '. $rule['selector'];
+
+foreach( $knobsOf['regular'] ?? [] as $name => $lines )
+	if( in_array( $lines[0]['kind'], [ 'ink', 'ground', 'colour' ], true ) === true )
+		$unequal[] = 'a colour knob '. $name;
+
+if( ( $baseDeclared['--countdown-digits'][0]['value'] ?? null ) !== 'currentColor' )
+	$unequal[] = 'the digits are not the colour of the text around the counter';
+
+check( 'Plain stands where countdown.css stands: the middle of each of its ladders is the default the base declares, it writes no rule and has no colour knob, and the tone of the digits the base declares is the text colour around the counter - so the counter under it is drawn as it is without the Design feature'. ( $unequal === [] ? '' : ' - '. implode( ', ', $unequal ) ),
+	$unequal === [] && count( array_filter( array_keys( $plain['declared'] ), static fn( string $property ): bool => str_ends_with( $property, '--default' ) ) ) === count( array_merge( ...array_values( $stemsOf( $looks['regular'] ?? [ 'declared' => [] ], $knobsOf['regular'] ?? [] ) ) ) ) );
+
+// --- The styles: once for all the looks
+$styles 			= countdownSheet( $design. '/styles.css' );
+$styleLines		= $styles['tags']['@style'] ?? [];
+$styleName		= (string) strtok( $styleLines[0] ?? '', " \t" );
+$optionFiles	= glob( $design. '/styles/*.css' ) ?: [];
+$styleProblems = [];
+
+if( count( $styleLines ) !== 1 || count( $styles['tags']['@style-de'] ?? [] ) !== 1 || strtok( $styles['tags']['@style-de'][0], " \t" ) !== $styleName || count( (array) preg_split( '/\s+/', $styleLines[0], 2 ) ) !== 2 )
+	$styleProblems[] = 'styles.css declares one style with its @style and its @style-de line';
+
+if( isset( $styles['tags']['@name'] ) === true )
+	$styleProblems[] = 'styles.css has a @name - it is no look';
+
+foreach( $optionFiles as $file ) {
+	$option = countdownSheet( $file );
+
+	if( preg_match( '/^'. preg_quote( $styleName, '/' ). '-[a-z0-9]+(?:-[a-z0-9]+)*$/', basename( $file, '.css' ) ) !== 1 )
+		$styleProblems[] = basename( $file ). ' is named for no option of '. $styleName;
+
+	foreach( [ '@name', '@name-de', '@description', '@description-de' ] as $tag )
+		if( count( $option['tags'][$tag] ?? [] ) !== 1 || trim( $option['tags'][$tag][0] ) === '' )
+			$styleProblems[] = basename( $file ). ' '. $tag;
+}
+
+/*	The shared rule is the body of styles.css, written once before the option chosen: a sign on the part, which is not the last one, with its content out of a
+	property; and an option is that property and nothing else - the sign and nothing of where it stands	*/
+$sharedRule	= [];
+$altRule		= [];
+
+foreach( $styles['rules'] as $rule )
+	if( str_contains( $rule['selector'], '::after' ) === true ) {
+		if( $rule['at'] === '' )
+			$sharedRule = $rule;
+		else
+			$altRule = $rule;
+	}
+
+$sharedContent = (string) ( array_column( countdownDeclarations( (string) ( $sharedRule['body'] ?? '' ) ), 'value', 'property' )['content'] ?? '' );
+$signProperty	 = preg_match( '/^var\(\s*(--[a-z0-9-]+)\s*\)$/', $sharedContent, $found ) === 1 ? $found[1] : '';
+$signs				 = [];
+
+foreach( $optionFiles as $file ) {
+	$option = countdownSheet( $file );
+
+	if( count( $option['rules'] ) !== 1 || $option['rules'][0]['selector'] !== ':root' || array_keys( $option['declared'] ) !== [ $signProperty ] )
+		$styleProblems[] = basename( $file ). ' is more than the property '. $signProperty. ' on :root';
+	else
+		$signs[] = $option['declared'][$signProperty][0]['value'];
+}
+
+if( $signProperty === '' || str_contains( (string) ( $sharedRule['selector'] ?? '' ), '.nino-countdown-part:not(:last-child)::after' ) === false )
+	$styleProblems[] = 'the shared rule is no sign on a part that is not the last one, with its content out of a property';
+
+// The sign is decoration: where the browser knows the alternative text of generated content it is given an empty one, and nowhere else is the content a different one
+if( $signProperty === '' || ( $altRule['selector'] ?? null ) !== ( $sharedRule['selector'] ?? '' ) || str_starts_with( $altRule['at'] ?? '', '@supports (content: "" / "")' ) === false
+	|| ( array_column( countdownDeclarations( (string) ( $altRule['body'] ?? '' ) ), 'value', 'property' ) ) !== [ 'content' => 'var('. $signProperty. ') / ""' ] )
+	$styleProblems[] = 'the sign has no empty alternative text under @supports (content: "" / "")';
+
+// The property is the options' to set: a default in countdown.css would make None a sign of its own
+if( $signProperty === '' || isset( $baseDeclared[$signProperty] ) === true )
+	$styleProblems[] = 'countdown.css declares a default for '. $signProperty;
+
+check( 'design/styles.css declares one style, the files of design/styles/ are its options - each named <style>-<option>.css and headed in both languages - and its body is the one rule they share: a sign after every part but the last, its content out of a property'. ( $styleProblems === [] ? '' : ' - '. implode( ', ', $styleProblems ) ),
+	$styleProblems === [] && $signProperty !== '' );
+check( '...and each option is that property and nothing else, a sign of its own: two options, no two the same, and no rule of the styles writes the content itself',
+	count( $optionFiles ) === 2 && count( array_unique( $signs ) ) === 2 && str_contains( (string) file_get_contents( $design. '/styles.css' ), 'content: var(' ) === true
+	&& array_filter( $optionFiles, static fn( string $file ): bool => preg_match( '/\bcontent\s*:/', (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) ) ) === 1 ) === [] );
+
+// --- The block: the counter as it stands once the script has taken it over
+$block 			= (string) @file_get_contents( $design. '/preview.tpl' );
+$blockIds 	= [];
+preg_match_all( '/<[a-z][^>]*>/i', $block, $blockTags );
+
+foreach( $blockTags[0] as $blockTag )
+	if( preg_match( '/\sid="([^"]*)"/', $blockTag, $blockId ) === 1 )
+		$blockIds[] = $blockId[1];
+
+preg_match_all( '/<div class="nino-countdown-parts"([^>]*)>(.*?)\n\t*<\/div>/s', $block, $blockCounters, PREG_SET_ORDER );
+preg_match_all( '/<time\b[^>]*>/', $block, $blockTimes );
+preg_match_all( '/\[\[(\/feature\/countdown\/[a-z0-9\/-]+)\]\]/', $block, $blockFills );
+
+$blockUnits = array_map( static fn( string $unit ): string => '/feature/countdown/unit-'. rtrim( $unit, 's' ). '/many', \Nino\Modules\Countdown::UNITS );
+$blockFirst = [];
+preg_match_all( '/\[\[(\/feature\/countdown\/[a-z0-9\/-]+)\]\]/', (string) ( $blockCounters[0][2] ?? '' ), $blockFirst );
+
+check( 'the feature brings a block to the specimen, design/preview.tpl: one grid row, every id in it countdown-something and each once, no section of its own and no inline handler',
+	str_starts_with( trim( $block ), '<div class="nino-grid-row">' ) === true && str_ends_with( trim( $block ), '</div>' ) === true && substr_count( $block, 'class="nino-grid-row"' ) === 1
+	&& $blockIds !== [] && array_filter( $blockIds, static fn( string $id ): bool => str_starts_with( $id, 'countdown-' ) === false ) === [] && count( $blockIds ) === count( array_unique( $blockIds ) )
+	&& preg_match( '/<section\b/i', $block ) !== 1 && preg_match( '/\son[a-z]+\s*=/i', $block ) !== 1 );
+check( '...the counters are the markup of the shortcode, finished: the parts in view - not hidden, as the script leaves them - each with its number written by hand and the name from the unit\'s text key, and the date a <time> with a moment of its own; none carries data-countdown-to, so that the script never counts it',
+	count( $blockCounters ) >= 2 && array_filter( $blockCounters, static fn( array $counter ): bool => preg_match( '/\bhidden\b/', $counter[1] ) === 1 || preg_match_all( '/<span class="nino-countdown-part"><span class="nino-countdown-value">\d+<\/span><span class="nino-countdown-name">\[\[\/feature\/countdown\/unit-[a-z]+\/(?:one|many)\]\]<\/span><\/span>/', $counter[2] ) < 1 ) === []
+	&& count( $blockTimes[0] ) === count( $blockCounters ) && array_filter( $blockTimes[0], static fn( string $time ): bool => preg_match( '/\sdatetime="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}"/', $time ) !== 1 ) === []
+	&& str_contains( $block, 'data-countdown-to' ) === false );
+check( '...the first one has the four parts of a counter without units=, largest first, and the names are keys the install unit writes into the Text panel in both languages - the second has fewer, so that the sign has a last part to leave alone',
+	$blockFirst[1] === $blockUnits && count( $blockCounters ) === 2 && preg_match_all( '/class="nino-countdown-part"/', $blockCounters[1][2] ) > 0 && preg_match_all( '/class="nino-countdown-part"/', $blockCounters[1][2] ) < 4
+	&& array_filter( array_unique( $blockFills[1] ), static function( string $key ) use ( $dir ): bool {
+		foreach( [ 'en_US', 'de_DE' ] as $locale )
+			if( isset( ( include $dir. '/install/text/'. $locale. '.php' )[ '[['. $key. ']]' ] ) === false )
+				return true;
+
+		return false;
+	} ) === [] );
+
+$blockClasses = [];
+preg_match_all( '/class="([^"]*)"/', $block, $blockClassLists );
+
+foreach( $blockClassLists[1] as $list )
+	foreach( explode( ' ', $list ) as $class )
+		if( str_starts_with( $class, 'nino-countdown' ) === true )
+			$blockClasses[$class] = true;
+
+$templateText = (string) file_get_contents( $dir. '/templates/countdown.tpl' ). (string) file_get_contents( $dir. '/templates/countdown-part.tpl' );
+
+check( '...and no class of the counter is one the shortcode\'s own templates do not write',
+	$blockClasses !== [] && array_filter( array_keys( $blockClasses ), static fn( string $class ): bool => str_contains( $templateText, $class ) === false ) === [] );
+
+// --- The manual
+$manualProblems = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$text = ( (array) ( $manifest['manual']['panel'] ?? [] ) )['Design: the looks of the counter'][$locale] ?? null;
+
+	if( is_string( $text ) === false || trim( $text ) === '' || max( array_map( 'strlen', explode( "\n", $text ) ) ) >= 1000 )
+		$manualProblems[] = $locale;
+}
+
+check( 'the manual names the looks, the knobs and the separator under panel, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
+
+echo "\n";
+
+
+// --- ...run through the Design feature ---------------------------------------------
+
+echo "design/ - as the Design feature reads and compiles it\n";
+
+$designSetup			= '\\Nino\\Modules\\Design\\Setup';
+$designPreview		= '\\Nino\\Modules\\Design\\Preview';
+$designCompiler		= '\\Nino\\Modules\\Design\\Compiler';
+
+if( class_exists( $designSetup ) === false || class_exists( $designCompiler ) === false )
+	echo "  note - there is no Design feature beside this one: the looks are not run through it here, bin/check.sh runs them with it in the checkout\n";
+else {
+	$library			= \Nino\Features::dir(). '/Design/library';
+	$modulesKept	= (array) ( $appData['/nino/modules'] ?? [] );
+	$localeKept		= $appData['./nino/locales/current'];
+
+	/** Which of the two features are on: their classes are listed in /nino/modules, and what the kernel and the Design feature have read of the features is read again */
+	$featuresOn = static function( array $names ) use ( &$appData, $modulesKept ): void {
+		$appData['/nino/modules'] = array_merge( array_values( array_diff( $modulesKept, [ '\\Nino\\Modules\\Countdown', '\\Nino\\Modules\\Design' ] ) ), array_map( static fn( string $name ): string => '\\Nino\\Modules\\'. $name, $names ) );
+		unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+	};
+
+	/** The sheet a setup makes of the raw entry given */
+	$compile = static function( array $raw, array &$notes = [] ) use ( &$appData, $designSetup, $designCompiler, $library ): string {
+		$setup = $designSetup::normalize( $appData, $raw, $library, $notes );
+
+		return $designCompiler::compile( $appData, $setup, $library, $notes );
+	};
+
+	ninoWarnings();
+	$featuresOn( [ 'Countdown', 'Design' ] );
+	$appData['./nino/locales/current'] = 'en_US';
+
+	$scanNotes	= [];
+	$scan				= $designSetup::features( $appData, $scanNotes );
+	$feature		= $scan['countdown'] ?? [];
+	$catalogue	= $feature['catalogue'] ?? [];
+
+	check( 'with the Design feature on, the scan lists this feature by its three looks, regular the one it has before anything is chosen, the anchor of its block - and has nothing to say of any file: no line dropped, no ladder missing, no style without a file',
+		isset( $scan['countdown'] ) === true && realpath( (string) $feature['dir'] ) === realpath( $dir ) && array_keys( $catalogue ) === array_keys( $looks ) && $feature['default'] === 'regular'
+		&& $feature['anchor'] === 'feature-countdown' && $scanNotes === [] );
+
+	$publishes = [];
+
+	foreach( $catalogue as $variant => $look )
+		$publishes[$variant] = array_map( static fn( array $knob ): array => [ $knob['kind'], $knob['tab'] ], $look['knobs'] );
+
+	check( 'each look publishes the knobs it declares and no other, with the kind and the tab of its head: six for Tiles, four for Big, three for Plain',
+		$publishes['tiles'] === $knobTable && $publishes['regular'] === array_diff_key( $knobTable, [ 'corners' => 1, 'tile' => 1, 'digits' => 1 ] ) && $publishes['big'] === array_diff_key( $knobTable, [ 'corners' => 1, 'tile' => 1 ] ) );
+	check( '...a scale by its own ladder and the choice by its ladder and the aspects it declares beside it, which are the ones every look carries',
+		array_filter( $catalogue, static fn( array $look ): bool => ( $look['knobs']['size']['ladder'] ?? [] ) !== [ 'size' ] || ( $look['knobs']['gap']['ladder'] ?? [] ) !== [ 'gap' ]
+			|| count( $look['knobs']['names']['ladder'] ?? [] ) < 2 || ( $look['knobs']['names']['ladder'] ?? [] ) !== ( $catalogue['regular']['knobs']['names']['ladder'] ?? [] ) ) === [] );
+
+	$styled = $feature['styles'] ?? [];
+
+	check( 'the styles the scan finds are the one design/styles.css declares, with the options its files give, the file of each there',
+		array_keys( $styled ) === [ $styleName ] && count( $styled[$styleName]['options'] ?? [] ) === count( $optionFiles ) && count( $optionFiles ) === 2
+		&& array_filter( $styled[$styleName]['options'] ?? [], static fn( array $option ): bool => is_file( (string) $option['file'] ) === false ) === [] );
+
+	// The block is the feature's, not a look's: Design makes the section round it, with the feature's anchor
+	$blockTold		= [];
+	$blockInside	= $designSetup::previewOf( (string) $feature['dir'], 'countdown', $blockTold );
+	$blocks				= $designPreview::blocks( $appData );
+
+	check( 'the block stands the check Design holds it to and the preview makes the section of it, with the anchor the scan names, before the footer',
+		$blockInside === trim( $block ) && $blockInside !== '' && $blockTold === [] && array_keys( $blocks ) === [ 'countdown' ]
+		&& preg_match( '~^<section id="feature-countdown" class="nino-section" aria-label="[^"]+">\s*(.*?)\s*</section>$~s', $blocks['countdown'] ?? '', $blockSection ) === 1 && str_contains( $blockSection[1] ?? '', 'id="countdown-full"' ) === true );
+
+	$featuresOn( [ 'Countdown', 'Design' ] );
+	$withNone	= $compile( [] );
+	$featuresOn( [ 'Design' ] );
+	$withOff	= $compile( [] );
+	$featuresOn( [ 'Countdown', 'Design' ] );
+
+	check( 'with no look chosen the feature compiles nothing: the sheet of a project that has the feature on is the sheet of one that has it off, byte for byte', $withNone === $withOff && str_contains( $withNone, 'feature countdown' ) === false );
+
+	$sheetProblems = [];
+
+	foreach( $catalogue as $variant => $look ) {
+		$sheetNotes	= [];
+		$sheet			= $compile( [ 'features' => [ 'countdown' => [ 'set' => $variant ] ] ], $sheetNotes );
+		$ladders		= [];
+
+		foreach( $look['knobs'] as $name => $knob )
+			if( in_array( $knob['kind'], [ 'scale', 'choice' ], true ) === true ) {
+				$ladders[] = $name. ' default';
+
+				foreach( $knob['ladder'] ?? [] as $ladder )
+					if( str_contains( $sheet, "\n\t--countdown-". $ladder. ': var('. sprintf( $designSetup::KNOB_TOKEN, 'countdown', $ladder, 'default' ). ");\n" ) === false )
+						$sheetProblems[] = $variant. ' selects no '. $ladder;
+			}
+			elseif( $knob['kind'] === 'ink' && preg_match( '~\n:root, :root \* \{\n(?:\t[^\n]*\n)*?\t--countdown-'. preg_quote( $name, '~' ). ': var\('. preg_quote( $designSetup::INKS[ (string) $knob['default'] ] ?? '', '~' ). '\);\n~', $sheet ) !== 1 )
+				$sheetProblems[] = $variant. ' writes no ink '. $name;
+			elseif( $knob['kind'] === 'ground' && str_contains( $sheet, "\n\t--countdown-". $name. ': var(--nino-'. $knob['default']. ");\n" ) === false )
+				$sheetProblems[] = $variant. ' writes no ground '. $name;
+
+		if( preg_match( '~^/\* ==== \d+\. feature countdown: '. preg_quote( $variant, '~' ). ' \((.*)\) ==== \*/$~m', $sheet, $title ) !== 1 || $title[1] !== implode( ', ', $ladders ) )
+			$sheetProblems[] = $variant. ' has no section of its own, or one that does not say its ladders';
+		elseif( str_contains( $sheet, rtrim( (string) file_get_contents( $design. '/'. $variant. '.css' ), "\n" ) ) === false )
+			$sheetProblems[] = $variant. ' is not in its section as the file has it';
+
+		if( $sheetNotes !== [] || str_contains( $sheet, $designCompiler::SHARED ) === true )
+			$sheetProblems[] = $variant. ' compiled with a note, or with the shared rules of a style that was not chosen';
+	}
+
+	check( 'with a look chosen the sheet carries its section, its stylesheet as the file has it, a line for every ladder of every knob it declares and the tone of its ink and the ground of its tile where it has them - and none of the shared rules of the styles, which stay out where no style is chosen'. ( $sheetProblems === [] ? '' : ' - '. implode( ', ', $sheetProblems ) ),
+		$sheetProblems === [] && $catalogue !== [] );
+
+	$styleProblems = [];
+
+	foreach( array_keys( $catalogue ) as $variant )
+		foreach( $styled[$styleName]['options'] ?? [] as $option => $declared ) {
+			$sheet	= $compile( [ 'features' => [ 'countdown' => [ 'set' => $variant, 'styles' => [ $styleName => $option ] ] ] ] );
+			$shared	= $designSetup::featureShared( $appData, 'countdown' );
+			$at 		= (int) strpos( $sheet, $designCompiler::SHARED );
+			$line 	= sprintf( $designCompiler::STYLE, $styleName, $option );
+
+			if( $shared === '' || substr_count( $sheet, $shared ) !== 1 || $at === 0 || strpos( $sheet, $shared ) < $at || strpos( $sheet, $line ) < strpos( $sheet, $shared ) )
+				$styleProblems[] = $variant. ' '. $option. ': the shared rules stand once, under their line, before the option';
+
+			if( str_contains( $sheet, rtrim( (string) file_get_contents( (string) $declared['file'] ), "\n" ) ) === false || substr_count( $sheet, $line ) !== 1 )
+				$styleProblems[] = $variant. ' '. $option. ': the option is not in the sheet once, as the file has it';
+		}
+
+	check( 'a style chosen puts the rules the styles share once into the section of the look, whichever it is, and then the file of the option under its own line - the same for Plain, Tiles and Big'. ( $styleProblems === [] ? '' : ' - '. implode( ', ', $styleProblems ) ), $styleProblems === [] && count( $catalogue ) === 3 );
+
+	// The bundle of a project the wizard has set up lists the sheet of the feature after the theme the Design feature writes
+	$bundled = $appData;
+	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ $designCompiler::TARGET, '/assets/style.css' ] ) ];
+	\Nino\Features::registerAssets( $bundled );
+	$bundle = $bundled['/nino/html/assets']['/.cache/style.css'];
+
+	check( 'in a booted project the bundle lists countdown.css after the theme.css the Design feature writes its sheet to - the order the :where() of its defaults is for',
+		in_array( '/features/Countdown/assets/countdown.css', $bundle, true ) === true && array_search( '/features/Countdown/assets/countdown.css', $bundle, true ) > array_search( $designCompiler::TARGET, $bundle, true ) );
+
+	$appData['/nino/modules']					= $modulesKept;
+	$appData['./nino/locales/current']	= $localeKept;
+	unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+
+	ninoWarnings();
+}
 
 echo "\n";
 

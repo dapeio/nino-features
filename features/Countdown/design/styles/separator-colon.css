@@ -1,0 +1,9 @@
+/*	@name			Colon
+ *	@name-de		Doppelpunkt
+ *	@description	A colon between the parts.
+ *	@description-de	Ein Doppelpunkt zwischen den Teilen.
+ */
+
+:root {
+	--countdown-separator: ":";
+}

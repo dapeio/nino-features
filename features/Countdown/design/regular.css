@@ -1,0 +1,51 @@
+/*	@name			Plain
+ *	@name-de		Schlicht
+ *	@description	The counter as it has always been drawn: the number over its name, in the type of the text around it.
+ *	@description-de	Der Zähler, wie er immer gezeichnet wurde: die Zahl über ihrem Namen, in der Schrift des Textes um ihn.
+ *
+ *	@knob	size		scale	type		Size of the digits
+ *	@knob-de	size		Größe der Ziffern
+ *	@knob	gap			scale	surfaces	Space between the parts
+ *	@knob-de	gap			Abstand der Teile
+ *	@knob	names		choice	surfaces	Where the name of a part stands
+ *	@knob-de	names		Wo der Name eines Teils steht
+ *	@option	names	less	Beside
+ *	@option	names	default	Under
+ *	@option	names	more	Above
+ *	@option-de	names	less	Daneben
+ *	@option-de	names	default	Darunter
+ *	@option-de	names	more	Darüber
+ *
+ *	Plain is the starting point of this feature: the middle of every ladder is the value countdown.css has as its own default,
+ *	so a counter under it is drawn as it is without the Design feature. It paints nothing: the digits stay in the type and the
+ *	colour of the text around the counter, which is why it has no knob for them.
+ */
+
+:root {
+	/*	The digits are as large as the text around them, times this	*/
+	--countdown-size--least:	.8em;
+	--countdown-size--less:		.9em;
+	--countdown-size--default:	1em;
+	--countdown-size--more:		1.25em;
+	--countdown-size--most:		1.6em;
+
+	--countdown-gap--least:		calc( var(--space-1) * .5 );
+	--countdown-gap--less:		var(--space-1);
+	--countdown-gap--default:	var(--space-2);
+	--countdown-gap--more:		var(--space-3);
+	--countdown-gap--most:		var(--space-4);
+
+	/*	Where the name stands: beside its number, under it - as countdown.css has it - or above it. The choice is the space
+		between the two, the aspects say how the part lays them out: the direction of the part and how its lines are aligned	*/
+	--countdown-names--less:		.4em;
+	--countdown-names--default:		0em;
+	--countdown-names--more:		0em;
+
+	--countdown-names-dir--less:	row;
+	--countdown-names-dir--default:	column;
+	--countdown-names-dir--more:	column-reverse;
+
+	--countdown-names-align--less:		baseline;
+	--countdown-names-align--default:	center;
+	--countdown-names-align--more:		center;
+}

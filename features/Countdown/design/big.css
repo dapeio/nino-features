@@ -1,0 +1,59 @@
+/*	@name			Big
+ *	@name-de		Groß
+ *	@description	Digits in the size of a title, in its weight, and the names small and spaced out under them.
+ *	@description-de	Ziffern in der Größe eines Titels und in seiner Stärke, darunter die Namen, klein und gesperrt.
+ *
+ *	@knob	size		scale	type		Size of the digits
+ *	@knob-de	size		Größe der Ziffern
+ *	@knob	gap			scale	surfaces	Space between the parts
+ *	@knob-de	gap			Abstand der Teile
+ *	@knob	names		choice	surfaces	Where the name of a part stands
+ *	@knob-de	names		Wo der Name eines Teils steht
+ *	@option	names	less	Beside
+ *	@option	names	default	Under
+ *	@option	names	more	Above
+ *	@option-de	names	less	Daneben
+ *	@option-de	names	default	Darunter
+ *	@option-de	names	more	Darüber
+ *	@knob	digits		ink		colours		Colour of the digits	= title
+ *	@knob-de	digits		Farbe der Ziffern
+ *
+ *	The digits follow the title of the page: its size, from the Text tab, is the first rung of the ladder and the others are
+ *	multiples of it, so a page with large titles has large digits.
+ */
+
+:root {
+	--countdown-size--least:	var(--font-title-size);
+	--countdown-size--less:		calc( var(--font-title-size) * 1.5 );
+	--countdown-size--default:	calc( var(--font-title-size) * 2 );
+	--countdown-size--more:		calc( var(--font-title-size) * 2.6 );
+	--countdown-size--most:		calc( var(--font-title-size) * 3.4 );
+
+	--countdown-gap--least:		var(--space-1);
+	--countdown-gap--less:		var(--space-2);
+	--countdown-gap--default:	var(--space-3);
+	--countdown-gap--more:		var(--space-4);
+	--countdown-gap--most:		var(--space-5);
+
+	--countdown-names--less:		.5em;
+	--countdown-names--default:		0em;
+	--countdown-names--more:		0em;
+
+	--countdown-names-dir--less:	row;
+	--countdown-names-dir--default:	column;
+	--countdown-names-dir--more:	column-reverse;
+
+	--countdown-names-align--less:		baseline;
+	--countdown-names-align--default:	center;
+	--countdown-names-align--more:		center;
+}
+
+.nino-countdown-value {
+	color: var(--countdown-digits);
+	font-weight: var(--font-title-weight);
+}
+
+.nino-countdown-name {
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}

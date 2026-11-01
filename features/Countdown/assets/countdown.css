@@ -1,8 +1,8 @@
 /**
  *	Nino - Countdown
  *	countdown.css		The counter's own layout, and nothing else: the parts in a
- *						row, the number over its name. Bundled into the project's
- *						own /.cache/style.css by the manifest's assets
+ *						row, the number next to or over its name. Bundled into the
+ *						project's own /.cache/style.css by the manifest's assets
  *						(docs/features.md, "Assets") - never rendered through the
  *						fill/shortcode engine (docs/development.md, "Assets Are Not
  *						Templates"), so nothing in here is a textfill.
@@ -10,26 +10,72 @@
  *						Nothing here paints. A countdown is numbers in whatever
  *						type, colour and size the surrounding classes give them -
  *						a hero and a sidebar are not the same countdown, and
- *						neither is this file's to decide.
+ *						neither is this file's to decide. What a look of the Design
+ *						feature paints (design/) is its own; this file declares the
+ *						properties those looks move, with the layout of the counter
+ *						as their default, so that a counter looks as it always did
+ *						until one of them is moved.
+ *
+ *						Two places for the defaults, as the Design feature's manual
+ *						asks: lengths, numbers, keywords and the grounds in
+ *						:where(:root), and the tone of the digits in :where(*), which
+ *						declares it on every element so that a look which gives it
+ *						a tone of the page gets the one of the ground it is read on.
+ *						Until a look does, the digits are the colour of the text
+ *						around the counter, whatever that is. :where() has no specificity
+ *						and the bundle lists this file after the theme the Design
+ *						feature writes, so a look moves a default by saying it on
+ *						:root. No colour literal, and no !important.
  */
+
+:where(:root) {
+	/*	The size of the digits and the space between the parts	*/
+	--countdown-size: 1em;
+	--countdown-gap: var(--space-2);
+
+	/*	Where the name of a part stands: the space between it and its number, the direction the part lays them out in and how
+		they are aligned there. The middle is the name under the number	*/
+	--countdown-names: 0em;
+	--countdown-names-dir: column;
+	--countdown-names-align: center;
+
+	/*	What only a look that paints a tile reads: the corners of a tile, and its ground with the roles the palette solves for it -
+		the text colour, the quieter one, the link, the line and the focus - which the tile passes on to what stands in it	*/
+	--countdown-corners: var(--radius-large);
+	--countdown-tile: var(--color-section-alt-bg);
+	--countdown-tile-on: var(--color-section-alt-text);
+	--countdown-tile-on-muted: var(--color-section-alt-text);
+	--countdown-tile-link: var(--color-accent-alt);
+	--countdown-tile-border: var(--color-border-alt);
+	--countdown-tile-focus: var(--color-focus-alt);
+
+	/*	--countdown-separator, the sign between the parts, has no default here: the options of the style in design/styles/ set it on
+		:root, and with none chosen the rule that reads it is not compiled	*/
+}
+
+:where(*) {
+	--countdown-digits: currentColor;
+}
 
 .nino-countdown-parts {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--space-2);
+	gap: var(--countdown-gap);
 	align-items: baseline;
 }
 
 .nino-countdown-part {
 	display: flex;
-	flex-direction: column;
-	align-items: center;
+	flex-direction: var(--countdown-names-dir);
+	align-items: var(--countdown-names-align);
+	gap: var(--countdown-names);
 	min-width: 3.5ch;
 }
 
 /*	Tabular figures, so the row does not shift on every tick: without them a
 	1 is narrower than an 8 and the whole line breathes once a second	*/
 .nino-countdown-value {
+	font-size: var(--countdown-size);
 	font-variant-numeric: tabular-nums;
 	font-feature-settings: 'tnum';
 	line-height: 1.1;

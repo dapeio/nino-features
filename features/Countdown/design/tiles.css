@@ -1,0 +1,83 @@
+/*	@name			Tiles
+ *	@name-de		Kacheln
+ *	@description	Every part on a ground of its own with rounded corners, the digits one and a half times the size of the text.
+ *	@description-de	Jeder Teil auf einem eigenen Grund mit gerundeten Ecken, die Ziffern anderthalbmal so groß wie der Text.
+ *
+ *	@knob	size		scale	type		Size of the digits
+ *	@knob-de	size		Größe der Ziffern
+ *	@knob	gap			scale	surfaces	Space between the tiles
+ *	@knob-de	gap			Abstand der Kacheln
+ *	@knob	corners		scale	surfaces	Corners of a tile
+ *	@knob-de	corners		Ecken einer Kachel
+ *	@knob	names		choice	surfaces	Where the name of a tile stands
+ *	@knob-de	names		Wo der Name einer Kachel steht
+ *	@option	names	less	Beside
+ *	@option	names	default	Under
+ *	@option	names	more	Above
+ *	@option-de	names	less	Daneben
+ *	@option-de	names	default	Darunter
+ *	@option-de	names	more	Darüber
+ *	@knob	tile		ground	colours		Ground of a tile	= alt
+ *	@knob-de	tile		Grund einer Kachel
+ *	@knob	digits		ink		colours		Colour of the digits	= accent
+ *	@knob-de	digits		Farbe der Ziffern
+ *
+ *	The ground is a surface of the palette and brings the roles solved for it. A tile passes them on to what stands in it, the
+ *	digits and the name, as the grounds of Nino.css do - the ink and the title as its text colour, the subtitle as the quieter
+ *	one, the accent as its link, the border and the focus as its own - so that a tone chosen for the digits is read on the tile
+ *	and not on the section behind it, and the separator between the tiles, which stands outside them, keeps the tone of the section.
+ *	The corners and the ground are the knobs the other looks do not answer to.
+ */
+
+:root {
+	--countdown-size--least:	var(--text-2);
+	--countdown-size--less:		var(--text-3);
+	--countdown-size--default:	var(--text-4);
+	--countdown-size--more:		var(--text-5);
+	--countdown-size--most:		var(--text-6);
+
+	--countdown-gap--least:		calc( var(--space-1) * .4 );
+	--countdown-gap--less:		calc( var(--space-1) * .7 );
+	--countdown-gap--default:	var(--space-1);
+	--countdown-gap--more:		var(--space-2);
+	--countdown-gap--most:		var(--space-3);
+
+	--countdown-corners--least:		0rem;
+	--countdown-corners--less:		var(--radius-small);
+	--countdown-corners--default:	var(--radius-large);
+	--countdown-corners--more:		.8rem;
+	--countdown-corners--most:		1.5rem;
+
+	--countdown-names--less:		.4em;
+	--countdown-names--default:		0em;
+	--countdown-names--more:		0em;
+
+	--countdown-names-dir--less:	row;
+	--countdown-names-dir--default:	column;
+	--countdown-names-dir--more:	column-reverse;
+
+	--countdown-names-align--less:		baseline;
+	--countdown-names-align--default:	center;
+	--countdown-names-align--more:		center;
+}
+
+.nino-countdown-part {
+	padding: var(--space-1) var(--space-2);
+	border-radius: var(--countdown-corners);
+	background-color: var(--countdown-tile);
+	color: var(--countdown-tile-on);
+}
+
+.nino-countdown-value,
+.nino-countdown-name {
+	--color-ink: var(--countdown-tile-on);
+	--color-title: var(--countdown-tile-on);
+	--color-subtitle: var(--countdown-tile-on-muted);
+	--color-accent: var(--countdown-tile-link);
+	--color-border: var(--countdown-tile-border);
+	--color-focus: var(--countdown-tile-focus);
+}
+
+.nino-countdown-value {
+	color: var(--countdown-digits);
+}

@@ -1,0 +1,9 @@
+/*	@name			Dot
+ *	@name-de		Punkt
+ *	@description	A dot between the parts.
+ *	@description-de	Ein Punkt zwischen den Teilen.
+ */
+
+:root {
+	--countdown-separator: "\00b7";
+}

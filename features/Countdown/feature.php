@@ -43,7 +43,12 @@ return [
 			],
 		],
 		'routes' => [],
-		'panel' => [],
+		'panel' => [
+			'Design: the looks of the counter' => [
+				'en_US' => 'With the Design feature on, the tab Countdown of the Design panel offers under Base three looks of the counter - Plain, Tiles and Big - and a select for the separator between the parts: None, Colon or Dot. The knobs stand under Text (the size of the digits), Surface (the space between the parts, where a name stands - under, beside or above its number - and, in Tiles only, the corners) and Colour (in Tiles and Big the colour of the digits, in Tiles only the ground of a tile); a knob the look does not answer to is greyed out. Plain draws the counter as it is without Design. On a section of the ground Page, alternate the default ground of a tile disappears into it - choose another there. The markup stays that of [countdown]. The block design/preview.tpl shows two counters in the preview; Apply to website puts the look on the site.',
+				'de_DE' => 'Ist das Feature Design an, bietet der Tab Countdown des Design-Panels unter Grundlage drei Looks des Zählers an - Schlicht, Kacheln und Groß - und eine Auswahl für den Trenner zwischen den Teilen: Keiner, Doppelpunkt oder Punkt. Die Regler stehen unter Text (die Größe der Ziffern), Fläche (der Abstand der Teile, wo ein Name steht - unter, neben oder über seiner Zahl - und, nur bei Kacheln, die Ecken) und Farbe (bei Kacheln und Groß die Farbe der Ziffern, nur bei Kacheln der Grund einer Kachel); ein Regler, auf den der Look nicht antwortet, steht ausgegraut da. Schlicht zeichnet den Zähler wie ohne Design. Auf einer Sektion mit dem Grund Seite alternativ geht der Standard-Grund einer Kachel darin unter - dort wählst Du einen anderen. Das Markup bleibt das von [countdown]. Der Block design/preview.tpl zeigt zwei Zähler in der Vorschau; Auf Website anwenden bringt den Look auf die Site.',
+			],
+		],
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
