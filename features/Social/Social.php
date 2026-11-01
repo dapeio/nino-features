@@ -35,11 +35,13 @@ namespace Nino\Modules {
 		private const string ID		= '/^[A-Za-z0-9][A-Za-z0-9_-]*$/D';
 		private const string SLUG	= '/^[a-z0-9][a-z0-9-]*$/D';
 
-		// The one attribute this class writes itself, with nothing an editor
-		// typed in it: an address on the web is one of the site's profiles,
-		// and rel="me" is how a profile that links back - Mastodon's - verifies
-		// that it is
-		private static string $relMe = ' rel="me"';
+		// The two attributes this class writes itself, with nothing an editor
+		// typed in them, on an address on the web only: it is one of the site's
+		// profiles, rel="me" is how a profile that links back - Mastodon's -
+		// verifies that it is, and it opens in a new tab, which noopener keeps
+		// from reaching back into this one
+		private static string $relProfile			= ' rel="me noopener"';
+		private static string $targetBlank	= ' target="_blank"';
 
 		/**
 		 *	Module initiating: the three shortcodes, wherever the Components module
@@ -278,7 +280,9 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	One anchor. An address that is a path of this website gets the
+		 *	One anchor. An address on the web opens in a new tab and carries
+		 *	rel="me noopener"; a path of this website, mailto: and tel: carry
+		 *	neither. An address that is a path of this website gets the
 		 *	directory the website is served from in front of it, as the kernel
 		 *	writes the link to a page - an editor writes /contact, the website may
 		 *	stand at /shop. Not \Nino\Filesystem::url(): that is the url of a
@@ -293,13 +297,16 @@ namespace Nino\Modules {
 		 */
 		private static function _link( array &$appData, array $link, string $show, string $classes = '' ): string {
 
+			$web = preg_match( '#^https?://#i', $link['url'] ) === 1;
+
 			// The name last, for the reason doShortcode() gives
 			return str_replace(
-				[ '[[classes]]', '[[url]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
+				[ '[[classes]]', '[[url]]', '[[target]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
 				[
 					$classes,
 					\Nino\Modules\Components::escape( str_starts_with( $link['url'], '/' ) === true ? rtrim( \Nino\Filesystem::getDir( $appData ), '/' ). $link['url'] : $link['url'] ),
-					preg_match( '#^https?://#i', $link['url'] ) === 1 ? self::$relMe : '',
+					$web === true ? self::$targetBlank : '',
+					$web === true ? self::$relProfile : '',
 					$show === 'label' ? '' : self::icon( $appData, $link['icon'] ),
 					$show === 'icon' ? 'nino-social-label nino-sr-only' : 'nino-social-label',
 					\Nino\Modules\Components::escape( $link['title'] ),

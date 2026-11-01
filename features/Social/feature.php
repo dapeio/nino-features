@@ -53,9 +53,9 @@ return [
 			],
 		],
 		'markup' => [
-			'rel="me"' => [
-				'en_US' => 'On every http(s) link, so a profile that links back can verify it is the site\'s. Every address is checked first: javascript:, data: and anything with a space is left out without a word.',
-				'de_DE' => 'An jedem http(s)-Link, damit ein Profil, das zurückverlinkt, prüfen kann, dass es das der Seite ist. Jede Adresse wird vorher geprüft: javascript:, data: und alles mit Leerzeichen bleibt ohne Meldung weg.',
+			'target="_blank" rel="me noopener"' => [
+				'en_US' => 'On every http(s) link, and on no other: it opens in a new tab, noopener keeps that tab from reaching back into the site, and rel="me" lets a profile that links back verify it is the site\'s. A path of the website, mailto: and tel: carry neither. Every address is checked first: javascript:, data: and anything with a space is left out without a word.',
+				'de_DE' => 'An jedem http(s)-Link und an keinem anderen: Er öffnet in einem neuen Tab, noopener hindert diesen Tab daran, auf die Seite zuzugreifen, und rel="me" lässt ein Profil, das zurückverlinkt, prüfen, dass es das der Seite ist. Ein Pfad der Website, mailto: und tel: tragen weder das eine noch das andere. Jede Adresse wird vorher geprüft: javascript:, data: und alles mit Leerzeichen bleibt ohne Meldung weg.',
 			],
 			'href="/contact"' => [
 				'en_US' => 'A link that is a path of the website is written without the directory (/contact, not /shop/contact) and gets the directory the website is served from: on a website at /shop it leads to /shop/contact.',

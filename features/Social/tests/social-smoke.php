@@ -64,6 +64,32 @@ function render( array &$appData, string $html ): string {
 	return \Nino\Html::renderHtml( $appData, $html );
 }
 
+/**
+ *	The attributes of the anchor that leads to an address, as written in a rendering
+ *
+ *	@param		string		$html
+ *	@param		string		$href					The href attribute's value as it is written
+ *
+ *	@return 	array|null								[ name => value, ... ] of the first such anchor, or null where there is none
+ */
+function anchorAttributes( string $html, string $href ): ?array {
+
+	preg_match_all( '#<a\s([^>]*)>#', $html, $anchors );
+
+	foreach( $anchors[1] as $attributes ) {
+
+		preg_match_all( '#([a-z-]+)="([^"]*)"#', $attributes, $pairs, PREG_SET_ORDER );
+		$found = [];
+		foreach( $pairs as $pair )
+			$found[$pair[1]] = $pair[2];
+
+		if( ( $found['href'] ?? null ) === $href )
+			return $found;
+	}
+
+	return null;
+}
+
 $dir = dirname( __DIR__ );
 
 
@@ -195,7 +221,8 @@ check( '[social]: one list, four links, by position', substr_count( $html, '<ul 
 	&& strpos( $html, 'instagram.com' ) < strpos( $html, 'facebook.com' ) && strpos( $html, 'facebook.com' ) < strpos( $html, 'youtube.com' ) && strpos( $html, 'youtube.com' ) < strpos( $html, 't.me' ) );
 check( 'every link is named by text for a screen reader, its icon hidden', substr_count( $html, '<span class="nino-social-label nino-sr-only">' ) === 4
 	&& substr_count( $html, '<span class="nino-social-icon" aria-hidden="true"><svg' ) === 4 && str_contains( $html, 'aria-label' ) === false );
-check( 'a profile on the web is rel="me", and nothing opens a new tab', substr_count( $html, 'rel="me"' ) === 4 && str_contains( $html, 'target=' ) === false );
+check( 'a profile on the web opens in a new tab and is rel="me noopener"', substr_count( $html, '<a ' ) === 4
+	&& count( array_filter( [ 'instagram.com', 'facebook.com', 'youtube.com', 't.me' ], static fn( string $host ): bool => preg_match( '#<a [^>]*href="https://[^"]*'. preg_quote( $host, '#' ). '[^"]*"[^>]*>#', $html, $anchor ) === 1 && str_contains( $anchor[0], 'target="_blank"' ) === true && str_contains( $anchor[0], 'rel="me noopener"' ) === true ) ) === 4 );
 $telegram = trim( (string) file_get_contents( $dir. '/icons/telegram.svg' ) );
 check( 'the icon is the one the element names', $telegram !== '' && str_contains( $html, $telegram ) === true );
 
@@ -225,7 +252,7 @@ check( '[social class=""] is the call without one', render( $appData, '[social c
 $html = render( $appData, 'Follow us on [social-link youtube].' );
 check( '[social-link]: one anchor in the text, icon and name by default, no list', substr_count( $html, '<a ' ) === 1 && str_contains( $html, '<ul' ) === false
 	&& str_contains( $html, '<span class="nino-social-label">YouTube</span>' ) === true && str_contains( $html, '<svg' ) === true && str_starts_with( $html, 'Follow us on <a class="nino-social-link"' ) === true );
-check( '[social-link class=…]: the call\'s class is on the anchor, in both forms of the call', str_contains( render( $appData, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link my-class" href="https://www.youtube.com/" rel="me">' ) === true
+check( '[social-link class=…]: the call\'s class is on the anchor, in both forms of the call', str_contains( render( $appData, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link my-class" href="https://www.youtube.com/" target="_blank" rel="me noopener">' ) === true
 	&& render( $appData, '[social-link id="youtube" class="my-class"]' ) === render( $appData, '[social-link youtube class="my-class"]' )
 	&& substr_count( render( $appData, '[social-link youtube class="my-class"]' ), 'my-class' ) === 1 );
 check( '...escaped, and nowhere when the link is none', str_contains( \Nino\Modules\Social::doLinkShortcode( $appData, [ 'id' => 'youtube', 'class' => $hostileClass ] ), '<a class="nino-social-link a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]" href=' ) === true
@@ -312,6 +339,11 @@ echo "Components - [social], [social-link], [social-icon] as the Builder offers 
 	check( 'the link of a call written with id= and the link of the bare word are one',
 		\Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' )
 		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ) !== '' );
+	check( 'a web link opens in a new tab with rel="me noopener", the Builder\'s component as the shortcode by hand',
+		( anchorAttributes( \Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ), 'https://www.youtube.com/' )['target'] ?? null ) === '_blank'
+		&& ( anchorAttributes( \Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ), 'https://www.youtube.com/' )['rel'] ?? null ) === 'me noopener'
+		&& ( anchorAttributes( \Nino\Html::renderHtml( $probe, '[social-link youtube]' ), 'https://www.youtube.com/' )['target'] ?? null ) === '_blank'
+		&& ( anchorAttributes( \Nino\Html::renderHtml( $probe, '[social-link youtube]' ), 'https://www.youtube.com/' )['rel'] ?? null ) === 'me noopener' );
 	check( 'a class is the call\'s own, on the list, the anchor and the wrapper of the icon, the wrapper\'s way as well',
 		str_contains( \Nino\Html::renderHtml( $probe, '[social class="my-class"]' ), '<ul class="nino-social my-class">' ) === true
 		&& str_contains( \Nino\Html::renderHtml( $probe, '[social size="large" class="my-class"]' ), '<ul class="nino-social nino-social--large my-class">' ) === true
@@ -334,13 +366,22 @@ echo "\nPositions\n";
 \Nino\Elements::insertElement( $appData, '/social/mastodon', [ 'title' => 'Mastodon', 'icon' => 'mastodon', 'link' => 'https://mastodon.social/@example', 'order' => 15 ], 'en_US' );
 \Nino\Elements::insertElement( $appData, '/social/website', [ 'title' => 'Website', 'icon' => 'website', 'link' => 'https://first.example/', 'order' => 0 ], 'en_US' );
 \Nino\Elements::insertElement( $appData, '/social/mail', [ 'title' => 'Mail', 'icon' => 'mail', 'link' => 'mailto:hello@example.com' ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/social/phone', [ 'title' => 'Phone', 'icon' => 'phone', 'link' => 'tel:+4930123456' ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/social/contact', [ 'title' => 'Contact', 'icon' => 'link', 'link' => '/contact', 'order' => 20 ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/social/scheme', [ 'title' => 'Scheme', 'icon' => 'link', 'link' => 'HTTPS://Upper-Scheme.example/', 'order' => 21 ], 'en_US' );
 
 $html = render( $appData, '[social]' );
 check( 'a position between two puts a link between them', strpos( $html, 'instagram.com' ) < strpos( $html, 'mastodon.social' ) && strpos( $html, 'mastodon.social' ) < strpos( $html, 'facebook.com' ) );
 check( '0 - what the panel saves for an empty field - and none go last, in the order of the type file', strpos( $html, 't.me' ) < strpos( $html, 'first.example' ) && strpos( $html, 'first.example' ) < strpos( $html, 'mailto:' ) );
 check( 'mail is a link, not a profile: no rel="me"', str_contains( $html, 'href="mailto:hello@example.com">' ) === true );
+foreach( [ [ 'a link on the web', 'mastodon', 'https://mastodon.social/@example', true ], [ 'a path of the website', 'contact', '/contact', false ], [ 'a mailto: link', 'mail', 'mailto:hello@example.com', false ], [ 'a tel: link', 'phone', 'tel:+4930123456', false ], [ 'a link on the web with its scheme in capitals', 'scheme', 'HTTPS://Upper-Scheme.example/', true ] ] as [ $what, $id, $href, $web ] ) {
+	$attributes = anchorAttributes( $html, $href );
+	check( $what. ( $web === true ? ' opens in a new tab and is rel="me noopener"' : ' is a plain link: no target, no rel' ),
+		$attributes !== null && ( $attributes['target'] ?? null ) === ( $web === true ? '_blank' : null ) && ( $attributes['rel'] ?? null ) === ( $web === true ? 'me noopener' : null ) );
+	check( $what. ' is the same through [social-link]', $attributes !== null && anchorAttributes( render( $appData, '[social-link '. $id. ']' ), $href ) === $attributes );
+}
 
-foreach( [ 'mastodon', 'website', 'mail' ] as $id )
+foreach( [ 'mastodon', 'website', 'mail', 'phone', 'contact', 'scheme' ] as $id )
 	\Nino\Elements::deleteElement( $appData, '/social/'. $id, '*' );
 
 
@@ -390,8 +431,8 @@ check( '...a path of a page that is named like a public directory is a page: /im
 check( '...with its query and fragment, and the front page as /sub/', str_contains( $html, 'href="/sub/contact?a=1#b">' ) === true && str_contains( $html, 'href="/sub/">' ) === true );
 check( '...in every shortcode that draws the link, and not twice', str_contains( render( $appData, '[social-link here]' ), 'href="/sub/contact">' ) === true
 	&& str_contains( render( $appData, '[social only="here" show="label"]' ), 'href="/sub/contact">' ) === true && str_contains( $html, '/sub/sub' ) === false );
-check( '...but not an address of another host, mailto: or tel:, which keep their rel as before', str_contains( $html, 'href="https://upper.example/"' ) === true && str_contains( $html, 'href="/sub' ) === true
-	&& substr_count( $html, 'href="/sub' ) === 4 && str_contains( $html, 'href="/sub/contact" rel' ) === false );
+check( '...but not an address of another host, mailto: or tel:, which no directory is put in front of', str_contains( $html, 'href="https://upper.example/"' ) === true && str_contains( $html, 'href="/sub' ) === true
+	&& substr_count( $html, 'href="/sub' ) === 4 && anchorAttributes( $html, '/sub/contact' ) !== null && isset( anchorAttributes( $html, '/sub/contact' )['target'] ) === false && isset( anchorAttributes( $html, '/sub/contact' )['rel'] ) === false );
 $appData['/nino/dir'] = '';
 $html = render( $appData, '[social]' );
 check( 'at the root nothing is put in front: /contact stays /contact, and /images stays /images', str_contains( $html, 'href="/contact">' ) === true && str_contains( $html, 'href="/images">' ) === true && str_contains( $html, '/public' ) === false );
