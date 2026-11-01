@@ -23,6 +23,7 @@ return [
 	'[[/_admin/forms/label/entries]]'			=> '%s gespeichert',
 	'[[/_admin/forms/label/delete]]'			=> 'Löschen',
 	'[[/_admin/forms/label/form]]'				=> 'Formular',
+	'[[/_admin/forms/label/first]]'				=> 'Erstes Formular',
 	'[[/_admin/forms/label/name]]'				=> 'Name',
 	'[[/_admin/forms/label/key]]'					=> 'Schlüssel',
 	'[[/_admin/forms/label/to]]'					=> 'Senden an',

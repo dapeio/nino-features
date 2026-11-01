@@ -1868,6 +1868,62 @@ check( '...a component a feature registers has the icon it registered, its parts
 	$iconedAnswer['zulu']['icon'] === [ [ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '9' ] ], [ 'path', [ 'd' => 'M12 7v5l3 3' ] ] ] && array_key_exists( 'icon', $iconedAnswer['alpha'] ) === false
 	&& array_slice( $iconedAnswer, 0, count( $registryAnswer['components'] ) ) === $registryAnswer['components'] );
 
+// An attribute whose options a method of a feature answers: the registry of the kernel hands out the values as the options and the words beside them, and the Builder
+// hands the panel the words in the language of the workbench - whichever component or feature it is, it knows none by name
+// Where the kernel has no such attribute (a Nino before the Components module's options from a method) there is nothing for the panel to hand on, and nothing to pin
+if( method_exists( \Nino\Modules\Components::class, 'registered' ) === false )
+	echo "  note - this Nino's Components module takes no options from a method of a feature: the words of the options and the value a call holds outside them are not run here\n";
+else {
+	if( class_exists( 'BuilderSmokeChoices' ) === false ) {
+		class BuilderSmokeChoices {
+			public static function pick( array &$appData, string $attribute ): array {
+				return [ '' => [ 'en_US' => 'First', 'de_DE' => 'Erstes' ], 'b' => 'Beta', '2' => [ 'de_DE' => 'Zwei' ], 'z' => [ 'en_US' => 'Zed', 'de_DE' => 'Zett' ] ];
+			}
+			public static function tones( array &$appData, string $attribute ): array {
+				return [ '' => 'Plain', 'warm' => 'Warm' ];
+			}
+		}
+	}
+	$chosen = $appData;
+	\Nino\Modules\Components::addComponent( $chosen, 'chooser', static fn( array &$appData, array $args ): string => '', [
+		'label' => [ 'en_US' => 'Chooser' ], 'source' => 'none', 'by' => 'hello',
+		'attributes' => [
+			'pick' => [ 'type' => 'select', 'options' => '\BuilderSmokeChoices::pick', 'default' => '', 'label' => 'Pick' ],
+			'plain' => [ 'type' => 'select', 'options' => [ '', 'x' ], 'default' => '', 'label' => 'Plain' ],
+			'tone' => [ 'type' => 'variant', 'options' => '\BuilderSmokeChoices::tones', 'default' => '', 'prefix' => 'chooser--', 'label' => 'Tone' ],
+		],
+	] );
+	ninoWarnings();
+	$choiceIn = static function( string $locale ) use ( $chosen ): array {
+		$session = $chosen;
+		\Nino\Runtime::setSessionValue( $session, './admin/locale', $locale );
+		return \Nino\Modules\Builder\Document::registry( $session )['components']['chooser']['attributes'];
+	};
+	$choiceEnglish	= $choiceIn( 'en_US' );
+	$choiceGerman		= $choiceIn( 'de_DE' );
+	check( 'an attribute that takes its options from a method of its feature has them in the answer as the values, and beside them optionLabels, value => words in the language of the workbench: the label of a locale map as the label of the attribute is read: the language, else English, else the first',
+		$choiceEnglish['pick']['options'] === [ '', 'b', '2', 'z' ] && $choiceEnglish['pick']['optionLabels'] === [ '' => 'First', 'b' => 'Beta', 2 => 'Zwei', 'z' => 'Zed' ]
+		&& $choiceGerman['pick']['options'] === $choiceEnglish['pick']['options'] && $choiceGerman['pick']['optionLabels'] === [ '' => 'Erstes', 'b' => 'Beta', 2 => 'Zwei', 'z' => 'Zett' ] );
+	check( '...each label is one string by then - the panel reads no map -, and an attribute with a list of its own has no optionLabels',
+		array_filter( $choiceGerman['pick']['optionLabels'], 'is_string' ) === $choiceGerman['pick']['optionLabels'] && array_key_exists( 'optionLabels', $choiceEnglish['plain'] ) === false && $choiceEnglish['plain']['options'] === [ '', 'x' ] );
+	check( '...the method is no part of the answer', array_filter( array_merge( $choiceEnglish['pick'], $choiceGerman['pick'] ), static fn( mixed $value ): bool => is_string( $value ) === true && str_contains( $value, '::' ) ) === [] );
+
+	// What the call holds outside the list a method answered - the form that was deleted since - is the project's data, not a mistake of the page: the Reader keeps it, the Writer writes it
+	// as it is, and a value outside a list written in the manifest is still refused
+	$chosenRegistry	= \Nino\Modules\Builder\Document::schemas( $chosen );
+	$staleFile			= $section( '[chooser pick="gone" plain="x"]' );
+	[ $staleBlock, $staleWhy ] = \Nino\Modules\Builder\Reader::readSection( $staleFile, $chosenRegistry );
+	check( 'a value outside the options a method of the feature answered is read and kept as the call has it, and written again as it was',
+		$staleWhy === null && is_array( $staleBlock ) === true && str_contains( \Nino\Modules\Builder\Writer::block( $staleBlock, $chosenRegistry ), '[chooser pick="gone" plain="x"]' ) === true
+		&& \Nino\Modules\Builder\Reader::readSection( $section( '[chooser pick="b"]' ), $chosenRegistry )[1] === null );
+	check( '...a variant keeps it only where it is a word, since a variant is written as the end of a class: the select keeps any string, the variant lower case letters and digits with hyphens between them',
+		\Nino\Modules\Builder\Reader::readSection( $section( '[chooser tone="gone-one"]' ), $chosenRegistry )[1] === null && \Nino\Modules\Builder\Reader::readSection( $section( '[chooser tone="warm"]' ), $chosenRegistry )[1] === null
+		&& \Nino\Modules\Builder\Reader::readSection( $section( '[chooser tone="Not a word"]' ), $chosenRegistry )[1]['code'] === 'attribute-value' && \Nino\Modules\Builder\Reader::readSection( $section( '[chooser tone="two--hyphens"]' ), $chosenRegistry )[1]['code'] === 'attribute-value'
+		&& \Nino\Modules\Builder\Reader::readSection( $section( '[chooser pick="Not a word"]' ), $chosenRegistry )[1] === null );
+	check( '...and a value outside a list the manifest writes is refused as before',
+		\Nino\Modules\Builder\Reader::readSection( $section( '[chooser plain="y"]' ), $chosenRegistry )[1]['code'] === 'attribute-value' );
+}
+
 $listed = \Nino\Modules\Builder\Document::list( $appData );
 $byFile = array_column( $listed['templates'], null, 'file' );
 

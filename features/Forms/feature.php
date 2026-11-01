@@ -11,12 +11,20 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[form key="quote"]' => [
-				'en_US' => 'Draws that form.',
-				'de_DE' => 'Zeichnet dieses Formular.',
+				'en_US' => 'Draws that form. A key no form has draws the first form.',
+				'de_DE' => 'Zeichnet dieses Formular. Ein Schlüssel, den kein Formular hat, zeichnet das erste Formular.',
 			],
 			'[form]' => [
 				'en_US' => 'Draws the first form there is.',
 				'de_DE' => 'Zeichnet das erste Formular, das es gibt.',
+			],
+			'[form] in the Builder' => [
+				'en_US' => 'Under Properties, Form is a select of the forms there are, by their names, with the first form at the top; choosing one writes its key into the call, the first form writes none. The Builder reads the list when it opens a page, so a form made in the Forms panel is offered once the page is opened again. A key whose form is gone is read as empty wherever the Components module renders the call, and the first form is drawn.',
+				'de_DE' => 'Unter Eigenschaften ist Formular ein Select der vorhandenen Formulare mit ihren Namen, das erste Formular steht oben; die Auswahl schreibt den Schlüssel in den Aufruf, das erste Formular schreibt keinen. Der Builder liest die Liste, wenn er eine Seite öffnet, ein im Panel Formulare angelegtes Formular wird also angeboten, sobald die Seite erneut geöffnet wird. Ein Schlüssel, dessen Formular es nicht mehr gibt, gilt überall als leer, wo das Komponenten-Modul den Aufruf rendert, und das erste Formular wird gezeichnet.',
+			],
+			'[form] and the kernel it needs' => [
+				'en_US' => 'The key is a select whose options a method of the feature answers (the Components module keeps options of that kind for a select or a variant only) - a bound the shortcode itself never declared: written by hand without that module it still draws nothing for a key no form has. Needs the Nino of the kernel patch after 1.8.0, whose Components module takes the options of an attribute from a method of the feature. On a kernel before it the whole manifest of this feature is refused - no panel, no guards, no [form] - and Forms cannot be installed, until the floor of the feature rises with that release.',
+				'de_DE' => 'Der Schlüssel ist ein Select, dessen Optionen eine Methode des Features beantwortet (das Komponenten-Modul behält Optionen dieser Art nur für ein Select oder eine Variante) - eine Schranke, die der Shortcode selbst nie hatte: Von Hand ohne dieses Modul geschrieben zeichnet er für einen Schlüssel, den kein Formular hat, weiterhin nichts. Braucht das Nino des Kernel-Patches nach 1.8.0, dessen Komponenten-Modul die Optionen eines Attributs von einer Methode des Features nimmt. Auf einem Kernel davor wird das ganze Manifest dieses Features abgewiesen - kein Panel, keine Schutzmaßnahmen, kein [form] - und Formulare lässt sich nicht installieren, bis die Untergrenze des Features mit diesem Release steigt.',
 			],
 			'[form ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the form. What the Builder writes for its custom classes.',
@@ -116,13 +124,17 @@ return [
 			'source'		=> 'none',
 			'loop'			=> false,
 			'attributes'	=> [
+				/*	A choice among the forms there are: the list is a method of the class
+					(Forms::options()), which the Components module asks, and a tool offers
+					the forms by their names. The empty word is the first form	*/
 				'key' => [
-					'type'		=> 'string',
+					'type'		=> 'select',
+					'options'	=> '\Nino\Modules\Forms::options',
 					'default'	=> '',
 					'label'		=> [ 'en_US' => 'Form', 'de_DE' => 'Formular' ],
 					'hint'		=> [
-						'en_US' => 'The key of the form, as the Forms panel names it. Empty draws the first form there is.',
-						'de_DE' => 'Der Schlüssel des Formulars, wie ihn das Panel Formulare nennt. Leer zeichnet das erste Formular, das es gibt.',
+						'en_US' => 'The form to draw. The first form is the one at the top of the Forms panel.',
+						'de_DE' => 'Das Formular, das gezeichnet wird. Das erste Formular steht oben im Panel Formulare.',
 					],
 				],
 			],

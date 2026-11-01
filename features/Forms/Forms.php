@@ -59,6 +59,11 @@ namespace Nino\Modules {
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Forms/templates';
 
+		// Where this feature's own words are, and the word of the first option of
+		// options(): the form [form] draws where it is told none
+		public const string TEXT = '/features/Forms/text';
+		public const string FIRST = '[[/_admin/forms/label/first]]';
+
 		// The endpoint's route callback - the kernel module's own, which is
 		// what makes a guard registered here run ahead of the engine
 		public const string ROUTE = '/nino/http/response/POST://.form';
@@ -106,6 +111,47 @@ namespace Nino\Modules {
 
 			\Nino\Callbacks::registerCallback( $appData, self::ROUTE, [ self::class, 'callbackGuard' ], 1 );
 			\Nino\Callbacks::registerCallback( $appData, self::ROUTE, [ self::class, 'callbackCount' ], 8 );
+		}
+
+		/**
+		 *	The forms there are, as the options of the attribute key of [form]
+		 *	(the manifest's 'options'; the Components module asks for them where a
+		 *	tool needs the list and where a call of [form] is made ready): the empty
+		 *	word first, which draws the first form, and then each form by its key
+		 *	with its name for the label, in the order the Forms panel lists them -
+		 *	what \Nino\Form::forms() reads, the contact form the kernel falls back to
+		 *	where a project defines none included, since [form] draws it by that key.
+		 *	The label of the empty word is a word of this feature's own text, in each
+		 *	language of the site (English where the feature has no words of it), so
+		 *	that a tool reads it in the language it is in. A key the list does not hold
+		 *	- the form was deleted since - is the empty word where the Components module
+		 *	makes a call ready, and draws the first form
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$attribute		The attribute asked for
+		 *
+		 *	@return 	array										key => name, a locale => string map for the first
+		 */
+		public static function options( array &$appData, string $attribute ): array {
+
+			$first = [];
+
+			foreach( \Nino\Locales::getAvailableLocales( $appData ) as $locale ) {
+
+				$words = \Nino\Filesystem::getFileContent( $appData, self::TEXT. '/'. $locale. '.php', false );
+
+				if( is_array( $words ) === false )
+					$words = \Nino\Filesystem::getFileContent( $appData, self::TEXT. '/en_US.php', [] );
+
+				$first[(string) $locale] = (string) ( ( (array) $words )[ self::FIRST ] ?? '' );
+			}
+
+			$options = [ '' => $first ];
+
+			foreach( \Nino\Form::forms( $appData ) as $form )
+				$options[ $form['key'] ] = $form['name'];
+
+			return $options;
 		}
 
 		/**

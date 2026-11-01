@@ -132,7 +132,9 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Everything the panel builds its forms from: the components and
-		 *	the stacks with their labels in the language of the workbench - and
+		 *	the stacks with their labels in the language of the workbench, and with
+		 *	them the words of the options an attribute takes from a method of its
+		 *	feature (optionLabels, value => label, in the same language) - and
 		 *	the rest of the schema as the kernel registered it, the icon a component
 		 *	is shown by (icon), where it belongs (in), what it draws (draws), what
 		 *	it holds (holds), whether it is a link (link), who registered it (by)
@@ -173,6 +175,10 @@ namespace Nino\Modules\Builder {
 					foreach( (array) $schema['attributes'] as $attribute => $declared ) {
 						$schemas[$kind][$name]['attributes'][$attribute]['label'] = \Nino\Features::localized( $declared['label'] ?? $attribute, $locale );
 						$schemas[$kind][$name]['attributes'][$attribute]['hint'] = \Nino\Features::localized( $declared['hint'] ?? '', $locale );
+
+						// The words of the options a method of the feature answered: each label in the language of the workbench, the way the label of the attribute is
+						if( is_array( $declared['optionLabels'] ?? null ) === true )
+							$schemas[$kind][$name]['attributes'][$attribute]['optionLabels'] = array_map( static fn( mixed $label ): string => \Nino\Features::localized( $label, $locale ), $declared['optionLabels'] );
 					}
 				}
 

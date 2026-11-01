@@ -3455,6 +3455,55 @@ check( 'Link: only where the schema says the component is a link - and the compo
 delete builder._registry.components['stub-kinds'];
 builder._closeDialog();
 
+// An attribute whose options a method of a feature answered: the registry has the values as the options and the words beside them as optionLabels (value => label), and the Builder
+// shows a word where there is one and the value where there is none - for no attribute by its name, no component, no feature
+builder._registry.components['stub-words'] = {
+	label : 'Stub words', source : 'none', loop : true, preview : 'block', by : 'hello',
+	attributes : {
+		pick		: { type : 'select', label : 'Pick', hint : '', options : [ '', 'quote', 'news' ], optionLabels : { '' : 'The first one', 'quote' : 'Quote request', 'news' : 'Newsletter sign-up' }, default : '' },
+		some		: { type : 'select', label : 'Some', hint : '', options : [ '', 'quote', 'news' ], optionLabels : { 'quote' : 'Quote request' }, default : '' },
+		row			: { type : 'select', label : 'Row', hint : '', input : 'segment', options : [ '', 'one', 'cold-snap' ], optionLabels : { '' : 'Nothing', 'one' : 'The one' }, default : '' },
+		tone		: { type : 'variant', label : 'Tone', hint : '', options : [ '', 'warm', 'cold-snap' ], optionLabels : { '' : 'Plain', 'warm' : 'Warm one' }, default : '' },
+		list		: { type : 'select', label : 'List', hint : '', options : [ '', 'quote' ], optionLabels : [], default : '' },
+	},
+	defaults : { pick : '', some : '', row : '', tone : '', list : '', 'class' : '' },
+};
+builder._doc.model.blocks[0].cols[0].components[3] = { name : 'stub-words', source : '', text : null, attributes : { pick : '', some : '', row : '', tone : '', list : '', 'class' : '' } };
+builder._lastBlock = {};
+builder._openSettings( [ 0, 0, 3 ] );
+const wordsOf = function() { return builder._get( builder._doc.model, [ 0, 0, 3 ] ).attributes };
+check( 'an option shows the words its schema gives it, in a select, a row of buttons and a variant alike, and the value where the schema has none - the empty one is none, and the value of a button is made into words as it is',
+	optionsOf( blockOf('properties'), 'Pick' ) === '=The first one,quote=Quote request,news=Newsletter sign-up'
+	&& optionsOf( blockOf('properties'), 'Some' ) === '=none,quote=Quote request,news=news' && optionsOf( blockOf('properties'), 'List' ) === '=none,quote=quote'
+	&& segmentOf( blockOf('properties'), 'Row' ) === ':Nothing,one:The one,cold-snap:Cold snap' && segmentOf( blockOf('properties'), 'Tone' ) === ':Plain,warm:Warm one,cold-snap:Cold snap' );
+check( '...what is chosen is the value and not the words: the call has the key',
+	( change( blockOf('properties'), 'Pick', 'news' ), change( blockOf('properties'), 'Row', 'one' ), change( blockOf('properties'), 'Some', 'news' ), wordsOf().pick === 'news' && wordsOf().row === 'one' && wordsOf().some === 'news'
+	&& valueAt( blockOf('properties'), 'Pick' ) === 'news' ) );
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 3 ] );
+check( '...the head of the block says the words of the options chosen - the value made into words where the schema has none - and nothing of what is the default', saysOf('properties').textContent === [ 'Newsletter sign-up', 'News', 'The one' ].join(' · ') );
+// A value the call holds that the answer of the method does not hold - the form that was deleted since - stays: it is one more entry of the choice, marked as not offered, until the editor picks another
+builder._doc.model.blocks[0].cols[0].components[3].attributes.pick = 'gone';
+builder._doc.model.blocks[0].cols[0].components[3].attributes.row = 'gone-row';
+builder._doc.model.blocks[0].cols[0].components[3].attributes.tone = 'gone-tone';
+builder._doc.model.blocks[0].cols[0].components[3].attributes.list = 'gone-list';
+builder._lastBlock = {};
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 3 ] );
+const notOfferedWord = function( value ) { return words['/_admin/builder/label/not-offered'].replace( '%s', value ) };
+const notOffered = notOfferedWord( 'gone' );
+check( 'a value outside the options a method answered is an entry more in the select, in the row of buttons and in the row of a variant, marked as not offered and chosen - and the words of the others are as they were',
+	words['/_admin/builder/label/not-offered'].indexOf('%s') !== -1 && notOffered !== 'gone' && optionsOf( blockOf('properties'), 'Pick' ) === '=The first one,quote=Quote request,news=Newsletter sign-up,gone='+ notOffered
+	&& valueAt( blockOf('properties'), 'Pick' ) === 'gone' && segmentOf( blockOf('properties'), 'Row' ) === ':Nothing,one:The one,cold-snap:Cold snap,gone-row:'+ notOfferedWord( 'gone-row' )
+	&& segmentOf( blockOf('properties'), 'Tone' ) === ':Plain,warm:Warm one,cold-snap:Cold snap,gone-tone:'+ notOfferedWord( 'gone-tone' ) && optionsOf( blockOf('properties'), 'List' ) === '=none,quote=quote,gone-list='+ notOfferedWord( 'gone-list' ) );
+check( '...and the head of the block says the same of it - the entry the dialog shows, not the value made into words - in a select, a row of buttons, a variant and a select that has no words - the variants first, as the block lists them - and the value that is offered as it was',
+	saysOf('properties').textContent === [ notOfferedWord( 'gone-tone' ), notOffered, 'News', notOfferedWord( 'gone-row' ), notOfferedWord( 'gone-list' ) ].join(' · ') );
+check( '...it stays what the call has until another is picked, and the entry is there for a list a method answered only: a list written in the manifest, and the empty value, have none',
+	wordsOf().pick === 'gone' && ( change( blockOf('properties'), 'Pick', 'quote' ), wordsOf().pick === 'quote' ) && builder._notOffered( { options : [ '', 'a' ] }, 'x' ).length === 0 && builder._notOffered( { options : [ '', 'a' ], optionLabels : {} }, '' ).length === 0
+	&& builder._notOffered( { options : [ '', 'a' ], optionLabels : {} }, 'a' ).length === 0 && builder._notOffered( { options : [ '', 'a' ], optionLabels : {} }, 'x' ).length === 1 );
+delete builder._registry.components['stub-words'];
+builder._closeDialog();
+
 check( 'an attribute of a schema stands in the block its schema names or its kind puts it in: one that names the tab of the background is of the surface, an address and the window of a link and whether all of a surface is the link are of the link, every other is a property - so the blocks are made of what the schema holds', ( function() {
 
 	const names = function( attributes, surface ) {

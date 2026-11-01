@@ -1036,8 +1036,16 @@ echo "Components - [form] as the Builder offers it\n";
 	\Nino\Modules\Forms::init( $probe );
 	ninoWarnings();
 
-	check( 'the component is registered with the schema the manifest declares',
-		( \Nino\Modules\Components::components( $probe )['form'] ?? null ) === ( $declared['form'] ?? false ) );
+	/*	The schema as the manifest declares it, but for the one attribute whose options are a method: the registry hands out the answer in
+		the place of the name, the values as 'options' and the words as 'optionLabels' (see the next section)	*/
+	$issued = \Nino\Modules\Components::components( $probe )['form'] ?? [];
+	unset( $issued['attributes']['key']['options'], $issued['attributes']['key']['optionLabels'] );
+	$wanted = $declared['form'] ?? false;
+
+	if( is_array( $wanted ) === true )
+		unset( $wanted['attributes']['key']['options'] );
+
+	check( 'the component is registered with the schema the manifest declares', $issued === $wanted );
 	check( '...as one meant once per page: the registered schema says it stays out of a loop',
 		( \Nino\Modules\Components::components( $probe )['form']['loop'] ?? null ) === false );
 	check( '...and what the feature registers is answered once - the component by its wrapper',
@@ -1046,8 +1054,11 @@ echo "Components - [form] as the Builder offers it\n";
 	check( '...with the defaults of the schema, as strings',
 		\Nino\Modules\Components::defaults( $probe, 'form' ) === [ 'key' => '', 'class' => '' ] );
 
+	/*	A key that names no form is the empty word where the Components module makes the call ready - its attribute is a select of the
+		forms there are - and the call draws the first form, where the plain shortcode drew nothing	*/
 	foreach( $calls as $call )
-		check( 'renders as it did: '. $call, preg_replace( '/name="_t" value="\d{10}"/', 'name="_t" value="0"', \Nino\Html::renderHtml( $probe, $call ) ) === $before[$call] );
+		check( 'renders as it did: '. $call. ( $call === '[form key="nowhere"]' ? ' - but for the key no form has, which is the first form now' : '' ),
+			preg_replace( '/name="_t" value="\d{10}"/', 'name="_t" value="0"', \Nino\Html::renderHtml( $probe, $call ) ) === ( $call === '[form key="nowhere"]' ? $before['[form]'] : $before[$call] ) );
 
 	ninoWarnings();
 
@@ -1056,6 +1067,69 @@ echo "Components - [form] as the Builder offers it\n";
 	check( 'a class of its own comes after the form\'s own, no class leaves no space behind',
 		str_contains( \Nino\Html::renderHtml( $probe, '[form key="quote" class="wide"]' ), '<form class="nino-form wide" id="form-quote"' ) === true
 		&& str_contains( $before['[form key="quote"]'], '<form class="nino-form" id="form-quote"' ) === true );
+
+} )( $appData );
+
+echo "\n";
+
+
+// --- The forms the Builder offers --------------------------------------------
+
+echo "Components - the forms there are, as the choice of [form]\n";
+
+( static function( array $appData ): void {
+
+	$form		= static fn( string $key, string $name ): array => [ 'key' => $key, 'name' => $name, 'fields' => [ [ 'name' => 'who', 'label' => 'Who', 'type' => 'text', 'required' => false, 'options' => [] ] ] ];
+	$locales	= \Nino\Locales::getAvailableLocales( $appData );
+
+	// Three forms, in an order that is neither the alphabet's nor the keys': the order of the panel is the order of the list
+	$several = $appData;
+	$several[ \Nino\Form::FORMS ] = [ $form( 'news', 'Rundbrief' ), $form( 'contact', 'Kontakt' ), $form( 'quote', 'Angebot' ) ];
+
+	$offered = \Nino\Modules\Forms::options( $several, 'key' );
+
+	check( 'options(): the empty word first - the first form - and then each form by its key with its name, in the order the Forms panel lists them',
+		array_keys( $offered ) === [ '', 'news', 'contact', 'quote' ] && array_slice( $offered, 1 ) === [ 'news' => 'Rundbrief', 'contact' => 'Kontakt', 'quote' => 'Angebot' ] );
+
+	$first = $offered[''];
+
+	check( '...the empty word has words in every language of the site, as a locale => string map the kernel reads (\Nino\Features::localized()), none of them empty',
+		is_array( $first ) === true && array_keys( $first ) === array_map( 'strval', $locales ) && $locales !== [] && array_filter( $first, static fn( mixed $word ): bool => is_string( $word ) === false || trim( $word ) === '' ) === [] );
+	check( '...and the words are the feature\'s own text, one file for each language, the key of the empty word in both',
+		array_filter( glob( dirname( __DIR__ ). '/text/*.php' ) ?: [], static fn( string $file ): bool => is_string( ( require $file )[ \Nino\Modules\Forms::FIRST ] ?? null ) === false ) === [] );
+
+	$none = $appData;
+	unset( $none[ \Nino\Form::FORMS ] );
+
+	check( '...where the project has defined no form it is the empty word and the contact form the kernel falls back to, which [form key="contact"] draws and the panel lists',
+		array_keys( \Nino\Modules\Forms::options( $none, 'key' ) ) === [ '', 'contact' ] && str_contains( \Nino\Html::renderHtml( $none, '[form key="contact"]' ), 'id="form-contact"' ) === true );
+
+	$mixed = $appData;
+	$mixed[ \Nino\Form::FORMS ] = [ $form( 'quote', 'Angebot' ), [ 'key' => 'broken', 'fields' => [] ], $form( 'news', '' ) ];
+	check( '...a definition the kernel does not read is not offered, and a form without a name is offered by its key', array_slice( \Nino\Modules\Forms::options( $mixed, 'key' ), 1 ) === [ 'quote' => 'Angebot', 'news' => 'news' ] );
+
+	// The registry the Components module hands a tool: the values, and the words beside them
+	$probe = $several;
+	foreach( [ 'form' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Forms::init( $probe );
+	ninoWarnings();
+
+	$key = \Nino\Modules\Components::components( $probe )['form']['attributes']['key'] ?? [];
+
+	check( 'the registry hands out the key of [form] as a select of the forms there are: the values as the options, the words by value as optionLabels, the empty word first',
+		( $key['type'] ?? null ) === 'select' && ( $key['options'] ?? null ) === [ '', 'news', 'contact', 'quote' ] && array_keys( $key['optionLabels'] ?? [] ) === $key['options']
+		&& array_slice( $key['optionLabels'], 1 ) === [ 'news' => 'Rundbrief', 'contact' => 'Kontakt', 'quote' => 'Angebot' ] && $key['optionLabels'][''] === $first && ( $key['default'] ?? null ) === '' );
+	check( '...the name of the method is not handed out, and asking was no warning', array_filter( $key, static fn( mixed $value ): bool => is_string( $value ) === true && str_contains( $value, '::' ) ) === [] && ninoWarnings() === [] );
+
+	// A form that was deleted: its key is a value outside the list, which the Components module makes the default - and the default draws the first form
+	$strip = static fn( string $html ): string => preg_replace( '/name="_t" value="\d{10}"/', 'name="_t" value="0"', $html );
+
+	check( 'a call with the key of a form there is not draws the first form, as a call without a key does',
+		str_contains( \Nino\Html::renderHtml( $probe, '[form key="gone"]' ), 'id="form-news"' ) === true
+		&& $strip( \Nino\Html::renderHtml( $probe, '[form key="gone"]' ) ) === $strip( \Nino\Html::renderHtml( $probe, '[form]' ) ) );
+	check( '...and a call with the key of a form there is draws that one', str_contains( \Nino\Html::renderHtml( $probe, '[form key="quote"]' ), 'id="form-quote"' ) === true );
 
 } )( $appData );
 

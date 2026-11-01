@@ -22,6 +22,7 @@ return [
 	'[[/_admin/forms/label/entries]]'			=> '%s on file',
 	'[[/_admin/forms/label/delete]]'			=> 'Delete',
 	'[[/_admin/forms/label/form]]'				=> 'Form',
+	'[[/_admin/forms/label/first]]'				=> 'First form',
 	'[[/_admin/forms/label/name]]'				=> 'Name',
 	'[[/_admin/forms/label/key]]'					=> 'Key',
 	'[[/_admin/forms/label/to]]'					=> 'Send to',

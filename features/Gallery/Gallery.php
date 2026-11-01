@@ -126,9 +126,35 @@ namespace Nino\Modules {
 				name. Where it does, what is registered here instead is the
 				component again, with the albums of the project (see
 				_offerAlbums()), unless a module of the project has registered a
-				[gallery] of its own since	*/
+				[gallery] of its own since. The schema is read as registered, with
+				no list asked for: where the Components module has registered(),
+				components() would ask the method of every attribute of every
+				component that takes its options from one - the forms, at every
+				boot - and the answer would be the first of the request. A Nino
+				before that has no such method, and there components() is the
+				registry as registered	*/
 			if( \Nino\Feature::shortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] ) === false && self::_registeredFromManifest( $appData ) === true )
-				self::_offerAlbums( $appData, \Nino\Modules\Components::components( $appData )['gallery'] ?? [] );
+				self::_offerAlbums( $appData, self::_registry( $appData )['gallery'] ?? [] );
+		}
+
+		/**
+		 *	The registry of the Components module as it was registered, with no
+		 *	list asked for. A Nino before the one whose Components module takes
+		 *	the options of an attribute from a method has no registered(), and
+		 *	there components() is that registry. The class is asked for its
+		 *	methods and the one it has is called by its name from a variable, so
+		 *	that the analysis of a checkout that has registered() and of one
+		 *	that has not reads the same code
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										name => schema, in registration order
+		 */
+		private static function _registry( array &$appData ): array {
+
+			$read = [ \Nino\Modules\Components::class, in_array( 'registered', get_class_methods( \Nino\Modules\Components::class ), true ) === true ? 'registered' : 'components' ];
+
+			return (array) $read( $appData );
 		}
 
 		/**

@@ -16,6 +16,7 @@ return [
 	'[[/_admin/builder/label/sections]]'			=> 'Sektionen',
 	'[[/_admin/builder/label/used-by]]'				=> 'Verwendet von',
 	'[[/_admin/builder/label/none]]'					=> 'keiner',
+	'[[/_admin/builder/label/not-offered]]'			=> '%s (nicht angeboten)',
 	'[[/_admin/builder/label/open]]'					=> 'Öffnen',
 	'[[/_admin/builder/label/duplicate]]'				=> 'Duplizieren',
 	'[[/_admin/builder/label/copy-of]]'					=> 'Kopie von %s',

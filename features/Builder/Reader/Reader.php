@@ -316,6 +316,8 @@ namespace Nino\Modules\Builder {
 		public const array STACK_ALIGN = [ 'start', 'center', 'end' ];
 
 		// The class of the wrap that makes it one, and the one that says its sections are animated
+		// The word of a variant, which the renderer writes as the end of a class: lower case letters and digits, hyphens between them (the kernel's own rule)
+		public const string WORD = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D';
 		public const string WRAP = 'nino-wrap';
 		public const string WRAP_VPA = 'nino-wrap--vpa';
 
@@ -2006,7 +2008,11 @@ namespace Nino\Modules\Builder {
 				$type = (string) ( $declared['type'] ?? 'string' );
 
 				$valid = match( $type ) {
-					'select', 'variant'	=> in_array( $value, (array) ( $declared['options'] ?? [] ), true ),
+					// A choice whose options a method of the feature answered (the schema carries their words, optionLabels) is the project's data: what a
+					// call holds outside the list - the form that was deleted since - stays as it is, and the dialog says it is not among the options. The
+					// word of a variant is written as the end of a class, so it stays only where it is a word (lower case letters and digits, hyphens between)
+					'select', 'variant'	=> in_array( $value, (array) ( $declared['options'] ?? [] ), true )
+						|| ( is_array( $declared['optionLabels'] ?? null ) === true && ( $type === 'select' || preg_match( self::WORD, $value ) === 1 ) ),
 					'int'			=> preg_match( '/^-?\d{1,9}$/D', $value ) === 1 && (int) $value >= ( $declared['min'] ?? PHP_INT_MIN ) && (int) $value <= ( $declared['max'] ?? PHP_INT_MAX ),
 					'bool'		=> $value === '0' || $value === '1',
 					default		=> true,

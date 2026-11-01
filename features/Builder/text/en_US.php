@@ -53,6 +53,7 @@ return [
 	'[[/_admin/builder/label/sections]]'			=> 'Sections',
 	'[[/_admin/builder/label/used-by]]'				=> 'Used by',
 	'[[/_admin/builder/label/none]]'					=> 'none',
+	'[[/_admin/builder/label/not-offered]]'			=> '%s (not offered)',
 	'[[/_admin/builder/label/open]]'					=> 'Open',
 	'[[/_admin/builder/label/duplicate]]'				=> 'Duplicate',
 	'[[/_admin/builder/label/copy-of]]'					=> 'Copy of %s',

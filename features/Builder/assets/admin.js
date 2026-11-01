@@ -7549,8 +7549,13 @@
 			if( declared.type === 'select' && builder._isGround( declared ) === true )
 				return builder._groundLabel( now );
 
-			if( declared.type === 'select' || declared.type === 'variant' )
-				return builder._wordOf( declared.type === 'variant' ? 'variant' : ( Object.prototype.hasOwnProperty.call( builder.ATTRIBUTE_WORDS, name ) === true ? builder.ATTRIBUTE_WORDS[name] : 'attribute-'+ name ), now );
+			if( declared.type === 'select' || declared.type === 'variant' ) {
+
+				// The words of the option, else - for a value the method does not answer - the entry the dialog shows for it, else the value made into words
+				const stale = builder._notOffered( declared, now );
+
+				return builder._optionWords( declared, now ) || ( stale.length > 0 ? stale[0].label : builder._wordOf( declared.type === 'variant' ? 'variant' : ( Object.prototype.hasOwnProperty.call( builder.ATTRIBUTE_WORDS, name ) === true ? builder.ATTRIBUTE_WORDS[name] : 'attribute-'+ name ), now ) );
+			}
 
 			return builder._firstLine( now, builder.SAID_MAX );
 		},
@@ -7716,6 +7721,45 @@
 		},
 
 		/**
+		 *	The words the schema gives one option of an attribute: the label that a method of the feature answered for it
+		 *	(optionLabels, value => label, in the language of the workbench), '' where the schema has none - the list of
+		 *	options is then written in the manifest, and its values are what the field shows, as before. The Builder knows
+		 *	no attribute by name for it: whatever the schema labels is shown by its label
+		 *
+		 *	@param		{Object}		declared					The schema's entry of the attribute
+		 *	@param		{string}		option						One of its options
+		 *
+		 *	@return		{string}
+		 */
+		_optionWords : function( declared, option ) {
+
+			const labels = declared.optionLabels;
+
+			if( labels === undefined || labels === null || typeof labels !== 'object' || Object.prototype.hasOwnProperty.call( labels, option ) === false )
+				return '';
+
+			return typeof labels[option] === 'string' ? labels[option] : '';
+		},
+
+		/**
+		 *	The value a call holds that is not among the options a method of the feature answered - a form that was deleted since, say - as the one more
+		 *	entry of the choice, marked as not offered, so that it stays what the call has until the editor picks another. A list that is written in the
+		 *	manifest has no such value (the Reader refuses it), and the empty value is the first of the options or none
+		 *
+		 *	@param		{Object}		declared					The schema's entry of the attribute
+		 *	@param		{string}		value							What the call has
+		 *
+		 *	@return		{Array}										[ { value, label } ] - none, or the one entry
+		 */
+		_notOffered : function( declared, value ) {
+
+			if( value === '' || declared.optionLabels === undefined || declared.optionLabels === null || ( declared.options || [] ).indexOf( value ) !== -1 )
+				return [];
+
+			return [ { value : value, label : Nino.adminUi.format( Nino.content.getText('/_admin/builder/label/not-offered'), value ) } ];
+		},
+
+		/**
 		 *	One attribute of a component or a stack, by the type its schema gives
 		 *	it. Every value is a string in the model, as a call writes it. A key, an image
 		 *	slot or a link is a source, and is changed in the dialog of the sources.
@@ -7730,7 +7774,7 @@
 		 *	background has (see _pictureAttribute())
 		 *
 		 *	@param		{string}		name
-		 *	@param		{Object}		declared					The schema's entry: type, label, hint, options, min, max
+		 *	@param		{Object}		declared					The schema's entry: type, label, hint, options, optionLabels, min, max
 		 *	@param		{Object}		attributes				Where the value is kept
 		 *	@param		{Object}		context						As _attributeFields() has it, with the roles of its attributes (see _roles())
 		 *
@@ -7773,13 +7817,13 @@
 					const icons = input === 'icons' ? builder._alignIcons( declared.options ) : null;
 
 					return builder._segmentField( label, ( declared.options || [] ).map( function( option ) {
-						return { value : option, label : builder._wordOf( group === '' ? 'attribute-'+ name : group, option ), icon : icons === null ? undefined : icons[option] };
-					} ), value, write, hint );
+						return { value : option, label : builder._optionWords( declared, option ) || builder._wordOf( group === '' ? 'attribute-'+ name : group, option ), icon : icons === null ? undefined : icons[option] };
+					} ).concat( builder._notOffered( declared, value ) ), value, write, hint );
 				}
 
 				return builder._selectField( label, hint, ( declared.options || [] ).map( function( option ) {
-					return { value : option, label : group !== '' ? builder._optionLabel( group, option ) : ( option === '' ? Nino.content.getText('/_admin/builder/label/none') : option ) };
-				} ), value, write );
+					return { value : option, label : builder._optionWords( declared, option ) || ( group !== '' ? builder._optionLabel( group, option ) : ( option === '' ? Nino.content.getText('/_admin/builder/label/none') : option ) ) };
+				} ).concat( builder._notOffered( declared, value ) ), value, write );
 			}
 
 			if( declared.type === 'bool' ) {

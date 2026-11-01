@@ -1214,6 +1214,38 @@ echo "Components - [gallery] as the Builder offers it\n";
 	check( '...with the defaults of the schema, as strings',
 		\Nino\Modules\Components::defaults( $probe, 'gallery' ) === [ 'album' => '', 'columns' => '', 'class' => '' ] );
 
+	/*	The registry as registered is what the feature reads when it runs, with no list asked for: another component of the project takes
+		the options of an attribute from a method (the forms, the albums of another feature), and a boot that asked it here would ask it at
+		the start of every request, for an answer that then stays the request's. The schema it registers again is the registered one	*/
+	if( method_exists( \Nino\Modules\Components::class, 'registered' ) === false )
+		echo "  note - this Nino's Components module has no registered(), and no attribute whose options are a method: the schema the feature reads is the registry as registered, which components() is there\n";
+	else {
+		if( class_exists( 'GalleryAskedProbe' ) === false ) {
+			class GalleryAskedProbe {
+				public static int $asked = 0;
+				public static function pick( array &$appData, string $attribute ): array {
+					self::$asked++;
+					return [ '' => 'None', 'a' => 'A' ];
+				}
+			}
+		}
+		$asking = $appData;
+		\Nino\Callbacks::removeCallbacks( $asking, '/nino/html/shortcode/gallery' );
+		\Nino\Modules\Components::init( $asking );
+		\Nino\Modules\Components::addComponent( $asking, 'asking', static fn( array &$appData, array $args ): string => '', [
+			'label' => 'Asking', 'source' => 'none', 'by' => 'hello',
+			'attributes' => [ 'pick' => [ 'type' => 'select', 'options' => '\GalleryAskedProbe::pick', 'default' => '' ] ],
+		] );
+		$askingRegistered = \Nino\Modules\Components::registered( $asking )['gallery'] ?? [];
+		\Nino\Modules\Gallery::init( $asking );
+		ninoWarnings();
+		check( 'the feature reads the schema as registered: a component of another feature that takes its options from a method is not asked while it runs, and stays registered with the name of the method',
+			GalleryAskedProbe::$asked === 0 && ( \Nino\Modules\Components::registered( $asking )['asking']['attributes']['pick']['options'] ?? null ) === '\GalleryAskedProbe::pick' );
+		check( '...and the schema it registers again is the registered one but for the album: the select of the albums there are',
+			$withoutAlbum( \Nino\Modules\Components::registered( $asking )['gallery'] ?? [] ) === $withoutAlbum( $askingRegistered ) && $askingRegistered !== []
+			&& ( \Nino\Modules\Components::registered( $asking )['gallery']['attributes']['album']['type'] ?? null ) === 'select' && ( $askingRegistered['attributes']['album']['type'] ?? null ) === 'string' );
+	}
+
 	foreach( $calls as $call )
 		check( 'renders as it did: '. $call, galleryPage( $probe, $call ) === $before[$call] );
 
