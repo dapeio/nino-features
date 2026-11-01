@@ -5,6 +5,7 @@ declare(strict_types=1);
 // docs/features.md, "The install unit"). Countdown ships no template, no
 // route and no config default of its own - a project writes [countdown ...]
 // where a countdown belongs. All this unit carries is the unit names in both
-// their forms and the sentence for afterwards, merged into text/<locale>.php
-// for every available locale.
+// their forms, the names of the months and days for a format="...", and the
+// sentence for afterwards, merged into text/<locale>.php for every available
+// locale.
 return [];

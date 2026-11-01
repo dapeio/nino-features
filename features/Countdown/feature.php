@@ -12,8 +12,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[countdown to="2026-12-24 18:00"]' => [
-				'en_US' => 'Counts down to that moment. Without tz= it is read in the timezone the Countdown setting names - the one the server runs in, by default.',
-				'de_DE' => 'Zählt bis zu diesem Moment herunter. Ohne tz= wird er in der Zeitzone gelesen, die die Einstellung von Countdown nennt - standardmäßig die, in der der Server läuft.',
+				'en_US' => 'Counts down to that moment. Without tz= it is read in the timezone the Countdown setting names - the one the server runs in, by default. A moment is a real, absolute date, and nothing in it is relative to the day it is read: 2026-12-24 18:00, 24 December 2026, a month alone (2026-12 or Dec 2026, which is its first day), 2026-12-24T18:00:00+01:00 or a Unix timestamp such as @1798132800. Nothing is drawn, and the log says so, for a date that does not exist (2027-02-30) and for what is not read: anything relative (tomorrow, next friday, +3 days, 18:00 alone, 24 December without a year) and an ISO week (2026-W52) - it would end at another instant at every rendering.',
+				'de_DE' => 'Zählt bis zu diesem Moment herunter. Ohne tz= wird er in der Zeitzone gelesen, die die Einstellung von Countdown nennt - standardmäßig die, in der der Server läuft. Ein Moment ist ein echtes, absolutes Datum, und nichts darin hängt vom Tag des Lesens ab: 2026-12-24 18:00, 24 December 2026, ein Monat allein (2026-12 oder Dec 2026, das ist sein erster Tag), 2026-12-24T18:00:00+01:00 oder ein Unix-Zeitstempel wie @1798132800. Nichts wird gezeichnet, und das Log sagt es, bei einem Datum, das es nicht gibt (2027-02-30), und bei allem, was nicht gelesen wird: allem Relativen (tomorrow, next friday, +3 days, 18:00 allein, 24 December ohne Jahr) und einer ISO-Woche (2026-W52) - es würde bei jedem Rendern an einem anderen Zeitpunkt enden.',
 			],
 			'[countdown ... tz="Europe/Berlin"]' => [
 				'en_US' => 'The timezone a wall-clock moment is read in, for this one countdown instead of the setting. A name PHP does not know renders nothing and says so in the log.',
@@ -28,8 +28,8 @@ return [
 				'de_DE' => 'Was dort steht, wenn der Moment vorbei ist. Ohne die Angabe wird der Satz aus dem Panel Texte verwendet.',
 			],
 			'[countdown ... format="d.m.Y H:i"]' => [
-				'en_US' => 'How the date under the counter is written, in PHP\'s date() letters. Default Y-m-d H:i.',
-				'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Standard: Y-m-d H:i.',
+				'en_US' => 'How the date under the counter is written, in PHP\'s date() letters. Default Y-m-d H:i. The names of months and days (F, M, l, D) are written in the language of the page, from the Text panel\'s keys /feature/countdown/month/<name>, month-short, day and day-short; a name that no language has a word for stands there as its key. \\F is a plain F.',
+				'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Standard: Y-m-d H:i. Die Namen der Monate und Tage (F, M, l, D) stehen in der Sprache der Seite, aus den Schlüsseln /feature/countdown/month/<name>, month-short, day und day-short des Panels Texte; ein Name, für den keine Sprache ein Wort hat, steht als sein Schlüssel da. \\F ist ein einfaches F.',
 			],
 			'[countdown ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the counter. What the Builder writes for its custom classes.',
@@ -47,8 +47,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The unit names in both their forms, and the sentence for afterwards, into the Text panel.',
-				'de_DE' => 'Die Einheitennamen in beiden Formen und der Satz für danach, ins Panel Texte.',
+				'en_US' => 'The unit names in both their forms, the names of the months and days (whole and short) and the sentence for afterwards, into the Text panel.',
+				'de_DE' => 'Die Einheitennamen in beiden Formen, die Namen der Monate und Tage (ausgeschrieben und kurz) und der Satz für danach, ins Panel Texte.',
 			],
 		],
 	],
@@ -100,8 +100,8 @@ return [
 					'default'	=> '',
 					'label'		=> [ 'en_US' => 'Moment', 'de_DE' => 'Zeitpunkt' ],
 					'hint'		=> [
-						'en_US' => 'The moment to count down to, written as 2026-12-24 18:00. Without it nothing is drawn.',
-						'de_DE' => 'Der Zeitpunkt, bis zu dem heruntergezählt wird, geschrieben als 2026-12-24 18:00. Ohne ihn wird nichts gezeichnet.',
+						'en_US' => 'The moment to count down to, a real, absolute date written as 2026-12-24 18:00. Without it, or with a date that does not exist or that is relative (tomorrow, +3 days), nothing is drawn.',
+						'de_DE' => 'Der Zeitpunkt, bis zu dem heruntergezählt wird, ein echtes, absolutes Datum, geschrieben als 2026-12-24 18:00. Ohne ihn, mit einem Datum, das es nicht gibt, oder einem relativen (tomorrow, +3 days) wird nichts gezeichnet.',
 					],
 				],
 				'tz' => [
@@ -136,8 +136,8 @@ return [
 					'default'	=> '',
 					'label'		=> [ 'en_US' => 'Date format', 'de_DE' => 'Datumsformat' ],
 					'hint'		=> [
-						'en_US' => 'How the date under the counter is written, in the letters of PHP\'s date(). Empty takes Y-m-d H:i.',
-						'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Leer nimmt Y-m-d H:i.',
+						'en_US' => 'How the date under the counter is written, in the letters of PHP\'s date(). Empty takes Y-m-d H:i. Month and day names come in the language of the page.',
+						'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Leer nimmt Y-m-d H:i. Monats- und Tagesnamen stehen in der Sprache der Seite.',
 					],
 				],
 			],

@@ -41,6 +41,26 @@ namespace Nino\Modules {
 	 *										countdown that cannot count is still a date, which is
 	 *										the fact it was carrying all along.
 	 *
+	 *										A moment is absolute and valid or it is none: nothing
+	 *										in the text is relative to the day it is read in
+	 *										("tomorrow", "+3 days", "next friday", "18:00" alone,
+	 *										a month and day without a year), because those end at
+	 *										a different instant at every rendering. A month alone
+	 *										("2026-12", "Dec 2026") is its first day, and a Unix
+	 *										timestamp ("@1798132800") is as absolute as a date is.
+	 *										And \DateTimeImmutable's own verdict has to be clean
+	 *										("2027-02-30" is read as the 2nd of March, with a
+	 *										warning).
+	 *
+	 *										The names of months and days in the readable date are
+	 *										the project's words, not PHP's English ones: the
+	 *										letters F, M, l and D of `format` are put in as the
+	 *										text keys /feature/countdown/month/<name>,
+	 *										/month-short/<name>, /day/<name> and /day-short/<name>
+	 *										in the language of the page - and where no language
+	 *										of the project has such a word, the key stands there,
+	 *										as it does everywhere else.
+	 *
 	 *										Units are named in both their forms - "1 Tag", "2
 	 *										Tage" - and both reach the browser as data attributes
 	 *										on the part they belong to. A static asset cannot read
@@ -78,6 +98,20 @@ namespace Nino\Modules {
 		// not say. Unambiguous in every language, which a numeric day/month
 		// pair is not
 		public const string FORMAT_DEFAULT = 'Y-m-d H:i';
+
+		// A Unix timestamp, which date_parse() marks as relative to 1970 although
+		// it is the most absolute moment there is
+		public const string TIMESTAMP = '/^@[+-]?\d+$/';
+
+		// The letters of date() that are words, not numbers, and the part of
+		// the key each one reads: F January, M Jan, l Monday, D Mon. The name
+		// in the key is PHP's English one in lower case, whatever the language
+		public const array WORDS = [
+			'F' => [ 'month', 'F' ],
+			'M' => [ 'month-short', 'F' ],
+			'l' => [ 'day', 'l' ],
+			'D' => [ 'day-short', 'l' ],
+		];
 
 		/**
 		 *	Register the shortcode where the Components module does not own it:
@@ -130,15 +164,20 @@ namespace Nino\Modules {
 			foreach( self::units( $args ) as $unit )
 				$parts .= self::_part( $appData, $unit );
 
+			/*	The date is made of words an editor wrote, so a bracket in it opens
+				nothing: it is written as &#91;, the way Components::escape() does,
+				before the next rendering pass can read it as a fill or a shortcode	*/
+			$date = str_replace( '[', '&#91;', $safe( self::date( $appData, $moment, $format ) ) );
+
 			// The parts last - they are built markup, and str_replace() works
 			// through its arrays in order
 			return str_replace(
-				[ '[[classes]]', '[[iso]]', '[[date]]', '[[done]]', '[[parts]]' ],
+				[ '[[classes]]', '[[iso]]', '[[done]]', '[[date]]', '[[parts]]' ],
 				[
 					\Nino\Feature::classes( $args ),
 					$safe( $moment->format( \DateTimeInterface::ATOM ) ),
-					$safe( $moment->format( $format ) ),
 					$done,
+					$date,
 					$parts,
 				],
 				\Nino\Feature::template( $appData, self::TEMPLATES, 'countdown' )
@@ -173,7 +212,11 @@ namespace Nino\Modules {
 
 		/**
 		 *	The moment a countdown counts to, or null where what was written is
-		 *	not one.
+		 *	not one: not absolute (something in it is relative to the day it is
+		 *	read in: "tomorrow", "+3 days", a time of day alone, a date without a
+		 *	year, an ISO week) or not valid ("2027-02-30"). Both are said out loud
+		 *	in the log. A month alone is its first day, and a Unix timestamp
+		 *	("@1798132800") is a moment.
 		 *
 		 *	A wall-clock time is only half a moment: "18:00" is a different
 		 *	instant in Berlin than it is in London. $zone is the other half, and
@@ -185,7 +228,7 @@ namespace Nino\Modules {
 		 *	name is read at that one and $zone does not enter into it, which is
 		 *	\DateTimeImmutable's own rule.
 		 *
-		 *	@param		string		$to						Anything \DateTimeImmutable reads
+		 *	@param		string		$to						An absolute date, with or without a time, as \DateTimeImmutable reads it
 		 *	@param		string		$zone					A timezone name for a $to without one, '' for the process default
 		 *
 		 *	@return 	\DateTimeImmutable|null
@@ -216,16 +259,95 @@ namespace Nino\Modules {
 
 			/*	Not @-suppressed and not caught silently: a date somebody typed
 				wrong is a countdown that will never count, and the one moment it
-				can be noticed is the one somebody is looking at the page	*/
-			try {
-				$moment = new \DateTimeImmutable( $to, $timezone );
-			}
-			catch( \Exception ) {
-				trigger_error( 'Nino: [countdown to="'. $to. '"] is not a moment this can read.', E_USER_WARNING );
-				return null;
+				can be noticed is the one somebody is looking at the page.
+
+				A moment is absolute and valid. Absolute: nothing in the text is
+				relative to the day it is read in, because "tomorrow", "next
+				friday", "+3 days" or a bare "18:00" is read against the clock of
+				every rendering and would end at a different instant each time -
+				date_parse() finds a year, a month and a day in the text itself
+				and no relative part. A Unix timestamp is the one thing it marks
+				as relative that is not, and is let through as it is written.
+				Valid: what \DateTimeImmutable read it as is what was written -
+				"2027-02-30" is read as the 2nd of March and only a warning says
+				so; getLastErrors() answers false where there is nothing to say,
+				and an array of counts where there is	*/
+			$parsed = date_parse( $to );
+			$moment = null;
+
+			if( preg_match( self::TIMESTAMP, $to ) === 1
+				|| ( is_int( $parsed['year'] ) === true && is_int( $parsed['month'] ) === true && is_int( $parsed['day'] ) === true && isset( $parsed['relative'] ) === false ) ) {
+				try {
+					$moment = new \DateTimeImmutable( $to, $timezone );
+				}
+				catch( \Exception ) {
+					$moment = null;
+				}
+
+				$said = \DateTimeImmutable::getLastErrors();
+
+				if( is_array( $said ) === true && $said['warning_count'] + $said['error_count'] > 0 )
+					$moment = null;
 			}
 
+			if( $moment === null )
+				trigger_error( 'Nino: [countdown to="'. $to. '"] is not a moment this can read.', E_USER_WARNING );
+
 			return $moment;
+		}
+
+		/**
+		 *	The moment written the way $format says, with the names of months
+		 *	and days in the language of the page.
+		 *
+		 *	The format is read letter by letter. F, M, l and D are words, and the
+		 *	word is the project's: the text key of WORDS for that moment, resolved
+		 *	as any text fill of the page is, so that what stands there is what the
+		 *	Text panel says in this language - and, where no language of the
+		 *	project has it, the key itself. A word is text: a shortcode in it does
+		 *	not run. Everything else, escaped letters ("\F" is an F) and the
+		 *	digits and separators with them, is \DateTimeImmutable::format()'s, in
+		 *	runs, so that its own escape rule stays its own. A backslash at the
+		 *	very end escapes nothing and is dropped.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		\DateTimeImmutable	$moment		The moment
+		 *	@param		string		$format				PHP's date() letters
+		 *
+		 *	@return 	string								Not escaped
+		 */
+		public static function date( array &$appData, \DateTimeImmutable $moment, string $format ): string {
+
+			$written	= '';
+			$run			= '';
+			$length		= strlen( $format );
+
+			for( $at = 0; $at < $length; $at++ ) {
+
+				$letter = $format[$at];
+
+				// A backslash takes the letter after it with it, whatever that is
+				if( $letter === '\\' ) {
+					if( $at + 1 < $length )
+						$run .= $letter. $format[$at + 1];
+					$at++;
+					continue;
+				}
+
+				if( isset( self::WORDS[$letter] ) === false ) {
+					$run .= $letter;
+					continue;
+				}
+
+				[ $part, $name ] = self::WORDS[$letter];
+
+				$key = '/feature/countdown/'. $part. '/'. strtolower( $moment->format( $name ) );
+
+				$written .= $moment->format( $run ). ( \Nino\Html::resolveTextfill( $appData, $key ) ?? '[['. $key. ']]' );
+				$run = '';
+			}
+
+			return $written. $moment->format( $run );
 		}
 
 		/**

@@ -5,12 +5,15 @@ declare(strict_types=1);
  *	Nino
  *	countdown-smoke.php		Contract test for the Countdown feature
  *												(Modules\Countdown): the manifest, the activation
- *												through \Nino\Features and the nine words it merges,
+ *												through \Nino\Features and the words it merges,
  *												the [countdown] shortcode over its units and its
  *												formats, the timezone a wall-clock moment is read in,
  *												and every way of getting the moment wrong, the two files
  *												its manifest puts into the site's own asset bundles
  *												(\Nino\Features::registerAssets()), and deactivation.
+ *												A moment is real and absolute, and the names of months
+ *												and days are written in the language of the page, from
+ *												the project's own words.
  *
  *												The arithmetic is the browser's, and
  *												countdown-js-smoke.js beside this file measures it;
@@ -235,6 +238,207 @@ ninoWarnings();
 
 check( 'a moment already past is still rendered - what has run out is what the script says so about',
 	str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2001-01-01 00:00"]' ), 'data-countdown-to="2001-01-01T00:00:00' ) === true );
+
+echo "\n";
+
+
+// --- A moment that is real -------------------------------------------------------
+
+echo "A moment is real and absolute\n";
+
+ninoWarnings();
+
+check( 'a date that does not exist is no countdown: PHP reads 2027-02-30 as the 2nd of March, with a warning, and without an exception',
+	\Nino\Modules\Countdown::moment( '2027-02-30' ) === null
+	&& \Nino\Html::renderHtml( $appData, '[countdown to="2027-02-30"]' ) === '' );
+check( '...and the log names the date, once for each of the two calls',
+	count( array_filter( ninoWarnings(), static fn( string $w ): bool => str_contains( $w, '[countdown to="2027-02-30"]' ) ) ) === 2 );
+check( '...which is a verdict of getLastErrors() alone: the date is complete to date_parse() and constructs',
+	( static function(): bool {
+		$parsed = date_parse( '2027-02-30' );
+		return is_int( $parsed['year'] ) && is_int( $parsed['month'] ) && is_int( $parsed['day'] ) && isset( $parsed['relative'] ) === false
+			&& ( new \DateTimeImmutable( '2027-02-30' ) ) instanceof \DateTimeImmutable;
+	} )() === true );
+check( '...and so is every other day a month does not have',
+	\Nino\Modules\Countdown::moment( '2026-02-29' ) === null && \Nino\Modules\Countdown::moment( '2026-04-31' ) === null );
+ninoWarnings();
+
+check( 'a relative date is no countdown: "tomorrow" would end at another instant at every rendering',
+	\Nino\Modules\Countdown::moment( 'tomorrow' ) === null
+	&& \Nino\Html::renderHtml( $appData, '[countdown to="tomorrow"]' ) === '' );
+check( '...and the log names it, once for each of the two calls',
+	count( array_filter( ninoWarnings(), static fn( string $w ): bool => str_contains( $w, '[countdown to="tomorrow"]' ) ) ) === 2 );
+
+$relative = [ 'next friday', '+3 days', 'now', '18:00', '24 December', '2026', '2026-12-24 +3 days', '2026-12-24 18:00 tomorrow', 'last day of december 2026', 'monday 2026-12-28' ];
+$drawn		= array_filter( $relative, static fn( string $to ): bool => \Nino\Modules\Countdown::moment( $to ) !== null
+	|| \Nino\Html::renderHtml( $appData, '[countdown to="'. $to. '"]' ) !== '' );
+check( '...whatever its form: a day or a time of the clock, a part of the date left out, a date with something relative on it'. ( $drawn === [] ? '' : ' - drawn: '. implode( ', ', $drawn ) ),
+	$drawn === [] );
+ninoWarnings();
+
+$counter = \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00"]' );
+check( 'a real, absolute date with a time is the counter', str_contains( $counter, '<div class="nino-countdown" data-countdown-to="2026-12-24T18:00:00' ) === true );
+
+$kept = [ '24 December 2026', '2026-12-24', '2026-12-24T18:00:00+05:00', '2026-12-24 18:00 Europe/Berlin', '12/24/2026' ];
+$lost = array_filter( $kept, static fn( string $to ): bool => \Nino\Modules\Countdown::moment( $to ) === null
+	|| str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="'. $to. '"]' ), 'data-countdown-to="2026-12-24T' ) === false );
+check( '...and so is every other absolute form PHP reads: a written month, a date alone, an offset, a zone name'. ( $lost === [] ? '' : ' - refused: '. implode( ', ', $lost ) ),
+	$lost === [] && ninoWarnings() === [] );
+check( '...a month alone is its first day',
+	\Nino\Modules\Countdown::moment( '2026-12' )?->format( 'Y-m-d' ) === '2026-12-01' && \Nino\Modules\Countdown::moment( 'Dec 2026' )?->format( 'Y-m-d' ) === '2026-12-01'
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12"]' ), 'data-countdown-to="2026-12-01T' ) === true && ninoWarnings() === [] );
+
+/*	A Unix timestamp is an instant, whatever date_parse() says of it - relative
+	to 1970, which is no clock of the rendering. An ISO week is read by PHP
+	against the year it names and stays out, as the manual says	*/
+check( 'a Unix timestamp is a moment, a negative one too, and it is the instant it names',
+	\Nino\Modules\Countdown::moment( '@86400' )?->getTimestamp() === 86400
+	&& \Nino\Modules\Countdown::moment( '@-86400' )?->getTimestamp() === -86400
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="@1798132800"]' ), 'data-countdown-to="'. ( new \DateTimeImmutable( '@1798132800' ) )->format( \DateTimeInterface::ATOM ). '"' ) === true
+	&& ninoWarnings() === [] );
+check( '...but only as a whole: nothing is added to it, and it is no word',
+	\Nino\Modules\Countdown::moment( '@86400 +1 day' ) === null && \Nino\Modules\Countdown::moment( '@' ) === null && \Nino\Modules\Countdown::moment( '@abc' ) === null );
+check( 'an ISO week is not read, and the log says so',
+	\Nino\Modules\Countdown::moment( '2026-W52' ) === null
+	&& count( array_filter( ninoWarnings(), static fn( string $w ): bool => str_contains( $w, '[countdown to="2026-W52"]' ) ) ) === 1 );
+
+echo "\n";
+
+
+// --- The names of months and days ------------------------------------------------
+
+echo "The names of months and days - in the language of the page, from the project's words\n";
+
+// The names the keys carry are PHP's English ones in lower case, read from PHP itself
+$months = [];
+foreach( range( 1, 12 ) as $month )
+	$months[$month] = strtolower( ( new \DateTimeImmutable( sprintf( '2026-%02d-15 12:00', $month ) ) )->format( 'F' ) );
+$weekdays = [];
+foreach( range( 21, 27 ) as $day )
+	$weekdays[$day] = strtolower( ( new \DateTimeImmutable( '2026-12-'. $day. ' 12:00' ) )->format( 'l' ) );
+
+$wanted = [];
+foreach( [ 'month' => $months, 'month-short' => $months, 'day' => $weekdays, 'day-short' => $weekdays ] as $part => $names )
+	foreach( $names as $name )
+		$wanted[] = '[[/feature/countdown/'. $part. '/'. $name. ']]';
+
+check( 'there are 19 words to a language and a kind: twelve months and seven days, whole and short', count( $wanted ) === 38 && count( array_unique( $wanted ) ) === 38 );
+
+$ofUnit = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$ofUnit[$locale] = array_keys( array_filter( include dirname( __DIR__ ). '/install/text/'. $locale. '.php',
+		static fn( string $key ): bool => preg_match( '#^\[\[/feature/countdown/(month|month-short|day|day-short)/#', $key ) === 1, ARRAY_FILTER_USE_KEY ) );
+	check( 'the unit brings exactly those words in '. $locale, $ofUnit[$locale] === array_values( array_intersect( $wanted, $ofUnit[$locale] ) ) && count( $ofUnit[$locale] ) === 38 );
+}
+check( '...under the same names in both languages', $ofUnit['en_US'] === $ofUnit['de_DE'] );
+
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+	check( 'activation merged them into text/'. $locale. '.php, every one with a word',
+		array_diff_key( array_flip( $wanted ), $text ) === [] && array_filter( $wanted, static fn( string $key ): bool => trim( (string) ( $text[$key] ?? '' ) ) === '' ) === [] );
+}
+
+/*	What a format writes, as the shortcode renders it: the text between the
+	<time> tags	*/
+$written = static function( array &$appData, string $moment, string $format ): string {
+	$html = \Nino\Html::renderHtml( $appData, '[countdown to="'. $moment. '" format="'. $format. '"]' );
+	return preg_match( '#<time class="nino-countdown-date" datetime="[^"]*">(.*?)</time>#s', $html, $found ) === 1 ? $found[1] : '';
+};
+// What the project says for a key, in the language of the page
+$word = static fn( array &$appData, string $key ): string => \Nino\Html::renderHtml( $appData, '[[/feature/countdown/'. $key. ']]' );
+
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+
+	$appData['./nino/locales/current'] = $locale;
+	$wrong = [];
+
+	foreach( $months as $month => $name ) {
+		$expected = [ $word( $appData, 'month/'. $name ), $word( $appData, 'month-short/'. $name ) ];
+		if( $written( $appData, sprintf( '2026-%02d-15 12:00', $month ), 'F|M' ) !== $expected[0]. '|'. $expected[1] || str_contains( $expected[0]. $expected[1], '[[' ) === true )
+			$wrong[] = $name;
+	}
+	foreach( $weekdays as $day => $name ) {
+		$expected = [ $word( $appData, 'day/'. $name ), $word( $appData, 'day-short/'. $name ) ];
+		if( $written( $appData, '2026-12-'. $day. ' 12:00', 'l|D' ) !== $expected[0]. '|'. $expected[1] || str_contains( $expected[0]. $expected[1], '[[' ) === true )
+			$wrong[] = $name;
+	}
+
+	check( 'in '. $locale. ' F, M, l and D write what the keys render, for every month and every day'. ( $wrong === [] ? '' : ' - wrong: '. implode( ', ', $wrong ) ), $wrong === [] );
+}
+
+$appData['./nino/locales/current'] = 'de_DE';
+$german = $written( $appData, '2026-12-24 18:00', 'F Y' );
+check( 'a German page writes format="F Y" with the German word of the key, then the year',
+	$german === $word( $appData, 'month/december' ). ' 2026' && str_contains( $german, '[[' ) === false );
+check( '...which is not the English name PHP would have written',
+	$german !== ( new \DateTimeImmutable( '2026-12-24 18:00' ) )->format( 'F Y' ) );
+check( '...a whole date in the page\'s language: the day, the month, and the numbers around them',
+	$written( $appData, '2026-12-24 18:00', 'l, j. F Y' ) === $word( $appData, 'day/thursday' ). ', 24. '. $word( $appData, 'month/december' ). ' 2026' );
+
+$appData['./nino/locales/current'] = 'en_US';
+$english = $written( $appData, '2026-12-24 18:00', 'F Y' );
+check( 'the English page writes the English word of the same key', $english === $word( $appData, 'month/december' ). ' 2026' && $english !== $german );
+
+check( 'an escaped letter is a letter, not a word: \F is an F, and \\\\ is a backslash before the word',
+	$written( $appData, '2026-12-24 18:00', '\F Y' ) === 'F 2026'
+	&& $written( $appData, '2026-12-24 18:00', '\l\D Y' ) === 'lD 2026'
+	&& $written( $appData, '2026-12-24 18:00', '\\\\F' ) === '\\'. $word( $appData, 'month/december' ) );
+check( 'every other letter is PHP\'s, as it always was: numbers, separators, escapes',
+	$written( $appData, '2026-12-24 18:00', 'd.m.Y H:i \U\h\r' ) === '24.12.2026 18:00 Uhr'
+	&& $written( $appData, '2026-12-24 18:00', 'Y-m-d H:i' ) === '2026-12-24 18:00' );
+
+/*	No fallback in the code for a word a project may lack: the key stands there,
+	the way any text fill of the page does where nobody wrote it	*/
+$kept = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$kept[$locale] = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+	$cut = $kept[$locale];
+	unset( $cut['[[/feature/countdown/month/december]]'] );
+	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $cut );
+}
+check( 'a month without a word in any language shows its key, with its brackets written so that nothing reads them again, and the words around it stay',
+	$written( $appData, '2026-12-24 18:00', 'F Y' ) === '&#91;&#91;/feature/countdown/month/december]] 2026'
+	&& $written( $appData, '2026-11-24 18:00', 'F Y' ) === $word( $appData, 'month/november' ). ' 2026' );
+foreach( $kept as $locale => $content )
+	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $content );
+check( '...and writing the word back writes it', $written( $appData, '2026-12-24 18:00', 'F' ) === $word( $appData, 'month/december' ) );
+
+/*	A word is an editor's text: a fill of the template in it is not filled, a
+	shortcode in it does not run, and what the date says is still the date	*/
+$december = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	$december[$locale] = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+$wordIs = static function( array &$appData, array $texts, string $text, string $format ): string {
+	foreach( $texts as $locale => $content ) {
+		$content['[[/feature/countdown/month/december]]'] = $text;
+		\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $content );
+	}
+	return \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" format="'. $format. '"]' );
+};
+
+$withParts = $wordIs( $appData, $december, 'X[[parts]]Y', 'F Y' );
+check( 'a word that holds [[parts]] says so, and the counter keeps its four parts',
+	str_contains( $withParts, '>X&#91;&#91;parts]]Y 2026</time>' ) === true && substr_count( $withParts, 'data-countdown-unit=' ) === 4 );
+$withDone = $wordIs( $appData, $december, 'X[[done]][[iso]]Y', 'F Y' );
+check( '...and so does one that holds [[done]] or [[iso]]',
+	str_contains( $withDone, '>X&#91;&#91;done]]&#91;&#91;iso]]Y 2026</time>' ) === true && substr_count( $withDone, 'data-countdown-done="' ) === 1 );
+
+$withShortcode = $wordIs( $appData, $december, 'X[countdown to="2026-12-24 18:00"]Y', 'F Y' );
+check( 'a word that holds a shortcode is text, and no counter is made of it',
+	str_contains( $withShortcode, '>X&#91;countdown to=&quot;2026-12-24 18:00&quot;]Y 2026</time>' ) === true
+	&& substr_count( $withShortcode, 'class="nino-countdown"' ) === 1 );
+
+foreach( $december as $locale => $content )
+	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $content );
+check( '...and the words as they were are back', $written( $appData, '2026-12-24 18:00', 'F' ) === $word( $appData, 'month/december' ) && str_contains( $written( $appData, '2026-12-24 18:00', 'F' ), '[' ) === false );
+
+check( 'a backslash at the very end of a format escapes nothing and is dropped, not written as a NUL byte',
+	\Nino\Modules\Countdown::date( $appData, new \DateTimeImmutable( '2026-12-24 18:00' ), 'Y\\' ) === '2026'
+	&& \Nino\Modules\Countdown::date( $appData, new \DateTimeImmutable( '2026-12-24 18:00' ), 'F\\' ) === $word( $appData, 'month/december' ) );
+
+$escaped = \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" format="j. F \<\b\>"]' );
+check( 'the words are escaped with the rest of the date: no markup comes out of a format', str_contains( $escaped, '&lt;b&gt;' ) === true && str_contains( $escaped, '<b>' ) === false );
+ninoWarnings();
 
 echo "\n";
 
