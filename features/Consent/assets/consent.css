@@ -7,32 +7,80 @@
  *								(docs/development.md, "Assets Are Not Templates"), so
  *								nothing in here is a textfill.
  *
- *								Every colour, spacing and radius reads the site's own
- *								design-system custom properties (the same names
- *								_nino/Nino.css and the project's assets/theme.css, which
- *								Nino's base unit delivers, define: --color-*, --space-*,
- *								--radius, --fontsize-small), which every site has, so the
- *								banner looks at home whatever that theme says.
+ *								The banner reads the site's own design-system custom
+ *								properties (the same names _nino/Nino.css and the
+ *								project's assets/theme.css, which Nino's base unit
+ *								delivers, define: --color-*, --space-*, --radius*,
+ *								--fontsize-small), which every site has, so it looks at
+ *								home whatever that theme says.
+ *
+ *								Its look is four properties, --consent-ground (with the
+ *								parts of a ground), --consent-space, --consent-corners
+ *								and --consent-shadow, and a layout: the bar along the
+ *								foot of the page, which is what stands here. The looks
+ *								of the Design feature (design/) move the properties and
+ *								replace the layout - the box in the corner, the dialog
+ *								in the middle. What replaces the layout stands in
+ *								:where(), which has no specificity, so a rule of a look
+ *								wins whatever the order of the sheets. The three
+ *								buttons are the kernel's (.nino-btn): the Buttons part
+ *								of the Design feature reaches them, and this file
+ *								draws none.
  */
 
+/*	The defaults of the properties the looks move, in :where(): the bundle lists this
+	file after theme.css, and a default in a bare :root would win over the line that
+	moves a knob by order. The ground and its parts are the page's own roles, so that
+	the banner is as it was without Design; the shadow is the page's text colour,
+	thinned. --consent-modal is no style: a look that sets it to 1 is read by consent.js,
+	which then holds the page while the banner is shown (inert, the focus, the Tab key)	*/
+:where(:root) {
+	--consent-ground: var(--color-background);
+	--consent-ground-on: var(--color-text);
+	--consent-ground-link: var(--color-accent);
+	--consent-ground-border: var(--color-border);
+	--consent-ground-focus: var(--color-focus);
+	--consent-ground-shadow: color-mix( in srgb, var(--color-text) 15%, transparent );
+	--consent-space: var(--space-2);
+	--consent-corners: 0rem;
+	--consent-shadow: 0 -2px 12px var(--consent-ground-shadow);
+	--consent-modal: 0;
+}
+
+/*	The banner paints a ground as a section does: the roles of the kernel that follow
+	a ground are pointed at it, so that the text, the ring of the focus and the
+	outline buttons in it are right on whichever ground is chosen	*/
 .nino-consent {
+	--color-ground: var(--consent-ground);
+	--color-ink: var(--consent-ground-on);
+	--color-title: var(--consent-ground-on);
+	--color-subtitle: var(--consent-ground-on);
+	--color-accent: var(--consent-ground-link);
+	--color-focus: var(--consent-ground-focus);
+	--color-border: var(--consent-ground-border);
 	position: fixed;
-	left: 0;
-	right: 0;
-	bottom: 0;
 	z-index: 9998;
 	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
 	gap: var(--space-2);
-	padding: var(--space-2);
-	background: var(--color-background);
-	color: var(--color-text);
-	border-top: 1px solid var(--color-border);
-	box-shadow: 0 -2px 12px rgba(0, 0, 0, .15);
+	padding: var(--consent-space);
+	background-color: var(--color-ground);
+	color: var(--color-ink);
+	border-style: solid;
+	border-color: var(--color-border);
 	font-size: var(--fontsize-small);
 	line-height: 1.5;
+}
+
+/*	The layout of the bar: along the foot of the page, the line on its top edge, the
+	corners above, the shadow upwards. A look replaces it with rules of its own	*/
+:where(.nino-consent) {
+	inset: auto 0 0 0;
+	flex-flow: row wrap;
+	align-items: center;
+	justify-content: space-between;
+	border-width: 1px 0 0;
+	border-radius: var(--consent-corners) var(--consent-corners) 0 0;
+	box-shadow: var(--consent-shadow);
 }
 
 /* Focus is moved here when the banner is reopened (consent.js), so a screen
@@ -48,8 +96,25 @@
 	display: none;
 }
 
-.nino-consent-content {
+/*	The banner standing in the flow, as the block of the Design preview shows it
+	(design/preview.tpl): where it is, and without the dimming a look draws round it
+	over the whole page - the stage it stands in carries that, for the one look that
+	has it. It beats the rules of the looks by its two classes	*/
+.nino-consent.nino-consent--static {
+	position: static;
+	z-index: auto;
+	box-shadow: var(--consent-shadow);
+}
+
+.nino-consent-stage {
+	padding: var(--space-3) var(--space-2);
+}
+
+:where(.nino-consent-content) {
 	flex: 1 1 20rem;
+}
+
+.nino-consent-content {
 	min-width: 0;
 }
 
@@ -105,25 +170,14 @@
 	flex-shrink: 0;
 }
 
+/*	The three buttons are .nino-btn of the kernel; this is their hook for the script
+	and the one thing the banner asks of them, that a label is not broken	*/
 .nino-consent-btn {
-	appearance: none;
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius);
-	padding: .6em 1.2em;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	cursor: pointer;
 	white-space: nowrap;
 }
 
-.nino-consent-btn:hover,
-.nino-consent-btn:focus-visible {
-	border-color: var(--color-primary);
-}
-
 /* [consent-settings] - a plain text link/button for the footer, not a
-   full nino-consent-btn: it is meant to sit quietly among other footer
+   full nino-btn: it is meant to sit quietly among other footer
    links until someone wants to change their mind */
 .nino-consent-open {
 	appearance: none;
@@ -145,17 +199,20 @@
 
 @media (max-width: 640px) {
 
-	.nino-consent {
+	:where(.nino-consent) {
 		flex-direction: column;
 		align-items: stretch;
+	}
+
+	:where(.nino-consent-content) {
+		flex-basis: auto;
 	}
 
 	.nino-consent-actions {
 		justify-content: stretch;
 	}
 
-	.nino-consent-btn {
+	:where(.nino-consent-btn) {
 		flex: 1 1 auto;
-		text-align: center;
 	}
 }

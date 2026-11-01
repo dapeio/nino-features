@@ -40,6 +40,11 @@
 	// focus goes back to it once a choice is made
 	var opener = null;
 
+	// What the banner holds the page with while a look declares itself modal
+	// (--consent-modal: 1, see hold()): the elements made inert, where the focus
+	// was before, and the handler that keeps the Tab key inside the banner
+	var held = null;
+
 	/**
 	 *	The banner, or null on a page that does not render [consent]
 	 *
@@ -47,6 +52,179 @@
 	 */
 	function banner() {
 		return document.querySelector( '.nino-consent' );
+	}
+
+	/**
+	 *	Whether the look in use is a modal one: a look says so with the custom
+	 *	property --consent-modal set to 1 (design/dialog.css), which consent.css
+	 *	declares as 0. The script reads it where the banner stands, so the choice
+	 *	of a look in the Design feature is all it takes
+	 *
+	 *	@param		{Element}		el
+	 *
+	 *	@return		{boolean}
+	 */
+	function isModal( el ) {
+		return window.getComputedStyle( el ).getPropertyValue( '--consent-modal' ).trim() === '1';
+	}
+
+	/**
+	 *	@param		{Node}			node
+	 *	@param		{Element}		root
+	 *
+	 *	@return		{boolean}								Whether the node is the root or stands below it
+	 */
+	function within( node, root ) {
+
+		while( node !== null && node !== undefined ) {
+			if( node === root )
+				return true;
+			node = node.parentNode;
+		}
+
+		return false;
+	}
+
+	/**
+	 *	What the Tab key can reach in the banner, in the order of the page: a
+	 *	link, a button and a field that is not off
+	 *
+	 *	@param		{Element}		el
+	 *
+	 *	@return		{Array}
+	 */
+	function controls( el ) {
+
+		return Array.prototype.filter.call( el.querySelectorAll( '*' ), function( node ) {
+
+			var tag = node.tagName.toLowerCase();
+
+			if( node.hidden === true || node.disabled === true )
+				return false;
+
+			if( tag === 'input' )
+				return node.getAttribute( 'type' ) !== 'hidden';
+
+			return tag === 'button' || tag === 'select' || tag === 'textarea' || ( tag === 'a' && node.getAttribute( 'href' ) !== null );
+		} );
+	}
+
+	/**
+	 *	Hold the page while the banner is shown by a modal look: the focus goes
+	 *	to the first control of the banner, the banner says it is modal, every
+	 *	element that stands beside the banner or beside one of the elements it
+	 *	stands in is made inert - out of the tab order and of the pointer's
+	 *	reach, and out of the reading of a screen reader - and the Tab key
+	 *	turns round at the ends of the banner. release() undoes all of it
+	 *
+	 *	@param		{Element}		el
+	 *
+	 *	@return		void
+	 */
+	function hold( el ) {
+
+		release();
+
+		var inert = [];
+		var node = el;
+
+		while( node !== document.body && node.parentNode !== null ) {
+
+			var siblings = node.parentNode.children;
+
+			for( var i = 0; i < siblings.length; i++ )
+				if( siblings[i] !== node && siblings[i].inert !== true ) {
+					siblings[i].inert = true;
+					inert.push( siblings[i] );
+				}
+
+			node = node.parentNode;
+		}
+
+		var onKey = function( event ) {
+
+			if( event.key !== 'Tab' )
+				return;
+
+			var list = controls( el );
+			var active = document.activeElement;
+
+			if( list.length === 0 ) {
+				event.preventDefault();
+				return;
+			}
+
+			var first = list[0];
+			var last = list[ list.length - 1 ];
+
+			if( within( active, el ) === false ) {
+				event.preventDefault();
+				( event.shiftKey === true ? last : first ).focus();
+			}
+			else if( event.shiftKey === true && active === first ) {
+				event.preventDefault();
+				last.focus();
+			}
+			else if( event.shiftKey !== true && active === last ) {
+				event.preventDefault();
+				first.focus();
+			}
+		};
+
+		held = { inert : inert, previous : document.activeElement, onKey : onKey };
+
+		el.setAttribute( 'aria-modal', 'true' );
+		document.addEventListener( 'keydown', onKey );
+
+		( controls( el )[0] || el ).focus();
+	}
+
+	/**
+	 *	Let the page go again after hold(): the elements that were made inert
+	 *	are live, the banner is no longer modal and the Tab key is the page's
+	 *
+	 *	@return		{?Element}								Where the focus was before the banner took it, null where it was nowhere in particular
+	 */
+	function release() {
+
+		if( held === null )
+			return null;
+
+		var state = held;
+		var el = banner();
+
+		held = null;
+
+		state.inert.forEach( function( node ) {
+			node.inert = false;
+		} );
+
+		document.removeEventListener( 'keydown', state.onKey );
+
+		if( el !== null )
+			el.removeAttribute( 'aria-modal' );
+
+		return state.previous === document.body || state.previous === document.documentElement ? null : state.previous;
+	}
+
+	/**
+	 *	Show the banner. A modal look holds the page and takes the focus; a
+	 *	banner that is reopened by a button takes the focus whatever the look,
+	 *	so a screen reader starts at its title
+	 *
+	 *	@param		{Element}		el
+	 *	@param		{boolean}		reopened
+	 *
+	 *	@return		void
+	 */
+	function show( el, reopened ) {
+
+		el.hidden = false;
+
+		if( isModal( el ) === true )
+			hold( el );
+		else if( reopened === true )
+			el.focus();
 	}
 
 	/**
@@ -302,14 +480,21 @@
 		writeCookie( cookieName(), allowed.join( ',' ), cookieDays() );
 		applyConsent( allowed );
 
+		// The page is live again before the focus goes back to it: an inert
+		// element takes none
+		var before = release();
 		var el = banner();
+
 		if( el !== null )
 			el.hidden = true;
 
-		// Back to the button that opened it. Nothing keeps the focus inside the
-		// banner meanwhile - it is a notice, not a modal
-		if( opener !== null && opener.parentNode !== null && typeof opener.focus === 'function' )
-			opener.focus();
+		// Back to the button that opened it, or - where a modal look held the
+		// page - to where the focus was. A banner that is no modal keeps the
+		// focus nowhere meanwhile: it is a notice
+		var back = opener !== null ? opener : before;
+
+		if( back !== null && back.parentNode !== null && typeof back.focus === 'function' )
+			back.focus();
 
 		opener = null;
 	}
@@ -372,8 +557,7 @@
 					return;
 
 				opener = this;
-				current.hidden = false;
-				current.focus();
+				show( current, true );
 			} );
 		}
 	}
@@ -399,7 +583,7 @@
 
 			var el = banner();
 			if( el !== null )
-				el.hidden = false;
+				show( el, false );
 
 			applyConsent( [ 'necessary' ] );
 			return;

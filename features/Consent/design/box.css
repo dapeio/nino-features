@@ -1,0 +1,68 @@
+/*	@name			Box
+ *	@name-de		Kasten
+ *	@description	A narrow box in the bottom right corner of the page, the text over the choice. On a narrow screen it is the bar along the foot of the page again.
+ *	@description-de	Ein schmaler Kasten in der Ecke unten rechts, der Text über der Wahl. Auf einem schmalen Bildschirm ist er wieder die Leiste am Fuß der Seite.
+ *
+ *	@knob	ground		ground	colours		Ground of the banner	= default
+ *	@knob-de	ground		Grund des Banners
+ *	@knob	space		scale	surfaces	Space inside the banner
+ *	@knob-de	space		Innenabstand des Banners
+ *	@knob	corners		scale	surfaces	Corners of the banner
+ *	@knob-de	corners		Ecken des Banners
+ *	@knob	shadow		scale	surfaces	Shadow the banner casts
+ *	@knob-de	shadow		Schatten des Banners
+ *
+ *	The box stands a space off the edges of the window and is 24rem wide at the most; its parts
+ *	are stacked, and the three buttons share the width. Under 640px there is room for no corner:
+ *	the box is the bar, over the whole width and rounded above. Its corners are the knob's on all
+ *	four sides, the shadow falls down and to the sides onto the page.
+ */
+
+:root {
+	--consent-space--least:		var(--space-1);
+	--consent-space--less:		calc( var(--space-1) * 1.5 );
+	--consent-space--default:	var(--space-2);
+	--consent-space--more:		var(--space-3);
+	--consent-space--most:		var(--space-4);
+
+	--consent-corners--least:		0rem;
+	--consent-corners--less:		var(--radius-small);
+	--consent-corners--default:		var(--radius-large);
+	--consent-corners--more:		.75rem;
+	--consent-corners--most:		1.25rem;
+
+	--consent-shadow--least:	0 0 0 0 var(--consent-ground-shadow);
+	--consent-shadow--less:		0 .125rem .5rem var(--consent-ground-shadow);
+	--consent-shadow--default:	0 .25rem 1.5rem var(--consent-ground-shadow);
+	--consent-shadow--more:		0 .5rem 2.5rem var(--consent-ground-shadow);
+	--consent-shadow--most:		0 .75rem 3.5rem var(--consent-ground-shadow), 0 .125rem .5rem var(--consent-ground-shadow);
+}
+
+.nino-consent {
+	inset: auto var(--space-2) var(--space-2) auto;
+	flex-flow: column nowrap;
+	align-items: stretch;
+	width: 100%;
+	max-width: 24rem;
+	border-width: 1px;
+	border-radius: var(--consent-corners);
+}
+
+.nino-consent-content {
+	flex-basis: auto;
+}
+
+/*	The three buttons share the width of the rows they stand in	*/
+.nino-consent-btn {
+	flex: 1 1 auto;
+}
+
+@media (max-width: 640px) {
+
+	.nino-consent {
+		inset: auto 0 0 0;
+		max-width: none;
+		border-width: 1px 0 0;
+		border-radius: var(--consent-corners) var(--consent-corners) 0 0;
+	}
+}

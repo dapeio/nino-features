@@ -1,0 +1,42 @@
+/*	@name			Bar
+ *	@name-de		Leiste
+ *	@description	The banner as it has always stood: a bar along the foot of the page over its whole width, the text and the choice side by side, the line on its top edge and the corners above it.
+ *	@description-de	Das Banner, wie es immer stand: eine Leiste am Fuß der Seite über die ganze Breite, der Text und die Wahl nebeneinander, die Linie auf der oberen Kante und die Ecken darüber.
+ *
+ *	@knob	ground		ground	colours		Ground of the banner	= default
+ *	@knob-de	ground		Grund des Banners
+ *	@knob	space		scale	surfaces	Space inside the banner
+ *	@knob-de	space		Innenabstand des Banners
+ *	@knob	corners		scale	surfaces	Corners of the banner
+ *	@knob-de	corners		Ecken des Banners
+ *	@knob	shadow		scale	surfaces	Shadow the banner casts
+ *	@knob-de	shadow		Schatten des Banners
+ *
+ *	Bar is the starting point of this feature: the layout is consent.css's own, so this file
+ *	sets the ladders and nothing else, and the middle of each is the value consent.css has as
+ *	its default - the banner under it looks as it does without Design. The corners are the
+ *	two above only, the shadow falls upwards onto the page.
+ */
+
+:root {
+	/*	The padding of the banner; the gap between its parts is the page's	*/
+	--consent-space--least:		var(--space-1);
+	--consent-space--less:		calc( var(--space-1) * 1.5 );
+	--consent-space--default:	var(--space-2);
+	--consent-space--more:		var(--space-3);
+	--consent-space--most:		var(--space-4);
+
+	/*	The radius of the two corners above. The banner has always been square, so the sharp end is a plateau - the three least positions are square	*/
+	--consent-corners--least:		0rem;
+	--consent-corners--less:		0rem;
+	--consent-corners--default:		0rem;
+	--consent-corners--more:		var(--radius-small);
+	--consent-corners--most:		var(--radius-large);
+
+	/*	The shadow, in the colour the palette gives the ground: the first position casts none, the middle is the one the banner has always cast	*/
+	--consent-shadow--least:	0 0 0 0 var(--consent-ground-shadow);
+	--consent-shadow--less:		0 -1px 4px var(--consent-ground-shadow);
+	--consent-shadow--default:	0 -2px 12px var(--consent-ground-shadow);
+	--consent-shadow--more:		0 -4px 24px var(--consent-ground-shadow);
+	--consent-shadow--most:		0 -8px 40px var(--consent-ground-shadow), 0 -2px 8px var(--consent-ground-shadow);
+}

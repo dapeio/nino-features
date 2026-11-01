@@ -1,0 +1,72 @@
+/*	@name			Dialog
+ *	@name-de		Dialog
+ *	@description	A dialog in the middle of the window, the text over the choice, and the page behind it dimmed.
+ *	@description-de	Ein Dialog in der Mitte des Fensters, der Text über der Wahl, und die Seite dahinter abgedunkelt.
+ *
+ *	@knob	ground		ground	colours		Ground of the banner	= default
+ *	@knob-de	ground		Grund des Banners
+ *	@knob	space		scale	surfaces	Space inside the banner
+ *	@knob-de	space		Innenabstand des Banners
+ *	@knob	corners		scale	surfaces	Corners of the banner
+ *	@knob-de	corners		Ecken des Banners
+ *	@knob	shadow		scale	surfaces	Shadow the banner casts
+ *	@knob-de	shadow		Schatten des Banners
+ *
+ *	The dialog is 36rem wide at the most, a space off the edges of the window on a narrow one, and
+ *	as high as its content - it scrolls inside itself where the window is lower. The page behind it
+ *	is dimmed with the page's own scrim: a shadow of 100vmax spread round the dialog, after the
+ *	shadow the knob gives it, so that the markup needs nothing besides the banner. The look is
+ *	modal: --consent-modal is 1, so consent.js makes the page inert while the banner is shown, takes
+ *	the focus into it, keeps the Tab key inside and gives the page back after a choice.
+ */
+
+:root {
+	--consent-modal:			1;
+
+	--consent-space--least:		var(--space-1);
+	--consent-space--less:		calc( var(--space-1) * 1.5 );
+	--consent-space--default:	var(--space-2);
+	--consent-space--more:		var(--space-3);
+	--consent-space--most:		var(--space-4);
+
+	--consent-corners--least:		0rem;
+	--consent-corners--less:		var(--radius-small);
+	--consent-corners--default:		var(--radius-large);
+	--consent-corners--more:		.75rem;
+	--consent-corners--most:		1.25rem;
+
+	--consent-shadow--least:	0 0 0 0 var(--consent-ground-shadow);
+	--consent-shadow--less:		0 .125rem .5rem var(--consent-ground-shadow);
+	--consent-shadow--default:	0 .5rem 2rem var(--consent-ground-shadow);
+	--consent-shadow--more:		0 .75rem 3rem var(--consent-ground-shadow);
+	--consent-shadow--most:		0 1rem 4rem var(--consent-ground-shadow), 0 .125rem .5rem var(--consent-ground-shadow);
+}
+
+.nino-consent {
+	inset: 0;
+	margin: auto;
+	flex-flow: column nowrap;
+	align-items: stretch;
+	width: calc( 100% - var(--space-2) * 2 );
+	max-width: 36rem;
+	height: fit-content;
+	max-height: calc( 100% - var(--space-2) * 2 );
+	overflow-y: auto;
+	border-width: 1px;
+	border-radius: var(--consent-corners);
+	box-shadow: var(--consent-shadow), 0 0 0 100vmax var(--color-background-dim);
+}
+
+.nino-consent-content {
+	flex-basis: auto;
+}
+
+/*	The three buttons share the width of the rows they stand in	*/
+.nino-consent-btn {
+	flex: 1 1 auto;
+}
+
+/*	The preview shows the dimming as the ground of the block the dialog stands in	*/
+.nino-consent-stage {
+	background-color: var(--color-background-dim);
+}

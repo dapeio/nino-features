@@ -9,7 +9,10 @@
  *												banner of an older base install is removed, that the
  *												reopen button of a page with no banner is hidden, where
  *												the focus goes when the banner is reopened and
- *												answered, that the script starts when Nino.js says the
+ *												answered, what a modal look makes of the page (the
+ *												elements beside the banner inert, the focus taken in
+ *												and the Tab key kept inside, all of it given back
+ *												after a choice), that the script starts when Nino.js says the
  *												page is ready, and that the cookie it reads and writes is
  *												the one the banner names, kept for the days it names.
  *
@@ -52,6 +55,9 @@ const checkout = process.env.NINO_ROOT || path.join( __dirname, '../../..' );
 const kernel = fs.readFileSync( path.join( checkout, '_nino/Nino.js' ), 'utf8' );
 const kernelUi = fs.readFileSync( path.join( checkout, '_nino/Nino.ui.js' ), 'utf8' );
 
+// The element that has the focus, as document.activeElement says it
+let focusedNow = null;
+
 /**
  *	One element, with just enough of the interface consent.js reaches for
  */
@@ -71,7 +77,9 @@ function element( tag, attributes ) {
 		focused				: 0,
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
+		removeAttribute	: function( name ) { delete this.attributes[name] },
 		addEventListener	: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
+		removeEventListener	: function( type, fn ) { this.listeners[type] = ( this.listeners[type] || [] ).filter( function( f ) { return f !== fn } ) },
 		appendChild			: function( child ) { child.parentNode = this; this.children.push( child ); return child },
 		insertBefore		: function( child, before ) {
 			child.parentNode = this;
@@ -84,7 +92,7 @@ function element( tag, attributes ) {
 			child.parentNode = null;
 			return child;
 		},
-		focus						: function() { this.focused++ },
+		focus						: function() { this.focused++; focusedNow = this },
 		click						: function() { ( this.listeners['click'] || [] ).forEach( function( fn ) { fn.call( el, {} ) } ) },
 		querySelector		: function( selector ) { return this.querySelectorAll( selector )[0] || null },
 		querySelectorAll	: function( selector ) { return descendants( this ).filter( function( e ) { return matches( e, selector ) } ) },
@@ -170,11 +178,12 @@ function banner( categories, attributes ) {
  *	A page with the given elements in its body and consent.js loaded over it
  *
  *	@param		{Array}		elements
- *	@param		{Object}	options		{ cookie, readyState, hold }
+ *	@param		{Object}	options		{ cookie, readyState, hold, modal }
  */
 function page( elements, options ) {
 
 	options = options || {};
+	focusedNow = null;
 
 	const root = element( 'html', {} );
 	const body = element( 'body', {} );
@@ -196,6 +205,7 @@ function page( elements, options ) {
 		createElement		: function( tag ) { return element( tag, {} ) },
 		getElementById	: function() { return null },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
+		removeEventListener	: function( type, fn ) { listeners[type] = ( listeners[type] || [] ).filter( function( f ) { return f !== fn } ) },
 		dispatchEvent		: function( ev ) {
 			fired.push( ev );
 			( listeners[ev.type] || [] ).forEach( function( fn ) { fn( ev ) } );
@@ -203,6 +213,8 @@ function page( elements, options ) {
 		querySelector		: function( selector ) { return body.querySelector( selector ) },
 		querySelectorAll	: function( selector ) { return body.querySelectorAll( selector ) },
 	};
+
+	Object.defineProperty( dc, 'activeElement', { get : function() { return focusedNow === null ? body : focusedNow } } );
 
 	Object.defineProperty( dc, 'cookie', {
 		get : function() { return Object.keys( cookies ).map( function( name ) { return name+ '='+ encodeURIComponent( cookies[name] ) } ).join( '; ' ) },
@@ -230,6 +242,8 @@ function page( elements, options ) {
 		dispatchEvent : function() {},
 		requestAnimationFrame : function() {},
 		setTimeout : function( fn ) { timeouts.push( fn ); return timeouts.length },
+		// The look is modal where the page says --consent-modal: 1 (options.modal), as consent.css and design/dialog.css do
+		getComputedStyle : function() { return { getPropertyValue : function( name ) { return name === '--consent-modal' && options.modal === true ? ' 1' : '' } } },
 	};
 	sandbox.window = sandbox;
 
@@ -251,7 +265,7 @@ function page( elements, options ) {
 		start();
 
 	return {
-		root : root, body : body, fired : fired, start : start, listeners : listeners, lines : lines,
+		document : dc, root : root, body : body, fired : fired, start : start, listeners : listeners, lines : lines,
 		stored : function( name ) { return cookies[ name || 'nino_consent' ] },
 		boxes : function( el ) {
 			const found = {};
@@ -384,6 +398,98 @@ const unused = element( 'button', { 'class' : 'nino-consent-open' } );
 const visit = page( [ unused, firstTime ], {} );
 visit.action( firstTime, 'necessary-only' );
 check( 'a banner nobody reopened moves the focus nowhere, neither in nor out', firstTime.focused === 0 && unused.focused === 0 );
+
+
+// --- A modal look --------------------------------------------------------------
+
+/**
+ *	A keydown of the Tab key, as the document gets it
+ */
+function tab( run, shift ) {
+	const event = { type : 'keydown', key : 'Tab', shiftKey : shift === true, prevented : false, preventDefault : function() { this.prevented = true } };
+	run.document.dispatchEvent( event );
+	return event;
+}
+
+function modalPage( cookie, extra ) {
+
+	const el = banner( [ 'statistics' ] );
+	const before = element( 'a', { 'href' : '/' } );
+	const wrapper = element( 'div', {} );
+	const inside = element( 'p', {} );
+	const after = element( 'button', {} );
+	const opener = element( 'button', { 'class' : 'nino-consent-open' } );
+	const already = element( 'nav', {} );
+
+	already.inert = true;
+	wrapper.appendChild( inside );
+	wrapper.appendChild( el );
+
+	const run = page( [ before, wrapper, after, opener, already ], Object.assign( { modal : true, cookie : cookie }, extra || {} ) );
+
+	return { run : run, banner : el, before : before, wrapper : wrapper, inside : inside, after : after, opener : opener, already : already };
+}
+
+const quiet = banner( [ 'statistics' ] );
+const quietLink = element( 'a', { 'href' : '/' } );
+const quietPage = page( [ quietLink, quiet ], {} );
+check( 'a look that is no modal one holds nothing: the page beside the banner is not inert, the banner says nothing of being modal and the focus is where it was',
+	quiet.hidden === false && quietLink.inert !== true && quiet.getAttribute( 'aria-modal' ) === null && quiet.focused === 0 && quietPage.listeners['keydown'] === undefined );
+
+const m = modalPage( undefined );
+
+check( 'a modal look holds the page on a first visit: what stands beside the banner, and beside the element it stands in, is inert - the banner and what it stands in are not',
+	m.banner.hidden === false && m.before.inert === true && m.after.inert === true && m.opener.inert === true && m.inside.inert === true
+	&& m.wrapper.inert !== true && m.banner.inert !== true );
+check( '...the banner says it is modal, and the focus is in it - on its first control', m.banner.getAttribute( 'aria-modal' ) === 'true'
+	&& m.banner.querySelector( '[data-consent-category="statistics"]' ).focused === 1 );
+check( '...and an element that was inert before the banner came is not the banner\'s to give back', m.already.inert === true );
+
+const statisticsBox = m.banner.querySelector( '[data-consent-category="statistics"]' );
+const acceptAll = m.banner.querySelector( '[data-consent-action="accept-all"]' );
+const lastButton = m.banner.querySelector( '[data-consent-action="save"]' );
+
+lastButton.focus();
+const forward = tab( m.run );
+check( 'the Tab key turns round at the end of the banner: from its last control it goes to the first', forward.prevented === true && statisticsBox.focused === 2 );
+
+const backward = tab( m.run, true );
+check( '...Shift+Tab at the first goes to the last', backward.prevented === true && lastButton.focused === 2 );
+
+m.before.focus();
+const outside = tab( m.run );
+check( '...a Tab from outside the banner goes into it, and Shift+Tab to its last control', outside.prevented === true && statisticsBox.focused === 3
+	&& ( m.before.focus(), tab( m.run, true ).prevented === true ) && lastButton.focused === 3 );
+
+acceptAll.focus();
+const between = tab( m.run );
+const letter = { type : 'keydown', key : 'a', shiftKey : false, prevented : false, preventDefault : function() { this.prevented = true } };
+lastButton.focus();
+m.run.document.dispatchEvent( letter );
+check( '...between its controls, and for any other key even at the end of the banner, the browser is left to it', between.prevented === false && letter.prevented === false );
+
+m.run.action( m.banner, 'necessary-only' );
+check( 'a choice gives the page back: nothing is inert that the banner made inert, the banner says no more that it is modal and the Tab key is the page\'s again',
+	m.banner.hidden === true && m.run.stored() === 'necessary' && m.before.inert === false && m.after.inert === false && m.opener.inert === false && m.inside.inert === false
+	&& m.banner.getAttribute( 'aria-modal' ) === null && m.run.listeners['keydown'].length === 0 && tab( m.run ).prevented === false );
+check( '...an element that was inert before stays so, and a page that had no focus before the banner has none given back', m.already.inert === true && m.before.focused === 2 && m.after.focused === 0 );
+
+const r = modalPage( { nino_consent : 'necessary' } );
+check( 'a stored choice holds nothing, a modal look or not', r.banner.hidden === true && r.before.inert !== true && r.opener.inert !== true && r.banner.focused === 0 && r.run.listeners['keydown'] === undefined );
+
+r.opener.click();
+check( 'a banner reopened by its button is held in the same way, the button too: the focus is in the banner, on its first control',
+	r.banner.hidden === false && r.opener.inert === true && r.before.inert === true && r.banner.getAttribute( 'aria-modal' ) === 'true'
+	&& r.banner.querySelector( '[data-consent-category="statistics"]' ).focused === 1 && r.banner.focused === 0 );
+
+r.run.action( r.banner, 'save' );
+check( '...and a choice lifts it and gives the focus back to the button that opened it, which is live to take it', r.opener.inert === false && r.opener.focused === 1 && r.before.inert === false && r.banner.hidden === true );
+
+const h = modalPage( undefined, { hold : true } );
+h.before.focus();
+h.run.start();
+h.run.action( h.banner, 'accept-all' );
+check( 'where nothing opened the banner, the focus goes back to where it was before the banner took it', h.before.focused === 2 && h.before.inert === false );
 
 
 // --- Starting with the kernel --------------------------------------------------

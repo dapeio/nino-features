@@ -26,6 +26,10 @@ return [
 			],
 		],
 		'markup' => [
+			'Custom properties' => [
+				'en_US' => 'consent.css declares the properties the banner is drawn from - --consent-ground with its parts (-on, -link, -border, -focus, -shadow), --consent-space, --consent-corners and --consent-shadow - with the page\'s own roles as their defaults, in :where(:root): a project restyles the banner without overriding a rule, with a value on :root in its own stylesheet. --consent-modal, 0 by default, is read by consent.js: at 1 the banner holds the page while it is shown (inert, the focus taken into it and kept there), which the look Dialog of the Design feature sets. The layout of the bar stands in :where(.nino-consent), so a rule on the class beats it.',
+				'de_DE' => 'consent.css deklariert die Properties, aus denen das Banner gezeichnet wird – --consent-ground mit seinen Teilen (-on, -link, -border, -focus, -shadow), --consent-space, --consent-corners und --consent-shadow –, mit den Rollen der Seite als Vorgabe, in :where(:root): Ein Projekt gestaltet das Banner um, ohne eine Regel zu überschreiben, mit einem Wert auf :root im eigenen Stylesheet. --consent-modal, vorgegeben 0, liest consent.js: Bei 1 hält das Banner die Seite, solange es zu sehen ist (inert, der Fokus wird hineingenommen und bleibt dort), was der Look Dialog des Features Design setzt. Das Layout der Leiste steht in :where(.nino-consent), eine Regel auf der Klasse gewinnt also dagegen.',
+			],
 			'<script type="text/plain" data-consent="statistics" data-src="…">' => [
 				'en_US' => 'Starts the moment that category is allowed, and not before. The host of data-src joins the policy\'s script-src.',
 				'de_DE' => 'Startet in dem Moment, in dem diese Kategorie erlaubt ist – und nicht davor. Der Host von data-src kommt in die script-src der Richtlinie.',
@@ -40,7 +44,12 @@ return [
 			],
 		],
 		'routes' => [],
-		'panel' => [],
+		'panel' => [
+			'Design: the look of the banner' => [
+				'en_US' => 'With the Design feature on, the tab Consent of the Design panel offers under Base three looks of the banner - Bar, Box and Dialog - and its knobs stand under Surface (the space inside the banner, its corners and its shadow) and Colour (the ground it is painted on). Bar is the banner as it has always stood, along the foot of the page; Box is a narrow box in the corner, the bar again on a narrow screen; Dialog stands in the middle of the window, dims the page behind it and holds it until a choice is made. The three buttons are the kernel\'s buttons, so the Buttons of the page reach them. The preview of the Design panel shows the banner in the flow, on the block this feature brings, design/preview.tpl, in a section named after the feature before the footer of the specimen; Apply to website puts the look on the site.',
+				'de_DE' => 'Ist das Feature Design an, bietet der Tab Cookie-Einwilligung des Design-Panels unter Grundlage drei Looks des Banners an – Leiste, Kasten und Dialog –, und seine Regler stehen unter Fläche (der Innenabstand des Banners, seine Ecken und sein Schatten) und Farbe (der Grund, auf den es gemalt ist). Die Leiste ist das Banner, wie es immer stand, am Fuß der Seite; der Kasten ist ein schmaler Kasten in der Ecke, auf einem schmalen Bildschirm wieder die Leiste; der Dialog steht in der Mitte des Fensters, dunkelt die Seite dahinter ab und hält sie fest, bis gewählt ist. Die drei Knöpfe sind die Buttons des Kernels, die Buttons der Seite erreichen sie also. Die Vorschau des Design-Panels zeigt das Banner im Fluss, an dem Block, den dieses Feature mitbringt, design/preview.tpl, in einer Sektion mit dem Namen des Features vor dem Footer der Musterseite; Auf Website anwenden bringt den Look auf die Site.',
+			],
+		],
 		'callbacks' => [
 			'/nino/http/output' => [
 				'en_US' => 'Adds the hosts of the page\'s consent-gated scripts to the policy\'s script-src.',

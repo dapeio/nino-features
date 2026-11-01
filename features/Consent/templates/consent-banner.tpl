@@ -5,8 +5,8 @@
 		<div class="nino-consent-categories">[[categories]]</div>
 	</div>
 	<div class="nino-consent-actions">
-		<button type="button" class="nino-consent-btn" data-consent-action="accept-all">[[/feature/consent/action/accept-all]]</button>
-		<button type="button" class="nino-consent-btn" data-consent-action="necessary-only">[[/feature/consent/action/necessary-only]]</button>
-		<button type="button" class="nino-consent-btn" data-consent-action="save">[[/feature/consent/action/save]]</button>
+		<button type="button" class="nino-btn nino-btn--outline nino-consent-btn" data-consent-action="accept-all">[[/feature/consent/action/accept-all]]</button>
+		<button type="button" class="nino-btn nino-btn--outline nino-consent-btn" data-consent-action="necessary-only">[[/feature/consent/action/necessary-only]]</button>
+		<button type="button" class="nino-btn nino-btn--outline nino-consent-btn" data-consent-action="save">[[/feature/consent/action/save]]</button>
 	</div>
 </div>
