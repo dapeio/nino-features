@@ -71,8 +71,8 @@ return [
 				'de_DE' => 'Der Elementtyp Social Media mit vier Links zum Bearbeiten, Ausblenden oder Löschen - unter Elemente.',
 			],
 			'templates/social-links.tpl' => [
-				'en_US' => 'Holds [social]. The Design feature\'s header and footer frames include it, and draw nothing where it is missing.',
-				'de_DE' => 'Enthält [social]. Die Header- und Footer-Rahmen des Design-Features binden es ein und zeichnen nichts, wo es fehlt.',
+				'en_US' => 'Holds [social], for a template of the project to include. The frames of the Design feature do not include it: a frame that wants the links writes [social] into the project\'s frame-header.tpl or frame-footer.tpl - the next apply of Design replaces those files and names [social] among the shortcodes it would lose.',
+				'de_DE' => 'Enthält [social], damit ein Template des Projekts es einbinden kann. Die Rahmen des Design-Features binden es nicht ein: Ein Rahmen, der die Links will, schreibt [social] in die frame-header.tpl oder frame-footer.tpl des Projekts - das nächste Apply von Design ersetzt diese Dateien und nennt [social] unter den Shortcodes, die es verlöre.',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'The labels of the type\'s fields in the Elements panel. They are added, never replaced: a project that has the feature already keeps the label of the field Link until it changes it by hand.',

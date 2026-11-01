@@ -3,7 +3,6 @@
 				<div class="nino-grid-100 nino-grid-l-50 nino-frame-footer-message">
 					<p class="nino-frame-footer-kicker">[[/project/company/general/name]]</p>
 					<p class="nino-frame-footer-description">[[/project/company/general/description]]</p>
-					<div class="nino-frame-footer-social">[template /templates/social-links]</div>
 				</div>
 				<nav class="nino-grid-100 nino-grid-l-25 nino-frame-footer-nav" aria-label="[[/template/common/navigation/footer]]">
 					[template /templates/html-footer-nav]

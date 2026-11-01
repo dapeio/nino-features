@@ -671,9 +671,8 @@ namespace Nino\Modules\Design {
 		 *	preview that could only show a saved decision would make saving the
 		 *	way to ask a question. Nothing here writes anything.
 		 *
-		 *	Rendered against this project - its menu, its logo, its social
-		 *	links, its fonts - and assembled through Preview, which is where the
-		 *	specimen and the frames around it live
+		 *	Rendered against this project - its menu, its logo, its fonts - and assembled
+		 *	through Preview, which is where the specimen and the frames around it live
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request

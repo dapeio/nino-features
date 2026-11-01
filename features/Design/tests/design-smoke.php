@@ -1573,6 +1573,30 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'the rungs less and default of the line of every header name a role of its ground, and with the ground at more the compile selects that role at the rung more'. ( $lineProblems === [] ? '' : ' - '. implode( ', ', $lineProblems ) ), count( Setup::available( $library, 'header' ) ) > 1 && $lineProblems === [] );
 
+/*	The line of a header stands on the ground of the header, not on the ground of the page. --color-border is the border of the page, drawn for the light ground the page has, and on a
+	bar of another ground it is the line of another surface. The pin fails closed: a set whose ground at the rung default is not one of the light grounds - the ground of the page,
+	the header's own light ground or the default surface of a section - names a border of its own at that rung, one that is not var(--color-border). A new ground that the list does
+	not know is therefore held to it as well, rather than passing for want of a name. Read from the library's own list of headers, so that a header that is added on a dark or a
+	brand ground with the border of the page fails here rather than on a site; and at least one header stands off the light grounds at default, so that the pin has something to hold	*/
+$lightGrounds = [ 'var(--color-background)', 'var(--color-header-bg)', 'var(--color-section-default-bg)' ];
+$darkProblems = [];
+$darkGrounds = 0;
+
+foreach( Setup::available( $library, 'header' ) as $set ) {
+
+	$roles = array_map( static fn( string $value ): string => (string) preg_replace( '/\s+/', '', $value ), designDeclarations( designPlain( (string) file_get_contents( Setup::file( $library, 'header', $set ) ) ) ) );
+
+	if( isset( $roles['--header-ground--default'] ) === true && in_array( $roles['--header-ground--default'], $lightGrounds, true ) === true )
+		continue;
+
+	$darkGrounds++;
+
+	if( isset( $roles['--header-ground--default'], $roles['--header-ground-border--default'] ) === false || $roles['--header-ground-border--default'] === 'var(--color-border)' )
+		$darkProblems[] = $set;
+}
+
+check( 'a header whose ground at default is not one of the light grounds does not draw its line at default in the border of the page'. ( $darkProblems === [] ? '' : ' - '. implode( ', ', $darkProblems ) ), $darkGrounds > 0 && $darkProblems === [] );
+
 /*	The burger of the kernel is a button: .nino-nav-burger > button with aria-expanded and aria-controls, the icon in it, the list beside it, the open
 	state on the button (and nino-is-open on the wrapper). A header that styles what the burger was - a label under it, the checkbox in it, input:checked
 	and input:focus-visible with the icon beside them - styles nothing, and its menu opens as the kernel's own and looks as no header meant it. The old

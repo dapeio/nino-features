@@ -4,7 +4,6 @@
 					<div class="nino-grid-100 nino-grid-l-50 nino-pb-2">
 						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo nino-mb-2 nino-logo--invert" alt="[[alt]]">[/image]
 						<p>[[/project/company/general/description]]</p>
-						[template /templates/social-links]
 					</div>
 					<div class="nino-grid-100 nino-grid-l-25 nino-pb-2">
 						<h2 class="nino-footer-title">[[/template/frame-footer/contact/title]]</h2>

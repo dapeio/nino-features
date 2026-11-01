@@ -8,10 +8,9 @@ return [
 	// Copied to /elements/social.php: the model and four links to start from
 	'elementTypes'	=> [ 'social.php' ],
 
-	// What the Design feature's header and footer frames include, holding
-	// [social]. A frame cannot name the shortcode itself: without this
-	// feature, [social] would stand on the page as text, while a template the
-	// project does not have renders as nothing
+	// Holds [social], for a template of the project to include. The frames of
+	// the Design feature do not include it: a frame that wants the links
+	// writes [social] into the project's frame-header.tpl or frame-footer.tpl
 	'templates'			=> [ 'social-links.tpl' ],
 
 	// The Elements panel's labels for the type's fields - the workbench's

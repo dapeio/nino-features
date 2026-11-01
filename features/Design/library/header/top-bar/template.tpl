@@ -3,7 +3,6 @@
 				<div class="nino-grid-row nino-grid-middle">
 					<div class="nino-grid-100 nino-frame-header-utility-inner">
 						<p class="nino-frame-header-contact">[[/project/company/contact/phone]] <span aria-hidden="true">·</span> [[/project/company/contact/email]]</p>
-						<div class="nino-frame-header-social">[template /templates/social-links]</div>
 					</div>
 				</div>
 			</div>

@@ -82,7 +82,7 @@ body {
 
 	/*	The line under it	*/
 	--header-ground-border--less:	var(--color-border);
-	--header-ground-border--default:	var(--color-border);
+	--header-ground-border--default:	var(--color-border-black);
 	--header-ground-border--more:	var(--color-border-dark);
 
 	--header-position-logo--less: 0;

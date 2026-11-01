@@ -205,7 +205,7 @@ $appData = socialSandbox();
 
 $typeFile = \Nino\Filesystem::getFileContent( $appData, '/elements/social.php', false );
 check( 'the type lands with its four links', is_array( $typeFile ) === true && count( array_diff_key( $typeFile['*'], [ '*' => true ] ) ) === 4 );
-check( 'the template the frames include lands, holding [social]', trim( (string) \Nino\Filesystem::getFileContent( $appData, '/templates/social-links.tpl', '' ) ) === '[social]' );
+check( 'the template social-links lands, holding [social]', trim( (string) \Nino\Filesystem::getFileContent( $appData, '/templates/social-links.tpl', '' ) ) === '[social]' );
 check( 'the labels land in both languages', ( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/_admin/elements/field/social/hidden]]'] ?? '' ) === 'Auf der Website ausblenden'
 	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/_admin/elements/field/social/hidden]]'] ?? '' ) === 'Hide on the website' );
 check( '...and on the blacklist', in_array( '/_admin/elements/field/social/link', (array) \Nino\Filesystem::getFileContent( $appData, '/text/blacklist.php', [] ), true ) === true );
@@ -266,7 +266,7 @@ check( '[social-icon class=…]: the call\'s class is on the wrapper of the icon
 check( '...escaped, and the icon of an unknown slug carries it too', str_contains( \Nino\Modules\Social::doIconShortcode( $appData, [ 'name' => 'telegram', 'class' => $hostileClass ] ), '<span class="nino-social-icon a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]" aria-hidden="true">' ) === true
 	&& str_starts_with( render( $appData, '[social-icon nope class="my-class"]' ), '<span class="nino-social-icon my-class" aria-hidden="true"><svg' ) === true );
 check( '[social-icon name="…"] inside [elements /social] draws each element\'s', substr_count( render( $appData, '[elements /social][social-icon name="[[icon]]"][/elements]' ), '<svg' ) === 4 );
-check( 'the template the frames include draws the list', substr_count( render( $appData, '[template /templates/social-links]' ), '<li class="nino-social-item">' ) === 4 );
+check( 'the template social-links, included, draws the list', substr_count( render( $appData, '[template /templates/social-links]' ), '<li class="nino-social-item">' ) === 4 );
 
 ninoWarnings();
 check( 'drawing raised no warning', ninoWarnings() === [] );
@@ -513,6 +513,6 @@ $next['./nino/html/cache'] = false;
 $next['/nino/modules'] = [ '\\Nino\\Modules\\Elements', '\\Nino\\Modules\\Template' ];
 \Nino\Modules::callModules( $next, 'init' );
 check( 'afterwards a [social] left in a template is text - the contract every feature has', render( $next, 'A[social]B' ) === 'A[social]B' );
-check( '...the template the frames include among them, which is why it has to be emptied first', trim( render( $next, '[template /templates/social-links]' ) ) === '[social]' );
+check( '...the template social-links among them, which is why it has to be emptied first', trim( render( $next, '[template /templates/social-links]' ) ) === '[social]' );
 
 ninoDone( $appData );
