@@ -6,7 +6,7 @@
 return [
 	'[[/_admin/elements/field/social/title]]'		=> 'Name',
 	'[[/_admin/elements/field/social/icon]]'		=> 'Icon',
-	'[[/_admin/elements/field/social/link]]'		=> 'Link (https://, mailto: or tel:)',
+	'[[/_admin/elements/field/social/link]]'		=> 'Link (https://, mailto:, tel: or a path of the website like /contact)',
 	'[[/_admin/elements/field/social/order]]'		=> 'Position (10, 20, … - 0 comes last)',
 	'[[/_admin/elements/field/social/hidden]]'	=> 'Hide on the website',
 ];

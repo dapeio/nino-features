@@ -23,6 +23,10 @@ return [
 				'en_US' => 'show: icon (the default), both (icon and name) or label (the name alone). size: small or large.',
 				'de_DE' => 'show: icon (Standard), both (Icon und Name) oder label (nur der Name). size: small oder large.',
 			],
+			'[social ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the list. What the Builder writes for its custom classes, such as its spacing classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Liste. Das schreibt der Builder für seine eigenen Klassen, etwa die Abstands-Klassen.',
+			],
 			'[social-link instagram]' => [
 				'en_US' => 'One link with icon and name, for running text. show works here too.',
 				'de_DE' => 'Ein einzelner Link mit Icon und Name, für den Fließtext. show geht auch hier.',
@@ -30,6 +34,10 @@ return [
 			'[social-link id="instagram"]' => [
 				'en_US' => 'The same as [social-link instagram], the form the Builder writes.',
 				'de_DE' => 'Dasselbe wie [social-link instagram], die Form, die der Builder schreibt.',
+			],
+			'[social-link ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the link. What the Builder writes for its custom classes, such as its spacing classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Links. Das schreibt der Builder für seine eigenen Klassen, etwa die Abstands-Klassen.',
 			],
 			'[social-icon telegram]' => [
 				'en_US' => 'The icon alone, for markup of your own - inside [elements /social] as [social-icon name="[[icon]]"].',
@@ -39,11 +47,19 @@ return [
 				'en_US' => 'The same as [social-icon telegram], the form the Builder writes.',
 				'de_DE' => 'Dasselbe wie [social-icon telegram], die Form, die der Builder schreibt.',
 			],
+			'[social-icon ... class="my-class"]' => [
+				'en_US' => 'A class of your own, on the wrapper of the icon. What the Builder writes for its custom classes, such as its spacing classes.',
+				'de_DE' => 'Eine eigene Klasse, am Wrapper des Icons. Das schreibt der Builder für seine eigenen Klassen, etwa die Abstands-Klassen.',
+			],
 		],
 		'markup' => [
 			'rel="me"' => [
 				'en_US' => 'On every http(s) link, so a profile that links back can verify it is the site\'s. Every address is checked first: javascript:, data: and anything with a space is left out without a word.',
 				'de_DE' => 'An jedem http(s)-Link, damit ein Profil, das zurückverlinkt, prüfen kann, dass es das der Seite ist. Jede Adresse wird vorher geprüft: javascript:, data: und alles mit Leerzeichen bleibt ohne Meldung weg.',
+			],
+			'href="/contact"' => [
+				'en_US' => 'A link that is a path of the website is written without the directory (/contact, not /shop/contact) and gets the directory the website is served from: on a website at /shop it leads to /shop/contact.',
+				'de_DE' => 'Ein Link, der ein Pfad der Website ist, wird ohne das Verzeichnis geschrieben (/kontakt, nicht /shop/kontakt) und bekommt das Verzeichnis, in dem die Website liegt: Auf einer Website unter /shop führt er nach /shop/kontakt.',
 			],
 		],
 		'routes' => [],
@@ -59,8 +75,8 @@ return [
 				'de_DE' => 'Enthält [social]. Die Header- und Footer-Rahmen des Design-Features binden es ein und zeichnen nichts, wo es fehlt.',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'The labels of the type\'s fields in the Elements panel.',
-				'de_DE' => 'Die Beschriftungen der Felder des Typs im Panel Elemente.',
+				'en_US' => 'The labels of the type\'s fields in the Elements panel. They are added, never replaced: a project that has the feature already keeps the label of the field Link until it changes it by hand.',
+				'de_DE' => 'Die Beschriftungen der Felder des Typs im Panel Elemente. Sie werden nur hinzugefügt, nie ersetzt: Ein Projekt, das das Feature schon hat, behält die Beschriftung des Felds Link, bis es sie von Hand ändert.',
 			],
 			'icons/*.svg (not installed)' => [
 				'en_US' => 'One Lucide icon per option, named after what it is for: replacing icons/telegram.svg changes every Telegram link. Never typed by an editor - an element picks one by name.',

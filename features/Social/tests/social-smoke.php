@@ -144,10 +144,30 @@ $unit			= include $dir. '/install/manifest.php';
 $labels		= array_map( static fn( string $field ): string => '[[/_admin/elements/field/social/'. $field. ']]', array_keys( $type['model'] ) );
 
 check( 'a label per field, in both languages, and nothing else', array_keys( $en ) === $labels && array_keys( $de ) === $labels );
+check( 'the label of the field Link names a path of the website, in both languages', str_contains( $en['[[/_admin/elements/field/social/link]]'], 'a path of the website like /contact' ) === true
+	&& str_contains( $de['[[/_admin/elements/field/social/link]]'], 'ein Pfad der Website wie /kontakt' ) === true );
+$manualLines = [];
+foreach( (array) ( $manifest['manual']['shortcodes'] ?? [] ) + (array) ( $manifest['manual']['markup'] ?? [] ) as $handle => $line )
+	$manualLines[$handle] = $line;
+check( 'the manual says the class of the three shortcodes and the path of the website, in both languages', array_filter(
+	[ '[social ... class="my-class"]', '[social-link ... class="my-class"]', '[social-icon ... class="my-class"]', 'href="/contact"' ],
+	static fn( string $handle ): bool => is_array( $manualLines[$handle] ?? null ) === false || trim( (string) ( $manualLines[$handle]['en_US'] ?? '' ) ) === '' || trim( (string) ( $manualLines[$handle]['de_DE'] ?? '' ) ) === '' ) === [] );
 check( 'the unit blacklists every label - workbench words, not the site\'s', $unit['blacklist'] === array_map( static fn( string $key ): string => trim( $key, '[]' ), $labels ) );
 
 $css = (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $dir. '/assets/social.css' ) );
 preg_match_all( '/(?<![\w-])fill\s*:\s*([^;]+);/', $css, $fills );
+preg_match_all( '/([^{}]+)\{([^}]*)\}/', $css, $rules, PREG_SET_ORDER );
+$reset = [];
+$weighty = [];
+foreach( $rules as $rule ) {
+	if( preg_match( '/(?<![\w-])(?:margin|padding)\s*:/', $rule[2] ) !== 1 )
+		continue;
+	if( preg_match( '/^\s*:where\(\.nino-social\)\s*$/', $rule[1] ) === 1 )
+		$reset[] = preg_replace( '/\s+/', ' ', trim( $rule[2] ) );
+	elseif( preg_match( '/^\s*\.nino-social\s*$/', $rule[1] ) === 1 )
+		$weighty[] = trim( $rule[1] );
+}
+check( 'the list\'s reset of margin and padding stands in :where(), so the spacing classes of the Builder, which weigh as much as .nino-social, are not cancelled by a stylesheet that comes later', $reset === [ 'margin: 0; padding: 0;' ] && $weighty === [] );
 check( 'the stylesheet fills nothing: a fill set from css beats the svg\'s and blots a line icon', $fills[1] === [ 'none' ] );
 
 
@@ -189,16 +209,35 @@ check( 'show="both" shows the names, size="large" sizes the list', str_contains(
 $html = render( $appData, '[social show="label" size="small"]' );
 check( 'show="label": the names alone', str_contains( $html, '<ul class="nino-social nino-social--small">' ) === true && str_contains( $html, '<svg' ) === false && str_contains( $html, '>Instagram</span>' ) === true );
 $html = render( $appData, '[social size="huge" show="all" class="x" onclick="y"]' );
-check( 'an unknown size or show is the default, and nothing else is echoed', str_contains( $html, '<ul class="nino-social">' ) === true
-	&& substr_count( $html, 'nino-sr-only' ) === 4 && str_contains( $html, 'onclick' ) === false && str_contains( $html, '"x"' ) === false );
+check( 'an unknown size or show is the default, and nothing else is echoed but the class', str_contains( $html, '<ul class="nino-social x">' ) === true
+	&& substr_count( $html, 'nino-sr-only' ) === 4 && str_contains( $html, 'onclick' ) === false );
+
+$html = render( $appData, '[social class="my-class mt-2"]' );
+check( '[social class=…]: the call\'s class is on the list, behind the feature\'s own, and on no link', str_contains( $html, '<ul class="nino-social my-class mt-2">' ) === true
+	&& substr_count( $html, '<a class="nino-social-link" href=' ) === 4 && substr_count( $html, 'my-class' ) === 1 );
+$html = render( $appData, '[social size="large" class="my-class"]' );
+check( '...after the size', str_contains( $html, '<ul class="nino-social nino-social--large my-class">' ) === true );
+$hostileClass = 'a" onclick="x" [[/project/company/general/name]] [social]';
+$html = \Nino\Modules\Social::doShortcode( $appData, [ 'class' => $hostileClass ] );
+check( '...escaped, its bracket neutralised, so it cannot leave the attribute or render again', str_contains( $html, '<ul class="nino-social a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]">' ) === true );
+check( '[social class=""] is the call without one', render( $appData, '[social class=""]' ) === render( $appData, '[social]' ) && render( $appData, '[social class="  "]' ) === render( $appData, '[social]' ) );
 
 $html = render( $appData, 'Follow us on [social-link youtube].' );
 check( '[social-link]: one anchor in the text, icon and name by default, no list', substr_count( $html, '<a ' ) === 1 && str_contains( $html, '<ul' ) === false
 	&& str_contains( $html, '<span class="nino-social-label">YouTube</span>' ) === true && str_contains( $html, '<svg' ) === true && str_starts_with( $html, 'Follow us on <a class="nino-social-link"' ) === true );
+check( '[social-link class=…]: the call\'s class is on the anchor, in both forms of the call', str_contains( render( $appData, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link my-class" href="https://www.youtube.com/" rel="me">' ) === true
+	&& render( $appData, '[social-link id="youtube" class="my-class"]' ) === render( $appData, '[social-link youtube class="my-class"]' )
+	&& substr_count( render( $appData, '[social-link youtube class="my-class"]' ), 'my-class' ) === 1 );
+check( '...escaped, and nowhere when the link is none', str_contains( \Nino\Modules\Social::doLinkShortcode( $appData, [ 'id' => 'youtube', 'class' => $hostileClass ] ), '<a class="nino-social-link a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]" href=' ) === true
+	&& render( $appData, '[social-link nope class="my-class"]' ) === '' );
 check( '[social-link id="…" show="label"]: the name alone', str_contains( render( $appData, '[social-link id="youtube" show="label"]' ), '<svg' ) === false
 	&& str_contains( render( $appData, '[social-link id="youtube" show="label"]' ), 'youtube.com' ) === true );
 check( '[social-link] of an unknown id draws nothing', render( $appData, '[social-link nope]' ) === '' && render( $appData, '[social-link]' ) === '' );
 check( '[social-icon telegram]: the icon alone', render( $appData, '[social-icon telegram]' ) === '<span class="nino-social-icon" aria-hidden="true">'. $telegram. '</span>' );
+check( '[social-icon class=…]: the call\'s class is on the wrapper of the icon, in both forms of the call', render( $appData, '[social-icon telegram class="my-class"]' ) === '<span class="nino-social-icon my-class" aria-hidden="true">'. $telegram. '</span>'
+	&& render( $appData, '[social-icon name="telegram" class="my-class"]' ) === render( $appData, '[social-icon telegram class="my-class"]' ) );
+check( '...escaped, and the icon of an unknown slug carries it too', str_contains( \Nino\Modules\Social::doIconShortcode( $appData, [ 'name' => 'telegram', 'class' => $hostileClass ] ), '<span class="nino-social-icon a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]" aria-hidden="true">' ) === true
+	&& str_starts_with( render( $appData, '[social-icon nope class="my-class"]' ), '<span class="nino-social-icon my-class" aria-hidden="true"><svg' ) === true );
 check( '[social-icon name="…"] inside [elements /social] draws each element\'s', substr_count( render( $appData, '[elements /social][social-icon name="[[icon]]"][/elements]' ), '<svg' ) === 4 );
 check( 'the template the frames include draws the list', substr_count( render( $appData, '[template /templates/social-links]' ), '<li class="nino-social-item">' ) === 4 );
 
@@ -273,9 +312,15 @@ echo "Components - [social], [social-link], [social-icon] as the Builder offers 
 	check( 'the link of a call written with id= and the link of the bare word are one',
 		\Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' )
 		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ) !== '' );
-	check( 'a class is still nothing this draws - what an editor can put in is not echoed',
-		\Nino\Html::renderHtml( $probe, '[social class="x"]' ) === $before['[social]']
-		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube" class="x"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' ) );
+	check( 'a class is the call\'s own, on the list, the anchor and the wrapper of the icon, the wrapper\'s way as well',
+		str_contains( \Nino\Html::renderHtml( $probe, '[social class="my-class"]' ), '<ul class="nino-social my-class">' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social size="large" class="my-class"]' ), '<ul class="nino-social nino-social--large my-class">' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link my-class" href=' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link id="youtube" class="my-class"]' ), '<a class="nino-social-link my-class" href=' ) === true
+		&& \Nino\Html::renderHtml( $probe, '[social-icon telegram class="my-class"]' ) === '<span class="nino-social-icon my-class" aria-hidden="true">'. trim( (string) file_get_contents( dirname( __DIR__ ). '/icons/telegram.svg' ) ). '</span>'
+		&& \Nino\Html::renderHtml( $probe, '[social-icon name="telegram" class="my-class"]' ) === \Nino\Html::renderHtml( $probe, '[social-icon telegram class="my-class"]' ) );
+	check( '...and the same through the Components module with the class written out empty',
+		\Nino\Html::renderHtml( $probe, '[social class="" only="" ]' ) === $before['[social]'] );
 
 } )( $appData );
 
@@ -321,6 +366,9 @@ foreach( $hostile as $id => $url )
 \Nino\Elements::insertElement( $appData, '/social/name', [ 'title' => '"><b>x</b>[social]', 'icon' => '../../config', 'link' => 'https://ok.example/"onmouseover="x', 'order' => 1 ], 'en_US' );
 \Nino\Elements::insertElement( $appData, '/social/noname', [ 'title' => '  ', 'icon' => 'website', 'link' => 'https://www.example.org/', 'order' => 2 ], 'en_US' );
 \Nino\Elements::insertElement( $appData, '/social/here', [ 'title' => 'Here', 'icon' => 'link', 'link' => '/contact', 'order' => 3 ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/social/query', [ 'title' => 'Query', 'icon' => 'website', 'link' => '/contact?a=1#b', 'order' => 6 ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/social/home', [ 'title' => 'Home', 'icon' => 'website', 'link' => '/', 'order' => 7 ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/social/images', [ 'title' => 'Images', 'icon' => 'website', 'link' => '/images', 'order' => 8 ], 'en_US' );
 \Nino\Elements::insertElement( $appData, '/social/Upper', [ 'title' => 'Upper', 'icon' => 'NotASlug', 'link' => 'https://upper.example/', 'order' => 5 ], 'en_US' );
 \Nino\Elements::insertElement( $appData, '/social/off', [ 'title' => 'Off', 'icon' => 'link', 'link' => 'https://off.example/', 'order' => 4, 'hidden' => true ], 'en_US' );
 
@@ -332,6 +380,21 @@ check( 'a quote in an address stays inside href', str_contains( $html, 'href="ht
 check( 'an icon that is no slug of this feature\'s draws the link icon', substr_count( $html, trim( (string) file_get_contents( $dir. '/icons/link.svg' ) ) ) === 3 );
 check( 'a link without a name is named by its host', str_contains( $html, '<span class="nino-social-label nino-sr-only">example.org</span>' ) === true );
 check( 'a path on this site is kept, without rel="me"', str_contains( $html, 'href="/contact">' ) === true );
+
+// The website at a directory: the path of the website is put behind it, an
+// address of another host is not
+$appData['/nino/dir'] = '/sub';
+$html = render( $appData, '[social]' );
+check( 'under a directory a path of the website gets it: /contact is /sub/contact', str_contains( $html, 'href="/sub/contact">' ) === true && str_contains( $html, 'href="/contact">' ) === false );
+check( '...a path of a page that is named like a public directory is a page: /images is /sub/images, not a file under /sub/public', str_contains( $html, 'href="/sub/images">' ) === true && str_contains( $html, '/public' ) === false );
+check( '...with its query and fragment, and the front page as /sub/', str_contains( $html, 'href="/sub/contact?a=1#b">' ) === true && str_contains( $html, 'href="/sub/">' ) === true );
+check( '...in every shortcode that draws the link, and not twice', str_contains( render( $appData, '[social-link here]' ), 'href="/sub/contact">' ) === true
+	&& str_contains( render( $appData, '[social only="here" show="label"]' ), 'href="/sub/contact">' ) === true && str_contains( $html, '/sub/sub' ) === false );
+check( '...but not an address of another host, mailto: or tel:, which keep their rel as before', str_contains( $html, 'href="https://upper.example/"' ) === true && str_contains( $html, 'href="/sub' ) === true
+	&& substr_count( $html, 'href="/sub' ) === 4 && str_contains( $html, 'href="/sub/contact" rel' ) === false );
+$appData['/nino/dir'] = '';
+$html = render( $appData, '[social]' );
+check( 'at the root nothing is put in front: /contact stays /contact, and /images stays /images', str_contains( $html, 'href="/contact">' ) === true && str_contains( $html, 'href="/images">' ) === true && str_contains( $html, '/public' ) === false );
 check( 'a hidden link is left out, wherever it is asked for', str_contains( $html, 'off.example' ) === false
 	&& render( $appData, '[social-link off]' ) === '' && render( $appData, '[social only="off"]' ) === '' );
 check( 'an id with capitals, which the Elements panel accepts, is drawn and can be asked for', str_contains( $html, 'upper.example' ) === true
@@ -350,7 +413,7 @@ $typeFile['*']['facebook']['hidden'] = false;
 \Nino\Filesystem::putFileContent( $appData, '/elements/social.php', $typeFile );
 unset( $appData['./nino/elements/cache'] );
 
-foreach( array_merge( array_keys( $hostile ), [ 'name', 'noname', 'here', 'Upper', 'off' ] ) as $id )
+foreach( array_merge( array_keys( $hostile ), [ 'name', 'noname', 'here', 'query', 'home', 'images', 'Upper', 'off' ] ) as $id )
 	\Nino\Elements::deleteElement( $appData, '/social/'. $id, '*' );
 check( 'with those gone, the four are what is left', substr_count( render( $appData, '[social]' ), '<li ' ) === 4 );
 

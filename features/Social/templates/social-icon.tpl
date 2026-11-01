@@ -1,1 +1,1 @@
-<span class="nino-social-icon" aria-hidden="true">[[svg]]</span>
+<span class="nino-social-icon[[classes]]" aria-hidden="true">[[svg]]</span>

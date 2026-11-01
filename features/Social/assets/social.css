@@ -20,9 +20,16 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--space-1) var(--space-2);
+	list-style: none;
+}
+
+/*	The list's reset in :where(), which has no specificity: the spacing classes
+	the Builder writes (.nino-mt-3) have the same weight as .nino-social, and
+	this file comes later in the bundle, so a reset beside them would cancel
+	every side	*/
+:where(.nino-social) {
 	margin: 0;
 	padding: 0;
-	list-style: none;
 }
 
 .nino-social--small {

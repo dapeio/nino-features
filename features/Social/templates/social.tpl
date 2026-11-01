@@ -1,1 +1,1 @@
-<ul class="nino-social[[modifiers]]">[[items]]</ul>
+<ul class="nino-social[[modifiers]][[classes]]">[[items]]</ul>

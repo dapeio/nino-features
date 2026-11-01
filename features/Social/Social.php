@@ -73,7 +73,7 @@ namespace Nino\Modules {
 		 */
 		public static function componentSocialLink( array &$appData, array $args ): string {
 
-			return self::doLinkShortcode( $appData, [ 'id' => $args['id'] !== '' ? $args['id'] : $args['source'], 'show' => $args['show'] ] );
+			return self::doLinkShortcode( $appData, [ 'id' => $args['id'] !== '' ? $args['id'] : $args['source'], 'show' => $args['show'], 'class' => $args['class'] ?? '' ] );
 		}
 
 		/**
@@ -88,13 +88,14 @@ namespace Nino\Modules {
 		 */
 		public static function componentSocialIcon( array &$appData, array $args ): string {
 
-			return self::doIconShortcode( $appData, [ 'name' => $args['name'] !== '' ? $args['name'] : $args['source'] ] );
+			return self::doIconShortcode( $appData, [ 'name' => $args['name'] !== '' ? $args['name'] : $args['source'], 'class' => $args['class'] ?? '' ] );
 		}
 
 		/**
-		 *	[social only="a,b" exclude="c" show="icon|both|label" size="small|large"]
+		 *	[social only="a,b" exclude="c" show="icon|both|label" size="small|large" class="x"]
 		 *	- the links as a list, in the order of their position. only= and
-		 *	exclude= pick by element id and leave that order as it is
+		 *	exclude= pick by element id and leave that order as it is; class= is
+		 *	the call's own class, on the list
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$args					Shortcode arguments
@@ -127,15 +128,16 @@ namespace Nino\Modules {
 			// The items last: str_replace() also searches what an earlier pair
 			// put in, and the items are where the editors' words are
 			return str_replace(
-				[ '[[modifiers]]', '[[items]]' ],
-				[ in_array( $args['size'] ?? '', [ 'small', 'large' ], true ) === true ? ' nino-social--'. $args['size'] : '', $items ],
+				[ '[[modifiers]]', '[[classes]]', '[[items]]' ],
+				[ in_array( $args['size'] ?? '', [ 'small', 'large' ], true ) === true ? ' nino-social--'. $args['size'] : '', \Nino\Feature::classes( $args ), $items ],
 				\Nino\Feature::template( $appData, self::TEMPLATES, 'social' )
 			);
 		}
 
 		/**
 		 *	[social-link <id>] or [social-link id="…"] - one link, icon and name,
-		 *	for running text; show= as for [social], both by default
+		 *	for running text; show= as for [social], both by default; class= is
+		 *	the call's own class, on the anchor
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$args					Shortcode arguments
@@ -150,13 +152,14 @@ namespace Nino\Modules {
 			if( preg_match( self::ID, $id ) !== 1 || isset( $links[$id] ) === false )
 				return '';
 
-			return self::_link( $appData, $links[$id], self::_show( $args, 'both' ) );
+			return self::_link( $appData, $links[$id], self::_show( $args, 'both' ), \Nino\Feature::classes( $args ) );
 		}
 
 		/**
 		 *	[social-icon <slug>] or [social-icon name="…"] - the icon alone, for
 		 *	markup of a template's own: [social-icon name="[[icon]]"] inside an
-		 *	[elements /social] block draws each element's
+		 *	[elements /social] block draws each element's; class= is the call's
+		 *	own class, on the wrapper
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$args					Shortcode arguments
@@ -164,7 +167,7 @@ namespace Nino\Modules {
 		 *	@return 	string
 		 */
 		public static function doIconShortcode( array &$appData, array $args ): string {
-			return self::icon( $appData, (string) ( $args['name'] ?? $args[0] ?? '' ) );
+			return self::icon( $appData, (string) ( $args['name'] ?? $args[0] ?? '' ), \Nino\Feature::classes( $args ) );
 		}
 
 		/**
@@ -258,35 +261,44 @@ namespace Nino\Modules {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$slug					instagram, website, …
+		 *	@param		string		$classes			A call's class as \Nino\Feature::classes() made it: '' or ' ' and the escaped classes
 		 *
 		 *	@return 	string
 		 */
-		public static function icon( array &$appData, string $slug ): string {
+		public static function icon( array &$appData, string $slug, string $classes = '' ): string {
 
 			$svg = preg_match( self::SLUG, $slug ) === 1 ? self::_svg( $appData, $slug ) : '';
 
 			if( $svg === '' )
 				$svg = self::_svg( $appData, self::FALLBACK );
 
-			return str_replace( '[[svg]]', $svg, \Nino\Feature::template( $appData, self::TEMPLATES, 'social-icon' ) );
+			// The svg last: it is markup, and str_replace() also searches what an
+			// earlier pair put in
+			return str_replace( [ '[[classes]]', '[[svg]]' ], [ $classes, $svg ], \Nino\Feature::template( $appData, self::TEMPLATES, 'social-icon' ) );
 		}
 
 		/**
-		 *	One anchor
+		 *	One anchor. An address that is a path of this website gets the
+		 *	directory the website is served from in front of it, as the kernel
+		 *	writes the link to a page - an editor writes /contact, the website may
+		 *	stand at /shop. Not \Nino\Filesystem::url(): that is the url of a
+		 *	file of the project, and puts /public in front of /images
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$link					[ 'title', 'icon', 'url' ] as links() has it
 		 *	@param		string		$show					icon, both or label
+		 *	@param		string		$classes			A call's class as \Nino\Feature::classes() made it
 		 *
 		 *	@return 	string
 		 */
-		private static function _link( array &$appData, array $link, string $show ): string {
+		private static function _link( array &$appData, array $link, string $show, string $classes = '' ): string {
 
 			// The name last, for the reason doShortcode() gives
 			return str_replace(
-				[ '[[url]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
+				[ '[[classes]]', '[[url]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
 				[
-					\Nino\Modules\Components::escape( $link['url'] ),
+					$classes,
+					\Nino\Modules\Components::escape( str_starts_with( $link['url'], '/' ) === true ? rtrim( \Nino\Filesystem::getDir( $appData ), '/' ). $link['url'] : $link['url'] ),
 					preg_match( '#^https?://#i', $link['url'] ) === 1 ? self::$relMe : '',
 					$show === 'label' ? '' : self::icon( $appData, $link['icon'] ),
 					$show === 'icon' ? 'nino-social-label nino-sr-only' : 'nino-social-label',
