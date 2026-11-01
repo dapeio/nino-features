@@ -1,34 +1,20 @@
 /*	@name			Contrast
- *	@name-de		Kontrast
  *	@description	Lines in the colour of the text, labels in spaced capitals at four fifths of their size, square at the least position, and a ring that stands off the line when the field is typed in.
  *	@description-de	Linien in der Textfarbe, Beschriftungen in gesperrten Versalien auf vier Fünftel ihrer Größe, eckig auf der untersten Stellung und ein Ring, der von der Linie absteht, wenn im Feld getippt wird.
  *
- *	@knob	scale		scale	type		Size of the fields' text
- *	@knob-de	scale		Schriftgröße der Felder
- *	@knob	space		scale	surfaces	Space inside a field and under it
- *	@knob-de	space		Raum im Feld und darunter
- *	@knob	corners		scale	surfaces	Corners of a field
- *	@knob-de	corners		Ecken eines Feldes
- *	@knob	line		scale	surfaces	Weight of the line of a field
- *	@knob-de	line		Stärke der Linie eines Feldes
- *	@knob	labels		choice	surfaces	Where the label of a field stands
- *	@knob-de	labels		Wo die Beschriftung eines Feldes steht
- *	@option	labels	less	Beside
- *	@option	labels	default	Above
- *	@option	labels	more	Floating
- *	@option-de	labels	less	Daneben
- *	@option-de	labels	default	Darüber
- *	@option-de	labels	more	Schwebend
- *	@knob	edge		ink	colours		Colour of the lines	= ink
- *	@knob-de	edge		Farbe der Linien
- *	@knob	label		ink	colours		Colour of the labels	= ink
- *	@knob-de	label		Farbe der Beschriftungen
+ *	@knob	scale		Size of the fields' text
+ *	@knob	space		Space inside a field and under it
+ *	@knob	corners		Corners of a field
+ *	@knob	line		Weight of the line of a field
+ *	@knob	labels		Where the label of a field stands
+ *	@knob	edge		Colour of the lines
+ *	@knob	label		Colour of the labels
  *
  *	Lines in the ink. A field is drawn in the ink of the ground it stands on and not in the colour of the border role: that is
- *	the default of the edge knob here, the one place this look differs from the other three in a colour. A label is set in
- *	spaced capitals at four fifths of its size, in whichever place the labels knob puts it. The corners are the knob's, and
- *	the least position is square. The focus is a ring of 2px in the colour of the focus, standing off the line, which keeps
- *	its colour.
+ *	the tone the edge knob gives here, the one place this look differs from the other three in a colour. A label is set in
+ *	spaced capitals at four fifths of its size, in whichever place the labels knob puts it - the capitals are the look and
+ *	not the case knob's, so this set does not answer that. The corners are the knob's, and the least position is square. The
+ *	focus is a ring of 2px in the colour of the focus, standing off the line, which keeps its colour.
  */
 
 :root {
@@ -107,7 +93,10 @@
 	--forms-label-size:		.8em;
 }
 
-/*	The colour of the line kept in focus, declared where it is used (see forms.css)	*/
+/*	The colours are declared where they are used, on every element (see Nino.css): the tone of the lines is the ink and not
+	the border, the tone of the labels the ink, and the colour of the line is kept in focus	*/
 :root, :root * {
+	--forms-edge--default:	var(--color-ink);
+	--forms-label--default:	var(--color-ink);
 	--forms-edge-focus:	var(--forms-edge);
 }

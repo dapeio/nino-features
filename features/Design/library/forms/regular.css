@@ -1,37 +1,35 @@
 /*	@name			Regular
- *	@name-de		Regulär
  *	@description	The form as the kernel draws it: a line round the field, the label above it, the middle of every ladder.
  *	@description-de	Das Formular, wie der Kernel es zeichnet: eine Linie um das Feld, die Beschriftung darüber, die Mitte jeder Leiter.
  *
- *	@knob	scale		scale	type		Size of the fields' text
- *	@knob-de	scale		Schriftgröße der Felder
- *	@knob	space		scale	surfaces	Space inside a field and under it
- *	@knob-de	space		Raum im Feld und darunter
- *	@knob	corners		scale	surfaces	Corners of a field
- *	@knob-de	corners		Ecken eines Feldes
- *	@knob	line		scale	surfaces	Weight of the line of a field
- *	@knob-de	line		Stärke der Linie eines Feldes
- *	@knob	labels		choice	surfaces	Where the label of a field stands
- *	@knob-de	labels		Wo die Beschriftung eines Feldes steht
- *	@option	labels	less	Beside
- *	@option	labels	default	Above
- *	@option	labels	more	Floating
- *	@option-de	labels	less	Daneben
- *	@option-de	labels	default	Darüber
- *	@option-de	labels	more	Schwebend
- *	@knob	edge		ink	colours		Colour of the lines	= border
- *	@knob-de	edge		Farbe der Linien
- *	@knob	label		ink	colours		Colour of the labels	= ink
- *	@knob-de	label		Farbe der Beschriftungen
+ *	@knob	scale		Size of the fields' text
+ *	@knob	space		Space inside a field and under it
+ *	@knob	corners		Corners of a field
+ *	@knob	line		Weight of the line of a field
+ *	@knob	labels		Where the label of a field stands
+ *	@knob	edge		Colour of the lines
+ *	@knob	label		Colour of the labels
+ *	@knob	label-case	Capitals in the labels
  *
- *	Regular is the starting point of this feature: every value it declares is the one forms.css has as its own default,
- *	so a form under it looks as the kernel draws it - and each knob has something to reach: the five values of a scale,
- *	the middle of them the kernel's own, or the three of a choice. It sets no property of a look, only the ladders.
+ *	Regular is the starting point, not a design. Every value it declares is the one Nino.css has as its own default, so a
+ *	form under it looks as the kernel draws it - and each knob has something to reach: the five values of a scale, the
+ *	middle of them the kernel's own, the three of a choice, the two of a toggle, and for an ink the tone the kernel gives
+ *	it. It declares no rule and no property of a look, only the ladders: the rules are the kernel's, which draws the
+ *	fields, the labels, the status line, the checkbox and the radio group from the properties --forms-* (see Nino.css).
+ *
+ *	Two rules for a set, as for every other part:
+ *
+ *	  - Only the properties of the form: a forms set sets the custom properties the rules of Nino.css read, and no rule
+ *	    of its own for a class of another part.
+ *	  - Colours through the roles, never as literals. Nor the case of a label, which is the knob's: a toggle of two
+ *	    rungs, none and uppercase, which the kernel's rule for a label reads.
+ *
+ *	Copy this file under a name of your own and start there.
  */
 
 :root {
 	/*	The type size of a field is 1rem, times this. The two steps under the middle are what they say on a pointer; on a
-		touch screen a field is held to 1rem (see forms.css)	*/
+		touch screen a field is held to 1rem (see Nino.css)	*/
 	--forms-scale--least:	.87;
 	--forms-scale--less:	.94;
 	--forms-scale--default:	1;
@@ -106,4 +104,17 @@
 	--forms-labels-cut--less:		transparent;
 	--forms-labels-cut--default:	transparent;
 	--forms-labels-cut--more:		initial;
+
+	/*	The case of a label: as it is written, or in capitals	*/
+	--forms-label-case--default:	none;
+	--forms-label-case--more:		uppercase;
+}
+
+/*	The colour of a line and of a label is the tone of the page on the ground the field stands on, so the rung of an ink
+	is declared on every element (see Nino.css): a tone of the roles is the page's on :root, and on a dark section the
+	field would keep the line of a light one. The rung is the tone this set gives; the knob selects it, or a tone of its
+	own	*/
+:root, :root * {
+	--forms-edge--default:	var(--color-border);
+	--forms-label--default:	var(--color-ink);
 }

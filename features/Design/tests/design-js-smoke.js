@@ -355,6 +355,11 @@ function isSwitch( row ) {
 	return hasClass( row, 'design-knob-row--switch' );
 }
 
+/** Whether a knob row is a select: the row of an ink, which has the tones of the page for its options and no strip of buttons */
+function isSelect( row ) {
+	return hasClass( row, 'design-knob-row--select' );
+}
+
 /** Run a function and say whether it threw */
 function threw( fn ) {
 	try {
@@ -373,7 +378,7 @@ const TABS = [ 'templates', 'type', 'surfaces', 'colours', 'motion', 'css' ];
 const BLOCK_VIEWS = TABS.filter( function( key ) { return key !== 'css' } );
 
 /** The objects the blocks of the tabs are of, in the order the blocks follow one another (Setup::OBJECTS) */
-const OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ];
+const OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables', 'forms' ];
 
 /** The tabs of the pane in the order the shell's strip shows them, by uri: the panel's own screen, which says Themes, the loader and the Settings tab the registry attaches */
 const PANE = [ 'design', 'design-typefaces', 'design-settings' ];
@@ -381,7 +386,7 @@ const PANE = [ 'design', 'design-typefaces', 'design-settings' ];
 /** The width below which the strip of the objects is a select: the query the script asks the window and the stylesheet of the panel answers (and the rail of the workbench, which gives its links up for a select at the same width) */
 const NARROW_QUERY = '(max-width: 63.999rem)';
 
-/** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1, a toggle two, 0 and 1 */
+/** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1, a toggle two, 0 and 1, an ink a tone of the page or none */
 const KINDS = {
 	header 		: { nav : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', position : 'choice', cta : 'choice', 'nav-case' : 'toggle' },
 	footer 		: { scale : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'nav-case' : 'toggle' },
@@ -390,6 +395,7 @@ const KINDS = {
 	buttons 	: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale', hover : 'choice', case : 'toggle' },
 	lists 		: { scale : 'scale', space : 'scale', marker : 'choice' },
 	tables 		: { scale : 'scale', space : 'scale', border : 'scale', zebra : 'choice', stripes : 'scale' },
+	forms 		: { scale : 'scale', space : 'scale', corners : 'scale', line : 'scale', labels : 'choice', edge : 'ink', label : 'ink', 'label-case' : 'toggle' },
 };
 
 /** The names of the knobs of each part, in the order of the part */
@@ -411,6 +417,7 @@ const LAYOUT = {
 	'parts/buttons'                   : [ 'templates', 'buttons', 1 ],
 	'parts/lists'                     : [ 'templates', 'lists', 1 ],
 	'parts/tables'                    : [ 'templates', 'tables', 1 ],
+	'parts/forms'                     : [ 'templates', 'forms', 1 ],
 
 	'size'                            : [ 'type', 'page', 1 ],
 	'fonts/title'                     : [ 'type', 'page', 2 ],
@@ -437,6 +444,8 @@ const LAYOUT = {
 	'knobs/buttons/case'              : [ 'type', 'buttons', 3 ],
 	'knobs/lists/scale'               : [ 'type', 'lists', 1 ],
 	'knobs/tables/scale'              : [ 'type', 'tables', 1 ],
+	'knobs/forms/scale'               : [ 'type', 'forms', 1 ],
+	'knobs/forms/label-case'          : [ 'type', 'forms', 2 ],
 
 	'width'                           : [ 'surfaces', 'page', 1 ],
 	'whitespace'                      : [ 'surfaces', 'page', 2 ],
@@ -464,6 +473,10 @@ const LAYOUT = {
 	'knobs/tables/space'              : [ 'surfaces', 'tables', 1 ],
 	'knobs/tables/border'             : [ 'surfaces', 'tables', 2 ],
 	'knobs/tables/zebra'              : [ 'surfaces', 'tables', 3 ],
+	'knobs/forms/space'               : [ 'surfaces', 'forms', 1 ],
+	'knobs/forms/corners'             : [ 'surfaces', 'forms', 2 ],
+	'knobs/forms/line'                : [ 'surfaces', 'forms', 3 ],
+	'knobs/forms/labels'              : [ 'surfaces', 'forms', 4 ],
 
 	'colours/primary'                 : [ 'colours', 'page', 1 ],
 	'colours/secondary'               : [ 'colours', 'page', 2 ],
@@ -479,6 +492,8 @@ const LAYOUT = {
 	'knobs/section/dim'               : [ 'colours', 'section', 1 ],
 	'knobs/card/tone'                 : [ 'colours', 'card', 1 ],
 	'knobs/tables/stripes'            : [ 'colours', 'tables', 1 ],
+	'knobs/forms/edge'                : [ 'colours', 'forms', 1 ],
+	'knobs/forms/label'               : [ 'colours', 'forms', 2 ],
 
 	'motion/effect'                   : [ 'motion', 'page', 1 ],
 	'motion/strength'                 : [ 'motion', 'page', 2 ],
@@ -634,7 +649,7 @@ function listing( over ) {
 	const knobs = {};
 	Object.keys( KNOBS ).forEach( function( tab ) {
 		knobs[tab] = {};
-		KNOBS[tab].forEach( function( knob ) { knobs[tab][knob] = 0 } );
+		KNOBS[tab].forEach( function( knob ) { knobs[tab][knob] = KINDS[tab][knob] === 'ink' ? '' : 0 } );
 	} );
 
 	// Where the shipped theme puts the two knobs of the header that are not in the middle: the navigation on the right, the button hidden
@@ -652,11 +667,11 @@ function listing( over ) {
 		'radius-alt' : 1,
 		radii 			: { cover : 'standard', row : 'standard', column : 'standard', card : 'standard', image : 'standard' },
 		motion 			: { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' },
-		parts 			: { header : 'first', footer : 'first', section : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first' },
+		parts 			: { header : 'first', footer : 'first', section : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first', forms : 'first' },
 		features 	: [],
 		knobs 			: JSON.parse( JSON.stringify( knobs ) ),
 		// No style is chosen for any template: an empty list for each part, as the server hands it over
-		styles 			: { header : [], footer : [], section : [], card : [], buttons : [], lists : [], tables : [] },
+		styles 			: { header : [], footer : [], section : [], card : [], buttons : [], lists : [], tables : [], forms : [] },
 		fonts 			: JSON.parse( JSON.stringify( fonts ) ),
 		colours 		: { primary : '#4faae8', secondary : '', harmony : 1, temperature : 3, saturation : 3, contrast : 3, depth : 3, mode : 'auto' },
 	};
@@ -700,6 +715,11 @@ function listing( over ) {
 			part( 'tables', 'set', 'first', {
 				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.tables.slice() },
 				fourth : { name : 'Filled', description : 'Tinted cells without a line', knobs : KNOBS.tables.slice() },
+			} ),
+			part( 'forms', 'set', 'first', {
+				first : { name : 'Nino', description : 'The form as the kernel draws it', knobs : KNOBS.forms.slice() },
+				second : { name : 'Line', description : 'A rule under the words', knobs : without( KNOBS.forms, [ 'corners', 'label-case' ] ) },
+				third : { name : 'Plain', description : 'No tone of its own to move', knobs : without( KNOBS.forms, [ 'edge' ] ) },
 			} ),
 		],
 		kinds 		: JSON.parse( JSON.stringify( KINDS ) ),
@@ -789,7 +809,7 @@ function listing( over ) {
  */
 function frameStage() {
 
-	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, lists : 1400, tables : 1500, colours : 450, 'feature-awning' : 3400, footer : 4000 } };
+	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, lists : 1400, tables : 1500, forms : 1650, colours : 450, 'feature-awning' : 3400, footer : 4000 } };
 
 	stage.style = element('style');
 	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
@@ -1945,6 +1965,12 @@ function moveKey( screen, key, position ) {
 		return;
 	}
 
+	// An ink is chosen among the tones of the page, whichever the position says: a tone is no position
+	if( row !== null && isSelect( row ) === true ) {
+		choose( byTag( row, 'select' )[0], 'primary' );
+		return;
+	}
+
 	pressKey( screen, key, position );
 }
 
@@ -1980,6 +2006,9 @@ function litOf( row ) {
 
 	if( isSwitch( row ) === true )
 		return byTag( row, 'input' )[0].checked === true ? TEXT['/_admin/common/label/on'] : TEXT['/_admin/common/label/off'];
+
+	if( isSelect( row ) === true )
+		return wordOf( byTag( row, 'select' )[0] );
 
 	return byTag( row, 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).map( function( button ) { return button.textContent } ).join();
 }
@@ -2553,8 +2582,8 @@ eachBlock( tpl.form, function( card ) {
 	tplDrawn.push( { object : card.dataset.object, tab : card.dataset.tab, open : isOpen( card ), head : headButton( card ) !== null && card.children[0] === headButton( card ), classes : hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-accordion' ) } );
 } );
 
-check( 'Base is a block under each object a part is the template of - seven in all, in the order the table gives the objects: each stands under an object, none under no object, and there is no strip of screens and no heading - and the block is the aspect, its card says which',
-	tabOf( tpl ) === 'templates' && tplParts.length === 7 && tplRows.length === 7 && tplParts.join() === 'header,footer,section,card,buttons,lists,tables'
+check( 'Base is a block under each object a part is the template of - eight in all, in the order the table gives the objects: each stands under an object, none under no object, and there is no strip of screens and no heading - and the block is the aspect, its card says which',
+	tabOf( tpl ) === 'templates' && tplParts.length === 8 && tplRows.length === 8 && tplParts.join() === 'header,footer,section,card,buttons,lists,tables,forms'
 	&& tplRows.map( function( row ) { return row.object } ).join() === OBJECTS.filter( function( object ) { return tplRows.some( function( row ) { return row.object === object } ) } ).join()
 	&& tplRows.every( function( row ) { return row.object !== '' && row.controls.filter( function( key ) { return key.indexOf('parts/') === 0 } ).length === 1 } )
 	&& tplDrawn.map( function( card ) { return card.object } ).join() === tplRows.map( function( row ) { return row.object } ).join()
@@ -2586,8 +2615,8 @@ eachBlock( tplFresh.form, function( card ) {
 	tplFreshHeads.push( { object : card.dataset.object, open : was === '' && headButton( card ).getAttribute('aria-expanded') === 'false', said : byClass( card, 'design-accordion-summary' )[0].textContent } );
 } );
 
-check( 'the head of a closed Base block names the template that is chosen - the word of the set as the catalogue of the answer has it - also while the selection stands at the defaults, where no other aspect says anything; the head of the open block says nothing, as everywhere: closing it puts the set of its part in its head, for all seven',
-	tplFreshHeads.length === 7 && tplFreshHeads.map( function( head ) { return head.said } ).join() === tplParts.map( function( part ) { return tplWord( part, 'first' ) } ).join() && tplFreshHeads.every( function( head ) { return head.open } )
+check( 'the head of a closed Base block names the template that is chosen - the word of the set as the catalogue of the answer has it - also while the selection stands at the defaults, where no other aspect says anything; the head of the open block says nothing, as everywhere: closing it puts the set of its part in its head, for all eight',
+	tplFreshHeads.length === 8 && tplFreshHeads.map( function( head ) { return head.said } ).join() === tplParts.map( function( part ) { return tplWord( part, 'first' ) } ).join() && tplFreshHeads.every( function( head ) { return head.open } )
 	&& tplFresh.design._isDirty() === false );
 check( '...an object opens on its first aspect: one block open, the first, and the blocks are the aspects the table gives the object, in its order',
 	( function() {
@@ -2942,7 +2971,7 @@ check( 'the screen follows the table it is handed and nothing else: the aspects 
 	rwShifted.design._tabKeys().join() === rwOther.tabs.join() && rwOther.objects.every( function( object ) { return rwShiftedBlocks[object].join() === aspectsOf( rwOther, object ).join() } )
 	&& rwShiftedBlocks.page.indexOf('motion') < rwShiftedBlocks.page.indexOf('colours') && rwShiftedBlocks.page.indexOf('css') === -1 && rwShiftedBlocks.tables.indexOf('type') === -1
 	&& JSON.stringify( rwShiftedType ) === JSON.stringify( tableRows( rwOther, 'type' ) ) && JSON.stringify( rwShiftedSurfaces ) === JSON.stringify( tableRows( rwOther, 'surfaces' ) )
-	&& rwShiftedType.map( function( row ) { return row.object } ).join() === 'page,header,footer,section,card,buttons,lists' && rwShiftedType[0].controls.indexOf('size') === -1
+	&& rwShiftedType.map( function( row ) { return row.object } ).join() === 'page,header,footer,section,card,buttons,lists,forms' && rwShiftedType[0].controls.indexOf('size') === -1
 	&& rwShiftedSurfaces.filter( function( row ) { return row.object === 'card' } )[0].controls.slice( -1 )[0] === 'size'
 	&& cardOf( controlOf( rwShifted, 'size' ) ).dataset.object === 'card' && cardOf( controlOf( rwShifted, 'size' ) ).dataset.tab === 'surfaces' );
 
@@ -3361,6 +3390,9 @@ function knobStands( part, knob, position ) {
 	if( KINDS[part][knob] === 'toggle' )
 		return TEXT['/_admin/common/label/'+ ( position === 1 ? 'on' : 'off' )];
 
+	if( KINDS[part][knob] === 'ink' )
+		return position === '' ? TEXT['/_admin/design/label/own'] : TEXT['/_admin/design/ink/'+ position];
+
 	return KINDS[part][knob] === 'scale' ? SIGNED[position + 2] : TEXT['/_admin/design/knob/'+ part+ '/'+ knob+ '/'+ [ 'less', 'default', 'more' ][position + 1]];
 }
 
@@ -3386,6 +3418,7 @@ let wordRows = 0;
 let scaleRows = 0;
 let choiceRows = 0;
 let toggleRows = 0;
+let inkRows = 0;
 const worded = panel();
 const knobKeys = Object.keys( worded.design._data.layout.controls ).filter( function( key ) { return key.indexOf('knobs/') === 0 } );
 
@@ -3419,6 +3452,22 @@ knobKeys.forEach( function( key ) {
 		return;
 	}
 
+	// An ink is a select of the tones of the page, none first - the tone the template gives - with the name of the knob for its label and the note beside it, at none to begin with
+	if( worded.design._data.kinds[ path[1] ][ path[2] ] === 'ink' ) {
+
+		const select = byTag( row, 'select' )[0];
+
+		wordRows++;
+		inkRows++;
+
+		if( select === undefined || byTag( row, 'button' ).length !== 0 || select.disabled !== false || shown( select ) !== worded.design._data.defaults.knobs[ path[1] ][ path[2] ]
+			|| JSON.stringify( offered( select ) ) !== JSON.stringify( [ [ '', TEXT['/_admin/design/label/own'] ] ].concat( INKS.map( function( tone ) { return [ tone, TEXT['/_admin/design/ink/'+ tone] ] } ) ) )
+			|| ( byTag( row, 'small' )[0] || {} ).textContent !== TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/note'] || rowName( row ) !== knobWord( path[1], path[2] ) )
+			wordProblems.push( key+ ': a select that is none' );
+
+		return;
+	}
+
 	const buttons = byTag( row, 'button' );
 	const drawn = buttons.map( function( button ) { return button.textContent } ).join();
 	const choice = CHOICE_WORDS[ path[1]+ '/'+ path[2] ] !== undefined;
@@ -3438,12 +3487,12 @@ knobKeys.forEach( function( key ) {
 		wordProblems.push( key+ ': '+ drawn );
 } );
 
-check( 'a scale is five numbers, a choice the three words of the knob, each capitalised, and a toggle a switch - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
+check( 'a scale is five numbers, a choice the three words of the knob, each capitalised, a toggle a switch and an ink a select of the tones with none first - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
-	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && choiceRows > 0 && toggleRows === 7 && scaleRows === 29 && wordProblems.length === 0 );
-check( '...the ten choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
-	Object.keys( CHOICE_WORDS ).length === 10 && Object.keys( CHOICE_WORDS ).every( function( at ) {
+	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 33 && inkRows === 2 && wordProblems.length === 0 );
+check( '...the eleven choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
+	Object.keys( CHOICE_WORDS ).length === 11 && Object.keys( CHOICE_WORDS ).every( function( at ) {
 		const key = 'knobs/'+ at;
 		const stands = worded.design._data.defaults.knobs[ at.split('/')[0] ][ at.split('/')[1] ];
 		worded.show( worded.design._data.layout.controls[key][0] );
@@ -3483,7 +3532,7 @@ check( '...and those of Colours the rows of the ground of the header, the colour
 		return knOtherRows[tab].map( rowName ).join() === knobWords( knLayout, tab, moved ).map( function( word ) { return word[0] } ).join()
 			&& knOtherRows[tab].length === knobKeys.filter( function( key ) { return knLayout.controls[key][0] === tab } ).length
 			&& knOtherRows[tab].every( function( row ) { return knLayout.controls[ row.dataset.control ][1] === cardOf( row ).dataset.object && knLayout.controls[ row.dataset.control ][1] !== 'page' } );
-	} ) && knOtherRows.colours.length === 6 && knOtherRows.motion.length === 2 );
+	} ) && knOtherRows.colours.length === 8 && knOtherRows.motion.length === 2 );
 
 kn.tab( tabWord('surfaces') );
 
@@ -3491,7 +3540,7 @@ const knTitlePressed = ( kn.tab( tabWord('type') ), kn.pressed( sectionTitle ) )
 const knShadowPressed = ( kn.tab( tabWord('surfaces') ), pressedKey( kn, 'knobs/card/shadow' ) );
 
 check( '...a group of buttons, not a tablist - the one it stands at is pressed and the others are not: the middle for a knob nobody moved, the +1 the shadow stands at',
-	knobRows( kn ).filter( function( row ) { return isSwitch( row ) === false } ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
+	knobRows( kn ).filter( function( row ) { return isSwitch( row ) === false && isSelect( row ) === false } ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
 	&& knTitlePressed === 'false,false,true,false,false' && knShadowPressed === 'false,false,false,true,false' );
 check( 'a template that answers to every knob greys none of them out, on whichever tab',
 	[ 'templates', 'type', 'surfaces', 'colours', 'motion' ].every( function( tab ) {
@@ -3538,7 +3587,7 @@ const knStands = function( key ) {
 
 check( '...in numbers: −2 for the title of a section, +2 for its subtitle, −1 for the corners of the buttons, +1 for the shadow of a card and, for the knobs nobody moved, the word of the position the defaults put them at - 0 for a scale, the middle word for a choice but for the navigation and the button of the header',
 	knWord('knobs/section/title') === '−2' && knWord('knobs/section/subtitle') === '+2' && knWord('knobs/buttons/corners') === '−1' && knWord('knobs/card/shadow') === '+1'
-	&& knAllLit().every( function( word, at ) { return [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) !== -1 || word[1] === knStands( knKeys[at] ) } ) && knMiddles.length === 10 );
+	&& knAllLit().every( function( word, at ) { return [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) !== -1 || word[1] === knStands( knKeys[at] ) } ) && knMiddles.length === 11 );
 
 /*	Another template brings its own knobs, and the ones the last one had are
 	not this one's: a position the new template does not answer to goes back to
@@ -3655,9 +3704,9 @@ check( '...a group of buttons as the knob rows are, named by what it sets, and u
 	&& byTag( pg.knobRow( whitespaceStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/whitespace'] && TEXT['/_admin/design/hint/whitespace'] !== ''
 	&& byTag( pg.knobRow( radiusStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/radius'] && byTag( pg.knobRow( radiusAltStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/radius-alt'] );
 check( '...the script keeps no list of the widths and no step to read a word off any more: PAGE_WIDTHS and _stepOf are gone, and a position of a scale reaches two to each side, a choice one, a toggle the middle and the one after it (the same answer Setup::positions() gives), the middle being the word default and the one after it more',
-	pg.design.PAGE_WIDTHS === undefined && pg.design._stepOf === undefined && JSON.stringify( pg.design.RANGE ) === JSON.stringify( { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ] } )
+	pg.design.PAGE_WIDTHS === undefined && pg.design._stepOf === undefined && JSON.stringify( pg.design.RANGE ) === JSON.stringify( { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ], ink : [ 0, 0 ] } )
 	&& JSON.stringify( pg.setup._positions('scale') ) === '[-2,-1,0,1,2]' && JSON.stringify( pg.setup._positions('choice') ) === '[-1,0,1]' && JSON.stringify( pg.setup._positions('toggle') ) === '[0,1]'
-	&& JSON.stringify( pg.setup._positions('nothing') ) === '[0]' && pg.setup._word( 0 ) === 'default' && pg.setup._word( 1 ) === 'more' && pg.setup._word( -2 ) === 'least' && pg.setup._word( 2 ) === 'most' );
+	&& JSON.stringify( pg.setup._positions('ink') ) === '[0]' && JSON.stringify( pg.setup._positions('nothing') ) === '[0]' && pg.setup._word( 0 ) === 'default' && pg.setup._word( 1 ) === 'more' && pg.setup._word( -2 ) === 'least' && pg.setup._word( 2 ) === 'most' );
 
 pg.move( widthStrip, 1 );
 pg.move( whitespaceStrip, -1 );
@@ -4204,8 +4253,8 @@ console.log('');
 
 // --- Type: the case of a thing, a switch under the sizes of its object ----------------------------------
 //
-// The seven toggles of the model - the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the
-// buttons - are the workbench's switch, one for each, on the Type view under the sizes of their object: on at the position 1, off at 0, and
+// The eight toggles of the model - the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the
+// buttons, the labels of a form - are the workbench's switch, one for each, on the Type view under the sizes of their object: on at the position 1, off at 0, and
 // greyed out and switched off like any knob where the chosen template does not answer to it. The closed head of the block says one that is on
 
 console.log( 'The case switches' );
@@ -4218,19 +4267,19 @@ const swOrder = {};
 
 drawnRows( sw ).forEach( function( row ) { swOrder[row.object] = row.controls } );
 
-check( 'the seven switches stand on the Type view, each under the sizes of its object and after them: the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the buttons',
+check( 'the eight switches stand on the Type view, each under the sizes of its object and after them: the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the buttons, the labels of a form',
 	JSON.stringify( swOrder.header ) === JSON.stringify( [ 'knobs/header/nav', 'knobs/header/nav-case' ] ) && JSON.stringify( swOrder.footer ) === JSON.stringify( [ 'knobs/footer/scale', 'knobs/footer/nav-case' ] )
 	&& JSON.stringify( swOrder.section ) === JSON.stringify( [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/section/quiet', 'knobs/section/loud', 'knobs/section/title-case', 'knobs/section/subtitle-case' ] )
 	&& JSON.stringify( swOrder.card ) === JSON.stringify( [ 'knobs/card/title', 'knobs/card/subtitle', 'knobs/card/title-case', 'knobs/card/subtitle-case' ] )
-	&& JSON.stringify( swOrder.buttons ) === JSON.stringify( [ 'knobs/buttons/size', 'knobs/buttons/spread', 'knobs/buttons/case' ] )
-	&& knobRows( sw ).filter( isSwitch ).length === 7 && knobRows( sw ).filter( isSwitch ).every( function( row ) { return LAYOUT[ row.dataset.control ][0] === 'type' } ) );
+	&& JSON.stringify( swOrder.buttons ) === JSON.stringify( [ 'knobs/buttons/size', 'knobs/buttons/spread', 'knobs/buttons/case' ] ) && JSON.stringify( swOrder.forms ) === JSON.stringify( [ 'knobs/forms/scale', 'knobs/forms/label-case' ] )
+	&& knobRows( sw ).filter( isSwitch ).length === 8 && knobRows( sw ).filter( isSwitch ).every( function( row ) { return LAYOUT[ row.dataset.control ][0] === 'type' } ) );
 
 const swKeys = knobRows( sw ).filter( isSwitch ).map( function( row ) { return row.dataset.control } );
 const swInput = function( key ) { return byTag( controlOf( sw, key ), 'input' )[0] };
 const swState = function( key ) { return byClass( controlOf( sw, key ), 'nino-admin-switch-state' )[0].textContent };
 
-check( 'a switch is the workbench\'s own: a checkbox with the label of the knob, its note for the hint and the word of its state after it - off to begin with, since the defaults put every one of the seven at 0',
-	swKeys.length === 7 && swKeys.every( function( key ) {
+check( 'a switch is the workbench\'s own: a checkbox with the label of the knob, its note for the hint and the word of its state after it - off to begin with, since the defaults put every one of the eight at 0',
+	swKeys.length === 8 && swKeys.every( function( key ) {
 		const at = key.split('/');
 		return swInput( key ).type === 'checkbox' && swInput( key ).checked === false && swState( key ) === TEXT['/_admin/common/label/off'] && swInput( key ).disabled === false
 			&& hasClass( controlOf( sw, key ), 'design-knob-row' ) && hasClass( controlOf( sw, key ), 'design-knob-row--off' ) === false
@@ -5229,11 +5278,12 @@ byTag( colours.knobRow( colourWord('contrast') ), 'button' )[0].fire('click');
 
 check( 'a position of a knob is a number, 1 to 5: +2 on a scale is the fifth position and \u22122 the first',
 	colours.design._edit.colours.saturation === 5 && colours.design._edit.colours.contrast === 1 && typeof colours.design._edit.colours.saturation === 'number' );
-check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again - and after the page\'s five the ground of the header, the colour of its line, the ground of the footer, the dimming of a section, the tone of the shadow of a card and the stripes of a table, in the middle',
+check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again - and after the page\'s five the ground of the header, the colour of its line, the ground of the footer, the dimming of a section, the tone of the shadow of a card and the stripes of a table, and the tone of the lines and of the labels of a form, in the middle',
 	colours.byId('design-colour-primary').value === '#8b1d3f'
 	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ colourWord('harmony'), TEXT['/_admin/design/colour/harmony/1'] ], [ colourWord('temperature'), TEXT['/_admin/design/colour/temperature/3'] ], [ colourWord('saturation'), '+2' ], [ colourWord('contrast'), '\u22122' ], [ colourWord('depth'), '0' ],
 		[ knobWord( 'header', 'ground' ), TEXT['/_admin/design/knob/header/ground/default'] ], [ knobWord( 'header', 'border-color' ), TEXT['/_admin/design/knob/header/border-color/default'] ], [ knobWord( 'footer', 'ground' ), TEXT['/_admin/design/knob/footer/ground/default'] ],
-		[ knobWord( 'section', 'dim' ), '0' ], [ knobWord( 'card', 'tone' ), TEXT['/_admin/design/knob/card/tone/default'] ], [ knobWord( 'tables', 'stripes' ), '0' ] ] )
+		[ knobWord( 'section', 'dim' ), '0' ], [ knobWord( 'card', 'tone' ), TEXT['/_admin/design/knob/card/tone/default'] ], [ knobWord( 'tables', 'stripes' ), '0' ],
+		[ knobWord( 'forms', 'edge' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'forms', 'label' ), TEXT['/_admin/design/label/own'] ] ] )
 	&& wordOf( colours.byId('design-colour-mode') ) === TEXT['/_admin/design/colour/mode/dark'] && colours.byId('design-summary') === null );
 
 // A second colour somebody chose overrides the wheel; choosing a position on the wheel gives it up
@@ -5281,8 +5331,8 @@ const csSaid = function() { return byClass( csBlock(), 'design-accordion-summary
 const csWalked = [];
 eachBlock( cs.form, function( card ) { csWalked.push( [ card.dataset.object, byClass( headButton( card ), 'design-accordion-name' )[0].textContent ] ) } );
 
-check( 'Colour is a block under six objects, the page\'s first and then the header\'s, the footer\'s, the section\'s, the card\'s and the tables\': a head named by the word of its aspect, and in the body of the page\'s the brand colour, the second colour, the five knobs and the mode - open to begin with',
-	csWalked.map( function( entry ) { return entry[0] } ).join() === 'page,header,footer,section,card,tables' && csWalked.every( function( entry ) { return entry[1] === tabWord('colours') } )
+check( 'Colour is a block under seven objects, the page\'s first and then the header\'s, the footer\'s, the section\'s, the card\'s, the tables\' and the forms\': a head named by the word of its aspect, and in the body of the page\'s the brand colour, the second colour, the five knobs and the mode - open to begin with',
+	csWalked.map( function( entry ) { return entry[0] } ).join() === 'page,header,footer,section,card,tables,forms' && csWalked.every( function( entry ) { return entry[1] === tabWord('colours') } )
 	&& csBlock().dataset.tab === 'colours' && csBlock().dataset.object === 'page' && isOpen( csBlock() ) === true && blocksOf( cs.form ).filter( isOpen ).length === 1
 	&& byClass( csBlock(), 'design-knob-row' ).length === 5
 	&& cs.byId('design-colour-primary') !== null && cs.byId('design-colour-secondary') !== null && cs.byId('design-colour-mode') !== null
@@ -5359,7 +5409,7 @@ pressKey( co, 'knobs/card/tone', 1 );
 pressKey( co, 'knobs/tables/stripes', -1 );
 
 check( 'the dimming of a section, the tone of the shadow of a card and the stripes of a table are a strip each in the block of their object on Colours, after the page\'s, and a head that is closed names a moved one - the label of the knob and the word of its position, a number for a scale and a name for a choice - while the head of the page, which nobody moved, says nothing',
-	tableObjects( co.design._data.layout, 'colours' ).join() === 'page,header,footer,section,card,tables'
+	tableObjects( co.design._data.layout, 'colours' ).join() === 'page,header,footer,section,card,tables,forms'
 	&& co.design._edit.knobs.section.dim === 2 && co.design._edit.knobs.card.tone === 1 && co.design._edit.knobs.tables.stripes === -1
 	&& coSaid('section') === knobWord( 'section', 'dim' )+ ' '+ SIGNED[4] && coSaid('card') === knobWord( 'card', 'tone' )+ ' '+ TEXT['/_admin/design/knob/card/tone/more']
 	&& coSaid('tables') === knobWord( 'tables', 'stripes' )+ ' '+ SIGNED[1] && coSaid('page') === '' );
@@ -5404,6 +5454,98 @@ check( 'a frame answers to the knobs its stylesheet declares ladders for, as a s
 	&& offRows( fg ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/header/height'
 	&& byTag( controlOf( fg, 'knobs/header/space' ), 'button' ).every( function( button ) { return button.disabled === false } ) && byTag( controlOf( fg, 'knobs/header/border-size' ), 'button' ).every( function( button ) { return button.disabled === false } )
 	&& ( fg.show( 'type' ), offRows( fg ).length === 0 ) );
+
+console.log('');
+
+
+// --- The form: an object of the page with its own tab ---------------------------------------------------
+//
+// The form is the ninth object and the eighth part: a tab Form after the tables, with a block for each aspect the table puts a control of it on -
+// Base, Text, Surface and Colour, none on Motion - and in each the controls the table names, in its order: the select of the template, the size of the
+// text and the switch for the case of the labels, the space, the corners, the line and the place of a label, the tone of the lines and of the labels. An
+// ink is no strip and no switch but a select of the tones of the page with none first, and the template that does not answer to it greys it out
+
+console.log( 'The form' );
+
+const fm = panel();
+
+check( 'the form is the last object of the page, a tab of its own, and has a block on Base, Text, Surface and Colour - in the order of the table, and none on Motion',
+	fm.design._data.layout.objects.slice( -1 )[0] === 'forms' && fm.design._data.layout.objects.indexOf('forms') === fm.design._data.layout.objects.indexOf('tables') + 1
+	&& aspectsOf( fm.design._data.layout, 'forms' ).join() === 'templates,type,surfaces,colours' && fm.design._data.kinds.forms.edge === 'ink' && fm.design._data.kinds.forms['label-case'] === 'toggle' );
+
+const fmRows = {};
+
+[ 'templates', 'type', 'surfaces', 'colours', 'motion' ].forEach( function( tab ) {
+	fm.show( tab );
+	drawnRows( fm ).filter( function( row ) { return row.object === 'forms' } ).forEach( function( row ) { fmRows[tab] = row.controls } );
+} );
+
+check( '...and each block holds the controls the table gives it, in the order of the table: the select of the template; the size of the text and the switch of the case; the space, the corners, the line and the place of the label; the tone of the lines and of the labels',
+	JSON.stringify( fmRows ) === JSON.stringify( {
+		templates : [ 'parts/forms' ],
+		type : [ 'knobs/forms/scale', 'knobs/forms/label-case' ],
+		surfaces : [ 'knobs/forms/space', 'knobs/forms/corners', 'knobs/forms/line', 'knobs/forms/labels' ],
+		colours : [ 'knobs/forms/edge', 'knobs/forms/label' ],
+	} ) );
+
+fm.show( 'colours' );
+
+const fmEdge = controlOf( fm, 'knobs/forms/edge' );
+const fmEdgeSelect = byTag( fmEdge, 'select' )[0];
+
+check( 'the tone of the lines is a select of the tones of the page with none first, the label of the knob over it with its icon and its note, and it stands at none to begin with - the tone the template gives',
+	isSelect( fmEdge ) && hasClass( fmEdge, 'design-knob-row' ) && byTag( fmEdge, 'button' ).length === 0 && fmEdgeSelect.disabled === false && fmEdgeSelect.id === 'design-knob-forms-edge'
+	&& JSON.stringify( offered( fmEdgeSelect ) ) === JSON.stringify( [ [ '', TEXT['/_admin/design/label/own'] ] ].concat( INKS.map( function( tone ) { return [ tone, TEXT['/_admin/design/ink/'+ tone] ] } ) ) )
+	&& shown( fmEdgeSelect ) === '' && rowName( fmEdge ) === knobWord( 'forms', 'edge' ) && byTag( byClass( fmEdge, 'design-knob-label' )[0], 'svg' ).length === 1 );
+
+choose( fmEdgeSelect, 'primary' );
+fm.design._previewNow();
+
+const fmPreview = fm.requests[fm.requests.length - 1];
+
+check( 'choosing a tone moves the knob to the tone - a word, not a position -, asks for a preview with it, looks at the form and is a change the screen can save; the other ink stays where it was',
+	fm.design._edit.knobs.forms.edge === 'primary' && fm.design._edit.knobs.forms.label === '' && fmPreview.endpoint === 'preview' && fmPreview.payload.knobs.forms.edge === 'primary' && fmPreview.payload.knobs.forms.label === ''
+	&& fm.design._target === 'forms' && fm.design._isDirty() === true );
+check( '...and a closed head of the block names it by the label of the knob and the word of the tone, while the head of the other tones says nothing',
+	closedLine( fm, 'forms' ) === knobWord( 'forms', 'edge' )+ ' '+ TEXT['/_admin/design/ink/primary'] );
+
+fm.show( 'colours' );
+choose( byTag( controlOf( fm, 'knobs/forms/edge' ), 'select' )[0], '' );
+
+check( '...and none again is the knob back at the tone the template gives: an empty word, the head says nothing and there is nothing to save',
+	fm.design._edit.knobs.forms.edge === '' && closedLine( fm, 'forms' ) === '' && fm.design._isDirty() === false );
+
+// A template that does not answer to the knobs it leaves out: the one with no corners and no case of the labels greys them out, an ink it declares stays
+fm.show( 'templates' );
+choose( setSelect( fm, 'forms' ), 'second' );
+fm.show( 'type' );
+const fmCase = controlOf( fm, 'knobs/forms/label-case' );
+fm.show( 'surfaces' );
+const fmCorners = controlOf( fm, 'knobs/forms/corners' );
+
+check( 'a template of the form that leaves the case of the labels and the corners out greys the switch and the strip out and puts both back at the default; the ones it answers to stay on',
+	isSwitch( fmCase ) && hasClass( fmCase, 'design-knob-row--off' ) && byTag( fmCase, 'input' )[0].disabled === true && hasClass( fmCorners, 'design-knob-row--off' ) && byTag( fmCorners, 'button' ).every( function( button ) { return button.disabled === true } )
+	&& offRows( fm ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/forms/corners' && fm.design._edit.knobs.forms['label-case'] === 0 );
+
+// An ink that the chosen template does not answer to is switched off, greyed out with the line that says so, and goes back to none with the change of the template
+fm.show( 'colours' );
+choose( byTag( controlOf( fm, 'knobs/forms/edge' ), 'select' )[0], 'focus' );
+fm.show( 'templates' );
+choose( setSelect( fm, 'forms' ), 'third' );
+fm.show( 'colours' );
+
+const fmGrey = controlOf( fm, 'knobs/forms/edge' );
+
+check( 'a template of the form that leaves the tone of the lines out switches the select off and greys its row out, with the line that says so in the place of the note, and the tone chosen goes back to none - the other ink, which it answers to, stays on',
+	hasClass( fmGrey, 'design-knob-row--off' ) && byTag( fmGrey, 'select' )[0].disabled === true && fm.design._edit.knobs.forms.edge === '' && shown( byTag( fmGrey, 'select' )[0] ) === ''
+	&& ( byTag( fmGrey, 'small' )[0] || {} ).textContent !== TEXT['/_admin/design/knob/forms/edge/note'] && byTag( byTag( controlOf( fm, 'knobs/forms/label' ), 'select' )[0], 'option' ).length === INKS.length + 1
+	&& byTag( controlOf( fm, 'knobs/forms/label' ), 'select' )[0].disabled === false && offRows( fm ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/forms/edge' );
+
+const fmOff = panel( { knobs : ( function() { const k = listing().knobs; k.forms.edge = 'focus'; return k } )() } );
+
+fmOff.show( 'colours' );
+check( 'an ink the stored setup holds is the tone of the select, when the template answers to it',
+	shown( byTag( controlOf( fmOff, 'knobs/forms/edge' ), 'select' )[0] ) === 'focus' && fmOff.design._edit.knobs.forms.edge === 'focus' );
 
 console.log('');
 
@@ -5841,6 +5983,7 @@ const ICON_OF = {
 	'buttons/hover' : 'move-vertical',
 	'lists/scale' : 'a-large-small', 'lists/space' : 'align-vertical-space-around', 'lists/marker' : 'list',
 	'tables/scale' : 'a-large-small', 'tables/space' : 'align-vertical-space-around', 'tables/border' : 'square', 'tables/zebra' : 'rows-3', 'tables/stripes' : 'contrast',
+	'forms/scale' : 'a-large-small', 'forms/space' : 'align-vertical-space-around', 'forms/corners' : 'square-round-corner', 'forms/line' : 'minus', 'forms/labels' : 'move-horizontal', 'forms/edge' : 'palette', 'forms/label' : 'palette',
 	'colours/primary' : 'palette', 'colours/harmony' : 'palette', 'colours/temperature' : 'thermometer', 'colours/saturation' : 'droplet',
 	'colours/contrast' : 'contrast', 'colours/depth' : 'square-stack', 'colours/mode' : 'sun-moon',
 };
@@ -5888,7 +6031,7 @@ const iconTab = function( key ) { return LAYOUT[key][0] };
 	} );
 } );
 
-check( 'every knob row of Templates, Type, Surfaces, Colours and Motion - one for each knob the table has - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim - but the seven switches of the case, which are the workbench\'s switch and have no icon, and the table has none for them'
+check( 'every knob row of Templates, Type, Surfaces, Colours and Motion - one for each knob the table has - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim - but the eight switches of the case, which are the workbench\'s switch and have no icon, and the table has none for them'
 	+ ( iconProblems.length === 0 ? '' : ' - not so for '+ iconProblems.join() ), iconRows + switchRows === knobKeys.length && switchRows === kindCount('toggle') && iconRows > 0 && iconProblems.length === 0 );
 
 icons.show( 'type' );
@@ -6599,7 +6742,7 @@ console.log('');
 console.log( 'The anchors' );
 
 /** The ids of the specimen the objects and a few controls of their own are looked at in (OBJECT_ANCHORS, CONTROL_ANCHORS) */
-const OBJECT_AIMS = { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' };
+const OBJECT_AIMS = { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables', forms : 'forms' };
 const CONTROL_AIMS = { 'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
 	'motion/hover' : 'cards', 'motion/hover-strength' : 'cards' };
 
@@ -6620,7 +6763,7 @@ function aimOf( layout, key, features ) {
 
 const anchors = panel();
 
-check( 'each object has the id of an element on the specimen it is looked at in: global for the page and the header - the top of the page -, footer for the footer, content, cards, buttons, lists and tables for the others, one for each of the eight; the aspects have none, and the list of the themes is looked at in the top of the page',
+check( 'each object has the id of an element on the specimen it is looked at in: global for the page and the header - the top of the page -, footer for the footer, content, cards, buttons, lists, tables and forms for the others, one for each of the nine; the aspects have none, and the list of the themes is looked at in the top of the page',
 	Object.keys( anchors.design.OBJECT_ANCHORS ).join() === OBJECTS.join() && JSON.stringify( anchors.design.OBJECT_ANCHORS ) === JSON.stringify( OBJECT_AIMS ) && anchors.design.THEMES_ANCHOR === 'global' && anchors.design.ANCHORS === undefined );
 
 const last = function() { return anchors.stage.scrolls[anchors.stage.scrolls.length - 1] };
@@ -6932,15 +7075,15 @@ function jpAnswer() {
 	jp.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 }
 
-check( 'the specimen knows where a control is looked at, by the object it stands under and by itself: the page and the header at the top of the page, the footer at its foot, a section in the first section of the page, a card in the cards, the buttons, the lists and the tables each in their block - and the eight controls of the palette in the grounds, where the page of the colours has its own anchor no more than the page of the other tabs has the top of the page, and the two of the hover of the pictures in the cards, whose first row has pictures that say the class; the maps say no more than that, and a template is looked at where its object is',
+check( 'the specimen knows where a control is looked at, by the object it stands under and by itself: the page and the header at the top of the page, the footer at its foot, a section in the first section of the page, a card in the cards, the buttons, the lists, the tables and the forms each in their block - and the eight controls of the palette in the grounds, where the page of the colours has its own anchor no more than the page of the other tabs has the top of the page, and the two of the hover of the pictures in the cards, whose first row has pictures that say the class; the maps say no more than that, and a template is looked at where its object is',
 	JSON.stringify( jp.design.OBJECT_ANCHORS ) === JSON.stringify( OBJECT_AIMS ) && JSON.stringify( jp.design.CONTROL_ANCHORS ) === JSON.stringify( CONTROL_AIMS ) && jp.design._target === null );
 check( '...and the place of every control follows from the table of the answer: what is set on the page - the root size and the roles of the fonts as much as the width, the whitespace and the corners - and the animation at the top, the palette at the grounds, a section in its section, the two variants of its titles included, a card in the cards, the buttons, the lists and the tables in their blocks, the header at the top of the page and the footer at its foot - the ids the maps name, counted from the table and not from the names of the controls',
 	Object.keys( jpLayout.controls ).every( function( key ) { return jp.setup._anchorOf( key ) === aimOf( jpLayout, key ) } )
 	&& [ [ 'width', 'global' ], [ 'radii/image', 'global' ], [ 'motion/effect', 'global' ], [ 'size', 'global' ], [ 'fonts/code', 'global' ], [ 'fonts/title', 'global' ], [ 'knobs/section/quiet', 'content' ], [ 'knobs/section/loud', 'content' ], [ 'colours/depth', 'colours' ], [ 'colours/primary', 'colours' ], [ 'colours/mode', 'colours' ],
-		[ 'parts/header', 'global' ], [ 'parts/footer', 'footer' ], [ 'parts/section', 'content' ], [ 'parts/card', 'cards' ], [ 'parts/buttons', 'buttons' ], [ 'parts/lists', 'lists' ], [ 'parts/tables', 'tables' ],
+		[ 'parts/header', 'global' ], [ 'parts/footer', 'footer' ], [ 'parts/section', 'content' ], [ 'parts/card', 'cards' ], [ 'parts/buttons', 'buttons' ], [ 'parts/lists', 'lists' ], [ 'parts/tables', 'tables' ], [ 'parts/forms', 'forms' ],
 		[ 'knobs/header/height', 'global' ], [ 'knobs/header/ground', 'global' ], [ 'knobs/footer/space', 'footer' ], [ 'knobs/footer/ground', 'footer' ],
 		[ 'knobs/section/space', 'content' ], [ 'radii/cover', 'content' ], [ 'knobs/section/dim', 'content' ], [ 'knobs/card/space', 'cards' ], [ 'knobs/card/tone', 'cards' ], [ 'knobs/card/hover', 'cards' ], [ 'radii/card', 'cards' ], [ 'motion/hover', 'cards' ], [ 'motion/hover-strength', 'cards' ],
-		[ 'knobs/buttons/space', 'buttons' ], [ 'knobs/buttons/hover', 'buttons' ], [ 'knobs/lists/marker', 'lists' ], [ 'knobs/lists/space', 'lists' ], [ 'knobs/tables/zebra', 'tables' ], [ 'knobs/tables/stripes', 'tables' ] ].every( function( entry ) { return jp.setup._anchorOf( entry[0] ) === entry[1] } ) );
+		[ 'knobs/buttons/space', 'buttons' ], [ 'knobs/buttons/hover', 'buttons' ], [ 'knobs/lists/marker', 'lists' ], [ 'knobs/lists/space', 'lists' ], [ 'knobs/tables/zebra', 'tables' ], [ 'knobs/tables/stripes', 'tables' ], [ 'knobs/forms/space', 'forms' ], [ 'knobs/forms/edge', 'forms' ], [ 'knobs/forms/label-case', 'forms' ] ].every( function( entry ) { return jp.setup._anchorOf( entry[0] ) === entry[1] } ) );
 
 /*	The place follows the table it is handed: a control moved to another object is looked at where that object is, and a change of it
 	sets that as the target	*/
@@ -7005,11 +7148,12 @@ jpKnobs.forEach( function( key ) {
 } );
 
 check( 'each knob has its place - a switch as much as a strip - by the object its row is of: the sizes, the two variants, the space, the rule, the dimming and the case of a section the first section, which the hero is - a card\'s and the sizes of its title the cards, the buttons\', the lists\' and the tables\' their blocks, the header\'s the top of the page and the footer\'s its foot',
-	jpKnobs.length === kindCount('scale') + kindCount('choice') + kindCount('toggle') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
+	jpKnobs.length === kindCount('scale') + kindCount('choice') + kindCount('toggle') + kindCount('ink') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
 	&& jpWhere['knobs/section/title'] === 'content' && jpWhere['knobs/section/space'] === 'content' && jpWhere['knobs/section/dim'] === 'content' && jpWhere['knobs/section/quiet'] === 'content' && jpWhere['knobs/section/loud'] === 'content'
 	&& jpWhere['knobs/card/subtitle'] === 'cards' && jpWhere['knobs/card/tone'] === 'cards' && jpWhere['knobs/card/hover'] === 'cards' && jpWhere['knobs/buttons/corners'] === 'buttons' && jpWhere['knobs/buttons/hover'] === 'buttons'
 	&& jpWhere['knobs/section/title-case'] === 'content' && jpWhere['knobs/card/title-case'] === 'cards' && jpWhere['knobs/buttons/case'] === 'buttons' && jpWhere['knobs/footer/nav-case'] === 'footer' && jpWhere['knobs/header/nav-case'] === 'global'
 	&& jpWhere['knobs/lists/marker'] === 'lists' && jpWhere['knobs/tables/zebra'] === 'tables' && jpWhere['knobs/tables/stripes'] === 'tables'
+	&& jpWhere['knobs/forms/space'] === 'forms' && jpWhere['knobs/forms/edge'] === 'forms' && jpWhere['knobs/forms/label-case'] === 'forms'
 	&& jpWhere['knobs/header/nav'] === 'global' && jpWhere['knobs/header/height'] === 'global' && jpWhere['knobs/footer/scale'] === 'footer' && jpWhere['knobs/footer/ground'] === 'footer' );
 
 /*	One change of every other kind of control: a strip of the page, the corners of a kind of surface, a font role, a part of the
@@ -7360,8 +7504,8 @@ const jumpedTo = [ jp.design.OBJECT_ANCHORS, jp.design.CONTROL_ANCHORS ].reduce(
 	return ids.concat( Object.keys( map ).map( function( key ) { return map[key] } ) );
 }, [] ).filter( function( id, at, all ) { return all.indexOf( id ) === at } );
 
-check( 'every id the script jumps to is on the specimen exactly once: the top of the page, the first section, the cards, the buttons, the lists and the tables, the grounds and, at the end, the footer - eight places, those of the objects and of the controls with a place of their own',
-	jumpedTo.length === 8 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 && specimenIds.lists === 1 && specimenIds.tables === 1 );
+check( 'every id the script jumps to is on the specimen exactly once: the top of the page, the first section, the cards, the buttons, the lists, the tables and the forms, the grounds and, at the end, the footer - nine places, those of the objects and of the controls with a place of their own',
+	jumpedTo.length === 9 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 && specimenIds.lists === 1 && specimenIds.tables === 1 && specimenIds.forms === 1 );
 check( '...and the footer, which is looked at at the end of the page, is an element of its own: the id footer, once, an empty block at the end of the specimen - after the last section, where the footer of the frame starts',
 	specimenIds.footer === 1 && /<\/section>\s*\[\[features\]\]\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') );
 check( '...and the Cards section is the element that has the id, with an accessible name of its own: the second section of the page, after the hero and before the grounds',
@@ -9328,8 +9472,8 @@ else {
 	/** What the buttons of a strip say is pressed, the strip found by the key the table has the control under */
 	const litOf = function( key ) { return byTag( controlOf( whole, key ), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() };
 
-	check( 'Templates is drawn from the catalogue and the choices the server gave: a block for each of the seven parts, each with a select over what the library has, on the one that is chosen - and nothing else on the tab but the strips of the header that the table puts there',
-		real.parts.length === 7 && tableObjects( real.layout, 'templates' ).length === 7 && real.parts.every( selectOf ) && knobRows( whole ).every( function( row ) { return cardOf( row ).dataset.object === 'header' } ) );
+	check( 'Templates is drawn from the catalogue and the choices the server gave: a block for each of the eight parts, each with a select over what the library has, on the one that is chosen - and nothing else on the tab but the strips of the header that the table puts there',
+		real.parts.length === 8 && tableObjects( real.layout, 'templates' ).length === 8 && real.parts.every( selectOf ) && knobRows( whole ).every( function( row ) { return cardOf( row ).dataset.object === 'header' } ) );
 
 	whole.show( 'type' );
 
@@ -9414,6 +9558,19 @@ else {
 				return;
 			}
 
+			// An ink is a select of the tones of the page, at the tone stored - none is the tone the template gives - and switched off with its row
+			if( kind === 'ink' ) {
+
+				const select = byTag( row, 'select' )[0];
+
+				if( isSelect( row ) === false || byTag( row, 'button' ).length !== 0 || select === undefined )
+					tabProblems.push( row.dataset.control+ ': not a select' );
+				else if( select.disabled !== off || shown( select ) !== real.knobs[ path[1] ][ path[2] ] )
+					tabProblems.push( row.dataset.control+ ': the select does not stand at the tone stored' );
+
+				return;
+			}
+
 			if( off === false && byTag( row, 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() !== lit )
 				tabProblems.push( row.dataset.control+ ': a step is lit that the knob does not stand at' );
 			if( byTag( row, 'button' ).length !== reach.length )
@@ -9435,7 +9592,7 @@ else {
 		} )
 		&& real.parts.every( function( row ) { return Object.keys( row.catalogue ).indexOf( row.set ) !== -1 } ) );
 	check( '...a frame is asked as a set is: the catalogue of the header and of the footer carries a list of knobs for every template',
-		real.parts.length === 7 && real.parts.map( function( row ) { return row.part } ).join() === Object.keys( real.kinds ).join()
+		real.parts.length === 8 && real.parts.map( function( row ) { return row.part } ).join() === Object.keys( real.kinds ).join()
 		&& [ 'header', 'footer' ].every( function( part ) {
 			return rowOf( part ).kind === 'frame' && Object.keys( rowOf( part ).catalogue ).length > 0 && Object.keys( rowOf( part ).catalogue ).every( function( set ) {
 				return Array.isArray( rowOf( part ).catalogue[set].knobs );

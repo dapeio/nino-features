@@ -126,7 +126,7 @@
 			specimen (its `anchor`, see _anchorOf()), and at the top of the page where it has none. The page has an id at its end,
 			footer, which only the footer is looked at in. The list of the themes has an anchor of its own, THEMES_ANCHOR. The maps are
 			told together in the docblock of _jump()	*/
-		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' },
+		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables', forms : 'forms' },
 
 		/*	The controls that are looked at elsewhere than their object is, by the key the table has them under: the
 			eight controls of the palette, which are the page's and are looked at in the grounds (#colours), where the
@@ -140,9 +140,9 @@
 
 		/*	The positions of a knob, by the kind of the knob, as the least and the most of them: a
 			scale has the five positions -2 to +2, a choice the three -1 to +1, a toggle the two 0 and
-			1, off and on (see Setup::positions()). The root size, the width, the whitespace and the two
-			radii of the page are scales	*/
-		RANGE		: { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ] },
+			1, off and on, and an ink the middle alone: what it stands at is a tone and no position (see Setup::positions()).
+			The root size, the width, the whitespace and the two radii of the page are scales	*/
+		RANGE		: { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ], ink : [ 0, 0 ] },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
@@ -334,6 +334,13 @@
 			'tables/border' : 'square',
 			'tables/zebra' : 'rows-3',
 			'tables/stripes' : 'contrast',
+			'forms/scale' : 'a-large-small',
+			'forms/space' : 'align-vertical-space-around',
+			'forms/corners' : 'square-round-corner',
+			'forms/line' : 'minus',
+			'forms/labels' : 'move-horizontal',
+			'forms/edge' : 'palette',
+			'forms/label' : 'palette',
 			'colours/primary' : 'palette',
 			'colours/harmony' : 'palette',
 			'colours/temperature' : 'thermometer',
@@ -2925,7 +2932,7 @@
 		 *	Scroll the page in the frame to where the open object is looked at, smoothly.
 		 *
 		 *	The specimen is one page with an element for each place the panel looks at (ids global,
-		 *	content, cards, buttons, lists, tables, colours and, at its end, footer - see OBJECT_ANCHORS), and
+		 *	content, cards, buttons, lists, tables, forms, colours and, at its end, footer - see OBJECT_ANCHORS), and
 		 *	the frame is the page of this very origin: the panel scrolls the
 		 *	frame's own window by hand, which needs neither a message to the page
 		 *	nor a hash it would have to read. Done after an object is opened and after
@@ -2938,7 +2945,7 @@
 		 *	key - the controls of the palette to the grounds (#colours) -, else the anchor of the object it stands under - the
 		 *	page's and the header's the top of the page (#global), the footer's its foot, a section's, the quiet and the loud variant
 		 *	of its titles among them, the first section (#content), a card's the cards (#cards), the buttons', the lists' and the tables'
-		 *	their blocks, a feature's the block it brings. The place of a change is _target, one for each change - it is put back
+		 *	their blocks, the forms' the form, a feature's the block it brings. The place of a change is _target, one for each change - it is put back
 		 *	to the object's own when an object is opened, and it is what is jumped to until then.
 		 *
 		 *	A place the page in the frame has not got is looked at where the object is: the id of a block that the specimen of a
@@ -4317,10 +4324,10 @@
 				if( views._answered( path[1] ).indexOf( path[2] ) === -1 )
 					return [];
 
-				const chosen = ( edit.knobs[path[1]] || {} )[path[2]] || 0;
+				const chosen = views._knobValue( edit.knobs, path[1], path[2] );
 				const strip = views._knobStrip( path[1], path[2] );
 
-				return chosen === ( ( ( normal.knobs || {} )[path[1]] || {} )[path[2]] || 0 ) ? [] : [ views._said( strip.name, strip.options, chosen ) ];
+				return chosen === views._knobValue( normal.knobs || {}, path[1], path[2] ) ? [] : [ views._said( strip.name, strip.options, chosen ) ];
 			}
 
 			// A knob a feature brings: said as the knobs of a part are, by the label its head gives it and the word of its value - a variant says it in its own row (see _variantSaid())
@@ -4948,7 +4955,7 @@
 
 			Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
 				if( answered.indexOf( knob ) === -1 )
-					edit.knobs[part][knob] = ( normal[part] || {} )[knob] || 0;
+					edit.knobs[part][knob] = views._knobValue( normal, part, knob );
 			} );
 
 			/*	The whole column of controls, drawn from the model the way a switch of the object draws it (see _switchTab()): the
@@ -5691,12 +5698,48 @@
 		},
 
 		/**
+		 *	Where a knob stands in a set of choices (the working copy, or the defaults design/list hands over): a position, or for an
+		 *	ink a tone - '' where none is chosen, the tone the template gives. A knob the set of choices has no entry for stands at the middle
+		 *
+		 *	@param		{Object}		knobs			part => knob => value
+		 *	@param		{string}		part
+		 *	@param		{string}		knob
+		 *
+		 *	@return		{number|string}
+		 */
+		_knobValue : function( knobs, part, knob ) {
+
+			const value = ( knobs[part] || {} )[knob];
+			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
+
+			return value === undefined || value === null ? ( kind === 'ink' ? '' : 0 ) : value;
+		},
+
+		/**
+		 *	The options of the select of an ink: none first - the tone the template itself gives, which is the middle of an ink - and then
+		 *	the tones of the page, by the words the feature inks have (design/list hands the tones over as `inks`)
+		 *
+		 *	@return		{Array}						{ value, label, title }
+		 */
+		_inkOptions : function() {
+
+			const said = function( value, key ) {
+				const label = Nino.content.getText( key );
+				return { value : value, label : label, title : label };
+			};
+
+			return [ said( '', '/_admin/design/label/own' ) ].concat( ( Nino.admin.design._data.inks || [] ).map( function( word ) {
+				return said( word, '/_admin/design/ink/'+ word );
+			} ) );
+		},
+
+		/**
 		 *	What the strip of a knob is made of: its label and its options, from the least to the most - the numbers
 		 *	-2 to +2 of a scale, the three words that knob has for a choice, the words off and on for a toggle, which the
-		 *	panel draws as a switch and says in the head of a closed block by these two. The kind is what design/list says
-		 *	of the knob in its part
+		 *	panel draws as a switch and says in the head of a closed block by these two, and for an ink the options of its select
+		 *	(see _inkOptions()). The kind is what design/list says of the knob in its part
 		 *
-		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
+		 *	@param		{string}		part			The part the knob belongs to: one of the eight parts (see Setup::PARTS)
 		 *	@param		{string}		knob
 		 *
 		 *	@return		{Object}							{ name, options }, the options as { value, label, title }
@@ -5706,6 +5749,10 @@
 			const base = '/_admin/design/knob/'+ part+ '/'+ knob;
 			const kind = ( ( Nino.admin.design._data.kinds || {} )[part] || {} )[knob];
 			const positions = Nino.admin.design.views._positions( kind );
+
+			// An ink is no strip: its options are the tones of the page and, first, none - the tone the template gives
+			if( kind === 'ink' )
+				return { name : Nino.content.getText( base+ '/label' ), options : Nino.admin.design.views._inkOptions() };
 
 			// An option that says a position in the words of a text key
 			const said = function( key, position ) {
@@ -5735,7 +5782,7 @@
 		 *	of the note, as a strip is. The kind is what design/list says of the knob
 		 *	in its part
 		 *
-		 *	@param		{string}		part			The part the knob belongs to: one of the seven parts (see Setup::PARTS)
+		 *	@param		{string}		part			The part the knob belongs to: one of the eight parts (see Setup::PARTS)
 		 *	@param		{string}		knob
 		 *	@param		{boolean}		answered		Whether the chosen template declares it
 		 *
@@ -5751,6 +5798,11 @@
 				return Nino.admin.design.views._knobSwitch( part, knob, answered, name,
 					answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ) );
 
+			// An ink is a select of the tones of the page, as the ink of a feature is, with none first: the tone the template gives
+			if( Nino.admin.design._data.kinds[part][knob] === 'ink' )
+				return Nino.admin.design.views._knobSelect( part, knob, answered, strip,
+					answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ) );
+
 			/*	The knob's own name and the terse note under it, both out of the
 				panel's text files: a knob is one key in every locale. Where the
 				template does not answer to it the note is the reason it is grey.
@@ -5764,6 +5816,56 @@
 			field.dataset.knob = knob;
 
 			return field;
+		},
+
+		/**
+		 *	One ink, as a row of its own: the name of the knob with its icon and its note, as a strip has them, and under it a select of the tones
+		 *	of the page with none first - the tone the template gives. A change moves the knob to the tone, or to '' for none (see _setStep());
+		 *	where the template does not answer to the knob the select is switched off and the row greyed out, with the line that says so in the
+		 *	place of the note, as a strip is
+		 *
+		 *	@param		{string}		part			The part the knob belongs to
+		 *	@param		{string}		knob			An ink of that part
+		 *	@param		{boolean}		answered	Whether the chosen template declares it
+		 *	@param		{Object}		strip			{ name, options }, see _knobStrip()
+		 *	@param		{string}		note			The line under the name
+		 *
+		 *	@return		{Element}
+		 */
+		_knobSelect : function( part, knob, answered, strip, note ) {
+
+			const design = Nino.admin.design;
+			const views = design.views;
+			const id = 'design-knob-'+ part+ '-'+ knob;
+			const stands = views._knobValue( design._edit.knobs, part, knob );
+
+			const row = dc.createElement('div');
+			row.className = 'design-knob-row design-knob-row--select'+ ( answered === false ? ' design-knob-row--off' : '' );
+			row.dataset.knob = knob;
+
+			const label = dc.createElement('label');
+			label.className = 'design-knob-label';
+			label.setAttribute( 'for', id );
+			design._labelContent( label, part+ '/'+ knob, strip.name, note );
+			row.appendChild( label );
+
+			const select = dc.createElement('select');
+			select.id = id;
+			select.className = 'design-knob-steps';
+			select.disabled = answered === false;
+
+			strip.options.forEach( function( option ) {
+				const node = dc.createElement('option');
+				node.value = option.value;
+				node.textContent = option.label;
+				node.selected = option.value === stands;
+				select.appendChild( node );
+			} );
+
+			select.addEventListener( 'change', function() { views._setStep( part, knob, select.value ) } );
+			row.appendChild( select );
+
+			return row;
 		},
 
 		/**
@@ -5809,7 +5911,7 @@
 		 *
 		 *	@param		{string}		part			The part the knob belongs to
 		 *	@param		{string}		knob			A knob of that part
-		 *	@param		{number}		position	-2 to +2 for a scale, -1 to +1 for a choice, 0 or 1 for a toggle
+		 *	@param		{number|string}	position	-2 to +2 for a scale, -1 to +1 for a choice, 0 or 1 for a toggle, a tone of the page or '' for an ink
 		 *
 		 *	@return		void
 		 */

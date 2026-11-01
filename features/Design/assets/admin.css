@@ -400,6 +400,11 @@
 	cursor: not-allowed;
 }
 
+/*	An ink is a select of the tones of the page under the name of the knob, the width of the strip it stands for */
+.nino-admin .design-knob-row--select select {
+	width: 100%;
+}
+
 /*	A toggle is the workbench's switch in the box of a row: the track, the name with
 	its note and the word of the state, set in the type a strip's label has, so that a
 	row of either kind reads alike. The switch keeps no padding of its own - the row has

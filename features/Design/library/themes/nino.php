@@ -16,7 +16,7 @@ return [
 		'radius-alt'	=> 1,
 		'radii'		=> [ 'cover' => 'standard', 'row' => 'standard', 'column' => 'standard', 'card' => 'standard', 'image' => 'standard' ],
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
-		'parts'		=> [ 'header' => 'regular', 'footer' => 'one-legal-row', 'section' => 'regular', 'card' => 'regular', 'buttons' => 'regular', 'lists' => 'regular', 'tables' => 'regular' ],
+		'parts'		=> [ 'header' => 'regular', 'footer' => 'one-legal-row', 'section' => 'regular', 'card' => 'regular', 'buttons' => 'regular', 'lists' => 'regular', 'tables' => 'regular', 'forms' => 'regular' ],
 		'knobs'		=> [
 			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'position' => 1, 'cta' => -1 ],
 			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'ground' => 0 ],
@@ -25,6 +25,7 @@ return [
 			'buttons' 		=> [ 'size' => 0, 'spread' => 0, 'space' => 0, 'corners' => 0, 'hover' => 0 ],
 			'lists' 		=> [ 'scale' => 0, 'space' => 0, 'marker' => 0 ],
 			'tables' 		=> [ 'scale' => 0, 'space' => 0, 'border' => 0, 'zebra' => 0, 'stripes' => 0 ],
+			'forms' 		=> [ 'scale' => 0, 'space' => 0, 'corners' => 0, 'line' => 0, 'labels' => 0, 'edge' => '', 'label' => '' ],
 		],
 		'features'	=> [],
 		'fonts'		=> [

@@ -30,6 +30,7 @@ return [
 	'[[/_admin/design/object/buttons/label]]'						=> 'Buttons',
 	'[[/_admin/design/object/lists/label]]'							=> 'Listen',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tabellen',
+	'[[/_admin/design/object/forms/label]]'							=> 'Formular',
 
 	// Die Themes: die Liste mit einer Zeile je Theme, ihren Knöpfen und dem Import – und was ein Theme von sich sagt. Das eigene CSS eines Themes ist die Ansicht CSS des Setups
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
@@ -78,6 +79,7 @@ return [
 	'[[/_admin/design/part/buttons]]'							=> 'Vorlage Buttons',
 	'[[/_admin/design/part/lists]]'							=> 'Vorlage Listen',
 	'[[/_admin/design/part/tables]]'							=> 'Vorlage Tabellen',
+	'[[/_admin/design/part/forms]]'							=> 'Vorlage Formular',
 	'[[/_admin/design/label/size]]'								=> 'Grundgröße',
 	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Breite',
@@ -319,6 +321,26 @@ return [
 	'[[/_admin/design/knob/tables/stripes/label]]'							=> 'Streifenstärke',
 	'[[/_admin/design/knob/tables/stripes/note]]'							=> 'schwächer ↔ stärker',
 
+	'[[/_admin/design/knob/forms/scale/label]]'							=> 'Textgröße',
+	'[[/_admin/design/knob/forms/scale/note]]'							=> 'kleiner ↔ größer',
+	'[[/_admin/design/knob/forms/space/label]]'							=> 'Abstände',
+	'[[/_admin/design/knob/forms/space/note]]'							=> 'enger ↔ weiter',
+	'[[/_admin/design/knob/forms/corners/label]]'							=> 'Ecken',
+	'[[/_admin/design/knob/forms/corners/note]]'							=> 'eckiger ↔ runder',
+	'[[/_admin/design/knob/forms/line/label]]'							=> 'Linien',
+	'[[/_admin/design/knob/forms/line/note]]'							=> 'keine ↔ dick',
+	'[[/_admin/design/knob/forms/labels/label]]'							=> 'Beschriftung',
+	'[[/_admin/design/knob/forms/labels/note]]'							=> 'wo die Beschriftung eines Feldes steht',
+	'[[/_admin/design/knob/forms/labels/less]]'							=> 'Daneben',
+	'[[/_admin/design/knob/forms/labels/default]]'							=> 'Darüber',
+	'[[/_admin/design/knob/forms/labels/more]]'							=> 'Schwebend',
+	'[[/_admin/design/knob/forms/edge/label]]'							=> 'Linienfarbe',
+	'[[/_admin/design/knob/forms/edge/note]]'							=> 'die Farbe der Linien eines Feldes',
+	'[[/_admin/design/knob/forms/label/label]]'							=> 'Beschriftungsfarbe',
+	'[[/_admin/design/knob/forms/label/note]]'							=> 'die Farbe der Wörter einer Beschriftung',
+	'[[/_admin/design/knob/forms/label-case/label]]'							=> 'Beschriftungen, Großbuchstaben',
+	'[[/_admin/design/knob/forms/label-case/note]]'							=> 'Großbuchstaben an oder aus',
+
 	// Was der Dialog vor dem Anwenden sagt, eine Zeile je Tatsache in Worten – im Skript des Panels gebaut und mit Zeilenumbrüchen verbunden, deshalb trägt hier kein Wert einen.
 	// Die Dateien selbst, mit ihren Pfaden, stehen in den Details darunter
 	'[[/_admin/design/confirm/replaced]]'						=> 'Vorlagen, die es nicht mehr gibt: %s. Angewendet werden stattdessen: %s.',
@@ -426,6 +448,7 @@ return [
 	'[[/_admin/design/ink/primary]]'							=> 'Marke',
 	'[[/_admin/design/ink/border]]'							=> 'Rand',
 	'[[/_admin/design/ink/focus]]'							=> 'Fokus',
+	'[[/_admin/design/label/own]]'							=> 'Wie die Vorlage es zeichnet',
 	'[[/_admin/design/label/light]]'						=> 'Hell',
 	'[[/_admin/design/label/dark]]'						=> 'Dunkel',
 	'[[/_admin/design/label/contrast]]'						=> 'Gegen die Seite messen die beiden Hälften %s:1 im Hellen und %s:1 im Dunklen – eine Markierung braucht %s:1. Die Farben bleiben, wie sie sind.',

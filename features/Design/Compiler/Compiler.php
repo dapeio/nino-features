@@ -18,7 +18,7 @@ namespace Nino\Modules\Design {
 	 *										palette over them, the type, the roles those tokens are
 	 *										assigned to, the root size, the width, the whitespace, the
 	 *										radius of its surfaces and the animation of the page, the
-	 *										chosen frames, the five chosen sets, the variants the
+	 *										chosen frames, the six chosen sets, the variants the
 	 *										features that bring some are given, the block that says
 	 *										which step of every ladder is live, and last the css of the
 	 *										theme, as it was typed.
@@ -90,7 +90,7 @@ namespace Nino\Modules\Design {
 		private const array HALVES = [ '/* ---- 1. ', '/* ---- 2. ' ];
 
 		/**
-		 *	The stylesheet a setup produces, in fifteen numbered sections - and one more for each feature
+		 *	The stylesheet a setup produces, in sixteen numbered sections - and one more for each feature
 		 *	that has a variant chosen, after the sets (see below):
 		 *
 		 *	  1 the tokens          base.css, the --nino-* defaults
@@ -100,9 +100,9 @@ namespace Nino\Modules\Design {
 		 *	  5 the root size
 		 *	  6 the page            the width, the whitespace, the radius of its surfaces, and the animation as a rule on main
 		 *	  7 header, 8 footer    the chosen frames
-		 *	  9 section, 10 card, 11 buttons, 12 lists, 13 tables    the chosen sets
-		 *	  14 the knob positions
-		 *	  15 the theme          the custom css, as it was typed
+		 *	  9 section, 10 card, 11 buttons, 12 lists, 13 tables, 14 forms    the chosen sets
+		 *	  15 the knob positions
+		 *	  16 the theme          the custom css, as it was typed
 		 *
 		 *	A frame or a set the library does not have is left out and noted, and
 		 *	the sections after it take the numbers that are free. So do the sections of the
@@ -152,6 +152,7 @@ namespace Nino\Modules\Design {
 			$selection 	= [];
 			$answered 	= [];
 			$styled 		= [];
+			$inks 			= [];
 
 			// 1. and 4. the tokens and the roles they are assigned to, which
 			// base.css holds as its two halves. The feature's own copy:
@@ -209,7 +210,7 @@ namespace Nino\Modules\Design {
 
 			$parts[] = sprintf( self::SECTION, 6, 'the page' ). "\n". self::page( $setup );
 
-			// 7. and 8. the frames, then 9. to 13. the sets - both in PARTS
+			// 7. and 8. the frames, then 9. to 14. the sets - both in PARTS
 			// order, which is the order the cascade wants them in
 			$number = 7;
 
@@ -238,7 +239,7 @@ namespace Nino\Modules\Design {
 				$answered[$part] = $knobs;
 
 				foreach( $knobs as $knob )
-					$where[] = $knob. ' '. Setup::step( $setup, $part, $knob );
+					$where[] = $knob. ' '. Setup::said( $setup, $part, $knob );
 
 				/*	The css of each style chosen, behind the css of the set and in its section. The choice was held to the
 					files of the set when the setup was normalised; a file that is gone since is told, and left out	*/
@@ -269,12 +270,24 @@ namespace Nino\Modules\Design {
 					line */
 				foreach( $ladders as $knob => $names )
 					foreach( $names as $name ) {
+
 						$token = $part. '-'. $name;
-						$selection[$token] = "\t--". $token. ': var('. sprintf( Setup::KNOB_TOKEN, $part, $name, Setup::step( $setup, $part, $knob ) ). ');';
+						$line = "\t--". $token. ': var('. sprintf( Setup::KNOB_TOKEN, $part, $name, Setup::step( $setup, $part, $knob ) ). ');';
+
+						/*	An ink is the tone of the page on the ground the element stands on, so it is written on every element, in the
+							block of the inks (see below): the rung the template gives it where nothing is chosen, the tone where a
+							tone is - the var() of the role of the page, which the sections of Nino.css point elsewhere on their own ground	*/
+						if( Setup::kind( $part, $knob ) === 'ink' ) {
+
+							$tone = $name === $knob ? Setup::tone( $setup['knobs'][$part][$knob] ?? '' ) : '';
+							$inks['--'. $token] = $tone !== '' ? "\t--". $token. ': var('. Setup::INKS[$tone]. ');' : $line;
+						}
+						else
+							$selection[$token] = $line;
 					}
 			}
 
-			/*	The variants of the features, after the seven parts so that a feature that restyles what a part
+			/*	The variants of the features, after the eight parts so that a feature that restyles what a part
 				drew has the last word - and the stylesheet the feature itself loads on the site comes after
 				this whole sheet, so that what a variant sets is set on what that one declares. In the order
 				of the catalogue. A feature that has an entry and is not in the catalogue is told, once -
@@ -282,7 +295,6 @@ namespace Nino\Modules\Design {
 			$catalogue 	= Setup::features( $appData );
 			$featured 	= [];
 			$lines 			= [];
-			$inks 			= [];
 			$dark 			= [];
 
 			foreach( array_keys( (array) ( $setup['features'] ?? [] ) ) as $key ) {
@@ -396,7 +408,7 @@ namespace Nino\Modules\Design {
 			}
 
 			/*	The block of the knob positions: the lines of the parts, sorted, and those of the features after them in the
-				order of the catalogue and of the heads. Then the inks, which are declared on every element (see above), and the
+				order of the catalogue and of the heads. Then the inks - those of the parts first, then those of the features -, which are declared on every element (see above), and the
 				dark halves of the colours, under the selectors the palette's own dark half stands under	*/
 			ksort( $selection );
 
@@ -709,8 +721,8 @@ namespace Nino\Modules\Design {
 				// Only the knobs the set answers to that stand off the middle: the
 				// rest is the template as it is
 				foreach( $answered[$part] ?? [] as $knob )
-					if( Setup::step( $setup, $part, $knob ) !== 'default' )
-						$moved[] = $knob. ' '. Setup::step( $setup, $part, $knob );
+					if( Setup::said( $setup, $part, $knob ) !== 'default' )
+						$moved[] = $knob. ' '. Setup::said( $setup, $part, $knob );
 
 				// The styles follow the knobs of their part
 				$moved = array_merge( $moved, $styled[$part] ?? [] );

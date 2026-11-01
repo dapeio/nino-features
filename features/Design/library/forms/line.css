@@ -1,26 +1,13 @@
 /*	@name			Line
- *	@name-de		Linie
  *	@description	A field is a rule under the words: no box, no fill, no corner, and the rule doubles in the colour of the focus when the field is typed in.
  *	@description-de	Ein Feld ist eine Linie unter den Wörtern: kein Kasten, keine Füllung, keine Ecke, und die Linie verdoppelt sich in der Farbe des Fokus, wenn im Feld getippt wird.
  *
- *	@knob	scale		scale	type		Size of the fields' text
- *	@knob-de	scale		Schriftgröße der Felder
- *	@knob	space		scale	surfaces	Space inside a field and under it
- *	@knob-de	space		Raum im Feld und darunter
- *	@knob	line		scale	surfaces	Weight of the line of a field
- *	@knob-de	line		Stärke der Linie eines Feldes
- *	@knob	labels		choice	surfaces	Where the label of a field stands
- *	@knob-de	labels		Wo die Beschriftung eines Feldes steht
- *	@option	labels	less	Beside
- *	@option	labels	default	Above
- *	@option	labels	more	Floating
- *	@option-de	labels	less	Daneben
- *	@option-de	labels	default	Darüber
- *	@option-de	labels	more	Schwebend
- *	@knob	edge		ink	colours		Colour of the lines	= border
- *	@knob-de	edge		Farbe der Linien
- *	@knob	label		ink	colours		Colour of the labels	= ink
- *	@knob-de	label		Farbe der Beschriftungen
+ *	@knob	scale		Size of the fields' text
+ *	@knob	space		Space inside a field and under it
+ *	@knob	line		Weight of the line of a field
+ *	@knob	labels		Where the label of a field stands
+ *	@knob	edge		Colour of the lines
+ *	@knob	label		Colour of the labels
  *
  *	A field with no box has no visible target before it is clicked, which is fine for three fields under a heading and wrong
  *	for a checkout. There is no corner left to round, so there is no corners knob; the focus rule is a pixel heavier than the
@@ -103,9 +90,11 @@
 	--forms-message-corners:	0;
 }
 
-/*	The colours are declared where they are used, on every element (see forms.css): no fill, and the line takes the colour of
-	the focus when the field is typed in	*/
+/*	The colours are declared where they are used, on every element (see Nino.css): the tones of the two inks, no fill, and the
+	line takes the colour of the focus when the field is typed in	*/
 :root, :root * {
+	--forms-edge--default:	var(--color-border);
+	--forms-label--default:	var(--color-ink);
 	--forms-fill:		transparent;
 	--forms-edge-focus:	var(--color-focus);
 }

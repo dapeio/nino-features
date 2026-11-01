@@ -5,8 +5,8 @@ return [
 	'key'					=> 'forms',
 	'name'				=> [ 'en_US' => 'Forms', 'de_DE' => 'Formulare' ],
 	'description'	=> [
-		'en_US' => 'A builder for Nino\'s own form endpoint: any number of forms with fields of their own, a [form] shortcode that draws them, and spam protection without a captcha - and, with the Design feature, four looks of the fields with knobs for their size, space, corners, lines and labels.',
-		'de_DE' => 'Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare mit eigenen Feldern, ein Shortcode [form], der sie zeichnet, und Spam-Schutz ohne Captcha – und, mit dem Feature Design, vier Looks der Felder mit Reglern für ihre Größe, ihren Raum, ihre Ecken, Linien und Beschriftungen.',
+		'en_US' => 'A builder for Nino\'s own form endpoint: any number of forms with fields of their own, a [form] shortcode that draws them, and spam protection without a captcha. How the fields look is the kernel\'s, and the Design feature sets it.',
+		'de_DE' => 'Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare mit eigenen Feldern, ein Shortcode [form], der sie zeichnet, und Spam-Schutz ohne Captcha. Wie die Felder aussehen, bestimmt der Kernel, und das Feature Design stellt es ein.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
@@ -32,9 +32,9 @@ return [
 			],
 		],
 		'markup' => [
-			'Custom properties' => [
-				'en_US' => 'forms.css declares the properties a field is drawn from - --forms-scale, --forms-space, --forms-corners, --forms-line, --forms-labels with its aspects, --forms-edge, --forms-label and the ones a look sets besides - with the kernel\'s own values as their defaults: lengths, numbers and keywords in :where(:root), the colours in :where(*). A project restyles a field without overriding a rule: a length, a number or a keyword goes on :root in its own stylesheet, a colour on :root, :root * (or on the element that reads it), because every element has a default of its own for the colours - the looks of the Design feature declare them that way. forms.css comes after the project\'s style.css in the bundle, so a rule of its own on .nino-form-input and the other field classes needs more specificity than the class alone - or it moves the properties. The names are declared at the top of the stylesheet.',
-				'de_DE' => 'forms.css deklariert die Properties, aus denen ein Feld gezeichnet wird – --forms-scale, --forms-space, --forms-corners, --forms-line, --forms-labels mit seinen Aspekten, --forms-edge, --forms-label und die, die ein Look sonst setzt –, mit den Werten des Kernels als Vorgabe: Längen, Zahlen und Schlüsselwörter in :where(:root), die Farben in :where(*). Ein Projekt stellt ein Feld um, ohne eine Regel zu überschreiben: Eine Länge, eine Zahl oder ein Schlüsselwort steht im eigenen Stylesheet auf :root, eine Farbe auf :root, :root * (oder auf dem Element, das sie liest), denn für die Farben hat jedes Element eine eigene Vorgabe – so deklarieren sie auch die Looks des Features Design. forms.css kommt im Bündel nach dem style.css des Projekts; eine eigene Regel auf .nino-form-input und den anderen Feld-Klassen braucht darum mehr Spezifität als die Klasse allein – oder sie setzt die Properties. Die Namen stehen oben im Stylesheet.',
+			'The look of the fields' => [
+				'en_US' => 'The fields, their labels, the status line, the checkbox (.nino-forms-check) and the group of radio buttons (.nino-forms-group) are drawn by Nino.css from the properties --forms-*, which the Design feature sets under the object Form, so this feature brings no stylesheet - and on a Nino before the one that draws the form there, a form looks as the contact form of the starter site does and the checkbox and the radio group are as the browser draws them.',
+				'de_DE' => 'Die Felder, ihre Beschriftungen, die Statuszeile, die Checkbox (.nino-forms-check) und die Gruppe von Radio-Buttons (.nino-forms-group) zeichnet Nino.css aus den Properties --forms-*, die das Feature Design unter dem Objekt Formular einstellt, darum bringt dieses Feature kein Stylesheet mit – und auf einem Nino vor dem, das das Formular dort zeichnet, sieht ein Formular aus wie das Kontaktformular der Start-Site, und die Checkbox und die Radiogruppe sind, wie der Browser sie zeichnet.',
 			],
 		],
 		'routes' => [],
@@ -46,10 +46,6 @@ return [
 			'Forms: fields' => [
 				'en_US' => 'One row per field: text, email, tel, url, number, textarea, select, radio, checkbox or date, required or not; the name follows the label until it is typed into. Saved to /nino/form/forms in config.php.',
 				'de_DE' => 'Eine Zeile je Feld: text, email, tel, url, number, textarea, select, radio, checkbox oder date, Pflicht oder nicht; der Name folgt der Beschriftung, bis er selbst getippt wird. Gespeichert unter /nino/form/forms in der config.php.',
-			],
-			'Design: the look of the forms' => [
-				'en_US' => 'With the Design feature on, the tab Forms of the Design panel offers under Base four looks of the fields - Regular, Line, Filled and Contrast - and its knobs stand under Text (the size of the text), Surface (space, corners, the weight of the line, where the label stands: beside, above or floating) and Colour (the colour of the lines and of the labels). A look applies to every form that carries the kernel\'s form classes, drawn by [form] or written by hand; the send button stays the primary button of the page, and on a touch screen a field is never set under 1rem. The preview of the Design panel shows the look on the block this feature brings, design/preview.tpl - a form with its messages, in a section named after the feature, before the footer of the specimen - and a change of the look or of a knob scrolls the preview to it; Apply to website puts it on the site.',
-				'de_DE' => 'Ist das Feature Design an, bietet der Tab Formulare des Design-Panels unter Grundlage vier Looks der Felder an – Regulär, Linie, Gefüllt und Kontrast –, und seine Regler stehen unter Text (die Größe des Textes), Fläche (Raum, Ecken, Stärke der Linie, wo die Beschriftung steht: daneben, darüber oder schwebend) und Farbe (die Farbe der Linien und der Beschriftungen). Ein Look gilt für jedes Formular mit den Formular-Klassen des Kernels, ob [form] es zeichnet oder Du es von Hand schreibst; der Absende-Button bleibt der Primär-Button der Seite, und auf einem Touch-Bildschirm wird ein Feld nie unter 1rem gesetzt. Die Vorschau des Design-Panels zeigt den Look an dem Block, den dieses Feature mitbringt, design/preview.tpl – ein Formular mit seinen Meldungen, in einer Sektion mit dem Namen des Features, vor dem Footer der Musterseite –, und eine Änderung des Looks oder eines Reglers scrollt die Vorschau dorthin; Auf Website anwenden bringt ihn auf die Site.',
 			],
 			'Submissions: keep and record' => [
 				'en_US' => 'How long the kernel keeps submissions (1 to 60 months) and whether it records them at all - /nino/form/retention and /nino/form/store.',
@@ -71,8 +67,7 @@ return [
 	],
 	'category'		=> 'communication',
 	'version'			=> '1.1.0',
-	// 1.8, for the toolset the code and the panel are written on, and for the
-	// manifest key 'assets' that bundles the stylesheet
+	// 1.8, for the toolset the code and the panel are written on
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing: the definitions live in config.php under '/nino/form/forms',
@@ -80,9 +75,6 @@ return [
 	// the submissions are the kernel's own /data/forms.<Y-m>.php. The one
 	// file this feature writes is a spam counter that rebuilds itself
 	'data'				=> [],
-	// The checkbox and the group of radio buttons [form] draws and the look of the
-	// kernel's form family, into the site's style bundle
-	'assets'			=> [ '/features/Forms/assets/forms.css' ],
 	'settings'		=> [
 		'rateLimit' => [
 			'type'	=> 'int',

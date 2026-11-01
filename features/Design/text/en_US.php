@@ -15,7 +15,7 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The six aspects of the design, the blocks under an object, and the eight objects, the tabs on top (a feature that brings variants is named after itself)
+	// The six aspects of the design, the blocks under an object, and the nine objects, the tabs on top (a feature that brings variants is named after itself)
 	'[[/_admin/design/tab/templates/label]]'						=> 'Base',
 	'[[/_admin/design/tab/type/label]]'								=> 'Text',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surface',
@@ -30,6 +30,7 @@ return [
 	'[[/_admin/design/object/buttons/label]]'						=> 'Buttons',
 	'[[/_admin/design/object/lists/label]]'							=> 'Lists',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tables',
+	'[[/_admin/design/object/forms/label]]'							=> 'Form',
 
 	// The themes: the list with a row for each, its buttons and the import - and what a theme says of itself. The css of a theme is the view CSS of the setup
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
@@ -78,6 +79,7 @@ return [
 	'[[/_admin/design/part/buttons]]'							=> 'Buttons template',
 	'[[/_admin/design/part/lists]]'							=> 'Lists template',
 	'[[/_admin/design/part/tables]]'							=> 'Tables template',
+	'[[/_admin/design/part/forms]]'							=> 'Form template',
 	'[[/_admin/design/label/size]]'								=> 'Root size',
 	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % of the browser\'s own size, never a fixed number of pixels',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Width',
@@ -319,6 +321,26 @@ return [
 	'[[/_admin/design/knob/tables/stripes/label]]'							=> 'Stripe strength',
 	'[[/_admin/design/knob/tables/stripes/note]]'							=> 'fainter ↔ stronger',
 
+	'[[/_admin/design/knob/forms/scale/label]]'							=> 'Text size',
+	'[[/_admin/design/knob/forms/scale/note]]'							=> 'smaller ↔ larger',
+	'[[/_admin/design/knob/forms/space/label]]'							=> 'Space',
+	'[[/_admin/design/knob/forms/space/note]]'							=> 'tighter ↔ wider',
+	'[[/_admin/design/knob/forms/corners/label]]'							=> 'Corners',
+	'[[/_admin/design/knob/forms/corners/note]]'							=> 'sharper ↔ rounder',
+	'[[/_admin/design/knob/forms/line/label]]'							=> 'Lines',
+	'[[/_admin/design/knob/forms/line/note]]'							=> 'none ↔ thick',
+	'[[/_admin/design/knob/forms/labels/label]]'							=> 'Labels',
+	'[[/_admin/design/knob/forms/labels/note]]'							=> 'where the label of a field stands',
+	'[[/_admin/design/knob/forms/labels/less]]'							=> 'Beside',
+	'[[/_admin/design/knob/forms/labels/default]]'							=> 'Above',
+	'[[/_admin/design/knob/forms/labels/more]]'							=> 'Floating',
+	'[[/_admin/design/knob/forms/edge/label]]'							=> 'Line colour',
+	'[[/_admin/design/knob/forms/edge/note]]'							=> 'the colour of the lines of a field',
+	'[[/_admin/design/knob/forms/label/label]]'							=> 'Label colour',
+	'[[/_admin/design/knob/forms/label/note]]'							=> 'the colour of the words of a label',
+	'[[/_admin/design/knob/forms/label-case/label]]'							=> 'Labels, uppercase',
+	'[[/_admin/design/knob/forms/label-case/note]]'							=> 'uppercase on or off',
+
 	// What the dialog before an apply says, one line per fact in words - built in the panel's script and joined with line breaks, so no value here carries one.
 	// The files themselves, by their paths, are in the details under it
 	'[[/_admin/design/confirm/replaced]]'						=> 'Templates that are not there any more: %s. Applied instead: %s.',
@@ -426,6 +448,7 @@ return [
 	'[[/_admin/design/ink/primary]]'							=> 'Brand',
 	'[[/_admin/design/ink/border]]'							=> 'Border',
 	'[[/_admin/design/ink/focus]]'							=> 'Focus',
+	'[[/_admin/design/label/own]]'							=> 'As the template draws it',
 	'[[/_admin/design/label/light]]'						=> 'Light',
 	'[[/_admin/design/label/dark]]'						=> 'Dark',
 	'[[/_admin/design/label/contrast]]'						=> 'Against the page the two halves measure %s:1 in light and %s:1 in dark - a mark needs %s:1. The colours stay as they are.',

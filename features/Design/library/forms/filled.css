@@ -1,34 +1,20 @@
 /*	@name			Filled
- *	@name-de		Gefüllt
  *	@description	Tinted fields without a line; the line under a field comes from the position above the middle, and the tint drops to the ground when the field is typed in.
  *	@description-de	Getönte Felder ohne Linie; die Linie unter einem Feld kommt von der Stellung über der Mitte, und die Tönung fällt auf den Grund zurück, wenn im Feld getippt wird.
  *
- *	@knob	scale		scale	type		Size of the fields' text
- *	@knob-de	scale		Schriftgröße der Felder
- *	@knob	space		scale	surfaces	Space inside a field and under it
- *	@knob-de	space		Raum im Feld und darunter
- *	@knob	corners		scale	surfaces	Corners of a field
- *	@knob-de	corners		Ecken eines Feldes
- *	@knob	line		scale	surfaces	Line under a field
- *	@knob-de	line		Linie unter einem Feld
- *	@knob	labels		choice	surfaces	Where the label of a field stands
- *	@knob-de	labels		Wo die Beschriftung eines Feldes steht
- *	@option	labels	less	Beside
- *	@option	labels	default	Above
- *	@option	labels	more	Floating
- *	@option-de	labels	less	Daneben
- *	@option-de	labels	default	Darüber
- *	@option-de	labels	more	Schwebend
- *	@knob	edge		ink	colours		Colour of the lines	= border
- *	@knob-de	edge		Farbe der Linien
- *	@knob	label		ink	colours		Colour of the labels	= ink
- *	@knob-de	label		Farbe der Beschriftungen
+ *	@knob	scale		Size of the fields' text
+ *	@knob	space		Space inside a field and under it
+ *	@knob	corners		Corners of a field
+ *	@knob	line		Weight of the line under a field
+ *	@knob	labels		Where the label of a field stands
+ *	@knob	edge		Colour of the lines
+ *	@knob	label		Colour of the labels
  *
  *	The fill is the field, which is why it is the ink of the ground the field stands on, thinned out, rather than a colour of
  *	its own: a form is not a place for a second palette. On focus the fill drops back to the ground and the ring takes over,
  *	so the field being typed in is the one that looks emptiest. Colour instead of edges: the one line there is is the one
- *	under a field, which the line knob draws from the position above the middle. A label that floats lies on the tint of its
- *	field and is cut on it.
+ *	under a field, which the line knob draws one pixel lighter than the other sets do - so it shows from the position above
+ *	the middle. A label that floats lies on the tint of its field and is cut on it.
  */
 
 :root {
@@ -50,13 +36,12 @@
 	--forms-corners--more:		var(--radius-large);
 	--forms-corners--most:		1rem;
 
-	/*	The line under a field adds a presence rather than a size, and a tinted field has none at the middle, where the
-		kernel has a hairline: none up to the middle, and above it 1px and 2px	*/
+	/*	The weight of a line is the kernel's, as in every set; what this set draws of it is read below	*/
 	--forms-line--least:	0px;
-	--forms-line--less:		0px;
-	--forms-line--default:	0px;
-	--forms-line--more:		1px;
-	--forms-line--most:		2px;
+	--forms-line--less:		.5px;
+	--forms-line--default:	1px;
+	--forms-line--more:		2px;
+	--forms-line--most:		3px;
 
 	/*	Where a label stands. Above the field is Nino.css: the form is a block and the label a line of text. Beside, the
 		form is a grid of a column for the labels and a column for the fields, this far apart. Floating, the label is
@@ -103,18 +88,21 @@
 	--forms-labels-cut--default:	transparent;
 	--forms-labels-cut--more:		initial;
 
-	/*	What makes it filled: the line under the field alone, the room round the words and under the field, the status line
-		in the same proportions, and the ring flush with the field	*/
-	--forms-width:		0 0 var(--forms-line);
+	/*	What makes it filled: the line under the field alone, one pixel less than the knob says - a tinted field has none at the
+		middle, where the kernel has a hairline, and never less than none -, the room round the words and under the field, the
+		status line in the same proportions, and the ring flush with the field	*/
+	--forms-width:		0 0 max( 0px, calc( var(--forms-line) - 1px ) );
 	--forms-ring-offset:	0px;
 	--forms-pad:		calc( var(--forms-space) * 2 / 1.5 ) calc( var(--forms-space) * 2 );
 	--forms-gap:		calc( var(--forms-space) * 2 );
 	--forms-message-pad:	calc( var(--forms-space) * 2 / 1.4 );
 }
 
-/*	The colours are declared where they are used, on every element (see forms.css): the tint at rest, the ground in focus, and
-	the colour of the line kept	*/
+/*	The colours are declared where they are used, on every element (see Nino.css): the tones of the two inks, the tint at
+	rest, the ground in focus, and the colour of the line kept	*/
 :root, :root * {
+	--forms-edge--default:	var(--color-border);
+	--forms-label--default:	var(--color-ink);
 	--forms-fill:		color-mix( in srgb, var(--color-ink) 7%, var(--color-ground) );
 	--forms-fill-focus:	var(--color-ground);
 	--forms-edge-focus:	var(--forms-edge);

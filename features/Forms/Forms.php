@@ -92,8 +92,8 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the shortcode and the two halves of the guard. The stylesheet
-		 *	of the two fields that need one is the manifest's 'assets'. No route:
+		 *	Register the shortcode and the two halves of the guard. The look of the
+		 *	fields, the checkbox and the radio group is the kernel's (Nino.css). No route:
 		 *	the endpoint is \Nino\Modules\Form's, and a project that switched that
 		 *	module off has no form endpoint on purpose - this feature is not the
 		 *	place to put one back

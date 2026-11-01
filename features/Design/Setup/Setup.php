@@ -19,14 +19,14 @@ namespace Nino\Modules\Design {
 	 *										here that cannot be worked out again from what is on disk.
 	 *
 	 *										One model for the panel (the loader of the typefaces installs
-	 *										families and keeps nothing here): the seven
+	 *										families and keeps nothing here): the eight
 	 *										templates (header and footer bring markup and a stylesheet,
-	 *										section, card, buttons, lists and tables are one stylesheet
+	 *										section, card, buttons, lists, tables and forms are one stylesheet
 	 *										each), the root size, the width and the whitespace of the
 	 *										page, the radius of its surfaces - two strengths and, for
 	 *										each kind of surface, the one it takes -, its animation and
 	 *										the hover of its pictures, a position for every named knob
-	 *										of the seven templates, the five font roles and the
+	 *										of the eight templates, the five font roles and the
 	 *										palette - and, for the list of the themes and the view CSS,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
@@ -102,9 +102,12 @@ namespace Nino\Modules\Design {
 			footer the two frames; the section the hero, a section with its title, subtitle and
 			text, the cover and the column on a ground; the card a card and the parts of it; the
 			buttons .nino-btn and its variants; the lists .nino-list and its two markers; the
-			tables .nino-table, its cells, its lines and its stripes. The fields of a form and
-			the blocks - badge, alert, pricing table, accordion and timeline - are no part: the
-			kernel draws them, until the features that bring forms and blocks bring their own.
+			tables .nino-table, its cells, its lines and its stripes; the forms the fields of a
+			form, their labels, the status line, the checkbox and the radio group. The blocks -
+			badge, alert, pricing table, accordion and timeline - are no part: the kernel draws
+			them, until the features that bring blocks bring their own. The kernel draws a form
+			as well - Nino.css holds the rules and the defaults of the properties --forms-* -, and
+			the sets of the forms are the ladders of those properties and the looks they make.
 
 			A `frame` part brings a template and is chosen from library/<part>/<set>/: a
 			template.tpl, which is the markup, and a style.css, which declares ladders the way
@@ -113,7 +116,9 @@ namespace Nino\Modules\Design {
 			content set, until its rules were cut in two: the sets of the two carry the same four
 			names - Regular, Open, Panel and Box -, so that a theme names a sensible pair and a
 			person can still mix them. The tables are what is left of the components set, whose
-			fields and blocks the kernel draws now: its table rules, five sets of them	*/
+			fields and blocks the kernel draws now: its table rules, five sets of them. The forms
+			are the eighth part, four sets of them, which declare no rule of their own: the rules
+			are the kernel's, and a set says what the properties they read are	*/
 		public const array PARTS = [
 			'header' 			=> 'frame',
 			'footer' 			=> 'frame',
@@ -122,6 +127,7 @@ namespace Nino\Modules\Design {
 			'buttons' 		=> 'set',
 			'lists' 			=> 'set',
 			'tables' 			=> 'set',
+			'forms' 			=> 'set',
 		];
 
 		/*	What a knob can be set to, as the words a stylesheet declares its values
@@ -146,7 +152,12 @@ namespace Nino\Modules\Design {
 			are no more or less of anything - the stripes of a table, the marker of a
 			list - and has three, which the panel names by words. A toggle is a switch of
 			two positions, 0 and 1, off and on - the case of a thing, the template as it is
-			or in capitals - and the panel draws it as a switch and no strip:
+			or in capitals - and the panel draws it as a switch and no strip. An ink is
+			the colour of a thing as one of the seven tones of INKS - the line of a field, the
+			words of a label - or none, which is the tone the template itself gives it: it
+			has one rung, `default`, which the template declares as the tone it gives, and the
+			panel draws it as a select. It is written on every element, since the tone is
+			the page's on the ground the element stands on (see Compiler::compile()):
 
 				header		nav					the size of the links of the navigation
 							height				how tall the bar is, and how far main starts below a fixed one
@@ -188,7 +199,15 @@ namespace Nino\Modules\Design {
 							space				the space in a cell
 							border				the weight of its lines
 							zebra				the stripes of a table that asks for them (a choice)
-							stripes				how strong the stripes are	*/
+							stripes				how strong the stripes are
+				forms		scale				the type size of a field
+							space				the padding of a field and the space under it
+							corners				the corners of a field
+							line				the weight of the line of a field
+							labels				where the label of a field stands: beside it, above it or floating on its edge (a choice)
+							edge				the colour of the lines of a field (an ink)
+							label				the colour of the labels (an ink)
+							label-case			the labels in capitals (a toggle)	*/
 		public const array KNOBS = [
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'cta' => 'choice', 'nav-case' => 'toggle' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'nav-case' => 'toggle' ],
@@ -197,13 +216,14 @@ namespace Nino\Modules\Design {
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
+			'forms' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'line' => 'scale', 'labels' => 'choice', 'edge' => 'ink', 'label' => 'ink', 'label-case' => 'toggle' ],
 		];
 
 		/*	The setup in two axes. A tab is a property of the design - the templates, the type,
 			the surfaces, the colours, the motion, and the css of the theme - and an object is what
 			a property is set on: the page, the header, the footer, a section, a card, the buttons,
-			the lists and the tables. TABS are the six views of the panel's setup screen, in the
-			order they are shown in, and OBJECTS the eight objects in the order their rows follow one
+			the lists, the tables and the forms. TABS are the six views of the panel's setup screen, in the
+			order they are shown in, and OBJECTS the nine objects in the order their rows follow one
 			another on a view that draws rows, which is every view but the last: the templates, the
 			type, the surfaces, the colours and the motion, each an accordion of one block for each
 			object that has a control on it - the css is one field with no object. The themes and the
@@ -212,13 +232,13 @@ namespace Nino\Modules\Design {
 			objects are /_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label.
 
 			Every part but the page has an object of its own, named as the part is: the header and
-			the footer, the section, the card, the buttons, the lists and the tables. The page is
+			the footer, the section, the card, the buttons, the lists, the tables and the forms. The page is
 			the one object that is no part - its controls are the root size, the width, the
 			whitespace, the radius, the five font roles, the palette, the animation and the
 			hover of the pictures	*/
 		public const array TABS = [ 'templates', 'type', 'surfaces', 'colours', 'motion', 'css' ];
 
-		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables' ];
+		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables', 'forms' ];
 
 		/*	Where every control of the panel stands, and the only place that says: one entry for
 			each thing the setup lets a person choose, keyed by where the choice is kept in it -
@@ -230,9 +250,9 @@ namespace Nino\Modules\Design {
 			stand at one place are one control: the cover, the row and the column of a section
 			take the strength of their corners from one choice, and the second colour is the
 			swatch at the end of the row of Harmony. An object with no control on a tab has no
-			row there. Every entry names one of OBJECTS: the seven templates stand under the
+			row there. Every entry names one of OBJECTS: the eight templates stand under the
 			object each is the template of - the header, the footer, the section, the card, the
-			buttons, the lists and the tables -, and the knobs under the object of their part,
+			buttons, the lists, the tables and the forms -, and the knobs under the object of their part,
 			the frames' among them: a header and a footer have a ladder each for their type, their
 			surfaces and their ground. The colours and the motion are the page's palette, its
 			animation and the hover of its pictures, and each object that has a ladder of colour
@@ -246,7 +266,7 @@ namespace Nino\Modules\Design {
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the choice of a set for each of the seven parts, under the object it is the template of
+			// The templates: the choice of a set for each of the eight parts, under the object it is the template of
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
 			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
 			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
@@ -256,6 +276,7 @@ namespace Nino\Modules\Design {
 			'parts/buttons' 						=> [ 'templates', 'buttons', 1 ],
 			'parts/lists' 							=> [ 'templates', 'lists', 1 ],
 			'parts/tables' 						=> [ 'templates', 'tables', 1 ],
+			'parts/forms' 							=> [ 'templates', 'forms', 1 ],
 
 			// The type: the root size and the five roles are the page's; the size of the links of the header, the type of the footer, the sizes of the titles and the type of a list and of a table are the object's own, and so is the case of a thing, a switch under the sizes of its object
 			'size' 									=> [ 'type', 'page', 1 ],
@@ -283,6 +304,8 @@ namespace Nino\Modules\Design {
 			'knobs/buttons/case' 					=> [ 'type', 'buttons', 3 ],
 			'knobs/lists/scale' 					=> [ 'type', 'lists', 1 ],
 			'knobs/tables/scale' 					=> [ 'type', 'tables', 1 ],
+			'knobs/forms/scale' 					=> [ 'type', 'forms', 1 ],
+			'knobs/forms/label-case' 				=> [ 'type', 'forms', 2 ],
 
 			// The surfaces: the space, the corners, the lines and the shadows of each object, the height and the line of the frames and the marker of a list. The three kinds of a section share one place: they are one choice
 			'width' 								=> [ 'surfaces', 'page', 1 ],
@@ -311,8 +334,12 @@ namespace Nino\Modules\Design {
 			'knobs/tables/space' 					=> [ 'surfaces', 'tables', 1 ],
 			'knobs/tables/border' 					=> [ 'surfaces', 'tables', 2 ],
 			'knobs/tables/zebra' 					=> [ 'surfaces', 'tables', 3 ],
+			'knobs/forms/space' 					=> [ 'surfaces', 'forms', 1 ],
+			'knobs/forms/corners' 					=> [ 'surfaces', 'forms', 2 ],
+			'knobs/forms/line' 						=> [ 'surfaces', 'forms', 3 ],
+			'knobs/forms/labels' 					=> [ 'surfaces', 'forms', 4 ],
 
-			// The colours: the palette is the page's, the frames have the ground of their bar and the header the colour of its line, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, the frames have the ground of their bar and the header the colour of its line, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table; the forms have the colour of their lines and of their labels, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -327,6 +354,8 @@ namespace Nino\Modules\Design {
 			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
+			'knobs/forms/edge' 						=> [ 'colours', 'forms', 1 ],
+			'knobs/forms/label' 					=> [ 'colours', 'forms', 2 ],
 
 			// The motion: the animation of the page and the hover of its pictures, and what a card and a button do under the pointer
 			'motion/effect' 						=> [ 'motion', 'page', 1 ],
@@ -371,7 +400,7 @@ namespace Nino\Modules\Design {
 		public const string KNOB_TOKEN = '--%s-%s--%s';
 
 		/*	The five kinds of knob a feature can declare in the head of a variant. A scale and a choice are ladders, as the knobs of the
-			seven parts are, with the key of the feature in the place of the part's name (KNOB_TOKEN). A ground is one of the surfaces of
+			eight parts are, with the key of the feature in the place of the part's name (KNOB_TOKEN). A ground is one of the surfaces of
 			the palette (Colours::SURFACES), an ink one of the seven tones of INKS, a colour a pair of hex colours - light, then dark	*/
 		public const array FEATURE_KINDS = [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
 
@@ -590,7 +619,7 @@ namespace Nino\Modules\Design {
 		];
 
 		/**
-		 *	Everything a fresh install starts from: the seven sets of the first
+		 *	Everything a fresh install starts from: the eight sets of the first
 		 *	theme the feature ships (see Themes::SHIPPED - the theme that is the
 		 *	framework as it is), every knob where that theme puts it, which is the
 		 *	middle but for the navigation of the header on the right and its button
@@ -599,7 +628,7 @@ namespace Nino\Modules\Design {
 		 *	hover of the pictures of Nino.css, the face the base unit delivers,
 		 *	the framework's own colours, no theme and no css of its own
 		 *
-		 *	The seven sets and the positions of the knobs are read out of that
+		 *	The eight sets and the positions of the knobs are read out of that
 		 *	theme's file, which is a php array and is included the way
 		 *	Themes::read() includes a shipped file - only the names of the sets
 		 *	and the positions are taken from it, as they stand, and not a
@@ -624,7 +653,7 @@ namespace Nino\Modules\Design {
 
 			foreach( self::KNOBS as $part => $kinds )
 				foreach( $kinds as $knob => $kind )
-					$knobs[$part][$knob] = self::position( $theme['setup']['knobs'][$part][$knob] ?? 0, $kind );
+					$knobs[$part][$knob] = $kind === 'ink' ? self::tone( $theme['setup']['knobs'][$part][$knob] ?? '' ) : self::position( $theme['setup']['knobs'][$part][$knob] ?? 0, $kind );
 
 			return [
 				'format' 	=> self::FORMAT,
@@ -684,7 +713,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What a knob is: 'scale', 'choice' or 'toggle' (see KNOBS)
+		 *	What a knob is: 'scale', 'choice', 'toggle' or 'ink' (see KNOBS)
 		 *
 		 *	@param		string		$part					A key of KNOBS
 		 *	@param		string		$knob					A name in KNOBS[$part]
@@ -698,9 +727,11 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The positions a kind of knob can stand at, from the least to the most: two to
 		 *	each side of the middle for a scale, one for a choice, and for a toggle off,
-		 *	which is the middle, and on. A kind there is none of has the middle alone
+		 *	which is the middle, and on. An ink has the middle alone: what it stands at is a tone
+		 *	and no position (see tone()), and the one rung it has is the tone the template gives.
+		 *	A kind there is none of has the middle alone as well
 		 *
-		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
+		 *	@param		string		$kind					'scale', 'choice', 'toggle' or 'ink'
 		 *
 		 *	@return 	array										Integers, eg. [ -1, 0, 1 ]
 		 */
@@ -710,15 +741,46 @@ namespace Nino\Modules\Design {
 				'scale' 	=> [ -2, -1, 0, 1, 2 ],
 				'choice' 	=> [ -1, 0, 1 ],
 				'toggle' 	=> [ 0, 1 ],
+				'ink' 		=> [ 0 ],
 				default 	=> [ 0 ],
 			};
 		}
 
 		/**
-		 *	The words a ladder of that kind is declared under, the words of its positions: all
-		 *	five of STEPS for a scale, the inner three for a choice, default and more for a toggle
+		 *	What an ink stands at: one of the tones of INKS, or '' for the tone the template itself gives it - which is the
+		 *	middle of an ink, as it is of a ladder. Anything else - a number, a word that is no tone, an array - is ''
 		 *
-		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
+		 *	@param		mixed			$value				Straight off the wire
+		 *
+		 *	@return 	string
+		 */
+		public static function tone( mixed $value ): string {
+			return is_string( $value ) === true && isset( self::INKS[$value] ) === true ? $value : '';
+		}
+
+		/**
+		 *	The word a knob stands at, as the selection of the sheet and its header say it: the step of a ladder, and for an ink
+		 *	the tone chosen - or 'default', the tone the template gives
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		string		$part					A key of KNOBS
+		 *	@param		string		$knob					A name in KNOBS[$part]
+		 *
+		 *	@return 	string
+		 */
+		public static function said( array $setup, string $part, string $knob ): string {
+
+			$tone = self::kind( $part, $knob ) === 'ink' ? self::tone( $setup['knobs'][$part][$knob] ?? '' ) : '';
+
+			return $tone !== '' ? $tone : self::step( $setup, $part, $knob );
+		}
+
+		/**
+		 *	The words a ladder of that kind is declared under, the words of its positions: all
+		 *	five of STEPS for a scale, the inner three for a choice, default and more for a toggle,
+		 *	default alone for an ink
+		 *
+		 *	@param		string		$kind					'scale', 'choice', 'toggle' or 'ink'
 		 *
 		 *	@return 	array
 		 */
@@ -1614,7 +1676,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The objects the blocks of the panel are of: the eight of OBJECTS and, after the tables, one for each feature
+		 *	The objects the blocks of the panel are of: the nine of OBJECTS and, after the forms, one for each feature
 		 *	that brings variants, in the order of the catalogue
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -1739,8 +1801,8 @@ namespace Nino\Modules\Design {
 			}
 
 			/*	Where every knob stands. A knob is a position of its own part, held to
-				the range of its kind, and a name that is none of the part's - or a part that
-				is none of the seven - is dropped with a note rather than carried: a
+				the range of its kind - an ink is a tone of the page or none -, and a name that is none of the part's - or a part that
+				is none of the eight - is dropped with a note rather than carried: a
 				position nothing reads is a position nobody can find again. One that is
 				missing stands where the defaults put it, which is where the shipped theme does	*/
 			$given = is_array( $raw['knobs'] ?? null ) === true ? $raw['knobs'] : [];
@@ -1758,8 +1820,11 @@ namespace Nino\Modules\Design {
 			}
 
 			foreach( self::KNOBS as $part => $kinds )
-				foreach( $kinds as $knob => $kind )
-					$setup['knobs'][$part][$knob] = self::position( is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? $setup['knobs'][$part][$knob] ) : $setup['knobs'][$part][$knob], $kind );
+				foreach( $kinds as $knob => $kind ) {
+
+					$stands = is_array( $given[$part] ?? null ) === true ? ( $given[$part][$knob] ?? $setup['knobs'][$part][$knob] ) : $setup['knobs'][$part][$knob];
+					$setup['knobs'][$part][$knob] = $kind === 'ink' ? self::tone( $stands ) : self::position( $stands, $kind );
+				}
 
 			$setup['styles'] = self::picked( $libraryDir, $setup['parts'], is_array( $raw['styles'] ?? null ) === true ? $raw['styles'] : [], $notes );
 			$setup['features'] = self::chosen( $appData, is_array( $raw['features'] ?? null ) === true ? $raw['features'] : [], $notes );
