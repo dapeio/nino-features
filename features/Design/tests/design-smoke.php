@@ -1144,6 +1144,57 @@ check( 'a set name that is not a set name resolves to nothing', Setup::file( $li
 	&& Setup::file( $library, 'section', '' ) === ''
 	&& Setup::file( $library, 'sets', $defaultSets['section'] ) === '' );
 
+/*	A template brings its styles in files beside it (see Setup::styles()), and the library ships them: the first is an example of what a style is. What is held
+	is the structure and not a name: that at least one set of the library declares a style with two options or more, that every option of every style it ships
+	says what it is called in both languages and what it does - the panel lists it by that - and that each compiles, behind the css of its set, under the line
+	that names it. No style and no option is named here, so that the library may bring more, or call them otherwise	*/
+$shippedStyles = [];
+
+foreach( array_keys( Setup::PARTS ) as $part )
+	foreach( Setup::available( $library, $part ) as $set )
+		foreach( Setup::styles( $library, $part, $set ) as $style => $declared )
+			if( $declared['options'] !== [] )
+				$shippedStyles[] = [ 'part' => $part, 'set' => $set, 'style' => $style, 'options' => $declared['options'] ];
+
+check( 'a set of the library brings a style of two options or more',
+	array_filter( $shippedStyles, static fn( array $shipped ): bool => count( $shipped['options'] ) >= 2 ) !== [] );
+
+$unsaid = [];
+
+foreach( $shippedStyles as $shipped )
+	foreach( $shipped['options'] as $option => $found ) {
+
+		$opening = designOpening( $found['file'] );
+
+		foreach( [ 'name', 'name-de', 'description', 'description-de' ] as $tag )
+			if( preg_match( '/@'. $tag. '[ \t]+\S/', $opening ) !== 1 )
+				$unsaid[] = $shipped['part']. '/'. $shipped['set']. ' '. $shipped['style']. '-'. $option. ': @'. $tag;
+	}
+
+check( '...and every option of every style the library ships says what it is called in both languages and what it does: @name and @name-de, @description and @description-de in the head of its file'. ( $unsaid === [] ? '' : ' - '. implode( ', ', $unsaid ) ),
+	$shippedStyles !== [] && $unsaid === [] );
+
+$compiledBehind = array_filter( $shippedStyles, static function( array $shipped ) use ( $appData, $library ): bool {
+
+	$part = $shipped['part'];
+	$own 	= rtrim( (string) file_get_contents( Setup::file( $library, $part, $shipped['set'] ) ), "\n" ). "\n";
+
+	foreach( $shipped['options'] as $option => $found ) {
+
+		$setup = Setup::normalize( $appData, [ 'parts' => [ $part => $shipped['set'] ], 'styles' => [ $part => [ $shipped['style'] => $option ] ] ], $library );
+		$sheet = Compiler::compile( $appData, $setup, $library );
+		$line = "\n/* -- style ". $shipped['style']. ': '. $option. " -- */\n". rtrim( (string) file_get_contents( $found['file'] ), "\n" ). "\n";
+
+		if( $setup['styles'][$part] !== [ $shipped['style'] => $option ] || str_contains( $sheet, $own. $line ) === false )
+			return false;
+	}
+
+	return true;
+} );
+
+check( '...and every one of them compiles behind the css of its set, under a line that names the style and the option, the file as it stands - and is the choice the setup keeps',
+	$shippedStyles !== [] && count( $compiledBehind ) === count( $shippedStyles ) );
+
 /*	The library is written by hand and grows by hand, so what is held here is
 	what a new file gets wrong - and gets wrong quietly. A set is named by a
 	slug and carries its name and its description in both languages, a name is
@@ -8771,7 +8822,8 @@ unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $app
 //
 // A template declares the styles it brings in its head and keeps the css of their options beside it; a person chooses one option of a
 // style, and the compile writes that file behind the template's own css. The fixtures are planted in the copy of the library this run
-// has of its own (designPlantStyles()) - the library of the feature brings no style - and taken away again
+// has of its own (designPlantStyles()) - the styles the library of the feature ships are held in the section on the library, and the fixtures
+// stand beside them under other names - and taken away again
 
 echo "\nThe styles a template brings: a select of css files beside it, the one chosen compiled behind it\n";
 
@@ -8869,10 +8921,10 @@ if( $styleCopy === true ) {
 		&& preg_grep( '/"nav" of "header" is not given an option/', $droppedNotes ) !== [] && preg_grep( '/part "nowhere" with styles/', $droppedNotes ) !== [] );
 
 	$otherNotes = [];
-	$other = Setup::normalize( $appData, [ 'parts' => [ 'header' => 'regular', 'section' => 'open' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ], 'section' => [ 'rhythm' => 'loose' ] ] ], $styleLib, $otherNotes );
+	$other = Setup::normalize( $appData, [ 'parts' => [ 'header' => 'top-bar', 'section' => 'open' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ], 'section' => [ 'rhythm' => 'loose' ] ] ], $styleLib, $otherNotes );
 
 	check( 'a choice belongs to the template it was made for: for another template of the part - one that does not declare the style - it is dropped and named, and so is the choice for the set a part falls back to when the set it names is not in the library',
-		$other['styles']['header'] === [] && $other['styles']['section'] === [] && preg_grep( '/template "regular" of "header" declares no style "nav-hover"/', $otherNotes ) !== []
+		$other['styles']['header'] === [] && $other['styles']['section'] === [] && preg_grep( '/template "top-bar" of "header" declares no style "nav-hover"/', $otherNotes ) !== []
 		&& preg_grep( '/template "open" of "section" declares no style "rhythm"/', $otherNotes ) !== []
 		&& Setup::normalize( $appData, [ 'parts' => [ 'header' => 'nowhere' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ] ] ], $styleLib )['styles']['header'] === []
 		&& Setup::normalize( $appData, [ 'styles' => 'x' ], $styleLib )['styles'] === $defaulted['styles'] && Setup::normalize( $appData, [ 'styles' => [ 'header' => 'x' ] ], $styleLib )['styles'] === $defaulted['styles']
@@ -8967,7 +9019,7 @@ if( $styleCopy === true ) {
 		&& ( $rowOf( $listedDe, 'header' )['catalogue']['floating']['styles']['nav-hover']['options']['glow']['name'] ?? '' ) === 'Leuchten' && ( $rowOf( $listedDe, 'header' )['catalogue']['floating']['styles']['nav-hover']['label'] ?? '' ) === 'Hover der Links'
 		&& str_contains( (string) json_encode( $listedEn['parts'], JSON_UNESCAPED_SLASHES ), $styleLib ) === false && ( $rowOf( $listedEn, 'section' )['catalogue']['regular']['styles']['rhythm']['options']['loose']['name'] ?? '' ) === 'Loose' );
 	check( '...a template that brings none has an empty list, and so has a part that chose none; what is chosen is the setup\'s, per part, in the order of the head',
-		$rowOf( $listedEn, 'header' )['catalogue']['regular']['styles'] === [] && $rowOf( $listedEn, 'section' )['catalogue']['open']['styles'] === []
+		$rowOf( $listedEn, 'header' )['catalogue']['top-bar']['styles'] === [] && $rowOf( $listedEn, 'section' )['catalogue']['open']['styles'] === []
 		&& array_keys( $listedEn['styles'] ) === array_keys( Setup::PARTS ) && $listedEn['styles']['header'] === [ 'nav' => 'compact', 'nav-hover' => 'soft-glow' ] && $listedEn['styles']['footer'] === []
 		&& $listedEn['defaults']['styles'] === array_fill_keys( array_keys( Setup::PARTS ), [] ) );
 	check( '...and the work in progress of every template is named once in the notes, however many times it is asked for - the files that are none, the file of a style nobody declared, the style without a file',
@@ -8980,7 +9032,7 @@ if( $styleCopy === true ) {
 		$status === 200 && $readBack['styles']['header'] === [ 'nav-hover' => 'glow' ] && $readBack['styles']['section'] === [ 'rhythm' => 'loose' ] && $readBack['styles']['footer'] === []
 		&& preg_grep( '/declares no style "tone"/', $saved['notes'] ) !== [] && preg_grep( '/option "nowhere"/', $saved['notes'] ) !== [] );
 
-	[ $status, $savedOther ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => 'regular', 'section' => 'open' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ], 'section' => [ 'rhythm' => 'loose' ] ] ] );
+	[ $status, $savedOther ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => 'top-bar', 'section' => 'open' ], 'styles' => [ 'header' => [ 'nav-hover' => 'glow' ], 'section' => [ 'rhythm' => 'loose' ] ] ] );
 	$readOther = Setup::read( $appData, $styleLib );
 
 	check( '...a choice sent with another template is not kept, and a request with no styles stores none: saving the screen as it is takes a style away',

@@ -1,0 +1,37 @@
+/*	@name				Pill
+ *	@name-de			Pille
+ *	@description	A pill in the accent of the bar stands behind the link under the pointer, the one with the focus and the current one.
+ *	@description-de	Eine Pille im Akzent der Leiste steht hinter dem Link unter dem Zeiger, dem mit dem Fokus und dem aktuellen.
+ *
+ *	The hover of the links of the navigation for the style nav-hover (see style.css). It takes
+ *	over the size, the spacing and the ink of the links from the Regular header, padding
+ *	included, and replaces the line that grows under a link: that line is gone, and so is its
+ *	movement. In its place the link gets a rounded fill, a tint of --header-ground-accent,
+ *	which follows the ground of the bar. The keyboard focus draws what the pointer draws,
+ *	and the focus ring is the kernel's and stays as it is.
+ *
+ *	From 768 px, like the link rules of the set: below it the menu is the page's.
+ */
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content li a {
+		border-radius: 999px;
+		transition: background-color .2s ease;
+	}
+
+	.nino-frame-header .nino-nav-content li a::after {
+		content: none;
+	}
+
+	.nino-frame-header .nino-nav-content li a:hover,
+	.nino-frame-header .nino-nav-content li a:focus-visible,
+	.nino-frame-header .nino-nav-content li a.nino-is-active {
+		background-color: color-mix(in srgb, var(--header-ground-accent) 14%, transparent);
+	}
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-nav-content li a {
+		transition: none;
+	}
+}

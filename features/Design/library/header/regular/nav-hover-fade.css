@@ -1,0 +1,39 @@
+/*	@name				Fade
+ *	@name-de			Abblenden
+ *	@description	The links dim to 60 % while the pointer or the focus is on one of them; the one it is on stays whole, and the current one is set in the accent of the bar.
+ *	@description-de	Die Links blenden auf 60 % ab, solange der Zeiger oder der Fokus auf einem von ihnen steht; der, auf dem er steht, bleibt voll, und der aktuelle steht im Akzent der Leiste.
+ *
+ *	The hover of the links of the navigation for the style nav-hover (see style.css). It takes
+ *	over the size, the spacing and the ink of the links from the Regular header and replaces
+ *	the line that grows under a link: that line is gone, and so is its movement. In its place
+ *	the other links dim while one is under the pointer or has the keyboard focus, to 60 %,
+ *	which keeps the ink legible on the ground of the bar, and the current link is set in
+ *	--header-ground-accent, the role of the link that is current, so that the page it stands
+ *	on stays marked at rest. The focus ring is the kernel's and stays as it is.
+ *
+ *	From 768 px, like the link rules of the set: below it the menu is the page's.
+ */
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content li a {
+		transition: opacity .2s ease;
+	}
+
+	.nino-frame-header .nino-nav-content li a::after {
+		content: none;
+	}
+
+	.nino-frame-header .nino-nav-content li a.nino-is-active {
+		color: var(--header-ground-accent);
+	}
+
+	.nino-frame-header .nino-nav-content ul:has(a:is(:hover, :focus-visible)) li a:not(:is(:hover, :focus-visible, .nino-is-active)) {
+		opacity: .6;
+	}
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-nav-content li a {
+		transition: none;
+	}
+}

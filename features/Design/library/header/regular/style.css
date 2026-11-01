@@ -12,6 +12,9 @@
  *	@knob	cta		Visibility and size of the button of the header
  *	@knob	nav-case	Capitals in the links of the navigation
  *
+ *	@style		nav-hover	Hover of the links
+ *	@style-de	nav-hover	Hover der Links
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
@@ -37,6 +40,12 @@
  *	The ninth, nav-case, is a toggle: two rungs, none and uppercase, and the links
  *	of the navigation - in the bar, and in the menu that opens over the page - are
  *	set in the one its position picks.
+ *
+ *	The style, nav-hover, is the hover of the links of the navigation from 768 px.
+ *	None leaves what this set draws: the line that grows under a link. Fade and Pill,
+ *	the files nav-hover-fade.css and nav-hover-pill.css beside this one, replace that
+ *	line - the others dim in the first, a pill stands behind the link in the second -
+ *	and read the roles of the bar, so they follow its ground.
  */
 
 :root {

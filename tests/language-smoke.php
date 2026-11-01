@@ -32,17 +32,17 @@ declare(strict_types=1);
  *											variants anywhere, so that the rule below is seen at work
  *											on them.
  *
- *											A template's name and description in another language
- *											are left out as well: a line that starts with '@name-de'
- *											or '@description-de' (or the tag of another language) in
- *											a .css file whose path contains '/library/' - the library
- *											of a feature that brings templates - is what the panel
- *											shows, the text of a locale in the file that names the
- *											template. So is the head of a variant a feature brings,
- *											a .css file below a '/design/' directory: there the lines
- *											of '@knob-de' and '@option-de' are the labels of its
- *											knobs. Only such a line is left out; the rest of the
- *											comment is read as everywhere, and so is the same line in
+ *											A template's name, description and style label in another
+ *											language are left out as well: a line that starts with
+ *											'@name-de', '@description-de' or '@style-de' (or the tag of
+ *											another language) in a .css file whose path contains
+ *											'/library/' - the library of a feature that brings templates -
+ *											is what the panel shows, the text of a locale in the file that
+ *											names the template. So is the head of a variant a feature
+ *											brings, a .css file below a '/design/' directory: there the
+ *											lines of '@knob-de' and '@option-de' are the labels of its
+ *											knobs. Only such a line is left out; the rest of the comment
+ *											is read as everywhere, and so is the same line in
  *											any other file.
  *
  *	Usage: php tests/language-smoke.php
@@ -126,7 +126,7 @@ foreach( $sources as $file ) {
 		// one place the panel reads it from, and in the head of a variant a feature
 		// brings, where the labels of its knobs are such lines too; the same line
 		// anywhere else is read like any other
-		$tags = str_contains( $below, '/library/' ) === true ? 'name|description' : ( str_contains( $below, '/design/' ) === true ? 'name|description|knob|option' : '' );
+		$tags = str_contains( $below, '/library/' ) === true ? 'name|description|style' : ( str_contains( $below, '/design/' ) === true ? 'name|description|knob|option' : '' );
 
 		if( $tags !== '' && str_ends_with( $file, '.css' ) === true && preg_match( '/^\s*\*?\s*@(?:'. $tags. ')-[a-z]{2}\s/', $line ) === 1 )
 			continue;
