@@ -35,6 +35,13 @@ namespace Nino\Modules {
 	 *										reads the list through PATH and records an address it
 	 *										deletes through recordRemoval().
 	 *
+	 *										The form that posts to it is [newsletter-signup], which
+	 *										the manifest declares as a component: the Builder offers
+	 *										it, a page writes it, and componentNewsletterSignup()
+	 *										fills templates/newsletter-signup.tpl for both. It is the
+	 *										form the manual's markup line describes, so one written by
+	 *										hand is taken by the endpoint all the same.
+	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
 	 *	@link							https://github.com/dapeio/nino
@@ -42,6 +49,17 @@ namespace Nino\Modules {
 	class Newsletter {
 
 		private const int MAX_FIELD_LENGTH = 1000;
+
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Newsletter/templates';
+
+		// How many signup forms this request has drawn, so that the label of
+		// each one points at the field of its own when a page carries more
+		// than one - a hero and a footer, say
+		// Where the count of the signup forms drawn in this request is kept - a request-lifecycle key, never saved
+		private const string COUNTER = './newsletter/signups';
 
 		public const string PATH = '/data/newsletter.php';
 
@@ -142,6 +160,35 @@ namespace Nino\Modules {
 			// its behalf, which is exactly what a restore, the one tool a
 			// broken install needs most, must never risk
 			\Nino\Callbacks::registerCallback( $appData, '/nino/admin/restore', [ self::class, 'callbackRestore' ] );
+		}
+
+		/**
+		 *	[newsletter-signup] - the signup form, as the Components module hands
+		 *	it over: the manifest declares the component, so the shortcode and
+		 *	the Builder's component are one and the same renderer. The form is
+		 *	the one a page could write by hand (see the manual's markup line):
+		 *	the endpoint reads email and the empty honeypot location, and
+		 *	Nino.ui.js drives the form by its classes. inline puts the field and
+		 *	the button on one line, where the label is read by screen readers
+		 *	only. The words are the Text panel's /feature/newsletter/signup/ keys
+		 *	and the button's /feature/newsletter/label/submit, left in the
+		 *	template for the kernel to resolve
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								The form
+		 */
+		public static function componentNewsletterSignup( array &$appData, array $args ): string {
+
+			$inline = $args['inline'] === '1';
+
+			// The classes of the call last: escaped, they cannot carry a token, but they are the one value an editor writes
+			return str_replace(
+				[ '[[inline]]', '[[hidden]]', '[[id]]', '[[classes]]' ],
+				[ $inline === true ? ' nino-form--inline' : '', $inline === true ? ' nino-sr-only' : '', 'newsletter-signup-'. ( $appData[self::COUNTER] = (int) ( $appData[self::COUNTER] ?? 0 ) + 1 ), \Nino\Feature::classes( $args ) ],
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'newsletter-signup' )
+			);
 		}
 
 		/**

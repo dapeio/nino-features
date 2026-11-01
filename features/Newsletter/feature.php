@@ -11,10 +11,23 @@ return [
 		'de_DE' => 'Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench.',
 	],
 	'manual'			=> [
-		'shortcodes' => [],
+		'shortcodes' => [
+			'[newsletter-signup]' => [
+				'en_US' => 'The signup form, ready for POST /.newsletter: a label, the email field, the honeypot, [csrf], the button and the line for the answer - the form the markup line below describes. It is also the component Newsletter signup of the Builder, in a section, a card and a hero; the Builder and the shortcode are one renderer. The words are the project\'s, in the Text panel: /feature/newsletter/signup/label, /feature/newsletter/signup/placeholder and /feature/newsletter/label/submit. The look is the kernel\'s form classes and whatever styles them, a theme or the looks of the Forms feature: nothing of it is set here.',
+				'de_DE' => 'Das Anmeldeformular, bereit für POST /.newsletter: eine Beschriftung, das E-Mail-Feld, der Honigtopf, [csrf], der Knopf und die Zeile für die Antwort – das Formular, das die Markup-Zeile unten beschreibt. Es ist auch die Komponente Newsletter-Anmeldung des Builders, in einer Sektion, einer Karte und einem Hero; Builder und Shortcode sind ein Renderer. Die Worte gehören dem Projekt, im Panel Texte: /feature/newsletter/signup/label, /feature/newsletter/signup/placeholder und /feature/newsletter/label/submit. Das Aussehen sind die Formularklassen des Kernels und was sie gestaltet, ein Theme oder die Looks des Features Forms: Hier wird nichts davon gesetzt.',
+			],
+			'[newsletter-signup inline="1"]' => [
+				'en_US' => 'The field and the button on one line (the kernel\'s nino-form--inline); the label is then read by screen readers only (nino-sr-only), the placeholder tells everyone else.',
+				'de_DE' => 'Feld und Knopf in einer Zeile (nino-form--inline des Kernels); die Beschriftung lesen dann nur noch Screenreader (nino-sr-only), allen anderen sagt es der Platzhalter.',
+			],
+			'[newsletter-signup ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the form. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Formulars. Das schreibt der Builder für seine eigenen Klassen.',
+			],
+		],
 		'markup' => [
-			[ 'en_US' => 'The feature ships no signup form: write one into an HTML+ block of the Builder, or into a page template of your own, on the page that collects addresses. It is <form class="nino-form nino-newsletter-form" action="[[/nino/dir]]/.newsletter"> with [csrf], the empty honeypot input location (class nino-form-trap, plus tabindex="-1" autocomplete="off" aria-hidden="true"), an input named email, a submit button reading [[/feature/newsletter/label/submit]] and a <p class="nino-form-message"> inside the form. Nino.ui.js posts it and shows the /feature/newsletter/info/ texts in the form\'s first <p>, whatever its class.',
-			  'de_DE' => 'Das Feature bringt kein Anmeldeformular mit: schreibe eines in einen HTML+-Block des Builders oder in ein eigenes Seitentemplate, auf der Seite, die Adressen sammelt. Es ist <form class="nino-form nino-newsletter-form" action="[[/nino/dir]]/.newsletter"> mit [csrf], dem leeren Honigtopf-Input location (Klasse nino-form-trap, dazu tabindex="-1" autocomplete="off" aria-hidden="true"), einem Input namens email, einem Absende-Button mit [[/feature/newsletter/label/submit]] und einem <p class="nino-form-message"> im Formular. Nino.ui.js schickt es ab und zeigt die Texte unter /feature/newsletter/info/ im ersten <p> des Formulars, welche Klasse es auch hat.' ],
+			[ 'en_US' => '[newsletter-signup] draws the signup form; to write it yourself instead, into an HTML+ block of the Builder or into a page template of your own, on the page that collects addresses, it is <form class="nino-form nino-newsletter-form" action="[[/nino/dir]]/.newsletter"> with [csrf], the empty honeypot input location (class nino-form-trap, plus tabindex="-1" autocomplete="off" aria-hidden="true"), an input named email, a submit button reading [[/feature/newsletter/label/submit]] and a <p class="nino-form-message"> inside the form. Nino.ui.js posts it and shows the /feature/newsletter/info/ texts in the form\'s first <p>, whatever its class.',
+			  'de_DE' => '[newsletter-signup] zeichnet das Anmeldeformular; schreibst Du es lieber selbst, in einen HTML+-Block des Builders oder in ein eigenes Seitentemplate, auf der Seite, die Adressen sammelt, ist es <form class="nino-form nino-newsletter-form" action="[[/nino/dir]]/.newsletter"> mit [csrf], dem leeren Honigtopf-Input location (Klasse nino-form-trap, dazu tabindex="-1" autocomplete="off" aria-hidden="true"), einem Input namens email, einem Absende-Button mit [[/feature/newsletter/label/submit]] und einem <p class="nino-form-message"> im Formular. Nino.ui.js schickt es ab und zeigt die Texte unter /feature/newsletter/info/ im ersten <p> des Formulars, welche Klasse es auch hat.' ],
 		],
 		'routes' => [
 			'/.newsletter' => [
@@ -76,8 +89,8 @@ return [
 				'de_DE' => 'Schlüssel der config.php, keiner von der Einheit gesetzt – page-template, unsubscribe-template, action-template, confirm-template und unsubscribe-mail-template unter /nino/newsletter/: So tauscht ein Projekt eine Seite oder eine Mail gegen ein eigenes Template (die Seite, die ein Link öffnet und mit der geantwortet wird, das Formular, das nach der Adresse fragt, das Formular mit dem Knopf, die Bestätigungsmail, die Mail mit dem Abmeldelink). Jeder gilt standardmäßig für die Datei der Einheit unter /templates.',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'Its words, into the Text panel - among them the name, the title and the description of its two pages, /_nino/webpage/.newsletter/... and /_nino/webpage/.newsletter/unsubscribe/..., which the Routes panel changes like those of any page and which never replace a word the project wrote.',
-				'de_DE' => 'Seine Worte, ins Panel Texte – darunter Name, Titel und Beschreibung seiner beiden Seiten, /_nino/webpage/.newsletter/... und /_nino/webpage/.newsletter/unsubscribe/..., die das Panel Routen wie die jeder Seite ändert und die ein Wort des Projekts nie ersetzen.',
+				'en_US' => 'Its words, into the Text panel - among them the name, the title and the description of its two pages, /_nino/webpage/.newsletter/... and /_nino/webpage/.newsletter/unsubscribe/..., which the Routes panel changes like those of any page and which never replace a word the project wrote - and the label and the placeholder of the signup form.',
+				'de_DE' => 'Seine Worte, ins Panel Texte – darunter Name, Titel und Beschreibung seiner beiden Seiten, /_nino/webpage/.newsletter/... und /_nino/webpage/.newsletter/unsubscribe/..., die das Panel Routen wie die jeder Seite ändert und die ein Wort des Projekts nie ersetzen – und die Beschriftung und der Platzhalter des Anmeldeformulars.',
 			],
 			'elements/privacy.php' => [
 				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice. It names seven days, the default of /nino/newsletter/pending-days in config.php: whoever changes the key changes the section in the Elements panel too.',
@@ -100,4 +113,36 @@ return [
 	// The files under data/ this feature owns - what a backup carries and
 	// callbackRestore() merges
 	'data'				=> [ '/data/newsletter.php', '/data/newsletter-removed.php' ],
+	/*	The signup form as the Builder offers it: no first argument, the form says all
+		it has to say itself, and the one choice is whether it stands in one line. The
+		class has no doShortcode() - there was no shortcode before - so the component is
+		the shortcode, and componentNewsletterSignup() renders it for the Builder and for
+		a page that writes [newsletter-signup]. A template of the feature, not the
+		project's: the form is the one the endpoint takes, and an editor does not change
+		it but for these words in the Text panel	*/
+	'components'	=> [
+		'newsletter-signup' => [
+			'label'			=> [ 'en_US' => 'Newsletter signup', 'de_DE' => 'Newsletter-Anmeldung' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'attributes'	=> [
+				'inline' => [
+					'type'		=> 'bool',
+					'default'	=> false,
+					'label'		=> [ 'en_US' => 'In one line', 'de_DE' => 'In einer Zeile' ],
+					'hint'		=> [
+						'en_US' => 'The field and the button side by side. The label is then read by screen readers only.',
+						'de_DE' => 'Feld und Knopf nebeneinander. Die Beschriftung lesen dann nur noch Screenreader.',
+					],
+				],
+			],
+			'preview'		=> 'block',
+			'draws'			=> 'form .nino-form',
+			'in'			=> [ 'section', 'card', 'hero' ],
+			'icon'			=> [
+				[ 'path', [ 'd' => 'm22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7' ] ],
+				[ 'rect', [ 'x' => '2', 'y' => '4', 'width' => '20', 'height' => '16', 'rx' => '2' ] ],
+			],
+		],
+	],
 ];

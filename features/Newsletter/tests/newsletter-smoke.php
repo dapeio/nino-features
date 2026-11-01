@@ -6,8 +6,9 @@ declare(strict_types=1);
  *	newsletter-smoke.php	Contract test for the Newsletter feature (Modules\Newsletter):
  *											the manifest and the activation through \Nino\Features,
  *											the double opt-in signup with confirm and unsubscribe
- *											links, the workbench panel and its permission, and the
- *											restore merge that keeps an unsubscribe unsubscribed.
+ *											links, the signup form as the component and the shortcode
+ *											[newsletter-signup], the workbench panel and its permission,
+ *											and the restore merge that keeps an unsubscribe unsubscribed.
  *											Travels with the feature and runs against the checkout
  *											three levels up, or the one NINO_ROOT names (see
  *											tests/harness.php there).
@@ -118,6 +119,44 @@ function newsletterForms( string $html ): array {
 		foreach( $form->getElementsByTagName( 'button' ) as $button )
 			if( $button->getAttribute( 'type' ) === 'submit' )
 				$entry['buttons']++;
+		$forms[] = $entry;
+	}
+	return $forms;
+}
+
+/*	What the signup forms of a rendered piece of html are, as a document reads them - the parts a visitor,
+	Nino.ui.js and the endpoint hold on to: [ [ 'classes', 'method', 'action', 'hidden' => name => value,
+	'traps', 'emails', 'labels', 'buttons', 'messages', 'novalidate' ], ... ]. A trap is the field called
+	location, an email is the field called email; a label is [ for, classes, text ]; a message is a paragraph
+	of the class nino-form-message and whether it is the first paragraph of the form, which Nino.ui.js writes
+	into	*/
+function newsletterSignupForms( string $html ): array {
+	$document = new DOMDocument();
+	libxml_use_internal_errors( true );
+	$document->loadHTML( '<?xml encoding="UTF-8">'. $html );
+	libxml_clear_errors();
+	$xpath = new DOMXPath( $document );
+	$classes = static fn( DOMElement $element ): array => array_values( array_filter( preg_split( '/\s+/', $element->getAttribute( 'class' ) ) ?: [] ) );
+	$forms = [];
+	foreach( $document->getElementsByTagName( 'form' ) as $form ) {
+		$entry = [ 'classes' => $classes( $form ), 'method' => strtolower( $form->getAttribute( 'method' ) ), 'action' => $form->getAttribute( 'action' ), 'hidden' => [],
+			'traps' => [], 'emails' => [], 'labels' => [], 'buttons' => [], 'messages' => [], 'novalidate' => $form->hasAttribute( 'novalidate' ) ];
+		foreach( $xpath->query( './/input', $form ) as $input ) {
+			if( $input->getAttribute( 'type' ) === 'hidden' )
+				$entry['hidden'][ $input->getAttribute( 'name' ) ] = $input->getAttribute( 'value' );
+			elseif( $input->getAttribute( 'name' ) === 'location' )
+				$entry['traps'][] = [ 'type' => $input->getAttribute( 'type' ), 'value' => $input->getAttribute( 'value' ), 'tabindex' => $input->getAttribute( 'tabindex' ), 'aria-hidden' => $input->getAttribute( 'aria-hidden' ), 'classes' => $classes( $input ) ];
+			elseif( $input->getAttribute( 'name' ) === 'email' )
+				$entry['emails'][] = [ 'type' => $input->getAttribute( 'type' ), 'id' => $input->getAttribute( 'id' ), 'required' => $input->hasAttribute( 'required' ), 'placeholder' => $input->getAttribute( 'placeholder' ), 'classes' => $classes( $input ) ];
+		}
+		foreach( $xpath->query( './/label', $form ) as $label )
+			$entry['labels'][] = [ 'for' => $label->getAttribute( 'for' ), 'classes' => $classes( $label ), 'text' => trim( $label->textContent ) ];
+		foreach( $xpath->query( './/button', $form ) as $button )
+			$entry['buttons'][] = [ 'type' => $button->getAttribute( 'type' ), 'classes' => $classes( $button ), 'text' => trim( $button->textContent ) ];
+		$first = $xpath->query( './/p', $form )->item( 0 );
+		foreach( $xpath->query( './/p', $form ) as $paragraph )
+			if( in_array( 'nino-form-message', $classes( $paragraph ), true ) === true )
+				$entry['messages'][] = [ 'live' => $paragraph->getAttribute( 'aria-live' ), 'first' => $paragraph->isSameNode( $first ), 'text' => trim( $paragraph->textContent ) ];
 		$forms[] = $entry;
 	}
 	return $forms;
@@ -1192,6 +1231,151 @@ check( 'with no owner mailbox installed, the mail still goes out and carries no 
 	( $unresolved['/nino/http/response']['statusCode'] ?? 0 ) === 200 && count( $mails ) === 1
 	&& ( $mails[0]['replyTo'] ?? 'x' ) === ''
 	&& str_contains( (string) ( $mails[0]['headers'] ?? '' ), 'Reply-To:' ) === false );
+
+echo "\n";
+
+
+// --- The signup form: a component and a shortcode ---------------------------------
+
+echo "Modules\\Newsletter - [newsletter-signup], the signup form the Builder offers\n";
+
+/*	The kernel reads the manifest ahead of the feature's own init() and registers its components with the
+	Components module; the csrf shortcode and the fills of the page are put in the way serveNewsletter() has them.
+	All of it on a copy of the project's data, which nothing else in this test sees	*/
+$siteBelow = static function( array $base, string $directory ): array {
+	$site = $base;
+	$site['/nino/dir'] = $directory;
+	$site['/nino/modules'] = [ '\\Nino\\Modules\\Newsletter' ];
+	\Nino\Csrf::init( $site );
+	\Nino\Html::init( $site );
+	\Nino\Html::addFills( $site, \Nino\Html::bootFills( $site ), '*' );
+	\Nino\Modules\Csrf::init( $site );
+	\Nino\Modules\Components::init( $site );
+	return $site;
+};
+$site = $siteBelow( $appData, '' );
+ninoWarnings();
+
+$declared = \Nino\Features::manifest( $dir )['components'] ?? [];
+$registered = \Nino\Modules\Components::components( $site )['newsletter-signup'] ?? null;
+
+check( 'the manifest declares one component, newsletter-signup, and the Components module registers exactly that schema as the feature\'s own',
+	array_keys( $declared ) === [ 'newsletter-signup' ] && is_array( $registered ) && ( $registered['by'] ?? null ) === 'newsletter'
+	&& array_intersect_key( $registered, $declared['newsletter-signup'] ) === $declared['newsletter-signup'] );
+check( '...it needs no source and no loop: the form is its own, and says nothing of the element around it',
+	( $registered['source'] ?? null ) === 'none' && ( $registered['loop'] ?? null ) === false );
+check( '...it is drawn as a block and says what it draws on the outside - a form with the kernel\'s class - and where it may stand: a section, a card and a hero',
+	( $registered['preview'] ?? null ) === 'block' && ( $registered['draws'] ?? null ) === 'form .nino-form' && ( $registered['in'] ?? null ) === [ 'section', 'card', 'hero' ] );
+check( '...it carries a picture of its own and a label in both languages, and no group: a tool offers it under the feature',
+	is_array( $registered['icon'] ?? null ) && $registered['icon'] !== [] && isset( $registered['group'] ) === false
+	&& ( $registered['label']['en_US'] ?? '' ) !== '' && ( $registered['label']['de_DE'] ?? '' ) !== '' && $registered['label']['en_US'] !== $registered['label']['de_DE'] );
+check( '...one choice, inline, a flag that is off unless the call turns it on',
+	array_keys( $registered['attributes'] ?? [] ) === [ 'inline' ] && ( $registered['attributes']['inline']['type'] ?? null ) === 'bool'
+	&& \Nino\Modules\Components::defaults( $site, 'newsletter-signup' ) === [ 'inline' => '0', 'class' => '' ] );
+\Nino\Modules\Newsletter::init( $site );
+check( 'the shortcode is registered by the component alone: the class draws no second one, however often it boots',
+	in_array( 'newsletter-signup', \Nino\Html::shortcodes( $site ), true ) === true && count( \Nino\Callbacks::registered( $site, '/nino/html/shortcode/newsletter-signup' ) ) === 1 );
+
+$drawn = \Nino\Html::renderHtml( $site, '[newsletter-signup]' );
+$forms = newsletterSignupForms( $drawn );
+$form = $forms[0] ?? [];
+
+check( 'the shortcode draws one form with the kernel\'s classes - nino-form, which Nino.ui.js takes over, and nino-newsletter-form, which picks the endpoint and the words - and nothing inline or hidden',
+	count( $forms ) === 1 && in_array( 'nino-form', $form['classes'], true ) === true && in_array( 'nino-newsletter-form', $form['classes'], true ) === true
+	&& in_array( 'nino-form--inline', $form['classes'], true ) === false && ninoWarnings() === [] );
+check( '...a post to the endpoint, below the directory of the website',
+	( $form['method'] ?? '' ) === 'post' && ( $form['action'] ?? '' ) === '/.newsletter' && \Nino\Http::requestRoute( $site, $form['action'], 'POST' ) !== null );
+check( '...the csrf token of the page in a hidden field and nothing else hidden', ( $form['hidden'] ?? [] ) === [ '_csrf' => \Nino\Csrf::getToken( $site ) ] && \Nino\Csrf::getToken( $site ) !== '' );
+check( '...the honeypot the endpoint reads: a text field called location, empty, out of the tab order and hidden from assistive technology, the kernel\'s trap class on it',
+	count( $form['traps'] ?? [] ) === 1 && $form['traps'][0]['type'] === 'text' && $form['traps'][0]['value'] === '' && $form['traps'][0]['tabindex'] === '-1'
+	&& $form['traps'][0]['aria-hidden'] === 'true' && in_array( 'nino-form-trap', $form['traps'][0]['classes'], true ) === true );
+check( '...one required email field called email, with a placeholder, and one submit button of the kernel\'s primary kind',
+	count( $form['emails'] ?? [] ) === 1 && $form['emails'][0]['type'] === 'email' && $form['emails'][0]['required'] === true && $form['emails'][0]['placeholder'] !== ''
+	&& count( $form['buttons'] ?? [] ) === 1 && $form['buttons'][0]['type'] === 'submit' && in_array( 'nino-btn--primary', $form['buttons'][0]['classes'], true ) === true );
+check( '...a visible label that belongs to the email field, and an empty status line that is the first paragraph of the form, announced politely',
+	count( $form['labels'] ?? [] ) === 1 && $form['labels'][0]['for'] === $form['emails'][0]['id'] && $form['emails'][0]['id'] !== '' && in_array( 'nino-sr-only', $form['labels'][0]['classes'], true ) === false
+	&& count( $form['messages'] ?? [] ) === 1 && $form['messages'][0]['first'] === true && $form['messages'][0]['live'] === 'polite' && $form['messages'][0]['text'] === '' );
+check( '...and the validation is left to Nino.ui.js, whose messages are the project\'s words, not the browser\'s', ( $form['novalidate'] ?? false ) === true );
+
+$inline = newsletterSignupForms( \Nino\Html::renderHtml( $site, '[newsletter-signup inline="1"]' ) )[0] ?? [];
+check( 'inline="1" puts the kernel\'s one-line class on the form and keeps the others', in_array( 'nino-form--inline', $inline['classes'] ?? [], true ) === true
+	&& array_diff( $form['classes'] ?? [], $inline['classes'] ?? [] ) === [] );
+check( '...and the label is read by screen readers only, still the label of the email field',
+	count( $inline['labels'] ?? [] ) === 1 && in_array( 'nino-sr-only', $inline['labels'][0]['classes'], true ) === true && $inline['labels'][0]['for'] === ( $inline['emails'][0]['id'] ?? null ) );
+$isInline = static fn( string $word ): bool => in_array( 'nino-form--inline', newsletterSignupForms( \Nino\Html::renderHtml( $site, '[newsletter-signup inline="'. $word. '"]' ) )[0]['classes'] ?? [], true );
+check( '...by the words a flag of a component is read by', array_filter( [ 'yes', 'true', 'on' ], static fn( string $word ): bool => $isInline( $word ) === false ) === [] );
+check( '...and not by the others: no, 0, and a word that is none leave the block form', array_filter( [ 'no', '0', 'maybe', '' ], $isInline ) === [] );
+
+$classed = newsletterSignupForms( \Nino\Html::renderHtml( $site, '[newsletter-signup class="my-class [[/nino/dir]]"]' ) )[0] ?? [];
+check( 'a class of the call joins those of the form, and its brackets are written so that nothing reads them again',
+	in_array( 'my-class', $classed['classes'] ?? [], true ) === true && in_array( 'nino-form', $classed['classes'], true ) === true && ( $classed['action'] ?? '' ) === '/.newsletter'
+	&& str_contains( \Nino\Html::renderHtml( $site, '[newsletter-signup class="a[[b"]' ), '&#91;&#91;b' ) === true );
+
+$twice = newsletterSignupForms( \Nino\Html::renderHtml( $site, '[newsletter-signup][newsletter-signup inline="1"]' ) );
+$ids = array_map( static fn( array $one ): string => $one['emails'][0]['id'] ?? '', $twice );
+check( 'two forms on one page have two fields of two ids, and each label belongs to the field of its own form',
+	count( $twice ) === 2 && count( array_unique( $ids ) ) === 2 && !in_array( '', $ids, true ) && $twice[0]['labels'][0]['for'] === $ids[0] && $twice[1]['labels'][0]['for'] === $ids[1] );
+
+$shop = $siteBelow( $appData, '/shop' );
+check( 'a website below a directory is posted to below it', ( newsletterSignupForms( \Nino\Html::renderHtml( $shop, '[newsletter-signup]' ) )[0]['action'] ?? '' ) === '/shop/.newsletter' );
+
+/*	A post of the fields as the form renders them goes through the endpoint the way the hand-written form's does:
+	the csrf guard first, then the callback of the route - the round Http::response() makes. The fields are what
+	the document says, the address is what a visitor typed	*/
+$postForm = static function( array &$site, array $form, string $address ): array {
+	$_POST = $form['hidden'] + [ 'location' => $form['traps'][0]['value'], 'email' => $address ];
+	$request = ninoVisit( $site, $form['action'], 'POST' );
+	\Nino\Csrf::callbackResponse( $site, $request );
+	\Nino\Modules\Newsletter::callbackResponse( $site, $request );
+	$_POST = [];
+	return $request;
+};
+$handWritten = static function( array &$site, string $address ): array {
+	$_POST = [ '_csrf' => \Nino\Csrf::getToken( $site ), 'location' => '', 'email' => $address ];
+	$request = ninoVisit( $site, '/.newsletter', 'POST' );
+	\Nino\Csrf::callbackResponse( $site, $request );
+	\Nino\Modules\Newsletter::callbackResponse( $site, $request );
+	$_POST = [];
+	return $request;
+};
+
+$writeList( $site, [] );
+$mails = [];
+$freshMailWindow( $site );
+$signedUp = $postForm( $site, $form, 'form-signup@example.org' );
+$same = $handWritten( $site, 'hand-signup@example.org' );
+check( 'a post from the rendered form is a signup like the hand-written form\'s: 200, the same answer, the confirmation mail out',
+	$signedUp['/nino/http/response']['statusCode'] === 200 && $signedUp['/nino/http/response']['body'] === $same['/nino/http/response']['body']
+	&& $same['/nino/http/response']['statusCode'] === 200 && count( $mails ) === 2 && $mails[0]['to'] === 'form-signup@example.org' );
+$entries = \Nino\Filesystem::getFileContent( $site, $subscribersPath, [] );
+check( '...the address waits as pending, as it does for the form written by hand, until the link of the mail is pressed',
+	array_column( $entries, 'status', 'email' ) === [ 'form-signup@example.org' => 'pending', 'hand-signup@example.org' => 'pending' ] );
+$freshMailWindow( $site );
+check( '...the same form refuses what the endpoint refuses: no address, a wrong one, a filled trap, and a post without its token',
+	$postForm( $site, $form, '' )['/nino/http/response']['statusCode'] === 400 && $postForm( $site, $form, 'not-an-email' )['/nino/http/response']['statusCode'] === 400
+	&& $postForm( $site, [ 'traps' => [ [ 'value' => 'bot' ] ] ] + $form, 'bot@example.org' )['/nino/http/response']['statusCode'] === 418
+	&& $postForm( $site, [ 'hidden' => [] ] + $form, 'no-token@example.org' )['/nino/http/response']['statusCode'] === 403 );
+
+/*	The words are the project's: the label, the placeholder and the button are keys of the Text panel that the
+	unit delivers, in both languages, and the form shows what the language of the page says for each	*/
+$keys = [ '[[/feature/newsletter/signup/label]]', '[[/feature/newsletter/signup/placeholder]]', '[[/feature/newsletter/label/submit]]' ];
+$ofLocale = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$ofLocale[$locale] = include $dir. '/install/text/'. $locale. '.php';
+	check( 'the unit brings the label, the placeholder and the button of the form in '. $locale. ', each with a word',
+		array_filter( $keys, static fn( string $key ): bool => trim( (string) ( $ofLocale[$locale][$key] ?? '' ) ) === '' ) === [] );
+	check( '...and activation merged them into text/'. $locale. '.php',
+		array_filter( $keys, static fn( string $key ): bool => ( \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] )[$key] ?? null ) !== $ofLocale[$locale][$key] ) === [] );
+
+	$site['./nino/locales/current'] = $locale;
+	$spoken = newsletterSignupForms( \Nino\Html::renderHtml( $site, '[newsletter-signup]' ) )[0] ?? [];
+	check( 'a page in '. $locale. ' shows the three words of that language in the form, none of them left as a key',
+		( $spoken['labels'][0]['text'] ?? null ) === $ofLocale[$locale][$keys[0]] && ( $spoken['emails'][0]['placeholder'] ?? null ) === $ofLocale[$locale][$keys[1]]
+		&& ( $spoken['buttons'][0]['text'] ?? null ) === $ofLocale[$locale][$keys[2]] && str_contains( \Nino\Html::renderHtml( $site, '[newsletter-signup]' ), '[[' ) === false );
+}
+check( '...in two languages that are not one: the label and the button differ',
+	$ofLocale['en_US'][$keys[0]] !== $ofLocale['de_DE'][$keys[0]] && $ofLocale['en_US'][$keys[2]] !== $ofLocale['de_DE'][$keys[2]] );
+$site['./nino/locales/current'] = 'en_US';
 
 echo "\n";
 

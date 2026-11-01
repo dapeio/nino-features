@@ -8,6 +8,8 @@
 	'[[/_nino/webpage/.newsletter/unsubscribe/description]]' => 'Ask for a link to unsubscribe from the newsletter.',
 
 	'[[/feature/newsletter/label/submit]]' => 'Subscribe',
+	'[[/feature/newsletter/signup/label]]' => 'Email address',
+	'[[/feature/newsletter/signup/placeholder]]' => 'name@example.com',
 	'[[/feature/newsletter/info/required]]' => 'Please enter an email address.',
 	'[[/feature/newsletter/info/email]]' => 'Please enter a valid email address.',
 	'[[/feature/newsletter/info/success]]' => 'Thank you – please confirm your signup via the link in your inbox.',
