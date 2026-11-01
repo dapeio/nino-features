@@ -14,11 +14,12 @@ declare(strict_types=1);
  *										config.php, the stylesheet that draws the kernel's form
  *										family from properties of its own (what it declares and
  *										where, what reads them, what it is set on and what it
- *										leaves alone) and the four looks in design/ that the
- *										Design feature offers (read by their grammar - the place
- *										of the specimen each is looked at in among it - and,
- *										where that feature is beside this one, as its own parser
- *										and compiler take them) - plus the thing that matters most
+ *										leaves alone), the four looks in design/ that the
+ *										Design feature offers (read by their grammar and, where
+ *										that feature is beside this one, as its own parser and
+ *										compiler take them) and the block it brings to the
+ *										specimen of that feature's preview, design/preview.tpl -
+ *										plus the thing that matters most
  *										about a feature like this: that switching it on changes
  *										nothing about a submission that should go through, and
  *										switching it off leaves every form working - and, where
@@ -1107,30 +1108,36 @@ foreach( $looks as $variant => $look )
 
 check( 'each head names and describes its variant in both languages, once each: @name, @name-de, @description, @description-de'. ( $headless === [] ? '' : ' - '. implode( ', ', $headless ) ), $headless === [] && $looks !== [] );
 
-// The place of the specimen of the Design preview that the look is seen in: one line, an id, the same in the four
-$anchorProblems	= [];
-$anchorWords		= [];
+// The block the feature brings to the specimen of the Design preview: the form, with its messages and its line, in a grid row of its own - what the section of the specimen was
+$blockSource 	= (string) @file_get_contents( $dir. '/design/preview.tpl' );
+$blockIds 		= [];
+preg_match_all( '/<[a-z][^>]*>/i', $blockSource, $blockTagFound );
 
-foreach( $looks as $variant => $look ) {
+foreach( $blockTagFound[0] as $blockTag )
+	if( preg_match( '/\sid="([^"]*)"/', $blockTag, $blockIdFound ) === 1 )
+		$blockIds[] = $blockIdFound[1];
 
-	$lines	= $look['tags']['@anchor'] ?? [];
-	$at			= array_search( '@anchor', $look['order'], true );
-	$first	= array_search( '@knob', $look['order'], true );
+$blockLabels = [];
+preg_match_all( '/<label for="([^"]+)"/', $blockSource, $blockForFound );
 
-	if( count( $lines ) !== 1 || preg_match( '/^[a-z][a-z0-9-]*$/D', $lines[0] ) !== 1 )
-		$anchorProblems[] = $variant. ' @anchor';
-	else
-		$anchorWords[] = $lines[0];
+foreach( $blockForFound[1] as $blockFor )
+	if( in_array( $blockFor, $blockIds, true ) === false )
+		$blockLabels[] = $blockFor;
 
-	if( isset( $look['tags']['@anchor-de'] ) === true )
-		$anchorProblems[] = $variant. ' @anchor-de';
+check( 'the feature brings a block to the specimen, design/preview.tpl: one grid row, every id in it forms-something, no section of its own and no inline handler, and each label points at a field of the block',
+	str_starts_with( trim( $blockSource ), '<div class="nino-grid-row">' ) === true && str_ends_with( trim( $blockSource ), '</div>' ) === true && substr_count( $blockSource, 'class="nino-grid-row"' ) === 1
+	&& $blockIds !== [] && array_filter( $blockIds, static fn( string $id ): bool => str_starts_with( $id, 'forms-' ) === false ) === [] && count( $blockIds ) === count( array_unique( $blockIds ) )
+	&& preg_match( '/<section\b/i', $blockSource ) !== 1 && preg_match( '/\son[a-z]+\s*=/i', $blockSource ) !== 1 && $blockLabels === [] );
 
-	if( $at === false || $first === false || $at > $first )
-		$anchorProblems[] = $variant. ' @anchor after the first @knob';
-}
+$blockMissing = [];
 
-check( 'each head says where in the specimen of the Design preview its look is seen, in one line: @anchor, once, with an id - letters, digits and hyphens - before the first @knob line, and no line of another language for it - and it is the same place in all four'. ( $anchorProblems === [] ? '' : ' - '. implode( ', ', $anchorProblems ) ),
-	$anchorProblems === [] && count( $anchorWords ) === count( $looks ) && $looks !== [] && count( array_unique( $anchorWords ) ) === 1 );
+foreach( [ 'class="nino-form"', 'class="nino-form-input"', 'class="nino-form-select"', 'class="nino-form-textarea"', 'type="checkbox"', 'type="radio"', '<fieldset class="nino-forms-group">', '<legend>',
+		'class="nino-form-message"', 'nino-form nino-is-error', 'nino-form nino-is-success', 'nino-form nino-form--inline', 'nino-form-submit', '<h2 class="nino-section-title' ] as $blockNeedle )
+	if( str_contains( $blockSource, $blockNeedle ) === false )
+		$blockMissing[] = $blockNeedle;
+
+check( '...with the fields the looks are seen on: the text, the e-mail, the select, the textarea, the checkbox, a group of radio buttons under a legend, the messages of an error and of a success, the form in one line and the send button, headed as the section was'. ( $blockMissing === [] ? '' : ' - missing '. implode( ', ', $blockMissing ) ),
+	$blockMissing === [] && substr_count( $blockSource, 'type="radio"' ) >= 2 );
 
 $knobProblems = [];
 
@@ -1322,6 +1329,7 @@ echo "\n";
 echo "Forms - the variants as the Design feature compiles them\n";
 
 $designSetup			= '\\Nino\\Modules\\Design\\Setup';
+$designPreview		= '\\Nino\\Modules\\Design\\Preview';
 $designCompiler		= '\\Nino\\Modules\\Design\\Compiler';
 
 if( class_exists( $designSetup ) === false || class_exists( $designCompiler ) === false )
@@ -1368,14 +1376,15 @@ else {
 
 	check( '...each described in the language of the workbench by the lines of its head, the name and the description - the English ones or the ones with -de', $described( $english, '' ) === [] && $described( $german, '-de' ) === [] && count( $english ) === 4 );
 
-	// The place the heads name is a place of the specimen the Design preview draws, and the scan publishes it with each variant
-	$place			= $anchorWords[0] ?? '';
-	$specimen		= (string) @file_get_contents( \Nino\Features::dir(). '/Design/templates/preview-specimen.tpl' );
-	$placeSection	= $place !== '' && preg_match( '~<section id="'. preg_quote( $place, '~' ). '"[^>]*>(.*?)</section>~s', $specimen, $placeMatch ) === 1 ? $placeMatch[1] : null;
+	// The block is the feature's, not a variant's: the scan names its anchor once, with the feature, and Design makes the section round it
+	$blockTold 		= [];
+	$blockInside 	= $designSetup::previewOf( (string) $feature['dir'], 'forms', $blockTold );
+	$blocks 			= $designPreview::blocks( $appData );
 
-	check( 'the place the heads name is on the specimen of the Design preview, once, on the section that holds the form of the kernel\'s family: the look is seen where it is looked at, and the scan publishes it with each of the four variants, without a word to say of it',
-		$place !== '' && substr_count( $specimen, ' id="'. $place. '"' ) === 1 && $placeSection !== null && str_contains( $placeSection, 'class="nino-form"' ) === true
-		&& count( $catalogue ) === 4 && array_unique( array_column( $catalogue, 'anchor' ) ) === [ $place ] && $scanNotes === [] );
+	check( 'with the Design feature on, the block stands the check Design holds it to and the scan publishes its anchor, feature-forms, with the feature and with none of its four variants, without a word to say of it - and the preview makes the section of it, named like the feature in the language of the workbench',
+		$blockInside === trim( $blockSource ) && $blockInside !== '' && $blockTold === [] && ( $feature['anchor'] ?? null ) === 'feature-forms' && count( $catalogue ) === 4 && array_keys( $catalogue['regular'] ) === [ 'name', 'description', 'knobs' ]
+		&& $scanNotes === [] && array_keys( $blocks ) === [ 'forms' ] && preg_match( '~^<section id="feature-forms" class="nino-section" aria-label="Formulare">\s*(.*?)\s*</section>$~s', $blocks['forms'], $blockSection ) === 1
+		&& str_contains( $blockSection[1] ?? '', 'id="forms-name"' ) === true );
 
 	$offTable = [];
 

@@ -22,10 +22,11 @@ namespace Nino\Modules\Design {
 	 *										page produces, with the chosen header and footer around it
 	 *										and the compiled stylesheet over it. Each tab and each
 	 *										object has an anchor on it, an element with an id the panel
-	 *										scrolls the frame to; the cards have one, the end of the
-	 *										page has one for the footer, and the section of the fields
-	 *										and their messages has one that no tab and no object looks
-	 *										at but a variant of a feature may name (see Setup::head()).
+	 *										scrolls the frame to; the cards have one, and the end of the
+	 *										page has one for the footer. Before it stand the blocks of
+	 *										the features that bring variants and a block of their own
+	 *										(see blocks()): a section each, with the anchor the panel
+	 *										scrolls to when a control of that feature is used.
 	 *										Nothing here writes: a preview is a question, and the answer
 	 *										to it must not already be the answer on disk.
 	 *
@@ -35,7 +36,9 @@ namespace Nino\Modules\Design {
 	 *										\Nino\Filesystem and filled with str_replace() - see
 	 *										AGENTS.md, "Markup belongs in a template". What is left
 	 *										here is which template, what goes in it, and where the
-	 *										frames around it come from.
+	 *										frames around it come from. The page, the specimen and the
+	 *										section around a block are templates; the block itself is
+	 *										the feature's (design/preview.tpl, see Setup::previewOf()).
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -92,21 +95,24 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		array 		$setup				A normalised setup (see Setup::normalize())
 		 *	@param		array 		&$notes				(reference) What was missing on the way
+		 *	@param		array|null	$blocks				The blocks of the features, where the caller made them (see specimen())
 		 *
-		 *	@return 	string								Rendered html
+		 *	@return 	string								Rendered html - the header, the specimen with each block of a feature in a pass of its own, and the footer
 		 */
-		public static function render( array &$appData, string $libraryDir, array $setup, array &$notes = [] ): string {
+		public static function render( array &$appData, string $libraryDir, array $setup, array &$notes = [], ?array $blocks = null ): string {
 
-			$page = [
-				self::frame( $libraryDir, $setup, 'header', $notes ),
-				self::specimen( $appData ),
-				self::frame( $libraryDir, $setup, 'footer', $notes ),
-			];
+			[ $before, $inside, $after ] = self::halves( $appData, $notes, $blocks );
 
-			foreach( $page as $at => $markup )
-				$page[$at] = \Nino\Html::renderHtml( $appData, $markup );
+			$render = static fn( string $markup ): string => \Nino\Html::renderHtml( $appData, $markup );
 
-			return implode( "\n", $page );
+			/*	The specimen is not one string either: the blocks of the features are the features' own markup, and a block that
+				leaves a pair shortcode open would take the closing tag of the next one - so the part of the specimen before them,
+				each block and the part after them are rendered one by one, and put together the way specimen() puts them */
+			return implode( "\n", [
+				$render( self::frame( $libraryDir, $setup, 'header', $notes ) ),
+				$render( $before ). implode( "\n\n", array_map( $render, $inside ) ). $render( $after ),
+				$render( self::frame( $libraryDir, $setup, 'footer', $notes ) ),
+			] );
 		}
 
 		/**
@@ -198,20 +204,92 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The specimen, without its frames - templates/preview-specimen.tpl
-		 *	with its three tokens filled in
+		 *	The specimen, without its frames - templates/preview-specimen.tpl with its three
+		 *	tokens filled in, and the blocks of the features at [[features]], which stands once
+		 *	before the anchor of the footer. All of it Html+ in one string, for a caller that wants
+		 *	it so; render() does not render it as one (see halves())
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$notes				(reference) What was missing on the way
+		 *	@param		array|null	$blocks				The blocks as blocks() answers them, key => markup; null where they are made here. A caller
+		 *															that changes the language before the page is built hands them in, since the name of a feature is the
+		 *															workbench's (see Admin::_specimen())
 		 *
 		 *	@return 	string								Html+, rendered through the kernel by the caller
 		 */
-		public static function specimen( array &$appData ): string {
+		public static function specimen( array &$appData, array &$notes = [], ?array $blocks = null ): string {
 
-			return str_replace(
+			[ $before, $inside, $after ] = self::halves( $appData, $notes, $blocks );
+
+			return $before. implode( "\n\n", $inside ). $after;
+		}
+
+		/**
+		 *	The specimen in the three pieces render() renders one by one: what stands before the place of the blocks, the blocks, and
+		 *	what stands after it. specimen() is the three put together, with the blocks between the two halves; a template with no
+		 *	[[features]] in it has no place for them and is the first piece alone
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$notes				(reference) What was missing on the way
+		 *	@param		array|null	$blocks				The blocks as blocks() answers them; null where they are made here
+		 *
+		 *	@return 	array									[ the markup before, key => block, the markup after ]
+		 */
+		private static function halves( array &$appData, array &$notes, ?array $blocks ): array {
+
+			$blocks ??= self::blocks( $appData, $notes );
+
+			$halves = explode( '[[features]]', str_replace(
 				[ '[[lorem]]', '[[short]]', '[[placeholder]]' ],
 				[ self::LOREM, self::SHORT, self::PLACEHOLDER ],
 				self::template( $appData, 'preview-specimen' )
-			);
+			), 2 );
+
+			return count( $halves ) === 2 ? [ $halves[0], $blocks, $halves[1] ] : [ $halves[0], [], '' ];
+		}
+
+		/**
+		 *	The blocks of the features: for each feature that is active, brings variants and has the file design/preview.tpl (see
+		 *	Setup::previewOf(), which holds the file to what a block is), the section templates/preview-block.tpl makes round it -
+		 *	the id is the feature's anchor (feature-<key>), the accessible name the feature's own, in the language of the workbench, and
+		 *	the inside the feature's row, with the three tokens of the specimen filled in. In the order of Setup::features(), which is
+		 *	the order of the names. A feature that has none is not here, and is not named.
+		 *
+		 *	The name is escaped, and a '[' in it written as &#91; as Components::escape() does: the page is rendered once more, and the
+		 *	name of a feature is its manifest's, not this class's
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$notes				(reference) What was missing on the way: a block that was a block a moment ago, and is none now
+		 *
+		 *	@return 	array									key => the section, html+
+		 */
+		public static function blocks( array &$appData, array &$notes = [] ): array {
+
+			$frame 	= self::template( $appData, 'preview-block' );
+			$blocks = [];
+
+			if( $frame === '' )
+				return $blocks;
+
+			foreach( Setup::features( $appData ) as $key => $feature ) {
+
+				$markup = $feature['anchor'] === '' ? '' : Setup::previewOf( $feature['dir'], $key, $notes );
+
+				if( $markup === '' )
+					continue;
+
+				$blocks[$key] = str_replace(
+					[ '[[id]]', '[[name]]', '[[block]]' ],
+					[
+						$feature['anchor'],
+						str_replace( '[', '&#91;', htmlspecialchars( $feature['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ),
+						str_replace( [ '[[lorem]]', '[[short]]', '[[placeholder]]' ], [ self::LOREM, self::SHORT, self::PLACEHOLDER ], $markup ),
+					],
+					$frame
+				);
+			}
+
+			return $blocks;
 		}
 
 		/**

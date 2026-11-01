@@ -293,8 +293,8 @@ namespace Nino\Modules\Design {
 				'styles' 	=> $setup['styles'],
 				'kinds' 	=> Setup::KNOBS,
 				/*	The features that bring variants of their own, each with the variants it brings - their names, their
-					descriptions, the place of the specimen each is looked at in and the knobs their heads declare - and
-					with what the setup chose for it: the variant
+					descriptions and the knobs their heads declare -, the anchor of the feature's block on the specimen ('' for a
+					feature with none) and with what the setup chose for it: the variant
 					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
@@ -380,13 +380,14 @@ namespace Nino\Modules\Design {
 		 *	The features as the screen draws them: the catalogue of Setup::features() without the path of
 		 *	the feature and the names of the ladders - nothing the screen reads - and, beside the variants,
 		 *	what the setup chose for the feature. A variant keeps whole what its head says: its name, its
-		 *	description, its anchor - '' where it names none - and its knobs. A feature the setup has an entry
-		 *	for and that is not in the catalogue follows them with its entry as it was kept, flagged as not active
+		 *	description and its knobs; the feature has its anchor, the id of its block on the specimen, '' where
+		 *	it has none. A feature the setup has an entry for and that is not in the catalogue follows them with
+		 *	its entry as it was kept, flagged as not active and without an anchor
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalised setup
 		 *
-		 *	@return 	array										key => name, active, default, catalogue (variant => name, description, anchor, knobs), set, knobs
+		 *	@return 	array										key => name, anchor, active, default, catalogue (variant => name, description, knobs), set, knobs
 		 */
 		private static function _features( array &$appData, array $setup ): array {
 
@@ -407,6 +408,7 @@ namespace Nino\Modules\Design {
 
 				$out[$key] = [
 					'name' 				=> $feature['name'],
+					'anchor' 			=> $feature['anchor'],
 					'active' 			=> true,
 					'default' 		=> $feature['default'],
 					'catalogue' 	=> $catalogue,
@@ -417,7 +419,7 @@ namespace Nino\Modules\Design {
 
 			foreach( $chosen as $key => $entry )
 				if( isset( $out[$key] ) === false )
-					$out[$key] = [ 'name' => (string) $key, 'active' => false, 'default' => '', 'catalogue' => [], 'set' => (string) $entry['set'], 'knobs' => (array) $entry['knobs'] ];
+					$out[$key] = [ 'name' => (string) $key, 'anchor' => '', 'active' => false, 'default' => '', 'catalogue' => [], 'set' => (string) $entry['set'], 'knobs' => (array) $entry['knobs'] ];
 
 			return $out;
 		}
@@ -1332,6 +1334,10 @@ namespace Nino\Modules\Design {
 				somebody will call twice */
 			\Nino\Html::addFills( $appData, self::_previewFills( $appData ), '*' );
 
+			/*	The blocks of the features are made before the language changes: the name a block is labelled with is
+				the feature's in the language of the workbench (Setup::features()), and Preview::render() is handed them */
+			$blocks = Preview::blocks( $appData, $notes );
+
 			/*	Drawn in the language of a visitor, which is not the workbench's: the
 				texts of the frames are what a visitor reads there. The fills above
 				were asked for before, in the workbench's own - the name of the
@@ -1340,7 +1346,7 @@ namespace Nino\Modules\Design {
 				the person at the workbench and no part of the page */
 			\Nino\Locales::useLocale( $appData, \Nino\Locales::getVisitorLocale( $appData ) );
 
-			return Preview::render( $appData, $library, $setup, $notes );
+			return Preview::render( $appData, $library, $setup, $notes, $blocks );
 		}
 
 		/**

@@ -68,11 +68,10 @@
  *												tones of the palette, a colour as two inputs, a light half and a dark half,
  *												with the line of what they measure; a knob the variant that is chosen does
  *												not declare is greyed out, a choice kept for a feature that is not active is
- *												drawn nowhere and posted all the same. A variant may name the place of the
- *												specimen it is looked at in (the line @anchor of its head, `anchor` in the
- *												answer): choosing it, and moving a knob of its feature, scroll the frame there,
- *												and to the anchor of the tab where the variant names none or the page in the
- *												frame has no such id.
+ *												drawn nowhere and posted all the same. A feature may bring a block to the
+ *												specimen (`anchor` of the feature in the answer, its id): choosing a variant of
+ *												it, and moving a knob of it, scroll the frame there, and to the anchor of the
+ *												tab where the feature has none or the page in the frame has no such id.
  *
  *												A template that brings styles - css files beside it, each style declared in
  *												the head of the template - has a select for each in the block of its part,
@@ -535,8 +534,8 @@ function featureKnob( kind, tab, label, standard, options ) {
  *	for them: `chosen` is key => { set, knobs }, and a key the catalogue does not have is a feature that is not active, which rides along with its entry. Two are made
  *	up here. The first, Zinc, whose key sorts before the other's, has two variants: the regular one a knob of each of four kinds - a scale on the Type view, a choice
  *	on Surfaces, a ground and an ink on Colours - and the loud one the same and two more, a pair of colours and a scale on Motion. The second, Tiles, has the one
- *	variant and a knob on the Type view. Each variant has the anchor its head names, as the server answers it ('' for none): the loud one of Zinc names an id of the
- *	stage, the cards, the others name none
+ *	variant and a knob on the Type view. Each feature has the anchor of its block on the specimen, as the server answers it ('' for none): Zinc brings a block, an id of the
+ *	stage, Tiles brings none
  */
 function featuresAnswer( chosen ) {
 
@@ -552,15 +551,15 @@ function featuresAnswer( chosen ) {
 		turn 		: featureKnob( 'scale', 'motion', 'Turn', 0 ),
 	} );
 	const answer = {
-		tiles 	: { name : 'Tiles', active : true, 'default' : 'regular', catalogue : { regular : { name : 'Plain', description : 'Tiles as they come', anchor : '', knobs : { grid : featureKnob( 'scale', 'type', 'Grid', 0 ) } } }, set : '', knobs : [] },
-		awning 	: { name : 'Zinc', active : true, 'default' : 'regular', catalogue : {
-			regular : { name : 'Regular', description : 'The awning as it hangs', anchor : '', knobs : regular },
-			loud 		: { name : 'Loud', description : 'The awning, louder', anchor : 'cards', knobs : loud },
+		tiles 	: { name : 'Tiles', anchor : '', active : true, 'default' : 'regular', catalogue : { regular : { name : 'Plain', description : 'Tiles as they come', knobs : { grid : featureKnob( 'scale', 'type', 'Grid', 0 ) } } }, set : '', knobs : [] },
+		awning 	: { name : 'Zinc', anchor : 'feature-awning', active : true, 'default' : 'regular', catalogue : {
+			regular : { name : 'Regular', description : 'The awning as it hangs', knobs : regular },
+			loud 		: { name : 'Loud', description : 'The awning, louder', knobs : loud },
 		}, set : '', knobs : [] },
 	};
 
 	Object.keys( picked ).forEach( function( key ) {
-		answer[key] = Object.assign( answer[key] || { name : key, active : false, 'default' : '', catalogue : {} }, { set : picked[key].set, knobs : picked[key].knobs } );
+		answer[key] = Object.assign( answer[key] || { name : key, anchor : '', active : false, 'default' : '', catalogue : {} }, { set : picked[key].set, knobs : picked[key].knobs } );
 	} );
 
 	return JSON.parse( JSON.stringify( answer ) );
@@ -778,7 +777,7 @@ function listing( over ) {
  */
 function frameStage() {
 
-	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, lists : 1400, tables : 1500, colours : 450, footer : 4000 } };
+	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, lists : 1400, tables : 1500, colours : 450, 'feature-awning' : 3400, footer : 4000 } };
 
 	stage.style = element('style');
 	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
@@ -6180,20 +6179,15 @@ const CONTROL_AIMS = { 'colours/primary' : 'colours', 'colours/secondary' : 'col
 
 /**
  *	Where a control is looked at, from the table: the id it has of its own, else that of the object it stands under, else that of its tab - how many rows its tab draws is no part of it.
- *	A control of a feature has no id of its own and stands under no object of the page: it is looked at where the variant chosen for its feature says, else where its tab is -
- *	`features` is design/list's list of them, `chosen` the entries of the screen (key => { set })
+ *	A control of a feature has no id of its own and stands under no object of the page: it is looked at in the block of its feature, where it brings one, else where its tab is -
+ *	`features` is design/list's list of them
  */
-function aimOf( layout, key, features, chosen ) {
+function aimOf( layout, key, features ) {
 
 	const at = layout.controls[key];
 
-	if( key.indexOf('features/') === 0 ) {
-
-		const feature = ( features || {} )[ at[1] ] || { catalogue : {} };
-		const set = ( ( chosen || {} )[ at[1] ] || {} ).set || feature['default'];
-
-		return ( feature.catalogue[set] || {} ).anchor || TAB_AIMS[ at[0] ];
-	}
+	if( key.indexOf('features/') === 0 )
+		return ( ( features || {} )[ at[1] ] || {} ).anchor || TAB_AIMS[ at[0] ];
 
 	return CONTROL_AIMS[key] || OBJECT_AIMS[ at[1] ] || TAB_AIMS[ at[0] ];
 }
@@ -6786,26 +6780,22 @@ jp.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', 
 
 check( 'a knob of the palette is looked at in the grounds, where opening the tab went', jp.design._target === 'colours' && jpAsked() === 'colours' );
 
-/*	A variant of a feature may name the place of the specimen it is looked at in: the line @anchor of its head, which design/list answers as `anchor` with each variant, '' for none. A control of a feature
-	has an entry in none of the maps - the page knows no feature -, and goes where the variant chosen for its feature says, else to the anchor of its tab. An id that the page in the frame has not got is
-	looked at where the tab is	*/
+/*	A feature may bring a block to the specimen: design/list answers the id of its section as `anchor` with the feature, '' for none. A control of a feature has an entry in none of the maps - the page knows no
+	feature -, and goes to the block of its feature, whichever variant is chosen, else to the anchor of its tab. An id that the page in the frame has not got is looked at where the tab is	*/
 const jf = panel( featured() );
 const jfLayout = jf.design._data.layout;
 const jfFeatures = jf.design._data.features;
 const jfLast = function() { return jf.stage.scrolls[jf.stage.scrolls.length - 1] };
 const jfAsked = function() { return jf.stage.asked[jf.stage.asked.length - 1] };
 const jfKeys = function( key ) { return Object.keys( jfLayout.controls ).filter( function( control ) { return control.indexOf('features/'+ key+ '/') === 0 } ) };
-const jfNamed = [];
-
-Object.keys( jfFeatures ).forEach( function( key ) {
-	Object.keys( jfFeatures[key].catalogue ).forEach( function( set ) { jfNamed.push( [ key, set, jfFeatures[key].catalogue[set].anchor ] ) } );
-} );
-
-const jfNaming = jfNamed.filter( function( one ) { return one[2] !== '' } );
-// The one variant that names a place: [ feature, variant, id ]
-const jfName = jfNaming[0] || [ '', '', '' ];
+const jfNamed = Object.keys( jfFeatures ).map( function( key ) { return [ key, jfFeatures[key].anchor ] } );
+const jfNaming = jfNamed.filter( function( one ) { return one[1] !== '' } );
+// The one feature that brings a block: [ feature, id ]
+const jfName = jfNaming[0] || [ '', '' ];
 const jfOther = Object.keys( jfFeatures ).filter( function( key ) { return key !== jfName[0] } )[0];
+const jfVariants = Object.keys( ( jfFeatures[ jfName[0] ] || { catalogue : {} } ).catalogue );
 const jfDefault = ( jfFeatures[ jfName[0] ] || {} )['default'];
+const jfLoud = jfVariants.filter( function( set ) { return set !== jfDefault } )[0];
 
 /** What the preview answers while the frame stands: a stylesheet to swap, and then the page goes where the change is looked at */
 function jfAnswer() {
@@ -6813,73 +6803,74 @@ function jfAnswer() {
 	jf.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 }
 
-check( 'the variants of the answer carry the place they are looked at in, as design/list gives it: a string with each, an id of the page on one of them - not the variant its feature starts from - and an empty one on the others, so that a variant that names a place and one that names none are both drawn, in a feature and beside another',
-	jfNamed.length >= 3 && jfNamed.every( function( one ) { return typeof one[2] === 'string' } ) && jfNaming.length === 1 && jf.stage.tops[ jfName[2] ] !== undefined
-	&& jfName[1] !== jfDefault && jfFeatures[ jfOther ] !== undefined );
+check( 'the features of the answer carry the anchor of their block, as design/list gives it: a string with each, the id of an element of the page on one of them and an empty one on the other - so that a feature with a block and one without are both drawn',
+	jfNamed.length >= 2 && jfNamed.every( function( one ) { return typeof one[1] === 'string' } ) && jfNaming.length === 1 && jf.stage.tops[ jfName[1] ] !== undefined
+	&& jfFeatures[ jfOther ] !== undefined && jfVariants.length >= 2 && jfLoud !== undefined );
 check( 'a control of a feature has an entry in none of the maps - no place of its own, and no object of the page that it stands under - and the maps are what they were: the page knows no feature',
 	jfKeys( jfName[0] ).length >= 7 && jfKeys( jfOther ).length >= 2
 	&& Object.keys( jfLayout.controls ).filter( function( key ) { return key.indexOf('features/') === 0 } ).every( function( key ) { return jf.design.CONTROL_ANCHORS[key] === undefined && jf.design.OBJECT_ANCHORS[ jfLayout.controls[key][1] ] === undefined } )
 	&& JSON.stringify( jf.design.ANCHORS ) === JSON.stringify( TAB_AIMS ) && JSON.stringify( jf.design.OBJECT_ANCHORS ) === JSON.stringify( OBJECT_AIMS ) && JSON.stringify( jf.design.CONTROL_ANCHORS ) === JSON.stringify( CONTROL_AIMS ) );
-check( 'with the variant a feature starts from, which names no place, every control of the feature is looked at where its tab is - the choice of the variant at the top of the page, a knob where the tab it stands on looks - and so is every control of the table, the rows of the features among them',
-	Object.keys( jfLayout.controls ).every( function( key ) { return jf.setup._anchorOf( key ) === aimOf( jfLayout, key, jfFeatures, jf.design._edit.features ) } )
-	&& jfKeys( jfName[0] ).every( function( key ) { return jf.setup._anchorOf( key ) === TAB_AIMS[ jfLayout.controls[key][0] ] } ) && jf.setup._anchorOf( 'features/'+ jfName[0]+ '/set' ) === TAB_AIMS.templates );
+check( 'every control of the feature that brings a block is looked at in it - the choice of the variant and each knob of it, on whichever tab - and every control of the feature that brings none where its tab is: the table gives the same answer for every row, the rows of the features among them',
+	Object.keys( jfLayout.controls ).every( function( key ) { return jf.setup._anchorOf( key ) === aimOf( jfLayout, key, jfFeatures ) } )
+	&& jfKeys( jfName[0] ).every( function( key ) { return jf.setup._anchorOf( key ) === jfName[1] } )
+	&& jfKeys( jfOther ).every( function( key ) { return jf.setup._anchorOf( key ) === TAB_AIMS[ jfLayout.controls[key][0] ] } ) && jf.setup._anchorOf('width') === TAB_AIMS.surfaces
+	&& jf.setup._anchorOf( 'features/'+ jfOther+ '/set' ) === TAB_AIMS.templates );
 
 const jfSet = fxSelect( jf, jfName[0] );
 const jfScrolled = jf.stage.scrolls.length;
 
-choose( jfSet, jfName[1] );
+choose( jfSet, jfLoud );
 
-check( 'choosing the variant that names a place makes that place the target of the change - the id its head names, not the anchor of the tab - and nothing scrolls until the preview has answered',
-	jf.design._edit.features[ jfName[0] ].set === jfName[1] && jf.design._target === jfName[2] && jf.design._target !== jf.design.ANCHORS.templates && jf.stage.scrolls.length === jfScrolled );
+check( 'choosing a variant of that feature makes its block the target of the change - the id of the feature, not the anchor of the tab - and nothing scrolls until the preview has answered',
+	jf.design._edit.features[ jfName[0] ].set === jfLoud && jf.design._target === jfName[1] && jf.design._target !== jf.design.ANCHORS.templates && jf.stage.scrolls.length === jfScrolled );
 
 jfAnswer();
 
 check( '...and then the frame goes there: the element with that id, from where the page stands, as for a place of the page',
-	jfAsked() === jfName[2] && jf.stage.scrolls.length === jfScrolled + 1 && JSON.stringify( jfLast() ) === JSON.stringify( { top : jf.stage.tops[ jfName[2] ] + jf.stage.scrollY - jf.stage.clearance, behavior : 'smooth' } ) );
-check( 'while that variant stands every control of its feature is looked at there - the choice of the variant and each knob of it, on whichever tab - and the controls of the other feature and of the page are where they were: the table gives the same answer for every row',
-	Object.keys( jfLayout.controls ).every( function( key ) { return jf.setup._anchorOf( key ) === aimOf( jfLayout, key, jfFeatures, jf.design._edit.features ) } )
-	&& jfKeys( jfName[0] ).every( function( key ) { return jf.setup._anchorOf( key ) === jfName[2] } )
-	&& jfKeys( jfOther ).every( function( key ) { return jf.setup._anchorOf( key ) === TAB_AIMS[ jfLayout.controls[key][0] ] } ) && jf.setup._anchorOf('width') === TAB_AIMS.surfaces );
+	jfAsked() === jfName[1] && jf.stage.scrolls.length === jfScrolled + 1 && JSON.stringify( jfLast() ) === JSON.stringify( { top : jf.stage.tops[ jfName[1] ] + jf.stage.scrollY - jf.stage.clearance, behavior : 'smooth' } ) );
 
 fxControl( jf, jfName[0], 'size' );
 pressKey( jf, 'features/'+ jfName[0]+ '/knobs/size', 1 );
 
 check( 'a knob of that feature goes there as well, on a tab that looks elsewhere: the size, on Type',
-	jf.design._target === jfName[2] && jf.design.ANCHORS[ jfLayout.controls['features/'+ jfName[0]+ '/knobs/size'][0] ] !== jfName[2] );
+	jf.design._target === jfName[1] && jf.design.ANCHORS[ jfLayout.controls['features/'+ jfName[0]+ '/knobs/size'][0] ] !== jfName[1] );
 
 fxControl( jf, jfOther, 'grid' );
 pressKey( jf, 'features/'+ jfOther+ '/knobs/grid', 1 );
 
-check( 'a knob of a feature whose variant names none is looked at where its tab is, whatever the other feature names',
-	jf.design._target === jf.design.ANCHORS[ jfLayout.controls['features/'+ jfOther+ '/knobs/grid'][0] ] && jf.design._target !== jfName[2] );
+check( 'a knob of a feature that brings no block is looked at where its tab is, whatever the other feature brings',
+	jf.design._target === jf.design.ANCHORS[ jfLayout.controls['features/'+ jfOther+ '/knobs/grid'][0] ] && jf.design._target !== jfName[1] );
 
 choose( fxSelect( jf, jfName[0] ), jfDefault );
 
-check( 'choosing the variant that names none, after, makes the anchor of the tab the target again: the top of the page, where the Templates view looks',
-	jf.design._edit.features[ jfName[0] ].set === jfDefault && jf.design._target === TAB_AIMS.templates );
+check( 'choosing the variant the feature starts from goes to its block as well: it is the feature that has the place, not the variant',
+	jf.design._edit.features[ jfName[0] ].set === jfDefault && jf.design._target === jfName[1] );
+
+jfAnswer();
+
+check( '...and the frame goes there', jfAsked() === jfName[1] && JSON.stringify( jfLast() ) === JSON.stringify( { top : jf.stage.tops[ jfName[1] ] + jf.stage.scrollY - jf.stage.clearance, behavior : 'smooth' } ) );
+
+// A feature with one variant has no select to choose it with; the call is the one the select makes
+jf.setup._setFeatureSet( jfOther, Object.keys( jfFeatures[ jfOther ].catalogue )[0] );
+
+check( 'choosing the variant of a feature that brings no block goes where the Templates view looks: the top of the page',
+	jf.design._target === TAB_AIMS.templates );
 
 jfAnswer();
 
 check( '...and the frame goes there', jfAsked() === TAB_AIMS.templates && JSON.stringify( jfLast() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) );
 
-fxControl( jf, jfName[0], 'size' );
-pressKey( jf, 'features/'+ jfName[0]+ '/knobs/size', -1 );
-jfAnswer();
-
-check( 'a knob of the feature, with that variant standing, goes to the anchor of its tab: the typography block for the size on Type',
-	jf.design._target === jf.design.ANCHORS.type && jfAsked() === jf.design.ANCHORS.type && JSON.stringify( jfLast() ) === JSON.stringify( { top : jf.stage.tops[ jf.design.ANCHORS.type ] + jf.stage.scrollY - jf.stage.clearance, behavior : 'smooth' } ) );
-
-// The variant that is chosen is the one on the screen, stored or chosen here: a feature that comes to the screen at the variant that names a place is looked at there from the first change
-const jfStored = panel( featured( { [ jfName[0] ] : { set : jfName[1], knobs : {} } } ) );
+// The variant that is chosen is the one on the screen, stored or chosen here - and a feature that comes to the screen with a variant chosen is looked at in its block from the first change
+const jfStored = panel( featured( { [ jfName[0] ] : { set : jfLoud, knobs : {} } } ) );
 const jfStoredLayout = jfStored.design._data.layout;
 
 fxControl( jfStored, jfName[0], 'size' );
 pressKey( jfStored, 'features/'+ jfName[0]+ '/knobs/size', 1 );
 
-check( 'the variant that is chosen is the one on the screen, stored or chosen here: a feature that came at the variant that names a place is looked at there from its first change, each control of the table at the place it follows from',
-	jfStored.design._target === jfName[2]
-	&& Object.keys( jfStoredLayout.controls ).every( function( key ) { return jfStored.setup._anchorOf( key ) === aimOf( jfStoredLayout, key, jfStored.design._data.features, jfStored.design._edit.features ) } )
-	&& jfKeys( jfName[0] ).every( function( key ) { return jfStored.setup._anchorOf( key ) === jfName[2] } ) );
+check( 'a feature that came to the screen with a variant chosen is looked at in its block from its first change, each control of the table at the place it follows from',
+	jfStored.design._target === jfName[1]
+	&& Object.keys( jfStoredLayout.controls ).every( function( key ) { return jfStored.setup._anchorOf( key ) === aimOf( jfStoredLayout, key, jfStored.design._data.features ) } )
+	&& jfKeys( jfName[0] ).every( function( key ) { return jfStored.setup._anchorOf( key ) === jfName[1] } ) );
 
 // An id the page in the frame has not got: asked for, given up for the anchor of the tab
 jf.tab( tabWord('type') );
@@ -6888,7 +6879,7 @@ const jfAskedFrom = jf.stage.asked.length;
 const jfScrolledFrom = jf.stage.scrolls.length;
 jf.design._jump();
 
-check( 'an id the page in the frame has not got - a variant names it, and a project may have a specimen of its own - is asked for and given up for the anchor of the open tab: the frame goes there and not nowhere',
+check( 'an id the page in the frame has not got - the block of a feature, and a project may have a specimen of its own - is asked for and given up for the anchor of the open tab: the frame goes there and not nowhere',
 	jf.stage.asked.slice( jfAskedFrom ).join() === 'nowhere,'+ jf.design.ANCHORS.type && jf.stage.scrolls.length === jfScrolledFrom + 1
 	&& JSON.stringify( jfLast() ) === JSON.stringify( { top : jf.stage.tops[ jf.design.ANCHORS.type ] + jf.stage.scrollY - jf.stage.clearance, behavior : 'smooth' } ) );
 
@@ -6930,15 +6921,16 @@ const jumpedTo = [ jp.design.ANCHORS, jp.design.OBJECT_ANCHORS, jp.design.CONTRO
 check( 'every id the script jumps to is on the specimen exactly once: the top of the page, the first section, the cards, the buttons, the lists and the tables, the typography block, the grounds and, at the end, the footer - nine places, those of the tabs, of the objects and of the controls with a place of their own',
 	jumpedTo.length === 9 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 && specimenIds.lists === 1 && specimenIds.tables === 1 );
 check( '...and the footer, which no tab has, is looked at in an element of its own: the id footer, once, an empty block at the end of the specimen - after the last section, where the footer of the frame starts',
-	specimenIds.footer === 1 && /<\/section>\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') && Object.keys( jp.design.ANCHORS ).every( function( tab ) { return jp.design.ANCHORS[tab] !== 'footer' } ) );
+	specimenIds.footer === 1 && /<\/section>\s*\[\[features\]\]\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') && Object.keys( jp.design.ANCHORS ).every( function( tab ) { return jp.design.ANCHORS[tab] !== 'footer' } ) );
 check( '...and the Cards section is the element that has the id, with an accessible name of its own: the second section of the page, after the hero and before the grounds',
 	/<section id="cards" class="nino-section" aria-label="[^"]+">/.test( specimen ) === true && specimen.indexOf('id="content"') < specimen.indexOf('id="cards"')
 	&& specimen.indexOf('id="cards"') < specimen.indexOf('id="colours"') );
-check( '...and the form has an id of its own, which no map of the script knows and a variant of a feature may name: the id form, once, on the section that holds the form and its field - after the buttons and before the tables',
-	specimenIds.form === 1 && jumpedTo.indexOf('form') === -1 && /<section id="form" class="nino-section" aria-label="[^"]+">/.test( specimen ) === true
-	&& specimen.slice( specimen.indexOf('id="form"'), specimen.indexOf( '</section>', specimen.indexOf('id="form"') ) ).indexOf('class="nino-form"') !== -1
-	&& specimen.slice( specimen.indexOf('id="form"'), specimen.indexOf( '</section>', specimen.indexOf('id="form"') ) ).indexOf('class="nino-form-input"') !== -1
-	&& specimen.indexOf('id="buttons"') < specimen.indexOf('id="form"') && specimen.indexOf('id="form"') < specimen.indexOf('id="tables"') );
+const blockFrame = fs.readFileSync( path.join( __dirname, '../templates/preview-block.tpl' ), 'utf8' );
+
+check( '...and the blocks of the features have a place of their own, which no map of the script knows: the token [[features]], once, after the last section of the specimen and before the footer - and each is the section the block template makes, with the id of its feature, an accessible name and the row of the feature in it',
+	( specimen.match( /\[\[features\]\]/g ) || [] ).length === 1 && specimen.indexOf('[[features]]') > specimen.lastIndexOf('<section ') && specimen.indexOf('[[features]]') < specimen.indexOf('id="footer"')
+	&& jumpedTo.every( function( id ) { return id.indexOf('feature-') !== 0 } )
+	&& /^<section id="\[\[id\]\]" class="nino-section" aria-label="\[\[name\]\]">\s*\[\[block\]\]\s*<\/section>\s*$/.test( blockFrame ) === true );
 
 console.log('');
 
@@ -9251,13 +9243,14 @@ else {
 		return Object.keys( catalogue ).reduce( function( all, set ) { return Object.keys( catalogue[set].knobs ).map( function( knob ) { return [ set, knob, catalogue[set].knobs[knob] ] } ).concat( all ) }, [] );
 	};
 
-	check( 'the server\'s answer with a feature in it is in the shape the screen draws: the features that are active have a name, a variant they start from and the variants with their names, descriptions, anchors and knobs - each knob of one of the five kinds, on a tab the table draws, with a label and a position, a surface, a tone or a pair of colours it stands at before anything is chosen',
+	check( 'the server\'s answer with a feature in it is in the shape the screen draws: the features that are active have a name, a variant they start from and the variants with their names, descriptions and knobs - each knob of one of the five kinds, on a tab the table draws, with a label and a position, a surface, a tone or a pair of colours it stands at before anything is chosen',
 		live.length >= 1 && live.every( function( key ) {
 			const feature = realFx.features[key];
-			return typeof feature.name === 'string' && feature.name !== '' && feature.catalogue[ feature['default'] ] !== undefined && Object.keys( feature.catalogue ).length >= 1
+			return typeof feature.name === 'string' && feature.name !== '' && typeof feature.anchor === 'string' && ( feature.anchor === '' || /^feature-[a-z][a-z0-9-]*$/.test( feature.anchor ) === true )
+				&& feature.catalogue[ feature['default'] ] !== undefined && Object.keys( feature.catalogue ).length >= 1
 				&& Object.keys( feature.catalogue ).every( function( set ) {
 					const variant = feature.catalogue[set];
-					return typeof variant.name === 'string' && variant.name !== '' && typeof variant.description === 'string' && typeof variant.anchor === 'string' && ( variant.anchor === '' || /^[a-z][a-z0-9-]*$/.test( variant.anchor ) === true )
+					return typeof variant.name === 'string' && variant.name !== '' && typeof variant.description === 'string'
 						&& Object.keys( variant.knobs ).every( function( knob ) {
 							const meta = variant.knobs[knob];
 							return kinds.indexOf( meta.kind ) !== -1 && [ 'templates', 'type', 'surfaces', 'colours', 'motion' ].indexOf( meta.tab ) !== -1 && typeof meta.label === 'string' && meta.label !== ''
@@ -9284,18 +9277,18 @@ else {
 			return feature.active === false && typeof feature.set === 'string' && feature.set !== '' && realFx.layout.objects.indexOf( key ) === -1 && Object.keys( realFx.layout.controls ).every( function( place ) { return place.indexOf('features/'+ key+ '/') !== 0 } );
 		} ) );
 
-	/*	The screen goes where the answer says: a variant that names a place is looked at there, one that names none where the tab is - read for the features that bring a choice of variants */
+	/*	The screen goes where the answer says: a feature that brings a block is looked at there, one that brings none where the tab is - read for the features that bring a choice of variants */
 	const realJump = panel( realFx, { whole : true } );
 	const realAimed = [];
 
 	live.filter( function( key ) { return Object.keys( realFx.features[key].catalogue ).length > 1 } ).forEach( function( key ) {
 		Object.keys( realFx.features[key].catalogue ).forEach( function( set ) {
 			choose( fxSelect( realJump, key ), set );
-			realAimed.push( [ realJump.design._target, realFx.features[key].catalogue[set].anchor || TAB_AIMS.templates ] );
+			realAimed.push( [ realJump.design._target, realFx.features[key].anchor || TAB_AIMS.templates ] );
 		} );
 	} );
 
-	check( 'the screen drawn from the server\'s answer goes where each variant of it says it is looked at: choosing it makes the id its head names the target of the change, and the anchor of the tab the target where the head names none',
+	check( 'the screen drawn from the server\'s answer goes where each feature of it says it is looked at: choosing a variant makes the id of its block the target of the change, and the anchor of the tab the target where the feature brings none',
 		realAimed.length >= 2 && realAimed.every( function( aimed ) { return aimed[0] === aimed[1] } ) && realAimed.some( function( aimed ) { return aimed[1] !== TAB_AIMS.templates } ) );
 
 	// Every tab is drawn from the table the server gave, the blocks of the features after those of the objects

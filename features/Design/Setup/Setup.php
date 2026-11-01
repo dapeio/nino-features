@@ -46,8 +46,10 @@ namespace Nino\Modules\Design {
 	 *										of that variant declares - a scale or a choice on a ladder, a
 	 *										ground, an ink, a colour in light and dark. They are read through
 	 *										Features::all() and head() (see features()), and what they add
-	 *										to the tables of the panel is layout() and objects(). A feature
-	 *										switched off keeps its entry, which nothing compiles.
+	 *										to the tables of the panel is layout() and objects(). It may
+	 *										bring a block for the specimen too, features/<Name>/design/
+	 *										preview.tpl (see previewOf()). A feature switched off keeps
+	 *										its entry, which nothing compiles.
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
@@ -388,6 +390,12 @@ namespace Nino\Modules\Design {
 			'border' 		=> '--color-border',
 			'focus' 		=> '--color-focus',
 		];
+
+		/*	The block a feature brings for the specimen of the preview: its file below the feature's directory, and the prefix of the id of the
+			section Design makes around it, which is the prefix and the key of the feature - the place the panel scrolls the frame to when a
+			control of the feature is used (see previewOf(), Preview::blocks()). The ids inside a block start with the key and a hyphen	*/
+		public const string PREVIEW = 'design/preview.tpl';
+		public const string ANCHOR_PREFIX = 'feature-';
 
 		// How much of a stylesheet is read for its opening comment: a variant of a feature declares its knobs there, and its head is longer than a set's
 		private const int HEAD = 16384;
@@ -846,27 +854,18 @@ namespace Nino\Modules\Design {
 		 *	another language for a style that is not declared - is dropped and named in `notes`, and in `styleNotes` alone, which is
 		 *	what styles() hands on: the other notes of a set are the ones its @knob lines earn, which are documentation there.
 		 *
-		 *	A variant of a feature also says in which place of the specimen its block is looked at, in one line:
-		 *
-		 *	  @anchor <id>
-		 *
-		 *	The id is that of an element of the specimen the preview draws (see
-		 *	Preview::specimen()), a letter and then letters, digits and hyphens - and nothing more
-		 *	is held to: the specimen is a template a project may replace, and whether its page has
-		 *	the id is for the panel to find out, which goes to the anchor of the tab where it has
-		 *	not. An id is no word of a language, so the line has no twin of another. The first line
-		 *	that is an id stands; a later one and a line that is none are dropped and named in
-		 *	`notes`, as the knob lines are. A set of the library that carries the line has it read
-		 *	and published by nothing.
+		 *	A variant of a feature says nothing of the specimen: the block a feature shows there is the file design/preview.tpl
+		 *	beside its stylesheets, the feature's and not the variant's (see previewOf()). A line of the head that is none of the
+		 *	lines above is not read and not named: the file is somebody's, and a comment may say what it likes.
 		 *
 		 *	@param		string		$file					A path
 		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
 		 *
-		 *	@return 	array										name, description ('' for none), anchor ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines), styles (name => label, in the order of the lines), notes and styleNotes (the ones of the style lines alone)
+		 *	@return 	array										name, description ('' for none), knobs (name => kind, tab, label, options, default - in the order of the lines), styles (name => label, in the order of the lines), notes and styleNotes (the ones of the style lines alone)
 		 */
 		public static function head( string $file, string $locale = 'en_US' ): array {
 
-			$read = [ 'name' => '', 'description' => '', 'anchor' => '', 'knobs' => [], 'styles' => [], 'notes' => [], 'styleNotes' => [] ];
+			$read = [ 'name' => '', 'description' => '', 'knobs' => [], 'styles' => [], 'notes' => [], 'styleNotes' => [] ];
 
 			// The first comment block only: a @name further down belongs to a
 			// rule somebody documented, not to the file
@@ -887,49 +886,11 @@ namespace Nino\Modules\Design {
 						break;
 					}
 
-			$read['anchor'] = self::anchored( $block[1], $read['notes'] );
 			$read['knobs'] = self::declared( $block[1], $own === true ? $language : '', $read['notes'] );
 			$read['styles'] = self::styled( $block[1], $own === true ? $language : '', $read['styleNotes'] );
 			$read['notes'] = array_merge( $read['notes'], $read['styleNotes'] );
 
 			return $read;
-		}
-
-		/**
-		 *	The anchor a head declares (see head()): the id its `@anchor` line names, the first line that is an id.
-		 *	Only the plain tag is a line of the grammar - `@anchor-de` and the like are none, and are not read
-		 *
-		 *	@param		string		$comment			The text of the opening comment
-		 *	@param		array 		&$notes				(reference) The lines that were dropped, each named
-		 *
-		 *	@return 	string										The id, '' for none
-		 */
-		private static function anchored( string $comment, array &$notes ): string {
-
-			$anchor = '';
-
-			foreach( (array) preg_split( '/\R/', $comment ) as $row ) {
-
-				// The line without the asterisk and the indent it stands behind
-				$line = trim( (string) preg_replace( '/^\s*\*/', '', (string) $row ) );
-
-				if( preg_match( '/^@anchor(?:[ \t]+(.*))?$/', $line, $tag ) !== 1 )
-					continue;
-
-				$id 	= trim( $tag[1] ?? '' );
-				$why 	= match( true ) {
-					preg_match( '/^[a-z][a-z0-9-]*$/D', $id ) !== 1 	=> 'an anchor is the id of an element of the specimen - letters, digits and hyphens, starting with a letter',
-					$anchor !== '' 																		=> 'the anchor is declared already',
-					default 																					=> '',
-				};
-
-				if( $why === '' )
-					$anchor = $id;
-				else
-					$notes[] = 'the line "'. self::shown( $line, 60 ). '" is dropped: '. $why;
-			}
-
-			return $anchor;
 		}
 
 		/**
@@ -1315,13 +1276,17 @@ namespace Nino\Modules\Design {
 		 *	called - a part or the page - only by the name of a part or of the page: such a key is
 		 *	skipped with a note, since the rows of its knobs would be those of the object.
 		 *
+		 *	A feature that brings variants may bring a block for the specimen as well, design/preview.tpl (see previewOf()). It names
+		 *	the anchor of the block where the file is there and stands the check, and none where it is not: the page has what the
+		 *	answer says, because Preview::blocks() asks the same question.
+		 *
 		 *	The answer is read once for a request and the language of the workbench, and kept in the
 		 *	app data beside the list of modules it was made for.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$notes				(reference) What the heads said that was dropped, led by the feature and the variant
 		 *
-		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, anchor, knobs - each with its ladder where it has one), sorted by name
+		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, anchor (the id of the feature's block on the specimen, '' where it has none), default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, knobs - each with its ladder where it has one), sorted by name
 		 */
 		public static function features( array &$appData, array &$notes = [] ): array {
 
@@ -1352,6 +1317,7 @@ namespace Nino\Modules\Design {
 					$kept['catalogue'][$key] = [
 						'name' 				=> \Nino\Features::localized( $feature['name'], $locale ) ?: $key,
 						'dir' 				=> $feature['dir'],
+						'anchor' 			=> self::previewOf( $feature['dir'], $key, $kept['notes'] ) === '' ? '' : self::ANCHOR_PREFIX. $key,
 						'default' 		=> isset( $variants['regular'] ) === true ? 'regular' : (string) array_key_first( $variants ),
 						'catalogue' 	=> $variants,
 					];
@@ -1372,7 +1338,7 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The variants one feature brings: a stylesheet each in its design/ directory, in the order of their
-		 *	names, with the name, the description, the anchor and the knobs its head declares. A scale or a choice a
+		 *	names, with the name, the description and the knobs its head declares. A scale or a choice a
 		 *	head declares is published by its ladder, as the knobs of the parts are (see declarations()):
 		 *	one without a complete ladder is not, and says so in a note. A ladder no head declares is not
 		 *	offered - nothing says where it stands
@@ -1382,7 +1348,7 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$locale				The language of the workbench
 		 *	@param		array 		&$notes				(reference) What was dropped, led by the feature and the variant
 		 *
-		 *	@return 	array										variant => name, description, anchor ('' for none), knobs
+		 *	@return 	array										variant => name, description, knobs
 		 */
 		private static function variants( string $dir, string $key, string $locale, array &$notes ): array {
 
@@ -1419,10 +1385,67 @@ namespace Nino\Modules\Design {
 						unset( $knobs[$name] );
 					}
 
-				$variants[$variant] = [ 'name' => $head['name'] !== '' ? $head['name'] : $variant, 'description' => $head['description'], 'anchor' => $head['anchor'], 'knobs' => $knobs ];
+				$variants[$variant] = [ 'name' => $head['name'] !== '' ? $head['name'] : $variant, 'description' => $head['description'], 'knobs' => $knobs ];
 			}
 
 			return $variants;
+		}
+
+		/**
+		 *	The block a feature brings for the specimen: the file design/preview.tpl of its directory - the inside of a section, one
+		 *	grid row (<div class="nino-grid-row">...</div>) in HTML+ as the specimen is written, with the tokens [[lorem]], [[short]] and
+		 *	[[placeholder]], which Preview fills. A feature without the file has no block and is not named; the file is looked at for a
+		 *	feature that is active and brings variants only (see features()).
+		 *
+		 *	The page has one element for each anchor, so a block is held to two things: every id in it starts with the key of the
+		 *	feature and a hyphen (forms-name), and it holds no section of its own - Design makes the section, with the id of the feature
+		 *	(see Preview::blocks()). A block that breaks either is no block: it is left out and named in `notes`, led by the feature, the
+		 *	way a line of a head that is wrong is. So is a file with nothing in it. The check errs the strict way: it reads the text of
+		 *	the file, not a document, so an id inside a comment or a `<section` inside an attribute value drops the block too.
+		 *
+		 *	@param		string		$dir					The directory of the feature
+		 *	@param		string		$key					The key of the feature, the prefix of every id in its block
+		 *	@param		array 		&$notes				(reference) Why the file is no block, led by the feature
+		 *
+		 *	@return 	string										The markup without the blank space at its ends; '' where there is no file, and where it is no block
+		 */
+		public static function previewOf( string $dir, string $key, array &$notes = [] ): string {
+
+			$file = $dir. '/'. self::PREVIEW;
+
+			if( is_file( $file ) === false )
+				return '';
+
+			$markup = trim( (string) @file_get_contents( $file ) );
+			$stray 	= '';
+
+			// The id of every tag that has one: in a tag only, so that a word of the text is none - a quoted value may hold a '>' and the tag goes on
+			preg_match_all( '/<[a-z](?:[^>"\']|"[^"]*"|\'[^\']*\')*>/i', $markup, $tags );
+
+			foreach( $tags[0] as $tag )
+				if( preg_match( '/\sid\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+))/i', $tag, $one ) === 1 ) {
+
+					$id = $one[1] !== '' ? $one[1] : ( ( $one[2] ?? '' ) !== '' ? $one[2] : ( $one[3] ?? '' ) );
+
+					if( str_starts_with( $id, $key. '-' ) === false ) {
+						$stray = $id === '' ? '(empty)' : $id;
+						break;
+					}
+				}
+
+			$why = match( true ) {
+				$markup === '' 											=> 'the file is empty',
+				preg_match( '/<section[\s>\/]/i', $markup ) === 1 		=> 'it holds a section - the block is the inside of the one the preview makes',
+				$stray !== '' 											=> 'the id "'. self::shown( $stray ). '" does not start with "'. $key. '-"',
+				default 												=> '',
+			};
+
+			if( $why === '' )
+				return $markup;
+
+			$notes[] = $key. ': the block '. self::PREVIEW. ' is left out: '. $why;
+
+			return '';
 		}
 
 		/**

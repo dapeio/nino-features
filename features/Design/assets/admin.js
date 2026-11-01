@@ -127,7 +127,7 @@
 			page, which the hero is (#content), a card in the cards (#cards), the buttons in their block and the lists
 			and the tables in theirs (#lists, #tables). A control with an entry of its own
 			(CONTROL_ANCHORS) goes there, and one under an object with no entry to the anchor of its tab. A control of a feature
-			has no entry in either: it goes where the variant chosen for the feature says (see _anchorOf()). The maps are told
+			has no entry in either: it goes to the block of the feature, where it has one (see _anchorOf()). The maps are told
 			together in the docblock of _jump()	*/
 		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' },
 
@@ -2216,7 +2216,7 @@
 		},
 
 		/**
-		 *	The features that bring variants, as design/list answered them: key => { name, active, default, catalogue, set, knobs }. An
+		 *	The features that bring variants, as design/list answered them: key => { name, anchor, active, default, catalogue, set, knobs }. An
 		 *	empty answer is an empty list on the wire, since php has no empty object - and no feature here
 		 *
 		 *	@param		{Object}	[data]		design/list's answer; the one the screen is drawn from where none is given
@@ -2912,14 +2912,14 @@
 		 *	under - the page's and the header's to the top of the page (#global), the footer's to its foot, a
 		 *	section's, the quiet and the loud variant of its titles among them, to the first section (#content), a
 		 *	card's to the cards (#cards), the buttons', the lists' and the tables' to their blocks -, else the
-		 *	anchor of its tab. A control of a feature stands in no map; it goes to the id the variant chosen
-		 *	for the feature names in the line @anchor of its head, else to the anchor of its tab. The place of a change is _target,
+		 *	anchor of its tab. A control of a feature stands in no map; it goes to the anchor of the feature - the id of the block the
+		 *	feature brings to the specimen, which design/list answers as `anchor` -, else to the anchor of its tab. The place of a change is _target,
 		 *	one for each change - it is put back to the tab's own when a tab is opened, and it is what is jumped to
 		 *	until then.
 		 *
-		 *	A place the page in the frame has not got is looked at where the tab is: an id a variant names that the
-		 *	specimen of a project does not carry goes to the anchor of the open tab, to the top of the page on the screen
-		 *	of the themes. Only where that is missing too, the frame stays where it is
+		 *	A place the page in the frame has not got is looked at where the tab is: the id of a block that the specimen of a
+		 *	project does not carry goes to the anchor of the open tab, to the top of the page on the screen of the themes.
+		 *	Only where that is missing too, the frame stays where it is
 		 *
 		 *	The top of the page is the exception to the room for the header: the element with the id global is
 		 *	the top of the page, header included - its anchor stands right below it -, and the footer is where the
@@ -2956,7 +2956,7 @@
 				let target = doc.getElementById( aim );
 				const view = doc.defaultView;
 
-				// An id the page has not got - a variant names it, and the specimen may be a project's own - is looked at where the tab is
+				// An id the page has not got - the block of a feature, and the specimen may be a project's own - is looked at where the tab is
 				if( target === null && aim !== tab ) {
 					aim = tab;
 					target = doc.getElementById( aim );
@@ -5115,7 +5115,7 @@
 		 *	Choose a variant for a feature. The knobs the last one declared and this one does not are not this one's: they go, as the position of
 		 *	a knob a template does not answer to goes back to the middle - the screen never holds a choice the stored one could not be. A choice
 		 *	that comes to the feature as it is leaves no entry (see _pruneFeature()). The description under the select is written in place.
-		 *	The frame goes to the place the variant names, else to where the tab is (see _anchorOf())
+		 *	The frame goes to the block of the feature, else to where the tab is (see _anchorOf())
 		 *
 		 *	@param		{string}		key
 		 *	@param		{string}		set				A variant of the feature
@@ -5152,7 +5152,7 @@
 		/**
 		 *	Move a knob of a feature: a position, a surface, a tone or a pair of colours. The feature is chosen at the variant it stands at, if
 		 *	nothing was chosen for it yet; a choice that comes to the feature as it is leaves no entry (see _pruneFeature()). The frame
-		 *	goes to the place the variant chosen names, else to where the tab is (see _anchorOf())
+		 *	goes to the block of the feature, else to where the tab is (see _anchorOf())
 		 *
 		 *	@param		{string}	key
 		 *	@param		{string}	knob
@@ -5605,9 +5605,10 @@
 		 *	the table's (see _place()); how many rows its tab has is no part of it.
 		 *
 		 *	A control of a feature - its key starts with features/, and the object it stands under is the feature - has no
-		 *	entry in either map. It is looked at where the variant chosen for the feature names in the line @anchor of its
-		 *	head (see Setup::head()), the one chosen on the screen and not the one stored, and where that names none at
-		 *	the anchor of its tab. Whether the page in the frame has the id is _jump()'s to find out
+		 *	entry in either map, the choice of its variant included. It is looked at in the block the feature brings to the
+		 *	specimen (design/preview.tpl, see Setup::previewOf()) - its anchor, which the answer of design/list gives with
+		 *	the feature -, and where the feature has none at the anchor of its tab. Whether the page in the frame has the id
+		 *	is _jump()'s to find out
 		 *
 		 *	@param		{string}		key				The key the control has in the table: 'size', 'knobs/section/quiet' ...
 		 *
@@ -5620,8 +5621,7 @@
 
 			if( key.indexOf('features/') === 0 ) {
 
-				const feature = design._featuresOf()[ place[1] ] || {};
-				const named = ( ( feature.catalogue || {} )[ Nino.admin.design.views._chosenSet( place[1] ) ] || {} ).anchor;
+				const named = ( design._featuresOf()[ place[1] ] || {} ).anchor;
 
 				return typeof named === 'string' && named !== '' ? named : design.ANCHORS[ place[0] ];
 			}
