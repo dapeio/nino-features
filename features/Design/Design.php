@@ -99,6 +99,10 @@ namespace Nino\Modules {
 		 *	by the bytes it has now, or by none where the feature is not active (activating it
 		 *	then changes what is compiled, and the fingerprint with it).
 		 *
+		 *	The styles chosen for a feature are part of its entry, and the entry hashes without them: the option each style is at and the file of
+		 *	it by the bytes it has now, and the rules the styles share (see Setup::featureShared()) join the files of the parts, so that a
+		 *	project that chose no style for its features hashes as it did.
+		 *
 		 *	The styles chosen for the templates are part of the setup like any other, and an empty choice is left out of the
 		 *	input as that of the features is: a project that chose no style hashes as it did. The file of each option chosen
 		 *	joins the files of the parts, by the bytes it has now, or by none where it is gone.
@@ -129,6 +133,21 @@ namespace Nino\Modules {
 				$set 		= is_array( $entry ) === true ? (string) ( $entry['set'] ?? '' ) : '';
 				$file 	= Design\Setup::featureFile( $appData, (string) $key, $set );
 				$files['feature '. $key] = [ $set, $file === '' ? '' : (string) hash_file( 'sha256', $file ) ];
+
+				// The styles chosen for the feature: the file of each option, and the file of the rules they share, which is compiled with them
+				$styles = is_array( $entry ) === true && is_array( $entry['styles'] ?? null ) === true ? $entry['styles'] : [];
+
+				foreach( $styles as $style => $option ) {
+					$file = Design\Setup::featureStyleFile( $appData, (string) $key, (string) $style, (string) $option );
+					$files['feature style '. $key. ' '. $style] = [ $option, $file === '' ? '' : (string) hash_file( 'sha256', $file ) ];
+				}
+
+				if( $styles !== [] )
+					$files['feature styles '. $key] = [ hash( 'sha256', Design\Setup::featureShared( $appData, (string) $key ) ) ];
+
+				// The choice is in the files above, in the order the head declares: an entry hashes as it did where it chose no style
+				if( is_array( $entry ) === true )
+					unset( $setup['features'][$key]['styles'] );
 			}
 
 			unset( $setup['compiled'] );

@@ -37,6 +37,8 @@ namespace Nino\Modules\Design {
 	 *										Setup::styles()) is the css file of the option chosen, written
 	 *										as it stands behind the css of the template, in the same
 	 *										section, under a line that names the style and the option.
+	 *										The styles of a feature (Setup::featureStyles()) are written the same
+	 *										way behind the css of the variant chosen, whichever variant it is.
 	 *
 	 *										write() refuses a file it did not write. The delivered
 	 *										theme.css is explicitly editable by hand, so a project may
@@ -77,6 +79,9 @@ namespace Nino\Modules\Design {
 		/*	The line a chosen style's css stands under, behind the css of its template: the style and the option. One line, the form the
 			other marks of the sheet have (a comment on a line of its own)	*/
 		public const string STYLE = '/* -- style %s: %s -- */';
+
+		/*	The line the rules the styles of a feature share stand under, before the css of the options chosen: the body of design/styles.css	*/
+		public const string SHARED = '/* -- styles -- */';
 
 		/*	The two lines base.css falls into its two halves by: the tokens follow
 			the first, the roles the second. What stands above the first - the
@@ -127,6 +132,11 @@ namespace Nino\Modules\Design {
 		 *	styles. The title of the section names them after the knobs ("header: floating (nav default,
 		 *	nav-hover soft-glow)"). A style is no ladder, so the block of the knob positions has no
 		 *	line for it.
+		 *
+		 *	The styles chosen for a feature are written behind the css of its variant, in the section of the feature, whichever variant it is:
+		 *	where there is one, first the body of the feature's design/styles.css - the rules the styles share - under the line SHARED, then
+		 *	each option as a template's are written. A feature with no style chosen has the section it always had. The title of the section
+		 *	names them after the knobs ("feature styled: loud (size more, look soft)"), the line of the feature in the header after its knobs.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data - the families a project installed are read off its disk
 		 *	@param		array 		$setup				A normalised setup (see Setup::normalize())
@@ -352,10 +362,37 @@ namespace Nino\Modules\Design {
 					}
 				}
 
+				/*	The styles chosen for the feature, behind the css of the variant and in its section, whichever variant it is: the rules the
+					styles share (the body of design/styles.css) once, under their own line, then the css of each option under the line that
+					names it. Nothing is chosen, nothing is written - not the shared rules either. The choice was held to the files of the
+					feature when the setup was normalised; a file that is gone since is told, and left out	*/
+				$css 		= self::_read( $file );
+				$extras = '';
+
+				foreach( (array) ( $entry['styles'] ?? [] ) as $style => $option ) {
+
+					$extra = Setup::featureStyleFile( $appData, $key, (string) $style, (string) $option );
+
+					if( $extra === '' ) {
+						$notes[] = 'no stylesheet for the style "'. $style. '" option "'. $option. '" of the feature "'. $key. '"';
+						continue;
+					}
+
+					$extras 	.= "\n". sprintf( self::STYLE, $style, $option ). "\n". self::_read( $extra );
+					$where[] 	= $style. ' '. $option;
+					$moved[] 	= $style. ' '. $option;
+				}
+
+				if( $extras !== '' ) {
+
+					$shared = Setup::featureShared( $appData, $key );
+					$css 		.= ( $shared === '' ? '' : "\n". self::SHARED. "\n". $shared. "\n" ). $extras;
+				}
+
 				$featured[$key] = [ 'set' => $set, 'moved' => $moved ];
 
 				$parts[] = sprintf( self::SECTION, $number++, 'feature '. $key. ': '. $set
-					. ( $where === [] ? '' : ' ('. implode( ', ', $where ). ')' ) ). "\n". self::_read( $file );
+					. ( $where === [] ? '' : ' ('. implode( ', ', $where ). ')' ) ). "\n". $css;
 			}
 
 			/*	The block of the knob positions: the lines of the parts, sorted, and those of the features after them in the

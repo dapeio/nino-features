@@ -381,13 +381,15 @@ namespace Nino\Modules\Design {
 		 *	the feature and the names of the ladders - nothing the screen reads - and, beside the variants,
 		 *	what the setup chose for the feature. A variant keeps whole what its head says: its name, its
 		 *	description and its knobs; the feature has its anchor, the id of its block on the specimen, '' where
-		 *	it has none. A feature the setup has an entry for and that is not in the catalogue follows them with
-		 *	its entry as it was kept, flagged as not active and without an anchor
+		 *	it has none, and the styles it offers for all its variants (`styles`, as a template's are in its entry of
+		 *	the catalogue: style => label, options of name and description) and those chosen (`picked`: style => option). A feature
+		 *	the setup has an entry for and that is not in the catalogue follows them with its entry as it was kept, flagged as not
+		 *	active and without an anchor
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalised setup
 		 *
-		 *	@return 	array										key => name, anchor, active, default, catalogue (variant => name, description, knobs), set, knobs
+		 *	@return 	array										key => name, anchor, active, default, catalogue (variant => name, description, knobs), styles, set, knobs, picked
 		 */
 		private static function _features( array &$appData, array $setup ): array {
 
@@ -406,20 +408,31 @@ namespace Nino\Modules\Design {
 					$catalogue[$variant] = $one;
 				}
 
+				// What the feature offers as styles, for all its variants: the label and the options with their names and descriptions - not the path of a file
+				$styles = [];
+
+				foreach( $feature['styles'] as $style => $declared )
+					$styles[$style] = [
+						'label' 	=> $declared['label'],
+						'options' => array_map( static fn( array $option ): array => [ 'name' => $option['name'], 'description' => $option['description'] ], $declared['options'] ),
+					];
+
 				$out[$key] = [
 					'name' 				=> $feature['name'],
 					'anchor' 			=> $feature['anchor'],
 					'active' 			=> true,
 					'default' 		=> $feature['default'],
 					'catalogue' 	=> $catalogue,
+					'styles' 			=> $styles,
 					'set' 				=> (string) ( $chosen[$key]['set'] ?? '' ),
 					'knobs' 			=> (array) ( $chosen[$key]['knobs'] ?? [] ),
+					'picked' 			=> (array) ( $chosen[$key]['styles'] ?? [] ),
 				];
 			}
 
 			foreach( $chosen as $key => $entry )
 				if( isset( $out[$key] ) === false )
-					$out[$key] = [ 'name' => (string) $key, 'anchor' => '', 'active' => false, 'default' => '', 'catalogue' => [], 'set' => (string) $entry['set'], 'knobs' => (array) $entry['knobs'] ];
+					$out[$key] = [ 'name' => (string) $key, 'anchor' => '', 'active' => false, 'default' => '', 'catalogue' => [], 'styles' => [], 'set' => (string) $entry['set'], 'knobs' => (array) $entry['knobs'], 'picked' => (array) $entry['styles'] ];
 
 			return $out;
 		}

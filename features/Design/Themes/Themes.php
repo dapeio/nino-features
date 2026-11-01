@@ -32,6 +32,8 @@ namespace Nino\Modules\Design {
 	 *										rest - and a file that names none is the empty choice. So
 	 *										are the styles of the templates: a file that names none
 	 *										has no style chosen, and the shipped theme names none.
+	 *										So are the styles of a feature, which are part of its entry
+	 *										in the choices for the features: they go and come with it.
 	 *
 	 *										One php file for each, an array as data/design.php is:
 	 *

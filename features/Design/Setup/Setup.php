@@ -48,8 +48,11 @@ namespace Nino\Modules\Design {
 	 *										Features::all() and head() (see features()), and what they add
 	 *										to the tables of the panel is layout() and objects(). It may
 	 *										bring a block for the specimen too, features/<Name>/design/
-	 *										preview.tpl (see previewOf()). A feature switched off keeps
-	 *										its entry, which nothing compiles.
+	 *										preview.tpl (see previewOf()). It declares styles of its own
+	 *										for all its variants at once, in design/styles.css and the files
+	 *										beside it (see featureStyles()): a pair of a style and an option,
+	 *										which is part of its entry as a template's is part of the setup.
+	 *										A feature switched off keeps its entry, which nothing compiles.
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
@@ -396,6 +399,10 @@ namespace Nino\Modules\Design {
 			control of the feature is used (see previewOf(), Preview::blocks()). The ids inside a block start with the key and a hyphen	*/
 		public const string PREVIEW = 'design/preview.tpl';
 		public const string ANCHOR_PREFIX = 'feature-';
+
+		/*	The styles a feature declares once for all its variants: the file design/styles.css below the feature's directory, which is no variant (see
+			variants()), and the directory design/styles/ beside it, where the files of the options stand (see featureStyles())	*/
+		public const string FEATURE_STYLES = 'styles';
 
 		// How much of a stylesheet is read for its opening comment: a variant of a feature declares its knobs there, and its head is longer than a set's
 		private const int HEAD = 16384;
@@ -854,6 +861,8 @@ namespace Nino\Modules\Design {
 		 *	another language for a style that is not declared - is dropped and named in `notes`, and in `styleNotes` alone, which is
 		 *	what styles() hands on: the other notes of a set are the ones its @knob lines earn, which are documentation there.
 		 *
+		 *	A feature declares its styles the same way, in the head of design/styles.css, once for all its variants (see featureStyles()).
+		 *
 		 *	A variant of a feature says nothing of the specimen: the block a feature shows there is the file design/preview.tpl
 		 *	beside its stylesheets, the feature's and not the variant's (see previewOf()). A line of the head that is none of the
 		 *	lines above is not read and not named: the file is somebody's, and a comment may say what it likes.
@@ -1157,27 +1166,48 @@ namespace Nino\Modules\Design {
 		public static function styles( string $libraryDir, string $part, string $set, string $locale = 'en_US', array &$notes = [] ): array {
 
 			$file = self::file( $libraryDir, $part, $set );
-			$dir 	= self::styleDir( $libraryDir, $part, $set );
 
 			if( $file === '' )
 				return [];
 
-			$head 	= self::head( $file, $locale );
-			$led 		= $part. '/'. $set. ': ';
-			$styles = [];
+			$head = self::head( $file, $locale );
+			$led 	= $part. '/'. $set. ': ';
 
 			foreach( $head['styleNotes'] as $note )
 				$notes[] = $led. $note;
 
-			foreach( $head['styles'] as $name => $label )
+			// The stylesheet of a frame is the frame's own, and no style
+			return self::offered( $head['styles'], self::styleDir( $libraryDir, $part, $set ), self::PARTS[$part] === 'frame' ? 'style' : '', $led, $locale, $notes );
+		}
+
+		/**
+		 *	The options of the styles a head declares, out of the files of a directory: the one reading of a style's files, which the
+		 *	styles of a template (see styles()) and those of a feature (see featureStyles()) have in common. A file is named
+		 *	<style>-<option>.css, the style the longest declared name its name starts with; the options are in the natural order of their
+		 *	names, each under the name and the description its own head gives it and under its slug where it gives none. What is work in
+		 *	progress is not offered and is named in $notes, led by $led
+		 *
+		 *	@param		array 		$declared			name => label, as head() gives the styles
+		 *	@param		string		$dir					The directory the files stand in, '' where there is none
+		 *	@param		string		$own					The name of a file of the directory that is no option's, without .css; '' for none
+		 *	@param		string		$led					What every note starts with
+		 *	@param		string		$locale				The language of the workbench
+		 *	@param		array 		&$notes				(reference) What was not offered, and why
+		 *
+		 *	@return 	array										style => label, options (option => name, description, file)
+		 */
+		private static function offered( array $declared, string $dir, string $own, string $led, string $locale, array &$notes ): array {
+
+			$styles = [];
+
+			foreach( $declared as $name => $label )
 				$styles[$name] = [ 'label' => $label, 'options' => [] ];
 
 			foreach( $dir === '' ? [] : ( glob( $dir. '/*.css' ) ?: [] ) as $path ) {
 
 				$base = basename( $path, '.css' );
 
-				// The stylesheet of a frame is the frame's own, and no style
-				if( self::PARTS[$part] === 'frame' && $base === 'style' )
+				if( $own !== '' && $base === $own )
 					continue;
 
 				if( is_file( $path ) === false )
@@ -1190,9 +1220,9 @@ namespace Nino\Modules\Design {
 
 				$style = '';
 
-				foreach( array_keys( $styles ) as $declared )
-					if( str_starts_with( $base, $declared. '-' ) === true && strlen( $declared ) > strlen( $style ) )
-						$style = $declared;
+				foreach( array_keys( $styles ) as $name )
+					if( str_starts_with( $base, $name. '-' ) === true && strlen( $name ) > strlen( $style ) )
+						$style = (string) $name;
 
 				if( $style === '' ) {
 
@@ -1205,9 +1235,9 @@ namespace Nino\Modules\Design {
 
 				// A name that is a slug and starts with the style and a hyphen has a slug after it
 				$option = substr( $base, strlen( $style ) + 1 );
-				$own 		= self::head( $path, $locale );
+				$head 	= self::head( $path, $locale );
 
-				$styles[$style]['options'][$option] = [ 'name' => $own['name'] !== '' ? $own['name'] : $option, 'description' => $own['description'], 'file' => $path ];
+				$styles[$style]['options'][$option] = [ 'name' => $head['name'] !== '' ? $head['name'] : $option, 'description' => $head['description'], 'file' => $path ];
 			}
 
 			foreach( $styles as $name => $style ) {
@@ -1276,6 +1306,8 @@ namespace Nino\Modules\Design {
 		 *	called - a part or the page - only by the name of a part or of the page: such a key is
 		 *	skipped with a note, since the rows of its knobs would be those of the object.
 		 *
+		 *	It may declare styles too, for all its variants at once (see featureStyles()): they stand beside the variants in its entry.
+		 *
 		 *	A feature that brings variants may bring a block for the specimen as well, design/preview.tpl (see previewOf()). It names
 		 *	the anchor of the block where the file is there and stands the check, and none where it is not: the page has what the
 		 *	answer says, because Preview::blocks() asks the same question.
@@ -1286,7 +1318,7 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$notes				(reference) What the heads said that was dropped, led by the feature and the variant
 		 *
-		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, anchor (the id of the feature's block on the specimen, '' where it has none), default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, knobs - each with its ladder where it has one), sorted by name
+		 *	@return 	array										key => name (the manifest's, in the language of the workbench), dir, anchor (the id of the feature's block on the specimen, '' where it has none), default (the variant a feature has before anything is chosen: regular, else the first), catalogue (variant => name, description, knobs - each with its ladder where it has one), styles (style => label, options - see featureStyles(); [] for a feature that declares none), sorted by name
 		 */
 		public static function features( array &$appData, array &$notes = [] ): array {
 
@@ -1320,6 +1352,7 @@ namespace Nino\Modules\Design {
 						'anchor' 			=> self::previewOf( $feature['dir'], $key, $kept['notes'] ) === '' ? '' : self::ANCHOR_PREFIX. $key,
 						'default' 		=> isset( $variants['regular'] ) === true ? 'regular' : (string) array_key_first( $variants ),
 						'catalogue' 	=> $variants,
+						'styles' 			=> self::featureStyles( $feature['dir'], $key, $locale, $kept['notes'] ),
 					];
 				}
 
@@ -1355,7 +1388,7 @@ namespace Nino\Modules\Design {
 			$files = [];
 
 			foreach( glob( $dir. '/design/*.css' ) ?: [] as $file )
-				if( self::named( basename( $file, '.css' ) ) === true && is_file( $file ) === true )
+				if( self::named( basename( $file, '.css' ) ) === true && basename( $file, '.css' ) !== self::FEATURE_STYLES && is_file( $file ) === true )
 					$files[ basename( $file, '.css' ) ] = $file;
 
 			ksort( $files, SORT_NATURAL );
@@ -1467,6 +1500,82 @@ namespace Nino\Modules\Design {
 			$path = $feature['dir']. '/design/'. $variant. '.css';
 
 			return is_file( $path ) === true ? $path : '';
+		}
+
+		/**
+		 *	The styles a feature declares, once for all its variants: the head of design/styles.css declares them (`@style <name> <label>` and the
+		 *	`@style-de` line beside it, the grammar of the head of a template, see head()), and the files of their options stand in the directory
+		 *	design/styles/ beside it, each named <style>-<option>.css, the style the longest declared name its name starts with. The file styles.css
+		 *	is no variant (see variants()). The options are listed as those of a template's styles are (see offered()): by the natural order of
+		 *	their file names, under the name and the description their own heads give them, under their slug where they give none.
+		 *
+		 *	A feature without design/styles.css declares no style, and its design/styles/ is not looked at. What is work in progress is not
+		 *	offered and is named in $notes, led by the feature and "styles": a file whose name is no <style>-<option>.css, a file of a style the head
+		 *	does not declare, a declared style that has no file, and the lines of the head that were dropped
+		 *
+		 *	@param		string		$dir					The directory of the feature
+		 *	@param		string		$key					The key of the feature
+		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
+		 *	@param		array 		&$notes				(reference) What was not offered, and why
+		 *
+		 *	@return 	array										style => label, options (option => name, description, file), in the order of the head's lines; [] where the feature declares none
+		 */
+		public static function featureStyles( string $dir, string $key, string $locale, array &$notes = [] ): array {
+
+			$file = $dir. '/design/'. self::FEATURE_STYLES. '.css';
+
+			if( is_file( $file ) === false )
+				return [];
+
+			$head = self::head( $file, $locale );
+			$led 	= $key. '/'. self::FEATURE_STYLES. ': ';
+
+			foreach( $head['styleNotes'] as $note )
+				$notes[] = $led. $note;
+
+			// A file of that name that declares no style is neither a variant nor a source of styles: said, so that nobody looks for it
+			if( $head['styles'] === [] && $head['styleNotes'] === [] )
+				$notes[] = $led. 'design/'. self::FEATURE_STYLES. '.css declares no style - it is no variant and is not compiled';
+
+			return self::offered( $head['styles'], $dir. '/design/'. self::FEATURE_STYLES, '', $led, $locale, $notes );
+		}
+
+		/**
+		 *	The file an option of a style of a feature resolves to
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of an active feature that brings variants
+		 *	@param		string		$style				A style the feature declares
+		 *	@param		string		$option				An option of it
+		 *
+		 *	@return 	string										A path, '' when the feature, the style or the option is not there
+		 */
+		public static function featureStyleFile( array &$appData, string $key, string $style, string $option ): string {
+
+			$path = self::features( $appData )[$key]['styles'][$style]['options'][$option]['file'] ?? '';
+
+			return is_string( $path ) === true && is_file( $path ) === true ? $path : '';
+		}
+
+		/**
+		 *	The rules the styles of a feature share: the body of design/styles.css, which is the file without the comment it opens with (that
+		 *	one is the head, see head()). The compiler writes it before the options that were chosen (see Compiler::compile())
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of an active feature that brings variants
+		 *
+		 *	@return 	string										The css without the blank space at its ends; '' where the feature is not there, has no such file, or the file holds the head alone
+		 */
+		public static function featureShared( array &$appData, string $key ): string {
+
+			$feature = self::features( $appData )[$key] ?? null;
+
+			if( $feature === null )
+				return '';
+
+			$css = (string) @file_get_contents( $feature['dir']. '/design/'. self::FEATURE_STYLES. '.css' );
+
+			return trim( (string) preg_replace( '~^\s*/\*.*?\*/~s', '', $css, 1 ) );
 		}
 
 		/**
@@ -1727,29 +1836,48 @@ namespace Nino\Modules\Design {
 
 				$set 			= (string) ( $parts[$part] ?? '' );
 				$declared = self::styles( $libraryDir, $part, $set, 'en_US', $notes );
-				$values 	= is_array( $given[$part] ?? null ) === true ? $given[$part] : [];
-				$chosen 	= [];
 
 				if( array_key_exists( $part, $given ) === true && is_array( $given[$part] ) === false )
 					$notes[] = 'the styles of "'. $part. '" are no list of styles with an option each - dropped';
 
-				foreach( $values as $style => $option ) {
-
-					if( isset( $declared[$style] ) === false )
-						$notes[] = 'the template "'. $set. '" of "'. $part. '" declares no style "'. self::shown( $style ). '" - dropped';
-					else if( is_string( $option ) === false )
-						$notes[] = 'the style "'. $style. '" of "'. $part. '" is not given an option - dropped';
-					else if( $option !== '' && isset( $declared[$style]['options'][$option] ) === false )
-						$notes[] = 'the style "'. $style. '" of the template "'. $set. '" has no option "'. self::shown( $option ). '" - dropped';
-					else if( $option !== '' )
-						$chosen[$style] = $option;
-				}
-
-				// In the order the head declares them: the same choice is the same bytes
-				$picked[$part] = array_intersect_key( array_replace( array_fill_keys( array_keys( $declared ), '' ), $chosen ), $chosen );
+				$picked[$part] = self::held( $declared, is_array( $given[$part] ?? null ) === true ? $given[$part] : [],
+					[ 'the template "'. $set. '" of "'. $part. '"', '"'. $part. '"', 'the template "'. $set. '"' ], $notes );
 			}
 
 			return $picked;
+		}
+
+		/**
+		 *	A choice of styles held to the styles that are declared and their files: a pair of a style and an option stays where the style is
+		 *	declared and the option has a file, and is dropped and named where it does not. An option that is '' is no choice. The pairs
+		 *	stand in the order the head declares the styles in, so that the same choice is the same bytes. The one holding of the styles of a
+		 *	template (see picked()) and of a feature (see chosen())
+		 *
+		 *	@param		array 		$declared			style => label, options (option => ...), as styles() and featureStyles() give them
+		 *	@param		array 		$values				What the file held, or the screen posted: style => option
+		 *	@param		array 		$words				How the notes name the owner: who declares a style, what the style belongs to, and who has the option
+		 *	@param		array 		&$notes				(reference) What had to be dropped
+		 *
+		 *	@return 	array										style => option, none chosen an empty list
+		 */
+		private static function held( array $declared, array $values, array $words, array &$notes ): array {
+
+			$chosen = [];
+
+			foreach( $values as $style => $option ) {
+
+				if( isset( $declared[$style] ) === false )
+					$notes[] = $words[0]. ' declares no style "'. self::shown( $style ). '" - dropped';
+				else if( is_string( $option ) === false )
+					$notes[] = 'the style "'. $style. '" of '. $words[1]. ' is not given an option - dropped';
+				else if( $option !== '' && isset( $declared[$style]['options'][$option] ) === false )
+					$notes[] = 'the style "'. $style. '" of '. $words[2]. ' has no option "'. self::shown( $option ). '" - dropped';
+				else if( $option !== '' )
+					$chosen[$style] = $option;
+			}
+
+			// In the order the head declares them: the same choice is the same bytes
+			return array_intersect_key( array_replace( array_fill_keys( array_keys( $declared ), '' ), $chosen ), $chosen );
 		}
 
 		/**
@@ -1757,17 +1885,19 @@ namespace Nino\Modules\Design {
 		 *	A feature that has an entry has its variant and a value for each knob that variant declares, every one held to
 		 *	its kind (see value()); one that has none is the feature as it is, which nothing is compiled for. A variant that
 		 *	is none of the feature's falls to the one it has before anything is chosen, and a knob the variant does not declare
-		 *	is dropped - each with a note, as a part's is.
+		 *	is dropped - each with a note, as a part's is. It has the styles chosen for it as well, a pair of a style and an option each: they
+		 *	belong to the feature and are held to what the feature declares (see featureStyles()) whichever variant is chosen, so a change of the
+		 *	variant leaves them as they are; one the feature does not declare, or an option without a file, is dropped and named
 		 *
 		 *	An entry of a feature that is not in the catalogue - switched off, or taken away, or without variants now - is kept,
-		 *	its two keys held to their types and nothing else looked at, since nothing about the feature can be asked: the choice
+		 *	its three keys held to their types and nothing else looked at, since nothing about the feature can be asked: the choice
 		 *	stays for the day it is back, and the note says nothing is compiled for it meanwhile
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$given				What the file held, or the screen posted, under `features`
 		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
 		 *
-		 *	@return 	array										key => [ set, knobs ], sorted by the key
+		 *	@return 	array										key => [ set, knobs, styles ], sorted by the key
 		 */
 		private static function chosen( array &$appData, array $given, array &$notes ): array {
 
@@ -1789,15 +1919,19 @@ namespace Nino\Modules\Design {
 				}
 
 				foreach( array_keys( $entry ) as $name )
-					if( in_array( $name, [ 'set', 'knobs' ], true ) === false )
+					if( in_array( $name, [ 'set', 'knobs', 'styles' ], true ) === false )
 						$notes[] = 'the feature "'. $key. '" has no "'. self::shown( $name ). '" - dropped';
 
 				$wanted = is_string( $entry['set'] ?? null ) === true ? $entry['set'] : '';
 				$values = is_array( $entry['knobs'] ?? null ) === true ? $entry['knobs'] : [];
+				$styled = is_array( $entry['styles'] ?? null ) === true ? $entry['styles'] : [];
+
+				if( array_key_exists( 'styles', $entry ) === true && is_array( $entry['styles'] ) === false )
+					$notes[] = 'the styles of the feature "'. $key. '" are no list of styles with an option each - dropped';
 
 				if( isset( $catalogue[$key] ) === false ) {
 					$notes[] = self::inactive( $key );
-					$chosen[$key] = [ 'set' => $wanted, 'knobs' => $values ];
+					$chosen[$key] = [ 'set' => $wanted, 'knobs' => $values, 'styles' => array_filter( $styled, 'is_string' ) ];
 					continue;
 				}
 
@@ -1818,7 +1952,9 @@ namespace Nino\Modules\Design {
 				foreach( $declared as $knob => $meta )
 					$knobs[$knob] = self::value( $meta, $values[$knob] ?? null );
 
-				$chosen[$key] = [ 'set' => $set, 'knobs' => $knobs ];
+				/*	The styles belong to the feature and not to the variant: a change of the variant leaves them as they are, and they are
+					held to what the feature declares, whichever variant is chosen	*/
+				$chosen[$key] = [ 'set' => $set, 'knobs' => $knobs, 'styles' => self::held( $feature['styles'], $styled, [ 'the feature "'. $key. '"', 'the feature "'. $key. '"', 'the feature "'. $key. '"' ], $notes ) ];
 			}
 
 			ksort( $chosen );

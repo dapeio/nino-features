@@ -504,7 +504,7 @@
 				parts 	: parts,
 				knobs 	: knobs,
 				styles 	: Nino.admin.design._stylesOf( data.styles, Object.keys( parts ) ),
-				features : Nino.admin.design._entriesOf( data.features ),
+				features : Nino.admin.design._entriesOf( data.features, 'picked' ),
 				size 		: data.size,
 				width 	: data.width,
 				whitespace : data.whitespace,
@@ -2216,7 +2216,7 @@
 		},
 
 		/**
-		 *	The features that bring variants, as design/list answered them: key => { name, anchor, active, default, catalogue, set, knobs }. An
+		 *	The features that bring variants, as design/list answered them: key => { name, anchor, active, default, catalogue, styles, set, knobs, picked }. An
 		 *	empty answer is an empty list on the wire, since php has no empty object - and no feature here
 		 *
 		 *	@param		{Object}	[data]		design/list's answer; the one the screen is drawn from where none is given
@@ -2232,15 +2232,21 @@
 
 		/**
 		 *	The choices for the features out of an answer - design/list's, or the setup of a theme: for each feature that has a variant chosen,
-		 *	the variant and the value of each knob of it, as a copy of its own. A feature that chose none has no entry
+		 *	the variant, the value of each knob of it and the style => option pairs chosen for the feature, as a copy of its own. A feature
+		 *	that chose none has no entry. The answer of design/list keeps the styles a feature offers under `styles` and the ones chosen under
+		 *	`picked`; the setup of a theme has the ones chosen under `styles`
 		 *
 		 *	@param		{(Object|Array)}	given		key => { set, knobs, ... }, or an empty list
+		 *	@param		{string}					[field]	Where the entry keeps the styles chosen: 'styles' (a setup), or 'picked' (design/list)
 		 *
-		 *	@return		{Object}									key => { set, knobs }
+		 *	@return		{Object}									key => { set, knobs, styles }
 		 */
-		_entriesOf : function( given ) {
+		_entriesOf : function( given, field ) {
 
 			const entries = {};
+			const copy = function( value ) {
+				return value === undefined || value === null || Array.isArray( value ) === true ? {} : JSON.parse( JSON.stringify( value ) );
+			};
 
 			if( given === undefined || given === null || Array.isArray( given ) === true )
 				return entries;
@@ -2250,7 +2256,7 @@
 				const entry = given[key] || {};
 
 				if( typeof entry.set === 'string' && entry.set !== '' )
-					entries[key] = { set : entry.set, knobs : entry.knobs === undefined || entry.knobs === null || Array.isArray( entry.knobs ) === true ? {} : JSON.parse( JSON.stringify( entry.knobs ) ) };
+					entries[key] = { set : entry.set, knobs : copy( entry.knobs ), styles : copy( entry[ field || 'styles' ] ) };
 			} );
 
 			return entries;
@@ -4116,7 +4122,7 @@
 				if( path[0] === 'parts' )
 					lines = lines.concat( [ design._setName( path[1], design._edit.parts[ path[1] ] ) ], views._stylesSaid( path[1] ) );
 				else if( path[0] === 'features' && path[2] === 'set' )
-					lines = lines.concat( views._variantSaid( path[1] ) );
+					lines = lines.concat( views._variantSaid( path[1] ), views._stylesSaid( path[1] ) );
 				else
 					lines = lines.concat( views._deviations( keys, row.object ) );
 			} );
@@ -4317,15 +4323,20 @@
 					( into || card ).appendChild( node );
 				};
 
-				// The select of the template and, under it, one for each style the template brings: no control of the table, so no key to stand for
+				// The select of the template and, under it, one for each style the template brings: no control of the table, so no key to stand for. The same for a feature: the select of its variant, and under it the styles it declares for all its variants
 				if( path[0] === 'parts' ) {
 					put( views._partField( design._row( path[1] ) ) );
 					return views._styleFields( path[1] ).forEach( function( field ) { card.appendChild( field ) } );
 				}
 
 				// A feature that brings variants: the choice of the variant on Templates, a knob of the variant on the tab its head names
+				if( path[0] === 'features' && path[2] === 'set' ) {
+					put( views._featureField( path[1] ) );
+					return views._styleFields( path[1] ).forEach( function( field ) { card.appendChild( field ) } );
+				}
+
 				if( path[0] === 'features' )
-					return put( path[2] === 'set' ? views._featureField( path[1] ) : views._featureKnobRow( path[1], path[3] ) );
+					return put( views._featureKnobRow( path[1], path[3] ) );
 
 				if( path[0] === 'knobs' )
 					return put( views._knobRow( path[1], path[2], views._answered( path[1] ).indexOf( path[2] ) !== -1 ) );
@@ -4587,33 +4598,69 @@
 		},
 
 		/**
-		 *	The selects of the styles of a template, in the order its head declares them: each headed with the label the head gives
-		 *	the style, "None" first and the files beside the template under the names their heads give them, with the description
-		 *	of the one chosen under it. They stand under the select of the template, in its block (see _fillRow())
+		 *	The styles an object of the panel brings, as design/list answered them: those of the template chosen for a part, or - for a feature -
+		 *	the ones it declares for all its variants. A key of a feature is never the name of a part (see Setup::features())
 		 *
-		 *	@param		{string}	part
+		 *	@param		{string}	object		A part, or the key of a feature
 		 *
-		 *	@return		{Array}						The fields, none where the template brings no style
+		 *	@return		{Object}					style => { label, options : option => { name, description } }; {} where there are none
 		 */
-		_styleFields : function( part ) {
+		_stylesOfObject : function( object ) {
+
+			const feature = Nino.admin.design._featuresOf()[object];
+
+			if( feature === undefined )
+				return Nino.admin.design.views._stylesOfPart( object );
+
+			return feature.styles === undefined || feature.styles === null || Array.isArray( feature.styles ) === true ? {} : feature.styles;
+		},
+
+		/**
+		 *	The style => option pairs the screen holds for an object: the part's in the selection, or the feature's in its entry. An empty
+		 *	object where nothing is chosen
+		 *
+		 *	@param		{string}	object		A part, or the key of a feature
+		 *
+		 *	@return		{Object}
+		 */
+		_chosenStyles : function( object ) {
 
 			const design = Nino.admin.design;
+
+			if( design._featuresOf()[object] === undefined )
+				return design._edit.styles[object] || {};
+
+			return ( ( design._edit.features || {} )[object] || {} ).styles || {};
+		},
+
+		/**
+		 *	The selects of the styles of an object, in the order the head declares them: each headed with the label the head gives the style,
+		 *	"None" first and the files beside it under the names their heads give them, with the description of the one chosen under it. They
+		 *	stand under the select of the template in its block (see _fillRow()), and under the select of the variant in the block of a feature,
+		 *	where they hold for every variant
+		 *
+		 *	@param		{string}	object		A part, or the key of a feature
+		 *
+		 *	@return		{Array}						The fields, none where the object brings no style
+		 */
+		_styleFields : function( object ) {
+
 			const views = Nino.admin.design.views;
-			const styles = views._stylesOfPart( part );
+			const styles = views._stylesOfObject( object );
 
 			return Object.keys( styles ).map( function( style ) {
 
 				const meta = styles[style];
 				const options = meta.options || {};
-				const chosen = ( design._edit.styles[part] || {} )[style];
+				const chosen = views._chosenStyles( object )[style];
 				const current = options[chosen] === undefined ? '' : chosen;
 
 				const field = views._select(
-					'design-style-'+ part+ '-'+ style, meta.label,
+					'design-style-'+ object+ '-'+ style, meta.label,
 					[ { value : '', label : Nino.content.getText('/_admin/design/style/none') } ].concat( Object.keys( options ).map( function( option ) {
 						return { value : option, label : options[option].name };
 					} ) ), current, function( value ) {
-						views._setStyle( part, style, value, field );
+						views._setStyle( object, style, value, field );
 					}, current === '' ? '' : options[current].description );
 
 				field.classList.add('design-style-select');
@@ -4624,31 +4671,46 @@
 		},
 
 		/**
-		 *	Choose an option of a style of a part: None is the template as it is and leaves no entry, as a feature that is as it is
-		 *	leaves none. The description under the select is written in place, and the frame goes to where the template is looked at
-		 *	(see OBJECT_ANCHORS), as for a change of the template
+		 *	Choose an option of a style of a part or a feature: None is the object as it is and leaves no entry, as a feature that is as it is
+		 *	leaves none (see _pruneFeature()). The description under the select is written in place, and the frame goes to where the object is
+		 *	looked at: where the template is (see OBJECT_ANCHORS), or the block of the feature (see _anchorOf()). The styles of a feature are
+		 *	the feature's, not the variant's: the feature is chosen at the variant it stands at, if nothing was chosen for it yet
 		 *
-		 *	@param		{string}		part
-		 *	@param		{string}		style			A style the template declares
+		 *	@param		{string}		object		A part, or the key of a feature
+		 *	@param		{string}		style			A style the object declares
 		 *	@param		{string}		option		An option of it, '' for None
 		 *	@param		{Element}		[field]		The select field of the style, whose note is the description of the option
 		 *
 		 *	@return		void
 		 */
-		_setStyle : function( part, style, option, field ) {
+		_setStyle : function( object, style, option, field ) {
 
 			const design = Nino.admin.design;
 			const views = Nino.admin.design.views;
-			const options = ( views._stylesOfPart( part )[style] || {} ).options || {};
+			const options = ( views._stylesOfObject( object )[style] || {} ).options || {};
 			const description = option === '' || options[option] === undefined ? '' : options[option].description;
+			const ofFeature = design._featuresOf()[object] !== undefined;
 			let note = field ? field.querySelector('small') : null;
+			let chosen;
 
-			design._edit.styles[part] = design._edit.styles[part] || {};
+			if( ofFeature === true ) {
+				const entry = design._edit.features[object] || { set : views._chosenSet( object ), knobs : {}, styles : {} };
+				entry.styles = entry.styles || {};
+				design._edit.features[object] = entry;
+				chosen = entry.styles;
+			}
+			else {
+				design._edit.styles[object] = design._edit.styles[object] || {};
+				chosen = design._edit.styles[object];
+			}
 
 			if( option === '' )
-				delete design._edit.styles[part][style];
+				delete chosen[style];
 			else
-				design._edit.styles[part][style] = option;
+				chosen[style] = option;
+
+			if( ofFeature === true )
+				views._pruneFeature( object );
 
 			// A select on None has no line under it: it is made when there is something to say
 			if( field && note === null && description !== '' ) {
@@ -4659,23 +4721,23 @@
 			if( note !== null )
 				note.textContent = description;
 
-			design._target = views._anchorOf( 'parts/'+ part );
+			design._target = views._anchorOf( ofFeature === true ? 'features/'+ object+ '/set' : 'parts/'+ object );
 			design._preview();
 		},
 
 		/**
-		 *	What the head of a closed block says of the styles chosen for its template: the name of each option chosen, as the select
-		 *	shows it. A choice the template chosen does not have is none (it cannot be made on this screen, and the server drops it)
+		 *	What the head of a closed block says of the styles chosen for its object: the name of each option chosen, as the select shows it.
+		 *	A choice the object does not have is none (it cannot be made on this screen, and the server drops it)
 		 *
-		 *	@param		{string}	part
+		 *	@param		{string}	object		A part, or the key of a feature
 		 *
 		 *	@return		{Array}						The names, none where no style is chosen
 		 */
-		_stylesSaid : function( part ) {
+		_stylesSaid : function( object ) {
 
 			const views = Nino.admin.design.views;
-			const styles = views._stylesOfPart( part );
-			const chosen = Nino.admin.design._edit.styles[part] || {};
+			const styles = views._stylesOfObject( object );
+			const chosen = views._chosenStyles( object );
 
 			return Object.keys( styles ).filter( function( style ) {
 				return ( styles[style].options || {} )[ chosen[style] ] !== undefined;
@@ -5114,7 +5176,8 @@
 		/**
 		 *	Choose a variant for a feature. The knobs the last one declared and this one does not are not this one's: they go, as the position of
 		 *	a knob a template does not answer to goes back to the middle - the screen never holds a choice the stored one could not be. A choice
-		 *	that comes to the feature as it is leaves no entry (see _pruneFeature()). The description under the select is written in place.
+		 *	that comes to the feature as it is leaves no entry (see _pruneFeature()). The styles chosen for the feature stay: they are the
+		 *	feature's and hold for every variant. The description under the select is written in place.
 		 *	The frame goes to the block of the feature, else to where the tab is (see _anchorOf())
 		 *
 		 *	@param		{string}		key
@@ -5129,7 +5192,7 @@
 			const views = Nino.admin.design.views;
 			const catalogue = ( design._featuresOf()[key] || {} ).catalogue || {};
 			const declared = ( catalogue[set] || {} ).knobs || {};
-			const entry = design._edit.features[key] || { set : set, knobs : {} };
+			const entry = design._edit.features[key] || { set : set, knobs : {}, styles : {} };
 			const note = field ? field.querySelector('small') : null;
 
 			entry.set = set;
@@ -5164,7 +5227,7 @@
 
 			const design = Nino.admin.design;
 			const views = Nino.admin.design.views;
-			const entry = design._edit.features[key] || { set : views._chosenSet( key ), knobs : {} };
+			const entry = design._edit.features[key] || { set : views._chosenSet( key ), knobs : {}, styles : {} };
 
 			entry.knobs[knob] = value;
 			design._edit.features[key] = entry;
@@ -5175,8 +5238,8 @@
 		},
 
 		/**
-		 *	Take the entry of a feature away where it says what the feature is without it: the variant it has before anything is chosen, and
-		 *	every knob at the default its head gives it. The server holds no entry for such a feature either, so the screen that was put back
+		 *	Take the entry of a feature away where it says what the feature is without it: the variant it has before anything is chosen, no
+		 *	style chosen and every knob at the default its head gives it. The server holds no entry for such a feature either, so the screen that was put back
 		 *	is the stored one
 		 *
 		 *	@param		{string}	key
@@ -5189,7 +5252,7 @@
 			const feature = design._featuresOf()[key];
 			const entry = design._edit.features[key];
 
-			if( feature === undefined || entry === undefined || entry.set !== feature['default'] )
+			if( feature === undefined || entry === undefined || entry.set !== feature['default'] || Object.keys( entry.styles || {} ).length > 0 )
 				return;
 
 			const declared = ( ( feature.catalogue || {} )[entry.set] || {} ).knobs || {};

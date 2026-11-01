@@ -99,8 +99,9 @@
  *												(DESIGN_WEBFONTS), the actions of the themes (DESIGN_THEMES) and - with a
  *												feature that brings variants active - the answer of design/list for it
  *												(DESIGN_FEATURES) and - with a template that brings styles - the answer of
- *												design/list for that (DESIGN_STYLES) really gave, which the screen is then
- *												drawn from as well;
+ *												design/list for that (DESIGN_STYLES) and - with a feature that declares styles
+ *												for all its variants - the one for that (DESIGN_FEATURE_STYLES) really gave,
+ *												which the screen is then drawn from as well;
  *												it also runs on its own.
  *
  *	Usage: node features/Design/tests/design-js-smoke.js
@@ -531,10 +532,10 @@ function featureKnob( kind, tab, label, standard, options ) {
 
 /**
  *	The features that bring variants, as design/list answers them (Admin::_features()), in the order of the catalogue - by their names - with what the setup chose
- *	for them: `chosen` is key => { set, knobs }, and a key the catalogue does not have is a feature that is not active, which rides along with its entry. Two are made
+ *	for them: `chosen` is key => { set, knobs, styles }, and a key the catalogue does not have is a feature that is not active, which rides along with its entry. Two are made
  *	up here. The first, Zinc, whose key sorts before the other's, has two variants: the regular one a knob of each of four kinds - a scale on the Type view, a choice
  *	on Surfaces, a ground and an ink on Colours - and the loud one the same and two more, a pair of colours and a scale on Motion. The second, Tiles, has the one
- *	variant and a knob on the Type view. Each feature has the anchor of its block on the specimen, as the server answers it ('' for none): Zinc brings a block, an id of the
+ *	variant and a knob on the Type view. Zinc declares two styles for both its variants, Look with two options and Edge with none; Tiles declares none. Each feature has the anchor of its block on the specimen, as the server answers it ('' for none): Zinc brings a block, an id of the
  *	stage, Tiles brings none
  */
 function featuresAnswer( chosen ) {
@@ -551,15 +552,18 @@ function featuresAnswer( chosen ) {
 		turn 		: featureKnob( 'scale', 'motion', 'Turn', 0 ),
 	} );
 	const answer = {
-		tiles 	: { name : 'Tiles', anchor : '', active : true, 'default' : 'regular', catalogue : { regular : { name : 'Plain', description : 'Tiles as they come', knobs : { grid : featureKnob( 'scale', 'type', 'Grid', 0 ) } } }, set : '', knobs : [] },
+		tiles 	: { name : 'Tiles', anchor : '', active : true, 'default' : 'regular', catalogue : { regular : { name : 'Plain', description : 'Tiles as they come', knobs : { grid : featureKnob( 'scale', 'type', 'Grid', 0 ) } } }, styles : [], set : '', knobs : [], picked : [] },
 		awning 	: { name : 'Zinc', anchor : 'feature-awning', active : true, 'default' : 'regular', catalogue : {
 			regular : { name : 'Regular', description : 'The awning as it hangs', knobs : regular },
 			loud 		: { name : 'Loud', description : 'The awning, louder', knobs : loud },
-		}, set : '', knobs : [] },
+		}, styles : {
+			look : { label : 'Look', options : { soft : { name : 'Soft', description : 'Rounded and quiet.' }, bold : { name : 'Bold', description : '' } } },
+			edge : { label : 'Edge', options : [] },
+		}, set : '', knobs : [], picked : [] },
 	};
 
 	Object.keys( picked ).forEach( function( key ) {
-		answer[key] = Object.assign( answer[key] || { name : key, anchor : '', active : false, 'default' : '', catalogue : {} }, { set : picked[key].set, knobs : picked[key].knobs } );
+		answer[key] = Object.assign( answer[key] || { name : key, anchor : '', active : false, 'default' : '', catalogue : {}, styles : [] }, { set : picked[key].set, knobs : picked[key].knobs, picked : picked[key].styles || [] } );
 	} );
 
 	return JSON.parse( JSON.stringify( answer ) );
@@ -5036,7 +5040,7 @@ check( '...the variant of a feature that brings two is chosen by a select of the
 	&& shown( fxSet ) === fxZinc['default'] && fxSet.id === 'design-feature-awning' && fxSet.parent.dataset.control === 'features/awning/set'
 	&& byTag( fxSet.parent, 'label' )[0].textContent === TEXT['/_admin/design/label/template'] && byTag( fxSet.parent, 'label' )[0].getAttribute('for') === fxSet.id
 	&& byTag( fxSet.parent, 'small' )[0].textContent === fxZinc.catalogue[ fxZinc['default'] ].description
-	&& byTag( cardOf( fxSet ), 'select' ).length === 1 && cardOf( fxSet ).dataset.object === 'awning' );
+	&& byTag( cardOf( fxSet ), 'select' ).length === 1 + Object.keys( fxZinc.styles ).length && cardOf( fxSet ).dataset.object === 'awning' );
 check( '...a feature with one variant only has nothing to choose: its block shows the description of the variant and no select',
 	fxSelect( fx, 'tiles' ) === null && byTag( fxBlock( fx, 'tiles' ), 'select' ).length === 0
 	&& byTag( controlOf( fx, 'features/tiles/set' ), 'small' )[0].textContent === fxData.tiles.catalogue.regular.description );
@@ -5047,11 +5051,11 @@ const fxHeadsAtStart = fxOrder.map( function( key ) { return fxSaid( fx, 'templa
 choose( fxSelect( fx, 'awning' ), 'loud' );
 
 check( 'choosing a variant is the selection on screen: the choice for the feature has the variant and no knob yet, the description under the select follows, the screen is no longer the stored one - the way back is shown - and the select stands where it was',
-	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'loud', knobs : {} } } ) && fxSelect( fx, 'awning' ).value === 'loud'
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'loud', knobs : {}, styles : {} } } ) && fxSelect( fx, 'awning' ).value === 'loud'
 	&& byTag( fxSelect( fx, 'awning' ).parent, 'small' )[0].textContent === fxZinc.catalogue.loud.description
 	&& fx.design._isDirty() === true && fx.byId('design-reset').hidden === false );
 check( '...the preview is asked for with the choices for the features beside the rest of the selection: an object of entries, the variant and the position of each knob that was moved',
-	JSON.stringify( fxLastPayload( fx ).features ) === JSON.stringify( { awning : { set : 'loud', knobs : {} } } ) && fx.requests[fx.requests.length - 1].endpoint === 'preview' );
+	JSON.stringify( fxLastPayload( fx ).features ) === JSON.stringify( { awning : { set : 'loud', knobs : {}, styles : {} } } ) && fx.requests[fx.requests.length - 1].endpoint === 'preview' );
 check( '...and the head of the closed block names the variant, as the catalogue of the answer has it: nothing at the start, and nothing of the feature that has the one variant',
 	fxHeadsAtStart.join() === ',' && fxSaid( fx, 'templates', 'awning' ) === fxZinc.catalogue.loud.name && fxSaid( fx, 'templates', 'tiles' ) === '' );
 
@@ -5093,7 +5097,7 @@ check( 'a scale a feature brings is a strip of five positions, −2 to +2, under
 pressKey( fx, fxSizeKey, 1 );
 
 check( '...pressing a position chooses it: the feature is chosen at the variant it stands at, with the position of the knob - the strip lights it - and the preview carries it',
-	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1 } } } ) && pressedKey( fx, fxSizeKey ) === 'false,false,false,true,false'
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1 }, styles : {} } } ) && pressedKey( fx, fxSizeKey ) === 'false,false,false,true,false'
 	&& fx.design._isDirty() === true && JSON.stringify( fxLastPayload( fx ).features ) === fxFeatures( fx ) );
 
 pressKey( fx, fxSizeKey, 0 );
@@ -5113,7 +5117,7 @@ check( 'a choice a feature brings is a strip of three, the words its head gives 
 pressKey( fx, fxLineKey, 1 );
 
 check( '...and a position of it is chosen as one of a scale is: the entry holds the knobs that were moved, in the order they were moved',
-	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1, line : 1 } } } ) && pressedKey( fx, fxLineKey ) === 'false,false,true' );
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1, line : 1 }, styles : {} } } ) && pressedKey( fx, fxLineKey ) === 'false,false,true' );
 
 // A ground is a select of the surfaces of the palette, an ink one of the tones of its text and lines
 const fxGroundSelect = function() { return byTag( fxControl( fx, 'awning', 'submit' ), 'select' )[0] };
@@ -5155,7 +5159,7 @@ fx.show( 'templates' );
 choose( fxSelect( fx, 'awning' ), 'loud' );
 
 check( '...the loud variant chosen, the same rows are live: the entry keeps the knobs that were moved, since the loud variant declares them too',
-	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'loud', knobs : { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk } } } )
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'loud', knobs : { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk }, styles : {} } } )
 	&& hasClass( fxControl( fx, 'awning', 'turn' ), 'design-knob-row--off' ) === false && byTag( fxControl( fx, 'awning', 'turn' ), 'button' ).every( function( button ) { return button.disabled === false } )
 	&& byTag( fxFlipRow(), 'input' ).every( function( input ) { return input.disabled === false } ) );
 
@@ -5229,7 +5233,7 @@ fx.show( 'templates' );
 choose( fxSelect( fx, 'awning' ), 'regular' );
 
 check( 'another variant is the knobs it declares: those the last one declared and this one does not are not this one\'s - they go from the entry - and the rows of them are greyed out',
-	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk } } } )
+	fxFeatures( fx ) === JSON.stringify( { awning : { set : 'regular', knobs : { size : 1, line : 1, submit : fxOtherGround, label : fxOtherInk }, styles : {} } } )
 	&& byTag( fxFlipRow(), 'input' ).every( function( input ) { return input.disabled === true } ) && hasClass( fxControl( fx, 'awning', 'turn' ), 'design-knob-row--off' ) === true );
 
 choose( fxSelect( fx, 'awning' ), 'loud' );
@@ -5269,8 +5273,8 @@ check( 'a choice kept for a feature that is not active - the answer lists it, fl
 	fxGhost.design._data.features.ghost.active === false && fxGhost.design._data.layout.objects.indexOf('ghost') === -1 && Object.keys( fxGhost.design._data.layout.controls ).every( function( key ) { return key.indexOf('features/ghost/') === -1 } )
 	&& [ 'templates', 'type', 'surfaces', 'colours', 'motion' ].every( function( tab ) { fxGhost.show( tab ); return fxObjects( fxGhost ).indexOf('ghost') === -1 } ) );
 check( '...and it is still the screen\'s choice: it is posted with the rest, so that a save keeps it, and a screen that did not touch it is the stored one',
-	JSON.stringify( fxGhost.design._edit.features.ghost ) === JSON.stringify( { set : 'x', knobs : { a : 1 } } ) && JSON.stringify( fxLastPayload( fxGhost ).features.ghost ) === JSON.stringify( { set : 'x', knobs : { a : 1 } } )
-	&& fxGhost.design._isDirty() === false && fxFeatures( fxGhost ).indexOf('"awning":{"set":"loud","knobs":{"size":1}}') !== -1 );
+	JSON.stringify( fxGhost.design._edit.features.ghost ) === JSON.stringify( { set : 'x', knobs : { a : 1 }, styles : {} } ) && JSON.stringify( fxLastPayload( fxGhost ).features.ghost ) === JSON.stringify( { set : 'x', knobs : { a : 1 }, styles : {} } )
+	&& fxGhost.design._isDirty() === false && fxFeatures( fxGhost ).indexOf('"awning":{"set":"loud","knobs":{"size":1},"styles":{}}') !== -1 );
 
 // What the server dropped or replaced on the way is told in the panel's words, the feature by the name its manifest gives it
 const fxNoted = panel( featured( {}, { notes : [
@@ -8081,7 +8085,7 @@ check( 'a theme that names colours - one of the project, written from the screen
 const chosenFeatures = { awning : { set : 'loud', knobs : { size : 1 } } };
 
 const recalled = themeSetup();
-recalled.features = { awning : { set : 'regular', knobs : { line : 1 } } };
+recalled.features = { awning : { set : 'regular', knobs : { line : 1 }, styles : {} } };
 const recalling = themed( featured( chosenFeatures ) );
 recalling.byId('design-theme-load-magazine').fire('click');
 recalling.answer( 200, themeLoad( 'magazine', recalled, [] ) );
@@ -9205,6 +9209,153 @@ else {
 
 console.log('');
 
+// --- The styles of a feature ---------------------------------------------------------------------
+//
+// A feature declares styles once, for all its variants (Setup::featureStyles()): the select of each stands in the block of the feature on Templates, under the select
+// of its variant and the description of it, "None" first and the options after it by the names their files give them. A choice is the feature's, a key `styles` of its
+// entry in the working copy, goes with every request the selection goes with, and a change of the variant leaves it where it is. The frame goes to the block of the
+// feature (F05's anchor), and the head of the closed block names the options chosen after the variant
+
+console.log( 'The styles of a feature' );
+
+const fsDefs = featured().features.awning.styles;
+const fsKeys = Object.keys( fsDefs );
+const fst = panel( featured() );
+// The block of the feature is opened for it: a closed block has drawn nothing yet
+const fsField = function( screen, style ) { fxControl( screen, 'awning' ); return screen.byId( 'design-style-awning-'+ style ) };
+const fsBody = function( screen ) { return byClass( cardOf( fxSelect( screen, 'awning' ) ), 'design-accordion-body' )[0] };
+const fsSelects = function( screen ) { return byClass( fsBody( screen ), 'design-style-select' ) };
+const fsLast = function( screen ) { return screen.requests[screen.requests.length - 1] };
+
+check( 'a feature that declares styles has a select for each in its block, in the order its head declares them, under the select of its variant: no control of the table, so none of them stands for a key - and a feature that declares none has none',
+	fsKeys.join() === 'look,edge' && fsSelects( fst ).length === 2 && fsKeys.every( function( style, at ) { return fsSelects( fst )[at] === fsField( fst, style ).parent } )
+	&& fsBody( fst ).children.indexOf( fsSelects( fst )[0] ) === fsBody( fst ).children.indexOf( fxSelect( fst, 'awning' ).parent ) + 1 && fsBody( fst ).children.indexOf( fsSelects( fst )[1] ) === fsBody( fst ).children.indexOf( fsSelects( fst )[0] ) + 1
+	&& fsSelects( fst ).every( function( field ) { return field.dataset.control === undefined && hasClass( field, 'design-field' ) } )
+	&& tableRows( fst.design._data.layout, 'templates' ).every( function( row ) { return row.controls.every( function( key ) { return key.indexOf('styles') === -1 } ) } )
+	&& byClass( fxBlock( fst, 'tiles' ), 'design-style-select' ).length === 0 );
+check( '...each headed with the label its head gives the style, over a select that has None first - the word the texts have for it - and the options after it by the names their files give them, in the order of the answer: it stands on None with no line under it, and a style whose files are none offers None alone',
+	fsKeys.every( function( style ) {
+		const select = fsField( fst, style );
+		const options = fsDefs[style].options;
+		return select !== null && JSON.stringify( offered( select ) ) === JSON.stringify( [ [ '', styNone ] ].concat( Object.keys( options ).map( function( option ) { return [ option, options[option].name ] } ) ) )
+			&& shown( select ) === '' && byTag( select.parent, 'label' )[0].textContent === fsDefs[style].label && byTag( select.parent, 'label' )[0].getAttribute('for') === select.id
+			&& byTag( select.parent, 'small' ).length === 0 && select.parent.dataset.style === style && select.id === 'design-style-awning-'+ style;
+	} ) && offered( fsField( fst, 'edge' ) ).length === 1 && offered( fsField( fst, 'look' ) ).length === 3 );
+
+fst.design._target = null;
+choose( fsField( fst, 'look' ), 'soft' );
+
+check( 'choosing an option writes it into the entry of the feature, which is chosen at the variant it stands at for it: the styles are the feature\'s and not the variant\'s - and the line under the select is the description of the option',
+	JSON.stringify( fst.design._edit.features ) === JSON.stringify( { awning : { set : 'regular', knobs : {}, styles : { look : 'soft' } } } ) && fsField( fst, 'look' ).value === 'soft'
+	&& byTag( fsField( fst, 'look' ).parent, 'small' )[0].textContent === fsDefs.look.options.soft.description && fst.design._isDirty() === true && fst.byId('design-reset').hidden === false );
+check( '...it asks for the preview with the choices for the features, the styles in them, and the frame goes to the block of the feature: the anchor the answer gives it',
+	JSON.stringify( fxLastPayload( fst ).features ) === JSON.stringify( { awning : { set : 'regular', knobs : {}, styles : { look : 'soft' } } } ) && fsLast( fst ).endpoint === 'preview' && fst.design._target === fxZinc.anchor );
+
+choose( fsField( fst, 'look' ), 'bold' );
+
+check( '...an option with no description has no line under its select, and a second choice is the same key with the other option',
+	fst.design._edit.features.awning.styles.look === 'bold' && ( byTag( fsField( fst, 'look' ).parent, 'small' )[0] || { textContent : '' } ).textContent === '' );
+
+choose( fsField( fst, 'look' ), 'soft' );
+choose( fxSelect( fst, 'awning' ), 'loud' );
+
+check( 'a change of the variant leaves the styles as they are: the entry has the other variant and the same option, the select stands on it, and the next preview carries both',
+	JSON.stringify( fst.design._edit.features.awning ) === JSON.stringify( { set : 'loud', knobs : {}, styles : { look : 'soft' } } ) && fsField( fst, 'look' ).value === 'soft' && fsSelects( fst ).length === 2
+	&& JSON.stringify( fxLastPayload( fst ).features.awning ) === JSON.stringify( { set : 'loud', knobs : {}, styles : { look : 'soft' } } ) );
+
+choose( fxSelect( fst, 'awning' ), 'regular' );
+
+check( '...and the variant the feature starts from, chosen again, is no choice for the variant alone: the style keeps the entry, which then says the variant it has before anything is chosen',
+	JSON.stringify( fst.design._edit.features.awning ) === JSON.stringify( { set : 'regular', knobs : {}, styles : { look : 'soft' } } ) && fst.design._isDirty() === true );
+
+check( 'the head of the closed block names the option of each style chosen after the variant, as the select shows it - the options alone while the variant is the one the feature starts from',
+	fxSaid( fst, 'templates', 'awning' ) === fsDefs.look.options.soft.name && ( choose( fxSelect( fst, 'awning' ), 'loud' ), fxSaid( fst, 'templates', 'awning' ) === [ fxZinc.catalogue.loud.name, fsDefs.look.options.soft.name ].join(' · ') ) );
+
+choose( fsField( fst, 'look' ), '' );
+
+check( 'None is the feature as it is: the style has no entry then, and with the variant at the one the feature starts from the entry is gone, the screen is the stored one and the line under the select is gone',
+	JSON.stringify( fst.design._edit.features.awning ) === JSON.stringify( { set : 'loud', knobs : {}, styles : {} } ) && fsField( fst, 'look' ).value === '' && ( byTag( fsField( fst, 'look' ).parent, 'small' )[0] || { textContent : '' } ).textContent === ''
+	&& ( choose( fxSelect( fst, 'awning' ), 'regular' ), fxFeatures( fst ) === '{}' && fst.design._isDirty() === false && fst.byId('design-reset').hidden === true ) );
+
+choose( fsField( fst, 'look' ), 'bold' );
+fst.byId('design-save').fire('click');
+
+check( 'the save posts the styles of the feature with the rest of the selection, and the way back puts the stored selection back: no style chosen, the select on None',
+	fsLast( fst ).endpoint === 'save' && JSON.stringify( fsLast( fst ).payload.features.awning.styles ) === JSON.stringify( { look : 'bold' } )
+	&& ( fst.byId('design-reset').fire('click'), fxFeatures( fst ) === '{}' && shown( fsField( fst, 'look' ) ) === '' && fst.design._isDirty() === false ) );
+
+// A stored choice is on the screen: the answer says the styles chosen for the feature
+const fsStored = panel( featured( { awning : { set : 'loud', knobs : {}, styles : { look : 'bold', gone : 'x' } } } ) );
+
+check( 'a stored choice is drawn as the answer says it: the select stands on the option, the screen is the stored selection with nothing to go back to, the head names the variant and the option - and a style the answer holds that the feature does not declare is not said and has no select',
+	shown( fsField( fsStored, 'look' ) ) === 'bold' && fsStored.design._isDirty() === false && fsStored.byId('design-reset').hidden === true && fsStored.byId('design-style-awning-gone') === null
+	&& fxSaid( fsStored, 'templates', 'awning' ) === [ fxZinc.catalogue.loud.name, fsDefs.look.options.bold.name ].join(' · ') );
+
+// A theme carries them: the entry of the feature in its setup has the styles
+const fsTheme = themeSetup();
+fsTheme.features = { awning : { set : 'regular', knobs : {}, styles : { look : 'soft' } } };
+
+const fsThemed = themed( featured() );
+fsThemed.byId('design-theme-load-magazine').fire('click');
+fsThemed.answer( 200, themeLoad( 'magazine', fsTheme, [] ) );
+
+check( 'a theme that names styles for a feature takes them over with the entry, and its record has them: the compare reads them again, and a style moved afterwards is a change of it',
+	JSON.stringify( fsThemed.design._edit.features ) === JSON.stringify( fsTheme.features ) && JSON.stringify( fsThemed.design._active.setup.features ) === JSON.stringify( fsTheme.features )
+	&& fsThemed.design._themeChanged() === false && ( fsThemed.design._edit.features.awning.styles.look = 'bold', fsThemed.design._themeChanged() ) === true );
+
+// The answer of the server with a feature that declares styles
+const featureStylesFile = process.env.DESIGN_FEATURE_STYLES || '';
+
+if( featureStylesFile === '' || fs.existsSync( featureStylesFile ) === false )
+	console.log( '  --  no answer of design/list with a feature that declares styles was handed to this run (DESIGN_FEATURE_STYLES), so the selects of the styles of a feature are not drawn from the real one' );
+else {
+
+	const realFs = JSON.parse( fs.readFileSync( featureStylesFile, 'utf8' ) );
+	const realKey = Object.keys( realFs.features ).filter( function( key ) { return realFs.features[key].active === true && Object.keys( realFs.features[key].styles ).length > 1 } )[0];
+	const realFeature = realFs.features[realKey];
+	const realStyleKeys = Object.keys( realFeature.styles );
+	const realFsScreen = panel( realFs );
+	const realFsField = function( style ) { return realFsScreen.byId( 'design-style-'+ realKey+ '-'+ style ) };
+
+	fxControl( realFsScreen, realKey );
+
+	check( 'the server\'s answer is in the shape the screen draws: every feature brings its styles as a list or an object of styles with a label and the options with a name and a description, the ones chosen apart from them, in `picked` - and no file of the server in them',
+		Object.keys( realFs.features ).every( function( key ) {
+			const feature = realFs.features[key];
+			return feature.styles !== undefined && feature.picked !== undefined && ( Array.isArray( feature.styles ) ? feature.styles.length === 0 : Object.keys( feature.styles ).every( function( style ) {
+				return /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test( style ) && typeof feature.styles[style].label === 'string' && feature.styles[style].label !== '' && Object.keys( feature.styles[style] ).join() === 'label,options'
+					&& ( Array.isArray( feature.styles[style].options ) ? true : Object.keys( feature.styles[style].options ).every( function( option ) { return Object.keys( feature.styles[style].options[option] ).join() === 'name,description' && typeof feature.styles[style].options[option].name === 'string' } ) );
+			} ) );
+		} ) && realStyleKeys.length >= 2 && JSON.stringify( realFs.features ).indexOf('"file"') === -1 );
+	check( '...the screen draws a select for each style of the feature - None first, then the options in the order of the answer - on the option the setup chose, with the line of its description under it, in the block of the feature',
+		realStyleKeys.every( function( style ) {
+			const chosen = ( Array.isArray( realFeature.picked ) ? {} : realFeature.picked )[style] || '';
+			return realFsField( style ) !== null && JSON.stringify( offered( realFsField( style ) ).map( function( pair ) { return pair[0] } ) ) === JSON.stringify( [ '' ].concat( Object.keys( realFeature.styles[style].options ) ) )
+				&& offered( realFsField( style ) )[0][1] === styNone && shown( realFsField( style ) ) === chosen && byTag( realFsField( style ).parent, 'label' )[0].textContent === realFeature.styles[style].label
+				&& ( byTag( realFsField( style ).parent, 'small' )[0] || { textContent : '' } ).textContent === ( chosen === '' ? '' : realFeature.styles[style].options[chosen].description )
+				&& cardOf( realFsField( style ) ) === fxBlock( realFsScreen, realKey );
+		} ) );
+
+	// Every option of every style is chosen once, and the preview is asked for with it, the frame going to the block of the feature
+	const realFsProblems = [];
+
+	realStyleKeys.forEach( function( style ) {
+		Object.keys( realFeature.styles[style].options ).forEach( function( option ) {
+			realFsScreen.design._target = null;
+			choose( realFsField( style ), option );
+			realFsScreen.design._previewNow();
+			const asked = realFsScreen.requests[realFsScreen.requests.length - 1];
+
+			if( asked.payload.features[realKey].styles[style] !== option || realFsScreen.design._edit.features[realKey].styles[style] !== option || realFsScreen.design._target !== realFeature.anchor )
+				realFsProblems.push( style+ '/'+ option );
+		} );
+	} );
+
+	check( 'each option of each style the server brings for a feature can be chosen, and goes with the preview as it is named, to the block of the feature'+ ( realFsProblems.length === 0 ? '' : ' - not so for '+ realFsProblems.join() ), realFsProblems.length === 0 && realStyleKeys.length >= 2 && realFeature.anchor !== '' );
+}
+
+console.log('');
+
 // --- The answer of design/list with a feature in it --------------------------------------------------
 //
 // The server's own answer for a project with an active feature that brings variants - the fixture of the PHP suite, with a choice for it and a choice kept for a
@@ -9339,9 +9490,11 @@ else {
 
 	check( 'the screen stands as the answer says for every feature: the variant that is chosen on its select, every knob of it at its value - a strip lit at the position, a select on the surface or the tone, a pair of colours in its two inputs - under the label its head gave it'
 		+ ( standing.length === 0 ? '' : ' - not so for '+ standing.slice( 0, 4 ).join() ), standing.length === 0 && realScreen.design._isDirty() === false );
+	const pickedOf = function( key ) { return Array.isArray( realFx.features[key].picked ) === true ? {} : realFx.features[key].picked };
+
 	check( '...the choice kept for a feature that is not there is the screen\'s still, and goes out with the next preview, and with the choices that are there as the answer gave them',
-		kept.every( function( key ) { return JSON.stringify( realScreen.design._edit.features[key] ) === JSON.stringify( { set : realFx.features[key].set, knobs : realFx.features[key].knobs } ) } )
-		&& live.filter( function( key ) { return realFx.features[key].set !== '' } ).every( function( key ) { return JSON.stringify( fxLastPayload( realScreen ).features[key] ) === JSON.stringify( { set : realFx.features[key].set, knobs : realFx.features[key].knobs } ) } )
+		kept.every( function( key ) { return JSON.stringify( realScreen.design._edit.features[key] ) === JSON.stringify( { set : realFx.features[key].set, knobs : realFx.features[key].knobs, styles : pickedOf( key ) } ) } )
+		&& live.filter( function( key ) { return realFx.features[key].set !== '' } ).every( function( key ) { return JSON.stringify( fxLastPayload( realScreen ).features[key] ) === JSON.stringify( { set : realFx.features[key].set, knobs : realFx.features[key].knobs, styles : pickedOf( key ) } ) } )
 		&& kept.every( function( key ) { return fxLastPayload( realScreen ).features[key] !== undefined } ) );
 
 	// What the colours of the feature measure on the page is the server's: the line under a pair says it where a half falls short

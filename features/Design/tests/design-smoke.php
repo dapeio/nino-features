@@ -47,7 +47,10 @@ declare(strict_types=1);
  *											brings: the @style lines of a head, the css files beside the template and the
  *											option each is, the choice held to the template that is chosen, the file written
  *											behind the css of the template and named in its section, the fingerprint, the
- *											answers of design/list, design/save and design/preview, and a theme that keeps them.
+ *											answers of design/list, design/save and design/preview, and a theme that keeps them, and the styles a feature declares
+ *											for all its variants: design/styles.css, which is no variant, and the files beside it, the
+ *											choice kept in the entry of the feature whichever variant is chosen, the shared rules and
+ *											the options behind the variant, and the same answers and a theme that keep them.
  *											Travels with the feature and
  *											runs against the checkout three levels up, or the one
  *											NINO_ROOT names (see tests/harness.php there). What the
@@ -116,10 +119,11 @@ function designCopyTree( string $from, string $to ): void {
  *	@param		array 		$variants			variant => the text of its stylesheet
  *	@param		string|array	$title		The name its manifest gives it, or locale => name; the directory's where none is given
  *	@param		string		$block				The text of its design/preview.tpl; '' for a feature that brings none
+ *	@param		array 		$styles				The files of the styles it declares for all its variants: the path below design/ => the text of the file (styles.css, styles/<style>-<option>.css)
  *
  *	@return 	void
  */
-function designMakeFeature( string $features, string $name, string $key, array $variants, string|array $title = '', string $block = '' ): void {
+function designMakeFeature( string $features, string $name, string $key, array $variants, string|array $title = '', string $block = '', array $styles = [] ): void {
 
 	mkdir( $features. '/'. $name. ( $variants === [] ? '' : '/design' ), 0755, true );
 
@@ -139,6 +143,14 @@ function designMakeFeature( string $features, string $name, string $key, array $
 
 	foreach( $variants as $variant => $css )
 		file_put_contents( $features. '/'. $name. '/design/'. $variant. '.css', $css );
+
+	foreach( $styles as $file => $css ) {
+
+		if( is_dir( dirname( $features. '/'. $name. '/design/'. $file ) ) === false )
+			mkdir( dirname( $features. '/'. $name. '/design/'. $file ), 0755, true );
+
+		file_put_contents( $features. '/'. $name. '/design/'. $file, $css );
+	}
 }
 
 /**
@@ -269,6 +281,27 @@ if( defined( 'NINO_FEATURES_DIR' ) === false ) {
 	designMakeFeature( $designTree, 'Quoted', 'quoted', [ 'regular' => "/*\t@name\tRegular\n *\t@knob\tsize\tscale\ttype\tSize\n */\n:root { --quoted-size--least: 1; --quoted-size--less: 1; --quoted-size--default: 1; --quoted-size--more: 1; --quoted-size--most: 1; }\n" ],
 		[ 'en_US' => 'A "quoted" <b>[name]</b> & more', 'de_DE' => 'Ein "zitierter" <b>[Name]</b> & mehr' ],
 		"<div class=\"nino-grid-row\">\n\t<div class=\"nino-grid-100\"><p id=\"quoted-text\">[[short]]</p></div>\n</div>\n" );
+
+	/*	Two features that declare styles for all their variants. Styled has two variants, a block of its own and a design/styles.css with a head that is wrong in each way a line
+		can be, a body of shared rules and the files of the options - one with a head of its own and its words in German, one with no head, one whose option has a hyphen -, beside
+		the work in progress a library may hold: a file of a style nobody declares, a file whose name is none, a declared style without a file. Hollow has a design/styles.css with
+		a head and no body	*/
+	designMakeFeature( $designTree, 'Styled', 'styled', [
+		'regular' => "/*\t@name\tRegular\n */\n.styled { color: inherit; }\n",
+		'loud' => "/*\t@name\tLoud\n */\n.styled { font-weight: bold; }\n",
+	], '', "<div class=\"nino-grid-row\">\n\t<div class=\"nino-grid-100\"><p id=\"styled-text\">[[short]]</p></div>\n</div>\n", [
+		'styles.css' => "/*\t@style\tlook\tLook of the block\n *\t@style-de\tlook\tAussehen des Blocks\n *\t@style\tedge\tEdge\n *\t@style\tspare\tA style without a file\n *\t@style\tBad_Name\tNot a name\n */\n.styled-shared { margin: 0; }\n",
+		'styles/look-soft.css' => "/*\t@name\tSoft\n *\t@name-de\tWeich\n *\t@description\tRounded corners.\n *\t@description-de\tAbgerundete Ecken.\n */\n.styled { border-radius: 1rem; }\n",
+		'styles/look-bold.css' => ".styled { font-weight: 900; }\n",
+		'styles/look-extra-wide.css' => "/*\t@name\tExtra wide\n */\n.styled { max-width: none; }\n",
+		'styles/edge-round.css' => "/*\t@name\tRound\n */\n.styled { border-radius: 50%; }\n",
+		'styles/ghost-x.css' => ".styled { opacity: 0; }\n",
+		'styles/Look_Soft.css' => ".styled { opacity: .5; }\n",
+	] );
+	designMakeFeature( $designTree, 'Hollow', 'hollow', [ 'regular' => "/*\t@name\tRegular\n */\n.hollow { color: inherit; }\n" ], '', '', [
+		'styles.css' => "/*\t@style\tmood\tMood\n */\n",
+		'styles/mood-calm.css' => ".hollow { opacity: .9; }\n",
+	] );
 
 	define( 'NINO_FEATURES_DIR', $designTree );
 	register_shutdown_function( static function() use ( $designTree ): void { designRemoveTree( $designTree ); } );
@@ -8196,7 +8229,7 @@ $goodNotes 	= [];
 $good 			= $entryOf( [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => '2', 'line' => -1, 'submit' => 'danger', 'label' => 'primary', 'flip' => [ '#ABC', '123456' ], 'turn' => 1 ] ] ], $goodNotes );
 
 check( 'a setup chooses a variant for a feature and a value for every knob that variant declares: a position for a scale and a choice, a surface for a ground, a tone for an ink, two hex colours - written as six digits, lower case - for a colour - in the order the head has them',
-	$good === [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => 2, 'line' => -1, 'submit' => 'danger', 'label' => 'primary', 'flip' => [ '#aabbcc', '#123456' ], 'turn' => 1 ] ] ] && $goodNotes === [] );
+	$good === [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => 2, 'line' => -1, 'submit' => 'danger', 'label' => 'primary', 'flip' => [ '#aabbcc', '#123456' ], 'turn' => 1 ], 'styles' => [] ] ] && $goodNotes === [] );
 
 $heldNotes 	= [];
 $held 			= $entryOf( [ 'probe' => [ 'set' => 'loud', 'knobs' => [ 'size' => 9, 'line' => 2, 'submit' => 'nowhere', 'label' => [ 'x' ], 'flip' => [ '#fff', 5 ], 'turn' => 'fast' ] ] ], $heldNotes );
@@ -8210,7 +8243,7 @@ $bare 			= $entryOf( [ 'probe' => [ 'set' => 'regular' ] ], $bareNotes );
 $emptyOne 	= $entryOf( [ 'probe' => [] ] );
 
 check( '...an entry that names no knob has every knob of its variant at the head\'s default, and one that names no variant is the variant the feature has before anything is chosen',
-	$bare === [ 'probe' => [ 'set' => 'regular', 'knobs' => array_combine( array_keys( $regular['knobs'] ), $defaultsOf( 'regular' ) ) ] ] && $bareNotes === [] && $emptyOne === $bare );
+	$bare === [ 'probe' => [ 'set' => 'regular', 'knobs' => array_combine( array_keys( $regular['knobs'] ), $defaultsOf( 'regular' ) ), 'styles' => [] ] ] && $bareNotes === [] && $emptyOne === $bare );
 
 $droppedNotes = [];
 $dropped 			= $entryOf( [ 'probe' => [ 'set' => 'regular', 'knobs' => [ 'size' => 1, 'flip' => [ '#112233', '#445566' ], 'turn' => 2 ] ] ], $droppedNotes );
@@ -8238,8 +8271,8 @@ check( 'an entry that is no entry is dropped and named: a key that no feature ha
 $strayNotes = [];
 $stray 			= $entryOf( [ 'probe' => [ 'set' => 'regular', 'zzz' => 1 ] ], $strayNotes );
 
-check( '...so is a key of an entry that is neither the variant nor the knobs; the entry has its two keys and no other',
-	array_keys( $stray['probe'] ) === [ 'set', 'knobs' ] && count( $strayNotes ) === 1 && str_contains( (string) $strayNotes[0], '"zzz"' ) === true );
+check( '...so is a key of an entry that is neither the variant, the knobs nor the styles; the entry has its three keys and no other',
+	array_keys( $stray['probe'] ) === [ 'set', 'knobs', 'styles' ] && count( $strayNotes ) === 1 && str_contains( (string) $strayNotes[0], '"zzz"' ) === true );
 
 check( '...and the entries come in the order of their keys, whichever order they were chosen in, so that the same choices are the same file',
 	array_keys( $entryOf( [ 'zed' => [ 'set' => 'a' ], 'probe' => [], 'alpha' => [ 'set' => 'b' ] ] ) ) === [ 'alpha', 'probe', 'zed' ] );
@@ -8252,8 +8285,8 @@ $featuresOn( [ 'Design' ] );
 $inactiveNotes 	= [];
 $inactive 			= $entryOf( [ 'probe' => [ 'set' => 'whatever', 'knobs' => [ 'size' => 99, 'x' => 'y' ] ], 'other' => [ 'set' => 5, 'knobs' => 'text' ] ], $inactiveNotes );
 
-check( 'an entry of a feature that is not active - switched off, taken away - is kept as it is, nothing validated against a feature that is not there, with the note that says so: the code and the key - and one whose two keys are not what they should be is held to their types',
-	$inactive === [ 'other' => [ 'set' => '', 'knobs' => [] ], 'probe' => [ 'set' => 'whatever', 'knobs' => [ 'size' => 99, 'x' => 'y' ] ] ]
+check( 'an entry of a feature that is not active - switched off, taken away - is kept as it is, nothing validated against a feature that is not there, with the note that says so: the code and the key - and one whose three keys are not what they should be is held to their types',
+	$inactive === [ 'other' => [ 'set' => '', 'knobs' => [], 'styles' => [] ], 'probe' => [ 'set' => 'whatever', 'knobs' => [ 'size' => 99, 'x' => 'y' ], 'styles' => [] ] ]
 	&& $inactiveNotes === [ Setup::inactive( 'probe' ), Setup::inactive( 'other' ) ] && $inactiveNotes[0]['code'] === 'design_feature_inactive' && $inactiveNotes[0]['params'] === [ 'probe' ] );
 check( '...the note is in the list of the notes that carry a code, with a sentence for a log, and the key of the feature is cut at 40 characters like the other keys in a note',
 	isset( Setup::NOTES['design_feature_inactive'] ) === true && substr_count( Setup::NOTES['design_feature_inactive'], '%s' ) === 1
@@ -8263,7 +8296,7 @@ check( '...the note is in the list of the notes that carry a code, with a senten
 $featuresOn( [ 'Design', 'Plain' ] );
 
 check( '...a feature that is active and brings no design/ directory is not a feature that brings variants, and its choice is kept as well',
-	$entryOf( [ 'plain' => [ 'set' => 'x' ] ] ) === [ 'plain' => [ 'set' => 'x', 'knobs' => [] ] ] );
+	$entryOf( [ 'plain' => [ 'set' => 'x' ] ] ) === [ 'plain' => [ 'set' => 'x', 'knobs' => [], 'styles' => [] ] ] );
 
 // The rows the features add to the panel
 $featuresOn( [ 'Design', 'Probe' ] );
@@ -8545,7 +8578,7 @@ Setup::write( $appData, $stored );
 $answerFeature = $listedFeatures['features']['probe'] ?? [];
 
 check( 'design/list answers the features that bring variants: for each its name, that it is active, the variant it has before anything is chosen and its variants with their knobs - the kind, the tab, the label, the words of a choice, the default - and what the setup chose for it: the variant and the value of each knob',
-	$status === 200 && array_keys( $answerFeature ) === [ 'name', 'anchor', 'active', 'default', 'catalogue', 'set', 'knobs' ] && $answerFeature['name'] === 'Probe' && $answerFeature['active'] === true && $answerFeature['default'] === 'regular'
+	$status === 200 && array_keys( $answerFeature ) === [ 'name', 'anchor', 'active', 'default', 'catalogue', 'styles', 'set', 'knobs', 'picked' ] && $answerFeature['name'] === 'Probe' && $answerFeature['active'] === true && $answerFeature['default'] === 'regular'
 	&& array_keys( $answerFeature['catalogue'] ) === [ 'loud', 'regular' ] && array_keys( $answerFeature['catalogue']['loud'] ) === [ 'name', 'description', 'knobs' ]
 	&& array_keys( $answerFeature['catalogue']['loud']['knobs']['line'] ) === [ 'kind', 'tab', 'label', 'options', 'default' ] && $answerFeature['catalogue']['loud']['knobs']['flip']['default'] === [ '#b03a2e', '#e8705f' ]
 	&& $answerFeature['set'] === 'loud' && $answerFeature['knobs'] === $stored['features']['probe']['knobs'] );
@@ -8558,7 +8591,7 @@ check( '...with each feature the anchor of its block on the specimen, not with i
 check( '...nothing of the server in it that the screen does not read: not the directory of the feature, not the names of the ladders',
 	str_contains( (string) json_encode( $listedFeatures['features'] ), $probeDir ) === false && str_contains( (string) json_encode( $listedFeatures['features'] ), 'ladder' ) === false );
 check( '...a choice kept for a feature that is not in the catalogue follows them, flagged as not active and as it was kept - so that a save carries it on - and the order is the catalogue\'s, then the kept ones by their keys',
-	array_keys( $listedFeatures['features'] ) === [ 'probe', 'gone' ] && $listedFeatures['features']['gone'] === [ 'name' => 'gone', 'anchor' => '', 'active' => false, 'default' => '', 'catalogue' => [], 'set' => 'x', 'knobs' => [ 'a' => 1 ] ] );
+	array_keys( $listedFeatures['features'] ) === [ 'probe', 'gone' ] && $listedFeatures['features']['gone'] === [ 'name' => 'gone', 'anchor' => '', 'active' => false, 'default' => '', 'catalogue' => [], 'styles' => [], 'set' => 'x', 'knobs' => [ 'a' => 1 ], 'picked' => [] ] );
 check( '...the table of the controls and the objects are the merged ones: the page\'s own and the rows of the feature, the object after the tables',
 	$listedFeatures['layout'] === [ 'tabs' => Setup::TABS, 'objects' => Setup::objects( $appData ), 'controls' => Setup::layout( $appData ) ] && end( $listedFeatures['layout']['objects'] ) === 'probe'
 	&& $listedFeatures['layout']['controls']['features/probe/knobs/flip'][0] === 'colours' );
@@ -8795,7 +8828,7 @@ unset( $appData['/nino/html/assets'] );
 $afterSave = Setup::read( $appData, $library );
 
 check( 'design/save stores the choices for the features, normalised, with the choice kept for a feature that is not there - the note says it - and in the order of the keys',
-	$status === 200 && array_keys( $afterSave['features'] ) === [ 'gone', 'probe' ] && $afterSave['features']['probe'] === $withEntry['features']['probe'] && $afterSave['features']['gone'] === [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ]
+	$status === 200 && array_keys( $afterSave['features'] ) === [ 'gone', 'probe' ] && $afterSave['features']['probe'] === $withEntry['features']['probe'] && $afterSave['features']['gone'] === [ 'set' => 'x', 'knobs' => [ 'a' => 1 ], 'styles' => [] ]
 	&& $savedFeatures['notes'] === [ Setup::inactive( 'gone' ) ] );
 check( '...and a save of the screen that chooses nothing for the features takes the choices away, and so does a request that carries a key that is no array',
 	( static function() use ( &$appData, $postedLoud, $library ): bool {
@@ -8822,7 +8855,7 @@ Themes::remove( $appData, (string) ( $made['slug'] ?? '' ) );
 
 // A theme sets the choices for the features: what it names is what the screen has after a load, every other feature is back at its own look, and an entry for a feature that is not there is left out and said
 $byHand 			= static fn( string $name, array $features ): array => [ 'format' => Themes::FORMAT, 'name' => $name, 'setup' => [ 'features' => $features ] ];
-$choiceGone 	= [ 'set' => 'x', 'knobs' => [ 'a' => 1 ] ];
+$choiceGone 	= [ 'set' => 'x', 'knobs' => [ 'a' => 1 ], 'styles' => [] ];
 callDesignAction( $appData, 'apiSave', array_merge( $postedLoud, [ 'features' => $withEntry['features'] ] ) );
 [ $status, $overShipped ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => Themes::SHIPPED[0] ] );
 Themes::write( $appData, 'by-hand', $byHand( 'By hand', [ 'probe' => [ 'set' => 'loud' ] ] ) );
@@ -9145,6 +9178,269 @@ if( $styleCopy === true ) {
 	\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 }
 
+// --- The styles a feature declares ---------------------------------------------------
+//
+// A feature declares styles once, for all its variants: design/styles.css is no variant - its head declares the styles, its body holds the rules they share - and the
+// files of the options stand in design/styles/. The pins run on two features this suite makes for itself (see designMakeFeature()): Styled, with the work in progress a
+// library may hold, and Hollow, whose styles.css has a head and no body
+
+echo "\nThe styles a feature declares: once for all its variants, the one chosen compiled behind the variant\n";
+
+$sfFile 		= \Nino\Filesystem::path( $appData, Setup::PATH );
+$sfKept 		= is_file( $sfFile ) === true ? (string) file_get_contents( $sfFile ) : null;
+$sfLocale 	= $appData['./nino/locales/current'];
+$sfModules 	= $appData['/nino/modules'] ?? [];
+$styledDir 	= \Nino\Features::dir(). '/Styled';
+$styleSheet = $styledDir. '/design/styles.css';
+
+$featuresOn( [ 'Design', 'Styled', 'Hollow', 'Probe' ] );
+$appData['./nino/locales/current'] = 'en_US';
+
+$sfNotes 	= [];
+$sfScan 	= Setup::features( $appData, $sfNotes );
+$sfHead 	= Setup::head( $styleSheet, 'en_US' );
+$sfHeadDe = Setup::head( $styleSheet, 'de_DE' );
+
+check( 'design/styles.css is no variant: the variants of a feature that declares styles are its other stylesheets, and the feature that has the file alone appears nowhere but in the list of those with variants',
+	array_keys( $sfScan['styled']['catalogue'] ) === [ 'loud', 'regular' ] && array_keys( $sfScan['hollow']['catalogue'] ) === [ 'regular' ] && Setup::FEATURE_STYLES === 'styles'
+	&& array_keys( $sfScan ) === [ 'hollow', 'probe', 'styled' ] && preg_grep( '/styles/', array_keys( $sfScan['styled']['catalogue'] ) ) === [] );
+check( 'the head of design/styles.css declares the styles of the feature with the lines of the head of a template: the name and the label in the language asked for and in English where the line of that language is not there - a line that is none of the grammar is dropped and named',
+	$sfHead['styles'] === [ 'look' => 'Look of the block', 'edge' => 'Edge', 'spare' => 'A style without a file' ] && $sfHeadDe['styles']['look'] === 'Aussehen des Blocks' && $sfHeadDe['styles']['edge'] === 'Edge'
+	&& count( $sfHead['styleNotes'] ) === 1 && str_contains( $sfHead['styleNotes'][0], 'Bad_Name' ) === true );
+
+$sfStyleNotes = [];
+$sfStyles 		= Setup::featureStyles( $styledDir, 'styled', 'en_US', $sfStyleNotes );
+$sfStylesDe 	= Setup::featureStyles( $styledDir, 'styled', 'de_DE' );
+
+check( 'featureStyles() lists the styles in the order of the head, each with its label and its options: the files of design/styles/ named <style>-<option>.css, in the natural order of their names, under the name and the description their own heads give them in the language asked for - and under their slug where they give none',
+	array_keys( $sfStyles ) === [ 'look', 'edge', 'spare' ] && $sfStyles['look']['label'] === 'Look of the block' && $sfStylesDe['look']['label'] === 'Aussehen des Blocks'
+	&& array_keys( $sfStyles['look']['options'] ) === [ 'bold', 'extra-wide', 'soft' ] && $sfStyles['look']['options']['bold']['name'] === 'bold' && $sfStyles['look']['options']['bold']['description'] === ''
+	&& $sfStyles['look']['options']['extra-wide']['name'] === 'Extra wide' && $sfStyles['look']['options']['soft']['name'] === 'Soft' && $sfStyles['look']['options']['soft']['description'] === 'Rounded corners.'
+	&& $sfStylesDe['look']['options']['soft']['name'] === 'Weich' && $sfStylesDe['look']['options']['soft']['description'] === 'Abgerundete Ecken.' && $sfStylesDe['look']['options']['extra-wide']['name'] === 'Extra wide'
+	&& array_keys( $sfStyles['edge']['options'] ) === [ 'round' ] && str_ends_with( $sfStyles['look']['options']['soft']['file'], '/Styled/design/styles/look-soft.css' ) && is_file( $sfStyles['look']['options']['soft']['file'] ) === true );
+check( '...work in progress is not offered and is named, led by the feature: a file of a style the head does not declare, a file whose name is none, a declared style that has no file - which is a select with None alone - and the line of the head that was dropped',
+	$sfStyles['spare']['options'] === [] && count( $sfStyleNotes ) === 4 && count( preg_grep( '/^styled\/styles: /', $sfStyleNotes ) ) === 4
+	&& preg_grep( '/ghost-x\.css" belongs to no style/', $sfStyleNotes ) !== [] && preg_grep( '/Look_Soft\.css" is named for no style and option/', $sfStyleNotes ) !== []
+	&& preg_grep( '/"spare" has no file/', $sfStyleNotes ) !== [] && preg_grep( '/Bad_Name/', $sfStyleNotes ) !== [] && isset( $sfStyles['ghost'] ) === false );
+// A feature with files in design/styles/ and no design/styles.css to declare them
+$cardStyles = \Nino\Features::dir(). '/Cardish/design/styles';
+mkdir( $cardStyles, 0755, true );
+file_put_contents( $cardStyles. '/look-x.css', ".card { opacity: 1; }\n" );
+
+$sfProbeNotes = [];
+$sfCardNotes 	= [];
+$sfCard 			= Setup::featureStyles( \Nino\Features::dir(). '/Cardish', 'card', 'en_US', $sfCardNotes );
+
+unlink( $cardStyles. '/look-x.css' );
+rmdir( $cardStyles );
+
+check( '...a feature that has no design/styles.css declares none, whatever stands in a design/styles/ beside it, and says nothing',
+	Setup::featureStyles( $probeDir, 'probe', 'en_US', $sfProbeNotes ) === [] && $sfProbeNotes === [] && $sfCard === [] && $sfCardNotes === [] && $sfScan['probe']['styles'] === [] );
+check( 'the scan carries the styles with the feature, once for all its variants - the options with their files - and the notes of the work in progress are among the scan\'s own',
+	array_keys( $sfScan['styled']['styles'] ) === [ 'look', 'edge', 'spare' ] && array_keys( $sfScan['hollow']['styles'] ) === [ 'mood' ] && array_keys( $sfScan['hollow']['styles']['mood']['options'] ) === [ 'calm' ]
+	&& count( preg_grep( '/^styled\/styles: /', $sfNotes ) ) === 4 && preg_grep( '/^hollow\//', $sfNotes ) === [] );
+
+$softFile = $styledDir. '/design/styles/look-soft.css';
+
+check( 'featureStyleFile() resolves a style and an option to the file, and to nothing for a style or an option that has no file, a name that could climb out of design/styles/, an option of a style that is not declared, a feature that is not there or not active',
+	Setup::featureStyleFile( $appData, 'styled', 'look', 'soft' ) === $softFile && Setup::featureStyleFile( $appData, 'hollow', 'mood', 'calm' ) === \Nino\Features::dir(). '/Hollow/design/styles/mood-calm.css'
+	&& Setup::featureStyleFile( $appData, 'styled', 'look', 'nowhere' ) === '' && Setup::featureStyleFile( $appData, 'styled', 'spare', 'x' ) === '' && Setup::featureStyleFile( $appData, 'styled', 'ghost', 'x' ) === ''
+	&& Setup::featureStyleFile( $appData, 'styled', 'look', '../look-soft' ) === '' && Setup::featureStyleFile( $appData, 'styled', '../styles/look', 'soft' ) === '' && Setup::featureStyleFile( $appData, 'styled', 'look', '' ) === ''
+	&& Setup::featureStyleFile( $appData, 'nowhere', 'look', 'soft' ) === '' && Setup::featureStyleFile( $appData, 'probe', 'look', 'soft' ) === '' );
+check( 'featureShared() is the body of design/styles.css: the file without the comment it opens with, which is the head - nothing for a file that holds the head alone, for a feature without the file and for one that is not there',
+	Setup::featureShared( $appData, 'styled' ) === '.styled-shared { margin: 0; }' && Setup::featureShared( $appData, 'hollow' ) === '' && Setup::featureShared( $appData, 'probe' ) === '' && Setup::featureShared( $appData, 'nowhere' ) === '' );
+
+// The setup: a choice stays where the feature declares the style and has a file for the option
+$sfWanted 	= [ 'styled' => [ 'set' => 'regular', 'styles' => [ 'edge' => 'round', 'look' => 'soft' ] ] ];
+$sfChosenNotes = [];
+// What the scan says of the work in progress of Styled comes with every reading of the features; the notes the pins look at are the others
+$sfOwnNotes 	= static fn( array $notes ): array => array_values( array_filter( $notes, static fn( mixed $note ): bool => is_string( $note ) === false || preg_match( '/^styled\/styles: /', $note ) !== 1 ) );
+$sfChosen 	= Setup::normalize( $appData, [ 'features' => $sfWanted ], $library, $sfChosenNotes )['features'];
+$sfBare 		= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'loud' ] ] ], $library )['features'];
+
+check( 'a setup keeps the styles chosen for a feature, in the order the head declares them, beside the variant and the knobs - and an entry that chose none has none: an empty list',
+	$sfChosen['styled'] === [ 'set' => 'regular', 'knobs' => [], 'styles' => [ 'look' => 'soft', 'edge' => 'round' ] ] && array_keys( $sfChosen['styled']['styles'] ) === [ 'look', 'edge' ] && $sfOwnNotes( $sfChosenNotes ) === []
+	&& $sfBare['styled'] === [ 'set' => 'loud', 'knobs' => [], 'styles' => [] ] && Setup::defaults( $library )['features'] === [] );
+
+$sfDropNotes 	= [];
+$sfDropped 		= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'regular', 'styles' => [ 'look' => 'nowhere', 'ghost' => 'x', 'spare' => 'x', 'edge' => 5 ] ] ] ], $library, $sfDropNotes )['features'];
+$sfEmptyNotes 	= [];
+$sfEmpty 			= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'regular', 'styles' => [ 'look' => '' ] ] ] ], $library, $sfEmptyNotes )['features'];
+
+check( 'a choice that cannot be honoured is dropped and named: an option that has no file, a style the feature does not declare, one it declares and has no file for, an option that is no word - the rest of the entry stands, and an option that is empty is no choice and says nothing',
+	$sfDropped['styled'] === [ 'set' => 'regular', 'knobs' => [], 'styles' => [] ] && count( $sfOwnNotes( $sfDropNotes ) ) === 4
+	&& preg_grep( '/the style "look" of the feature "styled" has no option "nowhere"/', $sfDropNotes ) !== [] && preg_grep( '/the feature "styled" declares no style "ghost"/', $sfDropNotes ) !== []
+	&& preg_grep( '/option "x"/', $sfDropNotes ) !== [] && preg_grep( '/the style "edge" of the feature "styled" is not given an option/', $sfDropNotes ) !== []
+	&& $sfEmpty['styled']['styles'] === [] && $sfOwnNotes( $sfEmptyNotes ) === [] );
+
+$sfShapeNotes = [];
+$sfShape 			= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'regular', 'styles' => 'look' ], 'hollow' => [ 'styles' => [ 'mood' => 'calm' ] ] ] ], $library, $sfShapeNotes )['features'];
+
+check( '...the styles that are no list of styles with an option each - a string - are dropped and named, and an entry that names only its styles is the feature at its own variant with them chosen',
+	$sfShape['styled']['styles'] === [] && preg_grep( '/styles of the feature "styled" are no list/', $sfShapeNotes ) !== [] && $sfShape['hollow'] === [ 'set' => 'regular', 'knobs' => [], 'styles' => [ 'mood' => 'calm' ] ] );
+
+$sfLoud 		= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'loud', 'styles' => [ 'look' => 'soft', 'edge' => 'round' ] ] ] ], $library )['features'];
+$sfBack 		= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'nowhere', 'styles' => [ 'look' => 'soft' ] ] ] ], $library )['features'];
+
+check( 'the styles belong to the feature and not to the variant: another variant keeps them - so does the variant a name that is none falls back to - where a template\'s styles are the template\'s and are dropped with it',
+	$sfLoud['styled']['set'] === 'loud' && $sfLoud['styled']['styles'] === $sfChosen['styled']['styles'] && $sfBack['styled']['set'] === 'regular' && $sfBack['styled']['styles'] === [ 'look' => 'soft' ]
+	&& Setup::normalize( $appData, [ 'features' => $sfLoud ], $library )['features'] === $sfLoud );
+
+$featuresOn( [ 'Design' ] );
+$sfInactiveNotes 	= [];
+$sfInactive 			= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'loud', 'styles' => [ 'look' => 'soft', 'x' => 5 ] ], 'other' => [ 'styles' => 'text' ] ] ], $library, $sfInactiveNotes )['features'];
+$sfOffFile 	= Setup::featureStyleFile( $appData, 'styled', 'look', 'soft' );
+$sfOffBody 	= Setup::featureShared( $appData, 'styled' );
+$featuresOn( [ 'Design', 'Styled', 'Hollow', 'Probe' ] );
+
+check( 'the entry of a feature that is not active keeps its styles as it keeps its knobs: held to their types - a style with an option that is a word - and nothing else looked at, for the day it is back - and nothing of its files is offered while it is off',
+	$sfInactive['styled'] === [ 'set' => 'loud', 'knobs' => [], 'styles' => [ 'look' => 'soft' ] ] && $sfInactive['other'] === [ 'set' => '', 'knobs' => [], 'styles' => [] ] && Setup::inactive( 'styled' ) === $sfInactiveNotes[0]
+	&& $sfOffFile === '' && $sfOffBody === '' );
+
+// The compile: the rules the styles share, then the css of each option, behind the css of the variant and in its section
+$sfSetup 		= Setup::normalize( $appData, [ 'features' => $sfWanted ], $library );
+$sfCompileNotes = [];
+$sfCompiled = Compiler::compile( $appData, $sfSetup, $library, $sfCompileNotes );
+$sfLoudSheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'loud', 'styles' => [ 'look' => 'soft', 'edge' => 'round' ] ] ] ], $library ), $library );
+$sfOwn 			= static fn( string $file ): string => rtrim( (string) file_get_contents( $file ), "\n" ). "\n";
+$sfRegularCss = $sfOwn( $styledDir. '/design/regular.css' );
+$sfLoudCss 	= $sfOwn( $styledDir. '/design/loud.css' );
+$sfSoftCss 	= $sfOwn( $softFile );
+$sfRoundCss = $sfOwn( $styledDir. '/design/styles/edge-round.css' );
+$sfShared 	= '.styled-shared { margin: 0; }'. "\n";
+$sfSection 	= designSection( $sfCompiled, 14, Compiler::SECTION );
+
+check( 'the section of the feature has, behind the css of the variant, the rules the styles share under their own line and then the css of each option chosen under the line that names the style and the option - in the order of the head, the files as they stand, the head comment of an option too',
+	str_contains( $sfSection, $sfRegularCss. "\n". Compiler::SHARED. "\n". $sfShared. "\n". sprintf( Compiler::STYLE, 'look', 'soft' ). "\n". $sfSoftCss. "\n". sprintf( Compiler::STYLE, 'edge', 'round' ). "\n". $sfRoundCss ) === true
+	&& substr_count( $sfCompiled, $sfShared ) === 1 && substr_count( $sfCompiled, $sfSoftCss ) === 1 && substr_count( $sfCompiled, $sfRoundCss ) === 1 && substr_count( $sfCompiled, '/* -- style ' ) === 2
+	&& str_contains( $sfSoftCss, '@name' ) === true && $sfOwnNotes( $sfCompileNotes ) === [] );
+check( '...the title of the section names the styles after the knobs, and the line of the feature in the header of the sheet after its knobs - a style is no ladder, so the block of the knob positions has no line for it',
+	preg_match( '/^\/\* ==== 14\. feature styled: regular \(look soft, edge round\) ==== \*\/$/m', $sfCompiled ) === 1 && preg_match( '/^ \*   feature styled  regular  \(look soft, edge round\)$/m', $sfCompiled ) === 1
+	&& str_contains( designSection( $sfCompiled, 15, Compiler::SECTION ), 'look' ) === false );
+check( '...whichever variant is chosen: the variant\'s own css, then the same rules and the same options',
+	str_contains( designSection( $sfLoudSheet, 14, Compiler::SECTION ), $sfLoudCss. "\n". Compiler::SHARED. "\n". $sfShared. "\n". sprintf( Compiler::STYLE, 'look', 'soft' ). "\n". $sfSoftCss. "\n". sprintf( Compiler::STYLE, 'edge', 'round' ). "\n". $sfRoundCss ) === true
+	&& preg_match( '/^\/\* ==== 14\. feature styled: loud \(look soft, edge round\) ==== \*\/$/m', $sfLoudSheet ) === 1 );
+
+// Nothing chosen, nothing written: the feature has the section it always had
+$sfNone 			= Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'regular', 'styles' => [] ] ] ], $library );
+$sfNoKey 			= $sfNone;
+unset( $sfNoKey['features']['styled']['styles'] );
+$sfNoneSheet 	= Compiler::compile( $appData, $sfNone, $library );
+$sfHollowSheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'features' => [ 'hollow' => [ 'set' => 'regular', 'styles' => [ 'mood' => 'calm' ] ] ] ], $library ), $library );
+
+check( 'a feature with no style chosen has the section it always had: the css of the variant alone - not the shared rules either - and the sheet is the sheet of an entry that has no key for styles',
+	$sfNoneSheet === Compiler::compile( $appData, $sfNoKey, $library ) && str_contains( $sfNoneSheet, '/* -- style' ) === false && str_contains( $sfNoneSheet, Compiler::SHARED ) === false && str_contains( $sfNoneSheet, $sfShared ) === false
+	&& preg_match( '/^\/\* ==== 14\. feature styled: regular ==== \*\/$/m', $sfNoneSheet ) === 1 && rtrim( designSection( $sfNoneSheet, 14, Compiler::SECTION ) ) === rtrim( "/* ==== 14. feature styled: regular ==== */\n". $sfRegularCss ) );
+check( '...and a design/styles.css that holds the head alone shares nothing: the option chosen is written and no line for the shared rules is',
+	str_contains( $sfHollowSheet, "\n". sprintf( Compiler::STYLE, 'mood', 'calm' ). "\n.hollow { opacity: .9; }\n" ) === true && str_contains( $sfHollowSheet, Compiler::SHARED ) === false
+	&& preg_match( '/^\/\* ==== 14\. feature hollow: regular \(mood calm\) ==== \*\/$/m', $sfHollowSheet ) === 1 );
+
+$sfGoneNotes = [];
+rename( $softFile, $softFile. '.kept' );
+$sfGoneSheet = Compiler::compile( $appData, $sfSetup, $library, $sfGoneNotes );
+rename( $softFile. '.kept', $softFile );
+$featuresOn( [ 'Design', 'Styled', 'Hollow', 'Probe' ] );
+
+check( 'a choice whose file is gone since the setup was read is told and left out: no comment and no css for it, the rules the styles share and the other options stand',
+	preg_grep( '/no stylesheet for the style "look" option "soft" of the feature "styled"/', $sfGoneNotes ) !== [] && str_contains( $sfGoneSheet, 'style look: soft' ) === false
+	&& str_contains( $sfGoneSheet, sprintf( Compiler::STYLE, 'edge', 'round' ) ) === true && str_contains( $sfGoneSheet, $sfShared ) === true );
+
+// What the sheet was compiled from: the fingerprint follows the files of the options chosen and the rules they share
+$sfPrint = static fn( array $setup ): string => \Nino\Modules\Design::fingerprint( $appData, $setup, $library );
+$sfSoft 	= (string) file_get_contents( $softFile );
+$sfSheet = (string) file_get_contents( $styleSheet );
+$sfPlain = $sfPrint( $sfNone );
+$sfWith 	= $sfPrint( $sfSetup );
+$sfRound = $sfPrint( Setup::normalize( $appData, [ 'features' => [ 'styled' => [ 'set' => 'regular', 'styles' => [ 'look' => 'bold', 'edge' => 'round' ] ] ] ], $library ) );
+file_put_contents( $softFile, $sfSoft. ".edited { color: inherit; }\n" );
+$sfEdited = $sfPrint( $sfSetup );
+file_put_contents( $softFile, $sfSoft );
+file_put_contents( $styleSheet, $sfSheet. ".edited { color: inherit; }\n" );
+$featuresOn( [ 'Design', 'Styled', 'Hollow', 'Probe' ] );
+$sfSharedEdit = $sfPrint( $sfSetup );
+$sfSharedNone = $sfPrint( $sfNone );
+file_put_contents( $styleSheet, $sfSheet );
+$featuresOn( [ 'Design', 'Styled', 'Hollow', 'Probe' ] );
+
+check( 'the fingerprint follows the styles of a feature: another option is another fingerprint, so is an edit of the file of the option in use and an edit of the rules the styles share - and a style taken away is the fingerprint of the entry without',
+	$sfWith !== $sfPlain && $sfWith !== $sfRound && $sfEdited !== $sfWith && $sfSharedEdit !== $sfWith && $sfPrint( $sfSetup ) === $sfWith && $sfPrint( $sfNone ) === $sfPlain );
+check( '...and an entry that chose no style hashes as it did before the features had styles: the empty choice is left out of the input, whatever the feature declares - and an edit of the rules they share moves nothing where none is chosen',
+	$sfPlain === $sfPrint( $sfNoKey ) && $sfSharedNone === $sfPlain );
+
+// The panel: design/list says what each feature declares and what is chosen, design/save keeps what holds, design/preview compiles it
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+unset( $appData['./nino/filesystem/cache'][Setup::PATH] );
+Setup::write( $appData, $sfSetup );
+
+$appData['./nino/locales/current'] = 'en_US';
+[ $status, $sfListedEn ] = callDesignAction( $appData, 'apiList' );
+$appData['./nino/locales/current'] = 'de_DE';
+[ , $sfListedDe ] = callDesignAction( $appData, 'apiList' );
+$appData['./nino/locales/current'] = 'en_US';
+$sfAnswer = $sfListedEn['features']['styled'] ?? [];
+
+check( 'design/list says what a feature declares for all its variants, beside the variants: for every style the label and for every option the name and the description in the language of the workbench - nothing of the server in it: no path - and a feature that declares none has an empty list',
+	$status === 200 && array_keys( $sfAnswer ) === [ 'name', 'anchor', 'active', 'default', 'catalogue', 'styles', 'set', 'knobs', 'picked' ] && array_keys( $sfAnswer['styles'] ) === [ 'look', 'edge', 'spare' ]
+	&& array_keys( $sfAnswer['styles']['look'] ) === [ 'label', 'options' ] && array_keys( $sfAnswer['styles']['look']['options'] ) === [ 'bold', 'extra-wide', 'soft' ] && array_keys( $sfAnswer['styles']['look']['options']['soft'] ) === [ 'name', 'description' ]
+	&& $sfAnswer['styles']['look']['options']['soft']['name'] === 'Soft' && $sfAnswer['styles']['spare']['options'] === []
+	&& $sfListedDe['features']['styled']['styles']['look']['label'] === 'Aussehen des Blocks' && $sfListedDe['features']['styled']['styles']['look']['options']['soft']['description'] === 'Abgerundete Ecken.'
+	&& str_contains( (string) json_encode( $sfListedEn['features'], JSON_UNESCAPED_SLASHES ), \Nino\Features::dir() ) === false && $sfListedEn['features']['probe']['styles'] === [] );
+check( '...what is chosen is the setup\'s, in the order of the head, and the work in progress of the feature is named once in the notes of the answer, however many times it is asked',
+	$sfAnswer['picked'] === [ 'look' => 'soft', 'edge' => 'round' ] && $sfAnswer['set'] === 'regular' && $sfListedEn['features']['probe']['picked'] === []
+	&& count( preg_grep( '/^styled\/styles: /', $sfListedEn['notes'] ) ) === 4 );
+
+[ $status, $sfSaved ] = callDesignAction( $appData, 'apiSave', [ 'features' => [ 'styled' => [ 'set' => 'loud', 'knobs' => [], 'styles' => [ 'look' => 'bold', 'ghost' => 'x', 'edge' => 'nowhere' ] ] ] ] );
+$sfRead = Setup::read( $appData, $library )['features']['styled'] ?? [];
+
+check( 'design/save keeps a choice that holds and drops one that does not, saying so in the notes: what is stored is what normalising makes of the request - the styles stay with the variant that was saved',
+	$status === 200 && $sfRead === [ 'set' => 'loud', 'knobs' => [], 'styles' => [ 'look' => 'bold' ] ] && preg_grep( '/declares no style "ghost"/', $sfSaved['notes'] ) !== [] && preg_grep( '/has no option "nowhere"/', $sfSaved['notes'] ) !== [] );
+check( '...and a request that carries no styles for the feature stores none: saving the screen as it is takes a style away',
+	callDesignAction( $appData, 'apiSave', [ 'features' => [ 'styled' => [ 'set' => 'loud' ] ] ] )[0] === 200 && ( Setup::read( $appData, $library )['features']['styled']['styles'] ?? null ) === [] );
+
+[ $status, $sfPreviewed ] = callDesignAction( $appData, 'apiPreview', [ 'features' => $sfWanted, 'full' => true ] );
+[ , $sfPreviewedNone ] = callDesignAction( $appData, 'apiPreview', [ 'features' => [ 'styled' => [ 'set' => 'regular' ] ], 'full' => true ] );
+$sfDocument = (string) ( $sfPreviewed['document'] ?? '' );
+
+check( 'design/preview compiles the styles that are posted with the selection as the sheet it would write - the comment and the css of the option are in it, and not in the preview of the same selection with none - and the document the frame shows has that sheet and the block the feature brings, which the style is looked at on',
+	$status === 200 && str_contains( (string) $sfPreviewed['css'], sprintf( Compiler::STYLE, 'look', 'soft' ). "\n". $sfSoftCss ) === true && str_contains( (string) $sfPreviewedNone['css'], '/* -- style ' ) === false
+	&& str_contains( $sfDocument, $sfSoftCss ) === true && str_contains( $sfDocument, 'id="feature-styled"' ) === true && str_contains( $sfDocument, 'id="styled-text"' ) === true );
+
+// A theme keeps them with the entry of the feature: in its file, back on a load, through an export and an import
+$sfThemeIn = Themes::json( [ 'format' => 1, 'name' => 'Feature styled', 'description' => '', 'setup' => [ 'features' => [ 'styled' => [ 'set' => 'regular', 'styles' => [ 'look' => 'soft', 'tone' => 'x' ] ] ] ], 'css' => '' ] );
+[ $status ] = callDesignAction( $appData, 'apiThemeImport', [ 'json' => $sfThemeIn ] );
+$sfThemeFile = Themes::read( $appData, $library, 'feature-styled' ) ?? [];
+[ , $sfThemeLoaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'feature-styled' ] );
+
+check( 'a theme file keeps the styles of a feature in the entry of the feature: written normalised - what the feature does not declare is dropped and named - and read back by a load, the record the screen is compared with the same as the file has it',
+	$status === 200 && ( $sfThemeFile['setup']['features']['styled'] ?? null ) === [ 'set' => 'regular', 'knobs' => [], 'styles' => [ 'look' => 'soft' ] ]
+	&& ( $sfThemeLoaded['setup']['features']['styled'] ?? null ) === [ 'set' => 'regular', 'knobs' => [], 'styles' => [ 'look' => 'soft' ] ] && Themes::snapshot( $sfSetup )['features'] === $sfSetup['features'] );
+check( '...it comes back out of an export and into an import as it went in, and a theme the screen is saved into keeps what the screen holds',
+	( Themes::fromJson( callDesignAction( $appData, 'apiThemeExport', [ 'slug' => 'feature-styled' ] )[1]['json'] ?? '' )['setup']['features']['styled']['styles'] ?? null ) === [ 'look' => 'soft' ]
+	&& callDesignAction( $appData, 'apiThemeSave', [ 'slug' => 'feature-styled', 'features' => $sfWanted ] )[0] === 200
+	&& ( Themes::read( $appData, $library, 'feature-styled' )['setup']['features']['styled']['styles'] ?? null ) === [ 'look' => 'soft', 'edge' => 'round' ] );
+
+Themes::remove( $appData, 'feature-styled' );
+
+// The answer the screen is drawn from, for design-js-smoke.js: the real one, with a feature that declares styles and a choice made
+Setup::write( $appData, $sfSetup );
+unset( $appData['./design/features'] );
+[ , $forFeatureStyles ] = callDesignAction( $appData, 'apiList' );
+$featureStylesListing = ninoSandboxDir( $appData ). '/design-feature-styles.json';
+file_put_contents( $featureStylesListing, json_encode( $forFeatureStyles, JSON_THROW_ON_ERROR ) );
+
+// Put the sandbox back as the sections after this one found it
+if( $sfKept === null )
+	@unlink( $sfFile );
+else
+	file_put_contents( $sfFile, $sfKept );
+
+$appData['./nino/locales/current'] = $sfLocale;
+$appData['/nino/modules'] = $sfModules;
+unset( $appData['./nino/filesystem/cache'][Setup::PATH], $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+
 // --- The panel's script, where node is on the path ------------------------------
 //
 // design-js-smoke.js beside this file draws the screen over a dom stand-in and
@@ -9158,7 +9454,7 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: design-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_FEATURES='. escapeshellarg( $featuresListing ). ' DESIGN_STYLES='. escapeshellarg( $stylesListing ?? '' ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_FEATURES='. escapeshellarg( $featuresListing ). ' DESIGN_STYLES='. escapeshellarg( $stylesListing ?? '' ). ' DESIGN_FEATURE_STYLES='. escapeshellarg( $featureStylesListing ?? '' ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
 
 	// A run that failed says what failed: the checks that did not hold, or what node stopped on
