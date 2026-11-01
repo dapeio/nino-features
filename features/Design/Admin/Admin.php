@@ -22,16 +22,17 @@ namespace Nino\Modules\Design {
 	 *										what can be done with it: load, duplicate, export, delete and
 	 *										edit, and a pencil that renames a theme of the project in its
 	 *										row - and, reached by Edit on a row and left by Back to list,
-	 *										the setup in six views, over the same preview and bar -
-	 *										Templates, the seven choices of a set - and under it a select
-	 *										for each style the set brings (see Setup::styles()); Type, Surfaces, Colours
-	 *										and Motion, each a block for every object that has a control
-	 *										on the view - the page, the header, the footer, a section, a
-	 *										card, the buttons, the lists and the tables - with the controls
-	 *										of that object: on Colours, the two colours, the five knobs and
+	 *										the setup by its objects, over the same preview and bar -
+	 *										a tab for each object - the page, the header, the footer, a section, a
+	 *										card, the buttons, the lists and the tables, and each feature that brings
+	 *										variants - and under it a block for each aspect the object has a control
+	 *										on: Base, the choice of a set - and under it a select
+	 *										for each style the set brings (see Setup::styles()); Text, Surface, Colour
+	 *										and Motion - with the controls
+	 *										of that object: in Colour, the two colours, the five knobs and
 	 *										the mode the palette is solved from, which are the page's, and
 	 *										the dimming of a section, the tone of the shadow of a card and
-	 *										the stripes of a table, and on Motion the animation of the page,
+	 *										the stripes of a table, and in Motion the animation of the page,
 	 *										the hover of its pictures and what a card and a button do
 	 *										under the pointer - and CSS, a view with no objects: the css
 	 *										of the theme in a field of its own, compiled with the rest
@@ -160,7 +161,7 @@ namespace Nino\Modules\Design {
 
 		/*	The one tab the panel brings: the loader of the typefaces. The Settings tab the registry attaches comes after it.
 			It is a panel of the kernel's own kind, with its uri, its words, its script and its mount - and no actions:
-			they are this panel's. The themes and the setup in six views are the panel's own screen, not a tab */
+			they are this panel's. The themes and the setup by its objects are the panel's own screen, not a tab */
 		public static function tabs(): array {
 			return [ Webfonts\Tab::class ];
 		}
@@ -298,9 +299,9 @@ namespace Nino\Modules\Design {
 					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
-				// Where the panel puts what it sets: the six views, the eight objects - and one more for each feature that
-				// brings variants - and the table that says, for every control of the setup, its view, its object and its place
-				// in the row, the rows of the features among them - the screen draws a view from it and from nothing else
+				// Where the panel puts what it sets: the six aspects, the eight objects - and one more for each feature that
+				// brings variants - and the table that says, for every control of the setup, its aspect, its object and its place
+				// in the row, the rows of the features among them - the screen draws an object from it and from nothing else
 				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::objects( $appData ), 'controls' => Setup::layout( $appData ) ],
 				/*	The setup a fresh install starts from, cut to the keys that choose something (see Themes::snapshot()): what the head of a
 					closed row is compared with, so that it names only the controls that stand elsewhere than there	*/
@@ -788,7 +789,7 @@ namespace Nino\Modules\Design {
 		 *	Install a family of the list, or update it: the whole family, from the
 		 *	archive the signed list names. The answer is the one the list gives, after
 		 *	the change, with the sentence the loader says it in. The screen asks design/list
-		 *	again, for the selects of the roles in the view Type
+		 *	again, for the selects of the roles in Text
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request

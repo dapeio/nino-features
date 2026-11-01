@@ -45,25 +45,61 @@
 
 @layer nino.tool {
 
-/*	The bar of the views of the setup: Back to list, and the strip of the six views after it. It stands at the top
-	of the pane of the tab, under the strip the shell draws on top of the pane (see Nino.adminUi.panelHead());
-	this is the column it opens where there is no head (see _head() in admin.js). A margin below rather than a
-	border: the card under it already draws one, and two lines a row apart read as a box nobody meant to draw.
-	Back to list and six views side by side are wider than a phone: the bar scrolls in its own box, and the page
-	does not scroll with it. The way back is a button, not a tab: quiet, with an arrow before its words and a
-	hairline between it and the views, which are a strip of their own with the rule of the bar under them */
+/*	The bar of the objects of the setup: Back to list, and the strip of the objects after it - the select of the same, below the
+	width where the rail of the workbench gives its links up for a select (63.999rem, the query the script asks the window for as
+	well, see NARROW in admin.js). It stands at the top of the pane of the tab, under the strip the shell draws on top of the pane (see
+	Nino.adminUi.panelHead()); this is the column it opens where there is no head (see _head() in admin.js). A margin below rather than
+	a border: the card under it already draws one, and two lines a row apart read as a box nobody meant to draw. The way back is a
+	button, not a tab: quiet, with an arrow before its words and a hairline between it and the objects, which are a strip of their own
+	with the rule of the bar under them. The strip is wider than the pane when a feature or two come after the eight: it scrolls in its
+	own box, without a scrollbar, and the edge that has more behind it is shadowed (is-more-start and is-more-end, set by the script as
+	the strip scrolls) - the page does not scroll with it */
 .nino-admin .design-tabs {
 	align-items: flex-end;
 	margin: 0 0 1rem;
-	overflow-x: auto;
-	scrollbar-width: none;
 }
-.nino-admin .design-tabs > .design-views {
+.nino-admin .design-tabs > .design-views-wrap {
+	position: relative;
+	flex: 1 1 0;
+	min-width: 0;
+}
+.nino-admin .design-tabs .design-views {
 	display: flex;
-	flex: 0 0 auto;
+	flex-wrap: nowrap;
 	gap: .25rem;
 	margin: 0;
 	border-bottom: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.nino-admin .design-tabs .design-views::-webkit-scrollbar {
+	display: none;
+}
+.nino-admin .design-tabs .design-views .nino-admin-tab {
+	white-space: nowrap;
+}
+.nino-admin .design-tabs > .design-views-wrap::before,
+.nino-admin .design-tabs > .design-views-wrap::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 2rem;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .15s;
+}
+.nino-admin .design-tabs > .design-views-wrap::before {
+	left: 0;
+	background: linear-gradient(to right, var(--editor-bg), transparent);
+}
+.nino-admin .design-tabs > .design-views-wrap::after {
+	right: 0;
+	background: linear-gradient(to left, var(--editor-bg), transparent);
+}
+.nino-admin .design-tabs > .design-views-wrap.is-more-start::before,
+.nino-admin .design-tabs > .design-views-wrap.is-more-end::after {
+	opacity: 1;
 }
 .nino-admin .design-tabs > .design-back {
 	margin-right: .5rem;
@@ -79,6 +115,35 @@
 }
 .nino-admin .design-tabs > .design-back:hover {
 	color: var(--editor-text);
+}
+
+/*	The select that stands for the strip: not there where the strip is */
+.nino-admin .design-tabs > .design-object-select {
+	display: none;
+}
+
+/*	Below the width where the rail gives up its links for a select, the objects are a select as well and the strip is gone, with its
+	shadows: one control, drawn from the one model. Back to list stands over it, a row of its own, without the hairline that
+	parted it from the tabs */
+@media (max-width: 63.999rem) {
+	.nino-admin .design-tabs {
+		display: grid;
+		gap: .5rem;
+		border-bottom: 0;
+	}
+	.nino-admin .design-tabs > .design-views-wrap {
+		display: none;
+	}
+	.nino-admin .design-tabs > .design-object-select {
+		display: block;
+		width: 100%;
+	}
+	.nino-admin .design-tabs > .design-back {
+		justify-self: start;
+		margin-right: 0;
+		border-right: 0;
+		border-bottom: 0;
+	}
 }
 
 /*	The chip on the button of the panel's own screen in the strip on top of the pane, which says Themes: the

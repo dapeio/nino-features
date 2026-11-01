@@ -38,8 +38,8 @@ declare(strict_types=1);
  *											with the codes they answer, the pane in three tabs - the
  *											order the registry lists them in, the class of the one the
  *											panel brings and the words of the strip - over a setup in
- *											six views, the manual, which has an entry for each tab, each
- *											view and each part of the themes and is a line in both
+ *											six aspects, the manual, which has an entry for each tab, each
+ *											aspect and each part of the themes and is a line in both
  *											languages, the answers the panel's script is drawn from, the
  *											stylesheets of the active features that the preview links after
  *											the compiled sheet, and the anchor a variant's head names - the
@@ -1061,14 +1061,28 @@ check( 'the pane has three tabs on top - the strip of the kernel reads the panel
 	count( $stripFills ) === 2 && array_filter( $stripFills, static fn( string $fill ): bool => preg_match( '~^/_admin/nav/[a-z-]+$~', $fill ) !== 1 ) === []
 	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => in_array( '', $stripWords( $locale ), true ) === true ) === []
 	&& array_filter( $stripWords( 'en_US' ), static fn( string $word ): bool => in_array( mb_strtolower( $word ), $handles, true ) === false ) === [] );
-check( 'the setup has six views - the ones the model names, in its order, are the ones its text files name - and the manual has an entry for each, found in the handles of the manual by the word the panel draws them with',
+check( 'the setup has six aspects - the ones the model names, in its order, are the ones its text files name - and the manual has an entry for each, found in the handles of the manual by the word the panel draws them with',
 	count( Setup::TABS ) === 6 && $panelTabs === Setup::TABS
 	&& array_filter( Setup::TABS, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab. '/label', 'en_US' ) ) === false ) === [] );
+// The strip of the objects and the select that stands for it are named by a word of their own; the six aspects and the eight objects each have a word, in both languages, and no two of them are the same word - a tab, the head of a block and an option of the select read alike wherever they stand
+$objectWords = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $wordLocale )
+	$objectWords[$wordLocale] = array_merge(
+		array_map( static fn( string $tab ): string => $panelWord( 'tab/'. $tab. '/label', $wordLocale ), Setup::TABS ),
+		array_map( static fn( string $object ): string => $panelWord( 'object/'. $object. '/label', $wordLocale ), Setup::OBJECTS )
+	);
+
+check( '...the strip of the objects is named for what it is by a word of its own, in both languages, and every aspect and every object has a word, no two the same'
+	. ( count( Setup::TABS ) + count( Setup::OBJECTS ) === 14 ? '' : ' - the model changed' ),
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => $panelWord( 'label/object', $locale ) === '' || in_array( $panelWord( 'label/object', $locale ), $objectWords[$locale], true ) === true ) === []
+	&& array_filter( $objectWords, static fn( array $words ): bool => in_array( '', $words, true ) === true || count( array_unique( array_map( 'mb_strtolower', $words ) ) ) !== count( $words ) ) === []
+	&& $panelWord( 'label/object', 'en_US' ) !== $panelWord( 'label/object', 'de_DE' ) );
 check( '...the panel\'s own screen is the one place of the setup: Admin::tabs() brings the loader of the typefaces and nothing else, and the manual\'s entry for the panel names the three tabs and the way back to the list by the words the panel draws them with',
 	Admin::tabs() === [ Webfonts\Tab::class ]
 	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => str_contains( $says( 'Design', $locale ), (string) ( $kernelWords( $locale )['[[/_admin/common/label/back]]'] ?? "\0" ) ) === false ) === [] );
 
-// The two axes of the setup are told in one entry: the overview names the six views and the blocks of the views name the eight objects, so only the entry on the axes names both - each by the word the panel draws it with, and in both languages by the same entry
+// The two axes of the setup are told in one entry: the overview names the six aspects and the entries of the aspects name the eight objects, so only the entry on the axes names both - each by the word the panel draws it with, and in both languages by the same entry
 $namedIn = static function( array $words, string $locale ) use ( $feature, $says ): array {
 	return array_values( array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => array_filter( $words, static fn( string $word ): bool => $word === '' || str_contains( $says( $entry, $locale ), $word ) === false ) === [] ) );
 };
@@ -1082,7 +1096,7 @@ foreach( [ 'en_US', 'de_DE' ] as $axisLocale )
 
 $axisEntries = array_values( array_intersect( $axisNamed['en_US'], $axisNamed['de_DE'] ) );
 
-check( '...the two axes are told in one entry of the manual: the same entry names all six views and all eight objects in both languages, by the words the panel draws them with'. ( $axisEntries === [] ? ' - no entry does in both: '. count( $axisNamed['en_US'] ). ' in English, '. count( $axisNamed['de_DE'] ). ' in German' : '' ),
+check( '...the two axes are told in one entry of the manual: the same entry names all six aspects and all eight objects in both languages, by the words the panel draws them with'. ( $axisEntries === [] ? ' - no entry does in both: '. count( $axisNamed['en_US'] ). ' in English, '. count( $axisNamed['de_DE'] ). ' in German' : '' ),
 	$axisEntries !== [] && count( Setup::TABS ) === 6 && count( Setup::OBJECTS ) === 8 );
 
 // The hover of the pictures is told in an entry of its own, which names the class that makes a picture take part and the two controls by the words the panel draws them with - the same entry in both languages
@@ -2168,20 +2182,28 @@ check( '...kind() says which - the quiet and the loud variant of a section are a
 	&& Setup::words( 'scale' ) === [ 'least', 'less', 'default', 'more', 'most' ] && Setup::words( 'choice' ) === [ 'less', 'default', 'more' ] && Setup::words( 'toggle' ) === [ 'default', 'more' ]
 	&& Setup::LADDERS === [ 'scale', 'choice', 'toggle' ] && Setup::FEATURE_KINDS === [ 'scale', 'choice', 'ground', 'ink', 'colour' ] );
 
-/*	Every view that the table draws is drawn as an accordion, the ones with one block as much as the ones with several - design-js-smoke.js holds the screen to that - and the manual says so
-	where it is drawn: in the entry of each such view, found by the word the panel draws the view with, a sentence that the entries of all of them have in common, in both languages. What is held
-	of it is its shape and not its words, as of every entry: a sentence is what stands between two full stops	*/
+/*	Every aspect that the table draws is drawn as a block of an accordion under each object that has a control on it - design-js-smoke.js holds the screen to that - and the manual says so
+	where it is drawn: in the entry of each such aspect, found by the word the panel draws the aspect with (the entry's handle is that word, or that word in the plural), a sentence that the
+	entries of all of them have in common, in both languages. What is held of it is its shape and not its words, as of every entry: a sentence is what stands between two full stops	*/
+$entryOf = static function( string $word ) use ( $feature ): string {
+
+	foreach( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) as $handle )
+		if( in_array( mb_strtolower( (string) $handle ), [ mb_strtolower( $word ), mb_strtolower( $word ). 's' ], true ) === true )
+			return (string) $handle;
+
+	return '';
+};
 $accordionTabs = array_values( array_filter( Setup::TABS, static fn( string $tab ): bool => count( array_filter( array_keys( $laidOut ), static fn( string $row ): bool => str_starts_with( $row, $tab. '/' ) ) ) > 0 ) );
 $sentencesOf = static fn( string $entry, string $locale ): array => array_values( array_filter( array_map( 'trim', (array) preg_split( '/(?<=\.)\s+(?=\p{Lu})/u', $says( $entry, $locale ) ) ) ) );
 $accordionSaid = [];
 
 foreach( [ 'en_US', 'de_DE' ] as $accordionLocale ) {
 
-	$accordionLists = array_map( static fn( string $tab ): array => $sentencesOf( $panelWord( 'tab/'. $tab. '/label', 'en_US' ), $accordionLocale ), $accordionTabs );
+	$accordionLists = array_map( static fn( string $tab ): array => $sentencesOf( $entryOf( $panelWord( 'tab/'. $tab. '/label', 'en_US' ) ), $accordionLocale ), $accordionTabs );
 	$accordionSaid[$accordionLocale] = $accordionLists === [] ? [] : array_values( array_intersect( ...$accordionLists ) );
 }
 
-check( 'every view the table draws - Templates, Type, Surfaces, Colours and Motion, and no other: CSS is the one field - is told as an accordion in the manual: the entries of all five have a sentence in common, in English and in German',
+check( 'every aspect the table draws controls for - Base, Text, Surface, Colour and Motion, and no other: CSS is the one field - is told as a block of an accordion in the manual: the entries of all five have a sentence in common, in English and in German',
 	$accordionTabs === [ 'templates', 'type', 'surfaces', 'colours', 'motion' ] && array_values( array_diff( Setup::TABS, $accordionTabs ) ) === [ 'css' ] && $accordionSaid['en_US'] !== [] && $accordionSaid['de_DE'] !== [] );
 
 /*	A knob is a position of its own part, held to the range of its kind: -2 to +2 for a scale, -1 to +1 for a choice.

@@ -5,14 +5,14 @@
  *													as the shell asks for a screen by the uri of its tab (Nino.admin[<uri>]):
  *													Nino.admin.design is the panel's own screen, which the strip calls Themes, and holds what
  *													the screen has in common with the setup - the state, the preview and the bar -,
- *													Nino.admin.design.views is the setup in its six views, which the shell never asks for,
+ *													Nino.admin.design.views is the setup by its objects and its aspects, which the shell never asks for,
  *													and Nino.admin['design-typefaces'] is the loader.
  *													The panel's screen has two modes. The first is the list of the themes, the library
  *													that keeps the whole setup under a name with a css of its own: one row for each theme,
  *													with its chips, its description and the buttons Load, Duplicate, Export, Delete (a theme
  *													of the project) and Edit, a pencil on the row of a theme of the project that turns its
  *													name and description into two fields to rename it, and under the list the field that takes
- *													a theme file in. Edit opens the second mode, the setup in six views, of the theme of the
+ *													a theme file in. Edit opens the second mode, the setup by its objects, of the theme of the
  *													row - at once for the theme that is loaded, whose draft stays as it is, else after it was
  *													loaded -, and the bar on top of the pane begins with Back to list, which returns to the
  *													list and discards nothing: the draft stays, and the chip says so. Which of the two was
@@ -20,30 +20,32 @@
  *													differs from the loaded theme, stands in the kernel's button of the strip that reads
  *													Themes, in both modes; Save theme, which puts the screen into the loaded theme of the
  *													project, stands in the action bar while the views are open.
- *													The views draw the setup in six, in two axes - the properties of the design, which
- *													are the views, and the objects they are set on, which are the blocks of five of them.
- *													Templates, Type, Surfaces, Colours and Motion draw a block for each object that has a
- *													control in the view, in one fixed order - the page, the header, the footer, a section, a
- *													card, the buttons, the lists and the tables - the blocks of an accordion, one open: the
- *													head of a closed one names, small and muted, the controls that stand elsewhere than at
- *													the defaults, and in Templates the template that is chosen. A block of Templates has the
- *													choice of the set of its part - the header, the footer, the section, the card, the
- *													buttons, the lists or the tables - with its name, its description and the word of the
- *													one chosen, and under it a select for each style the template brings - "None" first, then the css files that stand beside the template, each under its name, and the description of the one chosen under it; one of Type the root size and the five font roles under the page, and
- *													under the others the sizes of the titles and a switch for the case of the thing - the
- *													navigation, a title, a subtitle, a button -, which is a knob of two positions;
- *													one of Surfaces the width, the whitespace and the
- *													two radii under the page and the space, the corners and the lines under the others, a
- *													strip of five positions or of three words for each knob, greyed out where the chosen
- *													template does not answer to it - the header and the footer have knobs like the others;
- *													Colours has the two colours, the five knobs and the mode the palette is solved from
- *													under the page, and under a section, a card and the tables the one knob each has of its
- *													own, and Motion the animation of the page and the hover of a card and of the buttons.
- *													CSS, the sixth view, is one field with no object: the css of the theme, which every
- *													input mirrors into the preview and which is saved with the draft and with the theme.
- *													A feature that brings variants of its own (Setup::features()) has a block after those of
- *													the objects: in Templates the choice of its variant, and in each view its knobs are put
- *													on by their heads the knobs of the chosen variant - a scale and a choice as the knobs of
+ *													The views draw the setup in two axes, the objects it is set on and the aspects of the design,
+ *													and the objects come first: on top, a strip of tabs with the page, the header, the footer,
+ *													a section, a card, the buttons, the lists and the tables and, after them, each feature that
+ *													brings variants under its name - below 64rem, the width where the rail of the workbench
+ *													gives its links up for a select, the same choice is a select - and under it the aspects of the
+ *													object that is open, an accordion of one open block: Base, Text, Surface, Colour and
+ *													Motion, and for the page CSS as well, in that order and only those the object has a
+ *													control on. Base has the choice of the set of the part of the object - the header, the
+ *													footer, the section, the card, the buttons, the lists or the tables - with its name, its
+ *													description and the word of the one chosen, under it a select for each style the template brings -
+ *													"None" first, then the css files that stand beside the template, each under its name, and the
+ *													description of the one chosen under it - and the strips the table puts there, such as the position and the
+ *													call to action of the header; Text has the root size and the five font
+ *													roles of the page and the sizes of the titles and a switch for the case of the thing - the
+ *													navigation, a title, a subtitle, a button -, which is a knob of two positions; Surface the
+ *													width, the whitespace and the two radii of the page and the space, the corners and the lines of the
+ *													others, a strip of five positions or of three words for each knob, greyed out where the chosen
+ *													template does not answer to it; Colour the two colours, the five knobs and the mode the palette
+ *													is solved from under the page and the one knob each of a section, a card and the tables has of its
+ *													own, and Motion the animation of the page and the hover of a card and of the buttons. The head
+ *													of a closed aspect names, small and muted, the controls that stand elsewhere than at the
+ *													defaults, and in Base the template that is chosen. CSS is one field: the css of the theme, which
+ *													every input mirrors into the preview and which is saved with the draft and with the theme.
+ *													A feature that brings variants of its own (Setup::features()) is an object like the others:
+ *													in Base the choice of its variant and the styles it declares, and in each aspect its knobs
+ *													are put on by their heads the knobs of the chosen variant - a scale and a choice as the knobs of
  *													a part are, a ground and an ink as a select of the surfaces and of the tones of the
  *													palette, a colour as two inputs, a light half and a dark half. The choices are part of
  *													the setup, and of a theme of the project.
@@ -52,14 +54,15 @@
  *													is read when its button is pressed: an install or a removal happens when it is pressed,
  *													and is no part of the draft.
  *													The compile turns all of it into assets/theme.css (see Modules\Design\Admin beside this
- *													file). Which view, which object and which place in its row a control has is the table's
+ *													file). Which aspect, which object and which place in its row a control has is the table's
  *													(the `layout` design/list hands over, see Setup::LAYOUT): the script draws from it and
- *													decides nothing of the kind. The bar of the views, with Back to list and the strip of the
- *													six, stands at the top of the pane of the tab, under the strip of the shell.
+ *													decides nothing of the kind - the tabs are its objects, the blocks under them its tabs, transposed.
+ *													The bar of the objects, with Back to list and the strip of the tabs or the select, stands
+ *													at the top of the pane of the tab, under the strip of the shell.
  *													Beside the list and the views is one specimen page of the selection, under
  *													a head with the viewport switch, the switch that lets the frame follow and the reload;
  *													the frame fills the window down to the action bar and scrolls to the anchor of the open
- *													view, or to where a change of a control shows. The bar holds what the panel says - what
+ *													object, or to where a change of a control shows. The bar holds what the panel says - what
  *													a save or an apply did, or why not - and the state of the files in a word. Ships with
  *													the feature and is loaded exactly while it is active.
  *
@@ -75,13 +78,13 @@
 	/*	The panel: Design, in the rail, and the screen of its own, which the strip on top of the pane calls Themes. It holds
 		the state, which is one: the data the library and the stored setup gave, the working copy the screen edits, the theme
 		it was taken from, the draft - and the preview and the bar, which the screen stands on in both of its modes: the list
-		of the themes, and the setup in six views (Nino.admin.design.views). The loader of the typefaces
+		of the themes, and the setup by its objects (Nino.admin.design.views). The loader of the typefaces
 		(Nino.admin['design-typefaces']) has neither and keeps nothing here but what it reads. The shell asks each of the
 		two for its screen by the uri of its tab (see script.js, show())	*/
 	Nino.admin.design = {
 
 		_ready	: false,
-		/*	Which of the two modes of the screen is drawn: 'themes', the list of the themes, or 'setup', the setup in six views.
+		/*	Which of the two modes of the screen is drawn: 'themes', the list of the themes, or 'setup', the setup by its objects.
 			There is one preview and one bar and one mount, and the mode is remembered while the panel lives - the first
 			time the screen is shown it is the list. The loader, which has neither, leaves this as it was and the draft with it	*/
 		_screen	: 'themes',
@@ -110,25 +113,19 @@
 		// The id of the control that had the focus when the controls were switched off: a disabled control drops it, and has it back when they are on again (see _themeWork())
 		_busyFocus	: '',
 
-		/*	The id of the element on the specimen page each view scrolls the frame to when it is opened (see
-			_jump()). The page is templates/preview-specimen.tpl, which carries the same ids: Templates, Surfaces, Motion and CSS are the
-			top of the page - a header is looked at there, and so are the width and the whitespace of the page and its animation,
-			and the css of a theme is all of it -, Type the typography block - a typeface shows where the type is -, Colours the
-			grounds. The page has an id at its end, footer, which no view has: a footer that is chosen is looked at there (see
-			OBJECT_ANCHORS). The list of the themes has none of its own: a theme is all of the page, and THEMES_ANCHOR is its top	*/
-		ANCHORS	: { templates : 'global', type : 'type', surfaces : 'global', colours : 'colours', motion : 'global', css : 'global' },
-
 		// Where the list of the themes is looked at: the top of the page, where a loaded theme shows all of what it is
 		THEMES_ANCHOR	: 'global',
 
-		/*	Where a change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
+		/*	The id of the element on the specimen page the frame scrolls to when an object is opened (see _jump()), and where a
+			change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
 			top of it (#global) - the root size and the roles of the fonts as much as the width, the corners and the
-			animation -, a header at the top of it and a footer at its foot, a section in the first section of the
+			animation -, a header at the top of it and a footer at its foot (#footer, the id the page has at its end), a section in the first section of the
 			page, which the hero is (#content), a card in the cards (#cards), the buttons in their block and the lists
-			and the tables in theirs (#lists, #tables). A control with an entry of its own
-			(CONTROL_ANCHORS) goes there, and one under an object with no entry to the anchor of its tab. A control of a feature
-			has no entry in either: it goes to the block of the feature, where it has one (see _anchorOf()). The maps are told
-			together in the docblock of _jump()	*/
+			and the tables in theirs (#lists, #tables). An aspect has none: opening one moves nothing, the object is what is looked
+			at. A control with an entry of its own (CONTROL_ANCHORS) goes there. A feature is looked at in the block it brings to the
+			specimen (its `anchor`, see _anchorOf()), and at the top of the page where it has none. The page has an id at its end,
+			footer, which only the footer is looked at in. The list of the themes has an anchor of its own, THEMES_ANCHOR. The maps are
+			told together in the docblock of _jump()	*/
 		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables' },
 
 		/*	The controls that are looked at elsewhere than their object is, by the key the table has them under: the
@@ -284,7 +281,7 @@
 			and the pictures take by default; and the rows of the palette - the brand
 			colour, the second colour, which is the row of Harmony, temperature,
 			saturation, contrast, depth and the mode: all of them have one, so that every
-			name of the Colours view starts at the same left edge. A row of the loader,
+			name of the Colour aspect starts at the same left edge. A row of the loader,
 			an installed family and an available one, opens with the text size as
 			well. A row with no entry has no icon, and no stand-in shape takes its
 			place	*/
@@ -873,7 +870,7 @@
 		 *	the tabs in it (see Nino.adminUi.panelHead()).
 		 *
 		 *	null where there is none - the script drawn somewhere other than its
-		 *	pane - and the bar of the views then opens the column of controls,
+		 *	pane - and the bar of the objects then opens the column of controls,
 		 *	where it stood before there was a head to put it in
 		 *
 		 *	@return		{Object|null}			{ element, title, actions, tabs( strip ) }
@@ -887,11 +884,11 @@
 		 *	The whole screen that carries the preview: what the screen has in one column,
 		 *	a preview of the lot in the other, and the bar under both.
 		 *
-		 *	The list of the themes is the library; the setup is one view of its six at
-		 *	a time, because six blocks of blocks is a list to read and one view is a
-		 *	decision to make. The bar above the view says which one is open and takes
+		 *	The list of the themes is the library; the setup is one object at a
+		 *	time, because a block for every aspect of every object is a list to read and one object is a
+		 *	decision to make. The bar above the controls says which one is open and takes
 		 *	the way back to the list; the preview beside it is the whole page either way,
-		 *	scrolled to where the open view is
+		 *	scrolled to where the open object is
 		 *
 		 *	@return		void
 		 */
@@ -906,8 +903,8 @@
 			wrap.innerHTML = '';
 
 			/*	No heading of its own: the pane's head names the panel, and the strip of the
-				tabs on top of the pane is the shell's. The bar of the views - Back to list and
-				the strip of the six - goes to the top of the pane of the tab, under the shell's,
+				tabs on top of the pane is the shell's. The bar of the objects - Back to list and
+				the strip of the tabs, or the select - goes to the top of the pane of the tab, under the shell's,
 				the way the Features panel's strip goes to the top of its tab: it switches the
 				controls on the left and nothing else, so it belongs with the name of the screen
 				and not above one of its two halves. Handed over on every render; tabs() takes
@@ -920,8 +917,8 @@
 
 				head.tabs( design.views._renderTabs() );
 
-				// A bar wider than the pane scrolls in its own box: the view that is open is brought into sight, behind Back to list where the pane is narrow
-				const selected = dc.getElementById( 'design-tab-'+ design.views._tab );
+				// A strip wider than the pane scrolls in its own box: the object that is open is brought into sight
+				const selected = dc.getElementById( 'design-tab-'+ design.views._current() );
 
 				if( selected !== null && typeof selected.scrollIntoView === 'function' )
 					selected.scrollIntoView( { block : 'nearest', inline : 'nearest' } );
@@ -1033,8 +1030,8 @@
 		},
 
 		/**
-		 *	The controls column, on its own so a switch of the view can redraw it
-		 *	without touching the frame beside it - or the bar of the views, whose strip is
+		 *	The controls column, on its own so a switch of the object can redraw it
+		 *	without touching the frame beside it - or the bar of the objects, whose strip is
 		 *	the element the switch was made on, and keeps the focus an arrow key put
 		 *	on it.
 		 *
@@ -1049,7 +1046,13 @@
 			const controls = dc.createElement('div');
 			controls.id = 'design-controls';
 
-			// Only where there is no head does the bar of the views open the column (see
+			// In the setup the column is the panel of the tab that is open
+			if( Nino.admin.design._screen === 'setup' ) {
+				controls.setAttribute( 'role', 'tabpanel' );
+				controls.setAttribute( 'aria-labelledby', 'design-tab-'+ Nino.admin.design.views._current() );
+			}
+
+			// Only where there is no head does the bar of the objects open the column (see
 			// _head()) - and is drawn again with it on every switch
 			if( Nino.admin.design._screen === 'setup' && Nino.admin.design._head() === null )
 				controls.appendChild( Nino.admin.design.views._renderTabs() );
@@ -1071,12 +1074,22 @@
 		},
 
 		/**
-		 *	The views of the setup, in the order the table gives them
+		 *	The aspects of the design, in the order the table gives them: the tabs of the table, which the blocks under an object are
 		 *
-		 *	@return		{Array}					Keys of the views
+		 *	@return		{Array}					Keys of the aspects
 		 */
 		_tabKeys : function() {
 			return ( ( Nino.admin.design._data || {} ).layout || {} ).tabs || [];
+		},
+
+		/**
+		 *	The objects of the setup, in the order the table gives them: the eight of Setup::OBJECTS and one for each feature that brings
+		 *	variants. They are the tabs of the screen
+		 *
+		 *	@return		{Array}					Keys of the objects
+		 */
+		_objectKeys : function() {
+			return ( ( Nino.admin.design._data || {} ).layout || {} ).objects || [];
 		},
 
 		/**
@@ -1092,7 +1105,7 @@
 
 		/**
 		 *	What the screen that is drawn holds, into the box the column keeps for it: in the list mode the card of the
-		 *	themes, in the setup the view that is open (see Nino.admin.design.views._renderView())
+		 *	themes, in the setup the aspects of the object that is open (see Nino.admin.design.views._renderRows())
 		 *
 		 *	@param		{Element}	body
 		 *
@@ -1103,7 +1116,7 @@
 			const design = Nino.admin.design;
 
 			if( design._screen === 'setup' )
-				return design.views._renderView( design.views._tab, body );
+				return design.views._renderRows( design.views._current(), body );
 
 			// By the node, not by its id: this column is not in the document yet on the first render
 			const themes = design._card('design-themes');
@@ -1114,7 +1127,7 @@
 
 		/**
 		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
-		 *	keeps that, with the arrow keys and the one tab stop of a strip. The six views of the
+		 *	keeps that, with the arrow keys and the one tab stop of a strip. The objects of the
 		 *	setup are drawn with it (see Nino.admin.design.views._renderTabs())
 		 *
 		 *	@param		{string}		name				What the strip is called by assistive technology
@@ -1145,6 +1158,7 @@
 				button.setAttribute( 'role', 'tab' );
 				button.dataset[attribute] = tab.key;
 				button.id = 'design-tab-'+ tab.key;
+				button.setAttribute( 'aria-controls', 'design-controls' );
 				button.textContent = tab.label;
 				buttons[tab.key] = button;
 				bar.appendChild( button );
@@ -1160,7 +1174,7 @@
 		 *	height the stage was just fitted to.
 		 *
 		 *	In one column the stage stands under the controls, so a column of another
-		 *	height moves it - another view, the brand warning
+		 *	height moves it - another object, the brand warning
 		 *	of the colours - and the fit gives the frame another height. The page in it
 		 *	lays itself out again only after its window has heard the resize: the covers
 		 *	take their height from the window's, in an animation frame that follows it
@@ -1728,7 +1742,7 @@
 		 *	on the screen before.
 		 *	A family the role is not offered here - not in the list, declined, or not installed after all -
 		 *	is set to the face of Nino and told in the line of the bar with the rest. The screen is drawn
-		 *	again whole, the preview with it - on the setup in six views where the theme was loaded to be edited
+		 *	again whole, the preview with it - on the setup by its objects where the theme was loaded to be edited
 		 *
 		 *	@param		{Object}		response		design/theme/load's answer
 		 *	@param		{Array}			said				What the installs before it said
@@ -1780,7 +1794,7 @@
 
 			design._render();
 
-			// The press that asked is gone with the drawing: the focus goes to the open view's tab where the theme is edited, else back to the row's button
+			// The press that asked is gone with the drawing: the focus goes to the open object's tab where the theme is edited, else back to the row's button
 			if( edit === true )
 				design._focusViews();
 			else
@@ -1952,7 +1966,7 @@
 		},
 
 		/**
-		 *	Edit a theme: open the setup in six views, on the view that was open last. The loaded theme opens at once, without
+		 *	Edit a theme: open the setup by its objects, on the object that was open last. The loaded theme opens at once, without
 		 *	a request, and the draft with it - what was changed and not stored stays; any other is loaded first, as Load
 		 *	does, and the views open in the one drawing that takes it over
 		 *
@@ -1977,8 +1991,8 @@
 		},
 
 		/**
-		 *	The focus after the views were opened by a press on Edit, which the list took with it: on the view that is open, the one
-		 *	tab of the strip that is a tab stop, else on Back to list
+		 *	The focus after the views were opened by a press on Edit, which the list took with it: on the object that is open, the one
+		 *	tab of the strip that is a tab stop - the select where the strip gives way to it -, else on Back to list
 		 *
 		 *	@return		void
 		 */
@@ -1986,7 +2000,13 @@
 
 			const design = Nino.admin.design;
 
-			design._focus( dc.getElementById( 'design-tab-'+ design.views._tab ) !== null ? 'design-tab-'+ design.views._tab : 'design-back' );
+			const tab = 'design-tab-'+ design.views._current();
+
+			// Below the width where the strip gives way to the select, the strip is not on screen and cannot take the focus: the select does
+			if( typeof wn.matchMedia === 'function' && wn.matchMedia( design.views.NARROW ).matches === true && dc.getElementById('design-object-select') !== null )
+				return design._focus('design-object-select');
+
+			design._focus( dc.getElementById( tab ) !== null ? tab : 'design-back' );
 		},
 
 		/**
@@ -2858,7 +2878,7 @@
 		 *	Play the animation of the page again in the frame.
 		 *
 		 *	A viewport animation plays when an element comes into view, so the ones
-		 *	that stand in view already - the hero, on the Motion view where the
+		 *	that stand in view already - the hero, under the Motion of the page where the
 		 *	animation is chosen - would show nothing of a choice made while they are
 		 *	there. Each of them goes back to where it starts, without a transition,
 		 *	and is let in again with the one the page has now. The classes are put
@@ -2902,30 +2922,28 @@
 		},
 
 		/**
-		 *	Scroll the page in the frame to where the open tab is looked at, smoothly.
+		 *	Scroll the page in the frame to where the open object is looked at, smoothly.
 		 *
 		 *	The specimen is one page with an element for each place the panel looks at (ids global,
-		 *	type, content, cards, buttons, lists, tables, colours and, at its end, footer - see ANCHORS), and
+		 *	content, cards, buttons, lists, tables, colours and, at its end, footer - see OBJECT_ANCHORS), and
 		 *	the frame is the page of this very origin: the panel scrolls the
 		 *	frame's own window by hand, which needs neither a message to the page
-		 *	nor a hash it would have to read. Done after a tab is opened and after
+		 *	nor a hash it would have to read. Done after an object is opened and after
 		 *	every change, when the answer to the change is in the frame.
 		 *
-		 *	Three maps say where, all of them the panel's and the ids the page's. Opening a tab goes to the
-		 *	anchor of the tab (ANCHORS). A change of a control goes to the place that control is looked at in,
-		 *	which follows from the table (see _anchorOf()): the id CONTROL_ANCHORS names for its key - the controls
-		 *	of the palette to the grounds (#colours) -, else the id OBJECT_ANCHORS names for the object it stands
-		 *	under - the page's and the header's to the top of the page (#global), the footer's to its foot, a
-		 *	section's, the quiet and the loud variant of its titles among them, to the first section (#content), a
-		 *	card's to the cards (#cards), the buttons', the lists' and the tables' to their blocks -, else the
-		 *	anchor of its tab. A control of a feature stands in no map; it goes to the anchor of the feature - the id of the block the
-		 *	feature brings to the specimen, which design/list answers as `anchor` -, else to the anchor of its tab. The place of a change is _target,
-		 *	one for each change - it is put back to the tab's own when a tab is opened, and it is what is jumped to
-		 *	until then.
+		 *	Three maps say where, all of them the panel's and the ids the page's. Opening an object goes to its
+		 *	anchor (see _aimOf()): the id OBJECT_ANCHORS names for it, the block a feature brings to the specimen - which design/list
+		 *	answers as `anchor` - for a feature. An aspect has none, and opening one moves nothing. A change of a control goes to the
+		 *	place that control is looked at in, which follows from the table (see _anchorOf()): the id CONTROL_ANCHORS names for its
+		 *	key - the controls of the palette to the grounds (#colours) -, else the anchor of the object it stands under - the
+		 *	page's and the header's the top of the page (#global), the footer's its foot, a section's, the quiet and the loud variant
+		 *	of its titles among them, the first section (#content), a card's the cards (#cards), the buttons', the lists' and the tables'
+		 *	their blocks, a feature's the block it brings. The place of a change is _target, one for each change - it is put back
+		 *	to the object's own when an object is opened, and it is what is jumped to until then.
 		 *
-		 *	A place the page in the frame has not got is looked at where the tab is: the id of a block that the specimen of a
-		 *	project does not carry goes to the anchor of the open tab, to the top of the page on the screen of the themes.
-		 *	Only where that is missing too, the frame stays where it is
+		 *	A place the page in the frame has not got is looked at where the object is: the id of a block that the specimen of a
+		 *	project does not carry goes to the anchor of the open object, and that to the top of the page, which is also where the
+		 *	screen of the themes looks. Only where that is missing too, the frame stays where it is
 		 *
 		 *	The top of the page is the exception to the room for the header: the element with the id global is
 		 *	the top of the page, header included - its anchor stands right below it -, and the footer is where the
@@ -2956,17 +2974,21 @@
 				if( doc === null || doc.body === null )
 					return;
 
-				// Where no change was looked at: the list of the themes at the top of the page, a view of the setup at its own anchor
-				const tab = Nino.admin.design._screen === 'setup' ? Nino.admin.design.ANCHORS[ Nino.admin.design.views._tab ] : Nino.admin.design.THEMES_ANCHOR;
+				// Where no change was looked at: the list of the themes at the top of the page, an object of the setup at its own anchor
+				const tab = Nino.admin.design._screen === 'setup' ? Nino.admin.design.views._aimOf( Nino.admin.design.views._current() ) : Nino.admin.design.THEMES_ANCHOR;
 				let aim = Nino.admin.design._target || tab;
 				let target = doc.getElementById( aim );
 				const view = doc.defaultView;
 
-				// An id the page has not got - the block of a feature, and the specimen may be a project's own - is looked at where the tab is
-				if( target === null && aim !== tab ) {
-					aim = tab;
-					target = doc.getElementById( aim );
-				}
+				// An id the page has not got - the block of a feature, and the specimen may be a project's own - is looked at where the object is,
+				// and where that is missing too, at the top of the page
+				[ tab, Nino.admin.design.THEMES_ANCHOR ].forEach( function( fallback ) {
+
+					if( target === null && aim !== fallback ) {
+						aim = fallback;
+						target = doc.getElementById( aim );
+					}
+				} );
 
 				if( target === null || view === null )
 					return;
@@ -3041,7 +3063,7 @@
 		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
 		 *	viewport is chosen, when a view is opened and when a preview has come back.
 		 *	The last two are for one column, where the controls stand over the stage and
-		 *	a column of another height - another view, the brand warning of the colours -
+		 *	a column of another height - another object, the brand warning of the colours -
 		 *	moves it; beside the controls the pane sticks, and the stage stays where it is
 		 *
 		 *	The frame is the last thing on the page, and the page clears its foot for
@@ -3574,12 +3596,15 @@
 
 	};
 
-	/*	The setup in six views - Templates, Type, Surfaces, Colours, Motion and CSS, the ones Setup::TABS names -, one at a time, with
-		the preview beside it and the bar under it, which are the panel's (see Nino.admin.design): the second mode of its screen, reached
-		by Edit on a row of the list of the themes and left by Back to list. The shell does not ask for it, the screen of the panel draws
-		it. It is drawn from the state of the panel and writes through it: the working copy, the selection and the draft are not copied
-		here, only which view is open and which block of it. Five of the views draw a block for each object that has a control on them,
-		from the table (see Setup::LAYOUT); the sixth, CSS, has no objects - it is the one field of the css of the theme	*/
+	/*	The setup by its objects and its aspects - the page, the header, the footer, a section, a card, the buttons, the lists, the tables and
+		the features that bring variants (Setup::OBJECTS and the features) are the tabs; the aspects the design has (Setup::TABS: Base, Text,
+		Surface, Colour, Motion and, for the page, CSS) are the blocks of an accordion under the tab that is open -, one object at a time, with the preview
+		beside it and the bar under it, which are the panel's (see Nino.admin.design): the second mode of its screen, reached by Edit on a row
+		of the list of the themes and left by Back to list. The shell does not ask for it, the screen of the panel draws it. It is drawn from the
+		state of the panel and writes through it: the working copy, the selection and the draft are not copied here, only which object is open
+		and which aspect of it. An object draws a block for each aspect it has a control on, from the table (see Setup::LAYOUT) - the table
+		says for every control its aspect and its object, and the screen reads it the other way round than it used to: by the object first.
+		CSS has no object in the table - it is one field, the css of the theme - and is the aspect of the page	*/
 	Nino.admin.design.views = {
 
 		/*	The word the label and the hint of a strip of the page stand under (/_admin/design/label/<word> and
@@ -3592,12 +3617,38 @@
 			are switched off (see _motionOff()) and their heads say nothing	*/
 		MOTION_FOLLOWS	: { strength : [ 'effect', [ '' ] ], speed : [ 'effect', [ '' ] ], 'hover-strength' : [ 'hover', [ '', 'none' ] ] },
 
-		// The view that is open - Templates at the start of a visit, the first of the six
-		_tab		: 'templates',
-		/*	The row that is open on a view that draws its rows as an accordion (see _renderRows()), by the view: the object it is the
-			row of, or null once the person has closed it. A view with no entry has its first row open. Kept while the panel lives, like
-			the mode of the screen, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
+		/*	The aspect of the design that has no control in the table and is the field of the css of the theme, and the object it is the
+			aspect of: the page, which every theme is the css of. Both are named here because the table cannot say them	*/
+		CSS_TAB		: 'css',
+		CSS_OBJECT	: 'page',
+
+		/*	The width below which the strip of the objects is a select: the one at which the rail of the workbench gives its links up for a
+			select of the panels (_admin/assets/style.css, the same 64rem), as a media query, which the stylesheet of the panel names again
+			(admin.css, .design-tabs)	*/
+		NARROW		: '(max-width: 63.999rem)',
+
+		// The object that is open - the page at the start of a visit, the first of the tabs. Read through _current(), which falls back to the first where this is none of them any more
+		_tab		: 'page',
+		/*	The block that is open under an object (see _renderRows()), by the object: the key of its aspect, or null once the person has
+			closed it. An object with no entry has its first aspect open. Kept while the panel lives, like the mode of the screen and the
+			object that is open, and no part of the selection and nothing that is stored: another block changes nothing but the block	*/
 		_open	: {},
+
+		// The observer of the strip's box (see _edges()): one at a time
+		_observer	: null,
+
+		/**
+		 *	The object that is open: the one the screen last switched to, else - where that is none of the table's objects, a feature
+		 *	that was switched off since, or a table that is another - the first
+		 *
+		 *	@return		{string}
+		 */
+		_current : function() {
+
+			const objects = Nino.admin.design._objectKeys();
+
+			return objects.indexOf( Nino.admin.design.views._tab ) !== -1 || objects.length === 0 ? Nino.admin.design.views._tab : objects[0];
+		},
 
 		/**
 		 *	The knobs the template chosen for a part answers to. The rest of the
@@ -3668,22 +3719,23 @@
 		},
 
 		/**
-		 *	The rows a tab is drawn in, out of the table and nothing else: for each object that has a control on
-		 *	the tab, in the order the table gives the objects, the controls of it in the order of their numbers. A
-		 *	control is the keys that stand at one place: the cover, the row and the column of a section are one,
-		 *	and so are the second colour and the row of Harmony it ends. An object with no control on the tab has
-		 *	no row
+		 *	The rows an object is drawn in, out of the table and nothing else: for each aspect the object has a control on, in the
+		 *	order the table gives the aspects, the controls of it in the order of their numbers. A control is the keys that stand at
+		 *	one place: the cover, the row and the column of a section are one, and so are the second colour and the row of Harmony it
+		 *	ends. An aspect the object has no control on has no row - but for the css, which is no control of the table and is a row
+		 *	of the page, with no controls
 		 *
-		 *	@param		{string}	tab				A key of the table's tabs
+		 *	@param		{string}	object		A key of the table's objects
 		 *
-		 *	@return		{Array}						{ object, controls : [ [ key, ... ], ... ] } for each row; empty for a tab with no control
+		 *	@return		{Array}						{ tab, object, controls : [ [ key, ... ], ... ] } for each row; empty for an object with no control
 		 */
-		_rows : function( tab ) {
+		_rows : function( object ) {
 
+			const views = Nino.admin.design.views;
 			const layout = ( Nino.admin.design._data || {} ).layout || {};
 			const controls = layout.controls || {};
 
-			return ( layout.objects || [] ).map( function( object ) {
+			return ( layout.tabs || [] ).map( function( tab ) {
 
 				const places = {};
 
@@ -3694,18 +3746,37 @@
 				} );
 
 				return {
+					tab 			: tab,
 					object 		: object,
 					controls 	: Object.keys( places ).sort( function( a, b ) { return a - b } ).map( function( order ) { return places[order] } ),
 				};
-			} ).filter( function( row ) { return row.controls.length > 0 } );
+			} ).filter( function( row ) { return row.controls.length > 0 || ( row.tab === views.CSS_TAB && row.object === views.CSS_OBJECT ) } );
 		},
 
 		/**
-		 *	The bar of the views: a row of Back to list and the tablist of the six views, the ones the table names. Back
-		 *	to list is a button of its own, no tab - it opens no view, it leaves them - and stands outside the tablist,
-		 *	so that the arrow keys walk the six and nothing else. The tablist is a tablist rather than a button group,
-		 *	because these really are six panels: aria-selected, not aria-pressed. The bar stands at the top of the pane
-		 *	of the tab, under the strip of the shell (see Nino.admin.design._render())
+		 *	The objects as the tabs and the select name them: each with its word - the panel's for the page and the parts, the feature's
+		 *	own name for a feature (see _objectName()) - in the order of the table. The one model both are drawn from
+		 *
+		 *	@return		{Array}					{ key, label } for each object
+		 */
+		_objectTabs : function() {
+
+			const views = Nino.admin.design.views;
+
+			return Nino.admin.design._objectKeys().map( function( object ) {
+				return { key : object, label : views._objectName( object ) };
+			} );
+		},
+
+		/**
+		 *	The bar of the objects: a row of Back to list, the tablist of the objects and a select of the same. Back to list is a button
+		 *	of its own, no tab - it opens no object, it leaves them - and stands outside the tablist, so that the arrow keys walk the
+		 *	objects and nothing else. The tablist is a tablist rather than a button group, because these really are panels: aria-selected,
+		 *	not aria-pressed. It scrolls in its own box where it is wider than the bar, the edge that has more of it shadowed (see
+		 *	_edges()). Below the width where the rail of the workbench gives up its links (NARROW) the stylesheet shows the select
+		 *	instead of the strip, and the way back above it: the one choice, drawn twice from one model (_objectTabs()), and
+		 *	_switchTab() puts both at the object that is open. The bar stands at the top of the pane of the tab, under the strip of
+		 *	the shell (see Nino.admin.design._render())
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -3713,6 +3784,8 @@
 
 			const design = Nino.admin.design;
 			const views = design.views;
+			const objects = views._objectTabs();
+			const name = Nino.content.getText('/_admin/design/label/object');
 
 			const bar = Nino.adminUi.el( 'div', 'nino-admin-tabs nino-admin-tabs--bar design-tabs' );
 			bar.id = 'design-tabs';
@@ -3722,65 +3795,154 @@
 			back.id = 'design-back';
 			back.addEventListener( 'click', function() { design._back() } );
 
+			const list = design._tabs( name, 'design-views', 'tab', objects, views._current(), function( key ) {
+				views._switchTab( key );
+			} );
+
+			const wrap = Nino.adminUi.el( 'div', 'design-views-wrap' );
+			wrap.appendChild( list );
+			views._edges( wrap, list );
+
+			const select = Nino.adminUi.el( 'select', 'design-object-select' );
+			select.id = 'design-object-select';
+			select.setAttribute( 'aria-label', name );
+
+			objects.forEach( function( object ) {
+				const option = dc.createElement('option');
+				option.value = object.key;
+				option.textContent = object.label;
+				option.selected = object.key === views._current();
+				select.appendChild( option );
+			} );
+
+			select.addEventListener( 'change', function() { views._switchTab( select.value ) } );
+
 			bar.appendChild( back );
-			bar.appendChild( design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-views', 'tab',
-				design._tabKeys().map( function( key ) {
-					return { key : key, label : Nino.content.getText('/_admin/design/tab/'+ key+ '/label') };
-				} ), views._tab, function( key ) {
-					views._switchTab( key );
-				} ) );
+			bar.appendChild( wrap );
+			bar.appendChild( select );
 
 			return bar;
 		},
 
 		/**
-		 *	What the view that is open holds, into the box the column keeps for it: the field of the css on the view
-		 *	CSS, which has no objects, else the blocks of its objects (see _renderRows())
+		 *	Shadow the edge of the strip that has more of it behind: the wrapper carries is-more-start while the strip is scrolled
+		 *	away from its start and is-more-end while there is more to the right of it, and the stylesheet draws a shadow with each
+		 *	(.design-views-wrap::before and ::after). Painted when the strip scrolls and when its box changes size
+		 *	- a window that is resized, the words of another language - for as far as the browser tells the script of it.
+		 *	A strip that was not there - the select stood in its place - and is, its box going from no width to some, brings the
+		 *	tab that is open into sight: it may have been chosen in the select, out of the strip's reach. The observer of the bar
+		 *	that was drawn before is let go of (see _observer), so that a screen drawn again does not leave one behind
 		 *
-		 *	@param		{string}	key			A key of the table's tabs
-		 *	@param		{Element}	body		The box the column keeps for the view
+		 *	@param		{Element}	wrap			The box the strip stands in
+		 *	@param		{Element}	list			The strip, which is the box that scrolls
 		 *
 		 *	@return		void
 		 */
-		_renderView : function( key, body ) {
+		_edges : function( wrap, list ) {
 
-			if( key !== 'css' )
-				return Nino.admin.design.views._renderRows( key, body );
+			const paint = function() {
+				wrap.classList.toggle( 'is-more-start', list.scrollLeft > 1 );
+				wrap.classList.toggle( 'is-more-end', list.scrollLeft + list.clientWidth < list.scrollWidth - 1 );
+			};
 
-			// By the node, not by its id: this column is not in the document yet on the first render
-			const card = Nino.admin.design._card('design-theme-css-card');
+			list.addEventListener( 'scroll', paint );
 
-			body.appendChild( card );
-			Nino.admin.design.views._paintCustomCss( card );
+			const views = Nino.admin.design.views;
+
+			if( views._observer !== null ) {
+				views._observer.disconnect();
+				views._observer = null;
+			}
+
+			if( typeof wn.ResizeObserver === 'function' ) {
+
+				let width = 0;
+
+				views._observer = new wn.ResizeObserver( function() {
+
+					const now = list.clientWidth;
+					const open = dc.getElementById( 'design-tab-'+ views._current() );
+
+					if( width === 0 && now > 0 && open !== null && typeof open.scrollIntoView === 'function' )
+						open.scrollIntoView( { block : 'nearest', inline : 'nearest' } );
+
+					width = now;
+					paint();
+				} );
+
+				views._observer.observe( list );
+			}
+
+			paint();
 		},
 
 		/**
-		 *	Open another view.
+		 *	Mark the object that is open on both the strip and the select, as a press on the one has to show on the other. The
+		 *	buttons are the strip's own business when one of them was pressed (Nino.adminUi.buttonRow()); this is for the select
+		 *	being used, and the object being set from anywhere else
+		 *
+		 *	@param		{string}	key				A key of the table's objects
+		 *
+		 *	@return		void
+		 */
+		_markTab : function( key ) {
+
+			Nino.admin.design._objectKeys().forEach( function( object ) {
+
+				const tab = dc.getElementById( 'design-tab-'+ object );
+
+				if( tab === null )
+					return;
+
+				tab.classList.toggle( 'is-active', object === key );
+				tab.setAttribute( 'aria-selected', object === key ? 'true' : 'false' );
+				tab.tabIndex = object === key ? 0 : -1;
+			} );
+
+			const select = dc.getElementById('design-object-select');
+
+			if( select === null )
+				return;
+
+			select.value = key;
+
+			Array.prototype.forEach.call( select.querySelectorAll('option'), function( option ) { option.selected = option.value === key } );
+
+			const tab = dc.getElementById( 'design-tab-'+ key );
+
+			if( tab !== null && typeof tab.scrollIntoView === 'function' )
+				tab.scrollIntoView( { block : 'nearest', inline : 'nearest' } );
+		},
+
+		/**
+		 *	Open another object.
 		 *
 		 *	Only the column is redrawn, never the frame beside it: the page in
-		 *	it is the same page under every view, so rebuilding it would cost a
+		 *	it is the same page under every object, so rebuilding it would cost a
 		 *	request and a flash for a click that changed which controls are on
 		 *	screen and nothing at all about the design. What the frame does is
-		 *	scroll, smoothly, to the anchor of the view that was opened - once the
-		 *	page in it stands at the height the stage has for that view.
+		 *	scroll, smoothly, to the anchor of the object that was opened - once the
+		 *	page in it stands at the height the stage has for that object.
 		 *
-		 *	Nor the strip of the views. The view the switch was made on is
+		 *	Nor the strip of the objects. The tab the switch was made on is
 		 *	the one the keyboard is on, and the strip used to be drawn again
-		 *	with the column: an arrow key opened the next view and dropped the
-		 *	focus onto the page, so the next arrow went nowhere.
+		 *	with the column: an arrow key opened the next tab and dropped the
+		 *	focus onto the page, so the next arrow went nowhere. The select and the strip are
+		 *	each put at the object that is open (_markTab()) instead
 		 *
-		 *	@param		{string}	key			A key of the table's tabs
+		 *	@param		{string}	key			A key of the table's objects
 		 *
 		 *	@return		void
 		 */
 		_switchTab : function( key ) {
 
-			if( key === Nino.admin.design.views._tab )
+			if( key === Nino.admin.design.views._current() )
 				return;
 
 			Nino.admin.design.views._tab = key;
+			Nino.admin.design.views._markTab( key );
 
-			// Where a change was looked at belonged to the tab that was left: the
+			// Where a change was looked at belonged to the object that was left: the
 			// frame goes to the anchor of this one
 			Nino.admin.design._target = null;
 
@@ -3802,12 +3964,12 @@
 		},
 
 		/**
-		 *	The card of the view CSS: the css of the theme, in a field of its own, as tall as the stylesheet makes it - the
-		 *	view has nothing else. Every input sets it in the working copy and asks for a preview - the debounce of 350 ms every
+		 *	The body of the aspect CSS: the css of the theme, in a field of its own, as tall as the stylesheet makes it - the
+		 *	aspect has nothing else. Every input sets it in the working copy and asks for a preview - the debounce of 350 ms every
 		 *	control has - which compiles it as the last section of the sheet; the draft and the theme keep it with the rest of
-		 *	the setup. The label is the card's title again, for whoever hears the field and not the heading
+		 *	the setup. The head of the block names the aspect, so the field carries the title alone
 		 *
-		 *	@param		{Element}	card
+		 *	@param		{Element}	card			The body of the block
 		 *
 		 *	@return		void
 		 */
@@ -3818,7 +3980,6 @@
 			const title = Nino.content.getText('/_admin/design/theme/css/title');
 
 			card.innerHTML = '';
-			card.appendChild( design._sectionLabel( title ) );
 
 			const label = ui.el( 'label', 'nino-admin-field' );
 			label.appendChild( ui.el( 'span', 'design-theme-css-name', title ) );
@@ -3841,47 +4002,46 @@
 		},
 
 		/**
-		 *	The rows of a tab into a box, one card each, in the order the table gives them: the blocks of an accordion on
-		 *	every tab that is drawn from the table, the templates, the type, the surfaces, the colours and the motion alike.
-		 *	The head of a block is a button with the word of its object, and the row itself, the body of the block, is drawn
-		 *	while the block is open and not before. One block is open, the one the person left open on the tab and the first
-		 *	where there is none (see _blockOf()). A tab that has one row - the colours and the motion are the page's alone -
-		 *	is an accordion of one block, open to begin with and to be closed like any other
+		 *	The rows of an object into a box, one card each, in the order the table gives them: the blocks of an accordion, an aspect
+		 *	each. The head of a block is a button with the word of its aspect, and the row itself, the body of the block, is drawn
+		 *	while the block is open and not before. One block is open, the one the person left open under the object and the first
+		 *	where there is none (see _blockOf()). An object that has one aspect is an accordion of one block, open to begin with and
+		 *	to be closed like any other
 		 *
-		 *	@param		{string}	tab				A key of the table's tabs
+		 *	@param		{string}	object		A key of the table's objects
 		 *	@param		{Element}	box
 		 *
 		 *	@return		void
 		 */
-		_renderRows : function( tab, box ) {
+		_renderRows : function( object, box ) {
 
 			const views = Nino.admin.design.views;
-			const rows = views._rows( tab );
-			const open = views._blockOf( tab, rows );
+			const rows = views._rows( object );
+			const open = views._blockOf( object, rows );
 
 			rows.forEach( function( row ) {
-				box.appendChild( views._renderRow( tab, row, row.object === open ) );
+				box.appendChild( views._renderRow( row, row.tab === open ) );
 			} );
 		},
 
 		/**
-		 *	The block of a tab that is open: the one the person left open on it, else - where nothing was chosen on
-		 *	the tab yet - its first
+		 *	The block of an object that is open: the one the person left open under it, else - where nothing was chosen under the
+		 *	object yet - its first
 		 *
-		 *	@param		{string}	tab				A key of the table's tabs
-		 *	@param		{Array}		rows			The rows of the tab, see _rows()
+		 *	@param		{string}	object		A key of the table's objects
+		 *	@param		{Array}		rows			The rows of the object, see _rows()
 		 *
-		 *	@return		{?string}						The object of the row that is open; null where the person closed it, and for a tab with no rows
+		 *	@return		{?string}						The aspect of the row that is open; null where the person closed it, and for an object with no rows
 		 */
-		_blockOf : function( tab, rows ) {
+		_blockOf : function( object, rows ) {
 
-			const chosen = Nino.admin.design.views._open[tab];
-			const objects = rows.map( function( row ) { return row.object } );
+			const chosen = Nino.admin.design.views._open[object];
+			const tabs = rows.map( function( row ) { return row.tab } );
 
-			if( chosen === null || objects.length === 0 )
+			if( chosen === null || tabs.length === 0 )
 				return null;
 
-			return objects.indexOf( chosen ) !== -1 ? chosen : objects[0];
+			return tabs.indexOf( chosen ) !== -1 ? chosen : tabs[0];
 		},
 
 		/**
@@ -3897,54 +4057,52 @@
 		},
 
 		/**
-		 *	One row: a card of the controls the table gives an object on a tab, a block of the accordion - the head and, while the
-		 *	block is open, the body under it (see _setBlock()). The card says which tab and which object it is the row of, and every
+		 *	One row: a card of the controls the table gives an object on an aspect, a block of the accordion - the head and, while the
+		 *	block is open, the body under it (see _setBlock()). The card says which aspect and which object it is the row of, and every
 		 *	control in it says which keys it is (see _fillRow()), so that what is drawn can be read against the table
 		 *
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *	@param		{boolean}	[open]		Whether the block is open
 		 *
 		 *	@return		{Element}
 		 */
-		_renderRow : function( tab, row, open ) {
+		_renderRow : function( row, open ) {
 
 			const views = Nino.admin.design.views;
 
 			const card = dc.createElement('div');
-			card.id = views._rowId( tab, row.object );
+			card.id = views._rowId( row.tab, row.object );
 			card.className = 'nino-admin-card design-form-section design-accordion';
-			card.dataset.tab = tab;
+			card.dataset.tab = row.tab;
 			card.dataset.object = row.object;
 
-			card.appendChild( views._renderHead( tab, row ) );
-			views._setBlock( card, tab, row, open === true );
+			card.appendChild( views._renderHead( row ) );
+			views._setBlock( card, row, open === true );
 
 			return card;
 		},
 
 		/**
-		 *	The head of a block: a button that opens and closes it, with the word of its object, the line that names what
+		 *	The head of a block: a button that opens and closes it, with the word of its aspect, the line that names what
 		 *	stands elsewhere than at the defaults while the block is closed (see _paintHead()) and a chevron, which is
 		 *	decoration. The word is the button's name and the line its description; aria-expanded says whether the block
 		 *	is open and, while it is, aria-controls which body it is the head of (see _paintHead()) - a closed block has no
 		 *	body in the document, and its head names none
 		 *
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *
 		 *	@return		{Element}
 		 */
-		_renderHead : function( tab, row ) {
+		_renderHead : function( row ) {
 
 			const design = Nino.admin.design;
 			const views = Nino.admin.design.views;
-			const id = views._rowId( tab, row.object );
+			const id = views._rowId( row.tab, row.object );
 
 			const name = dc.createElement('span');
 			name.id = id+ '-name';
 			name.className = 'design-accordion-name';
-			name.textContent = views._objectName( row.object );
+			name.textContent = Nino.content.getText('/_admin/design/tab/'+ row.tab+ '/label');
 
 			const summary = dc.createElement('span');
 			summary.id = id+ '-summary';
@@ -3958,7 +4116,7 @@
 			head.className = 'design-accordion-head';
 			head.setAttribute( 'aria-labelledby', name.id );
 			head.setAttribute( 'aria-describedby', summary.id );
-			head.addEventListener( 'click', function() { views._toggleBlock( tab, row.object, head ) } );
+			head.addEventListener( 'click', function() { views._toggleBlock( row.object, row.tab, head ) } );
 
 			head.appendChild( name );
 			head.appendChild( summary );
@@ -3970,15 +4128,14 @@
 		/**
 		 *	The body of a block: the controls of its row (see _fillRow()), in the box the head names in aria-controls
 		 *
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *
 		 *	@return		{Element}
 		 */
-		_renderBody : function( tab, row ) {
+		_renderBody : function( row ) {
 
 			const body = dc.createElement('div');
-			body.id = Nino.admin.design.views._rowId( tab, row.object )+ '-body';
+			body.id = Nino.admin.design.views._rowId( row.tab, row.object )+ '-body';
 			body.className = 'design-accordion-body';
 
 			Nino.admin.design.views._fillRow( body, row );
@@ -3992,19 +4149,18 @@
 		 *	drawn again, so that the head that was pressed is still the element the focus is on
 		 *
 		 *	@param		{Element}	card			The card of the row
-		 *	@param		{string}	tab
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *	@param		{boolean}	open
 		 *
 		 *	@return		void
 		 */
-		_setBlock : function( card, tab, row, open ) {
+		_setBlock : function( card, row, open ) {
 
 			const views = Nino.admin.design.views;
 			const body = card.querySelector('.design-accordion-body');
 
 			if( open === true && body === null )
-				card.appendChild( views._renderBody( tab, row ) );
+				card.appendChild( views._renderBody( row ) );
 
 			if( open === false && body !== null )
 				body.remove();
@@ -4019,7 +4175,7 @@
 		 *	cut with dots where the head is too narrow, so its whole text is its title
 		 *
 		 *	@param		{Element}	head
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *	@param		{boolean}	open
 		 *
 		 *	@return		void
@@ -4043,31 +4199,31 @@
 
 		/**
 		 *	Open a block, or close it where it is the open one. Opening a block closes the one that was open; which of them is
-		 *	open is kept for the tab (see _open). It is a matter of the column and of nothing else: the selection stays as it is, no
+		 *	open is kept for the object (see _open). It is a matter of the column and of nothing else: the selection stays as it is, no
 		 *	preview is asked for and the frame is not moved - a change inside a block jumps, as it did, and this does not. The head
 		 *	that was pressed stays where it stood in the window (see _holdHead())
 		 *
-		 *	@param		{string}	tab
-		 *	@param		{string}	object		The object whose head was pressed
+		 *	@param		{string}	object		The object the block is under
+		 *	@param		{string}	tab				The aspect whose head was pressed
 		 *	@param		{Element}	head			That head
 		 *
 		 *	@return		void
 		 */
-		_toggleBlock : function( tab, object, head ) {
+		_toggleBlock : function( object, tab, head ) {
 
 			const views = Nino.admin.design.views;
-			const rows = views._rows( tab );
-			const was = views._blockOf( tab, rows );
+			const rows = views._rows( object );
+			const was = views._blockOf( object, rows );
 			const top = head.getBoundingClientRect().top;
 
-			views._open[tab] = was === object ? null : object;
+			views._open[object] = was === tab ? null : tab;
 
 			rows.forEach( function( row ) {
 
-				const card = row.object === was || row.object === object ? dc.getElementById( views._rowId( tab, row.object ) ) : null;
+				const card = row.tab === was || row.tab === tab ? dc.getElementById( views._rowId( row.tab, object ) ) : null;
 
 				if( card !== null )
-					views._setBlock( card, tab, row, views._open[tab] === row.object );
+					views._setBlock( card, row, views._open[object] === row.tab );
 			} );
 
 			views._holdHead( head, top );
@@ -4105,7 +4261,7 @@
 		 *	for a row that stands at the defaults - but for a template, which is a choice and no position: the block of a part
 		 *	says the word of the set that is chosen, whichever it is, so that a person sees which one is on, and after it the name of each option of a style chosen for it
 		 *
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *
 		 *	@return		{string}
 		 */
@@ -4299,7 +4455,7 @@
 		 *	knobs follow the brand colour under the heading Tuning
 		 *
 		 *	@param		{Element}	card			The body of the block
-		 *	@param		{Object}	row				{ object, controls }, one of _rows()
+		 *	@param		{Object}	row				{ tab, object, controls }, one of _rows()
 		 *
 		 *	@return		void
 		 */
@@ -4312,6 +4468,10 @@
 			let table = null;
 			let grid = null;
 			let tuned = false;
+
+			// The css of the theme is no control of the table: its block is the one field
+			if( row.tab === views.CSS_TAB )
+				return views._paintCustomCss( card );
 
 			row.controls.forEach( function( keys ) {
 
@@ -4561,7 +4721,7 @@
 		/**
 		 *	The select a template is chosen in: the one word of its label over it - the head of its block says which part it
 		 *	is, and the object a second time would be too much -, the catalogue as its options and the description of the
-		 *	chosen one as the line under it. The same for each of the five, in the block of its object on the Templates view
+		 *	chosen one as the line under it. The same for each of the five, in the Base block of its object
 		 *
 		 *	@param		{Object}	row			One part, as design/list answered it
 		 *
@@ -4757,8 +4917,8 @@
 		 *	The rows of the knobs stand on several tabs and are drawn when those are
 		 *	opened, with the knobs this template does not answer to greyed out.
 		 *
-		 *	The whole column of controls of the view that is open is drawn anew, as a
-		 *	switch of the view draws it, so that it shows what the model holds - the line
+		 *	The whole column of controls of the object that is open is drawn anew, as a
+		 *	switch of the object draws it, so that it shows what the model holds - the line
 		 *	under the select says what the template chosen is, and the strips of the part
 		 *	are the knobs the set answers to - and the focus stays on the select, which is
 		 *	a new one; the block that is open stays open. The head of the block says the word of the set that
@@ -4791,10 +4951,10 @@
 					edit.knobs[part][knob] = ( normal[part] || {} )[knob] || 0;
 			} );
 
-			/*	The whole column of controls, drawn from the model the way a switch of the view draws it (see _switchTab()): the
+			/*	The whole column of controls, drawn from the model the way a switch of the object draws it (see _switchTab()): the
 				select with its line, the strips of the knobs of the part - and every other view, which is drawn from the model
 				when it is opened, shows the knobs of the set that is chosen as well. The block that is open stays open (it is
-				the view's, see _open), and the select that was pressed is part of the column that is replaced: the focus follows
+				the object's, see _open), and the select that was pressed is part of the column that is replaced: the focus follows
 				it to the new one	*/
 			const column = dc.getElementById('design-controls');
 
@@ -4815,7 +4975,7 @@
 		},
 
 		/**
-		 *	What an object of the panel is called at the head of its block: its word in the panel's texts for the page and the parts, and for
+		 *	What an object of the panel is called on its tab and in the select: its word in the panel's texts for the page and the parts, and for
 		 *	a feature the name its manifest gives it, which is the feature's own and no text of this panel
 		 *
 		 *	@param		{string}	object		A key of the table's objects
@@ -5663,14 +5823,14 @@
 		},
 
 		/**
-		 *	The element a change of one control is looked at in: the id CONTROL_ANCHORS names for its key, else the one
-		 *	OBJECT_ANCHORS names for the object it stands under, else the anchor of its tab. Where the control stands is
-		 *	the table's (see _place()); how many rows its tab has is no part of it.
+		 *	The element a change of one control is looked at in: the id CONTROL_ANCHORS names for its key, else the anchor of
+		 *	the object it stands under (see _aimOf()), which is the one OBJECT_ANCHORS names for it. Where the control stands is
+		 *	the table's (see _place()); how many aspects the object has is no part of it.
 		 *
 		 *	A control of a feature - its key starts with features/, and the object it stands under is the feature - has no
-		 *	entry in either map, the choice of its variant included. It is looked at in the block the feature brings to the
+		 *	entry in CONTROL_ANCHORS, the choice of its variant included. It is looked at in the block the feature brings to the
 		 *	specimen (design/preview.tpl, see Setup::previewOf()) - its anchor, which the answer of design/list gives with
-		 *	the feature -, and where the feature has none at the anchor of its tab. Whether the page in the frame has the id
+		 *	the feature -, and where the feature has none at the top of the page. Whether the page in the frame has the id
 		 *	is _jump()'s to find out
 		 *
 		 *	@param		{string}		key				The key the control has in the table: 'size', 'knobs/section/quiet' ...
@@ -5680,16 +5840,30 @@
 		_anchorOf : function( key ) {
 
 			const design = Nino.admin.design;
-			const place = design._place( key );
 
-			if( key.indexOf('features/') === 0 ) {
+			if( key.indexOf('features/') === 0 )
+				return design.views._aimOf( design._place( key )[1] );
 
-				const named = ( design._featuresOf()[ place[1] ] || {} ).anchor;
+			return design.CONTROL_ANCHORS[key] || design.views._aimOf( design._place( key )[1] );
+		},
 
-				return typeof named === 'string' && named !== '' ? named : design.ANCHORS[ place[0] ];
-			}
+		/**
+		 *	Where an object is looked at: the id OBJECT_ANCHORS names for it, for a feature the block it brings to the specimen (the
+		 *	`anchor` of design/list), and the top of the page for an object that has neither
+		 *
+		 *	@param		{string}		object		A key of the table's objects
+		 *
+		 *	@return		{string}							The id of an element of the specimen
+		 */
+		_aimOf : function( object ) {
 
-			return design.CONTROL_ANCHORS[key] || design.OBJECT_ANCHORS[ place[1] ] || design.ANCHORS[ place[0] ];
+			const design = Nino.admin.design;
+			const named = ( design._featuresOf()[object] || {} ).anchor;
+
+			if( typeof named === 'string' && named !== '' )
+				return named;
+
+			return design.OBJECT_ANCHORS[object] || design.OBJECT_ANCHORS.page;
 		},
 
 		/**
@@ -5952,12 +6126,12 @@
 			const design = Nino.admin.design;
 			const views = Nino.admin.design.views;
 			const place = design._place('colours/secondary');
-			const rows = views._rows( place[0] );
-			const row = rows.filter( function( each ) { return each.object === place[1] } )[0];
+			const rows = views._rows( place[1] );
+			const row = rows.filter( function( each ) { return each.tab === place[0] } )[0];
 			const old = dc.getElementById( views._rowId( place[0], place[1] ) );
 
 			if( old !== null && row !== undefined )
-				old.replaceWith( views._renderRow( place[0], row, views._blockOf( place[0], rows ) === row.object ) );
+				old.replaceWith( views._renderRow( row, views._blockOf( place[1], rows ) === row.tab ) );
 
 			design._preview();
 		},

@@ -4,10 +4,10 @@
 // Schlüssel und dieselbe Form wie text/<locale>.php der Workbench
 return [
 	'[[/_admin/nav/design]]'										=> 'Design',
-	// Die Leiste oben im Pane: Themes ist der eigene Bildschirm des Panels (die Bibliothek der Themes und dahinter über Bearbeiten das Setup in sechs Ansichten), Schriftarten der Loader
+	// Die Leiste oben im Pane: Themes ist der eigene Bildschirm des Panels (die Bibliothek der Themes und dahinter über Bearbeiten das Setup nach Objekten), Schriftarten der Loader
 	'[[/_admin/nav/themes]]'										=> 'Themes',
 	'[[/_admin/nav/design-typefaces]]'								=> 'Schriftarten',
-	'[[/_admin/design/label/title]]'								=> 'Design',
+	'[[/_admin/design/label/object]]'								=> 'Objekt',
 
 	'[[/_admin/design/label/save]]'								=> 'Entwurf speichern',
 	'[[/_admin/design/label/reset]]'								=> 'Zurücksetzen',
@@ -15,11 +15,11 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Vorversion wiederherstellen',
 	'[[/_admin/design/label/state]]'								=> 'Angewendete Datei',
 
-	// Die sechs Ansichten des Setups – die Eigenschaften des Designs – und die acht Objekte, mit denen die Blöcke ihrer Ansichten überschrieben sind
-	'[[/_admin/design/tab/templates/label]]'						=> 'Vorlagen',
-	'[[/_admin/design/tab/type/label]]'								=> 'Schrift',
-	'[[/_admin/design/tab/surfaces/label]]'							=> 'Flächen',
-	'[[/_admin/design/tab/colours/label]]'							=> 'Farben',
+	// Die sechs Aspekte des Designs, die Blöcke unter einem Objekt, und die acht Objekte, die Reiter oben (die Features, die Varianten mitbringen, heißen nach sich selbst)
+	'[[/_admin/design/tab/templates/label]]'						=> 'Grundlage',
+	'[[/_admin/design/tab/type/label]]'								=> 'Text',
+	'[[/_admin/design/tab/surfaces/label]]'							=> 'Fläche',
+	'[[/_admin/design/tab/colours/label]]'							=> 'Farbe',
 	'[[/_admin/design/tab/motion/label]]'							=> 'Bewegung',
 	'[[/_admin/design/tab/css/label]]'								=> 'CSS',
 	'[[/_admin/design/object/page/label]]'							=> 'Seite',

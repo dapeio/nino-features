@@ -4,10 +4,10 @@
 // workbench's own text/<locale>.php has
 return [
 	'[[/_admin/nav/design]]'										=> 'Design',
-	// The strip on top of the pane: Themes is the panel's own screen (the library of the themes, and the setup in six views behind its Edit), Typefaces the loader
+	// The strip on top of the pane: Themes is the panel's own screen (the library of the themes, and the setup by its objects behind its Edit), Typefaces the loader
 	'[[/_admin/nav/themes]]'										=> 'Themes',
 	'[[/_admin/nav/design-typefaces]]'								=> 'Typefaces',
-	'[[/_admin/design/label/title]]'								=> 'Design',
+	'[[/_admin/design/label/object]]'								=> 'Object',
 
 	'[[/_admin/design/label/save]]'								=> 'Save draft',
 	'[[/_admin/design/label/reset]]'								=> 'Reset',
@@ -15,11 +15,11 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The six views of the setup - the properties of the design - and the eight objects that the blocks of their views are headed with
-	'[[/_admin/design/tab/templates/label]]'						=> 'Templates',
-	'[[/_admin/design/tab/type/label]]'								=> 'Type',
-	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surfaces',
-	'[[/_admin/design/tab/colours/label]]'							=> 'Colours',
+	// The six aspects of the design, the blocks under an object, and the eight objects, the tabs on top (a feature that brings variants is named after itself)
+	'[[/_admin/design/tab/templates/label]]'						=> 'Base',
+	'[[/_admin/design/tab/type/label]]'								=> 'Text',
+	'[[/_admin/design/tab/surfaces/label]]'							=> 'Surface',
+	'[[/_admin/design/tab/colours/label]]'							=> 'Colour',
 	'[[/_admin/design/tab/motion/label]]'							=> 'Motion',
 	'[[/_admin/design/tab/css/label]]'								=> 'CSS',
 	'[[/_admin/design/object/page/label]]'							=> 'Page',

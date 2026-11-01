@@ -1140,7 +1140,7 @@ echo "\n";
 
 echo "Forms - the look of the kernel's form family: the variants the Design feature offers\n";
 
-/*	Four stylesheets in design/, each a variant of the feature for the Design feature (its manual, under Templates, says what a variant
+/*	Four stylesheets in design/, each a variant of the feature for the Design feature (its manual, under Base, says what a variant
 	is): a head of lines "@tag words" and, after it, nothing but :root declarations. The base stylesheet owns every rule, the variants
 	move what it reads. Read here by their grammar - which tags, which fields, which names - and what a head says is never compared	*/
 $looks = [];
