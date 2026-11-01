@@ -706,7 +706,17 @@ const row = rows[0] || element('div');
 
 check( 'the list is a row of buttons, one per album', rowLists.length === 1 && rows.length === 1 && row.dataset.album === 'haus' );
 check( '...that names the album, its shortcode and how many pictures it holds', withTag( row, 'STRONG' )[0].textContent === 'Haus am See'
-	&& withTag( row, 'SMALL' )[0].textContent === fill( '/_admin/gallery/hint/shortcode', '[gallery album="haus"]' )+ ' · '+ fill( '/_admin/gallery/label/count', 1 ) );
+	&& withTag( row, 'SMALL' )[0].textContent === fill( '/_admin/gallery/hint/shortcode', '[gallery album="haus"]' )+ ' · '+ fill( '/_admin/gallery/label/count-one', 1 ) );
+
+/*	One picture is one picture, not "1 images": two words, and the number picks the word. What the words say is the
+	project's to change, so the row is compared with the test's fill of the key the number should have picked	*/
+const countIn = function( images ) {
+	const row = withClass( panel( { address : '#gallery', images : images } ).list, 'nino-admin-list-buttons' )[0].children[0];
+	return withTag( row, 'SMALL' )[0].textContent.split(' · ').pop();
+};
+check( 'the count takes the singular word for one picture and the plural for two and for none',
+	countIn( [ picture( 'a', '' ) ] ) === fill( '/_admin/gallery/label/count-one', 1 ) && countIn( [ picture( 'a', '' ), picture( 'b', '' ) ] ) === fill( '/_admin/gallery/label/count', 2 )
+	&& countIn( [] ) === fill( '/_admin/gallery/label/count', 0 ) && fill( '/_admin/gallery/label/count-one', 1 ) !== fill( '/_admin/gallery/label/count', 1 ) );
 check( '...with nothing on it but the way in', withClass( listed.list, 'nino-admin-btn-danger' ).length === 0 && withClass( row, 'admin-view-button-chev' ).length === 1 );
 
 fire( row, 'click' );
@@ -824,7 +834,12 @@ check( 'the album\'s own delete stands in the bar under the grid, with the line 
 
 fire( remove, 'click' );
 
-check( 'deleting an album asks first, with its name and how many images go with it', doomed.asked.length === 1 && doomed.asked[0] === fill( '/_admin/gallery/confirm/album', 'Haus am See', 2 ) );
+check( 'deleting an album asks first, with its name and how many images go with it', doomed.asked.length === 1 && doomed.asked[0] === fill( '/_admin/gallery/confirm/album', 'Haus am See', fill( '/_admin/gallery/label/count', 2 ) ) );
+check( '...in the words of the number: the plural phrase for two, the singular for an album of one', doomed.asked[0] === fill( '/_admin/gallery/confirm/album', 'Haus am See', fill( '/_admin/gallery/label/count', 2 ) ) && ( function() {
+	const single = panel( { images : [ picture( 'a1', '' ) ] } );
+	fire( withTag( withClass( single.pane, 'gallery-album-actions' )[0], 'BUTTON' )[0], 'click' );
+	return single.asked.length === 1 && single.asked[0] === fill( '/_admin/gallery/confirm/album', 'Haus am See', fill( '/_admin/gallery/label/count-one', 1 ) );
+} )() );
 check( '...then posts the album, and holds the button until it is answered',
 	doomed.requests.length === 1 && doomed.requests[0].endpoint === 'album-delete' && same( doomed.requests[0].payload, { album : 'haus' } )
 	&& remove.disabled === true && withClass( bar, 'nino-admin-status' )[0].textContent === 'Deleting …' );

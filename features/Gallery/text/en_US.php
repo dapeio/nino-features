@@ -23,6 +23,7 @@ return [
 	'[[/_admin/gallery/label/delete]]'	=> 'Delete',
 	'[[/_admin/gallery/label/key]]'			=> 'Key',
 	'[[/_admin/gallery/label/name]]'		=> 'Name',
+	'[[/_admin/gallery/label/count-one]]'	=> '%s image',
 	'[[/_admin/gallery/label/count]]'		=> '%s images',
 	'[[/_admin/gallery/label/upload]]'	=> 'Add images',
 	'[[/_admin/gallery/label/caption]]'	=> 'Caption',
@@ -41,7 +42,7 @@ return [
 	'[[/_admin/gallery/msg/uploading]]'	=> 'Uploading %s …',
 	'[[/_admin/gallery/msg/uploaded]]'	=> '%s added.',
 
-	'[[/_admin/gallery/confirm/album]]'	=> 'Delete the album "%s" and its %d images? The pictures go with it - nothing else points at them.',
+	'[[/_admin/gallery/confirm/album]]'	=> 'Delete the album "%s"? It holds %s. The pictures go with it - nothing else points at them.',
 	'[[/_admin/gallery/confirm/image]]'	=> 'Delete this image? Both sizes of it go from the server.',
 
 	'[[/_admin/error/gallery_key]]'				=> 'An album key is a slug: lower case, starting with a letter.',

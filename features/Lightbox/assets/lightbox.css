@@ -170,11 +170,16 @@
 	opacity: .7;
 }
 
-/*	The spinner while a full-size image is still on its way. It sits behind
-	the picture, so it disappears the moment there is something to see. */
+/*	The spinner while a full-size image is still on its way. It disappears the
+	moment there is something to see. It is there, transparent, whether or not
+	anything is loading, paints above the picture and lies on the exact middle
+	of the stage: a click that lands on it is a click on the stage itself, which
+	the script reads as the backdrop and closes on. A ring that takes no click
+	leaves the click to what is below it. */
 .nino-lightbox-stage::before {
 	content: "";
 	position: absolute;
+	pointer-events: none;
 	top: 50%;
 	left: 50%;
 	width: 2rem;

@@ -167,6 +167,17 @@ check( 'the manual says what a key that no album has does, in both languages: th
 	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'zeichnet das erste Album' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'HTML+-Block' ) === true
 	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'abgeschaltetem Modul' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'Nino 1.' ) === false );
 
+// The manual says what the code does with a count it cannot draw, how a thumbnail is sized and named, and which words the unit brings
+$columnsLine = (array) ( $manifest['manual']['shortcodes']['[gallery album="trip" columns="3"]'] ?? [] );
+$thumbLine = (array) ( $manifest['manual']['markup']['<img width="500" height="500" alt="Trip, picture 3">'] ?? [] );
+$unitLine = (array) ( $manifest['manual']['install']['text/<locale>.php'] ?? [] );
+check( 'the manual says, in both languages, that a column count outside 1 to 8 is the album\'s, how a thumbnail keeps its room and is named, and what the unit brings',
+	str_contains( (string) ( $columnsLine['en_US'] ?? '' ), '1 to 8' ) === true && str_contains( (string) ( $columnsLine['en_US'] ?? '' ), 'album\'s own' ) === true
+	&& str_contains( (string) ( $columnsLine['de_DE'] ?? '' ), '1 bis 8' ) === true && str_contains( (string) ( $columnsLine['de_DE'] ?? '' ), 'des Albums' ) === true
+	&& str_contains( (string) ( $thumbLine['en_US'] ?? '' ), '--nino-gallery-thumb-w' ) === true && str_contains( (string) ( $thumbLine['en_US'] ?? '' ), 'the album\'s name and the picture\'s place' ) === true
+	&& str_contains( (string) ( $thumbLine['de_DE'] ?? '' ), '--nino-gallery-thumb-w' ) === true && str_contains( (string) ( $thumbLine['de_DE'] ?? '' ), 'der Name des Albums und die Stelle des Bildes' ) === true
+	&& str_contains( (string) ( $unitLine['en_US'] ?? '' ), 'Text panel' ) === true && str_contains( (string) ( $unitLine['de_DE'] ?? '' ), 'Panel Texte' ) === true );
+
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
 
@@ -446,6 +457,21 @@ $refuse = static function( string $bytes, int $error = UPLOAD_ERR_OK ) use ( &$a
 $limitText = \Nino\Modules\Gallery::formatBytes( \Nino\Images::limits()['php'] );
 
 check( 'the panel\'s texts are there in both languages, every key of one in the other', array_keys( $panelText ) === array_keys( $german ) );
+
+// How many pictures an album holds is said in two words, the singular and the plural, and the script picks by the number (the JavaScript test
+// holds it to that). The words are the project's to change, so what is held here is their shape: both there in both languages, one place for the
+// number each, two different words in each language, and the question before an album is deleted takes the count as a phrase of its own
+check( 'the count of pictures is two words in each language, the singular and the plural, each with one place for the number - and the question before a delete has one for the name and one for the phrase',
+	( static function() use ( $panelText, $german ): bool {
+		foreach( [ $panelText, $german ] as $words ) {
+			foreach( [ '[[/_admin/gallery/label/count-one]]', '[[/_admin/gallery/label/count]]' ] as $key )
+				if( is_string( $words[$key] ?? null ) === false || substr_count( $words[$key], '%s' ) !== 1 )
+					return false;
+			if( $words['[[/_admin/gallery/label/count-one]]'] === $words['[[/_admin/gallery/label/count]]'] || substr_count( (string) ( $words['[[/_admin/gallery/confirm/album]]'] ?? '' ), '%s' ) !== 2 )
+				return false;
+		}
+		return true;
+	} )() );
 
 // A word the script or the class asks for that a language lacks is a screen with a key on it. Keys put together
 // from a part and a name - the label of an alt text and a caption - end in a slash and are not read here, and
@@ -798,9 +824,18 @@ check( 'every thumbnail is a link to the large view', substr_count( $html, 'clas
 // this is the whole of what the Lightbox feature needs from here
 check( 'each link carries the lightbox group of its own album', substr_count( $html, 'data-lightbox="gallery-trip"' ) === 2 );
 check( 'a caption travels as the caption and - where there is no alt text - as the alt', str_contains( $html, 'data-caption="Above the pass"' ) === true && str_contains( $html, 'alt="Above the pass"' ) === true );
-check( 'an image without one carries no empty caption attribute', substr_count( $html, 'data-caption=' ) === 1 );
+check( 'an image without one says it has no caption: the name it is given below is for whoever cannot see it, and not a caption the Lightbox would show under the picture',
+	substr_count( $html, 'data-caption=' ) === 2 && substr_count( $html, 'data-caption=""' ) === 1 && substr_count( $html, 'data-caption="Above the pass"' ) === 1 );
 check( 'the thumbnails are lazy', substr_count( $html, 'loading="lazy"' ) === 2 );
 check( 'the column count travels as a custom property, so the stylesheet needs no rule per number', str_contains( $html, '--nino-gallery-columns:4' ) === true );
+/*	The room a thumbnail takes before it has loaded: the size the album's thumbnails are cropped to - the album's, 200 x 200 here -
+	on the picture, where the browser makes a ratio of it before a byte has come, and on the list as two properties for the
+	stylesheet, which gives the link the same ratio. Without them a cell is as high as nothing until its picture is there, every
+	lazy picture is in view at once and none of them waits	*/
+check( 'every thumbnail carries the width and the height it is cropped to, so the browser knows its ratio before it has loaded',
+	substr_count( $html, 'width="200" height="200"' ) === 2 && preg_match_all( '/<img [^>]*\bwidth="(\d+)" height="(\d+)"/', $html ) === 2 );
+check( '...and the list carries the same two numbers as properties, for the stylesheet',
+	str_contains( $html, '--nino-gallery-thumb-w:200;--nino-gallery-thumb-h:200' ) === true );
 check( '[gallery columns="2"] overrides it for one gallery', str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="trip" columns="2"]' ), '--nino-gallery-columns:2' ) === true );
 check( 'a bare [gallery] renders the first album', str_contains( \Nino\Html::renderHtml( $appData, '[gallery]' ), 'data-lightbox="gallery-trip"' ) === true );
 check( 'an album key nothing has renders nothing at all', \Nino\Html::renderHtml( $appData, '[gallery album="nowhere"]' ) === '' );
@@ -815,16 +850,26 @@ $picture = $albumsNow[0]['images'][0];
 	[ 'key' => 'nine', 'name' => 'Nine', 'images' => [ $picture ], 'settings' => [ 'columns' => 9 ] ],
 	[ 'key' => 'broken', 'name' => 'Broken', 'images' => [ $picture ], 'settings' => 'wide' ],
 	[ 'key' => 'none', 'name' => 'None', 'images' => [ $picture ] ],
+	[ 'key' => 'wide', 'name' => 'Wide', 'images' => [ $picture ], 'settings' => [ 'thumbWidth' => 120, 'thumbHeight' => 80 ] ],
 ] ) );
 \Nino\Features::saveSettings( $appData, 'gallery', [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 6 ] );
 $columnsOf = static function( string $call ) use ( &$appData ): string {
 	return preg_match( '/--nino-gallery-columns:(\d+)/', \Nino\Html::renderHtml( $appData, $call ), $found ) === 1 ? $found[1] : '';
 };
 check( 'the grid is drawn in the columns of its album: an album with three draws three', $columnsOf( '[gallery album="three"]' ) === '3' );
-check( '...a call that sets a count of its own has the last word, and a count that is none is 4 as it always was - not the album\'s, not the feature\'s',
-	$columnsOf( '[gallery album="three" columns="2"]' ) === '2' && $columnsOf( '[gallery album="three" columns="9"]' ) === '4' );
+check( '...a call that sets a count of its own has the last word', $columnsOf( '[gallery album="three" columns="2"]' ) === '2' && $columnsOf( '[gallery album="three" columns="8"]' ) === '8' && $columnsOf( '[gallery album="three" columns="1"]' ) === '1' );
+check( '...and a count that is none - 9, 0, below nought, a word, nothing at all - is the album\'s: 3, not the 4 the code once made of it',
+	array_unique( array_map( $columnsOf, array_map( static fn( string $count ): string => '[gallery album="three" columns="'. $count. '"]', [ '9', '0', '-2', '100', 'x', '', 'many', '3x', '4.5', '4px', '1e0' ] ) ) ) === [ '3' ] );
+check( '...and the feature\'s where the album has no count of its own either: 6',
+	$columnsOf( '[gallery album="none" columns="9"]' ) === '6' && $columnsOf( '[gallery album="none" columns="x"]' ) === '6' && $columnsOf( '[gallery album="broken" columns="0"]' ) === '6' );
 check( '...an album that holds none, or one that is no count, or none that is a map, draws the feature\'s: six', $columnsOf( '[gallery album="none"]' ) === '6'
 	&& $columnsOf( '[gallery album="nine"]' ) === '6' && $columnsOf( '[gallery album="broken"]' ) === '6' );
+// The size comes from the album, and from the feature where the album holds none: 120 x 80 here, 200 x 200 there
+$wideGrid = \Nino\Html::renderHtml( $appData, '[gallery album="wide"]' );
+check( 'the thumbnail of an album with a size of its own carries that size, on the picture and on the list - and an album with none the feature\'s',
+	str_contains( $wideGrid, 'width="120" height="80"' ) === true && str_contains( $wideGrid, '--nino-gallery-thumb-w:120;--nino-gallery-thumb-h:80' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="none"]' ), 'width="200" height="200"' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="none"]' ), '--nino-gallery-thumb-w:200;--nino-gallery-thumb-h:200' ) === true );
 \Nino\Features::saveSettings( $appData, 'gallery', [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 4 ] );
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $albumsNow );
 
@@ -847,6 +892,18 @@ preg_match_all( '/\.(nino-[a-z0-9-]+)/', $uncommented( dirname( __DIR__ ). '/ass
 $written = array_values( array_unique( array_merge( $written, $found[1] ) ) );
 $styledByKernel = array_values( array_filter( $written, static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1 ) );
 check( 'no class the templates or the stylesheet write is one Nino.css styles - the bundle is shared, and the kernel\'s .nino-gallery is another grid', $written !== [] && $styledByKernel === [] );
+
+// The attribute of a caption is the template's: the class fills in its text, escaped, and none when there is none
+check( 'the caption attribute is written in the template of an item - an empty caption is the empty attribute',
+	str_contains( (string) file_get_contents( dirname( __DIR__ ). '/templates/gallery-item.tpl' ), 'data-caption="[[caption]]"' ) === true );
+
+// The link is the box, its ratio the album's thumbnail size; a thumbnail made before that size was changed keeps its old shape, and fills the
+// box all the same - cut to it - rather than leaving a gap or being clipped by the link
+$galleryCss = $uncommented( dirname( __DIR__ ). '/assets/gallery.css' );
+preg_match( '/\.nino-gallery-thumb\s*\{([^}]*)\}/', $galleryCss, $thumbRule );
+check( 'the thumbnail fills the box of its link, cut to it: width and height 100% and object-fit: cover',
+	preg_match( '/\bwidth:\s*100%\s*;/', $thumbRule[1] ?? '' ) === 1 && preg_match( '/\bheight:\s*100%\s*;/', $thumbRule[1] ?? '' ) === 1 && preg_match( '/\bobject-fit:\s*cover\s*;/', $thumbRule[1] ?? '' ) === 1
+	&& preg_match( '/\.nino-gallery-link\s*\{[^}]*\baspect-ratio:\s*var\(--nino-gallery-thumb-w[^;]*--nino-gallery-thumb-h/', $galleryCss ) === 1 );
 
 // A caption is editor text and may be a textfill, which is how one caption
 // serves every language - and what comes out of the fill engine is escaped
@@ -879,6 +936,98 @@ check( 'the same page in German reads the German alt text and the German caption
 // and has nothing, so the first there is is better than a picture with no words
 ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => '' ], 'gallery/image-save' );
 check( 'a language that has no text falls back to the site\'s own, then to the first there is', str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' ), 'data-caption="Above the pass"' ) === true );
+
+/*	A picture with neither an alt text nor a caption is a link with no name: a screen reader reads out its address.
+	It is named by its album and its place in it - the words are /feature/gallery/image/unnamed, which the unit delivers
+	in both languages and the code renders through the fill engine, with no sentence of its own. The album has four
+	pictures: an alt text, nothing, a caption, nothing - places 2 and 4 are unnamed, so that a number is the place of the
+	picture and not the count of those without a name	*/
+$unitWords = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	$unitWords[$locale] = (array) include dirname( __DIR__ ). '/install/text/'. $locale. '.php';
+$unnamedKey = '[[/feature/gallery/image/unnamed]]';
+// What the words say for an album and a place: the %s filled in the order they stand, the name escaped as an attribute has it
+$unnamedAlt = static fn( string $locale, string $album, int $place ): string => sprintf( $unitWords[$locale][$unnamedKey], htmlspecialchars( $album, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), $place );
+$albumsNow = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
+$picture = $albumsNow[0]['images'][0];
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, array_merge( $albumsNow, [
+	[ 'key' => 'bare', 'name' => 'Lake "House" & <Sauna>', 'images' => [
+		[ 'alt' => 'The jetty', 'caption' => '' ] + $picture,
+		[ 'alt' => '', 'caption' => '' ] + $picture,
+		[ 'alt' => '', 'caption' => 'At dusk' ] + $picture,
+		[ 'alt' => '', 'caption' => '' ] + $picture,
+	] ],
+] ) );
+$altsOf = static function( string $html ): array {
+	preg_match_all( '/<img [^>]*\balt="([^"]*)"/', $html, $found );
+	return $found[1];
+};
+
+\Nino\Locales::useLocale( $appData, 'en_US' );
+check( 'a picture with neither is named by its album and its place in it, in the words of the unit, escaped like anything that reaches an attribute - the others keep what they have',
+	$altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ) ) === [ 'The jetty', $unnamedAlt( 'en_US', 'Lake "House" & <Sauna>', 2 ), 'At dusk', $unnamedAlt( 'en_US', 'Lake "House" & <Sauna>', 4 ) ]
+	&& str_contains( $unnamedAlt( 'en_US', 'Lake "House" & <Sauna>', 2 ), '&quot;House&quot; &amp; &lt;Sauna&gt;' ) === true );
+\Nino\Locales::useLocale( $appData, 'de_DE' );
+check( '...in German in a German page, in the German words', $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ) )[1] === $unnamedAlt( 'de_DE', 'Lake "House" & <Sauna>', 2 )
+	&& $unnamedAlt( 'de_DE', 'x', 2 ) !== $unnamedAlt( 'en_US', 'x', 2 ) );
+\Nino\Locales::useLocale( $appData, 'en_US' );
+check( '...and none of them is without a name any more, the link of the first image of "trip" included',
+	in_array( '', $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ) ), true ) === false
+	&& in_array( '', $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' ) ), true ) === false );
+check( '...and the name is not a caption: a link says it has none, which the Lightbox reads as no caption',
+	substr_count( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ), 'data-caption=""' ) === 3 && substr_count( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ), 'data-caption="At dusk"' ) === 1 );
+
+// The unit: the sentence in both languages with a place for the name and one for the number, a word of the project like its others
+check( 'the unit delivers /feature/gallery/image/unnamed in both languages, with a %s for the album and one for the picture',
+	array_keys( $unitWords['en_US'] ) === [ '[[/feature/gallery/image/unnamed]]' ] && array_keys( $unitWords['de_DE'] ) === array_keys( $unitWords['en_US'] )
+	&& substr_count( $unitWords['en_US']['[[/feature/gallery/image/unnamed]]'], '%s' ) === 2 && substr_count( $unitWords['de_DE']['[[/feature/gallery/image/unnamed]]'], '%s' ) === 2
+	&& $unitWords['en_US']['[[/feature/gallery/image/unnamed]]'] !== $unitWords['de_DE']['[[/feature/gallery/image/unnamed]]'] );
+check( '...and activation puts it into the text files of the project, in each language',
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/gallery/image/unnamed]]'] ?? null ) === $unitWords['en_US']['[[/feature/gallery/image/unnamed]]']
+	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/feature/gallery/image/unnamed]]'] ?? null ) === $unitWords['de_DE']['[[/feature/gallery/image/unnamed]]'] );
+
+// The words are the project's once they are in its text files, and a sentence with too few or too many places never ends the request
+$bareOf = static function( string $words ) use ( &$appData, $altsOf ): string {
+	\Nino\Html::addFills( $appData, [ '[[/feature/gallery/image/unnamed]]' => $words ], '*' );
+	return $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ) )[3];
+};
+ninoWarnings();
+check( 'the words of the project are the ones used: the name where %s stands first and the place where it stands second',
+	$bareOf( 'Foto %s, Nr. %s' ) === 'Foto Lake &quot;House&quot; &amp; &lt;Sauna&gt;, Nr. 4' );
+check( '...and words with one place take the name, with none take neither, with three leave the third empty - and none of it is an error',
+	$bareOf( 'Foto von %s' ) === 'Foto von Lake &quot;House&quot; &amp; &lt;Sauna&gt;' && $bareOf( 'Ein Foto' ) === 'Ein Foto' && $bareOf( '%s/%s/%s' ) === 'Lake &quot;House&quot; &amp; &lt;Sauna&gt;/4/' && ninoWarnings() === [] );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, array_merge( \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ), [ [ 'key' => 'pct', 'name' => 'Sale %s', 'images' => [ [ 'alt' => '', 'caption' => '' ] + $picture ] ] ] ) );
+check( '...and a %s in the name of the album is the name, not another place', $bareOf( '%s, picture %s' ) !== '' && $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="pct"]' ) ) === [ 'Sale %s, picture 1' ] );
+
+// A project that has none of the words - the unit is applied when the feature is activated: the code has no sentence of its own, so the key
+// shows as every key without a word does, in either language. The text files without the key, and as they were again afterwards
+$textFiles = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$textFiles[$locale] = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+	$without = $textFiles[$locale];
+	unset( $without[$unnamedKey] );
+	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $without );
+}
+\Nino\Html::removeFill( $appData, '/feature/gallery/image/unnamed', '*' );
+$withoutWords = $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="pct"]' ) );
+\Nino\Locales::useLocale( $appData, 'de_DE' );
+$withoutWordsGerman = $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="pct"]' ) );
+\Nino\Locales::useLocale( $appData, 'en_US' );
+foreach( $textFiles as $locale => $content )
+	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $content );
+check( '...and a project without the word has the key where the name would be, in either language - no sentence in the code stands in for it',
+	$withoutWords === [ $unnamedKey ] && $withoutWordsGerman === [ $unnamedKey ] );
+// What was there before the words of the project were tried: the fills of each language from its text file, none in the bucket of no language
+$restored = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	\Nino\Locales::useLocale( $appData, $locale );
+	$restored[$locale] = $altsOf( \Nino\Html::renderHtml( $appData, '[gallery album="bare"]' ) )[3];
+}
+\Nino\Locales::useLocale( $appData, 'en_US' );
+check( '...and the words of each language are the ones of its own text file again after the words of a project were tried',
+	$restored === [ 'en_US' => $unnamedAlt( 'en_US', 'Lake "House" & <Sauna>', 4 ), 'de_DE' => $unnamedAlt( 'de_DE', 'Lake "House" & <Sauna>', 4 ) ] );
+
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $albumsNow );
 
 // Not ninoWarnings() === []: the sandbox has no text files, and every fill the
 // panel renders says so. What a map in a text must never do is be cast
@@ -1178,7 +1327,7 @@ echo "Components - [gallery] as the Builder offers it\n";
 	check( 'without a count of columns the setting\'s is taken by an album that holds none of its own, which a default of 4 in the schema would have overridden - and a count of its own still wins',
 		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip"]' ), '--nino-gallery-columns:6' ) === true
 		&& str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="3"]' ), '--nino-gallery-columns:3' ) === true
-		&& str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="9"]' ), '--nino-gallery-columns:4' ) === true );
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="9"]' ), '--nino-gallery-columns:6' ) === true );
 	// The one form the wrapper cannot tell from an omitted attribute
 	check( '...and an explicit columns="" is that omitted attribute, as the wrapper hands it on',
 		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns=""]' ), '--nino-gallery-columns:6' ) === true );
@@ -1190,8 +1339,9 @@ echo "Components - [gallery] as the Builder offers it\n";
 	check( 'an album with a count of columns of its own draws it when the call sets none - through the wrapper and as a plain call - and not the feature\'s 6',
 		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip"]' ), '--nino-gallery-columns:3' ) === true && str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns=""]' ), '--nino-gallery-columns:3' ) === true
 		&& str_contains( \Nino\Html::renderHtml( $plain, '[gallery album="trip"]' ), '--nino-gallery-columns:3' ) === true );
-	check( '...the call\'s own count has the last word, and a count that is none is 4, as it was: not the album\'s and not the feature\'s',
-		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="2"]' ), '--nino-gallery-columns:2' ) === true && str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="9"]' ), '--nino-gallery-columns:4' ) === true );
+	check( '...the call\'s own count has the last word, and a count that is none - 9 here - is the album\'s, through the wrapper and as a plain call: 3, and not the 4 the code once made of it',
+		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="2"]' ), '--nino-gallery-columns:2' ) === true && str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="9"]' ), '--nino-gallery-columns:3' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $plain, '[gallery album="trip" columns="x"]' ), '--nino-gallery-columns:3' ) === true );
 	// The album as it was. The copies of the project's data read a file by its time and its size, and a file
 	// written twice within a second to the same size is the one they hold - so they are told to read it again
 	$stored[0]['settings']['columns'] = 4;
@@ -1201,8 +1351,8 @@ echo "Components - [gallery] as the Builder offers it\n";
 	check( 'every attribute written out at its default is the call without it',
 		\Nino\Html::renderHtml( $probe, '[gallery album="" columns="" class=""]' ) === $before['[gallery]'] );
 	check( 'a class of its own comes after the grid\'s own, no class leaves no space behind',
-		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" class="trip"]' ), '<ul class="nino-gallery-grid trip" style="--nino-gallery-columns:4">' ) === true
-		&& str_contains( $before['[gallery album="trip"]'], '<ul class="nino-gallery-grid" style="--nino-gallery-columns:4">' ) === true );
+		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" class="trip"]' ), '<ul class="nino-gallery-grid trip" style="--nino-gallery-columns:4;--nino-gallery-thumb-w:200;--nino-gallery-thumb-h:200">' ) === true
+		&& str_contains( $before['[gallery album="trip"]'], '<ul class="nino-gallery-grid" style="--nino-gallery-columns:4;--nino-gallery-thumb-w:200;--nino-gallery-thumb-h:200">' ) === true );
 
 } )( $appData );
 

@@ -405,7 +405,7 @@
 			copy.appendChild( Nino.adminUi.el( 'strong', '', album.name ) );
 			copy.appendChild( Nino.adminUi.el( 'small', '', [
 				Nino.adminUi.format( Nino.content.getText('/_admin/gallery/hint/shortcode'), '[gallery album="'+ album.key+ '"]' ),
-				Nino.adminUi.format( Nino.content.getText('/_admin/gallery/label/count'), album.images.length ),
+				Nino.admin.gallery._count( album.images.length ),
 			].join( ' · ' ) ) );
 			row.appendChild( copy );
 
@@ -414,6 +414,20 @@
 			row.appendChild( chevron );
 
 			return row;
+		},
+
+		/**
+		 *	How many pictures, in words: "1 image" for one and "3 images" for
+		 *	any other number, nought included - two words, because a language
+		 *	does not make its plural by adding an s to the one it has. The row of
+		 *	the list and the question before an album is deleted say it the same way
+		 *
+		 *	@param		{number}	count
+		 *
+		 *	@return		{string}
+		 */
+		_count : function( count ) {
+			return Nino.adminUi.format( Nino.content.getText( count === 1 ? '/_admin/gallery/label/count-one' : '/_admin/gallery/label/count' ), count );
 		},
 
 		/**
@@ -566,7 +580,7 @@
 		 */
 		_deleteAlbum : function( album, btn, line ) {
 
-			if( wn.confirm( Nino.adminUi.format( Nino.content.getText('/_admin/gallery/confirm/album'), album.name, album.images.length ) ) === false )
+			if( wn.confirm( Nino.adminUi.format( Nino.content.getText('/_admin/gallery/confirm/album'), album.name, Nino.admin.gallery._count( album.images.length ) ) ) === false )
 				return;
 
 			btn.disabled = true;

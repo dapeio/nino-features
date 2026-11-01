@@ -722,10 +722,14 @@ namespace Nino\Modules {
 			if( $album === null || $album['images'] === [] )
 				return '';
 
-			// The call's own count, else the album's - which is the feature's where the
-			// album holds none (see settingsOf())
-			$columns = (int) ( $args['columns'] ?? self::settingsOf( $appData, $album )['columns'] );
-			$columns = ( $columns >= 1 && $columns <= 8 ) ? $columns : 4;
+			// The call's own count where it is a whole number from 1 to 8, else the album's -
+			// which is the feature's where the album holds none (see settingsOf()). A count
+			// that is none - 9, "x", "4.5", "4px" - is the album's count rather than a number
+			// of the code's own: the call asked for something the grid cannot draw, and the
+			// album already says how many thumbnails a row of it holds
+			$settings	= self::settingsOf( $appData, $album );
+			$columns	= filter_var( $args['columns'] ?? '', FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1, 'max_range' => 8 ] ] );
+			$columns	= is_int( $columns ) === true ? $columns : $settings['columns'];
 
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
@@ -739,7 +743,18 @@ namespace Nino\Modules {
 			$locale = \Nino\Locales::getCurrentLocale( $appData );
 			$native = \Nino\Locales::getNativeLocale( $appData );
 
-			foreach( $album['images'] as $image ) {
+			// The room a thumbnail takes before it has loaded: the size the album's
+			// thumbnails are cropped to, which the browser turns into the ratio of the
+			// box (see gallery.css). Without it the cell is as high as nothing until
+			// the picture arrives - and every lazy picture is in view at once
+			$width	= (string) $settings['thumbWidth'];
+			$height	= (string) $settings['thumbHeight'];
+
+			// The words that name a picture with neither an alt text nor a caption, read once
+			// for the gallery and only when there is such a picture (see _named())
+			$unnamed = null;
+
+			foreach( $album['images'] as $index => $image ) {
 
 				// Rendered, then escaped: an alt text and a caption are editor
 				// text that may be a textfill, and what comes out of the fill
@@ -752,15 +767,27 @@ namespace Nino\Modules {
 				// other way round there is no fallback: a picture given an alt
 				// text and no caption says so with an empty data-caption, which
 				// the Lightbox reads as 'no caption' rather than showing the alt
-				// text under the picture a second time
+				// text under the picture a second time. A picture with neither
+				// is named by its album and its place in it (see _named()),
+				// and says it has no caption in the same way - the name is for
+				// whoever cannot see the picture, and not a caption under it
+				$name = $alt !== '' ? $alt : $caption;
+
+				if( $name === '' ) {
+					$unnamed ??= \Nino\Html::renderHtml( $appData, '[[/feature/gallery/image/unnamed]]' );
+					$name = $safe( self::_named( $unnamed, $album['name'], $index + 1 ) );
+				}
+
 				$items .= str_replace(
-					[ '[[large]]', '[[group]]', '[[caption]]', '[[thumb]]', '[[alt]]' ],
+					[ '[[large]]', '[[group]]', '[[caption]]', '[[thumb]]', '[[width]]', '[[height]]', '[[alt]]' ],
 					[
 						$safe( \Nino\Images::getUrl( $appData, $image['large'] ) ),
 						$safe( 'gallery-'. $album['key'] ),
-						( $caption !== '' ? ' data-caption="'. $caption. '"' : ( $alt !== '' ? ' data-caption=""' : '' ) ),
+						$caption,
 						$safe( \Nino\Images::getUrl( $appData, $image['thumb'] ) ),
-						$alt !== '' ? $alt : $caption,
+						$width,
+						$height,
+						$name,
 					],
 					\Nino\Feature::template( $appData, self::TEMPLATES, 'gallery-item' )
 				);
@@ -768,7 +795,39 @@ namespace Nino\Modules {
 
 			// The items last: str_replace() works through its arrays in order, so a
 			// token after them would be looked for in the markup they put in as well
-			return str_replace( [ '[[classes]]', '[[columns]]', '[[items]]' ], [ \Nino\Feature::classes( $args ), (string) $columns, $items ], \Nino\Feature::template( $appData, self::TEMPLATES, 'gallery' ) );
+			return str_replace(
+				[ '[[classes]]', '[[columns]]', '[[thumbWidth]]', '[[thumbHeight]]', '[[items]]' ],
+				[ \Nino\Feature::classes( $args ), (string) $columns, $width, $height, $items ],
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'gallery' )
+			);
+		}
+
+		/**
+		 *	The name of a picture that has neither an alt text nor a caption: the
+		 *	name of its album and its place in it, 'Trip, picture 3', made of the
+		 *	words /feature/gallery/image/unnamed - which the feature's unit
+		 *	delivers in both languages with a %s each for the name and the number,
+		 *	and which doShortcode() renders once through the fill engine. Where a
+		 *	project has no word for the key the key shows as every key without a
+		 *	word does. The words are the project's to change in the Text panel and
+		 *	so may carry too few or too many %s: each is filled once, in order, and
+		 *	one that is left over is nothing, where sprintf() would end the request
+		 *	on a missing one
+		 *
+		 *	@param		string		$words				The rendered words
+		 *	@param		string		$album				The name of the album
+		 *	@param		int				$number				Its place in the album, counted from 1
+		 *
+		 *	@return 	string											Not yet escaped
+		 */
+		private static function _named( string $words, string $album, int $number ): string {
+
+			$values = [ $album, (string) $number ];
+
+			// By reference: an arrow function would take the list by value and hand every %s the first
+			return (string) preg_replace_callback( '/%s/', static function() use ( &$values ): string {
+				return (string) array_shift( $values );
+			}, $words );
 		}
 	}
 

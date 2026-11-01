@@ -13,9 +13,12 @@
  *
  *						The column count comes in as --nino-gallery-columns, written
  *						onto the list by the shortcode - the setting, or what
- *						[gallery columns="3"] said. Everything else is a custom
- *						property with a default, so a project restyles a gallery
- *						without overriding a single rule.
+ *						[gallery columns="3"] said. The size the album's thumbnails
+ *						are cropped to comes in as --nino-gallery-thumb-w and
+ *						--nino-gallery-thumb-h, two plain numbers, and the shape of
+ *						a cell before its picture has loaded is theirs. Everything
+ *						else is a custom property with a default, so a project
+ *						restyles a gallery without overriding a single rule.
  *
  *						The class names are this feature's own. Nino.css, which sits
  *						in the same bundle, has a public .nino-gallery mosaic with
@@ -48,21 +51,31 @@
 	padding: 0;
 }
 
-/*	The link is what holds the shape: the thumbnail is already cropped to the
-	configured size, so the ratio here only matters while it loads. */
+/*	The link is what holds the shape: the album's thumbnail size as a ratio. A
+	thumbnail is cropped to that size, so the ratio is the picture's own - and
+	before the picture has loaded it is all there is, which matters a great deal,
+	because a cell with no height until its picture has arrived is a cell that is
+	in view at once, and a lazy picture never waits. The picture says the same
+	through its width and height attributes. */
 .nino-gallery-link {
 	position: relative;
 	display: block;
+	aspect-ratio: var(--nino-gallery-thumb-w, 1) / var(--nino-gallery-thumb-h, 1);
 	overflow: hidden;
 	border-radius: var(--nino-gallery-radius);
 	background: rgba(0, 0, 0, .04);
 	line-height: 0;
 }
 
+/*	The link is the box and the picture fills it: a thumbnail made before the
+	album's size was changed keeps the shape it was made in, and cover cuts it to
+	the shape of the box the way the crop of an upload did, rather than leaving a
+	gap below it or being clipped by the link */
 .nino-gallery-thumb {
 	display: block;
 	width: 100%;
-	height: auto;
+	height: 100%;
+	object-fit: cover;
 	transition: transform .3s ease, opacity .2s ease;
 }
 

@@ -1,1 +1,1 @@
-<li class="nino-gallery-cell"><a class="nino-gallery-link" href="[[large]]" data-lightbox="[[group]]"[[caption]]><img class="nino-gallery-thumb" src="[[thumb]]" alt="[[alt]]" loading="lazy" decoding="async"></a></li>
+<li class="nino-gallery-cell"><a class="nino-gallery-link" href="[[large]]" data-lightbox="[[group]]" data-caption="[[caption]]"><img class="nino-gallery-thumb" src="[[thumb]]" width="[[width]]" height="[[height]]" alt="[[alt]]" loading="lazy" decoding="async"></a></li>

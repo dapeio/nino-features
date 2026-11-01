@@ -16,8 +16,8 @@ return [
 				'de_DE' => 'Das Raster der Vorschaubilder dieses Albums, in den Spalten, die für das Album eingestellt sind. Der Builder bietet die vorhandenen Alben als Liste zur Auswahl an.',
 			],
 			'[gallery album="trip" columns="3"]' => [
-				'en_US' => 'The same, with the column count for this one place.',
-				'de_DE' => 'Dasselbe, mit der Spaltenzahl für diese eine Stelle.',
+				'en_US' => 'The same, with the column count for this one place: a number from 1 to 8. Anything else - 9, 0, a word - is no count, and the grid takes the album\'s own.',
+				'de_DE' => 'Dasselbe, mit der Spaltenzahl für diese eine Stelle: eine Zahl von 1 bis 8. Alles andere – 9, 0, ein Wort – ist keine Spaltenzahl, und das Raster nimmt die des Albums.',
 			],
 			'[gallery]' => [
 				'en_US' => 'The first album there is.',
@@ -37,6 +37,10 @@ return [
 				'en_US' => 'What each thumbnail\'s link carries, so the Lightbox feature opens it and two galleries on one page stay two sets. The caption is data-caption, the alt text the thumbnail\'s alt.',
 				'de_DE' => 'Was der Link jeder Vorschau trägt, damit das Feature Lightbox ihn öffnet und zwei Galerien auf einer Seite zwei Sätze bleiben. Die Bildunterschrift steht in data-caption, der Alternativtext im alt der Vorschau.',
 			],
+			'<img width="500" height="500" alt="Trip, picture 3">' => [
+				'en_US' => 'The thumbnail carries the size its album crops its thumbnails to, so the browser knows the room of a cell before the picture has loaded, and the list carries it as --nino-gallery-thumb-w and --nino-gallery-thumb-h for the stylesheet. The alt text is the one written for the picture, else its caption, else - for a picture with neither - the album\'s name and the picture\'s place in it, so that no link is left without a name; that picture says it has no caption, so the Lightbox does not show the name under it.',
+				'de_DE' => 'Die Vorschau trägt das Maß, auf das ihr Album die Vorschaubilder zuschneidet, damit der Browser den Platz einer Zelle kennt, bevor das Bild geladen ist; die Liste trägt es als --nino-gallery-thumb-w und --nino-gallery-thumb-h für das Stylesheet. Der Alternativtext ist der für das Bild geschriebene, sonst seine Bildunterschrift, sonst – bei einem Bild mit keinem von beiden – der Name des Albums und die Stelle des Bildes darin, damit kein Link ohne Namen bleibt; dieses Bild sagt, dass es keine Bildunterschrift hat; die Lightbox zeigt den Namen deshalb nicht darunter.',
+			],
 		],
 		'routes' => [],
 		'panel' => [
@@ -54,7 +58,12 @@ return [
 			],
 		],
 		'callbacks' => [],
-		'install' => [],
+		'install' => [
+			'text/<locale>.php' => [
+				'en_US' => 'The sentence that names a picture with neither an alt text nor a caption - "%s, picture %s", the album and the place - into the Text panel. It is a word of the project like its others, changed there; where a project has no word for it, the alt text shows the key.',
+				'de_DE' => 'Der Satz, der ein Bild ohne Alternativtext und ohne Bildunterschrift benennt – „%s, Bild %s“, das Album und die Stelle –, ins Panel Texte. Er ist ein Wort des Projekts wie seine anderen, dort änderst Du ihn; hat ein Projekt kein Wort dafür, zeigt der Alternativtext den Schlüssel.',
+			],
+		],
 	],
 	// It brings content an editor maintains, which is what puts it here
 	// rather than with the effects that only change how a page behaves
@@ -133,10 +142,10 @@ return [
 		its key. album is a string here because a manifest is read without the data of a
 		project and cannot name its albums: Gallery::init() registers the component again,
 		this schema with the album as a select of the keys there are. columns is a string, not
-		a select of the numbers: the wrapper would turn what is not one of them into the
-		album's count, and doShortcode() has always read an (int) of it with 4 where that is
-		none. An explicit columns="" is the one form the wrapper cannot tell from an omitted
-		attribute, and it takes the album's count	*/
+		a select of the numbers: doShortcode() reads the call's count from 1 to 8 and takes
+		the album's otherwise, so a count outside the range is the album's whatever the
+		wrapper made of it. An explicit columns="" is the one form the wrapper cannot tell
+		from an omitted attribute, and it takes the album's count	*/
 	'components'	=> [
 		'gallery' => [
 			'label'			=> [ 'en_US' => 'Gallery', 'de_DE' => 'Galerie' ],

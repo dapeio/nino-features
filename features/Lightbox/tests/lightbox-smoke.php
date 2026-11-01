@@ -112,6 +112,13 @@ check( 'the page behind it is locked through the root element, not the body', st
 check( 'a reduced-motion preference stops the animation without stopping the lightbox', str_contains( $css, 'prefers-reduced-motion: reduce' ) === true
 	&& str_contains( $css, '.nino-lightbox.is-swapping .nino-lightbox-image {' ) === true );
 
+// The spinner is a pseudo-element on the middle of the stage, drawn whether or not
+// anything is loading. Without pointer-events: none a click on the exact middle of
+// the opened lightbox lands on it - on the stage itself, which the script takes for
+// the backdrop - and closes the lightbox over a click on the picture
+check( 'the spinner takes no click: a click on the middle of an opened lightbox is the picture\'s, not the backdrop\'s',
+	preg_match( '/\.nino-lightbox-stage::before\s*\{[^}]*\bpointer-events:\s*none\s*;/', $css ) === 1 );
+
 // A caption and an alt are editor text. Written with textContent, never as
 // markup - the same rule every panel of the workbench follows
 check( 'the script writes every word as text, never as markup', str_contains( $js, 'innerHTML' ) === false );

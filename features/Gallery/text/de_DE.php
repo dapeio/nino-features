@@ -24,6 +24,7 @@ return [
 	'[[/_admin/gallery/label/delete]]'	=> 'Löschen',
 	'[[/_admin/gallery/label/key]]'			=> 'Schlüssel',
 	'[[/_admin/gallery/label/name]]'		=> 'Name',
+	'[[/_admin/gallery/label/count-one]]'	=> '%s Bild',
 	'[[/_admin/gallery/label/count]]'		=> '%s Bilder',
 	'[[/_admin/gallery/label/upload]]'	=> 'Bilder hinzufügen',
 	'[[/_admin/gallery/label/caption]]'	=> 'Bildunterschrift',
@@ -42,7 +43,7 @@ return [
 	'[[/_admin/gallery/msg/uploading]]'	=> '%s wird hochgeladen …',
 	'[[/_admin/gallery/msg/uploaded]]'	=> '%s hinzugefügt.',
 
-	'[[/_admin/gallery/confirm/album]]'	=> 'Das Album „%s“ mit seinen %d Bildern löschen? Die Bilder gehen mit – nichts anderes zeigt auf sie.',
+	'[[/_admin/gallery/confirm/album]]'	=> 'Das Album „%s“ löschen? Es enthält %s. Die Bilder gehen mit – nichts anderes zeigt auf sie.',
 	'[[/_admin/gallery/confirm/image]]'	=> 'Dieses Bild löschen? Beide Größen verschwinden vom Server.',
 
 	'[[/_admin/error/gallery_key]]'				=> 'Ein Albumschlüssel ist ein Slug: klein geschrieben, beginnend mit einem Buchstaben.',
