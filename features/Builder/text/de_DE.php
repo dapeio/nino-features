@@ -270,6 +270,9 @@ return [
 	'[[/_admin/builder/source/key]]'						=> 'Textschlüssel',
 	'[[/_admin/builder/source/field]]'						=> 'Feld des Elements',
 	'[[/_admin/builder/source/page]]'						=> 'Seite',
+	'[[/_admin/builder/source/postfix]]'					=> 'Unterpfad',
+	'[[/_admin/builder/source/postfix-fields]]'			=> 'Felder des Elements:',
+	'[[/_admin/builder/source/postfix-invalid]]'			=> 'Ein Unterpfad enthält kein Leerzeichen, kein Anführungszeichen und keinen Backslash und keine Klammer außer den Feldern des Elements unter dem Eingabefeld - und keine, wo der Link nicht in einem Loop steht.',
 	'[[/_admin/builder/source/address]]'					=> 'Adresse',
 	'[[/_admin/builder/source/search]]'						=> 'Schlüssel nach Name oder Text suchen',
 	'[[/_admin/builder/source/search-slot]]'				=> 'Bildplatz suchen',
@@ -353,6 +356,7 @@ return [
 	'[[/_admin/builder/hint/fixed]]'						=> 'Der Wert wird in das Template selbst geschrieben statt in einen Textschlüssel: Er ist in jeder Sprache derselbe, und die Redaktion der Texte kann ihn nicht ändern. Nimm ihn für etwas, das sich nie ändert.',
 	'[[/_admin/builder/hint/typed]]'						=> 'Du darfst die Schlüssel des Projekts nicht lesen, darum tippst Du den Schlüssel ein. Ein Schlüssel dieses Templates sieht so aus: /template/<file>/<section>/<name>. Sobald er so geschrieben ist, wird er übernommen.',
 	'[[/_admin/builder/hint/page]]'						=> 'Wähle eine der Seiten der Website; die Liste zeigt ihre Adresse und das Template, das sie verwendet. Der Link ist keine feste Adresse: Er folgt der Seite in die Sprache des Besuchers und führt zu der Adresse, die die Seite dort hat.',
+	'[[/_admin/builder/hint/postfix]]'						=> 'Wird an die Adresse der Seite gehängt - zum Beispiel /2024 hinter /artikel; fehlt der Schrägstrich, setzt der Builder ihn davor. In einem Loop dürfen Felder des Elements darin stehen, sodass jede Zelle zu einer eigenen Seite führt: Ein Klick auf ein Feld unter dem Eingabefeld fügt es ein. Bleibt das Feld leer, wird nichts angehängt.',
 	'[[/_admin/builder/hint/focus]]'						=> 'Der Fokus bestimmt, welcher Teil des Bildes im Blick bleibt, wenn es auf seinen Rahmen zugeschnitten wird. Ist „Automatischer Fokus“ an, bleibt die Mitte erhalten; schalte ihn aus, um stattdessen einen der neun Orte zu wählen.',
 
 	// What the editor asks and says

@@ -164,6 +164,8 @@ check( '...asks for its own permission, names no group in its nav() - three entr
 	&& count( \Nino\Modules\Builder\Admin::nav() ) === 3 && \Nino\Modules\Builder\Admin::layout() === 'workspace' );
 check( '...and brings the HTML editor of the workbench, its own script and its stylesheet, which are there', count( \Nino\Modules\Builder\Admin::assets() ) === 3 && in_array( '/_admin/assets/html-editor.js', \Nino\Modules\Builder\Admin::assets(), true ) === true
 	&& array_filter( [ 'assets/admin.js', 'assets/admin.css', 'templates/panel.tpl', 'text/en_US.php', 'text/de_DE.php' ], static fn( string $file ): bool => is_file( dirname( __DIR__ ). '/'. $file ) === false ) === [] );
+check( 'the script writes no fill of the kernel out: the kernel puts the fills into a script it serves, so that the one a script holds in a string - the directory in front of the address of a link - would be gone from it, and the script puts it together',
+	array_filter( explode( "\n", (string) file_get_contents( $dir. '/assets/admin.js' ) ), static fn( string $line ): bool => preg_match( '~^\s*(?://|\*|/\*)~', $line ) !== 1 && str_contains( $line, '[[/' ) === true ) === [] );
 check( '...whose words are the same keys in both languages', array_keys( (array) include $dir. '/text/en_US.php' ) === array_keys( (array) include $dir. '/text/de_DE.php' ) );
 check( '...and the switch of a picture has its label and its hint in both of them, the words of the two languages differing', array_filter( [ '[[/_admin/builder/common/hover]]', '[[/_admin/builder/hint/hover]]' ], static function( string $key ) use ( $dir ): bool {
 	$english = (array) include $dir. '/text/en_US.php';
@@ -1590,6 +1592,78 @@ $looped['cols'][0]['components'] = [ [ 'name' => 'card', 'source' => '', 'text' 
 check( '...in the content of a loop the call of the card stands one tab deeper, its children one more and its closing tag with its call - and it reads back as the loop and the card it was', str_contains( $write( [ 'blocks' => [ $looped ] ] ),
 	"\t\t\t[stack /services]\n\t\t\t\t[card ". $cardFirst. "=\"". $cardAway[$cardFirst]. "\"]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/stack]\n" ) === true && $read( $write( [ 'blocks' => [ $looped ] ] ) )['blocks'][0] === $looped );
 
+// The address of a link may lead to a page of the site and go on from it: the fill that holds the address of the page and a sub-path, whose fills are the loop's
+$pageKey = '/_nino/webpage/artikel/uri';
+// The address a link to a page with a sub-path is written with: the directory the site is served from, then the fill of the key that holds the address of the page - which is
+// written without it - and the sub-path
+$front = '[[/nino/dir]]';
+$aimed = $front. '[['. $pageKey. ']]/[[.uri]]';
+// What a call that is refused comes to: its message, so that a pin that fails says so and the suite goes on
+$tried = static function( callable $do ): mixed {
+	try {
+		return $do();
+	}
+	catch( \Throwable $e ) {
+		return $e->getMessage();
+	}
+};
+check( 'the address of a link to a page with a sub-path is read as two things - the key that holds the address of the page and the sub-path, the fills of the element of a loop in it as they stand - and the page alone has a sub-path of nothing',
+	$reader::address( $aimed ) === [ 'key' => $pageKey, 'postfix' => '/[[.uri]]' ] && $reader::address( $front. '[['. $pageKey. ']]/a/[[title]]?b=1#c' ) === [ 'key' => $pageKey, 'postfix' => '/a/[[title]]?b=1#c' ]
+	&& $reader::address( $front. '[[/_nino/webpage/legal/imprint/uri]]' ) === [ 'key' => '/_nino/webpage/legal/imprint/uri', 'postfix' => '' ] );
+check( '...and what is not such an address is none: a sub-path with a quote, a space, a backslash or a bracket that is no fill, a key that is no page, a fill that is left open, the key without its brackets, an address typed in, the directory not in front of the key, twice or after it',
+	array_filter( [ $front. '[['. $pageKey. ']]/a"b', $front. '[['. $pageKey. ']]/a b', $front. '[['. $pageKey. ']]/a\\b', $front. '[['. $pageKey. ']]/a[b', $front. '[['. $pageKey. ']]/[[.uri]', $front. '[['. $pageKey. ']]/[[a b]]', $front. '[[/template/page-x/a/title]]/x', $front. '[[/_nino/webpage/artikel]]/x', '[['. $pageKey. ']]/x', $front. $front. '[['. $pageKey. ']]/x', '[['. $pageKey. ']]'. $front. '/x', $pageKey. '/x', $pageKey, '/artikel/[['. $pageKey. ']]', '/contact', '' ],
+		static fn( string $value ): bool => $reader::address( $value ) !== null ) === [] );
+
+$linked = $blank;
+$linked['cols'][0]['stack'] = [ 'name' => 'stack', 'source' => '/services', 'attributes' => $registry['stacks']['stack']['defaults'] ];
+$linked['cols'][0]['components'] = [
+	[ 'name' => 'button', 'source' => '', 'text' => 'More', 'attributes' => array_replace( $registry['components']['button']['defaults'], [ 'href' => $aimed ] ) ] + array_fill_keys( $reader::SPACING, '' ),
+	[ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => array_replace( $registry['components']['title']['defaults'], [ 'href' => $front. '[['. $pageKey. ']]/[[.id]]' ] ) ] + array_fill_keys( $reader::SPACING, '' ),
+];
+$linkedText = (string) $tried( static fn(): string => $write( [ 'blocks' => [ $linked ] ] ) );
+check( 'a link to a page with a sub-path is written as the call has it: the fill of the key that holds the address of the page and the sub-path after it, in the attribute of a button and in the implicit href of a component that is a link - and nothing of the brackets is escaped or dropped',
+	str_contains( $linkedText, "\t\t\t[button text=\"More\" href=\"[[/nino/dir]][[/_nino/webpage/artikel/uri]]/[[.uri]]\"]\n" ) === true && str_contains( $linkedText, "\t\t\t[title title href=\"[[/nino/dir]][[/_nino/webpage/artikel/uri]]/[[.id]]\"]\n" ) === true );
+check( '...and it reads back as what was meant, node for node, and is written again byte for byte - the loop around the two calls is the loop it was', $read( $linkedText )['blocks'][0] === $linked && $tried( static fn(): string => $write( $read( $linkedText ) ) ) === $linkedText );
+
+$plainAddress = $linked;
+$plainAddress['cols'][0]['components'][0]['attributes']['href'] = $pageKey;
+$plainText = (string) $tried( static fn(): string => $write( [ 'blocks' => [ $plainAddress ] ] ) );
+check( '...the page alone is the key as it was: the call holds no brackets, and the key reads back as the address of the page', str_contains( $plainText, "[button text=\"More\" href=\"/_nino/webpage/artikel/uri\"]\n" ) === true
+	&& $read( $plainText )['blocks'][0] === $plainAddress );
+
+$refusedAddress = static function( string $href ) use ( $linked, $write ): bool {
+	$model = $linked;
+	$model['cols'][0]['components'][0]['attributes']['href'] = $href;
+	try {
+		$write( [ 'blocks' => [ $model ] ] );
+	}
+	catch( \UnexpectedValueException ) {
+		return true;
+	}
+	return false;
+};
+check( 'a sub-path with a quote or a space, a fill that is left open and the brackets in any other attribute are refused as a value no call can carry: the Writer throws, and nothing of it reaches a file',
+	$refusedAddress( $front. '[['. $pageKey. ']]/a"b' ) === true && $refusedAddress( $front. '[['. $pageKey. ']]/a b' ) === true && $refusedAddress( $front. '[['. $pageKey. ']]/[[.uri]' ) === true && $refusedAddress( $front. '[[/template/page-x/a/title]]/x' ) === true
+	&& ( static function() use ( $linked, $write, $aimed ): bool {
+		$model = $linked;
+		$model['cols'][0]['components'][0]['attributes']['class'] = $aimed;
+		try {
+			$write( [ 'blocks' => [ $model ] ] );
+		}
+		catch( \UnexpectedValueException ) {
+			return true;
+		}
+		return false;
+	} )() === true );
+
+$readAddress = static fn( string $call ): array => $read( $page( $section( $call ) ) )['blocks'][0];
+check( 'the fill of a link in a value that is none of an address is no part of a call: the section is a block of html, as it was, with the reason of an argument the kernel would not read as it stands - in a fixed text, in the class, in a sub-path with a space',
+	array_filter( [ '[button text="[[/nino/dir]][[/_nino/webpage/artikel/uri]]/x"]', '[button text="Go" class="[[/nino/dir]][[/_nino/webpage/artikel/uri]]"]', '[button text="Go" href="[[/nino/dir]][[/_nino/webpage/artikel/uri]]/a b"]', '[button text="Go" href="[[/nino/dir]][[/template/page-x/a/b]]/x"]' ],
+		static fn( string $call ): bool => $readAddress( $call )['kind'] !== 'html' || ( $readAddress( $call )['reason']['code'] ?? '' ) !== 'call-arguments' ) === [] );
+$twoCalls = $readAddress( "[button text=\"Go\" href=\"". $front. "[[". $pageKey. "]]/x\"]\n\t\t\t[spacer]" );
+check( '...a link with such an address is one call, whose brackets are not its end: the call beside it is the next call, and the address is the attribute as it was written',
+	$twoCalls['kind'] === 'section' && count( $twoCalls['cols'][0]['components'] ) === 2 && $twoCalls['cols'][0]['components'][0]['attributes']['href'] === $front. '[['. $pageKey. ']]/x' && $twoCalls['cols'][0]['components'][1]['name'] === 'spacer' );
+
 // A card that holds nothing, one the model gives no list of children, and a content that a card has none of
 $bare = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'alt' ] ];
 $strayed = $bare;
@@ -2454,6 +2528,36 @@ check( '...the problem names the block, the component and the attribute, and pro
 	\Nino\Modules\Builder\Document::save( $appData, 'page-home', $named, $loaded['hash'] )['problems'] === \Nino\Modules\Builder\Document::problems( $appData, $named, $registry )
 	&& str_contains( \Nino\Modules\Builder\Document::problems( $appData, $named, $registry )[0], 'the section "contact" (block 4)' ) === true
 	&& str_contains( \Nino\Modules\Builder\Document::problems( $appData, $named, $registry )[0], 'the attribute "class" of the component "title"' ) === true );
+
+// The address of a link may hold the fill of a page of the site and a sub-path, and nothing else may hold a bracket
+$aimedModel = static function( string $href ) use ( $loaded ): array {
+	$model = $loaded['model'];
+	$model['blocks'][1]['cols'][1]['components'][3]['attributes']['href'] = $href;
+	return $model;
+};
+check( 'a link to a page of the site with a sub-path - the fill of the loop\'s element in it - is no problem in the button of a loop, and the page alone is none: problems() has nothing to say of either',
+	\Nino\Modules\Builder\Document::problems( $appData, $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.uri]]' ), $registry ) === [] && \Nino\Modules\Builder\Document::problems( $appData, $aimedModel( '/_nino/webpage/contact/uri' ), $registry ) === [] );
+$quoted = (array) $tried( static fn(): array => \Nino\Modules\Builder\Document::save( $appData, 'page-home', $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/a"b' ), $loaded['hash'] ) );
+$bracketed = (array) $tried( static fn(): array => \Nino\Modules\Builder\Document::save( $appData, 'page-home', $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.uri]' ), $loaded['hash'] ) );
+check( '...a sub-path with a quote, or a fill that is left open, is refused with 400 (code value) as any value a call cannot carry is - the attribute named - and the file is as it was',
+	( $quoted['status'] ?? 0 ) === 400 && ( $quoted['code'] ?? '' ) === 'value' && str_contains( implode( ' ', (array) ( $quoted['problems'] ?? [] ) ), 'the attribute "href" of the component "button"' ) === true && ( $bracketed['status'] ?? 0 ) === 400 && ( $bracketed['code'] ?? '' ) === 'value'
+	&& file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $before );
+
+// The fills of the element in the sub-path are the loop's: where there is none, or the type has no such field, they mean nothing
+$outside = static function( string $href ) use ( $loaded ): array {
+	$model = $loaded['model'];
+	$model['blocks'][3]['cols'][0]['components'][1]['attributes']['href'] = $href;
+	return $model;
+};
+$fillProblems = static fn( array $model ): string => implode( ' | ', array_filter( \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ), static fn( string $problem ): bool => str_contains( $problem, 'sub-path' ) ) );
+check( 'a fill of the element in the sub-path of a link is a problem where there is no loop - the section, the attribute and the fill named, as for a source that means nothing there - and the page alone, or a sub-path with none, is none',
+	str_contains( $fillProblems( $outside( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.uri]]' ) ), 'the sub-path of the attribute "href" of button holds the fill [[.uri]], which means nothing in a column without a loop' ) === true
+	&& $fillProblems( $outside( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/more?x=1' ) ) === '' && $fillProblems( $outside( '/_nino/webpage/contact/uri' ) ) === '' );
+check( '...in a loop it is .uri, .id or a field of the type - and a field the type has not is a problem, as a source that is no field is, whatever else the sub-path holds',
+	$fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.uri]]/[[.id]]/[[title]]' ) ) === '' && str_contains( $fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[title]]/[[nope]]' ) ), 'holds the fill [[nope]], which is no field of the loop\'s type' ) === true
+	&& str_contains( $fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.lang]]' ) ), '[[.lang]]' ) === true );
+check( '...and the Reader reads such a link all the same: the problem is the Document\'s, the page is a page', $reader::address( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[nope]]' ) !== null
+	&& $read( $page( $section( '[button text="Go" href="[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[nope]]"]' ) ) )['blocks'][0]['kind'] === 'section' );
 
 $thrown = 0;
 
@@ -4135,6 +4239,23 @@ check( '...the tag the builder writes is the tag the kernel draws: a title is an
 	&& str_contains( $tagged, "[subtitle /template/page-home/contact/title]\n" ) === true && str_contains( $tagged, '[subtitle /template/page-home/contact/title tag="h5"]' ) === true && str_contains( $tagged, "[card-title /template/page-home/contact/title]\n" ) === true
 	&& str_contains( $drawn, '<h4 class="nino-section-title nino-section-title--loud">Contact</h4>' ) === true && str_contains( $drawn, '<div class="nino-section-subtitle">Contact</div>' ) === true
 	&& str_contains( $drawn, '<h5 class="nino-section-subtitle">Contact</h5>' ) === true && str_contains( $drawn, '<h4 class="nino-card-title">Contact</h4>' ) === true );
+
+// A link to a page with a sub-path leads to the page where the site is served from: the directory is in front of it, as the kernel puts it in front of the key of a page alone
+$subLink = $write( $read( $section( '[button text="Go" href="[[/nino/dir]][[/_nino/webpage/contact/uri]]/sub?q=1"]' ) ) );
+$dirWas = $appData['/nino/dir'];
+$rendered = [];
+
+foreach( [ '', '/shop' ] as $served ) {
+	$appData['/nino/dir'] = $served;
+	\Nino\Html::addFills( $appData, \Nino\Html::bootFills( $appData ), '*' );
+	$rendered[$served] = [ \Nino\Html::renderHtml( $appData, $subLink ), \Nino\Html::renderHtml( $appData, '[button text="Go" href="/_nino/webpage/contact/uri"]' ) ];
+}
+
+$appData['/nino/dir'] = $dirWas;
+\Nino\Html::addFills( $appData, \Nino\Html::bootFills( $appData ), '*' );
+check( 'a link to a page with a sub-path is written as the call has it and renders as the address of the page with the sub-path behind it - /contact/sub?q=1 at the root of a host, /shop/contact/sub?q=1 where the site is served from /shop, the directory the page alone has in front of it as well',
+	str_contains( $subLink, 'href="[[/nino/dir]][[/_nino/webpage/contact/uri]]/sub?q=1"' ) === true && str_contains( $rendered[''][0], 'href="/contact/sub?q=1"' ) === true && str_contains( $rendered['/shop'][0], 'href="/shop/contact/sub?q=1"' ) === true
+	&& str_contains( $rendered['/shop'][1], 'href="/shop/contact"' ) === true );
 $appData['/nino/html/images']['/template/page-x/a/hover'] = [ 'label' => 'Hover', 'width' => 1600, 'height' => 900, 'filename' => 'hover.1600x900.jpg' ];
 \Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
 $hoverMade = $read( $section( "[image /template/page-x/a/hover]\n\t\t\t[card]\n\t\t\t\t[card-image /template/page-x/a/hover]\n\t\t\t[/card]" ). "\n" );

@@ -1340,6 +1340,33 @@ button.builder-status-item:hover {
 .builder-new-message:empty {
 	display: none;
 }
+/* The sub-path of a link to a page: the fields of the element of a loop, small, under the box - each a button that puts its fill in */
+.builder-postfix-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .25rem .4rem;
+	margin: 0;
+	font-size: .74rem;
+}
+.builder-postfix-token {
+	min-height: 0;
+	padding: .05rem .4rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: transparent;
+	box-shadow: none;
+	color: var(--editor-text);
+	font-family: var(--nino-admin-mono);
+	font-size: inherit;
+	cursor: pointer;
+}
+.builder-postfix-token:hover {
+	background: var(--editor-blue-soft);
+}
+.builder-postfix-message:empty {
+	display: none;
+}
 /* What is under the source of a component: the text of its key, or the picture of its slot with its alt text */
 .builder-content-extra,
 .builder-value,

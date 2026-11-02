@@ -196,6 +196,13 @@
 		// a key to, which the server decides again
 		SEGMENT		: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 		KEY				: /^\/(?:template|project|feature|module)(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){3}$/,
+
+		// An address that leads to a page of the site and goes on from it: the directory the site is served from, [[/nino/dir]], the fill of the key that holds the address of the
+		// page - which has no directory, the kernel puts it in front of a bare key - and the sub-path after it: characters that are none of a space, a quote, a backslash or a
+		// bracket, and the fills of the element of a loop - the one form \Nino\Modules\Builder\Reader::address() holds a value to
+		// Built from a string: the guard of keys-smoke against the old key family of a page takes the escaped slash of a literal for one of its forms
+		ADDRESS		: new RegExp( '^\\[\\[/nino/dir\\]\\]\\[\\[(/_nino/webpage/[^\\[\\]\\s"\'\\\\]+/uri)\\]\\]((?:[^\\s"\'\\\\\\[\\]]|\\[\\[\\.?[A-Za-z0-9_-]+\\]\\])*)$' ),
+		SUBPATH		: /^(?:[^\s"'\\\[\]]|\[\[\.?[A-Za-z0-9_-]+\]\])*$/,
 		FILE			: /^page-[a-z0-9]+(?:-[a-z0-9]+)*$/,
 
 		// The preview images the registry may name, and the one for the rest
@@ -7704,8 +7711,9 @@
 		},
 
 		/**
-		 *	Whether a value is a source: a key of the project or of the system, or a field
-		 *	of the type a loop runs over - and not an address typed in
+		 *	Whether a value is a source: a key of the project or of the system, a page of the
+		 *	site with a sub-path, or a field of the type a loop runs over - and not an address
+		 *	typed in
 		 *
 		 *	@param		{string}		value
 		 *	@param		{Object|null}	fields						The fields of the loop's type, null where there is no loop
@@ -7716,7 +7724,7 @@
 
 			const builder = Nino.admin.builder;
 
-			return builder.KEY.test( value ) === true || value.indexOf('/_nino/') === 0 || value === '.id' || value === '.uri'
+			return builder.KEY.test( value ) === true || value.indexOf('/_nino/') === 0 || builder.ADDRESS.test( value ) === true || value === '.id' || value === '.uri'
 				|| ( fields !== null && fields !== undefined && Object.prototype.hasOwnProperty.call( fields, value ) === true );
 		},
 
@@ -8095,7 +8103,74 @@
 		},
 
 		/**
-		 *	The page of the site a source is the address of, null for a source that is the address of none
+		 *	The two parts of the address of a link to a page of the site: the key that holds the address of the page, and the sub-path after it, which is empty where the link
+		 *	leads to the page alone. A source that is no such address has the whole of it for its key
+		 *
+		 *	@param		{string}		source
+		 *
+		 *	@return		{Object}									{ key, postfix }
+		 */
+		_pageParts : function( source ) {
+
+			const found = Nino.admin.builder.ADDRESS.exec( source );
+
+			return found === null ? { key : source, postfix : '' } : { key : found[1], postfix : found[2] };
+		},
+
+		/**
+		 *	The address of a link to a page of the site, as the template holds it: the key that holds the address of the page - and, where the link goes on from the page, the
+		 *	directory the site is served from, the fill of that key and the sub-path after it, which the kernel puts in before it reads the call
+		 *
+		 *	@param		{string}		key
+		 *	@param		{string}		postfix						As _postfixOf() answers it
+		 *
+		 *	@return		{string}
+		 */
+		_pageAddress : function( key, postfix ) {
+			// The fill of the directory is put together here: the kernel puts the fills into a script it serves, and one written out would be gone from it
+			return postfix === '' ? key : '[['+ '/nino/dir'+ ']][['+ key+ ']]'+ postfix;
+		},
+
+		/**
+		 *	The sub-path of a link as it is written, from what was typed: nothing for nothing, else with the slash in front that an address needs where it has none - a query
+		 *	or an anchor is the sub-path as it is. Null for one that holds a space, a quote, a backslash or a bracket that is no fill, and for a fill the loop does not have:
+		 *	one of the element of a loop is its .uri, its .id or a field of the type it was offered (see _fillsOf()), and where there is no loop none is
+		 *
+		 *	@param		{string}				typed
+		 *	@param		{Object|null}		fields					The fields of the type the loop runs over, null where there is no loop
+		 *
+		 *	@return		{string|null}
+		 */
+		_postfixOf : function( typed, fields ) {
+
+			const builder = Nino.admin.builder;
+			const text = typed.trim();
+			const said = text === '' || [ '/', '?', '#' ].indexOf( text.charAt(0) ) !== -1 ? text : '/'+ text;
+			const offered = fields === null || fields === undefined ? [] : builder._fillsOf( fields );
+
+			if( builder.SUBPATH.test( said ) === false )
+				return null;
+
+			return ( said.match( /\[\[[^\[\]]*\]\]/g ) ?? [] ).every( function( fill ) { return offered.indexOf( fill ) !== -1 } ) === true ? said : null;
+		},
+
+		/**
+		 *	The fills of the element of a loop that an address may hold, as the dialog of a link lists them: the uri of the element and its number in the loop, then the fields of
+		 *	the type that are a line of text or a number - not the ones that hold markup
+		 *
+		 *	@param		{Object}		fields						The fields of the type the loop runs over
+		 *
+		 *	@return		{Array}										[ '[[.uri]]', ... ]
+		 */
+		_fillsOf : function( fields ) {
+
+			return [ '.uri', '.id' ].concat( Object.keys( fields ).filter( function( name ) {
+				return [ 'string', 'integer', 'double' ].indexOf( fields[name].type ) !== -1 && fields[name].html !== true && /^[A-Za-z0-9_-]+$/.test( name ) === true;
+			} ) ).map( function( name ) { return '[['+ name+ ']]' } );
+		},
+
+		/**
+		 *	The page of the site a source is the address of, null for a source that is the address of none - the page alone or with a sub-path
 		 *
 		 *	@param		{string}		source
 		 *
@@ -8104,8 +8179,9 @@
 		_pageOf : function( source ) {
 
 			const builder = Nino.admin.builder;
+			const key = builder._pageParts( source ).key;
 
-			return builder._pages.find( function( page ) { return builder._pageKey( page ) === source } ) ?? null;
+			return builder._pages.find( function( page ) { return builder._pageKey( page ) === key } ) ?? null;
 		},
 
 		/**
@@ -8323,7 +8399,7 @@
 					.concat( names.map( function( name ) { return { value : name, label : name } } ) )
 					.concat( image === true ? [] : [ { value : '.id', label : '.id' }, { value : '.uri', label : '.uri' } ].filter( function( item ) { return options.kind === 'href' || item.value === '.id' } ) );
 
-				pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/field'), Nino.content.getText('/_admin/builder/hint/field'), items, options.value.charAt(0) === '/' ? '' : options.value, pick ) );
+				pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/field'), Nino.content.getText('/_admin/builder/hint/field'), items, options.value.charAt(0) === '/' || options.value.charAt(0) === '[' ? '' : options.value, pick ) );
 			}
 
 			if( image === true ) {
@@ -8358,8 +8434,10 @@
 		},
 
 		/**
-		 *	The tab of a link that leads to a page of the site: a choice among the pages by their address and the template they show. The source is the key that holds the
-		 *	address of the page, so the link follows the page into the language the visitor reads. A choice is the answer: it closes the dialog
+		 *	The tab of a link that leads to a page of the site: a choice among the pages by their address and the template they show, and the sub-path after the address of the
+		 *	page - the fields of the element in a loop, which are listed under the field and put in by a click. The source is the key that holds the address of the page, so the
+		 *	link follows the page into the language the visitor reads, and with a sub-path the fill of that key and the sub-path after it. A page chosen with no sub-path typed is
+		 *	the answer, and closes the dialog; with one the button, or Enter in the field, is the answer
 		 *
 		 *	@param		{Element}		pane
 		 *	@param		{Object}		options						See _sourceDialog()
@@ -8370,19 +8448,108 @@
 		_internalPane : function( pane, options, done ) {
 
 			const builder = Nino.admin.builder;
+			const words = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
 			const now = builder._pageOf( options.value );
-			const items = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ].concat( builder._pages.map( function( page ) {
+			const items = [ { value : '', label : words('label/none') } ].concat( builder._pages.map( function( page ) {
 				return { value : builder._pageKey( page ), label : builder._pageSaid( page ) };
 			} ) );
+			const use = builder._el( 'button', 'nino-admin-btn-secondary', words('source/use') );
+			const message = builder._el( 'p', 'nino-admin-error builder-postfix-message' );
+			let page = now === null ? '' : builder._pageKey( now );
+			let typed = now === null ? '' : builder._pageParts( options.value ).postfix;
+			const check = function() {
 
-			pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/page'), Nino.content.getText('/_admin/builder/hint/page'), items, now === null ? '' : builder._pageKey( now ), function( value ) {
+				const bad = builder._postfixOf( typed, options.fields ) === null;
 
-				if( value === '' )
+				message.textContent = bad === true ? words('source/postfix-invalid') : '';
+				field.control.setAttribute( 'aria-invalid', bad === true ? 'true' : 'false' );
+				use.disabled = page === '' || bad === true;
+			};
+			const take = function() {
+
+				const postfix = builder._postfixOf( typed, options.fields );
+
+				if( page === '' || postfix === null )
 					return;
 
-				options.onPick( value, null );
+				options.onPick( builder._pageAddress( page, postfix ), null );
 				done();
+			};
+
+			use.type = 'button';
+			use.addEventListener( 'click', take );
+			// What is wrong with the sub-path is said where a screen reader is told of it, as the refusal of a new key is
+			message.id = 'builder-postfix-message-'+ ( ++builder._sourceRows );
+			message.setAttribute( 'aria-live', 'polite' );
+
+			pane.appendChild( builder._selectField( words('source/page'), words('hint/page'), items, page, function( value ) {
+
+				page = value;
+
+				// None is no choice; a page alone is the answer, and a page with a sub-path waits for the button
+				if( value !== '' && typed.trim() === '' )
+					take();
+				else
+					check();
 			} ) );
+
+			const field = builder._textField( words('source/postfix'), words('hint/postfix'), typed, function( value ) {
+				typed = value;
+				check();
+			}, { placeholder : '/' } );
+
+			// The dialog closes on the key, and the focus goes back to the button that opened it: the key press is not to go on to it
+			field.control.addEventListener( 'keydown', function( ev ) {
+
+				if( ev.key !== 'Enter' )
+					return;
+
+				ev.preventDefault();
+				take();
+			} );
+
+			field.control.setAttribute( 'aria-describedby', message.id );
+			pane.appendChild( field );
+			pane.appendChild( message );
+
+			// In a loop the fields of the element stand for what each cell leads to; a click puts one in where the cursor is
+			if( options.fields !== null && options.fields !== undefined ) {
+
+				const list = builder._el( 'p', 'nino-admin-hint builder-postfix-fields' );
+
+				list.appendChild( builder._el( 'span', '', words('source/postfix-fields') ) );
+
+				builder._fillsOf( options.fields ).forEach( function( fill ) {
+
+					const token = builder._el( 'button', 'builder-postfix-token', fill );
+
+					token.type = 'button';
+					token.addEventListener( 'click', function() {
+
+						const control = field.control;
+						const empty = control.value.trim() === '';
+						const value = empty === true ? '/' : control.value;
+						const from = typeof control.selectionStart === 'number' && empty === false ? control.selectionStart : value.length;
+						const to = typeof control.selectionEnd === 'number' && empty === false ? control.selectionEnd : value.length;
+
+						control.value = value.slice( 0, from )+ fill+ value.slice( to );
+						typed = control.value;
+						control.focus();
+
+						// The caret goes behind the fill that was put in, where the next character is typed
+						if( typeof control.setSelectionRange === 'function' )
+							control.setSelectionRange( from + fill.length, from + fill.length );
+
+						check();
+					} );
+					list.appendChild( token );
+				} );
+
+				pane.appendChild( list );
+			}
+
+			pane.appendChild( use );
+			check();
 		},
 
 		/**

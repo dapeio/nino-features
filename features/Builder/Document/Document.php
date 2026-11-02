@@ -487,7 +487,7 @@ namespace Nino\Modules\Builder {
 			if( $same === true && $texts === [] )
 				return [ 'status' => 200, 'model' => $disk, 'hash' => hash( 'sha256', $current ) ];
 
-			$problems = self::_values( $model );
+			$problems = self::_values( $model, $schemas );
 
 			if( $problems !== [] )
 				return self::_error( 400, 'a value cannot stand in a call', 'value', $problems );
@@ -616,7 +616,7 @@ namespace Nino\Modules\Builder {
 			$parts		= [];
 
 			// After the blocks that were edited are read: what they came to is looked at, as a save does
-			$problems = self::_values( $model );
+			$problems = self::_values( $model, $schemas );
 
 			if( $problems !== [] )
 				return self::_error( 400, 'a value cannot stand in a call', 'value', $problems );
@@ -1094,7 +1094,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			// The Writer refuses these, so nothing is written to be read again
-			$values = self::_values( $model );
+			$values = self::_values( $model, $schemas );
 
 			if( $values !== [] )
 				return array_merge( $problems, $values );
@@ -1169,16 +1169,21 @@ namespace Nino\Modules\Builder {
 		 *	and the href among them) or a custom class - the classes of the wrap
 		 *	among them - and an effect or a speed of the wrap that Nino.css has
 		 *	none of, which would be a class of nothing. The content of a
-		 *	component is no attribute and is not looked at
+		 *	component is no attribute and is not looked at. The address of a link is the one
+		 *	value that may hold brackets, the fill of a page of the site with a sub-path
+		 *	after it (see Reader::address())
 		 *
 		 *	@param		array			$model
+		 *	@param		array			$schemas					The registry
 		 *
 		 *	@return 	array										Sentences naming the block, the component and the attribute
 		 */
-		private static function _values( array $model ): array {
+		private static function _values( array $model, array $schemas ): array {
 
 			$problems	= [];
-			$unsafe		= static fn( mixed $value ): bool => is_scalar( $value ) === true && preg_match( self::UNSAFE, is_bool( $value ) === true ? '' : (string) $value ) === 1;
+			// The address of a link may hold the brackets of the fill of a page of the site, with a sub-path after it (see Reader::address()), and nothing else may
+			$unsafe		= static fn( mixed $value, bool $link = false ): bool => is_scalar( $value ) === true && ( $link === false || is_string( $value ) === false || Reader::address( $value ) === null )
+				&& preg_match( self::UNSAFE, is_bool( $value ) === true ? '' : (string) $value ) === 1;
 
 			if( in_array( (string) ( $model['vpa'] ?? '' ), array_merge( [ '' ], Reader::EFFECTS ), true ) === false )
 				$problems[] = 'the effect of the animation of the template is none that Nino.css has';
@@ -1228,10 +1233,11 @@ namespace Nino\Modules\Builder {
 						if( is_array( $call ) === false )
 							continue;
 
+						$schema = (array) ( $schemas['components'][$call['name'] ?? ''] ?? $schemas['stacks'][$call['name'] ?? ''] ?? [] );
 						$values = [ 'source' => $call['source'] ?? null, 'text' => $call['text'] ?? null ] + (array) ( $call['attributes'] ?? [] );
 
 						foreach( $values as $attribute => $value )
-							if( $unsafe( $value ) === true )
+							if( $unsafe( $value, $attribute === 'source' ? ( $schema['source'] ?? '' ) === 'href' : in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ) === true )
 								$problems[] = $at. ': the attribute "'. $attribute. '" of the component "'. (string) ( $call['name'] ?? '' ). '" holds a quote, a bracket or a line break, which a call cannot carry';
 					}
 				}
@@ -1287,6 +1293,21 @@ namespace Nino\Modules\Builder {
 							continue;
 
 						$problems[] = 'the picture "'. $picture. '" of '. ( $component['name'] ?? '' ). ( $picture[0] === '/' ? ' is no image slot' : ( $fields === null ? ' means nothing in a column without a loop: it is an image slot' : ' is no field of the loop\'s type' ) );
+					}
+
+					// A link that goes on from a page of the site holds the fills of the element only in a loop, and only ones the type has: .id, .uri and its fields
+					$addressed = [ 'the source' => $kind === 'href' ? $source : '' ];
+
+					foreach( Reader::addresses( (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] ) ) as $attribute )
+						$addressed['the attribute "'. $attribute. '"'] = (string) ( $component['attributes'][$attribute] ?? '' );
+
+					foreach( $addressed as $what => $address ) {
+
+						preg_match_all( '~\[\[([^\[\]]+)\]\]~', (string) ( Reader::address( $address )['postfix'] ?? '' ), $found );
+
+						foreach( array_unique( $found[1] ) as $fill )
+							if( $fields === null || ( in_array( $fill, [ '.id', '.uri' ], true ) === false && isset( $fields[$fill] ) === false ) )
+								$problems[] = 'the sub-path of '. $what. ' of '. ( $component['name'] ?? '' ). ' holds the fill [['. $fill. ']], which '. ( $fields === null ? 'means nothing in a column without a loop' : 'is no field of the loop\'s type' );
 					}
 
 					if( $source === '' || in_array( $kind, [ 'none', 'content' ], true ) === true )

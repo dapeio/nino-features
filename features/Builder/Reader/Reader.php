@@ -324,6 +324,15 @@ namespace Nino\Modules\Builder {
 		// The call of the arrow at the foot of a section: the one thing that may stand after its row
 		public const string ARROW = 'scroll-hint';
 
+		// What follows the name of a call up to its closing bracket: a fill, [[...]], is one thing in it - the kernel puts the fills in before it reads a call, so that
+		// the brackets of a fill that is there are not the end of the call - and any other character is itself. See address() for the only fills a call may hold
+		private const string RAW = '(?:\[\[[^\[\]]*+\]\]|[^\]])*+';
+
+		// An address that leads to a page of the site and goes on from it: the directory the site is served from, [[/nino/dir]] - the key that holds the address of the page is
+		// written without it, as the kernel puts it in front of a bare key - then the fill of that key, [[/_nino/webpage/<uri>/uri]], then the sub-path: characters that are none
+		// of a space, a quote, a backslash or a bracket, and the fills of the element of a loop, [[.uri]] or [[title]]
+		private const string ADDRESS = '~^\[\[/nino/dir\]\]\[\[(/_nino/webpage/[^\[\]\s"\'\\\\]+/uri)\]\]((?:[^\s"\'\\\\\[\]]|\[\[\.?[A-Za-z0-9_-]+\]\])*)$~D';
+
 		// Why a section is not read: the code of a failure, and the sentence
 		// that says it. %s is the detail, where the failure has one
 		public const array REASONS = [
@@ -435,6 +444,48 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $defaults + [ 'class' => '' ];
+		}
+
+		/**
+		 *	The two parts of an address that leads to a page of the site and goes on from it - the key that holds the address of the page, and the sub-path after it, which is
+		 *	empty where the address is the page alone - written [[/nino/dir]][[<key>]]<sub-path>. The kernel puts the fills in before it reads the page: the directory the site is
+		 *	served from, which the fill of the key has not (a bare key is given it by the kernel), and the address of the page, so the link leads to the page in the language the
+		 *	visitor reads, and the sub-path with it; a fill of the element of a loop in the sub-path, [[.uri]], is the loop's. It is the one place a call may hold the brackets of
+		 *	a fill: the value of a link (the address of a component, or an attribute of the type href), and only in this form
+		 *
+		 *	@param		string		$value
+		 *
+		 *	@return 	array|null								[ 'key' => ..., 'postfix' => ... ], null where the value is no such address
+		 */
+		public static function address( string $value ): ?array {
+
+			if( preg_match( self::ADDRESS, $value, $match ) !== 1 )
+				return null;
+
+			return [ 'key' => $match[1], 'postfix' => $match[2] ];
+		}
+
+		/**
+		 *	The attributes of a component or a stack that are the address of a link: the ones its schema declares of the type href, and - for a component the registry marks
+		 *	as a link, which has the address and the window it opens in without declaring them - href. The Builder knows no component by name: this is what makes an
+		 *	attribute an address, and the one place a call may hold the brackets of a fill (see address())
+		 *
+		 *	@param		array			$schema				One entry of the registry
+		 *
+		 *	@return 	array										The names
+		 */
+		public static function addresses( array $schema ): array {
+
+			$names = [];
+
+			foreach( (array) ( $schema['attributes'] ?? [] ) as $attribute => $declared )
+				if( is_array( $declared ) === true && ( $declared['type'] ?? '' ) === 'href' )
+					$names[] = (string) $attribute;
+
+			if( ( $schema['link'] ?? false ) === true && in_array( 'href', $names, true ) === false )
+				$names[] = 'href';
+
+			return $names;
 		}
 
 		/**
@@ -1853,7 +1904,7 @@ namespace Nino\Modules\Builder {
 		 */
 		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image', string $holder = '', bool $whole = false ): array {
 
-			if( preg_match( '~\G\[([a-z][a-z0-9-]*)(?: ([^\]]*))?\]~', $text, $head, 0, $pos ) !== 1 )
+			if( preg_match( '~\G\[([a-z][a-z0-9-]*)(?: ('. self::RAW. '))?\]~', $text, $head, 0, $pos ) !== 1 )
 				throw self::_fail( $other, $holder === '' ? trim( substr( $text, $pos, 24 ) ) : $holder. "\n". (string) preg_replace( '/\s+/', ' ', trim( substr( $text, $pos, 24 ) ) ), $base + $pos );
 
 			$name			= $head[1];
@@ -1872,8 +1923,8 @@ namespace Nino\Modules\Builder {
 			if( $holder !== '' && ( $isStack === true || self::holds( $schema ) === true ) )
 				throw self::_fail( $isStack === true ? 'holder-stack' : 'holder-in-holder', '', $base + $pos );
 
-			// The expression the kernel finds a call and its content with
-			preg_match( '~\G\[('. preg_quote( $name, '~' ). ')(?: ([^\]]*))?\](?:([^\[]*+(?:\[(?!\/\1\])[^\[]*+)*+)(?:\[\/\1\]))?~', $text, $match, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL, $pos );
+			// The expression the kernel finds a call and its content with - but for the fills in the address of a link (see RAW), which the kernel has put in by then
+			preg_match( '~\G\[('. preg_quote( $name, '~' ). ')(?: ('. self::RAW. '))?\](?:([^\[]*+(?:\[(?!\/\1\])[^\[]*+)*+)(?:\[\/\1\]))?~', $text, $match, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL, $pos );
 
 			$raw				= $match[2][0] ?? '';
 			$content		= $match[3][0] ?? null;
@@ -1889,6 +1940,15 @@ namespace Nino\Modules\Builder {
 
 			if( $isStack === true && ( $positional[0] ?? '' ) === '' )
 				throw self::_fail( 'stack-source', '', $base + $pos );
+
+			// A fill is part of a call only in the address of a link (see address()): in any other value the closing bracket of the fill would have ended the call where the
+			// kernel, which had put the fills in, does not see one
+			if( str_contains( (string) ( $positional[0] ?? '' ), ']' ) === true && ( $kind !== 'href' || self::address( $positional[0] ) === null ) )
+				throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
+
+			foreach( $named as $key => $value )
+				if( str_contains( $value, ']' ) === true && ( in_array( (string) $key, self::addresses( $schema ), true ) === false || self::address( $value ) === null ) )
+					throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
 
 			$fixed = null;
 

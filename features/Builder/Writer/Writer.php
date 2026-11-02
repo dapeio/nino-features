@@ -616,6 +616,22 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	A value that is the address of a link, as a call carries it: as _safe() has it, and the address of a page of the site with a sub-path
+		 *	([[key]]/sub-path, see Reader::address()) besides, whose brackets are the fill the kernel puts in before it reads the call
+		 *
+		 *	@param		string		$value
+		 *	@param		string		$name					The call, for the message
+		 *	@param		string		$attribute		The attribute, for the message
+		 *
+		 *	@return 	string									The value, as it was given
+		 *
+		 *	@throws		\UnexpectedValueException
+		 */
+		private static function _address( string $value, string $name, string $attribute ): string {
+			return Reader::address( $value ) !== null ? $value : self::_safe( $value, $name, $attribute );
+		}
+
+		/**
 		 *	@param		string		$value
 		 *
 		 *	@return 	string									Escaped for an attribute of a tag
@@ -698,8 +714,9 @@ namespace Nino\Modules\Builder {
 			if( $first !== [] )
 				$attributes['class'] = trim( implode( ' ', $first ). ' '. self::_string( $attributes['class'] ?? '' ) );
 
+			// The address of a link may lead to a page of the site and go on from it (see Reader::address()): the one value a call carries the brackets of a fill in
 			if( (string) ( $node['source'] ?? '' ) !== '' )
-				$call .= ' '. self::_safe( (string) $node['source'], $name, 'source' );
+				$call .= ' '. ( ( $schema['source'] ?? '' ) === 'href' ? self::_address( (string) $node['source'], $name, 'source' ) : self::_safe( (string) $node['source'], $name, 'source' ) );
 
 			if( is_string( $node['text'] ?? null ) === true )
 				$call .= ' text="'. self::_safe( $node['text'], $name, 'text' ). '"';
@@ -713,7 +730,7 @@ namespace Nino\Modules\Builder {
 				$value = self::_string( $attributes[$attribute] );
 
 				if( $value !== ( $defaults[$attribute] ?? '' ) )
-					$call .= ' '. self::_safe( (string) $attribute, $name, 'attribute name' ). '="'. self::_safe( $value, $name, (string) $attribute ). '"';
+					$call .= ' '. self::_safe( (string) $attribute, $name, 'attribute name' ). '="'. ( in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ? self::_address( $value, $name, (string) $attribute ) : self::_safe( $value, $name, (string) $attribute ) ). '"';
 			}
 
 			$call .= ']';

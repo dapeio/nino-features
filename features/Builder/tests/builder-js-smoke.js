@@ -3785,6 +3785,109 @@ check( '...an answer of 200 makes the key the address of the link - with no mark
 	&& blockOf('link').querySelector('.builder-source-current').textContent === '/template/page-home/hero/'+ nameOfNew );
 requests = [];
 
+console.log( '\nThe link to a page: the sub-path after its address' );
+
+const postfixOf = function() { return controlOf( pickerPane('internal'), words['/_admin/builder/source/postfix'] ) };
+const useOf = function() { return buttonOf( pickerPane('internal'), words['/_admin/builder/source/use'] ) };
+const openInternal = function( at ) {
+	builder._openSettings( at );
+	buttonOf( blockOf('link'), 'Source' ).click();
+	buttonOf( pickerStrip(), words['/_admin/builder/source/tab-internal'] ).click();
+};
+
+doc = open();
+openInternal( [ 0, 0, 2 ] );
+check( 'under the select Page the tab Internal page has the field Sub-path - empty for a link that leads to the page alone, with its sentence behind the question mark - and the button that uses it; outside a loop there are no fields of an element to list',
+	labelsIn( pickerPane('internal') ) === words['/_admin/builder/source/page']+ ','+ words['/_admin/builder/source/postfix'] && postfixOf().el.value === '' && tipOf( postfixOf() ) === words['/_admin/builder/hint/postfix'] && useOf().disabled === false
+	&& pickerPane('internal').querySelectorAll('.builder-postfix-token').length === 0 && pickerPane('internal').querySelector('.builder-postfix-fields') === null );
+changes = 0;
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], 'articles/2024' );
+check( '...a sub-path typed is not the answer yet: the link is as it was and the dialog stays', componentAt( [ 0, 0, 2 ] ).attributes.href === pageKey( 0 ) && pickerBox().open === true && changes === 0 && useOf().disabled === false );
+useOf().click();
+check( '...the button uses it: the address of the link is the fill of the key that holds the address of the page and the sub-path, with the slash put in front that it had none of - the template keeps the page by its key, so the link follows the page into the language of the visitor - and the dialog closes, the form behind it says the address',
+	componentAt( [ 0, 0, 2 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/articles/2024' && pickerBox().open === false && changes === 1 && blockOf('link').querySelector('.builder-source-current').textContent === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/articles/2024'
+	&& blockOf('link').querySelector('.builder-source-current').textContent.charAt(0) === '[' );
+
+buttonOf( blockOf('link'), 'Source' ).click();
+check( 'a link with a sub-path opens on Internal page, with the page chosen and the sub-path in its field - the address is read as the two things it was made of, and is no fixed address typed in',
+	shownTab( pickerStrip(), 'builder-picker' ) === 'internal' && valueAt( pickerPane('internal'), words['/_admin/builder/source/page'] ) === pageKey( 0 ) && postfixOf().el.value === '/articles/2024' && builder._pageOf( componentAt( [ 0, 0, 2 ] ).attributes.href ) === builder._pages[0]
+	&& JSON.stringify( builder._pageParts( componentAt( [ 0, 0, 2 ] ).attributes.href ) ) === JSON.stringify( { key : pageKey( 0 ), postfix : '/articles/2024' } ) );
+changes = 0;
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/a b' );
+check( '...a sub-path with a space is refused where it is typed: the sentence says why, the button cannot be used and the key Enter does not use it - the link is as it was', pickerPane('internal').querySelector('.builder-postfix-message').textContent === words['/_admin/builder/source/postfix-invalid']
+	&& useOf().disabled === true && ( pressKey( postfixOf().el, 'Enter' ), componentAt( [ 0, 0, 2 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/articles/2024' && pickerBox().open === true && changes === 0 ) );
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/a"b' );
+check( '...so is a quote, and a bracket that is no field; the sentence goes when the sub-path is one that can be written', useOf().disabled === true && ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/a[b' ), useOf().disabled === true )
+	&& ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/a]b' ), useOf().disabled === true ) && ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/ok' ), useOf().disabled === false && pickerPane('internal').querySelector('.builder-postfix-message').textContent === '' ) );
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.uri]]' );
+check( '...a fill of the element is refused outside a loop, where nothing fills it: the sentence, the button off, the key Enter does nothing, and the field says it is invalid to a screen reader - with the sentence as its description',
+	pickerPane('internal').querySelector('.builder-postfix-message').textContent === words['/_admin/builder/source/postfix-invalid'] && pickerPane('internal').querySelector('.builder-postfix-message').classList.contains('nino-admin-error') === true
+	&& pickerPane('internal').querySelector('.builder-postfix-message').getAttribute('aria-live') === 'polite' && useOf().disabled === true && ( pressKey( postfixOf().el, 'Enter' ), pickerBox().open === true && changes === 0 )
+	&& postfixOf().el.getAttribute('aria-invalid') === 'true' && postfixOf().el.getAttribute('aria-describedby') === pickerPane('internal').querySelector('.builder-postfix-message').id
+	&& ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/ok' ), postfixOf().el.getAttribute('aria-invalid') === 'false' && useOf().disabled === false ) );
+change( pickerPane('internal'), words['/_admin/builder/source/page'], pageKey( 1 ) );
+check( '...a page chosen while a sub-path stands in the field is not the answer either: the button is, and the sub-path goes with the page', componentAt( [ 0, 0, 2 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/articles/2024' && pickerBox().open === true && changes === 0
+	&& ( useOf().click(), componentAt( [ 0, 0, 2 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 1 )+ ']]/ok' && pickerBox().open === false && changes === 1 ) );
+
+buttonOf( blockOf('link'), 'Source' ).click();
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '' );
+pressKey( postfixOf().el, 'Enter' );
+check( '...an emptied sub-path and Enter: the link leads to the page alone again, as the key that holds its address - no brackets in the template', componentAt( [ 0, 0, 2 ] ).attributes.href === pageKey( 1 ) && pickerBox().open === false );
+buttonOf( blockOf('link'), 'Source' ).click();
+buttonOf( pickerStrip(), words['/_admin/builder/source/tab-internal'] ).click();
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '#team' );
+useOf().click();
+check( '...a query or an anchor is a sub-path as it is, with no slash put in front of it', componentAt( [ 0, 0, 2 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 1 )+ ']]#team' );
+
+const servicesFields = registry().types[0].fields;
+check( 'what a sub-path is written as: nothing for nothing, a slash in front where it has none, a query or an anchor as it is, a fill of the element among its characters - and none for a space, a quote, a backslash or a bracket that is no fill',
+	JSON.stringify( [ '', '  ', 'a', '/a', ' a/b ', '?q=1', '#top', '/[[.uri]]', 'x/[[title]]-[[.id]]', '/a b', '/a"b', "/a'b", '/a\\b', '/[[', '/[[a b]]', '/[[.uri]', '/[a]', '/[[/_nino/webpage/x/uri]]' ].map( function( text ) { return builder._postfixOf( text, servicesFields ) } ) )
+	=== JSON.stringify( [ '', '', '/a', '/a', '/a/b', '?q=1', '#top', '/[[.uri]]', '/x/[[title]]-[[.id]]', null, null, null, null, null, null, null, null, null ] ) );
+check( '...a fill is the element\'s only where there is one and only one that is offered - .uri, .id or a field of the type that is a line of text or a number: none outside a loop, none for a field the type has not, for a picture or for the language of a text',
+	JSON.stringify( [ '/[[.uri]]', '/[[title]]', '/[[price]]', '/[[nope]]', '/[[image]]', '/[[.lang]]', '/a/[[title]]/[[nope]]' ].map( function( text ) { return [ builder._postfixOf( text, servicesFields ), builder._postfixOf( text, null ), builder._postfixOf( text, undefined ) ] } ) )
+	=== JSON.stringify( [ [ '/[[.uri]]', null, null ], [ '/[[title]]', null, null ], [ '/[[price]]', null, null ], [ null, null, null ], [ null, null, null ], [ null, null, null ], [ null, null, null ] ] )
+	&& builder._postfixOf( '/plain', null ) === '/plain' );
+check( '...and the two parts of an address as the template holds it, and the address they make: the page alone is its key', builder._pageAddress( pageKey( 0 ), '' ) === pageKey( 0 ) && builder._pageAddress( pageKey( 0 ), '/[[.uri]]' ) === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]'
+	&& JSON.stringify( builder._pageParts( builder._pageAddress( pageKey( 0 ), '/[[.uri]]' ) ) ) === JSON.stringify( { key : pageKey( 0 ), postfix : '/[[.uri]]' } ) && JSON.stringify( builder._pageParts( pageKey( 0 ) ) ) === JSON.stringify( { key : pageKey( 0 ), postfix : '' } )
+	&& JSON.stringify( builder._pageParts( '/contact' ) ) === JSON.stringify( { key : '/contact', postfix : '' } ) && builder._pageOf( '/contact' ) === null && builder._pageOf( '[[/_nino/webpage/nowhere/uri]]/x' ) === null );
+check( '...and it is a source and no address typed in: a field of the element, a key of the system, and a page with a sub-path are, an address typed in is not', builder._isSource( '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]', null ) === true && builder._isSource( pageKey( 0 ), null ) === true
+	&& builder._isSource( '/contact/[[.uri]]', null ) === false && builder._isSource( '[[/template/page-home/hero/title]]/x', null ) === false && builder._isSource( '/artikel', null ) === false );
+
+doc = open();
+openInternal( [ 1, 1, 3 ] );
+check( 'in a loop the fields of the element are listed under the field, small, as the fills they are - the uri of the element and its number, then the fields of the type that are a line of text or a number: not a picture',
+	JSON.stringify( pickerPane('internal').querySelectorAll('.builder-postfix-token').map( function( token ) { return token.textContent } ) ) === '["[[.uri]]","[[.id]]","[[title]]","[[summary]]","[[price]]"]'
+	&& pickerPane('internal').querySelector('.builder-postfix-fields').textContent.indexOf( words['/_admin/builder/source/postfix-fields'] ) === 0 && pickerPane('internal').querySelector('.builder-postfix-fields').classList.contains('nino-admin-hint') );
+changes = 0;
+buttonOf( pickerPane('internal'), '[[.uri]]' ).click();
+check( '...a click puts a field in the box - with the slash an address needs in front where the box is empty - and is no answer: with no page chosen the button cannot be used', postfixOf().el.value === '/[[.uri]]' && pickerBox().open === true && changes === 0 && componentAt( [ 1, 1, 3 ] ).attributes.href === '' && useOf().disabled === true );
+change( pickerPane('internal'), words['/_admin/builder/source/page'], pageKey( 0 ) );
+check( '...and a page chosen after it waits for the button', pickerBox().open === true && changes === 0 && useOf().disabled === false && componentAt( [ 1, 1, 3 ] ).attributes.href === '' );
+check( '...a field the type has not is refused in a loop as it is outside one - the sentence, the button off - and one it has is none to refuse', ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[nope]]' ), useOf().disabled === true && pickerPane('internal').querySelector('.builder-postfix-message').textContent === words['/_admin/builder/source/postfix-invalid'] )
+	&& ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[image]]' ), useOf().disabled === true ) && ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[title]]' ), useOf().disabled === false && pickerPane('internal').querySelector('.builder-postfix-message').textContent === '' ) );
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.uri]]' );
+useOf().click();
+check( '...and the sub-path /[[.uri]] after the page is the address of the link: the template holds the fill of the key of the page and the fill of the element, which the kernel puts in for each cell', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]' && pickerBox().open === false
+	&& blockOf('link').querySelector('.builder-source-current').textContent === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]' );
+
+buttonOf( blockOf('link'), 'Source' ).click();
+check( '...reopened, the dialog shows the page and the sub-path, fields of the element as they stand in it', shownTab( pickerStrip(), 'builder-picker' ) === 'internal' && valueAt( pickerPane('internal'), words['/_admin/builder/source/page'] ) === pageKey( 0 ) && postfixOf().el.value === '/[[.uri]]'
+	&& ( buttonOf( pickerPane('internal'), '[[.id]]' ).click(), postfixOf().el.value === '/[[.uri]][[.id]]' ) );
+const caretBox = postfixOf().el;
+caretBox.setSelectionRange = function( from, to ) { this.selectionStart = from; this.selectionEnd = to; this.caret = [ from, to ] };
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/ab' );
+caretBox.selectionStart = 2;
+caretBox.selectionEnd = 2;
+buttonOf( pickerPane('internal'), '[[title]]' ).click();
+check( '...a field put in the middle of the text stands where the caret was, and the caret goes behind it, where the next character is typed', caretBox.value === '/a[[title]]b' && JSON.stringify( caretBox.caret ) === '[11,11]' && postfixOf().el.value === '/a[[title]]b' );
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.uri]]/more' );
+useOf().click();
+check( '...and a sub-path after a field is one as well: it is written as it was typed', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]/more' );
+buttonOf( blockOf('link'), 'Source' ).click();
+buttonOf( pickerStrip(), words['/_admin/builder/source/tab-pick'] ).click();
+check( '...Choose a value does not offer a page with a sub-path as the field it is not: the select of the fields stands on none, the page is not marked as the current one in the list', valueAt( pickerPane('pick'), 'Field of the element' ) === '' && pickItems().filter( function( item ) { return item.classList.contains('is-current') } ).length === 0 );
+builder._closeDialog();
+
 doc = open();
 builder._keysRead = false;
 builder._pages = [];

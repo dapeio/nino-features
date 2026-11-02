@@ -307,6 +307,9 @@ return [
 	'[[/_admin/builder/source/key]]'						=> 'Text key',
 	'[[/_admin/builder/source/field]]'						=> 'Field of the element',
 	'[[/_admin/builder/source/page]]'						=> 'Page',
+	'[[/_admin/builder/source/postfix]]'					=> 'Sub-path',
+	'[[/_admin/builder/source/postfix-fields]]'			=> 'Fields of the element:',
+	'[[/_admin/builder/source/postfix-invalid]]'			=> 'A sub-path holds no space, quote or backslash, and no bracket but the fields of the element listed under the box - and none where the link is not in a loop.',
 	'[[/_admin/builder/source/address]]'					=> 'Address',
 	'[[/_admin/builder/source/search]]'						=> 'Find a key by its name or its text',
 	'[[/_admin/builder/source/search-slot]]'				=> 'Find an image slot',
@@ -390,6 +393,7 @@ return [
 	'[[/_admin/builder/hint/fixed]]'						=> 'The value is written into the template itself instead of a text key: it is the same in every language, and the editors of the texts cannot change it. Use it for something that never changes.',
 	'[[/_admin/builder/hint/typed]]'						=> 'Your account may not read the keys of the project, so you type the key instead. A key of this template looks like /template/<file>/<section>/<name>, and it is used as soon as it is written like that.',
 	'[[/_admin/builder/hint/page]]'						=> 'Choose one of the pages of the site; the list shows its address and the template it uses. The link is no fixed address: it follows the page into the language the visitor reads and leads to the address the page has there.',
+	'[[/_admin/builder/hint/postfix]]'						=> 'Appended to the address of the page - /2024 behind /articles, say; a slash is put in front where you leave it out. In a loop the fields of the element can stand in it, so that each cell leads to a page of its own: click a field under the box to put it in. It is not written when the box is empty.',
 	'[[/_admin/builder/hint/focus]]'						=> 'The focus decides which part of the picture stays in view when it is cropped to fit its frame. With Automatic focus on, the middle is kept; switch it off to choose one of the nine places instead.',
 
 	// What the editor asks and says
