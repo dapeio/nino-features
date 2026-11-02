@@ -68,8 +68,8 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.2.0',
-	'nino'				=> '^1.8',
+	'version'			=> '1.3.0',
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	'settings'		=> [
 		'api' => [

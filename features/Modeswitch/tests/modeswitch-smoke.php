@@ -67,7 +67,7 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'modeswitch' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Modeswitch', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'modeswitch' )['installed'] === '1.1.0' );
+	&& \Nino\Features::get( $appData, 'modeswitch' )['installed'] === '1.1.1' );
 
 /*	The four words, merged into the project's own text file for every locale it
 	has - so an editor changes "Dunkel" in the Text panel and never opens a

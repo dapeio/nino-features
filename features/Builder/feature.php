@@ -161,11 +161,12 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
-	// The Components module of 1.7: the registry the builder reads, whose card
-	// is [card] with [card-title] and [card-subtitle], and the shortcodes it
-	// writes calls of
-	'nino'				=> '^1.7',
+	'version'			=> '1.1.0',
+	// 1.9, for what the builder draws and writes: the card that stretches its
+	// link over itself (stretched), the slug of an element ([[.slug]]), the
+	// options a method of the component answers, and nino-grid-gap for the
+	// space between the cells of a grid
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

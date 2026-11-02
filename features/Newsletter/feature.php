@@ -103,11 +103,11 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.1.0',
-	// 1.8, for the toolset the code and the panel are written on. The hero of
-	// page-newsletter.tpl has the classes Nino 1.7 renamed it to (nino-hero), with
-	// no alias for the old ones
-	'nino'				=> '^1.8',
+	'version'			=> '1.2.0',
+	// 1.9, for the toolset the code and the panel are written on, and for the
+	// [[url]] of [image] that the header of its mail writes. The hero of
+	// page-newsletter.tpl has the classes of nino-hero
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	'settings'		=> [],
 	// The files under data/ this feature owns - what a backup carries and

@@ -102,7 +102,7 @@ echo "The manifest\n";
 $manifest = \Nino\Features::manifest( $dir );
 
 check( 'it validates, key "builder"', is_array( $manifest ) === true && $manifest['key'] === 'builder' && ninoWarnings() === [] );
-check( 'it is written for the kernel that has the Components module, with the card called one', is_array( $manifest ) === true && $manifest['nino'] === '^1.7' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for the kernel that has the Components module, with the card called one, the stretched link, the slug and the options methods', is_array( $manifest ) === true && $manifest['nino'] === '^1.9' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it is a feature for content, with nothing required, no settings and no data of its own', $manifest['category'] === 'content' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [] );
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'its manual says what it adds: the panel, and no shortcode, route or callback', $manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] && $manifest['manual']['callbacks'] === [] && isset( $manifest['manual']['panel']['Builder'] ) === true );

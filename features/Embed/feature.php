@@ -72,7 +72,7 @@ return [
 	// written there is fetched - the Features panel files that with the
 	// lightboxes and the switches
 	'category'		=> 'ui',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	// The kernel whose toolset it calls: the template and class helpers, the
 	// origin and policy helpers, the shortcode registration, the manifest's
 	// assets and Nino.events

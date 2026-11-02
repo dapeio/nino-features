@@ -90,14 +90,14 @@ return [
 		],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.2.0',
-	/*	1.8, because the class calls the toolset (\Nino\Feature::template() and
-		shortcode()) - and with it everything the floors before it named: the
+	'version'			=> '1.3.0',
+	/*	1.9, because the class reads an element with its fallback
+		(getElementWithFallback()) and calls the toolset (\Nino\Feature::template()
+		and shortcode()) - and with it everything the floors before it named: the
 		words the unit delivers and the page details a post sets are Nino 1.4's
 		text keys (/template/..., /_nino/webpage<uri>/...), and the cards of
-		page-posts.tpl have the classes Nino 1.7 renamed them to (nino-card) and
-		kept no alias for the old ones. */
-	'nino'				=> '^1.8',
+		page-posts.tpl have the classes of nino-card. */
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// Which element type is a section of the site, under which path, through
 	// which templates. Not the posts - those are ordinary elements and live in

@@ -61,7 +61,7 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'lightbox' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Lightbox', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'lightbox' )['installed'] === '1.1.0' );
+	&& \Nino\Features::get( $appData, 'lightbox' )['installed'] === '1.1.1' );
 check( 'activation wrote no template and no text of its own into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false
 	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) === [] );
 

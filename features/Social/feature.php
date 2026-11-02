@@ -100,8 +100,8 @@ return [
 	// It brings content an editor maintains, the reasoning Gallery files
 	// itself under
 	'category'		=> 'content',
-	'version'			=> '1.1.0',
-	'nino'				=> '^1.8',
+	'version'			=> '1.2.0',
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// The links are elements, in /elements/social.php - the project's own type
 	// file, which a backup carries like every other

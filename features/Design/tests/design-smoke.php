@@ -999,13 +999,15 @@ check( 'the manifest reads, with the key and the class the directory implies', i
 // kernel's - /project/company/..., the words of /template/frame-header and
 // /template/frame-footer, the page details after /_nino/webpage - and write
 // the project's frame-header.tpl and frame-footer.tpl, which are named so
-// from 1.4 on, and 1.6 has them all. A pre-release of 1.7 counts as 1.7
-check( 'it names ^1.7 - the kernel whose card, hero, roles and grounds its templates, its compiler and its specimen are written for', ( $feature['nino'] ?? '' ) === '^1.7' );
-check( '...and no 1.6 can run it, a 1.7 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
+// from 1.4 on, and 1.6 has them all. The floor now is 1.9: [logo] with the pair
+// of the light and the dark logo, and the theme.css the kernel delivers as the
+// body this compiler writes of the library. A pre-release of 1.9 counts as 1.9
+check( 'it names ^1.9 - the kernel whose card, hero, roles, grounds, [logo] and compiled theme its templates, its compiler and its specimen are written for', ( $feature['nino'] ?? '' ) === '^1.9' );
+check( '...and no 1.8 can run it, a 1.9 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.6.0' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.7.0-dev' ) === true );
-check( 'it is Design 2.1: the model of 2.0 with the typefaces and the five knobs of round 4, and the version says so', ( $feature['version'] ?? '' ) === '2.1.0' );
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.8.0' ) === false
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.9.0-dev' ) === true );
+check( 'it is Design 2.2: the [logo], the pair and the compiled theme on the model of 2.1, and the version says so', ( $feature['version'] ?? '' ) === '2.2.0' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
 // The line as the file has it, with no fallback to another language: what a check of both languages reads

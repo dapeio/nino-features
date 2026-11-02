@@ -66,9 +66,10 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.1.0',
-	// 1.8, for the toolset the code and the panel are written on
-	'nino'				=> '^1.8',
+	'version'			=> '1.2.0',
+	// 1.9, for the toolset the code and the panel are written on, and for the
+	// options of a field, which a method of the feature answers
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// Nothing: the definitions live in config.php under '/nino/form/forms',
 	// where the kernel reads them and every backup already carries them, and

@@ -115,7 +115,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `category` | what the feature is for, one slug - the manifest's |
 | `maturity` | the badge the Features panel draws beside the name - the manifest's; left out where it names none |
 | `version` | `major.minor.patch`, the manifest's |
-| `nino` | the Nino version constraint, `^1.8` |
+| `nino` | the Nino version constraint, `^1.9` |
 | `php` | `{ "ext": [ ... ] }` - the PHP extensions the feature needs |
 | `requires` | the keys of the features it requires |
 | `directory` | the one directory the archive holds - `Newsletter`, the class name |

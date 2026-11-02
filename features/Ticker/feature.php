@@ -84,8 +84,8 @@ return [
 	// fill of its own, the label of the pause button - the Features panel
 	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.1.0',
-	'nino'				=> '^1.8',
+	'version'			=> '1.2.0',
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// Nothing under data/: what runs past is the markup a project's own
 	// template carries, or the components between the tags of [ticker]

@@ -13,7 +13,7 @@ $appData['/nino/modules'] = [ '\\Nino\\Modules\\Components' ];
 
 check( 'the manifest validates without a warning', is_array( \Nino\Features::manifest( dirname( __DIR__ ) ) ) && ninoWarnings() === [] );
 check( 'activation lists the class, records the version and applies the unit', \Nino\Features::activate( $appData, 'hello' ) === true
-	&& \Nino\Features::get( $appData, 'hello' )['installed'] === '1.1.0' && is_file( \Nino\Filesystem::path( $appData, '/templates/page-hello.tpl' ) ) === true );
+	&& \Nino\Features::get( $appData, 'hello' )['installed'] === '1.1.1' && is_file( \Nino\Filesystem::path( $appData, '/templates/page-hello.tpl' ) ) === true );
 
 \Nino\Html::init( $appData );
 \Nino\Modules::callModules( $appData, 'init' );

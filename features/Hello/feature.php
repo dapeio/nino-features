@@ -12,7 +12,7 @@ return [
 	],
 	'category'		=> 'system',				// one of \Nino\Features::CATEGORIES
 	'maturity'		=> 'Example',				// the badge beside the name, 24 characters at most
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',					// the kernel whose vocabulary it uses
 	'data'				=> [ '/data/hello.php' ],					// what a backup carries
 	'assets'			=> [ '/features/Hello/assets/hello.css' ],	// into the site's style bundle

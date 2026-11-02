@@ -268,7 +268,7 @@ $dir 			= dirname( __DIR__ );
 $manifest	= \Nino\Features::manifest( $dir );
 
 check( 'the manifest validates, key "gallery"', is_array( $manifest ) === true && $manifest['key'] === 'gallery' && ninoWarnings() === [] );
-check( 'it is written for this kernel, and names the 1.8 whose vocabulary it uses', is_array( $manifest ) === true && \Nino\Features::satisfies( $manifest['nino'] ) === true && $manifest['nino'] === '^1.8' );
+check( 'it is written for this kernel, and names the 1.9 whose vocabulary it uses', is_array( $manifest ) === true && \Nino\Features::satisfies( $manifest['nino'] ) === true && $manifest['nino'] === '^1.9' );
 check( 'it names and describes itself in both interface languages', is_array( $manifest ) === true
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 

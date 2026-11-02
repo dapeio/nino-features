@@ -54,7 +54,7 @@ return [
 	// It adds a control to something already on the page - the Features panel
 	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'data'				=> [],

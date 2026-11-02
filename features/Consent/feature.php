@@ -72,7 +72,7 @@ return [
 		],
 	],
 	'category'		=> 'security',
-	'version'			=> '1.1.0',
+	'version'			=> '1.2.0',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the visitor's choice lives in a cookie in the

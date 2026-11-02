@@ -33,7 +33,7 @@ return [
 	// It changes how something already on the page behaves and brings
 	// nothing of its own to show
 	'category'		=> 'ui',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing: what it opens is markup the page already carries

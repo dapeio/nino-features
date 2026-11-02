@@ -36,7 +36,7 @@ return [
 		],
 	],
 	'category'		=> 'marketing',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// The whole directory this feature owns under data/ - what a backup

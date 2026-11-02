@@ -523,11 +523,14 @@ foreach( $plain['rules'] as $rule )
 	if( $rule['selector'] !== ':root' )
 		$unequal[] = 'a rule on '. $rule['selector'];
 
-if( ( $baseDeclared['--toc-edge'][0]['value'] ?? null ) !== 'var('. \Nino\Modules\Design\Setup::INKS[ (string) ( $knobsOf['regular']['edge'][0]['default'] ?? '' ) ]. ')' )
-	$unequal[] = 'the line is not the tone its knob stands at';
-
-check( 'Line stands where toc.css stands: the middle of each of its ladders is the default the base declares, it writes no rule, and the tone of the line the base declares is the one its knob stands at - so the list under it is drawn as it is without the Design feature'. ( $unequal === [] ? '' : ' - '. implode( ', ', $unequal ) ),
+check( 'Line stands where toc.css stands: the middle of each of its ladders is the default the base declares, and it writes no rule - so the list under it is drawn as it is without the Design feature'. ( $unequal === [] ? '' : ' - '. implode( ', ', $unequal ) ),
 	$unequal === [] && count( array_filter( array_keys( $plain['declared'] ), static fn( string $property ): bool => str_ends_with( $property, '--default' ) ) ) === 3 );
+
+if( class_exists( '\\Nino\\Modules\\Design\\Setup' ) === false )
+	echo "  note - there is no Design feature beside this one: the tone of the line is not compared with the tone its knob stands at here, a checkout whose Nino runs Design compares it\n";
+else
+	check( 'Line stands where toc.css stands in its tone too: the tone of the line the base declares is the one its knob stands at',
+		( $baseDeclared['--toc-edge'][0]['value'] ?? null ) === 'var('. \Nino\Modules\Design\Setup::INKS[ (string) ( $knobsOf['regular']['edge'][0]['default'] ?? '' ) ]. ')' );
 
 // A list written hidden stays hidden where the script never runs: no look and no style gives the list a display of its own
 $displayed = [];

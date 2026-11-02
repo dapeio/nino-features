@@ -71,7 +71,7 @@ return [
 		],
 	],
 	'category'		=> 'security',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// The attempt-cap counter and the session epoch this feature owns - what a

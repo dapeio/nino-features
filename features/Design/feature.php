@@ -188,7 +188,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'ui',
-	'version'			=> '2.1.0',
+	'version'			=> '2.2.0',
 	/*	Two floors, and the higher one wins. 1.2 is where the wizard stopped
 		asking about the look and the base unit started delivering
 		assets/theme.css as one file; everything here writes over that file, so
@@ -198,17 +198,17 @@ return [
 		read by a kernel newer than the v1.2.0-beta tag - on that one
 		Features::manifest() refuses this file outright - so a constraint
 		admitting 1.2 offered a feature that could not be installed. ^1.3 is
-		the first that names only a kernel which does both. And the highest came
-		with 1.7, which renamed the classes of the hero to nino-hero and kept
-		no alias, gave the font roles, the grounds and the counter ground
-		their custom properties - the section and card templates, the phone rule of
-		a header, the font roles the compiler writes and the specimen are
-		written for them - and called the card one - nino-card and its tokens, and kept
-		no alias for the old class - and whose delivered theme.css is the body
-		this compiler writes of a library with those names: the section and card sets,
-		base.css and the specimen are written for them, so on a 1.6 they style
-		nothing and the compile is not the delivered file. */
-	'nino'				=> '^1.7',
+		the first that names only a kernel which does both. And the highest is
+		1.9: it brings [logo], which draws the logo as the pair of the light and
+		the dark one, and a delivered theme.css that is the body this compiler
+		writes of the library - the hero as nino-hero, the font roles, the
+		grounds and the counter ground as custom properties, the card as
+		nino-card with its tokens, and [logo] with its pair. The section and
+		card templates, the phone rule of a header, the font roles the compiler
+		writes, the logo templates and the specimen are written for them, so on
+		an older kernel they style nothing and the compile is not the delivered
+		file. */
+	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// The whole setup: which template per part, the knob positions of the three
 	// template tabs, the size, width and animation, the font roles, the palette's

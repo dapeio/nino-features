@@ -85,8 +85,8 @@ return [
 	// It brings content an editor maintains, which is what puts it here
 	// rather than with the effects that only change how a page behaves
 	'category'		=> 'content',
-	'version'			=> '1.1.0',
-	'nino'				=> '^1.8',
+	'version'			=> '1.2.0',
+	'nino'				=> '^1.9',
 	// The overlay a thumbnail opens into is the Lightbox feature's, not a
 	// second copy of one. Installing this from the catalogue brings it along
 	'requires'		=> [ 'lightbox' ],

@@ -66,8 +66,8 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'posts' && $feature['module'] === '\\Nino\\Modules\\Posts' );
-check( 'it is content, and names the kernel it needs - the one whose toolset its class calls, and with it the card that is called one, which the list page is written in', ( $feature['category'] ?? '' ) === 'content'
-	&& ( $feature['nino'] ?? '' ) === '^1.8' );
+check( 'it is content, and names the kernel it needs - the one whose toolset its class calls, and with it the card that is called one, which the list page is written in, and the element with its fallback', ( $feature['category'] ?? '' ) === 'content'
+	&& ( $feature['nino'] ?? '' ) === '^1.9' );
 check( 'the sections file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Posts\Sections::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 check( 'the posts themselves are not - they are ordinary elements, and /elements is backed up already',

@@ -511,8 +511,8 @@ if( $part2 === true ) {
 	// Which features this checkout can run: bin/applicable.php says, the same answer the CI copies by
 	$applicable = trim( (string) shell_exec( escapeshellarg( PHP_BINARY ). ' '. escapeshellarg( $repo. '/bin/applicable.php' ). ' '. escapeshellarg( $root ). ' 2>/dev/null' ) );
 	$applicable = $applicable === '' ? [] : explode( "\n", $applicable );
-	// Design and Newsletter ask for a Nino of 1.7 - the one whose card classes the first is written for, and
-	// whose hero classes the second has. The checks that look for what only they bring - Design's
+	// Design and Newsletter ask for a Nino of 1.9 - the one with the [logo] and the compiled theme the first is written for,
+	// and with the [[url]] of [image] the second's mail header writes. The checks that look for what only they bring - Design's
 	// frames, Newsletter's mail templates - have nothing to look for on an older one, and say so
 	$designRuns = in_array( 'Design', $applicable, true ) === true;
 	$newsletterRuns = in_array( 'Newsletter', $applicable, true ) === true;
