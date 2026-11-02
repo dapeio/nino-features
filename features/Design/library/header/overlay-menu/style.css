@@ -273,7 +273,7 @@ body:has(.nino-frame-header .nino-nav-burger > button[aria-expanded="true"]) {
 }
 
 body main {
-	padding-top: calc( clamp(4.5rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) );
+	padding-top: calc( clamp(4.5rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) + var(--nino-header-grow, 0px) );
 }
 
 body main:has(> .nino-cover:first-child),

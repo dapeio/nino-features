@@ -172,7 +172,7 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 }
 
 body main {
-	padding-top: calc( clamp(4.75rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) );
+	padding-top: calc( clamp(4.75rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) + var(--nino-header-grow, 0px) );
 }
 
 body main:has(> .nino-cover:first-child),

@@ -1547,6 +1547,34 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'every header takes main\'s top padding away for a hero that opens the page, directly below main and inside the Builder\'s wrap alike'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] );
 
+/*	Below a page that opens with no hero main's top padding is the bar's height, and the bar grows a row with the links that wrap: the kernel writes how far it has grown as
+	--nino-header-grow (Nino.ui.js, 0px where it does not), and every formula of a header that reads --header-height for that padding adds it - the one of the top bar from 768px
+	included, which has the utility bar to add as well. Read from the library's own list of headers	*/
+$growProblems = [];
+$growFormulas = 0;
+
+foreach( Setup::available( $library, 'header' ) as $set ) {
+
+	$css = designPlain( (string) file_get_contents( Setup::file( $library, 'header', $set ) ) );
+	$formulas = 0;
+
+	preg_match_all( '/body main\s*\{\s*padding-top:\s*([^;]+);/', $css, $found );
+
+	foreach( $found[1] as $value )
+		if( str_contains( $value, '--header-height' ) === true ) {
+			$formulas++;
+			if( str_contains( $value, '+ var(--nino-header-grow, 0px)' ) === false )
+				$growProblems[] = $set. ': '. $value;
+		}
+
+	if( $formulas === 0 )
+		$growProblems[] = $set. ': no formula for the padding of main reads the height of the bar';
+
+	$growFormulas += $formulas;
+}
+
+check( 'every header adds how far the bar has grown to the padding of main, in every formula that reads the bar\'s height ('. $growFormulas. ' of them)'. ( $growProblems === [] ? '' : ' - '. implode( '; ', $growProblems ) ), $growProblems === [] && $growFormulas === 7 );
+
 /*	The colours of a header are roles. --nino-default-focus is the one solved for a ring - 3:1, which is all a ring has to clear, and not what a text
 	has to: a header that colours its text with it, the link that is current for one, is a text under 4.5:1 - so no set does, and the role a link is
 	coloured with is the link role. And a bar that paints a surface of its own that is see-through - a mix with transparent, or the page's dim - lies over
