@@ -120,6 +120,12 @@ check( '...and the lines of the lightbox and of the components by place are, in 
 check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the classes of the six sides of the spacing, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], array_keys( $manifest['manual']['markup'] ) ) === []
 	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
 
+$slugKey = array_values( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $name ): bool => str_starts_with( $name, 'href="[[/nino/dir]]' ) === true ) );
+check( '...and its example of a link to a page of the site goes on with the slug of the element, and names the slug and the uri in both languages',
+	$slugKey === [ 'href="[[/nino/dir]][[/_nino/webpage/<uri>/uri]]/[[.slug]]"' ]
+	&& array_reduce( [ 'en_US', 'de_DE' ], static fn( bool $carry, string $locale ): bool => $carry === true && str_contains( \Nino\Features::localized( $manifest['manual']['markup'][$slugKey[0]], $locale ), '[[.slug]]' ) === true
+		&& str_contains( \Nino\Features::localized( $manifest['manual']['markup'][$slugKey[0]], $locale ), '[[.uri]]' ) === true, true ) );
+
 $settingsLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'de_DE' ) ];
 check( '...and has a line of its own for the settings dialogs of columns and components, in both languages and under a thousand bytes each',
 	$settingsLines['en_US'] !== '' && $settingsLines['de_DE'] !== '' && $settingsLines['en_US'] !== $settingsLines['de_DE'] && strlen( $settingsLines['en_US'] ) < 1000 && strlen( $settingsLines['de_DE'] ) < 1000 );
@@ -2571,10 +2577,48 @@ $fillProblems = static fn( array $model ): string => implode( ' | ', array_filte
 check( 'a fill of the element in the sub-path of a link is a problem where there is no loop - the section, the attribute and the fill named, as for a source that means nothing there - and the page alone, or a sub-path with none, is none',
 	str_contains( $fillProblems( $outside( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.uri]]' ) ), 'the sub-path of the attribute "href" of button holds the fill [[.uri]], which means nothing in a column without a loop' ) === true
 	&& $fillProblems( $outside( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/more?x=1' ) ) === '' && $fillProblems( $outside( '/_nino/webpage/contact/uri' ) ) === '' );
-check( '...in a loop it is .uri, .id or a field of the type - and a field the type has not is a problem, as a source that is no field is, whatever else the sub-path holds',
-	$fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.uri]]/[[.id]]/[[title]]' ) ) === '' && str_contains( $fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[title]]/[[nope]]' ) ), 'holds the fill [[nope]], which is no field of the loop\'s type' ) === true
+check( '...in a loop it is .slug, .uri, .id or a field of the type - and a field the type has not is a problem, as a source that is no field is, whatever else the sub-path holds',
+	$fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.slug]]/[[.uri]]/[[.id]]/[[title]]' ) ) === '' && str_contains( $fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[title]]/[[nope]]' ) ), 'holds the fill [[nope]], which is no field of the loop\'s type' ) === true
 	&& str_contains( $fillProblems( $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[.lang]]' ) ), '[[.lang]]' ) === true );
-check( '...and the Reader reads such a link all the same: the problem is the Document\'s, the page is a page', $reader::address( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[nope]]' ) !== null
+// The slug is a source of a loop as the id and the uri are, and means nothing in a column without one
+$slugSource = static function( int $block, int $col, int $component ) use ( $loaded ): array {
+	$model = $loaded['model'];
+	$model['blocks'][$block]['cols'][$col]['components'][$component]['source'] = '.slug';
+	return $model;
+};
+check( 'the source .slug of a component is no problem in a loop, as .id and .uri are none - and it is one in a column without a loop, the source named',
+	\Nino\Modules\Builder\Document::problems( $appData, $slugSource( 1, 1, 1 ), $registry ) === []
+	&& str_contains( implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $slugSource( 3, 0, 0 ), $registry ) ), 'the source ".slug" of title means nothing in a column without a loop' ) === true );
+
+// The Document accepts in the sub-path exactly the fills the dialog of the Builder offers (_fillsOf() in admin.js): .slug, .uri, .id and the fields of the type that are a line of text or a number and no markup
+\Nino\Elements::insertElementType( $appData, '/slugkinds', [
+	'title'		=> [ 'type' => 'string', 'locale' => true ],
+	'count'		=> [ 'type' => 'integer' ],
+	'price'		=> [ 'type' => 'double' ],
+	'my-field'	=> [ 'type' => 'string' ],
+	'body'		=> [ 'type' => 'string', 'html' => true, 'blocks' => true ],
+	'photo'		=> [ 'type' => 'image', 'width' => 400, 'height' => 300 ],
+	'when'		=> [ 'type' => 'date' ],
+	'stamp'		=> [ 'type' => 'datetime' ],
+	'tags'		=> [ 'type' => 'array' ],
+	'flag'		=> [ 'type' => 'boolean' ],
+	'a.b'			=> [ 'type' => 'string' ],
+] );
+$kindsModel = static function( string $fill ) use ( $aimedModel ): array {
+	$model = $aimedModel( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/'. $fill );
+	$model['blocks'][1]['cols'][1]['stack']['source'] = '/slugkinds';
+	return $model;
+};
+// What the loop's cells say of the fields of the other type stays the same whatever the sub-path holds: a fill is offered where it adds no problem to it
+$kindsBase = \Nino\Modules\Builder\Document::problems( $appData, $kindsModel( '[[.id]]' ), $registry );
+$kindsOffered = array_values( array_filter( [ '.slug', '.uri', '.id', 'title', 'count', 'price', 'my-field', 'body', 'photo', 'when', 'stamp', 'tags', 'flag', 'a.b', '.lang', 'nope' ],
+	static fn( string $fill ): bool => \Nino\Modules\Builder\Document::problems( $appData, $kindsModel( '[['. $fill. ']]' ), $registry ) === $kindsBase ) );
+check( 'the Document accepts the fills of the element that the dialog offers, and no others: .slug, .uri, .id and the fields of the type that are a line of text, an integer or a double and hold no markup - not an image, a body, a date, a time, a list of tags, a flag, a name no address can hold, nor the language of a text',
+	$kindsOffered === [ '.slug', '.uri', '.id', 'title', 'count', 'price', 'my-field' ] );
+check( '...a field of the type that is none of those is told apart from one the type has not: the sentence names the fill, and the field it is not',
+	str_contains( $fillProblems( $kindsModel( '[[photo]]' ) ), 'holds the fill [[photo]], which is a field of the loop\'s type that is no line of text or number' ) === true
+	&& str_contains( $fillProblems( $kindsModel( '[[nope]]' ) ), 'holds the fill [[nope]], which is no field of the loop\'s type' ) === true );
+check( '...the Reader reads such a link all the same: the problem is the Document\'s, the page is a page', $reader::address( '[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[nope]]' ) !== null
 	&& $read( $page( $section( '[button text="Go" href="[[/nino/dir]][[/_nino/webpage/contact/uri]]/[[nope]]"]' ) ) )['blocks'][0]['kind'] === 'section' );
 
 $thrown = 0;

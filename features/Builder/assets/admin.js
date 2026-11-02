@@ -1855,7 +1855,7 @@
 
 						if( looped === false )
 							red.push( { path : path, source : source, why : 'static' } );
-						else if( fields !== null && ( plain === true || ( source !== '.id' && source !== '.uri' ) ) && Object.prototype.hasOwnProperty.call( fields, source ) === false )
+						else if( fields !== null && ( plain === true || [ '.id', '.uri', '.slug' ].indexOf( source ) === -1 ) && Object.prototype.hasOwnProperty.call( fields, source ) === false )
 							red.push( { path : path, source : source, why : 'field' } );
 					};
 					const check = function( component, path ) {
@@ -8269,7 +8269,7 @@
 
 			const builder = Nino.admin.builder;
 
-			return builder.KEY.test( value ) === true || value.indexOf('/_nino/') === 0 || builder.ADDRESS.test( value ) === true || value === '.id' || value === '.uri'
+			return builder.KEY.test( value ) === true || value.indexOf('/_nino/') === 0 || builder.ADDRESS.test( value ) === true || value === '.id' || value === '.uri' || value === '.slug'
 				|| ( fields !== null && fields !== undefined && Object.prototype.hasOwnProperty.call( fields, value ) === true );
 		},
 
@@ -8679,7 +8679,7 @@
 		/**
 		 *	The sub-path of a link as it is written, from what was typed: nothing for nothing, else with the slash in front that an address needs where it has none - a query
 		 *	or an anchor is the sub-path as it is. Null for one that holds a space, a quote, a backslash or a bracket that is no fill, and for a fill the loop does not have:
-		 *	one of the element of a loop is its .uri, its .id or a field of the type it was offered (see _fillsOf()), and where there is no loop none is
+		 *	one of the element of a loop is its .slug, its .uri, its .id or a field of the type it was offered (see _fillsOf()), and where there is no loop none is
 		 *
 		 *	@param		{string}				typed
 		 *	@param		{Object|null}		fields					The fields of the type the loop runs over, null where there is no loop
@@ -8700,16 +8700,16 @@
 		},
 
 		/**
-		 *	The fills of the element of a loop that an address may hold, as the dialog of a link lists them: the uri of the element and its number in the loop, then the fields of
-		 *	the type that are a line of text or a number - not the ones that hold markup
+		 *	The fills of the element of a loop that an address may hold, as the dialog of a link lists them: the slug of the element - the last segment of its uri, the name a link to
+		 *	a page of the element needs - its uri and its number in the loop, then the fields of the type that are a line of text or a number - not the ones that hold markup
 		 *
 		 *	@param		{Object}		fields						The fields of the type the loop runs over
 		 *
-		 *	@return		{Array}										[ '[[.uri]]', ... ]
+		 *	@return		{Array}										[ '[[.slug]]', ... ]
 		 */
 		_fillsOf : function( fields ) {
 
-			return [ '.uri', '.id' ].concat( Object.keys( fields ).filter( function( name ) {
+			return [ '.slug', '.uri', '.id' ].concat( Object.keys( fields ).filter( function( name ) {
 				return [ 'string', 'integer', 'double' ].indexOf( fields[name].type ) !== -1 && fields[name].html !== true && /^[A-Za-z0-9_-]+$/.test( name ) === true;
 			} ) ).map( function( name ) { return '[['+ name+ ']]' } );
 		},
@@ -8942,7 +8942,7 @@
 				const names = Object.keys( options.fields ).filter( function( name ) { return options.fields[name].type === ( image === true ? 'image' : 'string' ) } );
 				const items = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ]
 					.concat( names.map( function( name ) { return { value : name, label : name } } ) )
-					.concat( image === true ? [] : [ { value : '.id', label : '.id' }, { value : '.uri', label : '.uri' } ].filter( function( item ) { return options.kind === 'href' || item.value === '.id' } ) );
+					.concat( image === true ? [] : [ { value : '.id', label : '.id' }, { value : '.uri', label : '.uri' }, { value : '.slug', label : '.slug' } ].filter( function( item ) { return options.kind === 'href' || item.value !== '.uri' } ) );
 
 				pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/field'), Nino.content.getText('/_admin/builder/hint/field'), items, options.value.charAt(0) === '/' || options.value.charAt(0) === '[' ? '' : options.value, pick ) );
 			}

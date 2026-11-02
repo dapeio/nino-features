@@ -1248,8 +1248,9 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	What a section's sources mean where they stand: in a static
-		 *	column a text key or nothing, in a stack a key, .id, .uri or a
-		 *	field of the type, and a stack's type has to be one the Elements
+		 *	column a text key or nothing, in a stack a key, .id, .uri, .slug or
+		 *	a field of the type, the fills in the sub-path of a link the ones
+		 *	_fills() lists, and a stack's type has to be one the Elements
 		 *	panel knows. A key or a slot that is new has to be one that can
 		 *	be made
 		 *
@@ -1295,7 +1296,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the picture "'. $picture. '" of '. ( $component['name'] ?? '' ). ( $picture[0] === '/' ? ' is no image slot' : ( $fields === null ? ' means nothing in a column without a loop: it is an image slot' : ' is no field of the loop\'s type' ) );
 					}
 
-					// A link that goes on from a page of the site holds the fills of the element only in a loop, and only ones the type has: .id, .uri and its fields
+					// A link that goes on from a page of the site holds the fills of the element only in a loop, and only the ones the dialog of the Builder offers there
 					$addressed = [ 'the source' => $kind === 'href' ? $source : '' ];
 
 					foreach( Reader::addresses( (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] ) ) as $attribute )
@@ -1306,8 +1307,8 @@ namespace Nino\Modules\Builder {
 						preg_match_all( '~\[\[([^\[\]]+)\]\]~', (string) ( Reader::address( $address )['postfix'] ?? '' ), $found );
 
 						foreach( array_unique( $found[1] ) as $fill )
-							if( $fields === null || ( in_array( $fill, [ '.id', '.uri' ], true ) === false && isset( $fields[$fill] ) === false ) )
-								$problems[] = 'the sub-path of '. $what. ' of '. ( $component['name'] ?? '' ). ' holds the fill [['. $fill. ']], which '. ( $fields === null ? 'means nothing in a column without a loop' : 'is no field of the loop\'s type' );
+							if( $fields === null || in_array( $fill, self::_fills( $fields ), true ) === false )
+								$problems[] = 'the sub-path of '. $what. ' of '. ( $component['name'] ?? '' ). ' holds the fill [['. $fill. ']], which '. ( $fields === null ? 'means nothing in a column without a loop' : ( isset( $fields[$fill] ) === true ? 'is a field of the loop\'s type that is no line of text or number' : 'is no field of the loop\'s type' ) );
 					}
 
 					if( $source === '' || in_array( $kind, [ 'none', 'content' ], true ) === true )
@@ -1318,7 +1319,7 @@ namespace Nino\Modules\Builder {
 					elseif( $fields === null )
 						$valid = $kind === 'href';
 					else
-						$valid = in_array( $source, [ '.id', '.uri' ], true ) === true || isset( $fields[$source] ) === true || $kind === 'href';
+						$valid = in_array( $source, [ '.id', '.uri', '.slug' ], true ) === true || isset( $fields[$source] ) === true || $kind === 'href';
 
 					if( $valid === false )
 						$problems[] = 'the source "'. $source. '" of '. ( $component['name'] ?? '' ). ( $fields === null ? ' means nothing in a column without a loop: it is a text key or an image slot' : ' is no field of the loop\'s type' );
@@ -1326,6 +1327,24 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $problems;
+		}
+
+		/**
+		 *	The fills of the element of a loop that the sub-path of a link may hold, exactly the ones the dialog of the Builder lists (_fillsOf() in admin.js): the slug of
+		 *	the element - the last segment of its uri - its uri and its number in the loop, then the fields of the type that are a line of text or a number, not the ones that
+		 *	hold markup - no picture, no body, no date, no list of tags. A name an address cannot hold is none the Reader reads as a fill, so that it never gets here
+		 *
+		 *	@param		array			$fields				The model of the type the loop runs over
+		 *
+		 *	@return 	array										The names without brackets: [ '.slug', '.uri', '.id', 'title', ... ]
+		 */
+		private static function _fills( array $fields ): array {
+
+			$names = array_filter( array_map( 'strval', array_keys( $fields ) ), static fn( string $name ): bool => is_array( $fields[$name] ?? null ) === true
+				&& in_array( $fields[$name]['type'] ?? '', [ 'string', 'integer', 'double' ], true ) === true
+				&& ( $fields[$name]['html'] ?? false ) !== true );
+
+			return array_merge( [ '.slug', '.uri', '.id' ], array_values( $names ) );
 		}
 
 		/**

@@ -1321,6 +1321,12 @@ check( 'a stack changed to static: every field of the element is red in that col
 	=== JSON.stringify( [ [ '1.1.0', 'image', 'static' ], [ '1.1.1', 'title', 'static' ], [ '1.1.2', 'summary', 'static' ], [ '1.1.3', '.uri', 'static' ] ] ) );
 model.blocks[1].cols[1].stack = { name : 'stack', source : '/services', attributes : { cols : '100 50 50' } };
 check( 'and the stack back: nothing is red', builder._red( model, reg ).length === 0 );
+model.blocks[1].cols[1].components[1].source = '.slug';
+check( 'the slug of the element is a source of a loop as the id and the uri are: nothing is red for it in the type that has the fields, nor in one that has not - and in a column without a loop it is red',
+	builder._red( model, reg ).length === 0 && ( model.blocks[1].cols[1].stack.source = '/team', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ 'image:field', 'summary:field' ] ) )
+	&& ( model.blocks[1].cols[1].stack = null, JSON.stringify( builder._red( model, reg ).filter( function( entry ) { return entry.source === '.slug' } ).map( function( entry ) { return entry.why } ) ) === JSON.stringify( [ 'static' ] ) ) );
+model.blocks[1].cols[1].components[1].source = 'title';
+model.blocks[1].cols[1].stack = { name : 'stack', source : '/services', attributes : { cols : '100 50 50' } };
 model.blocks[1].cols[1].stack.source = '/team';
 check( 'a stack of a type that has not the fields: the fields it has not are red, the ones it has (.uri, a key) are not', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ 'image:field', 'title:field', 'summary:field' ] ) );
 model.blocks[1].cols[1].stack.source = '/nowhere';
@@ -3709,13 +3715,13 @@ change( pickerPane('pick'), 'Field of the element', '' );
 check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && dialogContent().querySelector('.builder-source-current').textContent === 'none' );
 builder._openSettings( [ 1, 1, 1 ] );
 sourceButton( dialogContent() ).click();
-check( 'the source of a text in a loop is a field of the element that holds a text, the id of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id'
+check( 'the source of a text in a loop is a field of the element that holds a text, the id or the slug of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.slug'
 	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' && pickItems().length === 2 && ( change( pickerPane('pick'), 'Field of the element', 'summary' ), componentAt( [ 1, 1, 1 ] ).source === 'summary' ) );
 builder._openSettings( [ 1, 1, 3 ] );
 check( 'the button in a loop has the source it has and the fixed text it has: the dialog opens on the fixed value', dialogContent().querySelector('.builder-source-current').textContent === '.uri' && ( sourceButton( dialogContent() ).click(), shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' ) );
 builder._openSettings( [ 1, 1, 3 ] );
 buttonOf( blockOf('link'), 'Source' ).click();
-check( 'the link of a button in a loop may be the uri or the id of the element - or a fixed address, which is a value that stands in the template', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.uri'
+check( 'the link of a button in a loop may be the uri or the id of the element - or a fixed address, which is a value that stands in the template', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.uri,.slug'
 	&& JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' );
 buttonOf( pickerStrip(), 'Static' ).click();
 fixedField().value = '/contact';
@@ -3885,20 +3891,21 @@ const servicesFields = registry().types[0].fields;
 check( 'what a sub-path is written as: nothing for nothing, a slash in front where it has none, a query or an anchor as it is, a fill of the element among its characters - and none for a space, a quote, a backslash or a bracket that is no fill',
 	JSON.stringify( [ '', '  ', 'a', '/a', ' a/b ', '?q=1', '#top', '/[[.uri]]', 'x/[[title]]-[[.id]]', '/a b', '/a"b', "/a'b", '/a\\b', '/[[', '/[[a b]]', '/[[.uri]', '/[a]', '/[[/_nino/webpage/x/uri]]' ].map( function( text ) { return builder._postfixOf( text, servicesFields ) } ) )
 	=== JSON.stringify( [ '', '', '/a', '/a', '/a/b', '?q=1', '#top', '/[[.uri]]', '/x/[[title]]-[[.id]]', null, null, null, null, null, null, null, null, null ] ) );
-check( '...a fill is the element\'s only where there is one and only one that is offered - .uri, .id or a field of the type that is a line of text or a number: none outside a loop, none for a field the type has not, for a picture or for the language of a text',
-	JSON.stringify( [ '/[[.uri]]', '/[[title]]', '/[[price]]', '/[[nope]]', '/[[image]]', '/[[.lang]]', '/a/[[title]]/[[nope]]' ].map( function( text ) { return [ builder._postfixOf( text, servicesFields ), builder._postfixOf( text, null ), builder._postfixOf( text, undefined ) ] } ) )
-	=== JSON.stringify( [ [ '/[[.uri]]', null, null ], [ '/[[title]]', null, null ], [ '/[[price]]', null, null ], [ null, null, null ], [ null, null, null ], [ null, null, null ], [ null, null, null ] ] )
+check( '...a fill is the element\'s only where there is one and only one that is offered - .slug, .uri, .id or a field of the type that is a line of text or a number: none outside a loop, none for a field the type has not, for a picture or for the language of a text',
+	JSON.stringify( [ '/[[.slug]]', '/[[.uri]]', '/[[title]]', '/[[price]]', '/[[nope]]', '/[[image]]', '/[[.lang]]', '/a/[[title]]/[[nope]]' ].map( function( text ) { return [ builder._postfixOf( text, servicesFields ), builder._postfixOf( text, null ), builder._postfixOf( text, undefined ) ] } ) )
+	=== JSON.stringify( [ [ '/[[.slug]]', null, null ], [ '/[[.uri]]', null, null ], [ '/[[title]]', null, null ], [ '/[[price]]', null, null ], [ null, null, null ], [ null, null, null ], [ null, null, null ], [ null, null, null ] ] )
 	&& builder._postfixOf( '/plain', null ) === '/plain' );
 check( '...and the two parts of an address as the template holds it, and the address they make: the page alone is its key', builder._pageAddress( pageKey( 0 ), '' ) === pageKey( 0 ) && builder._pageAddress( pageKey( 0 ), '/[[.uri]]' ) === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]'
 	&& JSON.stringify( builder._pageParts( builder._pageAddress( pageKey( 0 ), '/[[.uri]]' ) ) ) === JSON.stringify( { key : pageKey( 0 ), postfix : '/[[.uri]]' } ) && JSON.stringify( builder._pageParts( pageKey( 0 ) ) ) === JSON.stringify( { key : pageKey( 0 ), postfix : '' } )
 	&& JSON.stringify( builder._pageParts( '/contact' ) ) === JSON.stringify( { key : '/contact', postfix : '' } ) && builder._pageOf( '/contact' ) === null && builder._pageOf( '[[/_nino/webpage/nowhere/uri]]/x' ) === null );
 check( '...and it is a source and no address typed in: a field of the element, a key of the system, and a page with a sub-path are, an address typed in is not', builder._isSource( '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]', null ) === true && builder._isSource( pageKey( 0 ), null ) === true
-	&& builder._isSource( '/contact/[[.uri]]', null ) === false && builder._isSource( '[[/template/page-home/hero/title]]/x', null ) === false && builder._isSource( '/artikel', null ) === false );
+	&& builder._isSource( '.slug', null ) === true && builder._isSource( '/contact/[[.uri]]', null ) === false && builder._isSource( '[[/template/page-home/hero/title]]/x', null ) === false && builder._isSource( '/artikel', null ) === false );
 
 doc = open();
 openInternal( [ 1, 1, 3 ] );
-check( 'in a loop the fields of the element are listed under the field, small, as the fills they are - the uri of the element and its number, then the fields of the type that are a line of text or a number: not a picture',
-	JSON.stringify( pickerPane('internal').querySelectorAll('.builder-postfix-token').map( function( token ) { return token.textContent } ) ) === '["[[.uri]]","[[.id]]","[[title]]","[[summary]]","[[price]]"]'
+check( 'in a loop the fields of the element are listed under the field, small, as the fills they are - the slug of the element first, then its uri and its number, then the fields of the type that are a line of text or a number: not a picture',
+	JSON.stringify( pickerPane('internal').querySelectorAll('.builder-postfix-token').map( function( token ) { return token.textContent } ) ) === '["[[.slug]]","[[.uri]]","[[.id]]","[[title]]","[[summary]]","[[price]]"]'
+	&& JSON.stringify( builder._fillsOf( servicesFields ) ) === '["[[.slug]]","[[.uri]]","[[.id]]","[[title]]","[[summary]]","[[price]]"]'
 	&& pickerPane('internal').querySelector('.builder-postfix-fields').textContent.indexOf( words['/_admin/builder/source/postfix-fields'] ) === 0 && pickerPane('internal').querySelector('.builder-postfix-fields').classList.contains('nino-admin-hint') );
 changes = 0;
 buttonOf( pickerPane('internal'), '[[.uri]]' ).click();
@@ -3925,6 +3932,12 @@ check( '...a field put in the middle of the text stands where the caret was, and
 change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.uri]]/more' );
 useOf().click();
 check( '...and a sub-path after a field is one as well: it is written as it was typed', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]/more' );
+buttonOf( blockOf('link'), 'Source' ).click();
+buttonOf( pickerPane('internal'), '[[.slug]]' ).click();
+check( '...the slug of the element is put in as any field is, and is the sub-path a link to a page of the element needs', postfixOf().el.value === '/[[.uri]]/more[[.slug]]' );
+change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.slug]]' );
+useOf().click();
+check( '...and the sub-path /[[.slug]] after the page is the address of the link: the kernel puts the name of each element in', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.slug]]' && pickerBox().open === false );
 buttonOf( blockOf('link'), 'Source' ).click();
 buttonOf( pickerStrip(), words['/_admin/builder/source/tab-pick'] ).click();
 check( '...Choose a value does not offer a page with a sub-path as the field it is not: the select of the fields stands on none, the page is not marked as the current one in the list', valueAt( pickerPane('pick'), 'Field of the element' ) === '' && pickItems().filter( function( item ) { return item.classList.contains('is-current') } ).length === 0 );
@@ -3969,7 +3982,7 @@ check( 'a picture: a slot from the list, a new slot with its label and its size 
 builder._sourceDialog( plainOptions( { create : false, fixed : false } ) );
 check( 'a source that may not be made new or typed in has the list alone', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick"]' );
 builder._sourceDialog( plainOptions( { fields : { title : { type : 'string' }, image : { type : 'image' } }, value : 'title', kind : 'href' } ) );
-check( 'the fields of the type of a loop are what the options say they are: a link may be the id and the uri, a text the id', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,.id,.uri' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' );
+check( 'the fields of the type of a loop are what the options say they are: a link may be the id, the uri and the slug, a text the id and the slug', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,.id,.uri,.slug' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' );
 builder._sourceDialog( plainOptions() );
 builder._closeDialog();
 check( 'the dialog of a source goes with the dialog it was opened from', pickerBox().open === false );

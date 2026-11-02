@@ -403,7 +403,7 @@ return [
 	'[[/_admin/builder/hint/fixed]]'						=> 'The value is written into the template itself instead of a text key: it is the same in every language, and the editors of the texts cannot change it. Use it for something that never changes.',
 	'[[/_admin/builder/hint/typed]]'						=> 'Your account may not read the keys of the project, so you type the key instead. A key of this template looks like /template/<file>/<section>/<name>, and it is used as soon as it is written like that.',
 	'[[/_admin/builder/hint/page]]'						=> 'Choose one of the pages of the site; the list shows its address and the template it uses. The link is no fixed address: it follows the page into the language the visitor reads and leads to the address the page has there.',
-	'[[/_admin/builder/hint/postfix]]'						=> 'Appended to the address of the page - /2024 behind /articles, say; a slash is put in front where you leave it out. In a loop the fields of the element can stand in it, so that each cell leads to a page of its own: click a field under the box to put it in. It is not written when the box is empty.',
+	'[[/_admin/builder/hint/postfix]]'						=> 'Appended to the address of the page - /2024 behind /articles, say; a slash is put in front where you leave it out. In a loop the fields of the element can stand in it, so that each cell leads to a page of its own - the slug is the name of the element alone. Click a field under the box to put it in. It is not written when the box is empty.',
 	'[[/_admin/builder/hint/focus]]'						=> 'The focus decides which part of the picture stays in view when it is cropped to fit its frame. With Automatic focus on, the middle is kept; switch it off to choose one of the nine places instead.',
 
 	// What the editor asks and says
