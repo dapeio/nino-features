@@ -156,10 +156,12 @@ $drawnByModules = [ 'nino-legal-section',
 	// Nino 1.6's Components module: the section background, the columns a
 	// viewport hides, the component stack and its gaps and the image frame -
 	// written by the components, never by a unit's template. nino-wrap, the
-	// wrapper around a page's sections, is written by the Builder (a feature)
+	// wrapper around a page's sections, and the gap between the columns of a
+	// row, nino-grid-gap-0 to -6, are written by the Builder (a feature)
 	'nino-wrap', 'nino-section-bg', 'nino-hide-s', 'nino-hide-m', 'nino-hide-l',
 	'nino-stack', 'nino-stack-start', 'nino-stack-center', 'nino-stack-end',
 	'nino-stack-gap-0', 'nino-stack-gap-1', 'nino-stack-gap-2', 'nino-stack-gap-3', 'nino-stack-gap-4', 'nino-stack-gap-5', 'nino-stack-gap-6',
+	'nino-grid-gap-0', 'nino-grid-gap-1', 'nino-grid-gap-2', 'nino-grid-gap-3', 'nino-grid-gap-4', 'nino-grid-gap-5', 'nino-grid-gap-6',
 	'nino-image', 'nino-image--1-1', 'nino-image--4-3', 'nino-image--3-2', 'nino-image--16-9', 'nino-image--21-9', 'nino-image--4-1', 'nino-image--5-1',
 	// The form block of Nino.css draws the checkbox beside its words and the group of radio buttons under one question, which the templates of
 	// a feature that builds forms write (the Forms feature); the contact form of a unit has neither

@@ -2256,7 +2256,7 @@ namespace Nino\Modules\Builder {
 		 *	call cannot carry - or a loop in one of its columns, a background that is no
 		 *	slot or whose focus is none of the nine places, a call that is no
 		 *	call, texts that are no text for each language, the padding of a
-		 *	row and the six sides of the spacing of a section, a column or a
+		 *	row, the gap between its columns, the gap between the components of a column and the six sides of the spacing of a section, a column or a
 		 *	component that are none of the steps 0 to 6, how far in from its sides the picture behind a row, a
 		 *	column or a card starts where that is none of the steps 0 to 3 - or
 		 *	is asked of a component that is no card -, the hover of a component that
@@ -2348,6 +2348,10 @@ namespace Nino\Modules\Builder {
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 6';
 
+				// The gap between the columns of the row is a step of the space scale too
+				if( in_array( $block['settings']['rowGap'] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
+					$problems[] = 'the rowGap of '. $at. ' is none of the steps 0 to 6';
+
 				// So is how far in from either side the picture behind the row starts, up to the third step
 				foreach( Reader::ROW_BG_SPACING as $key )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::BG_STEPS ), true ) === false )
@@ -2402,6 +2406,10 @@ namespace Nino\Modules\Builder {
 					foreach( Reader::SPACING as $key )
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none of the steps 0 to 6';
+
+					// So is the gap between the components of its stack
+					if( in_array( $col['stackGap'] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
+						$problems[] = 'the stackGap of '. $of. ' is none of the steps 0 to 6';
 
 					// So is how far in from either side the picture behind the column starts, up to the third step
 					foreach( Reader::BG_SPACING as $key )

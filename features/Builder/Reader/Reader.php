@@ -111,6 +111,8 @@ namespace Nino\Modules\Builder {
 	 *											    row         ''|narrow|wide|full   nino-grid-row--<x>: the maximum width of the row, the grid's own for ''
 	 *											    rowPlace    ''|left|right         nino-grid-row--<x>: where a row narrower than the page stands, the middle for ''
 	 *											    rowAlign    ''|center|middle|bottom   nino-grid-<x>
+	 *											    rowGap      ''|0..6               nino-grid-gap-<n>: the gap between the columns of the row, a step of the space scale; '' writes none. The first
+	 *											                                      class is the setting, a second one is a class of the row's own
 	 *											    rowPl rowPr rowPt rowPb  ''|0..6  nino-pl-<n> nino-pr-<n> nino-pt-<n> nino-pb-<n>: the padding of the row on each side, a step
 	 *											                                      of the space scale; '' writes none - the gutter at the sides, no padding above and below,
 	 *											                                      or what the background inside gives the row
@@ -390,7 +392,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
+				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowGap' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'whitespace' => '',
 				...array_fill_keys( self::SPACING, '' ), 'text' => '', 'arrow' => false,
 			] + self::animationDefaults() + [ 'custom' => '' ];
@@ -1465,6 +1467,9 @@ namespace Nino\Modules\Builder {
 					$s['rowPlace'] = $m[1];
 				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
 					$s['rowAlign'] = $m[1];
+				// The gap between the columns is the first class of its kind, as the gap of a stack is a column's: a second is a class of the row's own
+				elseif( preg_match( '/^nino-grid-gap-([0-6])$/D', $token, $m ) === 1 && $s['rowGap'] === '' )
+					$s['rowGap'] = $m[1];
 				// The padding of a side is the first class of its kind, a second is a class of its own as on a section
 				elseif( preg_match( '/^nino-('. implode( '|', array_keys( self::ROW_SPACING ) ). ')-([0-6])$/D', $token, $m ) === 1 && $s[self::ROW_SPACING[$m[1]]] === '' )
 					$s[self::ROW_SPACING[$m[1]]] = $m[2];

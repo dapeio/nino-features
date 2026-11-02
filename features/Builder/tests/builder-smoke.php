@@ -138,8 +138,16 @@ check( '...and names the seven blocks of a dialog - the loop is one of them - an
 	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['The seven blocks']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The seven blocks']['de_DE'], 'Loop:' ) === true
 		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'title' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true;
 } )() );
-check( 'the words of the patch are in both languages: the block Loop, the group Background image, the three hints of the width, the line of a card without the child the kernel stretches, the row of a picture in its group - and the place of the content of a cover is called Content in the cover', ( static function() use ( $dir ): bool {
-	$words = [ 'block/loop/label', 'group/background-image', 'hint/content-pos', 'hint/text', 'hint/row-align', 'link/no-stretched', 'section/content-pos', 'source/picture' ];
+check( '...and the entry on the spacing of a section names the gap between the columns of its row, by the word the panel gives the select, in both languages', ( static function() use ( $manifest, $dir ): bool {
+	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+		$word = (string) ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/section/row-gap]]'];
+		if( $word === '' || str_contains( \Nino\Features::localized( $manifest['manual']['panel']['The spacing and width of a section'], $locale ), $word ) === false )
+			return false;
+	}
+	return true;
+} )() );
+check( 'the words of the patch are in both languages: the block Loop, the group Background image, the three hints of the width, the line of a card without the child the kernel stretches, the row of a picture in its group - and the place of the content of a cover is called Content in the cover, and the gap between the columns of a row has a word and a hint', ( static function() use ( $dir ): bool {
+	$words = [ 'block/loop/label', 'group/background-image', 'hint/content-pos', 'hint/text', 'hint/row-align', 'link/no-stretched', 'section/content-pos', 'section/row-gap', 'hint/row-gap', 'source/picture' ];
 	$texts = [ 'en_US' => (array) include $dir. '/text/en_US.php', 'de_DE' => (array) include $dir. '/text/de_DE.php' ];
 	foreach( $texts as $list )
 		foreach( $words as $word )
@@ -1016,6 +1024,7 @@ $rowWrong = [];
 foreach( [
 	[ 'row', \Nino\Modules\Builder\Reader::ROW, 'nino-grid-row--%s' ],
 	[ 'rowPlace', \Nino\Modules\Builder\Reader::ROW_PLACE, 'nino-grid-row--%s' ],
+	[ 'rowGap', \Nino\Modules\Builder\Reader::STEPS, 'nino-grid-gap-%s' ],
 	[ 'rowPl', \Nino\Modules\Builder\Reader::STEPS, 'nino-pl-%s' ],
 	[ 'rowPr', \Nino\Modules\Builder\Reader::STEPS, 'nino-pr-%s' ],
 	[ 'rowPt', \Nino\Modules\Builder\Reader::STEPS, 'nino-pt-%s' ],
@@ -1034,22 +1043,22 @@ foreach( [
 			$rowWrong[] = $key. ' '. $word;
 	}
 
-check( 'the row of a section has a width - narrow, wide or full -, a place - left or right, the middle being none -, and a padding on each side - a step of the space scale from 0 to 6 -, each read from its class and written back byte for byte, and read back as set: '
-	. ( count( \Nino\Modules\Builder\Reader::ROW ) + count( \Nino\Modules\Builder\Reader::ROW_PLACE ) + 4 * count( \Nino\Modules\Builder\Reader::STEPS ) ). ' classes'. ( $rowWrong === [] ? '' : ' - '. implode( ', ', $rowWrong ) ),
+check( 'the row of a section has a width - narrow, wide or full -, a place - left or right, the middle being none -, a gap between its columns and a padding on each side - a step of the space scale from 0 to 6 -, each read from its class and written back byte for byte, and read back as set: '
+	. ( count( \Nino\Modules\Builder\Reader::ROW ) + count( \Nino\Modules\Builder\Reader::ROW_PLACE ) + 5 * count( \Nino\Modules\Builder\Reader::STEPS ) ). ' classes'. ( $rowWrong === [] ? '' : ' - '. implode( ', ', $rowWrong ) ),
 	$rowWrong === [] && \Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide', 'full' ] && \Nino\Modules\Builder\Reader::ROW_PLACE === [ 'left', 'right' ]
 	&& \Nino\Modules\Builder\Reader::ROW_SPACING === [ 'pl' => 'rowPl', 'pr' => 'rowPr', 'pt' => 'rowPt', 'pb' => 'rowPb' ] && \Nino\Modules\Builder\Reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 
-$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row', 'rowBgPl' => '', 'rowBgPr' => '' ];
-$rowOrdered	= 'nino-grid-row nino-grid-row--wide nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row';
+$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowGap' => '3', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row', 'rowBgPl' => '', 'rowBgPr' => '' ];
+$rowOrdered	= 'nino-grid-row nino-grid-row--wide nino-grid-row--right nino-grid-bottom nino-grid-gap-3 nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row';
 $rowMade		= $blank;
 $rowMade['settings'] = $rowAll + $blank['settings'];
 
-check( 'the classes of the row stand in one order: the width, the place, the alignment of its columns, the padding on the left, on the right, above and below, then the custom ones - written from the settings, and read back as they were set',
+check( 'the classes of the row stand in one order: the width, the place, the alignment of its columns, the gap between them, the padding on the left, on the right, above and below, then the custom ones - written from the settings, and read back as they were set',
 	$write( [ 'blocks' => [ $rowMade ] ] ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) && $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0] === $rowMade
-	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 9 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ]
-	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 9, 2 ) === array_values( \Nino\Modules\Builder\Reader::ROW_BG_SPACING ) );
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 10 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ]
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 10, 2 ) === array_values( \Nino\Modules\Builder\Reader::ROW_BG_SPACING ) );
 
-$rowShuffled = 'nino-grid-row nino-pb-5 my-row nino-grid-bottom nino-pt-4 nino-grid-row--right nino-pr-2 nino-grid-row--wide nino-pl-1';
+$rowShuffled = 'nino-grid-row nino-pb-5 my-row nino-grid-bottom nino-pt-4 nino-grid-row--right nino-grid-gap-3 nino-pr-2 nino-grid-row--wide nino-pl-1';
 check( '...whatever order the file has them in: it is the same row, written in that one order, and what is written reads as it was', $fileRead( 'nino-section', $rowShuffled ) === $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0]
 	&& $write( $read( $fileOf( 'nino-section', $rowShuffled ) ) ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) );
 
@@ -1064,6 +1073,9 @@ check( '...with the background inside the colour and the scrim of the row stand 
 $rowSecond = [
 	'two widths'												=> [ 'nino-grid-row nino-grid-row--narrow nino-grid-row--wide', [ 'row' => 'narrow', 'rowCustom' => 'nino-grid-row--wide' ] ],
 	'two places'												=> [ 'nino-grid-row nino-grid-row--left nino-grid-row--right', [ 'rowPlace' => 'left', 'rowCustom' => 'nino-grid-row--right' ] ],
+	'two gaps between the columns'			=> [ 'nino-grid-row nino-grid-gap-1 nino-grid-gap-2', [ 'rowGap' => '1', 'rowCustom' => 'nino-grid-gap-2' ] ],
+	'a gap the scale has not'						=> [ 'nino-grid-row nino-grid-gap-7', [ 'rowGap' => '', 'rowCustom' => 'nino-grid-gap-7' ] ],
+	'the gap of a stack, which is a column\'s'	=> [ 'nino-grid-row nino-stack-gap-2', [ 'rowGap' => '', 'rowCustom' => 'nino-stack-gap-2' ] ],
 	'two steps of one side'							=> [ 'nino-grid-row nino-pl-1 nino-pl-2', [ 'rowPl' => '1', 'rowCustom' => 'nino-pl-2' ] ],
 	'a step the scale has not'					=> [ 'nino-grid-row nino-pt-7', [ 'rowPt' => '', 'rowCustom' => 'nino-pt-7' ] ],
 	'a step that is a word'							=> [ 'nino-grid-row nino-pb-x', [ 'rowPb' => '', 'rowCustom' => 'nino-pb-x' ] ],
@@ -1080,7 +1092,7 @@ foreach( $rowSecond as $label => [ $classes, $expected ] ) {
 		$rowSecondWrong[] = $label;
 }
 
-check( '...a second of a kind - two widths, two places, two steps of a side -, a step the scale has not and the margins, which the row has no setting for, are custom classes of the row, kept and written back as they were: '. count( $rowSecond ). ' cases'
+check( '...a second of a kind - two widths, two places, two gaps, two steps of a side -, a step the scale has not, the gap of a stack and the margins, which the row has no setting for, are custom classes of the row, kept and written back as they were: '. count( $rowSecond ). ' cases'
 	. ( $rowSecondWrong === [] ? '' : ' - '. implode( ', ', $rowSecondWrong ) ), $rowSecondWrong === [] );
 
 $padded = $fileRead( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' )['settings'];
@@ -1088,10 +1100,10 @@ check( '...the padding of the section and the padding of its row are two setting
 	&& $fileSame( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' ) === true );
 
 $rowLeft = $blank;
-unset( $rowLeft['settings']['rowPlace'], $rowLeft['settings']['rowPl'], $rowLeft['settings']['rowPr'], $rowLeft['settings']['rowPt'], $rowLeft['settings']['rowPb'], $rowLeft['settings']['rowBgPl'], $rowLeft['settings']['rowBgPr'], $rowLeft['settings']['arrow'] );
-check( 'a row the model says nothing of has no place, no padding, no offset of its picture and no arrow: the Writer takes the defaults, which are none, and writes the row as it always was', str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n" ) === true
+unset( $rowLeft['settings']['rowPlace'], $rowLeft['settings']['rowGap'], $rowLeft['settings']['rowPl'], $rowLeft['settings']['rowPr'], $rowLeft['settings']['rowPt'], $rowLeft['settings']['rowPb'], $rowLeft['settings']['rowBgPl'], $rowLeft['settings']['rowBgPr'], $rowLeft['settings']['arrow'] );
+check( 'a row the model says nothing of has no place, no gap between its columns, no padding, no offset of its picture and no arrow: the Writer takes the defaults, which are none, and writes the row as it always was', str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n" ) === true
 	&& str_contains( $write( [ 'blocks' => [ $rowLeft ] ] ), $reader::ARROW ) === false
-	&& array_diff( [ $blank['settings']['rowPlace'], $blank['settings']['rowPl'], $blank['settings']['rowPr'], $blank['settings']['rowPt'], $blank['settings']['rowPb'], $blank['settings']['rowBgPl'], $blank['settings']['rowBgPr'] ], [ '' ] ) === [] && $blank['settings']['arrow'] === false );
+	&& array_diff( [ $blank['settings']['rowPlace'], $blank['settings']['rowGap'], $blank['settings']['rowPl'], $blank['settings']['rowPr'], $blank['settings']['rowPt'], $blank['settings']['rowPb'], $blank['settings']['rowBgPl'], $blank['settings']['rowBgPr'] ], [ '' ] ) === [] && $blank['settings']['arrow'] === false );
 
 $custom = $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--black my-own nino-section--alt nino-cover--dim', 'nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 u-pad' ) ) )['blocks'][0];
 check( 'a class the builder does not know is a custom one, and so are a second colour and a scrim on a section that is neither a cover nor a parallax - nothing is lost',
@@ -1322,8 +1334,9 @@ check( '...and it is written back byte for byte: the call at the margin with the
 check( '...a call with no class of the section\'s has none: the classes are the section\'s settings in the order of a section\'s, and read back as set',
 	str_contains( $loopText(), "\n[sections /services sort=\"title\" limit=\"3\" id=\"news\"]\n" ) === true && $loopBack() === true
 	&& str_contains( $loopText( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'custom' => 'my-own' ] ), ' id="news" class="nino-section--black nino-section--border-2 nino-mt-1 nino-text-center my-own"]' ) === true
-	&& $loopBack( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'custom' => 'my-own', 'whitespace' => 'more', 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ) === true
-	&& str_contains( $loopText( [ 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ), "\n\t<div class=\"nino-grid-row nino-grid-row--full nino-grid-row--left nino-pl-0 nino-pr-0\">\n" ) === true );
+	&& $loopBack( [ 'color' => 'black', 'border' => '2', 'mt' => '1', 'text' => 'center', 'custom' => 'my-own', 'whitespace' => 'more', 'row' => 'full', 'rowPlace' => 'left', 'rowGap' => '3', 'rowPl' => '0', 'rowPr' => '0' ] ) === true
+	&& str_contains( $loopText( [ 'row' => 'full', 'rowPlace' => 'left', 'rowPl' => '0', 'rowPr' => '0' ] ), "\n\t<div class=\"nino-grid-row nino-grid-row--full nino-grid-row--left nino-pl-0 nino-pr-0\">\n" ) === true
+	&& str_contains( $loopText( [ 'rowGap' => '3', 'rowPl' => '1' ] ), "\n\t<div class=\"nino-grid-row nino-grid-gap-3 nino-pl-1\">\n" ) === true );
 check( '...a cover has no height to write in a call: it is the 90 of Nino.ui.js, nino-cover with the padding and the place of the content, and no data-cover-height',
 	str_contains( $loopText( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ), ' id="news" class="nino-cover nino-cover--padded nino-cover-top"]' ) === true && str_contains( $loopText( [ 'cover' => 90 ] ), 'data-cover-height' ) === false
 	&& $loopBack( [ 'cover' => 90, 'padded' => true, 'contentPos' => 'top' ] ) === true && $loopBack( [ 'parallax' => true, 'dim' => true ] ) === true );
@@ -1434,7 +1447,7 @@ check( 'an element has six sides of spacing - mt, mb, pt, pb, pl and pr, each of
 	. 3 * count( $reader::SPACING ) * count( $reader::STEPS ). ' of them'. ( $spaceWrong === [] ? '' : ' - '. implode( ', ', array_slice( $spaceWrong, 0, 5 ) ) ),
 	$spaceWrong === [] && $reader::SPACING === [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] && $reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 check( '...the six stand in one order, that of Reader::SPACING: in the defaults of a section and of a column, and in the node of a component - which has no spacing of its own but them - and each is none until a class says so',
-	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'whitespace',
+	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'whitespace',
 		'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
@@ -2897,6 +2910,7 @@ foreach( [
 	[ 'section', 'row', [ 'narrow', 'wide', 'full' ], 'nino-grid-row--%s' ],
 	[ 'section', 'rowPlace', [ 'left', 'right' ], 'nino-grid-row--%s' ],
 	[ 'section', 'rowAlign', [ 'center', 'middle', 'bottom' ], 'nino-grid-%s' ],
+	[ 'section', 'rowGap', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-grid-gap-%s' ],
 	[ 'section', 'rowPl', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pl-%s' ],
 	[ 'section', 'rowPr', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pr-%s' ],
 	[ 'section', 'rowPt', [ '0', '1', '2', '3', '4', '5', '6' ], 'nino-pt-%s' ],
@@ -2958,6 +2972,38 @@ $stepRight['blocks'][0]['settings']['rowPl'] = '0';
 $stepRight['blocks'][0]['settings']['rowPb'] = '';
 check( '...and every step of the eight is let through, the empty one and 0 and 6 among them: the row is written with the classes it says', $stepRightSource['status'] === 200 && str_contains( $stepRightSource['parts'][1]['source'], ' nino-pl-6 nino-pr-6 nino-pt-6 nino-pb-6' ) === true
 	&& \Nino\Modules\Builder\Document::source( $appData, $stepRight )['status'] === 200 && str_contains( \Nino\Modules\Builder\Document::source( $appData, $stepRight )['parts'][1]['source'], ' nino-pl-0 nino-pr-6 nino-pt-6 nino-vpa">' ) === true );
+
+// The gap between the columns of a row and the gap between the components of a column are steps of the space scale as well: the same eight words, the setting and the element named
+$gapRefused = [];
+
+foreach( [ 'rowGap' => [ [ 'blocks', 0, 'settings' ], 'the rowGap of block 1 is none of the steps 0 to 6' ], 'stackGap' => [ [ 'blocks', 0, 'cols', 0 ], 'the stackGap of column 1 of block 1 is none of the steps 0 to 6' ] ] as $key => [ $path, $sentence ] )
+	foreach( $stepBad as $what => $value ) {
+
+		$model = $loaded['model'];
+		$node = &$model;
+		foreach( $path as $step )
+			$node = &$node[$step];
+		$node[$key] = $value;
+		unset( $node );
+		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+		if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ $sentence ]
+			|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+			$gapRefused[] = $key. ' as '. $what;
+	}
+
+check( 'a gap between the columns of a row or between the components of a column that is none of the steps 0 to 6 - a step too far, a word, a number where the model has the step as text, a switch, a list - is refused with 400 (code invalid), the setting and the element named, by a save and by the source view alike, and nothing is written: '
+	. count( $stepBad ) * 2 . ' cases'. ( $gapRefused === [] ? '' : ' - '. implode( ', ', $gapRefused ) ), $gapRefused === [] );
+
+$gapRight = $loaded['model'];
+$gapRight['blocks'][0]['settings']['rowGap'] = '6';
+$gapRight['blocks'][0]['cols'][0]['stackGap'] = '0';
+$gapRightSource = \Nino\Modules\Builder\Document::source( $appData, $gapRight );
+$gapRight['blocks'][0]['settings']['rowGap'] = '';
+$gapRight['blocks'][0]['cols'][0]['stackGap'] = '';
+check( '...and the empty one, 0 and 6 are let through: the row and the column are written with the classes they say',
+	$gapRightSource['status'] === 200 && str_contains( $gapRightSource['parts'][1]['source'], 'nino-grid-gap-6' ) === true && str_contains( $gapRightSource['parts'][1]['source'], 'nino-stack-gap-0' ) === true
+	&& \Nino\Modules\Builder\Document::source( $appData, $gapRight )['status'] === 200 );
 
 // The cover and the picture behind it: two switches that are on or off like the others, and a height in percent of the window's that is a whole number or none
 $pictureSwitchRefused = [];

@@ -1210,7 +1210,7 @@ check( 'a new section is made with the animation of the template: the bare class
 	const first = builder._newSection( on );
 	const second = builder._newSection( off );
 	return first.settings.vpa === '' && second.settings.vpa === null && builder._animationMode( true, first.settings ) === 'like' && builder._animationMode( false, second.settings ) === 'like'
-		&& [ 'row', 'rowPlace', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowBgPl', 'rowBgPr' ].every( function( key ) { return first.settings[key] === '' && second.settings[key] === '' } ) && first.settings.arrow === false && second.settings.arrow === false
+		&& [ 'row', 'rowPlace', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowBgPl', 'rowBgPr' ].every( function( key ) { return first.settings[key] === '' && second.settings[key] === '' } ) && first.settings.arrow === false && second.settings.arrow === false
 		&& first.settings.vpaSpeed === '' && first.settings.vpaDelay === ''
 		&& Object.keys( first.settings ).join() === Object.keys( fixture('page-home.json').blocks[0].settings ).join();
 } )() );
@@ -2154,8 +2154,8 @@ change( widthBody(), word('section/row-align'), 'middle' );
 check( '...the head of the block says what is not the default - the maximum width the hero has and the alignment it has - and nothing of the width, which is the content\'s', saysOf('width').textContent === [ builder._optionLabel( 'row', 'wide' ), builder._optionLabel( 'row-align', 'middle' ) ].join(' · '));
 
 const spacingBody = function() { return blockOf('spacing') };
-check( 'Spacing: the whitespace of the page, then the box of the section - outside above, inside above, left, right and below, outside below - and under it, with its name, the box of its row, which has the inside alone: a box is a group of selects around a small rectangle',
-	JSON.stringify( labelList( spacingBody() ) ) === JSON.stringify( [ word('section/whitespace'), sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ),
+check( 'Spacing: the gap between the columns of the row and the whitespace of the page, then the box of the section - outside above, inside above, left, right and below, outside below - and under it, with its name, the box of its row, which has the inside alone: a box is a group of selects around a small rectangle',
+	JSON.stringify( labelList( spacingBody() ) ) === JSON.stringify( [ word('section/row-gap'), word('section/whitespace'), sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ),
 		sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ) ] )
 	&& boxesIn().length === 2 && boxesIn().every( function( box ) { return box.getAttribute('role') === 'group' && box.querySelector('.builder-box-frame') !== null && box.querySelector('.builder-box-core') !== null } )
 	&& boxesIn().map( function( box ) { return box.getAttribute('aria-label') } ).join() === word('tree/section')+ ','+ word('spacing/row') && boxesIn()[1].querySelector('.builder-box-name').textContent === word('spacing/row')
@@ -2209,6 +2209,27 @@ check( '...the box of the row and the width are the same two settings: the width
 check( 'Spacing: the whitespace is a select of the four rungs around the middle, with the words of the panel - the empty one is the page\'s own, which the Design sets - and it writes the word of the one chosen; what it says is behind its question mark', optionsOf( spacingBody(), word('section/whitespace') ) === '='+ word('option/whitespace-default')+ ',least='+ word('option/whitespace-least')+ ',less='+ word('option/whitespace-less')+ ',more='+ word('option/whitespace-more')+ ',most='+ word('option/whitespace-most')
 	&& valueAt( spacingBody(), word('section/whitespace') ) === '' && ( change( spacingBody(), word('section/whitespace'), 'most' ), settingsOf().whitespace === 'most' ) && saysOf('spacing').textContent === word('section/whitespace')+ ' '+ word('option/whitespace-most').toLowerCase()
 	&& ( change( spacingBody(), word('section/whitespace'), '' ), settingsOf().whitespace === '' ) && tipOf( controlOf( spacingBody(), word('section/whitespace') ) ) === word('hint/whitespace') );
+
+check( 'Spacing: the gap between the columns of the row is the first select of the block, of the eight values of a gap - none, 0 and the steps 1 to 6 - with the words of the panel and a hint behind its question mark, and it writes the step chosen into the setting of the row and into nothing else', ( function() {
+	const before = JSON.stringify( settingsOf() );
+	const writes = function( value ) { change( spacingBody(), word('section/row-gap'), value ); return settingsOf().rowGap };
+	const eight = optionsOf( spacingBody(), word('section/row-gap') ) === '='+ word('option/space-default')+ ',0=0,1=1,2=2,3=3,4=4,5=5,6=6';
+	const first = valueAt( spacingBody(), word('section/row-gap') ) === '' && labelList( spacingBody() )[0] === word('section/row-gap') && tipOf( controlOf( spacingBody(), word('section/row-gap') ) ) === word('hint/row-gap');
+	const steps = writes( '2' ) === '2' && writes( '0' ) === '0' && writes( '6' ) === '6' && valueAt( spacingBody(), word('section/row-gap') ) === '6';
+	const only = JSON.stringify( Object.assign( JSON.parse( before ), { rowGap : '6' } ) ) === JSON.stringify( settingsOf() );
+	return eight && first && steps && only && writes( '' ) === '' && JSON.stringify( settingsOf() ) === before;
+} )() );
+check( '...the head of the block says it, as the head of a column says its gap, in front of the whitespace', ( function() {
+	change( spacingBody(), word('section/row-gap'), '3' );
+	const alone = saysOf('spacing').textContent === word('spacing/gap')+ ' 3';
+	change( spacingBody(), word('section/whitespace'), 'less' );
+	const both = saysOf('spacing').textContent === word('spacing/gap')+ ' 3 · '+ word('section/whitespace')+ ' '+ word('option/whitespace-less').toLowerCase();
+	change( spacingBody(), word('section/whitespace'), '' );
+	change( spacingBody(), word('section/row-gap'), '0' );
+	const zero = saysOf('spacing').textContent === word('spacing/gap')+ ' 0';
+	change( spacingBody(), word('section/row-gap'), '' );
+	return alone && both && zero && saysOf('spacing').textContent === '' && saysOf('spacing').hidden === true;
+} )() );
 
 const ground = dialogContent();
 check( 'the parallax and the dimming are two switches, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off - and the dimming has what it says behind its question mark, the parallax has none', controlOf( ground, 'Parallax effect' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'

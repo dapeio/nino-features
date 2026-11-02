@@ -222,7 +222,7 @@
 		BLOCKS		: {
 			section : [
 				{ id : 'surface', controls : [ 'border', 'borderPrimary', 'color', 'inner', 'radius', 'rowRadius', 'background', 'cover', 'parallax', 'dim', 'padded', 'rowBgPl', 'rowBgPr', 'arrow' ] },
-				{ id : 'spacing', controls : [ 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
+				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
 				{ id : 'loop', controls : [ 'stack' ] },
 				{ id : 'properties', controls : [ 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
@@ -815,7 +815,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: [ builder._newCol() ],
@@ -6124,6 +6124,11 @@
 						picture( body ).appendChild( arrow );
 					},
 					says	: function() { return settings.arrow === true ? word('section/arrow') : '' },
+				},
+				rowGap : {
+					keys	: [ 'rowGap' ],
+					build	: function( body ) { body.appendChild( setting( { key : 'rowGap', type : 'select', label : '/_admin/builder/section/row-gap', hint : '/_admin/builder/hint/row-gap', group : 'space', values : builder.SPACES } ) ) },
+					says	: function() { return settings.rowGap === '' ? '' : word('spacing/gap')+ ' '+ settings.rowGap },
 				},
 				whitespace : {
 					keys	: [ 'whitespace' ],

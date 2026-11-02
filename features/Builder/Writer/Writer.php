@@ -396,6 +396,9 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['rowAlign'] !== '' )
 				$class[] = 'nino-grid-'. $s['rowAlign'];
 
+			if( (string) $s['rowGap'] !== '' )
+				$class[] = 'nino-grid-gap-'. $s['rowGap'];
+
 			foreach( Reader::ROW_SPACING as $side => $key )
 				if( (string) $s[$key] !== '' )
 					$class[] = 'nino-'. $side. '-'. $s[$key];
