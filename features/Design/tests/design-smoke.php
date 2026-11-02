@@ -1621,11 +1621,12 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'the rungs less and default of the line of every header name a role of its ground, and with the ground at more the compile selects that role at the rung more'. ( $lineProblems === [] ? '' : ' - '. implode( ', ', $lineProblems ) ), count( Setup::available( $library, 'header' ) ) > 1 && $lineProblems === [] );
 
-/*	The line of a header stands on the ground of the header, not on the ground of the page. --color-border is the border of the page, drawn for the light ground the page has, and on a
-	bar of another ground it is the line of another surface. The pin fails closed: a set whose ground at the rung default is not one of the light grounds - the ground of the page,
-	the header's own light ground or the default surface of a section - names a border of its own at that rung, one that is not var(--color-border). A new ground that the list does
-	not know is therefore held to it as well, rather than passing for want of a name. Read from the library's own list of headers, so that a header that is added on a dark or a
-	brand ground with the border of the page fails here rather than on a site; and at least one header stands off the light grounds at default, so that the pin has something to hold	*/
+/*	The line, the ring of the focus and the link of a header stand on the ground of the header, not on the ground of the page. --color-border, --color-focus and --color-accent are
+	the roles of the page, solved for the light ground the page has, and on a bar of another ground they are the roles of another surface. The pin fails closed: a set whose ground at
+	the rung default is not one of the light grounds - the ground of the page, the header's own light ground or the default surface of a section - names a border, a focus and an
+	accent of its own at that rung, none of them the role of the page. A new ground that the list does not know is therefore held to it as well, rather than passing for want of a
+	name. Read from the library's own list of headers, so that a header that is added on a dark or a brand ground with the border of the page fails here rather than on a site; and at
+	least one header stands off the light grounds at default, so that the pin has something to hold	*/
 $lightGrounds = [ 'var(--color-background)', 'var(--color-header-bg)', 'var(--color-section-default-bg)' ];
 $darkProblems = [];
 $darkGrounds = 0;
@@ -1639,11 +1640,105 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 	$darkGrounds++;
 
-	if( isset( $roles['--header-ground--default'], $roles['--header-ground-border--default'] ) === false || $roles['--header-ground-border--default'] === 'var(--color-border)' )
-		$darkProblems[] = $set;
+	foreach( [ 'border' => 'var(--color-border)', 'focus' => 'var(--color-focus)', 'accent' => 'var(--color-accent)' ] as $aspect => $pageRole )
+		if( isset( $roles['--header-ground--default'], $roles['--header-ground-'. $aspect. '--default'] ) === false || $roles['--header-ground-'. $aspect. '--default'] === $pageRole )
+			$darkProblems[] = $set. ': '. $aspect;
 }
 
-check( 'a header whose ground at default is not one of the light grounds does not draw its line at default in the border of the page'. ( $darkProblems === [] ? '' : ' - '. implode( ', ', $darkProblems ) ), $darkGrounds > 0 && $darkProblems === [] );
+check( 'a header whose ground at default is not one of the light grounds does not draw its line, its ring of the focus or its link at default in the border, the focus or the accent of the page'. ( $darkProblems === [] ? '' : ' - '. implode( ', ', $darkProblems ) ), $darkGrounds > 0 && $darkProblems === [] );
+
+/*	A frame on the palette's black reads the black pair. The ground the palette keeps for the darkest surface - the black of a section and the black of the footer, which is the one token
+	twice - has a border, a focus ring and a link of its own, solved against it: --color-border-black, --color-focus-black and --color-accent-black. A set of a header or a footer whose
+	ground at the rung default is one of those names them, each aspect at default, and no other role: the roles of the page are solved for the page's light ground, and a ring or a line
+	drawn in them on the black is a ring or a line of another surface. Read from the library's own lists of headers and footers, so that a set that is added on the black with a role of
+	the page, or a role of another ground, fails here rather than on a site; and each of the two has a set on the black, so that the pin has something to hold	*/
+$blackGrounds	= [ 'var(--color-section-black-bg)', 'var(--color-footer-bg-main)', 'var(--color-footer-bg-legal)' ];
+$blackPair		= [ 'border' => 'var(--color-border-black)', 'focus' => 'var(--color-focus-black)', 'accent' => 'var(--color-accent-black)' ];
+$blackProblems	= [];
+$blackSets		= [ 'header' => 0, 'footer' => 0 ];
+
+foreach( [ 'header', 'footer' ] as $blackFrame )
+	foreach( Setup::available( $library, $blackFrame ) as $set ) {
+
+		$roles = array_map( static fn( string $value ): string => (string) preg_replace( '/\s+/', '', $value ), designDeclarations( designPlain( (string) file_get_contents( Setup::file( $library, $blackFrame, $set ) ) ) ) );
+
+		if( in_array( $roles['--'. $blackFrame. '-ground--default'] ?? '', $blackGrounds, true ) === false )
+			continue;
+
+		$blackSets[$blackFrame]++;
+
+		foreach( $blackPair as $aspect => $role )
+			if( ( $roles['--'. $blackFrame. '-ground-'. $aspect. '--default'] ?? '' ) !== $role )
+				$blackProblems[] = $blackFrame. '/'. $set. ': '. $aspect;
+	}
+
+check( 'a header or a footer whose ground at default is the palette\'s black reads --color-border-black, --color-focus-black and --color-accent-black there, and no other role, for its line, its ring of the focus and its link'. ( $blackProblems === [] ? '' : ' - '. implode( ', ', $blackProblems ) ), $blackSets['header'] > 0 && $blackSets['footer'] > 0 && $blackProblems === [] );
+
+/*	A footer passes its ink and its ground on. --color-ink is the role the digits of a counter, the labels of a form and the other things a feature paints in the ink of the surface
+	it lies on are drawn in, --color-ground the one a field is filled with, and they stand on :root as the text and the ground of the page, so that on a ground of the footer's own
+	they are the roles of another surface - near-black on the black, a white field with near-white text. A rule of a footer that paints a ground - a background with a colour of its
+	text beside it - or that sets the colour of the whole footer declares --color-ink in the same value beside that colour, as the roles of the title, the accent and the focus are
+	re-pointed beside it, and --color-ground beside the ink, the ground the rule paints, as a section declares the pair. A footer whose ground at the rung default is transparent has
+	no ground to name there and cannot pass transparency on - a table draws its text in the role -, so it passes an aspect of its ground on that is the ground of the page at default
+	and what the ground is at the other two rungs. A band on a ground of a role of its own declares the focus, the border and the accent on it, the footer's being solved for another.
+	A rule of a hover or a focus is no ground. Read from the library's own list of footers, so that a set that is added, or a band that is added to one, with a colour and no ink or
+	no ground fails here rather than on a site; and the compile of each carries the ink	*/
+$inkProblems = [];
+$inkRules = 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	$inkCss = designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) );
+	$inked = 0;
+	$inkDeclared = array_map( static fn( string $value ): string => (string) preg_replace( '/\s+/', '', $value ), designDeclarations( $inkCss ) );
+	$inkTransparent = ( $inkDeclared['--footer-ground--default'] ?? '' ) === 'transparent';
+
+	foreach( designRules( $inkCss ) as $inkRule ) {
+
+		if( preg_match( '/(?<![a-z-])color\s*:\s*(var\([^;]+\))\s*;/', $inkRule['body'], $inkColor ) !== 1 || preg_match( '/:(?:hover|focus)/', $inkRule['selector'] ) === 1 )
+			continue;
+
+		if( trim( $inkRule['selector'] ) !== 'footer' && preg_match( '/(?<![a-z-])background(?:-color)?\s*:/', $inkRule['body'] ) !== 1 )
+			continue;
+
+		$inkRules++;
+		$inked++;
+
+		if( preg_match( '/--color-ink\s*:\s*'. preg_quote( $inkColor[1], '/' ). '\s*;/', $inkRule['body'] ) !== 1 )
+			$inkProblems[] = $set. ': '. trim( $inkRule['selector'] );
+
+		// The ground goes with the ink: the one the rule paints, or - for the footer as a whole - the ground of the footer; a transparent ground is the page's own
+		$inkGround = preg_match( '/(?<![a-z-])background(?:-color)?\s*:\s*(var\([^;]+\))\s*;/', $inkRule['body'], $inkPaint ) === 1 ? $inkPaint[1] : 'var(--footer-ground)';
+
+		// A footer that paints no ground at the rung default passes on an aspect of its ground: the page's there, and the ground it paints at the other two rungs
+		if( $inkTransparent === true && $inkGround === 'var(--footer-ground)' ) {
+
+			$inkAspect = preg_match( '/--color-ground\s*:\s*var\((--footer-ground-[a-z]+)\)\s*;/', $inkRule['body'], $inkPassed ) === 1 ? $inkPassed[1] : '';
+
+			if( $inkAspect === '' || ( $inkDeclared[$inkAspect. '--default'] ?? 'transparent' ) === 'transparent'
+				|| ( $inkDeclared[$inkAspect. '--less'] ?? '' ) !== ( $inkDeclared['--footer-ground--less'] ?? '-' ) || ( $inkDeclared[$inkAspect. '--more'] ?? '' ) !== ( $inkDeclared['--footer-ground--more'] ?? '-' ) )
+				$inkProblems[] = $set. ': '. trim( $inkRule['selector'] ). ' - no ground beside the ink at the rungs it paints one';
+		}
+		else if( preg_match( '/--color-ground\s*:\s*'. preg_quote( $inkGround, '/' ). '\s*;/', $inkRule['body'] ) !== 1 )
+			$inkProblems[] = $set. ': '. trim( $inkRule['selector'] ). ' - no ground beside the ink';
+
+		// A band on a ground of a role of its own - a brand colour, a dark section - is not on the ground of the footer: the roles of the footer are solved for that one, so the band declares its own
+		if( str_starts_with( $inkGround, 'var(--footer-ground' ) === false )
+			foreach( [ 'focus', 'border', 'accent' ] as $bandRole )
+				if( preg_match( '/(?<![a-z-])--color-'. $bandRole. '\s*:/', $inkRule['body'] ) !== 1 )
+					$inkProblems[] = $set. ': '. trim( $inkRule['selector'] ). ' - no '. $bandRole. ' of its own on a ground of its own';
+	}
+
+	if( $inked === 0 )
+		$inkProblems[] = $set. ': no rule sets the ink';
+
+	$inkSheet = designPlain( Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'footer' => $set ] ], $library ), $library ) );
+
+	if( preg_match( '/--color-ink\s*:\s*var\(--footer-ground[a-z-]*ink\)/', $inkSheet ) !== 1 )
+		$inkProblems[] = $set. ': the compile has no ink';
+}
+
+check( 'every footer declares --color-ink beside the colour of each ground it paints and of the footer as a whole, in the same value, and the compile of each carries it'. ( $inkProblems === [] ? '' : ' - '. implode( ', ', $inkProblems ) ), $inkRules > 0 && $inkProblems === [] );
 
 /*	The burger of the kernel is a button: .nino-nav-burger > button with aria-expanded and aria-controls, the icon in it, the list beside it, the open
 	state on the button (and nino-is-open on the wrapper). A header that styles what the burger was - a label under it, the checkbox in it, input:checked

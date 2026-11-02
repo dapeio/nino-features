@@ -18,8 +18,9 @@
  *	between its columns, lines and links, and ground a choice of three: the ground
  *	and the ink of the page, this set's own, and the dark pair of the palette. What
  *	the text, the links and the lines of the footer are read in comes with it, as
- *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
- *	and -border), and is put on the footer as the roles Nino.css reads - so the
+ *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus,
+ *	-border and -fill, the ground that is passed on where the footer's own is
+ *	transparent), and is put on the footer as the roles Nino.css reads - so the
  *	footer is legible on each of the three.
  */
 
@@ -79,11 +80,18 @@
 	--footer-ground-border--less:	var(--color-border);
 	--footer-ground-border--default:	var(--color-border);
 	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The ground it passes on to what stands in it: the page's own where it paints none, which shows through - transparent cannot be passed on, a table draws its text in it	*/
+	--footer-ground-fill--less:	var(--color-background);
+	--footer-ground-fill--default:	var(--color-ground);
+	--footer-ground-fill--more:	var(--color-section-dark-bg);
 }
 
 footer {
 	font-size: calc( .8em * var(--footer-scale) );
 	color: var(--footer-ground-ink);
+	--color-ink: var(--footer-ground-ink);
+	--color-ground: var(--footer-ground-fill);
 	--color-subtitle: var(--footer-ground-subtitle);
 	--color-title: var(--footer-ground-title);
 	--color-accent: var(--footer-ground-accent);

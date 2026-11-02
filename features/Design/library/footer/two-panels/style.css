@@ -75,12 +75,12 @@
 
 	/*	The ring of the focus	*/
 	--footer-ground-focus--less:	var(--color-focus);
-	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus-black);
 	--footer-ground-focus--more:	var(--color-focus-dark);
 
 	/*	The lines in it	*/
 	--footer-ground-border--less:	var(--color-border);
-	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border-black);
 	--footer-ground-border--more:	var(--color-border-dark);
 
 	/*	The ground of the panel with the contact and the navigation	*/
@@ -97,6 +97,8 @@
 footer {
 	font-size: calc( .8em * var(--footer-scale) );
 	color: var(--footer-ground-ink);
+	--color-ink: var(--footer-ground-ink);
+	--color-ground: var(--footer-ground);
 	--color-subtitle: var(--footer-ground-subtitle);
 	--color-title: var(--footer-ground-title);
 	--color-accent: var(--footer-ground-accent);
@@ -124,6 +126,13 @@ footer {
 	justify-content: flex-end;
 	flex-direction: column;
 	color: var(--color-section-dark-text);
+	--color-ink: var(--color-section-dark-text);
+	--color-ground: var(--color-section-dark-bg);
+	--color-title: var(--color-section-dark-text);
+	--color-subtitle: var(--color-section-dark-text);
+	--color-accent: var(--color-accent-dark);
+	--color-focus: var(--color-focus-dark);
+	--color-border: var(--color-border-dark);
 	background-color: var(--color-section-dark-bg);
 }
 
@@ -145,6 +154,8 @@ footer {
 	align-content: end;
 	gap: calc( var(--space-4) * var(--footer-space) );
 	color: var(--footer-ground-panel-ink);
+	--color-ink: var(--footer-ground-panel-ink);
+	--color-ground: var(--footer-ground-panel);
 	background-color: var(--footer-ground-panel);
 }
 

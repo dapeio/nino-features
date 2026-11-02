@@ -83,6 +83,8 @@
 footer {
 	font-size: calc( .8em * var(--footer-scale) );
 	color: var(--footer-ground-ink);
+	--color-ink: var(--footer-ground-ink);
+	--color-ground: var(--footer-ground);
 	--color-subtitle: var(--footer-ground-subtitle);
 	--color-title: var(--footer-ground-title);
 	--color-accent: var(--footer-ground-accent);

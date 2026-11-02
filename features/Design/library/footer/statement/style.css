@@ -74,18 +74,20 @@
 
 	/*	The ring of the focus	*/
 	--footer-ground-focus--less:	var(--color-focus);
-	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus-black);
 	--footer-ground-focus--more:	var(--color-focus-dark);
 
 	/*	The lines in it	*/
 	--footer-ground-border--less:	var(--color-border);
-	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border-black);
 	--footer-ground-border--more:	var(--color-border-dark);
 }
 
 footer {
 	font-size: calc( .8em * var(--footer-scale) );
 	color: var(--footer-ground-ink);
+	--color-ink: var(--footer-ground-ink);
+	--color-ground: var(--footer-ground);
 	--color-subtitle: var(--footer-ground-subtitle);
 	--color-title: var(--footer-ground-title);
 	--color-accent: var(--footer-ground-accent);
@@ -102,6 +104,13 @@ footer {
 	max-width: none;
 	padding: calc( var(--space-5) * var(--footer-height) ) max(var(--space-3), calc((100vw - var(--grid-max-width)) / 2)) calc( var(--space-1) * var(--footer-space) );
 	color: var(--color-primary-text);
+	--color-ink: var(--color-primary-text);
+	--color-ground: var(--color-primary);
+	--color-title: var(--color-primary-text);
+	--color-subtitle: var(--color-primary-text);
+	--color-accent: var(--color-primary-text);
+	--color-focus: var(--color-primary-text);
+	--color-border: var(--color-border-primary);
 	background-color: var(--color-primary);
 }
 

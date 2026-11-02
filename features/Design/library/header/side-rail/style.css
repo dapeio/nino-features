@@ -77,7 +77,7 @@ body {
 
 	/*	The ring of the focus	*/
 	--header-ground-focus--less:	var(--color-focus);
-	--header-ground-focus--default:	var(--color-focus);
+	--header-ground-focus--default:	var(--color-focus-black);
 	--header-ground-focus--more:	var(--color-focus-dark);
 
 	/*	The line under it	*/

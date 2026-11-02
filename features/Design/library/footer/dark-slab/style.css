@@ -69,23 +69,25 @@
 
 	/*	The accent role	*/
 	--footer-ground-accent--less:	var(--color-accent);
-	--footer-ground-accent--default:	var(--color-accent);
+	--footer-ground-accent--default:	var(--color-accent-black);
 	--footer-ground-accent--more:	var(--color-accent-dark);
 
 	/*	The ring of the focus	*/
 	--footer-ground-focus--less:	var(--color-focus);
-	--footer-ground-focus--default:	var(--color-focus);
+	--footer-ground-focus--default:	var(--color-focus-black);
 	--footer-ground-focus--more:	var(--color-focus-dark);
 
 	/*	The lines in it	*/
 	--footer-ground-border--less:	var(--color-border);
-	--footer-ground-border--default:	var(--color-border);
+	--footer-ground-border--default:	var(--color-border-black);
 	--footer-ground-border--more:	var(--color-border-dark);
 }
 
 footer {
 	font-size: calc( .8em * var(--footer-scale) );
 	color: var(--footer-ground-ink);
+	--color-ink: var(--footer-ground-ink);
+	--color-ground: var(--footer-ground);
 	--color-subtitle: var(--footer-ground-subtitle);
 	--color-title: var(--footer-ground-title);
 	--color-accent: var(--footer-ground-accent);
