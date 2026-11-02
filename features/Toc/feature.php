@@ -42,7 +42,12 @@ return [
 			],
 		],
 		'routes' => [],
-		'panel' => [],
+		'panel' => [
+			'Design: the looks of the list' => [
+				'en_US' => 'With the Design feature on, the tab Table of Contents of the Design panel offers under Base three looks of the list - Line, as it has always been drawn, Box and Numbered - and a select for the place: None, or Sticky, which keeps the list at the top of the window from 1024 px up, for as long as the column it stands in reaches - a header that slides back in while the page scrolls up covers it. The knobs stand under Surface (the thickness of the line, the space inside, the indent of the sub-levels) and Colour (the colour of the line, the ground of the box); a knob the look does not answer to is greyed out - Numbered has no line. Line draws the list as it is without Design. A box on a section of its own ground is told apart by its line. The markup stays that of [toc]. The block design/preview.tpl shows a title and three entries in the preview; Apply to website puts the look on the site.',
+				'de_DE' => 'Ist das Feature Design an, bietet der Tab Inhaltsverzeichnis des Design-Panels unter Grundlage drei Looks der Liste an - Linie, wie sie immer gezeichnet wurde, Kasten und Nummeriert - und eine Auswahl für den Platz: Keiner oder Klebt am Rand, das die Liste ab 1024 px oben im Fenster hält, solange die Spalte reicht, in der sie steht - ein Header, der beim Hochscrollen zurückkommt, verdeckt sie. Die Regler stehen unter Fläche (die Stärke der Linie, der Innenabstand, der Einzug der Unterebenen) und Farbe (die Farbe der Linie, der Grund des Kastens); ein Regler, auf den der Look nicht antwortet, steht ausgegraut da - Nummeriert hat keine Linie. Linie zeichnet die Liste wie ohne Design. Ein Kasten auf einer Sektion mit seinem eigenen Grund hebt sich durch seine Linie ab. Das Markup bleibt das von [toc]. Der Block design/preview.tpl zeigt einen Titel und drei Einträge in der Vorschau; Auf Website anwenden bringt den Look auf die Site.',
+			],
+		],
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [

@@ -11,12 +11,57 @@
  *					flat <ol> with the heading's level on each item, so what an h3
  *					is under an h2 is a padding rather than a second list inside
  *					the first. See toc.js on why it is built flat.
+ *
+ *					What a look of the Design feature moves (design/) are five
+ *					properties - --toc-line, the thickness of the line at the left,
+ *					--toc-edge, its colour, --toc-space, the room inside, --toc-indent,
+ *					how far the sub-levels stand in, and --toc-ground, the ground of
+ *					a box with the parts the palette solves for it - and this file
+ *					declares them with the list as it was drawn until now as their
+ *					default, so that a list looks as it always did until one of them
+ *					is moved. Two places for the defaults, as the Design feature's
+ *					manual asks: lengths and the ground in :where(:root), and the
+ *					colour of the line in :where(*), which declares it on every
+ *					element so that a look which gives the list a ground of its own
+ *					gets the line of that ground. The bundle lists this file after
+ *					the sheet the Design feature writes and :where() has no
+ *					specificity, so a look moves a default by saying it on :root. No
+ *					colour literal, no !important.
+ *
+ *					The line is a border of the list itself, and the look that has
+ *					none, Numbered, takes it away by setting its thickness to
+ *					nothing. --toc-inset is the room at the sides, twice the room
+ *					above and below until a look says another.
  */
+
+:where(:root) {
+	/*	The thickness of the line and the room inside the list: above and below, and - --toc-inset - at the sides	*/
+	--toc-line: 2px;
+	--toc-space: var(--space-2);
+	--toc-inset: calc(var(--toc-space) * 2);
+
+	/*	How far a sub-level stands in from the one above	*/
+	--toc-indent: var(--space-2);
+
+	/*	What only a look that paints a box reads: its ground, with the roles the palette solves for it - the text colour, the
+		quieter one, the link, the line and the focus - which the box passes on to what stands in it. It is a surface of the
+		palette and no colour of its own, and it does not follow a dark section	*/
+	--toc-ground: var(--color-section-alt-bg);
+	--toc-ground-on: var(--color-section-alt-text);
+	--toc-ground-on-muted: var(--color-section-alt-text);
+	--toc-ground-link: var(--color-accent-alt);
+	--toc-ground-border: var(--color-border-alt);
+	--toc-ground-focus: var(--color-focus-alt);
+}
+
+:where(*) {
+	--toc-edge: var(--color-border);
+}
 
 .nino-toc {
 	margin: var(--space-3) 0;
-	padding: var(--space-2) var(--space-3);
-	border-left: 2px solid var(--color-border);
+	padding: var(--toc-space) var(--toc-inset);
+	border-left: var(--toc-line) solid var(--toc-edge);
 }
 
 .nino-toc-title {
@@ -38,8 +83,8 @@
 .nino-toc-item + .nino-toc-item {
 	margin-top: .35em;
 }
-.nino-toc-item--3 { padding-left: var(--space-2); }
-.nino-toc-item--4 { padding-left: var(--space-3); }
+.nino-toc-item--3 { padding-left: var(--toc-indent); }
+.nino-toc-item--4 { padding-left: calc(var(--toc-indent) * 2); }
 
 .nino-toc-link {
 	text-decoration: none;
