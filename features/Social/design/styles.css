@@ -1,0 +1,20 @@
+/*	@style		hover	Hover
+ *	@style-de	hover	Hover
+ *
+ *	The styles of the links, for every look at once. The hover is what happens to a link under the pointer and under the keyboard
+ *	focus: its rule is the options', this file holds the one thing they share, how fast a link changes, which the compiler writes
+ *	once before the option that was chosen. With None chosen nothing of it is written and a link does not move or change colour.
+ *	A visitor who asks for less motion gets the change at once.
+ */
+
+.nino-social-link,
+.nino-social-icon {
+	transition: transform .2s ease, color .2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-social-link,
+	.nino-social-icon {
+		transition: none;
+	}
+}

@@ -61,9 +61,18 @@ return [
 				'en_US' => 'A link that is a path of the website is written without the directory (/contact, not /shop/contact) and gets the directory the website is served from: on a website at /shop it leads to /shop/contact.',
 				'de_DE' => 'Ein Link, der ein Pfad der Website ist, wird ohne das Verzeichnis geschrieben (/kontakt, nicht /shop/kontakt) und bekommt das Verzeichnis, in dem die Website liegt: Auf einer Website unter /shop führt er nach /shop/kontakt.',
 			],
+			'--social-size, --social-gap, --social-stroke, --social-icon, --social-badge' => [
+				'en_US' => 'The properties of the look of the links: the size of an icon, --social-size (1.5em; size="small" and size="large" are three quarters and four thirds of it), the space between two links, --social-gap (1rem), the weight of the line, --social-stroke (2), the tone of the icons, --social-icon (the colour of the link) and the ground of a badge, --social-badge (a surface of the palette, with --social-badge-on for the icon on it and --social-badge-border for its line). Without the Design feature a project sets them in its own css, on :root; with it, a look and its knobs write them.',
+				'de_DE' => 'Die Eigenschaften für den Look der Links: die Größe eines Icons, --social-size (1.5em; size="small" und size="large" sind drei Viertel und vier Drittel davon), der Abstand zweier Links, --social-gap (1rem), die Stärke der Linie, --social-stroke (2), der Ton der Icons, --social-icon (die Farbe des Links) und der Grund einer Plakette, --social-badge (eine Fläche der Palette, mit --social-badge-on für das Icon darauf und --social-badge-border für ihre Linie). Ohne das Feature Design setzt ein Projekt sie in seinem eigenen CSS, auf :root; mit ihm schreiben ein Look und seine Regler sie.',
+			],
 		],
 		'routes' => [],
-		'panel' => [],
+		'panel' => [
+			'Design: the looks of the social links' => [
+				'en_US' => 'With the Design feature on, the tab Social links of the Design panel offers under Base three looks - Plain, as the links have always been drawn, Badges, an icon on a round ground, and Outline, an icon in a circle of line - and a select Hover: None, Lift or Tint. The knobs stand under Text (the size of an icon, the weight of the line), Surface (the space between the links) and Colour (in Badges and Outline the colour of the icons and, in Badges only, the ground of a badge; Outline has none, its line takes the colour of the icon; Plain has no colour, its icons stay the colour of the link). On a section of the ground Page, alternate only the line of a badge shows - choose another ground there. size="small" and size="large" of [social] are three quarters and four thirds of the size the knob sets, not sizes of their own. The block design/preview.tpl shows four links in the preview.',
+				'de_DE' => 'Ist das Feature Design an, bietet der Tab Social-Media-Links des Design-Panels unter Grundlage drei Looks an - Schlicht, wie die Links immer gezeichnet wurden, Plaketten, ein Icon auf rundem Grund, und Umriss, ein Icon in einem Kreis aus Linie - und eine Auswahl Hover: Keiner, Heben oder Tönen. Die Regler stehen unter Text (Größe eines Icons, Strichstärke), Fläche (der Abstand der Links) und Farbe (bei Plaketten und Umriss die Farbe der Icons und, nur bei Plaketten, der Grund einer Plakette; Umriss hat keinen, seine Linie nimmt die Farbe des Icons; Schlicht hat keine, seine Icons bleiben in der Farbe des Links). Auf einer Sektion mit dem Grund Seite alternativ zeigt sich nur die Linie einer Plakette - dort wählst Du einen anderen Grund. size="small" und size="large" bei [social] sind drei Viertel und vier Drittel der Größe, die der Regler setzt, keine eigenen Größen. Der Block design/preview.tpl zeigt vier Links in der Vorschau.',
+			],
+		],
 		'callbacks' => [],
 		'install' => [
 			'elements/social.php' => [

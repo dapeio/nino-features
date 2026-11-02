@@ -1,0 +1,71 @@
+/*	@name			Badges
+ *	@name-de		Plaketten
+ *	@description	Every icon on a round ground of its own, like a button of the social networks, with a fine line round it in the border colour of the ground.
+ *	@description-de	Jedes Icon auf einem runden Grund, wie ein Knopf der sozialen Netzwerke, mit einer feinen Linie ringsum in der Randfarbe des Grunds.
+ *
+ *	@knob	size		scale	type		Size of an icon
+ *	@knob-de	size		Größe eines Icons
+ *	@knob	gap			scale	surfaces	Space between the badges
+ *	@knob-de	gap			Abstand der Plaketten
+ *	@knob	stroke		scale	type		Weight of the line
+ *	@knob-de	stroke		Strichstärke
+ *	@knob	icon		ink		colours		Colour of the icons	= ink
+ *	@knob-de	icon		Farbe der Icons
+ *	@knob	badge		ground	colours		Ground of a badge	= alt
+ *	@knob-de	badge		Grund einer Plakette
+ *
+ *	The size is the size of the icon inside the badge, which is a little under twice as wide as the icon: the room round it
+ *	is two fifths of the icon on each side. The ground is a surface of the palette and brings the roles solved for it. A badge
+ *	passes them on to what stands in it, the icon, as the grounds of Nino.css do - the ink and the title as its text colour,
+ *	the subtitle as the quieter one, the accent as its link, the border and the focus as its own - so that a tone chosen for
+ *	the icon is read on the badge and not on the section behind it: on a dark section or in a dimmed cover the badge keeps the
+ *	surface of its ground and its icon the tone that is legible on it. The line round the badge is the border of the ground, so
+ *	that a badge on a section of its own ground does not vanish - it is all that shows there.
+ *
+ *	A lone icon in running text, outside a list, has the room the badge takes round it taken off its margin again, so that the line
+ *	is as high as it is with a plain icon and the badge stands on the middle of the text.
+ */
+
+:root {
+	--social-size--least:	.875em;
+	--social-size--less:	1em;
+	--social-size--default:	1.25em;
+	--social-size--more:	1.5em;
+	--social-size--most:	2em;
+
+	--social-gap--least:	.25rem;
+	--social-gap--less:		var(--space-1);
+	--social-gap--default:	var(--space-2);
+	--social-gap--more:		1.5rem;
+	--social-gap--most:		var(--space-3);
+
+	--social-stroke--least:		1;
+	--social-stroke--less:		1.5;
+	--social-stroke--default:	2;
+	--social-stroke--more:		2.5;
+	--social-stroke--most:		3;
+}
+
+.nino-social-icon {
+	--color-ink: var(--social-badge-on);
+	--color-title: var(--social-badge-on);
+	--color-subtitle: var(--social-badge-on-muted);
+	--color-accent: var(--social-badge-link);
+	--color-border: var(--social-badge-border);
+	--color-focus: var(--social-badge-focus);
+
+	box-sizing: content-box;
+	padding: calc( var(--nino-social-icon-size) * .4 );
+	border: 1px solid var(--social-badge-border);
+	border-radius: 50%;
+	background-color: var(--social-badge);
+}
+
+.nino-social-icon:not(.nino-social *) {
+	margin-block: calc( var(--nino-social-icon-size) * -.4 - 1px );
+}
+
+/*	The ring of the keyboard follows the badge: a circle for an icon, a pill for an icon with its name	*/
+.nino-social-link {
+	border-radius: 99rem;
+}

@@ -12,14 +12,58 @@
  *					here as well as on the svg, because a rule elsewhere that fills
  *					svgs - Nino.css does it for .nino-icon - beats the attribute and
  *					turns a line icon into a blot.
+ *
+ *					What a look of the Design feature moves (design/) are the
+ *					properties declared first: --social-size, the size of an icon,
+ *					--social-gap between two links, --social-stroke, the weight of
+ *					the line, --social-icon, the tone of the icon, and --social-badge,
+ *					the ground a look that paints a badge puts behind an icon, with
+ *					the parts the palette solves for it. Each has the value the row
+ *					was drawn with until now as its default, so that the links look
+ *					as they always did until a look moves one. Lengths, numbers and
+ *					the ground stand in :where(:root), the tone of the icon in
+ *					:where(*) so that it is the tone of the ground an element stands
+ *					on, as the Design feature's manual asks. :where() has no
+ *					specificity and the bundle lists this file after the sheet the
+ *					Design feature writes, so a look moves a default by saying it on
+ *					:root. No colour literal, and no !important.
+ *
+ *					The size of a call - [social size="small"] - is the class
+ *					nino-social--small and a factor of the size of the site, not a
+ *					size of its own: the knob sets what the site draws, the attribute
+ *					is the exception of one list, and the exception is worked out
+ *					from the setting rather than put in its place. Nothing here moves
+ *					a link on hover: that is a style of the Design feature.
  */
 
+:where(:root) {
+	/*	The size of an icon, the space between two links and the weight of the line the icons are drawn with. A look that frames the
+		icon in a badge or a ring sizes the icon inside it	*/
+	--social-size: 1.5em;
+	--social-gap: var(--space-2);
+	--social-stroke: 2;
+
+	/*	The ground of a badge, with the parts of it a look reads: the text colour on it, the quieter one, the link, the line round it
+		and the focus - what the icon on it is read with. A surface of the palette and no colour of its own	*/
+	--social-badge: var(--color-section-alt-bg);
+	--social-badge-on: var(--color-section-alt-text);
+	--social-badge-on-muted: var(--color-section-alt-text);
+	--social-badge-link: var(--color-accent-alt);
+	--social-badge-border: var(--color-border-alt);
+	--social-badge-focus: var(--color-focus-alt);
+}
+
+:where(*) {
+	--social-icon: currentColor;
+}
+
+/*	The row gap is half the column gap: the space between two links, and between two lines of them, is the one the row had	*/
 .nino-social {
-	--nino-social-size: 1.5em;
+	--nino-social-size: var(--social-size);
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--space-1) var(--space-2);
+	gap: calc( var(--social-gap) / 2 ) var(--social-gap);
 	list-style: none;
 }
 
@@ -32,12 +76,14 @@
 	padding: 0;
 }
 
+/*	The two sizes of a call are factors of the size of the site - three quarters and four thirds, which is what 1.125em and 2em
+	were of 1.5em - and the knob moves them with it	*/
 .nino-social--small {
-	--nino-social-size: 1.125em;
+	--nino-social-size: calc( var(--social-size) * .75 );
 }
 
 .nino-social--large {
-	--nino-social-size: 2em;
+	--nino-social-size: calc( var(--social-size) * 4 / 3 );
 }
 
 .nino-social-item {
@@ -58,11 +104,15 @@
 	- the name is text of the line like any other, and the icon sits on it the
 	way a capital does, a little below the baseline */
 .nino-social-icon {
+	/*	The side of the icon: the size of the list it stands in, else five sixths of the size of the site, which is the 1.25em a
+		lone icon always was. A look that draws a badge or a ring round the icon reads it for the room it leaves	*/
+	--nino-social-icon-size: var(--nino-social-size, calc( var(--social-size) * 5 / 6 ));
 	display: inline-block;
 	flex: none;
-	width: var(--nino-social-size, 1.25em);
-	height: var(--nino-social-size, 1.25em);
+	width: var(--nino-social-icon-size);
+	height: var(--nino-social-icon-size);
 	vertical-align: -.25em;
+	color: var(--social-icon);
 }
 
 .nino-social-icon + .nino-social-label {
@@ -75,4 +125,5 @@
 	height: 100%;
 	fill: none;
 	stroke: currentColor;
+	stroke-width: var(--social-stroke);
 }

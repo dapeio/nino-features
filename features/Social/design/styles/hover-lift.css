@@ -1,0 +1,12 @@
+/*	@name			Lift
+ *	@name-de		Heben
+ *	@description	A link rises two pixels under the pointer and under the keyboard focus. A visitor who asks for less motion sees it stand still.
+ *	@description-de	Ein Link hebt sich unter dem Zeiger und unter dem Tastaturfokus um zwei Pixel. Wer weniger Bewegung wünscht, sieht ihn stehen bleiben.
+ */
+
+/*	In the list only: a link in running text is an inline box, which a transform does not move	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-social .nino-social-link:is(:hover, :focus-visible) {
+		transform: translateY(-2px);
+	}
+}

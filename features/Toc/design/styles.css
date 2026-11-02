@@ -1,7 +1,0 @@
-/*	@style		place	Place
- *	@style-de	place	Platz
- *
- *	The styles of the list, for every look at once. Place is where the list stands while the page is read: with None it stays
- *	where [toc] was written and scrolls away with the text, with Sticky it keeps to the edge of the window. There is no rule
- *	the options share, so this file is the head alone.
- */

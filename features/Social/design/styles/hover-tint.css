@@ -1,0 +1,9 @@
+/*	@name			Tint
+ *	@name-de		Tönen
+ *	@description	The icon of a link takes the accent colour under the pointer and under the keyboard focus.
+ *	@description-de	Das Icon eines Links nimmt unter dem Zeiger und unter dem Tastaturfokus die Akzentfarbe an.
+ */
+
+.nino-social-link:is(:hover, :focus-visible) .nino-social-icon {
+	color: var(--color-accent);
+}

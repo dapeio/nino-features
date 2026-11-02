@@ -1,0 +1,38 @@
+/*	@name			Plain
+ *	@name-de		Schlicht
+ *	@description	The links as they have always been drawn: line icons in the colour of the link, one beside the next with a small gap.
+ *	@description-de	Die Links, wie sie immer gezeichnet wurden: Strich-Icons in der Farbe des Links, eines neben dem anderen mit kleinem Abstand.
+ *
+ *	@knob	size		scale	type		Size of an icon
+ *	@knob-de	size		Größe eines Icons
+ *	@knob	gap			scale	surfaces	Space between the links
+ *	@knob-de	gap			Abstand der Links
+ *	@knob	stroke		scale	type		Weight of the line
+ *	@knob-de	stroke		Strichstärke
+ *
+ *	Plain is the starting point of this feature: the middle of every ladder is the value social.css has as its own default, so
+ *	the links under it are drawn as they are without the Design feature. It writes no rule of its own and paints nothing: the icon
+ *	stays the colour of the link round it - the accent where the kernel gives the links of a text the accent, the colour of the
+ *	text elsewhere - so that an icon and its name are one colour, which is why it has no knob for the colour. The size is the base
+ *	of a call as well: size="small" and size="large" are three quarters and four thirds of it.
+ */
+
+:root {
+	--social-size--least:	1em;
+	--social-size--less:	1.25em;
+	--social-size--default:	1.5em;
+	--social-size--more:	2em;
+	--social-size--most:	2.5em;
+
+	--social-gap--least:	.25rem;
+	--social-gap--less:		var(--space-1);
+	--social-gap--default:	var(--space-2);
+	--social-gap--more:		1.5rem;
+	--social-gap--most:		var(--space-3);
+
+	--social-stroke--least:		1;
+	--social-stroke--less:		1.5;
+	--social-stroke--default:	2;
+	--social-stroke--more:		2.5;
+	--social-stroke--most:		3;
+}

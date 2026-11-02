@@ -1,0 +1,66 @@
+/*	@name			Outline
+ *	@name-de		Umriss
+ *	@description	Every icon in a circle of line, drawn in the colour of the icon: no ground, so it lies lightly on any section.
+ *	@description-de	Jedes Icon in einem Kreis aus Linie, in der Farbe des Icons gezeichnet: ohne Grund, so liegt es leicht auf jeder Sektion.
+ *
+ *	@knob	size		scale	type		Size of an icon
+ *	@knob-de	size		Größe eines Icons
+ *	@knob	gap			scale	surfaces	Space between the circles
+ *	@knob-de	gap			Abstand der Kreise
+ *	@knob	stroke		scale	type		Weight of the line
+ *	@knob-de	stroke		Strichstärke
+ *	@knob	icon		ink		colours		Colour of the icons	= ink
+ *	@knob-de	icon		Farbe der Icons
+ *
+ *	The size is the size of the icon inside the circle, which is a little under twice as wide as the icon: the room round it is
+ *	two fifths of the icon on each side. The circle is drawn with the colour of the icon, so the one knob for the colour moves
+ *	both, and as thick as the line of the icon, so that the one knob for the weight moves it too. It is drawn as a shadow inside the
+ *	edge and not as a border, because the browser rounds the width of a border down to a pixel of the screen where the line of the
+ *	icon is drawn to the fraction - 1px for 1.9; a visitor who has forced colours loses shadows, and gets a border of a pixel then. It has no ground of its own, which is
+ *	why this look has no knob for one: the icon is read on the section it stands on, as in Plain.
+ *
+ *	A lone icon in running text, outside a list, has the room the circle takes round it taken off its margin again, so that the line
+ *	is as high as it is with a plain icon and the circle stands on the middle of the text.
+ */
+
+:root {
+	--social-size--least:	.875em;
+	--social-size--less:	1em;
+	--social-size--default:	1.25em;
+	--social-size--more:	1.5em;
+	--social-size--most:	2em;
+
+	--social-gap--least:	.25rem;
+	--social-gap--less:		var(--space-1);
+	--social-gap--default:	var(--space-2);
+	--social-gap--more:		1.5rem;
+	--social-gap--most:		var(--space-3);
+
+	--social-stroke--least:		1;
+	--social-stroke--less:		1.5;
+	--social-stroke--default:	2;
+	--social-stroke--more:		2.5;
+	--social-stroke--most:		3;
+}
+
+.nino-social-icon {
+	box-sizing: content-box;
+	padding: calc( var(--nino-social-icon-size) * .4 );
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 calc( var(--nino-social-icon-size) / 24 * var(--social-stroke) ) currentColor;
+}
+
+@media (forced-colors: active) {
+	.nino-social-icon {
+		border: 1px solid currentColor;
+	}
+}
+
+.nino-social-icon:not(.nino-social *) {
+	margin-block: calc( var(--nino-social-icon-size) * -.4 );
+}
+
+/*	The ring of the keyboard follows the circle: a circle for an icon, a pill for an icon with its name	*/
+.nino-social-link {
+	border-radius: 99rem;
+}
