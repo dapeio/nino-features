@@ -144,6 +144,7 @@ check( '...and names the seven blocks of a dialog - the loop is one of them - an
 	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['The seven blocks']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The seven blocks']['de_DE'], 'Loop:' ) === true
 		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Properties of a card']['de_DE'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true
 		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], ' Du ' ) === true
+		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['en_US'], 'Ctrl+C and Ctrl+V' ) === true && str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], 'Strg+C und Strg+V' ) === true
 		&& trim( $manifest['manual']['panel']['Copy and Paste']['en_US'] ) !== '' && trim( $manifest['manual']['panel']['Copy and Paste']['de_DE'] ) !== '' && $manifest['manual']['panel']['Copy and Paste']['en_US'] !== $manifest['manual']['panel']['Copy and Paste']['de_DE'];
 } )() );
 check( '...and the entry on the spacing of a section names the gap between the columns of its row, by the word the panel gives the select, in both languages', ( static function() use ( $manifest, $dir ): bool {

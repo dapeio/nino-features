@@ -131,6 +131,9 @@
 .builder-editor.admin-hidden {
 	display: none;
 }
+.builder-editor:focus:not(:focus-visible) {
+	outline: none;
+}
 .builder-editor-head {
 	display: flex;
 	flex-wrap: wrap;

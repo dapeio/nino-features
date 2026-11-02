@@ -18,7 +18,8 @@
  *													where it may stand, on the page or on another page of the
  *													project: the clip is kept in the browser's storage, with
  *													the texts of its keys, and a paste is a change of the model
- *													like a duplicate is.
+ *													like a duplicate is. Ctrl+C and Ctrl+V - Cmd on a Mac -
+ *													do it to the selected frame, outside the fields.
  *													The source of a text or a picture is changed in a dialog
  *													of its own, over that one, and the name of a section where
  *													it stands. The text of a key and the picture of a slot
@@ -2800,6 +2801,7 @@
 			const builder = Nino.admin.builder;
 
 			builder._doc = null;
+			builder._watchKeys( false );
 			builder._closeDialog();
 			builder._showScreen( 'list' );
 			Nino.admin.router.set( 'builder', [] );
@@ -3160,6 +3162,7 @@
 
 				if( failure !== null ) {
 					builder._doc = null;
+					builder._watchKeys( false );
 					builder._showScreen( 'list' );
 					Nino.admin.router.set( 'builder', [] );
 					builder._listError( failure.status, failure.response );
@@ -3186,6 +3189,7 @@
 					builder._clip = stored;
 
 				builder._renderEditor();
+				builder._watchKeys( true );
 				builder._keysAsked = false;
 				builder._loadKeys();
 				Nino.admin.router.set( 'builder', [ file ] );
@@ -4200,6 +4204,76 @@
 
 			if( tool !== null )
 				tool.focus();
+		},
+
+		/**
+		 *	The keys of the editor: the one listener of its root is there while a document is open and goes with it. The root is focusable, so that a
+		 *	click on a frame - which has no focus of its own - leaves the focus in the editor, where its keys are heard
+		 *
+		 *	@param		{boolean}		on
+		 *
+		 *	@return		void
+		 */
+		_watchKeys : function( on ) {
+
+			const builder = Nino.admin.builder;
+			const root = dc.getElementById('builder-editor');
+
+			root.removeEventListener( 'keydown', builder._keyDown );
+
+			if( on === true )
+				root.addEventListener( 'keydown', builder._keyDown );
+		},
+
+		/**
+		 *	Ctrl+C and Ctrl+V - Cmd on a Mac - copy and paste the frame whose tool has the focus, else the selected one, as the tools do. The
+		 *	browser keeps the key wherever it has its own
+		 *	use for it: in a field, with text selected, in a dialog, in an editor that is for reading, and where no frame is selected. A paste that
+		 *	the place refuses does nothing - the title of the tool says why
+		 *
+		 *	@param		{KeyboardEvent}	ev
+		 *
+		 *	@return		void
+		 */
+		_keyDown : function( ev ) {
+
+			const builder = Nino.admin.builder;
+			// The letter of the key where it is a Latin one, else the letter the key has on a Latin layout: a Cyrillic or Greek layout has its own letters on those keys
+			const key = typeof ev.key === 'string' && /^[a-z]$/i.test( ev.key ) === true ? ev.key.toLowerCase() : ( ev.code === 'KeyC' ? 'c' : ( ev.code === 'KeyV' ? 'v' : '' ) );
+
+			if( ( ev.ctrlKey !== true && ev.metaKey !== true ) || ev.altKey === true || ev.shiftKey === true || ( key !== 'c' && key !== 'v' ) || ev.defaultPrevented === true )
+				return;
+
+			if( builder._doc === null || builder._mutable() === false || builder._dialogOptions !== null || dc.getElementById('builder-picker').open === true )
+				return;
+
+			const active = dc.activeElement;
+
+			if( active !== null && active !== undefined && active.closest('input, textarea, select, [contenteditable]') !== null )
+				return;
+
+			const text = typeof wn.getSelection === 'function' ? wn.getSelection() : null;
+
+			if( text !== null && text !== undefined && text.toString() !== '' )
+				return;
+
+			// The frame whose tool has the focus is the one that is meant - its toolbar is what is in view - and the selection otherwise
+			const tool = active === null || active === undefined ? null : active.closest('[data-path] [data-tool]');
+			const frame = tool === null ? null : tool.closest('[data-path]');
+			const path = frame === null ? builder._sel : frame.dataset.path.split('.').map( Number );
+
+			if( path.length === 0 )
+				return;
+
+			ev.preventDefault();
+
+			if( builder._same( path, builder._sel ) === false )
+				builder._select( path, false );
+
+			if( key === 'c' )
+				builder._copyAt( path );
+			else
+				builder._pasteAt( path );
 		},
 
 		/**

@@ -69,6 +69,13 @@
  *												the column does not take - with the reason -, and the second
  *												line of a placeholder that says what a component draws.
  *
+ *												Copy and paste by keyboard: Ctrl+C and Ctrl+V - Cmd as well -
+ *												on the selected frame, through the listener of the editor's
+ *												root, which is there while an editor is open - and nothing in
+ *												a field, with text selected, in a dialog, in an editor for
+ *												reading, without a frame selected, or for a paste the place
+ *												refuses; the focus goes to the paste tool of the copy.
+ *
  *												The card, a component that holds components, over the page of
  *												the fixtures that has two (fixtures/page-home-card.json): a path
  *												one level deeper and the moving, copying and deleting that work
@@ -323,6 +330,7 @@ class Tag {
 	}
 
 	addEventListener( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) }
+	removeEventListener( type, fn ) { const held = this.listeners[type] || []; if( held.indexOf( fn ) !== -1 ) held.splice( held.indexOf( fn ), 1 ) }
 	/**
 	 *	What the page does when something happens: the listeners of the element are called, and then those of the
 	 *	elements around it unless one stops it
@@ -510,6 +518,7 @@ class Document {
 	querySelector( selector ) { return this.root.querySelector( selector ) }
 	querySelectorAll( selector ) { return this.root.querySelectorAll( selector ) }
 	addEventListener( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) }
+	removeEventListener( type, fn ) { const held = this.listeners[type] || []; if( held.indexOf( fn ) !== -1 ) held.splice( held.indexOf( fn ), 1 ) }
 
 	/**
 	 *	The template of the panel, parsed: a copy of what the page gets of it, with the words of its fills
@@ -8239,6 +8248,325 @@ check( 'a copy from a loop pasted outside one keeps its fields and is marked red
 
 	return clip.node.source === 'summary' && builder._pasteable( model, registry(), [ 0, 0 ], clip ) === '' && builder._get( model, at ).source === 'summary' && red.length === 1 && red[0].why === 'static'
 		&& builder._red( page(), registry() ).filter( function( entry ) { return entry.path[0] === 0 } ).length === 0;
+} ) );
+
+console.log( '\nCopy and paste by keyboard' );
+
+// The editor opened as the page opens it - the answers of the three requests - so that the listener of its root is the one the page binds
+const opened = function() {
+	requests = [];
+	builder._openEditor( 'page-home' );
+	requests.forEach( function( request ) {
+		if( request.action === 'builder/load' )
+			request.callback( 200, { model : page(), hash : 'h9', source : '' } );
+		else if( request.action === 'builder/registry' )
+			request.callback( 200, registry() );
+		else if( request.action === 'text/keys' )
+			request.callback( 200, { keys : known() } );
+		else
+			request.callback( 200, { templates : [ { file : 'page-home', usedBy : [] } ] } );
+	} );
+	changes = 0;
+};
+const editorRoot = function() { return screen.getElementById('builder-editor') };
+// A press of Ctrl, Cmd or neither with a letter, at an element of the editor
+const chord = function( at, letter, more ) { return at.dispatch( 'keydown', Object.assign( { key : letter, ctrlKey : true }, more ?? {} ) ) };
+const componentSources = function() { return builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.source.split('/').pop() } ).join() };
+// Whatever the page holds at the start of a check: a clip in the storage, the editor open on the page, a frame selected
+const ready = function( clipAt, selected ) {
+	copied( clipAt );
+	opened();
+	builder._select( selected, false );
+	screen.activeElement = null;
+	delete sandbox.getSelection;
+	delete sandbox.matchMedia;
+};
+
+check( 'Ctrl+C on a selected frame copies it as the tool does: the clip is made and kept, the document is not changed, the key is the editor\'s and not the browser\'s - Cmd+C and a capital letter as well', attempt( function() {
+
+	ready( [ 0, 0, 1 ], [ 0, 0, 0 ] );
+	builder._clip = null;
+	storage.items = {};
+
+	const event = chord( toolOf( '0.0.0', 'copy' ), 'c' );
+	const first = builder._clip !== null && builder._clip.node.name === 'title' && builder._clip.kind === 'component' && storage.items[clipKey] !== undefined && JSON.parse( storage.items[clipKey] ).node.name === 'title' && event.defaultPrevented === true && changes === 0 && builder._unsaved( builder._doc ) === false;
+
+	builder._select( [ 0, 0, 1 ], false );
+
+	const meta = editorRoot().dispatch( 'keydown', { key : 'c', metaKey : true } );
+	const second = builder._clip.node.source.split('/').pop() === 'subtitle' && meta.defaultPrevented === true;
+
+	builder._select( [ 0, 0, 0 ], false );
+	chord( editorRoot(), 'C' );
+
+	return first && second && builder._clip.node.source.split('/').pop() === 'title';
+} ) );
+check( '...Ctrl+V pastes it after the selected frame as the tool does: the copy selected, counted as one change, the clip as it was, the key taken from the browser - Cmd+V the same, and again as often as it is pressed', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+
+	const clip = builder._clip;
+	const event = chord( editorRoot(), 'v' );
+	const first = componentSources() === 'title,subtitle,title-2,name' && builder._same( builder._sel, [ 0, 0, 2 ] ) && changes === 1 && builder._unsaved( builder._doc ) === true && builder._clip === clip && event.defaultPrevented === true
+		&& JSON.stringify( builder._get( builder._doc.model, [ 0, 0, 2 ] ).values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && frameOf('0.0.2').classList.contains('is-selected');
+	const meta = editorRoot().dispatch( 'keydown', { key : 'v', metaKey : true } );
+
+	return first && meta.defaultPrevented === true && componentSources() === 'title,subtitle,title-2,title-3,name' && changes === 2 && builder._same( builder._sel, [ 0, 0, 3 ] );
+} ) );
+check( '...a section copied by key is pasted by key on another page: the keys are new there', attempt( function() {
+
+	ready( [ 1 ], [ 1 ] );
+	builder._doc.file = 'page-other';
+	chord( editorRoot(), 'v' );
+
+	const ids = builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join();
+
+	return ids === 'hero,services,services-2,html,contact' && builder._fresh['services-2'] === true && builder._doc.model.blocks[2].cols[0].components[0].source.indexOf( '/template/page-other/services-2/' ) === 0;
+} ) );
+check( '...the focus goes to the tool that pastes of the new selection, from the editor and from a tool alike - where the tool is, as it does for a press of the tool', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	editorRoot().focus();
+	chord( editorRoot(), 'v' );
+
+	const first = screen.activeElement === toolOf( '0.0.2', 'paste' ) && screen.activeElement !== null;
+
+	chord( screen.activeElement, 'v' );
+
+	return first && screen.activeElement === toolOf( '0.0.3', 'paste' ) && componentSources() === 'title,subtitle,title-2,title-3,name';
+} ) );
+check( '...a section pasted by key has the focus on its paste tool too', attempt( function() {
+
+	ready( [ 0 ], [ 1 ] );
+	chord( editorRoot(), 'v' );
+
+	return builder._same( builder._sel, [ 2 ] ) && screen.activeElement === toolOf( '2', 'paste' ) && screen.activeElement !== null;
+} ) );
+check( 'the key takes the frame whose tool has the focus - the toolbar in view - and not the selected one: Ctrl+C copies it and selects it, Ctrl+V pastes behind it; with the focus elsewhere it is the selection', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	toolOf( '1', 'settings' ).focus();
+
+	const event = chord( screen.activeElement, 'c' );
+	const copiedSection = builder._clip.kind === 'section' && builder._clip.node.id === 'services' && builder._same( builder._sel, [ 1 ] ) && event.defaultPrevented === true && frameOf('1').classList.contains('is-selected') && changes === 0;
+
+	ready( [ 0, 0, 0 ], [ 1 ] );
+	toolOf( '0.0.0', 'copy' ).focus();
+	chord( screen.activeElement, 'v' );
+
+	const behind = componentSources() === 'title,title-2,subtitle,name' && builder._same( builder._sel, [ 0, 0, 1 ] ) && builder._doc.model.blocks.length === 4 && screen.activeElement === toolOf( '0.0.1', 'paste' );
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	editorRoot().focus();
+	chord( editorRoot(), 'c' );
+
+	return copiedSection && behind && builder._clip.node.name === 'subtitle' && builder._same( builder._sel, [ 0, 0, 1 ] );
+} ) );
+check( 'a toolbar with the focus is enough where nothing is selected: the frame of the tool is the one', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [] );
+	toolOf( '0.0.1', 'up' ).focus();
+	chord( screen.activeElement, 'v' );
+
+	return componentSources() === 'title,subtitle,title-2,name' && builder._same( builder._sel, [ 0, 0, 2 ] );
+} ) );
+check( 'other layouts: the key is the letter where it is a Latin one, and the place of the key where it is not - a Cyrillic or Greek letter on the key of C and V; a Latin letter that stands on another place - Dvorak\'s J on the key of C - is not C', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	builder._clip = null;
+	storage.items = {};
+
+	const cyrillic = editorRoot().dispatch( 'keydown', { key : 'с', code : 'KeyC', ctrlKey : true } );
+	const greek = editorRoot().dispatch( 'keydown', { key : 'ψ', code : 'KeyC', metaKey : true } );
+	const copiedByPlace = cyrillic.defaultPrevented === true && greek.defaultPrevented === true && builder._clip !== null && builder._clip.node.name === 'subtitle';
+	const pasted = editorRoot().dispatch( 'keydown', { key : 'м', code : 'KeyV', ctrlKey : true } );
+	const pastedByPlace = pasted.defaultPrevented === true && componentSources() === 'title,subtitle,subtitle-2,name';
+	const before = JSON.stringify( builder._doc.model );
+	const dvorak = [ editorRoot().dispatch( 'keydown', { key : 'j', code : 'KeyC', ctrlKey : true } ), editorRoot().dispatch( 'keydown', { key : 'k', code : 'KeyV', ctrlKey : true } ), editorRoot().dispatch( 'keydown', { key : 'Dead', code : 'KeyX', ctrlKey : true } ), editorRoot().dispatch( 'keydown', { key : 'с', code : 'KeyX', ctrlKey : true } ) ];
+
+	return copiedByPlace && pastedByPlace && dvorak.every( function( event ) { return event.defaultPrevented === false } ) && JSON.stringify( builder._doc.model ) === before;
+} ) );
+check( 'the keys are heard on the root of the editor once it is open - the template makes it focusable, so that a click on a frame leaves the focus in it, and the stylesheet draws no ring round the whole editor for a click', attempt( function() {
+
+	const html = /<section id="builder-editor"[^>]*>/.exec( template )[0];
+
+	return html.indexOf( 'tabindex="-1"' ) !== -1 && ruleHas( '.builder-editor:focus:not(:focus-visible)', [ 'outline: none' ] );
+} ) );
+check( '...one listener however often an editor is opened, and none once the list is shown again: the keys do nothing there, and are heard again when an editor is opened', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	opened();
+	opened();
+	builder._select( [ 0, 0, 1 ], false );
+	chord( editorRoot(), 'v' );
+
+	const once = componentSources() === 'title,subtitle,title-2,name' && ( editorRoot().listeners.keydown || [] ).length === 1;
+
+	builder._showList();
+	builder._doc = open();
+	builder._select( [ 0, 0, 1 ], false );
+	changes = 0;
+
+	const event = chord( editorRoot(), 'v' );
+	const away = componentSources() === 'title,subtitle,name' && changes === 0 && event.defaultPrevented === false && ( editorRoot().listeners.keydown || [] ).length === 0;
+
+	opened();
+	builder._select( [ 0, 0, 1 ], false );
+	chord( editorRoot(), 'v' );
+
+	return once && away && componentSources() === 'title,subtitle,title-2,name';
+} ) );
+check( '...nor after an editor that could not be opened', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	requests = [];
+	builder._openEditor( 'page-home' );
+	requests.forEach( function( request ) { request.callback( 404, { code : 'builder_missing' } ) } );
+
+	return builder._doc === null && ( editorRoot().listeners.keydown || [] ).length === 0 && ( chord( editorRoot(), 'v' ), builder._doc === null );
+} ) );
+
+check( 'nothing happens in a field - an input, a text area, a select or what can be edited, and in what is inside it - the browser copies and pastes the text', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+
+	const before = JSON.stringify( builder._doc.model );
+	const clip = builder._clip;
+	const area = made('div');
+	const inner = made('span');
+	const fields = [ made('input'), made('textarea'), made('select'), area ];
+
+	area.setAttribute( 'contenteditable', 'true' );
+	area.appendChild( inner );
+	fields.forEach( function( field ) { editorRoot().appendChild( field ) } );
+
+	const heard = fields.concat( [ inner ] ).map( function( field ) {
+		field.focus();
+		return chord( field, 'v' ).defaultPrevented === false && chord( field, 'c' ).defaultPrevented === false;
+	} );
+
+	builder._clip = null;
+	storage.items = {};
+	fields[0].focus();
+	chord( fields[0], 'c' );
+
+	const kept = builder._clip === null && storage.items[clipKey] === undefined;
+
+	fields.forEach( function( field ) { field.remove() } );
+	builder._clip = clip;
+
+	return heard.every( Boolean ) && kept && JSON.stringify( builder._doc.model ) === before && changes === 0;
+} ) );
+check( 'nothing happens with text selected in the page: the browser copies the text', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+
+	const before = JSON.stringify( builder._doc.model );
+	const clip = builder._clip;
+
+	sandbox.getSelection = function() { return { toString : function() { return 'Welcome' } } };
+
+	const pastedKey = chord( editorRoot(), 'v' );
+
+	builder._clip = null;
+	storage.items = {};
+
+	const copiedKey = chord( editorRoot(), 'c' );
+	const none = builder._clip === null && storage.items[clipKey] === undefined;
+
+	sandbox.getSelection = function() { return { toString : function() { return '' } } };
+	builder._clip = clip;
+
+	const empty = chord( editorRoot(), 'v' );
+
+	delete sandbox.getSelection;
+
+	return pastedKey.defaultPrevented === false && copiedKey.defaultPrevented === false && none && JSON.stringify( builder._doc.model ) !== before && empty.defaultPrevented === true && componentSources() === 'title,subtitle,title-2,name';
+} ) );
+check( 'nothing happens while the editor is for reading only: neither key, and the browser keeps both', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+
+	const before = JSON.stringify( builder._doc.model );
+	const clip = builder._clip;
+
+	sandbox.matchMedia = function() { return { matches : true } };
+	storage.items = {};
+
+	const pastedKey = chord( editorRoot(), 'v' );
+	const copiedKey = chord( editorRoot(), 'c' );
+
+	delete sandbox.matchMedia;
+
+	return pastedKey.defaultPrevented === false && copiedKey.defaultPrevented === false && JSON.stringify( builder._doc.model ) === before && builder._clip === clip && storage.items[clipKey] === undefined && changes === 0;
+} ) );
+check( 'nothing happens without a selected frame: the page itself and the template are none', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [] );
+
+	const before = JSON.stringify( builder._doc.model );
+	const clip = builder._clip;
+
+	builder._clip = null;
+	storage.items = {};
+
+	const copiedKey = chord( editorRoot(), 'c' );
+
+	builder._clip = clip;
+
+	const pastedKey = chord( editorRoot(), 'v' );
+
+	return copiedKey.defaultPrevented === false && pastedKey.defaultPrevented === false && builder._clip === clip && storage.items[clipKey] === undefined && JSON.stringify( builder._doc.model ) === before && changes === 0;
+} ) );
+check( 'nothing happens while a dialog or the picker is open', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+	builder._openSettings( [ 0, 0, 1 ] );
+
+	const before = JSON.stringify( builder._doc.model );
+	const clip = builder._clip;
+	const inDialog = chord( editorRoot(), 'v' );
+
+	builder._closeDialog();
+	pickerBox().open = true;
+
+	const inPicker = chord( editorRoot(), 'v' );
+
+	pickerBox().open = false;
+
+	return inDialog.defaultPrevented === false && inPicker.defaultPrevented === false && JSON.stringify( builder._doc.model ) === before && builder._clip === clip && changes === 0;
+} ) );
+check( 'nothing happens for any other key or without the modifier: Ctrl+X, Ctrl+Z, a plain C or V, Alt or Shift with it', attempt( function() {
+
+	ready( [ 0, 0, 0 ], [ 0, 0, 1 ] );
+
+	const before = JSON.stringify( builder._doc.model );
+	const events = [ chord( editorRoot(), 'x' ), chord( editorRoot(), 'z' ), editorRoot().dispatch( 'keydown', { key : 'v' } ), editorRoot().dispatch( 'keydown', { key : 'c' } ), chord( editorRoot(), 'v', { altKey : true } ), chord( editorRoot(), 'v', { shiftKey : true } ), chord( editorRoot(), 'c', { shiftKey : true } ), editorRoot().dispatch( 'keydown', {} ) ];
+
+	return events.every( function( event ) { return event.defaultPrevented === false } ) && JSON.stringify( builder._doc.model ) === before && changes === 0;
+} ) );
+check( 'a paste that the place refuses does nothing: no change, no request, no new message - a section at a component, a column at a component, a component at a block of html, and nothing in the clip', attempt( function() {
+
+	const quiet = function( clipAt, selected, empty ) {
+
+		ready( clipAt, selected );
+
+		if( empty === true )
+			builder._clip = null;
+
+		const model = JSON.stringify( builder._doc.model );
+		const status = builder._status.state;
+		const clip = builder._clip;
+		const refused = builder._pasteable( builder._doc.model, builder._registry, selected, clip ) !== '';
+
+		requests = [];
+		chord( editorRoot(), 'v' );
+
+		return refused && JSON.stringify( builder._doc.model ) === model && changes === 0 && builder._unsaved( builder._doc ) === false && builder._status.state === status && requests.length === 0 && builder._clip === clip
+			&& builder._same( builder._sel, selected ) && builder._doc.model.blocks.length === 4 && builder._fresh.hero === undefined;
+	};
+
+	return quiet( [ 0 ], [ 0, 0, 1 ], false ) && quiet( [ 0, 0 ], [ 0, 0, 1 ], false ) && quiet( [ 0, 0, 0 ], [ 2 ], false ) && quiet( [ 0, 0, 0 ], [ 0, 0, 1 ], true );
 } ) );
 
 delete sandbox.localStorage;

@@ -21,7 +21,7 @@
 		<div id="builder-templates"></div>
 	</section>
 
-	<section id="builder-editor" class="builder-screen builder-editor admin-hidden">
+	<section id="builder-editor" class="builder-screen builder-editor admin-hidden" tabindex="-1">
 
 		<div class="builder-editor-head">
 			<a id="builder-back" class="nino-admin-back-link" href="#builder">[[/_admin/common/label/back]]</a>
