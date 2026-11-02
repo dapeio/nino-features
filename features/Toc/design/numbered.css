@@ -1,0 +1,56 @@
+/*	@name			Numbered
+ *	@name-de		Nummeriert
+ *	@description	The entries with numbers in front of them, counted down the list, and no line: the title and the numbers carry the list.
+ *	@description-de	Die Einträge mit Zahlen davor, durch die Liste gezählt, und ohne Linie: Titel und Zahlen tragen die Liste.
+ *
+ *	@knob	space		scale	surfaces	Space inside
+ *	@knob-de	space		Innenabstand
+ *	@knob	indent		scale	surfaces	Indent of the sub-levels
+ *	@knob-de	indent		Einzug der Unterebenen
+ *
+ *	Numbered has no line, so it declares neither its thickness nor its colour and the panel greys the two out under it: it sets
+ *	the thickness and the room at the sides to nothing, and the list stands in the column of the text. The numbers count the
+ *	entries of the list in the order they stand, which is the order of the ordered list the markup is; they are decoration, and
+ *	where the browser knows the alternative text of generated content they are given an empty one, so that a screen reader that
+ *	reads the list as numbered does not read them twice. They are written in the quieter tone of the page.
+ */
+
+:root {
+	--toc-line: 0px;
+	--toc-inset: 0rem;
+
+	--toc-space--least:	calc( var(--space-1) * .5 );
+	--toc-space--less:	var(--space-1);
+	--toc-space--default:	var(--space-2);
+	--toc-space--more:	calc( var(--space-2) * 1.5 );
+	--toc-space--most:	var(--space-3);
+
+	--toc-indent--least:	0rem;
+	--toc-indent--less:	var(--space-1);
+	--toc-indent--default:	var(--space-2);
+	--toc-indent--more:	calc( var(--space-2) * 1.5 );
+	--toc-indent--most:	var(--space-3);
+}
+
+.nino-toc-list {
+	counter-reset: toc-entry;
+}
+
+.nino-toc-item {
+	counter-increment: toc-entry;
+}
+
+.nino-toc-item::before {
+	content: counter(toc-entry) ".";
+	display: inline-block;
+	min-width: 1.6em;
+	margin-right: .4em;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-subtitle);
+}
+
+@supports (content: "" / "") {
+	.nino-toc-item::before {
+		content: counter(toc-entry) "." / "";
+	}
+}
