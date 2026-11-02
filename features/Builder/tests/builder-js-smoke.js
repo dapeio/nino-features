@@ -2071,6 +2071,15 @@ check( '...the table says what each block holds: what is drawn in a block is mar
 	redrawBlocks();
 	return within === true && drawn === true && both.join() === 'radius,rowRadius';
 } )() );
+check( '...a line parts the border and its brand-colour switch from what follows them in the surface: the stylesheet draws it above the field after the switch - in the separator colour, with the room of the line of the background image - and the switch is followed by the field of the colour', ( function() {
+
+	const rule = '\n.builder-block-body > :is([data-key="borderPrimary"], :has([data-key="borderPrimary"])) + * {\n\tpadding-top: .8rem;\n\tborder-top: 1px solid var(--editor-separator);\n}';
+	const held = function( el, key ) { return el.dataset.key === key || el.all().some( function( inner ) { return inner.dataset.key === key } ) };
+	const fields = blockOf('surface').children;
+	const at = fields.findIndex( function( el ) { return held( el, 'borderPrimary' ) } );
+
+	return stylesheet.indexOf( rule ) !== -1 && at > 0 && fields[at + 1] !== undefined && held( fields[at + 1], 'color' ) === true && held( fields[at - 1], 'border' ) === true;
+} )() );
 
 const coverLabel = word('section/cover');
 const heightLabel = word('section/cover-height');

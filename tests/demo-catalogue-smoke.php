@@ -160,7 +160,7 @@ $drawnByModules = [ 'nino-legal-section',
 	'nino-wrap', 'nino-section-bg', 'nino-hide-s', 'nino-hide-m', 'nino-hide-l',
 	'nino-stack', 'nino-stack-start', 'nino-stack-center', 'nino-stack-end',
 	'nino-stack-gap-0', 'nino-stack-gap-1', 'nino-stack-gap-2', 'nino-stack-gap-3', 'nino-stack-gap-4', 'nino-stack-gap-5', 'nino-stack-gap-6',
-	'nino-image', 'nino-image--1-1', 'nino-image--4-3', 'nino-image--3-2', 'nino-image--16-9', 'nino-image--21-9',
+	'nino-image', 'nino-image--1-1', 'nino-image--4-3', 'nino-image--3-2', 'nino-image--16-9', 'nino-image--21-9', 'nino-image--4-1', 'nino-image--5-1',
 	// The form block of Nino.css draws the checkbox beside its words and the group of radio buttons under one question, which the templates of
 	// a feature that builds forms write (the Forms feature); the contact form of a unit has neither
 	'nino-forms-check', 'nino-forms-group',

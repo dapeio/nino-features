@@ -1595,6 +1595,11 @@ button.builder-status-item:hover {
 	padding-top: .8rem;
 	border-top: 1px solid var(--editor-separator);
 }
+/* The line and its brand-colour switch are one thing, and what follows them is another: the same line parts them, by the marks the fields carry (data-key) */
+.builder-block-body > :is([data-key="borderPrimary"], :has([data-key="borderPrimary"])) + * {
+	padding-top: .8rem;
+	border-top: 1px solid var(--editor-separator);
+}
 .builder-group-title {
 	margin: 0;
 	color: var(--editor-text-secondary);
