@@ -120,6 +120,8 @@ $elsewhere = [
 	// The header and footer units own these - every page renders them, none
 	// declares them (see _admin/install/library/header|footer/<key>/template.tpl)
 	'nino-logo', 'nino-headernav-logo', 'nino-nav-burger', 'nino-nav-content', 'nino-nav-bg',
+	// [logo] writes the set of the two pictures, the frames and the navigation call it, and a page has no logo to draw before one is uploaded
+	'nino-logo-set', 'nino-logo-light', 'nino-logo-dark',
 	'nino-footer-main', 'nino-footer-legal', 'nino-footer-title', 'nino-footer-logo',
 	'nino-footer-getintouch', 'nino-footer-localepicker', 'nino-localepicker-wrap', 'nino-localepicker-bg',
 	'nino-scroll-header',

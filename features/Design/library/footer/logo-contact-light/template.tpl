@@ -2,7 +2,7 @@
 			<section class="nino-frame-footer-content">
 				<div class="nino-grid-row">
 					<div class="nino-grid-100 nino-grid-l-50">
-						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo" alt="[[alt]]">[/image]
+						[logo class="nino-footer-logo"]
 					</div>
 					<address class="nino-grid-100 nino-grid-m-50 nino-grid-l-25 nino-frame-footer-contact">
 						<h2>[[/template/frame-footer/contact/title]]</h2>

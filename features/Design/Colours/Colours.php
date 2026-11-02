@@ -38,8 +38,9 @@ namespace Nino\Modules\Design {
 	 *										the size raster, which the library's part sets and their
 	 *										knobs now own (see Setup::KNOBS).
 	 *
-	 *										Eight values per surface - bg, on, on-muted, link,
-	 *										border, focus, disabled and shadow - and the scrim over
+	 *										Ten values per surface - bg, on, on-muted, link,
+	 *										border, focus, disabled, shadow, and the pair of the
+	 *										logo, logo-light and logo-dark - and the scrim over
 	 *										a cover photograph. What it writes is what
 	 *										library/base.css already declares, surface for surface.
 	 *										base.css is the framework's palette as a static default,
@@ -514,7 +515,7 @@ namespace Nino\Modules\Design {
 		 *	@param		array			$settings			Design settings, normalized here if they are not already
 		 *	@param		string		$mode					'light' or 'dark'
 		 *
-		 *	@return 	array									surface => [ bg, on, on-muted, link, border, focus, disabled, shadow ]
+		 *	@return 	array									surface => [ bg, on, on-muted, link, border, focus, disabled, shadow, logo-light, logo-dark ]
 		 */
 		public static function palette( array $settings, string $mode = 'light' ): array {
 
@@ -772,7 +773,8 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	Every value a Theme may assign for one surface, each measured.
+		 *	Every value a Theme may assign for one surface, each measured - the pair of the logo
+		 *	is not a colour but a display value, read off the ink that was measured.
 		 *
 		 *	@param		string		$bg						The surface itself
 		 *	@param		float			$hue					Hue of the tinted parts
@@ -826,6 +828,14 @@ namespace Nino\Modules\Design {
 				// The colour a shadow is drawn in. How much of one a card throws is
 				// not the palette's to say
 				'shadow'		=> self::shadow( $mode ),
+				// The pair of the logo: which of the two pictures of [logo] is seen on
+				// this surface. The decision about the ink says it: written on in a dark
+				// ink ($darker), the surface is a light ground and shows the picture
+				// drawn for one; in a light ink it shows the picture for a dark ground.
+				// A display value, not a colour, so that a surface flips with the mode
+				// and with the brand colour it is solved from
+				'logo-light'	=> $darker === true ? 'block' : 'none',
+				'logo-dark'		=> $darker === true ? 'none' : 'block',
 			];
 		}
 
@@ -1181,7 +1191,7 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The parts the palette publishes of a surface, in its order, read off the palette itself and
-		 *	typed nowhere else: bg, on, on-muted, link, border, focus, disabled and shadow. What a
+		 *	typed nowhere else: bg, on, on-muted, link, border, focus, disabled, shadow, logo-light and logo-dark. What a
 		 *	feature that paints a ground writes for the ground it is given, one property for each (see
 		 *	Compiler)
 		 *
@@ -1201,8 +1211,8 @@ namespace Nino\Modules\Design {
 			$palette	= self::palette( $settings, $mode );
 
 			foreach( $palette as $surface => $values )
-				foreach( $values as $part => $hex )
-					$out .= $indent. self::token( $surface, $part ). ': '. $hex. ";\n";
+				foreach( $values as $part => $value )
+					$out .= $indent. self::token( $surface, $part ). ': '. $value. ";\n";
 
 			$out .= $indent. '--nino-scrim: '. self::scrim( $palette, self::normalize( $settings )['contrast'] ). ";\n";
 

@@ -23,7 +23,7 @@
  *	and ground a choice of three: the ground and the ink of the page, this set's
  *	own, and the dark pair of the palette. What the text, the icons, the links and
  *	the lines of the bar are read in comes with it, as aspects of the ground
- *	(--header-ground-ink, -title, -accent, -focus and -border), and is put on the
+ *	(--header-ground-ink, -title, -accent, -focus, -border, -logo-light and -logo-dark), and is put on the
  *	header as the roles Nino.css reads - so the bar is legible on each of the
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
  *
@@ -87,6 +87,14 @@
 	--header-ground-border--default:	var(--color-border);
 	--header-ground-border--more:	var(--color-border-dark);
 
+	/*	Which picture of the logo is seen: the one for a light ground or the one for a dark ground, as the pair of the ground says it - the page's, this set's own, the dark pair of the palette	*/
+	--header-ground-logo-light--less:	var(--color-logo-light);
+	--header-ground-logo-light--default:	var(--color-logo-light);
+	--header-ground-logo-light--more:	var(--color-section-dark-logo-light);
+	--header-ground-logo-dark--less:	var(--color-logo-dark);
+	--header-ground-logo-dark--default:	var(--color-logo-dark);
+	--header-ground-logo-dark--more:	var(--color-section-dark-logo-dark);
+
 	--header-border-size--least:	0;
 	--header-border-size--less:	.5px;
 	--header-border-size--default: 1px;
@@ -121,6 +129,8 @@
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
 	--color-border: var(--header-ground-border);
+	--logo-light: var(--header-ground-logo-light);
+	--logo-dark: var(--header-ground-logo-dark);
 }
 
 .nino-frame-header .nino-grid-row {

@@ -1,7 +1,7 @@
 		<footer class="nino-frame-footer">
 			<div class="nino-frame-footer-split">
 				<section class="nino-frame-footer-panel nino-frame-footer-panel--brand">
-					[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo nino-logo--invert" alt="[[alt]]">[/image]
+					[logo class="nino-footer-logo"]
 					<p>[[/project/company/general/description]]</p>
 				</section>
 				<section class="nino-frame-footer-panel nino-frame-footer-panel--info">

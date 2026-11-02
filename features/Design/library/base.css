@@ -9,10 +9,11 @@
  *										recompiles.
  *
  *										  1. the tokens - the --nino-* palette and raster, as the
- *										     static defaults the solved palette replaces. Eight
+ *										     static defaults the solved palette replaces. Ten
  *										     values per surface (bg, on, on-muted, link, border,
- *										     focus, disabled, shadow); the dark palette is not kept
- *										     here, the palette section solves it
+ *										     focus, disabled, shadow, logo-light, logo-dark); the
+ *										     dark palette is not kept here, the palette section
+ *										     solves it
  *										  2. the roles - which token goes in which role, for
  *										     everything that does not depend on the setup
  *
@@ -44,6 +45,8 @@
 	--nino-default-focus: #469cd7;
 	--nino-default-disabled: #aeaeaf;
 	--nino-default-shadow: rgb(15 23 42 / 12%);
+	--nino-default-logo-light: block;
+	--nino-default-logo-dark: none;
 	--nino-alt: #eef4fa;
 	--nino-on-alt: #0b0e10;
 	--nino-on-alt-muted: #6e6f71;
@@ -52,6 +55,8 @@
 	--nino-alt-focus: #3c94cd;
 	--nino-alt-disabled: #a5a6a7;
 	--nino-alt-shadow: rgb(15 23 42 / 12%);
+	--nino-alt-logo-light: block;
+	--nino-alt-logo-dark: none;
 	--nino-tint: #e3f3ff;
 	--nino-on-tint: #0b0e10;
 	--nino-on-tint-muted: #666f77;
@@ -60,6 +65,8 @@
 	--nino-tint-focus: #3b92cc;
 	--nino-tint-disabled: #9fa4a9;
 	--nino-tint-shadow: rgb(15 23 42 / 12%);
+	--nino-tint-logo-light: block;
+	--nino-tint-logo-dark: none;
 	--nino-dark: #2a2f32;
 	--nino-on-dark: #fcfcfc;
 	--nino-on-dark-muted: #939597;
@@ -68,6 +75,8 @@
 	--nino-dark-focus: #207db5;
 	--nino-dark-disabled: #616262;
 	--nino-dark-shadow: rgb(15 23 42 / 12%);
+	--nino-dark-logo-light: none;
+	--nino-dark-logo-dark: block;
 	--nino-black: #0e1216;
 	--nino-on-black: #fcfcfc;
 	--nino-on-black-muted: #7b7c7e;
@@ -76,6 +85,8 @@
 	--nino-black-focus: #00669a;
 	--nino-black-disabled: #4c4d4d;
 	--nino-black-shadow: rgb(15 23 42 / 12%);
+	--nino-black-logo-light: none;
+	--nino-black-logo-dark: block;
 	--nino-brand: #4faae8;
 	--nino-on-brand: #0b0e10;
 	--nino-on-brand-muted: #273b4b;
@@ -84,6 +95,8 @@
 	--nino-brand-focus: #005887;
 	--nino-brand-disabled: #5e6972;
 	--nino-brand-shadow: rgb(15 23 42 / 12%);
+	--nino-brand-logo-light: block;
+	--nino-brand-logo-dark: none;
 	--nino-brand-safe: #147bb7;
 	--nino-on-brand-safe: #fcfcfc;
 	--nino-on-brand-safe-muted: #fcfcfc;
@@ -92,6 +105,8 @@
 	--nino-brand-safe-focus: #a1d7ff;
 	--nino-brand-safe-disabled: #a9b5be;
 	--nino-brand-safe-shadow: rgb(15 23 42 / 12%);
+	--nino-brand-safe-logo-light: none;
+	--nino-brand-safe-logo-dark: block;
 	--nino-accent-safe: #147bb7;
 	--nino-on-accent-safe: #fcfcfc;
 	--nino-on-accent-safe-muted: #fcfcfc;
@@ -100,6 +115,8 @@
 	--nino-accent-safe-focus: #a1d7ff;
 	--nino-accent-safe-disabled: #a9b5be;
 	--nino-accent-safe-shadow: rgb(15 23 42 / 12%);
+	--nino-accent-safe-logo-light: none;
+	--nino-accent-safe-logo-dark: block;
 	--nino-success: #438061;
 	--nino-on-success: #fcfcfc;
 	--nino-on-success-muted: #eefff5;
@@ -108,6 +125,8 @@
 	--nino-success-focus: #7ee3b0;
 	--nino-success-disabled: #acb4af;
 	--nino-success-shadow: rgb(15 23 42 / 12%);
+	--nino-success-logo-light: none;
+	--nino-success-logo-dark: block;
 	--nino-warning: #986d00;
 	--nino-on-warning: #fcfcfc;
 	--nino-on-warning-muted: #fffbf4;
@@ -116,6 +135,8 @@
 	--nino-warning-focus: #fcc863;
 	--nino-warning-disabled: #b9b2a5;
 	--nino-warning-shadow: rgb(15 23 42 / 12%);
+	--nino-warning-logo-light: none;
+	--nino-warning-logo-dark: block;
 	--nino-danger: #cf4438;
 	--nino-on-danger: #fcfcfc;
 	--nino-on-danger-muted: #fffbfa;
@@ -124,6 +145,8 @@
 	--nino-danger-focus: #ffc2b8;
 	--nino-danger-disabled: #c4aeaa;
 	--nino-danger-shadow: rgb(15 23 42 / 12%);
+	--nino-danger-logo-light: none;
+	--nino-danger-logo-dark: block;
 	--nino-scrim: rgb(14 18 22 / 67%);
 	/* A percentage of the visitor's browser default, never a px length - see
 	   --base-size in Nino.css. A generated replacement for this file has to
@@ -241,6 +264,42 @@
 	--color-border-black: var(--nino-black-border);
 	--color-border-primary: var(--nino-brand-safe-border);
 	--color-border-brand-alt: var(--nino-accent-safe-border);
+
+	/* The logo, per ground, as the border is: [logo] draws a picture for a light
+	   ground and one for a dark ground, and a ground that paints itself says
+	   which is seen - a pair of display values, block and none, that Nino.css
+	   sets beside --color-ground. The palette solves the pair of each surface
+	   from the ink that was solved for it, so the page flips with the mode and
+	   a brand ground with the colour it was given, and these are the surfaces
+	   the roles sit on: the same ones as the bg and the text above. Nino.css
+	   declares the pairs it has without a design layer - the page and the light
+	   grounds showing the picture for a light ground, the others the one for a
+	   dark ground - and the delivered theme.css is this file compiled at the
+	   defaults, so both assign them */
+	--color-logo-light: var(--nino-default-logo-light);
+	--color-logo-dark: var(--nino-default-logo-dark);
+	--color-section-default-logo-light: var(--nino-default-logo-light);
+	--color-section-default-logo-dark: var(--nino-default-logo-dark);
+	--color-section-alt-logo-light: var(--nino-alt-logo-light);
+	--color-section-alt-logo-dark: var(--nino-alt-logo-dark);
+	--color-section-tint-logo-light: var(--nino-tint-logo-light);
+	--color-section-tint-logo-dark: var(--nino-tint-logo-dark);
+	--color-section-dark-logo-light: var(--nino-dark-logo-light);
+	--color-section-dark-logo-dark: var(--nino-dark-logo-dark);
+	--color-section-black-logo-light: var(--nino-black-logo-light);
+	--color-section-black-logo-dark: var(--nino-black-logo-dark);
+	--color-primary-logo-light: var(--nino-brand-safe-logo-light);
+	--color-primary-logo-dark: var(--nino-brand-safe-logo-dark);
+	--color-brand-alt-logo-light: var(--nino-accent-safe-logo-light);
+	--color-brand-alt-logo-dark: var(--nino-accent-safe-logo-dark);
+	--color-error-logo-light: var(--nino-danger-logo-light);
+	--color-error-logo-dark: var(--nino-danger-logo-dark);
+	--color-success-logo-light: var(--nino-success-logo-light);
+	--color-success-logo-dark: var(--nino-success-logo-dark);
+	--color-warning-logo-light: var(--nino-warning-logo-light);
+	--color-warning-logo-dark: var(--nino-warning-logo-dark);
+	--color-footer-logo-light: var(--nino-black-logo-light);
+	--color-footer-logo-dark: var(--nino-black-logo-dark);
 
 	/* The scrim over a cover image. The palette solves it against the worst
 	   photograph it could be asked to cover - a white one - so this is the

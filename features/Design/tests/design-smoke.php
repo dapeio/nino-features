@@ -1924,9 +1924,9 @@ foreach( Setup::available( $library, 'header' ) as $set )
 check( 'no header styles the burger as it was - a label or an input under .nino-nav-burger, or input:checked or input[type="checkbox"] wherever it stands'. ( $burgerProblems === [] ? '' : ' - '. implode( ', ', $burgerProblems ) ), $burgerProblems === [] );
 
 /*	The logo link says the name of the company until there is a logo: the base frame of the kernel writes <span aria-hidden="true">[[/project/company/general/name]]</span>
-	after [image /logo] - or after its [/image] where a header writes the enclosing form -, and Nino.css takes it away again once the link holds a picture. A header that draws the link with nothing but the shortcode in it
+	after [logo alt=""], and Nino.css takes it away again once the link holds a picture. A header that draws the link with nothing but the shortcode in it
 	leaves a link with nothing in it to see wherever no logo is uploaded, which is a stop of the Tab key that nobody can find. Read from the library's own
-	list of headers - those whose template asks for the slot, [image /logo, whatever class the link has - so that a header that is added without the
+	list of headers - those whose template asks for the logo, [logo, whatever class the link has - so that a header that is added without the
 	span in the link fails here rather than on a site	*/
 $nameProblems = [];
 $namedBy = 0;
@@ -1935,20 +1935,20 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 	$source = (string) file_get_contents( Setup::file( $library, 'header', $set, 'template' ) );
 
-	if( str_contains( $source, '[image /logo' ) === false )
+	if( str_contains( $source, '[logo' ) === false )
 		continue;
 
 	$namedBy++;
 
-	if( preg_match( '#<a\b[^>]*>(?:(?!</a>).)*?\[image /logo[^\]]*\](?:(?:(?!</a>).)*?\[/image\])?\s*<span aria-hidden="true">\[\[/project/company/general/name\]\]</span>#s', $source ) !== 1 )
+	if( preg_match( '#<a\b[^>]*>(?:(?!</a>).)*?\[logo[^\]]*\]\s*<span aria-hidden="true">\[\[/project/company/general/name\]\]</span>#s', $source ) !== 1 )
 		$nameProblems[] = $set;
 }
 
-check( 'every header whose logo link asks for the slot writes the name of the company after it, in the span of the kernel\'s own frame, so that a link with no logo in it has a name to read'. ( $nameProblems === [] ? '' : ' - '. implode( ', ', $nameProblems ) ), $namedBy > 0 && $nameProblems === [] );
+check( 'every header whose logo link asks for the logo writes the name of the company after it, in the span of the kernel\'s own frame, so that a link with no logo in it has a name to read'. ( $nameProblems === [] ? '' : ' - '. implode( ', ', $nameProblems ) ), $namedBy > 0 && $nameProblems === [] );
 
 /*	The brand link of a footer is the logo link of a header over again - a picture in a link, which is a link with nothing in it to see where no logo is
-	uploaded - and says the name of the company the same way, in the span of the frame after the logo, which a footer writes as a pair and so after its
-	[/image]. Nino.css takes that span away for the link of its own logo and for no other class, so the stylesheet of the footer does, behind a picture.
+	uploaded - and says the name of the company the same way, in the span of the frame after the logo, [logo class="nino-footer-logo"].
+	Nino.css takes that span away for the link of its own logo and for no other class, so the stylesheet of the footer does, behind a picture.
 	And with a picture and an empty alt text, as without one, the link has no name for whoever listens: the header's is named by the heading that stands
 	in it, a footer has none, so the name is written once more in the class that hides a text from the eye and from nobody else, as the kernel names its
 	burger. Read from the library's own list of footers - those whose template draws the logo in a link, whatever class the link has - so that a footer
@@ -1961,16 +1961,16 @@ foreach( Setup::available( $library, 'footer' ) as $set ) {
 	$source = (string) file_get_contents( Setup::file( $library, 'footer', $set, 'template' ) );
 
 	// The link the logo stands in - a logo that stands in no link leaves no link with nothing in it
-	if( preg_match( '#<a\b([^>]*)>((?:(?!</a>).)*?\[image /logo(?:(?!</a>).)*)</a>#s', $source, $link ) !== 1 )
+	if( preg_match( '#<a\b([^>]*)>((?:(?!</a>).)*?\[logo(?:(?!</a>).)*)</a>#s', $source, $link ) !== 1 )
 		continue;
 
 	$footerLinks++;
 
-	if( preg_match( '#\[image /logo[^\]]*\](?:(?:(?!</a>).)*?\[/image\])?\s*<span aria-hidden="true">\[\[/project/company/general/name\]\]</span>#s', $link[2] ) !== 1 )
+	if( preg_match( '#\[logo[^\]]*\]\s*<span aria-hidden="true">\[\[/project/company/general/name\]\]</span>#s', $link[2] ) !== 1 )
 		$footerProblems[] = $set. ': no name after the logo';
 
-	// The name for whoever listens stands in the link and outside the pair of the logo: inside the pair it is drawn with the picture alone
-	$outside = (string) preg_replace( '#\[image /logo[^\]]*\](?:(?:(?!</a>).)*?\[/image\])?#s', '', $link[2] );
+	// The name for whoever listens stands in the link beside the logo, which draws a set of pictures and nothing else
+	$outside = (string) preg_replace( '#\[logo[^\]]*\]#', '', $link[2] );
 
 	if( str_contains( $outside, '<span class="nino-sr-only">[[/project/company/general/name]]</span>' ) === false )
 		$footerProblems[] = $set. ': the link has no name for whoever listens';
@@ -1990,6 +1990,97 @@ foreach( Setup::available( $library, 'footer' ) as $set ) {
 }
 
 check( 'every footer whose logo stands in a link writes the name of the company after it, in the span of the frame of the kernel, and the same name for whoever listens beside it, and its stylesheet takes the span away where the link holds a picture - so that the link has a name to read with no logo in it and a name to hear with or without one'. ( $footerProblems === [] ? '' : ' - '. implode( ', ', $footerProblems ) ), $footerLinks > 0 && $footerProblems === [] );
+
+/*	The logo follows the ground a frame stands on. [logo] draws two pictures and Nino.css shows the one the pair --logo-light and --logo-dark names, so a frame that
+	paints a ground says the pair beside the roles it hands down: a header as an aspect of its ground, --header-ground-logo-light and -dark, a footer as
+	--footer-ground-logo-light and -dark, each declared under the three rungs of the ground and each rung the pair of the ground it names - the page's for the
+	ground of the page and for one that is none (the see-through bar of the overlay menu at rest, the hairline of a footer, which lie on the page), the dark
+	pair of the palette for the dark one, the black one for the black one, the footer's for the bands of a footer. Read from the library's own lists of headers and
+	footers, so that a frame that is added without the aspect, or with a pair that is not its ground's, fails here rather than on a site	*/
+$pairOfGround = [
+	'var(--color-background)'			=> 'page',
+	'var(--color-header-bg)'			=> 'page',
+	'transparent'									=> 'page',
+	'var(--color-section-dark-bg)'		=> 'section-dark',
+	'var(--color-section-black-bg)'		=> 'section-black',
+	'var(--color-footer-bg-main)'		=> 'footer',
+	'var(--color-footer-bg-legal)'		=> 'footer',
+];
+$pairRole = [
+	'page'					=> [ 'var(--color-logo-light)', 'var(--color-logo-dark)' ],
+	'section-dark'	=> [ 'var(--color-section-dark-logo-light)', 'var(--color-section-dark-logo-dark)' ],
+	'section-black'	=> [ 'var(--color-section-black-logo-light)', 'var(--color-section-black-logo-dark)' ],
+	'footer'				=> [ 'var(--color-footer-logo-light)', 'var(--color-footer-logo-dark)' ],
+];
+$frameWrong = [];
+$frameSets = 0;
+
+foreach( [ 'header' => '.nino-frame-header', 'footer' => 'footer' ] as $framePart => $frameRule )
+	foreach( Setup::available( $library, $framePart ) as $frameSet ) {
+
+		$frameSets++;
+		$frameCss = designPlain( (string) file_get_contents( Setup::file( $library, $framePart, $frameSet ) ) );
+		$frameLadder = Setup::ladders( $library, $framePart, $frameSet )['ground'] ?? [];
+
+		preg_match_all( '/--'. $framePart. '-(ground(?:-logo-light|-logo-dark)?)--(less|default|more)\s*:\s*([^;]+);/', $frameCss, $frameFound, PREG_SET_ORDER );
+
+		$frameRungs = [];
+
+		foreach( $frameFound as $frameHit )
+			$frameRungs[ $frameHit[1] ][ $frameHit[2] ] = trim( $frameHit[3] );
+
+		if( in_array( 'ground-logo-light', $frameLadder, true ) === false || in_array( 'ground-logo-dark', $frameLadder, true ) === false )
+			$frameWrong[] = $framePart. '/'. $frameSet. ': the ladder of the ground has not the pair of the logo among its aspects';
+
+		foreach( [ 'less', 'default', 'more' ] as $frameRung ) {
+
+			$frameRole = $pairRole[ $pairOfGround[ $frameRungs['ground'][$frameRung] ?? '' ] ?? '' ] ?? null;
+
+			if( $frameRole === null || ( $frameRungs['ground-logo-light'][$frameRung] ?? null ) !== $frameRole[0] || ( $frameRungs['ground-logo-dark'][$frameRung] ?? null ) !== $frameRole[1] )
+				$frameWrong[] = $framePart. '/'. $frameSet. ' '. $frameRung. ': the ground is '. ( $frameRungs['ground'][$frameRung] ?? 'not declared' ). ' and the pair '. ( $frameRungs['ground-logo-light'][$frameRung] ?? '-' ). ' / '. ( $frameRungs['ground-logo-dark'][$frameRung] ?? '-' );
+		}
+
+		// Put on the frame beside the other roles it hands down - the rule that sets --color-border to the aspect of the ground sets the pair too
+		if( preg_match( '/(?:^|\})\s*'. preg_quote( $frameRule, '/' ). '\s*\{[^{}]*--color-border:\s*var\(--'. $framePart. '-ground-border\);[^{}]*--logo-light:\s*var\(--'. $framePart. '-ground-logo-light\);\s*--logo-dark:\s*var\(--'. $framePart. '-ground-logo-dark\);/', $frameCss ) !== 1
+			&& preg_match( '/'. preg_quote( $frameRule, '/' ). '\s*\{[^{}]*--logo-light:\s*var\(--'. $framePart. '-ground-logo-light\);\s*--logo-dark:\s*var\(--'. $framePart. '-ground-logo-dark\);[^{}]*\}/', $frameCss ) !== 1 )
+			$frameWrong[] = $framePart. '/'. $frameSet. ': the pair is not put on '. $frameRule. ' beside the roles';
+	}
+
+check( 'every header and every footer of the library declares the pair of the logo as an aspect of its ground, under the three rungs, and each rung is the pair of the ground it names - the page\'s, the dark one, the black one or the footer\'s - and puts it on the frame beside the other roles'
+	. ( $frameWrong === [] ? '' : ' - '. implode( '; ', $frameWrong ) ), $frameWrong === [] && $frameSets === 17 );
+
+// The mark of the overlay menu stands above the overlay, which is the page's ground at every setting - it has the page's ink while the menu is open, and the page's pair with it
+check( '...the overlay menu says the page\'s pair for its mark while the menu is open, as it says the page\'s ink: the mark is above the overlay, and the bar behind it may be dark',
+	preg_match( '/\.nino-frame-header:has\(\.nino-nav-burger > button\[aria-expanded="true"\]\) \.nino-frame-header-brand\s*\{[^{}]*color:\s*var\(--color-text\);\s*--logo-light:\s*var\(--color-logo-light\);\s*--logo-dark:\s*var\(--color-logo-dark\);/', designPlain( (string) file_get_contents( Setup::file( $library, 'header', 'overlay-menu' ) ) ) ) === 1 );
+
+// The templates write the logo as the component: the headers as [logo alt=""] in the link of the frame and the footers as [logo class="nino-footer-logo"]
+$logoTemplates = [];
+
+foreach( [ 'header', 'footer' ] as $framePart )
+	foreach( Setup::available( $library, $framePart ) as $frameSet ) {
+
+		$frameSource = (string) file_get_contents( Setup::file( $library, $framePart, $frameSet, 'template' ) );
+		$frameCalls = preg_match_all( '/\[logo[^\]]*\]/', $frameSource, $frameLogo );
+
+		if( str_contains( $frameSource, '[image /logo' ) === true || str_contains( $frameSource, '[/image]' ) === true || str_contains( $frameSource, 'nino-logo--invert' ) === true )
+			$logoTemplates[] = $framePart. '/'. $frameSet. ' still writes the picture of the logo itself';
+		else if( $frameCalls > 1 || ( $framePart === 'header' && $frameCalls !== 1 ) )
+			$logoTemplates[] = $framePart. '/'. $frameSet. ' has '. $frameCalls. ' logos';
+		else if( $frameCalls === 1 && preg_match( $framePart === 'header' ? '/^\[logo alt=""\]$/' : '/^\[logo class="nino-footer-logo(?: nino-[a-z0-9-]+)?"\]$/', $frameLogo[0][0] ) !== 1 )
+			$logoTemplates[] = $framePart. '/'. $frameSet. ' writes '. $frameLogo[0][0];
+	}
+
+check( 'the templates of the library draw the logo with the component and nothing else: a header writes [logo alt=""] in its link, a footer that has one [logo class="nino-footer-logo"], with a class of the spacing at most, and none writes the <img> of the picture itself or the marker class of old'
+	. ( $logoTemplates === [] ? '' : ' - '. implode( '; ', $logoTemplates ) ), $logoTemplates === [] && count( glob( $library. '/footer/*/template.tpl' ) ?: [] ) === 11 );
+
+// The compiler selects the aspect with the ladder it belongs to: the position of the ground knob picks the rung of the pair as it picks that of the ink
+$groundDefault = designBlock( designSection( Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library ), 15, Compiler::SECTION ), ':root {' );
+$groundMore = designBlock( designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'header' => [ 'ground' => 1 ], 'footer' => [ 'ground' => -1 ] ] ], $library ), $library ), 15, Compiler::SECTION ), ':root {' );
+check( 'the compiled sheet selects the pair of the logo of a frame with the rung its ground stands at: the middle at the defaults, the dark pair when the ground of the header is moved to dark, and the page\'s when that of the footer is moved to the page',
+	str_contains( $groundDefault, "\t--header-ground-logo-light: var(--header-ground-logo-light--default);" ) === true && str_contains( $groundDefault, "\t--header-ground-logo-dark: var(--header-ground-logo-dark--default);" ) === true
+	&& str_contains( $groundDefault, "\t--footer-ground-logo-light: var(--footer-ground-logo-light--default);" ) === true
+	&& str_contains( $groundMore, "\t--header-ground-logo-light: var(--header-ground-logo-light--more);" ) === true && str_contains( $groundMore, "\t--header-ground-logo-dark: var(--header-ground-logo-dark--more);" ) === true
+	&& str_contains( $groundMore, "\t--footer-ground-logo-light: var(--footer-ground-logo-light--less);" ) === true && str_contains( $groundMore, "\t--footer-ground-logo-dark: var(--footer-ground-logo-dark--less);" ) === true );
 
 /*	The whitespace position of the Surfaces view is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
 	a card by --whitespace-scale, the room under a text by --whitespace-text. A section set and a card set say that spacing again, after Nino.css, so each has to
@@ -4591,14 +4682,65 @@ check( 'the untouched palette reproduces the token layer of base.css exactly, li
 	widened. A table that moves its middle row fails here before it moves a project	*/
 $palettePinned = 'c9bab03eebb71e8c02c50980616fafaf50161cf02e2368e40248dd7f9bf3a259';
 $paletteSection = designSection( $defaultSheet, 2, Compiler::SECTION );
+// The pair of the logo came with the logo, two lines to a surface and to a block: what is pinned is the palette without them
+$paletteWithoutPair = (string) preg_replace( '/^\s*--nino-[a-z-]+-logo-(?:light|dark): [^;]+;\n/m', '', $paletteSection );
 
-check( 'section 2 of the compiled defaults, the palette, is byte for byte what it was with three positions on the second: '. strlen( $paletteSection ). ' bytes, sha256 '. substr( $palettePinned, 0, 12 ). '... as computed on the F34 tip',
-	strlen( $paletteSection ) === 8872 && hash( 'sha256', $paletteSection ) === $palettePinned && Colours::normalize( [] )['saturation'] === 3
+check( 'section 2 of the compiled defaults, the palette, is byte for byte what it was with three positions on the second but for the pair of the logo, which has two lines for each surface in each of the three blocks: '. strlen( $paletteWithoutPair ). ' bytes, sha256 '. substr( $palettePinned, 0, 12 ). '... as computed on the F34 tip',
+	strlen( $paletteWithoutPair ) === 8872 && hash( 'sha256', $paletteWithoutPair ) === $palettePinned && preg_match_all( '/^\s*--nino-[a-z-]+-logo-(?:light|dark): /m', $paletteSection ) === 66 && Colours::normalize( [] )['saturation'] === 3
 	&& Colours::normalize( [] )['contrast'] === 3 && Colours::normalize( [] )['depth'] === 3 && Colours::normalize( [] )['temperature'] === 3 && Colours::normalize( [] )['harmony'] === 1 );
 check( 'the dark palette is the same set of tokens, under the media query as under the attribute', array_keys( $blocks['system'] ) === array_keys( $genDark ) && $blocks['system'] === $genDark );
-check( 'every block publishes the full surface vocabulary: eight values for each of the surfaces, and the scrim - and none for a state nothing reads',
-	count( $genLight ) === count( $genDark ) && count( $genLight ) === count( Colours::SURFACES ) * 8 + 1
+check( 'every block publishes the full surface vocabulary: ten values for each of the surfaces - the pair of the logo is two of them - and the scrim, and none for a state nothing reads',
+	count( $genLight ) === count( $genDark ) && count( $genLight ) === count( Colours::SURFACES ) * 10 + 1
 	&& preg_grep( '/-(hover|active)$/', array_keys( $genLight ) ) === [] && isset( $genLight['--nino-accent'] ) === false && isset( $genLight['--nino-scrim'] ) === true );
+/*	The pair of the logo: which of the two pictures of [logo] a surface shows. A display value for each, block and none, one of them each, read off the ink
+	the palette solved for the surface - written on in a light ink the surface is a dark ground and shows the picture for one - so that it flips with the mode
+	and with the brand colour, which a surface solved against it follows: the page is a light ground in the light block and a dark one in the dark block, a
+	brand surface the one its ink says. Held in the three blocks of the default palette, spelled out for the defaults, and for the settings that move a surface
+	across the middle	*/
+$pairWrong = [];
+
+foreach( [ 'light' => $genLight, 'dark' => $genDark ] as $pairMode => $pairBlock )
+	foreach( Colours::SURFACES as $pairSurface ) {
+
+		$pairDark = Colours::luminance( (string) $pairBlock[ Colours::token( $pairSurface, 'on' ) ] ) > 0.5;
+
+		if( ( $pairBlock[ Colours::token( $pairSurface, 'logo-light' ) ] ?? null ) !== ( $pairDark === true ? 'none' : 'block' ) || ( $pairBlock[ Colours::token( $pairSurface, 'logo-dark' ) ] ?? null ) !== ( $pairDark === true ? 'block' : 'none' ) )
+			$pairWrong[] = $pairMode. ' '. $pairSurface;
+	}
+
+$pairLight	= [ 'default' => 'block', 'alt' => 'block', 'tint' => 'block', 'dark' => 'none', 'black' => 'none', 'brand' => 'block', 'brand-safe' => 'none', 'accent-safe' => 'none', 'success' => 'none', 'warning' => 'none', 'danger' => 'none' ];
+$pairNight	= [ 'default' => 'none', 'alt' => 'none', 'tint' => 'none', 'dark' => 'none', 'black' => 'none', 'brand' => 'block', 'brand-safe' => 'block', 'accent-safe' => 'block', 'success' => 'block', 'warning' => 'block', 'danger' => 'block' ];
+
+foreach( [ 'light' => [ $genLight, $pairLight ], 'dark' => [ $genDark, $pairNight ] ] as $pairMode => [ $pairBlock, $pairExpected ] )
+	foreach( $pairExpected as $pairSurface => $pairShown ) {
+
+		$pairOther = $pairShown === 'block' ? 'none' : 'block';
+
+		if( ( $pairBlock['--nino-'. $pairSurface. '-logo-light'] ?? null ) !== $pairShown || ( $pairBlock['--nino-'. $pairSurface. '-logo-dark'] ?? null ) !== $pairOther )
+			$pairWrong[] = $pairMode. ' '. $pairSurface. ' is not '. $pairShown. ' / '. $pairOther;
+	}
+
+check( 'the palette publishes the pair of the logo for every surface in every block, --nino-<surface>-logo-light and -logo-dark, each block or none and one of each, read off the ink solved for the surface: the page and its steps show the picture for a light ground in the light block and the one for a dark ground in the dark one, the dark and the black ground the one for a dark ground in both'
+	. ( $pairWrong === [] ? '' : ' - '. implode( ', ', $pairWrong ) ), $pairWrong === [] && count( $pairLight ) === 11 && count( $pairNight ) === 11 && array_keys( $pairLight ) === Colours::SURFACES );
+
+$pairFollows = [];
+
+foreach( [ [ 'primary' => '#ffe000' ], [ 'primary' => '#102a43' ], [ 'primary' => '#d81b60', 'contrast' => 5 ], [ 'primary' => '#7a8c3a', 'contrast' => 1, 'saturation' => 5 ] ] as $pairSettings )
+	foreach( [ 'light', 'dark' ] as $pairMode )
+		foreach( Colours::palette( $pairSettings, $pairMode ) as $pairSurface => $pairValues ) {
+
+			$pairDark = Colours::luminance( $pairValues['on'] ) > 0.5;
+
+			if( $pairValues['logo-light'] !== ( $pairDark === true ? 'none' : 'block' ) || $pairValues['logo-dark'] !== ( $pairDark === true ? 'block' : 'none' ) )
+				$pairFollows[] = json_encode( $pairSettings ). ' '. $pairMode. ' '. $pairSurface;
+		}
+
+check( '...a surface solved for another brand colour or another contrast shows the picture its ink says, and the brand surfaces cross the middle with the colour: the pair is the ink\'s and no table of the surfaces',
+	$pairFollows === [] && Colours::palette( [], 'light' )['brand-safe']['logo-dark'] === 'block' && Colours::palette( [], 'dark' )['brand-safe']['logo-dark'] === 'none'
+	&& Colours::palette( [], 'light' )['default']['logo-light'] === 'block' && Colours::palette( [], 'dark' )['default']['logo-light'] === 'none' );
+check( '...and the parts of a surface, in the order the compiler writes the lines of a ground in, end with the pair: the eighth is the shadow, then logo-light and logo-dark - and the token of a part is named as the others are, the surface before the part',
+	Colours::parts() === [ 'bg', 'on', 'on-muted', 'link', 'border', 'focus', 'disabled', 'shadow', 'logo-light', 'logo-dark' ]
+	&& Colours::token( 'brand-safe', 'logo-light' ) === '--nino-brand-safe-logo-light' && Colours::token( 'danger', 'logo-dark' ) === '--nino-danger-logo-dark' );
 check( 'the surfaces are the grounds, the brand as three roles and the three states - the second colour as it was picked is no surface',
 	Colours::SURFACES === [ 'default', 'alt', 'tint', 'dark', 'black', 'brand', 'brand-safe', 'accent-safe', 'success', 'warning', 'danger' ] );
 
@@ -6200,11 +6342,11 @@ symlink( $root. '/_nino', ninoSandboxDir( $appData ). '/_nino' );
 $appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template' ];
 \Nino\Modules::callModules( $appData, 'init' );
 
-/*	The logo is the kernel's slot, as the base unit's own frames ask for it - never
+/*	The logo is the kernel's [logo], as the base unit's own frames ask for it - never
 	a file name of a library template, which a project that uploaded its logo
-	through the Images panel does not have. One slot serves every variant: a frame
-	that was drawn for a dark ground says so with nino-logo--invert and applies no
-	filter of its own	*/
+	through the Images panel does not have. Two slots serve every variant, /logo for a light
+	ground and /logo/dark for a dark one, and the ground a frame stands on says which is seen:
+	no frame marks itself as drawn for a dark ground and none applies a filter of its own	*/
 // [image] is the Components module's from Nino 1.6 and the Images module's
 // before; whichever this checkout carries registers it
 if( class_exists( '\\Nino\\Modules\\Components' ) === true )
@@ -6224,7 +6366,7 @@ foreach( [ 'header', 'footer' ] as $part )
 		if( preg_match( '#logo(?:-invert)?\.png#', $source ) === 1 || str_contains( $source, 'images/logo' ) === true )
 			$logoNamed[] = $part. '/'. $set;
 
-		$logoAsks[$part. '/'. $set] = str_contains( $source, '[image /logo' );
+		$logoAsks[$part. '/'. $set] = str_contains( $source, '[logo' );
 
 		unset( $appData['/nino/html/images']['/logo'] );
 		$logoRender['empty'][$part. '/'. $set] = \Nino\Html::renderHtml( $appData, $source );
@@ -6236,16 +6378,31 @@ unset( $appData['/nino/html/images']['/logo'] );
 
 check( 'no library template names logo.png or logo-invert.png'. ( $logoNamed === [] ? '' : ' - '. implode( ', ', $logoNamed ) ),
 	$logoNamed === [] && $logoRender['empty'] !== [] && count( $logoRender['empty'] ) === count( Setup::available( $library, 'header' ) ) + count( Setup::available( $library, 'footer' ) ) );
-check( 'every frame that asks the logo slot is given the logo that was uploaded: its url and its size',
+check( 'every frame that asks for the logo is given the logo that was uploaded: its url and its size',
 	array_filter( $logoAsks ) !== [] && array_filter( array_keys( array_filter( $logoAsks ) ), static fn( string $frame ): bool
 		=> str_contains( $logoRender['filled'][$frame], 'src="'. $logoUrl. '"' ) === false || str_contains( $logoRender['filled'][$frame], 'width="500" height="100"' ) === false ) === [] );
 check( '...and with no logo uploaded none leaves an <img>, a slot tag or a fill of the shortcode behind',
 	array_filter( $logoRender['empty'], static fn( string $html ): bool
-		=> preg_match( '#<img[^>]*logo#i', $html ) === 1 || str_contains( $html, '[image' ) === true
+		=> preg_match( '#<img[^>]*logo#i', $html ) === 1 || str_contains( $html, '[image' ) === true || str_contains( $html, '[logo' ) === true
 			|| str_contains( $html, '[[src]]' ) === true || str_contains( $html, '[[width]]' ) === true || str_contains( $html, '[[alt]]' ) === true
 			|| str_contains( $html, $logoUrl ) === true || str_contains( $html, '/images/logo' ) === true ) === [] );
-check( 'one slot serves every variant: no stylesheet of the library filters the logo, a frame that was drawn for a dark ground says so with nino-logo--invert in its markup and applies no filter of its own', array_filter( glob( $library. '/*/*/style.css' ) ?: [], static fn( string $file ): bool
-	=> preg_match( '#nino-logo--invert[^{]*\{[^}]*filter#', (string) file_get_contents( $file ) ) === 1 ) === [] );
+$logoMarked = [];
+$logoFiltered = [];
+
+foreach( array_merge( glob( $library. '/*/*/template.tpl' ) ?: [], glob( $library. '/*/*/style.css' ) ?: [] ) as $logoFile ) {
+
+	$logoText = (string) file_get_contents( $logoFile );
+
+	if( str_contains( $logoText, 'nino-logo--invert' ) === true )
+		$logoMarked[] = substr( $logoFile, strlen( $library ) + 1 );
+
+	if( str_ends_with( $logoFile, 'style.css' ) === true && preg_match( '#\.nino-(?:logo|footer-logo|frame-header-brand)[^{]*\{[^}]*(?<![\w-])filter\s*:#', designPlain( $logoText ) ) === 1 )
+		$logoFiltered[] = substr( $logoFile, strlen( $library ) + 1 );
+}
+
+check( 'two slots serve every variant: no template of the library marks a frame as drawn for a dark ground - nino-logo--invert is nowhere - and no stylesheet filters the logo, the ground a frame stands on says which of the two pictures is seen'
+	. ( $logoMarked === [] ? '' : ' - marked: '. implode( ', ', $logoMarked ) ). ( $logoFiltered === [] ? '' : ' - filtered: '. implode( ', ', $logoFiltered ) ),
+	$logoMarked === [] && $logoFiltered === [] && count( glob( $library. '/*/*/template.tpl' ) ?: [] ) >= 17 );
 
 $specimen = Preview::specimen( $appData );
 
@@ -6482,28 +6639,33 @@ $notes 		= [];
 $chosen 	= Setup::normalize( $appData, [ 'parts' => [ 'header' => $richParts['header'], 'footer' => $richParts['footer'] ] ], $library );
 
 /*	The preview renders its header, its specimen and its footer one by one, as a page renders the two frames it includes. The
-	kernel's parser pairs an opening shortcode with the first closing tag of its name after it, however far away: a header
-	carries its logo as [image /logo alt=""] on its own and a footer may carry it as a pair, [image /logo alt=""]...[/image],
-	so as one string the header's tag takes the footer's closing tag for its own and the page between the two is its content -
-	gone where no logo is uploaded, and a fresh install has none; where one is, the header's picture is drawn in the footer.
-	The two frames are found by what their templates carry, whatever the library calls them: the first header of the one
-	kind and the first footer of the other	*/
+	kernel's parser pairs an opening shortcode with the first closing tag of its name after it, however far away: the frames
+	of the library write their logo as [logo], which has no closing tag, so none of them is such a pair - but a frame may
+	write the picture of the logo as the shortcode [image /logo alt=""] on its own in a header and as a pair,
+	[image /logo alt=""]...[/image], in a footer, and then as one string the header's tag takes the footer's closing tag for its
+	own and the page between the two is its content - gone where no logo is uploaded, and a fresh install has none; where one is,
+	the header's picture is drawn in the footer. The library gets the two frames for the length of the check, a header and a
+	footer of that kind in sets of their own, and takes them away again	*/
 
-/** The sets of a part whose template asks for the logo slot and closes the tag ($closed) or leaves it open, as set => template */
-$logoFrames = static function( string $part, bool $closed ) use ( $library ): array {
+$pairLibrary = \Nino\Modules\Design::libraryDir();
+$plantedHeaders = [ $pairLibrary. '/header/lonely' ];
+$plantedFooters = [ $pairLibrary. '/footer/paired' ];
 
-	$found = [];
+// The suite reads the library it was started from and the class the registry loaded reads its own copy of it (see the features directory of this run): both get the sets
+if( realpath( $library ) !== realpath( $pairLibrary ) ) {
+	$plantedHeaders[] = $library. '/header/lonely';
+	$plantedFooters[] = $library. '/footer/paired';
+}
+$pairHeaderMarkup = (string) preg_replace( '/\[logo alt=""\]/', '[image /logo alt=""]', (string) file_get_contents( $library. '/header/regular/template.tpl' ), -1, $pairHeaderCount );
+$pairFooterMarkup = (string) preg_replace( '/\[logo class="nino-footer-logo"\]/', '[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo" alt="[[alt]]">[/image]', (string) file_get_contents( $library. '/footer/sitemap/template.tpl' ), -1, $pairFooterCount );
 
-	foreach( Setup::available( $library, $part ) as $set ) {
+foreach( array_merge( array_map( static fn( string $dir ): array => [ $dir, $pairHeaderMarkup ], $plantedHeaders ), array_map( static fn( string $dir ): array => [ $dir, $pairFooterMarkup ], $plantedFooters ) ) as [ $pairDir, $pairMarkup ] ) {
+	mkdir( $pairDir, 0755, true );
+	file_put_contents( $pairDir. '/style.css', "/*\t@name\tPlanted\n *\t@name-de\tEingesetzt\n *\t@description\tA frame that writes the picture of its logo as [image], for the length of a check.\n *\t@description-de\tEin Frame, der das Bild seines Logos als [image] schreibt, für die Länge einer Prüfung.\n */\n" );
+	file_put_contents( $pairDir. '/template.tpl', $pairMarkup );
+}
 
-		$source = (string) file_get_contents( Setup::file( $library, $part, $set, 'template' ) );
-
-		if( str_contains( $source, '[image /logo' ) === true && str_contains( $source, '[/image]' ) === $closed )
-			$found[$set] = $source;
-	}
-
-	return $found;
-};
+register_shutdown_function( static function() use ( $plantedHeaders, $plantedFooters ): void { array_map( 'designRemoveTree', array_merge( $plantedHeaders, $plantedFooters ) ); } );
 
 /** Whether every chunk is in the page, each after the one before it - none of them empty */
 $inOrder = static function( string $page, array $chunks ): bool {
@@ -6523,11 +6685,11 @@ $inOrder = static function( string $page, array $chunks ): bool {
 	return true;
 };
 
-$lonely 		= $logoFrames( 'header', false );
-$paired 		= $logoFrames( 'footer', true );
+$lonely 		= $pairHeaderCount === 1 && str_contains( $pairHeaderMarkup, '[image /logo' ) === true && str_contains( $pairHeaderMarkup, '[/image]' ) === false ? [ 'lonely' => $pairHeaderMarkup ] : [];
+$paired 		= $pairFooterCount === 1 && str_contains( $pairFooterMarkup, '[image /logo' ) === true && str_contains( $pairFooterMarkup, '[/image]' ) === true ? [ 'paired' => $pairFooterMarkup ] : [];
 $logoPair 		= [ 'header' => (string) array_key_first( $lonely ), 'footer' => (string) array_key_first( $paired ) ];
 $shortfall 		= array_filter( [ $lonely === [] ? 'header whose logo shortcode stands alone' : '', $paired === [] ? 'footer whose logo shortcode is a pair' : '' ] );
-$pairSetup 		= Setup::normalize( $appData, [ 'parts' => $logoPair ], $library, $notes );
+$pairSetup 		= Setup::normalize( $appData, [ 'parts' => $logoPair ], $pairLibrary, $notes );
 $pairSources 	= [ $lonely[$logoPair['header']] ?? '', $paired[$logoPair['footer']] ?? '' ];
 
 unset( $appData['/nino/html/images']['/logo'] );
@@ -6535,7 +6697,7 @@ unset( $appData['/nino/html/images']['/logo'] );
 $pairHeader 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[0] ) );
 $pairBody 		= trim( \Nino\Html::renderHtml( $appData, Preview::specimen( $appData ) ) );
 $pairFooter 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[1] ) );
-$pageApart 		= trim( Preview::render( $appData, $library, $pairSetup, $notes ) );
+$pageApart 		= trim( Preview::render( $appData, $pairLibrary, $pairSetup, $notes ) );
 $pairOpening 	= [ explode( "\n", $pairHeader )[0], explode( "\n", $pairFooter )[0] ];
 $oneString 		= trim( \Nino\Html::renderHtml( $appData, $pairSources[0]. "\n". Preview::specimen( $appData ). "\n". $pairSources[1] ) );
 
@@ -6562,7 +6724,7 @@ $appData['/nino/html/images']['/logo'] = [ 'label' => 'Logo', 'filename' => 'log
 
 $pairHeader 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[0] ) );
 $pairFooter 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[1] ) );
-$pageLogo 		= trim( Preview::render( $appData, $library, $pairSetup, $notes ) );
+$pageLogo 		= trim( Preview::render( $appData, $pairLibrary, $pairSetup, $notes ) );
 
 unset( $appData['/nino/html/images']['/logo'] );
 
@@ -6571,6 +6733,7 @@ check( '...and with a logo uploaded they come out as the whole page too, each fr
 	&& str_starts_with( $pageLogo, $pairHeader ) === true && str_ends_with( $pageLogo, $pairFooter ) === true
 	&& $inOrder( $pageLogo, [ $pairHeader, $pairBody, $pairFooter ] ) === true
 	&& substr_count( $pageLogo, 'src="'. $logoUrl. '"' ) === substr_count( $pairSources[0]. $pairSources[1], '[image /logo' ) );
+
 
 $notes = [];
 check( 'a frame with no template is named rather than quietly left out',
@@ -8864,11 +9027,11 @@ check( 'a scale and a choice are selected as the ladders of a set are, by the po
 	&& $rootLines['--probe-turn'] === 'var('. sprintf( Setup::KNOB_TOKEN, 'probe', 'turn', 'most' ). ')' );
 
 $paletteLines = designDeclarations( designBlock( Colours::css( [] ), ':root {' ) );
-$dangerTokens = array_keys( array_filter( $paletteLines, static fn( string $value, string $name ): bool => preg_match( '/^--nino-(on-)?danger(-muted|-link|-border|-focus|-disabled|-shadow)?$/D', $name ) === 1, ARRAY_FILTER_USE_BOTH ) );
+$dangerTokens = array_keys( array_filter( $paletteLines, static fn( string $value, string $name ): bool => preg_match( '/^--nino-(on-)?danger(-muted|-link|-border|-focus|-disabled|-shadow|-logo-light|-logo-dark)?$/D', $name ) === 1, ARRAY_FILTER_USE_BOTH ) );
 $groundLines 	= array_filter( $rootLines, static fn( string $name ): bool => str_starts_with( $name, '--probe-submit' ), ARRAY_FILTER_USE_KEY );
 
-check( 'a ground is written as the surface and every part the palette publishes of it - eight lines - each the var() of the palette\'s own token for that surface and that part, so that the text the palette solved for the ground stands on it: the eight tokens are all that the palette declares of that surface, read off the palette\'s own output',
-	count( $groundLines ) === count( $groundParts ) && count( $groundParts ) === 8 && count( $dangerTokens ) === 8
+check( 'a ground is written as the surface and every part the palette publishes of it - ten lines, the pair of the logo among them - each the var() of the palette\'s own token for that surface and that part, so that the text the palette solved for the ground stands on it, and the picture of the logo the ground shows: the ten tokens are all that the palette declares of that surface, read off the palette\'s own output',
+	count( $groundLines ) === count( $groundParts ) && count( $groundParts ) === 10 && count( $dangerTokens ) === 10 && array_slice( $groundParts, -2 ) === [ 'logo-light', 'logo-dark' ]
 	&& array_values( array_map( static fn( string $value ): string => substr( $value, 4, -1 ), $groundLines ) ) === array_map( static fn( string $part ): string => Colours::token( 'danger', $part ), $groundParts )
 	&& array_values( array_map( static fn( string $value ): string => substr( $value, 4, -1 ), $groundLines ) ) === $dangerTokens );
 
@@ -8883,11 +9046,11 @@ foreach( Colours::SURFACES as $surface ) {
 		if( isset( $paletteLines[ substr( $value, 4, -1 ) ] ) === false )
 			$everySurface[] = $surface. ' '. $value;
 
-	if( count( $eachLines ) !== 8 )
+	if( count( $eachLines ) !== 10 )
 		$everySurface[] = $surface. ' has '. count( $eachLines );
 }
 
-check( '...and so it is for each of the eleven surfaces of the palette, in its order: eight lines, and every token a line points at is one the palette declares'. ( $everySurface === [] ? '' : ' - '. implode( ', ', $everySurface ) ),
+check( '...and so it is for each of the eleven surfaces of the palette, in its order: ten lines, and every token a line points at is one the palette declares'. ( $everySurface === [] ? '' : ' - '. implode( ', ', $everySurface ) ),
 	count( Colours::SURFACES ) === 11 && $everySurface === [] );
 
 $inkBlock = designBlock( $positions, ':root, :root * {' );
@@ -9174,7 +9337,7 @@ check( '...and every id of the page is on it once, the ids of the blocks among t
 	count( $blockIdFound[1] ) >= 12 && count( $blockIdFound[1] ) === count( array_unique( $blockIdFound[1] ) ) && in_array( 'probe-title', $blockIdFound[1], true ) === true && in_array( 'quoted-text', $blockIdFound[1], true ) === true );
 
 $renderNotes 	= [];
-$renderedPage = Preview::render( $appData, $library, $pairSetup, $renderNotes );
+$renderedPage = Preview::render( $appData, $pairLibrary, $pairSetup, $renderNotes );
 
 check( 'render() carries them: the page the preview renders has the sections of the blocks between the grounds and the anchor of the footer, once, and says nothing',
 	$renderNotes === [] && $inOrder( $renderedPage, [ ' id="colours"', ' id="feature-quoted"', ' id="feature-probe"', ' id="footer"' ] ) === true && substr_count( $renderedPage, ' id="feature-probe"' ) === 1 );
@@ -9189,7 +9352,7 @@ file_put_contents( $blockFile( 'Probe' ), '<div class="nino-grid-row"><p id="pro
 $featuresOn( [ 'Design', 'Probe', 'Quoted', 'Single', 'Pair', 'Plain' ] );
 
 $pairRenderNotes 	= [];
-$openPair 				= Preview::render( $appData, $library, $pairSetup, $pairRenderNotes );
+$openPair 				= Preview::render( $appData, $pairLibrary, $pairSetup, $pairRenderNotes );
 
 file_put_contents( $blockFile( 'Quoted' ), $quotedKept );
 file_put_contents( $blockFile( 'Probe' ), $probeKept );
@@ -9207,6 +9370,9 @@ $pairNotes 		 = array_values( array_filter( (array) ( $blockPreview['notes'] ?? 
 check( 'design/preview builds the document with the blocks in it, before the footer, and the file of Pair that is no block is told once, in the notes of the answer, led by the feature - and the feature has no section',
 	$status === 200 && $inOrder( $blockDocument, [ ' id="colours"', ' id="feature-quoted"', ' id="feature-probe"', ' id="footer"' ] ) === true && str_contains( $blockDocument, 'feature-pair' ) === false
 	&& count( $pairNotes ) === 1 && count( (array) $blockPreview['notes'] ) === 1 );
+
+// The header and the footer of the pair form were planted for the checks above and below the section on the preview of a block: the library has the sets it ships again
+array_map( 'designRemoveTree', array_merge( $plantedHeaders, $plantedFooters ) );
 
 // The workbench speaks German here and the visitor English: the name of a block is the workbench's, which is the person's who looks at the preview, and the page is the visitor's
 $nativeKept = $appData['/nino/locales/native'];

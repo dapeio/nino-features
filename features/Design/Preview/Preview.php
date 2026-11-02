@@ -77,13 +77,13 @@ namespace Nino\Modules\Design {
 		 *
 		 *	Rendered as one string they would not come out as they do on a page:
 		 *	the kernel's parser pairs an opening shortcode with the first closing
-		 *	tag of its name after it, however far away. A header carries its logo
-		 *	as an [image /logo alt=""] on its own - the kernel's frame-header.tpl
-		 *	does, and so does every header of the library - while a footer may
-		 *	carry it as a pair, [image /logo alt=""]...[/image]. In one string
-		 *	the header's tag takes that closing tag for its own, and the page
-		 *	between the two becomes its content: gone where no logo is uploaded,
-		 *	and where one is, shown with the header's picture in the footer.
+		 *	tag of its name after it, however far away. Both frames carry their logo
+		 *	as a [logo] on its own - the header as [logo alt=""], the footer as
+		 *	[logo class="nino-footer-logo"], with no closing tag in either - so the
+		 *	logo pairs with nothing; the frames are rendered one by one for the
+		 *	other shortcodes a frame or a block of a feature may leave open, which
+		 *	in one string would take the closing tag of the next part of the page
+		 *	for their own, and the page between the two would become their content.
 		 *
 		 *	The frames are read straight out of the library rather than included
 		 *	as [template /templates/frame-header]: a preview shows a header nobody

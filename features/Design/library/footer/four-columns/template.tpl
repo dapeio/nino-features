@@ -2,7 +2,7 @@
 			<section class="nino-footer-main">
 				<div class="nino-grid-row nino-pt-2">
 					<div class="nino-grid-100 nino-grid-l-50 nino-pb-2">
-						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo nino-mb-2 nino-logo--invert" alt="[[alt]]">[/image]
+						[logo class="nino-footer-logo nino-mb-2"]
 						<p>[[/project/company/general/description]]</p>
 					</div>
 					<div class="nino-grid-100 nino-grid-l-25 nino-pb-2">
