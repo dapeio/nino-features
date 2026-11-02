@@ -235,6 +235,18 @@ check( '...a speed that is no number, or none the script would run, is the defau
 	&& $attributesOf( '[ticker speed="99999"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-speed' => '1000' ] && $attributesOf( '[ticker direction="up"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker' ] );
 check( '...a class with a quote and a bracket in it is escaped and opens nothing in the second pass',
 	str_contains( \Nino\Html::renderHtml( $probe, '[ticker class="a\'b [c"][text text="a"][/ticker]' ), 'class="nino-ticker a&quot;b &#91;c"' ) === true );
+/*	The pictures of a row: the markup the component writes for [image] - a bare <img>, or the frame round it that a ratio, a focus or a
+	class of its own call for - and the classes the picture rules of ticker.css select (checked below, against the file)	*/
+$probe['/nino/html/images']['/logo'] = [ 'label' => 'Logo', 'width' => 1600, 'height' => 900, 'filename' => 'logo.1600x900.png' ];
+$logos = $parsed( \Nino\Html::renderHtml( $probe, '[ticker][image /logo alt=""][image /logo alt="" ratio="1-1"][image /logo alt="" focus="5"][card-image /logo alt="" ratio="16-9"][/ticker]' ) );
+$cls = static fn( string $name ): string => "[contains(concat(' ',normalize-space(@class),' '),' ". $name. " ')]";
+check( 'a picture in the row is an item of the track: a bare [image] is an <img> that is a child of the track with no class of its own, and a ratio, a focus or a card-image with a ratio is a div of the class nino-image around it',
+	$logos->query( '//div'. $cls( 'nino-ticker-track' ). '/img[not(@class)]' )->length === 1
+	&& $logos->query( '//div'. $cls( 'nino-ticker-track' ). '/div'. $cls( 'nino-image' ). '/img' )->length === 3
+	&& $logos->query( '//div'. $cls( 'nino-ticker-track' ). '/div'. $cls( 'nino-image--1-1' ). '/img' )->length === 1
+	&& $logos->query( '//div'. $cls( 'nino-ticker-track' ). '/div'. $cls( 'nino-card-img' ). $cls( 'nino-image--16-9' ). '/img' )->length === 1
+	&& $logos->query( '//div'. $cls( 'nino-ticker-track' ). '/*' )->length === 4 );
+
 check( 'a row with nothing between its tags renders nothing: not a track with nothing to run',
 	\Nino\Html::renderHtml( $probe, '[ticker][/ticker]' ) === '' && \Nino\Html::renderHtml( $probe, '[ticker speed="60"]  [/ticker]' ) === '' );
 check( 'what a component writes in the row is rendered as it would be outside it: a text typed with a bracket is no call, and the call of a component of another place is its own business',
@@ -323,6 +335,71 @@ check( 'a single pass is held until the row has been seen, and ends on the anima
 check( 'nothing about a ticker reaches the server or outlives the page',
 	str_contains( $js, 'XMLHttpRequest' ) === false && str_contains( $js, 'fetch(' ) === false
 	&& str_contains( $js, 'localStorage' ) === false && str_contains( $js, 'document.cookie' ) === false );
+
+/*	The height of a picture: one property, with a default, and the rules that read it. The rules are found in the file as a
+	stylesheet reads them - a selector list and its declarations - and each selector is put to the rendered row above, so a
+	rule that names a class the markup does not carry, or a nesting it does not have, is the failure	*/
+$bare = preg_replace( '~/\*.*?\*/~s', '', $css );
+$rule = static function( string $selector ) use ( $bare ): array {
+
+	foreach( explode( '}', $bare ) as $chunk ) {
+
+		if( substr_count( $chunk, '{' ) !== 1 )
+			continue;
+
+		[ $head, $body ] = explode( '{', $chunk );
+
+		if( in_array( $selector, array_map( 'trim', explode( ',', $head ) ), true ) === false )
+			continue;
+
+		$declared = [];
+		foreach( array_filter( array_map( 'trim', explode( ';', $body ) ) ) as $line )
+			if( str_contains( $line, ':' ) === true )
+				$declared[trim( explode( ':', $line, 2 )[0] )] = trim( explode( ':', $line, 2 )[1] );
+
+		return $declared;
+	}
+
+	return [];
+};
+// A selector as a path: the child axis after a ">", the descendant axis between the other compounds
+$selectorXpath = static function( string $selector ): string {
+
+	$xpath = '';
+	$axis = '//';
+	foreach( preg_split( '/\s+/', trim( $selector ) ) as $token ) {
+
+		if( $token === '>' ) {
+			$axis = '/';
+			continue;
+		}
+
+		preg_match( '/^([a-z]*)((?:\.[\w-]+)*)$/', $token, $parts );
+		$xpath .= $axis. ( $parts[1] ?: '*' ). implode( '', array_map( static fn( string $name ): string => "[contains(concat(' ',normalize-space(@class),' '),' ". $name. " ')]", array_filter( explode( '.', $parts[2] ?? '' ) ) ) );
+		$axis = '//';
+	}
+
+	return $xpath;
+};
+
+check( 'the height of a picture in the row is one property, --ticker-picture-height, with a length as its default in :where(:root) - which has no specificity, so a project\'s own rule on :root or on the row moves it',
+	preg_match( '/:where\(:root\)\s*\{[^}]*--ticker-picture-height:\s*\d*\.?\d+(?:rem|em|px)\s*;/', $bare ) === 1
+	&& substr_count( $bare, '--ticker-picture-height:' ) === 1 );
+$flat = $rule( '.nino-ticker-track img' );
+check( '...a bare picture and the frame of [image] and [card-image] are that high, as wide as that makes them and not held to the width of the box: one rule reads the property for both, with height, width auto and no max-width',
+	$flat !== [] && $rule( '.nino-ticker-track .nino-image' ) === $flat
+	&& ( $flat['height'] ?? '' ) === 'var(--ticker-picture-height)' && ( $flat['width'] ?? '' ) === 'auto' && ( $flat['max-width'] ?? '' ) === 'none' );
+$inFrame = $rule( '.nino-ticker-track .nino-image > img' );
+check( '...the picture in a frame follows the frame\'s height with a width of auto, so that the ratio of a frame - which the kernel gives frame and picture alike - decides the width of the box and never its height',
+	( $inFrame['height'] ?? '' ) === '100%' && ( $inFrame['width'] ?? '' ) === 'auto' && ( $inFrame['max-width'] ?? '' ) === 'none' );
+$pictures = static fn( string $selector ): int => $logos->query( $selectorXpath( $selector ) )->length;
+check( '...and the selectors of those rules find the pictures of a rendered row: the four pictures, the three frames, and the three pictures inside the frames',
+	$selectorXpath( '.nino-ticker-track .nino-image > img' ) === "//*[contains(concat(' ',normalize-space(@class),' '),' nino-ticker-track ')]//*[contains(concat(' ',normalize-space(@class),' '),' nino-image ')]/img"
+	&& $pictures( '.nino-ticker-track img' ) === 4 && $pictures( '.nino-ticker-track .nino-image' ) === 3 && $pictures( '.nino-ticker-track .nino-image > img' ) === 3 );
+check( '...the row keeps the gap of its items: the track still declares its gap, and no picture rule touches it',
+	str_contains( (string) ( $rule( '.nino-ticker-track' )['gap'] ?? '' ), 'var(--space-3)' ) === true && array_key_exists( 'gap', $flat ) === false && array_key_exists( 'margin', $flat ) === false );
+check( 'the stylesheet writes no colour of its own: no hex, rgb(), hsl(), hwb(), lab(), lch(), oklab() or oklch() value, and no !important',
+	preg_match( '/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\s*\(|!important/', $bare ) === 0 );
 
 echo "\n";
 

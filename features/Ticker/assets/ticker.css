@@ -25,8 +25,22 @@
  *					Nothing here paints, but for the pressed state of that button,
  *					which wears the kernel's own button classes. What runs past is
  *					whatever the project put in the row, in its own type, colour and
- *					size.
+ *					size - but for a picture, whose height this file gives: one
+ *					property, --ticker-picture-height, declared below in
+ *					:where(:root) like the properties of the other features, so a
+ *					project sizes its logos by setting it on the row or on the page.
+ *					The bundle lists this file after Nino.css and :where() has no
+ *					specificity, so a rule of the project's on :root or on the row
+ *					is enough.
  */
+
+:where(:root) {
+	/*	The height of a picture in the track. 3rem is the height of a logo in a
+		row of logos: tall enough to read the lettering in it, low enough that
+		the row stays a band and that a few of them stand side by side on a
+		phone	*/
+	--ticker-picture-height: 3rem;
+}
 
 .nino-ticker {
 	overflow: hidden;
@@ -38,6 +52,28 @@
 	align-items: center;
 	gap: var(--space-3);
 	width: max-content;
+}
+
+/*	A picture in the track is --ticker-picture-height high and as wide as that
+	makes it, whatever its own size is and without the cap of the kernel's img
+	rule. That is the bare <img> and the frame [image] and [card-image] put round
+	a picture that has a ratio, a focus or a class of its own (.nino-image). The
+	frame is given the height and its width is left to the content, so a ratio
+	on the frame - which Nino.css gives the frame and the picture in it alike -
+	only decides how wide the box is at that height and never how tall: the
+	picture in it takes the height of the frame. The rule for the picture in a
+	frame has a class more than the kernel's rules for it, so that it wins
+	whichever file comes first. The items keep the gap of the track	*/
+.nino-ticker-track img,
+.nino-ticker-track .nino-image {
+	height: var(--ticker-picture-height);
+	width: auto;
+	max-width: none;
+}
+.nino-ticker-track .nino-image > img {
+	height: 100%;
+	width: auto;
+	max-width: none;
 }
 
 /*	Only once the script has copied the row and measured it: before that the

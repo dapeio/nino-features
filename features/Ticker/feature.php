@@ -45,6 +45,10 @@ return [
 				'en_US' => 'On the one element inside the row that holds what runs: its children run past, one after the other - one cycle, once the row has been scrolled into view, and then it stands still.',
 				'de_DE' => 'An dem einen Element in der Reihe, das hält, was läuft: Seine Kinder laufen nacheinander vorbei - ein Durchlauf, sobald die Reihe im Bild war, danach steht sie still.',
 			],
+			'--ticker-picture-height' => [
+				'en_US' => 'The height of a picture in the track, a bare image or the frame of [image] and [card-image], 3rem by default: the picture is that high, as wide as that makes it, and a ratio on its frame only decides the width. A project sets it on the row or on :root, in its own css, to size its logos.',
+				'de_DE' => 'Die Höhe eines Bildes in der Spur - eines Bildes ohne Rahmen oder des Rahmens von [image] und [card-image] -, vorgegeben 3rem: Das Bild hat diese Höhe und die Breite, die sich daraus ergibt; ein Seitenverhältnis am Rahmen bestimmt nur die Breite. Ein Projekt setzt sie in seinem eigenen CSS an der Reihe oder auf :root, um seine Logos zu bemessen.',
+			],
 			'data-ticker-speed="40"' => [
 				'en_US' => 'Pixels per second. Default 40 - slow enough to read a word on the way past.',
 				'de_DE' => 'Pixel je Sekunde. Vorgabe 40 - langsam genug, um ein Wort im Vorbeilaufen zu lesen.',
