@@ -9,11 +9,12 @@ declare(strict_types=1);
  *										the site's own asset bundles
  *										(\Nino\Features::registerAssets()), the one text fill its
  *										install unit merges for the pause button, what those two
- *										files promise, and deactivation. Like Typewriter this
- *										feature renders nothing at all - what runs past is
- *										markup the project's own template carries - so there
- *										is no shortcode here to test, and that absence is
- *										itself checked.
+ *										files promise, the component [ticker] that holds components - its
+ *										schema as the Builder reads it, the row it renders around the
+ *										calls between its tags, and the data attributes it writes only
+ *										where a call differs from what ticker.js does without them - and
+ *										deactivation. A row written by hand is still the markup a
+ *										project's own template carries, and the manual keeps its lines.
  *
  *										What the two files then do is the browser's, and
  *										ticker-js-smoke.js beside this file measures it, over
@@ -47,12 +48,12 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 
 check( 'it is filed under ui', $manifest['category'] === 'ui' );
 
-/*	Like Typewriter: what runs past is the project's own markup, and every
-	timing belongs to the row being run rather than to the site - a logo bar in
-	a footer and a line of announcements in a header are not one speed	*/
-check( 'it brings nothing of its own to write - no shortcode in the manual',
-	$manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] );
-check( '...and names the data attributes a row is timed with instead',
+/*	What a row is timed with belongs to the row being run rather than to the site - a logo bar in a footer and a line of
+	announcements in a header are not one speed - so there is no setting, and the component carries the timing as attributes	*/
+check( 'it brings no route, and its manual names the shortcode of the component and every attribute it takes, in both languages',
+	$manifest['manual']['routes'] === [] && array_keys( $manifest['manual']['shortcodes'] ) === [ '[ticker]...[/ticker]', '[ticker speed="60"]', '[ticker direction="right"]', '[ticker loop="1"]', '[ticker toggle="1"]', '[ticker pause="0"]' ]
+	&& array_filter( $manifest['manual']['shortcodes'], static fn( array $line ): bool => ( $line['en_US'] ?? '' ) === '' || ( $line['de_DE'] ?? '' ) === '' || $line['en_US'] === $line['de_DE'] ) === [] );
+check( '...and the markup of a row written by hand, the data attributes below it',
 	array_key_exists( 'data-ticker-speed="40"', $manifest['manual']['markup'] ) === true );
 check( '...and the track inside the row, the one element the script runs',
 	array_key_exists( 'class="nino-ticker-track"', $manifest['manual']['markup'] ) === true );
@@ -98,10 +99,11 @@ $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
 
 check( 'ticker.css joined the project\'s own /.cache/style.css bundle', in_array( '/features/Ticker/assets/ticker.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
 check( 'ticker.js joined the project\'s own /.cache/script.js bundle', in_array( '/features/Ticker/assets/ticker.js', \Nino\Html::getAssets( $appData, '/.cache/script.js' ), true ) === true );
-/*	Measured against this feature's own name rather than against the whole map:
-	Modules\Assets, which the bundle needs, registers [assets] of its own	*/
-check( 'and it registered no shortcode and no route at all', ( $appData['./nino/html/shortcodes']['ticker'] ?? null ) === null
-	&& ( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/http/routes'] ?? [] ) === [] );
+check( 'and it registered no route at all', ( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/http/routes'] ?? [] ) === [] );
+/*	The manifest declares the component and the Components module finds the renderer by its name, as it does for a feature
+	that has none to register: there is nothing for an init() to do	*/
+check( 'the class has no init() and no state: the renderer is componentTicker(), which the module derives from the name of the component',
+	method_exists( \Nino\Modules\Ticker::class, 'init' ) === false && method_exists( \Nino\Modules\Ticker::class, 'componentTicker' ) === true );
 
 check( 'the generated cache file carries this feature\'s css', ( static function() use ( &$appData ): bool {
 	\Nino\Html::renderHtml( $appData, '[assets /.cache/style.css]' );
@@ -111,6 +113,147 @@ check( '...and its js', ( static function() use ( &$appData ): bool {
 	\Nino\Html::renderHtml( $appData, '[assets /.cache/script.js]' );
 	return str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/.cache/script.js', '' ), 'nino-ticker-track' );
 } )() );
+
+echo "\n";
+
+
+// --- The component -------------------------------------------------------------
+
+echo "The component - [ticker] as the Builder offers it\n";
+
+$declared = $manifest['components']['ticker'] ?? [];
+
+check( 'the manifest declares one component, a row that holds components: the content is its source, the place of a section is what it holds, and a loop does not take it',
+	array_keys( $manifest['components'] ?? [] ) === [ 'ticker' ] && ( $declared['source'] ?? '' ) === 'content' && ( $declared['holds'] ?? '' ) === 'section' && ( $declared['loop'] ?? true ) === false );
+check( '...it says what the Builder draws it as, what it draws and where it stands: a block, a div of the class a theme addresses the row by, in a section and in the hero - not in a card, which holds components itself',
+	( $declared['preview'] ?? '' ) === 'block' && ( $declared['draws'] ?? '' ) === 'div .nino-ticker' && ( $declared['in'] ?? [] ) === [ 'section', 'hero' ] );
+check( '...its picture is two chevrons: paths of a 24 by 24 stroke icon, each a tag and a map of strings',
+	count( $declared['icon'] ?? [] ) === 2 && array_filter( $declared['icon'], static fn( mixed $part ): bool => is_array( $part ) === true && $part[0] === 'path' && array_keys( $part[1] ) === [ 'd' ] && is_string( $part[1]['d'] ) === true ) === $declared['icon'] );
+check( '...and its label is told in both languages, the words of the two differing',
+	is_array( $declared['label'] ?? null ) === true && ( $declared['label']['en_US'] ?? '' ) !== '' && ( $declared['label']['de_DE'] ?? '' ) !== '' && $declared['label']['en_US'] !== $declared['label']['de_DE'] );
+
+$attributes = $declared['attributes'] ?? [];
+check( 'it takes the five things a row is timed with, in this order: speed, direction, loop, toggle and pause - each with a label and, but for the direction, a hint in both languages',
+	array_keys( $attributes ) === [ 'speed', 'direction', 'loop', 'toggle', 'pause' ]
+	&& array_filter( $attributes, static fn( array $attribute, string $name ): bool => is_array( $attribute['label'] ?? null ) === false || ( $attribute['label']['en_US'] ?? '' ) === '' || ( $attribute['label']['de_DE'] ?? '' ) === ''
+		|| ( $name !== 'direction' && ( ( $attribute['hint']['en_US'] ?? '' ) === '' || ( $attribute['hint']['de_DE'] ?? '' ) === '' ) ), ARRAY_FILTER_USE_BOTH ) === [] );
+check( '...the types are the ones the data attributes mean: the speed a whole number of pixels a second, the direction a choice between the two ways, the other three switches',
+	( $attributes['speed']['type'] ?? '' ) === 'int' && ( $attributes['speed']['min'] ?? 0 ) >= 1 && ( $attributes['direction']['type'] ?? '' ) === 'select' && ( $attributes['direction']['options'] ?? null ) === '\\Nino\\Modules\\Ticker::directions'
+	&& array_filter( [ 'loop', 'toggle', 'pause' ], static fn( string $name ): bool => ( $attributes[$name]['type'] ?? '' ) !== 'bool' ) === [] );
+
+$js		= (string) file_get_contents( $dir. '/assets/ticker.js' );
+$css	= (string) file_get_contents( $dir. '/assets/ticker.css' );
+preg_match( '/var SPEED_DEFAULT = (\d+);/', $js, $speed );
+check( 'every default is what the script and the stylesheet do for a row that says nothing: the speed of the script\'s SPEED_DEFAULT, to the left, one cycle, no pause button - and the pointer stops the row',
+	( $attributes['speed']['default'] ?? null ) === (int) ( $speed[1] ?? 0 ) && (int) ( $speed[1] ?? 0 ) === \Nino\Modules\Ticker::SPEED_DEFAULT
+	&& ( $attributes['direction']['default'] ?? null ) === 'left' && ( $attributes['loop']['default'] ?? null ) === false && ( $attributes['toggle']['default'] ?? null ) === false && ( $attributes['pause']['default'] ?? null ) === true
+	&& str_contains( $css, '.nino-ticker[data-ticker-pause="off"]' ) === true && str_contains( $css, '.nino-ticker[data-ticker-direction="right"]' ) === true
+	&& preg_match( "/speed\s*:\s*\{[^}]*fallback : SPEED_DEFAULT/", $js ) === 1 && preg_match( "/loop\s*:\s*\{[^}]*fallback : false/", $js ) === 1 );
+
+// The Components module registers the component from the manifest, as a boot does, on a copy of the project that nothing else here sees
+$probe = $appData;
+$probe['/nino/modules'][] = '\\Nino\\Modules\\Components';
+\Nino\Modules\Components::init( $probe );
+ninoWarnings();
+
+$issued = \Nino\Modules\Components::components( $probe )['ticker'] ?? [];
+$issuedWay = $issued['attributes']['direction'] ?? [];
+$asDeclared = $declared;
+$asIssued = $issued;
+unset( $asDeclared['attributes']['direction'], $asIssued['attributes']['direction'] );
+
+check( 'the Components module has it as the manifest says but for the direction, whose options it asked the method for, and its defaults are strings: 40, left, off, off and on - the class last',
+	$asIssued === $asDeclared && ( $issuedWay['type'] ?? '' ) === 'select' && ( $issuedWay['default'] ?? '' ) === 'left'
+	&& \Nino\Modules\Components::defaults( $probe, 'ticker' ) === [ 'speed' => '40', 'direction' => 'left', 'loop' => '0', 'toggle' => '0', 'pause' => '1', 'class' => '' ] );
+
+check( 'the options of the direction are asked of a method of the feature\'s own class and the schema that is issued carries them: the two values the data attribute knows, and for each a label in both languages, the words of the two differing',
+	( $issuedWay['options'] ?? [] ) === [ 'left', 'right' ] && array_keys( $issuedWay['optionLabels'] ?? [] ) === [ 'left', 'right' ] && in_array( $issuedWay['default'] ?? null, $issuedWay['options'] ?? [], true ) === true
+	&& array_filter( $issuedWay['optionLabels'] ?? [], static fn( mixed $label ): bool => is_array( $label ) === false || ( $label['en_US'] ?? '' ) === '' || ( $label['de_DE'] ?? '' ) === '' || $label['en_US'] === $label['de_DE'] ) === []
+	&& ( $issuedWay['optionLabels']['left'] ?? null ) !== ( $issuedWay['optionLabels']['right'] ?? null ) && ninoWarnings() === [] );
+
+/**
+ *	A rendered row as a document: the row and what stands in it, read the way a browser reads it
+ *
+ *	@param		string		$html
+ *
+ *	@return 	\DOMXPath
+ */
+$parsed = static function( string $html ): \DOMXPath {
+
+	$document = new \DOMDocument();
+	@$document->loadHTML( '<?xml encoding="utf-8"?><body>'. $html. '</body>' );
+
+	return new \DOMXPath( $document );
+};
+
+\Nino\Locales::useLocale( $probe, 'en_US' );
+// What the project made of the label - the add-only check above left it as the project wrote it
+$label = (string) ( \Nino\Filesystem::getFileContent( $probe, '/text/en_US.php', [] )['[[/feature/ticker/pause/label]]'] ?? '' );
+
+$row = \Nino\Html::renderHtml( $probe, '[ticker][title text="Fast"][text text="Slow"][button text="Go"][/ticker]' );
+$dom = $parsed( $row );
+
+check( 'a row is a box around a track around what stands between the tags: one div of the class nino-ticker in the body, one div of the class nino-ticker-track as its only child',
+	$dom->query( '/html/body/*' )->length === 1 && $dom->query( '/html/body/div[@class="nino-ticker"]/*' )->length === 1 && $dom->query( '/html/body/div[@class="nino-ticker"]/div[@class="nino-ticker-track"]' )->length === 1 );
+check( '...the calls are rendered, in the order they were written, and each is a child of the track - the items that run past - with no call left in the page',
+	$dom->query( '//div[@class="nino-ticker-track"]/*' )->length === 3
+	&& $dom->query( '//div[@class="nino-ticker-track"]/h3[@class="nino-section-title"]' )->item( 0 )?->textContent === 'Fast'
+	&& str_contains( (string) $dom->query( '//div[@class="nino-ticker-track"]/div' )->item( 0 )?->textContent, 'Slow' ) === true
+	&& $dom->query( '//div[@class="nino-ticker-track"]/span[@class="nino-btn"]' )->item( 0 )?->textContent === 'Go' && preg_match( '/\[\/?(?:ticker|title|text|button)[ \]]/', $row ) === 0 );
+check( '...and a row that says nothing carries no data attribute at all - the box and the track are what a row written by hand is',
+	str_contains( $row, 'data-ticker' ) === false && $dom->query( '/html/body/div/@*' )->length === 1 );
+check( '...with every attribute written out at its default it is the same row',
+	\Nino\Html::renderHtml( $probe, '[ticker speed="40" direction="left" loop="0" toggle="0" pause="1"][title text="Fast"][text text="Slow"][button text="Go"][/ticker]' ) === $row
+	&& \Nino\Html::renderHtml( $probe, '[ticker loop="no" toggle="off" pause="yes"][title text="Fast"][text text="Slow"][button text="Go"][/ticker]' ) === $row );
+
+$attributesOf = static function( string $call ) use ( $probe, $parsed ): array {
+
+	$html		= \Nino\Html::renderHtml( $probe, $call );
+	$names	= [];
+
+	foreach( $parsed( $html )->query( '/html/body/div/@*' ) as $attribute )
+		$names[$attribute->nodeName] = $attribute->nodeValue;
+
+	return $names;
+};
+
+check( 'a data attribute is written only where the call differs: another speed writes data-ticker-speed and nothing else',
+	$attributesOf( '[ticker speed="60"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-speed' => '60' ] );
+check( '...the other direction writes data-ticker-direction="right"',
+	$attributesOf( '[ticker direction="right"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-direction' => 'right' ] );
+check( '...the loop writes data-ticker-loop="1", which is the word the script reads',
+	$attributesOf( '[ticker loop="1"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-loop' => '1' ] );
+check( '...the pause button writes data-ticker-toggle with the label the install unit merged - the fill resolved, as the markup of a row written by hand has it',
+	$attributesOf( '[ticker toggle="1"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-toggle' => $label ] );
+check( '...and a row that keeps running under the pointer writes data-ticker-pause="off"',
+	$attributesOf( '[ticker pause="0"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-pause' => 'off' ] );
+check( '...all of them at once, with a class of its own that comes after the row\'s',
+	$attributesOf( '[ticker speed="90" direction="right" loop="1" toggle="1" pause="0" class="logos"][text text="a"][/ticker]' )
+		=== [ 'class' => 'nino-ticker logos', 'data-ticker-speed' => '90', 'data-ticker-direction' => 'right', 'data-ticker-loop' => '1', 'data-ticker-toggle' => $label, 'data-ticker-pause' => 'off' ] );
+check( '...a speed that is no number, or none the script would run, is the default, and a speed out of the range is held to it',
+	$attributesOf( '[ticker speed="fast"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker' ] && $attributesOf( '[ticker speed="0"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-speed' => '1' ]
+	&& $attributesOf( '[ticker speed="99999"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker', 'data-ticker-speed' => '1000' ] && $attributesOf( '[ticker direction="up"][text text="a"][/ticker]' ) === [ 'class' => 'nino-ticker' ] );
+check( '...a class with a quote and a bracket in it is escaped and opens nothing in the second pass',
+	str_contains( \Nino\Html::renderHtml( $probe, '[ticker class="a\'b [c"][text text="a"][/ticker]' ), 'class="nino-ticker a&quot;b &#91;c"' ) === true );
+check( 'a row with nothing between its tags renders nothing: not a track with nothing to run',
+	\Nino\Html::renderHtml( $probe, '[ticker][/ticker]' ) === '' && \Nino\Html::renderHtml( $probe, '[ticker speed="60"]  [/ticker]' ) === '' );
+check( 'what a component writes in the row is rendered as it would be outside it: a text typed with a bracket is no call, and the call of a component of another place is its own business',
+	str_contains( \Nino\Html::renderHtml( $probe, '[ticker][text text="[title text=&quot;x&quot;]"][/ticker]' ), '<h3' ) === false );
+/*	Where German addresses the reader it is Du, capitalised: the lower case forms are what is refused	*/
+$german = [];
+$gather = static function( array $node ) use ( &$gather, &$german ): void {
+	foreach( $node as $key => $value )
+		if( is_array( $value ) === true )
+			$gather( $value );
+		else if( $key === 'de_DE' && is_string( $value ) === true )
+			$german[] = $value;
+};
+$gather( [ $manifest['manual'], $manifest['components'] ] );
+check( 'the German words of the manual and of the component address the reader in no line as du, dir, dich or dein',
+	count( $german ) > 20 && preg_match( '/\b(?:du|dir|dich|dein\w*)\b/u', implode( "\n", $german ) ) === 0 );
+check( 'the markup is the template\'s, which holds the box, the track and the places of the attributes and of the content - the content last, where nothing is filled in after it',
+	is_file( $dir. '/templates/ticker.tpl' ) === true && preg_match( '/^<div class="nino-ticker\[\[classes\]\]"\[\[speed\]\]\[\[direction\]\]\[\[loop\]\]\[\[toggle\]\]\[\[pause\]\]>\s*<div class="nino-ticker-track">\[\[content\]\]<\/div>\s*<\/div>\s*$/', (string) file_get_contents( $dir. '/templates/ticker.tpl' ) ) === 1
+	&& ninoWarnings() === [] );
 
 echo "\n";
 

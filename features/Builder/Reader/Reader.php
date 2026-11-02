@@ -450,9 +450,37 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The kind of surface a component is, by what the registry says of it and not by its name. A component that holds components is a
-		 *	card - the container of a page is the box that has corners; a component whose source is an image and which no container claims
-		 *	(its 'in' names no place a container holds) is the frame of a picture. Any other, the picture of a card among them, is none: it
+		 *	Whether a component that holds components paints a surface of its own, by what its schema declares and not by its name: a ground - a select over the
+		 *	grounds a column may paint, COL_COLOR with the empty word - or a picture behind it, an attribute of the type image: any such attribute counts, by its type and wherever it stands, as the panel's _pictures() and _look() find the picture of a holder. The card paints both. A holder that paints
+		 *	neither lays out what it holds and nothing else, and has no corners to round and no ground whose picture could start further in
+		 *
+		 *	@param		array			$schema				One entry of the registry
+		 *
+		 *	@return 	bool
+		 */
+		public static function paints( array $schema ): bool {
+
+			$grounds = [ '', ...self::COL_COLOR ];
+
+			foreach( (array) ( $schema['attributes'] ?? [] ) as $declared ) {
+
+				if( is_array( $declared ) === false )
+					continue;
+
+				if( ( $declared['type'] ?? '' ) === 'image' )
+					return true;
+
+				if( ( $declared['type'] ?? '' ) === 'select' && is_array( $declared['options'] ?? null ) === true && count( $declared['options'] ) === count( $grounds ) && array_diff( $grounds, $declared['options'] ) === [] )
+					return true;
+			}
+
+			return false;
+		}
+
+		/**
+		 *	The kind of surface a component is, by what the registry says of it and not by its name. A component that holds components and paints (see paints()) is a
+		 *	card - the container of a page is the box that has corners; one that paints nothing is none. A component whose source is an image and which no card claims
+		 *	(its 'in' names no place a card holds) is the frame of a picture. Any other, the picture of a card among them, is none: it
 		 *	follows the surface it stands in. A component that is a surface has the setting radius, and the panel offers it the toggle
 		 *	against the page's default for its kind
 		 *
@@ -467,13 +495,13 @@ namespace Nino\Modules\Builder {
 				return '';
 
 			if( self::holds( $schema ) === true )
-				return 'card';
+				return self::paints( $schema ) === true ? 'card' : '';
 
 			if( $schema['source'] !== 'image' )
 				return '';
 
 			foreach( $components as $other )
-				if( is_array( $other ) === true && self::holds( $other ) === true && in_array( $other['holds'], (array) ( $schema['in'] ?? [] ), true ) === true )
+				if( is_array( $other ) === true && self::holds( $other ) === true && self::paints( $other ) === true && in_array( $other['holds'], (array) ( $schema['in'] ?? [] ), true ) === true )
 					return '';
 
 			return 'image';

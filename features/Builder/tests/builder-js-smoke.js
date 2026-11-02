@@ -7816,6 +7816,120 @@ check( 'the controls of a picture have no frame of their own and the buttons sta
 	&& stylesheet.indexOf( '.builder-picture-buttons:has(input:focus-visible) .builder-picture-upload {' ) !== -1 );
 check( 'the accordion counts seven heads where a form has as many', ruleHas( '.builder-blocks:has(> :nth-child(7))', [ '--builder-count: 7' ] ) );
 
+console.log( '\nA second container, which the panel holds by what its schema says' );
+
+/*	The Builder knows no component by name: what holds components is whatever says "holds", and the place it holds is the registry's word. A second container of a
+	feature, a band that holds the components of a section and paints neither a ground nor a picture, is all the panel needs to show it - the card of the kernel is
+	not the only one, and what is the card's alone, its ground, its radius and the offset of its picture, is not assumed of a container that has none of them	*/
+const bandSchema = {
+	label : 'Band', source : 'content', loop : false, preview : 'block', 'in' : [ 'section', 'hero' ], draws : 'div .band', holds : 'section', by : 'fixture', group : 'section',
+	icon : [ [ 'path', { d : 'm6 17 5-5-5-5' } ] ],
+	attributes : { speed : { type : 'int', min : 1, max : 100, 'default' : 40, label : 'Speed', hint : '' }, wrap : { type : 'bool', 'default' : true, label : 'Wrap', hint : '' } },
+	defaults : { speed : '40', wrap : '1', 'class' : '' },
+};
+const bandRegistry = function() {
+
+	const own = registry();
+
+	own.components.band = JSON.parse( JSON.stringify( bandSchema ) );
+	own.features = { fixture : 'Fixture' };
+
+	return own;
+};
+const bandAt = cardAt;
+const bandPage = function() {
+
+	const model = cardPage();
+	const own = bandRegistry();
+	const band = builder._newComponent( model, own, 'page-home-card', [ 0, 1 ], 'band', [] );
+
+	band.attributes.speed = '60';
+
+	[ 'title', 'text', 'image' ].forEach( function( name ) {
+
+		const child = builder._newComponent( model, own, 'page-home-card', bandAt, name, [] );
+
+		child.source = '/template/page-home-card/story/'+ name;
+		delete child.create;
+		band.components.push( child );
+	} );
+
+	model.blocks[0].cols[1].components[0] = band;
+
+	return model;
+};
+const openBand = function() {
+
+	const opened = open( bandPage() );
+
+	opened.file = 'page-home-card';
+	builder._registry = bandRegistry();
+	builder._renderEditor();
+
+	return opened;
+};
+
+check( 'a container of a feature is read from the registry and by nothing else: the place it holds is the schema\'s - the registry without it holds none - and a new one starts with no children, no content, and none of what a card paints: no radius, no offset of a ground',
+	builder._holds( bandRegistry(), 'band' ) === 'section' && builder._holds( registry(), 'band' ) === '' && ( function() {
+
+		const made = builder._newComponent( cardPage(), bandRegistry(), 'page-home-card', [ 0, 1 ], 'band', [] );
+
+		return JSON.stringify( made.components ) === '[]' && made.content === undefined && made.source === '' && made.create === undefined && made.radius === undefined && made.bgPl === undefined && made.bgPr === undefined
+			&& made.attributes.speed === '40' && made.attributes.wrap === '1' && builder._surfaceOf( bandSchema ) === '';
+	} )() );
+
+check( 'the preview draws it as a frame with its children in it, as it draws the card: its place in the column, its label, what it draws and its three children with theirs - and the ground and the picture it has none of',
+	( function() {
+
+		const band = builder._preview( bandPage(), bandRegistry(), 'l' )[0].cols[1].components[0];
+
+		return band.holds === true && band.label === 'Band' && band.image === 'block' && band.draws === 'DIV .band' && JSON.stringify( band.path ) === '[0,1,0]' && band.color === '' && band.background === false
+			&& band.children.map( function( child ) { return child.path.join('.')+ ':'+ child.label+ ':'+ child.draws } ).join() === '0.1.0.0:Title (Section):H3 .nino-section-title,0.1.0.1:Text:,0.1.0.2:Image:'
+			&& band.children.every( function( child ) { return child.holds === undefined } );
+	} )() );
+
+openBand();
+
+check( '...and the editor draws that frame the card\'s way: the head with the name of the container and its tools, the children as placeholders in the body, and a button of its own that adds to it - with no mark of a picture behind it',
+	frameOf('0.1.0').classList.contains('builder-card') === true && frameOf('0.1.0').querySelector('.builder-card-name').textContent === 'Band' && frameOf('0.1.0').querySelector('.builder-card-body').querySelectorAll('.builder-ph').length === 3
+	&& [ '0.1.0.0', '0.1.0.1', '0.1.0.2' ].every( function( at ) { return frameOf( at ) !== null && frameOf( at ).classList.contains('builder-ph') } ) && frameOf('0.1.0').querySelector('.builder-adds .builder-add-button') !== null
+	&& frameOf('0.1.0').querySelector('.builder-head-status').children.length === 0 && toolOf( '0.1.0', 'settings' ) !== undefined && toolOf( '0.1.0', 'delete' ) !== undefined );
+
+check( 'the lightbox of a container offers what belongs to the place the container holds - here the components of a section - and not a container, whatever it holds, and not what belongs to another place; what is not offered stands there greyed and says so',
+	( function() {
+
+		const offered = offeredAt( bandAt ).split(',');
+
+		return [ 'Title (Section)', 'Subtitle (Section)', 'Text', 'Button', 'Image', 'HTML', 'Spacer' ].every( function( label ) { return offered.indexOf( label ) !== -1 } )
+			&& [ 'Card', 'Band', 'Title (Card)', 'Image (Card)' ].every( function( label ) { return offered.indexOf( label ) === -1 } )
+			&& reasonOf( bandAt, 'Band' ) === 'Not offered here' && reasonOf( bandAt, 'Card' ) === 'Not offered here' && reasonOf( bandAt, 'Title (Card)' ) === 'Not offered here' && reasonOf( bandAt, 'Text' ) === '';
+	} )() );
+builder._closeDialog();
+
+check( '...and the container itself is offered where its schema says it belongs: in a column of the first section, which is the hero - and not in the column of a loop, which its schema says it is no for, nor in a card, which holds none',
+	reasonOf( [ 0, 1 ], 'Band' ) === '' && reasonOf( [ 1, 0 ], 'Band' ) === 'Not in an element loop' && reasonOf( [ 1, 0, 0 ], 'Band' ) === 'Not in a card' );
+builder._closeDialog();
+
+openBand();
+frameOf('0.1.0').dispatch('dblclick');
+check( 'the form of a container that paints nothing has no block of the surface: no radius to toggle and no offset of a ground - the blocks the component has something for, which the card, which does paint, has the surface among',
+	dialogBox().open === true && dialogText('builder-dialog-kind') === 'Band' && blockIds().join() === 'spacing,properties' && dialogContent().querySelector('.builder-radius') === null );
+builder._closeDialog();
+
+openBand();
+builder._addComponent( bandAt, 'text' );
+
+check( 'a component added to it is its last child, with a key of its own in the section, selected, and drawn in it - the document that came of it has the children where the Reader puts them',
+	( function() {
+
+		const band = builder._get( builder._doc.model, bandAt );
+		const added = band.components[band.components.length - 1];
+
+		return band.components.length === 4 && added.name === 'text' && /^\/template\/page-home-card\/story\/[a-z0-9-]+$/.test( added.source ) === true && added.source !== band.components[1].source && JSON.stringify( added.create ) === '{}'
+			&& builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && frameOf('0.1.0.3').classList.contains('is-selected') === true && frameOf('0.1.0').querySelectorAll('.builder-ph').length === 4
+			&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4;
+	} )() );
+
 console.log( '\nThe screens' );
 
 check( 'the list and the editor are drawn without a page to complain', ( function() {

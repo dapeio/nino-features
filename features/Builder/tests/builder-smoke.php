@@ -211,9 +211,16 @@ check( '...the registry marks the components that are a surface by what their sc
 	&& array_filter( $registry['components'], static fn( array $schema ): bool => array_key_exists( 'surface', $schema ) === false && $reader::surface( $schema, $registry['components'] ) !== '' ) === []
 	&& array_filter( $marked, static fn( array $schema ): bool => ( $schema['surface'] === 'card' ) !== $reader::holds( $schema ) ) === []
 	&& array_filter( $marked, static fn( array $schema ): bool => $schema['surface'] === 'image' && ( $schema['source'] !== 'image' || array_filter( $registry['components'], static fn( array $other ): bool => $reader::holds( $other ) === true && in_array( $other['holds'], (array) ( $schema['in'] ?? [] ), true ) === true ) !== [] ) ) === [] );
-check( '...and the rule is the registry\'s: a component that holds a place is a card whatever it is called, a picture standing in a place that a container holds is none and one in any other is an image, a text and a loop are none',
-	$reader::surface( [ 'source' => 'content', 'holds' => 'things' ], [] ) === 'card' && $reader::surface( [ 'source' => 'image', 'in' => [ 'things' ] ], [ [ 'source' => 'content', 'holds' => 'things' ] ] ) === ''
-	&& $reader::surface( [ 'source' => 'image', 'in' => [ 'section' ] ], [ [ 'source' => 'content', 'holds' => 'things' ] ] ) === 'image' && $reader::surface( [ 'source' => 'image' ], [] ) === 'image'
+$grounds = [ '', 'counter', 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ];
+$holder = static fn( array $attributes ): array => [ 'source' => 'content', 'holds' => 'things', 'attributes' => $attributes ];
+check( '...and the rule is the registry\'s: a component that holds a place and paints - it declares a ground, a select over the grounds a column may paint, or a picture, an attribute of the type image - is a card whatever it is called and whatever the attributes are called, one that paints nothing is none',
+	$reader::surface( $holder( [ 'tint' => [ 'type' => 'select', 'options' => $grounds ] ] ), [] ) === 'card' && $reader::surface( $holder( [ 'behind' => [ 'type' => 'image' ] ] ), [] ) === 'card'
+	&& $reader::surface( $holder( [ 'speed' => [ 'type' => 'int', 'default' => 40 ], 'wrap' => [ 'type' => 'bool' ], 'way' => [ 'type' => 'select', 'options' => [ 'left', 'right' ] ] ] ), [] ) === ''
+	&& $reader::surface( $holder( [ 'tint' => [ 'type' => 'select', 'options' => array_slice( $grounds, 0, 5 ) ] ] ), [] ) === '' && $reader::surface( $holder( [ 'behind' => [ 'type' => 'string' ] ] ), [] ) === '' && $reader::surface( $holder( [] ), [] ) === ''
+	&& $reader::surface( [ 'source' => 'content', 'holds' => 'things' ], [] ) === '' && $reader::paints( $holder( [ 'behind' => [ 'type' => 'image' ] ] ) ) === true && $reader::paints( $holder( [] ) ) === false );
+check( '...a picture standing in a place that a card holds is none and one in any other is an image - and so is one standing in the place of a container that paints nothing, which it does not follow - a text and a loop are none',
+	$reader::surface( [ 'source' => 'image', 'in' => [ 'things' ] ], [ $holder( [ 'behind' => [ 'type' => 'image' ] ] ) ] ) === '' && $reader::surface( [ 'source' => 'image', 'in' => [ 'things' ] ], [ $holder( [ 'speed' => [ 'type' => 'int' ] ] ) ] ) === 'image'
+	&& $reader::surface( [ 'source' => 'image', 'in' => [ 'section' ] ], [ $holder( [ 'behind' => [ 'type' => 'image' ] ] ) ] ) === 'image' && $reader::surface( [ 'source' => 'image' ], [] ) === 'image'
 	&& $reader::surface( [ 'source' => 'text' ], [] ) === '' && $reader::surface( [ 'source' => 'none' ], [] ) === '' && $reader::surface( [ 'grid' => true ], [] ) === '' );
 check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'card', $schema['defaults'] ) === true ) === [] );
 check( '...the six titles name their tag and no level: one select of the tags their place takes, the default among them, then the style and the colour, which are variants - a hero is an h2, a section an h3, a card an h4, and the subtitles a p, a div and a p', array_filter(
@@ -514,6 +521,71 @@ $emptyNode = $read( $emptyCard )['blocks'][0]['cols'][0]['components'][0];
 check( '...a card with nothing between its tags holds nothing: a list of no children, and a card that is written has its closing tag below its call, and reads again as the same card', $emptyNode['components'] === [] && $emptyNode['attributes'] === $registry['components']['card']['defaults']
 	&& $write( $read( $emptyCard ) ) === $inWrap( $page( $section( "[card]\n\t\t\t[/card]" ) ) ) && $read( $write( $read( $emptyCard ) ) ) === $read( $emptyCard ) );
 check( '...a call without its closing tag is a card with no children as well - the kernel reads to the end of the call', $read( $page( $section( '[card ground="alt"]' ) ) )['blocks'][0]['cols'][0]['components'][0]['components'] === [] );
+
+// A second component that holds components, registered the way a feature registers one: a band that holds the components of a section and paints neither a ground nor a picture. What holds
+// components is whatever says "holds", and the Reader and the Writer know no component by name; what only a card has, the radius of its surface and the offset of its ground, a container that
+// has no ground has none of
+$bandRender		= static fn( array &$appData, array $args ): string => '<div class="band">'. $args['value']. '</div>';
+$bandSchema		= [
+	'label' => [ 'en_US' => 'Band', 'de_DE' => 'Band' ], 'source' => 'content', 'loop' => false, 'holds' => 'section', 'group' => 'section', 'preview' => 'block', 'draws' => 'div .band', 'in' => [ 'section', 'hero' ],
+	'attributes' => [
+		'speed' => [ 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 40, 'label' => 'Speed' ],
+		'wrap' => [ 'type' => 'bool', 'default' => true, 'label' => 'Wrap' ],
+	],
+];
+$bandApp = $appData;
+\Nino\Modules\Components::addComponent( $bandApp, 'band', $bandRender, $bandSchema );
+ninoWarnings();
+$bandRegistry	= \Nino\Modules\Builder\Document::schemas( $bandApp );
+$readBand			= static fn( string $source ): array => \Nino\Modules\Builder\Reader::read( $source, $bandRegistry );
+$writeBand		= static fn( array $model ): string => \Nino\Modules\Builder\Writer::write( $model, $bandRegistry );
+$bandPage			= $page( $section( "[band speed=\"60\" wrap=\"0\"]\n\t\t\t\t[title /template/page-x/a/title]\n\t\t\t\t[text /template/page-x/a/text]\n\t\t\t\t[image /template/page-x/a/photo]\n\t\t\t[/band]" ) );
+$bandModel		= $readBand( $bandPage );
+$bandNode			= $bandModel['blocks'][0]['cols'][0]['components'][0] ?? [];
+
+check( 'a second component that holds components is a container to the Reader by its schema alone: it holds the place of a section, and the card is no more the only one - it paints neither a ground nor a picture, so the registry says no surface of it, as it still does of the card',
+	$reader::holds( $bandRegistry['components']['band'] ) === true && $bandRegistry['components']['band']['holds'] === 'section' && array_key_exists( 'surface', $bandRegistry['components']['band'] ) === false
+	&& ( $bandRegistry['components']['card']['surface'] ?? '' ) === 'card' && array_keys( array_filter( $bandRegistry['components'], static fn( array $schema ): bool => $reader::holds( $schema ) === true ) ) === [ 'card', 'band' ] );
+check( '...its call is read with its children, in the order written, each a node as it is in a column, and the attributes of its schema - the call\'s where it sets them: and the six sides of the spacing - but no radius and no offset of a ground, which a component that is no surface has none of',
+	array_keys( $bandNode ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING, [ 'components' ] ) && $bandNode['attributes'] === [ 'speed' => '60', 'wrap' => '0', 'class' => '' ]
+	&& array_column( $bandNode['components'], 'name' ) === [ 'title', 'text', 'image' ] && array_column( $bandNode['components'], 'source' ) === [ '/template/page-x/a/title', '/template/page-x/a/text', '/template/page-x/a/photo' ]
+	&& array_key_exists( 'content', $bandNode ) === false && array_key_exists( 'radius', $bandNode ) === false && array_key_exists( 'bgPl', $bandNode ) === false && array_key_exists( 'bgPr', $bandNode ) === false );
+check( '...and it is written as the card is, byte for byte: the call on a line of its own, each child one tab deeper on a line of its own, the closing tag at the depth of its call - and what is written is read as the same model',
+	$writeBand( $bandModel ) === $inWrap( $bandPage ) && $readBand( $writeBand( $bandModel ) ) === $bandModel && $writeBand( $readBand( $writeBand( $bandModel ) ) ) === $inWrap( $bandPage ) );
+$bandStray = $bandModel;
+$bandStray['blocks'][0]['cols'][0]['components'][0]['content'] = '<p>Stray</p>';
+check( '...and a content the model carries besides the children is not written: what stands between the tags of a container is its children, whatever the node says',
+	$writeBand( $bandStray ) === $inWrap( $bandPage ) );
+
+$bandClasses = 'nino-radius-alt nino-bg-pl-1 nino-hover my-band';
+$bandClassed = $page( $section( "[band class=\"". $bandClasses. "\"]\n\t\t\t\t[text /template/page-x/a/text]\n\t\t\t[/band]" ) );
+$bandClassNode = $readBand( $bandClassed )['blocks'][0]['cols'][0]['components'][0] ?? [];
+check( '...what a card splits off its class - the radius, the offsets of its ground - is a class like any other on a container that paints nothing: it stays in the class of the call, as it was written, and the file is written back as it was',
+	$bandClassNode['attributes']['class'] === $bandClasses && array_key_exists( 'radius', $bandClassNode ) === false && array_key_exists( 'bgPl', $bandClassNode ) === false && $writeBand( $readBand( $bandClassed ) ) === $inWrap( $bandClassed ) );
+
+$bandEmpty = $readBand( $page( $section( '[band][/band]' ) ) )['blocks'][0]['cols'][0]['components'][0] ?? [ 'components' => null ];
+check( '...with nothing between its tags it holds nothing, and a call that is no container takes no children: the kernel reads a content only of the one that holds',
+	$bandEmpty['components'] === [] && $writeBand( $readBand( $page( $section( '[band][/band]' ) ) ) ) === $inWrap( $page( $section( "[band]\n\t\t\t[/band]" ) ) )
+	&& $readBand( $page( $section( "[title /template/page-x/a/title][/title]" ) ) )['blocks'][0]['reason']['code'] === 'component-content' );
+
+$bandNot = [
+	'a container in it'							=> "[band]\n\t\t\t\t[band][/band]\n\t\t\t[/band]",
+	'the card in it'								=> "[band]\n\t\t\t\t[card][/card]\n\t\t\t[/band]",
+	'it in a card'									=> "[card]\n\t\t\t\t[band][/band]\n\t\t\t[/card]",
+	'a loop in it'									=> "[band]\n\t\t\t\t[stack /services]\n\t\t\t\t\t[title title]\n\t\t\t\t[/stack]\n\t\t\t[/band]",
+	'markup in it'									=> "[band]\n\t\t\t\t<p>Hello</p>\n\t\t\t[/band]",
+];
+$bandWhy = [];
+
+foreach( $bandNot as $label => $calls ) {
+
+	$block = $readBand( $page( $section( $calls ) ) )['blocks'][0];
+	$bandWhy[$label] = $block['kind'] === 'html' ? $block['reason']['code'] : 'read';
+}
+
+check( 'a container is no page for the Builder where it holds another, in either order, or a loop, or markup next to its calls - the reasons are the card\'s, whichever container holds them',
+	$bandWhy === [ 'a container in it' => 'holder-in-holder', 'the card in it' => 'holder-in-holder', 'it in a card' => 'holder-in-holder', 'a loop in it' => 'holder-stack', 'markup in it' => 'holder-content' ] );
+
 
 echo "\n";
 
@@ -3613,6 +3685,53 @@ check( 'source answers the file with the card in it, its children on lines of th
 
 echo "\n";
 
+
+
+// A second container through the Document: loaded, saved with a child more, and rendered by the kernel - as the page with a card is, with nothing of the card's in it
+$bandDoc = $appData;
+\Nino\Modules\Components::addComponent( $bandDoc, 'band', $bandRender, $bandSchema );
+ninoWarnings();
+$bandFile = "<!-- nino:template-name Band -->\n[template /templates/html-header]\n<div class=\"nino-wrap\">\n\n". $section( "[band speed=\"60\"]\n\t\t\t\t[title /template/page-home-band/story/title]\n\t\t\t\t[text /template/page-home-band/story/text]\n\t\t\t[/band]", 'story' ). "\n\n</div>\n[template /templates/html-footer]\n";
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-home-band.tpl', $bandFile );
+$bandPath	= \Nino\Filesystem::path( $appData, '/templates/page-home-band.tpl' );
+$bandLoad	= \Nino\Modules\Builder\Document::load( $bandDoc, 'page-home-band' );
+$bandSave	= \Nino\Modules\Builder\Document::save( $bandDoc, 'page-home-band', $bandLoad['model'], $bandLoad['hash'] );
+$bandIn		= static fn( array $model ): array => $model['blocks'][0]['cols'][0]['components'][0] ?? [ 'components' => [], 'attributes' => [] ];
+
+check( 'a page with a second container is loaded as the model the Reader makes of it, the band with its two children, and a save without a change leaves the bytes as they were',
+	$bandLoad['status'] === 200 && array_column( $bandIn( $bandLoad['model'] )['components'], 'name' ) === [ 'title', 'text' ] && ( $bandIn( $bandLoad['model'] )['attributes']['speed'] ?? '' ) === '60'
+	&& $bandSave['status'] === 200 && file_get_contents( $bandPath ) === $bandFile && $bandSave['hash'] === $bandLoad['hash'] && $bandSave['model'] === $bandLoad['model'] );
+
+$bandMade = $bandLoad['model'];
+$bandMade['blocks'][0]['cols'][0]['components'][0]['components'][0] += [ 'create' => [], 'values' => [ 'en_US' => 'Our friends' ] ];
+$bandMade['blocks'][0]['cols'][0]['components'][0]['components'][1] += [ 'create' => [], 'values' => [ 'en_US' => '<p>They run with us.</p>' ] ];
+$bandMade['blocks'][0]['cols'][0]['components'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-home-band/story/note', 'text' => null, 'attributes' => $bandRegistry['components']['text']['defaults'], 'create' => [], 'values' => [ 'en_US' => '<p>A note.</p>' ] ];
+$bandAnswer = \Nino\Modules\Builder\Document::save( $bandDoc, 'page-home-band', $bandMade, $bandLoad['hash'] );
+
+check( '...a save with a child more writes it inside the band, below the others and above the closing tag, makes the keys the children name as new with the text typed for them - and answers the file as it reads',
+	$bandAnswer['status'] === 200 && str_contains( (string) file_get_contents( $bandPath ), "\t\t\t\t[text /template/page-home-band/story/text]\n\t\t\t\t[text /template/page-home-band/story/note]\n\t\t\t[/band]\n" ) === true
+	&& ( \Nino\Text::entry( $appData, '/template/page-home-band/story/title' )['values']['en_US'] ?? null ) === 'Our friends' && ( \Nino\Text::entry( $appData, '/template/page-home-band/story/note' )['values']['en_US'] ?? null ) === '<p>A note.</p>'
+	&& array_column( $bandIn( $bandAnswer['model'] )['components'], 'name' ) === [ 'title', 'text', 'text' ] && isset( $bandIn( $bandAnswer['model'] )['components'][2]['create'] ) === false );
+
+$bandLocale = \Nino\Locales::getCurrentLocale( $appData );
+\Nino\Locales::useLocale( $bandDoc, 'en_US' );
+$bandHtml = \Nino\Html::renderHtml( $bandDoc, '[template /templates/page-home-band]' );
+\Nino\Locales::useLocale( $bandDoc, $bandLocale );
+
+check( '...and the kernel renders it: the band around its three children in the order they were written, with no call left in the page',
+	preg_match( '/\[\/?(?:band|title|text)[ \]]/', $bandHtml ) === 0 && substr_count( $bandHtml, '<div class="band">' ) === 1 && strpos( $bandHtml, '<div class="band">' ) < strpos( $bandHtml, 'Our friends' )
+	&& strpos( $bandHtml, 'Our friends' ) < strpos( $bandHtml, 'They run with us.' ) && strpos( $bandHtml, 'They run with us.' ) < strpos( $bandHtml, 'A note.' ) && strpos( $bandHtml, 'A note.' ) < strpos( $bandHtml, '</div>', strpos( $bandHtml, 'A note.' ) ) );
+
+$bandRadius = $bandAnswer['model'];
+$bandRadius['blocks'][0]['cols'][0]['components'][0]['radius'] = 'alternative';
+$bandOffset = $bandAnswer['model'];
+$bandOffset['blocks'][0]['cols'][0]['components'][0]['bgPl'] = '1';
+$bandRefused = [ \Nino\Modules\Builder\Document::save( $bandDoc, 'page-home-band', $bandRadius, $bandAnswer['hash'] ), \Nino\Modules\Builder\Document::save( $bandDoc, 'page-home-band', $bandOffset, $bandAnswer['hash'] ) ];
+check( 'a container that paints nothing takes no radius and no offset of a ground: a save that says one is refused with 400, the component named, and the file is not written',
+	$bandRefused[0]['status'] === 400 && str_contains( implode( ' ', $bandRefused[0]['problems'] ), 'the component "band" with a radius, and it is no surface' ) === true
+	&& $bandRefused[1]['status'] === 400 && str_contains( implode( ' ', $bandRefused[1]['problems'] ), 'the component "band" with a bgPl, and it is no card' ) === true
+	&& file_get_contents( $bandPath ) === \Nino\Modules\Builder\Document::load( $bandDoc, 'page-home-band' )['source'] );
+unlink( $bandPath );
 
 // --- 8. Creating and deleting ------------------------------------------------
 
