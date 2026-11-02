@@ -284,6 +284,7 @@ class Tag {
 	getAttribute( key ) { return this.attrs[key] === undefined ? null : this.attrs[key] }
 	setAttribute( key, value ) { this.attrs[key] = String( value ) }
 	hasAttribute( key ) { return this.attrs[key] !== undefined }
+	removeAttribute( key ) { delete this.attrs[key] }
 
 	appendChild( node ) { return this.insertBefore( node, null ) }
 	insertBefore( node, ref ) {
@@ -588,6 +589,17 @@ const made = function( tag, className, text ) {
 	if( className !== undefined ) element.className = className;
 	if( text !== undefined ) element.textContent = text;
 	return element;
+};
+
+// The storage of the browser, as the clip is kept in it: a double that keeps what is set, and that a check may let refuse. The page has none until the
+// checks of the clip put it there (sandbox.localStorage): the panel keeps nothing else in the storage, and a check above says so
+const storage = {
+	items : {},
+	refuses : false,
+	refusesWrites : false,
+	getItem( key ) { if( this.refuses === true ) throw new Error('no storage'); return Object.prototype.hasOwnProperty.call( this.items, key ) ? this.items[key] : null },
+	setItem( key, value ) { if( this.refuses === true || this.refusesWrites === true ) throw new Error('no storage'); this.items[key] = String( value ) },
+	removeItem( key ) { delete this.items[key] },
 };
 
 const sandbox = {
@@ -979,7 +991,7 @@ const unnamed = function( root ) {
 	return root.all().filter( function( el ) {
 
 		if( el.localName === 'button' && el.querySelector('use') !== null && el.textContent.trim() === '' )
-			return el.title === '' || el.getAttribute('aria-label') !== el.title;
+			return el.title === '' || ( el.getAttribute('aria-label') !== el.title && el.getAttribute('aria-description') !== el.title );
 
 		if( el.localName === 'label' && el.classList.contains('builder-segment-option') && el.querySelector('use') !== null )
 			return el.title === '' || el.querySelector('input').getAttribute('aria-label') !== el.title;
@@ -1129,7 +1141,7 @@ console.log( '\nThe tools of a frame' );
 
 model = page();
 const toolbar = function( at ) { return JSON.stringify( builder._toolbar( model, at ) ) };
-check( 'a section has settings, HTML+, up, down, duplicate and delete - the first cannot go up, the last cannot go down', toolbar( [ 1 ] ) === '{"settings":true,"html":true,"up":true,"down":true,"duplicate":true,"delete":true}'
+check( 'a section has settings, HTML+, up, down, duplicate, copy, paste and delete - the first cannot go up, the last cannot go down, and paste waits for a copy', toolbar( [ 1 ] ) === '{"settings":true,"html":true,"up":true,"down":true,"duplicate":true,"copy":true,"paste":false,"delete":true}'
 	&& builder._toolbar( model, [ 0 ] ).up === false && builder._toolbar( model, [ 0 ] ).down === true && builder._toolbar( model, [ 3 ] ).down === false && builder._toolbar( model, [ 3 ] ).up === true );
 check( '...a block of html has no tool of its own to edit it as HTML+: its settings are the editor', builder._toolbar( model, [ 2 ] ).html === null && builder._toolbar( model, [ 2 ] ).settings === true && builder._toolbar( model, [ 2 ] ).duplicate === true );
 check( '...a column and a component move inside their level: the first of two cannot go up, the last cannot go down', builder._toolbar( model, [ 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 0 ] ).down === true && builder._toolbar( model, [ 1, 1 ] ).down === false
@@ -1441,7 +1453,7 @@ check( '...a section has a pencil right of its name, which is a button with the 
 		return pencil.localName === 'button' && pencil.title === 'Rename' && pencil.getAttribute('aria-label') === 'Rename' && iconOf( pencil ) === 'pencil' && pencil.previousSibling.className === 'builder-frame-name';
 	} ) && preview().children[2].querySelector('.builder-rename') === null && preview().querySelector('.builder-pcol-head .builder-rename') === null );
 check( '...the tools of a frame are the last part of its head', headsOf().every( function( head ) { return head.children[2].querySelectorAll('button').length > 0 } )
-	&& headsOf()[0].children[2].querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,delete' );
+	&& headsOf()[0].children[2].querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' );
 check( '...what is said of a section is a picture behind it, as an icon with its word for the title and the label: the section with one says it, the others do not', ( function() {
 	const status = preview().children[0].querySelector('.builder-frame-head .builder-head-status');
 	const item = status.querySelector('.is-background');
@@ -4140,15 +4152,15 @@ builder._renderEditor();
 const toolsOf = function( path ) {
 	const found = {};
 	const bar = builder._tools( path );
-	[ 'settings', 'html', 'up', 'down', 'duplicate', 'delete' ].forEach( function( name ) { found[name] = bar.querySelector('[data-tool="'+ name+ '"]') } );
+	[ 'settings', 'html', 'up', 'down', 'duplicate', 'copy', 'paste', 'delete' ].forEach( function( name ) { found[name] = bar.querySelector('[data-tool="'+ name+ '"]') } );
 	found.bar = bar;
 	return found;
 };
 const component = toolsOf( [ 0, 0, 0 ] );
 check( 'the tools of a frame are the buttons of its toolbar: the first component cannot go up, has no tool for HTML+, and has the others', component.up.disabled === true && component.down.disabled === false && component.html.hidden === true && component.settings.hidden === false
 	&& component.duplicate.disabled === false && component.delete.disabled === false );
-check( '...each is an icon with the word for its title and its label', component.bar.getAttribute('role') === 'toolbar' && component.bar.getAttribute('aria-label') === 'Tools' && unnamed( component.bar ).length === 0 && component.bar.querySelectorAll('button').length === 6
-	&& component.bar.querySelectorAll('button').map( function( button ) { return button.title } ).join() === 'Settings,Edit as HTML+,Move up,Move down,Duplicate,Delete' );
+check( '...each is an icon with the word for its title and its label', component.bar.getAttribute('role') === 'toolbar' && component.bar.getAttribute('aria-label') === 'Tools' && unnamed( component.bar ).length === 0 && component.bar.querySelectorAll('button').length === 8
+	&& component.bar.querySelectorAll('button').map( function( button ) { return button.title } ).join() === 'Settings,Edit as HTML+,Move up,Move down,Duplicate,Copy,'+ word('reason/paste-empty')+ ',Delete' );
 component.down.dispatch( 'click' );
 check( '...and pressed they work on the frame: down moves the title behind the subtitle', builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.name } ).join() === 'subtitle,title,button' && changes === 1 );
 component.duplicate.dispatch( 'click' );
@@ -5464,8 +5476,8 @@ check( '...the tools of a child are those of a component: settings, up and down 
 	const model = cardPage();
 	const tools = function( path ) { return JSON.stringify( builder._toolbar( model, path ) ) };
 
-	return tools( [ 0, 1, 0, 0 ] ) === '{"settings":true,"html":null,"up":false,"down":true,"duplicate":true,"delete":true}' && tools( [ 0, 1, 0, 2 ] ) === '{"settings":true,"html":null,"up":true,"down":false,"duplicate":true,"delete":true}'
-		&& tools( [ 0, 1, 0, 1 ] ) === '{"settings":true,"html":null,"up":true,"down":true,"duplicate":true,"delete":true}' && tools( cardAt ) === '{"settings":true,"html":null,"up":false,"down":false,"duplicate":true,"delete":true}';
+	return tools( [ 0, 1, 0, 0 ] ) === '{"settings":true,"html":null,"up":false,"down":true,"duplicate":true,"copy":true,"paste":false,"delete":true}' && tools( [ 0, 1, 0, 2 ] ) === '{"settings":true,"html":null,"up":true,"down":false,"duplicate":true,"copy":true,"paste":false,"delete":true}'
+		&& tools( [ 0, 1, 0, 1 ] ) === '{"settings":true,"html":null,"up":true,"down":true,"duplicate":true,"copy":true,"paste":false,"delete":true}' && tools( cardAt ) === '{"settings":true,"html":null,"up":false,"down":false,"duplicate":true,"copy":true,"paste":false,"delete":true}';
 } )() );
 check( '...a child is taken out of its container, a container with its children out of its column - and the first is the end of the level it stood in', ( function() {
 
@@ -6732,7 +6744,7 @@ check( 'a component that holds components is a frame of its own in the body of i
 	&& texts( frameOf('0.1.0').querySelectorAll('.builder-card-name') ) === 'Card' );
 check( '...its body has its children as placeholders, in order, each a frame of its own with its tools, and ends in a button that adds a child; the placeholders say what the components draw', classes( frameOf('0.1.0').querySelector('.builder-card-body').children ) === 'builder-ph has-draws builder-pick,builder-ph builder-pick,builder-ph has-draws builder-pick,builder-adds'
 	&& frameOf('0.1.0').querySelectorAll('.builder-ph').map( function( ph ) { return ph.dataset.path } ).join() === '0.1.0.0,0.1.0.1,0.1.0.2' && frameOf('0.1.0.0').querySelector('.builder-ph-draws').textContent === 'H3 .nino-card-title'
-	&& frameOf('0.1.0.0').querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,delete' && frameOf('0.1.0').querySelector('.builder-adds .builder-add-button').textContent === '+ Component' );
+	&& frameOf('0.1.0.0').querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' && frameOf('0.1.0').querySelector('.builder-adds .builder-add-button').textContent === '+ Component' );
 check( '...a card with no picture behind it says nothing in its head; the head of the column and the head of the section say nothing of the card', frameOf('0.1.0').querySelector('.builder-head-status').children.length === 0 && frameOf('0.1').querySelector('.builder-pcol-head .builder-head-status').children.length === 0
 	&& frameOf('0.1.0').querySelector('.builder-card-head .builder-rename') === null );
 check( '...a card in a loop is drawn once, in the cell of each element as the components of the column are - and the loop is in the head of its column, not in the card', preview().querySelectorAll('[data-path="1.0"] .builder-card').length === 1 && frameOf('1.0.0').querySelectorAll('.builder-ph').length === 1
@@ -7502,6 +7514,721 @@ check( 'the copy that the tool makes is made with them: the text of every langua
 	const copy = builder._get( builder._doc.model, [ 0, 0, 1 ] );
 	return copy.source === '/template/page-home/hero/title-2' && JSON.stringify( copy.create ) === '{}' && JSON.stringify( copy.values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}';
 } )() );
+
+console.log( '\nCopy and paste beside Duplicate' );
+
+sandbox.localStorage = storage;
+
+// A clip, as the tool's copy makes it, of a node of the page that is open
+const copied = function( path, withModel, file ) {
+	doc = open( withModel );
+	doc.file = file ?? 'page-home';
+	builder._renderEditor();
+	builder._clip = null;
+	storage.items = {};
+	return builder._copyAt( path );
+};
+const clipKey = builder.CLIP_KEY;
+// A clip made by hand: a component of the registry in a column of another page, with the words it carried
+const handmade = function( name, extra ) {
+	return Object.assign( { kind : 'component', file : 'page-other', section : 'intro', node : Object.assign( { name : name, source : '', text : null, attributes : {} }, extra ?? {} ), values : {} } );
+};
+// A check that cannot run to its end - a tool that is not there, a registry entry that is missing - is a failed check, and the ones after it still run
+const attempt = function( run ) { try { return run() } catch( error ) { console.log( '      '+ error.message ); return false } };
+const pathOf = function( list ) { return JSON.stringify( list ) };
+
+check( 'copy makes the clip of the node at the path: its kind, the page and the section it was in, a copy of the node that shares nothing with it - and the text each key under the prefix of the section has in each language, with what was typed for it and is not saved yet laid over the stored text', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	builder._get( builder._doc.model, [ 0, 0, 0 ] ).values = { de_DE : 'Hallo' };
+	builder._doc.saved = JSON.stringify( builder._doc.model );
+	changes = 0;
+
+	const clip = builder._copyAt( [ 0, 0, 0 ] );
+
+	clip.node.attributes.tag = 'h6';
+
+	return clip.kind === 'component' && clip.file === 'page-home' && clip.section === 'hero' && builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.tag === 'h3' && clip.node.name === 'title' && clip === builder._clip
+		&& JSON.stringify( clip.values ) === '{"/template/page-home/hero/title":{"en_US":"Welcome","de_DE":"Hallo"}}' && builder._get( builder._doc.model, [ 0, 0, 0 ] ).values.de_DE === 'Hallo';
+} ) );
+check( '...it marks nothing dirty and changes nothing: the document is as saved, no change was counted', builder._unsaved( builder._doc ) === false && changes === 0 );
+check( '...a column carries the words of every key of its components - a key every language shares in each language of the site, a source that is not under the section\'s keys and the key of a picture not at all - a section the same for all its columns, and a block of html has none', attempt( function() {
+
+	const column = copied( [ 0, 0 ] );
+	const section = copied( [ 0 ] );
+	const html = copied( [ 2 ] );
+	const picture = copied( [ 0, 0 ], cardPage(), 'page-home-card' );
+
+	builder._keys = [ { key : '/template/page-home-card/story/photo', global : false, format : 'plain', maxlength : 160, values : { en_US : 'A photo' } } ];
+
+	const again = builder._copyAt( [ 0, 0 ] );
+
+	return column.kind === 'column' && column.section === 'hero' && Object.keys( column.values ).join() === '/template/page-home/hero/title,/template/page-home/hero/subtitle'
+		&& JSON.stringify( column.values['/template/page-home/hero/subtitle'] ) === '{"en_US":"We build","de_DE":"We build"}' && section.kind === 'section' && section.section === 'hero' && section.node.id === 'hero' && section.node.background.slot === '/template/page-home/hero/background'
+		&& JSON.stringify( section.values ) === JSON.stringify( column.values ) && html.kind === 'html' && html.section === '' && JSON.stringify( html.values ) === '{}' && html.node.kind === 'html'
+		&& picture.node.components[0].source === '/template/page-home-card/story/photo' && JSON.stringify( again.values ) === '{}';
+} ) );
+check( '...the children of a component that holds components count: their words travel with the card', attempt( function() {
+
+	const clip = copied( cardAt, cardPage(), 'page-home-card' );
+
+	builder._keys = [ { key : '/template/page-home-card/story/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Card title' } }, { key : '/template/page-home-card/story/text', global : false, format : 'plain', maxlength : 160, values : { de_DE : 'Text' } } ];
+
+	const again = builder._copyAt( cardAt );
+
+	return clip.kind === 'component' && clip.node.components.length === 3 && Object.keys( again.values ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text' && JSON.stringify( again.values['/template/page-home-card/story/text'] ) === '{"de_DE":"Text"}';
+} ) );
+check( '...a loop has nothing to copy, and the clip stays what it was', attempt( function() {
+	const clip = copied( [ 0, 0, 0 ] );
+	return builder._copyAt( [ 1, 1, 'x' ] ) === null && builder._copyAt( [] ) === null && builder._copyAt( [ 9, 0 ] ) === null && builder._clip === clip;
+} ) );
+
+check( 'the clip is kept in the storage of the browser under one key of the Builder, and read from there when the editor opens: after a reload, and on another page', attempt( function() {
+
+	const clip = copied( [ 0, 0, 0 ] );
+	const kept = storage.items[clipKey] !== undefined && Object.keys( storage.items ).join() === clipKey && JSON.stringify( JSON.parse( storage.items[clipKey] ) ) === JSON.stringify( clip );
+
+	builder._clip = null;
+	requests = [];
+	builder._openEditor( 'page-other' );
+	requests.forEach( function( request ) {
+		if( request.action === 'builder/load' )
+			request.callback( 200, { model : page(), hash : 'h9', source : '' } );
+		else if( request.action === 'builder/registry' )
+			request.callback( 200, registry() );
+		else if( request.action === 'text/keys' )
+			request.callback( 200, { keys : known() } );
+		else
+			request.callback( 200, { templates : [ { file : 'page-other', usedBy : [] } ] } );
+	} );
+
+	return kept && builder._doc.file === 'page-other' && JSON.stringify( builder._clip ) === JSON.stringify( clip ) && builder._clip.file === 'page-home';
+} ) );
+check( '...what the storage holds that is no clip is none: a text that is no json, a thing of another shape, a kind of node there is none of', attempt( function() {
+
+	const clip = copied( [ 0, 0, 0 ] );
+	const broken = [ 'not json', '[]', '{"kind":"component"}', JSON.stringify( Object.assign( {}, clip, { kind : 'template' } ) ), JSON.stringify( Object.assign( {}, clip, { node : null } ) ), JSON.stringify( Object.assign( {}, clip, { values : [] } ) ) ];
+
+	return broken.every( function( text ) {
+		storage.items[clipKey] = text;
+		return builder._storedClip() === null;
+	} ) && ( delete storage.items[clipKey] ) && builder._storedClip() === null;
+} ) );
+check( '...where there is no storage to be had the clip lives in memory: copy still makes it, a paste uses it, and opening the editor leaves it where it is', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	storage.refuses = true;
+
+	const clip = builder._copyAt( [ 0, 0, 0 ] );
+	const asked = builder._storedClip();
+
+	requests = [];
+	builder._openEditor( 'page-home' );
+	requests.forEach( function( request ) {
+		if( request.action === 'builder/load' )
+			request.callback( 200, { model : page(), hash : 'h9', source : '' } );
+		else if( request.action === 'builder/registry' )
+			request.callback( 200, registry() );
+		else if( request.action === 'text/keys' )
+			request.callback( 200, { keys : known() } );
+		else
+			request.callback( 200, { templates : [ { file : 'page-home', usedBy : [] } ] } );
+	} );
+	builder._pasteAt( [ 0, 0, 1 ] );
+	storage.refuses = false;
+
+	return clip !== null && asked === undefined && builder._clip === clip && builder._doc.model.blocks[0].cols[0].components.length === 4;
+} ) );
+
+check( 'a component is pasted after the component the tool is of, with a key of its own beside the original, made with the words of the clip - and the clip stays: it is pasted again as often as it is wanted', attempt( function() {
+
+	const clip = copied( [ 0, 0, 0 ] );
+	const model = page();
+	const first = builder._paste( model, registry(), 'page-home', [ 0, 0, 1 ], clip );
+	const second = builder._paste( model, registry(), 'page-home', [ 0, 0, 1 ], clip );
+	const components = model.blocks[0].cols[0].components;
+
+	return pathOf( first ) === '[0,0,2]' && pathOf( second ) === '[0,0,2]' && components.map( function( node ) { return node.name+ ':'+ node.source.split('/').pop() } ).join() === 'title:title,subtitle:subtitle,title:title-3,title:title-2,button:name'
+		&& JSON.stringify( components[2].create ) === '{}' && JSON.stringify( components[2].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && components[2] !== clip.node && components[2].attributes !== clip.node.attributes && components[0].create === undefined
+		&& builder._clip === clip && clip.node.source === '/template/page-home/hero/title';
+} ) );
+check( '...at the end of a column, where the tool of the column is pressed', attempt( function() {
+
+	const clip = copied( [ 0, 0, 1 ] );
+	const model = page();
+
+	return pathOf( builder._paste( model, registry(), 'page-home', [ 0, 0 ], clip ) ) === '[0,0,3]' && model.blocks[0].cols[0].components[3].source === '/template/page-home/hero/subtitle-2'
+		&& JSON.stringify( model.blocks[0].cols[0].components[3].values ) === '{"en_US":"We build","de_DE":"We build"}';
+} ) );
+check( '...into a component that holds components, at the end of it, where that one takes it - and after it where it does not: a component the card does not take is put behind the card, in the column', attempt( function() {
+
+	const clip = copied( [ 0, 1, 0, 1 ], cardPage(), 'page-home-card' );
+	const model = cardPage();
+	const into = builder._paste( model, registry(), 'page-home-card', cardAt, clip );
+	const other = handmade( 'title', { source : '/template/page-home-card/story/other' } );
+	const behind = builder._paste( model, registry(), 'page-home-card', cardAt, other );
+
+	return pathOf( into ) === '[0,1,0,3]' && cardIn( model ).components.map( function( child ) { return child.name } ).join() === 'card-title,text,button,text' && cardIn( model ).components[3].source === '/template/page-home-card/story/text-2'
+		&& pathOf( behind ) === '[0,1,1]' && model.blocks[0].cols[1].components.map( function( node ) { return node.name } ).join() === 'card,title' && builder._pasteable( model, registry(), cardAt, other ) === '';
+} ) );
+check( '...a card is pasted as a card behind the card, with its children, each with a key of its own - the card does not hold a card', attempt( function() {
+
+	const clip = copied( cardAt, cardPage(), 'page-home-card' );
+	const model = cardPage();
+	const at = builder._paste( model, registry(), 'page-home-card', cardAt, clip );
+	const copy = builder._get( model, at );
+
+	return pathOf( at ) === '[0,1,1]' && copy.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title-2,/template/page-home-card/story/text-2,/template/page-home-card/story/button-2'
+		&& cardIn( model ).components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text,/template/page-home-card/story/button'
+		&& builder._pasteable( model, registry(), [ 0, 1, 0, 0 ], clip ) === word('reason/pick-not-card') && builder._paste( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], clip ) !== null;
+} ) );
+check( 'a column is pasted after the column the tool is of, and at the end of the columns of a section: its components take keys beside those of the section they go into, whatever section the column was in', attempt( function() {
+
+	const clip = copied( [ 0, 0 ] );
+	const model = page();
+	const after = builder._paste( model, registry(), 'page-home', [ 1, 0 ], clip );
+	const end = builder._paste( model, registry(), 'page-home', [ 1 ], clip );
+
+	return pathOf( after ) === '[1,1]' && pathOf( end ) === '[1,3]' && model.blocks[1].cols.length === 4
+		&& model.blocks[1].cols[1].components.map( function( node ) { return node.source } ).join() === '/template/page-home/services/title-2,/template/page-home/services/subtitle,/_nino/webpage/contact/name'
+		&& model.blocks[1].cols[3].components.map( function( node ) { return node.source } ).join() === '/template/page-home/services/title-3,/template/page-home/services/subtitle-2,/_nino/webpage/contact/name'
+		&& JSON.stringify( model.blocks[1].cols[1].components[0].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && JSON.stringify( model.blocks[1].cols[1].components[0].create ) === '{}' && model.blocks[1].cols[1].components[2].create === undefined
+		&& model.blocks[1].cols[1] !== clip.node && model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title';
+} ) );
+check( 'a section is pasted after the section the tool is of and at the end of the page: with an id that is free - hero-2, and one that is not the id a loop of sections would make - and with its keys and slots new under it', attempt( function() {
+
+	const clip = copied( [ 0 ] );
+	const model = page();
+	const after = builder._paste( model, registry(), 'page-home', [ 1 ], clip );
+	const end = builder._paste( model, registry(), 'page-home', [], clip );
+	const looped = page();
+
+	looped.blocks[1].stack = { name : 'sections', source : '/services', attributes : {} };
+
+	const loopClip = copied( [ 1 ], looped );
+	const model2 = page();
+
+	model2.blocks[1].stack = { name : 'sections', source : '/services', attributes : {} };
+
+	const copy = builder._paste( model2, registry(), 'page-home', [ 1 ], loopClip );
+
+	return pathOf( after ) === '[2]' && model.blocks[2].id === 'hero-2' && pathOf( end ) === '[5]' && model.blocks[5].id === 'hero-3' && model.blocks.length === 6
+		&& model.blocks[2].cols[0].components[0].source === '/template/page-home/hero-2/title' && JSON.stringify( model.blocks[2].cols[0].components[0].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}'
+		&& model.blocks[2].background.slot === '/template/page-home/hero-2/background' && model.blocks[2].background.create.from === '/template/page-home/hero/background' && model.blocks[2].background.create.label === words['/_admin/builder/source/background']
+		&& model.blocks[0].id === 'hero' && model.blocks[0].background.create === undefined && model.blocks[2].renamedFrom === undefined && pathOf( copy ) === '[2]' && model2.blocks[2].id === 'services-copy';
+} ) );
+check( '...a block of html is pasted as it is', attempt( function() {
+
+	const clip = copied( [ 2 ] );
+	const model = page();
+	const at = builder._paste( model, registry(), 'page-home', [ 0 ], clip );
+
+	return pathOf( at ) === '[1]' && model.blocks[1].kind === 'html' && model.blocks[1].source === clip.node.source && model.blocks[1].source !== undefined && model.blocks[1] !== clip.node && JSON.stringify( model.blocks[1] ) === JSON.stringify( clip.node );
+} ) );
+check( 'a paste on another page of the project: the sources move under the keys of the section it goes into, the words are the clip\'s, a picture is a copy of the slot it was - at its size - and a section is a new one there with its own id', attempt( function() {
+
+	const reg = registry();
+	const model = page();
+	const photo = { name : 'image', source : '/template/page-other/intro/photo', text : null, attributes : { alt : '', focus : '5' }, create : undefined };
+
+	reg.slots.push( { uri : '/template/page-other/intro/photo', label : 'Photo', width : 800, height : 600, hasImage : true, url : '/uploads/photo.jpg', alt : { en_US : 'A photo' } } );
+	delete photo.create;
+
+	const clip = handmade( 'title', { source : '/template/page-other/intro/title' } );
+	const picture = handmade( 'image', photo );
+
+	clip.values = { '/template/page-other/intro/title' : { en_US : 'Hi', de_DE : 'Hallo' } };
+
+	const text = builder._paste( model, reg, 'page-home', [ 0, 0, 1 ], clip );
+	const image = builder._paste( model, reg, 'page-home', [ 0, 0 ], picture );
+	const components = model.blocks[0].cols[0].components;
+	const section = { kind : 'section', file : 'page-other', section : 'intro', node : { kind : 'section', id : 'intro', settings : {}, background : null, stack : null, cols : [ { components : [ clip.node ], stack : null, background : null } ] }, values : clip.values };
+	const whole = builder._paste( model, reg, 'page-home', [], section );
+
+	return pathOf( text ) === '[0,0,2]' && components[2].source === '/template/page-home/hero/title-2' && JSON.stringify( components[2].values ) === '{"en_US":"Hi","de_DE":"Hallo"}' && JSON.stringify( components[2].create ) === '{}'
+		&& pathOf( image ) === '[0,0,4]' && components[4].source === '/template/page-home/hero/photo' && JSON.stringify( components[4].create ) === JSON.stringify( { label : registryFixture.components.image.label, width : 800, height : 600, from : '/template/page-other/intro/photo' } )
+		&& pathOf( whole ) === '[4]' && model.blocks[4].id === 'intro' && model.blocks[4].cols[0].components[0].source === '/template/page-home/intro/title' && JSON.stringify( model.blocks[4].cols[0].components[0].values ) === '{"en_US":"Hi","de_DE":"Hallo"}'
+		&& clip.node.source === '/template/page-other/intro/title';
+} ) );
+
+check( 'a name a copy is given is not one the project holds already: a key it knows or a slot of the registry under the prefix of the section is taken, for a paste and for a duplicate alike', attempt( function() {
+
+	const reg = registry();
+	const clip = copied( [ 0, 0, 0 ] );
+	const key = function( name ) { return { key : '/template/page-home/hero/'+ name, global : false, format : 'plain', maxlength : 160, values : {} } };
+
+	builder._keys = [ key('title-2'), key('title-3') ];
+
+	const bySource = function( run ) { const model = page(); return builder._get( model, run( model ) ).source.split('/').pop() };
+	const pasted = bySource( function( model ) { return builder._paste( model, reg, 'page-home', [ 0, 0, 0 ], clip ) } );
+	const duplicated = bySource( function( model ) { return builder._duplicate( model, reg, 'page-home', [ 0, 0, 0 ] ) } );
+
+	builder._keys = [];
+	reg.slots.push( { uri : '/template/page-home/hero/title-2', label : 'Left over', width : 10, height : 10, hasImage : false, url : null, alt : [] } );
+
+	const slotted = bySource( function( model ) { return builder._paste( model, reg, 'page-home', [ 0, 0, 0 ], clip ) } );
+	const slotDuplicated = bySource( function( model ) { return builder._duplicate( model, reg, 'page-home', [ 0, 0, 0 ] ) } );
+	const clean = bySource( function( model ) { return builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ] ) } );
+
+	builder._keys = known();
+
+	return pasted === 'title-4' && duplicated === 'title-4' && slotted === 'title-3' && slotDuplicated === 'title-3' && clean === 'title-2';
+} ) );
+
+check( 'nothing is pasted without a clip, and the reason is said: the words of the panel', attempt( function() {
+	doc = open();
+	builder._clip = null;
+	return builder._pasteable( builder._doc.model, builder._registry, [ 0, 0, 0 ], null ) === word('reason/paste-empty') && builder._pasteable( builder._doc.model, builder._registry, [], undefined ) === word('reason/paste-empty') && word('reason/paste-empty') !== '';
+} ) );
+check( '...a clip that holds a component, a loop or a type the project does not have is refused with its name - however deep it is in the clip', attempt( function() {
+
+	doc = open();
+
+	const model = builder._doc.model;
+	const reg = builder._registry;
+	const say = function( name ) { return sandbox.Nino.adminUi.format( word('reason/paste-unknown'), name ) };
+	const column = { kind : 'column', file : 'page-home', section : 'hero', values : {}, node : { components : [ { name : 'title' }, { name : 'card', components : [ { name : 'unheard' } ] } ], stack : null } };
+	const loop = function( stack ) { return { kind : 'column', file : 'page-home', section : 'hero', values : {}, node : { components : [], stack : stack } } };
+	const section = { kind : 'section', file : 'page-home', section : 'hero', values : {}, node : { kind : 'section', id : 'x', stack : { name : 'unheardof', source : '/services' }, cols : [] } };
+
+	return builder._pasteable( model, reg, [ 0, 0, 0 ], handmade('nothing-like-it') ) === say('nothing-like-it') && builder._pasteable( model, reg, [ 0, 0 ], handmade('toString') ) === say('toString') && builder._pasteable( model, reg, [ 0, 0 ], handmade('title') ) === ''
+		&& builder._pasteable( model, reg, [ 0, 0 ], column ) === say('unheard') && builder._pasteable( model, reg, [ 1 ], loop( { name : 'nothing', source : '/services' } ) ) === say('nothing') && builder._pasteable( model, reg, [ 1 ], loop( { name : 'stack', source : '/nothing' } ) ) === say('/nothing')
+		&& builder._pasteable( model, reg, [ 0 ], loop( { name : 'stack', source : '/services' } ) ) === '' && builder._pasteable( model, reg, [ 1 ], section ) === say('unheardof') && builder._pasteable( model, reg, [ 1 ], { kind : 'section', file : 'p', section : 'x', values : {}, node : Object.assign( {}, section.node, { stack : null, cols : [ { components : [ { name : 'nothing-like-it' } ], stack : null } ] } ) } ) === say('nothing-like-it');
+} ) );
+check( '...a clip does not fit a node of another kind: a section or a block of html goes beside a section or a block and at the end of the page, a column beside a column and into a section, a component beside a component and into a column - and into nothing else, a loop least of all', attempt( function() {
+
+	doc = open();
+
+	const model = builder._doc.model;
+	const reg = builder._registry;
+	const clips = { section : copied( [ 0 ] ), html : copied( [ 2 ] ), column : copied( [ 0, 0 ] ), component : copied( [ 0, 0, 0 ] ) };
+	const ok = { section : [ [], [ 0 ], [ 2 ] ], html : [ [], [ 1 ], [ 2 ] ], column : [ [ 0 ], [ 1 ], [ 1, 0 ] ], component : [ [ 0, 0 ], [ 1, 1 ], [ 0, 0, 1 ] ] };
+	const every = [ [], [ 0 ], [ 2 ], [ 0, 0 ], [ 1, 1 ], [ 0, 0, 1 ], [ 1, 1, 'x' ] ];
+	const wrong = every.filter( function( at ) { return [ 'section', 'html', 'column', 'component' ].some( function( kind ) {
+		return builder._pasteable( model, reg, at, clips[kind] ) !== '' && ok[kind].some( function( good ) { return builder._same( good, at ) } );
+	} ) } );
+	const refused = function( kind, at ) { return builder._pasteable( model, reg, at, clips[kind] ) === sandbox.Nino.adminUi.format( word('reason/paste-place'), builder._clipWord( clips[kind] ) ) };
+
+	return wrong.length === 0 && Object.keys( ok ).every( function( kind ) { return ok[kind].every( function( at ) { return builder._pasteable( model, reg, at, clips[kind] ) === '' } ) }, this )
+		&& refused( 'section', [ 0, 0 ] ) && refused( 'section', [ 0, 0, 0 ] ) && refused( 'html', [ 0, 0 ] ) && refused( 'column', [] ) && refused( 'column', [ 2 ] ) && refused( 'column', [ 0, 0, 0 ] ) && refused( 'component', [] ) && refused( 'component', [ 0 ] ) && refused( 'component', [ 2 ] )
+		&& refused( 'section', [ 1, 1, 'x' ] ) && refused( 'component', [ 1, 1, 'x' ] ) && refused( 'component', [ 9 ] ) && refused( 'column', [ 9, 9 ] ) && builder._paste( model, reg, 'page-home', [ 0, 0, 0 ], clips.column ) === null && builder._paste( model, reg, 'page-home', [], clips.component ) === null;
+} ) );
+check( '...a kind word tells the clip in the title: a section by its id', attempt( function() {
+	const clips = { section : copied( [ 1 ] ), html : copied( [ 2 ] ), column : copied( [ 0, 0 ] ), component : copied( [ 0, 0, 0 ] ) };
+	return builder._clipWord( clips.section ) === word('tree/section')+ ' services' && builder._clipWord( clips.html ) === word('tree/html-block') && builder._clipWord( clips.column ) === word('tree/col') && builder._clipWord( clips.component ) === word('tree/component');
+} ) );
+check( '...a component stands where the lightbox would let it stand and nowhere else: for every component of the registry and a place, the answer of the paste is the reason the lightbox gives - in a column of the first section, of another, in a column that runs a loop, in a component that holds components', attempt( function() {
+
+	const reg = registry();
+	const model = cardPage();
+	const places = [ [ 0, 0 ], [ 1, 0 ], [ 0, 1 ] ];
+	const found = {};
+	const clipOf = function( name ) { return handmade( name, builder._holds( reg, name ) !== '' ? { components : [] } : {} ) };
+	const reasonsAt = function( place ) {
+		const reasons = {};
+		builder._pickChoices( model, place, reg ).forEach( function( group ) { group.rows.forEach( function( row ) { row.items.forEach( function( item ) { reasons[item.name] = item.reason; found[item.reason] = true } ) } ) } );
+		return reasons;
+	};
+	// The same as the lightbox: a column's end, or - behind a child - the container the child is in
+	const sameAs = function( path, place ) {
+		const reasons = reasonsAt( place );
+		return Object.keys( reg.components ).every( function( name ) { return builder._pasteable( model, reg, path, clipOf( name ) ) === reasons[name] } );
+	};
+
+	// A component that belongs in the hero only and one that does not take a loop, so that every reason there is has an example
+	reg.components['scroll-hint']['in'] = [ 'hero' ];
+	reg.components.spacer.loop = false;
+
+	const same = places.every( function( place ) { return sameAs( place, place ) } ) && sameAs( [ 0, 1, 0, 0 ], cardAt );
+
+	delete found[''];
+
+	return same && Object.keys( found ).sort().join() === [ word('reason/pick-no-loop'), word('reason/pick-not-card'), word('reason/pick-only-card'), word('reason/pick-only-hero') ].sort().join();
+} ) );
+check( '...a component that does not take a loop is refused in the cell of one - at the end of the column, behind a component in it - and so is a column that carries such a component into a section that is a loop', attempt( function() {
+
+	const reg = registry();
+	const model = page();
+	const clip = copied( [ 0, 0, 0 ] );
+	const reason = word('reason/pick-no-loop');
+
+	reg.components.title.loop = false;
+
+	const column = copied( [ 0, 0 ] );
+	const looped = page();
+
+	looped.blocks[3].stack = { name : 'sections', source : '/services', attributes : {} };
+
+	return builder._pasteable( model, reg, [ 1, 1 ], clip ) === reason && builder._pasteable( model, reg, [ 1, 1, 0 ], clip ) === reason && builder._pasteable( model, reg, [ 1, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 3, 0 ], clip ) === ''
+		&& builder._pasteable( looped, reg, [ 3 ], column ) === reason && builder._pasteable( looped, reg, [ 3, 0 ], column ) === reason && builder._pasteable( model, reg, [ 3 ], column ) === ''
+		&& ( function() {
+
+			// The children of a card that is pasted are in the cell of the loop as well: one that does not take a loop refuses the card
+			const cards = cardPage();
+			const holder = copied( cardAt, cardPage(), 'page-home-card' );
+			const own = registry();
+
+			own.components.text.loop = false;
+
+			return builder._pasteable( cards, registry(), [ 1, 0 ], holder ) === '' && builder._pasteable( cards, own, [ 1, 0 ], holder ) === reason && builder._pasteable( cards, own, [ 0, 1 ], holder ) === '';
+		} )();
+} ) );
+check( '...a loop is not put in a loop: a column that has one, into a section that makes a section of every element - and a column that has none into it is fine; the section that is a loop itself is pasted anywhere', attempt( function() {
+
+	const loopColumn = copied( [ 1, 1 ] );
+	const looped = page();
+
+	looped.blocks[3].stack = { name : 'sections', source : '/services', attributes : {} };
+
+	const loopSection = copied( [ 3 ], looped );
+	const reg = registry();
+
+	return loopColumn.node.stack !== null && builder._pasteable( looped, reg, [ 3 ], loopColumn ) === word('reason/stack-in-stack') && builder._pasteable( looped, reg, [ 3, 0 ], loopColumn ) === word('reason/stack-in-stack') && builder._pasteable( looped, reg, [ 1 ], loopColumn ) === ''
+		&& builder._pasteable( looped, reg, [ 1, 1 ], loopColumn ) === '' && builder._pasteable( looped, reg, [ 0 ], loopSection ) === '' && builder._pasteable( looped, reg, [], loopSection ) === '';
+} ) );
+check( '...where the first section is the place, a component that belongs in the hero only is refused behind it', attempt( function() {
+
+	const reg = registry();
+	const model = page();
+
+	reg.components.title.in = [ 'hero' ];
+
+	const clip = copied( [ 0, 0, 0 ] );
+
+	return builder._pasteable( model, reg, [ 0, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 1, 0 ], clip ) === word('reason/pick-only-hero') && builder._pasteable( model, reg, [ 1, 0, 0 ], clip ) === word('reason/pick-only-hero');
+} ) );
+check( '...an unusable path is refused: a paste does not change the model it cannot paste into', attempt( function() {
+	const clip = copied( [ 0, 0, 0 ] );
+	const model = page();
+	const before = JSON.stringify( model );
+	return builder._paste( model, registry(), 'page-home', [ 1, 1, 'x' ], clip ) === null && builder._paste( model, registry(), 'page-home', [ 9, 0 ], clip ) === null && JSON.stringify( model ) === before;
+} ) );
+
+console.log( '\nThe tools that copy and paste' );
+
+check( 'the toolbar answers copy as it answers duplicate and paste by what the clip fits: a component clip is offered at a component, a column, a child - not at a section or a block of html', attempt( function() {
+
+	const clip = copied( [ 0, 0, 0 ] );
+	const model = builder._doc.model;
+	const tools = function( at ) { return builder._toolbar( model, at ) };
+
+	return clip !== null && tools( [ 0, 0, 1 ] ).paste === true && tools( [ 0, 0 ] ).paste === true && tools( [ 1, 1, 3 ] ).paste === true && tools( [ 0 ] ).paste === false && tools( [ 2 ] ).paste === false && tools( [ 0, 0, 1 ] ).copy === true && tools( [ 2 ] ).copy === true
+		&& tools( [ 9, 0, 0 ] ).copy === false && tools( [ 9, 0, 0 ] ).paste === false && builder._toolbar( model, [ 1, 1, 'x' ] ) === null && builder._toolbar( model, [] ) === null
+		&& JSON.stringify( tools( [ 0 ] ) ) === '{"settings":true,"html":true,"up":false,"down":true,"duplicate":true,"copy":true,"paste":false,"delete":true}'
+		&& JSON.stringify( tools( [ 0, 0, 1 ] ) ) === '{"settings":true,"html":null,"up":true,"down":true,"duplicate":true,"copy":true,"paste":true,"delete":true}';
+} ) );
+check( '...every frame of the preview has the two tools, in the order settings, HTML+, up, down, duplicate, copy, paste, delete', attempt( function() {
+
+	copied( [ 0, 0, 0 ] );
+
+	const bars = preview().querySelectorAll('.builder-tools');
+	const model = builder._doc.model;
+	const count = model.blocks.length + model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).length + ( block.cols || [] ).reduce( function( inner, col ) { return inner + col.components.length }, 0 ) }, 0 );
+
+	return bars.length === count && bars.every( function( bar ) { return bar.querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' } );
+} ) );
+check( '...the tool that pastes is off where nothing was copied, with the reason as its title and its label', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+
+	const tool = toolOf( '0.0.1', 'paste' );
+
+	return tool.disabled === true && tool.title === word('reason/paste-empty') && tool.getAttribute('aria-label') === word('menu/paste') && tool.getAttribute('aria-description') === tool.title && toolOf( '0.0.1', 'copy' ).disabled === false && toolOf( '0.0.1', 'copy' ).title === word('menu/copy');
+} ) );
+check( '...and on where the clip fits, with the clip as its title: Paste and the kind word - the id of a section among them - and where it does not, the reason', attempt( function() {
+
+	copied( [ 0, 0, 0 ] );
+
+	const component = toolOf( '0.0.1', 'paste' );
+	const refused = toolOf( '0', 'paste' );
+	const asComponent = component.disabled === false && component.title === sandbox.Nino.adminUi.format( word('menu/paste-of'), word('tree/component') ) && component.getAttribute('aria-label') === component.title && component.hasAttribute('aria-description') === false;
+	const asRefused = refused.disabled === true && refused.title === sandbox.Nino.adminUi.format( word('reason/paste-place'), word('tree/component') ) && refused.getAttribute('aria-label') === word('menu/paste') && refused.getAttribute('aria-description') === refused.title;
+
+	copied( [ 1 ] );
+
+	return asComponent && asRefused && toolOf( '2', 'paste' ).disabled === false && toolOf( '2', 'paste' ).title === sandbox.Nino.adminUi.format( word('menu/paste-of'), word('tree/section')+ ' services' ) && toolOf( '0.0', 'paste' ).disabled === true
+		&& toolOf( '0.0', 'paste' ).title === sandbox.Nino.adminUi.format( word('reason/paste-place'), word('tree/section')+ ' services' );
+} ) );
+check( '...pressed it pastes what is in the clip: after the component, the copy selected and counted as a change, the clip as it was', attempt( function() {
+
+	const clip = copied( [ 0, 0, 0 ] );
+
+	changes = 0;
+	toolOf( '0.0.1', 'paste' ).click();
+
+	return builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.source.split('/').pop() } ).join() === 'title,subtitle,title-2,name' && builder._same( builder._sel, [ 0, 0, 2 ] ) && changes === 1 && builder._unsaved( builder._doc ) === true
+		&& builder._clip === clip && frameOf('0.0.2').classList.contains('is-selected') && JSON.stringify( builder._get( builder._doc.model, [ 0, 0, 2 ] ).values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}';
+} ) );
+check( '...the focus stays on the tool that pastes, where it is drawn now - that of the copy, the selection - and the same press pastes again', attempt( function() {
+
+	copied( [ 0, 0, 0 ] );
+	toolOf( '0.0.1', 'paste' ).focus();
+	toolOf( '0.0.1', 'paste' ).click();
+
+	const first = screen.activeElement === toolOf( '0.0.2', 'paste' ) && screen.activeElement !== null;
+
+	if( screen.activeElement !== null )
+		screen.activeElement.click();
+
+	return first && screen.activeElement === toolOf( '0.0.3', 'paste' ) && builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.source.split('/').pop() } ).join() === 'title,subtitle,title-2,title-3,name';
+} ) );
+check( '...a copy from the tool makes the clip and the tools that paste follow it at once, with the focus on the tool that copied', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	storage.items = {};
+	builder._renderEditor();
+
+	const before = toolOf( '0.0.1', 'paste' ).disabled;
+
+	toolOf( '0.0.0', 'copy' ).focus();
+	toolOf( '0.0.0', 'copy' ).click();
+
+	return before === true && builder._clip !== null && builder._clip.node.name === 'title' && toolOf( '0.0.1', 'paste' ).disabled === false && screen.activeElement === toolOf( '0.0.0', 'copy' ) && changes === 0 && builder._unsaved( builder._doc ) === false
+		&& storage.items[clipKey] !== undefined;
+} ) );
+check( '...a column is pasted from the tool of a column and from that of a section, a section from that of a section, a block of html from that of a block', attempt( function() {
+
+	copied( [ 1, 0 ] );
+	toolOf( '0.0', 'paste' ).click();
+	toolOf( '3', 'paste' ).click();
+
+	const columns = builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[3].cols.length === 2;
+
+	copied( [ 2 ] );
+	toolOf( '0', 'paste' ).click();
+	toolOf( '2', 'paste' ).click();
+
+	return columns && builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join() === 'hero,html,services,html,html,contact';
+} ) );
+check( '...a section is pasted behind a section, new: its id is free, it is in _fresh and selected, and the paste tool of the copy has the focus', attempt( function() {
+
+	copied( [ 0 ] );
+	toolOf( '1', 'paste' ).focus();
+	toolOf( '1', 'paste' ).click();
+
+	return builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join() === 'hero,services,hero-2,html,contact' && builder._fresh['hero-2'] === true && builder._fresh.hero !== true && builder._same( builder._sel, [ 2 ] )
+		&& screen.activeElement === toolOf( '2', 'paste' ) && builder._doc.model.blocks[2].cols[0].components[0].source === '/template/page-home/hero-2/title';
+} ) );
+check( '...a tool that is off pastes nothing, and nothing is changed by a press that cannot be: the paste of a refused place is no change', attempt( function() {
+
+	copied( [ 0, 0, 0 ] );
+	changes = 0;
+
+	const before = JSON.stringify( builder._doc.model );
+
+	builder._pasteAt( [ 0 ] );
+	builder._pasteAt( [ 1, 1, 'x' ] );
+	toolOf( '0', 'paste' ).click();
+
+	return JSON.stringify( builder._doc.model ) === before && changes === 0 && builder._unsaved( builder._doc ) === false;
+} ) );
+
+const addBar = function() { return screen.getElementById('builder-add-bar') };
+check( 'the add bar of the page has a button to paste after its two: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+
+	const buttons = addBar().querySelectorAll('button');
+	const paste = addBar().querySelector('.builder-add-paste');
+
+	return buttons.length === 3 && buttons[2] === paste && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Section' && buttons[1].textContent === '+ HTML+ block'
+		&& addBar().className === 'builder-add-bar';
+} ) );
+check( '...a section or a block of html clip makes it ready: its title is Paste and the kind word, a press puts the clip at the end of the page, selected, and the button is not made twice', attempt( function() {
+
+	copied( [ 0 ] );
+	builder._renderEditor();
+
+	const paste = addBar().querySelector('.builder-add-paste');
+	const ready = paste.disabled === false && paste.title === sandbox.Nino.adminUi.format( word('menu/paste-of'), word('tree/section')+ ' hero' ) && addBar().querySelectorAll('.builder-add-paste').length === 1;
+
+	changes = 0;
+	paste.focus();
+	paste.click();
+
+	const ids = builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join();
+
+	return ready && ids === 'hero,services,html,contact,hero-2' && builder._same( builder._sel, [ 4 ] ) && builder._fresh['hero-2'] === true && changes === 1 && screen.activeElement === toolOf( '4', 'paste' )
+		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 3;
+} ) );
+check( '...a column or a component clip cannot go to the end of the page: the button is off and says why, and a press changes nothing', attempt( function() {
+
+	copied( [ 0, 0 ] );
+
+	const paste = addBar().querySelector('.builder-add-paste');
+	const before = JSON.stringify( builder._doc.model );
+
+	changes = 0;
+	paste.click();
+
+	return paste.disabled === true && paste.title === sandbox.Nino.adminUi.format( word('reason/paste-place'), word('tree/col') ) && JSON.stringify( builder._doc.model ) === before && changes === 0;
+} ) );
+check( '...the row that adds to a column has no paste button: the tool of the column has it', attempt( function() {
+	copied( [ 0, 0, 0 ] );
+	const row = builder._addsRow( [ 0, 0 ] );
+	return row.querySelectorAll('button').length === 1 && row.querySelector('button').textContent === '+ Component' && frameOf('0.0').querySelector('.builder-adds').querySelectorAll('button').length === 1;
+} ) );
+check( 'where the editor is for reading only, both tools are off - on every frame and in the add bar, where a paste would be offered - and neither a copy nor a paste does anything', attempt( function() {
+
+	const clip = copied( [ 0 ] );
+	const model = JSON.stringify( builder._doc.model );
+	const stored = storage.items[clipKey];
+	const offered = toolOf( '1', 'paste' ).disabled === false && addBar().querySelector('.builder-add-paste').disabled === false;
+
+	sandbox.matchMedia = function() { return { matches : true } };
+	builder._renderEditor();
+
+	const tools = preview().querySelectorAll('[data-tool="copy"],[data-tool="paste"]');
+	const off = tools.length > 0 && tools.every( function( tool ) { return tool.disabled === true } ) && addBar().querySelector('.builder-add-paste').disabled === true;
+
+	builder._copyAt( [ 1 ] );
+	builder._pasteAt( [ 1 ] );
+	builder._pasteAt( [] );
+
+	const same = JSON.stringify( builder._doc.model ) === model && builder._clip === clip && storage.items[clipKey] === stored && changes === 0;
+
+	delete sandbox.matchMedia;
+	builder._renderEditor();
+
+	return offered && off && same && toolOf( '1', 'paste' ).disabled === false && addBar().querySelector('.builder-add-paste').disabled === false;
+} ) );
+check( 'the tools stand in the template as the panel says: copy then paste, between duplicate and delete, each with its title and its label; Duplicate wears copy-plus, Copy wears copy and Paste wears clipboard-paste - all three in the sprite', attempt( function() {
+
+	const fragment = /<template id="builder-tpl-tools">([\s\S]*?)<\/template>/.exec( template )[1];
+	const buttons = fragment.match( /<button [^>]*data-tool="[a-z]+"[^>]*>[\s\S]*?<\/button>/g );
+	const tool = function( name ) { return buttons.find( function( html ) { return html.indexOf( 'data-tool="'+ name+ '"' ) !== -1 } ) };
+	const icon = function( name ) { return /href="#builder-icon-([a-z-]+)"/.exec( tool( name ) )[1] };
+
+	return buttons.map( function( html ) { return /data-tool="([a-z]+)"/.exec( html )[1] } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' && icon('duplicate') === 'copy-plus' && icon('copy') === 'copy' && icon('paste') === 'clipboard-paste'
+		&& tool('copy').indexOf( 'title="[[/_admin/builder/menu/copy]]" aria-label="[[/_admin/builder/menu/copy]]"' ) !== -1 && tool('paste').indexOf( 'title="[[/_admin/builder/menu/paste]]" aria-label="[[/_admin/builder/menu/paste]]"' ) !== -1
+		&& [ 'copy', 'copy-plus', 'clipboard-paste' ].every( function( name ) { return template.indexOf( '<symbol id="builder-icon-'+ name+ '"' ) !== -1 } ) && ruleHas( '.builder-add-button:disabled', [ 'opacity: .4' ] );
+} ) );
+
+check( 'a section whose rename is not saved yet has its keys under the id it had: a copy of a component or of the section takes the words of those keys with it, a paste puts them under the section it goes into - and the original keeps its own', attempt( function() {
+
+	const renamed = function() {
+		doc = open();
+		builder._get( doc.model, [ 0 ] ).id = 'start';
+		builder._get( doc.model, [ 0 ] ).renamedFrom = 'hero';
+		builder._renderEditor();
+		return doc.model;
+	};
+	const title = '/template/page-home/hero/title';
+	const words = '{"en_US":"Welcome","de_DE":"Willkommen"}';
+	const part = copied( [ 0, 0, 0 ], renamed() );
+	const whole = copied( [ 0 ], renamed() );
+
+	const plain = copied( [ 0, 0, 0 ] );
+	const model = renamed();
+	const into = builder._get( model, builder._paste( model, registry(), 'page-home', [ 1, 0 ], part ) );
+	const twice = builder._get( model, builder._paste( model, registry(), 'page-home', [ 0, 0, 0 ], part ) );
+	const at = builder._paste( model, registry(), 'page-home', [ 0 ], whole );
+	const section = builder._get( model, at );
+
+	return part.section === 'hero' && JSON.stringify( part.values[title] ) === words && whole.section === 'hero' && whole.node.id === 'start' && JSON.stringify( whole.values[title] ) === words && builder._clipWord( whole ) === word('tree/section')+ ' start'
+		&& plain.section === 'hero' && into.source === '/template/page-home/services/title-2' && JSON.stringify( into.values ) === words
+		&& twice.source === '/template/page-home/hero/title-2' && JSON.stringify( twice.values ) === words && builder._get( model, [ 0, 0, 0 ] ).source === title
+		&& section.id === 'start-2' && section.cols[0].components[0].source === '/template/page-home/start-2/title' && JSON.stringify( section.cols[0].components[0].values ) === words && section.renamedFrom === undefined && model.blocks[0].renamedFrom === 'hero';
+} ) );
+check( '...and so does a duplicate: of a component, a column, the section - keys of their own, beside the keys the original has, which are not shared with the copy', attempt( function() {
+
+	const words = '{"en_US":"Welcome","de_DE":"Willkommen"}';
+	const renamed = function() {
+		doc = open();
+		builder._get( doc.model, [ 0 ] ).id = 'start';
+		builder._get( doc.model, [ 0 ] ).renamedFrom = 'hero';
+		return doc.model;
+	};
+	const component = renamed();
+	const column = renamed();
+	const section = renamed();
+	const one = builder._duplicate( component, registry(), 'page-home', [ 0, 0, 0 ], builder._valuesOf );
+	const two = builder._duplicate( column, registry(), 'page-home', [ 0, 0 ], builder._valuesOf );
+	const three = builder._duplicate( section, registry(), 'page-home', [ 0 ], builder._valuesOf );
+
+	return builder._get( component, one ).source === '/template/page-home/hero/title-2' && JSON.stringify( builder._get( component, one ).values ) === words && builder._get( component, [ 0, 0, 0 ] ).source === '/template/page-home/hero/title'
+		&& builder._get( column, two ).components[0].source === '/template/page-home/hero/title-2' && builder._get( column, two ).components[1].source === '/template/page-home/hero/subtitle-2'
+		&& builder._get( section, three ).id === 'start-2' && builder._get( section, [ 1, 0, 0 ] ).source === '/template/page-home/start-2/title' && JSON.stringify( builder._get( section, [ 1, 0, 0 ] ).values ) === words
+		&& builder._get( section, [ 1 ] ).renamedFrom === undefined && builder._get( section, [ 0 ] ).renamedFrom === 'hero' && builder._get( section, [ 0, 0, 0 ] ).source === '/template/page-home/hero/title';
+} ) );
+
+check( 'the reason a paste is not offered is the tool\'s title and its description, and the tool keeps its name: the word of the tool - Paste - for a label where it is off, the clip where it is on; the button of the add bar the same with its word as its name', attempt( function() {
+
+	copied( [ 0, 0, 0 ] );
+
+	const off = toolOf( '0', 'paste' );
+	const on = toolOf( '0.0.1', 'paste' );
+	const bar = addBar().querySelector('.builder-add-paste');
+	const reason = sandbox.Nino.adminUi.format( word('reason/paste-place'), word('tree/component') );
+
+	return off.disabled === true && off.title === reason && off.getAttribute('aria-description') === reason && off.getAttribute('aria-label') === word('menu/paste')
+		&& on.disabled === false && on.getAttribute('aria-label') === sandbox.Nino.adminUi.format( word('menu/paste-of'), word('tree/component') ) && on.hasAttribute('aria-description') === false
+		&& bar.disabled === true && bar.title === reason && bar.getAttribute('aria-description') === reason && bar.hasAttribute('aria-label') === false && bar.textContent === word('menu/paste')
+		&& ( builder._clip = null, builder._renderEditor(), toolOf( '0', 'paste' ).getAttribute('aria-label') === word('menu/paste') && toolOf( '0', 'paste' ).getAttribute('aria-description') === word('reason/paste-empty') );
+} ) );
+check( '...where the editor is for reading only a tool is off with its plain word and says nothing of the clip - neither where it would have been offered nor where it would not - and nor does the button of the add bar', attempt( function() {
+
+	copied( [ 0 ] );
+	sandbox.matchMedia = function() { return { matches : true } };
+	builder._renderEditor();
+
+	const tools = [ toolOf( '1', 'paste' ), toolOf( '0.0.1', 'paste' ), toolOf( '0.0', 'paste' ) ];
+	const bar = addBar().querySelector('.builder-add-paste');
+	const plain = function( el ) { return el.disabled === true && el.title === word('menu/paste') && el.hasAttribute('aria-description') === false };
+
+	const same = tools.every( function( tool ) { return plain( tool ) && tool.getAttribute('aria-label') === word('menu/paste') } ) && plain( bar );
+
+	delete sandbox.matchMedia;
+	builder._renderEditor();
+
+	return same && toolOf( '1', 'paste' ).title === sandbox.Nino.adminUi.format( word('menu/paste-of'), word('tree/section')+ ' hero' ) && addBar().querySelector('.builder-add-paste').disabled === false;
+} ) );
+
+check( 'a storage that reads and does not write keeps no old clip: a copy takes what it holds away, and the editor opened afterwards has the newer clip of the session, not the one that was stored before', attempt( function() {
+
+	const older = copied( [ 0, 0, 1 ] );
+	const stored = storage.items[clipKey] !== undefined && JSON.parse( storage.items[clipKey] ).node.name === older.node.name;
+
+	storage.refusesWrites = true;
+
+	const newer = builder._copyAt( [ 0, 0, 0 ] );
+	const gone = storage.items[clipKey] === undefined && builder._storedClip() === null;
+
+	requests = [];
+	builder._openEditor( 'page-home' );
+	requests.forEach( function( request ) {
+		if( request.action === 'builder/load' )
+			request.callback( 200, { model : page(), hash : 'h9', source : '' } );
+		else if( request.action === 'builder/registry' )
+			request.callback( 200, registry() );
+		else if( request.action === 'text/keys' )
+			request.callback( 200, { keys : known() } );
+		else
+			request.callback( 200, { templates : [ { file : 'page-home', usedBy : [] } ] } );
+	} );
+	storage.refusesWrites = false;
+
+	return stored && older.node.name !== newer.node.name && gone && builder._clip === newer;
+} ) );
+check( 'a copy from a loop pasted outside one keeps its fields and is marked red until they are given a key: it is pasted all the same - the loop\'s cell is not a place a component is refused in - and the save would refuse it', attempt( function() {
+
+	const clip = copied( [ 1, 1, 2 ] );
+	const model = page();
+	const at = builder._paste( model, registry(), 'page-home', [ 0, 0 ], clip );
+	const red = builder._red( model, registry() ).filter( function( entry ) { return builder._same( entry.path, at ) } );
+
+	return clip.node.source === 'summary' && builder._pasteable( model, registry(), [ 0, 0 ], clip ) === '' && builder._get( model, at ).source === 'summary' && red.length === 1 && red[0].why === 'static'
+		&& builder._red( page(), registry() ).filter( function( entry ) { return entry.path[0] === 0 } ).length === 0;
+} ) );
+
+delete sandbox.localStorage;
 
 console.log( '\nText on a picture reads better with the picture dimmed' );
 

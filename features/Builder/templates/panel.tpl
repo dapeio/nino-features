@@ -47,7 +47,7 @@
 				</div>
 			</div>
 			<div id="builder-preview" class="builder-preview" data-viewport="l"></div>
-			<div class="builder-add-bar">
+			<div id="builder-add-bar" class="builder-add-bar">
 				<button type="button" id="builder-add-section" class="builder-add-button">+ [[/_admin/builder/tree/section]]</button>
 				<button type="button" id="builder-add-html" class="builder-add-button">+ [[/_admin/builder/tree/html-block]]</button>
 			</div>
@@ -94,7 +94,9 @@
 		<symbol id="builder-icon-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
 		<symbol id="builder-icon-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
 		<symbol id="builder-icon-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
-		<symbol id="builder-icon-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+		<symbol id="builder-icon-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+		<symbol id="builder-icon-copy-plus" viewBox="0 0 24 24"><line x1="15" x2="15" y1="12" y2="18"/><line x1="12" x2="18" y1="15" y2="15"/><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+		<symbol id="builder-icon-clipboard-paste" viewBox="0 0 24 24"><path d="M11 14h10"/><path d="M16 4h2a2 2 0 0 1 2 2v1.344"/><path d="m17 18 4-4-4-4"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 1.793-1.113"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol>
 		<symbol id="builder-icon-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
 		<symbol id="builder-icon-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
 		<symbol id="builder-icon-warning" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
@@ -148,7 +150,9 @@
 			<button type="button" class="builder-icon-btn" data-tool="html" title="[[/_admin/builder/menu/edit-html]]" aria-label="[[/_admin/builder/menu/edit-html]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-code"></use></svg></button>
 			<button type="button" class="builder-icon-btn" data-tool="up" title="[[/_admin/common/label/moveup]]" aria-label="[[/_admin/common/label/moveup]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-up"></use></svg></button>
 			<button type="button" class="builder-icon-btn" data-tool="down" title="[[/_admin/common/label/movedown]]" aria-label="[[/_admin/common/label/movedown]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-down"></use></svg></button>
-			<button type="button" class="builder-icon-btn" data-tool="duplicate" title="[[/_admin/builder/menu/duplicate]]" aria-label="[[/_admin/builder/menu/duplicate]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-copy"></use></svg></button>
+			<button type="button" class="builder-icon-btn" data-tool="duplicate" title="[[/_admin/builder/menu/duplicate]]" aria-label="[[/_admin/builder/menu/duplicate]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-copy-plus"></use></svg></button>
+			<button type="button" class="builder-icon-btn" data-tool="copy" title="[[/_admin/builder/menu/copy]]" aria-label="[[/_admin/builder/menu/copy]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-copy"></use></svg></button>
+			<button type="button" class="builder-icon-btn" data-tool="paste" title="[[/_admin/builder/menu/paste]]" aria-label="[[/_admin/builder/menu/paste]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-clipboard-paste"></use></svg></button>
 			<button type="button" class="builder-icon-btn" data-tool="delete" title="[[/_admin/common/label/delete]]" aria-label="[[/_admin/common/label/delete]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-trash"></use></svg></button>
 		</span>
 	</template>

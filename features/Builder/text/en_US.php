@@ -36,7 +36,7 @@ declare(strict_types=1);
 //   /_admin/builder/viewport/...  the viewports of the preview: the three, and all of them at once (g)
 //   /_admin/builder/preview/...   what the marks on a frame of the preview mean
 //   /_admin/builder/reason/...    why a section is not read, by the code the Reader gives - and, as pick-*, why a component
-//                                 cannot be added where the lightbox was opened
+//                                 cannot be added where the lightbox was opened, and, as paste-*, why a copy cannot be pasted
 //   /_admin/builder/pick/...      the headings of the groups of the lightbox that offers the components
 //   /_admin/builder/spacing/...   the words of the box of the spacing: outside, inside, the row, the gap
 //   /_admin/builder/link/...      the fields of the link block of a component
@@ -141,6 +141,9 @@ return [
 	'[[/_admin/builder/reason/pick-not-card]]'	=> 'Not in a card',
 	'[[/_admin/builder/reason/pick-no-loop]]'	=> 'Not in an element loop',
 	'[[/_admin/builder/reason/pick-elsewhere]]'	=> 'Not offered here',
+	'[[/_admin/builder/reason/paste-empty]]'		=> 'Nothing has been copied yet.',
+	'[[/_admin/builder/reason/paste-unknown]]'	=> 'The copy holds a component this project does not have: %s.',
+	'[[/_admin/builder/reason/paste-place]]'		=> 'The copy cannot be pasted here: %s.',
 
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Preview',
@@ -185,6 +188,9 @@ return [
 	'[[/_admin/builder/menu/template]]'						=> 'Settings of the template',
 	'[[/_admin/builder/menu/edit-html]]'					=> 'Edit as HTML+',
 	'[[/_admin/builder/menu/duplicate]]'					=> 'Duplicate',
+	'[[/_admin/builder/menu/copy]]'						=> 'Copy',
+	'[[/_admin/builder/menu/paste]]'						=> 'Paste',
+	'[[/_admin/builder/menu/paste-of]]'					=> 'Paste: %s',
 	'[[/_admin/builder/menu/tools]]'					=> 'Tools',
 	'[[/_admin/builder/menu/tools-of]]'					=> 'Tools: %s',
 	'[[/_admin/builder/menu/tools-col]]'				=> 'Column %s of %s',

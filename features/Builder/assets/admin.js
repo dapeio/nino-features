@@ -6,14 +6,19 @@
  *													columns and components, from the model alone. Every
  *													frame of it has a head of three parts - its title, what
  *													is said of it, the tools that change it (settings, up,
- *													down, duplicate, delete; and for a section to edit it as
- *													HTML+) -, every level ends in a button that adds to it,
+ *													down, duplicate, copy, paste, delete; and for a section to
+ *													edit it as HTML+) -, every level ends in a button that adds to it,
  *													and the settings of a frame open in a dialog of blocks, an
  *													accordion of the ones the element has - content, link,
  *													surface, spacing, width, loop and properties - drawn from one
  *													table. A component that holds
  *													components is a frame of its own among the components of
  *													its column, with its children in it and a form of its own.
+ *													A section, a column or a component is copied once and pasted
+ *													where it may stand, on the page or on another page of the
+ *													project: the clip is kept in the browser's storage, with
+ *													the texts of its keys, and a paste is a change of the model
+ *													like a duplicate is.
  *													The source of a text or a picture is changed in a dialog
  *													of its own, over that one, and the name of a section where
  *													it stands. The text of a key and the picture of a slot
@@ -85,6 +90,10 @@
 		// keys and slots are new, so a rename moves them in the model and no
 		// request has to move them
 		_fresh		: {},
+		// What the last Copy took - { kind, file, section, node, values }, see _copyAt() - or null. It is kept in the browser's storage under CLIP_KEY as
+		// well, so that it survives a reload and a change of page: it is read from there when the editor opens
+		_clip			: null,
+		CLIP_KEY	: 'nino-admin-builder-clip',
 		// The text keys of the project, for the source field: null until they were
 		// asked for, [] where this account may not read them
 		_keys			: null,
@@ -463,8 +472,9 @@
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
 		 *
-		 *	@return		{Object|null}							settings, html, up, down, duplicate and delete: null for a tool the
-		 *															frame does not have, false for one it has and cannot use now;
+		 *	@return		{Object|null}							settings, html, up, down, duplicate, copy, paste and delete: null for a tool the
+		 *															frame does not have, false for one it has and cannot use now - paste is so
+		 *															where nothing was copied or the copy does not fit the frame (see _pasteable());
 		 *															null for the template and a loop, which have none
 		 */
 		_toolbar : function( model, path ) {
@@ -483,6 +493,8 @@
 				up				: place !== null && place.index > 0,
 				down			: place !== null && place.index < place.list.length - 1,
 				duplicate	: place !== null,
+				copy			: place !== null,
+				paste			: place !== null && builder._pasteable( model, builder._registry, path, builder._clip ) === '',
 				delete		: place !== null && ( kind !== 'col' || place.list.length > 1 ),
 			};
 		},
@@ -590,6 +602,18 @@
 		},
 
 		/**
+		 *	The id the keys and slots of a section stand under: its own, and - where it was renamed and the rename is not saved yet - the one it had,
+		 *	for the server moves them at the save and until then the sources of its components name the old one
+		 *
+		 *	@param		{Object}		section
+		 *
+		 *	@return		{string}
+		 */
+		_keyId : function( section ) {
+			return section.renamedFrom ?? section.id;
+		},
+
+		/**
 		 *	The last segments of every source the section has under its own keys
 		 *	(and the keys the project holds there) - the names a new one may not take
 		 *
@@ -631,6 +655,19 @@
 			( known || [] ).forEach( function( entry ) { note( entry.key ) } );
 
 			return names;
+		},
+
+		/**
+		 *	What the project holds under keys and slots already, as _names() takes it: the text keys it knows (the editor asked for them) and the
+		 *	image slots of the registry. A name a copy is given is not one of these - a key or a slot left over under the prefix of a section is
+		 *	not written into
+		 *
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{Array}										Entries with a key
+		 */
+		_knownKeys : function( registry ) {
+			return ( Nino.admin.builder._keys || [] ).concat( ( registry.slots || [] ).map( function( slot ) { return { key : slot.uri } } ) );
 		},
 
 		/**
@@ -1357,14 +1394,14 @@
 
 				// A copy of a loop of sections, or of a section named like one, cannot be <id>-<n>: that is what the loop makes
 				const id = builder._free( builder._loopNames( model ).indexOf( copy.id ) === -1 ? copy.id : copy.id+ '-copy', function( name ) { return builder._sectionTaken( model, name ) } );
-				const from = builder._keyUri( file, copy.id, '' );
+				const from = builder._keyUri( file, builder._keyId( copy ), '' );
 
 				copy.id = id;
 				delete copy.renamedFrom;
 				builder._rekey( copy, registry, from, builder._keyUri( file, id, '' ), false, undefined, undefined, valuesOf );
 			} else if( path.length >= 2 ) {
 
-				const prefix = builder._keyUri( file, section.id, '' );
+				const prefix = builder._keyUri( file, builder._keyId( section ), '' );
 
 				builder._rekey( path.length === 2 ? copy : { cols : [ { components : [ copy ] } ] }, registry, prefix, prefix, true, section, file, valuesOf );
 			}
@@ -1390,7 +1427,7 @@
 		 *	@param		{string}		from							The prefix the sources stand under
 		 *	@param		{string}		to								The prefix they go to
 		 *	@param		{boolean}		within						Whether the copy stays in the section, so the last segment changes
-		 *	@param		{Object}		[section]					Its section, for the names that are taken
+		 *	@param		{Object}		[section]					Its section, for the names that are taken: those it has, the keys of the project and the slots of the registry
 		 *	@param		{string}		[file]
 		 *	@param		{Function}	[valuesOf]				See _duplicate()
 		 *
@@ -1400,7 +1437,7 @@
 
 			const builder = Nino.admin.builder;
 			const columns = node.kind === 'section' ? node.cols : ( node.cols || [ node ] );
-			const taken = within === true ? builder._names( section, file, [] ) : {};
+			const taken = within === true ? builder._names( Object.assign( {}, section, { id : builder._keyId( section ) } ), file, builder._knownKeys( registry ) ) : {};
 			const remake = function( source, kind, label ) {
 
 				if( typeof source !== 'string' || source.indexOf( from ) !== 0 )
@@ -1477,6 +1514,286 @@
 
 				( col.components || [] ).forEach( component );
 			} );
+		},
+
+		// ------------------------------------------------------- Copy and paste
+
+		/**
+		 *	What a clip is told by in a title: the word of the kind of node it holds (tree/*) and, for a section, its id
+		 *
+		 *	@param		{Object}		clip
+		 *
+		 *	@return		{string}
+		 */
+		_clipWord : function( clip ) {
+
+			const word = { section : 'section', html : 'html-block', column : 'col', component : 'component' }[clip.kind];
+
+			return Nino.content.getText( '/_admin/builder/tree/'+ word )+ ( clip.kind === 'section' ? ' '+ clip.node.id : '' );
+		},
+
+		/**
+		 *	The first thing a clip holds that this project does not have: a component the registry does not know, a loop it does not know, or the
+		 *	type that loop runs over. The Builder knows none of them by name - it is the registry that is asked
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		clip
+		 *
+		 *	@return		{string}									Its name; '' where the project has all of it
+		 */
+		_clipMissing : function( registry, clip ) {
+
+			const has = function( map, name ) { return Object.prototype.hasOwnProperty.call( map || {}, name ) };
+			const types = registry.types || [];
+			const loop = function( stack ) {
+
+				if( stack === null || stack === undefined )
+					return '';
+
+				if( has( registry.stacks, stack.name ) === false )
+					return stack.name;
+
+				return types.some( function( type ) { return type.uri === stack.source } ) === true ? '' : ( stack.source || stack.name );
+			};
+			const component = function( node ) {
+
+				if( has( registry.components, node.name ) === false )
+					return node.name;
+
+				return list( node.components );
+			};
+			const list = function( components ) {
+
+				for( const node of components || [] ) {
+
+					const missing = component( node );
+
+					if( missing !== '' )
+						return missing;
+				}
+
+				return '';
+			};
+			const column = function( col ) { return loop( col.stack ) || list( col.components ) };
+
+			if( clip.kind === 'component' )
+				return component( clip.node );
+
+			if( clip.kind === 'column' )
+				return column( clip.node );
+
+			if( clip.kind === 'section' )
+				return loop( clip.node.stack ) || ( clip.node.cols || [] ).reduce( function( found, col ) { return found || column( col ) }, '' );
+
+			return '';
+		},
+
+		/**
+		 *	Why components cannot stand where the place says, or - in one that holds components - why their children cannot: the first reason there is
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Array}			components				Nodes of the model; each is known to the registry
+		 *	@param		{Object}		where							As _placeOf() has it
+		 *
+		 *	@return		{string}									'' where all of them can stand there
+		 */
+		_componentsProblem : function( registry, components, where ) {
+
+			const builder = Nino.admin.builder;
+
+			for( const node of components ) {
+
+				const problem = builder._placeProblem( where, registry.components[node.name] );
+
+				if( problem !== '' )
+					return problem;
+
+				if( Array.isArray( node.components ) === true ) {
+
+					const inner = builder._componentsProblem( registry, node.components, { place : builder._holds( registry, node.name ), inside : true, looped : where.looped } );
+
+					if( inner !== '' )
+						return inner;
+				}
+			}
+
+			return '';
+		},
+
+		/**
+		 *	Where a clip goes for a path: the list it is put into and the place in it, and the path of the node that list belongs to. A section or a
+		 *	block of html goes after a section or a block (a path of one part) or - for the template, the path [] - at the end of the page; a column
+		 *	after a column or at the end of the columns of a section; a component after a component or a child, at the end of a column and at the
+		 *	end of a component that holds components when that one takes it, else after that component
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Object}		registry
+		 *	@param		{Array}			path
+		 *	@param		{Object}		clip
+		 *
+		 *	@return		{Object|null}							{ list, index, parent }; null where the kind of the clip does not fit the node
+		 */
+		_pastePlace : function( model, registry, path, clip ) {
+
+			const builder = Nino.admin.builder;
+			const node = builder._get( model, path );
+
+			if( node === null || path[path.length - 1] === 'x' )
+				return null;
+
+			if( clip.kind === 'section' || clip.kind === 'html' ) {
+
+				if( path.length > 1 )
+					return null;
+
+				return { list : model.blocks, index : path.length === 0 ? model.blocks.length : path[0] + 1, parent : [] };
+			}
+
+			if( clip.kind === 'column' ) {
+
+				if( path.length === 1 && node.kind === 'section' )
+					return { list : node.cols, index : node.cols.length, parent : path };
+
+				return path.length === 2 ? { list : model.blocks[path[0]].cols, index : path[1] + 1, parent : path.slice( 0, 1 ) } : null;
+			}
+
+			if( path.length === 2 )
+				return { list : node.components, index : node.components.length, parent : path };
+
+			if( path.length < 3 )
+				return null;
+
+			// Into the component that holds components, where it takes the clip: the place its 'holds' names, and whatever the column is
+			if( path.length === 3 && builder._holds( registry, node.name ) !== '' && Array.isArray( node.components ) === true
+				&& builder._componentsProblem( registry, [ clip.node ], { place : builder._holds( registry, node.name ), inside : true, looped : builder._placeOf( model, path.slice( 0, 2 ), registry ).looped } ) === '' )
+				return { list : node.components, index : node.components.length, parent : path };
+
+			const place = builder._place( model, path );
+
+			return { list : place.list, index : place.index + 1, parent : path.slice( 0, -1 ) };
+		},
+
+		/**
+		 *	Whether the clip can be pasted at a path, and if not why: nothing was copied, the clip holds something the project does not have, the
+		 *	kind of the clip does not fit the node, a component may not stand there (the answers of the lightbox, see _placeProblem()), a loop
+		 *	cannot stand in a loop
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Object}		registry
+		 *	@param		{Array}			path							The node the tool is of, or [] for the end of the page
+		 *	@param		{Object|null}	clip
+		 *
+		 *	@return		{string}									'' where it can; else the reason, in the words of the panel
+		 */
+		_pasteable : function( model, registry, path, clip ) {
+
+			const builder = Nino.admin.builder;
+			const text = function( key, name ) { return Nino.adminUi.format( Nino.content.getText( '/_admin/builder/reason/'+ key ), name ) };
+
+			if( clip === null || clip === undefined )
+				return text('paste-empty');
+
+			const missing = builder._clipMissing( registry, clip );
+
+			if( missing !== '' )
+				return text( 'paste-unknown', missing );
+
+			const place = builder._pastePlace( model, registry, path, clip );
+
+			if( place === null )
+				return text( 'paste-place', builder._clipWord( clip ) );
+
+			if( clip.kind === 'column' ) {
+
+				const section = model.blocks[place.parent[0]];
+				const looping = clip.node.stack !== null && clip.node.stack !== undefined;
+
+				if( looping === true && builder._looping( section ) === true )
+					return text('stack-in-stack');
+
+				return builder._componentsProblem( registry, clip.node.components || [], { place : builder._where( model, place.parent.slice( 0, 1 ), registry ), inside : false, looped : looping || builder._looping( section ) } );
+			}
+
+			return clip.kind === 'component' ? builder._componentsProblem( registry, [ clip.node ], builder._placeOf( model, place.parent, registry ) ) : '';
+		},
+
+		/**
+		 *	Put the clip beside or into the node at the path: a copy of it that shares nothing with it, with keys and slots of its own where it owns
+		 *	any - under the section it goes into, which may be one of another page. The keys are made with the words the clip carries, the slots
+		 *	say which slot they are copies of. The clip itself stays
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Object}		registry
+		 *	@param		{string}		file							The page the model is of
+		 *	@param		{Array}			path
+		 *	@param		{Object}		clip
+		 *
+		 *	@return		{Array|null}							The path of the copy; null where the clip does not fit the path (see _pasteable() for why)
+		 */
+		_paste : function( model, registry, file, path, clip ) {
+
+			const builder = Nino.admin.builder;
+			const place = builder._pastePlace( model, registry, path, clip );
+
+			if( place === null )
+				return null;
+
+			const copy = builder._clone( clip.node );
+			const valuesOf = function( source ) { return builder._clone( ( clip.values || {} )[source] ) ?? {} };
+
+			if( clip.kind === 'section' ) {
+
+				// As a duplicate has it: an id of its own, and not one the loop of sections would make
+				const id = builder._free( builder._loopNames( model ).indexOf( copy.id ) === -1 ? copy.id : copy.id+ '-copy', function( name ) { return builder._sectionTaken( model, name ) } );
+				const from = builder._keyUri( clip.file, clip.section, '' );
+
+				copy.id = id;
+				delete copy.renamedFrom;
+				builder._rekey( copy, registry, from, builder._keyUri( file, id, '' ), false, undefined, undefined, valuesOf );
+			} else if( clip.kind !== 'html' ) {
+
+				const section = model.blocks[place.parent[0]];
+
+				builder._rekey( clip.kind === 'column' ? copy : { cols : [ { components : [ copy ] } ] }, registry, builder._keyUri( clip.file, clip.section, '' ), builder._keyUri( file, builder._keyId( section ), '' ), true, section, file, valuesOf );
+			}
+
+			place.list.splice( place.index, 0, copy );
+
+			return place.parent.concat( [ place.index ] );
+		},
+
+		/**
+		 *	What the browser's storage holds as the clip: the clip, null where it holds none or what is no clip, undefined where there is no storage
+		 *	to ask (a browser that keeps none, or refuses it) - then the clip lives in memory, for as long as the session does
+		 *
+		 *	@return		{Object|null|undefined}
+		 */
+		_storedClip : function() {
+
+			const builder = Nino.admin.builder;
+			let text;
+
+			try {
+				text = wn.localStorage.getItem( builder.CLIP_KEY );
+			} catch(e) {
+				return undefined;
+			}
+
+			if( typeof text !== 'string' )
+				return null;
+
+			let clip;
+
+			try {
+				clip = JSON.parse( text );
+			} catch(e) {
+				return null;
+			}
+
+			const object = function( value ) { return value !== null && typeof value === 'object' && Array.isArray( value ) === false };
+
+			return object( clip ) === true && [ 'section', 'html', 'column', 'component' ].indexOf( clip.kind ) !== -1 && typeof clip.file === 'string' && typeof clip.section === 'string'
+				&& object( clip.node ) === true && object( clip.values ) === true ? clip : null;
 		},
 
 		// ------------------------------------------------------- Red sources
@@ -1658,6 +1975,56 @@
 		},
 
 		/**
+		 *	The place components would stand in, as _placeProblem() asks it: the place its schema names ('in'), whether they stand inside a component
+		 *	that holds components, and whether they are the cell of a loop
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The column, or the component that holds components
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{Object}									{ place, inside, looped }
+		 */
+		_placeOf : function( model, path, registry ) {
+
+			const builder = Nino.admin.builder;
+			const section = model.blocks[path[0]];
+
+			return { place : builder._where( model, path, registry ), inside : path.length > 2, looped : builder._loopOf( section, section.cols[path[1]] ) !== null };
+		},
+
+		/**
+		 *	Why a component cannot stand where the place says - what the lightbox greys it for, and what a paste is refused for: it belongs in other places
+		 *	(its 'in'), a component that holds components is not put in another, a loop does not take it (its 'loop'). The words are the registry's own
+		 *
+		 *	@param		{Object}		where							As _placeOf() has it: { place, inside, looped }
+		 *	@param		{Object}		schema						The component's entry of the registry
+		 *
+		 *	@return		{string}									'' for a component that can stand there
+		 */
+		_placeProblem : function( where, schema ) {
+
+			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
+			const places = Array.isArray( schema.in ) === true ? schema.in : null;
+
+			if( places !== null && places.indexOf( where.place ) === -1 ) {
+
+				if( where.inside === true )
+					return text( 'pick-not-'+ where.place ) || text('pick-elsewhere');
+
+				if( places.indexOf('card') !== -1 && places.indexOf('section') === -1 )
+					return text('pick-only-card');
+
+				return text( places.indexOf('hero') !== -1 && places.indexOf('section') === -1 ? 'pick-only-hero' : 'pick-elsewhere' );
+			}
+
+			// A component that holds components is not put in another
+			if( where.inside === true && typeof schema.holds === 'string' && schema.holds !== '' )
+				return text( 'pick-not-'+ where.place ) || text('pick-elsewhere');
+
+			return where.looped === true && schema.loop === false ? text('pick-no-loop') : '';
+		},
+
+		/**
 		 *	Every component of the registry as the picker shows it where a component is added - in a column, in the cell of a loop,
 		 *	in a component that holds components: in groups, by who registered it (what the kernel and the modules of the project
 		 *	registered by the 'group' its schema names - the registry takes none that names no group of its list -, in the order of
@@ -1679,44 +2046,18 @@
 		_pickChoices : function( model, path, registry ) {
 
 			const builder = Nino.admin.builder;
-			const place = builder._where( model, path, registry );
-			const section = model.blocks[path[0]];
-			const looped = builder._loopOf( section, section.cols[path[1]] ) !== null;
-			const inside = path.length > 2;
-			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
+			const where = builder._placeOf( model, path, registry );
 			const names = Object.keys( registry.components || {} );
 			const groups = {};
 			const features = {};
 
 			registry.groups.forEach( function( word ) { groups[word] = [] } );
 
-			const why = function( name, schema ) {
-
-				const where = Array.isArray( schema.in ) === true ? schema.in : null;
-
-				if( where !== null && where.indexOf( place ) === -1 ) {
-
-					if( inside === true )
-						return text( 'pick-not-'+ place ) || text('pick-elsewhere');
-
-					if( where.indexOf('card') !== -1 && where.indexOf('section') === -1 )
-						return text('pick-only-card');
-
-					return text( where.indexOf('hero') !== -1 && where.indexOf('section') === -1 ? 'pick-only-hero' : 'pick-elsewhere' );
-				}
-
-				// A component that holds components is not put in another
-				if( inside === true && builder._holds( registry, name ) !== '' )
-					return text( 'pick-not-'+ place ) || text('pick-elsewhere');
-
-				return looped === true && schema.loop === false ? text('pick-no-loop') : '';
-			};
-
 			names.forEach( function( name ) {
 
 				const schema = registry.components[name];
 				const by = typeof schema.by === 'string' ? schema.by : 'nino';
-				const item = { name : name, label : schema.label || name, icon : Array.isArray( schema.icon ) === true ? schema.icon : null, reason : why( name, schema ) };
+				const item = { name : name, label : schema.label || name, icon : Array.isArray( schema.icon ) === true ? schema.icon : null, reason : builder._placeProblem( where, schema ) };
 
 				if( by !== 'nino' )
 					( features[by] = features[by] || [] ).push( item );
@@ -2837,6 +3178,13 @@
 				builder._problems = [];
 				builder._saving = false;
 
+				// What was copied, here or on another page, before the editor was opened. Where the storage holds none - or cannot be asked - the clip of
+				// this session, which a storage that does not write could not keep, stays
+				const stored = builder._storedClip();
+
+				if( stored !== undefined && stored !== null )
+					builder._clip = stored;
+
 				builder._renderEditor();
 				builder._keysAsked = false;
 				builder._loadKeys();
@@ -3236,8 +3584,32 @@
 				mount.appendChild( frame );
 			} );
 
+			builder._paintAddBar();
 			builder._markRed( mount, builder._red( model, builder._registry ) );
 			builder._paintSelection( false );
+		},
+
+		/**
+		 *	The paste button at the end of the add bar of the page, made new with the preview: it puts what was copied at the end of the page, and
+		 *	where that cannot be done it is off and says why
+		 *
+		 *	@return		void
+		 */
+		_paintAddBar : function() {
+
+			const builder = Nino.admin.builder;
+			const bar = dc.getElementById('builder-add-bar');
+
+			if( bar === null )
+				return;
+
+			bar.querySelectorAll('.builder-add-paste').forEach( function( old ) { old.remove() } );
+
+			const button = builder._addButton( 'paste', function() { builder._pasteAt( [] ) }, 'builder-add-paste' );
+
+			builder._pasteTitle( button, [] );
+			button.disabled = builder._mutable() === false || builder._pasteable( builder._doc.model, builder._registry, [], builder._clip ) !== '';
+			bar.appendChild( button );
 		},
 
 		/**
@@ -3316,8 +3688,9 @@
 		},
 
 		/**
-		 *	The tools of a frame: settings, up, down, duplicate, delete - and for a
-		 *	section to edit it as HTML+. A tool the frame cannot use now is off. The
+		 *	The tools of a frame: settings, up, down, duplicate, copy, paste, delete - and for a
+		 *	section to edit it as HTML+. A tool the frame cannot use now is off - the one that
+		 *	pastes says why, as its title. The
 		 *	toolbar is named by what its tools are of - "Tools: Image" -, for there are
 		 *	as many buttons that read Settings, Duplicate or Delete on a page as it has
 		 *	frames, and a screen reader hears nothing that tells them apart
@@ -3341,6 +3714,8 @@
 				up				: function() { builder._stepNode( path, -1 ) },
 				down			: function() { builder._stepNode( path, 1 ) },
 				duplicate	: function() { builder._duplicateAt( path ) },
+				copy			: function() { builder._copyAt( path ) },
+				paste			: function() { builder._pasteAt( path ) },
 				delete		: function() { builder._deleteAt( path ) },
 			};
 
@@ -3349,20 +3724,66 @@
 				const button = builder._one( tools, '[data-tool="'+ name+ '"]' );
 
 				button.hidden = offered[name] === null;
-				button.disabled = offered[name] === false;
+				// Copy and paste are for an editor that may change the document: where it is for reading, both are off
+				button.disabled = offered[name] === false || ( ( name === 'copy' || name === 'paste' ) && builder._mutable() === false );
 				button.addEventListener( 'click', function( ev ) {
 					ev.stopPropagation();
 					run[name]();
 				} );
 			} );
 
+			builder._pasteTitle( builder._one( tools, '[data-tool="paste"]' ), path );
+
 			return tools;
+		},
+
+		/**
+		 *	The words of a button that pastes: where the clip can be pasted, its name says what is pasted (Paste: Section hero) and so does its title;
+		 *	where it cannot, the name stays the word of the tool and the reason is its title and its description, for whoever does not see the title.
+		 *	Where the editor is for reading only the tool has its plain word, as it does nothing. A tool that is an icon has its name as its label; the
+		 *	button of the add bar has its word for a name
+		 *
+		 *	@param		{Element}		button
+		 *	@param		{Array}			path							The node the tool is of, [] for the end of the page
+		 *
+		 *	@return		void
+		 */
+		_pasteTitle : function( button, path ) {
+
+			const builder = Nino.admin.builder;
+			let name = Nino.content.getText('/_admin/builder/menu/paste');
+			let title = name;
+			let reason = '';
+
+			if( builder._mutable() === true ) {
+
+				const problem = builder._pasteable( builder._doc.model, builder._registry, path, builder._clip );
+
+				if( problem === '' ) {
+					name = Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/paste-of'), builder._clipWord( builder._clip ) );
+					title = name;
+				} else {
+					title = problem;
+					reason = problem;
+				}
+			}
+
+			button.title = title;
+
+			if( button.hasAttribute('aria-label') === true )
+				button.setAttribute( 'aria-label', name );
+
+			if( reason !== '' )
+				button.setAttribute( 'aria-description', reason );
+			else
+				button.removeAttribute('aria-description');
 		},
 
 		/**
 		 *	The button at the end of a level that adds to it
 		 *
-		 *	@param		{string}		what							section, col, component, stack or html-block - the part of its words under tree/
+		 *	@param		{string}		what							section, col, component, stack or html-block - the part of its words under tree/ - or paste, which
+		 *															says the word of the tool and is no plus: it puts what was copied
 		 *	@param		{Function}	onClick						Called with the button
 		 *	@param		{string}		[className]
 		 *
@@ -3373,7 +3794,7 @@
 			const builder = Nino.admin.builder;
 			const button = builder._fragment( 'add' );
 
-			button.textContent = '+ '+ Nino.content.getText( '/_admin/builder/tree/'+ what );
+			button.textContent = what === 'paste' ? Nino.content.getText('/_admin/builder/menu/paste') : '+ '+ Nino.content.getText( '/_admin/builder/tree/'+ what );
 			button.disabled = builder._mutable() === false;
 
 			if( className !== undefined )
@@ -3680,6 +4101,105 @@
 			builder._sel = to;
 			builder._changed();
 			builder._paintSelection( true );
+		},
+
+		/**
+		 *	Copy a section, a column or a component: the clip is what the next paste puts in. The document is not changed, and so is not unsaved. The
+		 *	clip carries the text each key under the section's prefix has in each language - the stored one with what was typed for it and is not saved
+		 *	yet over it - so that the words travel when the page is left, or the key is renamed
+		 *
+		 *	@param		{Array}			path
+		 *
+		 *	@return		{Object|null}							The clip
+		 */
+		_copyAt : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const place = builder._place( doc.model, path );
+
+			if( builder._mutable() === false || place === null )
+				return null;
+
+			const kind = builder._kind( doc.model, path );
+			const section = doc.model.blocks[path[0]];
+			const clip = { kind : kind === 'col' ? 'column' : kind, file : doc.file, section : kind === 'html' ? '' : builder._keyId( section ), node : builder._clone( place.list[place.index] ), values : {} };
+			const prefix = builder._keyUri( doc.file, clip.section, '' );
+			const visit = function( component ) {
+
+				const source = component.source;
+
+				if( typeof source === 'string' && clip.section !== '' && source.indexOf( prefix ) === 0 && builder._sourceKind( builder._registry, component.name ) !== 'image' ) {
+
+					const held = Object.assign( {}, builder._valuesOf( source ), component.values );
+
+					if( Object.keys( held ).length > 0 )
+						clip.values[source] = held;
+				}
+
+				( component.components || [] ).forEach( visit );
+			};
+
+			if( clip.kind === 'section' )
+				clip.node.cols.forEach( function( col ) { col.components.forEach( visit ) } );
+			else if( clip.kind === 'column' )
+				clip.node.components.forEach( visit );
+			else if( clip.kind === 'component' )
+				visit( clip.node );
+
+			builder._clip = clip;
+
+			try {
+				wn.localStorage.setItem( builder.CLIP_KEY, JSON.stringify( clip ) );
+			} catch(e) {
+
+				// No storage to be had: the clip lives in memory. A storage that reads and does not write must not hand the older clip back when the
+				// editor is opened again, so what it holds is taken away
+				try {
+					wn.localStorage.removeItem( builder.CLIP_KEY );
+				} catch(e2) {
+					// None to take it from
+				}
+			}
+
+			// The paste tools say what is in the clip now
+			builder._redraw();
+
+			return clip;
+		},
+
+		/**
+		 *	Paste the clip beside or into the node at the path (see _paste()) and select the copy, with the focus on the tool that pastes - the one
+		 *	that was pressed went with the preview, and the person may want the same again. A section is a new one: its keys and slots are made
+		 *
+		 *	@param		{Array}			path							[] for the end of the page
+		 *
+		 *	@return		void
+		 */
+		_pasteAt : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+
+			if( builder._mutable() === false || builder._pasteable( doc.model, builder._registry, path, builder._clip ) !== '' )
+				return;
+
+			const to = builder._paste( doc.model, builder._registry, doc.file, path, builder._clip );
+
+			if( to === null )
+				return;
+
+			if( builder._clip.kind === 'section' )
+				builder._fresh[doc.model.blocks[to[0]].id] = true;
+
+			builder._sel = to;
+			builder._changed();
+			builder._paintSelection( true );
+
+			const tool = builder._toolAt( to, 'paste' );
+
+			if( tool !== null )
+				tool.focus();
 		},
 
 		/**
@@ -4341,7 +4861,7 @@
 		 *	A tool of a frame of the preview, where it is drawn now
 		 *
 		 *	@param		{Array}			path							The frame
-		 *	@param		{string}		name							settings, html, up, down, duplicate or delete
+		 *	@param		{string}		name							settings, html, up, down, duplicate, copy, paste or delete
 		 *
 		 *	@return		{Element|null}						null where the frame has none that is shown and can be used
 		 */

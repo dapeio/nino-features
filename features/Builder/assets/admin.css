@@ -230,6 +230,10 @@
 	border-color: var(--editor-blue);
 	opacity: 1;
 }
+.builder-add-button:disabled {
+	opacity: .4;
+	cursor: default;
+}
 .builder-add-bar {
 	display: flex;
 	flex-wrap: wrap;

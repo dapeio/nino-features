@@ -104,6 +104,9 @@ return [
 	'[[/_admin/builder/reason/pick-not-card]]'	=> 'Nicht in einer Karte',
 	'[[/_admin/builder/reason/pick-no-loop]]'	=> 'Nicht in einem Element-Loop',
 	'[[/_admin/builder/reason/pick-elsewhere]]'	=> 'Hier nicht möglich',
+	'[[/_admin/builder/reason/paste-empty]]'		=> 'Es wurde noch nichts kopiert.',
+	'[[/_admin/builder/reason/paste-unknown]]'	=> 'Die Kopie enthält eine Komponente, die es in diesem Projekt nicht gibt: %s.',
+	'[[/_admin/builder/reason/paste-place]]'		=> 'Die Kopie lässt sich hier nicht einfügen: %s.',
 
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Vorschau',
@@ -148,6 +151,9 @@ return [
 	'[[/_admin/builder/menu/template]]'						=> 'Einstellungen des Templates',
 	'[[/_admin/builder/menu/edit-html]]'					=> 'Als HTML+ bearbeiten',
 	'[[/_admin/builder/menu/duplicate]]'					=> 'Duplizieren',
+	'[[/_admin/builder/menu/copy]]'						=> 'Kopieren',
+	'[[/_admin/builder/menu/paste]]'						=> 'Einfügen',
+	'[[/_admin/builder/menu/paste-of]]'					=> 'Einfügen: %s',
 	'[[/_admin/builder/menu/tools]]'					=> 'Werkzeuge',
 	'[[/_admin/builder/menu/tools-of]]'					=> 'Werkzeuge: %s',
 	'[[/_admin/builder/menu/tools-col]]'				=> 'Spalte %s von %s',
