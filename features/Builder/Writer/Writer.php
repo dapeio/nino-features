@@ -30,7 +30,7 @@ namespace Nino\Modules\Builder {
 	 *											not what the schema says it is without it, a blank line
 	 *											between the blocks, one line feed at the end. The columns
 	 *											that are 100 wide in all three viewports are written
-	 *											nino-grid-100, any other as three classes. A section whose
+	 *											nino-grid-100, any other as nino-grid-100 and its three tiers after it. A section whose
 	 *											stack is set is the call of that loop - [sections /type ...] -
 	 *											with the section's id and its classes after nino-section as the
 	 *											call's, its row and the rest as they stand in a <section>; a
@@ -431,9 +431,12 @@ namespace Nino\Modules\Builder {
 			foreach( Reader::VIEWPORTS as $viewport )
 				$width[$viewport] = (int) ( $col['width'][$viewport] ?? 100 );
 
-			$class = $width === [ 's' => 100, 'm' => 100, 'l' => 100 ]
-				? [ 'nino-grid-100' ]
-				: [ 'nino-grid-s-'. $width['s'], 'nino-grid-m-'. $width['m'], 'nino-grid-l-'. $width['l'] ];
+			// Nino.css is mobile first and its first tier starts at 640px: a column that is not 100 in every viewport has the base class, full width, before its tiers, so that it is full width until the first one applies
+			$class = [ 'nino-grid-100' ];
+
+			if( $width !== [ 's' => 100, 'm' => 100, 'l' => 100 ] )
+				foreach( Reader::VIEWPORTS as $viewport )
+					$class[] = 'nino-grid-'. $viewport. '-'. $width[$viewport];
 
 			foreach( Reader::VIEWPORTS as $viewport )
 				if( ( $col['hidden'][$viewport] ?? false ) === true )

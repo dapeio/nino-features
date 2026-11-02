@@ -382,7 +382,7 @@ check( 'a load and a save without a change is the same file: Reader( Writer( Rea
 // A page the builder did not write the way it would: the order of the attributes, a default said aloud, the short class, an empty alt
 $hand = str_replace(
 	[ '[title /template/page-home/hero/title style="loud"]', '[title /template/page-home/contact/title]', "\t\t<div class=\"nino-grid-100\">\n\t\t\t[title" ],
-	[ '[title /template/page-home/hero/title class="" tag="h3" style="loud"]', '[title /template/page-home/contact/title tag="h3" style=""]', "\t\t<div class=\"nino-grid-s-100 nino-grid-m-100 nino-grid-l-100\">\n\t\t\t[title" ],
+	[ '[title /template/page-home/hero/title class="" tag="h3" style="loud"]', '[title /template/page-home/contact/title tag="h3" style=""]', "\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-100 nino-grid-l-100\">\n\t\t\t[title" ],
 	$fixture
 );
 check( 'a page written by hand is read all the same, and written back in the canonical form, wrapped', $hand !== $fixture && $read( $hand ) === $model && $write( $read( $hand ) ) === $wrapped( $fixture ) );
@@ -398,7 +398,7 @@ check( 'the wrap is read from its place - the line after the head, the line befo
 check( '...written back byte for byte, the wrap hard at the frames, and Reader( Writer( Reader( x ) ) ) is Reader( x )', $write( $wrapModel ) === $wrapFixture && $read( $write( $wrapModel ) ) === $wrapModel );
 check( '...and the file that is wrapped and the file that is not hold the same blocks, so that nothing but the two lines and their classes is the wrap\'s', $wrapFixture === $wrapped( $fixture, 'nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium' ) );
 
-// Every switch, effect and speed: the classes are in one order, and what is written is read as it was
+// Every switch, effect and speed: the classes are in one order, and what is written is read by its tiers
 $wrong		= [];
 $combined	= 0;
 
@@ -802,6 +802,63 @@ check( '...and the column is written with its three widths and read again as the
 $twice = $column( 'nino-grid-s-50 nino-grid-s-100' )['cols'][0];
 check( 'a second width for the same viewport is not lost: the first one is the width, the other stays a class of the column', $twice['width'] === [ 's' => 50, 'm' => 50, 'l' => 50 ] && $twice['custom'] === 'nino-grid-s-100'
 	&& $read( $write( [ 'blocks' => [ $column( 'nino-grid-s-50 nino-grid-s-100' ) ] ] ) )['blocks'][0]['cols'][0] === $twice );
+// Nino.css starts its first tier at 640px: a column that is not 100 everywhere is full width below it, through the base class that comes before its tiers
+$colWritten	= static fn( array $block ): string => $write( [ 'blocks' => [ $block ] ] );
+$colTag		= static fn( string $text ): string => (string) preg_replace( '/^.*?<div class="(nino-grid-(?:100|s-)[^"]*)".*$/s', '$1', $text );
+$tiered		= $column( 'nino-grid-s-50 nino-grid-m-50 nino-grid-l-33' );
+$allHundred	= $column( 'nino-grid-s-100 nino-grid-m-100 nino-grid-l-100' );
+$writer		= \Nino\Modules\Builder\Writer::class;
+
+check( 'a column that is not 100 in every viewport is written with the base class first and its three tiers after it, so that it is full width until the first tier applies',
+	$colTag( $colWritten( $tiered ) ) === 'nino-grid-100 nino-grid-s-50 nino-grid-m-50 nino-grid-l-33'
+	&& array_slice( $writer::colClasses( [ 'width' => [ 's' => 100, 'm' => 100, 'l' => 66 ] ] ), 0, 4 ) === [ 'nino-grid-100', 'nino-grid-s-100', 'nino-grid-m-100', 'nino-grid-l-66' ]
+	&& array_slice( $writer::colClasses( [ 'width' => [ 's' => 33, 'm' => 33, 'l' => 33 ], 'hidden' => [ 'm' => true ] ] ), 0, 5 ) === [ 'nino-grid-100', 'nino-grid-s-33', 'nino-grid-m-33', 'nino-grid-l-33', 'nino-hide-m' ] );
+check( '...a column that is 100 in every viewport stays the base class alone', $colTag( $colWritten( $allHundred ) ) === 'nino-grid-100'
+	&& $writer::colClasses( [ 'width' => [ 's' => 100, 'm' => 100, 'l' => 100 ] ] ) === [ 'nino-grid-100' ] && $writer::colClasses( [] ) === [ 'nino-grid-100' ] );
+check( 'the base class with tiers beside it is the column of the tiers: the tiers win, whatever the order, and the base class is not a custom class of the column',
+	( static function() use ( $column ): bool {
+		foreach( [ 'nino-grid-100 nino-grid-s-50 nino-grid-m-33 nino-grid-l-25', 'nino-grid-l-25 nino-grid-m-33 nino-grid-100 nino-grid-s-50' ] as $class ) {
+			$col = $column( $class )['cols'][0];
+
+			if( $col['width'] !== [ 's' => 50, 'm' => 33, 'l' => 25 ] || $col['custom'] !== '' )
+				return false;
+		}
+
+		return $column( 'nino-grid-100 nino-grid-s-33 nino-grid-l-66' )['cols'][0]['width'] === [ 's' => 33, 'm' => 33, 'l' => 66 ];
+	} )() );
+check( '...the base class alone is the column that is 100 in every viewport', $column( 'nino-grid-100' )['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 100 ] && $column( 'nino-grid-100' )['cols'][0]['custom'] === '' );
+check( '...a column with tiers and without the base class is read by its tiers, and is written with the base class - no refusal',
+	( static function() use ( $column, $colWritten, $colTag ): bool {
+		$bare = $column( 'nino-grid-s-50 nino-grid-m-50 nino-grid-l-33' );
+
+		return $bare['kind'] === 'section' && $bare['cols'][0]['width'] === [ 's' => 50, 'm' => 50, 'l' => 33 ] && $bare['cols'][0]['custom'] === ''
+			&& $bare === $column( 'nino-grid-100 nino-grid-s-50 nino-grid-m-50 nino-grid-l-33' ) && $colTag( $colWritten( $bare ) ) === 'nino-grid-100 nino-grid-s-50 nino-grid-m-50 nino-grid-l-33';
+	} )() );
+check( '...and the round trip holds for each form: what is written is read as the same column, and written again byte for byte',
+	( static function() use ( $column, $colWritten, $read, $page, $section ): bool {
+		foreach( [ 'nino-grid-100', 'nino-grid-100 nino-grid-s-100 nino-grid-m-100 nino-grid-l-66', 'nino-grid-s-50 nino-grid-m-50 nino-grid-l-33', 'nino-grid-100 nino-grid-m-50 nino-hide-s' ] as $class ) {
+			$block	= $column( $class );
+			$text		= $colWritten( $block );
+			$again	= $read( $text )['blocks'][0];
+
+			if( $again !== $block || $colWritten( $again ) !== $text )
+				return false;
+		}
+
+		return true;
+	} )() );
+check( 'the example pages of the fixtures carry the base class before the tiers of every column that has them, and the columns that have none are the base class alone',
+	( static function(): bool {
+		foreach( [ 'page-home', 'page-home-wrap', 'page-home-concept', 'page-home-card' ] as $name ) {
+			$text = (string) file_get_contents( __DIR__. '/fixtures/'. $name. '.tpl' );
+
+			if( preg_match_all( '/nino-grid-s-\d+/', $text ) === 0 || preg_match_all( '/nino-grid-s-\d+/', $text ) !== preg_match_all( '/class="nino-grid-100 nino-grid-s-\d+ nino-grid-m-\d+ nino-grid-l-\d+[ "]/', $text ) )
+				return false;
+		}
+
+		return true;
+	} )() );
+
 $blocks = $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section', 'nino-grid-50' ) ) )['blocks'];
 check( 'an unprefixed width other than 100 cannot be said in three viewports without changing it: the section is a foreign block', count( $blocks ) === 1 && $blocks[0]['reason']['code'] === 'col-width' );
 
@@ -881,7 +938,7 @@ check( 'a section\'s settings are its classes, in one order: the colour, the bor
 	str_contains( $once, '<section id="a" class="nino-section nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-text-right my-section other" data-cover-height="60">' ) === true );
 check( '...and the row\'s and the column\'s: the width and the place of the row, the alignment of its columns, its padding on each side, the animation of the section and the custom classes - the delay and the duration of the animation the attributes of the row\'s tag; of a column the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
 	str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-row" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true
-	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
+	&& str_contains( $once, '<div class="nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
 check( '...the animation of a section stands on its row and on nothing else of it: no class and no attribute of it on the tag of the section, whatever the section is - written, read back as it was set, and written again byte for byte',
 	preg_match( '/<section [^>]*(?:vpa)/', $once ) === 0 && $write( $read( $once ) ) === $once && substr_count( $once, 'data-vpa-delay' ) === 1 && substr_count( $once, 'data-vpa-duration' ) === 1 );
 check( '...the picture behind the column is the first thing in it, a block of its own with the focus and the image of its slot with an empty alt', str_contains( $once, "my-col\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--8\">[image /template/page-x/a/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
@@ -934,7 +991,7 @@ check( 'a column has a ground of its own - the six of a section, and counter, th
 $mixedUp = $columnOf( $groundOf( 'nino-text-left nino-grid--alt my-col nino-hide-s nino-stack-gap-3 nino-grid-s-100 nino-stack-center nino-grid-m-50 nino-grid-l-33' ) );
 check( '...the classes of a column are read in any order and written in one: the widths, the hidden ones, the ground, the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
 	$mixedUp['color'] === 'alt' && $mixedUp['custom'] === 'my-col' && str_contains( $write( [ 'blocks' => [ $read( $groundOf( 'nino-text-left nino-grid--alt my-col nino-hide-s nino-stack-gap-3 nino-grid-s-100 nino-stack-center nino-grid-m-50 nino-grid-l-33' ) )['blocks'][0] ] ] ),
-		'<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--alt nino-stack-center nino-stack-gap-3 nino-text-left my-col">' ) === true );
+		'<div class="nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--alt nino-stack-center nino-stack-gap-3 nino-text-left my-col">' ) === true );
 
 $second = $columnOf( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) );
 check( '...a second ground is a class of its own: kept, not lost', $second['color'] === 'alt' && $second['custom'] === 'nino-grid--dark' && $write( $read( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) ) ) === $inWrap( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) ) );
@@ -1367,8 +1424,8 @@ check( '...the picture behind it is the first thing between the tags, the scrim 
 	&& str_contains( $loopText( [ 'inner' => true, 'color' => 'tint', 'dim' => true ], $picture ), " id=\"news\"]\n\t<div class=\"nino-grid-row nino-grid-row--tint nino-grid-row--dim\">\n\t\t<div class=\"nino-grid-row-bg\">" ) === true
 	&& $loopBack( [ 'inner' => true, 'color' => 'tint', 'dim' => true ], $picture ) === true && $loopBack( [], $picture ) === true );
 
-$loopWide = "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row nino-grid-row--wide\">\n\t\t<div class=\"nino-grid-s-100 nino-grid-m-50 nino-grid-l-50\">\n\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/a/photo alt=\"\"]</div>\n"
-	. "\t\t\t[title title]\n\t\t\t[card]\n\t\t\t\t[card-title title]\n\t\t\t[/card]\n\t\t</div>\n\t\t<div class=\"nino-grid-s-100 nino-grid-m-50 nino-grid-l-50\">\n\t\t\t[button .uri text=\"More\"]\n\t\t</div>\n\t</div>\n[/sections]";
+$loopWide = "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row nino-grid-row--wide\">\n\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-50\">\n\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/a/photo alt=\"\"]</div>\n"
+	. "\t\t\t[title title]\n\t\t\t[card]\n\t\t\t\t[card-title title]\n\t\t\t[/card]\n\t\t</div>\n\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-50\">\n\t\t\t[button .uri text=\"More\"]\n\t\t</div>\n\t</div>\n[/sections]";
 $wide = $read( $page( $loopWide ) )['blocks'][0];
 check( '...its columns are columns as any, each with its picture and its components - a field of the element is the source of one, as in a loop of a column - and a card is a container in it as anywhere: written back byte for byte',
 	$wide['kind'] === 'section' && count( $wide['cols'] ) === 2 && $wide['cols'][0]['background'] === [ 'slot' => '/template/page-x/a/photo', 'focus' => null ] && array_column( $wide['cols'][0]['components'], 'name' ) === [ 'title', 'card' ]
@@ -2820,7 +2877,7 @@ $groundGood['blocks'][0]['cols'][0]['color'] = 'counter';
 $groundGood['blocks'][0]['cols'][0]['dim'] = true;
 $groundGood['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-home/hero/photo', 'focus' => 4 ];
 $groundSource = \Nino\Modules\Builder\Document::source( $appData, $groundGood );
-check( '...and counter, the dimming of a column with a picture and the slot of one are none of that: the source view writes them', $groundSource['status'] === 200 && str_contains( $groundSource['parts'][1]['source'], "<div class=\"nino-grid-s-100 nino-grid-m-100 nino-grid-l-66 nino-grid--counter nino-grid--dim nino-text-left\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--4\">[image /template/page-home/hero/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
+check( '...and counter, the dimming of a column with a picture and the slot of one are none of that: the source view writes them', $groundSource['status'] === 200 && str_contains( $groundSource['parts'][1]['source'], "<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-100 nino-grid-l-66 nino-grid--counter nino-grid--dim nino-text-left\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--4\">[image /template/page-home/hero/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
 
 // The focus of the picture behind a column or a section is none or a number from 1 to 9: the Writer casts a text or a list to a number, so it is refused before anything is made
 $focusBad			= [
@@ -3673,7 +3730,7 @@ $localeWas = \Nino\Locales::getCurrentLocale( $appData );
 $cardPage = \Nino\Html::renderHtml( $appData, '[template /templates/page-home-card]' );
 \Nino\Locales::useLocale( $appData, $localeWas );
 check( 'the kernel renders the page with a card: the column with its spacing, the card around its children with the ground and the padding, the loop with a full-height dimmed card in each cell - no call left in the page',
-	preg_match( '/\[\/?(?:title|card|card-title|text|image|button|stack)[ \]]/', $cardPage ) === 0 && str_contains( $cardPage, '<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-mt-1 nino-mb-1 nino-p-2">' ) === true
+	preg_match( '/\[\/?(?:title|card|card-title|text|image|button|stack)[ \]]/', $cardPage ) === 0 && str_contains( $cardPage, '<div class="nino-grid-100 nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-mt-1 nino-mb-1 nino-p-2">' ) === true
 	&& str_contains( $cardPage, '<article class="nino-card nino-card--counter nino-p-3">' ) === true && str_contains( $cardPage, '<h3 class="nino-card-title">Our story</h3>' ) === true && str_contains( $cardPage, '<a class="nino-btn" href="/contact">Read on</a>' ) === true
 	&& substr_count( $cardPage, '<article class="nino-card nino-card--dim nino-card--fill">' ) === 2 && strpos( $cardPage, '<h3 class="nino-card-title">App</h3>' ) < strpos( $cardPage, '<h3 class="nino-card-title">Web</h3>' )
 	&& strpos( $cardPage, 'Our story' ) < strpos( $cardPage, 'It began in a garage.' ) && strpos( $cardPage, 'It began in a garage.' ) < strpos( $cardPage, 'Read on' ) && strpos( $cardPage, 'Read on' ) < strpos( $cardPage, 'A note.' ) );

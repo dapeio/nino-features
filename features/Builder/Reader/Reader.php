@@ -182,7 +182,13 @@ namespace Nino\Modules\Builder {
 	 *											column
 	 *											  width     map     s, m, l: 25 33 50 66 75 100 (ints), what each
 	 *											                    viewport ends up with, mobile first: nino-grid-100
-	 *											                    is all three, nino-grid-m-50 holds from m up
+	 *											                    alone is all three, nino-grid-m-50 holds from m up.
+	 *											                    A column that is not 100 everywhere is written
+	 *											                    nino-grid-100 nino-grid-s-<s> nino-grid-m-<m>
+	 *											                    nino-grid-l-<l> - full width until its first tier
+	 *											                    applies - and the tiers win over the base class;
+	 *											                    a column with tiers and without the base class
+	 *											                    reads the same
 	 *											  hidden    map     s, m, l => true, only the hidden ones (none
 	 *											                    hidden is [] in php, and in the json)
 	 *											  color     ''|counter|alt|tint|dark|black|primary|brand-alt
