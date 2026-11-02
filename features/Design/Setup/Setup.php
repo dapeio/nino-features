@@ -172,6 +172,9 @@ namespace Nino\Modules\Design {
 							height				the space above and below its content
 							space				the space between its columns, its lines and its links
 							ground				what it stands on (a choice)
+							border-size			the weight of the line over it
+							border-color		the colour of that line (a choice)
+							position			where the content stands: left, the place the template gives it, or centre (a choice)
 							nav-case			the links of the navigation in capitals (a toggle)
 				section		quiet, loud			the size of the --quiet and --loud variants - the title and the subtitle of a hero are the loud variant
 							title, subtitle	the size of the title and of the subtitle of a section
@@ -210,7 +213,7 @@ namespace Nino\Modules\Design {
 							label-case			the labels in capitals (a toggle)	*/
 		public const array KNOBS = [
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'cta' => 'choice', 'nav-case' => 'toggle' ],
-			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'nav-case' => 'toggle' ],
+			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'nav-case' => 'toggle' ],
 			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
@@ -271,6 +274,7 @@ namespace Nino\Modules\Design {
 			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
 			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
 			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
+			'knobs/footer/position' 				=> [ 'templates', 'footer', 2 ],
 			'parts/section' 						=> [ 'templates', 'section', 1 ],
 			'parts/card' 							=> [ 'templates', 'card', 1 ],
 			'parts/buttons' 						=> [ 'templates', 'buttons', 1 ],
@@ -318,6 +322,7 @@ namespace Nino\Modules\Design {
 			'knobs/header/border-size' 				=> [ 'surfaces', 'header', 3 ],
 			'knobs/footer/height' 					=> [ 'surfaces', 'footer', 1 ],
 			'knobs/footer/space' 					=> [ 'surfaces', 'footer', 2 ],
+			'knobs/footer/border-size' 				=> [ 'surfaces', 'footer', 3 ],
 			'knobs/section/space' 					=> [ 'surfaces', 'section', 1 ],
 			'knobs/section/rule' 					=> [ 'surfaces', 'section', 2 ],
 			'radii/cover' 							=> [ 'surfaces', 'section', 3 ],
@@ -339,7 +344,7 @@ namespace Nino\Modules\Design {
 			'knobs/forms/line' 						=> [ 'surfaces', 'forms', 3 ],
 			'knobs/forms/labels' 					=> [ 'surfaces', 'forms', 4 ],
 
-			// The colours: the palette is the page's, the frames have the ground of their bar and the header the colour of its line, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table; the forms have the colour of their lines and of their labels, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table; the forms have the colour of their lines and of their labels, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -351,6 +356,7 @@ namespace Nino\Modules\Design {
 			'knobs/header/ground' 					=> [ 'colours', 'header', 1 ],
 			'knobs/header/border-color' 			=> [ 'colours', 'header', 2 ],
 			'knobs/footer/ground' 					=> [ 'colours', 'footer', 1 ],
+			'knobs/footer/border-color' 			=> [ 'colours', 'footer', 2 ],
 			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],

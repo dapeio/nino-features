@@ -389,7 +389,7 @@ const NARROW_QUERY = '(max-width: 63.999rem)';
 /** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1, a toggle two, 0 and 1, an ink a tone of the page or none */
 const KINDS = {
 	header 		: { nav : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', position : 'choice', cta : 'choice', 'nav-case' : 'toggle' },
-	footer 		: { scale : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'nav-case' : 'toggle' },
+	footer 		: { scale : 'scale', height : 'scale', space : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', position : 'choice', 'nav-case' : 'toggle' },
 	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', space : 'scale', rule : 'scale', dim : 'scale', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
 	card 			: { title : 'scale', subtitle : 'scale', space : 'scale', border : 'scale', shadow : 'scale', tone : 'choice', hover : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
 	buttons 	: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale', hover : 'choice', case : 'toggle' },
@@ -412,6 +412,7 @@ const LAYOUT = {
 	'knobs/header/position'           : [ 'templates', 'header', 2 ],
 	'knobs/header/cta'                : [ 'templates', 'header', 3 ],
 	'parts/footer'                    : [ 'templates', 'footer', 1 ],
+	'knobs/footer/position'           : [ 'templates', 'footer', 2 ],
 	'parts/section'                   : [ 'templates', 'section', 1 ],
 	'parts/card'                      : [ 'templates', 'card', 1 ],
 	'parts/buttons'                   : [ 'templates', 'buttons', 1 ],
@@ -457,6 +458,7 @@ const LAYOUT = {
 	'knobs/header/border-size'        : [ 'surfaces', 'header', 3 ],
 	'knobs/footer/height'             : [ 'surfaces', 'footer', 1 ],
 	'knobs/footer/space'              : [ 'surfaces', 'footer', 2 ],
+	'knobs/footer/border-size'        : [ 'surfaces', 'footer', 3 ],
 	'knobs/section/space'             : [ 'surfaces', 'section', 1 ],
 	'knobs/section/rule'              : [ 'surfaces', 'section', 2 ],
 	'radii/cover'                     : [ 'surfaces', 'section', 3 ],
@@ -489,6 +491,7 @@ const LAYOUT = {
 	'knobs/header/ground'             : [ 'colours', 'header', 1 ],
 	'knobs/header/border-color'       : [ 'colours', 'header', 2 ],
 	'knobs/footer/ground'             : [ 'colours', 'footer', 1 ],
+	'knobs/footer/border-color'       : [ 'colours', 'footer', 2 ],
 	'knobs/section/dim'               : [ 'colours', 'section', 1 ],
 	'knobs/card/tone'                 : [ 'colours', 'card', 1 ],
 	'knobs/tables/stripes'            : [ 'colours', 'tables', 1 ],
@@ -2601,6 +2604,14 @@ check( '...each over its catalogue, on the one that is chosen, with the one word
 			&& cardOf( select ).dataset.object === tplRows[ tplParts.indexOf( row.part ) ].object && byTag( cardOf( select ), 'select' ).length === 1
 			&& byTag( cardOf( select ), 'p' ).length === 0 && byClass( cardOf( select ), 'design-note' ).length === 0;
 	} ) );
+check( '...and what stands in a Base block beside the select is what the table puts on Templates under that object: the position and the button after the select of the header, the position after the select of the footer, and the select alone in the other six - each strip a knob row in the block of its object, with its three words',
+	JSON.stringify( tplRows.map( function( row ) { return row.controls } ) ) === JSON.stringify( [ [ 'parts/header', 'knobs/header/position', 'knobs/header/cta' ], [ 'parts/footer', 'knobs/footer/position' ], [ 'parts/section' ], [ 'parts/card' ], [ 'parts/buttons' ], [ 'parts/lists' ], [ 'parts/tables' ], [ 'parts/forms' ] ] )
+	&& [ 'header', 'footer' ].every( function( object ) {
+		return [ 'position' ].concat( object === 'header' ? [ 'cta' ] : [] ).every( function( knob ) {
+			const row = controlOf( tpl, 'knobs/'+ object+ '/'+ knob );
+			return row !== null && hasClass( row, 'design-knob-row' ) && cardOf( row ) === cardOf( tplSelect( object ) ) && byTag( row, 'button' ).map( function( button ) { return button.textContent } ).join() === [ 'less', 'default', 'more' ].map( function( word ) { return TEXT['/_admin/design/knob/'+ object+ '/'+ knob+ '/'+ word] } ).join();
+		} );
+	} ) );
 check( '...a select says what it is for with one word, the same over every one of them, and not with the part it is the select of: the head of its block says the object, and the object a second time would be too much',
 	listing().parts.every( function( row ) { return byTag( tplSelect( row.part ).parent, 'label' )[0].textContent === TEXT['/_admin/design/label/template'] && byTag( tplSelect( row.part ).parent, 'label' )[0].textContent !== TEXT['/_admin/design/part/'+ row.part] } )
 	&& TEXT['/_admin/design/label/template'] !== undefined && TEXT['/_admin/design/label/template'] !== '' );
@@ -3490,9 +3501,9 @@ knobKeys.forEach( function( key ) {
 check( 'a scale is five numbers, a choice the three words of the knob, each capitalised, a toggle a switch and an ink a select of the tones with none first - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
-	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 33 && inkRows === 2 && wordProblems.length === 0 );
-check( '...the eleven choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
-	Object.keys( CHOICE_WORDS ).length === 11 && Object.keys( CHOICE_WORDS ).every( function( at ) {
+	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 34 && inkRows === 2 && wordProblems.length === 0 );
+check( '...the thirteen choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
+	Object.keys( CHOICE_WORDS ).length === 13 && Object.keys( CHOICE_WORDS ).every( function( at ) {
 		const key = 'knobs/'+ at;
 		const stands = worded.design._data.defaults.knobs[ at.split('/')[0] ][ at.split('/')[1] ];
 		worded.show( worded.design._data.layout.controls[key][0] );
@@ -3527,12 +3538,12 @@ const knOtherRows = {};
 
 [ 'colours', 'motion' ].forEach( function( tab ) { kn.tab( tabWord( tab ) ); knOtherRows[tab] = knobRows( kn ) } );
 
-check( '...and those of Colours the rows of the ground of the header, the colour of its line, the ground of the footer, the dimming of a section, the tone of the shadow of a card and the stripes of a table, and those of Motion what a card and a button do under the pointer - each under the object it sets, after what the page has on the tab',
+check( '...and those of Colours the rows of the ground of the header, the colour of its line, the ground of the footer, the colour of its line, the dimming of a section, the tone of the shadow of a card and the stripes of a table, and those of Motion what a card and a button do under the pointer - each under the object it sets, after what the page has on the tab',
 	[ 'colours', 'motion' ].every( function( tab ) {
 		return knOtherRows[tab].map( rowName ).join() === knobWords( knLayout, tab, moved ).map( function( word ) { return word[0] } ).join()
 			&& knOtherRows[tab].length === knobKeys.filter( function( key ) { return knLayout.controls[key][0] === tab } ).length
 			&& knOtherRows[tab].every( function( row ) { return knLayout.controls[ row.dataset.control ][1] === cardOf( row ).dataset.object && knLayout.controls[ row.dataset.control ][1] !== 'page' } );
-	} ) && knOtherRows.colours.length === 8 && knOtherRows.motion.length === 2 );
+	} ) && knOtherRows.colours.length === 9 && knOtherRows.motion.length === 2 );
 
 kn.tab( tabWord('surfaces') );
 
@@ -3587,7 +3598,7 @@ const knStands = function( key ) {
 
 check( '...in numbers: −2 for the title of a section, +2 for its subtitle, −1 for the corners of the buttons, +1 for the shadow of a card and, for the knobs nobody moved, the word of the position the defaults put them at - 0 for a scale, the middle word for a choice but for the navigation and the button of the header',
 	knWord('knobs/section/title') === '−2' && knWord('knobs/section/subtitle') === '+2' && knWord('knobs/buttons/corners') === '−1' && knWord('knobs/card/shadow') === '+1'
-	&& knAllLit().every( function( word, at ) { return [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) !== -1 || word[1] === knStands( knKeys[at] ) } ) && knMiddles.length === 11 );
+	&& knAllLit().every( function( word, at ) { return [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) !== -1 || word[1] === knStands( knKeys[at] ) } ) && knMiddles.length === 13 );
 
 /*	Another template brings its own knobs, and the ones the last one had are
 	not this one's: a position the new template does not answer to goes back to
@@ -5278,10 +5289,10 @@ byTag( colours.knobRow( colourWord('contrast') ), 'button' )[0].fire('click');
 
 check( 'a position of a knob is a number, 1 to 5: +2 on a scale is the fifth position and \u22122 the first',
 	colours.design._edit.colours.saturation === 5 && colours.design._edit.colours.contrast === 1 && typeof colours.design._edit.colours.saturation === 'number' );
-check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again - and after the page\'s five the ground of the header, the colour of its line, the ground of the footer, the dimming of a section, the tone of the shadow of a card and the stripes of a table, and the tone of the lines and of the labels of a form, in the middle',
+check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again - and after the page\'s five the ground of the header, the colour of its line, the ground of the footer, the colour of its line, the dimming of a section, the tone of the shadow of a card and the stripes of a table, and the tone of the lines and of the labels of a form, in the middle',
 	colours.byId('design-colour-primary').value === '#8b1d3f'
 	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ colourWord('harmony'), TEXT['/_admin/design/colour/harmony/1'] ], [ colourWord('temperature'), TEXT['/_admin/design/colour/temperature/3'] ], [ colourWord('saturation'), '+2' ], [ colourWord('contrast'), '\u22122' ], [ colourWord('depth'), '0' ],
-		[ knobWord( 'header', 'ground' ), TEXT['/_admin/design/knob/header/ground/default'] ], [ knobWord( 'header', 'border-color' ), TEXT['/_admin/design/knob/header/border-color/default'] ], [ knobWord( 'footer', 'ground' ), TEXT['/_admin/design/knob/footer/ground/default'] ],
+		[ knobWord( 'header', 'ground' ), TEXT['/_admin/design/knob/header/ground/default'] ], [ knobWord( 'header', 'border-color' ), TEXT['/_admin/design/knob/header/border-color/default'] ], [ knobWord( 'footer', 'ground' ), TEXT['/_admin/design/knob/footer/ground/default'] ], [ knobWord( 'footer', 'border-color' ), TEXT['/_admin/design/knob/footer/border-color/default'] ],
 		[ knobWord( 'section', 'dim' ), '0' ], [ knobWord( 'card', 'tone' ), TEXT['/_admin/design/knob/card/tone/default'] ], [ knobWord( 'tables', 'stripes' ), '0' ],
 		[ knobWord( 'forms', 'edge' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'forms', 'label' ), TEXT['/_admin/design/label/own'] ] ] )
 	&& wordOf( colours.byId('design-colour-mode') ) === TEXT['/_admin/design/colour/mode/dark'] && colours.byId('design-summary') === null );
@@ -5444,6 +5455,25 @@ check( 'a template of the header that leaves the position and the button out gre
 	&& fg.design._data.defaults.knobs.header.position !== 0 && offRows( fg ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/header/position,knobs/header/cta'
 	&& cardOf( controlOf( fg, 'knobs/header/position' ) ) === cardOf( setSelect( fg, 'header' ) ) && byTag( controlOf( fg, 'knobs/header/cta' ), 'button' ).every( function( button ) { return button.disabled === true } )
 	&& pressedKey( fg, 'knobs/header/cta' ) === 'false,false,false' );
+
+// ...and a footer is asked for its knobs the same way: the second template of the footer leaves the position out
+const footerLess = listing().parts;
+footerLess.filter( function( one ) { return one.part === 'footer' } )[0].catalogue.second.knobs = without( KNOBS.footer, [ 'position' ] );
+
+const ff = panel( { parts : footerLess } );
+ff.show( 'templates' );
+pressKey( ff, 'knobs/footer/position', -1 );
+
+check( 'the position of the footer is a strip of three on Templates, under the select of the template, and a press on it moves the position: the left button is lit and the knob stands at -1',
+	ff.design._edit.knobs.footer.position === -1 && pressedKey( ff, 'knobs/footer/position' ) === 'true,false,false' && cardOf( controlOf( ff, 'knobs/footer/position' ) ) === cardOf( setSelect( ff, 'footer' ) ) && offRows( ff ).length === 0 );
+
+choose( setSelect( ff, 'footer' ), 'second' );
+
+check( '...and a template of the footer that leaves it out greys the strip out under its select at once and puts the knob back at the position the defaults hold - not where it was moved to - with the strips of the line, which that template answers to, still on',
+	ff.design._edit.knobs.footer.position === ff.design._data.defaults.knobs.footer.position && ff.design._edit.knobs.footer.position !== -1
+	&& offRows( ff ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/footer/position'
+	&& byTag( controlOf( ff, 'knobs/footer/position' ), 'button' ).every( function( button ) { return button.disabled === true } ) && pressedKey( ff, 'knobs/footer/position' ) === 'false,false,false'
+	&& [ 'surfaces', 'colours' ].every( function( tab ) { ff.show( tab ); return offRows( ff ).length === 0 } ) );
 
 fg.show( 'surfaces' );
 
@@ -5974,7 +6004,7 @@ const ICON_OF = {
 	'page/radii-section' : 'square-round-corner', 'page/radii-card' : 'square-round-corner', 'page/radii-image' : 'square-round-corner',
 	'typefaces/family' : 'a-large-small',
 	'header/nav' : 'a-large-small', 'header/height' : 'move-vertical', 'header/space' : 'align-vertical-space-around', 'header/ground' : 'contrast', 'header/border-size' : 'minus', 'header/border-color' : 'palette', 'header/position' : 'move-horizontal', 'header/cta' : 'square-round-corner',
-	'footer/scale' : 'a-large-small', 'footer/height' : 'move-vertical', 'footer/space' : 'align-vertical-space-around', 'footer/ground' : 'contrast',
+	'footer/scale' : 'a-large-small', 'footer/height' : 'move-vertical', 'footer/space' : 'align-vertical-space-around', 'footer/ground' : 'contrast', 'footer/border-size' : 'minus', 'footer/border-color' : 'palette', 'footer/position' : 'move-horizontal',
 	'section/quiet' : 'a-large-small', 'section/loud' : 'a-large-small',
 	'section/title' : 'a-large-small', 'section/subtitle' : 'a-large-small', 'section/space' : 'scaling', 'section/rule' : 'minus', 'section/dim' : 'contrast',
 	'card/title' : 'a-large-small', 'card/subtitle' : 'a-large-small', 'card/space' : 'align-vertical-space-around',
@@ -7081,7 +7111,7 @@ check( '...and the place of every control follows from the table of the answer: 
 	Object.keys( jpLayout.controls ).every( function( key ) { return jp.setup._anchorOf( key ) === aimOf( jpLayout, key ) } )
 	&& [ [ 'width', 'global' ], [ 'radii/image', 'global' ], [ 'motion/effect', 'global' ], [ 'size', 'global' ], [ 'fonts/code', 'global' ], [ 'fonts/title', 'global' ], [ 'knobs/section/quiet', 'content' ], [ 'knobs/section/loud', 'content' ], [ 'colours/depth', 'colours' ], [ 'colours/primary', 'colours' ], [ 'colours/mode', 'colours' ],
 		[ 'parts/header', 'global' ], [ 'parts/footer', 'footer' ], [ 'parts/section', 'content' ], [ 'parts/card', 'cards' ], [ 'parts/buttons', 'buttons' ], [ 'parts/lists', 'lists' ], [ 'parts/tables', 'tables' ], [ 'parts/forms', 'forms' ],
-		[ 'knobs/header/height', 'global' ], [ 'knobs/header/ground', 'global' ], [ 'knobs/footer/space', 'footer' ], [ 'knobs/footer/ground', 'footer' ],
+		[ 'knobs/header/height', 'global' ], [ 'knobs/header/ground', 'global' ], [ 'knobs/footer/space', 'footer' ], [ 'knobs/footer/ground', 'footer' ], [ 'knobs/footer/border-size', 'footer' ], [ 'knobs/footer/border-color', 'footer' ], [ 'knobs/footer/position', 'footer' ],
 		[ 'knobs/section/space', 'content' ], [ 'radii/cover', 'content' ], [ 'knobs/section/dim', 'content' ], [ 'knobs/card/space', 'cards' ], [ 'knobs/card/tone', 'cards' ], [ 'knobs/card/hover', 'cards' ], [ 'radii/card', 'cards' ], [ 'motion/hover', 'cards' ], [ 'motion/hover-strength', 'cards' ],
 		[ 'knobs/buttons/space', 'buttons' ], [ 'knobs/buttons/hover', 'buttons' ], [ 'knobs/lists/marker', 'lists' ], [ 'knobs/lists/space', 'lists' ], [ 'knobs/tables/zebra', 'tables' ], [ 'knobs/tables/stripes', 'tables' ], [ 'knobs/forms/space', 'forms' ], [ 'knobs/forms/edge', 'forms' ], [ 'knobs/forms/label-case', 'forms' ] ].every( function( entry ) { return jp.setup._anchorOf( entry[0] ) === entry[1] } ) );
 
@@ -9472,8 +9502,9 @@ else {
 	/** What the buttons of a strip say is pressed, the strip found by the key the table has the control under */
 	const litOf = function( key ) { return byTag( controlOf( whole, key ), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() };
 
-	check( 'Templates is drawn from the catalogue and the choices the server gave: a block for each of the eight parts, each with a select over what the library has, on the one that is chosen - and nothing else on the tab but the strips of the header that the table puts there',
-		real.parts.length === 8 && tableObjects( real.layout, 'templates' ).length === 8 && real.parts.every( selectOf ) && knobRows( whole ).every( function( row ) { return cardOf( row ).dataset.object === 'header' } ) );
+	check( 'Templates is drawn from the catalogue and the choices the server gave: a block for each of the eight parts, each with a select over what the library has, on the one that is chosen - and nothing else on the tab but the strips of the header and of the footer that the table puts there',
+		real.parts.length === 8 && tableObjects( real.layout, 'templates' ).length === 8 && real.parts.every( selectOf ) && knobRows( whole ).every( function( row ) { return [ 'header', 'footer' ].indexOf( cardOf( row ).dataset.object ) !== -1 } )
+		&& knobRows( whole ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/header/position,knobs/header/cta,knobs/footer/position' );
 
 	whole.show( 'type' );
 

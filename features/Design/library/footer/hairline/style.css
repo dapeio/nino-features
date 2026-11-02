@@ -6,14 +6,17 @@
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
  *	@knob	ground		What the footer stands on
+ *	@knob	border-size	Weight of the line over the footer
+ *	@knob	border-color	Colour of that line
+ *	@knob	position	Where the content of the footer stands
  *
  *	The least a footer can be and still be legal. No navigation - a site whose
  *	header carries every page does not need the list twice - and no surface of
  *	its own, so the page ends on the ground it was written on. For one-pagers,
  *	landing pages and anything where the footer is a formality.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
- *	was before it had any: scale is a factor on the type size of the footer, height
+ *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
  *	and the ink of the page, this set's own, and the dark pair of the palette. What
@@ -22,6 +25,18 @@
  *	-border and -fill, the ground that is passed on where the footer's own is
  *	transparent), and is put on the footer as the roles Nino.css reads - so the
  *	footer is legible on each of the three.
+ *
+ *	The line over the footer is two knobs. border-size is its weight, drawn as the top
+ *	border of the frame that paints the ground, and border-color a choice of three for its
+ *	colour: the ink of the ground, the line of the ground - where it stands at the middle -
+ *	and the brand. Of the three, the first two are roles of the footer's own ground, so
+ *	a ground of another kind brings its line with it.
+ *
+ *	The seventh, position, is a choice of three for where the content stands. Left has the
+ *	copyright and the links next to each other at the left edge, the middle one is the
+ *	template - the copyright at the left edge and the links pushed to the right one -
+ *	and centre gathers both in the middle of the line. How far the links are pushed is
+ *	--footer-position-push, an aspect of the knob that is as long as it is.
  */
 
 :root {
@@ -85,6 +100,26 @@
 	--footer-ground-fill--less:	var(--color-background);
 	--footer-ground-fill--default:	var(--color-ground);
 	--footer-ground-fill--more:	var(--color-section-dark-bg);
+
+	/*	The weight of the line over the footer, a hairline at the middle: none, half a pixel, a pixel, two, a rule	*/
+	--footer-border-size--least:	0;
+	--footer-border-size--less:	.5px;
+	--footer-border-size--default:	1px;
+	--footer-border-size--more:	2px;
+	--footer-border-size--most:	6px;
+
+	/*	The colour of that line: the ink of the ground the footer stands on, the line of that ground, the brand - so a dark ground brings its own line	*/
+	--footer-border-color--less:	var(--footer-ground-ink);
+	--footer-border-color--default:	var(--footer-ground-border);
+	--footer-border-color--more:	var(--color-primary);
+
+	/*	Where the content stands: the line is packed at the left edge, as the template has it, or in the middle. The links of the line are pushed to the right edge by an auto margin at the middle, and stand next to the copyright at the other two	*/
+	--footer-position--less:	start;
+	--footer-position--default:	start;
+	--footer-position--more:	center;
+	--footer-position-push--less:	0;
+	--footer-position-push--default:	auto;
+	--footer-position-push--more:	0;
 }
 
 footer {
@@ -102,13 +137,14 @@ footer {
 .nino-frame-footer {
 	padding: calc( var(--space-2) * var(--footer-height) ) 0;
 	background-color: var(--footer-ground);
-	border-top: 1px solid var(--color-border);
+	border-top: solid var(--footer-border-color) var(--footer-border-size);
 }
 
 .nino-frame-footer .nino-frame-footer-line {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
+	justify-content: var(--footer-position);
 	gap: calc( .35rem * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
 	font-size: var(--fontsize-small);
 }
@@ -123,7 +159,7 @@ footer {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: calc( .35rem * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
-	margin-left: auto;
+	margin-left: var(--footer-position-push);
 }
 
 .nino-frame-footer a {

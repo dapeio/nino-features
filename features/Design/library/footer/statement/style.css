@@ -6,13 +6,15 @@
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
  *	@knob	ground		What the footer stands on
+ *	@knob	border-size	Weight of the line over the footer
+ *	@knob	border-color	Colour of that line
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
- *	was before it had any: scale is a factor on the type size of the footer, height
+ *	The six knobs are ladders, declared below, the middle of each this set as it
+ *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
  *	and the ink of the page, this set's own, and the dark pair of the palette. What
@@ -23,6 +25,17 @@
  *
  *	The band the statement stands in has the brand colour for a ground and its own
  *	ink, whatever the ground of the footer is.
+ *
+ *	The line over the footer is two knobs. border-size is its weight, drawn as the top
+ *	border of the frame that paints the ground, and border-color a choice of three for its
+ *	colour: the ink of the band, the border of the band - where it stands at the middle -
+ *	and the second colour of the palette. The line lies directly above the band of the brand
+ *	colour, which is that colour on every ground, so its rungs are the roles of the band and
+ *	not those of the ground, and none of them is the brand colour, which would show nothing.
+ *
+ *	Position is not answered here: the statement stands in a band that takes the width of
+ *	the page, and the contact and the links stand against its edges - that is the
+ *	construction of the set, and a centred statement is another set.
  */
 
 :root {
@@ -81,6 +94,18 @@
 	--footer-ground-border--less:	var(--color-border);
 	--footer-ground-border--default:	var(--color-border-black);
 	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The weight of the line over the footer: none at the middle - this set draws no line of its own - a hairline and a rule beyond it	*/
+	--footer-border-size--least:	0;
+	--footer-border-size--less:	0;
+	--footer-border-size--default:	0;
+	--footer-border-size--more:	1px;
+	--footer-border-size--most:	2px;
+
+	/*	The colour of that line: it lies directly above the band of the brand colour, so its rungs are roles that show on the band - the ink of the band, the border of the band, the second colour of the palette - and never the brand colour itself, which the band is	*/
+	--footer-border-color--less:	var(--color-primary-text);
+	--footer-border-color--default:	var(--color-border-primary);
+	--footer-border-color--more:	var(--color-secondary);
 }
 
 footer {
@@ -97,6 +122,7 @@ footer {
 
 .nino-frame-footer {
 	background-color: var(--footer-ground);
+	border-top: solid var(--footer-border-color) var(--footer-border-size);
 }
 
 .nino-frame-footer .nino-frame-footer-statement {

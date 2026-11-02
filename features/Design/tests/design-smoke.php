@@ -1702,6 +1702,148 @@ foreach( [ 'header', 'footer' ] as $blackFrame )
 
 check( 'a header or a footer whose ground at default is the palette\'s black reads --color-border-black, --color-focus-black and --color-accent-black there, and no other role, for its line, its ring of the focus and its link'. ( $blackProblems === [] ? '' : ' - '. implode( ', ', $blackProblems ) ), $blackSets['header'] > 0 && $blackSets['footer'] > 0 && $blackProblems === [] );
 
+/*	The line of a footer follows its ground, as the line of a header does (see above). The selection line of a knob - --footer-border-color: var(--footer-border-color--default) - stands on :root, where a value is
+	computed, and the role a footer remaps further down (--color-border on the footer) comes too late for it: a rung that names --color-border or --color-text is the page's colour even where the
+	ground is the dark pair. A rung of the line that is to follow the ground names a role of the ground - var(--footer-ground-...) - which is a selection line on :root of its own, taking its rung
+	from the knob of the ground. Held for the rungs less and default, with the ground at more and the line at default, for each footer the library lists: every one answers both knobs, and the
+	compile selects the ground at more, the line at default and, for each of the two rungs, the role of the ground it names at its rung more. The rung more is the brand, which is the palette's.
+	One footer is the exception, and is named: the line of the statement lies directly above its band, which is the brand colour on every ground, so its rungs are the roles that show on the band -
+	the ink of the band, its border and the second colour of the palette - and none of them is the brand colour, which the band is and which would draw nothing there	*/
+$footerBandLine = [ 'statement' => [ 'less' => 'var(--color-primary-text)', 'default' => 'var(--color-border-primary)', 'more' => 'var(--color-secondary)' ] ];
+$footerLineProblems = [];
+$footerLineSets = 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	if( array_diff( [ 'ground', 'border-color' ], array_keys( Setup::ladders( $library, 'footer', $set ) ) ) !== [] ) {
+		$footerLineProblems[] = $set. ': does not answer both the ground and the colour of the line';
+		continue;
+	}
+
+	$footerLineSets++;
+
+	$lineRaw	= [ 'parts' => [ 'footer' => $set ], 'knobs' => [ 'footer' => [ 'ground' => 1, 'border-color' => 0 ] ] ];
+	$lineCss	= designPlain( Compiler::compile( $appData, Setup::normalize( $appData, $lineRaw, $library ), $library ) );
+	$lineRung	= designLadderValues( $lineCss, 'footer' )['base']['border-color'] ?? [];
+
+	if( str_contains( $lineCss, '--footer-ground: var(--footer-ground--more);' ) === false || str_contains( $lineCss, '--footer-border-color: var(--footer-border-color--default);' ) === false )
+		$footerLineProblems[] = $set. ': the compile does not select the ground at more and the line at default';
+
+	if( isset( $footerBandLine[$set] ) === true ) {
+
+		if( $lineRung !== $footerBandLine[$set] )
+			$footerLineProblems[] = $set. ': the rungs of the line are not the roles of its band';
+
+		continue;
+	}
+
+	foreach( [ 'less', 'default' ] as $step ) {
+
+		if( preg_match( '/^var\(\s*(--footer-ground-[a-z0-9-]+)\s*\)$/', $lineRung[$step] ?? '', $role ) !== 1 )
+			$footerLineProblems[] = $set. ': the rung '. $step. ' of the line is not a role of the ground';
+		elseif( preg_match( '/\s'. preg_quote( $role[1], '/' ). ':\s*var\(\s*'. preg_quote( $role[1], '/' ). '--more\s*\)/', $lineCss ) !== 1 )
+			$footerLineProblems[] = $set. ': the role '. $role[1]. ' that the rung '. $step. ' names is not selected from the ground at more';
+	}
+
+	if( ( $lineRung['more'] ?? '' ) !== 'var(--color-primary)' )
+		$footerLineProblems[] = $set. ': the rung more of the line is not the brand';
+}
+
+check( 'every footer answers the weight and the colour of its line, the rungs less and default of the colour name a role of its ground, and with the ground at more the compile selects that role at the rung more; the rung more is the brand - but for the line of the statement, which lies on its band and names the roles of the band, none of them the brand'
+	. ( $footerLineProblems === [] ? '' : ' - '. implode( ', ', $footerLineProblems ) ), $footerLineSets === count( Setup::available( $library, 'footer' ) ) && $footerLineSets > 1 && $footerLineProblems === [] );
+
+/*	The line is drawn on the element that paints the ground, and by the knobs: a rule of a footer reads --footer-border-color and --footer-border-size in one border-top, which is the line of the
+	footer, in the width and the colour the compile selects - on the element that carries the ground of the footer (the background of the rule is --footer-ground), so that the line is drawn over
+	the ground its colour was chosen for. The weight is a ladder that rises from nothing - the rung least is 0 - and the default footer, which draws no line of its own, has 0 at its middle: the
+	line is there when somebody asks for it. Read from the library's own list of footers, so that a set that is added with a line of its own, or with the knob unread, fails here rather than on a site	*/
+$footerBorderProblems = [];
+$footerRules = 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	$borderCss	= designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) );
+	$drawn			= [];
+
+	foreach( designRules( $borderCss ) as $borderRule )
+		if( preg_match( '/(?<![a-z-])border-top\s*:\s*solid\s+var\(--footer-border-color\)\s+var\(--footer-border-size\)\s*;/', $borderRule['body'] ) === 1 ) {
+
+			$drawn[] = $borderRule['selector'];
+
+			if( preg_match( '/(?<![a-z-])background(?:-color)?\s*:\s*var\(--footer-ground\)\s*;/', $borderRule['body'] ) !== 1 )
+				$footerBorderProblems[] = $set. ': '. $borderRule['selector']. ' draws the line over no ground of the footer';
+		}
+
+	if( count( $drawn ) !== 1 )
+		$footerBorderProblems[] = $set. ': '. count( $drawn ). ' rules draw the line from the two knobs';
+
+	$footerRules += count( $drawn );
+	$sizeRungs = designLadderValues( $borderCss, 'footer' )['base']['border-size'] ?? [];
+
+	if( array_keys( $sizeRungs ) !== Setup::STEPS || (float) $sizeRungs['least'] !== 0.0 )
+		$footerBorderProblems[] = $set. ': the weight of the line is not a ladder of five that starts at 0';
+	else if( $set === $defaultSets['footer'] && (float) $sizeRungs['default'] !== 0.0 )
+		$footerBorderProblems[] = $set. ': the default footer draws a line at the middle of the weight';
+}
+
+check( 'every footer draws the line over it from the two knobs, once - border-top: solid var(--footer-border-color) var(--footer-border-size) - on the element that paints its ground, the weight a ladder of five from 0, and the default footer has none at the middle'
+	. ( $footerBorderProblems === [] ? '' : ' - '. implode( ', ', $footerBorderProblems ) ), $footerBorderProblems === [] && $footerRules === count( Setup::available( $library, 'footer' ) ) );
+
+/*	A footer whose ground at default is not one of the light grounds has a line, a ring of the focus and a link of its own on it, none of them the role of the page - the pin of the header above, held
+	for the footers and failing closed the same way: the ground of the page and none at all are the light ones, whatever else a footer stands on is held to a border, a focus and an accent that
+	are not the border, the focus and the accent the page has. The light grounds of the library are the ground of the page and that of a footer with no surface of its own, and at least one footer
+	stands off them, so that the pin has something to hold	*/
+$footerLight		= [ 'var(--color-background)', 'transparent' ];
+$footerDark			= [];
+$footerDarkSets	= 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	$roles = array_map( static fn( string $value ): string => (string) preg_replace( '/\s+/', '', $value ), designDeclarations( designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) ) ) );
+
+	if( isset( $roles['--footer-ground--default'] ) === true && in_array( $roles['--footer-ground--default'], $footerLight, true ) === true )
+		continue;
+
+	$footerDarkSets++;
+
+	foreach( [ 'border' => 'var(--color-border)', 'focus' => 'var(--color-focus)', 'accent' => 'var(--color-accent)' ] as $aspect => $pageRole )
+		if( isset( $roles['--footer-ground--default'], $roles['--footer-ground-'. $aspect. '--default'] ) === false || $roles['--footer-ground-'. $aspect. '--default'] === $pageRole )
+			$footerDark[] = $set. ': '. $aspect;
+}
+
+check( 'a footer whose ground at default is not the ground of the page, nor none, does not draw its line, its ring of the focus or its link at default in the border, the focus or the accent of the page'
+	. ( $footerDark === [] ? '' : ' - '. implode( ', ', $footerDark ) ), $footerDarkSets > 0 && $footerDark === [] );
+
+/*	A ladder a footer publishes is read: every custom property of a ladder, the knob and its aspects, is the name of a var() in a declaration of the stylesheet that stands outside the ladders, so a
+	handle the panel offers moves something. The position of the content is answered by every footer that can place its content - the construction of two of them, the panels and the statement, has
+	its places built in, and they leave it out and are greyed out -, and by each of the others in at least one declaration of how a row or a column is aligned, laid out or pushed	*/
+$footerUnread = [];
+$footerPositioned = [];
+$footerAlign = '(?:text-align|justify-content|justify-items|align-items|grid-template-columns|margin-left|flex-basis|column-gap)';
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	$footerRead	= designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) );
+	$footerReadOnly	= (string) preg_replace( '/--footer-[a-z0-9-]+--(?:least|less|default|more|most)\s*:[^;]*;/', '', $footerRead );
+
+	foreach( Setup::ladders( $library, 'footer', $set ) as $knob => $names )
+		if( in_array( $knob, [ 'border-size', 'border-color', 'position' ], true ) === true )
+			foreach( $names as $name )
+				if( preg_match( '/var\(\s*--footer-'. preg_quote( $name, '/' ). '\s*[,)]/', $footerReadOnly ) !== 1 )
+					$footerUnread[] = $set. ': --footer-'. $name;
+
+	if( in_array( 'position', Setup::knobs( $library, 'footer', $set ), true ) === true ) {
+		$footerPositioned[] = $set;
+
+		if( preg_match( '/(?<![a-z-])'. $footerAlign. '\s*:\s*[^;]*var\(\s*--footer-position\s*[,)]/', $footerReadOnly ) !== 1 )
+			$footerUnread[] = $set. ': the position moves no alignment';
+	}
+}
+
+check( 'a footer reads every ladder it publishes for the line and the position, and each footer that answers the position moves an alignment, a column, a push or a basis with it - and the two whose parts have their places built in, the panels and the statement, leave it out'
+	. ( $footerUnread === [] ? '' : ' - '. implode( ', ', $footerUnread ) ),
+	$footerUnread === [] && count( $footerPositioned ) === count( Setup::available( $library, 'footer' ) ) - 2
+	&& array_values( array_diff( Setup::available( $library, 'footer' ), $footerPositioned ) ) === [ 'statement', 'two-panels' ] );
+
 /*	A footer passes its ink and its ground on. --color-ink is the role the digits of a counter, the labels of a form and the other things a feature paints in the ink of the surface
 	it lies on are drawn in, --color-ground the one a field is filled with, and they stand on :root as the text and the ground of the page, so that on a ground of the footer's own
 	they are the roles of another surface - near-black on the black, a white field with near-white text. A rule of a footer that paints a ground - a background with a colour of its
@@ -2124,10 +2266,10 @@ foreach( Setup::KNOBS as $knobPart => $kinds ) {
 	}
 }
 
-check( 'the knobs of the eight parts, in the order of the model: fifty-four, thirty-three scales, eleven choices, eight toggles and two inks - the ground, the colour of the line, the position and the button of the header, the ground of the footer, the tone and the hover of a card, the hover of the buttons, the marker of a list, the zebra of a table and the place of the label of a field are the choices; the case of the navigation of the header and of the footer, of the title and the subtitle of a section and of a card, of the buttons and of the labels of a form the toggles, each after the knobs of its part; the colour of the lines and of the labels of a form the inks, a tone of the page and no position - the line under the title of a section its rule, and no corners but the buttons\' and the form\'s: the radius of the other surfaces is the page\'s, set under Surfaces',
+check( 'the knobs of the eight parts, in the order of the model: fifty-seven, thirty-four scales, thirteen choices, eight toggles and two inks - the ground, the colour of the line, the position and the button of the header, the ground, the colour of the line and the position of the footer, the tone and the hover of a card, the hover of the buttons, the marker of a list, the zebra of a table and the place of the label of a field are the choices; the case of the navigation of the header and of the footer, of the title and the subtitle of a section and of a card, of the buttons and of the labels of a form the toggles, each after the knobs of its part; the colour of the lines and of the labels of a form the inks, a tone of the page and no position - the line under the title of a section its rule, and no corners but the buttons\' and the form\'s: the radius of the other surfaces is the page\'s, set under Surfaces',
 	array_map( 'array_keys', Setup::KNOBS ) === [
 		'header' => [ 'nav', 'height', 'space', 'ground', 'border-size', 'border-color', 'position', 'cta', 'nav-case' ],
-		'footer' => [ 'scale', 'height', 'space', 'ground', 'nav-case' ],
+		'footer' => [ 'scale', 'height', 'space', 'ground', 'border-size', 'border-color', 'position', 'nav-case' ],
 		'section' => [ 'quiet', 'loud', 'title', 'subtitle', 'space', 'rule', 'dim', 'title-case', 'subtitle-case' ],
 		'card' => [ 'title', 'subtitle', 'space', 'border', 'shadow', 'tone', 'hover', 'title-case', 'subtitle-case' ],
 		'buttons' => [ 'size', 'spread', 'space', 'corners', 'hover', 'case' ],
@@ -2136,15 +2278,15 @@ check( 'the knobs of the eight parts, in the order of the model: fifty-four, thi
 		'forms' => [ 'scale', 'space', 'corners', 'line', 'labels', 'edge', 'label', 'label-case' ],
 	]
 	&& array_keys( Setup::KNOBS ) === array_keys( Setup::PARTS )
-	&& $choices === [ 'header/ground', 'header/border-color', 'header/position', 'header/cta', 'footer/ground', 'card/tone', 'card/hover', 'buttons/hover', 'lists/marker', 'tables/zebra', 'forms/labels' ]
+	&& $choices === [ 'header/ground', 'header/border-color', 'header/position', 'header/cta', 'footer/ground', 'footer/border-color', 'footer/position', 'card/tone', 'card/hover', 'buttons/hover', 'lists/marker', 'tables/zebra', 'forms/labels' ]
 	&& $toggles === [ 'header/nav-case', 'footer/nav-case', 'section/title-case', 'section/subtitle-case', 'card/title-case', 'card/subtitle-case', 'buttons/case', 'forms/label-case' ]
 	&& $inks === [ 'forms/edge', 'forms/label' ]
-	&& $scales === 33 && array_sum( array_map( 'count', Setup::KNOBS ) ) === 54
+	&& $scales === 34 && array_sum( array_map( 'count', Setup::KNOBS ) ) === 57
 	&& Setup::KNOBS['buttons']['corners'] === 'scale' && Setup::KNOBS['forms']['corners'] === 'scale' && isset( Setup::KNOBS['section']['corners'], Setup::KNOBS['card']['corners'], Setup::KNOBS['tables']['corners'] ) === false );
 
 /*	A knob is selected on :root by a custom property of its own, --<part>-<knob>, which the rules of the templates read, and the compiler writes one line for each. A custom property
 	that the kernel's Nino.css or the library's base.css declares by the same name would be the same property - a selection line over a value of theirs, or a value of theirs that
-	the line is written under - so none of the fifty-four selection tokens is a name either of them declares. Read from both stylesheets, for every custom property they declare -
+	the line is written under - so none of the fifty-seven selection tokens is a name either of them declares. Read from both stylesheets, for every custom property they declare -
 	but for the defaults the kernel gives the properties of the form, which stand in :where() and have no specificity: the same name is meant there, a default for the selection
 	line to beat, and a rule of the kernel's that declares one anywhere else is a collision as before	*/
 $declaredByTheirs = [];
@@ -2163,7 +2305,7 @@ foreach( Setup::KNOBS as $knobPart => $kinds )
 		if( isset( $declaredByTheirs[ '--'. $knobPart. '-'. $knobName ] ) === true )
 			$colliding[] = '--'. $knobPart. '-'. $knobName;
 
-check( 'no selection token is a custom property that the kernel\'s Nino.css or the library\'s base.css declares, but as a default in :where() - the fifty-four names --<part>-<knob> are the knobs\' alone ('. count( $declaredByTheirs ). ' declared by the two)'
+check( 'no selection token is a custom property that the kernel\'s Nino.css or the library\'s base.css declares, but as a default in :where() - the fifty-seven names --<part>-<knob> are the knobs\' alone ('. count( $declaredByTheirs ). ' declared by the two)'
 	. ( $colliding === [] ? '' : ' - theirs: '. implode( ', ', $colliding ) ), $colliding === [] && count( $declaredByTheirs ) > 100 );
 
 /*	The panel in two axes is drawn from one table. A tab is a property of the design and an object is what the property is set on; Setup::LAYOUT says, for every control of
@@ -2274,7 +2416,7 @@ check( 'the keys that share a place are the controls that are one: the cover, th
 check( '...and the table puts every control in the row of its object: each template under the object it is the template of - the header, the footer, the section, the card, the buttons, the lists, the tables and the forms, in the order of the objects -; the type and the surfaces row by row - page, header, footer, section, card, buttons, lists, tables and forms - with the sizes of the titles under the object whose titles they are; the colours and the motion with the page, and with the object whose dimming, shadow, stripes or hover they are',
 	$laidOut === [
 		'templates/header' 			=> [ 'parts/header', 'knobs/header/position', 'knobs/header/cta' ],
-		'templates/footer' 			=> [ 'parts/footer' ],
+		'templates/footer' 			=> [ 'parts/footer', 'knobs/footer/position' ],
 		'templates/section' 		=> [ 'parts/section' ],
 		'templates/card' 				=> [ 'parts/card' ],
 		'templates/buttons' 		=> [ 'parts/buttons' ],
@@ -2292,7 +2434,7 @@ check( '...and the table puts every control in the row of its object: each templ
 		'type/forms' 						=> [ 'knobs/forms/scale', 'knobs/forms/label-case' ],
 		'surfaces/page' 				=> [ 'width', 'whitespace', 'radius', 'radius-alt', 'radii/image' ],
 		'surfaces/header' 			=> [ 'knobs/header/height', 'knobs/header/space', 'knobs/header/border-size' ],
-		'surfaces/footer' 			=> [ 'knobs/footer/height', 'knobs/footer/space' ],
+		'surfaces/footer' 			=> [ 'knobs/footer/height', 'knobs/footer/space', 'knobs/footer/border-size' ],
 		'surfaces/section' 			=> [ 'knobs/section/space', 'knobs/section/rule', 'radii/cover radii/row radii/column' ],
 		'surfaces/card' 				=> [ 'knobs/card/space', 'knobs/card/border', 'knobs/card/shadow', 'radii/card' ],
 		'surfaces/buttons' 			=> [ 'knobs/buttons/space', 'knobs/buttons/corners' ],
@@ -2301,7 +2443,7 @@ check( '...and the table puts every control in the row of its object: each templ
 		'surfaces/forms' 				=> [ 'knobs/forms/space', 'knobs/forms/corners', 'knobs/forms/line', 'knobs/forms/labels' ],
 		'colours/page' 					=> [ 'colours/primary', 'colours/secondary colours/harmony', 'colours/temperature', 'colours/saturation', 'colours/contrast', 'colours/depth', 'colours/mode' ],
 		'colours/header' 				=> [ 'knobs/header/ground', 'knobs/header/border-color' ],
-		'colours/footer' 				=> [ 'knobs/footer/ground' ],
+		'colours/footer' 				=> [ 'knobs/footer/ground', 'knobs/footer/border-color' ],
 		'colours/section' 			=> [ 'knobs/section/dim' ],
 		'colours/card' 					=> [ 'knobs/card/tone' ],
 		'colours/tables' 				=> [ 'knobs/tables/stripes' ],
@@ -5043,6 +5185,19 @@ check( 'a header and a footer template that leave the case of the navigation out
 	&& $keptOn['knobs']['header']['nav-case'] === 1 && $keptOn['knobs']['footer']['nav-case'] === 1 );
 callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $defaultSets['header'], 'footer' => $defaultSets['footer'] ], 'knobs' => [] ] );
 
+// A footer template that does not answer to the position of the content: whatever was posted for the knob, the setup keeps it where the defaults put it - and for the template that does answer it stays where it was put
+$noFooterPosition = array_values( array_filter( Setup::available( $library, 'footer' ), static fn( string $set ): bool => in_array( 'position', Setup::knobs( $library, 'footer', $set ), true ) === false ) )[0] ?? '';
+[ $statusNo, ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'footer' => $noFooterPosition ], 'knobs' => [ 'footer' => [ 'position' => -1, 'border-size' => 1 ] ] ] );
+$keptNo = Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
+[ $statusYes, ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'footer' => $defaultSets['footer'] ], 'knobs' => [ 'footer' => [ 'position' => -1, 'border-size' => 1 ] ] ] );
+$keptYes = Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
+
+check( 'a footer template that leaves the position out keeps no position posted for it: the setup holds the one the defaults put it at, while the line it does answer to is kept - and the default footer keeps both',
+	$noFooterPosition !== '' && $statusNo === 200 && $statusYes === 200 && $keptNo['parts']['footer'] === $noFooterPosition
+	&& $keptNo['knobs']['footer']['position'] === Setup::defaults( $library )['knobs']['footer']['position'] && $keptNo['knobs']['footer']['position'] !== -1
+	&& $keptNo['knobs']['footer']['border-size'] === 1 && $keptYes['knobs']['footer']['position'] === -1 && $keptYes['knobs']['footer']['border-size'] === 1 );
+callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $defaultSets['header'], 'footer' => $defaultSets['footer'] ], 'knobs' => [] ] );
+
 // Saving is not compiling: the decision lands, the stylesheet does not move
 // Every knob of every part is moved - each to +1, which a scale and a choice both reach - on another set for each part, whichever the library has: what is kept is what the chosen set answers to
 [ $status, $saved ] = callDesignAction( $appData, 'apiSave', [
@@ -5736,12 +5891,25 @@ foreach( Setup::PARTS as $part => $kind )
 		if( $themeKnobs[$part][$knob] !== 0 && Setup::kind( $part, $knob ) !== 'ink' )
 			$offMiddleLadders += count( $names );
 
-check( 'at the defaults the sheet selects the step the defaults put every ladder at: a line for each ladder the default sets of the eight parts publish - the fifty-four knobs and the aspects beside some of them, the inks of the forms among them, which stand in the block of the inks - each pointing at its own step, the middle but for the knobs the shipped theme moves, the five of the section and the card among them',
+check( 'at the defaults the sheet selects the step the defaults put every ladder at: a line for each ladder the default sets of the eight parts publish - the fifty-seven knobs and the aspects beside some of them, the inks of the forms among them, which stand in the block of the inks - each pointing at its own step, the middle but for the knobs the shipped theme moves, the five of the section and the card among them',
 	preg_match_all( '/^\t--((?:'. $partsPattern. ')-[a-z0-9-]+): var\(--\1--default\);$/m', $defaultLines ) === $ladderCount - $offMiddleLadders
-	&& preg_match_all( '/^\t--((?:'. $partsPattern. ')-[a-z0-9-]+): var\(--\1--(?:least|less|default|more|most)\);$/m', $defaultLines ) === $ladderCount && $ladderCount >= 54
+	&& preg_match_all( '/^\t--((?:'. $partsPattern. ')-[a-z0-9-]+): var\(--\1--(?:least|less|default|more|most)\);$/m', $defaultLines ) === $ladderCount && $ladderCount >= 57
 	&& count( array_filter( $groupKnobs, static function( array $names, string $groupPart ) use ( $defaultLines ): bool {
 		return array_filter( array_keys( $names ), static fn( string $knob ): bool => str_contains( $defaultLines, "\t--". $groupPart. '-'. $knob. ': var(--'. $groupPart. '-'. $knob. "--default);\n" ) === false ) === [];
 	}, ARRAY_FILTER_USE_BOTH ) ) === count( $groupKnobs ) );
+
+// ...the footer's three among them: the weight and the colour of the line and the position of the content, each with the aspects the default set declares, at the middle - the shipped theme moves none of them
+$footerAt = [ 'border-size', 'border-color', 'position' ];
+$footerLines = [];
+
+foreach( Setup::ladders( $library, 'footer', $defaultSets['footer'] ) as $footerKnob => $footerNames )
+	if( in_array( $footerKnob, $footerAt, true ) === true )
+		foreach( $footerNames as $footerName )
+			$footerLines[] = "\t--footer-". $footerName. ': var(--footer-'. $footerName. "--default);\n";
+
+check( '...and the default footer\'s line and position stand at their middle in it: one selection line for the weight and for the colour of the line, and for the position and the ladders beside it - the basis and the gap of the row - pointing at the rung default',
+	count( $footerLines ) === 5 && array_filter( $footerLines, static fn( string $line ): bool => str_contains( $defaultLines, $line ) === false ) === []
+	&& array_filter( $footerAt, static fn( string $knob ): bool => Setup::kind( 'footer', $knob ) === 'scale' ) === [ 'border-size' ] && $themeKnobs['footer']['border-size'] === 0 && $themeKnobs['footer']['border-color'] === 0 && $themeKnobs['footer']['position'] === 0 );
 echo "\nThe case of a thing: eight toggles, a switch each\n";
 
 /*	The manual tells the switches once, in both languages: one entry names the five labels the eight switches are drawn with - the navigation of the header and of the footer share one - by the words
@@ -5861,7 +6029,7 @@ $caseLines	= designPlain( substr( $caseSheet, (int) strrpos( $caseSheet, 'the kn
 $caseHeader	= substr( $caseSheet, 0, (int) strpos( $caseSheet, '*/' ) );
 $caseOff		= designPlain( substr( $defaultSheet, (int) strrpos( $defaultSheet, 'the knob positions' ) ) );
 
-check( 'a toggle at 0 selects its rung default and at 1 its rung more, one line each in the knob positions - the eight lines of the fifty-four',
+check( 'a toggle at 0 selects its rung default and at 1 its rung more, one line each in the knob positions - the eight lines of the fifty-seven',
 	array_filter( $toggles, static fn( string $at ): bool
 		=> str_contains( $caseOff, "\t--". str_replace( '/', '-', $at ). ': var(--'. str_replace( '/', '-', $at ). "--default);\n" ) === false
 			|| str_contains( $caseLines, "\t--". str_replace( '/', '-', $at ). ': var(--'. str_replace( '/', '-', $at ). "--more);\n" ) === false
@@ -7123,7 +7291,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		&& Themes::fromJson( '{"format":1,"name":"X","stray":true}' ) === [ 'format' => 1, 'name' => 'X', 'stray' => true ] );
 
 	/*	The themes the feature ships, every file of library/themes/ held to what a theme is and never to what these happen to be: a file of
-		the shape, a name and a description in both languages, the sets of its eight parts in the library, every position of every one of the fifty-four knobs inside its range
+		the shape, a name and a description in both languages, the sets of its eight parts in the library, every position of every one of the fifty-seven knobs inside its range
 		as the file writes it - not as normalising held it there, and a toggle the file does not name at 0 - a css that is not refused, and a setup that is its own normalisation: it
 		reads without a note and takes the same snapshot back	*/
 	$themeProblems = [];
@@ -7200,7 +7368,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$themeProblems[] = $slug. ' - '. implode( '; ', $problems );
 	}
 
-	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its eight parts in the library, every position of the fifty-four knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation - but for the parts that came after it was written, which read as the default - with no note and no palette: the brand colour is the project\'s'
+	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its eight parts in the library, every position of the fifty-seven knobs inside its range as written, a css that is not refused - and its setup is complete and its own normalisation - but for the parts that came after it was written, which read as the default - with no note and no palette: the brand colour is the project\'s'
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
 		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
@@ -7941,7 +8109,7 @@ foreach( [ 'en_US' => $textEn, 'de_DE' => $textDe ] as $wordLocale => $wordKeys 
 			$missingWords[] = $wordLocale. ' '. $word;
 
 check( 'the texts have a word for everything the model draws by name ('. count( $wanted ). ' of them, in two languages): a label and a note for every knob, the three words of a choice only, and for the palette a label and a note for every knob and one word per position for a choice'
-	. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', array_slice( $missingWords, 0, 6 ) ) ), $missingWords === [] && count( $choiceKnobs ) === 11 );
+	. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', array_slice( $missingWords, 0, 6 ) ) ), $missingWords === [] && count( $choiceKnobs ) === 13 );
 
 // ...and nothing else: a key is either one of those, or a literal the script names, or the one page title the server renders
 $accounted = array_merge( $wanted, array_values( array_unique( $scriptKeys[1] ) ), [ 'preview/page' ] );
@@ -7982,7 +8150,7 @@ check( 'the note under a scale says which way it goes, with U+2194 between the t
 	changed, and the options of a select stay as they are, in lower case - the mode of the palette, as the Colours view keeps
 	its select lower case and capitalises its choices. The words of a scale are gone: it shows numbers. And the one middle
 	word of the model before - Normal in German and Default in English, for every knob but the choices - has nothing left to
-	check: the only knobs that still have words are the eleven choices, each with a middle of its own	*/
+	check: the only knobs that still have words are the thirteen choices, each with a middle of its own	*/
 $initialOf	= static fn( string $word ): string => mb_substr( $word, 0, 1 );
 $isCapital	= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtoupper( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtolower( $initialOf( $word ) );
 $isLower		= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtolower( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtoupper( $initialOf( $word ) );
@@ -8001,9 +8169,9 @@ foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
 				$uncapital[] = $stepLocale. ' '. $part. '/'. $knob. '/'. Setup::words( 'choice' )[$at]. ' "'. $word. '"';
 		}
 
-check( 'every word of a choice begins with a capital letter, in both languages: eleven knobs of three words, thirty-three in each'
+check( 'every word of a choice begins with a capital letter, in both languages: thirteen knobs of three words, thirty-nine in each'
 	. ( $uncapital === [] ? '' : ' - not so for '. implode( ', ', array_slice( $uncapital, 0, 4 ) ) ),
-	$uncapital === [] && count( $stepWords['en_US'] ) === 33 && count( $stepWords['de_DE'] ) === 33 );
+	$uncapital === [] && count( $stepWords['en_US'] ) === 39 && count( $stepWords['de_DE'] ) === 39 );
 
 $scaleWords = [];
 
@@ -8015,8 +8183,8 @@ foreach( Setup::KNOBS as $part => $kinds )
 					if( $panelWord( 'knob/'. $part. '/'. $knob. '/'. $step, $stepLocale ) !== '' )
 						$scaleWords[] = $stepLocale. ' '. $part. '/'. $knob. '/'. $step;
 
-check( 'a scale has no word for a position in either language: thirty-three knobs with a name and a note, and none of the 165 words of five steps left - a strip of five shows -2 to +2'
-	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 33 );
+check( 'a scale has no word for a position in either language: thirty-four knobs with a name and a note, and none of the 170 words of five steps left - a strip of five shows -2 to +2'
+	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 34 );
 
 $toggleWords	= [];
 $toggleBare		= [];

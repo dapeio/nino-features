@@ -6,14 +6,17 @@
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
  *	@knob	ground		What the footer stands on
+ *	@knob	border-size	Weight of the line over the footer
+ *	@knob	border-color	Colour of that line
+ *	@knob	position	Where the content of the footer stands
  *
  *	The footer with nothing to rearrange. Everything is centred and stacked, so
  *	there is no desktop layout that collapses into a phone one - which is the
  *	half of a footer that usually breaks. For sites with few pages, where a
  *	four-column sitemap would be four columns of one link.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
- *	was before it had any: scale is a factor on the type size of the footer, height
+ *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
  *	and the ink of the page, this set's own, and the dark pair of the palette. What
@@ -21,6 +24,16 @@
  *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
  *	and -border), and is put on the footer as the roles Nino.css reads - so the
  *	footer is legible on each of the three.
+ *
+ *	The line over the footer is two knobs. border-size is its weight, drawn as the top
+ *	border of the frame that paints the ground, and border-color a choice of three for its
+ *	colour: the ink of the ground, the line of the ground - where it stands at the middle -
+ *	and the brand. Of the three, the first two are roles of the footer's own ground, so
+ *	a ground of another kind brings its line with it.
+ *
+ *	The seventh, position, is a choice of three for where the column stands: against the
+ *	left edge of the page at the left rung, in the middle at the other two, where the
+ *	template has it. The one ladder aligns the column and the text in it.
  */
 
 :root {
@@ -79,6 +92,23 @@
 	--footer-ground-border--less:	var(--color-border);
 	--footer-ground-border--default:	var(--color-border-black);
 	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The weight of the line over the footer: none at the middle - this set draws no line of its own - a hairline and a rule beyond it	*/
+	--footer-border-size--least:	0;
+	--footer-border-size--less:	0;
+	--footer-border-size--default:	0;
+	--footer-border-size--more:	1px;
+	--footer-border-size--most:	2px;
+
+	/*	The colour of that line: the ink of the ground the footer stands on, the line of that ground, the brand - so a dark ground brings its own line	*/
+	--footer-border-color--less:	var(--footer-ground-ink);
+	--footer-border-color--default:	var(--footer-ground-border);
+	--footer-border-color--more:	var(--color-primary);
+
+	/*	Where the column stands: against the left edge, in the middle - the template - and in the middle	*/
+	--footer-position--less:	start;
+	--footer-position--default:	center;
+	--footer-position--more:	center;
 }
 
 footer {
@@ -96,14 +126,15 @@ footer {
 .nino-frame-footer {
 	padding: calc( var(--space-4) * var(--footer-height) ) 0 calc( var(--space-3) * var(--footer-height) );
 	background-color: var(--footer-ground);
+	border-top: solid var(--footer-border-color) var(--footer-border-size);
 }
 
 .nino-frame-footer .nino-frame-footer-stack {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: var(--footer-position);
 	gap: calc( var(--space-2) * var(--footer-space) );
-	text-align: center;
+	text-align: var(--footer-position);
 }
 
 .nino-frame-footer .nino-footer-logo {
@@ -129,7 +160,7 @@ footer {
 .nino-frame-footer .nino-frame-footer-nav ul {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: center;
+	justify-content: var(--footer-position);
 	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-3) * var(--footer-space) );
 	margin: 0;
 	padding: 0;
@@ -145,7 +176,7 @@ footer {
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: center;
+	justify-content: var(--footer-position);
 	align-items: center;
 	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
 	font-size: var(--fontsize-small);

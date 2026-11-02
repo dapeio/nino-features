@@ -6,13 +6,15 @@
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
  *	@knob	ground		What the footer stands on
+ *	@knob	border-size	Weight of the line over the footer
+ *	@knob	border-color	Colour of that line
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
- *	was before it had any: scale is a factor on the type size of the footer, height
+ *	The six knobs are ladders, declared below, the middle of each this set as it
+ *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
  *	and the ink of the page, this set's own, and the dark pair of the palette. What
@@ -24,6 +26,16 @@
  *	The brand panel is the dark pair of the palette at every setting, the way the set
  *	draws it; the panel with the contact and the navigation has the ground of its own
  *	(--footer-ground-panel and -panel-ink), which the ground of the footer does not reach.
+ *
+ *	The line over the footer is two knobs. border-size is its weight, drawn as the top
+ *	border of the frame that paints the ground, and border-color a choice of three for its
+ *	colour: the ink of the ground, the line of the ground - where it stands at the middle -
+ *	and the brand. Of the three, the first two are roles of the footer's own ground, so
+ *	a ground of another kind brings its line with it.
+ *
+ *	Position is not answered here: the two panels are the construction of the set, a brand
+ *	panel and an info panel that stand against each other and take half of the width
+ *	each - there is no content to be moved in them.
  */
 
 :root {
@@ -92,6 +104,18 @@
 	--footer-ground-panel-ink--less:	var(--color-text);
 	--footer-ground-panel-ink--default:	var(--color-footer-text-main);
 	--footer-ground-panel-ink--more:	var(--color-section-dark-text);
+
+	/*	The weight of the line over the footer: none at the middle - this set draws no line of its own - a hairline and a rule beyond it	*/
+	--footer-border-size--least:	0;
+	--footer-border-size--less:	0;
+	--footer-border-size--default:	0;
+	--footer-border-size--more:	1px;
+	--footer-border-size--most:	2px;
+
+	/*	The colour of that line: the ink of the ground the footer stands on, the line of that ground, the brand - so a dark ground brings its own line	*/
+	--footer-border-color--less:	var(--footer-ground-ink);
+	--footer-border-color--default:	var(--footer-ground-border);
+	--footer-border-color--more:	var(--color-primary);
 }
 
 footer {
@@ -108,6 +132,7 @@ footer {
 
 .nino-frame-footer {
 	background-color: var(--footer-ground);
+	border-top: solid var(--footer-border-color) var(--footer-border-size);
 }
 
 .nino-frame-footer .nino-frame-footer-split {

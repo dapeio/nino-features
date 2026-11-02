@@ -6,13 +6,16 @@
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
  *	@knob	ground		What the footer stands on
+ *	@knob	border-size	Weight of the line over the footer
+ *	@knob	border-color	Colour of that line
+ *	@knob	position	Where the content of the footer stands
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The four knobs are ladders, declared below, the middle of each this set as it
- *	was before it had any: scale is a factor on the type size of the footer, height
+ *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
  *	and the ink of the page, this set's own, and the dark pair of the palette. What
@@ -20,6 +23,21 @@
  *	aspects of the ground (--footer-ground-ink, -subtitle, -title, -accent, -focus
  *	and -border), and is put on the footer as the roles Nino.css reads - so the
  *	footer is legible on each of the three.
+ *
+ *	The line over the footer is two knobs. border-size is its weight, drawn as the top
+ *	border of the frame that paints the ground, and border-color a choice of three for its
+ *	colour: the ink of the ground, the line of the ground - where it stands at the middle -
+ *	and the brand. Of the three, the first two are roles of the footer's own ground, so
+ *	a ground of another kind brings its line with it.
+ *
+ *	The seventh, position, is a choice of three for where the content stands. Left packs the
+ *	cells of both bands against the left edge. The middle one is the template: in the first
+ *	band the brand at the left edge, the description beside it and the links at the right
+ *	edge, in the second the copyright, the contact in the middle and the legal links at the
+ *	right edge. Centre stacks the bands in one column and sets everything in the middle.
+ *	The aspects are the columns of the two bands (--footer-position-columns and -meta), how
+ *	their cells sit in them (-items), and the place of what the template puts at the right
+ *	edge (-end) and in the middle (-middle).
  */
 
 :root {
@@ -78,6 +96,46 @@
 	--footer-ground-border--less:	var(--color-border);
 	--footer-ground-border--default:	var(--color-border);
 	--footer-ground-border--more:	var(--color-border-dark);
+
+	/*	The weight of the line over the footer, a hairline at the middle: none, half a pixel, a pixel, two, a rule	*/
+	--footer-border-size--least:	0;
+	--footer-border-size--less:	.5px;
+	--footer-border-size--default:	1px;
+	--footer-border-size--more:	2px;
+	--footer-border-size--most:	6px;
+
+	/*	The colour of that line: the ink of the ground the footer stands on, the line of that ground, the brand - so a dark ground brings its own line	*/
+	--footer-border-color--less:	var(--footer-ground-ink);
+	--footer-border-color--default:	var(--footer-ground-border);
+	--footer-border-color--more:	var(--color-primary);
+
+	/*	Where the content stands: the text and the cells of the two bands, at the left edge, as the template has them, or in the middle	*/
+	--footer-position--less:	start;
+	--footer-position--default:	start;
+	--footer-position--more:	center;
+
+	/*	What the template puts at the right edge: the links, the legal links and the locale	*/
+	--footer-position-end--less:	start;
+	--footer-position-end--default:	end;
+	--footer-position-end--more:	center;
+
+	/*	What the template puts in the middle of the second band: the contact	*/
+	--footer-position-middle--less:	start;
+	--footer-position-middle--default:	center;
+	--footer-position-middle--more:	center;
+
+	/*	How a cell sits in its column	*/
+	--footer-position-items--less:	start;
+	--footer-position-items--default:	normal;
+	--footer-position-items--more:	center;
+
+	/*	The columns of the first band and of the second	*/
+	--footer-position-columns--less:	auto auto 1fr;
+	--footer-position-columns--default:	auto minmax(12rem, 1fr) auto;
+	--footer-position-columns--more:	minmax(0, 1fr);
+	--footer-position-meta--less:	auto auto 1fr;
+	--footer-position-meta--default:	1fr auto 1fr;
+	--footer-position-meta--more:	minmax(0, 1fr);
 }
 
 footer {
@@ -94,12 +152,14 @@ footer {
 
 .nino-frame-footer {
 	background-color: var(--footer-ground);
-	border-top: 1px solid var(--color-border);
+	border-top: solid var(--footer-border-color) var(--footer-border-size);
 }
 
 .nino-frame-footer .nino-frame-footer-primary {
 	display: grid;
-	grid-template-columns: auto minmax(12rem, 1fr) auto;
+	grid-template-columns: var(--footer-position-columns);
+	justify-items: var(--footer-position-items);
+	text-align: var(--footer-position);
 	gap: calc( var(--space-3) * var(--footer-space) );
 	padding-top: calc( var(--space-3) * var(--footer-height) );
 	padding-bottom: calc( var(--space-3) * var(--footer-space) );
@@ -139,13 +199,15 @@ footer {
 }
 
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
-	justify-content: flex-end;
+	justify-content: var(--footer-position-end);
 	gap: calc( var(--space-2) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-frame-footer-meta {
 	display: grid;
-	grid-template-columns: 1fr auto 1fr;
+	grid-template-columns: var(--footer-position-meta);
+	justify-items: var(--footer-position-items);
+	text-align: var(--footer-position);
 	gap: calc( var(--space-2) * var(--footer-space) );
 	padding-top: calc( var(--space-1) * var(--footer-space) );
 	padding-bottom: calc( var(--space-2) * var(--footer-height) );
@@ -160,18 +222,18 @@ footer {
 }
 
 .nino-frame-footer .nino-frame-footer-contact {
-	text-align: center;
+	text-align: var(--footer-position-middle);
 }
 
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: var(--footer-position-end);
 	gap: calc( var(--space-2) * var(--footer-space) );
 	align-items: center;
 }
 
 .nino-frame-footer .nino-footer-localepicker {
-	justify-content: flex-end;
+	justify-content: var(--footer-position-end);
 }
 
 .nino-frame-footer a:hover,
@@ -181,23 +243,19 @@ footer {
 	text-underline-offset: .25em;
 }
 
+/*	Stacked in one column below 900px, with what the template puts at the right edge or in the middle at the left	*/
 @media (max-width: 900px) {
+	:root {
+		--footer-position-end--default:	start;
+		--footer-position-middle--default:	start;
+	}
+
 	.nino-frame-footer .nino-frame-footer-primary,
 	.nino-frame-footer .nino-frame-footer-meta {
 		grid-template-columns: 1fr;
 	}
 
 	.nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
-		justify-content: flex-start;
 		flex-wrap: wrap;
-	}
-
-	.nino-frame-footer .nino-frame-footer-contact {
-		text-align: left;
-	}
-
-	.nino-frame-footer .nino-frame-footer-utility,
-	.nino-frame-footer .nino-footer-localepicker {
-		justify-content: flex-start;
 	}
 }
