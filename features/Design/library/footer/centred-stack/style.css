@@ -9,13 +9,14 @@
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
  *	@knob	position	Where the content of the footer stands
+ *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The footer with nothing to rearrange. Everything is centred and stacked, so
  *	there is no desktop layout that collapses into a phone one - which is the
  *	half of a footer that usually breaks. For sites with few pages, where a
- *	four-column sitemap would be four columns of one link.
+ *	sitemap in columns would be columns of one link.
  *
- *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -34,6 +35,9 @@
  *	The seventh, position, is a choice of three for where the column stands: against the
  *	left edge of the page at the left rung, in the middle at the other two, where the
  *	template has it. The one ladder aligns the column and the text in it.
+ *
+ *	The eighth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	navigation and the legal links are set in the one it is on.
  */
 
 :root {
@@ -117,6 +121,10 @@
 	--footer-ground-logo-dark--less:	var(--color-logo-dark);
 	--footer-ground-logo-dark--default:	var(--color-footer-logo-dark);
 	--footer-ground-logo-dark--more:	var(--color-section-dark-logo-dark);
+
+	/*	The case of the links of the navigation: as they are written, or in capitals	*/
+	--footer-nav-case--default: none;
+	--footer-nav-case--more: uppercase;
 }
 
 footer {
@@ -175,6 +183,11 @@ footer {
 	margin: 0;
 	padding: 0;
 	list-style: none;
+}
+
+.nino-frame-footer .nino-frame-footer-nav .nino-nav-content li a,
+.nino-frame-footer .nino-frame-footer-utility .nino-nav-content li a {
+	text-transform: var(--footer-nav-case);
 }
 
 .nino-frame-footer .nino-frame-footer-copyright {

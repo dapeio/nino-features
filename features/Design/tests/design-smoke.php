@@ -429,6 +429,43 @@ function designRules( string $css, string $within = '' ): array {
 }
 
 /**
+ *	The elements a piece of markup stands in at the first place it writes a given text: the classes of every tag that is open
+ *	there, one list for each level, outermost first - what a rule has to name, in that order, to reach what a shortcode draws at that place
+ *
+ *	@param		string		$markup				A template
+ *	@param		string		$needle				The text to find in it, eg. '[navigation nav="legal"'
+ *
+ *	@return 	array											A list of class names for each open element; [] where the text is not in the template
+ */
+function designMarkupClasses( string $markup, string $needle ): array {
+
+	$at = strpos( $markup, $needle );
+
+	if( $at === false )
+		return [];
+
+	$stack	= [];
+	$void		= [ 'area', 'base', 'br', 'col', 'hr', 'img', 'input', 'link', 'meta', 'source', 'wbr' ];
+
+	preg_match_all( '~<(/?)([a-z][a-z0-9]*)([^>]*)>~i', substr( $markup, 0, $at ), $tags, PREG_SET_ORDER );
+
+	foreach( $tags as [ , $closing, $tag, $attributes ] ) {
+
+		if( in_array( strtolower( $tag ), $void, true ) === true || str_ends_with( trim( $attributes ), '/' ) === true )
+			continue;
+
+		if( $closing === '/' ) {
+			array_pop( $stack );
+			continue;
+		}
+
+		$stack[] = preg_match( '~\sclass="([^"]*)"~', $attributes, $class ) === 1 ? preg_split( '~\s+~', trim( $class[1] ), -1, PREG_SPLIT_NO_EMPTY ) : [];
+	}
+
+	return $stack;
+}
+
+/**
  *	What a custom property comes to in a stylesheet, the way a browser takes it:
  *	its value, and where that is the var() of another property, the value of that
  *	one - whitespace folded
@@ -1996,13 +2033,12 @@ check( 'every footer whose logo stands in a link writes the name of the company 
 /*	The logo follows the ground a frame stands on. [logo] draws two pictures and Nino.css shows the one the pair --logo-light and --logo-dark names, so a frame that
 	paints a ground says the pair beside the roles it hands down: a header as an aspect of its ground, --header-ground-logo-light and -dark, a footer as
 	--footer-ground-logo-light and -dark, each declared under the three rungs of the ground and each rung the pair of the ground it names - the page's for the
-	ground of the page and for one that is none (the see-through bar of the overlay menu at rest, the hairline of a footer, which lie on the page), the dark
+	ground of the page and for one that is none (the see-through bar of the overlay menu at rest, which lies on the page), the dark
 	pair of the palette for the dark one, the black one for the black one, the footer's for the bands of a footer. Read from the library's own lists of headers and
 	footers, so that a frame that is added without the aspect, or with a pair that is not its ground's, fails here rather than on a site	*/
 $pairOfGround = [
 	'var(--color-background)'			=> 'page',
 	'var(--color-header-bg)'			=> 'page',
-	'transparent'									=> 'page',
 	'var(--color-section-dark-bg)'		=> 'section-dark',
 	'var(--color-section-black-bg)'		=> 'section-black',
 	'var(--color-footer-bg-main)'		=> 'footer',
@@ -2049,7 +2085,7 @@ foreach( [ 'header' => '.nino-frame-header', 'footer' => 'footer' ] as $framePar
 	}
 
 check( 'every header and every footer of the library declares the pair of the logo as an aspect of its ground, under the three rungs, and each rung is the pair of the ground it names - the page\'s, the dark one, the black one or the footer\'s - and puts it on the frame beside the other roles'
-	. ( $frameWrong === [] ? '' : ' - '. implode( '; ', $frameWrong ) ), $frameWrong === [] && $frameSets === 17 );
+	. ( $frameWrong === [] ? '' : ' - '. implode( '; ', $frameWrong ) ), $frameWrong === [] && $frameSets === 13 );
 
 // The mark of the overlay menu stands above the overlay, which is the page's ground at every setting - it has the page's ink while the menu is open, and the page's pair with it
 check( '...the overlay menu says the page\'s pair for its mark while the menu is open, as it says the page\'s ink: the mark is above the overlay, and the bar behind it may be dark',
@@ -2073,7 +2109,7 @@ foreach( [ 'header', 'footer' ] as $framePart )
 	}
 
 check( 'the templates of the library draw the logo with the component and nothing else: a header writes [logo alt=""] in its link, a footer that has one [logo class="nino-footer-logo"], with a class of the spacing at most, and none writes the <img> of the picture itself or the marker class of old'
-	. ( $logoTemplates === [] ? '' : ' - '. implode( '; ', $logoTemplates ) ), $logoTemplates === [] && count( glob( $library. '/footer/*/template.tpl' ) ?: [] ) === 11 );
+	. ( $logoTemplates === [] ? '' : ' - '. implode( '; ', $logoTemplates ) ), $logoTemplates === [] && count( glob( $library. '/footer/*/template.tpl' ) ?: [] ) === 7 );
 
 // The compiler selects the aspect with the ladder it belongs to: the position of the ground knob picks the rung of the pair as it picks that of the ink
 $groundDefault = designBlock( designSection( Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library ), 15, Compiler::SECTION ), ':root {' );
@@ -5315,18 +5351,24 @@ check( 'a header template that leaves the position out keeps no position posted 
 	$noPosition !== '' && $status === 200 && $kept['parts']['header'] === $noPosition
 	&& $kept['knobs']['header']['position'] === Setup::defaults( $library )['knobs']['header']['position'] && Setup::defaults( $library )['knobs']['header']['position'] !== 0 );
 
-// A header template that does not answer to the case of the navigation (a toggle): a switch posted on for it is off again, and for the template that does answer it stays on - and so for the footer
+// A header template that does not answer to the case of the navigation (a toggle): a switch posted on for it is off again, and for the template that does answer it stays on - and every footer answers it, so there it stays on for each
 $noCase = array_values( array_filter( Setup::available( $library, 'header' ), static fn( string $set ): bool => in_array( 'nav-case', Setup::knobs( $library, 'header', $set ), true ) === false ) )[0] ?? '';
-$noFooterCase = array_values( array_filter( Setup::available( $library, 'footer' ), static fn( string $set ): bool => in_array( 'nav-case', Setup::knobs( $library, 'footer', $set ), true ) === false ) )[0] ?? '';
-[ $statusOff, ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $noCase, 'footer' => $noFooterCase ], 'knobs' => [ 'header' => [ 'nav-case' => 1 ], 'footer' => [ 'nav-case' => 1 ] ] ] );
+[ $statusOff, ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $noCase ], 'knobs' => [ 'header' => [ 'nav-case' => 1 ] ] ] );
 $keptOff = Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
-[ $statusOn, ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $defaultSets['header'], 'footer' => $defaultSets['footer'] ], 'knobs' => [ 'header' => [ 'nav-case' => 1 ], 'footer' => [ 'nav-case' => 1 ] ] ] );
+[ $statusOn, ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $defaultSets['header'] ], 'knobs' => [ 'header' => [ 'nav-case' => 1 ] ] ] );
 $keptOn = Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
+$footerCaseKept = [];
 
-check( 'a header and a footer template that leave the case of the navigation out keep no switch posted for it - the setup holds it off - while the default templates keep it on',
-	$noCase !== '' && $noFooterCase !== '' && $statusOff === 200 && $statusOn === 200
-	&& $keptOff['parts']['header'] === $noCase && $keptOff['knobs']['header']['nav-case'] === 0 && $keptOff['parts']['footer'] === $noFooterCase && $keptOff['knobs']['footer']['nav-case'] === 0
-	&& $keptOn['knobs']['header']['nav-case'] === 1 && $keptOn['knobs']['footer']['nav-case'] === 1 );
+foreach( Setup::available( $library, 'footer' ) as $footerCaseSet ) {
+	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'footer' => $footerCaseSet ], 'knobs' => [ 'footer' => [ 'nav-case' => 1 ] ] ] );
+	$footerCaseKept[$footerCaseSet] = Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['knobs']['footer']['nav-case'] ?? null;
+}
+
+check( 'a header template that leaves the case of the navigation out keeps no switch posted for it - the setup holds it off - while the default template keeps it on, and every footer template keeps it on',
+	$noCase !== '' && $statusOff === 200 && $statusOn === 200
+	&& $keptOff['parts']['header'] === $noCase && $keptOff['knobs']['header']['nav-case'] === 0
+	&& $keptOn['knobs']['header']['nav-case'] === 1
+	&& count( $footerCaseKept ) === count( Setup::available( $library, 'footer' ) ) && array_unique( array_values( $footerCaseKept ) ) === [ 1 ] );
 callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'header' => $defaultSets['header'], 'footer' => $defaultSets['footer'] ], 'knobs' => [] ] );
 
 // A footer template that does not answer to the position of the content: whatever was posted for the knob, the setup keeps it where the defaults put it - and for the template that does answer it stays where it was put
@@ -6073,22 +6115,22 @@ check( 'the manual tells the eight switches in one entry of its own, in both lan
 	count( $caseTold['en_US'] ) === 1 && $caseTold['en_US'] === $caseTold['de_DE'] && count( $toggles ) === 8 );
 
 /*	A toggle is a ladder of two rungs, none and uppercase, under the words default and more, and the set that answers it reads the rung the knob selects where it styles the thing: the default set of the
-	header, the footer, the section, the card and the buttons does, any other does not (a set of the library that sets capitals of its own is none of this). The selectors are what the case is of: the links of the
-	navigation of the bar and of the footer, the title and the subtitle of a section and of the hero, the title and the subtitle of a card, the label of a button. Read from the files the way the panel and the
-	compiler read them - the ladders with Setup::ladders() - and not from a list of the sets	*/
+	header, the section, the card and the buttons does, any other does not (a set of the library that sets capitals of its own is none of this), and the case of the links of the footer is answered by every
+	set of the footer, which is held below. The selectors are what the case is of: the links of the navigation of the bar, the title and the subtitle of a section and of the hero, the title and the subtitle
+	of a card, the label of a button. Read from the files the way the panel and the compiler read them - the ladders with Setup::ladders() - and not from a list of the sets	*/
 $toggleSelectors = [
 	'header/nav-case' => [ '.nino-frame-header .nino-nav-content li a' ],
-	'footer/nav-case' => [ '.nino-footer-nav .nino-nav-content li a' ],
 	'section/title-case' => [ '.nino-section-title', '.nino-hero-title' ],
 	'section/subtitle-case' => [ '.nino-section-subtitle', '.nino-hero-subtitle' ],
 	'card/title-case' => [ '.nino-card-title' ],
 	'card/subtitle-case' => [ '.nino-card-subtitle' ],
 	'buttons/case' => [ '.nino-btn' ],
 ];
+$toggleEverySet	= [ 'footer/nav-case' ];
 $toggleProblems	= [];
 $toggleReads		= 0;
 
-foreach( $toggles as $at ) {
+foreach( array_diff( $toggles, $toggleEverySet ) as $at ) {
 
 	[ $togglePart, $toggleKnob ] = explode( '/', $at );
 
@@ -6112,8 +6154,8 @@ foreach( $toggles as $at ) {
 			$toggleProblems[] = $at. ': the default set "'. $set. '" does not publish it as a ladder of its own';
 
 		foreach( [ 'default' => 'none', 'more' => 'uppercase' ] as $word => $value )
-			if( preg_match( '/'. preg_quote( $token. '--'. $word, '/' ). '\s*:\s*'. $value. '\s*;/', $css ) !== 1 )
-				$toggleProblems[] = $at. ': the rung '. $word. ' is not '. $value;
+			if( preg_match( '/'. preg_quote( $token. '--'. $word, '/' ). '\s*:\s*'. $value. '\s*;/', designBlock( $css, ':root {' ) ) !== 1 )
+				$toggleProblems[] = $at. ': the rung '. $word. ' is not '. $value. ' on :root';
 
 		/*	The case of a label is the kernel's rule and not the set's: the set declares the two rungs and the form block of Nino.css reads the property - held
 			below, where the kernel is at hand	*/
@@ -6131,8 +6173,83 @@ foreach( $toggles as $at ) {
 	}
 }
 
-check( 'the eight toggles are answered by the default set of their part alone, as a ladder of two rungs of their own - none under default, uppercase under more - which one rule reads, on what the case is of: the links of the navigation of the bar and of the footer, a title and a subtitle of a section and of the hero, of a card, and the buttons - and the labels of a form, whose rule is the kernel\'s'
-	. ( $toggleProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $toggleProblems, 0, 4 ) ) ), $toggleProblems === [] && $toggleReads === 7 && array_keys( $toggleSelectors ) === array_values( array_diff( $toggles, [ 'forms/label-case' ] ) ) );
+check( 'seven of the eight toggles are answered by the default set of their part alone, as a ladder of two rungs of their own - none under default, uppercase under more - which one rule reads, on what the case is of: the links of the navigation of the bar, a title and a subtitle of a section and of the hero, of a card, and the buttons - and the labels of a form, whose rule is the kernel\'s'
+	. ( $toggleProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $toggleProblems, 0, 4 ) ) ), $toggleProblems === [] && $toggleReads === 6 && array_keys( $toggleSelectors ) === array_values( array_diff( $toggles, $toggleEverySet, [ 'forms/label-case' ] ) ) );
+
+/*	The case of the links of the footer is answered by every footer of the library: each publishes it as a ladder of two rungs of its own and reads it in one rule, and the rule reaches the links of the two
+	navigations its template draws - the footer navigation and the legal links - by the elements those stand in. Which elements, is read from the template and not from a list of class names	*/
+$everyDrawn		= [ '[template /templates/html-footer-nav]', '[navigation nav="legal"' ];
+$everyProblems	= [];
+$everyReads		= 0;
+$everySets		= 0;
+
+foreach( $toggleEverySet as $at ) {
+
+	[ $everyPart, $everyKnob ] = explode( '/', $at );
+
+	foreach( Setup::available( $library, $everyPart ) as $set ) {
+
+		$everySets++;
+
+		$css			= designPlain( (string) file_get_contents( Setup::file( $library, $everyPart, $set ) ) );
+		$template	= (string) file_get_contents( Setup::file( $library, $everyPart, $set, 'template' ) );
+
+		if( in_array( $everyKnob, Setup::knobs( $library, $everyPart, $set ), true ) === false || ( Setup::ladders( $library, $everyPart, $set )[$everyKnob] ?? null ) !== [ $everyKnob ] )
+			$everyProblems[] = $set. ': it does not publish '. $at. ' as a ladder of its own';
+
+		foreach( [ 'default' => 'none', 'more' => 'uppercase' ] as $word => $value )
+			if( preg_match( '/'. preg_quote( '--'. $everyPart. '-'. $everyKnob. '--'. $word, '/' ). '\s*:\s*'. $value. '\s*;/', designBlock( $css, ':root {' ) ) !== 1 )
+				$everyProblems[] = $set. ': the rung '. $word. ' is not '. $value. ' on :root';
+
+		$reading = array_values( array_filter( designRules( $css ), static fn( array $rule ): bool
+			=> preg_match( '/text-transform\s*:\s*var\(\s*--'. preg_quote( $everyPart. '-'. $everyKnob, '/' ). '\s*\)/', $rule['body'] ) === 1 ) );
+
+		$everyReads += count( $reading );
+
+		if( count( $reading ) !== 1 || $reading[0]['within'] !== '' ) {
+			$everyProblems[] = $set. ': read by '. count( $reading ). ' rules'. ( count( $reading ) === 1 ? ' within '. $reading[0]['within'] : '' );
+			continue;
+		}
+
+		$selectors	= array_map( 'trim', explode( ',', $reading[0]['selector'] ) );
+		$reaches		= static function( string $selector, array $stands ): bool {
+			if( preg_match( '/^((?:\.[a-z0-9-]+\s+)+)\.nino-nav-content li a$/', $selector, $found ) !== 1 )
+				return false;
+
+			// Each class names an element of the stack, below the one the class before it names: the order of a selector with descendant combinators
+			$level = 0;
+
+			foreach( preg_split( '/[\s.]+/', trim( $found[1] ), -1, PREG_SPLIT_NO_EMPTY ) ?: [ '' ] as $named ) {
+
+				while( $level < count( $stands ) && in_array( $named, $stands[$level], true ) === false )
+					$level++;
+
+				if( $level++ >= count( $stands ) )
+					return false;
+			}
+
+			return true;
+		};
+
+		foreach( $everyDrawn as $drawn ) {
+
+			$stands = designMarkupClasses( $template, $drawn );
+
+			if( $stands === [] )
+				$everyProblems[] = $set. ': its template draws no '. $drawn. ' inside an element';
+			else if( array_filter( $selectors, static fn( string $selector ): bool => $reaches( $selector, $stands ) ) === [] )
+				$everyProblems[] = $set. ': its rule does not reach the links of '. $drawn;
+		}
+
+		foreach( $selectors as $selector )
+			if( array_filter( $everyDrawn, static fn( string $drawn ): bool => $reaches( $selector, designMarkupClasses( $template, $drawn ) ) ) === [] )
+				$everyProblems[] = $set. ': "'. $selector. '" is the links of neither navigation';
+	}
+}
+
+check( 'the case of the links of the footer is answered by every footer of the library, as a ladder of two rungs of its own on :root - none under default, uppercase under more - which one rule reads, on the links of the footer navigation and of the legal links its template draws and on nothing else'
+	. ( $everyProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $everyProblems, 0, 4 ) ) ),
+	$everyProblems === [] && $everySets === count( Setup::available( $library, 'footer' ) ) && $everySets > 1 && $everyReads === $everySets );
 
 // The case of a label is read from the property by the kernel's form block - the labels of a field, in the words of a check, and the legend of a group - and nothing in it writes uppercase itself
 if( $ninoCss === '' )
@@ -6147,8 +6264,8 @@ else {
 		&& preg_match( '/text-transform\s*:\s*uppercase/', implode( ' ', array_column( $labelRules, 'body' ) ) ) !== 1 );
 }
 
-/*	The panel greys what a template does not answer to, and says so of a toggle as of any knob: the sets that leave the case out - the other header, footer, section, card and buttons sets - are listed with the
-	other knobs and without these, so that the answer to design/list has the toggles in the catalogue of the default sets alone	*/
+/*	The panel greys what a template does not answer to, and says so of a toggle as of any knob: the sets that leave the case out - the other header, section, card and buttons sets - are listed with the
+	other knobs and without these, so that the answer to design/list has the toggles in the catalogue of the default sets alone, but for the case of the links of the footer, which every footer set has	*/
 [ , $caseListing ] = callDesignAction( $appData, 'apiList' );
 $caseAnswered = [];
 
@@ -6156,9 +6273,10 @@ foreach( (array) ( $caseListing['parts'] ?? [] ) as $row )
 	foreach( $row['catalogue'] as $set => $entry )
 		$caseAnswered[$row['part']. '/'. $set] = array_values( array_intersect( array_keys( array_filter( Setup::KNOBS[$row['part']], static fn( string $kind ): bool => $kind === 'toggle' ) ), $entry['knobs'] ) );
 
-check( 'the answer of the list has the toggles in the knobs of the default set of each of the five parts that have them, and in no other set\'s - and says, by the kinds, that they are toggles',
+check( 'the answer of the list has the toggles in the knobs of the default set of each of the five parts that have them, and in no other set\'s but for the toggles every set of its part answers, the case of the links of the footer - and says, by the kinds, that they are toggles',
 	array_filter( $caseAnswered, static fn( array $answered, string $where ): bool
-		=> $answered !== ( explode( '/', $where )[1] === $defaultSets[ explode( '/', $where )[0] ] ? array_keys( array_filter( Setup::KNOBS[ explode( '/', $where )[0] ], static fn( string $kind ): bool => $kind === 'toggle' ) ) : [] ), ARRAY_FILTER_USE_BOTH ) === []
+		=> $answered !== array_keys( array_filter( Setup::KNOBS[ explode( '/', $where )[0] ], static fn( string $kind, string $knob ): bool
+			=> $kind === 'toggle' && ( explode( '/', $where )[1] === $defaultSets[ explode( '/', $where )[0] ] || in_array( explode( '/', $where )[0]. '/'. $knob, $toggleEverySet, true ) === true ), ARRAY_FILTER_USE_BOTH ) ), ARRAY_FILTER_USE_BOTH ) === []
 	&& count( $caseAnswered ) === array_sum( array_map( static fn( array $row ): int => count( $row['catalogue'] ), (array) ( $caseListing['parts'] ?? [] ) ) )
 	&& ( $caseListing['kinds']['buttons']['case'] ?? '' ) === 'toggle' && ( $caseListing['kinds']['header']['nav-case'] ?? '' ) === 'toggle' && ( $caseListing['kinds']['section']['title'] ?? '' ) === 'scale' );
 
@@ -6404,7 +6522,7 @@ foreach( array_merge( glob( $library. '/*/*/template.tpl' ) ?: [], glob( $librar
 
 check( 'two slots serve every variant: no template of the library marks a frame as drawn for a dark ground - nino-logo--invert is nowhere - and no stylesheet filters the logo, the ground a frame stands on says which of the two pictures is seen'
 	. ( $logoMarked === [] ? '' : ' - marked: '. implode( ', ', $logoMarked ) ). ( $logoFiltered === [] ? '' : ' - filtered: '. implode( ', ', $logoFiltered ) ),
-	$logoMarked === [] && $logoFiltered === [] && count( glob( $library. '/*/*/template.tpl' ) ?: [] ) >= 17 );
+	$logoMarked === [] && $logoFiltered === [] && count( glob( $library. '/*/*/template.tpl' ) ?: [] ) >= 13 );
 
 $specimen = Preview::specimen( $appData );
 

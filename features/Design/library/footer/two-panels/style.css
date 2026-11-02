@@ -8,12 +8,13 @@
  *	@knob	ground		What the footer stands on
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
+ *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The six knobs are ladders, declared below, the middle of each this set as it
+ *	The seven knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -32,6 +33,9 @@
  *	colour: the ink of the ground, the line of the ground - where it stands at the middle -
  *	and the brand. Of the three, the first two are roles of the footer's own ground, so
  *	a ground of another kind brings its line with it.
+ *
+ *	The seventh, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	navigation and the legal links are set in the one it is on.
  *
  *	Position is not answered here: the two panels are the construction of the set, a brand
  *	panel and an info panel that stand against each other and take half of the width
@@ -124,6 +128,10 @@
 	--footer-border-color--less:	var(--footer-ground-ink);
 	--footer-border-color--default:	var(--footer-ground-border);
 	--footer-border-color--more:	var(--color-primary);
+
+	/*	The case of the links of the navigation: as they are written, or in capitals	*/
+	--footer-nav-case--default: none;
+	--footer-nav-case--more: uppercase;
 }
 
 footer {
@@ -208,6 +216,11 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content li + li {
 	margin-top: calc( .55rem * var(--footer-space) );
+}
+
+.nino-frame-footer .nino-frame-footer-nav .nino-nav-content li a,
+.nino-frame-footer .nino-frame-footer-utility .nino-nav-content li a {
+	text-transform: var(--footer-nav-case);
 }
 
 .nino-frame-footer .nino-frame-footer-legal {

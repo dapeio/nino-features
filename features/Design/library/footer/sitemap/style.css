@@ -9,13 +9,14 @@
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
  *	@knob	position	Where the content of the footer stands
+ *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The navigation is set in columns that fill themselves rather than in a
  *	fixed grid, so a menu of eight and a menu of thirty both end up as a block
  *	rather than as one long strip or an empty half. column-count is the one
  *	property that can do that without knowing how many links there are.
  *
- *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -36,6 +37,9 @@
  *	against the left edge of their cell, as the template has them, or in the middle of it.
  *	The links of the legal line, which the template pushes to the right edge by an auto
  *	margin, stand next to the copyright at the other two (--footer-position-push).
+ *
+ *	The eighth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	navigation and the legal links are set in the one it is on.
  */
 
 :root {
@@ -122,6 +126,10 @@
 	--footer-ground-logo-dark--less:	var(--color-logo-dark);
 	--footer-ground-logo-dark--default:	var(--color-footer-logo-dark);
 	--footer-ground-logo-dark--more:	var(--color-section-dark-logo-dark);
+
+	/*	The case of the links of the navigation: as they are written, or in capitals	*/
+	--footer-nav-case--default: none;
+	--footer-nav-case--more: uppercase;
 }
 
 footer {
@@ -208,6 +216,11 @@ footer {
 	break-inside: avoid;
 	margin-bottom: calc( .45rem * var(--footer-space) );
 	font-size: var(--fontsize-small);
+}
+
+.nino-frame-footer .nino-frame-footer-nav .nino-nav-content li a,
+.nino-frame-footer .nino-frame-footer-utility .nino-nav-content li a {
+	text-transform: var(--footer-nav-case);
 }
 
 .nino-frame-footer .nino-frame-footer-legal {
