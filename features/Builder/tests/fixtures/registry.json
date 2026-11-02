@@ -67,6 +67,7 @@
                 "section"
             ],
             "draws": "{tag} .nino-section-title",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "section",
@@ -150,6 +151,7 @@
                 "section"
             ],
             "draws": "{tag} .nino-section-subtitle",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "section",
@@ -239,6 +241,7 @@
                     "default": ""
                 }
             },
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "global",
@@ -321,6 +324,7 @@
                 "card"
             ],
             "draws": "{tag} .nino-card-title",
+            "stretched": true,
             "link": true,
             "by": "nino",
             "group": "card",
@@ -403,6 +407,7 @@
                 "card"
             ],
             "draws": "{tag} .nino-card-subtitle",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "card",
@@ -485,6 +490,7 @@
                 "card"
             ],
             "draws": "div .nino-card-descr",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "card",
@@ -590,6 +596,7 @@
                 "card"
             ],
             "draws": "img .nino-card-img",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "card",
@@ -673,6 +680,7 @@
                 "section"
             ],
             "draws": "{tag} .nino-hero-title",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "hero",
@@ -756,6 +764,7 @@
                 "section"
             ],
             "draws": "{tag} .nino-hero-subtitle",
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "hero",
@@ -870,7 +879,7 @@
                 "linked": {
                     "type": "bool",
                     "label": "Whole card is the link",
-                    "hint": "The link of the card's title covers the whole card; text in the card cannot be selected then.",
+                    "hint": "A link in the card - its title's, or another component's that may be the card's link - covers the whole card; text in the card cannot be selected then.",
                     "default": false
                 },
                 "background": {
@@ -913,7 +922,7 @@
             ],
             "draws": "article .nino-card",
             "holds": "card",
-            "stretches": "card-title",
+            "stretched": false,
             "link": false,
             "by": "nino",
             "group": "card",
@@ -1029,6 +1038,7 @@
                 }
             },
             "draws": "a .nino-btn",
+            "stretched": false,
             "link": false,
             "by": "nino",
             "group": "global",
@@ -1119,6 +1129,7 @@
                     "default": ""
                 }
             },
+            "stretched": false,
             "link": true,
             "by": "nino",
             "group": "global",
@@ -1156,6 +1167,7 @@
                 ]
             ],
             "attributes": [],
+            "stretched": false,
             "link": false,
             "by": "nino",
             "group": "global",
@@ -1208,6 +1220,7 @@
                     "default": "2"
                 }
             },
+            "stretched": false,
             "link": false,
             "by": "nino",
             "group": "global",
@@ -1246,6 +1259,7 @@
                 "section"
             ],
             "draws": "a .nino-hero-arrowdown",
+            "stretched": false,
             "link": false,
             "by": "nino",
             "group": "hero",

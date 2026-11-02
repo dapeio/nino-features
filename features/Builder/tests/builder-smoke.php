@@ -136,7 +136,7 @@ check( '...and names the seven blocks of a dialog - the loop is one of them - an
 			if( isset( $manifest['manual']['panel'][$name][$locale] ) === false || strlen( $manifest['manual']['panel'][$name][$locale] ) >= 1000 )
 				return false;
 	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['The seven blocks']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The seven blocks']['de_DE'], 'Loop:' ) === true
-		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'title' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true;
+		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Properties of a card']['de_DE'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true;
 } )() );
 check( '...and the entry on the spacing of a section names the gap between the columns of its row, by the word the panel gives the select, in both languages', ( static function() use ( $manifest, $dir ): bool {
 	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
@@ -146,8 +146,8 @@ check( '...and the entry on the spacing of a section names the gap between the c
 	}
 	return true;
 } )() );
-check( 'the words of the patch are in both languages: the block Loop, the group Background image, the three hints of the width, the line of a card without the child the kernel stretches, the row of a picture in its group - and the place of the content of a cover is called Content in the cover, and the gap between the columns of a row has a word and a hint', ( static function() use ( $dir ): bool {
-	$words = [ 'block/loop/label', 'group/background-image', 'hint/content-pos', 'hint/text', 'hint/row-align', 'link/no-stretched', 'section/content-pos', 'section/row-gap', 'hint/row-gap', 'source/picture' ];
+check( 'the words of the patch are in both languages: the block Loop, the group Background image, the three hints of the width, the three lines of the Link block of a linked card - whose link it takes, that only one should be, and what to add where it has none -, the row of a picture in its group - and the place of the content of a cover is called Content in the cover, and the gap between the columns of a row has a word and a hint', ( static function() use ( $dir ): bool {
+	$words = [ 'block/loop/label', 'group/background-image', 'hint/content-pos', 'hint/text', 'hint/row-align', 'link/no-stretched', 'link/stretched', 'link/two-stretched', 'section/content-pos', 'section/row-gap', 'hint/row-gap', 'source/picture' ];
 	$texts = [ 'en_US' => (array) include $dir. '/text/en_US.php', 'de_DE' => (array) include $dir. '/text/de_DE.php' ];
 	foreach( $texts as $list )
 		foreach( $words as $word )

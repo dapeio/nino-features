@@ -7801,23 +7801,50 @@ check( 'the width and the alignment of a section: where the row stands in a cove
 	&& [ 'hint/content-pos', 'hint/text', 'hint/row-align' ].every( function( key ) { return word( key ) !== '' && word( key ).indexOf('%') === -1 } ) );
 builder._closeDialog();
 
-// The link of a card. The schema of the card names the child the kernel stretches - on a kernel that has the key; the pins say it on their own registry, so that they hold
-// on any kernel the suite is run against
+// The link of a card. The registry says which components may give the link of a linked card - 'stretched' in their schema: the pins set it on their own registry, so that they hold
+// on any kernel the suite is run against. A title-like component is a link the kernel wraps (link true); a feature-like one draws a link of its own (link false)
+check( 'the registry the PHP suite wrote from its kernel (fixtures/registry.json) says stretched on every component, as a bool: true for the title of a card alone, which is a link the kernel wraps, and false for the card, which holds components and is no link',
+	Object.keys( registryFixture.components ).every( function( name ) { return typeof registryFixture.components[name].stretched === 'boolean' } )
+	&& Object.keys( registryFixture.components ).filter( function( name ) { return registryFixture.components[name].stretched === true } ).join() === 'card-title'
+	&& registryFixture.components['card-title'].link === true && registryFixture.components.card.stretched === false && typeof registryFixture.components.card.holds === 'string' );
 openCard();
-builder._registry.components.card.stretches = 'card-title';
+builder._registry.components['card-title'].stretched = true;
+builder._registry.components['card-title'].link = true;
+builder._registry.components['probe-link'] = Object.assign( {}, builder._registry.components['card-subtitle'], { label : 'Probe link', link : false, stretched : true, by : 'probe', defaults : { tag : 'p', style : '', color : '', class : '' } } );
+builder._registry.components['probe-link'].labels = { de_DE : 'Probe-Link', en_US : 'Probe link' };
 builder._renderEditor();
 builder._openSettings( cardAt );
 builder._openBlock('link');
 
 const linkedLabel = cardDeclared.linked.label;
 const cardTitleOf = function() { return holderNow().components[0] };
+const hintsOf = function() { return Array.from( blockOf('link').querySelectorAll('.nino-admin-hint') ).map( function( hint ) { return hint.textContent } ) };
+const childAttributes = { tag : 'h3', style : '', color : '', href : '', target : '', class : '' };
+const childBox = { mt : '', mb : '', pt : '', pb : '', pl : '', pr : '' };
+const titleChild = function() { return Object.assign( { name : 'card-title', source : '/template/page-home-card/story/title-2', text : null, attributes : Object.assign( {}, childAttributes ) }, childBox ) };
+const probeChild = function() { return Object.assign( { name : 'probe-link', source : '/template/page-home-card/story/title', text : null, attributes : { tag : 'p', style : '', color : '', class : '' } }, childBox ) };
+const textChild = function() { return Object.assign( { name : 'text', source : '/template/page-home-card/story/text', text : null, attributes : { tag : 'p', format : 'blocks', style : '', color : '', href : '', target : '', class : '' } }, childBox ) };
+// The window of the card's link, chosen where the block has the field for it - a block that has none is the pin's to find out, not a thrown error
+const chooseWindow = function() {
+	if( labelList( blockOf('link') ).indexOf( word('link/target') ) !== -1 )
+		change( blockOf('link'), word('link/target'), '_blank' );
+};
+// The link block of a linked card that holds these children, drawn again
+const linkedWith = function( children ) {
+	builder._closeDialog();
+	holderNow().components = children;
+	holderNow().attributes.linked = '1';
+	builder._renderEditor();
+	builder._openSettings( cardAt );
+	builder._openBlock('link');
+};
 
 check( 'the Link block of a card has the switch Whole card is the link, and nothing else while it is off: no address, no window', JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && valueAt( blockOf('link'), linkedLabel ) === false
 	&& blockOf('link').querySelector('.builder-source') === null && blockOf('link').querySelector('.nino-admin-hint') === null );
 change( blockOf('link'), linkedLabel, true );
 check( '...turned on, the block is drawn again with the address and the window of the title of the card under the switch - the fields the title has in its own form, the switch still in focus order - and the card itself keeps no address', holderNow().attributes.linked === '1'
 	&& JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel, word('link/target') ] ) && blockOf('link').querySelectorAll('.builder-source').length === 1 && blockOf('link').querySelector('.builder-source-name').textContent === word('link/href')
-	&& holderNow().attributes.href === undefined && holderNow().attributes.target === undefined && blockIds().join() === 'link,surface,spacing,properties' && saysOf('link').textContent === linkedLabel );
+	&& holderNow().attributes.href === undefined && holderNow().attributes.target === undefined && blockIds().join() === 'link,surface,spacing,properties' && saysOf('link').textContent === linkedLabel && hintsOf().length === 0 );
 change( blockOf('link'), word('link/target'), '_blank' );
 buttonOf( blockOf('link'), 'Source' ).click();
 buttonOf( pickerStrip(), 'Static' ).click();
@@ -7829,43 +7856,65 @@ change( blockOf('link'), linkedLabel, false );
 check( '...and turned off again the block is the switch alone, and what the title has is kept', JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && cardTitleOf().attributes.href === '/contact' && cardTitleOf().attributes.target === '_blank' && holderNow().attributes.linked === '0' );
 builder._closeDialog();
 
-// A card that has none of what the kernel stretches says so, naming what to add by the label the registry gives it
-const wantedLine = word('link/no-stretched').replace( '%s', registry().components['card-title'].label );
-holderNow().components.splice( 0, 1 );
-holderNow().components.splice( 1, 1 );
-holderNow().attributes.linked = '1';
-builder._renderEditor();
-builder._openSettings( cardAt );
-builder._openBlock('link');
-check( 'a card that holds none of what the kernel stretches over it says so in a line, where all of it is the link: the words for it, in both languages, and no field to type an address into - a text in it is a link of its own, which the kernel does not stretch', holderNow().components.map( function( child ) { return child.name } ).join() === 'text'
-	&& registry().components.text.link === true && builder._registry.components.card.stretches === 'card-title'
-	&& blockOf('link').querySelector('.nino-admin-hint') !== null && blockOf('link').querySelector('.nino-admin-hint').textContent === wantedLine && blockOf('link').querySelector('.builder-source') === null
-	&& JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && word('link/no-stretched') !== '' );
-holderNow().components.unshift( { name : 'card-image', source : '/template/page-home-card/story/picture', text : null, attributes : { style : '', alt : '', focus : '', ratio : '', href : '', target : '', class : '' }, mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', hover : '' } );
-holderNow().components.push( { name : 'card-title', source : '/template/page-home-card/story/title-2', text : null, attributes : { tag : 'h3', style : '', color : '', href : '', target : '', class : '' }, mt : '', mb : '', pt : '', pb : '', pl : '', pr : '' } );
-builder._closeDialog();
-builder._renderEditor();
-builder._openSettings( cardAt );
-builder._openBlock('link');
-change( blockOf('link'), word('link/target'), '_blank' );
-check( '...the child is the one the schema of the card names, wherever it stands in the card: here the third, after a picture - which is a link as well, and is not the one - and a text; its window is written to it and to none of the others', blockOf('link').querySelector('.nino-admin-hint') === null
-	&& holderNow().components.map( function( child ) { return child.name } ).join() === 'card-image,text,card-title' && holderNow().components[2].attributes.target === '_blank' && holderNow().components[0].attributes.target === '' && holderNow().components[1].attributes.target === '' );
-builder._closeDialog();
-delete builder._registry.components.card.stretches;
-builder._renderEditor();
-builder._openSettings( cardAt );
-builder._openBlock('link');
-check( '...and a registry whose card names nothing - a kernel that has no such key - leaves the Link block as it was before the key: the switch alone, no fields under it and no line, though the card has a title and is linked', blockOf('link').querySelector('.nino-admin-hint') === null
+// A component that says stretched and draws a link of its own gives the card its link with no field to type into: one line says whose link the card takes, by the label the registry gives it
+linkedWith( [ probeChild(), textChild() ] );
+check( 'a component that says stretched and is no link of the kernel\'s making is the card\'s link without a field: the Link block is the switch and one line, "The card takes the link of" and the label of the component - the words for it, in both languages - and nothing is written to the card or to the component',
+	JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && blockOf('link').querySelector('.builder-source') === null
+	&& JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/stretched').replace( '%s', 'Probe link' ) ] ) && word('link/stretched').split('%s').length === 2 && word('link/stretched') !== ''
+	&& /%s/.test( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( "'[[/_admin/builder/link/stretched]]'" )[1].split('\n')[0] ) === true
+	&& holderNow().attributes.href === undefined && holderNow().components[0].attributes.href === undefined && holderNow().components[0].attributes.target === undefined && holderNow().components[1].attributes.href === '' );
+// ...and the line follows the label the registry has, not the name of the component
+builder._registry.components['probe-link'].label = 'Profile';
+linkedWith( [ probeChild(), textChild() ] );
+check( '...the label is the registry\'s, whatever the component is called', JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/stretched').replace( '%s', 'Profile' ) ] ) && hintsOf()[0].indexOf('probe-link') === -1 );
+builder._registry.components['probe-link'].label = 'Probe link';
+
+// A component that is a link and says stretched has the address and the window as fields, wherever it stands in the card
+linkedWith( [ textChild(), Object.assign( textChild(), { name : 'button', attributes : { href : '/x', style : '', size : '', width : '', target : '', class : '' } } ), titleChild() ] );
+chooseWindow();
+check( 'the child is the one the registry says, wherever it stands in the card: here the third, after a text - which is a link as well, and is not the one - and a button; its window is written to it and to none of the others, and there is no line',
+	hintsOf().length === 0 && holderNow().components.map( function( child ) { return child.name } ).join() === 'text,button,card-title' && holderNow().components[2].attributes.target === '_blank'
+	&& holderNow().components[0].attributes.target === '' && holderNow().components[1].attributes.target === '' );
+
+// Two of them: both cover the card and the later one lies on top and takes the clicks, so the last in the order of the card is the one the block speaks of, and a second line says that only one should be the card's
+const deLine = function( key ) { return fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( "'[[/_admin/builder/link/"+ key+ "]]'" )[1].split('\n')[0] };
+linkedWith( [ probeChild(), titleChild() ] );
+chooseWindow();
+check( 'two components that say stretched: the last is the one the block speaks of - here the title, with its fields, and its window written to it alone - and a second line says that only one link should be the card\'s, in both languages',
+	JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/two-stretched') ] ) && blockOf('link').querySelectorAll('.builder-source').length === 1 && holderNow().components[1].attributes.target === '_blank' && holderNow().components[0].attributes.target === undefined
+	&& word('link/two-stretched') !== '' && word('link/two-stretched').indexOf('%') === -1 && /=>\s*'[^']+'/.test( deLine('two-stretched') ) === true && deLine('two-stretched').indexOf('%') === -1 );
+linkedWith( [ titleChild(), probeChild() ] );
+chooseWindow();
+check( '...and the other way round the last is the one that draws its own link: its line, then the second, and no field for the title that stands before it - which keeps what it has',
+	JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/stretched').replace( '%s', 'Probe link' ), word('link/two-stretched') ] ) && blockOf('link').querySelector('.builder-source') === null
+	&& JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && holderNow().components[0].attributes.target === '' );
+linkedWith( [ probeChild(), textChild(), probeChild() ] );
+check( '...two of the one component are two', JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/stretched').replace( '%s', 'Probe link' ), word('link/two-stretched') ] ) );
+
+// None in the card: the line names the components that say stretched and may stand in a card - those that name the card among their places, or no place - by their labels, in the order of the registry
+builder._registry.components['elsewhere-link'] = Object.assign( {}, builder._registry.components['title'], { label : 'Elsewhere', link : false, stretched : true, in : [ 'section', 'hero' ] } );
+builder._registry.components['anywhere-link'] = Object.assign( {}, builder._registry.components['title'], { label : 'Anywhere', link : false, stretched : true } );
+delete builder._registry.components['anywhere-link'].in;
+const offeredLabels = Object.keys( builder._registry.components ).filter( function( name ) {
+	const schema = builder._registry.components[name];
+	return schema.stretched === true && ( Array.isArray( schema.in ) === false || schema.in.indexOf('card') !== -1 );
+} ).map( function( name ) { return builder._registry.components[name].label } );
+linkedWith( [ textChild() ] );
+check( 'a card that holds none of them says so in a line, where all of it is the link: the words for it, in both languages, with the labels of the components that say stretched and may stand in a card - the title, the probe and the one that names no place, not the one offered in a section alone - joined with a comma, and no field to type an address into: a text in it is a link of its own, which the kernel does not stretch',
+	holderNow().components.map( function( child ) { return child.name } ).join() === 'text' && registry().components.text.link === true && offeredLabels.length === 3 && offeredLabels.indexOf('Elsewhere') === -1 && offeredLabels.indexOf('Anywhere') !== -1
+	&& JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/no-stretched').replace( '%s', offeredLabels.join(', ') ) ] ) && blockOf('link').querySelector('.builder-source') === null
+	&& JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && word('link/no-stretched').split('%s').length === 2 && word('link/no-stretched') !== ''
+	&& /%s/.test( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( "'[[/_admin/builder/link/no-stretched]]'" )[1].split('\n')[0] ) === true );
+linkedWith( [] );
+check( '...a card that holds nothing says the same', JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/no-stretched').replace( '%s', offeredLabels.join(', ') ) ] ) );
+delete builder._registry.components['elsewhere-link'];
+delete builder._registry.components['anywhere-link'];
+
+// Where no component of the registry says stretched the Link block of a linked card is the switch alone, though the card has a title
+Object.keys( builder._registry.components ).forEach( function( name ) { delete builder._registry.components[name].stretched } );
+linkedWith( [ titleChild(), probeChild() ] );
+check( '...and a registry in which no component says it has the switch alone in the Link block: no fields under it and no line, though the card has a title and is linked', hintsOf().length === 0
 	&& blockOf('link').querySelector('.builder-source') === null && blockOf('link').children.length === 1 && JSON.stringify( labelList( blockOf('link') ) ) === JSON.stringify( [ linkedLabel ] ) && holderNow().attributes.linked === '1' );
-builder._closeDialog();
-builder._registry.components.card.stretches = 'card-image';
-holderNow().components = holderNow().components.filter( function( child ) { return child.name !== 'card-image' } );
-builder._renderEditor();
-builder._openSettings( cardAt );
-builder._openBlock('link');
-check( '...and a schema that names a component the card does not hold has the line, with that component named by the label of the registry - in the words of the panel, which have the place for it in both languages', blockOf('link').querySelector('.nino-admin-hint') !== null
-	&& blockOf('link').querySelector('.nino-admin-hint').textContent === word('link/no-stretched').replace( '%s', registry().components['card-image'].label ) && registry().components['card-image'].label !== 'card-image'
-	&& words['/_admin/builder/link/no-stretched'].split('%s').length === 2 && /%s/.test( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( "'[[/_admin/builder/link/no-stretched]]'" )[1].split('\n')[0] ) === true );
 builder._closeDialog();
 
 // The picture behind a card

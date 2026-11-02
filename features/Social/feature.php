@@ -35,6 +35,10 @@ return [
 				'en_US' => 'The same as [social-link instagram], the form the Builder writes.',
 				'de_DE' => 'Dasselbe wie [social-link instagram], die Form, die der Builder schreibt.',
 			],
+			'[social-link instagram] in [card linked="1"]' => [
+				'en_US' => 'A lone link in a card whose whole surface is the link is that link - as a component of the Builder and as the shortcode in an HTML+ block or the template of the card; the links of [social] are not.',
+				'de_DE' => 'Ein einzelner Link in einer Karte, deren ganze Fläche der Link ist, ist deren Link - als Komponente des Builders wie als Shortcode in einem HTML+-Block oder im Template der Karte; die Links von [social] sind es nicht.',
+			],
 			'[social-link ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the link. What the Builder writes for its custom classes, such as its spacing classes.',
 				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Links. Das schreibt der Builder für seine eigenen Klassen, etwa die Abstands-Klassen.',
@@ -191,6 +195,7 @@ return [
 			],
 			'preview'		=> 'button',
 			'draws'			=> 'a .nino-social-link',
+			'stretched'	=> true,
 			'in'			=> [ 'section', 'card', 'hero' ],
 			'icon'			=> [
 				[ 'path', [ 'd' => 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' ] ],

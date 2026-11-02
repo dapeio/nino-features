@@ -7448,10 +7448,13 @@
 		},
 
 		/**
-		 *	Where the link of a card goes, under the switch that makes all of the card the link: the address and the window of the child the kernel stretches over the card - the
-		 *	component the schema of the card names ('stretches'; the Builder knows none by name) -, as fields of the attributes of that child, the same fields its own form has.
-		 *	Nothing while the switch is off, and nothing where the schema of the card names no component (a kernel that has no such key); a card that does not hold the one it
-		 *	names says so in a line of its own, which names it by its label. The card keeps no address of its own: the link is that child's, as the kernel draws it
+		 *	Where the link of a card goes, under the switch that makes all of the card the link: the link of the last child whose component says in the registry that its link may
+		 *	be the card's ('stretched'; the Builder knows none by name), wherever it stands among the children - with more than one both cover the card, and the later one lies on top
+		 *	and takes the clicks. A child whose schema says it is a link ('link') has the address and the window as fields of its attributes, the same fields its own form has; one
+		 *	that draws a link of its own has none, and a line says whose link the card takes. More than one such child has a second line, that only one should be the card's.
+		 *	A card that holds none says so in a line that names the components of the registry that say it and may stand in a card, by their labels. Nothing while the switch is off,
+		 *	and nothing where no component of the registry says stretched: the block is the switch alone. The card keeps no address of its own: the link is that child's, as the kernel
+		 *	draws it
 		 *
 		 *	@param		{Element}		body							The block of the link
 		 *	@param		{Array}			path							The card
@@ -7462,40 +7465,57 @@
 		_stretchedLink : function( body, path, context ) {
 
 			const builder = Nino.admin.builder;
-			const registry = builder._registry;
+			const components = builder._registry.components || {};
 			const card = builder._get( builder._doc.model, path );
 
 			if( String( card.attributes.linked ?? '' ) !== '1' )
 				return;
 
 			const children = card.components ?? [];
-			const stretched = ( ( registry.components || {} )[card.name] || {} ).stretches;
+			const line = function( key, label ) {
+				const text = Nino.content.getText( '/_admin/builder/link/'+ key );
+				body.appendChild( builder._el( 'p', 'nino-admin-hint', label === undefined ? text : Nino.adminUi.format( text, label ) ) );
+			};
+			const labelOf = function( name ) { return ( components[name] || {} ).label || name };
+			// The children whose component says that its link may be the card's, by their place among the children, in the order they stand in
+			const candidates = [];
 
-			// A schema that names none - a kernel that has no such key - leaves nothing to say under the switch: the card is linked as it was, and the block is the switch alone
-			if( typeof stretched !== 'string' )
-				return;
+			children.forEach( function( child, at ) {
+				if( ( components[child.name] || {} ).stretched === true )
+					candidates.push( at );
+			} );
 
-			const at = children.findIndex( function( child ) { return child.name === stretched } );
+			// None: the line names what to add - the components that say it and may stand in a card (no place named is every place)
+			if( candidates.length === 0 ) {
 
-			// The schema names a component and the card does not hold it: the line says which one to add, by the label the registry gives it
-			if( at === -1 ) {
+				const offered = Object.keys( components ).filter( function( name ) {
+					return components[name].stretched === true && ( Array.isArray( components[name].in ) === false || components[name].in.indexOf('card') !== -1 );
+				} );
 
-				const named = ( registry.components || {} )[stretched] || {};
+				if( offered.length > 0 )
+					line( 'no-stretched', offered.map( labelOf ).join(', ') );
 
-				body.appendChild( builder._el( 'p', 'nino-admin-hint', Nino.adminUi.format( Nino.content.getText('/_admin/builder/link/no-stretched'), named.label || stretched ) ) );
 				return;
 			}
 
-			const title = children[at];
+			const at = candidates[candidates.length - 1];
+			const child = children[at];
 
-			builder._attributeFields( body, builder._linkFields( registry.components[title.name] ), title.attributes, {
-				fields	: context.fields,
-				section	: context.section,
-				around	: context.around,
-				node		: title,
-				path		: path.concat( [ at ] ),
-				redraw	: context.redraw,
-			} );
+			// A child that is a link has the address and the window the kernel wraps around what it draws; one that draws its own link has no field for it here
+			if( components[child.name].link === true )
+				builder._attributeFields( body, builder._linkFields( components[child.name] ), child.attributes, {
+					fields	: context.fields,
+					section	: context.section,
+					around	: context.around,
+					node		: child,
+					path		: path.concat( [ at ] ),
+					redraw	: context.redraw,
+				} );
+			else
+				line( 'stretched', labelOf( child.name ) );
+
+			if( candidates.length > 1 )
+				line( 'two-stretched' );
 		},
 
 		/**

@@ -357,11 +357,11 @@ check( '[social class=""] is the call without one', render( $appData, '[social c
 
 $html = render( $appData, 'Follow us on [social-link youtube].' );
 check( '[social-link]: one anchor in the text, icon and name by default, no list', substr_count( $html, '<a ' ) === 1 && str_contains( $html, '<ul' ) === false
-	&& str_contains( $html, '<span class="nino-social-label">YouTube</span>' ) === true && str_contains( $html, '<svg' ) === true && str_starts_with( $html, 'Follow us on <a class="nino-social-link"' ) === true );
-check( '[social-link class=…]: the call\'s class is on the anchor, in both forms of the call', str_contains( render( $appData, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link my-class" href="https://www.youtube.com/" target="_blank" rel="me noopener">' ) === true
+	&& str_contains( $html, '<span class="nino-social-label">YouTube</span>' ) === true && str_contains( $html, '<svg' ) === true && str_starts_with( $html, 'Follow us on <a class="nino-social-link nino-stretch"' ) === true );
+check( '[social-link class=…]: the call\'s class is on the anchor, in both forms of the call', str_contains( render( $appData, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link nino-stretch my-class" href="https://www.youtube.com/" target="_blank" rel="me noopener">' ) === true
 	&& render( $appData, '[social-link id="youtube" class="my-class"]' ) === render( $appData, '[social-link youtube class="my-class"]' )
 	&& substr_count( render( $appData, '[social-link youtube class="my-class"]' ), 'my-class' ) === 1 );
-check( '...escaped, and nowhere when the link is none', str_contains( \Nino\Modules\Social::doLinkShortcode( $appData, [ 'id' => 'youtube', 'class' => $hostileClass ] ), '<a class="nino-social-link a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]" href=' ) === true
+check( '...escaped, and nowhere when the link is none', str_contains( \Nino\Modules\Social::doLinkShortcode( $appData, [ 'id' => 'youtube', 'class' => $hostileClass ] ), '<a class="nino-social-link nino-stretch a&quot; onclick=&quot;x&quot; &#91;&#91;/project/company/general/name]] &#91;social]" href=' ) === true
 	&& render( $appData, '[social-link nope class="my-class"]' ) === '' );
 check( '[social-link id="…" show="label"]: the name alone', str_contains( render( $appData, '[social-link id="youtube" show="label"]' ), '<svg' ) === false
 	&& str_contains( render( $appData, '[social-link id="youtube" show="label"]' ), 'youtube.com' ) === true );
@@ -994,12 +994,34 @@ echo "Components - [social], [social-link], [social-icon] as the Builder offers 
 	check( 'a class is the call\'s own, on the list, the anchor and the wrapper of the icon, the wrapper\'s way as well',
 		str_contains( \Nino\Html::renderHtml( $probe, '[social class="my-class"]' ), '<ul class="nino-social my-class">' ) === true
 		&& str_contains( \Nino\Html::renderHtml( $probe, '[social size="large" class="my-class"]' ), '<ul class="nino-social nino-social--large my-class">' ) === true
-		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link my-class" href=' ) === true
-		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link id="youtube" class="my-class"]' ), '<a class="nino-social-link my-class" href=' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link youtube class="my-class"]' ), '<a class="nino-social-link nino-stretch my-class" href=' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link id="youtube" class="my-class"]' ), '<a class="nino-social-link nino-stretch my-class" href=' ) === true
 		&& \Nino\Html::renderHtml( $probe, '[social-icon telegram class="my-class"]' ) === '<span class="nino-social-icon my-class" aria-hidden="true">'. trim( (string) file_get_contents( dirname( __DIR__ ). '/icons/telegram.svg' ) ). '</span>'
 		&& \Nino\Html::renderHtml( $probe, '[social-icon name="telegram" class="my-class"]' ) === \Nino\Html::renderHtml( $probe, '[social-icon telegram class="my-class"]' ) );
 	check( '...and the same through the Components module with the class written out empty',
 		\Nino\Html::renderHtml( $probe, '[social class="" only="" ]' ) === $before['[social]'] );
+
+	// The lone link may be the link of a linked card: the schema says so, and the anchor carries the class Nino.css stretches - first after the feature's own, before the call's.
+	// The links of the list do not: a list is no candidate, and two links in one card would both cover it
+	check( 'the lone link says stretched in the schema the manifest declares, and registers with it; it draws its own anchor, so it says no link - the list and the icon say neither',
+		( $declared['social-link']['stretched'] ?? null ) === true && ( $declared['social']['stretched'] ?? null ) === false && ( $declared['social-icon']['stretched'] ?? null ) === false
+		&& ( \Nino\Modules\Components::components( $probe )['social-link']['stretched'] ?? null ) === true && ( \Nino\Modules\Components::components( $probe )['social-link']['link'] ?? null ) === false
+		&& array_keys( array_filter( \Nino\Modules\Components::components( $probe ), static fn( array $schema ): bool => ( $schema['by'] ?? '' ) === 'social' && $schema['stretched'] === true ) ) === [ 'social-link' ] );
+	check( 'the anchor of a lone link carries nino-stretch right after its own class, before the class of the call - as the shortcode by hand and as the component',
+		str_contains( \Nino\Html::renderHtml( $probe, '[social-link youtube]' ), '<a class="nino-social-link nino-stretch" href=' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social-link id="youtube" show="icon" class="my-class"]' ), '<a class="nino-social-link nino-stretch my-class" href=' ) === true
+		&& \Nino\Modules\Social::doLinkShortcode( $probe, [ 'id' => 'youtube', 'class' => 'my-class' ] ) === \Nino\Html::renderHtml( $probe, '[social-link id="youtube" class="my-class"]' )
+		&& substr_count( \Nino\Html::renderHtml( $probe, '[social-link youtube]' ), 'nino-stretch' ) === 1 );
+	check( '...and the links of the list carry none, however the list is called',
+		substr_count( \Nino\Html::renderHtml( $probe, '[social show="both" size="large" class="my-class"]' ), '<a class="nino-social-link" href=' ) === 4
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[social]' ), 'nino-stretch' ) === false && str_contains( \Nino\Html::renderHtml( $probe, '[social only="youtube"]' ), 'nino-stretch' ) === false
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[elements /social][social-icon name="[[icon]]"][/elements]' ), 'nino-stretch' ) === false );
+	check( 'a linked card with a lone link and a text holds exactly one anchor of the class, the link of the card; with the list in its place it holds none',
+		substr_count( \Nino\Html::renderHtml( $probe, '[card linked="1"][social-link instagram][card-text text="Follow us"][/card]' ), '<a class="nino-social-link nino-stretch" href="https://www.instagram.com/' ) === 1
+		&& substr_count( \Nino\Html::renderHtml( $probe, '[card linked="1"][social-link instagram][card-text text="Follow us"][/card]' ), 'nino-stretch' ) === 1
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[card linked="1"][social-link instagram][card-text text="Follow us"][/card]' ), '<article class="nino-card nino-card--linked">' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[card linked="1"][social show="both"][card-text text="Follow us"][/card]' ), 'nino-stretch' ) === false
+		&& substr_count( \Nino\Html::renderHtml( $probe, '[card linked="1"][card-title text="Follow us" href="/contact"][social-link instagram][/card]' ), 'nino-stretch' ) === 2 );
 
 } )( $appData );
 
@@ -1025,7 +1047,10 @@ foreach( [ [ 'a link on the web', 'mastodon', 'https://mastodon.social/@example'
 	$attributes = anchorAttributes( $html, $href );
 	check( $what. ( $web === true ? ' opens in a new tab and is rel="me noopener"' : ' is a plain link: no target, no rel' ),
 		$attributes !== null && ( $attributes['target'] ?? null ) === ( $web === true ? '_blank' : null ) && ( $attributes['rel'] ?? null ) === ( $web === true ? 'me noopener' : null ) );
-	check( $what. ' is the same through [social-link]', $attributes !== null && anchorAttributes( render( $appData, '[social-link '. $id. ']' ), $href ) === $attributes );
+	$lone = anchorAttributes( render( $appData, '[social-link '. $id. ']' ), $href );
+	check( $what. ' is the same through [social-link], but for the class that makes the lone link the link of a linked card', $attributes !== null && $lone !== null
+		&& array_diff_key( $lone, [ 'class' => 1 ] ) === array_diff_key( $attributes, [ 'class' => 1 ] )
+		&& ( $lone['class'] ?? null ) === 'nino-social-link nino-stretch' && ( $attributes['class'] ?? null ) === 'nino-social-link' );
 }
 
 foreach( [ 'mastodon', 'website', 'mail', 'phone', 'contact', 'scheme' ] as $id )

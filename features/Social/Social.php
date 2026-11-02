@@ -43,6 +43,12 @@ namespace Nino\Modules {
 		private static string $relProfile			= ' rel="me noopener"';
 		private static string $targetBlank	= ' target="_blank"';
 
+		// The class of the kernel's vocabulary that a lone link carries: in a card
+		// whose whole surface is the link (Nino.css reads it under .nino-card--linked
+		// alone) it is the link of the card. The links of a list do not carry it - a
+		// list is no candidate, and two links of one card would both cover it
+		private static string $stretch				= ' nino-stretch';
+
 		/**
 		 *	Module initiating: the three shortcodes, wherever the Components module
 		 *	does not own them. The stylesheet reaches the site's bundle through the
@@ -139,7 +145,8 @@ namespace Nino\Modules {
 		/**
 		 *	[social-link <id>] or [social-link id="…"] - one link, icon and name,
 		 *	for running text; show= as for [social], both by default; class= is
-		 *	the call's own class, on the anchor
+		 *	the call's own class, on the anchor. The anchor carries nino-stretch: a
+		 *	lone link in a card that is linked as a whole is the link of the card
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$args					Shortcode arguments
@@ -154,7 +161,7 @@ namespace Nino\Modules {
 			if( preg_match( self::ID, $id ) !== 1 || isset( $links[$id] ) === false )
 				return '';
 
-			return self::_link( $appData, $links[$id], self::_show( $args, 'both' ), \Nino\Feature::classes( $args ) );
+			return self::_link( $appData, $links[$id], self::_show( $args, 'both' ), \Nino\Feature::classes( $args ), true );
 		}
 
 		/**
@@ -292,17 +299,19 @@ namespace Nino\Modules {
 		 *	@param		array			$link					[ 'title', 'icon', 'url' ] as links() has it
 		 *	@param		string		$show					icon, both or label
 		 *	@param		string		$classes			A call's class as \Nino\Feature::classes() made it
+		 *	@param		bool			$stretch			A lone link, which may be the link of a linked card, and not one of a list
 		 *
 		 *	@return 	string
 		 */
-		private static function _link( array &$appData, array $link, string $show, string $classes = '' ): string {
+		private static function _link( array &$appData, array $link, string $show, string $classes = '', bool $stretch = false ): string {
 
 			$web = preg_match( '#^https?://#i', $link['url'] ) === 1;
 
 			// The name last, for the reason doShortcode() gives
 			return str_replace(
-				[ '[[classes]]', '[[url]]', '[[target]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
+				[ '[[stretch]]', '[[classes]]', '[[url]]', '[[target]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
 				[
+					$stretch === true ? self::$stretch : '',
 					$classes,
 					\Nino\Modules\Components::escape( str_starts_with( $link['url'], '/' ) === true ? rtrim( \Nino\Filesystem::getDir( $appData ), '/' ). $link['url'] : $link['url'] ),
 					$web === true ? self::$targetBlank : '',
