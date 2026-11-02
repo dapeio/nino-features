@@ -101,6 +101,35 @@ function protectedGate( array &$appData, string $uri, string $body = 'ORIGINAL P
 }
 
 /**
+ *	Drive a request the way \Nino\Http::response() answers it: the route found
+ *	for the path, its uri and its body laid into the response, and the callbacks
+ *	of the response run, the gate among them. Nothing is rendered. For a pin that
+ *	depends on what the route says; protectedGate() above lays the response in
+ *	by hand
+ *
+ *	@param		array 		&$appData
+ *	@param		string		$uri
+ *
+ *	@return 	array										The request, response and all
+ */
+function protectedServe( array &$appData, string $uri ): array {
+	$request = ninoVisit( $appData, $uri );
+	\Nino\Http::response( $appData, $request );
+	return $request;
+}
+
+/**
+ *	What a visitor is shown of an answer: its status and its body
+ *
+ *	@param		array 		$request
+ *
+ *	@return 	array										[ status, body ]
+ */
+function protectedAnswer( array $request ): array {
+	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ];
+}
+
+/**
  *	Drive POST /.protected: what it does beyond ninoVisit() is fill $_POST by
  *	hand, which the route callback reads, and call the callback itself
  *
@@ -259,6 +288,79 @@ check( 'the current uri is carried into the return fill', ( $appData['./nino/htm
 $unprotectedRequest = protectedGate( $appData, '/about', 'PUBLIC PAGE' );
 check( 'an unprotected uri is left untouched', $unprotectedRequest['/nino/http/response']['statusCode'] === 200
 	&& $unprotectedRequest['/nino/http/response']['body'] === 'PUBLIC PAGE' );
+
+echo "\n";
+
+
+// --- The gate - a page's address in every language -----------------------------
+
+echo "Modules\\ProtectedArea::callbackGate - a page is shut at every address its routes give it\n";
+
+/*	The Routes panel gives a page one route for each language, every one with the
+	page's uri and a locale of its own, while the setting names the page once. With
+	/intern protected, the page's address in the other language answered everybody:
+	the gate looked only at the path that was asked for. These requests are
+	answered by the routes, the way the kernel answers one - the route found, its
+	uri and body laid into the response, the callbacks of the response run - so the
+	gate sees the response it sees in production. The setting is still /intern and
+	/preview/client-a	*/
+$routesBefore = $appData['/nino/http/routes'];
+$appData['/nino/http/routes'] = array_merge( $routesBefore, [
+	'GET://intern'			=> [ 'uri' => '/intern', 'locale' => 'de_DE', 'body' => 'INTERN' ],
+	'GET://members'			=> [ 'uri' => '/intern', 'locale' => 'en_US', 'body' => 'MEMBERS' ],
+	'GET://members/*'		=> [ 'uri' => '/intern/*', 'locale' => 'en_US', 'body' => 'MEMBERS TREE' ],
+	'GET://news/*'			=> [ 'uri' => '/intern/post', 'body' => 'NEWS' ],
+	'GET://intern/archive'	=> [ 'uri' => '/archive', 'body' => 'ARCHIVE' ],
+	'GET://internal'		=> [ 'uri' => '/internal', 'body' => 'INTERNAL' ],
+] );
+
+$shut = [ 401, '[template /templates/page-protected]' ];
+$_SERVER['REMOTE_ADDR'] = '198.51.100.40';
+$served = [];
+$returned = [];
+
+// In turn: the page's own address; its address in the other language; a path below that one, answered by a
+// wildcard route whose uri is a subtree of the page; a path answered by a wildcard route whose uri is a page below
+// the prefix; a route whose uri is outside the prefixes but whose path lies under one; and a path that only
+// begins like a prefix, with a uri that does too
+foreach( [ '/intern', '/members', '/members/2026/plan', '/news/hello-world', '/intern/archive', '/internal' ] as $each ) {
+	$served[$each] = protectedServe( $appData, $each );
+	$returned[$each] = $appData['./nino/html/fills']['*']['[[/feature/protected/form/return]]'] ?? '';
+}
+
+check( 'a page that has a route for each language is shut at every address: the one in the other language answers a locked visitor with the password form (401, no-store), as the page\'s own address does',
+	protectedAnswer( $served['/intern'] ) === $shut && protectedAnswer( $served['/members'] ) === $shut
+	&& ( $served['/members']['/nino/http/response']['header']['Cache-Control'] ?? '' ) === 'no-store' );
+check( '...a wildcard route whose uri lies under the prefix is shut for every path below it, its uri a subtree (/intern/*) or a page below the prefix (/intern/post)',
+	protectedAnswer( $served['/members/2026/plan'] ) === $shut && protectedAnswer( $served['/news/hello-world'] ) === $shut );
+check( '...the form carries the path that was asked for, at the visitor\'s own address, and not the uri of the page that answers it',
+	$returned['/members'] === '/members' && $returned['/members/2026/plan'] === '/members/2026/plan' && $returned['/news/hello-world'] === '/news/hello-world' );
+check( '...the path asked for counts as it did: a route whose uri is outside the prefixes is shut when its path lies under one',
+	protectedAnswer( $served['/intern/archive'] ) === $shut );
+check( '...and a path that only begins like a prefix, with a uri that does too, is the page it is',
+	protectedAnswer( $served['/internal'] ) === [ 200, 'INTERNAL' ] );
+
+// The same visitor, once the password was given
+protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/members' ] );
+$passed = [];
+
+foreach( array_keys( $served ) as $each )
+	$passed[$each] = protectedAnswer( protectedServe( $appData, $each ) );
+
+check( '...and a visitor who has unlocked passes at every one of them: the page is the page at its address in the other language and below it, as at its own',
+	\Nino\Modules\ProtectedArea::unlocked( $appData ) === true
+	&& $passed === [ '/intern' => [ 200, 'INTERN' ], '/members' => [ 200, 'MEMBERS' ], '/members/2026/plan' => [ 200, 'MEMBERS TREE' ], '/news/hello-world' => [ 200, 'NEWS' ], '/intern/archive' => [ 200, 'ARCHIVE' ], '/internal' => [ 200, 'INTERNAL' ] ] );
+
+// What a crawler is told to leave out: Seo matches the address of a route, and a page has one for each language
+$excluded = [];
+\Nino\Callbacks::doCallbacks( $appData, '/seo/exclude', $excluded );
+check( 'the Seo feature is told the page\'s address in the other language and the subtree of the wildcard route, each once, beside the prefixes - not an address a prefix covers already, nor a page outside them',
+	$excluded === [ '/intern/*', '/preview/client-a/*', '/members', '/members/*', '/news/*' ] );
+
+$appData['/nino/http/routes'] = $routesBefore;
+check( '...and the route table is as it was before the section, so what follows reads the routes it expects', $appData['/nino/http/routes'] === $routesBefore && isset( $appData['/nino/http/routes']['GET://members'] ) === false );
+\Nino\Runtime::unsetSessionValue( $appData, './protected/unlocked' );
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
 echo "\n";
 

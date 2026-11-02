@@ -43,12 +43,12 @@ return [
 		],
 		'callbacks' => [
 			'/nino/http/response' => [
-				'en_US' => 'Puts the password form in front of every protected page.',
-				'de_DE' => 'Stellt das Passwortformular vor jede geschützte Seite.',
+				'en_US' => 'Puts the password form in front of every protected page, at every address the page has: the gate looks at the uri of the route that answers as well as at the path that was asked for, so a page with a route for each language is shut in all of them.',
+				'de_DE' => 'Stellt das Passwortformular vor jede geschützte Seite, an jeder Adresse, die die Seite hat: Das Tor sieht auf die Uri der Route, die antwortet, und auf den Pfad, der aufgerufen wurde. So ist eine Seite mit einer Route je Sprache in allen zu.',
 			],
 			'/seo/exclude' => [
-				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected pages out of sitemap.xml and llms.txt.',
-				'de_DE' => 'Sagt dem Feature SEO, wo es installiert ist, die geschützten Seiten aus sitemap.xml und llms.txt herauszuhalten.',
+				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected pages out of sitemap.xml and llms.txt, at every address such a page has: the address of every route whose uri lies under a protected path is named as well.',
+				'de_DE' => 'Sagt dem Feature SEO, wo es installiert ist, die geschützten Seiten aus sitemap.xml und llms.txt herauszuhalten, an jeder Adresse, die eine solche Seite hat: Auch die Adresse jeder Route, deren Uri unter einem geschützten Pfad liegt, wird genannt.',
 			],
 			'/nino/admin/action' => [
 				'en_US' => 'Signs everybody out when the password was changed through the feature settings instead of the panel.',
@@ -82,8 +82,8 @@ return [
 			'type'	=> 'lines',
 			'label'	=> [ 'en_US' => 'Protected paths', 'de_DE' => 'Geschützte Pfade' ],
 			'hint'	=> [
-				'en_US' => 'One uri prefix per line, eg. /intern - protects that page and everything below it. Leave empty to protect nothing.',
-				'de_DE' => 'Ein Uri-Präfix pro Zeile, zB /intern - schützt diese Seite und alles darunter. Leer lassen, um nichts zu schützen.',
+				'en_US' => 'One uri prefix per line, eg. /intern - protects that page and everything below it, at every address the page has. Enter the page\'s uri (its Element URI in the Routes panel): a page with a route for each language is then shut in every language, and the sitemap leaves every one of its addresses out. Leave empty to protect nothing.',
+				'de_DE' => 'Ein Uri-Präfix pro Zeile, zB /intern - schützt diese Seite und alles darunter, an jeder Adresse, die die Seite hat. Trag die Uri der Seite ein (ihre Element-URI im Panel Routen): Eine Seite mit einer Route je Sprache ist dann in jeder Sprache zu, und die Sitemap lässt jede ihrer Adressen aus. Leer lassen, um nichts zu schützen.',
 			],
 		],
 		'password' => [

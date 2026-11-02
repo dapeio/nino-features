@@ -17,7 +17,8 @@ namespace Nino\Modules {
 	 *										password - a members' area, a client preview, an
 	 *										internal page - without accounts and without any
 	 *										per-visitor tracking. A visitor under a protected
-	 *										prefix whose session has not unlocked sees the
+	 *										prefix - or at any address of a page whose uri lies
+	 *										under one - whose session has not unlocked sees the
 	 *										password form instead of the page (the gate, see
 	 *										callbackGate(), priority 1 on '/nino/http/response' -
 	 *										before Modules\Cache's 9, so a locked response is
@@ -40,7 +41,8 @@ namespace Nino\Modules {
 	 *										also has a small panel (Admin/Admin.php) for the
 	 *										password and for ticking pages off the route list, and
 	 *										tells \Nino\Modules\Seo, where that is installed,
-	 *										which prefixes to keep out of the sitemap
+	 *										which prefixes to keep out of the sitemap, and the
+	 *										address of every route whose page lies under one
 	 *										(callbackSeoExclude()).
 	 *
 	 *										The directory is ProtectedArea, not Protected: the
@@ -255,8 +257,13 @@ namespace Nino\Modules {
 		/**
 		 *	The addresses a crawler has no business listing, answered under
 		 *	'/seo/exclude' for the Seo feature, where that is installed: every
-		 *	protected prefix and everything below it - while a password is set,
-		 *	because without one nothing is protected and nothing is excluded.
+		 *	protected prefix and everything below it, and the address of every
+		 *	route whose page lies under one - Seo matches the addresses of the
+		 *	routes, and a page has one for each language (see _behindTheGate()).
+		 *	A wildcard route is named with its subtree, and an address a prefix
+		 *	covers already is not named a second time. All of it while a password
+		 *	is set, because without one nothing is protected and nothing is
+		 *	excluded.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$list				(reference) Patterns, in the spelling of Seo's 'exclude' setting
@@ -270,11 +277,20 @@ namespace Nino\Modules {
 
 			foreach( self::prefixes( $appData ) as $prefix )
 				$list[] = $prefix. '/*';
+
+			// The routes the gate answers from, as the kernel reads a table of them for a
+			// sitemap. An address under a prefix is named by the entry above already, so
+			// the ones added here are those outside the prefixes
+			foreach( \Nino\Http::pages( (array) ( $appData['/nino/http/routes'] ?? [] ) ) as $row )
+				if( self::protects( $appData, $row['path'] ) === false && self::protects( $appData, $row['uri'] ) === true )
+					$list[] = $row['wildcard'] === true ? $row['path']. '/*' : $row['path'];
 		}
 
 		/**
 		 *	The gate: replace the response of a protected, still-locked
-		 *	request with the password form. A plain 401 - never a 200, so
+		 *	request with the password form. A request is protected when the path
+		 *	asked for lies under a protected prefix, or when the page that answers
+		 *	it does (see _behindTheGate()). A plain 401 - never a 200, so
 		 *	nothing caches it, and honest about the fact that nothing was
 		 *	actually served. No exception for a signed-in workbench user: the
 		 *	password is the only way in, on purpose.
@@ -288,16 +304,39 @@ namespace Nino\Modules {
 
 			$uri = (string) ( $request['/nino/http/request']['uri'] ?? '' );
 
-			if( self::protects( $appData, $uri ) === false || self::unlocked( $appData ) === true )
+			if( self::_behindTheGate( $appData, $request ) === false || self::unlocked( $appData ) === true )
 				return;
 
-			// Escaped the way a posted return is (see _answerForm()): the uri is the
-			// visitor's too, and lands in the page that is rendered afterwards
+			// The path that was asked for, not the uri of the page that answers it: that
+			// is where the form returns to, at the visitor's own address. Escaped the way
+			// a posted return is (see _answerForm()): the uri is the visitor's too, and
+			// lands in the page that is rendered afterwards
 			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => \Nino\Modules\Components::escape( $uri ) ], '*' );
 
 			$request['/nino/http/response']['body']										= '[template /templates/page-protected]';
 			$request['/nino/http/response']['statusCode']							= 401;
 			$request['/nino/http/response']['header']['Cache-Control']	= 'no-store';
+		}
+
+		/**
+		 *	Whether a request is for a page behind the gate: the path asked for lies
+		 *	under a protected prefix, or the uri of the route that answers it does. A
+		 *	page can have a route for each language, every one with the page's uri and
+		 *	an address of its own, while a prefix is written once - /intern, say - and
+		 *	its address in another language would be open where /intern is shut. A
+		 *	wildcard route's uri, /intern/*, lies under the prefix as well. The route
+		 *	is laid into the response before the callbacks of the response run, so at
+		 *	the gate's priority the response's uri is the route's
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$request			Current server request, its response already routed
+		 *
+		 *	@return 	bool
+		 */
+		private static function _behindTheGate( array &$appData, array $request ): bool {
+
+			return self::protects( $appData, (string) ( $request['/nino/http/request']['uri'] ?? '' ) ) === true
+				|| self::protects( $appData, (string) ( $request['/nino/http/response']['uri'] ?? '' ) ) === true;
 		}
 
 		/**
