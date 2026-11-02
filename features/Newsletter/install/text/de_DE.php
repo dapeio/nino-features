@@ -14,6 +14,7 @@
 	'[[/feature/newsletter/info/email]]' => 'Bitte gib eine gültige E-Mail-Adresse ein.',
 	'[[/feature/newsletter/info/success]]' => 'Vielen Dank – bitte bestätige Deine Anmeldung über den Link in Deinem Postfach.',
 	'[[/feature/newsletter/info/error]]' => 'Die Mail konnte gerade nicht versendet werden. Bitte versuche es später noch einmal.',
+	'[[/feature/newsletter/info/expired]]' => 'Das Formular ist abgelaufen – bitte schicke es noch einmal ab.',
 
 	'[[/feature/newsletter/subject/confirm]]' => 'Bitte bestätige Deine Newsletter-Anmeldung | [[/project/website/general/url]]',
 	'[[/template/mail-newsletter-confirm/intro/title]]' => 'Fast geschafft!',

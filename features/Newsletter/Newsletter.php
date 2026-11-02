@@ -390,7 +390,12 @@ namespace Nino\Modules {
 		 *	for every outcome of the mail: 200, 'a link is on its way if the
 		 *	address is on the list'. A known address is mailed, an unknown one
 		 *	is not; the visitor cannot tell which, because nothing in the
-		 *	answer depends on it - no 429, no 500, whatever the mail did
+		 *	answer depends on it - no 429, no 500, whatever the mail did.
+		 *	Nothing happens without the csrf token the form carries: the
+		 *	kernel's guard has answered 403 with the body false, which a
+		 *	visitor whose session is gone would read as a bare "false" - the
+		 *	status stays, and the body is the form's page with the line that
+		 *	says the form has expired
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -399,12 +404,16 @@ namespace Nino\Modules {
 		 */
 		public static function callbackUnsubscribeRequest( array &$appData, array &$request ): void {
 
-			if( \Nino\Form::blocked( $request ) === true )
+			$form = '[template '. ( $appData['/nino/newsletter/unsubscribe-template'] ?? '/templates/page-newsletter-unsubscribe' ). ']';
+
+			if( \Nino\Form::blocked( $request ) === true ) {
+				$request['/nino/http/response']['body'] = $form;
+				\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/error]]' => '[[/feature/newsletter/info/expired]]' ], '*' );
 				return;
+			}
 
 			[ $email, $location ] = self::_posted();
 
-			$form = '[template '. ( $appData['/nino/newsletter/unsubscribe-template'] ?? '/templates/page-newsletter-unsubscribe' ). ']';
 			$page = '[template '. ( $appData['/nino/newsletter/page-template'] ?? '/templates/page-newsletter' ). ']';
 
 			// The answer page, the same one whatever was asked: a filled

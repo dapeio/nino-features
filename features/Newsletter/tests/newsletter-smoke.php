@@ -6,7 +6,9 @@ declare(strict_types=1);
  *	newsletter-smoke.php	Contract test for the Newsletter feature (Modules\Newsletter):
  *											the manifest and the activation through \Nino\Features,
  *											the double opt-in signup with confirm and unsubscribe
- *											links, the signup form as the component and the shortcode
+ *											links, the unsubscribe-request form whose session has
+ *											lapsed answering with its page and a line instead of the
+ *											kernel's bare false, the signup form as the component and the shortcode
  *											[newsletter-signup], the workbench panel and its permission,
  *											and the restore merge that keeps an unsubscribe unsubscribed.
  *											Travels with the feature and runs against the checkout
@@ -358,7 +360,7 @@ $wrongCsrf = performNewsletterLink( $appData, [ 'confirm' => $pendingToken, '_cs
 check( '...nor with a wrong one', $wrongCsrf['/nino/http/response']['statusCode'] === 403 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );
 
 /*	The kernel's guard answers a post without its token 403 with the body false, which is json: a
-	visitor whose session cookie is gone saw a bare "false". The status stays, the body is the page -
+	visitor whose session cookie is gone would read a bare "false". The status stays, the body is the page -
 	Http only encodes a body that is no string, whatever the status is - and the page says what is true:
 	this one has expired, and the link of the mail opens it again	*/
 $expiredPage = serveNewsletter( $appData, '/.newsletter/action', [ 'confirm' => $pendingToken ], false );
@@ -733,6 +735,30 @@ $before = $readList( $appData );
 \Nino\Modules\Newsletter::callbackUnsubscribeRequest( $appData, $blockedAsk );
 unset( $_POST['_csrf'] );
 check( 'a csrf-blocked post is refused (403), sends nothing and writes nothing', $blockedAsk['/nino/http/response']['statusCode'] === 403 && $mails === [] && $readList( $appData ) === $before );
+
+/*	The kernel's guard answers that post 403 with the body false, which is json: a visitor of the
+	plain form whose session is gone would read a bare "false". The status stays, the body is the form's
+	page - the form to send again - with the line that says the form has expired	*/
+check( '...with the form\'s page as its body and the line that says the form has expired, not the bare false', ( $blockedAsk['/nino/http/response']['body'] ?? null ) === '[template /templates/page-newsletter-unsubscribe]'
+	&& $errorFill( $appData ) === '[[/feature/newsletter/info/expired]]' );
+$expiredAsk = serveNewsletter( $appData, '/.newsletter/unsubscribe', [ 'email' => 'legacy@example.com', 'location' => '' ], false );
+$expiredAskForms = newsletterForms( $expiredAsk['html'] );
+check( 'served, the post without the csrf token keeps its 403 and answers with the page of the form - the form with a fresh token to send again, never the json false', $expiredAsk['status'] === 403
+	&& $expiredAsk['html'] !== '' && $expiredAsk['html'] !== 'false' && json_decode( $expiredAsk['html'] ) === null
+	&& count( $expiredAskForms ) === 1 && $expiredAskForms[0]['method'] === 'post' && str_ends_with( $expiredAskForms[0]['action'], '/.newsletter/unsubscribe' ) === true
+	&& empty( $expiredAskForms[0]['fields']['_csrf'] ) === false && $expiredAskForms[0]['buttons'] === 1 );
+$expiredLine = [];
+$expiredDocument = new DOMDocument();
+libxml_use_internal_errors( true );
+$expiredDocument->loadHTML( '<?xml encoding="UTF-8">'. $expiredAsk['html'] );
+libxml_clear_errors();
+foreach( $expiredDocument->getElementsByTagName( 'p' ) as $paragraph )
+	if( str_contains( ' '. $paragraph->getAttribute( 'class' ). ' ', ' nino-form-message ' ) === true )
+		$expiredLine[] = $paragraph->textContent;
+check( '...and the page shows that line in the paragraph of the form\'s messages, as the words of its key', count( $expiredLine ) === 1 && $expiredLine[0] !== ''
+	&& in_array( $expiredLine[0], [ ( require dirname( __DIR__ ). '/install/text/en_US.php' )['[[/feature/newsletter/info/expired]]'], ( require dirname( __DIR__ ). '/install/text/de_DE.php' )['[[/feature/newsletter/info/expired]]'] ], true ) === true );
+check( '...the line it carries is the expired-form text, which is neither the one for an invalid address nor the one of the page whose link has expired, and nothing was mailed or written', $errorFill( $appData ) === '[[/feature/newsletter/info/expired]]'
+	&& $errorFill( $appData ) !== '[[/feature/newsletter/info/email]]' && $mails === [] && $readList( $appData ) === $before );
 
 // Only the button of the link takes anybody off the list
 check( 'pressing the button of the link the mail carried removes the entry and records the removal', performNewsletterLink( $appData, [ 'unsubscribe' => $knownToken ] )['/nino/http/response']['statusCode'] === 200
@@ -1181,6 +1207,12 @@ foreach( $mailWords as $textLocale => $words )
 	foreach( $pageWords as $wordKey )
 		if( trim( (string) ( $words[$wordKey] ?? '' ) ) === '' )
 			$missingWords[] = $textLocale. ' '. $wordKey;
+$expiredFormWords = [];
+foreach( $mailWords as $textLocale => $words )
+	if( trim( (string) ( $words['[[/feature/newsletter/info/expired]]'] ?? '' ) ) === '' || str_starts_with( (string) $words['[[/feature/newsletter/info/expired]]'], '[[/' ) === true )
+		$expiredFormWords[] = $textLocale;
+check( 'the line of the unsubscribe form that has expired has its words in both languages, in each their own'. ( $expiredFormWords === [] ? '' : ' - missing: '. implode( ', ', $expiredFormWords ) ), $expiredFormWords === []
+	&& $mailWords['de_DE']['[[/feature/newsletter/info/expired]]'] !== $mailWords['en_US']['[[/feature/newsletter/info/expired]]'] );
 check( 'the page of an opened link has its button and its title and text in both languages, for confirming and for unsubscribing, and the page that has expired has its title and text'. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', $missingWords ) ), $missingWords === [] );
 check( '...in each language their own words: none is the key as it stands, none the same in both', array_filter( $pageWords, static fn( string $wordKey ): bool => ( $mailWords['de_DE'][$wordKey] ?? '' ) === ( $mailWords['en_US'][$wordKey] ?? '' )
 	|| str_starts_with( (string) ( $mailWords['de_DE'][$wordKey] ?? '' ), '[[/' ) === true || str_starts_with( (string) ( $mailWords['en_US'][$wordKey] ?? '' ), '[[/' ) === true ) === [] );

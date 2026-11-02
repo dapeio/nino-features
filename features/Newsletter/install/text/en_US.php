@@ -14,6 +14,7 @@
 	'[[/feature/newsletter/info/email]]' => 'Please enter a valid email address.',
 	'[[/feature/newsletter/info/success]]' => 'Thank you – please confirm your signup via the link in your inbox.',
 	'[[/feature/newsletter/info/error]]' => 'The mail could not be sent just now. Please try again later.',
+	'[[/feature/newsletter/info/expired]]' => 'The form has expired – please send it again.',
 
 	'[[/feature/newsletter/subject/confirm]]' => 'Please confirm your newsletter signup | [[/project/website/general/url]]',
 	'[[/template/mail-newsletter-confirm/intro/title]]' => 'Almost there!',
