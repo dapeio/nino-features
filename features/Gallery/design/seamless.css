@@ -1,0 +1,24 @@
+/*	@name			Seamless
+ *	@name-de		Fugenlos
+ *	@description	The pictures side by side with no space between them and no rounded corners, one surface of pictures.
+ *	@description-de	Die Bilder Kante an Kante, ohne Abstand und ohne gerundete Ecken, eine einzige Fläche aus Bildern.
+ *
+ *	@knob	ground		ground	colours		Ground behind a picture	= alt
+ *	@knob-de	ground		Grund hinter einem Bild
+ *
+ *	Seamless has no space and no corners to move: it sets the two properties to nothing, so the panel greys the knobs of
+ *	Grid out under it. What is left is the ground a picture lies on while it loads. With no space between them the ring of a
+ *	focused picture would run into its neighbours, which paint over it: the focused link is raised over them, and the ring
+ *	has a second line in the ground, so that one of the two shows on whatever the picture is.
+ */
+
+:root {
+	--gallery-gap: 0rem;
+	--gallery-corners: 0rem;
+}
+
+.nino-gallery-cell > .nino-gallery-link:focus-visible {
+	z-index: 1;
+	outline-color: var(--gallery-ground-on);
+	box-shadow: 0 0 0 3px var(--gallery-ground);
+}

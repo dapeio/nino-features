@@ -153,6 +153,112 @@ function galleryGroups( string $html ): array {
 	return array_count_values( $found[1] );
 }
 
+/**
+ *	The rules of a stylesheet, its comments left out: for each the at-rule it stands in ('' for none), its selector with the
+ *	whitespace folded and the text of its body. One level of at-rule is read, which is as deep as the stylesheets here go
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array<int, array{at: string, selector: string, body: string}>
+ */
+function galleryRules( string $css ): array {
+
+	$rules	= [];
+	$read		= static function( string $text, string $at ) use ( &$read, &$rules ): void {
+
+		$offset = 0;
+
+		while( ( $open = strpos( $text, '{', $offset ) ) !== false ) {
+
+			$depth	= 1;
+			$close	= $open + 1;
+
+			for( ; $close < strlen( $text ) && $depth > 0; $close++ )
+				$depth += $text[$close] === '{' ? 1 : ( $text[$close] === '}' ? -1 : 0 );
+
+			$selector	= trim( (string) preg_replace( '/\s+/', ' ', substr( $text, $offset, $open - $offset ) ) );
+			$body			= substr( $text, $open + 1, $close - $open - 2 );
+
+			if( str_starts_with( $selector, '@' ) === true )
+				$read( $body, $selector );
+			else
+				$rules[] = [ 'at' => $at, 'selector' => $selector, 'body' => $body ];
+
+			$offset = $close;
+		}
+	};
+
+	$read( (string) preg_replace( '#/\*.*?\*/#s', '', $css ), '' );
+
+	return $rules;
+}
+
+/**
+ *	The declarations in the body of a rule, in the order they stand, the whitespace of each value folded
+ *
+ *	@param		string		$body
+ *
+ *	@return 	array<int, array{property: string, value: string}>
+ */
+function galleryDeclarations( string $body ): array {
+
+	preg_match_all( '/(?:^|;)\s*(-{0,2}[a-z][a-z0-9-]*)\s*:\s*([^;]*)/i', $body, $found, PREG_SET_ORDER );
+
+	return array_map( static fn( array $match ): array => [ 'property' => $match[1], 'value' => trim( (string) preg_replace( '/\s+/', ' ', $match[2] ) ) ], $found );
+}
+
+/**
+ *	A stylesheet of the Design feature's grammar, read as it is written: the tags of its head (tag => the texts after it, one
+ *	for each line), the rules after the head, and the property each declaration sets (property => [ selector, value ] for
+ *	each). Nothing is compared with what a head says - that is the file's to say
+ *
+ *	@param		string		$file
+ *
+ *	@return 	array{tags: array<string, array<int, string>>, rules: array<int, array{at: string, selector: string, body: string}>, declared: array<string, array<int, array{selector: string, value: string}>>}
+ */
+function gallerySheet( string $file ): array {
+
+	$css	= (string) file_get_contents( $file );
+	$tags	= [];
+
+	preg_match( '#^\s*/\*(.*?)\*/#s', $css, $comment );
+
+	foreach( (array) preg_split( '/\R/', $comment[1] ?? '' ) as $line )
+		if( preg_match( '/^\s*\*?\s*(@[a-z]+(?:-de)?)\s+(\S.*?)\s*$/', (string) $line, $found ) === 1 )
+			$tags[ $found[1] ][] = $found[2];
+
+	$sheet = [ 'tags' => $tags, 'rules' => galleryRules( $css ), 'declared' => [] ];
+
+	foreach( $sheet['rules'] as $rule )
+		foreach( galleryDeclarations( $rule['body'] ) as $declaration )
+			$sheet['declared'][ $declaration['property'] ][] = [ 'selector' => $rule['selector'], 'value' => $declaration['value'] ];
+
+	return $sheet;
+}
+
+/**
+ *	The colours a stylesheet writes as a literal in the value of a declaration: a hex colour, a colour function or the name of a
+ *	colour. What a value reads of the kernel - var(--color-ink) - is the name of a property and none of these; transparent,
+ *	currentColor and color-mix() of the kernel's tokens are none either
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array<int, string>				property: literal, for each
+ */
+function galleryColourLiterals( string $css ): array {
+
+	$names = explode( ' ', 'aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen' );
+	$literal = '/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|(?<![\w-])(?:'. implode( '|', $names ). ')(?![\w-])/i';
+	$found = [];
+
+	foreach( galleryRules( $css ) as $rule )
+		foreach( galleryDeclarations( $rule['body'] ) as $declaration )
+			if( preg_match( $literal, (string) preg_replace( '/--[a-z0-9-]+/i', '', $declaration['value'] ), $match ) === 1 )
+				$found[] = $declaration['property']. ': '. $match[0];
+
+	return $found;
+}
+
 
 // --- The feature -------------------------------------------------------------
 
@@ -934,16 +1040,20 @@ check( '...while a second gallery within the request goes on counting',
 // Selectors, not comments: both stylesheets talk about the other's classes
 $uncommented = static fn( string $file ): string => (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
 $ninoCss = $uncommented( $root. '/_nino/Nino.css' );
+/*	The two classes of the kernel's hover - the frame says nino-image and nino-hover, and Nino.css draws what the pointer does to it - are the
+	templates' to write and the stylesheet's never to style: every other class the templates write, and every class the stylesheet selects, is
+	this feature's own	*/
+$hoverClasses = [ 'nino-image', 'nino-hover' ];
 $written = [];
 foreach( [ 'templates/gallery.tpl', 'templates/gallery-item.tpl' ] as $file ) {
 	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( dirname( __DIR__ ). '/'. $file ), $found );
 	foreach( $found[1] as $list )
-		$written = array_merge( $written, (array) preg_split( '/\s+/', trim( $list ) ) );
+		$written = array_merge( $written, array_diff( (array) preg_split( '/\s+/', trim( $list ) ), $hoverClasses ) );
 }
 preg_match_all( '/\.(nino-[a-z0-9-]+)/', $uncommented( dirname( __DIR__ ). '/assets/gallery.css' ), $found );
 $written = array_values( array_unique( array_merge( $written, $found[1] ) ) );
 $styledByKernel = array_values( array_filter( $written, static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1 ) );
-check( 'no class the templates or the stylesheet write is one Nino.css styles - the bundle is shared, and the kernel\'s .nino-gallery is another grid', $written !== [] && $styledByKernel === [] );
+check( 'no class the templates or the stylesheet write is one Nino.css styles - the bundle is shared, and the kernel\'s .nino-gallery is another grid - but the two of the hover, which the template says and the stylesheet never selects', $written !== [] && $styledByKernel === [] );
 
 // The attribute of a caption is the template's: the class fills in its text, escaped, and none when there is none
 check( 'the caption attribute is written in the template of an item - an empty caption is the empty attribute',
@@ -1086,6 +1196,412 @@ check( '...and the words of each language are the ones of its own text file agai
 check( 'none of it cast a map to a string', array_filter( ninoWarnings(), static fn( string $warning ): bool => str_contains( $warning, 'Array to string' ) === true ) === [] );
 
 echo "\n";
+
+
+// --- The looks of the Design feature ----------------------------------------------
+
+echo "design/ - the looks, the knobs and the block that the Design feature reads\n";
+
+/*	What a feature brings the Design feature as files (its manual, under Base, says what a variant and a block are). Read here by their
+	grammar - which tags, which fields, which names, which rule where - and what a head says is never compared: the words are the
+	files' to say. The base stylesheet owns the grid and declares every property a look moves, the looks move them	*/
+$design 		= $dir. '/design';
+$base 			= gallerySheet( $dir. '/assets/gallery.css' );
+$looks 			= [];
+
+foreach( glob( $design. '/*.css' ) ?: [] as $file )
+	$looks[ basename( $file, '.css' ) ] = gallerySheet( $file );
+
+ksort( $looks );
+
+$kinds			= [ 'scale', 'choice', 'ground', 'ink', 'colour' ];
+$tabs				= [ 'type', 'surfaces', 'colours', 'motion' ];
+$surfaces		= [ 'default', 'alt', 'tint', 'dark', 'black', 'brand', 'brand-safe', 'accent-safe', 'success', 'warning', 'danger' ];
+$steps			= [ 'least', 'less', 'default', 'more', 'most' ];
+$stepSuffix	= '/--(?:least|less|default|more|most)$/';
+$knobTable	= [ 'gap' => [ 'scale', 'surfaces' ], 'corners' => [ 'scale', 'surfaces' ], 'ground' => [ 'ground', 'colours' ] ];
+$answers		= [ 'mat' => [ 'gap', 'corners', 'ground' ], 'regular' => [ 'gap', 'corners', 'ground' ], 'seamless' => [ 'ground' ] ];
+
+check( 'the feature brings three looks of the Design feature, a stylesheet each in design/ - and regular, which is where a feature starts from, is the grid as it has always been - and the block for the preview beside them',
+	array_keys( $looks ) === [ 'mat', 'regular', 'seamless' ] && array_map( 'basename', glob( $design. '/*' ) ?: [] ) === [ 'mat.css', 'preview.tpl', 'regular.css', 'seamless.css' ] );
+
+$headless = [];
+
+foreach( $looks as $variant => $look )
+	foreach( [ '@name', '@name-de', '@description', '@description-de' ] as $tag )
+		if( count( $look['tags'][$tag] ?? [] ) !== 1 || trim( $look['tags'][$tag][0] ) === '' )
+			$headless[] = $variant. ' '. $tag;
+
+check( 'each head names and describes its look in both languages, once each: @name, @name-de, @description, @description-de'. ( $headless === [] ? '' : ' - '. implode( ', ', $headless ) ), $headless === [] && $looks !== [] );
+
+/** The knobs a head declares: name => kind, tab, label, default (null where the line has none), and how often it was declared */
+$knobsOf = [];
+
+foreach( $looks as $variant => $look )
+	foreach( $look['tags']['@knob'] ?? [] as $text ) {
+		$fields = (array) preg_split( '/\s+/', $text, 4 );
+		preg_match( '/^(.*?)(?:\s+=\s+(\S+))?$/', (string) ( $fields[3] ?? '' ), $label );
+		$knobsOf[$variant][ (string) $fields[0] ][] = [ 'fields' => count( $fields ), 'kind' => (string) ( $fields[1] ?? '' ), 'tab' => (string) ( $fields[2] ?? '' ), 'label' => (string) ( $label[1] ?? '' ), 'default' => $label[2] ?? null ];
+	}
+
+$knobProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	foreach( $knobsOf[$variant] ?? [] as $name => $lines ) {
+		$line = $lines[0];
+
+		if( count( $lines ) !== 1 || $line['fields'] !== 4 || in_array( $line['kind'], $kinds, true ) === false || in_array( $line['tab'], $tabs, true ) === false || $line['label'] === '' )
+			$knobProblems[] = $variant. ' @knob '. $name;
+
+		$twins = array_filter( $look['tags']['@knob-de'] ?? [], static fn( string $text ): bool => preg_match( '/^'. preg_quote( $name, '/' ). '\s+\S/', $text ) === 1 );
+
+		if( count( $twins ) !== 1 )
+			$knobProblems[] = $variant. ' @knob-de '. $name;
+
+		// A scale takes no default - its middle is the one it stands at - and a ground the surface of the palette it stands at
+		if( $line['kind'] === 'scale' ? $line['default'] !== null : in_array( $line['default'], $surfaces, true ) === false )
+			$knobProblems[] = $variant. ' default of '. $name;
+	}
+
+	foreach( $look['tags']['@knob-de'] ?? [] as $text )
+		if( isset( $knobsOf[$variant][ (string) strtok( $text, " \t" ) ] ) === false )
+			$knobProblems[] = $variant. ' @knob-de '. strtok( $text, " \t" ). ' names no knob';
+}
+
+check( 'each @knob line has its four fields - the name, a kind, a tab, the words - once, a @knob-de beside it, and a ground the surface of the palette it stands at'. ( $knobProblems === [] ? '' : ' - '. implode( ', ', $knobProblems ) ), $knobProblems === [] && $knobsOf !== [] );
+
+$offTable = [];
+
+foreach( $knobsOf as $variant => $declared )
+	foreach( $declared as $name => $lines )
+		if( ( $knobTable[$name] ?? null ) !== [ $lines[0]['kind'], $lines[0]['tab'] ] )
+			$offTable[] = $variant. ' '. $name;
+
+check( 'every knob is one of the three, of the same kind and on the same tab in every look: the space between the pictures and the corners on Surface, the ground on Colour - and there is none for the columns, which are the album\'s and the shortcode\'s'. ( $offTable === [] ? '' : ' - '. implode( ', ', $offTable ) ),
+	$offTable === [] && array_diff( array_keys( $knobsOf ), array_keys( $answers ) ) === [] );
+check( 'a look declares only what it answers to: Grid and Mat all three, Seamless the ground alone - it has no space and no corners to move, and the panel greys the two out under it with its line',
+	array_map( static fn( array $declared ): array => array_keys( $declared ), $knobsOf ) === $answers );
+
+$ladderProblems = [];
+
+foreach( $looks as $variant => $look ) {
+	$stems = [];
+
+	foreach( $knobsOf[$variant] ?? [] as $name => $lines )
+		if( $lines[0]['kind'] === 'scale' ) {
+			$stems[] = '--gallery-'. $name;
+
+			foreach( $steps as $step )
+				if( count( $look['declared'][ '--gallery-'. $name. '--'. $step ] ?? [] ) !== 1 || $look['declared'][ '--gallery-'. $name. '--'. $step ][0]['selector'] !== ':root' )
+					$ladderProblems[] = $variant. ' lacks --gallery-'. $name. '--'. $step. ' on :root, once';
+		}
+
+	foreach( array_keys( $look['declared'] ) as $property )
+		if( preg_match( $stepSuffix, $property ) === 1 && in_array( (string) preg_replace( $stepSuffix, '', $property ), $stems, true ) === false )
+			$ladderProblems[] = $variant. ' has a ladder no knob of its head moves: '. $property;
+}
+
+check( 'a scale declares its five rungs - once each, on :root - and every ladder belongs to a knob the head declares'. ( $ladderProblems === [] ? '' : ' - '. implode( ', ', $ladderProblems ) ),
+	$ladderProblems === [] && count( array_filter( array_keys( $looks['regular']['declared'] ?? [] ), static fn( string $property ): bool => preg_match( $stepSuffix, $property ) === 1 ) ) === 10 && count( array_filter( array_keys( $looks['mat']['declared'] ?? [] ), static fn( string $property ): bool => preg_match( $stepSuffix, $property ) === 1 ) ) === 10
+	&& array_filter( array_keys( $looks['seamless']['declared'] ?? [] ), static fn( string $property ): bool => preg_match( $stepSuffix, $property ) === 1 ) === [] );
+
+/*	Seamless has no space and no corners, and says so by setting the two properties to nothing: on :root, where a look moves a default, and to a
+	length that is none - the knobs it does not declare are not moved by anything else	*/
+$seamless = $looks['seamless']['declared'] ?? [];
+
+check( 'Seamless sets the space and the corners to nothing, on :root and nowhere else - a length of zero, which no knob of its own moves',
+	array_column( $seamless['--gallery-gap'] ?? [], 'selector' ) === [ ':root' ] && array_column( $seamless['--gallery-corners'] ?? [], 'selector' ) === [ ':root' ]
+	&& preg_match( '/^0(?:\.0+)?[a-z%]*$/', (string) ( $seamless['--gallery-gap'][0]['value'] ?? '' ) ) === 1 && preg_match( '/^0(?:\.0+)?[a-z%]*$/', (string) ( $seamless['--gallery-corners'][0]['value'] ?? '' ) ) === 1
+	&& array_column( $looks['seamless']['rules'] ?? [], 'selector' ) === [ ':root', '.nino-gallery-cell > .nino-gallery-link:focus-visible' ] );
+
+/*	With no space between the pictures the ring of a focused link would run into its neighbours, which are positioned and paint over it: the focused link is raised
+	over them, and the ring is two lines - the outline in the text colour of the ground and a shadow in the ground itself in the gap between the picture and the outline
+	- so that one of them shows on whatever the picture is	*/
+$seamlessRing = array_values( array_filter( $looks['seamless']['rules'] ?? [], static fn( array $rule ): bool => $rule['selector'] === '.nino-gallery-cell > .nino-gallery-link:focus-visible' ) );
+$ringMade			= array_column( galleryDeclarations( $seamlessRing[0]['body'] ?? '' ), 'value', 'property' );
+
+check( 'Seamless raises the focused link over its neighbours and gives the ring a second line: a z-index above the cells, the outline in the text colour of the ground, a shadow in the ground itself',
+	count( $seamlessRing ) === 1 && preg_match( '/^[1-9]\d*$/', (string) ( $ringMade['z-index'] ?? '' ) ) === 1 && ( $ringMade['outline-color'] ?? '' ) === 'var(--gallery-ground-on)'
+	&& preg_match( '/^0 0 0 \d+(?:\.\d+)?[a-z]+ var\(--gallery-ground\)$/', (string) ( $ringMade['box-shadow'] ?? '' ) ) === 1 );
+
+$baseDeclared	= $base['declared'];
+$ruleProblems	= [];
+
+foreach( $looks as $variant => $look )
+	foreach( $look['rules'] as $rule ) {
+		$properties = array_column( galleryDeclarations( $rule['body'] ), 'property' );
+
+		// The ladders and the properties Seamless moves stand on :root; a rule is on the grid's own classes and on nothing else - no element, no id, no class of the kernel's
+		if( $rule['selector'] === ':root' ) {
+			foreach( $properties as $property )
+				if( preg_match( '/^--gallery-[a-z0-9-]+--(?:least|less|default|more|most)$/', $property ) !== 1 && in_array( $property, [ '--gallery-gap', '--gallery-corners' ], true ) === false )
+					$ruleProblems[] = $variant. ' declares '. $property. ' on :root, which is no rung of a ladder';
+		}
+		elseif( $rule['at'] !== '' || preg_match( '/^[\s>+~,]*$/', (string) preg_replace( [ '/\.nino-gallery[a-z0-9-]*/', '/:focus-visible/' ], '', $rule['selector'] ) ) !== 1 || str_contains( $rule['selector'], '.nino-gallery' ) === false )
+			$ruleProblems[] = $variant. ' writes a rule on '. $rule['selector'];
+
+		foreach( galleryDeclarations( $rule['body'] ) as $declaration ) {
+			preg_match_all( '/var\(\s*(--gallery-[a-z0-9-]+)/', $declaration['value'], $reads );
+
+			foreach( $reads[1] as $read )
+				if( isset( $baseDeclared[$read] ) === false )
+					$ruleProblems[] = $variant. ' reads '. $read. ', which gallery.css does not declare';
+		}
+	}
+
+check( 'a look is a head, the rungs of its ladders on :root and rules on the grid\'s own classes - never an element, an id or a class of the kernel - and it reads only properties that gallery.css declares'. ( $ruleProblems === [] ? '' : ' - '. implode( ', ', $ruleProblems ) ), $ruleProblems === [] && count( $looks ) === 3 );
+
+$colourProblems = [];
+
+foreach( array_merge( array_map( static fn( string $variant ): string => $design. '/'. $variant. '.css', array_keys( $looks ) ), [ $dir. '/assets/gallery.css' ] ) as $file ) {
+	$code = (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
+
+	foreach( galleryColourLiterals( $code ) as $literal )
+		$colourProblems[] = basename( $file ). ' '. $literal;
+
+	if( stripos( $code, '!important' ) !== false )
+		$colourProblems[] = basename( $file ). ' !important';
+}
+
+check( '...and no stylesheet of the feature writes a colour as a literal - a hex colour, a function, the name of one - or declares anything !important: the colours are a ground and what the page says'. ( $colourProblems === [] ? '' : ' - '. implode( ', ', $colourProblems ) ), $colourProblems === [] );
+
+/*	Where the defaults stand: lengths, numbers and the ground with its parts in :where(:root), and nowhere else - a custom property is resolved where it is
+	declared, and :where() has no specificity, so the line of the knob positions a look compiles beats it. A ground in :where(*) would be declared on every
+	element and beat the compiled one on all of them	*/
+$gallerySource	= (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $dir. '/assets/gallery.css' ) );
+$strayDefaults	= [];
+$owned					= [ '--gallery-gap', '--gallery-corners', '--gallery-ground', '--gallery-ground-on', '--gallery-ground-border' ];
+
+foreach( $owned as $property )
+	if( array_column( $baseDeclared[$property] ?? [], 'selector' ) !== [ ':where(:root)' ] )
+		$strayDefaults[] = $property. ' is not declared once in :where(:root)';
+
+foreach( $base['rules'] as $rule )
+	foreach( galleryDeclarations( $rule['body'] ) as $declaration )
+		if( str_starts_with( $declaration['property'], '--gallery-' ) === true && $rule['selector'] !== ':where(:root)' )
+			$strayDefaults[] = $declaration['property']. ' is declared under '. $rule['selector'];
+
+// Each property it declares is read by a var() - in the grid or in a look - since one that nothing reads is a knob that moves nothing
+$readAnywhere = $gallerySource. implode( "\n", array_map( static fn( string $variant ): string => (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $dir. '/design/'. $variant. '.css' ) ), array_keys( $looks ) ) );
+
+foreach( array_unique( array_merge( $owned, array_filter( array_keys( $baseDeclared ), static fn( string $property ): bool => str_starts_with( $property, '--gallery-' ) ) ) ) as $property )
+	if( preg_match( '/var\(\s*'. preg_quote( $property, '/' ). '\s*[,)]/', $readAnywhere ) !== 1 )
+		$strayDefaults[] = $property. ' is read by nothing';
+
+if( preg_match( '/:root\s*\{/', (string) preg_replace( '/:where\(:root\)/', '', $gallerySource ) ) === 1 )
+	$strayDefaults[] = 'a bare :root in gallery.css';
+
+check( 'gallery.css declares every property a look moves, once, in :where(:root) and nowhere else - never in a bare :root, on a class, in :where(*) or with !important - and each of them is read by a var()'. ( $strayDefaults === [] ? '' : ' - '. implode( ', ', $strayDefaults ) ),
+	$strayDefaults === [] && str_contains( $gallerySource, 'var(--gallery-gap)' ) === true );
+
+// Grid is the gallery as it is without the Design feature: the middle of each ladder is the default gallery.css has, it writes no rule, and the ground it stands at is the one gallery.css has
+$unequal = [];
+
+foreach( $looks['regular']['declared'] ?? [] as $property => $places )
+	if( preg_match( '/^(.+)--default$/', $property, $stem ) === 1 && ( $baseDeclared[ $stem[1] ][0]['value'] ?? null ) !== $places[0]['value'] )
+		$unequal[] = $property;
+
+foreach( $looks['regular']['rules'] ?? [] as $rule )
+	if( $rule['selector'] !== ':root' )
+		$unequal[] = 'a rule on '. $rule['selector'];
+
+if( ( $baseDeclared['--gallery-ground'][0]['value'] ?? null ) !== 'var(--color-section-'. ( $knobsOf['regular']['ground'][0]['default'] ?? '' ). '-bg)' )
+	$unequal[] = 'the ground it stands at is not the one gallery.css has';
+
+check( 'Grid stands where gallery.css stands: the middle of the space and of the corners is the default the base declares, it writes no rule, and the ground it stands at is the surface gallery.css reads - so the gallery under it is drawn as it is without the Design feature'. ( $unequal === [] ? '' : ' - '. implode( ', ', $unequal ) ),
+	$unequal === [] && count( array_filter( array_keys( $looks['regular']['declared'] ?? [] ), static fn( string $property ): bool => str_ends_with( $property, '--default' ) ) ) === 2 );
+
+// The hover is the kernel's: nothing in gallery.css moves a picture - no transform, no rule under :hover, no transition of its own, and no reduced-motion block to take the zoom back
+check( 'gallery.css moves no picture: no transform, no :hover, no transition and no reduced-motion block - the hover is the kernel\'s, set for every picture under Page, Motion',
+	preg_match( '/\btransform\s*:|:hover|\btransition\s*:|prefers-reduced-motion/', $gallerySource ) !== 1 && preg_match( '/\btransform\b|:hover|\btransition\b/', (string) preg_replace( '#/\*.*?\*/#s', '', implode( "\n", array_map( static fn( string $variant ): string => (string) file_get_contents( $dir. '/design/'. $variant. '.css' ), array_keys( $looks ) ) ) ) ) !== 1 );
+
+// The mat is a ground of its own: what is drawn on it takes its text colour, and its line - the roles of the ground - are the ground's, not the section's
+$matCell = array_values( array_filter( $looks['mat']['rules'] ?? [], static fn( array $rule ): bool => $rule['selector'] === '.nino-gallery-grid > .nino-gallery-cell' ) );
+$matMade = array_column( galleryDeclarations( $matCell[0]['body'] ?? '' ), 'value', 'property' );
+
+check( 'Mat paints the cell: the ground of the knob, its line, the corners of the knob and room round the picture, the colour of the text the ground brings - on the ring of the focused link, which stands on the mat - and the picture inside has the small corners of the page',
+	count( $matCell ) === 1 && ( $matMade['background-color'] ?? '' ) === 'var(--gallery-ground)' && ( $matMade['color'] ?? '' ) === 'var(--gallery-ground-on)' && str_contains( (string) ( $matMade['border'] ?? '' ), 'var(--gallery-ground-border)' ) === true
+	&& ( $matMade['border-radius'] ?? '' ) === 'var(--gallery-corners)' && preg_match( '/^var\(--space-[1-6]\)$/', (string) ( $matMade['padding'] ?? '' ) ) === 1
+	&& array_filter( $looks['mat']['rules'] ?? [], static fn( array $rule ): bool => $rule['selector'] === '.nino-gallery-cell > .nino-gallery-link' && ( array_column( galleryDeclarations( $rule['body'] ), 'value', 'property' )['border-radius'] ?? '' ) === 'var(--radius-small)' ) !== [] );
+
+// --- The block: six pictures as the template writes them, in three columns
+$block 			= (string) @file_get_contents( $design. '/preview.tpl' );
+$blockIds 	= [];
+preg_match_all( '/<[a-z][^>]*>/i', $block, $blockTags );
+
+foreach( $blockTags[0] as $blockTag )
+	if( preg_match( '/\sid="([^"]*)"/', $blockTag, $blockId ) === 1 )
+		$blockIds[] = $blockId[1];
+
+preg_match_all( '/<img\b[^>]*>/', $block, $blockImages );
+preg_match_all( '/<li class="nino-gallery-cell">(.*?)<\/li>/s', $block, $blockCells );
+preg_match( '/<ul class="nino-gallery-grid"[^>]*style="([^"]*)"/', $block, $blockList );
+
+// The shape of one item as the template has it, the fills made static: the preview's cell is that, so that the specimen draws what the shortcode draws
+$itemOfBlock = static fn( string $cell ): string => (string) preg_replace( '/ id="[^"]*"/', '', $cell );
+$cellShape	 = static fn( string $markup ): string => (string) preg_replace( [ '/ (?:src|alt|width|height|href|data-lightbox|data-caption)="[^"]*"/', '/ loading="lazy" decoding="async"/' ], '', $markup );
+$templateItem = (string) file_get_contents( $dir. '/templates/gallery-item.tpl' );
+
+check( 'the feature brings a block to the specimen, design/preview.tpl: one grid row, every id in it gallery-something and each once, no section of its own and no inline handler',
+	str_starts_with( trim( $block ), '<div class="nino-grid-row">' ) === true && str_ends_with( trim( $block ), '</div>' ) === true && substr_count( $block, 'class="nino-grid-row"' ) === 1
+	&& $blockIds !== [] && array_filter( $blockIds, static fn( string $id ): bool => str_starts_with( $id, 'gallery-' ) === false ) === [] && count( $blockIds ) === count( array_unique( $blockIds ) )
+	&& preg_match( '/<section\b/i', $block ) !== 1 && preg_match( '/\son[a-z]+\s*=/i', $block ) !== 1 );
+check( '...the grid is the shortcode\'s: one list with three columns and the size the thumbnails are cropped to as the properties the stylesheet reads, and six cells, each of them a link to nothing - # - round the frame of the hover and a picture of the preview\'s placeholder, which has nothing to say and so an empty alt, with the width and the height the template writes - the lightbox does not load there, so no link carries a group',
+	substr_count( $block, '<ul class="nino-gallery-grid"' ) === 1 && count( $blockCells[0] ) === 6 && count( $blockImages[0] ) === 6
+	&& str_contains( (string) ( $blockList[1] ?? '' ), '--nino-gallery-columns:3' ) === true && preg_match( '/--nino-gallery-thumb-w:\d+;--nino-gallery-thumb-h:\d+/', (string) ( $blockList[1] ?? '' ) ) === 1
+	&& array_filter( $blockImages[0], static fn( string $image ): bool => str_contains( $image, 'src="[[placeholder]]"' ) === false || preg_match( '/\swidth="\d+" height="\d+"/', $image ) !== 1 ) === []
+	&& substr_count( $block, 'href="#"' ) === 6 && str_contains( $block, 'data-lightbox' ) === false && substr_count( $block, ' alt=""' ) === 6
+	&& array_unique( array_map( static fn( string $cell ): string => $cellShape( $itemOfBlock( $cell ) ), $blockCells[0] ) ) === [ $cellShape( trim( $templateItem ) ) ] );
+
+// The hover is asked for in the item the shortcode renders: the frame says the two classes of the kernel, and the picture is its child - which is what the kernel's rule is written for
+$itemHtml = galleryPage( $appData, '[gallery album="trip"]' );
+preg_match_all( '/<a class="nino-gallery-link"[^>]*>(<span class="([^"]*)">(<img [^>]*>)<\/span>)<\/a>/', $itemHtml, $frames, PREG_SET_ORDER );
+
+check( 'the item the shortcode renders has the kernel\'s frame round the picture, inside its link: nino-image and nino-hover on one element - the rule of Nino.css reads both and the picture as its direct child - and the picture is the one with the width and the height',
+	count( $frames ) === 2 && array_filter( $frames, static fn( array $frame ): bool => array_diff( [ 'nino-image', 'nino-hover' ], (array) preg_split( '/\s+/', $frame[2] ) ) !== [] || str_contains( $frame[3], 'class="nino-gallery-thumb"' ) === false || str_contains( $frame[3], 'width="' ) === false ) === []
+	&& preg_match( '/\.nino-image\.nino-hover\s*>\s*img\s*\{/', $ninoCss ) === 1 && preg_match( '/a:focus-visible\s*>\s*\.nino-image\.nino-hover\b/', $ninoCss ) === 1 );
+
+// --- The manual
+$manualProblems = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+	$text = ( (array) ( $manifest['manual']['panel'] ?? [] ) )['Design: the looks of the gallery'][$locale] ?? null;
+
+	if( is_string( $text ) === false || trim( $text ) === '' || max( array_map( 'strlen', explode( "\n", $text ) ) ) >= 1000 || str_contains( $text, 'nino-hover' ) === true )
+		$manualProblems[] = $locale;
+}
+
+$hoverWords = [ 'en_US' => [ 'Page, Motion', 'kernel' ], 'de_DE' => [ 'Seite, Bewegung', 'Kernels' ] ];
+
+foreach( $hoverWords as $locale => $words )
+	foreach( $words as $word )
+		if( str_contains( (string) ( ( (array) ( $manifest['manual']['panel'] ?? [] ) )['Design: the looks of the gallery'][$locale] ?? '' ), $word ) === false )
+			$manualProblems[] = $locale. ' '. $word;
+
+$frameLine = (array) ( $manifest['manual']['markup']['<span class="nino-gallery-frame nino-image nino-hover">'] ?? [] );
+$propertyLine = (array) ( $manifest['manual']['markup']['--gallery-gap, --gallery-corners, --gallery-ground'] ?? [] );
+
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	foreach( [ '--gallery-gap', '--gallery-corners', '--gallery-ground', ':root' ] as $word )
+		if( str_contains( (string) ( $propertyLine[$locale] ?? '' ), $word ) === false || strlen( (string) ( $propertyLine[$locale] ?? '' ) ) >= 1000 )
+			$manualProblems[] = $locale. ' markup line '. $word;
+
+check( 'the manual names the looks, the knobs and the hover under panel - the hover as the kernel\'s, set under Page, Motion - and the frame of the picture under markup, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ),
+	$manualProblems === [] && trim( (string) ( $frameLine['en_US'] ?? '' ) ) !== '' && trim( (string) ( $frameLine['de_DE'] ?? '' ) ) !== '' && strlen( (string) $frameLine['en_US'] ) < 1000 && strlen( (string) $frameLine['de_DE'] ) < 1000 );
+
+echo "\n";
+
+
+// --- ...run through the Design feature ---------------------------------------------
+
+echo "design/ - as the Design feature reads and compiles it\n";
+
+$designSetup			= '\\Nino\\Modules\\Design\\Setup';
+$designCompiler		= '\\Nino\\Modules\\Design\\Compiler';
+$designPreview		= '\\Nino\\Modules\\Design\\Preview';
+
+if( class_exists( $designSetup ) === false || class_exists( $designCompiler ) === false )
+	echo "  note - there is no Design feature beside this one: the looks are not run through it here, bin/check.sh runs them with it in the checkout\n";
+else {
+	$library			= \Nino\Features::dir(). '/Design/library';
+	$modulesKept	= (array) ( $appData['/nino/modules'] ?? [] );
+	$localeKept		= $appData['./nino/locales/current'];
+
+	/** Which of the features are on: their classes are listed in /nino/modules, and what the kernel and the Design feature have read of the features is read again */
+	$featuresOn = static function( array $names ) use ( &$appData, $modulesKept ): void {
+		$appData['/nino/modules'] = array_merge( array_values( array_diff( $modulesKept, [ '\\Nino\\Modules\\Gallery', '\\Nino\\Modules\\Design' ] ) ), array_map( static fn( string $name ): string => '\\Nino\\Modules\\'. $name, $names ) );
+		unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+	};
+
+	/** The sheet a setup makes of the raw entry given */
+	$compile = static function( array $raw, array &$notes = [] ) use ( &$appData, $designSetup, $designCompiler, $library ): string {
+		$setup = $designSetup::normalize( $appData, $raw, $library, $notes );
+
+		return $designCompiler::compile( $appData, $setup, $library, $notes );
+	};
+
+	ninoWarnings();
+	$featuresOn( [ 'Gallery', 'Design' ] );
+	$appData['./nino/locales/current'] = 'en_US';
+
+	$scanNotes	= [];
+	$scan				= $designSetup::features( $appData, $scanNotes );
+	$feature		= $scan['gallery'] ?? [];
+	$catalogue	= $feature['catalogue'] ?? [];
+
+	check( 'with the Design feature on, the scan lists this feature by its three looks, regular the one it has before anything is chosen, the anchor of its block - and has nothing to say of any file: no line dropped, no ladder missing',
+		isset( $scan['gallery'] ) === true && realpath( (string) $feature['dir'] ) === realpath( $dir ) && array_keys( $catalogue ) === array_keys( $looks ) && $feature['default'] === 'regular'
+		&& $feature['anchor'] === 'feature-gallery' && $scanNotes === [] );
+
+	$publishes = [];
+
+	foreach( $catalogue as $variant => $look )
+		$publishes[$variant] = array_map( static fn( array $knob ): array => [ $knob['kind'], $knob['tab'] ], $look['knobs'] );
+
+	check( 'each look publishes the knobs it declares and no other, with the kind and the tab of its head: all three for Grid and for Mat, the ground alone for Seamless - and a scale by the ladder of its own name',
+		$publishes['regular'] === $knobTable && $publishes['mat'] === $knobTable && $publishes['seamless'] === array_intersect_key( $knobTable, [ 'ground' => 1 ] )
+		&& array_filter( [ 'regular', 'mat' ], static fn( string $variant ): bool => ( $catalogue[$variant]['knobs']['gap']['ladder'] ?? [] ) !== [ 'gap' ] || ( $catalogue[$variant]['knobs']['corners']['ladder'] ?? [] ) !== [ 'corners' ] ) === [] );
+
+	// The block is the feature's, not a look's: Design makes the section round it, with the feature's anchor
+	$blockTold		= [];
+	$blockInside	= $designSetup::previewOf( (string) $feature['dir'], 'gallery', $blockTold );
+	$blocks				= $designPreview::blocks( $appData );
+
+	check( 'the block stands the check Design holds it to and the preview makes the section of it, with the anchor the scan names, before the footer',
+		$blockInside === trim( $block ) && $blockInside !== '' && $blockTold === [] && array_keys( $blocks ) === [ 'gallery' ]
+		&& preg_match( '~^<section id="feature-gallery" class="nino-section" aria-label="[^"]+">\s*(.*?)\s*</section>$~s', $blocks['gallery'] ?? '', $blockSection ) === 1 && str_contains( $blockSection[1] ?? '', 'id="gallery-grid"' ) === true
+		&& substr_count( $blocks['gallery'], 'nino-gallery-cell' ) === 6 && str_contains( $blocks['gallery'], '[[placeholder]]' ) === false );
+
+	$withNone	= $compile( [] );
+	$featuresOn( [ 'Design' ] );
+	$withOff	= $compile( [] );
+	$featuresOn( [ 'Gallery', 'Design' ] );
+
+	check( 'with no look chosen the feature compiles nothing: the sheet of a project that has the feature on is the sheet of one that has it off, byte for byte', $withNone === $withOff && str_contains( $withNone, 'feature gallery' ) === false );
+
+	$sheetProblems = [];
+
+	foreach( $catalogue as $variant => $look ) {
+		$sheetNotes	= [];
+		$sheet			= $compile( [ 'features' => [ 'gallery' => [ 'set' => $variant ] ] ], $sheetNotes );
+		$ladders		= [];
+
+		foreach( $look['knobs'] as $name => $knob )
+			if( $knob['kind'] === 'scale' ) {
+				$ladders[] = $name. ' default';
+
+				foreach( $knob['ladder'] ?? [] as $ladder )
+					if( str_contains( $sheet, "\n\t--gallery-". $ladder. ': var('. sprintf( $designSetup::KNOB_TOKEN, 'gallery', $ladder, 'default' ). ");\n" ) === false )
+						$sheetProblems[] = $variant. ' selects no '. $ladder;
+			}
+			elseif( $knob['kind'] === 'ground' && str_contains( $sheet, "\n\t--gallery-". $name. ': var(--nino-'. $knob['default']. ");\n" ) === false )
+				$sheetProblems[] = $variant. ' writes no ground '. $name;
+
+		if( preg_match( '~^/\* ==== \d+\. feature gallery: '. preg_quote( $variant, '~' ). '(?: \((.*)\))? ==== \*/$~m', $sheet, $title ) !== 1 || ( $title[1] ?? '' ) !== implode( ', ', $ladders ) )
+			$sheetProblems[] = $variant. ' has no section of its own, or one that does not say its ladders';
+		elseif( str_contains( $sheet, rtrim( (string) file_get_contents( $design. '/'. $variant. '.css' ), "\n" ) ) === false )
+			$sheetProblems[] = $variant. ' is not in its section as the file has it';
+
+		if( $sheetNotes !== [] )
+			$sheetProblems[] = $variant. ' compiled with a note';
+	}
+
+	check( 'with a look chosen the sheet carries its section, its stylesheet as the file has it, and a line for every ladder of every knob it declares and for the ground, with every part the palette solved for it'. ( $sheetProblems === [] ? '' : ' - '. implode( ', ', $sheetProblems ) ),
+		$sheetProblems === [] && $catalogue !== [] );
+
+	$groundSheet = $compile( [ 'features' => [ 'gallery' => [ 'set' => 'mat', 'knobs' => [ 'ground' => 'dark' ] ] ] ] );
+
+	check( 'a ground moved is written as the surface and every part of it - the colour, the text on it, the line - the properties the stylesheet reads',
+		str_contains( $groundSheet, "\n\t--gallery-ground: var(--nino-dark);\n" ) === true && str_contains( $groundSheet, "\n\t--gallery-ground-on: var(--nino-on-dark);\n" ) === true && str_contains( $groundSheet, "\n\t--gallery-ground-border: var(--nino-dark-border);\n" ) === true );
+
+	$appData['/nino/modules'] = $modulesKept;
+	unset( $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+	$appData['./nino/locales/current'] = $localeKept;
+	ninoWarnings();
+}
+
+echo "\n";
+
 
 
 /**

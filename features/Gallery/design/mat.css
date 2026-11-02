@@ -1,0 +1,43 @@
+/*	@name			Mat
+ *	@name-de		Passepartout
+ *	@description	Every picture on a ground of its own with room round it, like a print in a mat, and small corners on the picture inside.
+ *	@description-de	Jedes Bild auf einem eigenen Grund mit Rand ringsum, wie ein Abzug im Passepartout, und kleine Ecken am Bild darin.
+ *
+ *	@knob	gap			scale	surfaces	Space between the mats
+ *	@knob-de	gap			Abstand der Passepartouts
+ *	@knob	corners		scale	surfaces	Corners of a mat
+ *	@knob-de	corners		Ecken des Passepartouts
+ *	@knob	ground		ground	colours		Ground of a mat	= alt
+ *	@knob-de	ground		Grund des Passepartouts
+ *
+ *	The ground is a surface of the palette and brings the roles solved for it. A mat is a ground of its own, so what is
+ *	drawn on it takes its text colour - the ring round a focused picture, which stands on the mat, not on the section - and
+ *	a line of its own colour keeps it from disappearing into a section of the same ground. The picture inside has the small
+ *	corners of the page whatever the corners of the mat are.
+ */
+
+:root {
+	--gallery-gap--least:	.25rem;
+	--gallery-gap--less:	var(--space-1);
+	--gallery-gap--default:	.75rem;
+	--gallery-gap--more:	1.25rem;
+	--gallery-gap--most:	var(--space-3);
+
+	--gallery-corners--least:	0rem;
+	--gallery-corners--less:	var(--radius-small);
+	--gallery-corners--default:	var(--radius-large);
+	--gallery-corners--more:	.8rem;
+	--gallery-corners--most:	1.5rem;
+}
+
+.nino-gallery-grid > .nino-gallery-cell {
+	padding: var(--space-2);
+	border: 1px solid var(--gallery-ground-border);
+	border-radius: var(--gallery-corners);
+	background-color: var(--gallery-ground);
+	color: var(--gallery-ground-on);
+}
+
+.nino-gallery-cell > .nino-gallery-link {
+	border-radius: var(--radius-small);
+}

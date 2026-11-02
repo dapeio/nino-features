@@ -16,31 +16,61 @@
  *						[gallery columns="3"] said. The size the album's thumbnails
  *						are cropped to comes in as --nino-gallery-thumb-w and
  *						--nino-gallery-thumb-h, two plain numbers, and the shape of
- *						a cell before its picture has loaded is theirs. Everything
- *						else is a custom property with a default, so a project
- *						restyles a gallery without overriding a single rule.
+ *						a cell before its picture has loaded is theirs.
+ *
+ *						What a look of the Design feature moves (design/) are three
+ *						properties - --gallery-gap between the cells, --gallery-corners
+ *						of a cell and --gallery-ground, the ground of a cell with the
+ *						parts the palette solves for it - and this file declares them
+ *						with the grid as it was drawn until now as their default, so
+ *						that a gallery looks as it always did until one of them is
+ *						moved. They stand in :where(:root), as the Design feature's
+ *						manual asks of lengths and of a ground. The
+ *						bundle lists this file after the sheet the Design feature
+ *						writes and :where() has no specificity, so a look moves a
+ *						default by saying it on :root. No colour literal, no
+ *						!important.
+ *
+ *						The hover of a picture is the kernel's: the frame round each
+ *						thumbnail says nino-image and nino-hover, and Nino.css draws
+ *						what the pointer does to it - a gentle zoom until the Design
+ *						feature, under Page, Motion, says another. Nothing here moves
+ *						a picture.
  *
  *						The class names are this feature's own. Nino.css, which sits
  *						in the same bundle, has a public .nino-gallery mosaic with
  *						fixed rows and a clipping .nino-gallery-item - another grid.
  *						The list and its cells carried those two names once, and every
  *						thumbnail was cut off at the bottom of a 200 px cell while
- *						these rules restyled every mosaic a project drew. Nothing
- *						here names a class the kernel styles, and the feature's test
- *						holds it that way.
+ *						these rules restyled every mosaic a project drew. No rule
+ *						here names a class the kernel styles - the two the template
+ *						gives the frame, for the hover, are the kernel's own and are
+ *						styled there - and the feature's test holds it that way.
  */
+
+:where(:root) {
+	/*	The space between the cells and the corners of a cell	*/
+	--gallery-gap: .75rem;
+	--gallery-corners: 3px;
+
+	/*	The ground of a cell, with the parts of it a look reads: the text on it and the line round it. It is the ground the
+		picture lies on while it loads or behind a picture that is transparent; a look that frames the picture
+		(design/mat.css) paints it round the picture. It is a surface of the palette and no colour of its own, and it
+		does not follow a dark section: it is the same surface on every section, light on a dark one	*/
+	--gallery-ground: var(--color-section-alt-bg);
+	--gallery-ground-on: var(--color-section-alt-text);
+	--gallery-ground-border: var(--color-border-alt);
+}
 
 .nino-gallery-grid {
 	--nino-gallery-columns: 4;
-	--nino-gallery-gap: .75rem;
-	--nino-gallery-radius: 3px;
 
 	display: grid;
 	/* auto-fit with a floor rather than a hard column count: the configured
 	   number is what a wide screen gets, and a narrow one falls to as many as
 	   fit without a media query per breakpoint */
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, max(8rem, calc((100% - (var(--nino-gallery-columns) - 1) * var(--nino-gallery-gap)) / var(--nino-gallery-columns)))), 1fr));
-	gap: var(--nino-gallery-gap);
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, max(8rem, calc((100% - (var(--nino-gallery-columns) - 1) * var(--gallery-gap)) / var(--nino-gallery-columns)))), 1fr));
+	gap: var(--gallery-gap);
 	margin: 0;
 	padding: 0;
 	list-style: none;
@@ -62,40 +92,38 @@
 	display: block;
 	aspect-ratio: var(--nino-gallery-thumb-w, 1) / var(--nino-gallery-thumb-h, 1);
 	overflow: hidden;
-	border-radius: var(--nino-gallery-radius);
-	background: rgba(0, 0, 0, .04);
+	border-radius: var(--gallery-corners);
+	background-color: var(--gallery-ground);
 	line-height: 0;
 }
 
-/*	The link is the box and the picture fills it: a thumbnail made before the
-	album's size was changed keeps the shape it was made in, and cover cuts it to
-	the shape of the box the way the crop of an upload did, rather than leaving a
-	gap below it or being clipped by the link */
+/*	The frame is what the kernel's hover is written for (.nino-image with
+	.nino-hover, a picture directly inside it): it lies over the whole link, and
+	the link, which has the corners, cuts what grows in it. The kernel gives a
+	frame the corners of the images, --radius-image; the link's are the cell's,
+	so the frame has none of its own. For the same reason a lift of the frame,
+	which only a project's own css sets (Design writes none), would be cut off
+	at the link	*/
+.nino-gallery-link > .nino-gallery-frame {
+	--radius-image: 0rem;
+
+	position: absolute;
+	inset: 0;
+	display: block;
+}
+
+/*	The picture fills its frame and the frame its link: a thumbnail made before
+	the album's size was changed keeps the shape it was made in, and cover cuts
+	it to the shape of the box the way the crop of an upload did, rather than
+	leaving a gap below it or being clipped by the link */
 .nino-gallery-thumb {
 	display: block;
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	transition: transform .3s ease, opacity .2s ease;
-}
-
-.nino-gallery-link:hover .nino-gallery-thumb,
-.nino-gallery-link:focus-visible .nino-gallery-thumb {
-	transform: scale(1.04);
-	opacity: .92;
 }
 
 .nino-gallery-link:focus-visible {
 	outline: 2px solid currentColor;
 	outline-offset: 3px;
-}
-
-/*	Nino.css makes every transition and animation instant under reduced motion;
-	the zoom of the hovered thumbnail is not one of them - it would still happen,
-	at once - so it is taken away here	*/
-@media (prefers-reduced-motion: reduce) {
-	.nino-gallery-link:hover .nino-gallery-thumb,
-	.nino-gallery-link:focus-visible .nino-gallery-thumb {
-		transform: none;
-	}
 }

@@ -1,0 +1,33 @@
+/*	@name			Grid
+ *	@name-de		Raster
+ *	@description	The gallery as it has always been drawn: the pictures in rows with a small gap between them, slightly rounded corners and a quiet ground behind a picture that is still loading.
+ *	@description-de	Die Galerie, wie sie immer gezeichnet wurde: die Bilder in Reihen mit einem kleinen Abstand, leicht gerundete Ecken und ein ruhiger Grund hinter einem Bild, das noch lädt.
+ *
+ *	@knob	gap			scale	surfaces	Space between the pictures
+ *	@knob-de	gap			Abstand der Bilder
+ *	@knob	corners		scale	surfaces	Corners of a picture
+ *	@knob-de	corners		Ecken eines Bildes
+ *	@knob	ground		ground	colours		Ground behind a picture	= alt
+ *	@knob-de	ground		Grund hinter einem Bild
+ *
+ *	Grid is the starting point of this feature: the middle of the space and of the corners is the value gallery.css has as its
+ *	own default, so a gallery under it is drawn as it is without the Design feature. It sets no property of a look, only the
+ *	ladders. The ground is a surface of the palette: it shows where a picture has not loaded yet, and is the colour of nothing
+ *	else. The number of columns is no knob - it is a setting of the album and an attribute of the shortcode.
+ */
+
+:root {
+	/*	The space between two cells, in a row and between rows	*/
+	--gallery-gap--least:	.25rem;
+	--gallery-gap--less:	var(--space-1);
+	--gallery-gap--default:	.75rem;
+	--gallery-gap--more:	1.25rem;
+	--gallery-gap--most:	var(--space-3);
+
+	/*	The corners of a picture: square at the sharp end, then the radii of the page	*/
+	--gallery-corners--least:	0rem;
+	--gallery-corners--less:	var(--radius-small);
+	--gallery-corners--default:	3px;
+	--gallery-corners--more:	var(--radius-large);
+	--gallery-corners--most:	1rem;
+}
