@@ -162,18 +162,23 @@ namespace Nino\Modules\Design {
 				header		nav					the size of the links of the navigation
 							height				how tall the bar is, and how far main starts below a fixed one
 							space				the space between the logo, the links and the edges
+							logo				the width of the logo
 							ground				what the bar stands on (a choice)
 							border-size			the weight of the line under the bar
 							border-color		the colour of that line (a choice)
+							shadow				the shadow the bar casts on the page
 							position			where the navigation stands: left, centre or right (a choice)
 							cta					the button of the header: hidden, small or large (a choice)
+							behaviour			what the bar does when the page is scrolled: goes with it, hides on the way down or stays (a choice)
 							nav-case			the links of the navigation in capitals (a toggle)
 				footer		scale				the type size of the footer
 							height				the space above and below its content
 							space				the space between its columns, its lines and its links
+							logo				the width of the logo
 							ground				what it stands on (a choice)
 							border-size			the weight of the line over it
 							border-color		the colour of that line (a choice)
+							divider				the weight of the line between its main band and its legal row
 							position			where the content stands: left, the place the template gives it, or centre (a choice)
 							nav-case			the links of the navigation in capitals (a toggle)
 				section		quiet, loud			the size of the --quiet and --loud variants - the title and the subtitle of a hero are the loud variant
@@ -212,8 +217,8 @@ namespace Nino\Modules\Design {
 							label				the colour of the labels (an ink)
 							label-case			the labels in capitals (a toggle)	*/
 		public const array KNOBS = [
-			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'cta' => 'choice', 'nav-case' => 'toggle' ],
-			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'position' => 'choice', 'nav-case' => 'toggle' ],
+			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle' ],
+			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
 			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
@@ -269,10 +274,11 @@ namespace Nino\Modules\Design {
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the choice of a set for each of the eight parts, under the object it is the template of
+			// The templates: the choice of a set for each of the eight parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
 			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
 			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
+			'knobs/header/behaviour' 				=> [ 'templates', 'header', 4 ],
 			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
 			'knobs/footer/position' 				=> [ 'templates', 'footer', 2 ],
 			'parts/section' 						=> [ 'templates', 'section', 1 ],
@@ -311,7 +317,7 @@ namespace Nino\Modules\Design {
 			'knobs/forms/scale' 					=> [ 'type', 'forms', 1 ],
 			'knobs/forms/label-case' 				=> [ 'type', 'forms', 2 ],
 
-			// The surfaces: the space, the corners, the lines and the shadows of each object, the height and the line of the frames and the marker of a list. The three kinds of a section share one place: they are one choice
+			// The surfaces: the space, the corners, the lines and the shadows of each object, the height, the logo and the line of the frames - the shadow of the bar and the divider of the footer besides - and the marker of a list. The three kinds of a section share one place: they are one choice
 			'width' 								=> [ 'surfaces', 'page', 1 ],
 			'whitespace' 							=> [ 'surfaces', 'page', 2 ],
 			'radius' 								=> [ 'surfaces', 'page', 3 ],
@@ -320,9 +326,13 @@ namespace Nino\Modules\Design {
 			'knobs/header/height' 					=> [ 'surfaces', 'header', 1 ],
 			'knobs/header/space' 					=> [ 'surfaces', 'header', 2 ],
 			'knobs/header/border-size' 				=> [ 'surfaces', 'header', 3 ],
+			'knobs/header/logo' 					=> [ 'surfaces', 'header', 4 ],
+			'knobs/header/shadow' 					=> [ 'surfaces', 'header', 5 ],
 			'knobs/footer/height' 					=> [ 'surfaces', 'footer', 1 ],
 			'knobs/footer/space' 					=> [ 'surfaces', 'footer', 2 ],
 			'knobs/footer/border-size' 				=> [ 'surfaces', 'footer', 3 ],
+			'knobs/footer/logo' 					=> [ 'surfaces', 'footer', 4 ],
+			'knobs/footer/divider' 					=> [ 'surfaces', 'footer', 5 ],
 			'knobs/section/space' 					=> [ 'surfaces', 'section', 1 ],
 			'knobs/section/rule' 					=> [ 'surfaces', 'section', 2 ],
 			'radii/cover' 							=> [ 'surfaces', 'section', 3 ],

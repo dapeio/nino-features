@@ -18,8 +18,8 @@ return [
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
 		'parts'		=> [ 'header' => 'regular', 'footer' => 'one-legal-row', 'section' => 'regular', 'card' => 'regular', 'buttons' => 'regular', 'lists' => 'regular', 'tables' => 'regular', 'forms' => 'regular' ],
 		'knobs'		=> [
-			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'position' => 1, 'cta' => -1 ],
-			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'position' => 0 ],
+			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'shadow' => 0, 'position' => 1, 'cta' => -1, 'behaviour' => 0 ],
+			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'divider' => 0, 'position' => 0 ],
 			'section' 		=> [ 'quiet' => 0, 'loud' => 0, 'title' => 0, 'subtitle' => 0, 'space' => 0, 'rule' => 0, 'dim' => 0 ],
 			'card' 			=> [ 'title' => 0, 'subtitle' => 0, 'space' => 0, 'border' => 0, 'shadow' => 0, 'tone' => 0, 'hover' => 0 ],
 			'buttons' 		=> [ 'size' => 0, 'spread' => 0, 'space' => 0, 'corners' => 0, 'hover' => 0 ],

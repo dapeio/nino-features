@@ -8,13 +8,14 @@
  *	@knob	ground		What the footer stands on
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
+ *	@knob	divider		Weight of the line between the bands
  *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -34,7 +35,11 @@
  *	colour, which is that colour on every ground, so its rungs are the roles of the band and
  *	not those of the ground, and none of them is the brand colour, which would show nothing.
  *
- *	The seventh, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	The seventh, divider, is the weight of the line between the main band and the legal row, in the
+ *	border of the ground the footer stands on. This set draws none at the middle: a hairline
+ *	and a rule follow it.
+ *
+ *	The eighth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
  *	navigation and the legal links are set in the one it is on.
  *
  *	Position is not answered here: the statement stands in a band that takes the width of
@@ -110,6 +115,13 @@
 	--footer-border-color--less:	var(--color-primary-text);
 	--footer-border-color--default:	var(--color-border-primary);
 	--footer-border-color--more:	var(--color-secondary);
+
+	/*	The weight of the line between the main band and the legal row, in the border of the ground the footer stands on: none at the middle - this set draws none -, a hairline and a rule beyond it	*/
+	--footer-divider--least:	0;
+	--footer-divider--less:	0;
+	--footer-divider--default:	0;
+	--footer-divider--more:	1px;
+	--footer-divider--most:	2px;
 
 	/*	Which picture of the logo is seen: the one for a light ground or the one for a dark ground, as the pair of the ground says it - the page's, this set's own, the dark pair of the palette	*/
 	--footer-ground-logo-light--less:	var(--color-logo-light);
@@ -215,6 +227,7 @@ footer {
 	align-items: center;
 	justify-content: space-between;
 	gap: calc( var(--space-2) * var(--footer-space) );
+	border-top: var(--footer-divider) solid var(--footer-ground-border);
 	padding-top: calc( var(--space-2) * var(--footer-space) );
 	padding-bottom: calc( var(--space-2) * var(--footer-height) );
 	color: inherit;

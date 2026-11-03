@@ -5,15 +5,18 @@
  *	@knob	nav		Size of the links of the navigation
  *	@knob	height		How tall the bar is
  *	@knob	space		Space between the logo, the links and the edges
+ *	@knob	logo		Width of the logo
  *	@knob	ground		What the bar stands on
  *	@knob	border-size	Width of the border
  *	@knob	border-color	Colour of the border
+ *	@knob	shadow		Shadow of the bar
+ *	@knob	behaviour	What the bar does when the page is scrolled
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The six knobs this set answers to are ladders, declared below, the middle of each this set as it
+ *	The nine knobs this set answers to are ladders, declared below, the middle of each this set as it
  *	was before it had any: nav is a factor on the size of the links of the
  *	navigation, height the height of the bar - and of the room main leaves under
  *	it -, space a factor on the gaps between the logo, the links and the edges,
@@ -25,6 +28,19 @@
  *	three. The menu that opens over the page is the page's again, as in Nino.css.
  *
  *	border-size is the width of the line under the bar and border-color a choice of three for its colour. The set leaves the position of the navigation and the button out: the menu is an overlay.
+ *
+ *	logo is a factor on the width of the logo, and shadow the shadow the bar casts on the
+ *	page: none at the middle, a soft one and a strong one beyond it, in the palette's colour
+ *	for a shadow. The bar casts it when it is drawn: after the page is scrolled up, and from
+ *	the first moment where the ground at rest is one (--header-ground-rest-shadow).
+ *	behaviour is a choice of three for what the bar does when the page is scrolled: it goes
+ *	with the page, it is fixed and folds away on the way down - as Nino.css has it - or it is
+ *	fixed and stays. Its rungs are the position of the header (--header-behaviour), and beside
+ *	them stand the greatest height the bar has once the page is scrolled down (-collapse), a
+ *	factor on what it keeps there (-keep) and a factor on the room main leaves under it
+ *	(-clear): a bar that goes with the page needs none. A bar that stays is drawn on the way
+ *	down as it is drawn on the way up (-ground, -shadow): the others fold it away, and are
+ *	left as they were.
  *
  *	One ladder is this set's own: the ground of the bar before the page is scrolled up
  *	(--header-ground-rest), which is none at the middle - the mark lies on the page - and the page's
@@ -54,6 +70,13 @@
 	--header-space--default:	1;
 	--header-space--more:	1.5;
 	--header-space--most:	2;
+
+	/*	The width of the logo, as a factor of the width this set gives it	*/
+	--header-logo--least:	.7;
+	--header-logo--less:	.85;
+	--header-logo--default:	1;
+	--header-logo--more:	1.25;
+	--header-logo--most:	1.5;
 
 	/*	What the bar stands on: the ground of the page, this set's own, the dark pair of the palette	*/
 	--header-ground--less:	var(--color-background);
@@ -99,6 +122,11 @@
 	--header-ground-rest--default:	transparent;
 	--header-ground-rest--more:	var(--color-section-dark-bg);
 
+	/*	The shadow of the bar before the page is scrolled up: the bar's own where the ground at rest is one, none where it is not - a shadow under a bar that is not there would be a shadow of the page	*/
+	--header-ground-rest-shadow--less:	var(--header-shadow);
+	--header-ground-rest-shadow--default:	none;
+	--header-ground-rest-shadow--more:	var(--header-shadow);
+
 	--header-border-size--least:	0;
 	--header-border-size--less:	.5px;
 	--header-border-size--default: 1px;
@@ -108,9 +136,37 @@
 	--header-border-color--less:	var(--header-ground-ink);
 	--header-border-color--default:	var(--header-ground-border);
 	--header-border-color--more:	var(--color-primary);
+
+	/*	The shadow the bar casts on the page: none at the middle - this set casts none of its own - a soft one and a strong one beyond it, in the palette's colour for a shadow	*/
+	--header-shadow--least:	none;
+	--header-shadow--less:	none;
+	--header-shadow--default:	none;
+	--header-shadow--more:	0 .5rem 1.5rem var(--nino-default-shadow);
+	--header-shadow--most:	0 .75rem 2rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
+
+	/*	What the bar does when the page is scrolled: it goes with the page, it is fixed and folds away on the way down - as Nino.css has it - or it is fixed and stays. The rung is the position of the header; beside it stand what follows from it: the greatest height of the bar once the page is scrolled down, how much of its height it keeps there (a factor, 0 being folded) and a factor on the room main leaves under it, which a bar in the flow of the page needs none of	*/
+	--header-behaviour--less:	relative;
+	--header-behaviour--default:	fixed;
+	--header-behaviour--more:	fixed;
+	--header-behaviour-collapse--less:	none;
+	--header-behaviour-collapse--default:	0;
+	--header-behaviour-collapse--more:	none;
+	--header-behaviour-keep--less:	1;
+	--header-behaviour-keep--default:	0;
+	--header-behaviour-keep--more:	1;
+	--header-behaviour-clear--less:	0;
+	--header-behaviour-clear--default:	1;
+	--header-behaviour-clear--more:	1;
+	--header-behaviour-ground--less:	var(--header-ground-rest);
+	--header-behaviour-ground--default:	var(--header-ground-rest);
+	--header-behaviour-ground--more:	var(--header-ground);
+	--header-behaviour-shadow--less:	var(--header-ground-rest-shadow);
+	--header-behaviour-shadow--default:	var(--header-ground-rest-shadow);
+	--header-behaviour-shadow--more:	var(--header-shadow);
 }
 
 .nino-frame-header {
+	position: var(--header-behaviour);
 	--color-title: var(--header-ground-title);
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
@@ -131,13 +187,23 @@
 	color: var(--header-ground-ink);
 	display: flex;
 	background-color: var(--header-ground-rest);
-	transition:background-color .4s;
+	box-shadow: var(--header-ground-rest-shadow);
+	transition:background-color .4s, box-shadow .4s;
 }
 body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	background-color: var(--header-ground-rest);
 }
 body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	background-color:var(--header-ground);
+	box-shadow: var(--header-shadow);
+}
+
+/*	What Nino.css folds away on the way down - the bar's height, its room and its line - this set takes back, or says again, as the behaviour has it. One rule more specific than the kernel's, with the same exception: not while the focus is in the bar	*/
+body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:focus-visible))) {
+	max-height: var(--header-behaviour-collapse);
+	min-height: calc( var(--header-height) * var(--header-behaviour-keep) );
+	background-color: var(--header-behaviour-ground);
+	box-shadow: var(--header-behaviour-shadow);
 }
 
 .nino-frame-header .nino-frame-header-inner {
@@ -147,7 +213,7 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 .nino-frame-header .nino-frame-header-brand {
 	position: relative;
 	z-index: 102;
-	width: clamp(7rem, 9vw, 9rem);
+	width: calc( clamp(7rem, 9vw, 9rem) * var(--header-logo) );
 	height: auto;
 	min-width: 0;
 	min-height: 0;
@@ -285,7 +351,7 @@ body:has(.nino-frame-header .nino-nav-burger > button[aria-expanded="true"]) {
 }
 
 body main {
-	padding-top: calc( clamp(4.5rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) + var(--nino-header-grow, 0px) );
+	padding-top: calc( ( clamp(4.5rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) + var(--nino-header-grow, 0px) ) * var(--header-behaviour-clear) );
 }
 
 body main:has(> .nino-cover:first-child),

@@ -5,9 +5,11 @@
  *	@knob	scale		Type size of the footer
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
+ *	@knob	logo		Width of the logo
  *	@knob	ground		What the footer stands on
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
+ *	@knob	divider		Weight of the line between the bands
  *	@knob	position	Where the content of the footer stands
  *	@knob	nav-case	Capitals in the links of the navigation
  *
@@ -16,7 +18,7 @@
  *	rather than as one long strip or an empty half. column-count is the one
  *	property that can do that without knowing how many links there are.
  *
- *	The eight knobs are ladders, declared below, the middle of each this set as it
+ *	The ten knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -32,13 +34,21 @@
  *	and the brand. Of the three, the first two are roles of the footer's own ground, so
  *	a ground of another kind brings its line with it.
  *
- *	The seventh, position, is a choice of three for where the content stands: the brand
+ *	The seventh, logo, is a factor on the width of the mark: .7 to 1.5 times the width this
+ *	set gives it, and the greatest width of 8rem that Nino.css puts on the logo of a footer
+ *	goes with it.
+ *
+ *	The eighth, divider, is the weight of the line between the main band and the legal row, which
+ *	this set draws as a hairline at the middle: none below it, two heavier ones above. It
+ *	keeps the colour this set draws it in.
+ *
+ *	The ninth, position, is a choice of three for where the content stands: the brand
  *	with its description and its address, the columns of links and the legal line are set
  *	against the left edge of their cell, as the template has them, or in the middle of it.
  *	The links of the legal line, which the template pushes to the right edge by an auto
  *	margin, stand next to the copyright at the other two (--footer-position-push).
  *
- *	The eighth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	The tenth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
  *	navigation and the legal links are set in the one it is on.
  */
 
@@ -63,6 +73,13 @@
 	--footer-space--default:	1;
 	--footer-space--more:	1.5;
 	--footer-space--most:	2;
+
+	/*	The width of the logo, as a factor of the width this set gives it	*/
+	--footer-logo--least:	.7;
+	--footer-logo--less:	.85;
+	--footer-logo--default:	1;
+	--footer-logo--more:	1.25;
+	--footer-logo--most:	1.5;
 
 	/*	What the footer stands on: the ground of the page, this set's own, the dark pair of the palette	*/
 	--footer-ground--less:	var(--color-background);
@@ -110,6 +127,13 @@
 	--footer-border-color--less:	var(--footer-ground-ink);
 	--footer-border-color--default:	var(--footer-ground-border);
 	--footer-border-color--more:	var(--color-primary);
+
+	/*	The weight of the line between the main band and the legal row: none, this set's own hairline at the middle, and two heavier ones. It is drawn in the colour this set gives it	*/
+	--footer-divider--least:	0;
+	--footer-divider--less:	0;
+	--footer-divider--default:	1px;
+	--footer-divider--more:	2px;
+	--footer-divider--most:	3px;
 
 	/*	Where the content stands: the brand, the columns of links and the legal line, at the left edge or in the middle	*/
 	--footer-position--less:	start;
@@ -164,7 +188,8 @@ footer {
 }
 
 .nino-frame-footer .nino-footer-logo {
-	width: clamp(6rem, 9vw, 9rem);
+	width: calc( clamp(6rem, 9vw, 9rem) * var(--footer-logo) );
+	max-width: calc( 8rem * var(--footer-logo) );
 	height: auto;
 	margin: 0 0 calc( var(--space-1) * var(--footer-space) );
 }
@@ -231,7 +256,7 @@ footer {
 	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-2) * var(--footer-space) );
 	margin-top: calc( var(--space-3) * var(--footer-space) );
 	padding-top: calc( var(--space-1) * var(--footer-space) );
-	border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+	border-top: var(--footer-divider) solid color-mix(in srgb, currentColor 20%, transparent);
 	font-size: var(--fontsize-small);
 }
 

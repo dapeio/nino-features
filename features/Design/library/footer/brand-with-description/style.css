@@ -5,9 +5,11 @@
  *	@knob	scale		Type size of the footer
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
+ *	@knob	logo		Width of the logo
  *	@knob	ground		What the footer stands on
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
+ *	@knob	divider		Weight of the line between the bands
  *	@knob	position	Where the content of the footer stands
  *	@knob	nav-case	Capitals in the links of the navigation
  *
@@ -15,7 +17,7 @@
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The eight knobs are ladders, declared below, the middle of each this set as it
+ *	The ten knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -31,7 +33,14 @@
  *	and the brand. Of the three, the first two are roles of the footer's own ground, so
  *	a ground of another kind brings its line with it.
  *
- *	The seventh, position, is a choice of three for where the content stands. Left packs the
+ *	The seventh, logo, is a factor on the width of the mark: .7 to 1.5 times the width this
+ *	set gives it.
+ *
+ *	The eighth, divider, is the weight of the line between the main band and the legal row, which
+ *	this set draws as a hairline at the middle: none below it, two heavier ones above. It
+ *	keeps the colour this set draws it in.
+ *
+ *	The ninth, position, is a choice of three for where the content stands. Left packs the
  *	cells of both bands against the left edge. The middle one is the template: in the first
  *	band the brand at the left edge, the description beside it and the links at the right
  *	edge, in the second the copyright, the contact in the middle and the legal links at the
@@ -40,7 +49,7 @@
  *	their cells sit in them (-items), and the place of what the template puts at the right
  *	edge (-end) and in the middle (-middle).
  *
- *	The eighth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	The tenth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
  *	navigation and the legal links are set in the one it is on.
  */
 
@@ -65,6 +74,13 @@
 	--footer-space--default:	1;
 	--footer-space--more:	1.5;
 	--footer-space--most:	2;
+
+	/*	The width of the logo, as a factor of the width this set gives it	*/
+	--footer-logo--least:	.7;
+	--footer-logo--less:	.85;
+	--footer-logo--default:	1;
+	--footer-logo--more:	1.25;
+	--footer-logo--most:	1.5;
 
 	/*	What the footer stands on: the ground of the page, this set's own, the dark pair of the palette	*/
 	--footer-ground--less:	var(--color-background);
@@ -112,6 +128,13 @@
 	--footer-border-color--less:	var(--footer-ground-ink);
 	--footer-border-color--default:	var(--footer-ground-border);
 	--footer-border-color--more:	var(--color-primary);
+
+	/*	The weight of the line between the main band and the legal row: none, this set's own hairline at the middle, and two heavier ones. It is drawn in the colour this set gives it	*/
+	--footer-divider--least:	0;
+	--footer-divider--less:	0;
+	--footer-divider--default:	1px;
+	--footer-divider--more:	2px;
+	--footer-divider--most:	3px;
 
 	/*	Where the content stands: the text and the cells of the two bands, at the left edge, as the template has them, or in the middle	*/
 	--footer-position--less:	start;
@@ -188,7 +211,7 @@ footer {
 }
 
 .nino-frame-footer .nino-footer-logo {
-	width: clamp(7rem, 10vw, 9rem);
+	width: calc( clamp(7rem, 10vw, 9rem) * var(--footer-logo) );
 	max-width: none;
 	opacity: 1;
 }
@@ -236,7 +259,7 @@ footer {
 	padding-bottom: calc( var(--space-2) * var(--footer-height) );
 	color: var(--color-subtitle);
 	font-size: calc( .72rem * var(--footer-scale) );
-	border-top: 1px solid var(--color-border);
+	border-top: var(--footer-divider) solid var(--color-border);
 }
 
 .nino-frame-footer .nino-frame-footer-primary > *,

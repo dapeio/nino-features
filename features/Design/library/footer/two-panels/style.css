@@ -5,16 +5,18 @@
  *	@knob	scale		Type size of the footer
  *	@knob	height		Space above and below the content of the footer
  *	@knob	space		Space between its columns, lines and links
+ *	@knob	logo		Width of the logo
  *	@knob	ground		What the footer stands on
  *	@knob	border-size	Weight of the line over the footer
  *	@knob	border-color	Colour of that line
+ *	@knob	divider		Weight of the line between the bands
  *	@knob	nav-case	Capitals in the links of the navigation
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
- *	The seven knobs are ladders, declared below, the middle of each this set as it
+ *	The nine knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
  *	between its columns, lines and links, and ground a choice of three: the ground
@@ -34,7 +36,14 @@
  *	and the brand. Of the three, the first two are roles of the footer's own ground, so
  *	a ground of another kind brings its line with it.
  *
- *	The seventh, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
+ *	The seventh, logo, is a factor on the width of the mark: .7 to 1.5 times the width this
+ *	set gives it.
+ *
+ *	The eighth, divider, is the weight of the line between the main band and the legal row, in the
+ *	border of the ground the footer stands on. This set draws none at the middle: a hairline
+ *	and a rule follow it.
+ *
+ *	The ninth, nav-case, is a toggle: two rungs, none and uppercase, and the links of the
  *	navigation and the legal links are set in the one it is on.
  *
  *	Position is not answered here: the two panels are the construction of the set, a brand
@@ -63,6 +72,13 @@
 	--footer-space--default:	1;
 	--footer-space--more:	1.5;
 	--footer-space--most:	2;
+
+	/*	The width of the logo, as a factor of the width this set gives it	*/
+	--footer-logo--least:	.7;
+	--footer-logo--less:	.85;
+	--footer-logo--default:	1;
+	--footer-logo--more:	1.25;
+	--footer-logo--most:	1.5;
 
 	/*	What the footer stands on: the ground of the page, this set's own - the darkest surface of the palette, under the legal row -, the dark pair of the palette	*/
 	--footer-ground--less:	var(--color-background);
@@ -129,6 +145,13 @@
 	--footer-border-color--default:	var(--footer-ground-border);
 	--footer-border-color--more:	var(--color-primary);
 
+	/*	The weight of the line between the main band and the legal row, in the border of the ground the footer stands on: none at the middle - this set draws none -, a hairline and a rule beyond it	*/
+	--footer-divider--least:	0;
+	--footer-divider--less:	0;
+	--footer-divider--default:	0;
+	--footer-divider--more:	1px;
+	--footer-divider--most:	2px;
+
 	/*	The case of the links of the navigation: as they are written, or in capitals	*/
 	--footer-nav-case--default: none;
 	--footer-nav-case--more: uppercase;
@@ -185,7 +208,7 @@ footer {
 }
 
 .nino-frame-footer .nino-footer-logo {
-	width: clamp(8rem, 15vw, 13rem);
+	width: calc( clamp(8rem, 15vw, 13rem) * var(--footer-logo) );
 	max-width: none;
 	margin-bottom: calc( var(--space-3) * var(--footer-space) );
 	opacity: 1;
@@ -228,6 +251,7 @@ footer {
 	align-items: center;
 	justify-content: space-between;
 	gap: calc( var(--space-2) * var(--footer-space) );
+	border-top: var(--footer-divider) solid var(--footer-ground-border);
 	padding-top: calc( var(--space-2) * var(--footer-space) );
 	padding-bottom: calc( var(--space-2) * var(--footer-height) );
 	color: inherit;
