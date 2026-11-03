@@ -202,7 +202,10 @@ footer {
 	text-align: var(--footer-position);
 }
 
-.nino-frame-footer .nino-footer-main > * {
+/*	One edge for both bands: the row of the main band and the row of the legal band are inset by the same room, so that the
+	brand and the copyright stand on one line and the contact column and the legal links end on one	*/
+.nino-frame-footer .nino-footer-main > *,
+.nino-frame-footer .nino-footer-legal > * {
 	padding-right: calc( var(--space-2) * var(--footer-space) );
 	padding-left: calc( var(--space-2) * var(--footer-space) );
 }

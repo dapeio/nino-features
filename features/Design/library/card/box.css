@@ -152,6 +152,15 @@
 .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: calc( var(--card-space) * var(--whitespace-scale, 1) );
 }
+/*	Below 768px Nino.css gives a card no padding at its sides and pads the content of a card that [card] draws with nothing, since the
+	card is what insets it from 768px on - and a box has a line round it, so that the words would stand against it. The content
+	takes the card-space there, in the place where Nino.css leaves it nothing: the same cards as its rule (a card with no padding of
+	its own, a fullwidth card and a counter card are padded by the rule above), after it, so that it wins at the same weight	*/
+@media (max-width: 767px) {
+	.nino-card:where(:not(.nino-p-0, .nino-card--fullwidth, .nino-card--counter)) > .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+		padding: calc( var(--card-space) * var(--whitespace-scale, 1) );
+	}
+}
 .nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
 .nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
 .nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
@@ -195,7 +204,10 @@
 .nino-card--last-bottom:where(:not([class*="nino-text-"], [class*="nino-text-"] *)) > .nino-card-content > .nino-btn {
 	align-self: var(--card-align-button);
 }
-:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-text-"], [class*="nino-text-"] *, [class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+/*	The margins of the title stand down for the classes that align it at every width - left, centre and right - and for any class on what it stands in, since
+	the words of a card are inherited from the card. A class that aligns the title itself from a breakpoint leaves it where the alignment says below it, and the
+	mirrors after this rule take it from the breakpoint on	*/
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not(.nino-text-left, .nino-text-center, .nino-text-right, [class*="nino-text-"] *, [class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
 	margin-inline: var(--card-align-margin);
 }
 .nino-text-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),

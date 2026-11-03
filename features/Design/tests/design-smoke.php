@@ -1662,7 +1662,13 @@ foreach( [ 'section' => '--section-align', 'card' => '--card-align' ] as $alignP
 
 				$reading++;
 
-				if( str_contains( $alignRule['selector'], ':where(:not(' ) === false || str_contains( $alignRule['selector'], '[class*="nino-text-"]' ) === false )
+				// The margins of a box stand down for the classes that align at every width and for what stands in one, and for no class that aligns from a breakpoint: below it the box stands where the alignment says
+				$leaves = str_contains( $alignRule['body'], 'margin-inline' ) === true
+					? str_contains( $alignRule['selector'], ':not(.nino-text-left, .nino-text-center, .nino-text-right, '. ( $alignPart === 'card' ? '[class*="nino-text-"] *' : ':is(.nino-text-left, .nino-text-center, .nino-text-right) *' ) ) === true
+						&& substr_count( $alignRule['selector'], '[class*="nino-text-"]' ) === ( $alignPart === 'card' ? 1 : 0 )
+					: str_contains( $alignRule['selector'], '[class*="nino-text-"]' ) === true;
+
+				if( str_contains( $alignRule['selector'], ':where(:not(' ) === false || $leaves === false )
 					$notAligned[] = $alignPart. '/'. $set. ' '. substr( $alignRule['selector'], 0, 40 );
 
 				if( $alignPart === 'section' && $set === 'panel' && str_contains( $alignRule['selector'], 'nino-hero' ) === true )
@@ -1677,7 +1683,7 @@ foreach( [ 'section' => '--section-align', 'card' => '--card-align' ] as $alignP
 			$notAligned[] = $alignPart. '/'. $set. ' reads the alignment in '. $reading. ' rules';
 	}
 
-check( 'what a page aligns by a nino-text-* class is the page\'s: every rule of a section or a card set that reads the alignment names the class in a :where( :not() ) and leaves it, the opening of Panel answers none, and a rule of the class gives a box its margins'
+check( 'what a page aligns by a nino-text-* class is the page\'s: every rule of a section or a card set that reads the alignment names the class in a :where( :not() ) and leaves it - the margins of a box only the classes that align at every width on the element and, in a card, whatever class on what it stands in - the words of a card are inherited - so that a box stands where the alignment says below the breakpoint of a class that aligns from one - the opening of Panel answers none, and a rule of the class gives a box its margins'
 	. ( $notAligned === [] ? '' : ' - '. implode( ' | ', array_slice( $notAligned, 0, 3 ) ) ), $notAligned === [] && $mirrors === 8 );
 
 /*	The rule under the title of a section is the line Nino.css draws as the border, drawn as a background so that it can be short: as high as the rule says, of the length the knob says, with
@@ -1777,6 +1783,84 @@ check( 'a margin class of a page is the page\'s: every rule of a section or a ca
 	. ( $marginProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $marginProblems, 0, 3 ) ) ), $marginProblems === [] && count( $ninoBreaks ) === 4 && $breakpointRules === 8 * 4 );
 check( '...and a title that says the brand ink or the muted one takes the share of the ground in its words: one rule for each in every set, which reads the aspect the ground of the title has for it'
 	. ( $inkProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $inkProblems, 0, 3 ) ) ), $inkProblems === [] );
+
+/*	A class that aligns from a breakpoint moves the words of a title only on the title itself: a title carries a text-align of its own and Nino.css has the ancestor form for the classes
+	that align at every width alone. So the mirrors of a section set - the margins and the place of the rule, from each breakpoint - name the title and not what it stands in, or the box and the
+	rule would move and the words not. The words of a card are inherited from the card, so there the ancestor form is the right one and the card sets keep it	*/
+$ancestorMirrors	= [];
+$titleMirrors			= 0;
+
+foreach( Setup::available( $library, 'section' ) as $set )
+	foreach( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) ) ) as $mirrorRule )
+		foreach( $splitSelectors( $mirrorRule['selector'] ) as $mirrorSelector )
+			if( preg_match( '/\.nino-text-(?:s|m|l|xl)-(?:left|center|right)(?![\w-])/', $mirrorSelector ) === 1 ) {
+
+				$titleMirrors++;
+
+				if( preg_match( '/^:is\([^()]*\)\.nino-text-(?:s|m|l|xl)-(?:left|center|right)(?::where\(.*\))?$/', $mirrorSelector ) !== 1 )
+					$ancestorMirrors[] = 'section/'. $set. ' '. substr( $mirrorSelector, 0, 40 );
+			}
+
+check( 'the mirrors of a class that aligns from a breakpoint name the title of a section itself, in every set: its margins and the place of its rule follow the words, which Nino.css moves by the class on the title alone'
+	. ( $ancestorMirrors === [] ? '' : ' - '. implode( ' | ', array_slice( $ancestorMirrors, 0, 3 ) ) ), $ancestorMirrors === [] && $titleMirrors === 3 * 4 * 5 );
+
+/*	A card that draws a line on every side - the box - is not left with the words against the line on a phone: below 768px Nino.css pads the content of a card with nothing, since the card
+	insets it from there, and a card with no padding at its sides would write against its own border. The content takes the card-space where Nino.css leaves it none. And a card turned on
+	its side by a picture - the row - wraps the words under it where its cell has no room for the picture and a measure beside it: the words ask for a length of their own, and the row wraps - a card that is a column of its own, whose flex basis is its height, is left alone by both	*/
+$phonePadding	= [];
+$withLine			= 0;
+$unwrapped		= [];
+$turnedOver		= 0;
+
+foreach( Setup::available( $library, 'card' ) as $set ) {
+
+	$cardRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'card', $set ) ) ) );
+	$outlined	 = array_filter( $cardRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-card:where(:not(.nino-card--borderless))' && preg_match( '/(?<![\w-])border\s*:/', $rule['body'] ) === 1 );
+	$turning	 = array_filter( $cardRules, static fn( array $rule ): bool => str_starts_with( $rule['selector'], '.nino-card:has(> .nino-card-img)' ) && preg_match( '/(?<![\w-])display\s*:\s*flex\s*;/', $rule['body'] ) === 1 && str_contains( $rule['within'], 'min-width: 768px' ) );
+
+	if( $outlined !== [] ) {
+
+		$withLine++;
+
+		if( array_filter( $cardRules, static fn( array $rule ): bool => str_contains( $rule['within'], 'max-width: 767px' ) && str_contains( $rule['selector'], '> .nino-card-content' ) && preg_match( '/(?<![\w-])padding\s*:[^;]*var\(--card-space\)/', $rule['body'] ) === 1 ) === [] )
+			$phonePadding[] = $set;
+	}
+
+	if( $turning !== [] ) {
+
+		$turnedOver++;
+
+		if( array_filter( $cardRules, static fn( array $rule ): bool => str_starts_with( $rule['selector'], '.nino-card:has(> .nino-card-img)' ) && preg_match( '/(?<![\w-])flex-wrap\s*:\s*wrap\s*;/', $rule['body'] ) === 1 ) === []
+			|| array_filter( $cardRules, static fn( array $rule ): bool => str_contains( $rule['selector'], ':where(:not(.nino-card--middle, .nino-card--bottom, .nino-card--last-bottom)) > .nino-card-content' ) && preg_match( '/(?<![\w-])flex\s*:\s*1\s+1\s+[\d.]+(?:rem|em|ch|px)\s*;/', $rule['body'] ) === 1 ) === []
+			|| array_filter( $cardRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '> .nino-card-content' ) && str_contains( $rule['selector'], ':where(' ) === false && preg_match( '/(?<![\w-])flex\s*:\s*1\s+1\s+[\d.]+(?:rem|em|ch|px)\s*;/', $rule['body'] ) === 1 ) !== [] )
+			$unwrapped[] = $set;
+	}
+}
+
+check( 'a card set that draws a line on every side pads the content of the card on a phone, where Nino.css leaves it nothing: a rule below 768px reads the card-space for it'
+	. ( $phonePadding === [] ? '' : ' - not so for '. implode( ', ', $phonePadding ) ), $phonePadding === [] && $withLine >= 1 );
+check( '...and a card set that turns a card with a picture on its side wraps the words under the picture when the cell is too narrow for both: the card wraps and the words ask for a length of their own - neither is asked of a card that is a column'
+	. ( $unwrapped === [] ? '' : ' - not so for '. implode( ', ', $unwrapped ) ), $unwrapped === [] && $turnedOver >= 1 );
+
+/*	The two bands of a footer that has both stand on one edge: where a footer insets the cells of its main band at the sides, the rule that does so insets those of its legal band too, so that
+	the brand and the copyright start on one line and the columns and the legal links end on one	*/
+$bandEdges	= [];
+$insetting	= 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	foreach( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) ) ) as $bandRule )
+		if( in_array( '.nino-frame-footer .nino-footer-main > *', $splitSelectors( $bandRule['selector'] ), true ) === true && preg_match( '/(?<![\w-])padding-(?:left|right)\s*:/', $bandRule['body'] ) === 1 ) {
+
+			$insetting++;
+
+			if( in_array( '.nino-frame-footer .nino-footer-legal > *', $splitSelectors( $bandRule['selector'] ), true ) === false )
+				$bandEdges[] = $set;
+		}
+}
+
+check( 'a footer that insets the cells of its main band at the sides insets those of its legal band by the same rule, so that both bands stand on one edge'
+	. ( $bandEdges === [] ? '' : ' - not so for '. implode( ', ', $bandEdges ) ), $bandEdges === [] && $insetting >= 1 );
 
 /*	Every section set reads the alignment where a section has words - the title, the subtitle and the text - and the hero too, but for the one of Panel, which is built on its rail. And what the aspects of the
 	knobs of the words are is the default set's, as the ladders of the knobs are: a template that gave a ladder beside a knob other rungs would move a box when a person switches the template, and the measure,
@@ -3203,12 +3287,12 @@ $cased = Setup::normalize( $appData, [ 'knobs' => [
 	'card' => [ 'title-case' => 2, 'subtitle-case' => 'on' ], 'buttons' => [ 'case' => -1 ],
 ] ], $library, $casedNotes );
 
-check( 'a toggle posted as 1, as "1" or as 1.2 is on; as 2, -1, true or "on" it is off, and one that is not posted is off - the eight stand at 0 in a setup that names none, and the shipped theme names none of them',
+check( 'a toggle posted as 1, as "1" or as 1.2 is on; as 2, -1, true or "on" it is off, and one that is not posted is off - the eight stand at 0 in a setup that names none, and the first shipped theme holds each at off',
 	$cased['knobs']['header']['nav-case'] === 1 && $cased['knobs']['footer']['nav-case'] === 1 && $cased['knobs']['section']['title-case'] === 1
 	&& $cased['knobs']['section']['subtitle-case'] === 0 && $cased['knobs']['card']['title-case'] === 0 && $cased['knobs']['card']['subtitle-case'] === 0 && $cased['knobs']['buttons']['case'] === 0
 	&& $casedNotes === [] && array_filter( $toggles, static fn( string $at ): bool => Setup::normalize( $appData, [], $library )['knobs'][ explode( '/', $at )[0] ][ explode( '/', $at )[1] ] !== 0
 		|| Setup::defaults( $library )['knobs'][ explode( '/', $at )[0] ][ explode( '/', $at )[1] ] !== 0
-		|| array_key_exists( explode( '/', $at )[1], $firstTheme['setup']['knobs'][ explode( '/', $at )[0] ] ) === true ) === [] );
+		|| ( $firstTheme['setup']['knobs'][ explode( '/', $at )[0] ][ explode( '/', $at )[1] ] ?? 0 ) !== 0 ) === [] );
 
 check( '...a knob that is none of its part\'s and a part that is none of the eight are dropped and named, never carried',
 	array_keys( $setup['knobs']['section'] ) === array_keys( Setup::KNOBS['section'] ) && isset( $setup['knobs']['nowhere'] ) === false
@@ -8181,6 +8265,22 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
 		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $completed( $given ) )
 			$problems[] = 'a setup that is not its own normalisation';
+
+		// A shipped theme writes its choices out whole: every knob of every part - the toggles too - in the order of the model, the motion with each of its keys and a list of styles for each part
+		$unwritten = [];
+
+		foreach( Setup::KNOBS as $part => $kinds )
+			if( array_keys( (array) ( $given['knobs'][$part] ?? [] ) ) !== array_keys( $kinds ) )
+				$unwritten[] = 'knobs/'. $part;
+
+		if( array_keys( (array) ( $given['motion'] ?? [] ) ) !== array_keys( Setup::defaults( $library )['motion'] ) )
+			$unwritten[] = 'motion';
+
+		if( array_keys( (array) ( $given['styles'] ?? [] ) ) !== array_keys( Setup::PARTS ) )
+			$unwritten[] = 'styles';
+
+		if( $unwritten !== [] )
+			$problems[] = 'a setup that leaves out what it could name: '. implode( ', ', $unwritten );
 
 		$ranged = [];
 
