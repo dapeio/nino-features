@@ -134,9 +134,13 @@
 			page's as well and are looked at in the cards (#cards), whose first row of pictures says nino-hover. The
 			templates have none: a template is looked at where its object is (OBJECT_ANCHORS). Nor have the quiet and
 			the loud variant of a section: the loud one sizes the hero, and the two are looked at in the first section
-			(#content) with the other knobs of the section	*/
+			(#content) with the other knobs of the section. The knobs of a section that act on a band - the alignment, the measure,
+			the letter-spacing, the rule with its length and colour, the shadow and the ground of the title - are looked at in the
+			first section that has a title and a subtitle of its own, which is the cards (#cards): the hero is centred by a class
+			of its page, which the alignment leaves alone, has no rule, and stands on a ground the black shadow is lost on	*/
 		CONTROL_ANCHORS	: { 'colours/primary' : 'colours', 'colours/secondary' : 'colours', 'colours/harmony' : 'colours', 'colours/temperature' : 'colours', 'colours/saturation' : 'colours', 'colours/contrast' : 'colours', 'colours/depth' : 'colours', 'colours/mode' : 'colours',
-			'motion/hover' : 'cards', 'motion/hover-strength' : 'cards' },
+			'motion/hover' : 'cards', 'motion/hover-strength' : 'cards',
+			'knobs/section/align' : 'cards', 'knobs/section/measure' : 'cards', 'knobs/section/title-tracking' : 'cards', 'knobs/section/rule' : 'cards', 'knobs/section/rule-length' : 'cards', 'knobs/section/title-shadow' : 'cards', 'knobs/section/title-ground' : 'cards', 'knobs/section/rule-color' : 'cards', },
 
 		/*	The positions of a knob, by the kind of the knob, as the least and the most of them: a
 			scale has the five positions -2 to +2, a choice the three -1 to +1, a toggle the two 0 and
@@ -229,6 +233,23 @@
 			'chevrons-left-right' : [
 				[ 'path', { d : 'm9 7-5 5 5 5' } ],
 				[ 'path', { d : 'm15 7 5 5-5 5' } ],
+			],
+			// Where the words of a section and of a card stand: Lucide's align-center
+			'align-center' : [
+				[ 'path', { d : 'M17 12H7' } ],
+				[ 'path', { d : 'M19 18H5' } ],
+				[ 'path', { d : 'M21 6H3' } ],
+			],
+			// How wide the column of a text is: Lucide's unfold-horizontal
+			'unfold-horizontal' : [
+				[ 'path', { d : 'M16 12h6' } ],
+				[ 'path', { d : 'M8 12H2' } ],
+				[ 'path', { d : 'M12 2v2' } ],
+				[ 'path', { d : 'M12 8v2' } ],
+				[ 'path', { d : 'M12 14v2' } ],
+				[ 'path', { d : 'M12 20v2' } ],
+				[ 'path', { d : 'm19 15 3-3-3-3' } ],
+				[ 'path', { d : 'm5 9-3 3 3 3' } ],
 			],
 			'move-horizontal' : [
 				[ 'path', { d : 'm18 8 4 4-4 4' } ],
@@ -325,16 +346,26 @@
 			'section/loud' : 'a-large-small',
 			'section/title' : 'a-large-small',
 			'section/subtitle' : 'a-large-small',
+			'section/title-tracking' : 'chevrons-left-right',
 			'section/space' : 'scaling',
 			'section/rule' : 'minus',
+			'section/rule-length' : 'move-horizontal',
+			'section/title-shadow' : 'square-stack',
 			'section/dim' : 'contrast',
+			'section/title-ground' : 'square',
+			'section/rule-color' : 'palette',
+			'section/align' : 'align-center',
+			'section/measure' : 'unfold-horizontal',
 			'card/title' : 'a-large-small',
 			'card/subtitle' : 'a-large-small',
+			'card/title-tracking' : 'chevrons-left-right',
 			'card/space' : 'align-vertical-space-around',
 			'card/border' : 'square',
 			'card/shadow' : 'square-stack',
 			'card/tone' : 'palette',
+			'card/title-ground' : 'square',
 			'card/hover' : 'move-vertical',
+			'card/align' : 'align-center',
 			'buttons/size' : 'a-large-small',
 			'buttons/spread' : 'chevrons-left-right',
 			'buttons/space' : 'align-vertical-space-around',

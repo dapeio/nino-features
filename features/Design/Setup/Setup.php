@@ -113,9 +113,9 @@ namespace Nino\Modules\Design {
 			template.tpl, which is the markup, and a style.css, which declares ladders the way
 			a set's stylesheet does, so that a frame has knobs like the rest. The others are one
 			stylesheet each, library/<part>/<set>.css. The section and the card were one part, the
-			content set, until its rules were cut in two: the sets of the two carry the same four
-			names - Regular, Open, Panel and Box -, so that a theme names a sensible pair and a
-			person can still mix them. The tables are what is left of the components set, whose
+			content set, until its rules were cut in two: the sets of the two carry the same
+			names - Regular, Open and Panel, and the card's Box besides -, so that a theme names a
+			sensible pair and a person can still mix them. The tables are what is left of the components set, whose
 			fields and blocks the kernel draws now: its table rules, five sets of them. The forms
 			are the eighth part, four sets of them, which declare no rule of their own: the rules
 			are the kernel's, and a set says what the properties they read are	*/
@@ -183,16 +183,26 @@ namespace Nino\Modules\Design {
 							nav-case			the links of the navigation in capitals (a toggle)
 				section		quiet, loud			the size of the --quiet and --loud variants - the title and the subtitle of a hero are the loud variant
 							title, subtitle	the size of the title and of the subtitle of a section
+							title-tracking	the letter-spacing of the title of a section, the hero's among them
 							space				the vertical space of a section
 							rule				the rule under the title of a section
+							rule-length		how long that rule is: short, the width of the title or of the column, or the width of its words (a choice)
+							title-shadow		the shadow of the title of a section, the hero's among them
 							dim					how dark the scrim of a dimmed cover is
+							title-ground		the ground of the title of a section, the hero's among them: none, soft or full (a choice)
+							rule-color			the colour of that rule: the ink, the border of the ground or the brand (a choice)
+							align				where the title, the subtitle and the text of a section stand: left, as the template has them or right (a choice)
+							measure				how wide the column of the subtitle and of the text is (a choice)
 							title-case			the title of a section, the hero's among them, in capitals (a toggle)
 							subtitle-case		the subtitle of a section, the hero's among them, in capitals (a toggle)
 				card		title, subtitle	the size of the title and of the subtitle of a card
+							title-tracking	the letter-spacing of the title of a card
 							space				the space inside a card and between its parts
 							border, shadow		the line and the shadow of a card
 							tone				the colour the shadow is drawn in (a choice)
+							title-ground		the ground of the title of a card: none, soft or full (a choice)
 							hover				what a card does under the pointer (a choice)
+							align				where the title, the subtitle, the text and the button of a card stand: in the middle, as the template has them or right (a choice)
 							title-case			the title of a card in capitals (a toggle)
 							subtitle-case		the subtitle of a card in capitals (a toggle)
 				buttons		size				the size of .nino-btn
@@ -219,8 +229,8 @@ namespace Nino\Modules\Design {
 		public const array KNOBS = [
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
-			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'dim' => 'scale', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
-			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'hover' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
+			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'rule-length' => 'choice', 'title-shadow' => 'scale', 'dim' => 'scale', 'title-ground' => 'choice', 'rule-color' => 'choice', 'align' => 'choice', 'measure' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
+			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'title-ground' => 'choice', 'hover' => 'choice', 'align' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
@@ -274,7 +284,7 @@ namespace Nino\Modules\Design {
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the choice of a set for each of the eight parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled
+			// The templates: the choice of a set for each of the eight parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled -, and how a section and a card stand on the page: where their words are and how wide the column of a section is
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
 			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
 			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
@@ -282,7 +292,10 @@ namespace Nino\Modules\Design {
 			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
 			'knobs/footer/position' 				=> [ 'templates', 'footer', 2 ],
 			'parts/section' 						=> [ 'templates', 'section', 1 ],
+			'knobs/section/align' 					=> [ 'templates', 'section', 2 ],
+			'knobs/section/measure' 				=> [ 'templates', 'section', 3 ],
 			'parts/card' 							=> [ 'templates', 'card', 1 ],
+			'knobs/card/align' 						=> [ 'templates', 'card', 2 ],
 			'parts/buttons' 						=> [ 'templates', 'buttons', 1 ],
 			'parts/lists' 							=> [ 'templates', 'lists', 1 ],
 			'parts/tables' 						=> [ 'templates', 'tables', 1 ],
@@ -303,12 +316,14 @@ namespace Nino\Modules\Design {
 			'knobs/section/subtitle' 				=> [ 'type', 'section', 2 ],
 			'knobs/section/quiet' 					=> [ 'type', 'section', 3 ],
 			'knobs/section/loud' 					=> [ 'type', 'section', 4 ],
-			'knobs/section/title-case' 				=> [ 'type', 'section', 5 ],
-			'knobs/section/subtitle-case' 			=> [ 'type', 'section', 6 ],
+			'knobs/section/title-tracking' 			=> [ 'type', 'section', 5 ],
+			'knobs/section/title-case' 				=> [ 'type', 'section', 6 ],
+			'knobs/section/subtitle-case' 			=> [ 'type', 'section', 7 ],
 			'knobs/card/title' 						=> [ 'type', 'card', 1 ],
 			'knobs/card/subtitle' 					=> [ 'type', 'card', 2 ],
-			'knobs/card/title-case' 				=> [ 'type', 'card', 3 ],
-			'knobs/card/subtitle-case' 				=> [ 'type', 'card', 4 ],
+			'knobs/card/title-tracking' 			=> [ 'type', 'card', 3 ],
+			'knobs/card/title-case' 				=> [ 'type', 'card', 4 ],
+			'knobs/card/subtitle-case' 				=> [ 'type', 'card', 5 ],
 			'knobs/buttons/size' 					=> [ 'type', 'buttons', 1 ],
 			'knobs/buttons/spread' 					=> [ 'type', 'buttons', 2 ],
 			'knobs/buttons/case' 					=> [ 'type', 'buttons', 3 ],
@@ -317,7 +332,7 @@ namespace Nino\Modules\Design {
 			'knobs/forms/scale' 					=> [ 'type', 'forms', 1 ],
 			'knobs/forms/label-case' 				=> [ 'type', 'forms', 2 ],
 
-			// The surfaces: the space, the corners, the lines and the shadows of each object, the height, the logo and the line of the frames - the shadow of the bar and the divider of the footer besides - and the marker of a list. The three kinds of a section share one place: they are one choice
+			// The surfaces: the space, the corners, the lines and the shadows of each object, the height, the logo and the line of the frames - the shadow of the bar and the divider of the footer besides -, how long the rule under a section title is and the shadow of that title, and the marker of a list. The three kinds of a section share one place: they are one choice
 			'width' 								=> [ 'surfaces', 'page', 1 ],
 			'whitespace' 							=> [ 'surfaces', 'page', 2 ],
 			'radius' 								=> [ 'surfaces', 'page', 3 ],
@@ -335,9 +350,11 @@ namespace Nino\Modules\Design {
 			'knobs/footer/divider' 					=> [ 'surfaces', 'footer', 5 ],
 			'knobs/section/space' 					=> [ 'surfaces', 'section', 1 ],
 			'knobs/section/rule' 					=> [ 'surfaces', 'section', 2 ],
-			'radii/cover' 							=> [ 'surfaces', 'section', 3 ],
-			'radii/row' 							=> [ 'surfaces', 'section', 3 ],
-			'radii/column' 							=> [ 'surfaces', 'section', 3 ],
+			'knobs/section/rule-length' 			=> [ 'surfaces', 'section', 3 ],
+			'knobs/section/title-shadow' 			=> [ 'surfaces', 'section', 4 ],
+			'radii/cover' 							=> [ 'surfaces', 'section', 5 ],
+			'radii/row' 							=> [ 'surfaces', 'section', 5 ],
+			'radii/column' 							=> [ 'surfaces', 'section', 5 ],
 			'knobs/card/space' 						=> [ 'surfaces', 'card', 1 ],
 			'knobs/card/border' 					=> [ 'surfaces', 'card', 2 ],
 			'knobs/card/shadow' 					=> [ 'surfaces', 'card', 3 ],
@@ -354,7 +371,7 @@ namespace Nino\Modules\Design {
 			'knobs/forms/line' 						=> [ 'surfaces', 'forms', 3 ],
 			'knobs/forms/labels' 					=> [ 'surfaces', 'forms', 4 ],
 
-			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming of a section, the tone of the shadow of a card, the stripes of a table; the forms have the colour of their lines and of their labels, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming, the ground of the title and the colour of the rule of a section, the tone of the shadow and the ground of the title of a card, the stripes of a table; the forms have the colour of their lines and of their labels, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -368,7 +385,10 @@ namespace Nino\Modules\Design {
 			'knobs/footer/ground' 					=> [ 'colours', 'footer', 1 ],
 			'knobs/footer/border-color' 			=> [ 'colours', 'footer', 2 ],
 			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
+			'knobs/section/title-ground' 			=> [ 'colours', 'section', 2 ],
+			'knobs/section/rule-color' 				=> [ 'colours', 'section', 3 ],
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
+			'knobs/card/title-ground' 				=> [ 'colours', 'card', 2 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
 			'knobs/forms/edge' 						=> [ 'colours', 'forms', 1 ],
 			'knobs/forms/label' 					=> [ 'colours', 'forms', 2 ],
@@ -406,9 +426,10 @@ namespace Nino\Modules\Design {
 			knob's too: they are selected where it stands, and are as long as it is. A
 			stylesheet that declares one without the ladder of the knob itself has
 			published nothing, and one with another length than its knob's has not
-			published the knob. A name that is a knob of its own is no aspect of another:
-			--section-title-case is the toggle of that name and not an aspect of the
-			size --section-title.
+			published the knob. An aspect belongs to the longest knob its name begins
+			with (see owner()): --section-title-case is the toggle of that name and not
+			an aspect of the size --section-title, and --section-title-ground-ink the
+			aspect of the choice --section-title-ground and of none of the two others.
 
 			The name of a rung is KNOB_TOKEN filled with the part, the name and the
 			word: ladders() reads the declarations with it, and the compiler asks
@@ -2222,9 +2243,9 @@ namespace Nino\Modules\Design {
 
 				$names = [ $knob ];
 
-				// A name that is a knob of its own - title-case beside title - is that knob's and no aspect of this one
+				// A name is the aspect of the longest knob it begins with: title-case is a knob of its own beside title, and title-ground-ink is the aspect of title-ground and of no other
 				foreach( array_keys( $declared ) as $name )
-					if( str_starts_with( $name, $knob. '-' ) === true && isset( $kinds[$name] ) === false )
+					if( self::owner( $name, array_keys( $kinds ) ) === $knob && $name !== $knob )
 						$names[] = $name;
 
 				foreach( $names as $name )
@@ -2235,6 +2256,27 @@ namespace Nino\Modules\Design {
 			}
 
 			return $out;
+		}
+
+		/**
+		 *	The knob a ladder belongs to: the one it is named for, or - for an aspect - the longest knob whose name
+		 *	the ladder's begins with, followed by a hyphen. --section-title-ground-ink is an aspect of the choice
+		 *	title-ground, and not of the size title, which it begins with as well
+		 *
+		 *	@param		string		$name					A ladder without its part and its word, eg. 'title-ground-ink'
+		 *	@param		array 		$knobs				Knob names
+		 *
+		 *	@return 	string										'' where it begins with none of them
+		 */
+		public static function owner( string $name, array $knobs ): string {
+
+			$owner = '';
+
+			foreach( $knobs as $knob )
+				if( ( $name === $knob || str_starts_with( $name, $knob. '-' ) === true ) && strlen( $knob ) > strlen( $owner ) )
+					$owner = $knob;
+
+			return $owner;
 		}
 
 		/**

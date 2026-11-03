@@ -4,11 +4,14 @@
  *
  *	@knob	title		Size of the title of a card
  *	@knob	subtitle	Size of the subtitle of a card
+ *	@knob	title-tracking		Letter-spacing of the title of a card
  *	@knob	space		Space inside a card and between its parts
  *	@knob	border		Line round a card that has a ground
  *	@knob	shadow		Shadow of a card
  *	@knob	tone		Colour the shadow is drawn in
+ *	@knob	title-ground		Ground behind the title of a card
  *	@knob	hover		What a card does under the pointer
+ *	@knob	align				Where the words and the button of a card stand
  *	@knob	title-case	Capitals in the title of a card
  *	@knob	subtitle-case	Capitals in the subtitle of a card
  *
@@ -52,8 +55,8 @@
  *	quarter of a rem with the strongest step of the shadow, and only where the
  *	visitor has not asked for less motion. The two cases are toggles of two rungs,
  *	none and uppercase, read by a rule each: the title and the subtitle of a card.
- *	The section family has the same four
- *	names (Regular, Open, Panel, Box) and a theme names a sensible pair.
+ *	The section family has the same
+ *	names, but for Box, and a theme names a sensible pair.
  *	Copy this file under a name of your own and start there.
  */
 
@@ -122,6 +125,49 @@
 	--card-hover-shadow--default: 	var(--shadow-card);
 	--card-hover-shadow--more: 			0 .25rem 1.5rem var(--card-tone), 0 .0625rem .25rem var(--card-tone);
 
+	/*	The letter-spacing of the title of a card, as a step from what the template gives it: nothing at the middle, so that the middle is
+		the template, whichever it is. Tighter on the two steps below it, looser on the two above	*/
+	--card-title-tracking--least: 	-.03em;
+	--card-title-tracking--less: 		-.015em;
+	--card-title-tracking--default: 	0em;
+	--card-title-tracking--more: 		.04em;
+	--card-title-tracking--most: 		.1em;
+
+	/*	The ground behind the words of the title of a card: none, as Nino.css has it, soft or full. The ladder is the share of the colour of the title
+		in the ground, 12% and 100%, over what the title stands on; its aspects are the share of the ground in the words (the words of a
+		full ground are the ground's own), the factor of the room round them and of the radius, and the width: a title with a ground is as wide
+		as its words. The roles are read where the title stands, so that each ground is its own	*/
+	--card-title-ground--less: 			12%;
+	--card-title-ground--default: 	0%;
+	--card-title-ground--more: 			100%;
+
+	--card-title-ground-ink--less: 		0%;
+	--card-title-ground-ink--default: 0%;
+	--card-title-ground-ink--more: 		100%;
+
+	--card-title-ground-fit--less: 		1;
+	--card-title-ground-fit--default: 0;
+	--card-title-ground-fit--more: 		1;
+
+	--card-title-ground-width--less: 		fit-content;
+	--card-title-ground-width--default: auto;
+	--card-title-ground-width--more: 		fit-content;
+
+	/*	Where the words and the button of a card stand: in the middle, as the card they stand in has them - which is the left, unless the page says
+		otherwise - or right. The aspects say where a title as wide as its words stands and where a button stands in a card that lays itself out
+		in a column	*/
+	--card-align--less: 			center;
+	--card-align--default: 	match-parent;
+	--card-align--more: 			right;
+
+	--card-align-margin--less: 			auto;
+	--card-align-margin--default: 	0;
+	--card-align-margin--more: 			auto 0;
+
+	--card-align-button--less: 			center;
+	--card-align-button--default: 	flex-start;
+	--card-align-button--more: 			flex-end;
+
 	/*	The case of the title and of the subtitle: as they are written, or in capitals	*/
 	--card-title-case--default: 		none;
 	--card-title-case--more: 			uppercase;
@@ -188,4 +234,87 @@
 	.nino-card--linked:where(:not(.nino-card--borderless)):hover {
 		box-shadow: var(--card-hover-shadow);
 	}
+}
+
+/* ---- the title and the words ---- */
+
+/*	The alignment of what is in the card, only where the page says nothing of its own; the button of a card that is a column; the place of a title
+	that is as wide as its words; and where the page aligns by a class, the place that class gives it	*/
+.nino-card:where(:not([class*="nino-text-"], [class*="nino-text-"] *)) {
+	text-align: var(--card-align);
+}
+:is(.nino-card--middle, .nino-card--bottom, .nino-card--last-bottom):where(:not([class*="nino-text-"], [class*="nino-text-"] *)) > .nino-btn,
+.nino-card--last-bottom:where(:not([class*="nino-text-"], [class*="nino-text-"] *)) > .nino-card-content > .nino-btn {
+	align-self: var(--card-align-button);
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-text-"], [class*="nino-text-"] *, [class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+	margin-inline: var(--card-align-margin);
+}
+.nino-text-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+	margin-inline: auto;
+}
+.nino-text-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+	margin-inline: auto 0;
+}
+@media (min-width: 640px) {
+	.nino-text-s-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-s-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-s-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-s-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+@media (min-width: 768px) {
+	.nino-text-m-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-m-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-m-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-m-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+@media (min-width: 1024px) {
+	.nino-text-l-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-l-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-l-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-l-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+@media (min-width: 1280px) {
+	.nino-text-xl-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-xl-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-xl-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-xl-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud) {
+	letter-spacing: var(--card-title-tracking);
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud) {
+	background-color: color-mix( in srgb, var(--color-title) var(--card-title-ground), transparent );
+	border-radius: calc( var(--radius) * var(--card-title-ground-fit) );
+	width: var(--card-title-ground-width);
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-ink--"])) {
+	color: color-mix( in srgb, var(--color-ground) var(--card-title-ground-ink), var(--color-title) );
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-ink--accent {
+	color: color-mix( in srgb, var(--color-ground) var(--card-title-ground-ink), var(--color-accent) );
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-ink--muted {
+	color: color-mix( in srgb, var(--color-ground) var(--card-title-ground-ink), color-mix(in srgb, currentColor 80%, transparent) );
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-pl-"], [class*="nino-pr-"])) {
+	padding: calc( .15em * var(--card-title-ground-fit) ) calc( .5em * var(--card-title-ground-fit) );
 }
