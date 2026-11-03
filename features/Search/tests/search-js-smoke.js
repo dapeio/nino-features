@@ -85,7 +85,7 @@ const ROW = typeRow();
  *																save, created, probe: what those actions answer,
  *																fail: { action: { status, body } } answers that action with a failure,
  *																hold: the action whose answer is kept until release() gives it,
- *																dirty: stands in for the shell's Nino.admin.dirty registry,
+ *																dirty: stands in for the shell's Nino.admin.dirty registry, false: a shell without one,
  *																start: 'show' (the shell shows the panel - the default) or 'none' - a page that
  *																is still loading, whose ready() the test calls
  */
@@ -172,7 +172,7 @@ function panel( options ) {
 	};
 
 	// The shell's registry of unsaved input, with nothing unsaved in it and an exit that is never refused
-	Nino.admin = { dirty : options.dirty || { register : function() {}, isDirty : function() { return false }, guard : function( names, proceed ) { proceed() } } };
+	Nino.admin = options.dirty === false ? {} : { dirty : options.dirty || { register : function() {}, isDirty : function() { return false }, guard : function( names, proceed ) { proceed() } } };
 
 	load( '_admin/assets/Nino.admin.js', context );
 	vm.runInContext( source, context, { filename : 'admin.js' } );
@@ -574,6 +574,14 @@ fire( nothing.byId('search-probe-run'), 'click' );
 check( 'a search that found nothing says so', withClass( nothing.byId('search-probe-results'), 'nino-admin-empty' )[0].textContent === WORDS['/_admin/search/hint/probe-empty'] );
 check( '...and with one language there is no select to pick it from, and the probe asks for the empty one', nothing.byId('search-probe-locale') === null
 	&& JSON.parse( nothing.asked('search/probe')[0].data ).locale === '' );
+// A shell without the registry has nothing unsaved to ask about
+const bare = panel( { dirty : false } );
+fire( bare.button( bare.row('/products'), WORDS['/_admin/search/label/edit'] ), 'click' );
+bare.panel.showCurrent();
+check( 'on a shell without the registry the panel shows the editor again, from its working copy', bare.hidden( bare.type ) === false && bare.slots().length === 4 );
+withTag( bare.type, 'A' )[0].listeners['click'].forEach( function( listener ) { listener( { preventDefault : function() {} } ) } );
+check( '...and the back link goes back at once', bare.panel._editing === null && bare.hidden( bare.list ) === false );
+
 
 const unsearchable = panel( { types : [ typeRow( { fields : {}, configured : false } ) ] } );
 fire( unsearchable.byId('search-openprobe'), 'click' );

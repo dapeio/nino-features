@@ -101,8 +101,8 @@
 
 				// The editor reads its fields back from the copy, and what was
 				// typed since is only in the boxes - drawn again, it would
-				// be gone. The shell keeps count of that, and it stays as it is
-				if( Nino.admin.dirty.isDirty( [ 'forms' ] ) === true )
+				// be gone. The shell keeps count of that, when it has the registry
+				if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'forms' ] ) === true )
 					return;
 
 				return Nino.admin.forms._showForm( Nino.admin.forms._editing, Nino.admin.forms._was );

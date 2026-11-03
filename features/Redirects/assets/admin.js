@@ -127,7 +127,13 @@
 		 *	@return		void
 		 */
 		_leave : function( proceed, onCancel ) {
-			Nino.admin.dirty.guard( [ 'redirects' ], proceed, onCancel );
+
+			// A shell without the registry has nothing unsaved to ask about
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.guard( [ 'redirects' ], proceed, onCancel );
+			else
+				proceed();
+
 		},
 
 		/**

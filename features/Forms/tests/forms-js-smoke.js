@@ -230,7 +230,8 @@ function shellRegistry() {
  *									names as mail templates, types: the field types
  *									it names, text: what a fill key reads as (the
  *									key itself where nothing is said), refuse: the
- *									body forms/save answers with, status 400
+ *									body forms/save answers with, status 400,
+ *									registry: false is a shell without Nino.admin.dirty
  */
 function panel( options ) {
 
@@ -424,7 +425,7 @@ function panel( options ) {
 					if( self.loading === true || self.mount() === null )
 						return;
 					self.loading = true;
-					if( registered === false && typeof spec.dirty === 'object' ) {
+					if( registered === false && typeof spec.dirty === 'object' && typeof Nino.admin.dirty === 'object' ) {
 						Nino.admin.dirty.register( spec.uri, spec.dirty );
 						registered = true;
 					}
@@ -597,6 +598,10 @@ function panel( options ) {
 		formToolbar		: function( back ) { return Nino.adminUi.contextBar( back ) },
 		dirty					: registry,
 	};
+
+	// A shell without the registry: nothing but the toolbar
+	if( options.registry === false )
+		Nino.admin = { formToolbar : Nino.admin.formToolbar };
 
 	if( options.api )
 		Nino.adminUi.api = options.api;
@@ -860,6 +865,15 @@ entry.discard();
 check( 'discarding takes what is typed for saved', entry.isDirty() === false );
 guarded.panel.showCurrent();
 check( '...and an editor that holds nothing unsaved is drawn again as before', guarded.form.children.indexOf( mark ) === -1 && guarded.hidden( guarded.form ) === false );
+
+// A shell without the registry has nothing unsaved to ask about
+const bare = panel( { forms : two, registry : false } );
+bare.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+const bareMark = element('span');
+bare.form.appendChild( bareMark );
+bare.panel.showCurrent();
+check( 'on a shell without the registry the panel loads, and showing it draws the editor again',
+	bare.panel.ready === true && bare.form.children.indexOf( bareMark ) === -1 && bare.hidden( bare.form ) === false );
 
 // The shell's Save saves from its own question
 guarded.form.querySelector('[data-about="key"]').value = 'Renamed';

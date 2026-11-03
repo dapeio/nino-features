@@ -85,7 +85,7 @@ function listed( options ) {
  *																save: what a save answers,
  *																fail: { action: { status, body } } answers that action with a failure,
  *																hold: the action whose answer is kept until release() gives it,
- *																dirty: stands in for the shell's Nino.admin.dirty registry,
+ *																dirty: stands in for the shell's Nino.admin.dirty registry, false: a shell without one,
  *																head: false renders the pane without a head,
  *																confirm: what window.confirm() answers,
  *																start: 'show' (the shell shows the panel - the default) or 'none' - a page that
@@ -192,7 +192,7 @@ function panel( options ) {
 	};
 
 	// The shell's registry of unsaved input, with nothing unsaved in it and an exit that is never refused
-	Nino.admin = { dirty : options.dirty || { register : function() {}, isDirty : function() { return false }, guard : function( names, proceed ) { proceed() } } };
+	Nino.admin = options.dirty === false ? {} : { dirty : options.dirty || { register : function() {}, isDirty : function() { return false }, guard : function( names, proceed ) { proceed() } } };
 
 	load( '_admin/assets/Nino.admin.js', context );
 	vm.runInContext( source, context, { filename : 'admin.js' } );
@@ -625,6 +625,16 @@ check( '...and the shell showing the panel again keeps the reason, and the rule 
 // What the shell throws away when it is told to discard is not asked about again
 registry.entries['redirects'].discard();
 check( 'the shell\'s Discard takes the editor for saved, whatever is typed into it', registry.entries['redirects'].isDirty() === false );
+
+// A shell without the registry has nothing unsaved to ask about: the way out is open
+const bare = panel( { rules : [ fine ], dirty : false } );
+fire( bare.add(), 'click' );
+fire( bare.rules.querySelectorAll('.nino-admin-contextbar')[0].children[0], 'click' );
+check( 'on a shell without the registry the editor\'s Back goes back at once', bare.panel._editing === null );
+
+fire( bare.add(), 'click' );
+fire( bare.tab('missing'), 'click' );
+check( '...and so does the strip between the two screens', bare.panel._screen === 'missing' && bare.panel._editing === null );
 
 
 // --- Nothing to draw -----------------------------------------------------------

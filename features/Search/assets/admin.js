@@ -94,7 +94,7 @@
 			// The shell brings the panel on screen again after a Save it
 			// asked for failed: drawn anew, the reason the save gave would
 			// be gone, and so would the slots nobody has saved
-			if( Nino.admin.dirty.isDirty( [ 'search' ] ) === false )
+			if( typeof Nino.admin.dirty !== 'object' || Nino.admin.dirty.isDirty( [ 'search' ] ) === false )
 				Nino.admin.search._renderType();
 		},
 
@@ -116,7 +116,13 @@
 		 *	@return		void
 		 */
 		_leave : function( proceed ) {
-			Nino.admin.dirty.guard( [ 'search' ], proceed );
+
+			// A shell without the registry has nothing unsaved to ask about
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.guard( [ 'search' ], proceed );
+			else
+				proceed();
+
 		},
 
 		/**
