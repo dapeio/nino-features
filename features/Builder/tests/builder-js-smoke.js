@@ -3724,7 +3724,7 @@ change( pickerPane('pick'), 'Field of the element', '' );
 check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && dialogContent().querySelector('.builder-source-current').textContent === 'none' );
 builder._openSettings( [ 1, 1, 1 ] );
 sourceButton( dialogContent() ).click();
-check( 'the source of a text in a loop is a field of the element that holds a text, the id or the slug of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.slug'
+check( 'the source of a text in a loop is a field of the element that holds a line of text, a number or a date, the id or the slug of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,price,.id,.slug'
 	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' && pickItems().length === 2 && ( change( pickerPane('pick'), 'Field of the element', 'summary' ), componentAt( [ 1, 1, 1 ] ).source === 'summary' ) );
 builder._openSettings( [ 1, 1, 3 ] );
 check( 'the button in a loop has the source it has and the fixed text it has: the dialog opens on the fixed value', dialogContent().querySelector('.builder-source-current').textContent === '.uri' && ( sourceButton( dialogContent() ).click(), shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' ) );
@@ -3992,6 +3992,8 @@ builder._sourceDialog( plainOptions( { create : false, fixed : false } ) );
 check( 'a source that may not be made new or typed in has the list alone', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick"]' );
 builder._sourceDialog( plainOptions( { fields : { title : { type : 'string' }, image : { type : 'image' } }, value : 'title', kind : 'href' } ) );
 check( 'the fields of the type of a loop are what the options say they are: a link may be the id, the uri and the slug, a text the id and the slug', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,.id,.uri,.slug' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' );
+builder._sourceDialog( plainOptions( { fields : { title : { type : 'string' }, price : { type : 'double' }, start : { type : 'datetime' }, day : { type : 'date' }, n : { type : 'integer' }, photo : { type : 'image' }, tags : { type : 'array' }, ref : { type : 'element' } }, value : 'title' } ) );
+check( 'a text in a loop may read a line of text, a number or a date of the element, in the order of the fields and then the three tokens - not a picture, a list or a reference', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,price,start,day,n,.id,.slug' );
 builder._sourceDialog( plainOptions() );
 builder._closeDialog();
 check( 'the dialog of a source goes with the dialog it was opened from', pickerBox().open === false );

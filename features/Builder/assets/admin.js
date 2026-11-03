@@ -9013,7 +9013,8 @@
 
 			if( options.fields !== null && options.fields !== undefined ) {
 
-				const names = Object.keys( options.fields ).filter( function( name ) { return options.fields[name].type === ( image === true ? 'image' : 'string' ) } );
+				const types = image === true ? [ 'image' ] : ( options.kind === 'text' ? [ 'string', 'integer', 'double', 'date', 'datetime' ] : [ 'string' ] );
+				const names = Object.keys( options.fields ).filter( function( name ) { return types.indexOf( options.fields[name].type ) !== -1 } );
 				const items = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ]
 					.concat( names.map( function( name ) { return { value : name, label : name } } ) )
 					.concat( image === true ? [] : [ { value : '.id', label : '.id' }, { value : '.uri', label : '.uri' }, { value : '.slug', label : '.slug' } ].filter( function( item ) { return options.kind === 'href' || item.value !== '.uri' } ) );
