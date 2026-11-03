@@ -5,8 +5,8 @@ return [
 	'key'					=> 'pdf',
 	'name'				=> [ 'en_US' => 'PDF', 'de_DE' => 'PDF' ],
 	'description'	=> [
-		'en_US' => 'A PDF builder with no library: a layout the owner sets once - paper, margins, font, header and footer with page numbers, a logo and their own signature -, a library of text blocks in HTML, and templates composed of them - text, a slot for a table or any HTML, a free-text input, a signature field at a position in millimetres, a page break - each with a tag of the project\'s list. render() turns a template and what a caller knows into the bytes of a PDF, the same bytes every time; templates(), fields(), inputs(), tags() and layout() answer what a caller needs to offer them.',
-		'de_DE' => 'Ein PDF-Baukasten ohne Bibliothek: ein Layout, das der Inhaber einmal einstellt - Papier, Ränder, Schrift, Kopf- und Fußzeile mit Seitenzahlen, ein Logo und die eigene Unterschrift -, eine Bibliothek von Textbausteinen in HTML und Vorlagen daraus - Text, ein Platzhalter für eine Tabelle oder beliebiges HTML, ein Freitextfeld, ein Unterschriftfeld an einer Stelle in Millimetern, ein Seitenumbruch -, jede mit einem Tag aus der Liste des Projekts. render() macht aus einer Vorlage und dem, was ein Aufrufer weiß, die Bytes eines PDFs, jedes Mal dieselben; templates(), fields(), inputs(), tags() und layout() antworten, was ein Aufrufer braucht, um sie anzubieten.',
+		'en_US' => 'A PDF builder with no library: a layout the owner sets once - paper, margins, font, header and footer with page numbers, a logo and their own signature -, a library of text blocks in HTML, and templates composed of them - text, a slot for a table or any HTML, a free-text input, a signature field at a position in millimetres, a page break - each with a tag of the project\'s list. render() turns a template and what a caller knows - and, where it wants one, a part of HTML appended on a page of its own after the last block (the option append) - into the bytes of a PDF, the same bytes every time; templates(), fields(), inputs(), tags() and layout() answer what a caller needs to offer them.',
+		'de_DE' => 'Ein PDF-Baukasten ohne Bibliothek: ein Layout, das der Inhaber einmal einstellt - Papier, Ränder, Schrift, Kopf- und Fußzeile mit Seitenzahlen, ein Logo und die eigene Unterschrift -, eine Bibliothek von Textbausteinen in HTML und Vorlagen daraus - Text, ein Platzhalter für eine Tabelle oder beliebiges HTML, ein Freitextfeld, ein Unterschriftfeld an einer Stelle in Millimetern, ein Seitenumbruch -, jede mit einem Tag aus der Liste des Projekts. render() macht aus einer Vorlage und dem, was ein Aufrufer weiß - und, wo er einen will, einem HTML-Teil, der nach dem letzten Block auf einer eigenen Seite angehängt wird (die Option append) -, die Bytes eines PDFs, jedes Mal dieselben; templates(), fields(), inputs(), tags() und layout() antworten, was ein Aufrufer braucht, um sie anzubieten.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -46,7 +46,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
+	'version'			=> '1.1.0',
 	'nino'				=> '^1.8',
 	// gd decodes a picture that is no JPEG, dom reads the HTML of a document (and holds it to the list of what the
 	// layout understands), zlib compresses every stream of the file, iconv writes the text in the code page of the

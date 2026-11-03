@@ -84,13 +84,13 @@ check( '...and the six sections of its manual, in both languages', array_keys( $
 if( is_file( dirname( __DIR__, 3 ). '/bin/catalogue.php' ) === true ) {
 	$listed = json_decode( (string) shell_exec( escapeshellarg( PHP_BINARY ). ' '. escapeshellarg( dirname( __DIR__, 3 ). '/bin/catalogue.php' ). ' '. escapeshellarg( $root ). ' 2>/dev/null' ), true );
 	check( 'bin/catalogue.php lists the feature with its version, its category and the data it owns', is_array( $listed ) === true
-		&& count( array_filter( $listed['features'] ?? [], static fn( array $feature ): bool => $feature['key'] === 'pdf' && $feature['version'] === '1.0.0' && $feature['category'] === 'content' ) ) === 1 );
+		&& count( array_filter( $listed['features'] ?? [], static fn( array $feature ): bool => $feature['key'] === 'pdf' && $feature['version'] === '1.1.0' && $feature['category'] === 'content' ) ) === 1 );
 }
 else
 	echo "note - bin/catalogue.php is not beside this feature: the catalogue's listing of it was NOT checked\n";
 
-check( 'activation lists the class and records 1.0.0', \Nino\Features::activate( $appData, 'pdf' ) === true
-	&& in_array( '\\Nino\\Modules\\Pdf', $appData['/nino/modules'], true ) === true && \Nino\Features::get( $appData, 'pdf' )['installed'] === '1.0.0' );
+check( 'activation lists the class and records 1.1.0', \Nino\Features::activate( $appData, 'pdf' ) === true
+	&& in_array( '\\Nino\\Modules\\Pdf', $appData['/nino/modules'], true ) === true && \Nino\Features::get( $appData, 'pdf' )['installed'] === '1.1.0' );
 check( '...and copies nothing: the feature has no unit', glob( \Nino\Filesystem::path( $appData, '/templates' ). '/*' ) === [] || is_dir( \Nino\Filesystem::path( $appData, '/templates' ) ) === false );
 
 \Nino\Html::init( $appData );
@@ -385,7 +385,13 @@ check( '...the xref table points at every object, and startxref at the table', (
 		$ok = $ok && (int) substr( $entries, 20 * $id, 10 ) === strpos( $pdf, "\n". $id. " 0 obj\n" ) + 1;
 	return $ok;
 })() );
-check( '...the /Producer is the feature\'s name and version from its manifest, no title without the option', str_contains( $pdf, '/Producer (Nino PDF '. \Nino\Features::get( $appData, 'pdf' )['version']. ')' ) === true && str_contains( $pdf, '/Title' ) === false );
+check( '...the /Producer is the framework and the feature with no version - nothing after the name - and there is no title without the option', str_contains( $pdf, '/Producer (Nino PDF)' ) === true && str_contains( $pdf, '/Title' ) === false );
+$before = (string) Pdf::render( $appData, 'invoice-a' );
+// An update of the feature is a manifest that says another version: the registry's reading of it - cached for the request - is made to
+$manifestVersion = \Nino\Features::get( $appData, 'pdf' )['version'];
+$appData['./nino/features/all']['pdf']['version'] = '9.9.9';
+check( '...an update of the feature changes no byte: the same render after the manifest of the feature says another version is the same bytes, so that a document kept with its hash can be made again', \Nino\Features::get( $appData, 'pdf' )['version'] === '9.9.9' && $manifestVersion !== '9.9.9' && $before !== '' && (string) Pdf::render( $appData, 'invoice-a' ) === $before );
+unset( $appData['./nino/features/all'] );
 check( '...the paper is the layout\'s: US Letter in points', str_contains( $pdf, '/MediaBox [ 0 0 612 792 ]' ) === true );
 check( '...two pages: the page break adds one', $pages( $pdf ) === 2 && $pages( (string) Pdf::render( $appData, 'invoice-a' ) ) === 1 );
 check( '...two renders of one template with the same arguments are the same bytes, with a picture in it as well', $pdf === Pdf::render( $appData, 'offer-one', $data )
@@ -665,6 +671,56 @@ preg_match( '#q ([\d.]+) 0 0 ([\d.]+) ([\d.]+) ([\d.]+) cm /Im1 Do Q#', $content
 check( 'a signature picture is fitted into its box keeping its ratio, bottom-aligned at the left edge: a tall picture in a wide box is as high as the box and half as wide, and stands on the bottom edge', $pages( $stamped ) === 1 && count( $cm ) === 5
 	&& abs( $cm[1] - 10 * 72 / 25.4 ) < 0.05 && abs( $cm[2] - 20 * 72 / 25.4 ) < 0.05 && abs( $cm[3] - 20 * 72 / 25.4 ) < 0.05 && abs( $cm[4] - ( 841.8898 - 220 * 72 / 25.4 ) ) < 0.05 );
 $post( 'pdf/templates/delete', [ 'key' => 'stamp' ] );
+
+// --- the appended part ---------------------------------------------------------------------------------------------
+
+// The option append of render(): an HTML part on a page of its own after the last block, which a signature feature uses for the record of a signing
+$record = '<h2>Appended record</h2><p>Appended text of the caller</p>';
+$base = (string) Pdf::render( $appData, 'invoice-b' );
+$appended = (string) Pdf::render( $appData, 'invoice-b', [], [ 'append' => $record ] );
+check( 'append lays the part out on a page of its own after the last block: one page more, its text on the last page and not on the first - and a render without the option is the render it was, byte for byte',
+	$pages( $base ) === 1 && $pages( $appended ) === 2 && str_contains( $content( $appended, 1 ), '(Appended text of the caller) Tj' ) === true && str_contains( $content( $appended, 0 ), 'Appended' ) === false
+	&& $base === Pdf::render( $appData, 'invoice-b' ) && $appended === Pdf::render( $appData, 'invoice-b', [], [ 'append' => $record ] ) );
+check( '...nothing is added where there is nothing to add: an empty option, one of blanks, one that is no text and one that holds nothing to draw leave the bytes as they were',
+	Pdf::render( $appData, 'invoice-b', [], [ 'append' => '' ] ) === $base && Pdf::render( $appData, 'invoice-b', [], [ 'append' => " \n\t " ] ) === $base
+	&& Pdf::render( $appData, 'invoice-b', [], [ 'append' => [ '<p>x</p>' ] ] ) === $base && Pdf::render( $appData, 'invoice-b', [], [ 'append' => '<script>hidden()</script><style>p{}</style>' ] ) === $base );
+
+$held = (string) Pdf::render( $appData, 'invoice-b', [], [ 'append' => '<p onclick="alert(1)">Held <font color="red">text</font></p><script>hidden()</script><img src="https://example.com/x.png" width="20">' ] );
+check( '...it is held to the list of what a document may hold, as a slot is: the text of a tag that is not listed is drawn, and an attribute, a script, an address and a picture that is not the logo are not in the file',
+	$pages( $held ) === 2 && str_contains( $content( $held, 1 ), '(Held text) Tj' ) === true && preg_match( '/onclick|alert|hidden|example\.com|<font/', $held ) === 0 && str_contains( $held, '/Subtype /Image' ) === false );
+
+$post( 'pdf/layout/save', [ 'format' => 'a4', 'margins' => [ 20, 20, 20, 20 ], 'font' => 'helvetica', 'size' => 10, 'header' => '<p>Head [[page]]</p>', 'footer' => '<p>Page [[page]] / [[pages]]</p>' ] );
+$framed = (string) Pdf::render( $appData, 'invoice-b', [], [ 'append' => $record ] );
+$longer = (string) Pdf::render( $appData, 'invoice-b', [], [ 'append' => '<p>'. str_repeat( 'word ', 1500 ). '</p>' ] );
+check( '...the appended page has the header and the footer of the layout and [[pages]] counts it: page 2 of 2; a part longer than a page goes on to the next, and the last of three says 3 of 3',
+	str_contains( $content( $framed, 0 ), '(Page 1 / 2) Tj' ) === true && str_contains( $content( $framed, 1 ), '(Page 2 / 2) Tj' ) === true && str_contains( $content( $framed, 1 ), '(Head 2) Tj' ) === true
+	&& $pages( $longer ) === 3 && str_contains( $content( $longer, 2 ), '(Page 3 / 3) Tj' ) === true );
+$post( 'pdf/layout/save', [ 'format' => 'a4', 'margins' => [ 20, 20, 20, 20 ], 'font' => 'helvetica', 'size' => 10, 'header' => '', 'footer' => '' ] );
+
+// The fields belong to the pages of the template: the last page is the last before the appended one
+$field = static fn( string $name, int|string $page, string $label = '' ): array => [ 'type' => 'signature', 'name' => $name, 'party' => 'member', 'label' => $label, 'page' => $page, 'x' => 20, 'y' => 200, 'w' => 60, 'h' => 20, 'line' => false ];
+$post( 'pdf/templates/save', [ 'key' => 'append-seal', 'isNew' => true, 'name' => 'Append seal', 'tag' => 'offer', 'blocks' => [ [ 'type' => 'html', 'block' => 'intro' ], $field( 'seal', 'last' ), $field( 'later', 2 ) ] ] );
+$sealed = (string) Pdf::render( $appData, 'append-seal', [], [ 'signatures' => [ 'seal' => $picture( 'png', 20, 40 ), 'later' => $picture( 'png', 20, 40 ) ], 'append' => $record ] );
+check( 'a field on the last page stays on the last page of the template and not on the appended one, and a field on a page past the template is not drawn on the appended page: the picture is on the first of the two pages only',
+	$pages( $sealed ) === 2 && str_contains( $object( $sealed, $pageObjects( $sealed )[0] ), '/XObject <<' ) === true && str_contains( $object( $sealed, $pageObjects( $sealed )[1] ), '/XObject' ) === false
+	&& str_contains( $content( $sealed, 1 ), ' Do Q' ) === false && str_contains( $content( $sealed, 0 ), ' Do Q' ) === true && substr_count( $content( $sealed, 0 ), ' Do Q' ) === 1 );
+
+check( '...a template with text keeps it on its own page and the part comes on the one after: the text of the template is on the first page and not on the second, the part on the second and not on the first',
+	str_contains( $content( $sealed, 0 ), 'Hello' ) === true && str_contains( $content( $sealed, 0 ), 'Appended' ) === false && str_contains( $content( $sealed, 1 ), 'Appended' ) === true && str_contains( $content( $sealed, 1 ), 'Hello' ) === false );
+
+$post( 'pdf/templates/save', [ 'key' => 'append-empty', 'isNew' => true, 'name' => 'Append empty', 'tag' => 'offer', 'blocks' => [ $field( 'seal', 'last', 'The seal' ) ] ] );
+$emptied = (string) Pdf::render( $appData, 'append-empty', [], [ 'append' => $record ] );
+check( '...a template with no text has its page all the same - the part is the second, not the first', $pages( $emptied ) === 2 && str_contains( $content( $emptied, 0 ), '(The seal) Tj' ) === true
+	&& str_contains( $content( $emptied, 1 ), '(Appended text of the caller) Tj' ) === true && $pages( (string) Pdf::render( $appData, 'append-empty' ) ) === 1 );
+
+$post( 'pdf/templates/save', [ 'key' => 'append-end', 'isNew' => true, 'name' => 'Append end', 'tag' => 'offer', 'blocks' => [ [ 'type' => 'html', 'block' => 'intro' ], [ 'type' => 'pagebreak' ] ] ] );
+check( '...and a template that ends in a page break adds no page of its own before the part: the part is the second page, not the third', $pages( (string) Pdf::render( $appData, 'append-end' ) ) === 1
+	&& $pages( (string) Pdf::render( $appData, 'append-end', [], [ 'append' => $record ] ) ) === 2 );
+if( $pdftotext === true )
+	check( '...and pdftotext reads the part on the last page, after the text of the template', preg_match( '/Appended record\s+Appended text of the caller/', $words( $appended, '-f 2 -l 2' ) ) === 1 && str_contains( $words( $appended, '-f 1 -l 1' ), 'Appended' ) === false );
+
+foreach( [ 'append-seal', 'append-empty', 'append-end' ] as $key )
+	$post( 'pdf/templates/delete', [ 'key' => $key ] );
 
 // --- the blob frame -----------------------------------------------------------------------------------------------
 

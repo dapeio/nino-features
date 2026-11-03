@@ -146,7 +146,11 @@ namespace Nino\Modules {
 		 *	\Nino\Modules\Pdf\Layout\Allow when the document is laid out, as a text a person saved is),
 		 *	inputs (name => text, what an input block holds). $options: signatures (name => the bytes
 		 *	of a PNG or JPEG or the absolute path of one, drawn in the box of the signature block of that
-		 *	name), title, date (Y-m-d: the only date the file names).
+		 *	name), title, date (Y-m-d: the only date the file names), append (HTML, held to the list of
+		 *	\Nino\Modules\Pdf\Layout\Allow like a slot: laid out after the last block on a page of its
+		 *	own, with the header and the footer of the layout, and counted by [[pages]]; the signature
+		 *	fields stay on the pages of the template - the last page is the last before it - and
+		 *	nothing is added where it is empty or holds nothing to draw).
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$template			The key of a template
@@ -445,6 +449,10 @@ namespace Nino\Modules {
 			if( $preview === true && array_filter( $parts, static fn( array $part ): bool => $part['k'] !== 'break' ) === [] )
 				$parts[] = [ 'k' => 'html', 'html' => \Nino\Feature::template( $appData, '/features/Pdf/templates', 'preview-sample' ) ];
 
+			// The part a caller appends: its own page after the last block, whatever the blocks were
+			if( is_string( $options['append'] ?? null ) === true && trim( $options['append'] ) !== '' )
+				$parts[] = [ 'k' => 'append', 'html' => $options['append'] ];
+
 			$date = is_string( $options['date'] ?? null ) === true ? $options['date'] : '';
 			$parsed = $date === '' ? false : \DateTimeImmutable::createFromFormat( '!Y-m-d', $date );
 			$date = $parsed !== false && $parsed->format( 'Y-m-d' ) === $date ? $date : '';
@@ -461,7 +469,7 @@ namespace Nino\Modules {
 					break;
 				}
 
-			$document = new Document( self::_producer( $appData ), is_string( $options['title'] ?? null ) === true ? $options['title'] : '', $date );
+			$document = new Document( self::_producer(), is_string( $options['title'] ?? null ) === true ? $options['title'] : '', $date );
 
 			( new Engine( $document, $layout, $logo ) )->run( $parts, $header, $footer, $fields );
 
@@ -492,17 +500,14 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The /Producer of a file: the framework, the feature and the version its manifest says
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	The /Producer of a file: the framework and the feature, with no version - a file made again after an update
+		 *	of the feature is the same bytes as before it, so that a document kept with its hash can be checked
 		 *
 		 *	@return 	string
 		 */
-		private static function _producer( array &$appData ): string {
+		private static function _producer(): string {
 
-			$feature = \Nino\Features::get( $appData, self::KEY );
-
-			return $feature === null ? 'Nino PDF' : 'Nino '. \Nino\Features::localized( $feature['name'], 'en_US' ). ' '. $feature['version'];
+			return 'Nino PDF';
 		}
 	}
 }

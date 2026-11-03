@@ -38,7 +38,11 @@ namespace Nino\Modules\Pdf\Layout {
 	 *										the document has all its pages and [[page]] and [[pages]] can be
 	 *										filled in. The fields - a signature box at x, y, w and h in
 	 *										millimetres from the top-left corner of the paper, on a page or the
-	 *										last - are drawn last and by position alone.
+	 *										last - are drawn last and by position alone. A part handed in to be
+	 *										appended is laid out after the last block on a page of its own, with
+	 *										the header and the footer like any other page; the last page of a
+	 *										field is the template's, the one before it, and the fields lie on the
+	 *										template's pages only.
 	 *
 	 *										An item is what the engine draws, a positional array: r (a run of
 	 *										text: x, baseline, font, size, bytes, underlined, width), i (a
@@ -69,6 +73,9 @@ namespace Nino\Modules\Pdf\Layout {
 		private bool $_fresh = true;
 		private bool $_break = false;
 
+		// How many pages are the template's own: the pages before an appended part, 0 until there is one
+		private int $_body = 0;
+
 		// The column: where the text starts and stops on every page
 		private float $_left = 0.0;
 		private float $_width = 0.0;
@@ -88,7 +95,7 @@ namespace Nino\Modules\Pdf\Layout {
 		/**
 		 *	Set a whole document
 		 *
-		 *	@param		array 		$parts					[ k => html, html ] | [ k => text, text, multiline ] | [ k => break ] | [ k => mark ] - the place of a field on the last page
+		 *	@param		array 		$parts					[ k => html, html ] | [ k => text, text, multiline ] | [ k => break ] | [ k => mark ] - the place of a field on the last page | [ k => append, html ] - laid out on a page of its own after the others
 		 *	@param		string		$header					The header HTML, [[page]] and [[pages]] still in it
 		 *	@param		string		$footer					The footer HTML
 		 *	@param		array 		$fields					[ page (last or a number), x, y, w, h (mm), line, label, image (Image|null) ]
@@ -130,12 +137,34 @@ namespace Nino\Modules\Pdf\Layout {
 					continue;
 				}
 
+				// The appended part begins a page of its own, after whatever the template set - an empty page of the template
+				// included - and the pages before it are the template's: its fields end there. Nothing to set is no page. A page
+				// break of the template that is still waiting is spent by the first block, which stands on a fresh page
+				if( $part['k'] === 'append' ) {
+
+					$blocks = Html::blocks( $part['html'], $this->_base(), $this->_logo, $this->_width );
+
+					if( $blocks === [] )
+						continue;
+
+					$this->_body = $this->_doc->pages();
+					$this->newPage();
+
+					foreach( $blocks as $block )
+						$this->_flow( $block );
+
+					continue;
+				}
+
 				foreach( $part['k'] === 'html' ? Html::blocks( $part['html'], $this->_base(), $this->_logo, $this->_width ) : [ $this->_typed( $part['text'], $part['multiline'] ) ] as $block )
 					if( $block !== null )
 						$this->_flow( $block );
 			}
 
 			$pages = $this->_doc->pages();
+
+			// Without an appended part every page is the template's
+			$this->_body = $this->_body === 0 ? $pages : $this->_body;
 
 			for( $page = 0; $page < $pages; $page++ ) {
 
@@ -543,7 +572,7 @@ namespace Nino\Modules\Pdf\Layout {
 		 */
 		private function _fields( array $fields ): void {
 
-			$pages = $this->_doc->pages();
+			$pages = $this->_body;
 			$base = $this->_base();
 
 			foreach( $fields as $field ) {
