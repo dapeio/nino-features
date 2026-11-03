@@ -6,7 +6,8 @@ bundles no third-party library, but its features draw icons from one: the
 the Builder's panel (`features/Builder/templates/panel.tpl`), the `ICONS` of
 Design's panel script (`features/Design/assets/admin.js`) and the `icon` of every
 component a manifest declares (`features/*/feature.php`) carry the geometry of inline SVG icons
-from [Lucide](https://lucide.dev). Lucide is released under the ISC License; the
+from [Lucide](https://lucide.dev), but for `tracking` in that script, which is drawn
+for the panel and is the catalogue's own. Lucide is released under the ISC License; the
 icons it took over from Feather, the project it grew out of, are under the
 MIT License as well. Both licenses ask for their notice to travel with every
 copy of the icons, and this file is where it does. The one other thing the

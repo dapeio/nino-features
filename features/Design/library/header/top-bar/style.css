@@ -14,6 +14,9 @@
  *	@knob	cta		Visibility and size of the button of the header
  *	@knob	behaviour	What the bar does when the page is scrolled
  *
+ *	@style		nav-hover	Hover of the links
+ *	@style-de	nav-hover	Hover der Links
+ *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
@@ -44,6 +47,12 @@
  *	(--header-behaviour), and beside them stand the greatest height the bar has once the
  *	page is scrolled down (-collapse), a factor on what it keeps there (-keep) and a factor
  *	on the room main leaves under it (-clear): a bar that goes with the page needs none.
+ *
+ *	The style, nav-hover, is the hover of the links of the navigation from 768 px.
+ *	None leaves what this set draws: the line that grows under a link. Fade and Pill,
+ *	the files nav-hover-fade.css and nav-hover-pill.css beside this one, replace that
+ *	line - the others dim in the first, a pill stands behind the link in the second -
+ *	and read the roles of the bar, so they follow its ground.
  */
 
 :root {

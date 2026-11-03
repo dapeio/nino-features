@@ -1,0 +1,178 @@
+/*	@name			Soft
+ *	@description	Every filled button is a wash of its colour with the words in that colour, and has no line. The outline stays an outline.
+ *	@description-de	Jeder gefüllte Button ist eine Tönung seiner Farbe mit der Schrift in dieser Farbe und ohne Linie. Der Outline-Button bleibt ein Outline.
+ *
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
+ *	@knob	tracking	Letter-spacing of the label
+ *	@knob	space		Space around the label
+ *	@knob	corners		Corner radius
+ *	@knob	outline		Weight of the line of the outline button
+ *	@knob	hover		What a button does under the pointer
+ *
+ *	The primary, the brand-alt, the light and the dark button give up their fill for a
+ *	wash of their colour, 14 % of it over whatever the button stands on, and 26 % under
+ *	the pointer or the keyboard focus, which is the answer this set gives where the
+ *	framework dims the two brand buttons: the opacity stays whole here. The words are
+ *	taken toward the ink of the ground the button stands on, so that they are read on
+ *	their own wash and on the stronger one: 70 % of the brand as ink, the role the
+ *	palette solved for that ground, for the primary and the brand-alt button, and the
+ *	ink itself for the light and the dark one. The light button is washed with the
+ *	black of the palette, 8 %, which darkens a ground whose ink is light, and the dark
+ *	button with the dark ground of the palette. The line the framework draws round them
+ *	is kept, as a transparent one, so that every button is the box of the outline beside
+ *	it. The outline button is not a filled one and stays what it is: the line in the
+ *	accent of the ground, and the ground the framework gives it under the pointer. A
+ *	button that is off is the framework's, with the ground and the ink of a thing that
+ *	is off.
+ *
+ *	The ladders are Nino's, value for value - buttons regular says what each of them
+ *	is. The outline moves the line of the outline button alone, the one line this set
+ *	draws.
+ *
+ *	The hover is a choice of three, as in regular: nothing, which is also the middle, since
+ *	the stronger wash is what this set does under the pointer by itself and stays at
+ *	every position, and lifted: a rise of one pixel with a shadow under it, where
+ *	the visitor has not asked for less motion. The outline casts no shadow. The wash is
+ *	a change of colour, not of place, and is there under reduced motion as well.
+ */
+
+/*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
+:root {
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
+
+	--buttons-spread--least: 		.1;
+	--buttons-spread--less: 		.2;
+	--buttons-spread--default: 	.3;
+	--buttons-spread--more: 		.4;
+	--buttons-spread--most: 		.5;
+
+	--buttons-tracking--least: 		-.02em;
+	--buttons-tracking--less: 			-.01em;
+	--buttons-tracking--default: 	0em;
+	--buttons-tracking--more: 			.05em;
+	--buttons-tracking--most: 			.1em;
+
+	--buttons-space--least: 		calc( var(--space-1) * .5 );
+	--buttons-space--less: 			var(--space-1);
+	--buttons-space--default: var(--space-2);
+	--buttons-space--more: 			var(--space-3);
+	--buttons-space--most: 			var(--space-4);
+
+	--buttons-corners--least: 		0rem;
+	--buttons-corners--less: 		var(--radius-small);
+	--buttons-corners--default: var(--radius);
+	--buttons-corners--more: 		var(--radius-large);
+	--buttons-corners--most: 		999rem;
+
+	--buttons-outline--least: 		0px;
+	--buttons-outline--less: 			.5px;
+	--buttons-outline--default: 	1px;
+	--buttons-outline--more: 			2px;
+	--buttons-outline--most: 			3px;
+
+	/*	The rise and the shadow under it, as regular says; this set casts none at rest	*/
+	--buttons-hover--less: 		none;
+	--buttons-hover--default: 	none;
+	--buttons-hover--more: 		0 -1px;
+
+	--buttons-hover-shadow--less: 		none;
+	--buttons-hover-shadow--default: 	none;
+	--buttons-hover-shadow--more: 		0 .25rem .5rem var(--nino-default-shadow);
+}
+
+.nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
+}
+.nino-btn {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
+	letter-spacing: var(--buttons-tracking);
+}
+.nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+}
+.nino-btn--small {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+}
+.nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+.nino-btn--big {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+
+/*	The line of the outline button, times the size	*/
+.nino-btn--outline {
+	border-width: calc( var(--buttons-outline) * var(--buttons-size) );
+}
+
+/*	The wash. The framework's line stays as a transparent one. The words are the colour of the button toward the ink
+	of the ground, which is the role of that ground, and so are the brand as ink and the black of the palette: the
+	light button is washed with that black and not with the ink, which on a ground with a light ink would lighten
+	the ground its words are read on	*/
+.nino-btn--primary,
+.nino-btn--brand-alt,
+.nino-btn--light,
+.nino-btn--dark {
+	border-color: transparent;
+}
+.nino-btn--primary {
+	background-color: color-mix( in srgb, var(--color-primary) 14%, transparent );
+	color: color-mix( in srgb, var(--color-accent) 70%, var(--color-ink) );
+}
+.nino-btn--brand-alt {
+	background-color: color-mix( in srgb, var(--color-brand-alt) 14%, transparent );
+	color: color-mix( in srgb, var(--color-accent) 70%, var(--color-ink) );
+}
+.nino-btn--light {
+	background-color: color-mix( in srgb, var(--color-section-black-bg) 8%, transparent );
+	color: var(--color-ink);
+}
+.nino-btn--dark {
+	background-color: color-mix( in srgb, var(--color-section-dark-bg) 14%, transparent );
+	color: var(--color-ink);
+}
+
+/*	The stronger wash under the pointer and the keyboard focus, which the framework answers with a ground of its own (the
+	light and the dark button) or with a dimming (the two brand buttons, not while the keyboard has them: their ring is
+	never dimmed). Here the wash is the answer, and the opacity is whole. Not for a button that is off	*/
+.nino-btn--primary:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus-visible) {
+	background-color: color-mix( in srgb, var(--color-primary) 26%, transparent );
+	opacity: 1;
+}
+.nino-btn--brand-alt:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus-visible) {
+	background-color: color-mix( in srgb, var(--color-brand-alt) 26%, transparent );
+	opacity: 1;
+}
+.nino-btn--light:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+	background-color: color-mix( in srgb, var(--color-section-black-bg) 16%, transparent );
+	color: var(--color-ink);
+}
+.nino-btn--dark:where(:not(:disabled, [aria-disabled="true"])):is(:hover, :focus) {
+	background-color: color-mix( in srgb, var(--color-section-dark-bg) 26%, transparent );
+	color: var(--color-ink);
+}
+
+/*	The hover, as the ladder says it - regular says where it does not apply. The outline casts no
+	shadow. The transition adds the transform and the filter of the viewport animation, with the
+	time and the easing Nino.css gives them (the easing is written out, Nino.css names no custom
+	property for it), to the framework's list: the opacity keeps the .3s of the framework, so
+	that a button hovered while it arrives goes on arriving	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
+		translate: var(--buttons-hover);
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease,
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
+	}
+	.nino-btn:where(:not(.nino-btn--outline, :focus-visible, :disabled, [aria-disabled="true"])):hover {
+		box-shadow: var(--buttons-hover-shadow);
+	}
+}

@@ -1,0 +1,351 @@
+/*	@name				Stacked
+ *	@description	The logo in the middle over a row with the links, from 768 px; below it a bar as Regular has it.
+ *	@description-de	Das Logo mittig über einer Zeile mit den Links, ab 768 px; darunter eine Leiste wie bei Regular.
+ *
+ *	@knob	nav		Size of the links of the navigation
+ *	@knob	height		How tall the bar is
+ *	@knob	space		Space between the logo, the links and the edges
+ *	@knob	logo		Width of the logo
+ *	@knob	ground		What the bar stands on
+ *	@knob	border-size	Width of the border
+ *	@knob	border-color	Colour of the border
+ *	@knob	shadow		Shadow of the bar
+ *	@knob	position	Where the navigation stands
+ *	@knob	cta		Visibility and size of the button of the header
+ *	@knob	behaviour	What the bar does when the page is scrolled
+ *
+ *	@style		nav-hover	Hover of the links
+ *	@style-de	nav-hover	Hover der Links
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ *
+ *	The eleven knobs are ladders, declared below, the middle of each this set as it
+ *	stands: nav is a factor on the size of the links of the
+ *	navigation, height the height of the bar - and of the room main leaves under
+ *	it -, space a factor on the gaps between the logo, the links and the edges,
+ *	and ground a choice of three: the ground and the ink of the page, this set's
+ *	own, and the dark pair of the palette. What the text, the icons, the links and
+ *	the lines of the bar are read in comes with it, as aspects of the ground
+ *	(--header-ground-ink, -title, -accent, -focus, -border, -logo-light and -logo-dark), and is put on the
+ *	header as the roles Nino.css reads - so the bar is legible on each of the
+ *	three. The menu that opens over the page is the page's again, as in Nino.css.
+ *
+ *	The other four: border-size is the width of the border the bar has, border-color a
+ *	choice of three for its colour - the ink of its ground, the border of its ground and the
+ *	brand -, position a choice of three for where the navigation stands - left, centre or
+ *	right of the bar - and cta a choice of three for the button of the header - hidden,
+ *	small, or as large as a button is. The button is scaled by --header-cta-scale, the
+ *	factor its font, its padding and its corners are drawn with.
+ *
+ *	logo is a factor on the width of the logo, and shadow the shadow the bar casts on the
+ *	page: none at the middle, a soft one and a strong one beyond it, in the palette's colour
+ *	for a shadow. behaviour is a choice of three for what the bar does when the page is
+ *	scrolled: it goes with the page, it is fixed and folds away on the way down - as
+ *	Nino.css has it - or it is fixed and stays. Its rungs are the position of the header
+ *	(--header-behaviour), and beside them stand the greatest height the bar has once the page
+ *	is scrolled down (-collapse), a factor on the height it keeps there (-keep) and a factor
+ *	on the room main leaves under it (-clear): a bar that goes with the page needs none.
+ *
+ *	From 768 px the bar is two rows: the logo, centred, over the links, with the button
+ *	of the header at the right end of that row; position is the alignment of the links.
+ *	At the middle the row is three columns, the outer two of one width, so that the links
+ *	are in the middle of the bar whatever the button is; at the other two positions it
+ *	is two, with no empty cell. The height is that of both rows, 7 rem at the middle;
+ *	what a taller logo or a second row adds past it, the kernel adds to the room main
+ *	leaves. Below 768 px it is a bar as Regular has it.
+ *
+ *	The style, nav-hover, is the hover of the links of the navigation from 768 px.
+ *	None leaves what this set draws: the line that grows under a link. Fade and Pill,
+ *	the files nav-hover-fade.css and nav-hover-pill.css beside this one, replace that
+ *	line - the others dim in the first, a pill stands behind the link in the second -
+ *	and read the roles of the bar, so they follow its ground.
+ */
+
+:root {
+	/*	The size of the links of the navigation, as a factor of the size this set sets them in	*/
+	--header-nav--least:	.85;
+	--header-nav--less:	.92;
+	--header-nav--default:	1;
+	--header-nav--more:	1.1;
+	--header-nav--most:	1.2;
+
+	/*	The height of the bar, once: the bar is that tall, and main, which the fixed
+			header would cover, starts below it. The middle is five rem, and from 768 px,
+			where the bar is two rows, seven (see the end of the file)	*/
+	--header-height--least:	calc( 5rem * .7 );
+	--header-height--less:	calc( 5rem * .85 );
+	--header-height--default:	5rem;
+	--header-height--more:	calc( 5rem * 1.25 );
+	--header-height--most:	calc( 5rem * 1.5 );
+
+	/*	The gaps between the logo, the links and the edges, as a factor of what this set has	*/
+	--header-space--least:	.5;
+	--header-space--less:	.75;
+	--header-space--default:	1;
+	--header-space--more:	1.5;
+	--header-space--most:	2;
+
+	/*	The width of the logo, as a factor of the width this set gives it	*/
+	--header-logo--least:	.7;
+	--header-logo--less:	.85;
+	--header-logo--default:	1;
+	--header-logo--more:	1.25;
+	--header-logo--most:	1.5;
+
+	/*	What the bar stands on: the ground of the page, this set's own, the dark pair of the palette	*/
+	--header-ground--less:	var(--color-background);
+	--header-ground--default:	var(--color-background);
+	--header-ground--more:	var(--color-section-dark-bg);
+
+	/*	The ink of the text on it	*/
+	--header-ground-ink--less:	var(--color-text);
+	--header-ground-ink--default:	var(--color-text);
+	--header-ground-ink--more:	var(--color-section-dark-text);
+
+	/*	The title role, which the icon of the menu is drawn in	*/
+	--header-ground-title--less:	var(--color-title);
+	--header-ground-title--default:	var(--color-title);
+	--header-ground-title--more:	var(--color-section-dark-text);
+
+	/*	The accent role: the link that is current	*/
+	--header-ground-accent--less:	var(--color-accent);
+	--header-ground-accent--default:	var(--color-accent);
+	--header-ground-accent--more:	var(--color-accent-dark);
+
+	/*	The ring of the focus	*/
+	--header-ground-focus--less:	var(--color-focus);
+	--header-ground-focus--default:	var(--color-focus);
+	--header-ground-focus--more:	var(--color-focus-dark);
+
+	/*	The line under it	*/
+	--header-ground-border--less:	var(--color-border);
+	--header-ground-border--default:	var(--color-border);
+	--header-ground-border--more:	var(--color-border-dark);
+
+	/*	Which picture of the logo is seen: the one for a light ground or the one for a dark ground, as the pair of the ground says it - the page's, this set's own, the dark pair of the palette	*/
+	--header-ground-logo-light--less:	var(--color-logo-light);
+	--header-ground-logo-light--default:	var(--color-logo-light);
+	--header-ground-logo-light--more:	var(--color-section-dark-logo-light);
+	--header-ground-logo-dark--less:	var(--color-logo-dark);
+	--header-ground-logo-dark--default:	var(--color-logo-dark);
+	--header-ground-logo-dark--more:	var(--color-section-dark-logo-dark);
+
+	--header-border-size--least:	0;
+	--header-border-size--less:	.5px;
+	--header-border-size--default: 1px;
+	--header-border-size--more:	2px;
+	--header-border-size--most:	6px;
+
+	--header-border-color--less:	var(--header-ground-ink);
+	--header-border-color--default:	var(--header-ground-border);
+	--header-border-color--more:	var(--color-primary);
+
+	/*	The shadow the bar casts on the page: none at the middle - this set casts none of its own - a soft one and a strong one beyond it, in the palette's colour for a shadow	*/
+	--header-shadow--least:	none;
+	--header-shadow--less:	none;
+	--header-shadow--default:	none;
+	--header-shadow--more:	0 .5rem 1.5rem var(--nino-default-shadow);
+	--header-shadow--most:	0 .75rem 2rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
+
+	--header-position--less: 0 auto 0 0;
+	--header-position--default: 0 auto;
+	--header-position--more: 0 0 0 auto;
+
+	--header-position-cta--less: 0;
+	--header-position-cta--default: clamp(7rem, 9vw, 9rem);
+	--header-position-cta--more: 0;
+
+	/*	The columns of the row of the links from 768 px and what stands in them: at the middle the links between two columns of
+		one width, at the other two positions the links and the button	*/
+	--header-position-columns--less: minmax(0, 1fr) auto;
+	--header-position-columns--default: minmax(auto, 1fr) auto minmax(auto, 1fr);
+	--header-position-columns--more: minmax(0, 1fr) auto;
+
+	--header-position-areas--less: "logo logo" "nav cta";
+	--header-position-areas--default: "logo logo logo" ". nav cta";
+	--header-position-areas--more: "logo logo" "nav cta";
+
+	--header-cta--less: none;
+	--header-cta--default: block;
+	--header-cta--more: block;
+
+	--header-cta-scale--less: .7;
+	--header-cta-scale--default: .7;
+	--header-cta-scale--more: 1;
+
+	/*	What the bar does when the page is scrolled: it goes with the page, it is fixed and folds away on the way down - as Nino.css has it - or it is fixed and stays. The rung is the position of the header; beside it stand what follows from it: the greatest height of the bar once the page is scrolled down, how much of its height it keeps there (a factor, 0 being folded) and a factor on the room main leaves under it, which a bar in the flow of the page needs none of	*/
+	--header-behaviour--less:	relative;
+	--header-behaviour--default:	fixed;
+	--header-behaviour--more:	fixed;
+	--header-behaviour-collapse--less:	none;
+	--header-behaviour-collapse--default:	0;
+	--header-behaviour-collapse--more:	none;
+	--header-behaviour-keep--less:	1;
+	--header-behaviour-keep--default:	0;
+	--header-behaviour-keep--more:	1;
+	--header-behaviour-clear--less:	0;
+	--header-behaviour-clear--default:	1;
+	--header-behaviour-clear--more:	1;
+}
+
+@media (min-width: 768px) {
+	:root {
+		--header-height--least:	calc( 7rem * .7 );
+		--header-height--less:	calc( 7rem * .85 );
+		--header-height--default:	7rem;
+		--header-height--more:	calc( 7rem * 1.25 );
+		--header-height--most:	calc( 7rem * 1.5 );
+	}
+}
+
+.nino-frame-header {
+	position: var(--header-behaviour);
+	border-bottom: solid var(--header-border-color) var(--header-border-size);
+	--color-title: var(--header-ground-title);
+	--color-accent: var(--header-ground-accent);
+	--color-focus: var(--header-ground-focus);
+	--color-border: var(--header-ground-border);
+	--logo-light: var(--header-ground-logo-light);
+	--logo-dark: var(--header-ground-logo-dark);
+}
+
+.nino-frame-header .nino-grid-row {
+	padding-right: calc( var(--grid-gutter) * var(--header-space) );
+	padding-left: calc( var(--grid-gutter) * var(--header-space) );
+}
+
+.nino-frame-header .nino-scroll-header {
+	min-height: var(--header-height);
+	opacity: 1;
+	color: var(--header-ground-ink);
+	background-color: var(--header-ground);
+	box-shadow: var(--header-shadow);
+	display: flex;
+}
+
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
+	background-color: var(--header-ground);
+}
+
+/*	What Nino.css folds away on the way down - the bar's height, its room and its line - this set takes back, or says again, as the behaviour has it. One rule more specific than the kernel's, with the same exception: not while the focus is in the bar	*/
+body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:focus-visible))) {
+	max-height: var(--header-behaviour-collapse);
+	min-height: calc( var(--header-height) * var(--header-behaviour-keep) );
+}
+
+.nino-frame-header .nino-logo {
+	width: calc( clamp(7.5rem, 10vw, 10rem) * var(--header-logo) );
+	height: auto;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	background-image: none;
+}
+.nino-frame-header-cta {
+	display: var(--header-cta);
+	min-width: var(--header-position-cta);
+}
+.nino-frame-header-cta a {
+	display: block;
+	font-size: calc( var(--font-button-size) * var(--header-cta-scale) );
+	padding: calc( var(--space-1) * var(--header-cta-scale) ) calc( var(--space-2) * var(--header-cta-scale) );
+	border-radius: calc( var(--radius) * var(--header-cta-scale) );
+}
+
+.nino-frame-header .nino-frame-header-nav {
+	margin: var(--header-position);
+}
+
+.nino-frame-header .nino-nav-burger > button > svg {
+	fill: var(--color-title);
+}
+
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
+	fill: var(--color-title-default);
+}
+
+
+body main {
+	padding-top: calc( ( var(--header-height) + var(--nino-header-grow, 0px) ) * var(--header-behaviour-clear) );
+}
+
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-wrap > .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child),
+body main:has(> .nino-wrap > .nino-parallex:first-child) {
+	padding-top: 0;
+}
+
+@media (min-width: 768px) {
+	/*	Two rows: the logo over a row of the links and the button. The columns and what stands in them are the position's
+		(see the ladder): the room between the cells is the button's own margin, so that a button that is hidden leaves none	*/
+	.nino-frame-header .nino-grid-100 {
+		display: grid;
+		grid-template-columns: var(--header-position-columns);
+		grid-template-areas: var(--header-position-areas);
+		align-items: center;
+		justify-items: stretch;
+		padding-block: calc( var(--space-1) * var(--header-space) );
+		row-gap: calc( var(--space-1) * var(--header-space) );
+		column-gap: 0;
+	}
+
+	.nino-frame-header .nino-logo {
+		grid-area: logo;
+		justify-self: center;
+	}
+
+	.nino-frame-header .nino-frame-header-nav {
+		grid-area: nav;
+	}
+
+	.nino-frame-header .nino-frame-header-cta {
+		grid-area: cta;
+		justify-self: end;
+		min-width: 0;
+		margin-left: calc( var(--space-2) * var(--header-space) );
+	}
+
+	.nino-frame-header .nino-frame-header-cta a {
+		white-space: nowrap;
+	}
+
+	.nino-frame-header .nino-nav-content li a {
+		position: relative;
+		padding: calc( var(--space-1) * var(--header-space) );
+		font-size: calc( var(--fontsize-btn) * var(--header-nav) );
+		letter-spacing: .04em;
+	}
+
+	.nino-frame-header .nino-nav-content ul {
+		gap: calc( var(--space-2) * var(--header-space) );
+	}
+
+	.nino-frame-header .nino-nav-content li a::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: 100%;
+		height: 2px;
+		background-color: var(--color-secondary);
+		transform: scaleX(0);
+		transform-origin: right;
+		transition: transform .2s ease;
+	}
+
+	.nino-frame-header .nino-nav-content li a:hover::after,
+	.nino-frame-header .nino-nav-content li a:focus::after,
+	.nino-frame-header .nino-nav-content li a.nino-is-active::after {
+		transform: scaleX(1);
+		transform-origin: left;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-nav-content li a::after {
+		transition: none;
+	}
+}

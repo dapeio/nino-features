@@ -1,0 +1,127 @@
+/*	@name			Hard
+ *	@description	A 2px line in the ink and a hard shadow offset to the lower right, which the button sinks into when it is pressed.
+ *	@description-de	Eine 2-px-Linie in der Tinte und ein harter Schatten nach rechts unten, in den der Button beim Drücken einsinkt.
+ *
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
+ *	@knob	tracking	Letter-spacing of the label
+ *	@knob	space		Space around the label
+ *	@knob	corners		Corner radius
+ *	@knob	hover		What a button does under the pointer
+ *
+ *	Every variant is drawn with a line of 2px in the ink of the ground it stands on and a
+ *	shadow of the same ink, a quarter of a rem to the right and down with no blur, and
+ *	keeps the fill and the words the framework gives it. The line is the construction, so
+ *	the outline knob has nothing to move here, and the panel greys it. The corners are
+ *	the knob's, and the shadow follows them. Pressed (:active) the button moves by the
+ *	offset of the shadow and casts none, so that it lies where its shadow was; a button
+ *	that is off casts none and does not move. The press stays under reduced motion: it
+ *	answers an action of the visitor and, with no transition there, is a jump and no
+ *	animation. The ring of the focus is the framework's and stays, the second line on
+ *	a picture included.
+ *
+ *	The ladders are Nino's, value for value - buttons regular says what each of them is.
+ *
+ *	The hover is a choice of three, as in regular: nothing, which is also the middle, since the
+ *	framework's own answer to the pointer stays at every position, and lifted: a rise of one
+ *	pixel, and the shadow grows from a quarter to three eighths of a rem - the lift of this
+ *	set is its shadow - where the visitor has not asked for less motion. The ladder of the
+ *	shadow holds the offset alone, the ink is the one of the ground the button stands on and
+ *	is read where the button is, which a role in a ladder on :root would not be.
+ */
+
+/*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
+:root {
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
+
+	--buttons-spread--least: 		.1;
+	--buttons-spread--less: 		.2;
+	--buttons-spread--default: 	.3;
+	--buttons-spread--more: 		.4;
+	--buttons-spread--most: 		.5;
+
+	--buttons-tracking--least: 		-.02em;
+	--buttons-tracking--less: 			-.01em;
+	--buttons-tracking--default: 	0em;
+	--buttons-tracking--more: 			.05em;
+	--buttons-tracking--most: 			.1em;
+
+	--buttons-space--least: 		calc( var(--space-1) * .5 );
+	--buttons-space--less: 			var(--space-1);
+	--buttons-space--default: var(--space-2);
+	--buttons-space--more: 			var(--space-3);
+	--buttons-space--most: 			var(--space-4);
+
+	--buttons-corners--least: 		0rem;
+	--buttons-corners--less: 		var(--radius-small);
+	--buttons-corners--default: var(--radius);
+	--buttons-corners--more: 		var(--radius-large);
+	--buttons-corners--most: 		999rem;
+
+	/*	The rise (a translate, which lies beside the transform of an animation) and the offset
+		of the shadow under it. The first two positions name the offset the button has at rest,
+		so that nothing changes under the pointer	*/
+	--buttons-hover--less: 		none;
+	--buttons-hover--default: 	none;
+	--buttons-hover--more: 		0 -1px;
+
+	--buttons-hover-shadow--less: 		.25rem .25rem 0;
+	--buttons-hover-shadow--default: 	.25rem .25rem 0;
+	--buttons-hover-shadow--more: 		.375rem .375rem 0;
+}
+
+.nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
+}
+.nino-btn {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
+	border: 2px solid var(--color-ink);
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
+	letter-spacing: var(--buttons-tracking);
+	box-shadow: .25rem .25rem 0 var(--color-ink);
+}
+.nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+}
+.nino-btn--small {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+}
+.nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+.nino-btn--big {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+
+/*	The hover, as the ladder says it - before the press, which is as specific and so comes last. Not for a button that
+	is off or that the keyboard has, whose ring is the framework's; the transition is the hover's own, the framework's
+	with the rise and the shadow added - and the transform and the filter of the viewport animation, with the time and
+	the easing Nino.css gives them (the easing is written out, Nino.css names no custom property for it): the opacity
+	keeps the .3s of the framework, and a button hovered while it arrives goes on arriving	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-btn:where(:not(:focus-visible, :disabled, [aria-disabled="true"])):hover {
+		translate: var(--buttons-hover);
+		box-shadow: var(--buttons-hover-shadow) var(--color-ink);
+		transition: background-color .2s ease, color .2s ease, border-color .2s ease, opacity .3s, translate .2s ease, box-shadow .2s ease,
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
+	}
+}
+
+/*	The press: the button moves by the offset of the shadow and casts none. Its own translate, so that the
+	transform of a viewport animation stays; and not for a button that is off	*/
+.nino-btn:active {
+	translate: .25rem .25rem;
+	box-shadow: none;
+}
+.nino-btn:disabled,
+.nino-btn[aria-disabled="true"] {
+	translate: none;
+	box-shadow: none;
+}

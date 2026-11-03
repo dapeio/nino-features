@@ -157,7 +157,9 @@
 			parts each of them is made of - an element and its attributes, in the order
 			the shape is given in. Built as elements rather than written as markup, the
 			way the rest of the panel is. The class of the svg carries the stroke and the
-			size (see .design-icon in admin.css)	*/
+			size (see .design-icon in admin.css). One is no Lucide's: tracking, the
+			letter-spacing of a button, is drawn for the panel in the same grid and
+			with the same stroke	*/
 		ICONS	: {
 			'a-large-small' : [
 				[ 'path', { d : 'm15 16 2.536-7.328a1.02 1.02 1 0 1 1.928 0L22 16' } ],
@@ -250,6 +252,14 @@
 				[ 'path', { d : 'M12 20v2' } ],
 				[ 'path', { d : 'm19 15 3-3-3-3' } ],
 				[ 'path', { d : 'm5 9-3 3 3 3' } ],
+			],
+			// The letter-spacing of the label of a button, drawn for the panel: the two edges of a box and the arrows of the space between them
+			'tracking' : [
+				[ 'path', { d : 'M3 4v16' } ],
+				[ 'path', { d : 'M21 4v16' } ],
+				[ 'path', { d : 'M7 12h10' } ],
+				[ 'path', { d : 'm10 9-3 3 3 3' } ],
+				[ 'path', { d : 'm14 9 3 3-3 3' } ],
 			],
 			'move-horizontal' : [
 				[ 'path', { d : 'm18 8 4 4-4 4' } ],
@@ -368,8 +378,10 @@
 			'card/align' : 'align-center',
 			'buttons/size' : 'a-large-small',
 			'buttons/spread' : 'chevrons-left-right',
+			'buttons/tracking' : 'tracking',
 			'buttons/space' : 'align-vertical-space-around',
 			'buttons/corners' : 'square-round-corner',
+			'buttons/outline' : 'minus',
 			'buttons/hover' : 'move-vertical',
 			'lists/scale' : 'a-large-small',
 			'lists/space' : 'align-vertical-space-around',

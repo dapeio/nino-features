@@ -1,0 +1,331 @@
+/*	@name			Tile
+ *	@description	A card with a picture is the picture, with its words on it at the foot, over a fade to black. A card with none is Regular's.
+ *	@description-de	Eine Karte mit Bild ist das Bild, mit ihren Worten am Fuß darauf, über einem Verlauf nach Schwarz. Eine Karte ohne Bild ist die von Regular.
+ *
+ *	@knob	title		Size of the title of a card
+ *	@knob	subtitle	Size of the subtitle of a card
+ *	@knob	title-tracking		Letter-spacing of the title of a card
+ *	@knob	space		Space inside a card and between its parts
+ *	@knob	border		Line round a card
+ *	@knob	shadow		Shadow of a card
+ *	@knob	tone		Colour the shadow is drawn in
+ *	@knob	title-ground		Ground behind the title of a card
+ *	@knob	hover		What a card does under the pointer
+ *	@knob	align				Where the words and the button of a card stand
+ *
+ *	A card that has a picture and the div of its content - what [card] draws - is a tile:
+ *	the picture is the ground, in a box of 4 : 5 with the corners of the card, and
+ *	the title, the subtitle, the text and the buttons stand at its foot, on the black ground
+ *	of the palette in its full strength, which fades out over the space above the words, in
+ *	the words of that ground: the roles of the black
+ *	surface are put on the content, as a section of that ground puts them, so that a
+ *	title, a ring, a link and a ground behind a title are the right ones on it. Picture and
+ *	content are both in the one cell of a grid, the content after the picture; the content has
+ *	a layer of its own, which is no containing block, so that the link a linked card stretches
+ *	over the whole card still does. A card that has no picture, or its words with no div round
+ *	them, or that lays its picture beside its words in columns (nino-card-cols), is drawn as
+ *	Regular draws it, and so is a ground a card without a picture names; with a picture, the
+ *	ground of a tile is the picture.
+ *
+ *	The ladders are Nino's, value for value - card regular says what each of them is. What
+ *	the construction reads of them is its own: the space is the padding of the content on
+ *	every side, three times that above it, where the fade begins; the line is drawn round the
+ *	whole tile and has none at the middle, from the position above it 1px and 2px, an aspect
+ *	of the border knob (--card-border-tile), as in Open; the cases of the title and of the
+ *	subtitle are the default template's alone.
+ *
+ *	The hover: a card that is a link rises and takes the shadow, as in Regular. And the picture
+ *	grows under the pointer, a gentle zoom of 4 %, the number the framework gives a picture
+ *	that asks for a hover: that is what the template does by itself, so the middle is the zoom,
+ *	nothing at the first position, and at the third the lift and the zoom. Only where the visitor
+ *	has not asked for less motion. The zoom is an aspect of the hover knob (--card-hover-zoom).
+ *
+ *	Copy this file under a name of your own and start there.
+ */
+
+/*	The ladders are Nino's, value for value - card regular says what each of them is	*/
+:root {
+	--card-title--least: 	calc(.8 * 5 / 6);
+	--card-title--less: 	calc(.9 * 5 / 6);
+	--card-title--default: 	calc(5 / 6);
+	--card-title--more: 	calc(1.15 * 5 / 6);
+	--card-title--most: 	calc(1.3 * 5 / 6);
+
+	--card-subtitle--least: 	.85;
+	--card-subtitle--less: 		.92;
+	--card-subtitle--default: 	1;
+	--card-subtitle--more: 		1.1;
+	--card-subtitle--most: 		1.2;
+
+	--card-title-tracking--least: 	-.03em;
+	--card-title-tracking--less: 		-.015em;
+	--card-title-tracking--default: 	0em;
+	--card-title-tracking--more: 		.04em;
+	--card-title-tracking--most: 		.1em;
+
+	--card-space--least: 		calc( var(--space-1) * .5 );
+	--card-space--less: 		var(--space-1);
+	--card-space--default: var(--space-2);
+	--card-space--more: 		var(--space-3);
+	--card-space--most: 		var(--space-4);
+
+	--card-border--least: 					0px;
+	--card-border--less: 					.5px;
+	--card-border--default: 				1px;
+	--card-border--more: 					2px;
+	--card-border--most: 					3px;
+
+	/*	The line round a tile, an aspect of the border knob: none up to the middle, where a picture
+		that runs to the edge of its card has none, and from the position above it 1px and 2px	*/
+	--card-border-tile--least: 		0px;
+	--card-border-tile--less: 			0px;
+	--card-border-tile--default: 	0px;
+	--card-border-tile--more: 			1px;
+	--card-border-tile--most: 			2px;
+
+	--card-shadow--least: 					none;
+	--card-shadow--less: 					none;
+	--card-shadow--default: 				none;
+	--card-shadow--more: 					0 .125rem .75rem var(--card-tone);
+	--card-shadow--most: 					0 .25rem 1.5rem var(--card-tone), 0 .0625rem .25rem var(--card-tone);
+
+	--card-tone--less: 			color-mix( in srgb, var(--color-text) 12%, transparent );
+	--card-tone--default: 	var(--nino-default-shadow);
+	--card-tone--more: 			color-mix( in srgb, var(--color-secondary) 30%, transparent );
+
+	--card-title-ground--less: 			12%;
+	--card-title-ground--default: 	0%;
+	--card-title-ground--more: 			100%;
+
+	--card-title-ground-ink--less: 		0%;
+	--card-title-ground-ink--default: 0%;
+	--card-title-ground-ink--more: 		100%;
+
+	--card-title-ground-fit--less: 		1;
+	--card-title-ground-fit--default: 0;
+	--card-title-ground-fit--more: 		1;
+
+	--card-title-ground-width--less: 		fit-content;
+	--card-title-ground-width--default: auto;
+	--card-title-ground-width--more: 		fit-content;
+
+	/*	The rise and the shadow of a linked card, as regular says. The zoom is the picture's: not at all at the first position, the framework's
+		gentle zoom of a picture at the middle - what the template does by itself - and at the third, with the rise	*/
+	--card-hover--less: 			none;
+	--card-hover--default: 		none;
+	--card-hover--more: 			0 -.25rem;
+
+	--card-hover-shadow--less: 			var(--shadow-card);
+	--card-hover-shadow--default: 	var(--shadow-card);
+	--card-hover-shadow--more: 			0 .25rem 1.5rem var(--card-tone), 0 .0625rem .25rem var(--card-tone);
+
+	--card-hover-zoom--less: 			1;
+	--card-hover-zoom--default: 	1.04;
+	--card-hover-zoom--more: 			1.04;
+
+	--card-align--less: 			center;
+	--card-align--default: 	match-parent;
+	--card-align--more: 			right;
+
+	--card-align-margin--less: 			auto;
+	--card-align-margin--default: 	0;
+	--card-align-margin--more: 			auto 0;
+
+	--card-align-button--less: 			center;
+	--card-align-button--default: 	flex-start;
+	--card-align-button--more: 			flex-end;
+}
+
+@media (min-width: 768px) {
+	:root {
+		--card-title--least: 	calc(.8 * 25 / 32);
+		--card-title--less: 	calc(.9 * 25 / 32);
+		--card-title--default: 	calc(25 / 32);
+		--card-title--more: 	calc(1.15 * 25 / 32);
+		--card-title--most: 	calc(1.3 * 25 / 32);
+	}
+}
+
+/*	The two numbers and the shadow Nino.css reads by name	*/
+:root {
+	--card-title-scale: var(--card-title);
+	--card-subtitle-scale: var(--card-subtitle);
+	--shadow-card: var(--card-shadow);
+}
+
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--card-space) / 2 * var(--whitespace-scale, 1) ) calc( var(--card-space) * var(--whitespace-scale, 1) );
+}
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--card-space) * var(--whitespace-text, 1) );
+}
+.nino-card-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--card-space) / 2 * var(--whitespace-text, 1) );
+}
+
+.nino-card--alt, .nino-card--tint, .nino-card--dark, .nino-card--black, .nino-card--primary, .nino-card--brand-alt, .nino-card--counter, .nino-card--dim {
+	border-width: var(--card-border);
+}
+
+/*	The hover, as the ladder says it: the card rises and takes the shadow. Only for the card the pointer
+	can mean as a whole (.nino-card--linked), and only where the visitor has not asked for less motion.
+	The transition is the hover's own, so that the one a viewport animation has on the card is not
+	taken from it while it is at rest - and it carries the animation's: its three properties with the
+	time and the easing Nino.css gives them (the easing is written out, Nino.css names no custom
+	property for it), so that a card hovered while it arrives goes on arriving. A borderless card has
+	no shadow to lift	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-card--linked:hover {
+		translate: var(--card-hover);
+		transition: translate .2s ease, box-shadow .2s ease,
+			opacity var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			transform var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1),
+			filter var(--vpa-duration) cubic-bezier(0.5, 0, 0.7, 1);
+	}
+	.nino-card--linked:where(:not(.nino-card--borderless)):hover {
+		box-shadow: var(--card-hover-shadow);
+	}
+}
+
+/* ---- the title and the words ---- */
+
+/*	The alignment of what is in the card, only where the page says nothing of its own; the button of a card that is a column; the place of a title
+	that is as wide as its words; and where the page aligns by a class, the place that class gives it	*/
+.nino-card:where(:not([class*="nino-text-"], [class*="nino-text-"] *)) {
+	text-align: var(--card-align);
+}
+:is(.nino-card--middle, .nino-card--bottom, .nino-card--last-bottom):where(:not([class*="nino-text-"], [class*="nino-text-"] *)) > .nino-btn,
+.nino-card--last-bottom:where(:not([class*="nino-text-"], [class*="nino-text-"] *)) > .nino-card-content > .nino-btn {
+	align-self: var(--card-align-button);
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-text-"], [class*="nino-text-"] *, [class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+	margin-inline: var(--card-align-margin);
+}
+.nino-text-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+	margin-inline: auto;
+}
+.nino-text-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+	margin-inline: auto 0;
+}
+@media (min-width: 640px) {
+	.nino-text-s-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-s-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-s-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-s-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+@media (min-width: 768px) {
+	.nino-text-m-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-m-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-m-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-m-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+@media (min-width: 1024px) {
+	.nino-text-l-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-l-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-l-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-l-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+@media (min-width: 1280px) {
+	.nino-text-xl-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-xl-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto;
+	}
+	.nino-text-xl-right :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-xl-right:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: auto 0;
+	}
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud) {
+	letter-spacing: var(--card-title-tracking);
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud) {
+	background-color: color-mix( in srgb, var(--color-title) var(--card-title-ground), transparent );
+	border-radius: calc( var(--radius) * var(--card-title-ground-fit) );
+	width: var(--card-title-ground-width);
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-ink--"])) {
+	color: color-mix( in srgb, var(--color-ground) var(--card-title-ground-ink), var(--color-title) );
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-ink--accent {
+	color: color-mix( in srgb, var(--color-ground) var(--card-title-ground-ink), var(--color-accent) );
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-ink--muted {
+	color: color-mix( in srgb, var(--color-ground) var(--card-title-ground-ink), color-mix(in srgb, currentColor 80%, transparent) );
+}
+:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-pl-"], [class*="nino-pr-"])) {
+	padding: calc( .15em * var(--card-title-ground-fit) ) calc( .5em * var(--card-title-ground-fit) );
+}
+
+/* ---- the tile ---- */
+
+/*	A card with a picture and its content is a tile: one cell of a grid, the picture and the content both in it, the box 4 : 5 - taller
+	where the content is - with the corners of the card, which cuts what is in it. The card has no padding of its own: the picture runs
+	to the edge, and the content has the space. The fade is the black ground of the palette, from the foot, and the content is written
+	in the roles of that ground. Both the classes of the picture and of the content name it, so that a card with either alone is Regular's	*/
+.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) {
+	display: grid;
+	aspect-ratio: 4 / 5;
+	padding: 0;
+	border: var(--card-border-tile) solid var(--color-border);
+}
+.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) > .nino-card-img {
+	grid-area: 1 / 1;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	max-height: none;
+	margin: 0;
+	border-radius: 0;
+	object-fit: cover;
+}
+.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) > .nino-card-content {
+	grid-area: 1 / 1;
+	align-self: end;
+	z-index: 1;
+	--color-ground: var(--color-section-black-bg);
+	--color-ink: var(--color-section-black-text);
+	--logo-light: var(--color-section-black-logo-light);
+	--logo-dark: var(--color-section-black-logo-dark);
+	--color-title: var(--color-section-black-text);
+	--color-subtitle: var(--color-section-black-text);
+	--color-accent: var(--color-accent-black);
+	--color-focus: var(--color-focus-black);
+	--color-border: var(--color-border-black);
+	color: var(--color-ink);
+	background: linear-gradient( to top, var(--color-section-black-bg) calc( 100% - 3 * var(--card-space) * var(--whitespace-scale, 1) ), transparent );
+}
+.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) > .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--card-space) * 3 * var(--whitespace-scale, 1) ) calc( var(--card-space) * var(--whitespace-scale, 1) ) calc( var(--card-space) * var(--whitespace-scale, 1) );
+}
+.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) > .nino-card-content > :last-child {
+	margin-bottom: 0;
+}
+
+/*	The hover of the picture, as the ladder says it: the card is the pointer's, and not the picture alone, which the content covers. The
+	picture grows inside its frame or its card, which cut it. Only where the visitor has not asked for less motion	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) > img.nino-card-img,
+	.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content) > .nino-card-img > img {
+		transition: transform .3s ease;
+	}
+	.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content):hover > img.nino-card-img,
+	.nino-card:where(:not([class*="nino-card-cols"])):has(> .nino-card-img):has(> .nino-card-content):hover > .nino-card-img > img {
+		transform: scale(var(--card-hover-zoom));
+	}
+}

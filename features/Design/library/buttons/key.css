@@ -4,16 +4,19 @@
  *
  *	@knob	size		Size of a button
  *	@knob	spread		How far a small and a big button stand from it
+ *	@knob	tracking	Letter-spacing of the label
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
+ *	@knob	outline		Weight of the line of the outline button
  *	@knob	hover		What a button does under the pointer
  *
  *	The one template here that answers :active, because a key that does not move
  *	under the finger is the thing people press twice. The shadow is what makes
  *	the movement visible, so the two are one decision - and the outline variant
- *	and a button that is off cast none. The first four ladders are Nino's, value
- *	for value: a small key is the size times 1 less the spread and a big one the
- *	size times 1 plus it, as in regular.
+ *	and a button that is off cast none. The ladders are Nino's, value for value: a
+ *	small key is the size times 1 less the spread and a big one the size times 1
+ *	plus it, the tracking is the letter-spacing of the label and the outline the
+ *	weight of the line of the outline key, times the size - as in regular.
  *
  *	The hover is a choice of three: nothing - the key with the light shadow it has
  *	at rest, which is also what this set does under the pointer by itself, so the
@@ -37,6 +40,12 @@
 	--buttons-spread--more: 		.4;
 	--buttons-spread--most: 		.5;
 
+	--buttons-tracking--least: 		-.02em;
+	--buttons-tracking--less: 			-.01em;
+	--buttons-tracking--default: 	0em;
+	--buttons-tracking--more: 			.05em;
+	--buttons-tracking--most: 			.1em;
+
 	--buttons-space--least: 		calc( var(--space-1) * .5 );
 	--buttons-space--less: 			var(--space-1);
 	--buttons-space--default: var(--space-2);
@@ -48,6 +57,12 @@
 	--buttons-corners--default: var(--radius);
 	--buttons-corners--more: 		var(--radius-large);
 	--buttons-corners--most: 		999rem;
+
+	--buttons-outline--least: 		0px;
+	--buttons-outline--less: 			.5px;
+	--buttons-outline--default: 	1px;
+	--buttons-outline--more: 			2px;
+	--buttons-outline--most: 			3px;
 
 	/*	The rise (a translate, which lies beside the transform of the press and of an
 		animation) and the shadow under it. The first two positions name the shadow the
@@ -67,6 +82,7 @@
 .nino-btn {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
+	letter-spacing: var(--buttons-tracking);
 	box-shadow: 0 1px 2px var(--nino-default-shadow);
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
@@ -82,6 +98,10 @@
 .nino-btn--big {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+}
+
+.nino-btn--outline {
+	border-width: calc( var(--buttons-outline) * var(--buttons-size) );
 }
 
 /*	The hover, as the ladder says it - before the press, which is as specific and so

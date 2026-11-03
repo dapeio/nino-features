@@ -4,32 +4,34 @@
  *
  *	@knob	size		Size of a button
  *	@knob	spread		How far a small and a big button stand from it
+ *	@knob	tracking	Letter-spacing of the label
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
+ *	@knob	outline		Weight of the line of the outline button
  *	@knob	hover		What a button does under the pointer
  *
  *	The button as punctuation, for pages where a button is an option and not
  *	the point: a filter row, a table with an action in every line, a form with
  *	three ways out. The plain button and the primary one stay buttons, with the
- *	fill the framework gives them, and read the four ladders as regular does - the
+ *	fill the framework gives them, and read the ladders as regular does - the
  *	padding from the space and the size, the type from the button role and the
- *	size, the radius from the corners and the size, a small and a big one from
- *	the spread. The outline, light, dark and brand-alt variants are text: no
- *	ground, no edge, the accent as ink - the brand as it is solved for the
- *	ground the button stands on - and an arrow after the label, with an
- *	underline of 2px under the label while the pointer or the focus is on it.
+ *	size, the letter-spacing from the tracking, the radius from the corners and
+ *	the size, a small and a big one from the spread. The outline, light, dark and
+ *	brand-alt variants are text: no ground, no edge, the accent as ink - the brand
+ *	as it is solved for the ground the button stands on - and an arrow after the
+ *	label, with an underline of 2px under the label while the pointer or the focus
+ *	is on it.
  *	Their vertical padding stays, for the hit area, and the horizontal one is a
  *	quarter of an em; the focus ring is the framework's, and a text button that
  *	is off has the ink of a thing that is off and no underline. A filter button
  *	stays a box with the radius of the corners knob, since a row of filters in
  *	text has no edges to tell them apart.
  *
- *	The hover is a choice of three, as in regular: nothing, which is also the
- *	middle, since what this set does under the pointer by itself is the underline
- *	of the text variants - their construction, which stays at every position, as
- *	the ring of the focus does -, and lifted: a rise of one pixel with a shadow
- *	under it, where the visitor has not asked for less motion. The text variants
- *	rise and cast no shadow; there is no box to cast it from.
+ *	The outline variant has no line to weigh, being text, and the knob of its line
+ *	moves what stands in its place: the underline it takes under the pointer or the
+ *	focus, the weight of the ladder times the size and 1px more, so that it keeps its
+ *	sign at the least. At the middle that is 2px, as the other text variants have it,
+ *	who keep that.
  */
 
 /*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
@@ -46,6 +48,12 @@
 	--buttons-spread--more: 		.4;
 	--buttons-spread--most: 		.5;
 
+	--buttons-tracking--least: 		-.02em;
+	--buttons-tracking--less: 			-.01em;
+	--buttons-tracking--default: 	0em;
+	--buttons-tracking--more: 			.05em;
+	--buttons-tracking--most: 			.1em;
+
 	--buttons-space--least: 		calc( var(--space-1) * .5 );
 	--buttons-space--less: 			var(--space-1);
 	--buttons-space--default: var(--space-2);
@@ -57,6 +65,12 @@
 	--buttons-corners--default: var(--radius);
 	--buttons-corners--more: 		var(--radius-large);
 	--buttons-corners--most: 		999rem;
+
+	--buttons-outline--least: 		0px;
+	--buttons-outline--less: 			.5px;
+	--buttons-outline--default: 	1px;
+	--buttons-outline--more: 			2px;
+	--buttons-outline--most: 			3px;
 
 	/*	The rise and the shadow under it, as regular says; this set casts none at rest	*/
 	--buttons-hover--less: 		none;
@@ -74,6 +88,7 @@
 .nino-btn {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
+	letter-spacing: var(--buttons-tracking);
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
@@ -143,6 +158,9 @@
 	text-decoration: underline;
 	text-decoration-thickness: 2px;
 	text-underline-offset: .2em;
+}
+.nino-btn--outline:is(:hover, :focus-visible) {
+	text-decoration-thickness: calc( var(--buttons-outline) * var(--buttons-size) + 1px );
 }
 .nino-btn--outline:is(:disabled, [aria-disabled="true"]),
 .nino-btn--light:is(:disabled, [aria-disabled="true"]),

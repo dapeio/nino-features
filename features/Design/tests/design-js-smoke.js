@@ -392,7 +392,7 @@ const KINDS = {
 	footer 		: { scale : 'scale', height : 'scale', space : 'scale', logo : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', divider : 'scale', position : 'choice', 'nav-case' : 'toggle' },
 	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', rule : 'scale', 'rule-length' : 'choice', 'title-shadow' : 'scale', dim : 'scale', 'title-ground' : 'choice', 'rule-color' : 'choice', align : 'choice', measure : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
 	card 			: { title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', border : 'scale', shadow : 'scale', tone : 'choice', 'title-ground' : 'choice', hover : 'choice', align : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
-	buttons 	: { size : 'scale', spread : 'scale', space : 'scale', corners : 'scale', hover : 'choice', case : 'toggle' },
+	buttons 	: { size : 'scale', spread : 'scale', tracking : 'scale', space : 'scale', corners : 'scale', outline : 'scale', hover : 'choice', case : 'toggle' },
 	lists 		: { scale : 'scale', space : 'scale', marker : 'choice' },
 	tables 		: { scale : 'scale', space : 'scale', border : 'scale', zebra : 'choice', stripes : 'scale' },
 	forms 		: { scale : 'scale', space : 'scale', corners : 'scale', line : 'scale', labels : 'choice', edge : 'ink', label : 'ink', 'label-case' : 'toggle' },
@@ -448,7 +448,8 @@ const LAYOUT = {
 	'knobs/card/subtitle-case'        : [ 'type', 'card', 5 ],
 	'knobs/buttons/size'              : [ 'type', 'buttons', 1 ],
 	'knobs/buttons/spread'            : [ 'type', 'buttons', 2 ],
-	'knobs/buttons/case'              : [ 'type', 'buttons', 3 ],
+	'knobs/buttons/tracking'          : [ 'type', 'buttons', 3 ],
+	'knobs/buttons/case'              : [ 'type', 'buttons', 4 ],
 	'knobs/lists/scale'               : [ 'type', 'lists', 1 ],
 	'knobs/tables/scale'              : [ 'type', 'tables', 1 ],
 	'knobs/forms/scale'               : [ 'type', 'forms', 1 ],
@@ -482,6 +483,7 @@ const LAYOUT = {
 	'radii/card'                      : [ 'surfaces', 'card', 4 ],
 	'knobs/buttons/space'             : [ 'surfaces', 'buttons', 1 ],
 	'knobs/buttons/corners'           : [ 'surfaces', 'buttons', 2 ],
+	'knobs/buttons/outline'           : [ 'surfaces', 'buttons', 3 ],
 	'knobs/lists/space'               : [ 'surfaces', 'lists', 1 ],
 	'knobs/lists/marker'              : [ 'surfaces', 'lists', 2 ],
 	'knobs/tables/space'              : [ 'surfaces', 'tables', 1 ],
@@ -3516,7 +3518,7 @@ knobKeys.forEach( function( key ) {
 check( 'a scale is five numbers, a choice the three words of the knob, each capitalised, a toggle a switch and an ink a select of the tones with none first - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
-	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 41 && inkRows === 2 && wordProblems.length === 0 );
+	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 43 && inkRows === 2 && wordProblems.length === 0 );
 check( '...the fourteen choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
 	Object.keys( CHOICE_WORDS ).length === 21 && Object.keys( CHOICE_WORDS ).every( function( at ) {
 		const key = 'knobs/'+ at;
@@ -4297,7 +4299,7 @@ check( 'the eight switches stand on the Type view, each under the sizes of its o
 	JSON.stringify( swOrder.header ) === JSON.stringify( [ 'knobs/header/nav', 'knobs/header/nav-case' ] ) && JSON.stringify( swOrder.footer ) === JSON.stringify( [ 'knobs/footer/scale', 'knobs/footer/nav-case' ] )
 	&& JSON.stringify( swOrder.section ) === JSON.stringify( [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/section/quiet', 'knobs/section/loud', 'knobs/section/title-tracking', 'knobs/section/title-case', 'knobs/section/subtitle-case' ] )
 	&& JSON.stringify( swOrder.card ) === JSON.stringify( [ 'knobs/card/title', 'knobs/card/subtitle', 'knobs/card/title-tracking', 'knobs/card/title-case', 'knobs/card/subtitle-case' ] )
-	&& JSON.stringify( swOrder.buttons ) === JSON.stringify( [ 'knobs/buttons/size', 'knobs/buttons/spread', 'knobs/buttons/case' ] ) && JSON.stringify( swOrder.forms ) === JSON.stringify( [ 'knobs/forms/scale', 'knobs/forms/label-case' ] )
+	&& JSON.stringify( swOrder.buttons ) === JSON.stringify( [ 'knobs/buttons/size', 'knobs/buttons/spread', 'knobs/buttons/tracking', 'knobs/buttons/case' ] ) && JSON.stringify( swOrder.forms ) === JSON.stringify( [ 'knobs/forms/scale', 'knobs/forms/label-case' ] )
 	&& knobRows( sw ).filter( isSwitch ).length === 8 && knobRows( sw ).filter( isSwitch ).every( function( row ) { return LAYOUT[ row.dataset.control ][0] === 'type' } ) );
 
 const swKeys = knobRows( sw ).filter( isSwitch ).map( function( row ) { return row.dataset.control } );
@@ -5994,6 +5996,7 @@ const LUCIDE = {
 	'sun-moon' : '<path d="M12 2v2"/><path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715"/><path d="M16 12a4 4 0 0 0-4-4"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/>',
 	// The spread of the buttons, and the width of the page
 	'chevrons-left-right' : '<path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/>',
+	'tracking' : '<path d="M3 4v16"/><path d="M21 4v16"/><path d="M7 12h10"/><path d="m10 9-3 3 3 3"/><path d="m14 9 3 3-3 3"/>',
 	'align-center' : '<path d="M17 12H7"/><path d="M19 18H5"/><path d="M21 6H3"/>',
 	'unfold-horizontal' : '<path d="M16 12h6"/><path d="M8 12H2"/><path d="M12 2v2"/><path d="M12 8v2"/><path d="M12 14v2"/><path d="M12 20v2"/><path d="m19 15 3-3-3-3"/><path d="m5 9-3 3 3 3"/>',
 	'move-horizontal' : '<path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/>',
@@ -6028,7 +6031,7 @@ const ICON_OF = {
 	'section/title-ground' : 'square', 'section/rule-color' : 'palette', 'section/align' : 'align-center', 'section/measure' : 'unfold-horizontal',
 	'card/title' : 'a-large-small', 'card/subtitle' : 'a-large-small', 'card/title-tracking' : 'chevrons-left-right', 'card/space' : 'align-vertical-space-around',
 	'card/border' : 'square', 'card/shadow' : 'square-stack', 'card/tone' : 'palette', 'card/title-ground' : 'square', 'card/hover' : 'move-vertical', 'card/align' : 'align-center',
-	'buttons/size' : 'a-large-small', 'buttons/spread' : 'chevrons-left-right', 'buttons/space' : 'align-vertical-space-around', 'buttons/corners' : 'square-round-corner',
+	'buttons/size' : 'a-large-small', 'buttons/spread' : 'chevrons-left-right', 'buttons/tracking' : 'tracking', 'buttons/space' : 'align-vertical-space-around', 'buttons/corners' : 'square-round-corner', 'buttons/outline' : 'minus',
 	'buttons/hover' : 'move-vertical',
 	'lists/scale' : 'a-large-small', 'lists/space' : 'align-vertical-space-around', 'lists/marker' : 'list',
 	'tables/scale' : 'a-large-small', 'tables/space' : 'align-vertical-space-around', 'tables/border' : 'square', 'tables/zebra' : 'rows-3', 'tables/stripes' : 'contrast',

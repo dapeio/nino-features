@@ -359,7 +359,7 @@
 				<thead><tr><th>Component</th><th>Template</th><th>Position</th></tr></thead>
 				<tbody>
 					<tr><td>Section</td><td>Regular</td><td>as it is</td></tr>
-					<tr><td>Buttons</td><td>Pill</td><td>more</td></tr>
+					<tr><td>Buttons</td><td>Soft</td><td>more</td></tr>
 					<tr><td>Tables</td><td>Ruled</td><td>less</td></tr>
 					<tr><td>Header</td><td>Classic, default</td><td>as it is</td></tr>
 					<tr><td>Footer</td><td>One legal row</td><td>as it is</td></tr>

@@ -207,7 +207,9 @@ namespace Nino\Modules\Design {
 							subtitle-case		the subtitle of a card in capitals (a toggle)
 				buttons		size				the size of .nino-btn
 							spread				how far .nino-btn--small and --big stand from it
+							tracking			the letter-spacing of the label of a button
 							space, corners		the padding and the radius
+							outline				the weight of the line of .nino-btn--outline
 							hover				what a button does under the pointer (a choice)
 							case				the label of a button in capitals (a toggle)
 				lists		scale				the type size of a list
@@ -231,7 +233,7 @@ namespace Nino\Modules\Design {
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
 			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'rule-length' => 'choice', 'title-shadow' => 'scale', 'dim' => 'scale', 'title-ground' => 'choice', 'rule-color' => 'choice', 'align' => 'choice', 'measure' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'title-ground' => 'choice', 'hover' => 'choice', 'align' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
-			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
+			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'tracking' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'outline' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
 			'forms' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'line' => 'scale', 'labels' => 'choice', 'edge' => 'ink', 'label' => 'ink', 'label-case' => 'toggle' ],
@@ -326,7 +328,8 @@ namespace Nino\Modules\Design {
 			'knobs/card/subtitle-case' 				=> [ 'type', 'card', 5 ],
 			'knobs/buttons/size' 					=> [ 'type', 'buttons', 1 ],
 			'knobs/buttons/spread' 					=> [ 'type', 'buttons', 2 ],
-			'knobs/buttons/case' 					=> [ 'type', 'buttons', 3 ],
+			'knobs/buttons/tracking' 				=> [ 'type', 'buttons', 3 ],
+			'knobs/buttons/case' 					=> [ 'type', 'buttons', 4 ],
 			'knobs/lists/scale' 					=> [ 'type', 'lists', 1 ],
 			'knobs/tables/scale' 					=> [ 'type', 'tables', 1 ],
 			'knobs/forms/scale' 					=> [ 'type', 'forms', 1 ],
@@ -361,6 +364,7 @@ namespace Nino\Modules\Design {
 			'radii/card' 							=> [ 'surfaces', 'card', 4 ],
 			'knobs/buttons/space' 					=> [ 'surfaces', 'buttons', 1 ],
 			'knobs/buttons/corners' 				=> [ 'surfaces', 'buttons', 2 ],
+			'knobs/buttons/outline' 				=> [ 'surfaces', 'buttons', 3 ],
 			'knobs/lists/space' 					=> [ 'surfaces', 'lists', 1 ],
 			'knobs/lists/marker' 					=> [ 'surfaces', 'lists', 2 ],
 			'knobs/tables/space' 					=> [ 'surfaces', 'tables', 1 ],
@@ -832,7 +836,7 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$part					A key of PARTS
 		 *
-		 *	@return 	array										Set names, eg. [ 'regular', 'pill' ]
+		 *	@return 	array										Set names, eg. [ 'regular', 'quiet' ]
 		 */
 		public static function available( string $libraryDir, string $part ): array {
 
