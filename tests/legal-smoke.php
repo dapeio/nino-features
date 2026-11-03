@@ -75,6 +75,7 @@ const LEGAL_RANGES = [
 	'protected'		=> [ 800, 899 ],
 	'hello'			=> [ 800, 899 ],
 	'members'		=> [ 800, 899 ],
+	'files'			=> [ 800, 899 ],
 ];
 
 // What the Legal module replaces: /project/company/<group>/<name> and /project/website/general/<name>
