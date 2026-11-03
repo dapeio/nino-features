@@ -1804,7 +1804,7 @@ $currentAfter = $appData['./nino/locales/current'];
 $appData['./nino/locales/current'] = 'de_DE';
 check( 'the mail goes out in the native language of the site, and the language of the request is back afterwards', $native !== $other && ( $mails[0]['subject'] ?? '' ) === $native && $currentAfter === 'en_US' );
 
-check( 'a group of seven is mailed in full, though the kernel allows five mails an hour from one address: one upload is one hit of the cap', count( $mails ) === 7 && \Nino\Mail::rateLimited( $appData ) === false );
+check( 'a group of seven is mailed in full, though the default cap of the kernel is five mails an hour from one address: one upload is one hit of the cap', count( $mails ) === 7 && \Nino\Mail::rateLimited( $appData ) === false );
 
 $mails = [];
 $hiddenOne = filesOwnerUpload( $appData, 'Hidden Mix.mp3', $room['id'], [ 'visible' => false ] );

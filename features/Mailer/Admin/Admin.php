@@ -103,7 +103,7 @@ namespace Nino\Modules\Mailer {
 
 		/**
 		 *	Send one test mail through \Nino\Mail::send() - the same
-		 *	transport, the same per-ip cap (5/hour) every other mail on the
+		 *	transport, the same per-ip cap (the kernel's cap, a key of its config) every other mail on the
 		 *	site goes through. An address that is none is refused with the code
 		 *	mailer_address, and a send the cap itself refused - the transport was
 		 *	never even asked - with mailer_ratelimit. A send the transport
@@ -140,7 +140,7 @@ namespace Nino\Modules\Mailer {
 			}
 
 			if( \Nino\Mail::rateLimited( $appData ) === true ) {
-				\Nino\Http::fail( $request, 400, 'rate limit reached - at most 5 test or other mails per hour and client ip', 'mailer_ratelimit' );
+				\Nino\Http::fail( $request, 400, 'rate limit reached - the cap of mails an hour per address', 'mailer_ratelimit' );
 				return;
 			}
 

@@ -90,5 +90,5 @@ return [
 	'[[/_admin/error/sign_unknown]]'			=> 'Es gibt diese Anfrage nicht (mehr).',
 	'[[/_admin/error/sign_state]]'				=> 'Die Anfrage ist vorbei - sie wurde unterschrieben, abgelehnt, zurückgezogen oder geändert.',
 	'[[/_admin/error/sign_mail]]'				=> 'Die Mail konnte nicht gesendet werden. Die Anfrage ist da; drücke Erinnern, um sie noch einmal zu senden.',
-	'[[/_admin/error/sign_ratelimit]]'			=> 'Der Server sendet fünf Mails pro Stunde. Die Anfrage ist da; drücke in einer Stunde Erinnern.',
+	'[[/_admin/error/sign_ratelimit]]'			=> 'Die Obergrenze für Mails pro Stunde ist erreicht. Die Anfrage ist da; drücke später Erinnern.',
 ];

@@ -1779,6 +1779,8 @@ $enKeys = array_keys( \Nino\Admin\Admin::textFills( $appData, '/features/Sign/te
 $deKeys = array_keys( \Nino\Admin\Admin::textFills( $appData, '/features/Sign/text', 'de_DE' ) );
 check( 'every code the panel answers with has its sentence in both interface languages ('. count( $codes ). ' of them), and the two languages have the same keys',
 	$missingCode === [] && count( $codes ) === 9 && $enKeys === $deKeys && count( $enKeys ) > 60 && str_contains( \Nino\Admin\Admin::textFills( $appData, '/features/Sign/text', 'en_US' )['[[/_admin/error/sign_input]]'], '%s' ) === true );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...the sentence of sign_ratelimit in $locale is not empty and names the hour", preg_match( '/Stunde|hour/', trim( \Nino\Admin\Admin::textFills( $appData, '/features/Sign/text', $locale )['[[/_admin/error/sign_ratelimit]]'] ?? '' ) ) === 1 );
 echo "\n";
 
 // --- The restore of a backup, and deactivation ----------------------------------------------------------------------------------

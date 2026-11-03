@@ -280,7 +280,7 @@ namespace Nino\Modules\Members {
 		}
 
 		/**
-		 *	Answer a mail that was not sent. The kernel's cap - five mails an hour from one
+		 *	Answer a mail that was not sent. The kernel's cap of mails an hour from one
 		 *	address, \Nino\Mail::rateLimited() - is a failure of its own: members_ratelimit,
 		 *	a 429, so that whoever is at the screen waits an hour instead of looking for a
 		 *	fault in the mail settings. Any other is members_mail, a 500
@@ -294,7 +294,7 @@ namespace Nino\Modules\Members {
 		private static function _unsent( array &$appData, array &$request, string $error ): void {
 
 			if( \Nino\Mail::rateLimited( $appData ) === true ) {
-				\Nino\Http::fail( $request, 429, 'the kernel allows five mails an hour from one address', 'members_ratelimit' );
+				\Nino\Http::fail( $request, 429, 'the kernel\'s cap of mails an hour from one address is reached', 'members_ratelimit' );
 				return;
 			}
 

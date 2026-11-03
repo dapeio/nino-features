@@ -74,5 +74,5 @@ return [
 	'[[/_admin/error/members_unknown]]'			=> 'Dieses Mitglied gibt es nicht (mehr).',
 	'[[/_admin/error/members_inactive]]'		=> 'Einem Mitglied, das nicht aktiv ist, kann kein Link gesendet werden.',
 	'[[/_admin/error/members_mail]]'			=> 'Die E-Mail konnte nicht gesendet werden. Prüfe die Mail-Einstellungen und die Adresse der Website und versuche es dann noch einmal.',
-	'[[/_admin/error/members_ratelimit]]'		=> 'Von dieser IP-Adresse aus können höchstens fünf E-Mails pro Stunde gesendet werden. Versuche es später noch einmal.',
+	'[[/_admin/error/members_ratelimit]]'		=> 'Die Obergrenze für E-Mails pro Stunde von dieser Adresse aus ist erreicht. Versuche es später noch einmal.',
 ];

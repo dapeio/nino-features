@@ -657,7 +657,7 @@ setMailerControl( $server, [] );
 // Exhaust the per-ip budget and confirm the panel says so rather than
 // reporting a generic failure - \Nino\Mail::send()'s own cap, not the
 // transport, refuses this one. The budget is spent the way the kernel spends
-// it: five tries of this client counted
+// it: the default of five tries of this client counted
 setMailerControl( $server, [] );
 \Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 for( $try = 0; $try < 5; $try++ )
@@ -665,11 +665,11 @@ for( $try = 0; $try < 5; $try++ )
 [ $limitedCode, $limitedBody ] = ninoCall( $appData, $panel, [ 'to' => 'capped@example.org' ], 'mailer/test' );
 check( 'a capped client ip is refused with the code mailer_ratelimit, not reported as a transport failure', $limitedCode === 400 && $limitedBody['code'] === 'mailer_ratelimit' );
 foreach( [ 'en_US', 'de_DE' ] as $locale )
-	check( "...and the code has its sentence in $locale, which says how many mails an hour it is", str_contains( \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/error/'. $limitedBody['code']. ']]'] ?? '', '5' ) === true );
+	check( "...and the code has its sentence in $locale, which is not empty and names the hour", preg_match( '/Stunde|hour/', trim( \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/error/'. $limitedBody['code']. ']]'] ?? '' ) ) === 1 );
 
 /*	The counter is the kernel's: its file is keyed by the sha256 of the client's
 	address, never by the address, and the try that was refused was counted
-	too - six tries for a cap of five	*/
+	too - six tries for the default cap of five	*/
 $rateState = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
 check( 'the refused try was counted as well, under the hash of the address and under no other key', ( $rateState[hash( 'sha256', '127.0.0.1' )]['tries'] ?? null ) === 6 && isset( $rateState['127.0.0.1'] ) === false );
 

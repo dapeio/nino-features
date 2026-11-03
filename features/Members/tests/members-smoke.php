@@ -569,6 +569,9 @@ foreach( [ 'members_invalid', 'members_taken', 'members_long', 'members_unknown'
 	foreach( [ 'en_US', 'de_DE' ] as $locale )
 		check( "...the code $code has its sentence in $locale", trim( \Nino\Admin\Admin::textFills( $appData, '/features/Members/text', $locale )['[[/_admin/error/'. $code. ']]'] ?? '' ) !== '' );
 
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...the sentence of members_ratelimit in $locale is not empty and names the hour", preg_match( '/Stunde|hour/', trim( \Nino\Admin\Admin::textFills( $appData, '/features/Members/text', $locale )['[[/_admin/error/members_ratelimit]]'] ?? '' ) ) === 1 );
+
 // An invitation: the account is added and a link goes to its address, valid for the days the setting names
 membersFresh( $appData );
 $mails = [];
@@ -681,7 +684,7 @@ $delivery = false;
 $delivery = true;
 check( 'a link whose mail was not taken is a 500 with the code members_mail', $status === 500 && $body['code'] === 'members_mail' );
 
-// The kernel's own cap of mails - five an hour from one address - is a failure of its own, and the person at the screen is told so
+// The kernel's own cap of mails an hour from one address is a failure of its own, and the person at the screen is told so
 membersFresh( $appData );
 
 for( $each = 0; $each < 5; $each++ )

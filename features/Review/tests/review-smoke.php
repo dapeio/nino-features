@@ -1620,7 +1620,7 @@ check( 'the mail goes out in the native language of the site, and the language o
 
 $mails = [];
 reviewOwnerWrites( [ 'file' => $track['id'], 'text' => 'The whole group' ] );
-check( 'a group of eight is mailed in full, though the kernel allows five mails an hour from one address: one comment is one hit of the cap', count( $mails ) === 8 && \Nino\Mail::rateLimited( $appData ) === false );
+check( 'a group of eight is mailed in full, though the default cap of the kernel is five mails an hour from one address: one comment is one hit of the cap', count( $mails ) === 8 && \Nino\Mail::rateLimited( $appData ) === false );
 
 $mails = [];
 \Nino\Modules\Members::change( $appData, $eve['id'], [ 'name' => '<u>under<u> [[company]]' ] );

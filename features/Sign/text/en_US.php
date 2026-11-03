@@ -90,5 +90,5 @@ return [
 	'[[/_admin/error/sign_unknown]]'			=> 'There is no such request (any more).',
 	'[[/_admin/error/sign_state]]'				=> 'The request is over - it was signed, declined, cancelled or changed.',
 	'[[/_admin/error/sign_mail]]'				=> 'The mail could not be sent. The request is there; press Remind to send it again.',
-	'[[/_admin/error/sign_ratelimit]]'			=> 'The server sends five mails an hour. The request is there; press Remind in an hour.',
+	'[[/_admin/error/sign_ratelimit]]'			=> 'The cap of mails an hour is reached. The request is there; press Remind later.',
 ];

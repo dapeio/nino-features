@@ -21,5 +21,5 @@ return [
 
 	// The sentences of the codes the test mail answers with (Admin::apiSendTest())
 	'[[/_admin/error/mailer_address]]'		=> 'That is not an email address.',
-	'[[/_admin/error/mailer_ratelimit]]'	=> 'The limit is reached: at most 5 test or other mails per hour and client ip. Try again later.',
+	'[[/_admin/error/mailer_ratelimit]]'	=> 'The limit of mails an hour from this address is reached. Try again later.',
 ];

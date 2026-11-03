@@ -73,5 +73,5 @@ return [
 	'[[/_admin/error/members_unknown]]'			=> 'There is no such member (any more).',
 	'[[/_admin/error/members_inactive]]'		=> 'A member who is not active cannot be sent a link.',
 	'[[/_admin/error/members_mail]]'			=> 'The mail could not be sent. Check the mail settings and the address of the website, then try again.',
-	'[[/_admin/error/members_ratelimit]]'		=> 'At most five mails an hour can be sent from this IP address. Try again later.',
+	'[[/_admin/error/members_ratelimit]]'		=> 'The cap of mails an hour from this address is reached. Try again later.',
 ];

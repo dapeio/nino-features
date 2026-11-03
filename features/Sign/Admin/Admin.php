@@ -444,7 +444,7 @@ namespace Nino\Modules\Sign {
 		}
 
 		/**
-		 *	Answer a mail that was not sent. The kernel's cap - five mails an hour from one address,
+		 *	Answer a mail that was not sent. The kernel's cap of mails an hour from one address,
 		 *	\Nino\Mail::rateLimited() - is a failure of its own: sign_ratelimit, a 429, so that whoever is at the screen waits
 		 *	an hour instead of looking for a fault in the mail settings. Any other is sign_mail, a 500
 		 *
@@ -457,7 +457,7 @@ namespace Nino\Modules\Sign {
 		private static function _unsent( array &$appData, array &$request, string $error ): void {
 
 			if( \Nino\Mail::rateLimited( $appData ) === true ) {
-				\Nino\Http::fail( $request, 429, 'the kernel allows five mails an hour from one address', 'sign_ratelimit' );
+				\Nino\Http::fail( $request, 429, 'the kernel\'s cap of mails an hour from one address is reached', 'sign_ratelimit' );
 				return;
 			}
 
