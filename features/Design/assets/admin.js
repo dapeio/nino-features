@@ -500,7 +500,7 @@
 
 			// The shell brings the screen on again after a Save it asked for failed: drawn anew, the reason the
 			// save gave would be gone, and so would the selection nobody has stored
-			if( Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
+			if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
 				return design._refreshThemeChip();
 
 			design._render();
@@ -1090,7 +1090,8 @@
 
 			// A screen drawn from the stored selection has nothing unsaved
 			// to mark any more
-			Nino.admin.dirty.refresh();
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.refresh();
 		},
 
 		/**
@@ -7368,29 +7369,30 @@
 		it has its place in the shell's account of what is unsaved under the uri
 		of its tab, in both of its modes, and a Save that failed brings the
 		screen on, where the reason it gave is said (see _show())	*/
-	Nino.admin.dirty.register( 'design', {
-		isDirty : function() { return Nino.admin.design._isDirty() },
-		save : function( done ) {
+	if( typeof Nino.admin.dirty === 'object' )
+		Nino.admin.dirty.register( 'design', {
+			isDirty : function() { return Nino.admin.design._isDirty() },
+			save : function( done ) {
 
-			const btn = dc.getElementById('design-save');
-			const msg = dc.getElementById('design-msg');
+				const btn = dc.getElementById('design-save');
+				const msg = dc.getElementById('design-msg');
 
-			if( btn === null || msg === null )
-				return done( false );
+				if( btn === null || msg === null )
+					return done( false );
 
-			Nino.admin.design._save( false, btn, msg, done );
-		},
-		// Drawn again with the stored selection: if the exit then does not
-		// leave the page, the controls show what the model holds
-		discard : function() {
+				Nino.admin.design._save( false, btn, msg, done );
+			},
+			// Drawn again with the stored selection: if the exit then does not
+			// leave the page, the controls show what the model holds
+			discard : function() {
 
-			if( Nino.admin.design._data === null )
-				return;
+				if( Nino.admin.design._data === null )
+					return;
 
-			Nino.admin.design._takeStored( Nino.admin.design._data );
-			Nino.admin.design._render();
-		},
-	} );
+				Nino.admin.design._takeStored( Nino.admin.design._data );
+				Nino.admin.design._render();
+			},
+		} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.design.init );
 

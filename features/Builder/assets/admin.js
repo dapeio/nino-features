@@ -2398,21 +2398,34 @@
 		// ----------------------------------------------------------- Requests
 
 		/**
-		 *	Call an action through the workbench's request helper - it knows the
-		 *	project's directory and what to do when the page has outlived its session
+		 *	Call an action of this panel through the workbench's request helper - it
+		 *	knows the project's directory and what to do when the page has outlived
+		 *	its session
 		 *
-		 *	@param		{string}		action				builder/<name> - or only the name - or the action of another panel
+		 *	@param		{string}		endpoint			The name of the action below builder/
+		 *	@param		{Object}		payload				Sent json-encoded as "data"
+		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
+		 *	@param		{Object}		[extra]				Extra multipart fields (eg. { file : File })
+		 *
+		 *	@return		void
+		 */
+		_apiCall : function( endpoint, payload, callback, extra ) {
+			Nino.adminUi.api.call( 'builder/'+ endpoint, payload, callback, extra );
+		},
+
+		/**
+		 *	Call an action of another panel - the Text panel's keys, the Images panel's
+		 *	slots and pictures - through the same helper
+		 *
+		 *	@param		{string}		action				<panel>/<name>, eg. images/upload
 		 *	@param		{Object}		payload				Sent json-encoded as "data"
 		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
 		 *	@param		{Object}		[extra]				Extra multipart fields (eg. { file : File }), as the Images panel posts a picture
 		 *
 		 *	@return		void
 		 */
-		_apiCall : function( action, payload, callback, extra ) {
-
-			const name = action.indexOf('/') === -1 ? 'builder/'+ action : action;
-
-			Nino.adminUi.api.call( name, payload, callback, extra );
+		_panelCall : function( action, payload, callback, extra ) {
+			Nino.adminUi.api.call( action, payload, callback, extra );
 		},
 
 		/**
@@ -3250,7 +3263,7 @@
 			builder._keysAsked = true;
 			builder._keys = builder._keys ?? [];
 
-			builder._apiCall( 'text/keys', {}, function( status, response ) {
+			builder._panelCall( 'text/keys', {}, function( status, response ) {
 
 				builder._keysAnswered = true;
 				Object.assign( builder._seen, stamp );
@@ -3353,7 +3366,8 @@
 			builder._repaint();
 			builder._saySummaries();
 
-			Nino.admin.dirty.refresh();
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.refresh();
 		},
 
 		/**
@@ -8863,7 +8877,7 @@
 
 						builder._newName( pane, options, 'key', function( key, size, text, answer ) {
 
-							builder._apiCall( 'keys/create', { key : key, global : true, format : 'plain', value : text }, function( status, response ) {
+							builder._panelCall( 'keys/create', { key : key, global : true, format : 'plain', value : text }, function( status, response ) {
 
 								if( status !== 200 )
 									return answer( builder._errorText( status, response, '/_admin/builder/error/key' ) );
@@ -9964,7 +9978,7 @@
 
 					sent[locale] = text;
 
-					builder._apiCall( 'images/alt', { uri : held.uri, alt : sent }, function( status, response ) {
+					builder._panelCall( 'images/alt', { uri : held.uri, alt : sent }, function( status, response ) {
 
 						if( status !== 200 || response === null )
 							return say( builder._errorText( status, response, '/_admin/builder/error/alt' ), 'error' );
@@ -10035,7 +10049,7 @@
 				if( Object.keys( alt ).length === 0 )
 					return done( text, kind );
 
-				builder._apiCall( 'images/alt', { uri : uri, alt : alt }, function( status, response ) {
+				builder._panelCall( 'images/alt', { uri : uri, alt : alt }, function( status, response ) {
 
 					if( status !== 200 || response === null )
 						return done( builder._errorText( status, response, '/_admin/builder/error/alt' ), 'error' );
@@ -10047,7 +10061,7 @@
 			};
 			const send = function() {
 
-				builder._apiCall( 'images/upload', { uri : uri }, function( status, response ) {
+				builder._panelCall( 'images/upload', { uri : uri }, function( status, response ) {
 
 					if( status !== 200 || response === null )
 						return finish( builder._errorText( status, response, '/_admin/builder/error/upload' ), 'error' );
@@ -10076,7 +10090,7 @@
 
 				const size = mark ?? Object.assign( { label : options.seed }, builder.SLOT_SIZE );
 
-				builder._apiCall( 'slots/create', { uri : uri, label : size.label, width : size.width, height : size.height }, function( status, response ) {
+				builder._panelCall( 'slots/create', { uri : uri, label : size.label, width : size.width, height : size.height }, function( status, response ) {
 
 					// A slot that is there already (409) was made by another request in the meantime, and is the one to use
 					if( status !== 200 && status !== 409 )
@@ -10430,7 +10444,8 @@
 					builder._refreshStores();
 					dc.getElementById('builder-save').disabled = false;
 
-					Nino.admin.dirty.refresh();
+					if( typeof Nino.admin.dirty === 'object' )
+						Nino.admin.dirty.refresh();
 
 					return report( true );
 				}
@@ -10592,12 +10607,13 @@
 	/*	The shell asks Save, Discard or Cancel before anything throws the document
 		away - a back link, a log out, a change of language - and the browser asks
 		when the page is closed	*/
-	Nino.admin.dirty.register( 'builder', {
-		isDirty	: Nino.admin.builder.isDirty,
-		save		: function( done ) { Nino.admin.builder._save( done ) },
-		discard	: Nino.admin.builder.discard,
-		bar			: function() { return dc.getElementById('builder-bar') },
-	} );
+	if( typeof Nino.admin.dirty === 'object' )
+		Nino.admin.dirty.register( 'builder', {
+			isDirty	: Nino.admin.builder.isDirty,
+			save		: function( done ) { Nino.admin.builder._save( done ) },
+			discard	: Nino.admin.builder.discard,
+			bar			: function() { return dc.getElementById('builder-bar') },
+		} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.builder.init );
 

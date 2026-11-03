@@ -9,11 +9,11 @@
 	<div class="nino-grid-row">
 		[posts]
 		<div class="nino-grid-100 nino-grid-m-50 nino-grid-l-33">
-			<article class="nino-card"[[.lang]]>
-				<a href="[[.url]]" class="nino-card-link">[[.image]]</a>
+			<article class="nino-card nino-card--linked"[[.lang]]>
+				[[.image]]
 				<div class="nino-card-content">
 					<p class="nino-card-subtitle">[[date]]</p>
-					<h3 class="nino-card-title"[[.lang]]><a href="[[.url]]">[[title]]</a></h3>
+					<h3 class="nino-card-title"[[.lang]]><a href="[[.url]]" class="nino-stretch">[[title]]</a></h3>
 					<p class="nino-card-descr">[[summary]]</p>
 				</div>
 			</article>

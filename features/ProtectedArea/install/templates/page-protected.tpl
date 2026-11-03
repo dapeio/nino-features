@@ -1,6 +1,6 @@
 [template /templates/html-header]
-<section class="nino-section nino-section--narrow nino-text-center" id="protected">
-	<div class="nino-grid-row">
+<section class="nino-section nino-text-center" id="protected">
+	<div class="nino-grid-row nino-grid-row--narrow">
 		<div class="nino-grid-100">
 			<h2 class="nino-section-title">[[/template/page-protected/intro/title]]</h2>
 			<p class="nino-section-subtitle">[[/template/page-protected/intro/text]]</p>

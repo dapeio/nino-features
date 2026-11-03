@@ -129,8 +129,8 @@ check( '...and the two templates', \Nino\Filesystem::fileExists( $appData, '/tem
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-post.tpl' ) === true );
 preg_match( '#<article.*?</article>#s', (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-posts.tpl' ) ), $postCard );
 preg_match_all( '/class="([^"]+)"/', $postCard[0] ?? '', $postClasses );
-check( '...the list page draws a post as the card, in the card classes of Nino 1.7 and the template\'s own class for the link, and no others: the card itself, its link, its content, its subtitle, its title and its description',
-	$postClasses[1] === [ 'nino-card', 'nino-card-link', 'nino-card-content', 'nino-card-subtitle', 'nino-card-title', 'nino-card-descr' ] );
+check( '...the list page draws a post as the card, in the card classes the kernel owns, the card that is a link the stretched way and the one link it stretches, and no others: the card itself, its content, its subtitle, its title, the link of the title and its description',
+	$postClasses[1] === [ 'nino-card nino-card--linked', 'nino-card-content', 'nino-card-subtitle', 'nino-card-title', 'nino-stretch', 'nino-card-descr' ] );
 check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/template/page-posts/intro/title' ) !== '' );
 
 /*	The list page of the default section is a page of the system: its title, its name in a menu and its
@@ -635,7 +635,7 @@ ninoVisit( $appData, '/blog' );
 $cards = postsRender( $appData, $cardBlock[0] ?? '' );
 
 check( 'the card in the list has both as it always had them: escaped, the way the head has them now',
-	str_contains( $cards, '<h3 class="nino-card-title"><a href="/blog/second-wind">&quot;&gt;&lt;b&gt;x&lt;/b&gt;&#91;image</a></h3>' ) === true
+	str_contains( $cards, '<h3 class="nino-card-title"><a href="/blog/second-wind" class="nino-stretch">&quot;&gt;&lt;b&gt;x&lt;/b&gt;&#91;image</a></h3>' ) === true
 	&& str_contains( $cards, '<p class="nino-card-descr">&quot; onmouseover=</p>' ) === true );
 
 /*	With the Consent feature there, the finished body is read for the placeholders
@@ -777,8 +777,8 @@ $posted		= \Nino\Modules\Posts::posts( $appData, \Nino\Modules\Posts::section( $
 $borrowed	= count( array_filter( $posts = $posted, static fn( array $post ): bool => ( $post['.lang'] ?? '' ) !== '' ) );
 
 check( '...so the list of the other language has a card of every post, and the ones with words from the native language say so on the card and on its title',
-	$borrowed >= 2 && $borrowed < count( $posted ) && substr_count( $cards, '<article class="nino-card"' ) === count( $posted )
-	&& substr_count( $cards, '<article class="nino-card" lang="de-DE">' ) === $borrowed && substr_count( $cards, '<h3 class="nino-card-title" lang="de-DE">' ) === $borrowed
+	$borrowed >= 2 && $borrowed < count( $posted ) && substr_count( $cards, '<article class="nino-card nino-card--linked"' ) === count( $posted )
+	&& substr_count( $cards, '<article class="nino-card nino-card--linked" lang="de-DE">' ) === $borrowed && substr_count( $cards, '<h3 class="nino-card-title" lang="de-DE">' ) === $borrowed
 	&& str_contains( $cards, '[[' ) === false );
 
 // What the page of a post says about itself where no language has a title for it
