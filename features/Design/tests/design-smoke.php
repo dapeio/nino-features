@@ -8225,6 +8225,68 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
 		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
 
+	/*	The themes the feature ships are one that is the framework as it is and a few that are constructions of the library: they follow it in the order of the
+		names, and each is a construction of its own - no two choose the same templates - that names no colours, no css and no feature, and says what it is in
+		both languages with two lines that are not the one line twice	*/
+	$constructions = array_slice( $shippedRaw, 1, null, true );
+	$constructed = array_map( static fn( array $file ): array => Themes::setup( $file )['parts'] ?? [], $constructions );
+	$sortedRest = array_keys( $constructions );
+	sort( $sortedRest );
+
+	/*	A construction moves only what its templates read: a knob that stands off the middle - a position other than 0, an ink other than none - is one the template chosen for its part declares a ladder for, since a position
+		nothing reads is one nobody can find again	*/
+	$unread = [];
+
+	foreach( $constructions as $slug => $file )
+		foreach( Themes::setup( $file )['knobs'] ?? [] as $part => $knobs )
+			foreach( $knobs as $knob => $position )
+				if( $position !== 0 && $position !== '' && in_array( $knob, Setup::knobs( $library, $part, (string) ( Themes::setup( $file )['parts'][$part] ?? '' ) ), true ) === false )
+					$unread[] = $slug. ': '. $part. '/'. $knob;
+
+	check( 'the library ships six themes: the framework as it is and five constructions after it, in the order of their names - each with a line for both languages that is its own, no colours, no css and no choice for a feature, no two on the same templates, and no knob off the middle that its template does not read'. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ),
+		count( $shippedFiles ) === 6 && array_key_first( $shippedFiles ) === $shippedFirst && array_keys( $constructions ) === $sortedRest && count( $constructions ) === 5
+		&& array_filter( $constructions, static fn( array $file ): bool => trim( (string) ( $file['description'] ?? '' ) ) === '' || trim( (string) ( $file['description-de'] ?? '' ) ) === '' || $file['description'] === $file['description-de'] ) === []
+		&& array_filter( $constructions, static fn( array $file ): bool => array_key_exists( 'colours', Themes::setup( $file ) ) === true || Themes::css( $file ) !== '' || ( Themes::setup( $file )['features'] ?? null ) !== [] || ( $file['presets'] ?? null ) !== [] ) === []
+		&& $unread === [] && count( array_unique( array_map( 'json_encode', $constructed ) ) ) === count( $constructed ) && array_filter( $constructed, static fn( array $parts ): bool => $parts === Themes::setup( $shippedRaw[$shippedFirst] )['parts'] ) === [] );
+
+	/*	...and the sheet of each is the sheet of its choice: the stylesheet of the template chosen for every part and the file of every style chosen, and for every ladder those
+		templates publish a line pointing at the step the file names - the inks apart, which stand in a block of their own. Two themes are never the same sheet	*/
+	$themeSheets = [];
+	$sheetProblems = [];
+
+	foreach( $shippedRaw as $slug => $file ) {
+
+		$loaded = Setup::normalize( $appData, Themes::setup( $file ) + [ 'theme' => $slug, 'css' => Themes::css( $file ) ], $library );
+		$sheet = Compiler::compile( $appData, $loaded, $library );
+		$lines = designPlain( substr( $sheet, (int) strrpos( $sheet, 'the knob positions' ) ) );
+		$themeSheets[$slug] = designBody( $sheet );
+
+		foreach( Setup::PARTS as $part => $kind ) {
+
+			$set = $loaded['parts'][$part];
+
+			if( str_contains( $sheet, rtrim( (string) file_get_contents( Setup::file( $library, $part, $set ) ), "\n" ). "\n" ) === false )
+				$sheetProblems[] = $slug. ': the stylesheet of '. $part. '/'. $set;
+
+			foreach( $loaded['styles'][$part] as $style => $option )
+				if( str_contains( $sheet, "\n/* -- style ". $style. ': '. $option. " -- */\n". rtrim( (string) file_get_contents( Setup::styleFile( $library, $part, $set, $style, $option ) ), "\n" ). "\n" ) === false )
+					$sheetProblems[] = $slug. ': the style '. $style. ' '. $option. ' of '. $part;
+
+			foreach( Setup::ladders( $library, $part, $set ) as $knob => $names ) {
+
+				if( Setup::kind( $part, $knob ) === 'ink' )
+					continue;
+
+				foreach( $names as $name )
+					if( str_contains( $lines, "\t--". $part. '-'. $name. ': var(--'. $part. '-'. $name. '--'. Setup::word( $loaded['knobs'][$part][$knob] ). ");\n" ) === false )
+						$sheetProblems[] = $slug. ': '. $part. '-'. $name. ' not at '. Setup::word( $loaded['knobs'][$part][$knob] );
+			}
+		}
+	}
+
+	check( '...and the compiled sheet of each is the sheet of its choice: the template chosen for each part, the style chosen, and every ladder the templates publish selecting the step the file names - and no two of them are the same sheet'
+		. ( $sheetProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $sheetProblems, 0, 6 ) ) ), $sheetProblems === [] && count( $themeSheets ) === count( $shippedRaw ) && count( array_unique( $themeSheets ) ) === count( $themeSheets ) );
+
 	// The compile
 	$notes = [];
 	$plainSheet = Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library, $notes );
@@ -9850,7 +9912,7 @@ $noEntry 	= Setup::normalize( $appData, [], $library );
 $sheetOn 	= Compiler::compile( $appData, $noEntry, $library );
 $sameThemes = [];
 
-foreach( Themes::SHIPPED as $slug ) {
+foreach( array_keys( Themes::shipped( $library ) ) as $slug ) {
 
 	$themeRaw 	= (array) Themes::read( $appData, $library, $slug );
 	$themeSetup = Setup::normalize( $appData, Themes::setup( $themeRaw ) + [ 'theme' => $slug, 'css' => Themes::css( $themeRaw ) ], $library );
@@ -9869,7 +9931,7 @@ Compiler::compile( $appData, Setup::normalize( $appData, $chooseLoud, $library, 
 $featuresOn( [ 'Design', 'Probe' ] );
 
 check( 'a feature that has no entry compiles nothing: with the feature active the sheet is the sheet without it, byte for byte - and so are the sheets the shipped themes make',
-	$sheetOn === $sheetOff && str_contains( $sheetOn, 'feature probe' ) === false && $sameThemes === array_fill( 0, count( Themes::SHIPPED ), true ) && $sameThemes !== [] );
+	$sheetOn === $sheetOff && str_contains( $sheetOn, 'feature probe' ) === false && $sameThemes === array_fill( 0, count( Themes::shipped( $library ) ), true ) && $sameThemes !== [] );
 check( 'an entry of a feature that is not active compiles nothing and is told: no section and not a line, the sheet the setup without the entry makes, and the note once however many readers of the setup told it already',
 	$entryOff === $sheetOff && $offNotes === [ Setup::inactive( 'probe' ) ] && count( $onceNotes ) === 1 && $onceNotes[0] === Setup::inactive( 'probe' ) );
 

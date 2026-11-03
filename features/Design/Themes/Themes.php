@@ -23,15 +23,15 @@ namespace Nino\Modules\Design {
 	 *										a draft; saving puts the screen into it.
 	 *
 	 *										The palette is the one part a theme may leave out: a brand
-	 *										colour is the project's, so the theme the feature ships names
-	 *										none, and loading it takes everything but it; a theme of the
+	 *										colour is the project's, so the themes the feature ships name
+	 *										none, and loading one takes everything but it; a theme of the
 	 *										project is written from the screen with its colours, and loads
 	 *										with them. The choices for the features are in every theme:
 	 *										loading one sets each feature to what the theme says - the
 	 *										variant and the knobs of one it names, its own look for the
 	 *										rest - and a file that names none is the empty choice. So
 	 *										are the styles of the templates: a file that names none
-	 *										has no style chosen, and the shipped theme names none.
+	 *										has no style chosen, and so has the framework's own.
 	 *										So are the styles of a feature, which are part of its entry
 	 *										in the choices for the features: they go and come with it.
 	 *

@@ -1536,7 +1536,7 @@ namespace Nino\Modules\Design {
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
 		 *	has none) and whether the list of the loader has it at all.
 		 *
-		 *	And except for the colours: a file that names none - the theme the feature ships -
+		 *	And except for the colours: a file that names none - a theme the feature ships -
 		 *	chooses no brand colour, so the setup has none either, and what takes the setup
 		 *	over keeps the colours it has. A file that names them (a theme of the project, which
 		 *	a save writes with them) has them normalised as a selection's are.

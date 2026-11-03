@@ -1845,7 +1845,7 @@ namespace Nino\Modules\Design {
 				the range of its kind - an ink is a tone of the page or none -, and a name that is none of the part's - or a part that
 				is none of the eight - is dropped with a note rather than carried: a
 				position nothing reads is a position nobody can find again. One that is
-				missing stands where the defaults put it, which is where the shipped theme does	*/
+				missing stands where the defaults put it, which is where the first shipped theme does	*/
 			$given = is_array( $raw['knobs'] ?? null ) === true ? $raw['knobs'] : [];
 
 			foreach( $given as $part => $values ) {
