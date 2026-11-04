@@ -102,7 +102,7 @@ echo "The manifest\n";
 $manifest = \Nino\Features::manifest( $dir );
 
 check( 'it validates, key "builder"', is_array( $manifest ) === true && $manifest['key'] === 'builder' && ninoWarnings() === [] );
-check( 'it is written for the kernel that has the Components module, with the card called one, the stretched link, the slug and the options methods', is_array( $manifest ) === true && $manifest['nino'] === '^1.9' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for the kernel that has the Components module, with the card called one, the stretched link, the slug and the options methods', is_array( $manifest ) === true && $manifest['nino'] === '^1.10' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it is a feature for content, with nothing required, no settings and no data of its own', $manifest['category'] === 'content' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [] );
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'its manual says what it adds: the panel, and no shortcode, route or callback', $manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] && $manifest['manual']['callbacks'] === [] && isset( $manifest['manual']['panel']['Builder'] ) === true );
@@ -1516,9 +1516,9 @@ check( 'an element has six sides of spacing - mt, mb, pt, pb, pl and pr, each of
 	. 3 * count( $reader::SPACING ) * count( $reader::STEPS ). ' of them'. ( $spaceWrong === [] ? '' : ' - '. implode( ', ', array_slice( $spaceWrong, 0, 5 ) ) ),
 	$spaceWrong === [] && $reader::SPACING === [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] && $reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 check( '...the six stand in one order, that of Reader::SPACING: in the defaults of a section and of a column, and in the node of a component - which has no spacing of its own but them - and each is none until a class says so',
-	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'whitespace',
+	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'tiles', 'ratio', 'whitespace',
 		'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
-	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
+	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
 
 $spacedSection	= $spaceOf( 'section', 'nino-pr-4 nino-text-right nino-pl-2 nino-pb-6 nino-mb-0 nino-whitespace--less nino-pt-3 nino-mt-1' );
@@ -1766,8 +1766,8 @@ $plainBlock['cols'][0]['components'] = [ $plain ];
 // class of its own, nino-radius or nino-radius-alt. The model keeps it as a setting where the class means something - the picture of a padded cover, what the row paints with the
 // background inside, the ground or the picture of a column - and on a component that is a surface; anywhere else the class is a custom one: kept, not lost
 
-check( 'the radius of a surface has two strengths - standard and alternative - a class for each, nino-radius and nino-radius-alt, and five kinds of surface the page has a default for: the cover, the row, the column, the card and the image - and no section, row or column has a radius until it is said',
-	$reader::RADIUS === [ 'standard', 'alternative' ] && $reader::RADIUS_CLASS === [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ] && $reader::SURFACES === [ 'cover', 'row', 'column', 'card', 'image' ]
+check( 'the radius of a surface has two strengths - standard and alternative - a class for each, nino-radius and nino-radius-alt, and six kinds of surface the page has a default for: the cover, the row, the column, the tile, the card and the image - and no section, row or column has a radius until it is said',
+	$reader::RADIUS === [ 'standard', 'alternative' ] && $reader::RADIUS_CLASS === [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ] && $reader::SURFACES === [ 'cover', 'row', 'column', 'tile', 'card', 'image' ]
 	&& $reader::sectionDefaults()['radius'] === '' && $reader::sectionDefaults()['rowRadius'] === '' && $reader::colDefaults()['radius'] === '' && $blank['settings']['radius'] === '' && $blank['settings']['rowRadius'] === '' && $blank['cols'][0]['radius'] === '' );
 
 // The picture of a padded cover
@@ -1973,6 +1973,98 @@ check( 'a component whose schema does not say that it holds components is one li
 echo "\n";
 
 
+// --- Sections of tiles --------------------------------------------------------
+
+echo "A section of tiles: the second kind of section\n";
+
+$tilesFixture	= (string) file_get_contents( __DIR__. '/fixtures/page-home-tiles.tpl' );
+$tilesModel		= $read( $tilesFixture );
+$tilesWork		= $tilesModel['blocks'][0];
+$tilesTeam		= $tilesModel['blocks'][1];
+$tilesLoop		= $tilesModel['blocks'][2];
+
+check( 'the page with tiles is read as it is written: a section of tiles with the ratio 16 : 9 and two tiles, one without a ratio and with a gap and three tiles of a third, and a loop of sections whose class makes each of them one',
+	array_column( $tilesModel['blocks'], 'kind' ) === [ 'section', 'section', 'section' ] && array_column( $tilesModel['blocks'], 'id' ) === [ 'work', 'team', 'news' ]
+	&& [ $tilesWork['settings']['tiles'], $tilesWork['settings']['ratio'] ] === [ true, '16-9' ] && [ $tilesTeam['settings']['tiles'], $tilesTeam['settings']['ratio'] ] === [ true, '' ] && [ $tilesLoop['settings']['tiles'], $tilesLoop['settings']['ratio'] ] === [ true, '4-3' ]
+	&& $tilesLoop['stack']['name'] === 'sections' && $tilesWork['settings']['color'] === 'alt' && $tilesWork['settings']['rowGap'] === '1' && $tilesTeam['settings']['rowGap'] === '1' && $tilesWork['settings']['custom'] === '' && $tilesWork['settings']['rowCustom'] === ''
+	&& count( $tilesWork['cols'] ) === 2 && count( $tilesTeam['cols'] ) === 3 );
+check( '...a tile is a column: the first is dimmed over its picture, linked and puts its words at the end, the second is the primary ground, and the link and the dimming are settings and no custom classes',
+	$tilesWork['cols'][0]['linked'] === true && $tilesWork['cols'][0]['dim'] === true && $tilesWork['cols'][0]['background'] === [ 'slot' => '/template/page-home-tiles/work/picture', 'focus' => 5 ] && $tilesWork['cols'][0]['stackAlign'] === 'end' && $tilesWork['cols'][0]['custom'] === ''
+	&& $tilesWork['cols'][1]['linked'] === false && $tilesWork['cols'][1]['color'] === 'primary' && array_column( $tilesWork['cols'][1]['components'], 'name' ) === [ 'title', 'text', 'button' ] && $tilesWork['cols'][0]['components'][0]['attributes']['href'] === '/_nino/webpage/work/uri'
+	&& $tilesLoop['cols'][0]['linked'] === true );
+check( 'the model the panel\'s script test reads (fixtures/page-home-tiles.json) is written from what the Reader makes of the page with tiles: the file is there, is json, and holds the blocks of the page under the name of its file',
+	$fixtureWritten( 'page-home-tiles.json', array_replace( $tilesModel, [ 'file' => 'page-home-tiles' ] ) ) === true && is_array( $fixtureRead( 'page-home-tiles.json' )['blocks'] ?? null ) === true
+	&& ( $fixtureRead( 'page-home-tiles.json' )['file'] ?? '' ) === 'page-home-tiles' && $fixtureRead( 'page-home-tiles.json' ) === json_decode( (string) json_encode( array_replace( $tilesModel, [ 'file' => 'page-home-tiles' ] ) ), true ) );
+check( '...writing the model gives the page back, byte for byte - nino-tiles and its ratio after nino-section, the link of a tile after its ground and dimming and before the place of its words - and reading what was written gives the model',
+	$write( $tilesModel ) === $tilesFixture && $read( $write( $tilesModel ) ) === $tilesModel && $read( $write( $read( $tilesFixture ) ) ) === $read( $tilesFixture ) );
+
+// What only the content kind has is a custom class on a section of tiles, and a column's link is a setting on a tile only
+$tilesOf = static fn( string $class, string $rowClass = 'nino-grid-row', string $col = 'nino-grid-100', string $attributes = '' ): string => '<section id="a" class="nino-section '. $class. '"'. $attributes. ">\n\t<div class=\"". $rowClass. "\">\n\t\t<div class=\"". $col. "\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n";
+$tilesLonely	= $read( $tilesOf( 'nino-tiles--16-9' ) )['blocks'][0]['settings'];
+$tilesCover		= $read( $tilesOf( 'nino-tiles nino-cover nino-cover--dim nino-cover--padded nino-cover-top nino-parallex nino-parallex--dim nino-section--dim nino-radius-alt' ) )['blocks'][0]['settings'];
+$tilesData		= $read( $tilesOf( 'nino-tiles nino-cover', 'nino-grid-row', 'nino-grid-100', ' data-cover-height="50"' ) )['blocks'][0];
+$tilesRow			= $read( $tilesOf( 'nino-tiles nino-section--alt', 'nino-grid-row nino-grid-row--wide nino-grid-row--left nino-grid-row--alt nino-grid-row--dim nino-grid-gap-2' ) )['blocks'][0]['settings'];
+$tilesSecond	= $read( $tilesOf( 'nino-tiles nino-tiles--4-3 nino-tiles--16-9' ) )['blocks'][0]['settings'];
+check( 'nino-tiles--16-9 on a section that is not tiles is a custom class: the ratio is read while the section is one, and a second ratio is a class of its own',
+	$tilesLonely['tiles'] === false && $tilesLonely['ratio'] === '' && $tilesLonely['custom'] === 'nino-tiles--16-9' && $tilesSecond['ratio'] === '4-3' && $tilesSecond['custom'] === 'nino-tiles--16-9' );
+check( '...a cover, a parallax, their scrims, the room of a padded cover, the place of its content and the radius of it are custom classes on a section of tiles, which is none of them, and data-cover-height on it fails as an attribute the builder does not keep',
+	$tilesCover['tiles'] === true && $tilesCover['cover'] === null && $tilesCover['parallax'] === false && $tilesCover['dim'] === false && $tilesCover['padded'] === false && $tilesCover['contentPos'] === '' && $tilesCover['radius'] === ''
+	&& $tilesCover['custom'] === 'nino-cover nino-cover--dim nino-cover--padded nino-cover-top nino-parallex nino-parallex--dim nino-section--dim nino-radius-alt'
+	&& $tilesData['kind'] === 'html' && $tilesData['reason']['code'] === 'section-attribute' && $tilesData['reason']['detail'] === 'data-cover-height' );
+check( '...the width and the place of its row, its ground and its scrim are custom classes of the row, and the background is never inside; the gap is read as it is',
+	$tilesRow['row'] === '' && $tilesRow['rowPlace'] === '' && $tilesRow['color'] === 'alt' && $tilesRow['inner'] === false && $tilesRow['dim'] === false && $tilesRow['rowGap'] === '2' && $tilesRow['rowCustom'] === 'nino-grid-row--wide nino-grid-row--left nino-grid-row--alt nino-grid-row--dim' );
+$linkedOf = static fn( string $sectionClass ): array => $read( $tilesOf( $sectionClass, 'nino-grid-row', 'nino-grid-100 nino-grid--linked' ) )['blocks'][0]['cols'][0];
+check( 'nino-grid--linked is a setting of a tile and a custom class of a column in a content section',
+	$linkedOf( 'nino-tiles' )['linked'] === true && $linkedOf( 'nino-tiles' )['custom'] === '' && $linkedOf( 'nino-section--alt' )['linked'] === false && $linkedOf( 'nino-section--alt' )['custom'] === 'nino-grid--linked' );
+$tilesBlocks = [
+	'a picture block behind a section of tiles'		=> "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-section-bg\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n",
+	'a picture block behind the row of a section of tiles'	=> "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-row-bg\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n",
+];
+$tilesWrong = [];
+foreach( $tilesBlocks as $tilesName => $tilesSource ) {
+	$tilesBlock = $read( $tilesSource )['blocks'][0];
+	if( $tilesBlock['kind'] !== 'html' || $tilesBlock['reason']['code'] !== 'tiles-background' || $tilesBlock['reason']['detail'] !== ( str_contains( $tilesName, 'the row' ) ? 'nino-grid-row-bg' : 'nino-section-bg' ) || $write( $read( $tilesSource ) ) !== "<div class=\"nino-wrap\">\n\n". rtrim( $tilesSource ). "\n\n</div>\n" )
+		$tilesWrong[] = $tilesName;
+}
+check( '...a section background or a row background in a section of tiles is what the model cannot hold: the section fails with the reason tiles-background, the class of the block in its detail, and is written back as it was'. ( $tilesWrong === [] ? '' : ' - not: '. implode( ', ', $tilesWrong ) ),
+	$tilesWrong === [] && isset( $reader::REASONS['tiles-background'] ) === true && str_contains( $reader::REASONS['tiles-background'], '%s' ) === true );
+check( 'the ratio of a tile is one of the seven words the image component has - the registry says them, and the Reader keeps the same list - and a content section has none',
+	$reader::RATIO === array_values( array_filter( $registry['components']['image']['attributes']['ratio']['options'], static fn( string $ratio ): bool => $ratio !== '' ) ) && count( $reader::RATIO ) === 7
+	&& $reader::sectionDefaults()['tiles'] === false && $reader::sectionDefaults()['ratio'] === '' && $reader::colDefaults()['linked'] === false && $blank['settings']['tiles'] === false && $blank['cols'][0]['linked'] === false );
+
+// The Writer: the classes of a section, a row and a column in the order of the model, whatever order the file has them in
+$tilesSection = [ 'tiles' => true, 'ratio' => '21-9', 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'whitespace' => 'more', 'mt' => '0', 'mb' => '0', 'text' => 'center', 'custom' => 'extra',
+	'row' => 'wide', 'rowPlace' => 'left', 'rowAlign' => 'middle', 'rowGap' => '1', 'rowPt' => '2', 'cover' => 60, 'parallax' => true, 'dim' => true, 'padded' => true, 'contentPos' => 'top', 'radius' => 'alternative', 'inner' => true, 'rowCustom' => 'row-extra' ];
+check( 'the Writer says the classes of a section of tiles as the model has them - nino-tiles and its ratio right after nino-section, then the ground, the lines, the room, the spacing, the text and the classes of its own - and none of what only the content kind has, whatever the model still holds of it',
+	$writer::sectionClasses( $tilesSection ) === [ 'nino-section', 'nino-tiles', 'nino-tiles--21-9', 'nino-section--tint', 'nino-section--border-2', 'nino-section--border-primary', 'nino-whitespace--more', 'nino-mt-0', 'nino-mb-0', 'nino-text-center', 'extra' ]
+	&& $writer::sectionClasses( [ 'tiles' => true ] ) === [ 'nino-section', 'nino-tiles' ] && $writer::sectionClasses( [ 'ratio' => '4-3' ] ) === [ 'nino-section' ]
+	&& $writer::sectionClasses( [ 'tiles' => false, 'cover' => 60, 'color' => 'tint' ] ) === [ 'nino-section', 'nino-section--tint', 'nino-cover' ] );
+check( '...its row has no width, no place and no ground - the alignment of its columns, the gap, the padding and its own classes stay - and a tile has its link after its ground and its dimming and before the place of its words',
+	$writer::rowClasses( $tilesSection ) === [ 'nino-grid-row', 'nino-grid-middle', 'nino-grid-gap-1', 'nino-pt-2', 'row-extra' ] && $writer::rowClasses( array_replace( $tilesSection, [ 'tiles' => false ] ) ) === [ 'nino-grid-row', 'nino-grid-row--wide', 'nino-grid-row--left', 'nino-grid-middle', 'nino-grid-gap-1', 'nino-pt-2', 'row-extra' ]
+	&& $writer::colClasses( [ 'linked' => true, 'color' => 'alt', 'stackAlign' => 'end', 'text' => 'left' ], true ) === [ 'nino-grid-100', 'nino-grid--alt', 'nino-grid--linked', 'nino-stack-end', 'nino-text-left' ]
+	&& $writer::colClasses( [ 'linked' => true, 'color' => 'alt' ] ) === [ 'nino-grid-100', 'nino-grid--alt' ] && $writer::colClasses( [ 'linked' => false ], true ) === [ 'nino-grid-100' ] );
+check( '...a tile has no offsets of its picture: the Writer says none for a tile whose model holds them, a column of a content section says them, and a file that has them on a tile keeps them as the tile\'s own classes, byte for byte',
+	$writer::colClasses( [ 'background' => [ 'slot' => '/a' ], 'bgPl' => '2', 'bgPr' => '1' ], true ) === [ 'nino-grid-100' ] && $writer::colClasses( [ 'background' => [ 'slot' => '/a' ], 'bgPl' => '2', 'bgPr' => '1' ] ) === [ 'nino-grid-100', 'nino-bg-pl-2', 'nino-bg-pr-1' ]
+	&& ( static function() use ( $read, $write, $tilesOf ): bool {
+		$source = "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100 nino-bg-pl-2\">\n\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n";
+		$col = $read( $source )['blocks'][0]['cols'][0];
+		return $col['bgPl'] === '' && $col['custom'] === 'nino-bg-pl-2' && str_contains( $write( $read( $source ) ), 'class="nino-grid-100 nino-bg-pl-2"' );
+	} )() );
+$tilesShuffled = $tilesOf( 'nino-section--alt nino-tiles--16-9 nino-mt-0 nino-tiles nino-text-left', 'nino-grid-gap-1 nino-grid-row', 'nino-grid--linked nino-text-left nino-grid--alt nino-grid-100' );
+check( '...a file that names them in another order is written in the canonical one, and read again as the same',
+	str_contains( $write( $read( $tilesShuffled ) ), '<section id="a" class="nino-section nino-tiles nino-tiles--16-9 nino-section--alt nino-mt-0 nino-text-left">' ) && str_contains( $write( $read( $tilesShuffled ) ), '<div class="nino-grid-row nino-grid-gap-1">' )
+	&& str_contains( $write( $read( $tilesShuffled ) ), '<div class="nino-grid-100 nino-grid--alt nino-grid--linked nino-text-left">' ) && $read( $write( $read( $tilesShuffled ) ) ) === $read( $tilesShuffled ) );
+// A section made a content one again keeps what it is, and the Writer says nothing of the ratio and the links of tiles
+$tilesBack = $tilesModel;
+$tilesBack['blocks'][0]['settings']['tiles'] = false;
+$tilesBackWritten = $write( $tilesBack );
+check( 'a section turned back into a content section is written without nino-tiles, its ratio and the link of its tiles - the settings the form clears, and no class of nothing that would be read as a custom one',
+	str_contains( $tilesBackWritten, '<section id="work" class="nino-section nino-section--alt">' ) === true && str_contains( $tilesBackWritten, 'nino-tiles--16-9' ) === false && substr_count( $tilesBackWritten, 'nino-grid--linked' ) === 1 );
+// ^ the loop of sections in the page keeps its own tiles class in the call, and the model of the page reads it back
+
+echo "\n";
+
+
 // --- 6. The Document: a project with the example page ------------------------
 
 echo "Document - the page templates of a project\n";
@@ -2060,7 +2152,7 @@ check( '...the components, the stacks, the groups and the strength each kind of 
 /*	The strength each kind of surface takes where an element names none is the site's stylesheets' to say, by a marker at their :root - the workbench loads none of them, so the
 	registry reads the bundle's sources and tells the panel: the kernel's own say standard for every kind, and the last declaration in the bundle is the one in force	*/
 $radiiSheet = '/assets/radius-test.css';
-check( 'the registry tells the panel the strength each kind of surface takes by default: the five kinds, in order, each one of the two strengths - the kernel\'s own stylesheet says standard for all of them',
+check( 'the registry tells the panel the strength each kind of surface takes by default: the six kinds, in order, each one of the two strengths - the kernel\'s own stylesheet says standard for all of them',
 	array_keys( $registryAnswer['radii'] ) === $reader::SURFACES && array_values( array_unique( array_values( $registryAnswer['radii'] ) ) ) === [ 'standard' ]
 	&& \Nino\Modules\Builder\Document::radii( $appData ) === $registryAnswer['radii'] );
 
@@ -2071,7 +2163,7 @@ $appData['/nino/html/assets']['/.cache/style.css'] = array_values( array_diff( $
 @unlink( \Nino\Filesystem::path( $appData, $radiiSheet ) );
 
 check( '...a stylesheet of the project that declares the markers is heard, and the last declaration in the bundle is the one in force: a marker in a comment is none, a word that is none of the two and a kind the page does not have are ignored',
-	$radiiProject === [ 'cover' => 'standard', 'row' => 'alternative', 'column' => 'standard', 'card' => 'alternative', 'image' => 'standard' ]
+	$radiiProject === [ 'cover' => 'standard', 'row' => 'alternative', 'column' => 'standard', 'tile' => 'standard', 'card' => 'alternative', 'image' => 'standard' ]
 	&& \Nino\Modules\Builder\Document::radii( $appData ) === $registryAnswer['radii'] );
 check( '...the components stand in the order the kernel registers them, which is the order a column offers them, and the answer keeps it the way the panel reads it: through json, as the kernel has them',
 	array_keys( (array) json_decode( (string) json_encode( $registryAnswer['components'] ), true ) ) === array_keys( $kernelComponents ) );
@@ -4429,6 +4521,11 @@ check( '...and the sections are what Nino.css knows: the cover with its height, 
 check( '...the arrow of a section is the last thing in it, after its row: the element the registry says the scroll hint draws, once - for the one section of the page that has the setting',
 	preg_match_all( '~<'. preg_quote( $arrowTag, '~' ). ' [^>]*class="[^"]*\b'. preg_quote( $arrowClass, '~' ). '\b~', $page ) === 1
 	&& preg_match( '~\t</div>\n\t<'. preg_quote( $arrowTag, '~' ). ' [^>]*\b'. preg_quote( $arrowClass, '~' ). '\b[^>]*></'. preg_quote( $arrowTag, '~' ). '>\n</section>~', $page ) === 1 );
+$tilesDrawn = \Nino\Html::renderHtml( $appData, $tilesFixture );
+check( '...a section of tiles is what Nino.css knows: the section with nino-tiles and its ratio, the row with the gap of the section, the tile that is linked and puts its words at the end, and the loop of sections that makes one tiles section for each element, the class of the call on each',
+	str_contains( $tilesDrawn, '<section id="work" class="nino-section nino-tiles nino-tiles--16-9 nino-section--alt">' ) === true && str_contains( $tilesDrawn, '<div class="nino-grid-row nino-grid-gap-1">' ) === true
+	&& str_contains( $tilesDrawn, 'nino-grid--dim nino-grid--linked nino-stack-end nino-text-left">' ) === true && str_contains( $tilesDrawn, '<div class="nino-grid-bg nino-img-focus--5">' ) === true
+	&& preg_match_all( '/<section id="news-(\d)" class="nino-section nino-tiles nino-tiles--4-3/', $tilesDrawn ) === 2 && str_contains( $tilesDrawn, '[sections' ) === false );
 check( '...a block of html written by hand is in the page as it was written', str_contains( $page, '<p>Imprint note</p>' ) === true && str_contains( $page, '<div class="map"></div>' ) === true );
 $loopDrawn = \Nino\Html::renderHtml( $appData, $inWrap( $loopFile ) );
 check( '...a loop of sections is a section for each element, one after the other where the call stood: the id and the number of the element, the classes after nino-section, the row and its columns once for each, the element the context of what is in them',
@@ -4564,6 +4661,30 @@ $switchHash = \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['has
 [ $status, $switchBody ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $notASwitch, 'hash' => $switchHash ] );
 check( '...a parallax that is no bool: 400, builder_invalid, the switch and its block in the params - and the file is as it was', $status === 400 && $switchBody['code'] === 'builder_invalid'
 	&& $switchBody['params'] === [ 'the parallax of block 1 is neither on nor off' ] && \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] === $switchHash );
+
+// The tiles: a switch that is none, a ratio that is none of the seven and a link that is no switch are refused with their sentences, and the file stays as it was
+$tilesRefused = static function( callable $break ) use ( &$appData, $next ): array {
+	$broken = $next;
+	$break( $broken );
+	[ $status, $body ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $broken, 'hash' => \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] ] );
+	return [ $status, $body['code'] ?? '', $body['params'] ?? [] ];
+};
+$tilesHash = \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'];
+check( '...tiles that is no bool, a ratio that is none of the seven words and a link that is no bool are 400, builder_invalid, with the sentence of each - and the file is as it was',
+	$tilesRefused( static function( array &$model ): void { $model['blocks'][0]['settings']['tiles'] = 'yes'; } ) === [ 400, 'builder_invalid', [ 'the tiles of block 1 is neither on nor off' ] ]
+	&& $tilesRefused( static function( array &$model ): void { $model['blocks'][0]['settings']['tiles'] = true; $model['blocks'][0]['settings']['ratio'] = '7-3'; } ) === [ 400, 'builder_invalid', [ 'the ratio of block 1 is none that Nino.css has' ] ]
+	&& $tilesRefused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['linked'] = 1; } ) === [ 400, 'builder_invalid', [ 'the linked of column 1 of block 1 is neither on nor off' ] ]
+	&& \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] === $tilesHash );
+$tilesGood = $next;
+$tilesGood['blocks'][0]['settings']['tiles'] = true;
+$tilesGood['blocks'][0]['settings']['ratio'] = '21-9';
+$tilesGood['blocks'][0]['cols'][0]['linked'] = true;
+[ $status, $goodBody ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $tilesGood, 'hash' => $tilesHash ] );
+check( '...and the words of the seven and a switch are saved: the section is written as a section of tiles and read back as one - the ratio, the link of the tile, and the class of the cover it no longer writes',
+	$status === 200 && $goodBody['model']['blocks'][0]['settings']['tiles'] === true && $goodBody['model']['blocks'][0]['settings']['ratio'] === '21-9' && $goodBody['model']['blocks'][0]['cols'][0]['linked'] === true
+	&& str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/templates/page-home.tpl', '' ), 'class="nino-section nino-tiles nino-tiles--21-9' ) === true
+	&& str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/templates/page-home.tpl', '' ), 'nino-grid--linked' ) === true );
+check( 'the registry the panel is given has the corners of a tile: the sixth kind, standard until a stylesheet of the project says otherwise', array_key_exists( 'tile', $registryAnswer['radii'] ) === true && $registryAnswer['radii']['tile'] === 'standard' && array_keys( $registryAnswer['radii'] )[3] === 'tile' );
 
 // The texts of a save go through the same action, and a language the site does not have is answered in the panel's own code
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-api.tpl', $section( '[title /template/page-api/a/title]', 'a' ). "\n" );

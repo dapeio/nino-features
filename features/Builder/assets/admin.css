@@ -669,6 +669,23 @@ button.builder-status-item:hover {
 	padding: 0 .7rem .7rem;
 	justify-content: center;
 }
+/* A section of tiles is drawn as it is on the page: edge to edge, with no inset and no gap, and its tiles as high as the ratio of the section says - or as their
+   placeholders need, where a tile holds more. The kind is said after the name in the head */
+.builder-frame-kind {
+	margin-inline-start: .4rem;
+	font-weight: 400;
+	opacity: .7;
+}
+.builder-frame.is-tiles {
+	--builder-gap: 0px;
+}
+.builder-frame.is-tiles > .builder-frame-body {
+	padding: 0;
+	justify-content: flex-start;
+}
+.builder-frame.is-tiles .builder-pcol {
+	aspect-ratio: var(--builder-ratio, auto);
+}
 /* A column has no frame until the pointer is over it or it is selected: it keeps the room of the line, so that nothing moves when the line comes (the selection
    draws its outline besides it) */
 .builder-pcol {

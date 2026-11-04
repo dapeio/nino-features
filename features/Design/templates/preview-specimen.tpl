@@ -498,6 +498,30 @@
 	</div>
 </section>
 
+<section id="tiles" class="nino-section nino-tiles nino-tiles--16-9 nino-section--alt nino-mt-0 nino-mb-0" aria-label="Tiles">
+	<div class="nino-grid-row">
+		<div class="nino-grid-100 nino-grid-m-50 nino-grid--dim nino-grid--linked nino-stack-end nino-text-left">
+			<div class="nino-grid-bg"><img src="[[placeholder]]" alt="" width="640" height="420"></div>
+			<a class="nino-stretch" href="#tiles"><h3 class="nino-section-title">A linked tile</h3></a>
+			<p class="nino-section-text">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-grid--primary nino-text-center">
+			<h3 class="nino-section-title">A tile on a ground</h3>
+			<p class="nino-section-subtitle">Subtitle</p>
+			<p class="nino-section-text">[[lorem]]</p>
+			<a class="nino-btn" href="#buttons">More</a>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-grid--counter nino-text-left">
+			<h3 class="nino-section-title">A counter tile</h3>
+			<p class="nino-section-text">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-grid--tint nino-radius-alt nino-text-left">
+			<h3 class="nino-section-title">The other corners</h3>
+			<p class="nino-section-text">[[short]]</p>
+		</div>
+	</div>
+</section>
+
 [[features]]
 
 <div id="footer"></div>

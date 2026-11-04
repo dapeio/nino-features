@@ -1859,7 +1859,7 @@ const titleName = screen.getElementById('builder-dialog-name');
 const problemLine = screen.getElementById('builder-dialog-problems');
 const idLabel = words['/_admin/builder/section/id'];
 const loopIdLabel = words['/_admin/builder/stack/id'];
-check( 'the title of the dialog of a section is the kind and the name, with the pencil right of the name', dialogText('builder-dialog-kind') === 'Section' && titleName.hidden === false && titleName.textContent === 'hero' && heading.querySelectorAll('.builder-rename').length === 1
+check( 'the title of the dialog of a section is the kind and the name, with the pencil right of the name', dialogText('builder-dialog-kind') === 'Content' && titleName.hidden === false && titleName.textContent === 'hero' && heading.querySelectorAll('.builder-rename').length === 1
 	&& iconOf( heading.querySelector('.builder-rename') ) === 'pencil' && heading.querySelector('.builder-rename').title === 'Rename' );
 check( '...and the form has the id as a field as well: the name is in the title and in the properties, where it is changed the same way', controlsIn( dialogContent() ).filter( function( control ) { return control.label === idLabel } ).length === 1 );
 heading.querySelector('.builder-rename').click();
@@ -2056,7 +2056,7 @@ check( 'the dialog closed by the browser - Escape - asks as well; and once', que
 animation( false, [ null, null, null ] );
 change( dialogContent(), 'Animate the sections', true );
 builder._openSettings( [ 1 ] );
-check( 'the dialog replaced by another asks before it goes', questions.length === 1 && dialogText('builder-dialog-kind') === 'Section' );
+check( 'the dialog replaced by another asks before it goes', questions.length === 1 && dialogText('builder-dialog-kind') === 'Content' );
 console.log( '\nThe dialog of a section' );
 
 doc = open();
@@ -2069,7 +2069,7 @@ const sideLabel = function( side, place ) { return word('section/spacing-cell').
 const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
 const stepsOf = function( box ) { return box.querySelectorAll('select').map( function( select ) { return select.dataset.key } ).join() };
 
-check( 'the dialog of a section has the blocks the table has for it, in the order of the table - the ids and how many - and no strip of tabs: surface, spacing, width, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ) )
+check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, width, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
 	&& blockIds().join() === 'surface,spacing,width,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
 check( '...every block is named by the words of its own key: a head that is a button with the name in it - and no block but the first has what it says of the element in front of the name', blockIds().every( function( id ) {
 	return headOf( id ).localName === 'button' && headOf( id ).querySelector('.builder-block-name').textContent === word('block/'+ id+ '/label') && word('block/'+ id+ '/label') !== '';
@@ -2612,7 +2612,7 @@ check( '...a section that runs a loop says so in its head, as a column does: "El
 
 	item.click();
 
-	return opened && dialogText('builder-dialog-kind') === 'Section' && openBlock() === 'loop' && builder._same( builder._sel, [ 3 ] )
+	return opened && dialogText('builder-dialog-kind') === 'Content' && openBlock() === 'loop' && builder._same( builder._sel, [ 3 ] )
 		&& preview().children[0].querySelector('.builder-frame-head .builder-status-item.is-loop') === null;
 } )() );
 check( '...what the loop of a section takes of the other blocks is its own: the cover is as high as the page makes it - the height is asleep and is 90, the one height a call has - and the animation is the section\'s as it was, delay and duration among it: the document takes them of a loop, so the fields stay and what they hold is kept', ( function() {
@@ -3236,11 +3236,11 @@ const everyComponent = function( then ) {
 	} );
 };
 
-check( 'the table lists every control of a section and of a column once, and nothing that is none: the names of the table and the controls the dialog makes are the same', [ [ 'section', builder._sectionControls( [ 0 ] ) ], [ 'column', builder._colControls( [ 0, 0 ] ) ] ].every( function( pair ) {
+check( 'the table lists every control of a section and of a column once, and nothing that is none: the names of the table and the controls the dialog makes are the same - but for the controls of the tiles, which a content section and a column of one have none of: the ratio, the gap and the text of a section of tiles, and the link over the whole of a tile', [ [ 'section', builder._sectionControls( [ 0 ] ), [ 'ratio', 'tileGap', 'tileText' ] ], [ 'column', builder._colControls( [ 0, 0 ] ), [ 'linked' ] ] ].every( function( pair ) {
 
 	const listed = [].concat( ...builder.BLOCKS[pair[0]].map( function( block ) { return block.controls } ) );
 
-	return new Set( listed ).size === listed.length && JSON.stringify( listed.slice().sort() ) === JSON.stringify( Object.keys( pair[1] ).sort() );
+	return new Set( listed ).size === listed.length && JSON.stringify( listed.filter( function( name ) { return pair[2].indexOf( name ) === -1 } ).sort() ) === JSON.stringify( Object.keys( pair[1] ).sort() );
 } ) );
 check( '...and of a component: each control it has is listed, once - in a block of the kinds of content, link, surface, spacing and properties - and every attribute of its schema stands in one control, the one of its group, whichever component of the registry it is', everyComponent( function( name, at ) {
 
@@ -3350,7 +3350,7 @@ check( 'what is said of a frame in the preview opens its dialog on the block the
 	try {
 		preview().children[3].querySelector('.builder-frame-head .builder-status-item.is-loop').click();
 
-		const loop = openBlock() === 'surface' && dialogText('builder-dialog-kind') === 'Section';
+		const loop = openBlock() === 'surface' && dialogText('builder-dialog-kind') === 'Content';
 
 		builder._closeDialog();
 		alignOf('1.0')[0].click();
@@ -4273,7 +4273,7 @@ check( '...at the end of the level they are meant for: the column of the service
 check( '...the buttons of the preview do the same: a section, a column - and a component, which is chosen in the lightbox the button opens, and goes in at once: the dialog stays and shows its settings', ( function() {
 	doc = open();
 	builder._renderEditor();
-	screen.getElementById('builder-add-section').click();
+	screen.getElementById('builder-add-content').click();
 	preview().children[0].querySelector('.builder-add-col').click();
 	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
 	const box = lightboxOf();
@@ -5028,13 +5028,11 @@ check( 'the content of a form of blocks is a column - the problems of a refused 
 check( 'the blocks of the accordion keep their heads whatever the room is - each a column that does not grow, may be shrunk to nothing and so lets its body give way - and the open one grows: its body is what scrolls - auto, and not scroll, with the room of the bar kept and a floor under which it does not give way, its rows as high as what is in them - and is the box that the switches and the radios in it are placed in, while the bodies of the others stay hidden', ruleHas( '.builder-block', [ 'display: flex', 'flex: 0 0 auto', 'flex-direction: column', 'min-height: 0' ] )
 	&& ruleHas( '.builder-block.is-open', [ 'flex: 1 1 auto' ] ) && ruleHas( '.builder-block.is-open > .builder-block-body', [ 'position: relative', 'flex: 1 1 auto', 'grid-auto-rows: max-content', 'align-content: start', 'min-height: var(--builder-floor)', 'overflow-y: auto', 'scrollbar-gutter: stable' ] )
 	&& ruleHas( '.builder-block-body[hidden]', [ 'display: none' ] ) );
-check( 'the accordion keeps the room for what it must not lose while a block is open - the head of every block and the floor of the open body, 2.4rem a head and 10rem a floor, the one head of the stylesheet for the rule of the head and for the sum - a head and a line for each block and one line more: the count has a rule for each number of blocks a form can have, which is as many as the table has different ones, and the box of the accordion asks for none of it while every block is closed - so that a window too low for it makes the content scroll as a whole', ( function() {
+check( 'the accordion keeps the room for what it must not lose while a block is open - the head of every block and the floor of the open body, 2.4rem a head and 10rem a floor, the one head of the stylesheet for the rule of the head and for the sum - a head and a line for each block and one line more: the count has a rule for each number of blocks a form can have, which is as many as the longest table lists for one element, and the box of the accordion asks for none of it while every block is closed - so that a window too low for it makes the content scroll as a whole', ( function() {
 
-	const named = {};
-
-	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { named[block.id] = true } ) } );
-
-	const counted = Array.from( { length : Object.keys( named ).length - 1 }, function( unused, at ) { return at + 2 } );
+	// The most blocks a table lists for one kind of element: a form has no more
+	const longest = Math.max( ...Object.keys( builder.BLOCKS ).map( function( kind ) { return builder.BLOCKS[kind].length } ) );
+	const counted = Array.from( { length : longest - 1 }, function( unused, at ) { return at + 2 } );
 
 	return ruleHas( '.builder-blocks', [ '--builder-head: 2.4rem', '--builder-floor: 10rem', '--builder-count: 1' ] ) && ruleHas( '.builder-block-head', [ 'min-height: var(--builder-head)' ] )
 		&& ruleHas( '.builder-blocks:has(> .is-open)', [ 'min-height: calc(var(--builder-count) * (var(--builder-head) + 1px) + 1px + var(--builder-floor))' ] )
@@ -8053,7 +8051,7 @@ check( '...a tool that is off pastes nothing, and nothing is changed by a press 
 } ) );
 
 const addBar = function() { return screen.getElementById('builder-add-bar') };
-check( 'the add bar of the page has a button to paste after its two: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
+check( 'the add bar of the page has a button to paste after its three: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
 
 	doc = open();
 	builder._clip = null;
@@ -8062,7 +8060,7 @@ check( 'the add bar of the page has a button to paste after its two: made by the
 	const buttons = addBar().querySelectorAll('button');
 	const paste = addBar().querySelector('.builder-add-paste');
 
-	return buttons.length === 3 && buttons[2] === paste && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Section' && buttons[1].textContent === '+ HTML+ block'
+	return buttons.length === 4 && buttons[3] === paste && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Content' && buttons[1].textContent === '+ Tiles' && buttons[2].textContent === '+ HTML+ block'
 		&& addBar().className === 'builder-add-bar';
 } ) );
 check( '...a section or a block of html clip makes it ready: its title is Paste and the kind word, a press puts the clip at the end of the page, selected, and the button is not made twice', attempt( function() {
@@ -8080,7 +8078,7 @@ check( '...a section or a block of html clip makes it ready: its title is Paste 
 	const ids = builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join();
 
 	return ready && ids === 'hero,services,html,contact,hero-2' && builder._same( builder._sel, [ 4 ] ) && builder._fresh['hero-2'] === true && changes === 1 && screen.activeElement === toolOf( '4', 'paste' )
-		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 3;
+		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 4;
 } ) );
 check( '...a column or a component clip cannot go to the end of the page: the button is off and says why, and a press changes nothing', attempt( function() {
 
@@ -8707,7 +8705,7 @@ check( 'the editor of HTML+ that is opened from the tool for it and cancelled le
 
 console.log( '\nThe seven blocks, the background image, the pictures and the link of a card' );
 
-check( 'the table names seven blocks in all - content, link, surface, spacing, width, loop and properties - and the loop is a block of its own, between the width and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
+check( 'the table names eight blocks in all - content, link, surface, tiles, spacing, width, loop and properties, the tiles being those of a section of tiles - and the loop is a block of its own, between the width and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
 
 	const ids = {};
 	const ofKind = function( kind ) { return builder.BLOCKS[kind].map( function( block ) { return block.id } ).join() };
@@ -8715,13 +8713,13 @@ check( 'the table names seven blocks in all - content, link, surface, spacing, w
 
 	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { ids[block.id] = true } ) } );
 
-	return Object.keys( ids ).sort().join() === 'content,link,loop,properties,spacing,surface,width' && ofKind('section') === 'surface,spacing,width,loop,properties' && ofKind('column') === 'surface,spacing,width,loop,properties'
+	return Object.keys( ids ).sort().join() === 'content,link,loop,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,width,loop,properties' && ofKind('column') === 'surface,spacing,width,loop,properties'
 		&& ofKind('component') === 'content,link,surface,spacing,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && JSON.stringify( loop('column').controls ) === '["stack"]'
 		&& [ 'section', 'column' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
 		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop';
 } )() );
-check( '...the surface of a section lists the line, the colour, the background inside and the corners first and then the picture with what depends on it, the arrow last; the surface of a column the colour and the corners first, then the picture, the dimming and the offset', JSON.stringify( builder.BLOCKS.section[0].controls )
-	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[0].controls ) === '["color","radius","background","dim","bgPl","bgPr"]' );
+check( '...the surface of a section lists the line, the colour, the background inside and the corners first and then the picture with what depends on it, the arrow last; the surface of a column the colour and the corners first, then the picture, the dimming, the link over the whole of a tile and the offset', JSON.stringify( builder.BLOCKS.section[0].controls )
+	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[0].controls ) === '["color","radius","background","dim","linked","bgPl","bgPr"]' );
 
 doc = open();
 builder._renderEditor();
@@ -8873,9 +8871,9 @@ builder._closeDialog();
 
 // The link of a card. The registry says which components may give the link of a linked card - 'stretched' in their schema: the pins set it on their own registry, so that they hold
 // on any kernel the suite is run against. A title-like component is a link the kernel wraps (link true); a feature-like one draws a link of its own (link false)
-check( 'the registry the PHP suite wrote from its kernel (fixtures/registry.json) says stretched on every component, as a bool: true for the title of a card alone, which is a link the kernel wraps, and false for the card, which holds components and is no link',
+check( 'the registry the PHP suite wrote from its kernel (fixtures/registry.json) says stretched on every component, as a bool: true for the title and the title of a card, which are links the kernel wraps, and false for the card, which holds components and is no link',
 	Object.keys( registryFixture.components ).every( function( name ) { return typeof registryFixture.components[name].stretched === 'boolean' } )
-	&& Object.keys( registryFixture.components ).filter( function( name ) { return registryFixture.components[name].stretched === true } ).join() === 'card-title'
+	&& Object.keys( registryFixture.components ).filter( function( name ) { return registryFixture.components[name].stretched === true } ).join() === 'title,card-title'
 	&& registryFixture.components['card-title'].link === true && registryFixture.components.card.stretched === false && typeof registryFixture.components.card.holds === 'string' );
 openCard();
 builder._registry.components['card-title'].stretched = true;
@@ -9180,6 +9178,171 @@ check( 'a component added to it is its last child, with a key of its own in the 
 		return band.components.length === 4 && added.name === 'text' && /^\/template\/page-home-card\/story\/[a-z0-9-]+$/.test( added.source ) === true && added.source !== band.components[1].source && JSON.stringify( added.create ) === '{}'
 			&& builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && frameOf('0.1.0.3').classList.contains('is-selected') === true && frameOf('0.1.0').querySelectorAll('.builder-ph').length === 4
 			&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4;
+	} )() );
+
+console.log( '\nSections of tiles' );
+
+const tilesPage = function() { return builder._normalise( fixture('page-home-tiles.json') ) };
+const germanFile = fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' );
+const englishFile = fs.readFileSync( path.join( __dirname, '../text/en_US.php' ), 'utf8' );
+const wordIn = function( file, key ) { return new RegExp( "^\\s*'\\[\\[/_admin/builder/"+ key.replace( /[.*+?^${}()|[\]\\\/]/g, '\\$&' )+ "\\]\\]'\\s*=>\\s*'.+',\\s*$", 'm' ).test( file ) };
+const tilesKeys = [ 'tree/content', 'tree/tiles', 'tree/tile', 'tile/title', 'tile/stack-align', 'block/tiles/label', 'section/kind', 'option/kind-content', 'option/kind-tiles', 'hint/kind', 'section/ratio', 'option/ratio-default', 'hint/ratio',
+	'col/linked', 'hint/linked', 'section/color-tiles', 'section/tile-gap', 'hint/tile-gap', 'reason/tiles-background' ].concat( [ '1-1', '4-3', '3-2', '16-9', '21-9', '4-1', '5-1' ].map( function( ratio ) { return 'option/ratio-'+ ratio } ) );
+check( 'every word the tiles need is in both interface languages - the kinds, a tile, the block, the ratio with its seven options, the link, the colour and the gap between the tiles, and the reason of a picture block that is not kept - and the two languages say the kinds in different words',
+	tilesKeys.every( function( key ) { return wordIn( englishFile, key ) && wordIn( germanFile, key ) } ) && tilesKeys.length === 26
+	&& builder.RATIOS.join() === ',1-1,4-3,3-2,16-9,21-9,4-1,5-1' && builder.RATIOS.slice( 1 ).every( function( ratio ) { return words['/_admin/builder/option/ratio-'+ ratio] !== undefined } ) );
+
+// A new section of the kind asked for
+const madeKinds = ( function() {
+	const model = page();
+	return { content : builder._newSection( model, 'content' ), tiles : builder._newSection( model, 'tiles' ), plain : builder._newSection( model ) };
+} )();
+check( 'a new section of tiles has the ratio 4 : 3 and two tiles - the whole width on a phone, a half from 768px - with the settings in the order the Reader reads them; a content section is as it was, one column over the whole width, and none says which kind it wants is a content section',
+	madeKinds.tiles.settings.tiles === true && madeKinds.tiles.settings.ratio === '4-3' && madeKinds.tiles.cols.length === 2 && madeKinds.tiles.cols.every( function( col ) { return JSON.stringify( col.width ) === '{"s":100,"m":50,"l":50}' && col.linked === false } )
+	&& Object.keys( madeKinds.tiles.settings ).join() === Object.keys( tilesPage().blocks[0].settings ).join() && Object.keys( madeKinds.tiles.cols[0] ).join() === Object.keys( tilesPage().blocks[0].cols[0] ).join()
+	&& madeKinds.content.settings.tiles === false && madeKinds.content.settings.ratio === '' && madeKinds.content.cols.length === 1 && JSON.stringify( madeKinds.content.cols[0].width ) === '{"s":100,"m":100,"l":100}' && JSON.stringify( madeKinds.plain ) === JSON.stringify( madeKinds.content )
+	&& builder._newCol().linked === false && madeKinds.tiles.cols[0].width !== builder.TILES_WIDTH );
+check( 'the add bar has a button for each kind - + Content and + Tiles - and no button that adds a section of one kind alone: each adds its kind, below the last one, and selects it',
+	template.indexOf('id="builder-add-content"') !== -1 && template.indexOf('id="builder-add-tiles"') !== -1 && template.indexOf('id="builder-add-section"') === -1
+	&& template.indexOf( '>+ [[/_admin/builder/tree/content]]<' ) !== -1 && template.indexOf( '>+ [[/_admin/builder/tree/tiles]]<' ) !== -1 && ( function() {
+		doc = open();
+		builder._renderEditor();
+		screen.getElementById('builder-add-tiles').click();
+		const afterTiles = builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[4].settings.tiles === true && builder._doc.model.blocks[4].cols.length === 2 && builder._same( builder._sel, [ 4 ] ) && preview().children[4].classList.contains('is-tiles') === true;
+		screen.getElementById('builder-add-content').click();
+		return afterTiles && builder._doc.model.blocks.length === 6 && builder._doc.model.blocks[5].settings.tiles === false && builder._doc.model.blocks[5].cols.length === 1 && preview().children[5].classList.contains('is-tiles') === false && changes === 2;
+	} )() );
+
+// The dialog of a section of tiles
+doc = open( tilesPage() );
+builder._lastBlock = {};
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+const tilesLabels = labelList( dialogContent() );
+const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'section/row-align', 'section/content-pos', 'section/cover', 'section/cover-height', 'section/parallax', 'section/inner-background', 'section/padded', 'section/arrow', 'section/offset', 'common/radius-alt', 'section/dim' ];
+check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Loop and Properties - no block of the width',
+	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
+check( '...Surface has the colour - between the tiles - and the border; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background, dimming, offset, arrow or radius',
+	[ word('section/color-tiles'), word('section/border'), word('section/border-primary') ].every( function( label ) { return blockOf('surface').all().some( function( el ) { return controlsIn( blockOf('surface') ).some( function( control ) { return control.label === label } ) } ) } )
+	&& controlsIn( blockOf('surface') ).length === 3 && labelList( blockOf('tiles') ).join() === [ word('section/ratio'), word('section/tile-gap'), word('section/text') ].join()
+	&& contentOnly.every( function( key ) { return tilesLabels.indexOf( words['/_admin/builder/'+ key] ) === -1 } ) && tilesLabels.indexOf( word('section/color') ) === -1 && tilesLabels.indexOf( word('section/row-gap') ) === -1 );
+check( '...the height is a select of the seven ratios and the default, which says what it is - as the content - the gap a step of the space scale, and a change of either is a change of the model, which the Writer reads as nino-tiles--<ratio> and nino-grid-gap-<n>', ( function() {
+	const options = controlOf( blockOf('tiles'), word('section/ratio') ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join();
+	const was = changes;
+	change( blockOf('tiles'), word('section/ratio'), '1-1' );
+	change( blockOf('tiles'), word('section/tile-gap'), '3' );
+	const set = settingsAt( 0 ).ratio === '1-1' && settingsAt( 0 ).rowGap === '3' && changes === was + 2;
+	change( blockOf('tiles'), word('section/ratio'), '' );
+	return options === '=As the content,1-1=1 : 1,4-3=4 : 3,3-2=3 : 2,16-9=16 : 9,21-9=21 : 9,4-1=4 : 1,5-1=5 : 1' && set && settingsAt( 0 ).ratio === '' && controlOf( blockOf('tiles'), word('section/ratio') ).el.value === '';
+} )() );
+change( blockOf('tiles'), word('section/ratio'), '16-9' );
+change( blockOf('tiles'), word('section/tile-gap'), '1' );
+check( '...the properties begin with the kind, a segment of Content and Tiles that says Tiles; the animation, the classes and the id follow',
+	labelList( blockOf('properties') )[0] === word('section/kind') && valueAt( blockOf('properties'), word('section/kind') ) === 'tiles' && labelList( blockOf('properties') ).indexOf( word('section/id') ) !== -1 && labelList( blockOf('properties') ).indexOf( word('section/custom') ) !== -1
+	&& labelList( blockOf('properties') ).indexOf( word('section/row-custom') ) !== -1 );
+check( 'the table lists the controls of a section of tiles once, as it does those of a content section: every control the dialog makes is in it, and in none but one of its blocks', ( function() {
+	const controls = builder._sectionControls( [ 0 ] );
+	const listed = [].concat( ...builder.BLOCKS.section.map( function( block ) { return block.controls } ) );
+	return new Set( listed ).size === listed.length && Object.keys( controls ).every( function( name ) { return listed.indexOf( name ) !== -1 } ) && [ 'ratio', 'tileGap', 'tileText' ].every( function( name ) { return controls[name] !== undefined } )
+		&& [ 'rowGap', 'text', 'width', 'row', 'cover', 'background', 'inner', 'arrow' ].every( function( name ) { return controls[name] === undefined } );
+} )() );
+
+// The dialog of a tile
+builder._closeDialog();
+builder._openSettings( [ 0, 0 ] );
+const tileLabels = labelList( dialogContent() );
+check( 'the dialog of a tile is titled for it, and has the link over the whole tile - a switch - beside the colour, the picture and its dimming, the position of the words in place of the vertical alignment, and no offset of its picture',
+	dialogText('builder-dialog-kind') === 'Tile of "work"' && tileLabels.indexOf( word('col/linked') ) !== -1 && tileLabels.indexOf( word('tile/stack-align') ) !== -1 && tileLabels.indexOf( word('col/stack-align') ) === -1
+	&& tileLabels.filter( function( label ) { return label.indexOf( word('section/offset') ) === 0 } ).length === 0 && tileLabels.indexOf( word('section/dim') ) !== -1 && controlOf( dialogContent(), word('col/linked') ).kind === 'switch' && valueAt( dialogContent(), word('col/linked') ) === true );
+check( '...the link is written to the tile, and the preview says it of the tile: a switch off is a change of the model and takes the mark away',
+	( function() {
+		change( dialogContent(), word('col/linked'), false );
+		const off = builder._doc.model.blocks[0].cols[0].linked === false;
+		change( dialogContent(), word('col/linked'), true );
+		return off && builder._doc.model.blocks[0].cols[0].linked === true;
+	} )() );
+check( '...its radius is the one of the tile kind: the toggle shows the default the registry names for tiles, and not the column\'s', ( function() {
+	const toggle = function() { return controlOf( dialogContent(), word('common/radius-alt') ).el.checked };
+	const radii = builder._registry.radii;
+	const was = radii.tile;
+	radii.tile = 'alternative';
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	const alternative = toggle() === true && builder._radiusDefault( 'tile' ) === 'alternative' && builder._radiusDefault( 'column' ) === 'standard';
+	radii.tile = was;
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	return alternative && toggle() === false;
+} )() );
+check( '...a column of a content section has no link over the whole of it and keeps the vertical alignment, the offset and the radius of the column kind',
+	( function() {
+		doc = open();
+		builder._renderEditor();
+		builder._openSettings( [ 0, 0 ] );
+		const labels = labelList( dialogContent() );
+		return dialogText('builder-dialog-kind') === 'Column of "hero"' && labels.indexOf( word('col/linked') ) === -1 && labels.indexOf( word('col/stack-align') ) !== -1 && labels.indexOf( word('tile/stack-align') ) === -1
+			&& labels.filter( function( label ) { return label.indexOf( word('section/offset') ) === 0 } ).length === 2;
+	} )() );
+
+// Switching the kind
+const ofKind = function( tiles ) {
+	const model = tiles === true ? page() : tilesPage();
+	const settings = model.blocks[0].settings;
+	if( tiles === true )
+		Object.assign( settings, { row : 'full', rowPlace : 'left', rowAlign : 'middle', rowPl : '0', rowPr : '0', rowPt : '1', rowPb : '1', rowRadius : 'alternative', rowBgPl : '1', rowBgPr : '2', cover : 80, parallax : true, dim : true, padded : true, radius : 'alternative', contentPos : 'top', inner : true, arrow : true,
+			color : 'tint', border : '2', borderPrimary : true, rowGap : '2', whitespace : 'more', mt : '1', pt : '3', text : 'center', vpa : 'zoom-soft', custom : 'mine', rowCustom : 'row-mine' } );
+	return model;
+};
+check( 'switching a content section to tiles takes the ratio 4 : 3 and gives up what only a content section has - the width, the place, the alignment and the padding of the row, the radius of what it paints and the picture offsets, the cover, the parallax, the dimming, the room of a padded cover, the radius of it, the place of the content, the background inside and the arrow, and the picture behind the section - and keeps the ground, the lines, the gap, the whitespace, the spacing, the text alignment, the animation and the classes', ( function() {
+	const model = ofKind( true );
+	model.blocks[0].background = { slot : '/template/page-home/hero/background', focus : 5 };
+	model.blocks[0].cols.forEach( function( col ) { col.bgPl = '2'; col.bgPr = '1' } );
+	builder._setKind( model.blocks[0], true );
+	const s = model.blocks[0].settings;
+	return s.tiles === true && s.ratio === '4-3' && [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowBgPl', 'rowBgPr', 'radius', 'contentPos' ].every( function( key ) { return s[key] === '' } )
+		&& s.cover === null && [ 'parallax', 'dim', 'padded', 'inner', 'arrow' ].every( function( key ) { return s[key] === false } ) && model.blocks[0].background === null
+		&& s.color === 'tint' && s.border === '2' && s.borderPrimary === true && s.rowGap === '2' && s.whitespace === 'more' && s.mt === '1' && s.pt === '3' && s.text === 'center' && s.vpa === 'zoom-soft' && s.custom === 'mine' && s.rowCustom === 'row-mine'
+		&& model.blocks[0].cols.length === page().blocks[0].cols.length && model.blocks[0].cols.every( function( col ) { return col.bgPl === '' && col.bgPr === '' } );
+} )() );
+check( '...and the other way it loses the ratio and the link over every tile, and the columns stay - the same columns, the same widths', ( function() {
+	const model = tilesPage();
+	const before = JSON.stringify( model.blocks[0].cols.map( function( col ) { return col.width } ) );
+	builder._setKind( model.blocks[0], false );
+	return model.blocks[0].settings.tiles === false && model.blocks[0].settings.ratio === '' && model.blocks[0].cols.every( function( col ) { return col.linked === false } ) && JSON.stringify( model.blocks[0].cols.map( function( col ) { return col.width } ) ) === before && model.blocks[0].cols.length === 2;
+} )() );
+check( 'the kind of a section is switched in its dialog, which is drawn again for the kind it became - the title, the blocks - and stays on the Properties; a change to the same kind is none', ( function() {
+	doc = open();
+	builder._lastBlock = {};
+	builder._renderEditor();
+	builder._openSettings( [ 0 ] );
+	const was = changes;
+	change( blockOf('properties'), word('section/kind'), 'content' );
+	const none = changes === was && dialogText('builder-dialog-kind') === 'Content';
+	change( blockOf('properties'), word('section/kind'), 'tiles' );
+	const tiles = builder._doc.model.blocks[0].settings.tiles === true && builder._doc.model.blocks[0].settings.ratio === '4-3' && dialogText('builder-dialog-kind') === 'Tiles' && blockIds().join() === 'surface,tiles,spacing,loop,properties' && openBlock() === 'properties'
+		&& builder._doc.model.blocks[0].settings.cover === null && changes === was + 1 && preview().children[0].classList.contains('is-tiles') === true;
+	change( blockOf('properties'), word('section/kind'), 'content' );
+	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
+} )() );
+
+// The preview
+check( 'the preview plans a section of tiles as one - its ratio, and a tile that is linked - and a content section as none, an html block as none', ( function() {
+	const plan = builder._preview( tilesPage(), registry(), 'l' );
+	const content = builder._preview( page(), registry(), 'l' );
+	return plan[0].tiles === true && plan[0].ratio === '16-9' && plan[1].tiles === true && plan[1].ratio === '' && plan[2].tiles === true && plan[2].ratio === '4-3'
+		&& plan[0].cols.map( function( col ) { return col.linked } ).join() === 'true,false' && plan[0].cols[0].width === 50
+		&& content.every( function( block ) { return block.tiles === false && block.ratio === '' && block.cols.every( function( col ) { return col.linked === false } ) } );
+} )() );
+check( '...it is drawn as it is on the page: edge to edge - the frame says so, and the stylesheet gives such a frame no inset and no gap, and its tiles the ratio - with the kind after the name, the link over the tile as a mark on it, and a tile, not a column, as the button that ends the row adds',
+	( function() {
+		doc = open( tilesPage() );
+		builder._renderEditor();
+		const frame = preview().children[0];
+		const mark = frameOf('0.0').querySelector('.builder-head-status .is-linked');
+		const plain = frameOf('0.1').querySelector('.builder-head-status .is-linked');
+		return frame.classList.contains('is-tiles') === true && preview().children[1].classList.contains('is-tiles') === true && frame.querySelector('.builder-frame-kind').textContent === 'Tiles' && frame.querySelector('.builder-frame-name').textContent === 'work'
+			&& mark !== null && iconOf( mark ) === 'link' && plain === null && frame.querySelector('.builder-add-col').textContent === '+ Tile' && ( function() { doc = open(); builder._renderEditor(); return preview().children[0].querySelector('.builder-add-col').textContent === '+ Column' && preview().children[0].querySelector('.builder-frame-kind') === null } )()
+			&& /\.builder-frame\.is-tiles\s*\{[^}]*--builder-gap:\s*0px/.test( stylesheet ) && /\.builder-frame\.is-tiles > \.builder-frame-body\s*\{[^}]*padding:\s*0/.test( stylesheet ) && /\.builder-frame\.is-tiles \.builder-pcol\s*\{[^}]*aspect-ratio:\s*var\(--builder-ratio/.test( stylesheet );
 	} )() );
 
 console.log( '\nThe screens' );

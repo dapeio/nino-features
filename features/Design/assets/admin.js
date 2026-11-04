@@ -120,13 +120,13 @@
 			change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
 			top of it (#global) - the root size and the roles of the fonts as much as the width, the corners and the
 			animation -, a header at the top of it and a footer at its foot (#footer, the id the page has at its end), a section in the first section of the
-			page, which the hero is (#content), a card in the cards (#cards), the buttons in their block and the lists
+			page, which the hero is (#content), the tiles in their own section (#tiles), a card in the cards (#cards), the buttons in their block and the lists
 			and the tables in theirs (#lists, #tables). An aspect has none: opening one moves nothing, the object is what is looked
 			at. A control with an entry of its own (CONTROL_ANCHORS) goes there. A feature is looked at in the block it brings to the
 			specimen (its `anchor`, see _anchorOf()), and at the top of the page where it has none. The page has an id at its end,
 			footer, which only the footer is looked at in. The list of the themes has an anchor of its own, THEMES_ANCHOR. The maps are
 			told together in the docblock of _jump()	*/
-		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables', forms : 'forms' },
+		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', tiles : 'tiles', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables', forms : 'forms' },
 
 		/*	The controls that are looked at elsewhere than their object is, by the key the table has them under: the
 			eight controls of the palette, which are the page's and are looked at in the grounds (#colours), where the
@@ -329,6 +329,7 @@
 			'page/radius' : 'square-round-corner',
 			'page/radius-alt' : 'square-round-corner',
 			'page/radii-section' : 'square-round-corner',
+			'page/radii-tile' : 'square-round-corner',
 			'page/radii-card' : 'square-round-corner',
 			'page/radii-image' : 'square-round-corner',
 			'typefaces/family' : 'a-large-small',
@@ -366,6 +367,15 @@
 			'section/rule-color' : 'palette',
 			'section/align' : 'align-center',
 			'section/measure' : 'unfold-horizontal',
+			'tiles/title' : 'a-large-small',
+			'tiles/subtitle' : 'a-large-small',
+			'tiles/text' : 'a-large-small',
+			'tiles/title-tracking' : 'chevrons-left-right',
+			'tiles/space' : 'align-vertical-space-around',
+			'tiles/gap' : 'unfold-horizontal',
+			'tiles/place' : 'align-center',
+			'tiles/dim' : 'contrast',
+			'tiles/hover' : 'move-vertical',
 			'card/title' : 'a-large-small',
 			'card/subtitle' : 'a-large-small',
 			'card/title-tracking' : 'chevrons-left-right',

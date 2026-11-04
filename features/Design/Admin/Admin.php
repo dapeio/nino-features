@@ -714,7 +714,7 @@ namespace Nino\Modules\Design {
 			$css 			= Preview::css( $appData, $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );
 			$document = '';
 
-			/*	Six of the eight parts are a stylesheet and nothing else, and so
+			/*	Seven of the nine parts are a stylesheet and nothing else, and so
 				are the knobs, the size, the width, the animation, the hover of the
 				pictures, the fonts and the palette: for those the screen swaps
 				one <style> inside the frame it already has, and neither the

@@ -19,14 +19,14 @@ namespace Nino\Modules\Design {
 	 *										here that cannot be worked out again from what is on disk.
 	 *
 	 *										One model for the panel (the loader of the typefaces installs
-	 *										families and keeps nothing here): the eight
+	 *										families and keeps nothing here): the nine
 	 *										templates (header and footer bring markup and a stylesheet,
-	 *										section, card, buttons, lists, tables and forms are one stylesheet
+	 *										section, tiles, card, buttons, lists, tables and forms are one stylesheet
 	 *										each), the root size, the width and the whitespace of the
 	 *										page, the radius of its surfaces - two strengths and, for
 	 *										each kind of surface, the one it takes -, its animation and
 	 *										the hover of its pictures, a position for every named knob
-	 *										of the eight templates, the five font roles and the
+	 *										of the nine templates, the five font roles and the
 	 *										palette - and, for the list of the themes and the view CSS,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
@@ -100,7 +100,8 @@ namespace Nino\Modules\Design {
 			shown in, and the order of the cascade: what a later part says, it says over an
 			earlier one. Each styles one object of a page (see OBJECTS): the header and the
 			footer the two frames; the section the hero, a section with its title, subtitle and
-			text, the cover and the column on a ground; the card a card and the parts of it; the
+			text, the cover and the column on a ground - the content kind of a section, which the Builder
+			calls Content; the tiles the other kind, a section of tiles, its tiles and what is on them; the card a card and the parts of it; the
 			buttons .nino-btn and its variants; the lists .nino-list and its two markers; the
 			tables .nino-table, its cells, its lines and its stripes; the forms the fields of a
 			form, their labels, the status line, the checkbox and the radio group. The blocks -
@@ -117,12 +118,13 @@ namespace Nino\Modules\Design {
 			names - Regular, Open and Panel, and the card's Box besides -, so that a theme names a
 			sensible pair and a person can still mix them. The tables are what is left of the components set, whose
 			fields and blocks the kernel draws now: its table rules, five sets of them. The forms
-			are the eighth part, four sets of them, which declare no rule of their own: the rules
+			are the ninth part, four sets of them, which declare no rule of their own: the rules
 			are the kernel's, and a set says what the properties they read are	*/
 		public const array PARTS = [
 			'header' 			=> 'frame',
 			'footer' 			=> 'frame',
 			'section' 		=> 'set',
+			'tiles' 			=> 'set',
 			'card' 				=> 'set',
 			'buttons' 		=> 'set',
 			'lists' 			=> 'set',
@@ -195,6 +197,13 @@ namespace Nino\Modules\Design {
 							measure				how wide the column of the subtitle and of the text is (a choice)
 							title-case			the title of a section, the hero's among them, in capitals (a toggle)
 							subtitle-case		the subtitle of a section, the hero's among them, in capitals (a toggle)
+				tiles		title, subtitle, text	the size of the title, the subtitle and the words of a tile
+							title-tracking	the letter-spacing of the title of a tile
+							space				the room inside a tile
+							gap					the gap between the tiles, which the colour of the section shows in
+							place				where the words of a tile stand in it: at the start, in the middle or at the end (a choice)
+							dim					how dark the scrim of a dimmed tile is
+							hover				what the picture of a linked tile does under the pointer (a choice)
 				card		title, subtitle	the size of the title and of the subtitle of a card
 							title-tracking	the letter-spacing of the title of a card
 							space				the space inside a card and between its parts
@@ -232,6 +241,7 @@ namespace Nino\Modules\Design {
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
 			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'rule-length' => 'choice', 'title-shadow' => 'scale', 'dim' => 'scale', 'title-ground' => 'choice', 'rule-color' => 'choice', 'align' => 'choice', 'measure' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
+			'tiles' 		=> [ 'title' => 'scale', 'subtitle' => 'scale', 'text' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'gap' => 'scale', 'place' => 'choice', 'dim' => 'scale', 'hover' => 'choice' ],
 			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'title-ground' => 'choice', 'hover' => 'choice', 'align' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'tracking' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'outline' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
@@ -258,7 +268,7 @@ namespace Nino\Modules\Design {
 			hover of the pictures	*/
 		public const array TABS = [ 'templates', 'type', 'surfaces', 'colours', 'motion', 'css' ];
 
-		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'card', 'buttons', 'lists', 'tables', 'forms' ];
+		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'tiles', 'card', 'buttons', 'lists', 'tables', 'forms' ];
 
 		/*	Where every control of the panel stands, and the only place that says: one entry for
 			each thing the setup lets a person choose, keyed by where the choice is kept in it -
@@ -270,8 +280,8 @@ namespace Nino\Modules\Design {
 			stand at one place are one control: the cover, the row and the column of a section
 			take the strength of their corners from one choice, and the second colour is the
 			swatch at the end of the row of Harmony. An object with no control on a tab has no
-			row there. Every entry names one of OBJECTS: the eight templates stand under the
-			object each is the template of - the header, the footer, the section, the card, the
+			row there. Every entry names one of OBJECTS: the nine templates stand under the
+			object each is the template of - the header, the footer, the section, the tiles, the card, the
 			buttons, the lists, the tables and the forms -, and the knobs under the object of their part,
 			the frames' among them: a header and a footer have a ladder each for their type, their
 			surfaces and their ground. The colours and the motion are the page's palette, its
@@ -286,7 +296,7 @@ namespace Nino\Modules\Design {
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the choice of a set for each of the eight parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled -, and how a section and a card stand on the page: where their words are and how wide the column of a section is
+			// The templates: the choice of a set for each of the nine parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled -, and how a section and a card stand on the page: where their words are and how wide the column of a section is
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
 			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
 			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
@@ -296,6 +306,7 @@ namespace Nino\Modules\Design {
 			'parts/section' 						=> [ 'templates', 'section', 1 ],
 			'knobs/section/align' 					=> [ 'templates', 'section', 2 ],
 			'knobs/section/measure' 				=> [ 'templates', 'section', 3 ],
+			'parts/tiles' 							=> [ 'templates', 'tiles', 1 ],
 			'parts/card' 							=> [ 'templates', 'card', 1 ],
 			'knobs/card/align' 						=> [ 'templates', 'card', 2 ],
 			'parts/buttons' 						=> [ 'templates', 'buttons', 1 ],
@@ -321,6 +332,10 @@ namespace Nino\Modules\Design {
 			'knobs/section/title-tracking' 			=> [ 'type', 'section', 5 ],
 			'knobs/section/title-case' 				=> [ 'type', 'section', 6 ],
 			'knobs/section/subtitle-case' 			=> [ 'type', 'section', 7 ],
+			'knobs/tiles/title' 					=> [ 'type', 'tiles', 1 ],
+			'knobs/tiles/subtitle' 					=> [ 'type', 'tiles', 2 ],
+			'knobs/tiles/text' 						=> [ 'type', 'tiles', 3 ],
+			'knobs/tiles/title-tracking' 			=> [ 'type', 'tiles', 4 ],
 			'knobs/card/title' 						=> [ 'type', 'card', 1 ],
 			'knobs/card/subtitle' 					=> [ 'type', 'card', 2 ],
 			'knobs/card/title-tracking' 			=> [ 'type', 'card', 3 ],
@@ -358,6 +373,11 @@ namespace Nino\Modules\Design {
 			'radii/cover' 							=> [ 'surfaces', 'section', 5 ],
 			'radii/row' 							=> [ 'surfaces', 'section', 5 ],
 			'radii/column' 							=> [ 'surfaces', 'section', 5 ],
+			'knobs/tiles/space' 					=> [ 'surfaces', 'tiles', 1 ],
+			'knobs/tiles/gap' 						=> [ 'surfaces', 'tiles', 2 ],
+			'knobs/tiles/place' 					=> [ 'surfaces', 'tiles', 3 ],
+			'knobs/tiles/hover' 					=> [ 'surfaces', 'tiles', 4 ],
+			'radii/tile' 							=> [ 'surfaces', 'tiles', 5 ],
 			'knobs/card/space' 						=> [ 'surfaces', 'card', 1 ],
 			'knobs/card/border' 					=> [ 'surfaces', 'card', 2 ],
 			'knobs/card/shadow' 					=> [ 'surfaces', 'card', 3 ],
@@ -391,6 +411,7 @@ namespace Nino\Modules\Design {
 			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
 			'knobs/section/title-ground' 			=> [ 'colours', 'section', 2 ],
 			'knobs/section/rule-color' 				=> [ 'colours', 'section', 3 ],
+			'knobs/tiles/dim' 						=> [ 'colours', 'tiles', 1 ],
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
 			'knobs/card/title-ground' 				=> [ 'colours', 'card', 2 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
@@ -553,8 +574,8 @@ namespace Nino\Modules\Design {
 		public const array WHITESPACE = [ -2 => '.75', -1 => '.9', 0 => '1', 1 => '1.5', 2 => '2' ];
 
 		/*	The radius of a surface, the way Nino.css has it at its :root: two strengths for the whole page, the
-			standard one --radius-surface and the alternative one --radius-surface-alt, and five kinds of surface
-			- the picture of a padded cover, a row, a column, a card and the frame of a picture -, each with the
+			standard one --radius-surface and the alternative one --radius-surface-alt, and six kinds of surface
+			- the picture of a padded cover, a row, a column, a tile, a card and the frame of a picture -, each with the
 			token --radius-<kind> that points at one of the two and the marker --radius-<kind>-default, a plain
 			word that says which, for a tool that wants the default of a kind without resolving a length. The
 			setup holds a position for each strength (`radius` and `radius-alt`) and a word for each kind (`radii`).
@@ -564,7 +585,7 @@ namespace Nino\Modules\Design {
 		public const array RADIUS = [ -2 => '0rem', -1 => '.05rem', 0 => '.1rem', 1 => '.4rem', 2 => '1rem' ];
 
 		// The kinds of surface in the order Nino.css names them, and the two words a kind is set to: the strength it takes
-		public const array SURFACES = [ 'cover', 'row', 'column', 'card', 'image' ];
+		public const array SURFACES = [ 'cover', 'row', 'column', 'tile', 'card', 'image' ];
 
 		public const array RADIUS_WORDS = [ 'standard', 'alternative' ];
 

@@ -138,6 +138,13 @@
 		ROW_ALIGN	: [ '', 'middle', 'bottom' ],
 		// Where the row of a cover or a parallax stands in it: in the middle, which is none, at the top, at the bottom
 		CONTENT_POS	: [ '', 'top', 'bottom' ],
+		// The height of the tiles of a section of tiles, the ratio of the image component (Reader::RATIO): none is a tile as high as its words
+		RATIOS		: [ '', '1-1', '4-3', '3-2', '16-9', '21-9', '4-1', '5-1' ],
+		// The kinds of section: the content kind, which has no setting of its own, and the tiles
+		KINDS			: [ 'content', 'tiles' ],
+		// What a new tiles section starts as: the ratio of its tiles, and the widths of the two tiles it has - the whole width on a phone, a half from 768px
+		TILES_RATIO	: '4-3',
+		TILES_WIDTH	: { s : 100, m : 50, l : 50 },
 		// How much room a section keeps, on the scale of the page's whitespace (the Design's): none is the page's own
 		WHITESPACE	: [ '', 'least', 'less', 'more', 'most' ],
 		// Where a component that is a link opens: the second of the two attributes every one has (the schema does not declare them)
@@ -232,13 +239,15 @@
 		BLOCKS		: {
 			section : [
 				{ id : 'surface', controls : [ 'border', 'borderPrimary', 'color', 'inner', 'radius', 'rowRadius', 'background', 'cover', 'parallax', 'dim', 'padded', 'rowBgPl', 'rowBgPr', 'arrow' ] },
+				// The block of a section of tiles: the controls that are the tiles' own - the ratio, and the gap and the text of the row under the words of tiles - have names of their own, so that a content section has none of them
+				{ id : 'tiles', controls : [ 'ratio', 'tileGap', 'tileText' ] },
 				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
 				{ id : 'loop', controls : [ 'stack' ] },
-				{ id : 'properties', controls : [ 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
+				{ id : 'properties', controls : [ 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
 			],
 			column : [
-				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'bgPl', 'bgPr' ] },
+				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'linked', 'bgPl', 'bgPr' ] },
 				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
 				{ id : 'loop', controls : [ 'stack' ] },
@@ -838,13 +847,15 @@
 		 *	A section as the editor makes a new one: a name that is free, the
 		 *	animation the template gives, one column over the whole width, nothing
 		 *	in it. The template gives the bare nino-vpa where it animates its
-		 *	sections and none where it does not
+		 *	sections and none where it does not. A section of tiles starts with the
+		 *	ratio of TILES_RATIO and two tiles, a half each from 768px
 		 *
 		 *	@param		{Object}		model
+		 *	@param		{string}		[kind]						content, the default, or tiles
 		 *
 		 *	@return		{Object}
 		 */
-		_newSection : function( model ) {
+		_newSection : function( model, kind ) {
 
 			const builder = Nino.admin.builder;
 			// A loop called section would take every section-<n>: the new one is then section-new
@@ -853,20 +864,22 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
-				cols			: [ builder._newCol() ],
+				cols			: kind === 'tiles' ? [ builder._newCol( builder.TILES_WIDTH ), builder._newCol( builder.TILES_WIDTH ) ] : [ builder._newCol() ],
 			};
 		},
 
 		/**
-		 *	A column as the editor makes a new one: the whole width everywhere
+		 *	A column as the editor makes a new one: the whole width everywhere, or the widths it is given
+		 *
+		 *	@param		{Object}		[width]						{ s, m, l }
 		 *
 		 *	@return		{Object}
 		 */
-		_newCol : function() {
-			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+		_newCol : function( width ) {
+			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
 		},
 
 		/**
@@ -2165,7 +2178,7 @@
 			return model.blocks.map( function( block, b ) {
 
 				if( block.kind !== 'section' )
-					return { path : [ b ], kind : 'html', id : '', color : '', rowColor : '', inner : false, padded : false, whitespace : '', loop : null, background : false, reason : block.reason || null, cols : [] };
+					return { path : [ b ], kind : 'html', id : '', color : '', rowColor : '', inner : false, padded : false, whitespace : '', loop : null, background : false, tiles : false, ratio : '', reason : block.reason || null, cols : [] };
 
 				const covered = block.settings.cover !== null && block.settings.cover !== undefined;
 				// A cover and a parallax are the section's own picture: the background is inside - on the row - for no other
@@ -2185,6 +2198,9 @@
 					whitespace	: block.settings.whitespace || '',
 					loop				: loop === null ? null : { path : [ b ], type : loops === undefined || loops.title === '' ? loop.source : loops.title },
 					background	: block.background !== null && block.background !== undefined,
+					// A section of tiles is drawn edge to edge, its tiles in its ratio
+					tiles				: block.settings.tiles === true,
+					ratio				: block.settings.tiles === true ? ( block.settings.ratio || '' ) : '',
 					reason			: null,
 					cols				: block.cols.map( function( col, c ) {
 
@@ -2201,6 +2217,7 @@
 							// dimmed, whatever colour it names: Nino.css paints a dimmed column as the dark ground (a dimming without a picture is no ground)
 							color			: picture === true && col.dim === true ? 'dark' : ( col.color === undefined || col.color === '' ? '' : ( builder._paints( col.color, block.settings.color || '' ) || 'plain' ) ),
 							background : picture,
+							linked		: block.settings.tiles === true && col.linked === true,
 							text			: col.text || '',
 							stackAlign : col.stackAlign || '',
 							stack			: stack === null ? null : { path : [ b, c, 'x' ], label : builder._stackLabel( registry, stack.name ), type : type === undefined || type.title === '' ? stack.source : type.title },
@@ -3107,7 +3124,8 @@
 
 			dc.getElementById('builder-save').addEventListener( 'click', function() { builder._save() } );
 			dc.getElementById('builder-source').addEventListener( 'click', builder._showSource );
-			dc.getElementById('builder-add-section').addEventListener( 'click', function() { builder._addSection() } );
+			dc.getElementById('builder-add-content').addEventListener( 'click', function() { builder._addSection( 'content' ) } );
+			dc.getElementById('builder-add-tiles').addEventListener( 'click', function() { builder._addSection( 'tiles' ) } );
 			dc.getElementById('builder-add-html').addEventListener( 'click', function() { builder._editBlock( null ) } );
 			dc.getElementById('builder-template-settings').addEventListener( 'click', function() { builder._select( [] ); builder._openSettings( [] ) } );
 
@@ -3550,11 +3568,19 @@
 				if( block.rowColor !== '' )
 					body.classList.add( 'builder-color-'+ block.rowColor );
 
-				// The title: a section has its name, which is changed where it stands
+				// The title: a section has its name, which is changed where it stands, and a section of tiles says what it is after it - and is drawn edge to edge, its tiles in its ratio
 				name.textContent = block.kind === 'section' ? block.id : 'HTML+';
 
 				if( block.kind === 'section' )
 					name.parentNode.appendChild( builder._renamer( name, block.path, builder._barSays ) );
+
+				if( block.tiles === true ) {
+					frame.classList.add('is-tiles');
+					name.parentNode.appendChild( builder._el( 'span', 'builder-frame-kind', Nino.content.getText('/_admin/builder/tree/tiles') ) );
+
+					if( block.ratio !== '' )
+						frame.style.setProperty( '--builder-ratio', block.ratio.replace( '-', ' / ' ) );
+				}
 
 				// What is said of the frame
 				if( block.background === true )
@@ -3588,7 +3614,7 @@
 					status.appendChild( builder._statusItem( 'warning', 'warning', builder._reasonText( block.reason ), '' ) );
 
 				builder._pick( frame, block.path );
-				head.appendChild( builder._tools( block.path, block.kind === 'section' ? Nino.content.getText('/_admin/builder/tree/section')+ ' '+ block.id : Nino.content.getText('/_admin/builder/tree/html-block') ) );
+				head.appendChild( builder._tools( block.path, block.kind === 'section' ? Nino.content.getText('/_admin/builder/tree/section')+ ' '+ block.id+ ( block.tiles === true ? ', '+ Nino.content.getText('/_admin/builder/tree/tiles') : '' ) : Nino.content.getText('/_admin/builder/tree/html-block') ) );
 
 				if( block.kind === 'html' )
 					body.appendChild( builder._placeholder( { path : block.path, label : 'HTML+', image : 'block' }, 'none' ) );
@@ -3597,7 +3623,7 @@
 
 				// The end of the row: a column more
 				if( block.kind === 'section' )
-					body.appendChild( builder._addButton( 'col', function() { builder._addCol( block.path ) }, 'builder-add-col' ) );
+					body.appendChild( builder._addButton( block.tiles === true ? 'tile' : 'col', function() { builder._addCol( block.path ) }, 'builder-add-col' ) );
 
 				mount.appendChild( frame );
 			} );
@@ -3800,7 +3826,7 @@
 		/**
 		 *	The button at the end of a level that adds to it
 		 *
-		 *	@param		{string}		what							section, col, component, stack or html-block - the part of its words under tree/ - or paste, which
+		 *	@param		{string}		what							section, col, tile, component, stack or html-block - the part of its words under tree/ - or paste, which
 		 *															says the word of the tool and is no plus: it puts what was copied
 		 *	@param		{Function}	onClick						Called with the button
 		 *	@param		{string}		[className]
@@ -3861,6 +3887,10 @@
 
 			if( col.background === true )
 				status.appendChild( builder._statusItem( 'background', 'image', Nino.content.getText('/_admin/builder/preview/column-background'), '' ) );
+
+			// The title's link covers the whole of the tile
+			if( col.linked === true )
+				status.appendChild( builder._statusItem( 'linked', 'link', Nino.content.getText('/_admin/builder/preview/linked'), '' ) );
 
 			if( col.stack !== null ) {
 
@@ -4343,9 +4373,11 @@
 		/**
 		 *	A new section below the last one, with the animation of the template
 		 *
+		 *	@param		{string}		[kind]						content, the default, or tiles
+		 *
 		 *	@return		void
 		 */
-		_addSection : function() {
+		_addSection : function( kind ) {
 
 			const builder = Nino.admin.builder;
 			const model = builder._doc.model;
@@ -4353,7 +4385,7 @@
 			if( builder._mutable() === false )
 				return;
 
-			const section = builder._newSection( model );
+			const section = builder._newSection( model, kind );
 
 			model.blocks.push( section );
 			builder._fresh[section.id] = true;
@@ -6203,7 +6235,7 @@
 		 *	The strength the page gives a kind of surface where an element says nothing: the registry's radii (the markers --radius-<kind>-default of the
 		 *	page's style sheets, read by the server; the kernel's own where no Design sets them, all of them standard)
 		 *
-		 *	@param		{string}		kind							cover, row, column, card or image
+		 *	@param		{string}		kind							cover, row, column, tile, card or image
 		 *
 		 *	@return		{string}									standard or alternative
 		 */
@@ -6236,7 +6268,7 @@
 		 *
 		 *	@param		{Object}		holder						Where the setting is kept: the settings of a section, a column, a component
 		 *	@param		{string}		key								radius, or rowRadius for the row of a section
-		 *	@param		{string}		kind							cover, row, column, card or image: the kind of surface, which has its default
+		 *	@param		{string}		kind							cover, row, column, tile, card or image: the kind of surface, which has its default
 		 *	@param		{Function}	awake							Whether the element paints a surface now
 		 *
 		 *	@return		{Element}									The switch, with syncRadius(): draws its state and its sleep again, for the form that changes what the element paints
@@ -6432,7 +6464,8 @@
 			const builder = Nino.admin.builder;
 
 			builder._dialog( {
-				title		: Nino.content.getText('/_admin/builder/tree/section'),
+				// The title is the kind of the section: Content or Tiles
+				title		: Nino.content.getText( builder._doc.model.blocks[path[0]].settings.tiles === true ? '/_admin/builder/tree/tiles' : '/_admin/builder/tree/content' ),
 				rename	: path,
 				blame		: path[0],
 				returnTo	: path,
@@ -6538,7 +6571,7 @@
 
 			settle();
 
-			return {
+			const controls = {
 				color : {
 					keys	: [ 'color' ],
 					build	: function( body ) { body.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color' }, syncInner ) ) },
@@ -6898,7 +6931,90 @@
 					},
 					says	: function() { return '' },
 				},
+				// The kind of the section, content or tiles: a switch of the whole form, which is opened again for the kind it has become (see _setKind())
+				kind : {
+					keys	: [ 'tiles' ],
+					build	: function( body ) {
+						body.appendChild( builder._keyed( builder._segmentField( word('section/kind'), builder._options( 'kind', builder.KINDS ), settings.tiles === true ? 'tiles' : 'content', function( value ) {
+
+							if( ( value === 'tiles' ) === ( settings.tiles === true ) )
+								return;
+
+							builder._setKind( section, value === 'tiles' );
+							builder._changed();
+							builder._sectionDialog( path, builder._blockOf( 'section', 'kind' ) );
+						}, word('hint/kind') ), 'tiles' ) );
+					},
+					says	: function() { return settings.tiles === true ? word('tree/tiles') : '' },
+				},
 			};
+
+			if( settings.tiles !== true )
+				return controls;
+
+			// A section of tiles has the controls it has of the content kind - the ground between its tiles, its lines, its air, its loop, its animation and its own classes - and three of its
+			// own: the height of its tiles, the gap between them and how the text of the section runs, under the names the table lists in the block Tiles. It has no width, no row, no cover,
+			// no parallax, no background and no picture of its row: its row is the whole width of the section and its tiles hold the pictures
+			const kept = [ 'border', 'borderPrimary', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'stack', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
+			const tiles = {};
+
+			kept.forEach( function( name ) { tiles[name] = controls[name] } );
+
+			// The colour of the section is what shows between the tiles
+			tiles.color = {
+				keys	: [ 'color' ],
+				build	: function( body ) { body.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color-tiles' } ) ) },
+				says	: controls.color.says,
+			};
+			tiles.ratio = {
+				keys	: [ 'ratio' ],
+				build	: function( body ) { body.appendChild( setting( { key : 'ratio', type : 'select', label : '/_admin/builder/section/ratio', hint : '/_admin/builder/hint/ratio', group : 'ratio', values : builder.RATIOS } ) ) },
+				says	: function() { return settings.ratio === '' ? '' : builder._optionLabel( 'ratio', settings.ratio ) },
+			};
+			tiles.tileGap = {
+				keys	: [ 'rowGap' ],
+				build	: function( body ) { body.appendChild( setting( { key : 'rowGap', type : 'select', label : '/_admin/builder/section/tile-gap', hint : '/_admin/builder/hint/tile-gap', group : 'space', values : builder.SPACES } ) ) },
+				says	: controls.rowGap.says,
+			};
+			tiles.tileText = controls.text;
+
+			return tiles;
+		},
+
+		/**
+		 *	A section turned into the other kind, as the switch of the form says it. To tiles it takes the ratio of a new one and gives up what is the content kind's: the width, the place
+		 *	and the padding of its row, the ground and the picture of its row, the cover, the parallax, the dimming and the room of a padded cover, the place of the content, the radius of a padded cover,
+		 *	the arrow, the picture behind it and the offsets of the picture of each column. The ground and the lines of the section, the gap, the whitespace, its spacing, its text alignment, its animation and its classes stay. To content it
+		 *	loses the ratio and the link over the whole of each of its tiles. Its columns stay as they are
+		 *
+		 *	@param		{Object}		section
+		 *	@param		{boolean}		tiles							The kind it becomes
+		 *
+		 *	@return		void
+		 */
+		_setKind : function( section, tiles ) {
+
+			const builder = Nino.admin.builder;
+			const settings = section.settings;
+
+			settings.tiles = tiles;
+
+			if( tiles === true ) {
+
+				settings.ratio = builder.TILES_RATIO;
+
+				[ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowBgPl', 'rowBgPr', 'contentPos', 'radius' ].forEach( function( key ) { settings[key] = '' } );
+				[ 'parallax', 'dim', 'padded', 'inner', 'arrow' ].forEach( function( key ) { settings[key] = false } );
+				settings.cover = null;
+				section.background = null;
+				// A tile has no offsets of its picture
+				section.cols.forEach( function( col ) { col.bgPl = ''; col.bgPr = '' } );
+
+				return;
+			}
+
+			settings.ratio = '';
+			section.cols.forEach( function( col ) { col.linked = false } );
 		},
 
 		/**
@@ -7360,7 +7476,8 @@
 			const section = builder._doc.model.blocks[path[0]];
 
 			builder._dialog( {
-				title		: Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/title'), section.id ),
+				// A column of a section of tiles is a tile
+				title		: Nino.adminUi.format( Nino.content.getText( section.settings.tiles === true ? '/_admin/builder/tile/title' : '/_admin/builder/col/title' ), section.id ),
 				blame		: path[0],
 				returnTo	: path,
 				kind		: 'column',
@@ -7381,6 +7498,8 @@
 			const builder = Nino.admin.builder;
 			const section = builder._doc.model.blocks[path[0]];
 			const col = section.cols[path[1]];
+			// A column of a section of tiles is a tile: it has the link over the whole of it, the radius of its own kind and no offsets of its picture, and its words are placed in it
+			const tile = section.settings.tiles === true;
 			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
 			const setting = function( field, after ) { return builder._setting( col, field, after ) };
 			const has = function() { return col.background !== null && col.background !== undefined };
@@ -7437,7 +7556,7 @@
 				says	: widthSaid,
 			};
 
-			return {
+			const controls = {
 				color : {
 					keys	: [ 'color' ],
 					build	: function( body ) {
@@ -7472,7 +7591,7 @@
 					build	: function( body ) {
 
 						// A column that paints - a colour, a picture - has a radius, which is the column's to take; one that paints nothing has none, and the toggle sleeps
-						fields.radius = builder._radiusToggle( col, 'radius', 'column', function() { return ( col.color !== '' && col.color !== undefined ) || has() } );
+						fields.radius = builder._radiusToggle( col, 'radius', tile === true ? 'tile' : 'column', function() { return ( col.color !== '' && col.color !== undefined ) || has() } );
 						body.appendChild( fields.radius );
 					},
 					says	: function() { return col.radius === '' ? '' : word( col.radius === 'alternative' ? 'common/radius-alt' : 'common/radius-standard' ) },
@@ -7492,7 +7611,7 @@
 				hidden : width,
 				stackAlign : {
 					keys	: [ 'stackAlign' ],
-					build	: function( body ) { body.appendChild( setting( { key : 'stackAlign', type : 'segment', label : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ) ) },
+					build	: function( body ) { body.appendChild( setting( { key : 'stackAlign', type : 'segment', label : tile === true ? '/_admin/builder/tile/stack-align' : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ) ) },
 					says	: function() { return col.stackAlign === '' ? '' : builder._optionLabel( 'stack-align', col.stackAlign ) },
 				},
 				text : {
@@ -7524,6 +7643,20 @@
 					says	: function() { return col.custom === '' ? '' : word('group/custom') },
 				},
 			};
+
+			if( tile === false )
+				return controls;
+
+			// The title's link covers the whole of a tile - a switch of its own, which a column of a content section has no use for - and the picture of a tile lies over the whole of it
+			controls.linked = {
+				keys	: [ 'linked' ],
+				build	: function( body ) { body.appendChild( setting( { key : 'linked', type : 'bool', label : '/_admin/builder/col/linked', hint : '/_admin/builder/hint/linked' } ) ) },
+				says	: function() { return col.linked === true ? word('col/linked') : '' },
+			};
+			delete controls.bgPl;
+			delete controls.bgPr;
+
+			return controls;
 		},
 
 

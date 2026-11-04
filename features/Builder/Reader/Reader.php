@@ -148,6 +148,13 @@ namespace Nino\Modules\Builder {
 	 *											                                      has no colour and no picture of its own; the colour and the picture
 	 *											                                      are the section's keys all the same. With neither of the two there
 	 *											                                      is nothing on the row to read it from, and it reads as off
+	 *											    tiles       bool                  nino-tiles: the section is a section of tiles, the second kind - full width, no padding of its own, its
+	 *											                                      columns tiles with a height, a padding and a radius of their own. The cover, the parallax, the scrim, the room of
+	 *											                                      a padded cover, the place of the content and the radius of a padded cover are the content kind's: on a tiles
+	 *											                                      section they are custom classes, and so are the width, the place, the ground and the scrim of its row; its inner
+	 *											                                      is never read. A section background or a row background in it is a failure (tiles-background)
+	 *											    ratio       ''|RATIO              nino-tiles--<x>: the height of every tile, the words of the ratio of the image component; '' is a tile as high as
+	 *											                                      its words. Read while the section is tiles, else the class is a custom one; a second class is a class of its own
 	 *											    whitespace  ''|least|less|more|most   nino-whitespace--<x>: how much room the section keeps, on
 	 *											                                      the scale of the page's whitespace (the Design's)
 	 *											    mt mb pt pb pl pr ''|0..6         nino-mt-<n> nino-mb-<n> nino-pt-<n> nino-pb-<n> nino-pl-<n> nino-pr-<n>: the six sides of the spacing of the section - the margin
@@ -196,8 +203,10 @@ namespace Nino\Modules\Builder {
 	 *											                    column off from the section it is in
 	 *											  dim       bool    nino-grid--dim, written only while the column has a
 	 *											                    background: there is no picture to darken without one
-	 *											  radius    ''|standard|alternative   nino-radius, nino-radius-alt: the radius of the ground and of the picture of the column, the page's own
-	 *											                    for ''; on a column that paints neither the two classes are idle and stay custom ones
+	 *											  linked    bool    nino-grid--linked, read on a tile - a column of a section of tiles - only: the title's
+	 *											                    link covers the whole tile. On a column of a content section it is a custom class
+	 *											  radius    ''|standard|alternative   nino-radius, nino-radius-alt: the radius of the ground and of the picture of the column - of a tile, of the kind tile -,
+	 *											                    the page's own for ''; on a column that paints neither the two classes are idle and stay custom ones
 	 *											  background null|map  as that of a section: slot, focus, create; the
 	 *											            div.nino-grid-bg, the first thing in the column - before its
 	 *											            stack or its components
@@ -299,10 +308,12 @@ namespace Nino\Modules\Builder {
 		// How much room a section keeps, the four rungs of the page's whitespace around the middle: nino-whitespace--<x>
 		public const array WHITESPACE = [ 'least', 'less', 'more', 'most' ];
 		/*	The radius of a surface: the two strengths the page has - the Design writes both, Nino.css has them as well -, the class that puts one
-			element on either, and the five kinds of surface the page has a default strength for (see surface() for the components)	*/
+			element on either, and the six kinds of surface the page has a default strength for (see surface() for the components)	*/
 		public const array RADIUS = [ 'standard', 'alternative' ];
 		public const array RADIUS_CLASS = [ 'standard' => 'nino-radius', 'alternative' => 'nino-radius-alt' ];
-		public const array SURFACES = [ 'cover', 'row', 'column', 'card', 'image' ];
+		public const array SURFACES = [ 'cover', 'row', 'column', 'tile', 'card', 'image' ];
+		// The height of a tile, the ratio the section names for all of its tiles: the words of the ratio of the kernel's image component, which the smoke test holds equal
+		public const array RATIO = [ '1-1', '4-3', '3-2', '16-9', '21-9', '4-1', '5-1' ];
 		// The hover of a picture - a component whose schema says its source is an image -: the one class that puts the hover effect of the page on its frame, and the word of the
 		// setting while it does
 		public const string HOVER = 'on';
@@ -348,6 +359,7 @@ namespace Nino\Modules\Builder {
 			'marker-unclosed'			=> 'a <!-- nino:html --> marker that is never closed',
 			'attribute-syntax'		=> 'a tag whose attributes are not written as name="value"',
 			'section-attribute'		=> 'the section has the attribute %s, which the builder does not keep',
+			'tiles-background'		=> 'the section of tiles has the background block %s, which the builder does not keep: its tiles hold the pictures',
 			'section-id'					=> 'the section has no id that is a slug',
 			'duplicate-id'				=> 'the id %s is the id of an earlier section',
 			'section-class'				=> 'the section has no class nino-section',
@@ -399,7 +411,7 @@ namespace Nino\Modules\Builder {
 		public static function sectionDefaults(): array {
 			return [
 				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowGap' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
-				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'whitespace' => '',
+				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'tiles' => false, 'ratio' => '', 'whitespace' => '',
 				...array_fill_keys( self::SPACING, '' ), 'text' => '', 'arrow' => false,
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
@@ -411,7 +423,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'linked' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -1149,6 +1161,9 @@ namespace Nino\Modules\Builder {
 
 			if( $tag === 'div' && in_array( 'nino-section-bg', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === true ) {
 
+				if( $section['settings']['tiles'] === true )
+					throw self::_fail( 'tiles-background', 'nino-section-bg', $pos );
+
 				[ $section['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-section-bg' );
 				$pos = self::_skip( $body, $pos );
 				[ $tag, $tagAttributes, $after ] = self::_peek( $body, $pos );
@@ -1168,6 +1183,9 @@ namespace Nino\Modules\Builder {
 			$picture		= null;
 
 			// The picture behind the row is the first thing in it, as the one behind the section is the first before its row
+			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true && $section['settings']['tiles'] === true )
+				throw self::_fail( 'tiles-background', 'nino-grid-row-bg', $pos );
+
 			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
 				[ $picture, $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-row-bg' );
 
@@ -1185,7 +1203,7 @@ namespace Nino\Modules\Builder {
 				if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
 					throw self::_fail( 'row-background', '', $pos );
 
-				[ $col, $pos ] = self::_col( $body, $pos, $registry, $loop );
+				[ $col, $pos ] = self::_col( $body, $pos, $registry, $loop, $section['settings']['tiles'] );
 				$section['cols'][] = $col;
 			}
 
@@ -1335,6 +1353,11 @@ namespace Nino\Modules\Builder {
 			[ $sides, $tokens ] = self::_sides( $tokens, true );
 			$s = array_replace( $s, $sides );
 
+			// A section of tiles is the second kind: what only the content kind has - a cover, a parallax, a scrim, a padded cover, the place of its content - is a custom class
+			// on it, and a picture block of its own is none (the section fails where it stands, see _inside()). The ratio is read after the loop: it stands where the section says tiles
+			$tiles		= in_array( 'nino-tiles', $tokens, true ) === true;
+			$ratios	= [];
+
 			// A second modifier of a kind that has one place is a class of its
 			// own: kept, not lost
 			$set = static function( string $key, mixed $value, string $token ) use ( &$s, &$custom, $default ): void {
@@ -1356,6 +1379,13 @@ namespace Nino\Modules\Builder {
 					$set( 'border', $m[1], $token );
 				elseif( $token === 'nino-section--border-primary' )
 					$set( 'borderPrimary', true, $token );
+				elseif( $token === 'nino-tiles' )
+					$set( 'tiles', true, $token );
+				elseif( preg_match( '/^nino-tiles--('. implode( '|', self::RATIO ). ')$/D', $token, $m ) === 1 )
+					$ratios[] = $token;
+				elseif( $tiles === true && ( in_array( $token, [ 'nino-cover', 'nino-parallex', 'nino-cover--dim', 'nino-parallex--dim', 'nino-section--dim', 'nino-cover--padded' ], true ) === true
+					|| preg_match( '/^nino-cover-('. implode( '|', self::CONTENT_POS ). ')$/D', $token ) === 1 ) )
+					$custom[] = $token;
 				// A cover that names no height is as high as Nino.ui.js makes it: 90 percent of the window
 				elseif( $token === 'nino-cover' )
 					$set( 'cover', 90, $token );
@@ -1379,6 +1409,14 @@ namespace Nino\Modules\Builder {
 				else
 					$custom[] = $token;
 			}
+
+			// The height of the tiles: the first ratio class is the setting while the section is tiles, a second one is a class of its own, and on a section that is no
+			// tiles section the class is idle and stays a custom one
+			foreach( $ratios as $token )
+				if( $s['tiles'] === true && $s['ratio'] === '' )
+					$s['ratio'] = substr( $token, strlen( 'nino-tiles--' ) );
+				else
+					$custom[] = $token;
 
 			// The place of the content is the row's in a cover or a parallax: on a section that is neither the Builder writes none,
 			// and one that is there is kept as a custom class (the kernel reads it on a section with a background picture too)
@@ -1451,7 +1489,10 @@ namespace Nino\Modules\Builder {
 			$s				= &$section['settings'];
 			$custom		= [];
 			$radii		= [];
-			$free			= $s['cover'] === null && $s['parallax'] === false && $s['color'] === '' && $section['background'] === null;
+			$tiles		= $s['tiles'] === true;
+			// A row that paints a ground of its own is the content kind's: on a section of tiles no ground, no scrim, no width and no place of the row is read - they are the
+			// row's custom classes - and its inner is never set
+			$free			= $s['cover'] === null && $s['parallax'] === false && $s['color'] === '' && $section['background'] === null && $tiles === false;
 
 			if( $picture !== null ) {
 
@@ -1467,9 +1508,9 @@ namespace Nino\Modules\Builder {
 				if( $token === 'nino-grid-row' )
 					continue;
 
-				if( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW ). ')$/D', $token, $m ) === 1 && $s['row'] === '' )
+				if( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW ). ')$/D', $token, $m ) === 1 && $s['row'] === '' && $tiles === false )
 					$s['row'] = $m[1];
-				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW_PLACE ). ')$/D', $token, $m ) === 1 && $s['rowPlace'] === '' )
+				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW_PLACE ). ')$/D', $token, $m ) === 1 && $s['rowPlace'] === '' && $tiles === false )
 					$s['rowPlace'] = $m[1];
 				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
 					$s['rowAlign'] = $m[1];
@@ -1704,10 +1745,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		int				$pos
 		 *	@param		array			$registry
 		 *	@param		bool			$loop					Whether the column is one of a loop of sections, whose cell it is: a loop of its own would be one inside a loop
+		 *	@param		bool			$tiles				Whether the column is a tile, one of a section of tiles: nino-grid--linked is a setting of it
 		 *
 		 *	@return 	array										[ the column, the position after its closing tag ]
 		 */
-		private static function _col( string $body, int $pos, array $registry, bool $loop = false ): array {
+		private static function _col( string $body, int $pos, array $registry, bool $loop = false, bool $tiles = false ): array {
 
 			[ $attributes, $after ] = self::_open( $body, $pos, 'div', 'row-content' );
 
@@ -1760,6 +1802,9 @@ namespace Nino\Modules\Builder {
 					$dim = true;
 					$custom[] = $token;
 				}
+				// The link over the whole of a tile is the tile's setting: on a column of a content section the class is a custom one
+				elseif( $token === 'nino-grid--linked' && $tiles === true )
+					$col['linked'] = true;
 				elseif( in_array( $token, self::RADIUS_CLASS, true ) === true ) {
 
 					$radii[] = $token;
@@ -1812,8 +1857,8 @@ namespace Nino\Modules\Builder {
 			}
 
 			// How far in from a side the picture starts is the picture's: the first class of a side is the setting where the column has one, a second is a class of its
-			// own, and without a picture both sides stay custom classes
-			if( $col['background'] !== null )
+			// own, and without a picture - or on a tile, which has no offsets of its picture - both sides stay custom classes
+			if( $col['background'] !== null && $tiles === false )
 				foreach( $offsets as $side => $steps ) {
 					$col[self::BG_SPACING[$side]]	= $steps[0];
 					$custom												= array_values( array_diff( $custom, [ 'nino-bg-'. $side. '-'. $steps[0] ] ) );

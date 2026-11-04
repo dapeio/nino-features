@@ -48,7 +48,8 @@
 			</div>
 			<div id="builder-preview" class="builder-preview" data-viewport="l"></div>
 			<div id="builder-add-bar" class="builder-add-bar">
-				<button type="button" id="builder-add-section" class="builder-add-button">+ [[/_admin/builder/tree/section]]</button>
+				<button type="button" id="builder-add-content" class="builder-add-button">+ [[/_admin/builder/tree/content]]</button>
+				<button type="button" id="builder-add-tiles" class="builder-add-button">+ [[/_admin/builder/tree/tiles]]</button>
 				<button type="button" id="builder-add-html" class="builder-add-button">+ [[/_admin/builder/tree/html-block]]</button>
 			</div>
 		</section>

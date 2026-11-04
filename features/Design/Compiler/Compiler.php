@@ -90,7 +90,7 @@ namespace Nino\Modules\Design {
 		private const array HALVES = [ '/* ---- 1. ', '/* ---- 2. ' ];
 
 		/**
-		 *	The stylesheet a setup produces, in sixteen numbered sections - and one more for each feature
+		 *	The stylesheet a setup produces, in seventeen numbered sections - and one more for each feature
 		 *	that has a variant chosen, after the sets (see below):
 		 *
 		 *	  1 the tokens          base.css, the --nino-* defaults
@@ -100,9 +100,9 @@ namespace Nino\Modules\Design {
 		 *	  5 the root size
 		 *	  6 the page            the width, the whitespace, the radius of its surfaces, and the animation as a rule on main
 		 *	  7 header, 8 footer    the chosen frames
-		 *	  9 section, 10 card, 11 buttons, 12 lists, 13 tables, 14 forms    the chosen sets
-		 *	  15 the knob positions
-		 *	  16 the theme          the custom css, as it was typed
+		 *	  9 section, 10 tiles, 11 card, 12 buttons, 13 lists, 14 tables, 15 forms    the chosen sets
+		 *	  16 the knob positions
+		 *	  17 the theme          the custom css, as it was typed
 		 *
 		 *	A frame or a set the library does not have is left out and noted, and
 		 *	the sections after it take the numbers that are free. So do the sections of the
@@ -210,7 +210,7 @@ namespace Nino\Modules\Design {
 
 			$parts[] = sprintf( self::SECTION, 6, 'the page' ). "\n". self::page( $setup );
 
-			// 7. and 8. the frames, then 9. to 14. the sets - both in PARTS
+			// 7. and 8. the frames, then 9. to 15. the sets - both in PARTS
 			// order, which is the order the cascade wants them in
 			$number = 7;
 
@@ -287,7 +287,7 @@ namespace Nino\Modules\Design {
 					}
 			}
 
-			/*	The variants of the features, after the eight parts so that a feature that restyles what a part
+			/*	The variants of the features, after the nine parts so that a feature that restyles what a part
 				drew has the last word - and the stylesheet the feature itself loads on the site comes after
 				this whole sheet, so that what a variant sets is set on what that one declares. In the order
 				of the catalogue. A feature that has an entry and is not in the catalogue is told, once -

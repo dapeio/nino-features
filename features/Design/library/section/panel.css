@@ -395,7 +395,7 @@
 	at its sides, which is what a hand-written cover says - and one at full
 	height - no padding above and below - are left as the page has them. The
 	shadow is the card family's ladder of it (see the opening comment)	*/
-.nino-section:where(:not(.nino-hero, .nino-cover, .nino-pt-0.nino-pb-0, .nino-pl-0.nino-pr-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0))) {
+.nino-section:where(:not(.nino-tiles, .nino-hero, .nino-cover, .nino-pt-0.nino-pb-0, .nino-pl-0.nino-pr-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0))) {
 	width: calc( 100% - 2 * var(--grid-gutter) );
 	max-width: var(--grid-max-width);
 	margin-right: auto;
@@ -403,11 +403,12 @@
 	border-radius: var(--radius-surface);
 	box-shadow: var(--card-shadow);
 }
-/*	The padding of a panel is times the whitespace of the page, as in regular	*/
-.nino-section:where(:not([class*="nino-pt-"], [class*="nino-p-"])) {
+/*	The padding of a panel is times the whitespace of the page, as in regular. A section of tiles is no panel and has no padding of its own: the inset, the
+	rounding, the shadow, the padding and the gap above are all for the content kind, and the rules above and below leave a section that says nino-tiles alone	*/
+.nino-section:where(:not(.nino-tiles, [class*="nino-pt-"], [class*="nino-p-"])) {
 	padding-top: calc( var(--section-space) * var(--whitespace-scale, 1) );
 }
-.nino-section:where(:not([class*="nino-pb-"], [class*="nino-p-"])) {
+.nino-section:where(:not(.nino-tiles, [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding-bottom: calc( var(--section-space) * var(--whitespace-scale, 1) );
 }
 
@@ -416,7 +417,7 @@
 	rounded and casting its shadow - whatever ground each has. The conditions
 	are those of the panel above, and a margin of its own - nino-mt-<n>, nino-m-<n> -
 	is the page's to decide, as the padding is	*/
-.nino-section + .nino-section:where(:not(.nino-hero, .nino-cover, .nino-pt-0.nino-pb-0, .nino-pl-0.nino-pr-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0), [class*="nino-mt-"], [class*="nino-m-"])) {
+.nino-section + .nino-section:where(:not(.nino-tiles, .nino-hero, .nino-cover, .nino-pt-0.nino-pb-0, .nino-pl-0.nino-pr-0, :has(> .nino-grid-row--full.nino-pl-0.nino-pr-0), [class*="nino-mt-"], [class*="nino-m-"])) {
 	margin-top: var(--grid-gutter);
 }
 

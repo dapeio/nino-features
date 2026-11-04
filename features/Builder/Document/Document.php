@@ -2342,7 +2342,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
 
 				// What is no switch would be left out of the classes, and read back as off
-				foreach( [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner', 'arrow' ] as $key )
+				foreach( [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner', 'tiles', 'arrow' ] as $key )
 					if( is_bool( $block['settings'][$key] ?? false ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
 
@@ -2354,7 +2354,7 @@ namespace Nino\Modules\Builder {
 					$problems[] = 'the cover of '. $at. ' is neither none nor a height in percent';
 
 				// The width of the row, where it stands and where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
-				foreach( [ 'row' => Reader::ROW, 'rowPlace' => Reader::ROW_PLACE, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT, 'radius' => Reader::RADIUS, 'rowRadius' => Reader::RADIUS ] as $key => $words )
+				foreach( [ 'row' => Reader::ROW, 'rowPlace' => Reader::ROW_PLACE, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'ratio' => Reader::RATIO, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT, 'radius' => Reader::RADIUS, 'rowRadius' => Reader::RADIUS ] as $key => $words )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
 
@@ -2418,8 +2418,9 @@ namespace Nino\Modules\Builder {
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none that Nino.css has';
 
-					if( is_bool( $col['dim'] ?? false ) === false )
-						$problems[] = 'the dim of '. $of. ' is neither on nor off';
+					foreach( [ 'dim', 'linked' ] as $key )
+						if( is_bool( $col[$key] ?? false ) === false )
+							$problems[] = 'the '. $key. ' of '. $of. ' is neither on nor off';
 
 					// The six sides of the spacing are steps of the space scale: what is none of them would be a class of nothing
 					foreach( Reader::SPACING as $key )

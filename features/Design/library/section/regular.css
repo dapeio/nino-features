@@ -258,11 +258,14 @@
 	does - --whitespace-scale for an area, --whitespace-text for the room under
 	a text, and 1 where the framework says none - since a rule that came after
 	Nino.css and said the space without the factor would stop the whitespace
-	of the page at the set	*/
-.nino-section:where(:not([class*="nino-pt-"], [class*="nino-p-"])) {
+	of the page at the set. A section of tiles (.nino-tiles) is the other kind
+	of section and has no padding of its own - its tiles have the room, and
+	the tiles set says how much - so it is left alone as well. The exclusion
+	stands in :where(), which has no weight	*/
+.nino-section:where(:not(.nino-tiles, [class*="nino-pt-"], [class*="nino-p-"])) {
 	padding-top: calc( var(--section-space) * var(--whitespace-scale, 1) );
 }
-.nino-section:where(:not([class*="nino-pb-"], [class*="nino-p-"])) {
+.nino-section:where(:not(.nino-tiles, [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding-bottom: calc( var(--section-space) * var(--whitespace-scale, 1) );
 }
 

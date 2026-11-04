@@ -197,7 +197,9 @@ namespace Nino\Modules\Builder {
 
 			$settings	= (array) ( $section['settings'] ?? [] ) + Reader::sectionDefaults();
 			$stack		= is_array( $section['stack'] ?? null ) === true ? $section['stack'] : null;
-			$pictured	= self::_pictured( $section );
+			// A section of tiles holds no picture of its own, behind it or in its row: its tiles do (the model has none)
+			$tiles		= $settings['tiles'] === true;
+			$pictured	= $tiles === false && self::_pictured( $section );
 			$inner		= self::_inner( $settings );
 			$lines		= [];
 
@@ -213,7 +215,7 @@ namespace Nino\Modules\Builder {
 				$attributes = '';
 
 				// The height is always written, at 90 as well: a template says what it is, and nobody has to know the 90 Nino.ui.js takes without it
-				if( $settings['cover'] !== null )
+				if( $settings['cover'] !== null && $tiles === false )
 					$attributes .= ' data-cover-height="'. (int) $settings['cover']. '"';
 
 				$lines[] = self::_fill( 'section-open', [ '[[id]]' => self::_escape( (string) ( $section['id'] ?? '' ) ), '[[class]]' => self::_class( self::sectionClasses( $settings, $pictured ) ), '[[attributes]]' => $attributes ] );
@@ -230,7 +232,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
 
-				$lines[] = "\t\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::colClasses( (array) $col ) ) ] );
+				$lines[] = "\t\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::colClasses( (array) $col, $tiles ) ) ] );
 
 				if( self::_pictured( (array) $col ) === true )
 					$lines[] = "\t\t\t". self::_background( (array) $col['background'], 'nino-grid-bg' );
@@ -308,6 +310,16 @@ namespace Nino\Modules\Builder {
 
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-section' ];
+			$tiles	= $s['tiles'] === true;
+
+			// A section of tiles says what it is right after nino-section, then the height of its tiles
+			if( $tiles === true ) {
+
+				$class[] = 'nino-tiles';
+
+				if( (string) $s['ratio'] !== '' )
+					$class[] = 'nino-tiles--'. $s['ratio'];
+			}
 
 			// The colour is the row's where the background stands inside
 			if( (string) $s['color'] !== '' && self::_inner( $s ) === false )
@@ -319,7 +331,11 @@ namespace Nino\Modules\Builder {
 			if( $s['borderPrimary'] === true )
 				$class[] = 'nino-section--border-primary';
 
-			// The scrim is the cover's where the section is a cover - Nino.css gives that class the ink of a black section as well - else the parallax's
+			// The scrim is the cover's where the section is a cover - Nino.css gives that class the ink of a black section as well - else the parallax's.
+			// A cover, a parallax, a scrim, a padded cover and the place of the content are the content kind's: a section of tiles writes none of them
+			$s['cover']			= $tiles === true ? null : $s['cover'];
+			$s['parallax']	= $tiles === true ? false : $s['parallax'];
+
 			if( $s['cover'] !== null ) {
 
 				$class[] = 'nino-cover';
@@ -337,7 +353,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			// A plain section is darkened by a scrim of its own over its own picture - and one with no picture has nothing to darken, and the light inks of the scrim would sit on a light ground
-			if( $s['dim'] === true && $s['cover'] === null && $s['parallax'] === false && $pictured === true && self::_inner( $s ) === false )
+			if( $s['dim'] === true && $s['cover'] === null && $s['parallax'] === false && $pictured === true && self::_inner( $s ) === false && $tiles === false )
 				$class[] = 'nino-section--dim';
 
 			// The room of the page around a cover or a parallax, and the place of the content in them: on a section that is neither the Builder writes neither
@@ -377,11 +393,13 @@ namespace Nino\Modules\Builder {
 
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-grid-row' ];
+			$tiles	= $s['tiles'] === true;
 
-			if( (string) $s['row'] !== '' )
+			// The row of a section of tiles has the whole width of the section: no maximum width, no place (nor ground or scrim, which are inner)
+			if( (string) $s['row'] !== '' && $tiles === false )
 				$class[] = 'nino-grid-row--'. $s['row'];
 
-			if( (string) $s['rowPlace'] !== '' )
+			if( (string) $s['rowPlace'] !== '' && $tiles === false )
 				$class[] = 'nino-grid-row--'. $s['rowPlace'];
 
 			if( self::_inner( $s ) === true ) {
@@ -420,10 +438,11 @@ namespace Nino\Modules\Builder {
 		 *	The classes of a column
 		 *
 		 *	@param		array			$col
+		 *	@param		bool			$tiles				Whether it is a tile, a column of a section of tiles: it can be linked, as a whole
 		 *
 		 *	@return 	array
 		 */
-		public static function colClasses( array $col ): array {
+		public static function colClasses( array $col, bool $tiles = false ): array {
 
 			$col		= $col + Reader::colDefaults();
 			$width	= [];
@@ -449,6 +468,10 @@ namespace Nino\Modules\Builder {
 			if( $col['dim'] === true && self::_pictured( $col ) === true )
 				$class[] = 'nino-grid--dim';
 
+			// The title's link covers the whole of a tile
+			if( $tiles === true && $col['linked'] === true )
+				$class[] = 'nino-grid--linked';
+
 			if( (string) $col['stackAlign'] !== '' )
 				$class[] = 'nino-stack-'. $col['stackAlign'];
 
@@ -462,7 +485,7 @@ namespace Nino\Modules\Builder {
 			$class = array_merge( $class, self::_spacing( $col, true ) );
 
 			// How far in from either side the picture behind the column starts, left then right, after the spacing
-			if( self::_pictured( $col ) === true )
+			if( self::_pictured( $col ) === true && $tiles === false )
 				foreach( Reader::BG_SPACING as $side => $key )
 					if( (string) $col[$key] !== '' )
 						$class[] = 'nino-bg-'. $side. '-'. $col[$key];
@@ -520,7 +543,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	bool
 		 */
 		private static function _inner( array $s ): bool {
-			return ( $s['inner'] ?? false ) === true && ( $s['cover'] ?? null ) === null && ( $s['parallax'] ?? false ) === false;
+			return ( $s['inner'] ?? false ) === true && ( $s['cover'] ?? null ) === null && ( $s['parallax'] ?? false ) === false && ( $s['tiles'] ?? false ) === false;
 		}
 
 		/**
