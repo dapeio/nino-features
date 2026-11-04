@@ -1875,6 +1875,15 @@
 						else if( fields !== null && ( plain === true || [ '.id', '.uri', '.slug' ].indexOf( source ) === -1 ) && Object.prototype.hasOwnProperty.call( fields, source ) === false )
 							red.push( { path : path, source : source, why : 'field' } );
 					};
+					// The picture behind a column may be an image field of the element where the section is a loop: elsewhere, or for a field the type has not or that is no image, it is red
+					if( col.background !== null && col.background !== undefined && ( col.background.field ?? '' ) !== '' ) {
+
+						if( block.stack === null || block.stack === undefined )
+							red.push( { path : [ b, c ], source : col.background.field, why : 'background-static' } );
+						else if( around !== null && ( Object.prototype.hasOwnProperty.call( around, col.background.field ) === false || around[col.background.field].type !== 'image' ) )
+							red.push( { path : [ b, c ], source : col.background.field, why : 'background-field' } );
+					}
+
 					const check = function( component, path ) {
 
 						const kind = builder._sourceKind( registry, component.name );
@@ -2223,6 +2232,8 @@
 							// dimmed, whatever colour it names: Nino.css paints a dimmed column as the dark ground (a dimming without a picture is no ground)
 							color			: picture === true && col.dim === true ? 'dark' : ( col.color === undefined || col.color === '' ? '' : ( builder._paints( col.color, block.settings.color || '' ) || 'plain' ) ),
 							background : picture,
+							// The image field of the element that is the picture of a column in a loop of sections, '' for a slot
+							backgroundField : picture === true ? String( col.background.field ?? '' ) : '',
 							linked		: block.settings.tiles === true && col.linked === true,
 							text			: col.text || '',
 							stackAlign : col.stackAlign || '',
@@ -3903,7 +3914,20 @@
 				frame.classList.add( 'builder-color-'+ col.color );
 
 			if( col.background === true )
-				status.appendChild( builder._statusItem( 'background', 'image', Nino.content.getText('/_admin/builder/preview/column-background'), '' ) );
+				status.appendChild( builder._statusItem( 'background', 'image', col.backgroundField === ''
+					? Nino.content.getText('/_admin/builder/preview/column-background')
+					: Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/column-background-field'), col.backgroundField ), '' ) );
+
+			// The picture of a field is the element's own, and there is none to draw: a placeholder that names the field stands behind what the column holds, as the picture does on the page
+			if( col.backgroundField !== '' ) {
+
+				const behind = builder._placeholder( { path : col.path, label : col.backgroundField, image : 'image', line : '', picture : '', draws : '' }, 'none' );
+
+				behind.classList.add('builder-col-bg');
+				behind.removeAttribute('data-path');
+				// A layer behind what the column holds, in the frame and not in the flow of its body
+				frame.insertBefore( behind, frame.firstChild );
+			}
 
 			// The title's link covers the whole of the tile
 			if( col.linked === true )
@@ -6979,10 +7003,10 @@
 			if( settings.tiles !== true )
 				return controls;
 
-			// A section of tiles has the controls it has of the content kind - the ground between its tiles, its lines, its air, its loop, its animation and its own classes, and the order of its tiles, turned round for each viewport as for any row - and three of its
+			// A section of tiles has the controls it has of the content kind - the ground between its tiles, its lines, the picture behind the whole section with its dimming, its air, its loop, its animation and its own classes, and the order of its tiles, turned round for each viewport as for any row - and three of its
 			// own: the height of its tiles, the gap between them and how the text of the section runs, under the names the table lists in the block Tiles. It has no width, no row, no cover,
-			// no parallax, no background and no picture of its row: its row is the whole width of the section and its tiles hold the pictures
-			const kept = [ 'border', 'borderPrimary', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'stack', 'reverse', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
+			// no parallax and no picture of its row: its row is the whole width of the section, the picture of the section shows in the gaps between the tiles and its tiles hold their own
+			const kept = [ 'border', 'borderPrimary', 'background', 'dim', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'stack', 'reverse', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
 			const tiles = {};
 
 			kept.forEach( function( name ) { tiles[name] = controls[name] } );
@@ -7010,8 +7034,8 @@
 
 		/**
 		 *	A section turned into the other kind, as the switch of the form says it. To tiles it takes the ratio of a new one and gives up what is the content kind's: the width, the place
-		 *	and the padding of its row, the ground and the picture of its row, the cover, the parallax, the dimming and the room of a padded cover, the place of the content, the radius of a padded cover,
-		 *	the arrow, the picture behind it and the offsets of the picture of each column. The ground and the lines of the section, the gap, the whitespace, its spacing, its text alignment, its animation and its classes stay. To content it
+		 *	and the padding of its row, the ground and the picture of its row, the cover, the parallax, the dimming of a cover or a parallax and the room of a padded cover, the place of the content, the radius of a padded cover,
+		 *	the arrow and the offsets of the picture of each column. The ground and the lines of the section, the picture behind it with its dimming, the gap, the whitespace, its spacing, its text alignment, its animation and its classes stay. To content it
 		 *	loses the ratio and the link over the whole of each of its tiles. Its columns stay as they are
 		 *
 		 *	@param		{Object}		section
@@ -7031,9 +7055,13 @@
 				settings.ratio = builder.TILES_RATIO;
 
 				[ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowBgPl', 'rowBgPr', 'contentPos', 'radius' ].forEach( function( key ) { settings[key] = '' } );
-				[ 'parallax', 'dim', 'padded', 'inner', 'arrow' ].forEach( function( key ) { settings[key] = false } );
+				[ 'parallax', 'padded', 'inner', 'arrow' ].forEach( function( key ) { settings[key] = false } );
 				settings.cover = null;
-				section.background = null;
+
+				// The scrim of a cover or of a parallax goes with them; the one over the picture behind the section stays with the picture
+				if( section.background === null || section.background === undefined )
+					settings.dim = false;
+
 				// A tile has no offsets of its picture
 				section.cols.forEach( function( col ) { col.bgPl = ''; col.bgPr = '' } );
 
@@ -9537,7 +9565,8 @@
 		 *	The picture behind a section or a column: its slot, the picture it has with the buttons that store one and take it away again - side by side, in the row of the
 		 *	question mark that says what the upload takes - and the alt text in the language the editor works in, and its focus. The slot is the source of the row, which is changed
 		 *	in the dialog of the sources. A column that loses its picture loses the dimming with it, a section the parallax and the dimming. What else the picture decides - the
-		 *	switches of a section, the offsets of a column - is the block's: it is told when the picture changes
+		 *	switches of a section, the offsets of a column - is the block's: it is told when the picture changes. The picture of a column that is a cell of a loop of sections is
+		 *	chosen among the image fields of the loop's type instead (see below), with the same focus
 		 *
 		 *	@param		{Array}			path							A section, or a column
 		 *	@param		{Function}	redraw						Draws the blocks that follow the picture again
@@ -9556,6 +9585,62 @@
 			const words = column === true ? Nino.adminUi.format( Nino.content.getText('/_admin/builder/source/column-background'), path[1] + 1 ) : Nino.content.getText('/_admin/builder/source/background');
 
 			wrap.dataset.key = 'background';
+
+			// A column with a loop of its own has the picture outside it: one picture for every cell, which the form says
+			if( column === true && holder.stack !== null && holder.stack !== undefined ) {
+
+				const said = Nino.content.getText('/_admin/builder/source/background-image');
+				const own = builder._hinted( builder._el( 'span', 'builder-label', said ), Nino.content.getText('/_admin/builder/hint/background-own-loop'), said );
+
+				own.classList.add('builder-background-own-loop');
+				wrap.appendChild( own );
+			}
+
+			// A column that is a cell of a loop of sections takes an image field of the element for its picture, instead of a slot: the control offers the image fields of the
+			// type, and the focus. (A column with a loop of its own has its picture outside that loop, where there is no element; a column of a loop of sections has none.) A column
+			// that has a slot already keeps the controls of the slot
+			const cell = column === true && section.stack !== null && section.stack !== undefined ? builder._typeFields( section, holder ) : null;
+
+			if( cell !== null && ( has === false || ( holder.background.field ?? '' ) !== '' ) ) {
+
+				const current = has === true ? holder.background.field : '';
+				const names = Object.keys( cell ).filter( function( name ) { return cell[name].type === 'image' } );
+				// A field the type has not any more stays in the list, so that the form says what the column holds, and is marked red as the preview marks it
+				const offered = current === '' || names.indexOf( current ) !== -1 ? names : names.concat( [ current ] );
+				const red = builder._red( builder._doc.model, builder._registry ).find( function( entry ) { return builder._same( entry.path, path ) } );
+				const items = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ].concat( offered.map( function( name ) { return { value : name, label : name } } ) );
+
+				wrap.classList.add('builder-background-field');
+				wrap.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/background-field'), Nino.content.getText('/_admin/builder/hint/background-field'), items, current, function( value ) {
+
+					if( value === '' ) {
+
+						holder.background = null;
+						holder.dim = false;
+					}
+					else
+						holder.background = { slot : '', field : value, focus : has === true ? holder.background.focus : null };
+
+					builder._changed();
+					// The focus is there for a picture, and so is the dimming: the blocks are drawn again
+					redraw();
+				} ) );
+
+				if( red !== undefined ) {
+
+					const note = builder._el( 'p', 'nino-admin-error builder-source-red', Nino.content.getText( '/_admin/builder/tree/red-'+ red.why ) );
+
+					wrap.appendChild( note );
+				}
+
+				wrap.appendChild( builder._focusField( has === true ? holder.background.focus : null, has, function( focus ) {
+					holder.background.focus = focus;
+					builder._changed();
+				} ) );
+
+				return wrap;
+			}
+
 			wrap.appendChild( builder._sourceRow( {
 				kind		: 'image',
 				fixed		: false,
@@ -9563,14 +9648,17 @@
 				fields	: null,
 				// Inside the group Background image the row is the picture: the heading says the rest
 				label		: Nino.content.getText('/_admin/builder/source/picture'),
-				value		: has === true ? holder.background.slot : '',
+				// A field of the element where there is no loop for it to be the element's is shown, red, until a slot takes its place
+				value		: has === true ? ( holder.background.slot || ( holder.background.field ?? '' ) ) : '',
 				text		: null,
 				section	: section,
 				name		: column === true ? 'column-background' : 'background',
 				seed		: words,
+				red			: column === true ? builder._red( builder._doc.model, builder._registry ).find( function( entry ) { return builder._same( entry.path, path ) } ) : undefined,
 				caption	: Nino.content.getText('/_admin/builder/source/current-image'),
 				onPick	: function( source, create ) {
 
+					// A slot where a field was: the field is gone, with its red mark
 					holder.background = { slot : source, focus : holder.background ? holder.background.focus : null };
 
 					if( create !== null )
@@ -9589,6 +9677,7 @@
 
 						holder.background = holder.background ?? { slot : uri, focus : null };
 						holder.background.slot = uri;
+						delete holder.background.field;
 
 						if( create === undefined )
 							delete holder.background.create;

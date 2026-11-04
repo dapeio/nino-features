@@ -1531,6 +1531,52 @@ check( '...its columns are columns as any, each with its picture and its compone
 	&& array_column( $wide['cols'][0]['components'][1]['components'], 'name' ) === [ 'card-title' ] && $wide['cols'][1]['components'][0]['source'] === '.uri' && $wide['cols'][1]['components'][0]['text'] === 'More' && $wide['settings']['row'] === 'wide'
 	&& $write( $read( $page( $loopWide ) ) ) === $inWrap( $page( $loopWide ) ) );
 
+// The picture behind a column that is a cell of a loop of sections may be an image field of the element: the name of the field where a slot has its path
+$cellOf = static fn( string $background, string $sectionClass = '', string $colClass = 'nino-grid-100' ): string => "[sections /services id=\"news\"". ( $sectionClass === '' ? '' : ' class="'. $sectionClass. '"' ). "]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"". $colClass. "\">\n\t\t\t". $background. "\n\t\t\t[title title]\n\t\t</div>\n\t</div>\n[/sections]";
+$fieldBg		= '<div class="nino-grid-bg nino-img-focus--3">[image photo alt=""]</div>';
+$fieldCol		= $read( $page( $cellOf( $fieldBg ) ) )['blocks'][0]['cols'][0];
+check( 'the picture behind a column of a loop of sections may name an image field of the element: it is read as a background with no slot and the name of the field, and its focus, and written back byte for byte',
+	$fieldCol['background'] === [ 'slot' => '', 'field' => 'photo', 'focus' => 3 ] && $write( $read( $page( $cellOf( $fieldBg ) ) ) ) === $inWrap( $page( $cellOf( $fieldBg ) ) ) && $read( $write( $read( $page( $cellOf( $fieldBg ) ) ) ) ) === $read( $page( $cellOf( $fieldBg ) ) ) );
+check( '...the scrim over it is the column\'s dim as over a slot, and the offsets of its picture are the column\'s: the classes are read as settings and written in the order of a column with a slot',
+	( static function() use ( $read, $write, $page, $cellOf, $inWrap, $fieldBg ): bool {
+		$source = $page( $cellOf( $fieldBg, '', 'nino-grid-100 nino-grid--dim nino-bg-pl-2' ) );
+		$col = $read( $source )['blocks'][0]['cols'][0];
+		return $col['dim'] === true && $col['bgPl'] === '2' && $col['custom'] === '' && $write( $read( $source ) ) === $inWrap( $source );
+	} )() );
+check( '...a slot is still a background in a loop of sections, and the same block outside a loop - a field of the element means nothing there - is refused as it was: the section is one foreign block, background-image',
+	$read( $page( $cellOf( '<div class="nino-grid-bg">[image /template/page-x/a/photo alt=""]</div>' ) ) )['blocks'][0]['cols'][0]['background'] === [ 'slot' => '/template/page-x/a/photo', 'focus' => null ]
+	&& $read( $page( $section( "<div class=\"nino-grid-bg\">[image photo alt=\"\"]</div>\n\t\t\t[title /template/page-x/a/title]" ) ) )['blocks'][0]['kind'] === 'html'
+	&& $read( $page( $section( "<div class=\"nino-grid-bg\">[image photo alt=\"\"]</div>\n\t\t\t[title /template/page-x/a/title]" ) ) )['blocks'][0]['reason']['code'] === 'background-image' );
+$fieldRefused = [];
+foreach( [
+	'a special source of the element'					=> '<div class="nino-grid-bg">[image .uri alt=""]</div>',
+	'a field with an alt text'								=> '<div class="nino-grid-bg">[image photo alt="A house"]</div>',
+	'a field with a class of its own'						=> '<div class="nino-grid-bg">[image photo alt="" class="nino-mt-1"]</div>',
+	'a field and a fixed text'								=> '<div class="nino-grid-bg">[image photo text="x" alt=""]</div>',
+	'a loop where the picture is'							=> "<div class=\"nino-grid-bg\">[stack photo]\n[image photo alt=\"\"]\n[/stack]</div>",
+	'a field in the background of a section'			=> '',
+	'a field in a tile that stands in no loop'		=> '',
+] as $what => $block ) {
+	$source = $what === 'a field in a tile that stands in no loop'
+		? "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t<div class=\"nino-grid-bg\">[image photo alt=\"\"]</div>\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n"
+		: ( $what === 'a field in the background of a section'
+		? "[sections /services id=\"news\"]\n\t<div class=\"nino-section-bg\">[image photo alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title title]\n\t\t</div>\n\t</div>\n[/sections]"
+		: $cellOf( $block ) );
+	$blocks = $read( $page( $source ) )['blocks'];
+	if( count( $blocks ) !== 1 || $blocks[0]['kind'] !== 'html' || $blocks[0]['reason']['code'] !== 'background-image' )
+		$fieldRefused[] = $what;
+}
+check( '...what is not the name of a field of the element is no background there - a special source, an alt text, a class, a fixed text, a loop, and a field behind a section'. ( $fieldRefused === [] ? '' : ' - not: '. implode( ', ', $fieldRefused ) ), $fieldRefused === [] );
+$fieldTiles = $read( $page( $cellOf( $fieldBg, 'nino-tiles', 'nino-grid-100 nino-grid--dim' ) ) )['blocks'][0];
+check( '...a tile of a loop of sections takes it as a column does, the loop being a section of tiles',
+	$fieldTiles['settings']['tiles'] === true && $fieldTiles['cols'][0]['background'] === [ 'slot' => '', 'field' => 'photo', 'focus' => 3 ] && $fieldTiles['cols'][0]['dim'] === true && $fieldTiles['settings']['custom'] === ''
+	&& $write( $read( $page( $cellOf( $fieldBg, 'nino-tiles', 'nino-grid-100 nino-grid--dim' ) ) ) ) === $inWrap( $page( $cellOf( $fieldBg, 'nino-tiles', 'nino-grid-100 nino-grid--dim' ) ) ) );
+check( 'the Writer writes the field of a background where a slot would stand, with its focus, and the dimming of a column whose picture is a field - a background with neither a slot nor a field is none',
+	str_contains( $write( [ 'blocks' => [ [ 'kind' => 'section', 'id' => 'a', 'settings' => [], 'background' => null, 'stack' => $fieldCol['stack'] ?? null, 'cols' => [ array_replace( $fieldCol, [ 'dim' => true ] ) ] ] ] ] ), '<div class="nino-grid-bg nino-img-focus--3">[image photo alt=""]</div>' ) === true
+	&& $writer::colClasses( [ 'background' => [ 'slot' => '', 'field' => 'photo', 'focus' => null ], 'dim' => true ] ) === [ 'nino-grid-100', 'nino-grid--dim' ]
+	&& $writer::colClasses( [ 'background' => [ 'slot' => '', 'field' => '', 'focus' => null ], 'dim' => true ] ) === [ 'nino-grid-100' ]
+	&& $writer::colClasses( [ 'background' => [ 'slot' => '', 'field' => 'photo', 'focus' => null ], 'bgPl' => '1' ] ) === [ 'nino-grid-100', 'nino-bg-pl-1' ] );
+
 $between = $read( $page( $section( '[title /template/page-x/a/title]', 'first' ), $loopFile, $section( '[title /template/page-x/a/title]', 'last' ) ) );
 check( '...it stands between the sections of a page as one of them: the blocks in the order of the file, all three sections, and the page is written back byte for byte',
 	array_column( $between['blocks'], 'kind' ) === [ 'section', 'section', 'section' ] && array_column( $between['blocks'], 'id' ) === [ 'first', 'news', 'last' ] && array_column( $between['blocks'], 'stack' ) === [ null, $loopBlock['stack'], null ]
@@ -2114,18 +2160,20 @@ check( '...the width and the place of its row, its ground and its scrim are cust
 $linkedOf = static fn( string $sectionClass ): array => $read( $tilesOf( $sectionClass, 'nino-grid-row', 'nino-grid-100 nino-grid--linked' ) )['blocks'][0]['cols'][0];
 check( 'nino-grid--linked is a setting of a tile and a custom class of a column in a content section',
 	$linkedOf( 'nino-tiles' )['linked'] === true && $linkedOf( 'nino-tiles' )['custom'] === '' && $linkedOf( 'nino-section--alt' )['linked'] === false && $linkedOf( 'nino-section--alt' )['custom'] === 'nino-grid--linked' );
-$tilesBlocks = [
-	'a picture block behind a section of tiles'		=> "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-section-bg\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n",
-	'a picture block behind the row of a section of tiles'	=> "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-row-bg\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n",
-];
-$tilesWrong = [];
-foreach( $tilesBlocks as $tilesName => $tilesSource ) {
-	$tilesBlock = $read( $tilesSource )['blocks'][0];
-	if( $tilesBlock['kind'] !== 'html' || $tilesBlock['reason']['code'] !== 'tiles-background' || $tilesBlock['reason']['detail'] !== ( str_contains( $tilesName, 'the row' ) ? 'nino-grid-row-bg' : 'nino-section-bg' ) || $write( $read( $tilesSource ) ) !== "<div class=\"nino-wrap\">\n\n". rtrim( $tilesSource ). "\n\n</div>\n" )
-		$tilesWrong[] = $tilesName;
-}
-check( '...a section background or a row background in a section of tiles is what the model cannot hold: the section fails with the reason tiles-background, the class of the block in its detail, and is written back as it was'. ( $tilesWrong === [] ? '' : ' - not: '. implode( ', ', $tilesWrong ) ),
-	$tilesWrong === [] && isset( $reader::REASONS['tiles-background'] ) === true && str_contains( $reader::REASONS['tiles-background'], '%s' ) === true );
+// A section of tiles keeps the picture behind it as a content section does, with the scrim over it; the picture behind its row is what the model cannot hold
+$tilesPicture		= "<section id=\"a\" class=\"nino-section nino-tiles nino-section--dim\">\n\t<div class=\"nino-section-bg nino-img-focus--4\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n";
+$tilesPictured	= $read( $tilesPicture )['blocks'][0];
+check( 'a section of tiles keeps the background block behind it: the slot and the focus are the section\'s background, the scrim is the section\'s dim and no custom class, and the page is written back byte for byte',
+	$tilesPictured['kind'] === 'section' && $tilesPictured['settings']['tiles'] === true && $tilesPictured['background'] === [ 'slot' => '/template/page-x/a/bg', 'focus' => 4 ] && $tilesPictured['settings']['dim'] === true && $tilesPictured['settings']['custom'] === ''
+	&& $write( $read( $tilesPicture ) ) === $inWrap( $tilesPicture ) && $read( $write( $read( $tilesPicture ) ) ) === $read( $tilesPicture ) );
+$tilesUnpictured = $read( str_replace( "\t<div class=\"nino-section-bg nino-img-focus--4\">[image /template/page-x/a/bg alt=\"\"]</div>\n", '', $tilesPicture ) )['blocks'][0];
+check( '...the scrim of a section of tiles without the picture is a custom class as it was, the cover, the parallax and their scrims are custom classes with the picture as without it, and the Writer writes the scrim of a pictured section of tiles and none over no picture',
+	$tilesUnpictured['settings']['dim'] === false && $tilesUnpictured['settings']['custom'] === 'nino-section--dim' && $read( str_replace( 'nino-section--dim', 'nino-cover--dim nino-parallex', $tilesPicture ) )['blocks'][0]['settings']['custom'] === 'nino-cover--dim nino-parallex'
+	&& $writer::sectionClasses( [ 'tiles' => true, 'dim' => true ], true ) === [ 'nino-section', 'nino-tiles', 'nino-section--dim' ] && $writer::sectionClasses( [ 'tiles' => true, 'dim' => true ], false ) === [ 'nino-section', 'nino-tiles' ] );
+$tilesRowPicture = "<section id=\"a\" class=\"nino-section nino-tiles\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-row-bg\">[image /template/page-x/a/bg alt=\"\"]</div>\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>\n";
+$tilesRowBlock = $read( $tilesRowPicture )['blocks'][0];
+check( '...a picture block behind the row of a section of tiles is what the model cannot hold: the section fails with the reason row-background, is written back as it was - and the reason tiles-background is gone from the Reader',
+	$tilesRowBlock['kind'] === 'html' && $tilesRowBlock['reason']['code'] === 'row-background' && $write( $read( $tilesRowPicture ) ) === "<div class=\"nino-wrap\">\n\n". rtrim( $tilesRowPicture ). "\n\n</div>\n" && isset( $reader::REASONS['tiles-background'] ) === false );
 check( 'the ratio of a tile is one of the seven words the image component has - the registry says them, and the Reader keeps the same list - and a content section has none',
 	$reader::RATIO === array_values( array_filter( $registry['components']['image']['attributes']['ratio']['options'], static fn( string $ratio ): bool => $ratio !== '' ) ) && count( $reader::RATIO ) === 7
 	&& $reader::sectionDefaults()['tiles'] === false && $reader::sectionDefaults()['ratio'] === '' && $reader::colDefaults()['linked'] === false && $blank['settings']['tiles'] === false && $blank['cols'][0]['linked'] === false );
@@ -3446,6 +3494,34 @@ check( 'the sources in a loop of sections mean what they mean in a loop of a col
 	&& $loopFieldsAnswer['status'] === 400 && in_array( 'the section "news": the source "nothing" of text is no field of the loop\'s type', $loopFieldsAnswer['problems'], true ) === true
 	&& \Nino\Modules\Builder\Document::save( $appData, 'page-loop', $loopWell, $loopAnswer['hash'] )['status'] === 200 && str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-loop.tpl' ) ), "\t\t\t[text summary]\n" ) === true );
 \Nino\Modules\Builder\Document::delete( $appData, 'page-loop' );
+
+// The picture behind a column of a loop of sections is a slot or an image field of the type the loop runs over
+\Nino\Elements::insertElementType( $appData, '/sights', [ 'title' => [ 'type' => 'string', 'locale' => true ], 'photo' => [ 'type' => 'image', 'width' => 400, 'height' => 300 ] ] );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-gallery.tpl', $page( "[sections /sights id=\"shots\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--2\">[image photo alt=\"\"]</div>\n\t\t\t[title title]\n\t\t</div>\n\t</div>\n[/sections]" ) );
+$galleryLoaded	= \Nino\Modules\Builder\Document::load( $appData, 'page-gallery' );
+$galleryOn			= (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-gallery.tpl' ) );
+$galleryProblems = static function( callable $change ) use ( &$appData, $galleryLoaded ): array {
+	$model = $galleryLoaded['model'];
+	$change( $model );
+	return \Nino\Modules\Builder\Document::save( $appData, 'page-gallery', $model, $galleryLoaded['hash'] )['problems'] ?? [];
+};
+check( 'an image field of the element is the picture behind a column of a loop of sections the Document keeps: the page is read with it, saved as it is without a change in the file, and the source view writes the field where a slot would stand',
+	$galleryLoaded['status'] === 200 && $galleryLoaded['model']['blocks'][0]['cols'][0]['background'] === [ 'slot' => '', 'field' => 'photo', 'focus' => 2 ]
+	&& \Nino\Modules\Builder\Document::save( $appData, 'page-gallery', $galleryLoaded['model'], $galleryLoaded['hash'] )['status'] === 200 && (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-gallery.tpl' ) ) === $galleryOn
+	&& str_contains( \Nino\Modules\Builder\Document::source( $appData, $galleryLoaded['model'] )['parts'][1]['source'], '<div class="nino-grid-bg nino-img-focus--2">[image photo alt=""]</div>' ) === true );
+check( '...a field the type has not, or one that is no image, is a problem with the column and the field named - the red mark of the panel, as a picture of a field the type has not is - and nothing is written',
+	$galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['field'] = 'nope'; } ) === [ 'the section "shots": the background "nope" of column 1 is no image field of the loop\'s type' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['field'] = 'title'; } ) === [ 'the section "shots": the background "title" of column 1 is no image field of the loop\'s type' ]
+	&& (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-gallery.tpl' ) ) === $galleryOn );
+check( '...outside a loop a field means nothing - the loop taken from the section, or the field put on a column of a section that is none - and the model refuses it, as it refuses a field that is no name, a field next to a slot and a field behind a section',
+	$galleryProblems( static function( array &$model ): void { $model['blocks'][0]['stack'] = null; } ) === [ 'column 1 of block 1 has a background that names a field of the element, and the section runs no loop' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['field'] = 'a b'; } ) === [ 'column 1 of block 1 has a background with a field that is no name' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['field'] = 5; } ) === [ 'column 1 of block 1 has a background with a field that is no name' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['field'] = [ 'photo' ]; } ) === [ 'column 1 of block 1 has a background with a field that is no name' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['create'] = [ 'label' => 'Photo', 'width' => 400, 'height' => 300 ]; } ) === [ 'column 1 of block 1 has a background that names a field and a slot' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['background']['slot'] = '/template/page-gallery/shots/photo'; } ) === [ 'column 1 of block 1 has a background that names a field and a slot' ]
+	&& $galleryProblems( static function( array &$model ): void { $model['blocks'][0]['background'] = [ 'slot' => '', 'field' => 'photo', 'focus' => null ]; } ) === [ 'block 1 has a background that names a field, which only the background of a column in a loop of sections may' ] );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-gallery' );
 
 $stackWrong = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $stackWrong['model']['blocks'][3]['cols'][0]['components'] = [ [ 'name' => 'stack', 'source' => '/services', 'text' => null, 'attributes' => [], 'content' => '' ] ];

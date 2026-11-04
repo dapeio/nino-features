@@ -157,7 +157,8 @@ namespace Nino\Modules\Builder {
 	 *											                                      columns tiles with a height, a padding and a radius of their own. The cover, the parallax, the scrim, the room of
 	 *											                                      a padded cover, the place of the content and the radius of a padded cover are the content kind's: on a tiles
 	 *											                                      section they are custom classes, and so are the width, the place, the ground and the scrim of its row; its inner
-	 *											                                      is never read. A section background or a row background in it is a failure (tiles-background)
+	 *											                                      is never read. The section background is read as a content section's is, with its scrim (nino-section--dim);
+	 *											                                      a row background in it is a failure (row-background)
 	 *											    ratio       ''|RATIO              nino-tiles--<x>: the height of every tile, the words of the ratio of the image component; '' is a tile as high as
 	 *											                                      its words. Read while the section is tiles, else the class is a custom one; a second class is a class of its own
 	 *											    whitespace  ''|least|less|more|most   nino-whitespace--<x>: how much room the section keeps, on
@@ -364,7 +365,6 @@ namespace Nino\Modules\Builder {
 			'marker-unclosed'			=> 'a <!-- nino:html --> marker that is never closed',
 			'attribute-syntax'		=> 'a tag whose attributes are not written as name="value"',
 			'section-attribute'		=> 'the section has the attribute %s, which the builder does not keep',
-			'tiles-background'		=> 'the section of tiles has the background block %s, which the builder does not keep: its tiles hold the pictures',
 			'section-id'					=> 'the section has no id that is a slug',
 			'duplicate-id'				=> 'the id %s is the id of an earlier section',
 			'section-class'				=> 'the section has no class nino-section',
@@ -1166,9 +1166,6 @@ namespace Nino\Modules\Builder {
 
 			if( $tag === 'div' && in_array( 'nino-section-bg', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === true ) {
 
-				if( $section['settings']['tiles'] === true )
-					throw self::_fail( 'tiles-background', 'nino-section-bg', $pos );
-
 				[ $section['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-section-bg' );
 				$pos = self::_skip( $body, $pos );
 				[ $tag, $tagAttributes, $after ] = self::_peek( $body, $pos );
@@ -1188,9 +1185,6 @@ namespace Nino\Modules\Builder {
 			$picture		= null;
 
 			// The picture behind the row is the first thing in it, as the one behind the section is the first before its row
-			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true && $section['settings']['tiles'] === true )
-				throw self::_fail( 'tiles-background', 'nino-grid-row-bg', $pos );
-
 			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
 				[ $picture, $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-row-bg' );
 
@@ -1358,8 +1352,9 @@ namespace Nino\Modules\Builder {
 			[ $sides, $tokens ] = self::_sides( $tokens, true );
 			$s = array_replace( $s, $sides );
 
-			// A section of tiles is the second kind: what only the content kind has - a cover, a parallax, a scrim, a padded cover, the place of its content - is a custom class
-			// on it, and a picture block of its own is none (the section fails where it stands, see _inside()). The ratio is read after the loop: it stands where the section says tiles
+			// A section of tiles is the second kind: what only the content kind has - a cover, a parallax, a scrim of a cover, a padded cover, the place of its content - is a custom class
+			// on it, and a picture block of its row is none (the section fails where it stands, see _inside()); the picture behind the section and its scrim are the tiles' too. The ratio is
+			// read after the loop: it stands where the section says tiles
 			$tiles		= in_array( 'nino-tiles', $tokens, true ) === true;
 			$ratios	= [];
 
@@ -1388,7 +1383,7 @@ namespace Nino\Modules\Builder {
 					$set( 'tiles', true, $token );
 				elseif( preg_match( '/^nino-tiles--('. implode( '|', self::RATIO ). ')$/D', $token, $m ) === 1 )
 					$ratios[] = $token;
-				elseif( $tiles === true && ( in_array( $token, [ 'nino-cover', 'nino-parallex', 'nino-cover--dim', 'nino-parallex--dim', 'nino-section--dim', 'nino-cover--padded' ], true ) === true
+				elseif( $tiles === true && ( in_array( $token, [ 'nino-cover', 'nino-parallex', 'nino-cover--dim', 'nino-parallex--dim', 'nino-cover--padded' ], true ) === true || ( $token === 'nino-section--dim' && $pictured === false )
 					|| preg_match( '/^nino-cover-('. implode( '|', self::CONTENT_POS ). ')$/D', $token ) === 1 ) )
 					$custom[] = $token;
 				// A cover that names no height is as high as Nino.ui.js makes it: 90 percent of the window
@@ -1719,10 +1714,12 @@ namespace Nino\Modules\Builder {
 		 *	@param		int				$pos
 		 *	@param		array			$registry
 		 *	@param		string		$class				nino-section-bg or nino-grid-bg: the class that makes the block one
+		 *	@param		bool			$loop					Whether the block is the one of a column that is a cell of a loop of sections: its picture may be an image field of the element
+		 *															and not a slot - the name of a field, with no slash in front of it. Whether the type has such a field the Reader cannot know (the Document does)
 		 *
-		 *	@return 	array										[ [ slot, focus ], the position after it ]
+		 *	@return 	array										[ [ slot, focus ] or [ slot '', field, focus ], the position after it ]
 		 */
-		private static function _background( string $body, int $pos, array $registry, string $class ): array {
+		private static function _background( string $body, int $pos, array $registry, string $class, bool $loop = false ): array {
 
 			[ $attributes, $pos ] = self::_open( $body, $pos, 'div', 'background-image' );
 
@@ -1744,7 +1741,10 @@ namespace Nino\Modules\Builder {
 
 			[ $call, $pos ] = self::_call( $body, $pos, 0, $registry );
 
-			if( $call['stack'] === true || $call['node']['name'] !== 'image' || $call['node']['source'] === '' || $call['node']['source'][0] !== '/'
+			// A field of the element stands where a slot does: in a column of a loop of sections, the cell the picture is the element's
+			$field = $loop === true && $call['stack'] === false && $call['node']['source'] !== '' && $call['node']['source'][0] !== '/' && preg_match( '/^[A-Za-z0-9_-]+$/D', $call['node']['source'] ) === 1;
+
+			if( $call['stack'] === true || $call['node']['name'] !== 'image' || $call['node']['source'] === '' || ( $call['node']['source'][0] !== '/' && $field === false )
 				|| $call['node']['text'] !== null || ( $call['node']['attributes']['alt'] ?? '' ) !== '' || ( $call['node']['radius'] ?? '' ) !== '' || ( $call['node']['hover'] ?? '' ) !== '' || implode( '', array_intersect_key( $call['node'], array_flip( self::SPACING ) ) ) !== '' )
 				throw self::_fail( 'background-image', '', $pos );
 
@@ -1758,7 +1758,7 @@ namespace Nino\Modules\Builder {
 			if( preg_match( '~\G</div\s*>~', $body, $close, 0, $pos ) !== 1 )
 				throw self::_fail( 'background-image', '', $pos );
 
-			return [ [ 'slot' => $call['node']['source'], 'focus' => $focus ], $pos + strlen( $close[0] ) ];
+			return [ $field === true ? [ 'slot' => '', 'field' => $call['node']['source'], 'focus' => $focus ] : [ 'slot' => $call['node']['source'], 'focus' => $focus ], $pos + strlen( $close[0] ) ];
 		}
 
 		/**
@@ -1863,7 +1863,7 @@ namespace Nino\Modules\Builder {
 			$pos = self::_skip( $body, $after );
 
 			if( self::_isDiv( $body, $pos, 'nino-grid-bg' ) === true )
-				[ $col['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-bg' );
+				[ $col['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-bg', $loop );
 
 			// There is nothing to darken without a picture: the class of a column that has none is a class of its own, and stays where it stood among the others
 			if( $dim === true && $col['background'] !== null ) {

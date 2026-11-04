@@ -9252,9 +9252,9 @@ const germanFile = fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ),
 const englishFile = fs.readFileSync( path.join( __dirname, '../text/en_US.php' ), 'utf8' );
 const wordIn = function( file, key ) { return new RegExp( "^\\s*'\\[\\[/_admin/builder/"+ key.replace( /[.*+?^${}()|[\]\\\/]/g, '\\$&' )+ "\\]\\]'\\s*=>\\s*'.+',\\s*$", 'm' ).test( file ) };
 const tilesKeys = [ 'tree/content', 'tree/tiles', 'tree/tile', 'tile/title', 'tile/stack-align', 'block/tiles/label', 'section/kind', 'option/kind-content', 'option/kind-tiles', 'hint/kind', 'section/ratio', 'option/ratio-default', 'hint/ratio',
-	'col/linked', 'hint/linked', 'section/color-tiles', 'section/tile-gap', 'hint/tile-gap', 'reason/tiles-background' ].concat( [ '1-1', '4-3', '3-2', '16-9', '21-9', '4-1', '5-1' ].map( function( ratio ) { return 'option/ratio-'+ ratio } ) );
-check( 'every word the tiles need is in both interface languages - the kinds, a tile, the block, the ratio with its seven options, the link, the colour and the gap between the tiles, and the reason of a picture block that is not kept - and the two languages say the kinds in different words',
-	tilesKeys.every( function( key ) { return wordIn( englishFile, key ) && wordIn( germanFile, key ) } ) && tilesKeys.length === 26
+	'col/linked', 'hint/linked', 'section/color-tiles', 'section/tile-gap', 'hint/tile-gap', 'source/background-field', 'hint/background-field', 'preview/column-background-field', 'tree/red-background-static', 'tree/red-background-field' ].concat( [ '1-1', '4-3', '3-2', '16-9', '21-9', '4-1', '5-1' ].map( function( ratio ) { return 'option/ratio-'+ ratio } ) );
+check( 'every word the tiles need is in both interface languages - the kinds, a tile, the block, the ratio with its seven options, the link, the colour and the gap between the tiles, and the picture behind a column that is a field of the element - and the two languages say the kinds in different words',
+	tilesKeys.every( function( key ) { return wordIn( englishFile, key ) && wordIn( germanFile, key ) } ) && tilesKeys.length === 30
 	&& builder.RATIOS.join() === ',1-1,4-3,3-2,16-9,21-9,4-1,5-1' && builder.RATIOS.slice( 1 ).every( function( ratio ) { return words['/_admin/builder/option/ratio-'+ ratio] !== undefined } ) );
 
 // A new section of the kind asked for
@@ -9284,14 +9284,15 @@ builder._lastBlock = {};
 builder._renderEditor();
 builder._openSettings( [ 0 ] );
 const tilesLabels = labelList( dialogContent() );
-const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'section/row-align', 'section/content-pos', 'section/cover', 'section/cover-height', 'section/parallax', 'section/inner-background', 'section/padded', 'section/arrow', 'section/offset', 'common/radius-alt', 'section/dim' ];
+const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'section/row-align', 'section/content-pos', 'section/cover', 'section/cover-height', 'section/parallax', 'section/inner-background', 'section/padded', 'section/arrow', 'section/offset', 'common/radius-alt' ];
 check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Order, Loop and Properties - no block of the width',
 	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
 check( '...and Order, after Spacing, with the switch of each viewport that is shown - a section of tiles is a row like any other, and its tiles turn round the way columns do: one switch in the view of one viewport, the model a switch for each', labelList( blockOf('order') ).join() === word('section/reverse-in').replace( '%s', builder._viewport === 'g' ? 'Mobile' : word( 'viewport/'+ builder._viewport ) )+ ( builder._viewport === 'g' ? ',Reversed (Tablet),Reversed (Desktop)' : '' )
 	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 2 );
-check( '...Surface has the colour - between the tiles - and the border; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background, dimming, offset, arrow or radius',
+check( '...Surface has the colour - between the tiles - and the border, and the group Background image: the picture behind the whole section with its focus and its dimming, which a section of tiles has as a content section does; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background inside, offset, arrow or radius',
 	[ word('section/color-tiles'), word('section/border'), word('section/border-primary') ].every( function( label ) { return blockOf('surface').all().some( function( el ) { return controlsIn( blockOf('surface') ).some( function( control ) { return control.label === label } ) } ) } )
-	&& controlsIn( blockOf('surface') ).length === 3 && labelList( blockOf('tiles') ).join() === [ word('section/ratio'), word('section/tile-gap'), word('section/text') ].join()
+	&& labelList( blockOf('surface') ).indexOf( word('section/dim') ) !== -1 && labelList( blockOf('surface') ).indexOf( word('picture/upload') ) !== -1 && titlesIn( blockOf('surface') ) === word('group/background-image')
+	&& controlsIn( blockOf('surface') ).filter( function( control ) { return control.label === word('section/cover') || control.label === word('section/parallax') || control.label === word('section/inner-background') } ).length === 0 && labelList( blockOf('tiles') ).join() === [ word('section/ratio'), word('section/tile-gap'), word('section/text') ].join()
 	&& contentOnly.every( function( key ) { return tilesLabels.indexOf( words['/_admin/builder/'+ key] ) === -1 } ) && tilesLabels.indexOf( word('section/color') ) === -1 && tilesLabels.indexOf( word('section/row-gap') ) === -1 );
 check( '...the height is a select of the seven ratios and the default, which says what it is - as the content - the gap a step of the space scale, and a change of either is a change of the model, which the Writer reads as nino-tiles--<ratio> and nino-grid-gap-<n>', ( function() {
 	const options = controlOf( blockOf('tiles'), word('section/ratio') ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join();
@@ -9311,7 +9312,7 @@ check( 'the table lists the controls of a section of tiles once, as it does thos
 	const controls = builder._sectionControls( [ 0 ] );
 	const listed = [].concat( ...builder.BLOCKS.section.map( function( block ) { return block.controls } ) );
 	return new Set( listed ).size === listed.length && Object.keys( controls ).every( function( name ) { return listed.indexOf( name ) !== -1 } ) && [ 'ratio', 'tileGap', 'tileText' ].every( function( name ) { return controls[name] !== undefined } )
-		&& [ 'rowGap', 'text', 'width', 'row', 'cover', 'background', 'inner', 'arrow' ].every( function( name ) { return controls[name] === undefined } );
+		&& [ 'rowGap', 'text', 'width', 'row', 'cover', 'inner', 'arrow' ].every( function( name ) { return controls[name] === undefined } ) && controls.background !== undefined && controls.dim !== undefined && controls.parallax === undefined;
 } )() );
 
 // The dialog of a tile
@@ -9351,6 +9352,207 @@ check( '...a column of a content section has no link over the whole of it and ke
 			&& labels.filter( function( label ) { return label.indexOf( word('section/offset') ) === 0 } ).length === 2;
 	} )() );
 
+console.log( '\nThe picture of a column from a field of the element' );
+
+// A section that is a loop of sections over the type Team (a name and an image field, photo), content or tiles
+const fieldLoop = function( tiles ) {
+	const model = tiles === true ? tilesPage() : page();
+	model.blocks[0].stack = { name : 'sections', source : '/team', attributes : {} };
+	model.blocks[0].cols.forEach( function( col ) { col.background = null } );
+	return model;
+};
+const fieldLabel = function() { return word('source/background-field') };
+const dialogOf = function( model, at ) {
+	doc = open( model );
+	builder._renderEditor();
+	builder._openSettings( at ?? [ 0, 0 ] );
+	return dialogContent();
+};
+check( 'the picture of a column that is a cell of a loop of sections is chosen among the image fields of the element\'s type, with the focus and the dimming, and not among the slots: the control offers none and the image fields - the text fields of the type are not offered - and no upload, no alt text',
+	( function() {
+		const content = dialogOf( fieldLoop( false ) );
+		const labels = labelList( content );
+		return labels.indexOf( fieldLabel() ) !== -1 && optionsOf( content, fieldLabel() ) === '=none,photo=photo' && valueAt( content, fieldLabel() ) === '' && labels.indexOf( word('picture/upload') ) === -1
+			&& labels.indexOf('Automatic focus') !== -1 && labels.indexOf('Manual focus') !== -1 && labels.indexOf( word('section/dim') ) !== -1 && controlOf( content, word('section/dim') ).el.disabled === true;
+	} )() );
+check( '...a column outside a loop of sections has the slot, as it had - the upload and the picture of its slot - and no field to choose; so has a column with a loop of its own, whose picture stands outside the loop',
+	( function() {
+		const plain = labelList( dialogOf( page() ) );
+		const own = page();
+		own.blocks[1].cols[1].background = null;
+		const inner = labelList( dialogOf( own, [ 1, 1 ] ) );
+		return plain.indexOf( fieldLabel() ) === -1 && plain.indexOf( word('picture/upload') ) !== -1 && inner.indexOf( fieldLabel() ) === -1 && inner.indexOf( word('picture/upload') ) !== -1;
+	} )() );
+check( '...a field chosen is the column\'s background with no slot, the focus it had kept, the model changed and the dimming and the focus there for it; none takes the picture and the dimming away',
+	( function() {
+		const content = dialogOf( fieldLoop( false ) );
+		const was = changes;
+		change( content, fieldLabel(), 'photo' );
+		const col = builder._doc.model.blocks[0].cols[0];
+		const chosen = JSON.stringify( col.background ) === '{"slot":"","field":"photo","focus":null}' && changes === was + 1 && valueAt( dialogContent(), fieldLabel() ) === 'photo' && controlOf( dialogContent(), word('section/dim') ).el.disabled === false;
+		change( dialogContent(), 'Automatic focus', false );
+		change( dialogContent(), 'Manual focus', '6' );
+		change( dialogContent(), word('section/dim'), true );
+		const focused = col.background.focus === 6 && col.dim === true;
+		change( dialogContent(), fieldLabel(), '' );
+		return chosen && focused && col.background === null && col.dim === false && controlOf( dialogContent(), word('section/dim') ).el.disabled === true;
+	} )() );
+check( '...a field chosen over another keeps the focus the picture had',
+	( function() {
+		const model = fieldLoop( false );
+		model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : 6 };
+		const content = dialogOf( model );
+		builder._registry.types[1].fields.cover = { type : 'image' };
+		builder._closeDialog();
+		builder._openSettings( [ 0, 0 ] );
+		change( dialogContent(), fieldLabel(), 'cover' );
+		return JSON.stringify( builder._doc.model.blocks[0].cols[0].background ) === '{"slot":"","field":"cover","focus":6}' && content !== null;
+	} )() );
+check( '...a column that has a slot in a loop keeps the controls of the slot, and the image field is not offered over it',
+	( function() {
+		const model = fieldLoop( false );
+		model.blocks[0].cols[0].background = { slot : '/template/page-home/hero/background', focus : null };
+		const labels = labelList( dialogOf( model ) );
+		return labels.indexOf( fieldLabel() ) === -1 && labels.indexOf( word('picture/upload') ) !== -1;
+	} )() );
+check( '...a tile of a loop of sections is a column in this: its dialog offers the image fields, and a tile outside a loop has the slot',
+	labelList( dialogOf( fieldLoop( true ) ) ).indexOf( fieldLabel() ) !== -1 && labelList( dialogOf( tilesPage() ) ).indexOf( fieldLabel() ) === -1 && labelList( dialogOf( tilesPage() ) ).indexOf( word('picture/upload') ) !== -1 );
+
+console.log( '\nThe field of a picture that means nothing' );
+
+const fieldRed = function( mutate ) {
+	const model = fieldLoop( false );
+	model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : 2 };
+	mutate( model );
+	return redOf( model );
+};
+check( 'a field of the type is not red; a field the type has not, a field that is no image, and a field in a section that is no loop of sections are red in the column - not in its components, and not for a slot',
+	fieldRed( function() {} ) === '' && fieldRed( function( model ) { model.blocks[0].cols[0].background.field = 'nope' } ) === '0.0:background-field:nope'
+	&& fieldRed( function( model ) { model.blocks[0].cols[0].background.field = 'name' } ) === '0.0:background-field:name'
+	&& fieldRed( function( model ) { model.blocks[0].stack.source = '/services' } ) === '0.0:background-field:photo' && fieldRed( function( model ) { model.blocks[0].stack = null } ) === '0.0:background-static:photo'
+	&& fieldRed( function( model ) { model.blocks[0].cols[0].background = { slot : '/template/page-home/hero/background', focus : null } } ) === '' );
+check( '...a field in a tile that stands in no loop is red as well - a static section of tiles has no element to take it from',
+	( function() {
+		const model = tilesPage();
+		model.blocks[0].cols[1].background = { slot : '', field : 'photo', focus : null };
+		return redOf( model ) === '0.1:background-static:photo';
+	} )() );
+check( 'the placeholder of a field is a layer behind the content of the column: absolute over the whole frame, under the head and the body, no pointer events - and the frame is the box it is placed in',
+	/\.builder-col-bg \{[^}]*position: absolute;[^}]*inset: 0;[^}]*z-index: 0;[^}]*pointer-events: none;/.test( stylesheet ) === true && /\.builder-pcol \{\n\tposition: relative;/.test( stylesheet ) === true
+	&& /\.builder-pcol-head,\n\.builder-col-body \{\n\tposition: relative;\n\tz-index: 1;/.test( stylesheet ) === true );
+check( 'a column with a loop of its own says in the form, under Background image, that its picture stands outside the loop and is the same behind every cell - and a column of a loop of sections, or none, says nothing',
+	( function() {
+		const own = page();
+		own.blocks[1].cols[1].background = null;
+		const content = dialogOf( own, [ 1, 1 ] );
+		const hints = function( root ) { return root.querySelectorAll('.builder-background-own-loop') };
+		const said = hints( content ).length === 1 && hints( content )[0].querySelector('.builder-help-tip').textContent === word('hint/background-own-loop') && hints( content )[0].parentNode.dataset.key === 'background';
+		return said && hints( dialogOf( fieldLoop( false ) ) ).length === 0 && hints( dialogOf( page() ) ).length === 0 && wordIn( englishFile, 'hint/background-own-loop' ) === true && wordIn( germanFile, 'hint/background-own-loop' ) === true;
+	} )() );
+check( '...a type the Elements panel has not makes the loop red and not the picture, which cannot be judged by a type that is not there',
+	fieldRed( function( model ) { model.blocks[0].stack.source = '/nowhere' } ) === '0:type:/nowhere' );
+check( '...the dialog of the column says it, in red, and still lists the field the column holds, so that it is not lost on opening; a slot takes its place when it is chosen',
+	( function() {
+		const model = fieldLoop( false );
+		model.blocks[0].cols[0].background = { slot : '', field : 'nope', focus : null };
+		const content = dialogOf( model );
+		const note = content.querySelectorAll('.builder-source-red').filter( function( el ) { return el.hidden !== true && el.textContent !== '' } );
+		return note.length === 1 && note[0].textContent === word('tree/red-background-field') && optionsOf( content, fieldLabel() ) === '=none,photo=photo,nope=nope' && valueAt( content, fieldLabel() ) === 'nope';
+	} )() );
+check( '...a field in a column that stands in no loop of sections is shown as the source of the picture, red with the words for it, and the choice of a slot is the end of it',
+	( function() {
+		const model = page();
+		model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : null };
+		const content = dialogOf( model );
+		const note = content.querySelectorAll('.builder-source-red').filter( function( el ) { return el.hidden !== true && el.textContent !== '' } );
+		const shown = note.length === 1 && note[0].textContent === word('tree/red-background-static') && content.querySelectorAll('.builder-source-current').some( function( el ) { return el.textContent === 'photo' } );
+		builder._doc.model.blocks[0].cols[0].background = { slot : '/template/page-home/hero/background', focus : null };
+		return shown && redOf( builder._doc.model ) === '';
+	} )() );
+check( '...a picture stored for it - the slot the upload makes - takes the field\'s place: the column has the slot and no field, and the red mark is gone', ( function() {
+	const model = page();
+	model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : 3 };
+	doc = open( model );
+	const original = builder._pictureField;
+	let owner = null;
+	builder._pictureField = function( options ) { owner = options.owner; return original.call( builder, options ) };
+	builder._backgroundField( [ 0, 0 ], function() {} );
+	builder._pictureField = original;
+	owner.put( '/template/page-home/hero/background', undefined );
+	return JSON.stringify( builder._doc.model.blocks[0].cols[0].background ) === '{"slot":"/template/page-home/hero/background","focus":3}' && redOf( builder._doc.model ) === '';
+} )() );
+check( '...and the panel does not save with it: the red mark is the one that stops a save, as a field of a picture that means nothing does', ( function() {
+	const model = fieldLoop( false );
+	model.blocks[0].cols[0].background = { slot : '', field : 'nope', focus : null };
+	doc = open( model );
+	builder._renderEditor();
+	const sent = requests.length;
+	builder._save();
+	return requests.length === sent && builder._red( builder._doc.model, builder._registry ).length === 1;
+} )() );
+
+console.log( '\nThe picture from a field in the preview' );
+
+check( 'the preview says of a column whether its picture is a field of the element and which: the name, and nothing for a slot or for no picture',
+	( function() {
+		const model = fieldLoop( true );
+		model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : null };
+		model.blocks[0].cols[1].background = { slot : '/template/page-home/hero/background', focus : null };
+		const cols = builder._preview( model, registry(), 'l' )[0].cols;
+		return cols[0].background === true && cols[0].backgroundField === 'photo' && cols[1].background === true && cols[1].backgroundField === '' && cols.slice( 2 ).every( function( col ) { return col.background === false && col.backgroundField === '' } );
+	} )() );
+check( '...the frame of the column wears a placeholder that names the field, a layer behind what the column holds and no row of its body, and a status that says it with the name - the frame of a column with a slot has neither, only the status that there is a picture',
+	( function() {
+		const model = fieldLoop( true );
+		model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : null };
+		model.blocks[0].cols[1].background = { slot : '/template/page-home/hero/background', focus : null };
+		doc = open( model );
+		builder._renderEditor();
+		const first = preview().querySelector('.builder-pcol[data-path="0.0"]');
+		const second = preview().querySelector('.builder-pcol[data-path="0.1"]');
+		const placeholder = first.querySelector('.builder-col-bg');
+		const status = first.querySelector('.builder-pcol-head .is-background');
+		return placeholder !== null && placeholder.querySelector('.builder-ph-label').textContent === 'photo' && placeholder.parentNode === first && first.querySelector('.builder-col-body').children.every( function( child ) { return child !== placeholder && child.classList.contains('builder-col-bg') === false } )
+			&& status !== null && status.title === word('preview/column-background-field').replace( '%s', 'photo' ) && second.querySelector('.builder-col-bg') === null && second.querySelector('.builder-pcol-head .is-background').title === word('preview/column-background');
+	} )() );
+check( '...a field that means nothing is marked red in the preview as a source is',
+	( function() {
+		const model = fieldLoop( true );
+		model.blocks[0].cols[0].background = { slot : '', field : 'nope', focus : null };
+		doc = open( model );
+		builder._renderEditor();
+		const first = preview().querySelector('.builder-pcol[data-path="0.0"]');
+		return first.classList.contains('is-red') === true && first.title === word('tree/red-background-field');
+	} )() );
+check( 'a copy of a column whose picture is a field of the element is a column with the same field: there is no slot to make again',
+	( function() {
+		const model = fieldLoop( false );
+		model.blocks[0].cols[0].background = { slot : '', field : 'photo', focus : 4 };
+		const copy = builder._clone( model.blocks[0].cols[0] );
+		builder._rekey( copy, registry(), '/template/page-home/hero/', '/template/page-home/hero-2/', true, model.blocks[0], 'page-home' );
+		return JSON.stringify( copy.background ) === '{"slot":"","field":"photo","focus":4}';
+	} )() );
+
+console.log( '\nThe picture behind a section of tiles' );
+
+check( 'the dialog of a section of tiles has the picture behind the whole section as a content section has it, and its dimming: a field of the element is not offered for it, as it is not for a section',
+	( function() {
+		const model = fieldLoop( true );
+		const content = dialogOf( model, [ 0 ] );
+		const labels = labelList( blockOf('surface') );
+		return labels.indexOf( word('picture/upload') ) !== -1 && labels.indexOf( fieldLabel() ) === -1 && labels.indexOf( word('section/dim') ) !== -1 && titlesIn( blockOf('surface') ) === word('group/background-image') && content !== null;
+	} )() );
+check( '...its picture is the section\'s background and its dimming the section\'s: switching a section that has both to tiles keeps them, and the status of the frame says there is a picture',
+	( function() {
+		const model = tilesPage();
+		model.blocks[0].background = { slot : '/template/page-home/hero/background', focus : 5 };
+		model.blocks[0].settings.dim = true;
+		doc = open( model );
+		builder._renderEditor();
+		const entry = builder._preview( model, registry(), 'l' )[0];
+		return entry.tiles === true && entry.background === true && preview().querySelector('.builder-frame[data-path="0"] .is-background') !== null;
+	} )() );
+
 // Switching the kind
 const ofKind = function( tiles ) {
 	const model = tiles === true ? page() : tilesPage();
@@ -9360,14 +9562,15 @@ const ofKind = function( tiles ) {
 			color : 'tint', border : '2', borderPrimary : true, rowGap : '2', whitespace : 'more', mt : '1', pt : '3', text : 'center', vpa : 'zoom-soft', custom : 'mine', rowCustom : 'row-mine' } );
 	return model;
 };
-check( 'switching a content section to tiles takes the ratio 4 : 3 and gives up what only a content section has - the width, the place, the alignment and the padding of the row, the radius of what it paints and the picture offsets, the cover, the parallax, the dimming, the room of a padded cover, the radius of it, the place of the content, the background inside and the arrow, and the picture behind the section - and keeps the ground, the lines, the gap, the whitespace, the spacing, the text alignment, the animation and the classes', ( function() {
+check( 'switching a content section to tiles takes the ratio 4 : 3 and gives up what only a content section has - the width, the place, the alignment and the padding of the row, the radius of what it paints and the picture offsets, the cover, the parallax, the room of a padded cover, the radius of it, the place of the content, the background inside and the arrow - and keeps the picture behind the section with its dimming (the dimming of a section without a picture goes), the ground, the lines, the gap, the whitespace, the spacing, the text alignment, the animation and the classes', ( function() {
 	const model = ofKind( true );
 	model.blocks[0].background = { slot : '/template/page-home/hero/background', focus : 5 };
 	model.blocks[0].cols.forEach( function( col ) { col.bgPl = '2'; col.bgPr = '1' } );
 	builder._setKind( model.blocks[0], true );
 	const s = model.blocks[0].settings;
 	return s.tiles === true && s.ratio === '4-3' && [ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowBgPl', 'rowBgPr', 'radius', 'contentPos' ].every( function( key ) { return s[key] === '' } )
-		&& s.cover === null && [ 'parallax', 'dim', 'padded', 'inner', 'arrow' ].every( function( key ) { return s[key] === false } ) && model.blocks[0].background === null
+		&& s.cover === null && [ 'parallax', 'padded', 'inner', 'arrow' ].every( function( key ) { return s[key] === false } ) && model.blocks[0].background !== null && model.blocks[0].background.slot === '/template/page-home/hero/background' && s.dim === true
+		&& ( function() { const bare = ofKind( true ); bare.blocks[0].background = null; builder._setKind( bare.blocks[0], true ); return bare.blocks[0].settings.dim === false } )()
 		&& s.color === 'tint' && s.border === '2' && s.borderPrimary === true && s.rowGap === '2' && s.whitespace === 'more' && s.mt === '1' && s.pt === '3' && s.text === 'center' && s.vpa === 'zoom-soft' && s.custom === 'mine' && s.rowCustom === 'row-mine'
 		&& model.blocks[0].cols.length === page().blocks[0].cols.length && model.blocks[0].cols.every( function( col ) { return col.bgPl === '' && col.bgPr === '' } );
 } )() );

@@ -197,9 +197,9 @@ namespace Nino\Modules\Builder {
 
 			$settings	= (array) ( $section['settings'] ?? [] ) + Reader::sectionDefaults();
 			$stack		= is_array( $section['stack'] ?? null ) === true ? $section['stack'] : null;
-			// A section of tiles holds no picture of its own, behind it or in its row: its tiles do (the model has none)
+			// A section of tiles has the picture behind it as a content section has, and none in its row (the model has none): its tiles hold their own
 			$tiles		= $settings['tiles'] === true;
-			$pictured	= $tiles === false && self::_pictured( $section );
+			$pictured	= self::_pictured( $section );
 			$inner		= self::_inner( $settings );
 			$lines		= [];
 
@@ -353,7 +353,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			// A plain section is darkened by a scrim of its own over its own picture - and one with no picture has nothing to darken, and the light inks of the scrim would sit on a light ground
-			if( $s['dim'] === true && $s['cover'] === null && $s['parallax'] === false && $pictured === true && self::_inner( $s ) === false && $tiles === false )
+			if( $s['dim'] === true && $s['cover'] === null && $s['parallax'] === false && $pictured === true && self::_inner( $s ) === false )
 				$class[] = 'nino-section--dim';
 
 			// The room of the page around a cover or a parallax, and the place of the content in them: on a section that is neither the Builder writes neither
@@ -564,16 +564,16 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	@param		array			$node					A section or a column
 		 *
-		 *	@return 	bool										Whether it has a background that names a slot
+		 *	@return 	bool										Whether it has a background that names a slot - or a field of the element, which a column in a loop of sections may
 		 */
 		private static function _pictured( array $node ): bool {
-			return is_array( $node['background'] ?? null ) === true && (string) ( $node['background']['slot'] ?? '' ) !== '';
+			return is_array( $node['background'] ?? null ) === true && ( (string) ( $node['background']['slot'] ?? '' ) !== '' || (string) ( $node['background']['field'] ?? '' ) !== '' );
 		}
 
 		/**
-		 *	The block of a background: the picture of a slot, with an empty alt, and its focus
+		 *	The block of a background: the picture of a slot - or the image field of the element, where it names one -, with an empty alt, and its focus
 		 *
-		 *	@param		array			$background		slot, focus
+		 *	@param		array			$background		slot, focus - or field, focus
 		 *	@param		string		$class				nino-section-bg or nino-grid-bg
 		 *
 		 *	@return 	string
@@ -584,7 +584,7 @@ namespace Nino\Modules\Builder {
 
 			return self::_fill( 'background', [
 				'[[class]]'	=> self::_class( [ $class ] + ( $focus >= 1 && $focus <= 9 ? [ 1 => 'nino-img-focus--'. $focus ] : [] ) ),
-				'[[slot]]'	=> self::_escape( (string) $background['slot'] ),
+				'[[slot]]'	=> self::_escape( (string) ( (string) ( $background['field'] ?? '' ) !== '' ? $background['field'] : $background['slot'] ) ),
 			] );
 		}
 

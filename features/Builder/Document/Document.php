@@ -1274,8 +1274,21 @@ namespace Nino\Modules\Builder {
 
 				$fields = $cell;
 
-				if( is_array( $col['background'] ?? null ) === true && preg_match( self::SLOT, (string) ( $col['background']['slot'] ?? '' ) ) !== 1 )
-					$problems[] = 'the background of column '. ( (int) $c + 1 ). ' is not an image slot';
+				// The picture behind a column is a slot, or - in a loop of sections, whose cell the column is - an image field of the element
+				if( is_array( $col['background'] ?? null ) === true ) {
+
+					$field = (string) ( $col['background']['field'] ?? '' );
+
+					if( $field === '' ) {
+
+						if( preg_match( self::SLOT, (string) ( $col['background']['slot'] ?? '' ) ) !== 1 )
+							$problems[] = 'the background of column '. ( (int) $c + 1 ). ' is not an image slot';
+					}
+					elseif( $cell === null )
+						$problems[] = 'the background "'. $field. '" of column '. ( (int) $c + 1 ). ' means nothing in a column without a loop: it is an image slot';
+					elseif( ( $cell[$field]['type'] ?? '' ) !== 'image' )
+						$problems[] = 'the background "'. $field. '" of column '. ( (int) $c + 1 ). ' is no image field of the loop\'s type';
+				}
 
 				if( is_array( $col['stack'] ?? null ) === true )
 					$fields = self::_fields( $appData, $col['stack'], $problems );
@@ -1450,7 +1463,7 @@ namespace Nino\Modules\Builder {
 					$model['blocks'][$index]['background']['slot'] = $move( (string) $block['background']['slot'], 'slot' );
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
-					if( is_array( $col['background'] ?? null ) === true )
+					if( is_array( $col['background'] ?? null ) === true && (string) ( $col['background']['field'] ?? '' ) === '' )
 						$model['blocks'][$index]['cols'][$c]['background']['slot'] = $move( (string) $col['background']['slot'], 'slot' );
 
 				// A source follows the section, and so does the picture an image attribute names - in the children of a component that holds components as well
@@ -2399,6 +2412,9 @@ namespace Nino\Modules\Builder {
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
 					$problems[] = $at. ' has a background that is no image slot';
 
+				if( is_array( $block['background'] ?? null ) === true && ( $block['background']['field'] ?? '' ) !== '' )
+					$problems[] = $at. ' has a background that names a field, which only the background of a column in a loop of sections may';
+
 				if( is_array( $block['background'] ?? null ) === true && self::_texted( [ 'create' => $block['background']['create'] ?? null ] ) === false )
 					$problems[] = $at. ' has a background with an alt text that is none';
 
@@ -2442,6 +2458,17 @@ namespace Nino\Modules\Builder {
 
 					if( ( $col['background'] ?? null ) !== null && ( is_array( $col['background'] ) === false || $text( $col['background']['slot'] ?? null ) === false ) )
 						$problems[] = $of. ' has a background that is no image slot';
+
+					// A field of the element is the picture of a column in a loop of sections: a name, and no slot with it
+					if( is_array( $col['background'] ?? null ) === true && array_key_exists( 'field', $col['background'] ) === true && $col['background']['field'] !== '' ) {
+
+						if( is_string( $col['background']['field'] ) === false || preg_match( '/^[A-Za-z0-9_-]+$/D', $col['background']['field'] ) !== 1 )
+							$problems[] = $of. ' has a background with a field that is no name';
+						elseif( ( $block['stack'] ?? null ) === null )
+							$problems[] = $of. ' has a background that names a field of the element, and the section runs no loop';
+						elseif( (string) ( $col['background']['slot'] ?? '' ) !== '' || array_key_exists( 'create', $col['background'] ) === true )
+							$problems[] = $of. ' has a background that names a field and a slot';
+					}
 
 					if( is_array( $col['background'] ?? null ) === true && self::_texted( [ 'create' => $col['background']['create'] ?? null ] ) === false )
 						$problems[] = $of. ' has a background with an alt text that is none';

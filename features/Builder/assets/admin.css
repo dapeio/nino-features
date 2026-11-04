@@ -726,6 +726,28 @@ button.builder-status-item:hover {
 	gap: .3rem;
 	padding: 0 .5rem .5rem;
 }
+/* The picture of a field of the element behind a column: a placeholder that names the field, ahead of what the column holds, drawn with a dashed line as what is not
+   there to be picked apart */
+.builder-col-bg {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: .55;
+	outline: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+	outline-offset: -1px;
+}
+.builder-pcol {
+	position: relative;
+}
+.builder-pcol-head,
+.builder-col-body {
+	position: relative;
+	z-index: 1;
+}
 /* A component that holds components has a frame of its own in its column, lighter than the column's: no line, a tint of grey over the ground it
    stands on, and a smaller head. A card that paints a ground of its own keeps that colour: the rules of the grounds (above) are more specific */
 .builder-card {
