@@ -56,11 +56,11 @@
 
 :root {
 	/*	What a button is multiplied by: 1 is Nino.css as it is	*/
-	--buttons-size--least: 		.8;
-	--buttons-size--less: 		.9;
-	--buttons-size--default: 	1;
-	--buttons-size--more: 		1.12;
-	--buttons-size--most: 		1.25;
+	--buttons-size--least:	.75;
+	--buttons-size--less:	.875;
+	--buttons-size--default:	1;
+	--buttons-size--more:	1.2;
+	--buttons-size--most:	1.4;
 
 	/*	How far the variants stand from the size, as a part of it: .3 is the
 		.7 of a small button and the 1.3 of a big one	*/
@@ -79,11 +79,11 @@
 	--buttons-space--most: 			var(--space-4);
 
 	/*	The letter-spacing of the label: tighter below the middle, wider above it	*/
-	--buttons-tracking--least: 		-.02em;
-	--buttons-tracking--less: 			-.01em;
-	--buttons-tracking--default: 	0em;
-	--buttons-tracking--more: 			.05em;
-	--buttons-tracking--most: 			.1em;
+	--buttons-tracking--least:	-.03em;
+	--buttons-tracking--less:	-.015em;
+	--buttons-tracking--default:	0em;
+	--buttons-tracking--more:	.08em;
+	--buttons-tracking--most:	.15em;
 
 	/*	A pill is no large number but a radius past half the height, where it stops growing	*/
 	--buttons-corners--least: 		0rem;

@@ -16,6 +16,8 @@
  *	@knob	rule-color			Colour of the rule under the title
  *	@knob	align				Where the title, the subtitle and the text stand
  *	@knob	measure				Width of the column of the subtitle and of the text
+ *	@knob	title-ink			Colour of the title of a section
+ *	@knob	subtitle-ink		Colour of the subtitle of a section
  *
  *	One decision: the heading is the page and the text is the footnote to it.
  *	The leading tightens as the size grows, because a display line set at the
@@ -47,17 +49,17 @@
 	--section-loud--more: 					1.35;
 	--section-loud--most: 					1.6;
 
-	--section-title--least: 	.8;
-	--section-title--less: 		.9;
-	--section-title--default: 	1;
-	--section-title--more: 		1.15;
-	--section-title--most: 		1.3;
+	--section-title--least:	.7;
+	--section-title--less:	.85;
+	--section-title--default:	1;
+	--section-title--more:	1.25;
+	--section-title--most:	1.5;
 
-	--section-subtitle--least: 		.85;
-	--section-subtitle--less: 		.92;
-	--section-subtitle--default: 	1;
-	--section-subtitle--more: 		1.1;
-	--section-subtitle--most: 		1.2;
+	--section-subtitle--least:	.8;
+	--section-subtitle--less:	.9;
+	--section-subtitle--default:	1;
+	--section-subtitle--more:	1.15;
+	--section-subtitle--most:	1.3;
 
 	--section-space--least: 	var(--space-2);
 	--section-space--less: 		var(--space-3);
@@ -65,11 +67,11 @@
 	--section-space--more: 		var(--space-5);
 	--section-space--most: 		var(--space-6);
 
-	--section-rule--least: 		0px;
-	--section-rule--less: 		0px;
-	--section-rule--default: 	0px;
-	--section-rule--more: 		1px;
-	--section-rule--most: 		2px;
+	--section-rule--default:	0px;
+	--section-rule--light:	.0625rem;
+	--section-rule--medium:	.125rem;
+	--section-rule--strong:	.25rem;
+	--section-rule--full:	.375rem;
 
 	--section-dim--least: 		color-mix( in srgb, var(--color-background-dim) 50%, transparent );
 	--section-dim--less: 		color-mix( in srgb, var(--color-background-dim) 75%, transparent );
@@ -79,11 +81,11 @@
 
 	/*	The letter-spacing of the title of a section and of the hero, as a step from what the template gives it: nothing at the middle, so that the middle is
 		the template, whichever it is. Tighter on the two steps below it, looser on the two above	*/
-	--section-title-tracking--least: 	-.03em;
-	--section-title-tracking--less: 		-.015em;
-	--section-title-tracking--default: 	0em;
-	--section-title-tracking--more: 		.04em;
-	--section-title-tracking--most: 		.1em;
+	--section-title-tracking--least:	-.04em;
+	--section-title-tracking--less:	-.02em;
+	--section-title-tracking--default:	0em;
+	--section-title-tracking--more:	.06em;
+	--section-title-tracking--most:	.15em;
 
 	/*	How long the rule under the title is: the length of the line at the foot of the title - short, the width of the title as Nino.css draws
 		it, or the width of its words, which is the width of the title then (its aspect is that width, as a maximum). The line is a background
@@ -96,13 +98,13 @@
 	--section-rule-length-fit--default: none;
 	--section-rule-length-fit--more: 		fit-content;
 
-	/*	The shadow of the words of the title of a section and of the hero: none up to the middle, then a soft one and a strong one, in the
-		black of the palette, thinned	*/
-	--section-title-shadow--least: 		none;
-	--section-title-shadow--less: 			none;
-	--section-title-shadow--default: 	none;
-	--section-title-shadow--more: 			0 .04em .12em color-mix( in srgb, var(--color-section-black-bg) 30%, transparent );
-	--section-title-shadow--most: 			0 .06em .25em color-mix( in srgb, var(--color-section-black-bg) 55%, transparent );
+	/*	The shadow of the words of the title of a section and of the hero, a grade: none, the kernel's, then four that grow - the soft one, the strong one the sets had before, and
+		two stronger still - in the black of the palette, thinned	*/
+	--section-title-shadow--default:	none;
+	--section-title-shadow--light:	0 .04em .12em color-mix( in srgb, var(--color-section-black-bg) 30%, transparent );
+	--section-title-shadow--medium:	0 .06em .25em color-mix( in srgb, var(--color-section-black-bg) 55%, transparent );
+	--section-title-shadow--strong:	0 .09em .35em color-mix( in srgb, var(--color-section-black-bg) 70%, transparent );
+	--section-title-shadow--full:	0 .12em .5em color-mix( in srgb, var(--color-section-black-bg) 85%, transparent );
 
 	/*	The ground behind the words of the title of a section and of the hero: none, as Nino.css has it, soft or full. The ladder is the share of the colour of the title
 		in the ground, 12% and 100%, over what the title stands on; its aspects are the share of the ground in the words (the words of a
@@ -254,23 +256,35 @@
 
 /*	The ground behind the words of a title, a share of its colour and of the ground in its words (the roles are read where the title stands)
 	and the room round it - none at the middle - and the width: a title with a ground is as wide as its words	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not(.nino-tiles *)) {
 	background-color: color-mix( in srgb, var(--color-title) var(--section-title-ground), transparent );
 	border-radius: calc( var(--radius) * var(--section-title-ground-fit) );
 	width: var(--section-title-ground-width);
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-ink--"])) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-ink--"], .nino-tiles *)) {
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), var(--color-title) );
+}
+
+/*	The ink of a title and of a subtitle, the hero's with them, is the tone the knob selects: the colour of the words of the title (and the colour the
+	ground behind it is a share of), the colour of the subtitle. At the middle the tone is the one Nino.css gives the ground the title stands on, so that
+	nothing changes where no tone is chosen. A title or a subtitle that says an ink of its own (nino-ink--accent, nino-ink--muted) keeps it, and a section
+	of tiles is the tiles set's: its titles and subtitles are read there	*/
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-ink--"], .nino-tiles *)) {
+	background-color: color-mix( in srgb, var(--section-title-ink) var(--section-title-ground), transparent );
+	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), var(--section-title-ink) );
+}
+:is(.nino-section-subtitle, .nino-section-subtitle--quiet, .nino-section-subtitle--loud, .nino-hero-subtitle, .nino-hero-subtitle--quiet, .nino-hero-subtitle--loud):where(:not([class*="nino-ink--"], .nino-tiles *)) {
+	color: var(--section-subtitle-ink);
 }
 /*	The two inks a title may say - the brand and the muted one - take the share of the ground in the words as well, so that a full ground does not leave
 	them in the colour of the ground	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud).nino-ink--accent {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud).nino-ink--accent:where(:not(.nino-tiles *)) {
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), var(--color-accent) );
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud).nino-ink--muted {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud).nino-ink--muted:where(:not(.nino-tiles *)) {
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), color-mix(in srgb, currentColor 80%, transparent) );
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pl-"], [class*="nino-pr-"])) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pl-"], [class*="nino-pr-"], .nino-tiles *)) {
 	padding-top: calc( .15em * var(--section-title-ground-fit) );
 	padding-inline: calc( .5em * var(--section-title-ground-fit) );
 }
@@ -279,9 +293,9 @@
 }
 
 /*	The rule under the title is a background of it, as long as the length says, in the colour of the rule: the line Nino.css draws as the border is
-	drawn here, so that it can be short, and the air under the title is the six times the line Nino.css leaves, and the line itself	*/
+	drawn here, so that it can be short, and the air under the title is the line plus the smaller of the six times the line Nino.css leaves and 1.25rem, so that a thick rule stays with its title	*/
 :is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud):where(:not([class*="nino-p-"], [class*="nino-pb-"])) {
-	padding-bottom: calc( .15em * var(--section-title-ground-fit) + var(--section-rule) * 7 );
+	padding-bottom: calc( .15em * var(--section-title-ground-fit) + var(--section-rule) + min( var(--section-rule) * 6, 1.25rem ) );
 }
 :is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud) {
 	border-bottom-width: 0;
@@ -404,4 +418,12 @@
 	:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud).nino-text-xl-right {
 		background-position: right bottom;
 	}
+}
+
+/*	The colour of the title and of the subtitle of a section is the tone of the page on the ground they stand on, so the rung of an ink is declared on every
+	element (see Nino.css): the title role and the subtitle role are re-pointed by a dark section, a brand section and the rest on their own, and the rung
+	is read where the words stand. The rung is the tone this set gives: the role the framework gives the words, which a knob replaces with a tone of its own	*/
+:root, :root * {
+	--section-title-ink--default:		var(--color-title);
+	--section-subtitle-ink--default:	var(--color-subtitle);
 }

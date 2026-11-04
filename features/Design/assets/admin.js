@@ -146,7 +146,7 @@
 			scale has the five positions -2 to +2, a choice the three -1 to +1, a toggle the two 0 and
 			1, off and on, and an ink the middle alone: what it stands at is a tone and no position (see Setup::positions()).
 			The root size, the width, the whitespace and the two radii of the page are scales	*/
-		RANGE		: { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ], ink : [ 0, 0 ] },
+		RANGE		: { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ], grade : [ 0, 4 ], ink : [ 0, 0 ] },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
@@ -365,6 +365,8 @@
 			'section/dim' : 'contrast',
 			'section/title-ground' : 'square',
 			'section/rule-color' : 'palette',
+			'section/title-ink' : 'palette',
+			'section/subtitle-ink' : 'palette',
 			'section/align' : 'align-center',
 			'section/measure' : 'unfold-horizontal',
 			'tiles/title' : 'a-large-small',
@@ -376,6 +378,8 @@
 			'tiles/place' : 'align-center',
 			'tiles/dim' : 'contrast',
 			'tiles/hover' : 'move-vertical',
+			'tiles/title-ink' : 'palette',
+			'tiles/subtitle-ink' : 'palette',
 			'card/title' : 'a-large-small',
 			'card/subtitle' : 'a-large-small',
 			'card/title-tracking' : 'chevrons-left-right',
@@ -384,6 +388,8 @@
 			'card/shadow' : 'square-stack',
 			'card/tone' : 'palette',
 			'card/title-ground' : 'square',
+			'card/title-ink' : 'palette',
+			'card/subtitle-ink' : 'palette',
 			'card/hover' : 'move-vertical',
 			'card/align' : 'align-center',
 			'buttons/size' : 'a-large-small',
@@ -3759,9 +3765,10 @@
 
 		/**
 		 *	The positions of a kind of knob, from the least to the most: -2 to +2 for a
-		 *	scale, -1 to +1 for a choice, 0 and 1 for a toggle (see RANGE)
+		 *	scale, -1 to +1 for a choice, 0 and 1 for a toggle, 0 to 4 for a grade, which only grows from the
+		 *	kernel's own (see RANGE)
 		 *
-		 *	@param		{string}	kind				'scale', 'choice' or 'toggle'
+		 *	@param		{string}	kind				'scale', 'choice', 'toggle' or 'grade'
 		 *
 		 *	@return		{Array}
 		 */

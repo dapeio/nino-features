@@ -36,11 +36,11 @@
 
 /*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/
 :root {
-	--buttons-size--least: 		.8;
-	--buttons-size--less: 		.9;
-	--buttons-size--default: 	1;
-	--buttons-size--more: 		1.12;
-	--buttons-size--most: 		1.25;
+	--buttons-size--least:	.75;
+	--buttons-size--less:	.875;
+	--buttons-size--default:	1;
+	--buttons-size--more:	1.2;
+	--buttons-size--most:	1.4;
 
 	--buttons-spread--least: 		.1;
 	--buttons-spread--less: 		.2;
@@ -48,11 +48,11 @@
 	--buttons-spread--more: 		.4;
 	--buttons-spread--most: 		.5;
 
-	--buttons-tracking--least: 		-.02em;
-	--buttons-tracking--less: 			-.01em;
-	--buttons-tracking--default: 	0em;
-	--buttons-tracking--more: 			.05em;
-	--buttons-tracking--most: 			.1em;
+	--buttons-tracking--least:	-.03em;
+	--buttons-tracking--less:	-.015em;
+	--buttons-tracking--default:	0em;
+	--buttons-tracking--more:	.08em;
+	--buttons-tracking--most:	.15em;
 
 	--buttons-space--least: 		calc( var(--space-1) * .5 );
 	--buttons-space--less: 			var(--space-1);

@@ -140,6 +140,10 @@ namespace Nino\Modules\Design {
 			word of its own	*/
 		public const array STEPS = [ 'least', 'less', 'default', 'more', 'most' ];
 
+		/*	The five words of a grade, the knob that only grows: its first rung, `default`, is the kernel's value - nothing, where the kernel draws
+			nothing - and the four after it climb from there, so that the positions are 0 to 4 and not -2 to +2	*/
+		public const array GRADES = [ 'default', 'light', 'medium', 'strong', 'full' ];
+
 		/*	The knobs, per part, and the kind of each - and nothing else. A knob belongs
 			to the part whose templates answer to it and has a name: what it is called and
 			what the terse note beside it says live in the panel's text files, one key each
@@ -150,12 +154,14 @@ namespace Nino\Modules\Design {
 			object, is LAYOUT's.
 
 			A scale is a track of five positions, -2 to +2, the middle the template as it
-			is: a size, a space, a corner, a line. A choice is a few alternatives that
+			is: a size, a space, a corner, a line. A grade is a track of five positions too, but one that only grows, 0 to 4: the first is the
+			kernel's own - nothing, where the kernel draws nothing - and the four after it climb from there: the line under a title, a shadow,
+			the gap of the tiles - a knob that starts at the kernel's nothing. A choice is a few alternatives that
 			are no more or less of anything - the stripes of a table, the marker of a
 			list - and has three, which the panel names by words. A toggle is a switch of
 			two positions, 0 and 1, off and on - the case of a thing, the template as it is
 			or in capitals - and the panel draws it as a switch and no strip. An ink is
-			the colour of a thing as one of the seven tones of INKS - the line of a field, the
+			the colour of a thing as one of the seven tones of INKS - the line of a field, the title of a card, the
 			words of a label - or none, which is the tone the template itself gives it: it
 			has one rung, `default`, which the template declares as the tone it gives, and the
 			panel draws it as a select. It is written on every element, since the tone is
@@ -197,6 +203,8 @@ namespace Nino\Modules\Design {
 							measure				how wide the column of the subtitle and of the text is (a choice)
 							title-case			the title of a section, the hero's among them, in capitals (a toggle)
 							subtitle-case		the subtitle of a section, the hero's among them, in capitals (a toggle)
+							title-ink			the colour of the title of a section, the hero's among them (an ink)
+							subtitle-ink		the colour of the subtitle of a section, the hero's among them (an ink)
 				tiles		title, subtitle, text	the size of the title, the subtitle and the words of a tile
 							title-tracking	the letter-spacing of the title of a tile
 							space				the room inside a tile
@@ -204,6 +212,8 @@ namespace Nino\Modules\Design {
 							place				where the words of a tile stand in it: at the start, in the middle or at the end (a choice)
 							dim					how dark the scrim of a dimmed tile is
 							hover				what the picture of a linked tile does under the pointer (a choice)
+							title-ink			the colour of the title of a tile (an ink)
+							subtitle-ink		the colour of the subtitle of a tile (an ink)
 				card		title, subtitle	the size of the title and of the subtitle of a card
 							title-tracking	the letter-spacing of the title of a card
 							space				the space inside a card and between its parts
@@ -214,6 +224,8 @@ namespace Nino\Modules\Design {
 							align				where the title, the subtitle, the text and the button of a card stand: in the middle, as the template has them or right (a choice)
 							title-case			the title of a card in capitals (a toggle)
 							subtitle-case		the subtitle of a card in capitals (a toggle)
+							title-ink			the colour of the title of a card (an ink)
+							subtitle-ink		the colour of the subtitle of a card (an ink)
 				buttons		size				the size of .nino-btn
 							spread				how far .nino-btn--small and --big stand from it
 							tracking			the letter-spacing of the label of a button
@@ -240,9 +252,9 @@ namespace Nino\Modules\Design {
 		public const array KNOBS = [
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
-			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'rule' => 'scale', 'rule-length' => 'choice', 'title-shadow' => 'scale', 'dim' => 'scale', 'title-ground' => 'choice', 'rule-color' => 'choice', 'align' => 'choice', 'measure' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
-			'tiles' 		=> [ 'title' => 'scale', 'subtitle' => 'scale', 'text' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'gap' => 'scale', 'place' => 'choice', 'dim' => 'scale', 'hover' => 'choice' ],
-			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'scale', 'tone' => 'choice', 'title-ground' => 'choice', 'hover' => 'choice', 'align' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle' ],
+			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'rule' => 'grade', 'rule-length' => 'choice', 'title-shadow' => 'grade', 'dim' => 'scale', 'title-ground' => 'choice', 'rule-color' => 'choice', 'align' => 'choice', 'measure' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle', 'title-ink' => 'ink', 'subtitle-ink' => 'ink' ],
+			'tiles' 		=> [ 'title' => 'scale', 'subtitle' => 'scale', 'text' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'gap' => 'grade', 'place' => 'choice', 'dim' => 'scale', 'hover' => 'choice', 'title-ink' => 'ink', 'subtitle-ink' => 'ink' ],
+			'card' 			=> [ 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'border' => 'scale', 'shadow' => 'grade', 'tone' => 'choice', 'title-ground' => 'choice', 'hover' => 'choice', 'align' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle', 'title-ink' => 'ink', 'subtitle-ink' => 'ink' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'tracking' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'outline' => 'scale', 'hover' => 'choice', 'case' => 'toggle' ],
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
@@ -395,7 +407,7 @@ namespace Nino\Modules\Design {
 			'knobs/forms/line' 						=> [ 'surfaces', 'forms', 3 ],
 			'knobs/forms/labels' 					=> [ 'surfaces', 'forms', 4 ],
 
-			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming, the ground of the title and the colour of the rule of a section, the tone of the shadow and the ground of the title of a card, the stripes of a table; the forms have the colour of their lines and of their labels, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming, the ground of the title and the colour of the rule of a section, the tone of the shadow and the ground of the title of a card, the stripes of a table; the forms have the colour of their lines and of their labels, and the titles and the subtitles of a section, of the tiles and of a card have their colour, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -411,9 +423,15 @@ namespace Nino\Modules\Design {
 			'knobs/section/dim' 					=> [ 'colours', 'section', 1 ],
 			'knobs/section/title-ground' 			=> [ 'colours', 'section', 2 ],
 			'knobs/section/rule-color' 				=> [ 'colours', 'section', 3 ],
+			'knobs/section/title-ink' 				=> [ 'colours', 'section', 4 ],
+			'knobs/section/subtitle-ink' 			=> [ 'colours', 'section', 5 ],
 			'knobs/tiles/dim' 						=> [ 'colours', 'tiles', 1 ],
+			'knobs/tiles/title-ink' 				=> [ 'colours', 'tiles', 2 ],
+			'knobs/tiles/subtitle-ink' 				=> [ 'colours', 'tiles', 3 ],
 			'knobs/card/tone' 						=> [ 'colours', 'card', 1 ],
 			'knobs/card/title-ground' 				=> [ 'colours', 'card', 2 ],
+			'knobs/card/title-ink' 					=> [ 'colours', 'card', 3 ],
+			'knobs/card/subtitle-ink' 				=> [ 'colours', 'card', 4 ],
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
 			'knobs/forms/edge' 						=> [ 'colours', 'forms', 1 ],
 			'knobs/forms/label' 					=> [ 'colours', 'forms', 2 ],
@@ -468,7 +486,7 @@ namespace Nino\Modules\Design {
 
 		/*	...of which these two are ladders, declared in the stylesheet of the variant and published by it (see variants()). A
 			toggle is a ladder too, of two rungs, and is the parts' alone: a feature cannot declare one (see FEATURE_KINDS)	*/
-		public const array LADDERS = [ 'scale', 'choice', 'toggle' ];
+		public const array LADDERS = [ 'scale', 'choice', 'toggle', 'grade' ];
 
 		/*	The seven tones the page writes with on whatever ground an element stands on, and the custom property of the kernel each is: the
 			roles Nino.css re-points inside .nino-section--alt, --tint, --dark and --black (and in the grid, the row and the card of the same
@@ -753,11 +771,16 @@ namespace Nino\Modules\Design {
 		 *	less, 0 default, +1 more and +2 most. The model keeps numbers, the
 		 *	library keeps words, and this is the only place that knows both
 		 *
-		 *	@param		int				$position			-2 to 2; a number past the ends is the end
+		 *	@param		int				$position			-2 to 2; a number past the ends is the end - 0 to 4 for a grade (GRADES)
+		 *	@param		string		$kind					'scale', or 'grade' for the words of a grade
 		 *
 		 *	@return 	string
 		 */
-		public static function word( int $position ): string {
+		public static function word( int $position, string $kind = 'scale' ): string {
+
+			if( $kind === 'grade' )
+				return self::GRADES[ max( 0, min( count( self::GRADES ) - 1, $position ) ) ];
+
 			return self::STEPS[ max( 0, min( count( self::STEPS ) - 1, $position + 2 ) ) ];
 		}
 
@@ -775,7 +798,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What a knob is: 'scale', 'choice', 'toggle' or 'ink' (see KNOBS)
+		 *	What a knob is: 'scale', 'choice', 'toggle', 'grade' or 'ink' (see KNOBS)
 		 *
 		 *	@param		string		$part					A key of KNOBS
 		 *	@param		string		$knob					A name in KNOBS[$part]
@@ -788,8 +811,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The positions a kind of knob can stand at, from the least to the most: two to
-		 *	each side of the middle for a scale, one for a choice, and for a toggle off,
-		 *	which is the middle, and on. An ink has the middle alone: what it stands at is a tone
+		 *	each side of the middle for a scale, one for a choice, for a toggle off,
+		 *	which is the middle, and on, and for a grade 0, the kernel's, to 4. An ink has the middle alone: what it stands at is a tone
 		 *	and no position (see tone()), and the one rung it has is the tone the template gives.
 		 *	A kind there is none of has the middle alone as well
 		 *
@@ -803,6 +826,7 @@ namespace Nino\Modules\Design {
 				'scale' 	=> [ -2, -1, 0, 1, 2 ],
 				'choice' 	=> [ -1, 0, 1 ],
 				'toggle' 	=> [ 0, 1 ],
+				'grade' 	=> [ 0, 1, 2, 3, 4 ],
 				'ink' 		=> [ 0 ],
 				default 	=> [ 0 ],
 			};
@@ -848,7 +872,7 @@ namespace Nino\Modules\Design {
 		 */
 		public static function words( string $kind ): array {
 
-			return array_map( self::word( ... ), self::positions( $kind ) );
+			return array_map( static fn( int $position ): string => self::word( $position, $kind ), self::positions( $kind ) );
 		}
 
 		/**
@@ -2141,12 +2165,14 @@ namespace Nino\Modules\Design {
 		 *	One position, as a number among the positions of its kind (see positions()): -2 to 2
 		 *	for a scale (the default kind - the root size, the width, the whitespace and the two
 		 *	strengths of the radius are scales as well), -1 to 1 for a choice, 0 or 1 for a
-		 *	toggle. Anything else - a word, a boolean, an array, and a number past the ends - is
+		 *	toggle, 0 to 4 for a grade. A grade is clamped: a number under 0 is 0 and one past 4 is 4,
+		 *	which is where a position of a scale that the knob held before lands - nothing is migrated.
+		 *	Anything else - a word, a boolean, an array, and for the other kinds a number past the ends - is
 		 *	the middle, which is the template as it is, or the position the caller says is the
 		 *	one to stand at where there is no choice made
 		 *
 		 *	@param		mixed			$value				Straight off the wire
-		 *	@param		string		$kind					'scale', 'choice' or 'toggle'
+		 *	@param		string		$kind					'scale', 'choice', 'toggle' or 'grade'
 		 *	@param		int				$fallback			What anything else is
 		 *
 		 *	@return 	int
@@ -2160,6 +2186,10 @@ namespace Nino\Modules\Design {
 				return $fallback;
 
 			$position = (int) round( (float) $value );
+
+			// A grade only grows: a number under the first rung is the first and one past the last is the last - which is where a position of a scale, -2 to 2, that the knob was before lands
+			if( $kind === 'grade' )
+				return max( 0, min( 4, $position ) );
 
 			return in_array( $position, self::positions( $kind ), true ) === true ? $position : $fallback;
 		}
@@ -2175,7 +2205,7 @@ namespace Nino\Modules\Design {
 		 *	@return 	string								One of STEPS
 		 */
 		public static function step( array $setup, string $part, string $knob ): string {
-			return self::word( self::position( $setup['knobs'][$part][$knob] ?? 0, self::kind( $part, $knob ) ) );
+			return self::word( self::position( $setup['knobs'][$part][$knob] ?? 0, self::kind( $part, $knob ) ), self::kind( $part, $knob ) );
 		}
 
 		/**
@@ -2251,7 +2281,7 @@ namespace Nino\Modules\Design {
 		 */
 		private static function declarations( string $css, string $part, array $kinds ): array {
 
-			preg_match_all( '/'. sprintf( preg_quote( self::KNOB_TOKEN, '/' ), preg_quote( $part, '/' ), '([a-z0-9]+(?:-[a-z0-9]+)*)', '('. implode( '|', self::STEPS ). ')' ). '\s*:/', $css, $found, PREG_SET_ORDER );
+			preg_match_all( '/'. sprintf( preg_quote( self::KNOB_TOKEN, '/' ), preg_quote( $part, '/' ), '([a-z0-9]+(?:-[a-z0-9]+)*)', '('. implode( '|', array_unique( array_merge( self::STEPS, self::GRADES ) ) ). ')' ). '\s*:/', $css, $found, PREG_SET_ORDER );
 
 			// The words each name is declared under - once each, however often a media query says it again
 			$declared = [];

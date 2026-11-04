@@ -55,11 +55,11 @@
 
 :root {
 	/*	The type size of the footer, as a factor of the one it has: .8em of the text round it, and the sizes this set gives its parts	*/
-	--footer-scale--least:	.85;
-	--footer-scale--less:	.92;
+	--footer-scale--least:	.8;
+	--footer-scale--less:	.9;
 	--footer-scale--default:	1;
-	--footer-scale--more:	1.1;
-	--footer-scale--most:	1.2;
+	--footer-scale--more:	1.15;
+	--footer-scale--most:	1.3;
 
 	/*	The room above and below the content, as a factor of what this set has	*/
 	--footer-height--least:	.5;

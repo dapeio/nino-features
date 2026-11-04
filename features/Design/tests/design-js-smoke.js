@@ -390,9 +390,9 @@ const NARROW_QUERY = '(max-width: 63.999rem)';
 const KINDS = {
 	header 		: { nav : 'scale', height : 'scale', space : 'scale', logo : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', shadow : 'scale', position : 'choice', cta : 'choice', behaviour : 'choice', 'nav-case' : 'toggle' },
 	footer 		: { scale : 'scale', height : 'scale', space : 'scale', logo : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', divider : 'scale', position : 'choice', 'nav-case' : 'toggle' },
-	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', rule : 'scale', 'rule-length' : 'choice', 'title-shadow' : 'scale', dim : 'scale', 'title-ground' : 'choice', 'rule-color' : 'choice', align : 'choice', measure : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
-	tiles 		: { title : 'scale', subtitle : 'scale', text : 'scale', 'title-tracking' : 'scale', space : 'scale', gap : 'scale', place : 'choice', dim : 'scale', hover : 'choice' },
-	card 			: { title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', border : 'scale', shadow : 'scale', tone : 'choice', 'title-ground' : 'choice', hover : 'choice', align : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle' },
+	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', rule : 'grade', 'rule-length' : 'choice', 'title-shadow' : 'grade', dim : 'scale', 'title-ground' : 'choice', 'rule-color' : 'choice', align : 'choice', measure : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle', 'title-ink' : 'ink', 'subtitle-ink' : 'ink' },
+	tiles 		: { title : 'scale', subtitle : 'scale', text : 'scale', 'title-tracking' : 'scale', space : 'scale', gap : 'grade', place : 'choice', dim : 'scale', hover : 'choice', 'title-ink' : 'ink', 'subtitle-ink' : 'ink' },
+	card 			: { title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', border : 'scale', shadow : 'grade', tone : 'choice', 'title-ground' : 'choice', hover : 'choice', align : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle', 'title-ink' : 'ink', 'subtitle-ink' : 'ink' },
 	buttons 	: { size : 'scale', spread : 'scale', tracking : 'scale', space : 'scale', corners : 'scale', outline : 'scale', hover : 'choice', case : 'toggle' },
 	lists 		: { scale : 'scale', space : 'scale', marker : 'choice' },
 	tables 		: { scale : 'scale', space : 'scale', border : 'scale', zebra : 'choice', stripes : 'scale' },
@@ -520,9 +520,15 @@ const LAYOUT = {
 	'knobs/section/dim'               : [ 'colours', 'section', 1 ],
 	'knobs/section/title-ground'      : [ 'colours', 'section', 2 ],
 	'knobs/section/rule-color'        : [ 'colours', 'section', 3 ],
+	'knobs/section/title-ink'         : [ 'colours', 'section', 4 ],
+	'knobs/section/subtitle-ink'      : [ 'colours', 'section', 5 ],
 	'knobs/tiles/dim'                 : [ 'colours', 'tiles', 1 ],
+	'knobs/tiles/title-ink'           : [ 'colours', 'tiles', 2 ],
+	'knobs/tiles/subtitle-ink'        : [ 'colours', 'tiles', 3 ],
 	'knobs/card/tone'                 : [ 'colours', 'card', 1 ],
 	'knobs/card/title-ground'         : [ 'colours', 'card', 2 ],
+	'knobs/card/title-ink'            : [ 'colours', 'card', 3 ],
+	'knobs/card/subtitle-ink'         : [ 'colours', 'card', 4 ],
 	'knobs/tables/stripes'            : [ 'colours', 'tables', 1 ],
 	'knobs/forms/edge'                : [ 'colours', 'forms', 1 ],
 	'knobs/forms/label'               : [ 'colours', 'forms', 2 ],
@@ -543,6 +549,7 @@ function layoutTable() {
 
 /** What the five buttons of a scale say, from the least to the most: the distance from the middle, the minus U+2212 and not a hyphen */
 const SIGNED = [ '\u22122', '\u22121', '0', '+1', '+2' ];
+const stripLabelsOf = function( screen, label ) { return screen.steps( label ).map( function( button ) { return button.textContent } ).join() };
 
 /** The kinds of surface the radius is chosen for, and the two words a kind is set to, as design/list gives them: a strip of two for each kind */
 const SURFACES = [ 'cover', 'row', 'column', 'tile', 'card', 'image' ];
@@ -3147,9 +3154,9 @@ pressKey( ac, acBorderKey, 1 );
 
 const acBorderSays = acSays( knobWord( 'card', 'border' ), controlOf( ac, acBorderKey ), 1 );
 
-pressKey( ac, acShadowKey, -2 );
+pressKey( ac, acShadowKey, 3 );
 
-const acShadowSays = acSays( knobWord( 'card', 'shadow' ), controlOf( ac, acShadowKey ), -2 );
+const acShadowSays = acSays( knobWord( 'card', 'shadow' ), controlOf( ac, acShadowKey ), 3 );
 
 toggle( acCard('card') );
 
@@ -3162,7 +3169,7 @@ toggle( acCard('card') );
 
 check( '...and an open block says nothing: the line is empty again while the controls themselves stand in view, on the positions they were moved to',
 	acLine('card') === '' && byClass( acCard('card'), 'design-accordion-summary' )[0].title === '' && pressedKey( ac, acBorderKey ) === 'false,false,false,true,false'
-	&& pressedKey( ac, acShadowKey ) === 'true,false,false,false,false' );
+	&& pressedKey( ac, acShadowKey ) === 'false,false,false,true,false' );
 
 // The other kinds of control: a choice - in its words -, a strip of the page, the corners that are one choice for the cover, the row and the column of a section
 pressKey( ac, 'knobs/tables/zebra', 1 );
@@ -3178,9 +3185,9 @@ pressKey( ac, 'radii/cover', 'alternative' );
 const acCornersSays = acSays( TEXT['/_admin/design/radii/section'], controlOf( ac, 'radii/cover' ), 'alternative' );
 
 
-check( '...a choice is named with the word it has for its position, as its button says it, and a scale with the number on its button, from \u22122 to +2',
+check( '...a choice is named with the word it has for its position, as its button says it, and a scale with the number on its button, from \u22122 to +2, a grade from 0 to +4',
 	acClosedLine('tables') === knobWord( 'tables', 'zebra' )+ ' '+ TEXT['/_admin/design/knob/tables/zebra/more'] && acZebraSays === acClosedLine('tables')
-	&& acBorderSays === knobWord( 'card', 'border' )+ ' '+ SIGNED[3] && acShadowSays === knobWord( 'card', 'shadow' )+ ' '+ SIGNED[0] );
+	&& acBorderSays === knobWord( 'card', 'border' )+ ' '+ SIGNED[3] && acShadowSays === knobWord( 'card', 'shadow' )+ ' +3' );
 check( '...a strip of the page is named by the label of its key, the width of the page with its +2 - and the heads that were closed in turn kept what they said',
 	acClosedLine('page') === acWidthSays && acWidthSays === TEXT['/_admin/design/label/pagewidth']+ ' '+ SIGNED[4] && acClosedLine('card') === acBorderSays+ acSeparator+ acShadowSays && acOpen().length === 0 );
 check( '...and the corners of a section are one control and are named once, whatever kinds they stand for: the label of the choice and the word of its strip - the cover, the row and the column are all on it',
@@ -3437,6 +3444,9 @@ function knobStands( part, knob, position ) {
 	if( KINDS[part][knob] === 'ink' )
 		return position === '' ? TEXT['/_admin/design/label/own'] : TEXT['/_admin/design/ink/'+ position];
 
+	if( KINDS[part][knob] === 'grade' )
+		return position === 0 ? '0' : '+'+ position;
+
 	return KINDS[part][knob] === 'scale' ? SIGNED[position + 2] : TEXT['/_admin/design/knob/'+ part+ '/'+ knob+ '/'+ [ 'less', 'default', 'more' ][position + 1]];
 }
 
@@ -3463,6 +3473,7 @@ let scaleRows = 0;
 let choiceRows = 0;
 let toggleRows = 0;
 let inkRows = 0;
+let gradeRows = 0;
 const worded = panel();
 const knobKeys = Object.keys( worded.design._data.layout.controls ).filter( function( key ) { return key.indexOf('knobs/') === 0 } );
 
@@ -3515,26 +3526,30 @@ knobKeys.forEach( function( key ) {
 	const buttons = byTag( row, 'button' );
 	const drawn = buttons.map( function( button ) { return button.textContent } ).join();
 	const choice = CHOICE_WORDS[ path[1]+ '/'+ path[2] ] !== undefined;
+	const grade = worded.design._data.kinds[ path[1] ][ path[2] ] === 'grade';
 
 	wordRows++;
 
 	if( choice === true )
 		choiceRows++;
+	else if( grade === true )
+		gradeRows++;
 	else
 		scaleRows++;
 
-	if( drawn !== ( choice === true ? CHOICE_WORDS[ path[1]+ '/'+ path[2] ] : SIGNED.join() ) || buttons.map( function( button ) { return button.title } ).join() !== drawn
+	// A grade only grows: 0 at the left, the kernel's own, and +1 to +4 after it
+	if( drawn !== ( choice === true ? CHOICE_WORDS[ path[1]+ '/'+ path[2] ] : ( grade === true ? '0,+1,+2,+3,+4' : SIGNED.join() ) ) || buttons.map( function( button ) { return button.title } ).join() !== drawn
 		|| ( choice === true && buttons.some( function( button ) { return button.textContent.charAt(0) !== button.textContent.charAt(0).toUpperCase() } ) )
-		|| buttons.map( function( button ) { return button.dataset.value } ).join() !== ( choice === true ? '-1,0,1' : '-2,-1,0,1,2' )
-		|| worded.design._data.kinds[ path[1] ][ path[2] ] !== ( choice === true ? 'choice' : 'scale' )
+		|| buttons.map( function( button ) { return button.dataset.value } ).join() !== ( choice === true ? '-1,0,1' : ( grade === true ? '0,1,2,3,4' : '-2,-1,0,1,2' ) )
+		|| worded.design._data.kinds[ path[1] ][ path[2] ] !== ( choice === true ? 'choice' : ( grade === true ? 'grade' : 'scale' ) )
 		|| ( byTag( row, 'small' )[0] || {} ).textContent !== TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/note'] || rowName( row ) !== knobWord( path[1], path[2] ) )
 		wordProblems.push( key+ ': '+ drawn );
 } );
 
-check( 'a scale is five numbers, a choice the three words of the knob, each capitalised, a toggle a switch and an ink a select of the tones with none first - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2 and -1 to +1, and a note beside the name'
+check( 'a scale is five numbers, a grade five that only grow, a choice the three words of the knob, each capitalised, a toggle a switch and an ink a select of the tones with none first - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2, 0 to +4 and -1 to +1, and a note beside the name'
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
-	&& scaleRows === kindCount('scale') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 50 && inkRows === 2 && wordProblems.length === 0 );
+	&& scaleRows === kindCount('scale') && gradeRows === kindCount('grade') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 8 && scaleRows === 46 && gradeRows === 4 && inkRows === 8 && wordProblems.length === 0 );
 check( '...the twenty-three choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
 	Object.keys( CHOICE_WORDS ).length === 23 && Object.keys( CHOICE_WORDS ).every( function( at ) {
 		const key = 'knobs/'+ at;
@@ -3576,7 +3591,7 @@ check( '...and those of Colours the rows of the ground of the header, the colour
 		return knOtherRows[tab].map( rowName ).join() === knobWords( knLayout, tab, moved ).map( function( word ) { return word[0] } ).join()
 			&& knOtherRows[tab].length === knobKeys.filter( function( key ) { return knLayout.controls[key][0] === tab } ).length
 			&& knOtherRows[tab].every( function( row ) { return knLayout.controls[ row.dataset.control ][1] === cardOf( row ).dataset.object && knLayout.controls[ row.dataset.control ][1] !== 'page' } );
-	} ) && knOtherRows.colours.length === 13 && knOtherRows.motion.length === 2 );
+	} ) && knOtherRows.colours.length === 19 && knOtherRows.motion.length === 2 );
 
 kn.tab( tabWord('surfaces') );
 
@@ -3585,7 +3600,7 @@ const knShadowPressed = ( kn.tab( tabWord('surfaces') ), pressedKey( kn, 'knobs/
 
 check( '...a group of buttons, not a tablist - the one it stands at is pressed and the others are not: the middle for a knob nobody moved, the +1 the shadow stands at',
 	knobRows( kn ).filter( function( row ) { return isSwitch( row ) === false && isSelect( row ) === false } ).every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' && byClass( row, 'design-knob-steps' )[0].getAttribute('aria-label') === rowName( row ) } )
-	&& knTitlePressed === 'false,false,true,false,false' && knShadowPressed === 'false,false,false,true,false' );
+	&& knTitlePressed === 'false,false,true,false,false' && knShadowPressed === 'false,true,false,false,false' );
 check( 'a template that answers to every knob greys none of them out, on whichever tab',
 	[ 'templates', 'type', 'surfaces', 'colours', 'motion' ].every( function( tab ) {
 		kn.show( tab );
@@ -3676,7 +3691,7 @@ kn.tab( tabWord('surfaces') );
 
 check( 'choosing the template that has it again takes the grey away, with the knob in the middle',
 	offRows( kn ).length === 0 && kn.design._edit.knobs.card.shadow === 0
-	&& pressedKey( kn, 'knobs/card/shadow' ) === 'false,false,true,false,false' );
+	&& pressedKey( kn, 'knobs/card/shadow' ) === 'true,false,false,false,false' );
 
 // The buttons' own template leaves the corners to the template: the position the stored setup cannot have had
 check( 'the buttons\' template Square leaves the corners out, which the stored position cannot have been: its row is the one grey row of Surfaces, once that template is chosen',
@@ -3747,9 +3762,9 @@ check( '...a group of buttons as the knob rows are, named by what it sets, and u
 	&& ( pg.tab( tabWord('surfaces') ), byTag( pg.knobRow( widthStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/pagewidth'] ) && TEXT['/_admin/design/hint/pagewidth'] !== ''
 	&& byTag( pg.knobRow( whitespaceStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/whitespace'] && TEXT['/_admin/design/hint/whitespace'] !== ''
 	&& byTag( pg.knobRow( radiusStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/radius'] && byTag( pg.knobRow( radiusAltStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/radius-alt'] );
-check( '...the script keeps no list of the widths and no step to read a word off any more: PAGE_WIDTHS and _stepOf are gone, and a position of a scale reaches two to each side, a choice one, a toggle the middle and the one after it (the same answer Setup::positions() gives), the middle being the word default and the one after it more',
-	pg.design.PAGE_WIDTHS === undefined && pg.design._stepOf === undefined && JSON.stringify( pg.design.RANGE ) === JSON.stringify( { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ], ink : [ 0, 0 ] } )
-	&& JSON.stringify( pg.setup._positions('scale') ) === '[-2,-1,0,1,2]' && JSON.stringify( pg.setup._positions('choice') ) === '[-1,0,1]' && JSON.stringify( pg.setup._positions('toggle') ) === '[0,1]'
+check( '...the script keeps no list of the widths and no step to read a word off any more: PAGE_WIDTHS and _stepOf are gone, and a position of a scale reaches two to each side, a choice one, a toggle the middle and the one after it, a grade four from the first (the same answer Setup::positions() gives), the middle being the word default and the one after it more',
+	pg.design.PAGE_WIDTHS === undefined && pg.design._stepOf === undefined && JSON.stringify( pg.design.RANGE ) === JSON.stringify( { scale : [ -2, 2 ], choice : [ -1, 1 ], toggle : [ 0, 1 ], grade : [ 0, 4 ], ink : [ 0, 0 ] } )
+	&& JSON.stringify( pg.setup._positions('scale') ) === '[-2,-1,0,1,2]' && JSON.stringify( pg.setup._positions('choice') ) === '[-1,0,1]' && JSON.stringify( pg.setup._positions('toggle') ) === '[0,1]' && JSON.stringify( pg.setup._positions('grade') ) === '[0,1,2,3,4]'
 	&& JSON.stringify( pg.setup._positions('ink') ) === '[0]' && JSON.stringify( pg.setup._positions('nothing') ) === '[0]' && pg.setup._word( 0 ) === 'default' && pg.setup._word( 1 ) === 'more' && pg.setup._word( -2 ) === 'least' && pg.setup._word( 2 ) === 'most' );
 
 pg.move( widthStrip, 1 );
@@ -5326,7 +5341,7 @@ check( 'the rows show the brand colour, the second colour - Monochrome while nob
 	colours.byId('design-colour-primary').value === '#8b1d3f'
 	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ colourWord('harmony'), TEXT['/_admin/design/colour/harmony/1'] ], [ colourWord('temperature'), TEXT['/_admin/design/colour/temperature/3'] ], [ colourWord('saturation'), '+2' ], [ colourWord('contrast'), '\u22122' ], [ colourWord('depth'), '0' ],
 		[ knobWord( 'header', 'ground' ), TEXT['/_admin/design/knob/header/ground/default'] ], [ knobWord( 'header', 'border-color' ), TEXT['/_admin/design/knob/header/border-color/default'] ], [ knobWord( 'footer', 'ground' ), TEXT['/_admin/design/knob/footer/ground/default'] ], [ knobWord( 'footer', 'border-color' ), TEXT['/_admin/design/knob/footer/border-color/default'] ],
-		[ knobWord( 'section', 'dim' ), '0' ], [ knobWord( 'section', 'title-ground' ), TEXT['/_admin/design/knob/section/title-ground/default'] ], [ knobWord( 'section', 'rule-color' ), TEXT['/_admin/design/knob/section/rule-color/default'] ], [ knobWord( 'tiles', 'dim' ), '0' ], [ knobWord( 'card', 'tone' ), TEXT['/_admin/design/knob/card/tone/default'] ], [ knobWord( 'card', 'title-ground' ), TEXT['/_admin/design/knob/card/title-ground/default'] ], [ knobWord( 'tables', 'stripes' ), '0' ],
+		[ knobWord( 'section', 'dim' ), '0' ], [ knobWord( 'section', 'title-ground' ), TEXT['/_admin/design/knob/section/title-ground/default'] ], [ knobWord( 'section', 'rule-color' ), TEXT['/_admin/design/knob/section/rule-color/default'] ], [ knobWord( 'section', 'title-ink' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'section', 'subtitle-ink' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'tiles', 'dim' ), '0' ], [ knobWord( 'tiles', 'title-ink' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'tiles', 'subtitle-ink' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'card', 'tone' ), TEXT['/_admin/design/knob/card/tone/default'] ], [ knobWord( 'card', 'title-ground' ), TEXT['/_admin/design/knob/card/title-ground/default'] ], [ knobWord( 'card', 'title-ink' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'card', 'subtitle-ink' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'tables', 'stripes' ), '0' ],
 		[ knobWord( 'forms', 'edge' ), TEXT['/_admin/design/label/own'] ], [ knobWord( 'forms', 'label' ), TEXT['/_admin/design/label/own'] ] ] )
 	&& wordOf( colours.byId('design-colour-mode') ) === TEXT['/_admin/design/colour/mode/dark'] && colours.byId('design-summary') === null );
 
@@ -5609,6 +5624,53 @@ const fmOff = panel( { knobs : ( function() { const k = listing().knobs; k.forms
 fmOff.show( 'colours' );
 check( 'an ink the stored setup holds is the tone of the select, when the template answers to it',
 	shown( byTag( controlOf( fmOff, 'knobs/forms/edge' ), 'select' )[0] ) === 'focus' && fmOff.design._edit.knobs.forms.edge === 'focus' );
+
+// The ink of a title and of a subtitle: six more inks, a select of the tones under the content section, the tiles and the card on the Colours tab
+const titleInkRows = [ [ 'section', 'title-ink' ], [ 'section', 'subtitle-ink' ], [ 'tiles', 'title-ink' ], [ 'tiles', 'subtitle-ink' ], [ 'card', 'title-ink' ], [ 'card', 'subtitle-ink' ] ];
+const inkPanel = panel();
+
+inkPanel.show( 'colours' );
+
+check( 'the colour of a title and of a subtitle is a select of the tones of the page for the content section, the tiles and the card on the Colours tab, each after the controls its object has there, with none first - the tone the template gives - and standing at none to begin with',
+	titleInkRows.every( function( entry ) {
+		const row = controlOf( inkPanel, 'knobs/'+ entry[0]+ '/'+ entry[1] );
+		const select = byTag( row, 'select' )[0];
+		return isSelect( row ) && select.disabled === false && select.id === 'design-knob-'+ entry[0]+ '-'+ entry[1] && shown( select ) === '' && byTag( select, 'option' ).length === INKS.length + 1
+			&& rowName( row ) === knobWord( entry[0], entry[1] ) && byTag( byClass( row, 'design-knob-label' )[0], 'svg' ).length === 1;
+	} )
+	&& drawnRows( inkPanel ).filter( function( row ) { return [ 'section', 'tiles', 'card' ].indexOf( row.object ) !== -1 } ).map( function( row ) { return row.object+ ':'+ row.controls.slice( -2 ).join() } ).join( ' ' )
+		=== 'section:knobs/section/title-ink,knobs/section/subtitle-ink tiles:knobs/tiles/title-ink,knobs/tiles/subtitle-ink card:knobs/card/title-ink,knobs/card/subtitle-ink' );
+
+titleInkRows.forEach( function( entry ) {
+	choose( byTag( controlOf( inkPanel, 'knobs/'+ entry[0]+ '/'+ entry[1] ), 'select' )[0], 'accent' );
+} );
+inkPanel.design._previewNow();
+
+const inkPreview = inkPanel.requests[inkPanel.requests.length - 1];
+
+check( '...choosing a tone for each moves the six knobs to the word of the tone, asks for a preview with them and is a change the screen can save; choosing none again puts each back at none',
+	titleInkRows.every( function( entry ) { return inkPanel.design._edit.knobs[entry[0]][entry[1]] === 'accent' && inkPreview.payload.knobs[entry[0]][entry[1]] === 'accent' } ) && inkPanel.design._isDirty() === true
+	&& ( function() {
+		titleInkRows.forEach( function( entry ) { choose( byTag( controlOf( inkPanel, 'knobs/'+ entry[0]+ '/'+ entry[1] ), 'select' )[0], '' ) } );
+		return titleInkRows.every( function( entry ) { return inkPanel.design._edit.knobs[entry[0]][entry[1]] === '' } ) && inkPanel.design._isDirty() === false;
+	} )() );
+
+// A grade: the strip of five whose first button is the kernel's own, 0, and the four after it grow to the right - the rule under a title, the first of them
+const gradePanel = panel();
+const ruleName = knobWord( 'section', 'rule' );
+
+gradePanel.show( 'surfaces' );
+
+check( 'a grade is a strip of five buttons that only grow: 0, +1, +2, +3 and +4 from the left, the first - the kernel\'s own - pressed to begin with; the other kinds keep their strips',
+	gradePanel.design._data.kinds.section.rule === 'grade' && stripLabelsOf( gradePanel, ruleName ) === '0,+1,+2,+3,+4' && gradePanel.pressed( ruleName ) === 'true,false,false,false,false'
+	&& gradePanel.steps( ruleName ).map( function( button ) { return button.dataset.value } ).join() === '0,1,2,3,4'
+	&& stripLabelsOf( gradePanel, knobWord( 'section', 'space' ) ) === SIGNED.join() );
+
+gradePanel.move( ruleName, 4 );
+
+check( '...and a press moves the knob to the position, 4 for the last: the rung full, a change the screen can save, and the first button back puts it at the kernel\'s',
+	gradePanel.design._edit.knobs.section.rule === 4 && gradePanel.pressed( ruleName ) === 'false,false,false,false,true' && gradePanel.design._isDirty() === true
+	&& ( function() { gradePanel.move( ruleName, 0 ); return gradePanel.design._edit.knobs.section.rule === 0 && gradePanel.design._isDirty() === false } )() );
 
 console.log('');
 
@@ -6044,11 +6106,11 @@ const ICON_OF = {
 	'footer/scale' : 'a-large-small', 'footer/height' : 'move-vertical', 'footer/space' : 'align-vertical-space-around', 'footer/logo' : 'scaling', 'footer/ground' : 'contrast', 'footer/border-size' : 'minus', 'footer/border-color' : 'palette', 'footer/divider' : 'minus', 'footer/position' : 'move-horizontal',
 	'section/quiet' : 'a-large-small', 'section/loud' : 'a-large-small',
 	'section/title' : 'a-large-small', 'section/subtitle' : 'a-large-small', 'section/title-tracking' : 'chevrons-left-right', 'section/space' : 'scaling', 'section/rule' : 'minus', 'section/rule-length' : 'move-horizontal', 'section/title-shadow' : 'square-stack', 'section/dim' : 'contrast',
-	'section/title-ground' : 'square', 'section/rule-color' : 'palette', 'section/align' : 'align-center', 'section/measure' : 'unfold-horizontal',
+	'section/title-ground' : 'square', 'section/rule-color' : 'palette', 'section/title-ink' : 'palette', 'section/subtitle-ink' : 'palette', 'section/align' : 'align-center', 'section/measure' : 'unfold-horizontal',
 	'tiles/title' : 'a-large-small', 'tiles/subtitle' : 'a-large-small', 'tiles/text' : 'a-large-small', 'tiles/title-tracking' : 'chevrons-left-right', 'tiles/space' : 'align-vertical-space-around', 'tiles/gap' : 'unfold-horizontal',
-	'tiles/place' : 'align-center', 'tiles/dim' : 'contrast', 'tiles/hover' : 'move-vertical',
+	'tiles/place' : 'align-center', 'tiles/dim' : 'contrast', 'tiles/hover' : 'move-vertical', 'tiles/title-ink' : 'palette', 'tiles/subtitle-ink' : 'palette',
 	'card/title' : 'a-large-small', 'card/subtitle' : 'a-large-small', 'card/title-tracking' : 'chevrons-left-right', 'card/space' : 'align-vertical-space-around',
-	'card/border' : 'square', 'card/shadow' : 'square-stack', 'card/tone' : 'palette', 'card/title-ground' : 'square', 'card/hover' : 'move-vertical', 'card/align' : 'align-center',
+	'card/border' : 'square', 'card/shadow' : 'square-stack', 'card/tone' : 'palette', 'card/title-ground' : 'square', 'card/title-ink' : 'palette', 'card/subtitle-ink' : 'palette', 'card/hover' : 'move-vertical', 'card/align' : 'align-center',
 	'buttons/size' : 'a-large-small', 'buttons/spread' : 'chevrons-left-right', 'buttons/tracking' : 'tracking', 'buttons/space' : 'align-vertical-space-around', 'buttons/corners' : 'square-round-corner', 'buttons/outline' : 'minus',
 	'buttons/hover' : 'move-vertical',
 	'lists/scale' : 'a-large-small', 'lists/space' : 'align-vertical-space-around', 'lists/marker' : 'list',
@@ -7214,14 +7276,15 @@ const jpKnobs = Object.keys( LAYOUT ).filter( function( key ) { return key.index
 jpKnobs.forEach( function( key ) {
 	jp.show( LAYOUT[key][0] );
 	jp.design._target = null;
-	moveKey( jp, key, KINDS[ key.split('/')[1] ][ key.split('/')[2] ] === 'toggle' ? 1 : -1 );
+	moveKey( jp, key, [ 'toggle', 'grade' ].indexOf( KINDS[ key.split('/')[1] ][ key.split('/')[2] ] ) !== -1 ? 1 : -1 );
 	jpWhere[key] = jp.design._target;
 } );
 
 check( 'each knob has its place - a switch as much as a strip - by the object its row is of: the sizes, the two variants, the space, the rule, the dimming and the case of a section the first section, which the hero is - a card\'s and the sizes of its title the cards, the buttons\', the lists\' and the tables\' their blocks, the header\'s the top of the page and the footer\'s its foot',
-	jpKnobs.length === kindCount('scale') + kindCount('choice') + kindCount('toggle') + kindCount('ink') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
+	jpKnobs.length === kindCount('scale') + kindCount('choice') + kindCount('toggle') + kindCount('ink') + kindCount('grade') && jpKnobs.every( function( key ) { return jpWhere[key] === aimOf( jpLayout, key ) } )
 	&& jpWhere['knobs/section/title'] === 'content' && jpWhere['knobs/section/space'] === 'content' && jpWhere['knobs/section/dim'] === 'content' && jpWhere['knobs/section/quiet'] === 'content' && jpWhere['knobs/section/loud'] === 'content'
 	&& jpWhere['knobs/card/subtitle'] === 'cards' && jpWhere['knobs/card/tone'] === 'cards' && jpWhere['knobs/card/hover'] === 'cards' && jpWhere['knobs/buttons/corners'] === 'buttons' && jpWhere['knobs/buttons/hover'] === 'buttons'
+	&& jpWhere['knobs/section/title-ink'] === 'content' && jpWhere['knobs/section/subtitle-ink'] === 'content' && jpWhere['knobs/tiles/title-ink'] === 'tiles' && jpWhere['knobs/card/subtitle-ink'] === 'cards'
 	&& jpWhere['knobs/section/title-case'] === 'content' && jpWhere['knobs/card/title-case'] === 'cards' && jpWhere['knobs/buttons/case'] === 'buttons' && jpWhere['knobs/footer/nav-case'] === 'footer' && jpWhere['knobs/header/nav-case'] === 'global'
 	&& jpWhere['knobs/lists/marker'] === 'lists' && jpWhere['knobs/tables/zebra'] === 'tables' && jpWhere['knobs/tables/stripes'] === 'tables'
 	&& jpWhere['knobs/forms/space'] === 'forms' && jpWhere['knobs/forms/edge'] === 'forms' && jpWhere['knobs/forms/label-case'] === 'forms'
@@ -9434,7 +9497,7 @@ else {
 				const answered = ( ( part.catalogue[part.set] || {} ).knobs || [] ).indexOf( path[2] ) !== -1;
 				const position = real.knobs[ path[1] ][ path[2] ];
 				const kind = real.kinds[ path[1] ][ path[2] ];
-				const word = kind === 'scale' ? at( position ) : ( kind === 'toggle' ? TEXT['/_admin/common/label/'+ ( position === 1 ? 'on' : 'off' )] : TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/'+ [ 'less', 'default', 'more' ][position + 1]] );
+				const word = kind === 'scale' ? at( position ) : ( kind === 'grade' ? ( position === 0 ? '0' : '+'+ position ) : kind === 'toggle' ? TEXT['/_admin/common/label/'+ ( position === 1 ? 'on' : 'off' )] : TEXT['/_admin/design/knob/'+ path[1]+ '/'+ path[2]+ '/'+ [ 'less', 'default', 'more' ][position + 1]] );
 				if( answered === true && position !== real.defaults.knobs[ path[1] ][ path[2] ] )
 					lines.push( knobWord( path[1], path[2] )+ ' '+ word );
 			}
@@ -9607,7 +9670,7 @@ else {
 			const part = rowOf( path[1] );
 			const off = ( ( part.catalogue[part.set] || {} ).knobs || [] ).indexOf( path[2] ) === -1;
 			const kind = real.kinds[ path[1] ][ path[2] ];
-			const reach = kind === 'scale' ? [ -2, -1, 0, 1, 2 ] : [ -1, 0, 1 ];
+			const reach = kind === 'scale' ? [ -2, -1, 0, 1, 2 ] : ( kind === 'grade' ? [ 0, 1, 2, 3, 4 ] : [ -1, 0, 1 ] );
 			const lit = reach.map( function( at ) { return String( at === real.knobs[ path[1] ][ path[2] ] ) } ).join();
 
 			knobsDrawn++;
