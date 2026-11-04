@@ -34,14 +34,15 @@ namespace Nino\Modules\Mailer {
 		 *	Send one message over one SMTP session. Never throws - every
 		 *	failure comes back as { sent: false, reason: '...' }, the reason
 		 *	naming what went wrong (a connect failure, a refused command with
-		 *	the server's own reply line) but never the password.
+		 *	the server's own reply line) but never the password. A MAIL FROM the
+		 *	server answered with a 5xx also carries 'senderRefused' => true.
 		 *
 		 *	@param		array			$config				{ host, port, encryption ('starttls'|'tls'|'none'), username, password, timeout, verify }
 		 *	@param		string		$envelopeFrom	MAIL FROM address
 		 *	@param		array			$recipients		RCPT TO addresses, one per entry
 		 *	@param		string		$payload			The complete CRLF message: headers, blank line, dot-stuffed body, ending "\r\n.\r\n"
 		 *
-		 *	@return 	array										{ sent: bool, reason: string|null }
+		 *	@return 	array										{ sent: bool, reason: string|null, senderRefused?: bool }
 		 */
 		public static function send( array $config, string $envelopeFrom, array $recipients, string $payload ): array {
 
@@ -80,7 +81,12 @@ namespace Nino\Modules\Mailer {
 
 				$mailFrom = self::_command( $stream, 'MAIL FROM:<'. $envelopeFrom. '>' );
 				if( self::_ok( $mailFrom ) === false )
-					return [ 'sent' => false, 'reason' => self::_reason( $mailFrom, 'MAIL FROM refused' ) ];
+					return [
+						'sent'					=> false,
+						'reason'				=> self::_reason( $mailFrom, 'MAIL FROM refused' ),
+						// A permanent refusal (5xx) of the sender, as the server's own answer and not a lost connection - the caller explains it
+						'senderRefused'	=> is_array( $mailFrom ) === true && $mailFrom['code'] >= 500,
+					];
 
 				foreach( $recipients as $recipient ) {
 

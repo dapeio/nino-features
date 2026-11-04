@@ -142,6 +142,16 @@ check( 'the manifest validates, key "mailer"', is_array( $manifest ) && $manifes
 check( 'the feature is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
+check( 'the hint of the From address is told in both languages, and the manual names the setting by its own label, in a line each under a thousand bytes', is_array( $manifest )
+	&& \Nino\Features::localized( $manifest['settings']['from']['hint'], 'de_DE' ) !== \Nino\Features::localized( $manifest['settings']['from']['hint'], 'en_US' )
+	&& ( static function() use ( $manifest ): bool {
+		foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+			$line = \Nino\Features::localized( $manifest['manual']['callbacks']['/nino/mail/send'], $locale );
+			if( strlen( $line ) >= 1000 || str_contains( $line, \Nino\Features::localized( $manifest['settings']['from']['label'], $locale ) ) === false )
+				return false;
+		}
+		return true;
+	} )() );
 check( 'the settings schema declares every setting this feature reads', is_array( $manifest )
 	&& array_keys( $manifest['settings'] ) === [ 'host', 'port', 'encryption', 'username', 'password', 'from', 'fromName', 'timeout', 'verify' ] );
 check( 'it declares the file of last errors it keeps, so a backup carries it', is_array( $manifest ) && $manifest['data'] === [ '/data/mailer.php' ] );
@@ -378,25 +388,79 @@ check( '...and the whole of it decodes back to what was sent',
 echo "\n";
 
 
-// --- From resolution: the kernel's sender wins over the setting ------------
+// --- From resolution: the setting wins where it is set ---------------------
 
 echo "From resolution\n";
 
-// The kernel's envelope sender, set the way the kernel reads it: the
-// '[[/project/mail/address/envelope]]' textfill
+/*	The kernel's envelope sender, set the way the kernel reads it: the
+	'[[/project/mail/address/envelope]]' textfill. A site practically always
+	has one - the wizard writes the owner's address - so the setting has to win
+	over it, or an authenticated server refuses the sender	*/
 \Nino\Html::addFills( $appData, [ '[[/project/mail/address/envelope]]' => 'kernel-sender@example.org' ], '*' );
 \Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 resetMailerLog( $server );
-check( 'a send with a kernel sender still succeeds', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === true );
+check( 'a send with a kernel sender and a setting succeeds', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', 'reply@example.org' ) === true );
+
+$ownSession = waitForMailerLog( $server );
+$ownData = (string) ( $ownSession['data'] ?? '' );
+$ownCommands = $ownSession['commands'] ?? [];
+check( 'MAIL FROM is the setting, not the kernel\'s sender', in_array( 'MAIL FROM:<no-reply@example.org>', $ownCommands, true ) === true
+	&& in_array( 'MAIL FROM:<kernel-sender@example.org>', $ownCommands, true ) === false );
+check( 'the header block has one From: line, the setting with its name - and the kernel\'s is gone', substr_count( $ownData, "\r\nFrom:" ) === 1
+	&& preg_match( '/^From: (=\?UTF-8\?B\?[A-Za-z0-9+\/=]+\?=) <no-reply@example\.org>\r$/m', $ownData, $ownMatch ) === 1
+	&& mb_decode_mimeheader( $ownMatch[1] ) === 'Café Nino' && str_contains( $ownData, 'kernel-sender@example.org' ) === false );
+check( '...and every other line of the block is kept: Content-Type and Reply-To, MIME-Version once', str_contains( $ownData, "Content-Type: text/html; charset=UTF-8\r\n" ) === true
+	&& str_contains( $ownData, "Reply-To: reply@example.org\r\n" ) === true && substr_count( $ownData, 'MIME-Version:' ) === 1 );
+check( '...a Reply-To of the mail\'s own is kept, once, and the kernel\'s sender is not put beside it', substr_count( $ownData, "\r\nReply-To:" ) === 1 );
+check( '...the From: line standing where the kernel\'s stood, between them', preg_match( '/Content-Type: [^\r]+\r\nFrom: [^\r]+\r\nReply-To: /', $ownData ) === 1 );
+
+// A mail with no Reply-To of its own: the replies go to the site's sender, which the From: line no longer names
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+\Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
+$noReplyData = (string) ( waitForMailerLog( $server )['data'] ?? '' );
+check( 'where the block has no Reply-To the kernel\'s sender is added as one, once', substr_count( $noReplyData, "\r\nReply-To: kernel-sender@example.org\r\n" ) === 1 && substr_count( $noReplyData, "\r\nReply-To:" ) === 1 );
+
+// A header block made by hand: the From: stands where it stood, before the line that follows it
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+$handMade = [ 'to' => 'to@example.org', 'subject' => 'x', 'body' => 'y', 'replyTo' => 'r@example.org', 'sender' => 'k@example.org', 'headers' => "MIME-Version: 1.0\r\nFrom: k@example.org\r\nX-A: 1\r\nContent-Type: text/plain\r\nReply-To: r@example.org", 'sent' => null ];
+\Nino\Modules\Mailer::callbackSend( $appData, $handMade );
+$handData = (string) ( waitForMailerLog( $server )['data'] ?? '' );
+check( 'a hand-made block: the setting\'s From: stands where the kernel\'s stood, before the line after it, and is the only one', $handMade['sent'] === true
+	&& substr_count( $handData, "\r\nFrom:" ) === 1 && preg_match( '/\r\nFrom: [^\r]*<no-reply@example\.org>\r\nX-A: 1\r\nContent-Type: text\/plain\r\nReply-To: r@example\.org\r\n/', $handData ) === 1
+	&& str_contains( $handData, 'k@example.org' ) === false );
+
+// Where the setting is empty, the site's sender is the envelope and the header, as before
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => '' ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+check( 'a send with a kernel sender and no setting succeeds', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === true );
 
 $kernelSenderSession = waitForMailerLog( $server );
 $kernelSenderData = (string) ( $kernelSenderSession['data'] ?? '' );
 $kernelSenderCommands = $kernelSenderSession['commands'] ?? [];
-check( 'MAIL FROM uses the kernel\'s own sender, not the setting', in_array( 'MAIL FROM:<kernel-sender@example.org>', $kernelSenderCommands, true ) === true );
+check( 'MAIL FROM is the kernel\'s own sender where the setting is empty', in_array( 'MAIL FROM:<kernel-sender@example.org>', $kernelSenderCommands, true ) === true );
 check( 'the header block\'s own From: is kept, and Mailer adds none of its own', substr_count( $kernelSenderData, "\r\nFrom:" ) === 1
 	&& str_contains( $kernelSenderData, "From: kernel-sender@example.org\r\n" ) === true );
+check( '...and nothing is added to the block, no Reply-To either', str_contains( $kernelSenderData, 'Reply-To:' ) === false );
 
+// ...and where there is neither, the mail is refused (the check above, with no setting)
 \Nino\Html::addFills( $appData, [ '[[/project/mail/address/envelope]]' => '' ], '*' );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+ninoWarnings();
+check( 'with neither a kernel sender nor a setting the send is refused', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === false
+	&& str_contains( (string) ( $appData['./mailer/last'] ?? '' ), 'From address' ) === true );
+ninoWarnings();
+
+// No kernel sender, a setting: the header block has no From: and ours is added
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => 'no-reply@example.org' ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+check( 'a send with no kernel sender and a setting succeeds', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === true );
+$addedData = (string) ( waitForMailerLog( $server )['data'] ?? '' );
+check( '...with one From: line of the setting, and no Reply-To - there is no sender of the site to name', substr_count( $addedData, "\r\nFrom:" ) === 1 && str_contains( $addedData, '<no-reply@example.org>' ) === true
+	&& str_contains( $addedData, 'Reply-To:' ) === false );
 
 echo "\n";
 
@@ -471,6 +535,46 @@ check( 'and is recorded too, without the password', ( static function(): bool {
 			return true;
 	return false;
 } )() );
+check( 'a refused AUTH gets no sender hint', str_contains( (string) ( $appData['./mailer/last'] ?? '' ), 'authentication failed' ) === true
+	&& str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '(hint: ' ) === false && str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '(Hinweis: ' ) === false );
+
+// A sender the server refuses (a 5xx to MAIL FROM) is explained: the server's
+// line, the address that was refused, and a hint in both languages of the feature
+setMailerControl( $server, [ 'failMailFrom' => true ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+ninoWarnings();
+check( 'a 550 to MAIL FROM is a failure', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === false );
+$senderReason = (string) ( $appData['./mailer/last'] ?? '' );
+check( 'the reason carries the server\'s own line', str_contains( $senderReason, '550 5.7.1 Sender mismatch' ) === true );
+check( '...and the hint, which names the address that was refused - once in each language', str_contains( $senderReason, '(hint: ' ) === true && str_contains( $senderReason, '(Hinweis: ' ) === true
+	&& substr_count( $senderReason, 'no-reply@example.org' ) === 2 );
+check( '...the server\'s line first and the hint after it, the hint whole', strpos( $senderReason, 'Sender mismatch' ) < strpos( $senderReason, '(hint: ' )
+	&& str_ends_with( $senderReason, ')' ) === true );
+check( '...and it is what the log carries too', in_array( 'Mailer: '. $senderReason, ninoWarnings(), true ) === true );
+
+// A long address does not eat the server's line in the list of errors: the reason is cut on its own, the hint comes after it
+$longAddress = 'sender@'. str_repeat( 'a', 62 ). '.'. str_repeat( 'b', 62 ). '.example';
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => $longAddress ] );
+setMailerControl( $server, [ 'failMailFrom' => true ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+\Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
+$longListed = \Nino\Modules\Mailer::errors( $appData )[0]['reason'] ?? '';
+check( 'with an address of 140 characters the entry of the list still starts with the server\'s line, and carries the hint whole', strlen( $longAddress ) >= 140
+	&& str_starts_with( $longListed, 'MAIL FROM refused: 550 5.7.1 Sender mismatch (hint: ' ) === true && str_ends_with( $longListed, ')' ) === true && substr_count( $longListed, $longAddress ) === 2 );
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => 'no-reply@example.org' ] );
+
+// A 4xx to MAIL FROM is no refusal of the sender - it is to be tried again - and gets no hint
+setMailerControl( $server, [ 'tempMailFrom' => true ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+check( 'a 451 to MAIL FROM is a failure', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === false && str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '451' ) === true );
+check( '...with no sender hint', str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '(hint: ' ) === false && str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '(Hinweis: ' ) === false );
+
+setMailerControl( $server, [ 'failRcpt' => true ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+\Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
+check( 'a refusal of anything but the sender gets no sender hint', str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '(hint: the server refused' ) === false
+	&& str_contains( (string) ( $appData['./mailer/last'] ?? '' ), '(Hinweis: ' ) === false );
+ninoWarnings();
 
 setMailerControl( $server, [] );
 
@@ -589,6 +693,9 @@ check( 'an address that is none is a 400 with the code mailer_address, naming th
 foreach( [ 'en_US', 'de_DE' ] as $locale )
 	check( "...and the code has its sentence in $locale", trim( \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/error/'. $invalidBody['code']. ']]'] ?? '' ) !== '' );
 
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "the intro of the panel names the cap of mails without a number that the kernel's config could contradict, in $locale", preg_match( '/\d/', \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/mailer/hint/intro]]'] ?? '0' ) === 0 );
+
 // The payload is untrusted json: an address that is a list is as much none as a word is, and no warning is raised for it
 ninoWarnings();
 [ $listedCode, $listedBody ] = ninoCall( $appData, $panel, [ 'to' => [ 'a@example.org' ] ], 'mailer/test' );
@@ -618,6 +725,19 @@ check( 'the refusal is the newest of the errors the panel lists, with a date and
 	&& str_contains( $afterRefusal['errors'][0]['reason'], 'mailbox unavailable' ) === true
 	&& preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $afterRefusal['errors'][0]['date'] ) === 1
 	&& str_contains( json_encode( $afterRefusal ). (string) file_get_contents( $ringFile ), 's3cret' ) === false );
+
+// The sender the server refuses: the button shows the reason with its hint, the
+// list keeps it whole
+setMailerControl( $server, [ 'failMailFrom' => true ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+[ $mismatchCode, $mismatchBody ] = ninoCall( $appData, $panel, [ 'to' => 'mismatch@example.org' ], 'mailer/test' );
+$mismatchError = (string) ( $mismatchBody['error'] ?? '' );
+check( 'a refused sender is a 500 whose reason holds the server\'s line and the hint naming the refused address, in both languages', $mismatchCode === 500
+	&& str_contains( $mismatchError, 'Sender mismatch' ) === true && str_contains( $mismatchError, '(hint: ' ) === true && str_contains( $mismatchError, '(Hinweis: ' ) === true
+	&& substr_count( $mismatchError, 'no-reply@example.org' ) === 2 && isset( $mismatchBody['code'] ) === false );
+[ , $mismatchStatus ] = ninoCall( $appData, $panel, [], 'mailer/status' );
+check( '...and the list keeps the reason whole: the hint is not cut', ( $mismatchStatus['errors'][0]['reason'] ?? null ) === $mismatchError && count( $mismatchStatus['errors'] ) === 2 );
+setMailerControl( $server, [ 'failRcpt' => true ] );
 
 // Newest first, and a ring: the sixth failure pushes the first one out
 for( $i = 2; $i <= 6; $i++ ) {

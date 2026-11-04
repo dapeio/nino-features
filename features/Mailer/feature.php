@@ -20,8 +20,8 @@ return [
 		],
 		'callbacks' => [
 			'/nino/mail/send' => [
-				'en_US' => 'Takes over delivery from mail(): every mail goes over SMTP once a host is set. Without a host it does nothing and mail() stays in charge. A failure is logged, never thrown.',
-				'de_DE' => 'Übernimmt die Zustellung von mail(): Jede Mail geht über SMTP, sobald ein Host eingetragen ist. Ohne Host tut er nichts und mail() bleibt zuständig. Ein Fehler wird protokolliert, nie geworfen.',
+				'en_US' => 'Takes over delivery from mail(): every mail goes over SMTP once a host is set. Without a host it does nothing and mail() stays in charge. The sender of every mail is the From address of the settings where it is set, the site\'s own sender where it is not - with replies, where a mail names none, going to the site\'s sender. A failure is logged, never thrown.',
+				'de_DE' => 'Übernimmt die Zustellung von mail(): Jede Mail geht über SMTP, sobald ein Host eingetragen ist. Ohne Host tut er nichts und mail() bleibt zuständig. Absender jeder Mail ist die Absenderadresse der Einstellungen, wo sie gesetzt ist, sonst der Absender der Website - Antworten, wo eine Mail keine nennt, gehen an diesen. Ein Fehler wird protokolliert, nie geworfen.',
 			],
 		],
 		'install' => [
@@ -99,8 +99,8 @@ return [
 			'type'			=> 'email',
 			'label'			=> [ 'en_US' => 'From address', 'de_DE' => 'Absenderadresse' ],
 			'hint'			=> [
-				'en_US' => 'Used when a mail brings none of its own - has to be an address the provider allows you to send as.',
-				'de_DE' => 'Wird verwendet, wenn eine Mail keine eigene mitbringt - muss eine Adresse sein, für die der Provider den Versand erlaubt.',
+				'en_US' => 'The address every mail goes out with - envelope and From - and the one the provider allows the username to send as, mostly its mailbox. Empty, every mail goes out with the site\'s own sender. Replies to a mail with no reply address of its own go to the site\'s sender.',
+				'de_DE' => 'Die Adresse, mit der jede Mail hinausgeht - Umschlag und From - und die der Provider dem Benutzernamen erlaubt, meist dessen Postfach. Leer, geht jede Mail mit dem Absender der Website hinaus. Antworten auf eine Mail ohne eigene Antwortadresse gehen an den Absender der Website.',
 			],
 			'default'		=> '',
 		],

@@ -27,7 +27,10 @@ namespace Nino\Modules {
 	 *										the panel's test button), keeps the last five in
 	 *										/data/mailer.php (for the panel's list of errors) and
 	 *										logs it with trigger_error(), the password never among
-	 *										the words. The port is the setting's own, or - at 0,
+	 *										the words. The sender of every mail - envelope and From -
+	 *										is the setting "from" where it is set, the kernel's sender
+	 *										only where it is not; a 5xx to MAIL FROM is explained.
+	 *										The port is the setting's own, or - at 0,
 	 *										what it is by default - the one the encryption names.
 	 *
 	 *	@package					Dape/Nino
@@ -191,8 +194,14 @@ namespace Nino\Modules {
 				'verify'			=> (bool) ( $settings['verify'] ?? true ),
 			];
 
-			$hasKernelFrom = (string) $mail['sender'] !== '';
-			$fromAddress	 = $hasKernelFrom === true ? (string) $mail['sender'] : trim( (string) ( $settings['from'] ?? '' ) );
+			/*	The setting is the sender of every mail where it is set: an
+				authenticated server lets an account send as its own mailbox
+				(or the addresses the provider names), and the site's own
+				address - which the kernel hands over whenever the site has
+				one - is rarely that. Where the setting is empty the kernel's
+				sender is the envelope and the header, as it always was	*/
+			$ownFrom			= trim( (string) ( $settings['from'] ?? '' ) );
+			$fromAddress	= $ownFrom !== '' ? $ownFrom : (string) $mail['sender'];
 
 			if( $fromAddress === '' ) {
 				$mail['sent'] = false;
@@ -209,14 +218,18 @@ namespace Nino\Modules {
 			}
 
 			$fromName	= trim( (string) ( $settings['fromName'] ?? '' ) );
-			$payload	= self::_payload( $mail, $hasKernelFrom, $fromAddress, $fromName, $host );
+			$payload	= self::_payload( $mail, $ownFrom !== '', $fromAddress, $fromName, $host );
 
 			$result = \Nino\Modules\Mailer\Smtp::send( $config, $fromAddress, $recipients, $payload );
 
 			$mail['sent'] = $result['sent'];
 
 			if( $result['sent'] === false )
-				self::_fail( $appData, (string) ( $result['reason'] ?? 'the mail could not be sent' ), self::_portHint( $config['port'], $config['encryption'] ) );
+				self::_fail(
+					$appData,
+					(string) ( $result['reason'] ?? 'the mail could not be sent' ),
+					self::_portHint( $config['port'], $config['encryption'] ). ( ( $result['senderRefused'] ?? false ) === true ? self::_senderHint( $fromAddress ) : '' )
+				);
 		}
 
 		/**
@@ -228,13 +241,13 @@ namespace Nino\Modules {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$reason
-		 *	@param		string		$hint					Appended to the reason; kept whole in the panel's list, where the reason is cut short before it
+		 *	@param		string		$hint					Appended to the reason; kept whole in the panel's list, where the reason is cut on its own before it
 		 *
 		 *	@return 	void
 		 */
 		private static function _fail( array &$appData, string $reason, string $hint = '' ): void {
 
-			$listed = mb_strcut( $reason, 0, max( 0, self::MAX_REASON - strlen( $hint ) ), 'UTF-8' ). $hint;
+			$listed = mb_strcut( $reason, 0, self::MAX_REASON, 'UTF-8' ). $hint;
 			$reason .= $hint;
 
 			$appData['./mailer/last'] = $reason;
@@ -281,6 +294,24 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	What to add to a failed send's reason when the server refused the
+		 *	sender with a 5xx on MAIL FROM: that is nearly always an address
+		 *	the authenticated account may not send as ("Sender mismatch"). In
+		 *	both languages of the feature, since a reason is recorded once and
+		 *	read in whichever the operator's panel speaks. Names the address
+		 *	that was refused
+		 *
+		 *	@param		string		$address			The address MAIL FROM carried
+		 *
+		 *	@return 	string									A sentence to append
+		 */
+		private static function _senderHint( string $address ): string {
+
+			return ' (hint: the server refused the sender address '. $address. ' - with most providers it has to be the mailbox of the username, or an address the provider lets that account send as; enter it as the From address in the settings)'
+				. ' (Hinweis: Der Server hat die Absenderadresse '. $address. ' abgelehnt - bei den meisten Providern muss es das Postfach des Benutzernamens sein oder eine Adresse, als die der Provider dieses Konto senden lässt; trag sie in den Einstellungen als Absenderadresse ein)';
+		}
+
+		/**
 		 *	The kernel's 'to' as mail() itself would treat it: a plain,
 		 *	comma-separated list of addresses, each RCPT TO'd on its own -
 		 *	\Nino\Mail::send() only ever hands this a single validated
@@ -309,18 +340,19 @@ namespace Nino\Modules {
 		/**
 		 *	The complete CRLF message: Date, Message-ID, To, Subject (RFC 2047
 		 *	when it is not plain ASCII), MIME-Version, then the kernel's own
-		 *	header block verbatim, a From: of our own only when that block has
-		 *	none, a blank line, the dot-stuffed body and the DATA terminator
+		 *	header block - with its From: line replaced by the configured one
+		 *	where the setting is set (and a Reply-To of the kernel's sender added
+		 *	where the block has none), verbatim otherwise - a blank line, the dot-stuffed body and the DATA terminator
 		 *
 		 *	@param		array 		$mail					{ to, subject, body, headers, ... }, see \Nino\Mail::TRANSPORT
-		 *	@param		bool			$hasKernelFrom	Whether $mail['headers'] already carries a From: line
+		 *	@param		bool			$ownFrom				Whether the From: of the kernel's block is replaced by $fromAddress (the setting is set)
 		 *	@param		string		$fromAddress	The envelope/header From address
 		 *	@param		string		$fromName			The configured display name, '' for none
 		 *	@param		string		$smtpHost			The configured SMTP host, for the Message-ID's right-hand side
 		 *
 		 *	@return 	string
 		 */
-		private static function _payload( array $mail, bool $hasKernelFrom, string $fromAddress, string $fromName, string $smtpHost ): string {
+		private static function _payload( array $mail, bool $ownFrom, string $fromAddress, string $fromName, string $smtpHost ): string {
 
 			$lines = [];
 			$lines[] = 'Date: '. date( DATE_RFC2822 );
@@ -332,13 +364,41 @@ namespace Nino\Modules {
 			// $mail['headers'] is the block \Nino\Mail::send() would hand
 			// mail() - which already starts with its own "MIME-Version: 1.0"
 			// (see Mail.php) - so that one line is dropped here rather than
-			// duplicated; everything else (Content-Type, From, Reply-To) is
-			// kept verbatim
-			foreach( preg_split( '/\r\n|\r|\n/', trim( (string) $mail['headers'] ) ) ?: [] as $headerLine )
-				if( trim( $headerLine ) !== '' && preg_match( '/^MIME-Version:/i', trim( $headerLine ) ) !== 1 )
-					$lines[] = $headerLine;
+			// duplicated; everything else (Content-Type, Reply-To) is kept
+			// verbatim. The From: line is the configured one where the setting
+			// is set - in the place the kernel's stood - and the kernel's own
+			// otherwise
+			$fromWritten = false;
+			$hasReplyTo	 = false;
 
-			if( $hasKernelFrom === false )
+			foreach( preg_split( '/\r\n|\r|\n/', trim( (string) $mail['headers'] ) ) ?: [] as $headerLine ) {
+
+				if( trim( $headerLine ) === '' || preg_match( '/^MIME-Version:/i', trim( $headerLine ) ) === 1 )
+					continue;
+
+				if( $ownFrom === true && preg_match( '/^From:/i', $headerLine ) === 1 ) {
+
+					if( $fromWritten === false )
+						$lines[] = 'From: '. self::_fromHeaderValue( $fromAddress, $fromName );
+
+					$fromWritten = true;
+					continue;
+				}
+
+				if( preg_match( '/^Reply-To:/i', $headerLine ) === 1 )
+					$hasReplyTo = true;
+
+				$lines[] = $headerLine;
+			}
+
+			// Replies to a mail that names no Reply-To of its own (the test
+			// mail, an invitation) belong to the owner of the site, whose
+			// address the From: line no longer carries - not to the mailbox
+			// of the SMTP account
+			if( $ownFrom === true && $hasReplyTo === false && trim( (string) $mail['sender'] ) !== '' )
+				$lines[] = 'Reply-To: '. trim( (string) $mail['sender'] );
+
+			if( $ownFrom === true && $fromWritten === false )
 				$lines[] = 'From: '. self::_fromHeaderValue( $fromAddress, $fromName );
 
 			return implode( "\r\n", $lines ). "\r\n\r\n". self::_dotStuff( (string) $mail['body'] ). "\r\n.\r\n";

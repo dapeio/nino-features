@@ -11,7 +11,7 @@ declare(strict_types=1);
  *												connection until killed. The control file is read
  *												fresh at the start of every session, so the already-
  *												running server can be told, between sends, to behave
- *												differently for the next connection: refuse RCPT (550),
+ *												differently for the next connection: refuse MAIL FROM (550 5.7.1 Sender mismatch), defer it (451), refuse RCPT (550),
  *												refuse AUTH (535), or advertise only AUTH LOGIN.
  *
  *	Usage: php fake-smtp-server.php <controlFile> <logFile>
@@ -41,7 +41,7 @@ fflush( STDOUT );
  *	exact CRLF endings.
  *
  *	@param		resource	$conn
- *	@param		array			$control			{ failRcpt, failAuth, authMethods }
+ *	@param		array			$control			{ failMailFrom, tempMailFrom, failRcpt, failAuth, authMethods }
  *
  *	@return 	array										{ commands: string[], data: string }
  */
@@ -92,7 +92,7 @@ function fakeSmtpSession( $conn, array $control ): array {
 		} else if( str_starts_with( $upper, 'AUTH PLAIN' ) === true ) {
 			$write( ( $control['failAuth'] ?? false ) === true ? '535 authentication failed' : '235 authentication successful' );
 		} else if( str_starts_with( $upper, 'MAIL FROM:' ) === true ) {
-			$write( '250 ok' );
+			$write( ( $control['failMailFrom'] ?? false ) === true ? '550 5.7.1 Sender mismatch' : ( ( $control['tempMailFrom'] ?? false ) === true ? '451 4.3.0 Try again later' : '250 ok' ) );
 		} else if( str_starts_with( $upper, 'RCPT TO:' ) === true ) {
 			$write( ( $control['failRcpt'] ?? false ) === true ? '550 mailbox unavailable' : '250 ok' );
 		} else if( $upper === 'DATA' ) {
