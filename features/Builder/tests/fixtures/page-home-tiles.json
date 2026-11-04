@@ -15,6 +15,11 @@
                 "row": "",
                 "rowPlace": "",
                 "rowAlign": "",
+                "reverse": {
+                    "s": false,
+                    "m": false,
+                    "l": false
+                },
                 "rowGap": "1",
                 "rowPl": "",
                 "rowPr": "",
@@ -210,6 +215,11 @@
                 "row": "",
                 "rowPlace": "",
                 "rowAlign": "",
+                "reverse": {
+                    "s": false,
+                    "m": false,
+                    "l": false
+                },
                 "rowGap": "1",
                 "rowPl": "",
                 "rowPr": "",
@@ -415,6 +425,11 @@
                 "row": "",
                 "rowPlace": "",
                 "rowAlign": "",
+                "reverse": {
+                    "s": false,
+                    "m": false,
+                    "l": false
+                },
                 "rowGap": "",
                 "rowPl": "",
                 "rowPr": "",

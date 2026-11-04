@@ -15,6 +15,11 @@
                 "row": "wide",
                 "rowPlace": "",
                 "rowAlign": "middle",
+                "reverse": {
+                    "s": false,
+                    "m": false,
+                    "l": false
+                },
                 "rowGap": "",
                 "rowPl": "",
                 "rowPr": "",
@@ -157,6 +162,11 @@
                 "row": "",
                 "rowPlace": "",
                 "rowAlign": "",
+                "reverse": {
+                    "s": false,
+                    "m": false,
+                    "l": false
+                },
                 "rowGap": "",
                 "rowPl": "",
                 "rowPr": "",
@@ -411,6 +421,11 @@
                 "row": "narrow",
                 "rowPlace": "",
                 "rowAlign": "",
+                "reverse": {
+                    "s": false,
+                    "m": false,
+                    "l": false
+                },
                 "rowGap": "",
                 "rowPl": "",
                 "rowPr": "",

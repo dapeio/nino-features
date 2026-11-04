@@ -497,14 +497,20 @@
 .builder-head-title {
 	display: inline-flex;
 	align-items: center;
-	flex: 0 1 auto;
+	flex: 0 0 auto;
 	gap: .1rem;
 	min-width: 0;
+	max-width: 55%;
 }
 .builder-frame-name {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+/* The name of a section keeps its room beside what is said of the frame: the status shrinks first, its text ending in an ellipsis, and the name only where the head is narrower than it */
+.builder-head-title .builder-frame-name {
+	flex-shrink: 0;
+	max-width: 100%;
 }
 .builder-head-status {
 	display: inline-flex;
@@ -678,6 +684,15 @@ button.builder-status-item:hover {
 }
 .builder-frame.is-tiles {
 	--builder-gap: 0px;
+}
+/* The row of a frame turned round in the view of the viewport it is reversed in: the canvas draws the row as a plain flex row, so the order is the kernel's own - the last
+   column first, the lines changed places - and the button that ends the row stays at the end of the reading order */
+.builder-frame.is-reversed > .builder-frame-body {
+	flex-direction: row-reverse;
+	flex-wrap: wrap-reverse;
+}
+.builder-frame.is-reversed > .builder-frame-body > .builder-add-col {
+	order: -1;
 }
 .builder-frame.is-tiles > .builder-frame-body {
 	padding: 0;

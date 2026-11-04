@@ -2069,22 +2069,22 @@ const sideLabel = function( side, place ) { return word('section/spacing-cell').
 const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
 const stepsOf = function( box ) { return box.querySelectorAll('select').map( function( select ) { return select.dataset.key } ).join() };
 
-check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, width, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
-	&& blockIds().join() === 'surface,spacing,width,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
+check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, width, order, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
+	&& blockIds().join() === 'surface,spacing,width,order,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
 check( '...every block is named by the words of its own key: a head that is a button with the name in it - and no block but the first has what it says of the element in front of the name', blockIds().every( function( id ) {
 	return headOf( id ).localName === 'button' && headOf( id ).querySelector('.builder-block-name').textContent === word('block/'+ id+ '/label') && word('block/'+ id+ '/label') !== '';
 } ) );
 check( '...the blocks are an accordion: the head controls its body and says whether it is open, the body is a region the head names, and exactly one block is open - the first where no other was open before', blockIds().every( function( id ) {
 	const body = blockOf( id );
 	return headOf( id ).getAttribute('aria-controls') === body.id && body.getAttribute('role') === 'region' && body.getAttribute('aria-labelledby') === headOf( id ).id && dialogContent().contains( body );
-} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false,false' && openBlock() === 'surface'
-	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true,true' );
+} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false,false,false' && openBlock() === 'surface'
+	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true,true,true' );
 headOf('width').click();
 const pressed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
 headOf('width').click();
 const closed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
 headOf('surface').click();
-check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,true,false,false' && closed === '/false,false,false,false,false' && openBlock() === 'surface' );
+check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,true,false,false,false' && closed === '/false,false,false,false,false,false' && openBlock() === 'surface' );
 // The controls the table lists for a block, as the dialog has drawn them, and the keys they write
 const heldIn = function( id ) { return builder._dialogBlocks.parts[id].spec.held };
 const keysHeld = function( id ) { return Array.from( new Set( [].concat( ...heldIn( id ).map( function( control ) { return control.keys } ) ) ) ) };
@@ -2179,6 +2179,71 @@ check( '...and the choice is written: the vertical alignment as it is chosen, th
 change( widthBody(), word('section/text'), '' );
 change( widthBody(), word('section/row-align'), 'middle' );
 check( '...the head of the block says what is not the default - the maximum width the hero has and the alignment it has - and nothing of the width, which is the content\'s', saysOf('width').textContent === [ builder._optionLabel( 'row', 'wide' ), builder._optionLabel( 'row-align', 'middle' ) ].join(' · '));
+
+// The order of the columns: its own block after the width, a switch for each viewport that is shown
+const orderBody = function() { return blockOf('order') };
+const openBefore = openBlock();
+const reverseOf = function() { return JSON.stringify( settingsOf().reverse ) };
+check( 'the block Order follows Width and alignment in the table, for a section - and holds the one control, reverse, which no other block lists', ( function() {
+	const ids = builder.BLOCKS.section.map( function( block ) { return block.id } );
+	return ids.indexOf('order') === ids.indexOf('width') + 1 && JSON.stringify( builder.BLOCKS.section[ids.indexOf('order')].controls ) === '["reverse"]'
+		&& builder.BLOCKS.section.filter( function( block ) { return block.controls.indexOf('reverse') !== -1 } ).length === 1 && builder.BLOCKS.column.every( function( block ) { return block.id !== 'order' } )
+		&& word('block/order/label') !== '' && headOf('order').querySelector('.builder-block-name').textContent === word('block/order/label');
+} )() );
+builder._setView('m');
+builder._openSettings( [ 0 ] );
+headOf('order').click();
+check( '...in the view of one viewport it is a table as the hidden box of a column is - one row, with the icon and the word of the viewport, and the box of that viewport alone, labelled with it, off - with the hint behind a question mark and the link to all of them under the table; the model is a switch for each viewport', JSON.stringify( labelList( orderBody() ) ) === JSON.stringify( [ word('section/reverse-in').replace( '%s', 'Tablet' ) ] )
+	&& controlsIn( orderBody() ).every( function( control ) { return control.kind === 'box' } ) && valueAt( orderBody(), 'Reversed (Tablet)' ) === false
+	&& orderBody().querySelectorAll('tbody tr').length === 1 && orderBody().querySelector('th[scope="row"]').textContent === 'Tablet' && iconOf( orderBody().querySelector('table') ) === 'tablet' && orderBody().querySelector('table').nextSibling === orderBody().querySelector('.builder-link-btn') && reverseOf() === '{"s":false,"m":false,"l":false}'
+	&& orderBody().querySelectorAll('.builder-link-btn').length === 1 && orderBody().querySelector('.builder-help') !== null && openBlock() === 'order' );
+change( orderBody(), 'Reversed (Tablet)', true );
+check( '...a switch writes its viewport in the model, and no other, and is a change; the head of the block says which viewports are turned', reverseOf() === '{"s":false,"m":true,"l":false}' && saysOf('order').textContent === word('section/reverse-said').replace( '%s', 'Tablet' ) && saysOf('order').hidden === false );
+buttonOf( orderBody(), 'All viewports' ).click();
+check( '...in the view of all of them the table has a row for each, in the order of the viewports, with the icon and the word of each, each labelled with its own and marked with it, the link is gone and the block stays open; what was turned is on', JSON.stringify( labelList( orderBody() ) ) === JSON.stringify( [ 'Reversed (Mobile)', 'Reversed (Tablet)', 'Reversed (Desktop)' ] )
+	&& controlsIn( orderBody() ).map( function( control ) { return control.el.dataset.viewport } ).join() === 's,m,l' && controlsIn( orderBody() ).map( function( control ) { return control.el.dataset.key } ).join() === 'reverse,reverse,reverse'
+	&& controlsIn( orderBody() ).map( function( control ) { return control.el.checked } ).join() === 'false,true,false' && orderBody().querySelectorAll('.builder-link-btn').length === 0
+	&& orderBody().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && openBlock() === 'order' && builder._viewport === 'g' );
+change( orderBody(), 'Reversed (Mobile)', true );
+change( orderBody(), 'Reversed (Desktop)', true );
+change( orderBody(), 'Reversed (Tablet)', false );
+check( '...and each of them writes its own: three changes, the model as the Writer turns into the base class, the m forward and the l reverse, and the head says the two viewports', reverseOf() === '{"s":true,"m":false,"l":true}' && saysOf('order').textContent === word('section/reverse-said').replace( '%s', 'Mobile, Desktop' ) );
+// The canvas shows the order: a status item on the frame of the section, and in the view of one viewport the row of the frame turned round where that viewport is reversed
+const reversedFrame = function() { return preview().querySelector('.builder-frame[data-path="0"]') };
+const reverseItem = function() { return reversedFrame().querySelector('.builder-head-status .builder-status-item.is-reverse') };
+check( 'the frame of a section says which viewports its row is turned round in, as the frame of a column says where it is hidden: an item in its head - an icon and "Reversed: Mobile, Desktop" - in every view, and none where no viewport is', ( function() {
+	builder._setView('g');
+	const global = reverseItem() !== null && reverseItem().textContent === word('section/reverse-said').replace( '%s', 'Mobile, Desktop' ) && reverseItem().title === reverseItem().textContent && iconOf( reverseItem() ) === 'arrow-left-right';
+	builder._setView('m');
+	const tablet = reverseItem() !== null && reverseItem().textContent === 'Reversed: Mobile, Desktop';
+	const used = stylesheet.indexOf('<symbol id="builder-icon-arrow-left-right"') === -1 && template.indexOf('id="builder-icon-arrow-left-right"') !== -1;
+	settingsOf().reverse = { s : false, m : false, l : false };
+	builder._setView('g');
+	return global && tablet && used && reverseItem() === null;
+} )() );
+check( '...and in the view of one viewport the row of the frame is turned round where that viewport is reversed (a class of the frame, off in Global and where the viewport is not) - and not otherwise', ( function() {
+	settingsOf().reverse = { s : true, m : false, l : true };
+	const seen = {};
+	[ 'g', 's', 'm', 'l' ].forEach( function( viewport ) { builder._setView( viewport ); seen[viewport] = reversedFrame().classList.contains('is-reversed') } );
+	return JSON.stringify( seen ) === '{"g":false,"s":true,"m":false,"l":true}';
+} )() );
+check( '...the canvas draws the row of a frame as a plain flex row that wraps, and the turned one is row-reverse and wrap-reverse - on the body of the frame, with the button that ends the row kept at the end of the reading order', /\.builder-frame-body \{[^}]*display: flex;[^}]*flex-wrap: wrap;/.test( stylesheet )
+	&& /\.builder-frame\.is-reversed > \.builder-frame-body \{[^}]*flex-direction: row-reverse;[^}]*flex-wrap: wrap-reverse;/.test( stylesheet ) && /\.builder-frame\.is-reversed > \.builder-frame-body > \.builder-add-col \{[^}]*order: -1;/.test( stylesheet ) );
+check( '...and the name of a section keeps its room in the head of its frame beside what is said of the frame: the title keeps its room up to 55 % of the head and the name does not shrink within it, the status, whose text ends in an ellipsis, does', /\.builder-head-title \.builder-frame-name \{[^}]*flex-shrink: 0;/.test( stylesheet )
+	&& /\.builder-head-title \{[^}]*flex: 0 0 auto;[^}]*max-width: 55%;/.test( stylesheet )
+	&& /\.builder-head-status \{[^}]*flex: 1 1 auto;[^}]*min-width: 0;/.test( stylesheet ) && /\.builder-status-text \{[^}]*text-overflow: ellipsis;/.test( stylesheet ) );
+check( 'a model without the order comes out of _normalise with a switch off for each viewport, and one that has some of it keeps them: the default is { s, m, l : false }', ( function() {
+	const bare = builder._normalise( { blocks : [ { kind : 'section', settings : [], cols : [] } ] } ).blocks[0].settings.reverse;
+	const some = builder._normalise( { blocks : [ { kind : 'section', settings : { reverse : { m : true } }, cols : [] } ] } ).blocks[0].settings.reverse;
+	return JSON.stringify( bare ) === '{"s":false,"m":false,"l":false}' && JSON.stringify( some ) === '{"s":false,"m":true,"l":false}';
+} )() );
+// Back to the dialog the tests that follow stand in: the hero, on Width and alignment, in the view of the desktop, turned round nowhere
+settingsOf().reverse = { s : false, m : false, l : false };
+builder._setView('l');
+builder._openSettings( [ 0 ] );
+
+if( openBlock() !== openBefore )
+	headOf( openBefore ).click();
 
 const spacingBody = function() { return blockOf('spacing') };
 check( 'Spacing: the gap between the columns of the row and the whitespace of the page, then the box of the section - outside above, inside above, left, right and below, outside below - and under it, with its name, the box of its row, which has the inside alone: a box is a group of selects around a small rectangle',
@@ -2586,7 +2651,7 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 3 ] );
 const loopTab = function() { return blockOf('loop').querySelector('.builder-loop') };
-check( 'a section has its loop in a block of its own, between the width and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","width","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
+check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
 	&& JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && valueAt( loopTab(), 'Loop' ) === '' && optionsOf( loopTab(), 'Loop' ) === '=Static,sections=Element loop' && loopTab().querySelectorAll('.builder-group').length === 0
 	&& builder._sectionLoop( builder._registry ) === 'sections' && builder._sectionLoop( { stacks : { stack : { grid : true } } } ) === '' );
 change( loopTab(), 'Loop', 'sections' );
@@ -3299,7 +3364,7 @@ openWith( [ 0 ], ( function() {
 	table.section.find( function( block ) { return block.id === 'width' } ).controls = [];
 	return table;
 } )() );
-check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other four blocks, in the order of the table', blockIds().join() === 'surface,spacing,loop,properties' );
+check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other five blocks, in the order of the table', blockIds().join() === 'surface,spacing,order,loop,properties' );
 openWith( [ 0 ] );
 settingsOf().custom = 'one';
 settingsOf().rowCustom = 'two';
@@ -8705,7 +8770,7 @@ check( 'the editor of HTML+ that is opened from the tool for it and cancelled le
 
 console.log( '\nThe seven blocks, the background image, the pictures and the link of a card' );
 
-check( 'the table names eight blocks in all - content, link, surface, tiles, spacing, width, loop and properties, the tiles being those of a section of tiles - and the loop is a block of its own, between the width and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
+check( 'the table names eight blocks in all - content, link, surface, tiles, spacing, width, order, loop and properties, the tiles being those of a section of tiles - and the loop is a block of its own, between the order and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
 
 	const ids = {};
 	const ofKind = function( kind ) { return builder.BLOCKS[kind].map( function( block ) { return block.id } ).join() };
@@ -8713,7 +8778,7 @@ check( 'the table names eight blocks in all - content, link, surface, tiles, spa
 
 	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { ids[block.id] = true } ) } );
 
-	return Object.keys( ids ).sort().join() === 'content,link,loop,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,width,loop,properties' && ofKind('column') === 'surface,spacing,width,loop,properties'
+	return Object.keys( ids ).sort().join() === 'content,link,loop,order,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,width,order,loop,properties' && ofKind('column') === 'surface,spacing,width,loop,properties'
 		&& ofKind('component') === 'content,link,surface,spacing,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && JSON.stringify( loop('column').controls ) === '["stack"]'
 		&& [ 'section', 'column' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
 		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop';
@@ -9220,8 +9285,10 @@ builder._renderEditor();
 builder._openSettings( [ 0 ] );
 const tilesLabels = labelList( dialogContent() );
 const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'section/row-align', 'section/content-pos', 'section/cover', 'section/cover-height', 'section/parallax', 'section/inner-background', 'section/padded', 'section/arrow', 'section/offset', 'common/radius-alt', 'section/dim' ];
-check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Loop and Properties - no block of the width',
-	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
+check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Order, Loop and Properties - no block of the width',
+	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
+check( '...and Order, after Spacing, with the switch of each viewport that is shown - a section of tiles is a row like any other, and its tiles turn round the way columns do: one switch in the view of one viewport, the model a switch for each', labelList( blockOf('order') ).join() === word('section/reverse-in').replace( '%s', builder._viewport === 'g' ? 'Mobile' : word( 'viewport/'+ builder._viewport ) )+ ( builder._viewport === 'g' ? ',Reversed (Tablet),Reversed (Desktop)' : '' )
+	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 2 );
 check( '...Surface has the colour - between the tiles - and the border; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background, dimming, offset, arrow or radius',
 	[ word('section/color-tiles'), word('section/border'), word('section/border-primary') ].every( function( label ) { return blockOf('surface').all().some( function( el ) { return controlsIn( blockOf('surface') ).some( function( control ) { return control.label === label } ) } ) } )
 	&& controlsIn( blockOf('surface') ).length === 3 && labelList( blockOf('tiles') ).join() === [ word('section/ratio'), word('section/tile-gap'), word('section/text') ].join()
@@ -9319,10 +9386,10 @@ check( 'the kind of a section is switched in its dialog, which is drawn again fo
 	change( blockOf('properties'), word('section/kind'), 'content' );
 	const none = changes === was && dialogText('builder-dialog-kind') === 'Content';
 	change( blockOf('properties'), word('section/kind'), 'tiles' );
-	const tiles = builder._doc.model.blocks[0].settings.tiles === true && builder._doc.model.blocks[0].settings.ratio === '4-3' && dialogText('builder-dialog-kind') === 'Tiles' && blockIds().join() === 'surface,tiles,spacing,loop,properties' && openBlock() === 'properties'
+	const tiles = builder._doc.model.blocks[0].settings.tiles === true && builder._doc.model.blocks[0].settings.ratio === '4-3' && dialogText('builder-dialog-kind') === 'Tiles' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && openBlock() === 'properties'
 		&& builder._doc.model.blocks[0].settings.cover === null && changes === was + 1 && preview().children[0].classList.contains('is-tiles') === true;
 	change( blockOf('properties'), word('section/kind'), 'content' );
-	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
+	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
 } )() );
 
 // The preview

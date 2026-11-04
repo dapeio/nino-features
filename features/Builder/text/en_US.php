@@ -13,7 +13,7 @@ declare(strict_types=1);
 //   /_admin/builder/hint/...      the sentence a field of a form has to say, which stands behind its question mark
 //   /_admin/builder/tree/...      what a frame is called, what the add buttons say, and why a source is red
 //   /_admin/builder/menu/...      the titles of the buttons on a frame
-//   /_admin/builder/block/...     the names of the seven blocks every form is drawn in, as block/<name>/label
+//   /_admin/builder/block/...     the names of the blocks every form is drawn in, as block/<name>/label
 //   /_admin/builder/group/...     the headings of the groups of a form
 //   /_admin/builder/section/...   the fields of the section and row forms
 //   /_admin/builder/template/...  the fields of the template form
@@ -210,6 +210,7 @@ return [
 	'[[/_admin/builder/block/tiles/label]]'	=> 'Tiles',
 	'[[/_admin/builder/block/spacing/label]]'	=> 'Spacing',
 	'[[/_admin/builder/block/width/label]]'	=> 'Width and alignment',
+	'[[/_admin/builder/block/order/label]]'	=> 'Order',
 	'[[/_admin/builder/block/loop/label]]'	=> 'Loop',
 	'[[/_admin/builder/block/properties/label]]'	=> 'Properties',
 	'[[/_admin/builder/spacing/outside]]'	=> 'outside',
@@ -248,6 +249,9 @@ return [
 	'[[/_admin/builder/section/text]]'						=> 'Horizontal text alignment',
 	'[[/_admin/builder/section/row-align]]'					=> 'Vertical content alignment',
 	'[[/_admin/builder/section/row-place]]'					=> 'Place of the row',
+	'[[/_admin/builder/section/reverse]]'						=> 'Reversed',
+	'[[/_admin/builder/section/reverse-in]]'					=> 'Reversed (%s)',
+	'[[/_admin/builder/section/reverse-said]]'				=> 'Reversed: %s',
 	'[[/_admin/builder/section/left]]'						=> 'Left',
 	'[[/_admin/builder/section/right]]'						=> 'Right',
 	'[[/_admin/builder/section/above]]'					=> 'Above',
@@ -393,6 +397,7 @@ return [
 	'[[/_admin/builder/hint/text]]'						=> 'How the text of the section runs: left, centred or right. A column with an alignment of its own keeps it for its text.',
 	'[[/_admin/builder/hint/row-align]]'				=> 'Where the columns of a row stand when they differ in height: aligned at the top, in the middle or at the bottom.',
 	'[[/_admin/builder/hint/row-place]]'					=> 'Where a row that is narrower than the page stands in its section: at the left, in the middle or at the right. It applies to Content width only, because a row as wide as the page has no room to move.',
+	'[[/_admin/builder/hint/reverse]]'					=> 'The columns of the row stand in the opposite order in this viewport: the last one first, so at the top on a phone. The alignment and the place of the columns keep their meaning. A section that says nino-section--mirrored already turns its row from 768px: a reversed tier does not mirror it twice, and --forward leaves the mirror in place.',
 	'[[/_admin/builder/hint/padded]]'	=> 'The picture of the cover or the parallax keeps the room of the page around it instead of running to the edge of the window, like a framed panel. Its corners can then be rounded.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'How much air this section has: its padding, the gaps between its pieces and the room under its texts grow or shrink together. As the page follows the Design; the other steps make this section narrower or wider than the page.',
 	'[[/_admin/builder/hint/row-gap]]'	=> 'How far apart the columns of the row stand, in steps from 0 (none) to 6 (the most). On a phone, where they stand one above the other, the gap is between them too; Default sets none.',

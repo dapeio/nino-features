@@ -243,6 +243,8 @@
 				{ id : 'tiles', controls : [ 'ratio', 'tileGap', 'tileText' ] },
 				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
+				// The order of the columns of the row, turned round for each viewport by itself - for a content section and for tiles alike
+				{ id : 'order', controls : [ 'reverse' ] },
 				{ id : 'loop', controls : [ 'stack' ] },
 				{ id : 'properties', controls : [ 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
 			],
@@ -293,6 +295,7 @@
 					return;
 
 				block.settings = map( block.settings );
+				block.settings.reverse = Object.assign( { s : false, m : false, l : false }, map( block.settings.reverse ) );
 
 				if( block.stack !== null && typeof block.stack === 'object' )
 					block.stack.attributes = map( block.stack.attributes );
@@ -864,7 +867,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: kind === 'tiles' ? [ builder._newCol( builder.TILES_WIDTH ), builder._newCol( builder.TILES_WIDTH ) ] : [ builder._newCol() ],
@@ -2199,6 +2202,9 @@
 					loop				: loop === null ? null : { path : [ b ], type : loops === undefined || loops.title === '' ? loop.source : loops.title },
 					background	: block.background !== null && block.background !== undefined,
 					// A section of tiles is drawn edge to edge, its tiles in its ratio
+					// The order of the columns: the viewports the row is turned round in, and whether it is in the one the preview shows
+					reversedIn	: builder.VIEWPORTS.filter( function( at ) { return ( block.settings.reverse || {} )[at] === true } ),
+					reversed		: viewport !== 'g' && ( block.settings.reverse || {} )[viewport] === true,
 					tiles				: block.settings.tiles === true,
 					ratio				: block.settings.tiles === true ? ( block.settings.ratio || '' ) : '',
 					reason			: null,
@@ -3588,6 +3594,17 @@
 
 				if( block.inner === true )
 					status.appendChild( builder._statusItem( 'inner', 'inner', Nino.content.getText('/_admin/builder/preview/inner'), '' ) );
+
+				// The canvas keeps the markup order, and draws a row as a plain flex row: in the view of one viewport the row is turned round where that viewport is, and in
+				// every view the head names the viewports that are
+				frame.classList.toggle( 'is-reversed', block.reversed === true );
+
+				if( Array.isArray( block.reversedIn ) === true && block.reversedIn.length > 0 ) {
+
+					const said = Nino.adminUi.format( Nino.content.getText('/_admin/builder/section/reverse-said'), block.reversedIn.map( function( viewport ) { return Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) } ).join(', ') );
+
+					status.appendChild( builder._statusItem( 'reverse', 'arrow-left-right', said, said ) );
+				}
 
 				if( block.padded === true )
 					status.appendChild( builder._statusItem( 'padded', 'frame', Nino.content.getText('/_admin/builder/preview/padded'), '' ) );
@@ -5313,7 +5330,7 @@
 			link.type = 'button';
 			link.addEventListener( 'click', function() {
 				builder._setView('g');
-				builder._refreshControls( 'width', 'stack' );
+				builder._refreshControls( 'width', 'stack', 'reverse' );
 			} );
 
 			return link;
@@ -6840,6 +6857,16 @@
 					build	: function( body ) { body.appendChild( setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', hint : '/_admin/builder/hint/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ) ) },
 					says	: function() { return alignSaid( 'rowAlign', 'row-align' ) },
 				},
+				reverse : {
+					keys	: [ 'reverse' ],
+					build	: function( body ) { builder._reverseSwitches( body, settings, word('hint/reverse') ) },
+					says	: function() {
+
+						const turned = builder.VIEWPORTS.filter( function( viewport ) { return settings.reverse[viewport] === true } );
+
+						return turned.length === 0 ? '' : Nino.adminUi.format( word('section/reverse-said'), turned.map( function( viewport ) { return word( 'viewport/'+ viewport ) } ).join(', ') );
+					},
+				},
 				contentPos : {
 					keys	: [ 'contentPos' ],
 					build	: function( body ) {
@@ -6952,10 +6979,10 @@
 			if( settings.tiles !== true )
 				return controls;
 
-			// A section of tiles has the controls it has of the content kind - the ground between its tiles, its lines, its air, its loop, its animation and its own classes - and three of its
+			// A section of tiles has the controls it has of the content kind - the ground between its tiles, its lines, its air, its loop, its animation and its own classes, and the order of its tiles, turned round for each viewport as for any row - and three of its
 			// own: the height of its tiles, the gap between them and how the text of the section runs, under the names the table lists in the block Tiles. It has no width, no row, no cover,
 			// no parallax, no background and no picture of its row: its row is the whole width of the section and its tiles hold the pictures
-			const kept = [ 'border', 'borderPrimary', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'stack', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
+			const kept = [ 'border', 'borderPrimary', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'stack', 'reverse', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
 			const tiles = {};
 
 			kept.forEach( function( name ) { tiles[name] = controls[name] } );
@@ -7687,6 +7714,38 @@
 						builder._changed();
 					} ), 'hidden' ),
 				];
+			} );
+		},
+
+		/**
+		 *	The switches that turn the columns of a row round, as the hidden box of a column is drawn: a table with a row for each viewport that is shown (see
+		 *	_viewportTable()) - the one of the view, or all three in Global, each row with its icon and its word, and the link to all of them under the table of one row.
+		 *	A switch writes its viewport in the map of the section (settings.reverse); it is marked with the setting and with the viewport, and the hint stands over the table
+		 *
+		 *	@param		{Element}		pane
+		 *	@param		{Object}		settings					Of the section
+		 *	@param		{string}		hint
+		 *
+		 *	@return		void
+		 */
+		_reverseSwitches : function( pane, settings, hint ) {
+
+			const builder = Nino.admin.builder;
+			const label = Nino.content.getText('/_admin/builder/section/reverse');
+
+			settings.reverse = Object.assign( { s : false, m : false, l : false }, settings.reverse );
+			pane.appendChild( builder._hinted( builder._el( 'span', 'builder-note', label ), hint, label ) );
+
+			builder._viewportTable( pane, [ label ], function( viewport ) {
+
+				const box = builder._hiddenBox( Nino.adminUi.format( Nino.content.getText('/_admin/builder/section/reverse-in'), Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) ), settings.reverse[viewport] === true, function( checked ) {
+					settings.reverse[viewport] = checked;
+					builder._changed();
+				} );
+
+				box.dataset.viewport = viewport;
+
+				return [ builder._keyed( box, 'reverse' ) ];
 			} );
 		},
 

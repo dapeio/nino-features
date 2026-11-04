@@ -414,6 +414,21 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['rowAlign'] !== '' )
 				$class[] = 'nino-grid-'. $s['rowAlign'];
 
+			// The order of the columns: the narrowest viewport says it for every width, each wider one only where it differs from the one before
+			$before = false;
+
+			foreach( Reader::VIEWPORTS as $viewport ) {
+
+				$turned = ( (array) $s['reverse'] )[$viewport] ?? false;
+
+				if( $viewport === 's' && $turned === true )
+					$class[] = 'nino-grid-row--reverse';
+				elseif( $viewport !== 's' && $turned !== $before )
+					$class[] = 'nino-grid-row--'. $viewport. ( $turned === true ? '-reverse' : '-forward' );
+
+				$before = $turned;
+			}
+
 			if( (string) $s['rowGap'] !== '' )
 				$class[] = 'nino-grid-gap-'. $s['rowGap'];
 

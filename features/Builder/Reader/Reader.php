@@ -111,6 +111,11 @@ namespace Nino\Modules\Builder {
 	 *											    row         ''|narrow|wide|full   nino-grid-row--<x>: the maximum width of the row, the grid's own for ''
 	 *											    rowPlace    ''|left|right         nino-grid-row--<x>: where a row narrower than the page stands, the middle for ''
 	 *											    rowAlign    ''|center|middle|bottom   nino-grid-<x>
+	 *											    reverse     map                   s, m, l: bool each, the columns of the row in the opposite order from that viewport on. The
+	 *											                                      Writer says the fewest classes: nino-grid-row--reverse for s, then for m and l a
+	 *											                                      nino-grid-row--<m|l>-reverse or --<m|l>-forward where the value differs from the viewport
+	 *											                                      before. Read: --reverse is s, --m-* and --l-* the others, the first
+	 *											                                      class of a viewport is the setting; --s-*, --xl-* and a bare --forward are none of the three and stay custom classes
 	 *											    rowGap      ''|0..6               nino-grid-gap-<n>: the gap between the columns of the row, a step of the space scale; '' writes none. The first
 	 *											                                      class is the setting, a second one is a class of the row's own
 	 *											    rowPl rowPr rowPt rowPb  ''|0..6  nino-pl-<n> nino-pr-<n> nino-pt-<n> nino-pb-<n>: the padding of the row on each side, a step
@@ -410,7 +415,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'rowGap' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
+				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'reverse' => [ 's' => false, 'm' => false, 'l' => false ], 'rowGap' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'tiles' => false, 'ratio' => '', 'whitespace' => '',
 				...array_fill_keys( self::SPACING, '' ), 'text' => '', 'arrow' => false,
 			] + self::animationDefaults() + [ 'custom' => '' ];
@@ -1489,6 +1494,7 @@ namespace Nino\Modules\Builder {
 			$s				= &$section['settings'];
 			$custom		= [];
 			$radii		= [];
+			$turned		= [];
 			$tiles		= $s['tiles'] === true;
 			// A row that paints a ground of its own is the content kind's: on a section of tiles no ground, no scrim, no width and no place of the row is read - they are the
 			// row's custom classes - and its inner is never set
@@ -1514,6 +1520,17 @@ namespace Nino\Modules\Builder {
 					$s['rowPlace'] = $m[1];
 				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
 					$s['rowAlign'] = $m[1];
+				// The order of the columns, for each viewport by itself, in the builder's own vocabulary: the base class says the narrowest viewport, a class of the m and of the l tier the
+				// other two, and the first class of a viewport is the setting, a second one is a class of the row's own. The classes of the s and of the xl tier are no setting of the
+				// builder (the narrowest viewport has the base class, xl follows l) and neither is a bare --forward: they stay classes of the row's own, kept as they were
+				elseif( preg_match( '/^nino-grid-row--(?:(m|l)-)?(reverse|forward)$/D', $token, $m ) === 1 && ( $m[1] !== '' || $m[2] === 'reverse' ) ) {
+					$viewport = $m[1] === '' ? 's' : $m[1];
+
+					if( isset( $turned[$viewport] ) === false )
+						$turned[$viewport] = $m[2] === 'reverse';
+					else
+						$custom[] = $token;
+				}
 				// The gap between the columns is the first class of its kind, as the gap of a stack is a column's: a second is a class of the row's own
 				elseif( preg_match( '/^nino-grid-gap-([0-6])$/D', $token, $m ) === 1 && $s['rowGap'] === '' )
 					$s['rowGap'] = $m[1];
@@ -1536,6 +1553,12 @@ namespace Nino\Modules\Builder {
 				elseif( self::_animation( $token, $s ) === false )
 					$custom[] = $token;
 			}
+
+			// A viewport that names nothing has the value of the one before it, the narrowest has none
+			$before = false;
+
+			foreach( self::VIEWPORTS as $viewport )
+				$before = $s['reverse'][$viewport] = $turned[$viewport] ?? $before;
 
 			// The radius is the radius of what the row paints, which the background inside gives it: the first of the two classes is the setting then, and on a row that
 			// paints nothing both are idle and stay custom classes

@@ -2353,6 +2353,10 @@ namespace Nino\Modules\Builder {
 				if( $height( $block['settings']['cover'] ?? null ) === false )
 					$problems[] = 'the cover of '. $at. ' is neither none nor a height in percent';
 
+				// The order of the columns is a switch for each of the three viewports: what is none would be left out of the classes, and read back as off
+				if( is_array( $block['settings']['reverse'] ?? [] ) === false || count( array_filter( (array) ( $block['settings']['reverse'] ?? [] ), static fn( mixed $on, mixed $viewport ): bool => in_array( $viewport, Reader::VIEWPORTS, true ) === false || is_bool( $on ) === false, ARRAY_FILTER_USE_BOTH ) ) > 0 )
+					$problems[] = 'the reverse of '. $at. ' is no switch for each viewport';
+
 				// The width of the row, where it stands and where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
 				foreach( [ 'row' => Reader::ROW, 'rowPlace' => Reader::ROW_PLACE, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'ratio' => Reader::RATIO, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT, 'radius' => Reader::RADIUS, 'rowRadius' => Reader::RADIUS ] as $key => $words )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )

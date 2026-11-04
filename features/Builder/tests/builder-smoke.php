@@ -135,17 +135,48 @@ check( '...and names the class a picture takes for the hover of the page in a li
 check( '...and has a line of its own for the tools of a frame - how the toolbar is named and how large a tool is to hit - in both languages',
 	isset( $manifest['manual']['panel']['The tools of a frame'] ) === true && array_diff( [ 'en_US', 'de_DE' ], array_keys( $manifest['manual']['panel']['The tools of a frame'] ) ) === []
 	&& \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'en_US' ) );
-check( '...and names the seven blocks of a dialog - the loop is one of them - and the entries this patch rewrites, each in both languages and a line under a thousand bytes, in a manual of at most forty entries of the panel', ( static function() use ( $manifest ): bool {
-	$names = [ 'The seven blocks', 'The dialog of a section', 'The spacing and width of a section', 'Properties of a card', 'Loop', 'Placeholders', 'The card', 'Heads of the frames', 'Pictures of the slots', 'Copy and Paste' ];
+check( '...and names the blocks of a dialog - the loop is one of them - and the entries this patch rewrites, each in both languages and a line under a thousand bytes, in a manual of at most forty entries of the panel', ( static function() use ( $manifest ): bool {
+	$names = [ 'The blocks of the dialogs', 'The dialog of a section', 'The spacing and width of a section', 'Properties of a card', 'Loop', 'Placeholders', 'The card', 'Heads of the frames', 'Pictures of the slots', 'Copy and Paste' ];
 	foreach( $names as $name )
 		foreach( [ 'en_US', 'de_DE' ] as $locale )
 			if( isset( $manifest['manual']['panel'][$name][$locale] ) === false || strlen( $manifest['manual']['panel'][$name][$locale] ) >= 1000 )
 				return false;
-	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['The seven blocks']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The seven blocks']['de_DE'], 'Loop:' ) === true
+	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['The blocks of the dialogs']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The blocks of the dialogs']['de_DE'], 'Loop:' ) === true
 		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Properties of a card']['de_DE'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true
 		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], ' Du ' ) === true
 		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['en_US'], 'Ctrl+C and Ctrl+V' ) === true && str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], 'Strg+C und Strg+V' ) === true
 		&& trim( $manifest['manual']['panel']['Copy and Paste']['en_US'] ) !== '' && trim( $manifest['manual']['panel']['Copy and Paste']['de_DE'] ) !== '' && $manifest['manual']['panel']['Copy and Paste']['en_US'] !== $manifest['manual']['panel']['Copy and Paste']['de_DE'];
+} )() );
+check( '...and has an entry of its own for the order of a row, in both languages and under a thousand bytes, which names the classes it writes', ( static function() use ( $manifest ): bool {
+	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+		$line = (string) ( $manifest['manual']['panel']['The order of a section'][$locale] ?? '' );
+		if( $line === '' || strlen( $line ) >= 1000 || str_contains( $line, 'nino-grid-row--reverse' ) === false || str_contains( $line, '--l-forward' ) === false )
+			return false;
+	}
+	return $manifest['manual']['panel']['The order of a section']['en_US'] !== $manifest['manual']['panel']['The order of a section']['de_DE'] && count( $manifest['manual']['panel'] ) <= 40;
+} )() );
+check( '...and the lists of the blocks name Order - the settings dialogs, the blocks of the dialogs, the dialog of a section of tiles - in both languages, the entry of its own says where it stands for a section and for tiles, that the canvas turns the row, and what a hand-written s or xl tier is; the header of the english text names no number of blocks', ( static function() use ( $manifest, $dir ): bool {
+	$where = [
+		'en_US' => [ 'Settings dialogs' => 'Width and alignment, Order, Loop', 'The blocks of the dialogs' => 'Order: the switch', 'The dialog of a section of tiles' => 'Spacing, Order, Loop', 'The order of a section' => 'Order, in the dialog' ],
+		'de_DE' => [ 'Settings dialogs' => 'Breite und Ausrichtung, Reihenfolge, Loop', 'The blocks of the dialogs' => 'Reihenfolge: der Schalter', 'The dialog of a section of tiles' => 'Abstände, Reihenfolge, Loop', 'The order of a section' => 'Reihenfolge, im Dialog' ],
+	];
+	foreach( $where as $locale => $names ) {
+		foreach( $names as $name => $phrase )
+			if( str_contains( (string) ( $manifest['manual']['panel'][$name][$locale] ?? '' ), $phrase ) === false )
+				return false;
+		$entry = (string) $manifest['manual']['panel']['The order of a section'][$locale];
+		if( str_contains( $entry, '--s-reverse' ) === false || str_contains( $entry, '--xl-forward' ) === false )
+			return false;
+	}
+	// The canvas is the Vorschau of the German Builder - the Fläche is the Surface block - and the block is named in the entry
+	$german = (string) $manifest['manual']['panel']['The order of a section']['de_DE'];
+	if( str_contains( $german, 'Vorschau dreht die Zeile' ) === false || str_contains( $german, 'Fläche' ) === true || str_contains( $german, 'nach dem Block Abstände' ) === false )
+		return false;
+	$hints = [ 'en_US' => 'nino-section--mirrored', 'de_DE' => 'nino-section--mirrored' ];
+	foreach( $hints as $locale => $word )
+		if( str_contains( (string) ( ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/hint/reverse]]'] ?? '' ), $word ) === false )
+			return false;
+	return str_contains( file_get_contents( $dir. '/text/en_US.php' ), 'names of the seven blocks' ) === false;
 } )() );
 check( '...and the entry on the spacing of a section names the gap between the columns of its row, by the word the panel gives the select, in both languages', ( static function() use ( $manifest, $dir ): bool {
 	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
@@ -191,6 +222,16 @@ check( '...and the switch of a picture has its label and its hint in both of the
 	$english = (array) include $dir. '/text/en_US.php';
 	$german = (array) include $dir. '/text/de_DE.php';
 	return trim( (string) ( $english[$key] ?? '' ) ) === '' || trim( (string) ( $german[$key] ?? '' ) ) === '' || $english[$key] === $german[$key];
+} ) === [] );
+check( '...and the order of a row has its block name, its switch, its label for a viewport, its summary and its hint in both of them, differing, the label and the summary with one place for the viewport', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
+	$texts = (array) include $dir. '/text/'. $locale. '.php';
+	$other = (array) include $dir. '/text/'. ( $locale === 'en_US' ? 'de_DE' : 'en_US' ). '.php';
+	foreach( [ 'block/order/label', 'section/reverse', 'section/reverse-in', 'section/reverse-said', 'hint/reverse' ] as $name ) {
+		$key = '[[/_admin/builder/'. $name. ']]';
+		if( trim( (string) ( $texts[$key] ?? '' ) ) === '' || ( $texts[$key] ?? '' ) === ( $other[$key] ?? '' ) )
+			return true;
+	}
+	return substr_count( (string) $texts['[[/_admin/builder/section/reverse-in]]'], '%s' ) !== 1 || substr_count( (string) $texts['[[/_admin/builder/section/reverse-said]]'], '%s' ) !== 1;
 } ) === [] );
 check( '...and the sentences that name the keys and the slots of a copy in the way have a place for the list, one each, in both', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 	$texts = (array) include $dir. '/text/'. $locale. '.php';
@@ -1117,15 +1158,15 @@ check( 'the row of a section has a width - narrow, wide or full -, a place - lef
 	$rowWrong === [] && \Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide', 'full' ] && \Nino\Modules\Builder\Reader::ROW_PLACE === [ 'left', 'right' ]
 	&& \Nino\Modules\Builder\Reader::ROW_SPACING === [ 'pl' => 'rowPl', 'pr' => 'rowPr', 'pt' => 'rowPt', 'pb' => 'rowPb' ] && \Nino\Modules\Builder\Reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 
-$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowGap' => '3', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row', 'rowBgPl' => '', 'rowBgPr' => '' ];
+$rowAll			= [ 'row' => 'wide', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'reverse' => [ 's' => false, 'm' => false, 'l' => false ], 'rowGap' => '3', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'rowRadius' => '', 'rowCustom' => 'my-row', 'rowBgPl' => '', 'rowBgPr' => '' ];
 $rowOrdered	= 'nino-grid-row nino-grid-row--wide nino-grid-row--right nino-grid-bottom nino-grid-gap-3 nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 my-row';
 $rowMade		= $blank;
 $rowMade['settings'] = $rowAll + $blank['settings'];
 
 check( 'the classes of the row stand in one order: the width, the place, the alignment of its columns, the gap between them, the padding on the left, on the right, above and below, then the custom ones - written from the settings, and read back as they were set',
 	$write( [ 'blocks' => [ $rowMade ] ] ) === $inWrap( $fileOf( 'nino-section', $rowOrdered ) ) && $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0] === $rowMade
-	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 10 ) === [ 'row', 'rowPlace', 'rowAlign', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ]
-	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 10, 2 ) === array_values( \Nino\Modules\Builder\Reader::ROW_BG_SPACING ) );
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 0, 11 ) === [ 'row', 'rowPlace', 'rowAlign', 'reverse', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom' ]
+	&& array_slice( array_keys( \Nino\Modules\Builder\Reader::sectionDefaults() ), 11, 2 ) === array_values( \Nino\Modules\Builder\Reader::ROW_BG_SPACING ) );
 
 $rowShuffled = 'nino-grid-row nino-pb-5 my-row nino-grid-bottom nino-pt-4 nino-grid-row--right nino-grid-gap-3 nino-pr-2 nino-grid-row--wide nino-pl-1';
 check( '...whatever order the file has them in: it is the same row, written in that one order, and what is written reads as it was', $fileRead( 'nino-section', $rowShuffled ) === $read( $write( [ 'blocks' => [ $rowMade ] ] ) )['blocks'][0]
@@ -1164,6 +1205,63 @@ foreach( $rowSecond as $label => [ $classes, $expected ] ) {
 check( '...a second of a kind - two widths, two places, two gaps, two steps of a side -, a step the scale has not, the gap of a stack and the margins, which the row has no setting for, are custom classes of the row, kept and written back as they were: '. count( $rowSecond ). ' cases'
 	. ( $rowSecondWrong === [] ? '' : ' - '. implode( ', ', $rowSecondWrong ) ), $rowSecondWrong === [] );
 
+// The order of the columns, for each viewport by itself: the Writer says the fewest classes - the narrowest viewport as the base class, a wider one only where it differs from the one before, never an s tier, never an xl one
+$turnCases = [
+	'none'								=> [ [ false, false, false ], '' ],
+	'the narrowest'				=> [ [ true, false, false ], ' nino-grid-row--reverse nino-grid-row--m-forward' ],
+	'the narrowest and the next'	=> [ [ true, true, false ], ' nino-grid-row--reverse nino-grid-row--l-forward' ],
+	'all three'						=> [ [ true, true, true ], ' nino-grid-row--reverse' ],
+	'the middle one'				=> [ [ false, true, false ], ' nino-grid-row--m-reverse nino-grid-row--l-forward' ],
+	'the middle and the widest'	=> [ [ false, true, true ], ' nino-grid-row--m-reverse' ],
+	'the widest'					=> [ [ false, false, true ], ' nino-grid-row--l-reverse' ],
+	'the narrowest and the widest'	=> [ [ true, false, true ], ' nino-grid-row--reverse nino-grid-row--m-forward nino-grid-row--l-reverse' ],
+];
+$turnWrong = [];
+
+foreach( $turnCases as $label => [ $turned, $classes ] ) {
+
+	$turnModel = $blank;
+	$turnModel['settings']['reverse'] = array_combine( [ 's', 'm', 'l' ], $turned );
+	$classesOf = $reader::VIEWPORTS === [ 's', 'm', 'l' ] ? $writer::rowClasses( $turnModel['settings'] ) : [];
+
+	if( implode( ' ', $classesOf ) !== 'nino-grid-row'. $classes || $write( [ 'blocks' => [ $turnModel ] ] ) !== $inWrap( $fileOf( 'nino-section', 'nino-grid-row'. $classes ) )
+		|| $read( $write( [ 'blocks' => [ $turnModel ] ] ) )['blocks'][0] !== $turnModel || $fileSame( 'nino-section', 'nino-grid-row'. $classes ) === false
+		|| array_intersect( [ 'nino-grid-row--s-reverse', 'nino-grid-row--s-forward', 'nino-grid-row--xl-reverse', 'nino-grid-row--xl-forward' ], $classesOf ) !== [] )
+		$turnWrong[] = $label;
+}
+
+check( 'the order of the columns is a switch for each viewport: '. count( $turnCases ). ' combinations are written in the fewest classes - the base class for the narrowest, a tier of the next two only where it differs from the one before, never an s or an xl tier - and read back as they were set, and the classes are read and written back byte for byte'
+	. ( $turnWrong === [] ? '' : ' - '. implode( ', ', $turnWrong ) ), $turnWrong === [] && array_keys( $blank['settings']['reverse'] ) === [ 's', 'm', 'l' ] && array_filter( $blank['settings']['reverse'] ) === [] );
+$turnTiles = $blank;
+$turnTiles['settings']['tiles'] = true;
+$turnTiles['settings']['reverse'] = [ 's' => true, 'm' => false, 'l' => false ];
+check( '...a section of tiles is a row like any other: it turns round the same way, written and read back, and the rest of its row stays what it was',
+	$writer::rowClasses( $turnTiles['settings'] ) === [ 'nino-grid-row', 'nino-grid-row--reverse', 'nino-grid-row--m-forward' ] && $fileRead( 'nino-section nino-tiles', 'nino-grid-row nino-grid-row--reverse nino-grid-row--m-forward nino-grid-gap-1' )['settings']['reverse'] === [ 's' => true, 'm' => false, 'l' => false ]
+	&& $fileSame( 'nino-section nino-tiles', 'nino-grid-row nino-grid-row--reverse nino-grid-row--m-forward nino-grid-gap-1' ) === true );
+
+// What a hand writes: the switches speak the builder's own vocabulary - the base class, the m and the l tier. The classes of the s tier, of the xl tier and a bare --forward are no setting: they are classes of the row's own, kept byte for byte and never rewritten, the first class of a viewport is the setting and a second one is kept too
+$turnHand = [
+	'an s tier reverse'						=> [ 'nino-grid-row nino-grid-row--s-reverse', [ 's' => false, 'm' => false, 'l' => false ], 'nino-grid-row--s-reverse' ],
+	'an s tier forward'						=> [ 'nino-grid-row nino-grid-row--s-forward', [ 's' => false, 'm' => false, 'l' => false ], 'nino-grid-row--s-forward' ],
+	'an s tier and an m reverse'		=> [ 'nino-grid-row nino-grid-row--m-reverse nino-grid-row--s-reverse', [ 's' => false, 'm' => true, 'l' => true ], 'nino-grid-row--s-reverse' ],
+	'the base and an s tier'			=> [ 'nino-grid-row nino-grid-row--reverse nino-grid-row--s-forward', [ 's' => true, 'm' => true, 'l' => true ], 'nino-grid-row--s-forward' ],
+	'a tier that follows the one before'	=> [ 'nino-grid-row nino-grid-row--m-reverse nino-grid-row--m-forward', [ 's' => false, 'm' => true, 'l' => true ], 'nino-grid-row--m-forward' ],
+	'an xl tier'									=> [ 'nino-grid-row nino-grid-row--reverse nino-grid-row--xl-forward', [ 's' => true, 'm' => true, 'l' => true ], 'nino-grid-row--xl-forward' ],
+	'an xl tier alone'						=> [ 'nino-grid-row nino-grid-row--xl-reverse', [ 's' => false, 'm' => false, 'l' => false ], 'nino-grid-row--xl-reverse' ],
+	'a forward with no tier'			=> [ 'nino-grid-row nino-grid-row--forward', [ 's' => false, 'm' => false, 'l' => false ], 'nino-grid-row--forward' ],
+];
+$turnHandWrong = [];
+
+foreach( $turnHand as $label => [ $classes, $turned, $custom ] ) {
+
+	$settings = $fileRead( 'nino-section', $classes )['settings'];
+
+	if( $settings['reverse'] !== $turned || $settings['rowCustom'] !== $custom || $fileSame( 'nino-section', $classes ) === false )
+		$turnHandWrong[] = $label;
+}
+
+check( '...and what is written by hand outside the vocabulary is kept: the s tier, the xl tier and a bare --forward are classes of the row, read and written back byte for byte, so that a save of a section nobody touched leaves its row as it was - a template with --s-reverse, one with --reverse --s-forward (the switches say reversed everywhere, as --reverse does) - and the first class of a viewport is the setting: '. count( $turnHand ). ' cases'
+	. ( $turnHandWrong === [] ? '' : ' - '. implode( ', ', $turnHandWrong ) ), $turnHandWrong === [] );
 $padded = $fileRead( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' )['settings'];
 check( '...the padding of the section and the padding of its row are two settings: the classes of the section are the section\'s, those of the row the row\'s, whatever they say', [ $padded['pt'], $padded['pb'], $padded['rowPt'], $padded['rowPb'], $padded['custom'], $padded['rowCustom'] ] === [ '3', '6', '1', '2', '', '' ]
 	&& $fileSame( 'nino-section nino-pt-3 nino-pb-6', 'nino-grid-row nino-pt-1 nino-pb-2' ) === true );
@@ -1516,7 +1614,7 @@ check( 'an element has six sides of spacing - mt, mb, pt, pb, pl and pr, each of
 	. 3 * count( $reader::SPACING ) * count( $reader::STEPS ). ' of them'. ( $spaceWrong === [] ? '' : ' - '. implode( ', ', array_slice( $spaceWrong, 0, 5 ) ) ),
 	$spaceWrong === [] && $reader::SPACING === [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] && $reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 check( '...the six stand in one order, that of Reader::SPACING: in the defaults of a section and of a column, and in the node of a component - which has no spacing of its own but them - and each is none until a class says so',
-	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'tiles', 'ratio', 'whitespace',
+	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'reverse', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'tiles', 'ratio', 'whitespace',
 		'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
@@ -3102,6 +3200,21 @@ foreach( [ 0, 3 ] as $at )
 	}
 
 check( 'a row that is no width, a place of a row, an alignment of a row, a place of the content and an alignment of a text or of a stack that Nino.css has none of are refused the same way, the setting and the block named: '. count( $wordBad ) * 2 . ' cases'. ( $wordRefused === [] ? '' : ' - '. implode( ', ', $wordRefused ) ), $wordRefused === [] );
+
+$turnRefused = [];
+
+foreach( [ 'a switch that is a number' => [ 's' => 1 ], 'a switch that is a word' => [ 'm' => 'true' ], 'a viewport that is none' => [ 'xl' => true ], 'a map that is a word' => 'yes' ] as $what => $reverse ) {
+
+	$model = $loaded['model'];
+	$model['blocks'][0]['settings']['reverse'] = $reverse;
+	$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+	if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ 'the reverse of block 1 is no switch for each viewport' ] || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+		$turnRefused[] = $what;
+}
+
+check( '...the order of the columns is a switch for each of the three viewports in the model the Document takes, and nothing else: a switch that is none, a viewport that is none and a map that is none are refused, the setting and the block named'
+	. ( $turnRefused === [] ? '' : ' - '. implode( ', ', $turnRefused ) ), $turnRefused === [] );
 
 $wordWrong = [];
 
