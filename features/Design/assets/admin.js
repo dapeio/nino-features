@@ -1769,12 +1769,29 @@
 
 				const offered = ( response.missing || [] ).filter( function( entry ) { return entry.inList === true } );
 
-				if( offered.length > 0 && wn.confirm( design._text( '/_admin/design/theme/confirm/fonts', offered.map( function( entry ) { return entry.name } ).join(', ') ) ) === true )
-					return design._installMissing( offered, function( said, failure ) {
-						design._relist( function() { design._takeTheme( response, said, failure, stamp, edit === true ) } );
-					} );
+				const take = function() { design._takeTheme( response, [], '', stamp, edit === true ) };
 
-				design._takeTheme( response, [], '', stamp, edit === true );
+				if( offered.length === 0 )
+					return take();
+
+				// A question that cannot be asked (another one stands open) is a no: the theme is taken as it is
+				const asked = Nino.adminUi.confirm( 'routine', {
+					message : design._text( '/_admin/design/theme/confirm/fonts', offered.map( function( entry ) { return entry.name } ).join(', ') ),
+					yes : Nino.content.getText('/_admin/design/typefaces/available/install'),
+					no : Nino.content.getText('/_admin/common/label/cancel'),
+					onChoose : function( yes ) {
+
+						if( yes === false )
+							return take();
+
+						design._installMissing( offered, function( said, failure ) {
+							design._relist( function() { design._takeTheme( response, said, failure, stamp, edit === true ) } );
+						} );
+					},
+				} );
+
+				if( asked === false )
+					take();
 			} );
 		},
 
@@ -2166,9 +2183,30 @@
 
 			const name = design._themeEntry( slug ).name;
 
-			if( wn.confirm( design._text( '/_admin/design/theme/confirm/delete', name ) ) === false )
-				return;
+			Nino.adminUi.confirm( 'destructive', {
+				title : Nino.content.getText('/_admin/common/label/delete'),
+				message : design._text( '/_admin/design/theme/confirm/delete', name ),
+				yes : Nino.content.getText('/_admin/common/label/delete'),
+				no : Nino.content.getText('/_admin/common/label/cancel'),
+				onChoose : function( yes ) {
 
+					if( yes === true )
+						design._deletingTheme( slug, name );
+				},
+			} );
+		},
+
+		/**
+		 *	The deletion of a theme, once it was said yes to
+		 *
+		 *	@param		{string}	slug
+		 *	@param		{string}	name				What the answer calls it
+		 *
+		 *	@return		void
+		 */
+		_deletingTheme : function( slug, name ) {
+
+			const design = Nino.admin.design;
 			const stamp = ++design._themeStamp;
 
 			design._themeWork( true );
@@ -3337,11 +3375,12 @@
 		 *	Two steps rather than one: a draft is not a website, and the
 		 *	screen stays honest about which of the two just happened.
 		 *
-		 *	Applying asks first, every time. design/plan says what would happen
-		 *	to each of the three files, the dialog says it in words (see
-		 *	_askApply()), and only a yes sends the apply - with `force` where a
+		 *	Applying asks first, as the mode of the workbench asks it (a live site
+		 *	every time, a site that is being built not at all). design/plan says
+		 *	what would happen to each of the three files, the dialog says it in
+		 *	words (see _askApply()), and only a yes sends the apply - with `force` where a
 		 *	file is not Design's, which the dialog has just said it is about to
-		 *	replace. The same question is what gets a project out of a stylesheet
+		 *	replace - or the line of the bar says afterwards, where nothing was asked. The same question is what gets a project out of a stylesheet
 		 *	that is Design's beside a header that is not, which used to be refused
 		 *	with nothing on screen to say yes to
 		 *
@@ -3401,6 +3440,27 @@
 					} );
 				} );
 			} );
+		},
+
+		/**
+		 *	_save() with the buttons of the bar that is on screen, for the shell's Save and its Ctrl+S: the draft, or the
+		 *	draft and the apply. A pane whose bar is not drawn (the Typefaces tab, a screen nothing of which has been read) has
+		 *	no such buttons - nothing is sent, and the bar's line says nothing
+		 *
+		 *	@param		{boolean}		apply
+		 *	@param		{Function}	done				Told whether the draft was saved
+		 *
+		 *	@return		void
+		 */
+		_saveWith : function( apply, done ) {
+
+			const btn = dc.getElementById( apply === true ? 'design-apply' : 'design-save' );
+			const msg = dc.getElementById('design-msg');
+
+			if( btn === null || msg === null )
+				return done( false );
+
+			Nino.admin.design._save( apply, btn, msg, done );
 		},
 
 		/**
@@ -3465,12 +3525,14 @@
 		},
 
 		/**
-		 *	The question before an apply, in the workbench's own dialog (Nino.adminUi.choiceDialog():
-		 *	modal, Escape says no, the focus goes back to the button): what happens is in words - the
-		 *	sets that were replaced since the setup was read, which files of the website are written,
-		 *	which of them are not Design's, which shortcodes the new frames lose and that the present
-		 *	state stays as the previous version - and the paths of the files stand in a <details> under
-		 *	them, closed. Where the browser has no <dialog> the words are asked as a confirm()
+		 *	The question before an apply (Nino.adminUi.confirm(), level big), in the workbench's own dialog: what happens is in
+		 *	words - the sets that were replaced since the setup was read, which files of the website are written,
+		 *	which of them are not Design's, which shortcodes the new frames lose and that the present state stays
+		 *	as the previous version - and the paths of the files stand in a <details> under them, closed. What the
+		 *	mode adds (a live site that is not in maintenance) is the shell's paragraph under the question, and the
+		 *	paths come after it. A site that is being built is not asked: the answer is yes at once, there is no
+		 *	dialog and so nothing to hang the paths on. Where the browser has no <dialog> the words are asked as a
+		 *	confirm()
 		 *
 		 *	The dialog has no place for a <details>, so it is put in behind the text the dialog has
 		 *	drawn, which the dialog's own aria-describedby names; a dialog that was drawn otherwise gets
@@ -3485,19 +3547,18 @@
 
 			const design = Nino.admin.design;
 
-			const asked = Nino.adminUi.choiceDialog( {
-				title 		: Nino.content.getText('/_admin/design/label/apply'),
-				message 	: design._confirmText( files ),
-				choices 	: [
-					{ value : 'apply', label : Nino.content.getText('/_admin/design/confirm/yes'), kind : 'primary' },
-					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
-				],
-				onChoose 	: function( value ) { then( value === 'apply' ) },
+			const asked = Nino.adminUi.confirm( 'big', {
+				title 	: Nino.content.getText('/_admin/design/label/apply'),
+				message : design._confirmText( files ),
+				yes 		: Nino.content.getText('/_admin/design/confirm/yes'),
+				no 			: Nino.content.getText('/_admin/common/label/cancel'),
+				onChoose 	: then,
 			} );
 
 			if( asked === false )
 				return then( false );
 
+			// A question the mode did not ask has been answered and has drawn nothing
 			const text = dc.getElementById('nino-admin-choice-text');
 
 			if( text === null )
@@ -3505,7 +3566,11 @@
 
 			// One line to a fact: the line breaks of the text are the breaks of the lines
 			text.classList.add('design-confirm-text');
-			text.parentNode.insertBefore( design._confirmFiles( files ), text.nextSibling );
+
+			const note = dc.getElementById('nino-admin-choice-note');
+			const last = note ?? text;
+
+			last.parentNode.insertBefore( design._confirmFiles( files ), last.nextSibling );
 		},
 
 		/**
@@ -3651,8 +3716,27 @@
 		 */
 		_restore : function( btn ) {
 
-			if( wn.confirm( Nino.content.getText('/_admin/design/confirm/restore') ) === false )
-				return;
+			Nino.adminUi.confirm( 'destructive', {
+				title 	: Nino.content.getText('/_admin/design/label/restore'),
+				message : Nino.content.getText('/_admin/design/confirm/restore'),
+				yes 		: Nino.content.getText('/_admin/design/label/restore'),
+				no 			: Nino.content.getText('/_admin/common/label/cancel'),
+				opener 	: btn,
+				onChoose 	: function( yes ) {
+					if( yes === true )
+						Nino.admin.design._restoring( btn );
+				},
+			} );
+		},
+
+		/**
+		 *	The restore, once it was said yes to
+		 *
+		 *	@param		{Element}		btn
+		 *
+		 *	@return		void
+		 */
+		_restoring : function( btn ) {
 
 			btn.disabled = true;
 
@@ -7389,15 +7473,14 @@
 	if( typeof Nino.admin.dirty === 'object' )
 		Nino.admin.dirty.register( 'design', {
 			isDirty : function() { return Nino.admin.design._isDirty() },
-			save : function( done ) {
-
-				const btn = dc.getElementById('design-save');
-				const msg = dc.getElementById('design-msg');
-
-				if( btn === null || msg === null )
-					return done( false );
-
-				Nino.admin.design._save( false, btn, msg, done );
+			save : function( done ) { Nino.admin.design._saveWith( false, done ) },
+			/*	Ctrl+S, or Cmd+S, by the mode of the workbench: a site that is being built applies what is on screen, and
+				that apply is not asked (see _askApply()); a live one stores the draft, and applying is the person's own click,
+				with its question. The apply ends the shell's run when the draft is stored, as a Save
+				does; the rest goes on as after a click on the button	*/
+			shortcut : {
+				development : function( done ) { Nino.admin.design._saveWith( true, done ) },
+				production : function( done ) { Nino.admin.design._saveWith( false, done ) },
 			},
 			// Drawn again with the stored selection: if the exit then does not
 			// leave the page, the controls show what the model holds

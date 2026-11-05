@@ -138,6 +138,11 @@
  *												the room the accordion keeps for its heads and the floor of its
  *												body, and what is placed in the box that scrolls.
  *
+ *												The questions with a yes and a no are weighed by the workbench's mode
+ *												(Nino.adminUi.confirm()): a template's deletion is asked in both modes, the
+ *												deletion of a frame that holds others and the renaming of a section whose keys
+ *												move with it in Production only.
+ *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
 
@@ -738,6 +743,43 @@ sandbox.Nino = {
 		choiceDialog : function( options ) { questions.push( options ); return true },
 	},
 };
+
+/*	The workbench the panel asks its questions of: Nino.adminUi.confirm() weighs a question by the mode of the workbench (Nino.admin.mode.policy())
+	and draws it with choiceDialog(). The stand-in is the kernel's own call in miniature	*/
+// What the shell says of the workbench's mode: the mode of the project, and whether the maintenance page is up. A test turns both
+const shellMode = { mode : 'production', maintenance : false };
+const LIVE_NOTE = 'Visitors see this change at once.';
+
+{
+	sandbox.Nino.admin.mode = {
+		current : function() { return shellMode.mode },
+		// The shell's own table: a site that is being built asks only before what cannot be taken back, a live one asks before all three
+		policy : function( level ) {
+			const live = shellMode.mode === 'production';
+			if( level === 'routine' )
+				return { ask : live, note : '' };
+			if( level === 'big' )
+				return { ask : live, note : live === true && shellMode.maintenance === false ? LIVE_NOTE : '' };
+			return { ask : true, note : '' };
+		},
+	};
+	// The kernel's call: the policy answers whether the question is asked and what it adds; the question is the dialog's
+	sandbox.Nino.adminUi.confirm = function( level, options ) {
+		const policy = sandbox.Nino.admin.mode.policy( level );
+		if( policy.ask === false ) {
+			options.onChoose( true );
+			return true;
+		}
+		return sandbox.Nino.adminUi.choiceDialog( {
+			title : options.title, message : options.message, note : policy.note, opener : options.opener,
+			choices : [
+				{ value : 'yes', label : options.yes, kind : options.kind ?? ( level === 'routine' || level === 'big' ? 'primary' : 'danger' ) },
+				{ value : 'no', label : options.no, kind : 'secondary' },
+			],
+			onChoose : function( value ) { options.onChoose( value === 'yes' ) },
+		} );
+	};
+}
 
 vm.createContext( sandbox );
 vm.runInContext( source, sandbox, { filename : 'admin.js' } );
@@ -1784,10 +1826,10 @@ fieldOf( 0 ).value = 'start';
 const enter = pressKey( fieldOf( 0 ), 'Enter' );
 check( 'Enter takes the name: the field is gone, the name and the pencil are back, the pencil has the focus - and a section with keys under its name is asked first, since they move with it', enter.defaultPrevented === true && fieldOf( 0 ) === null && frameName( 0 ).hidden === false && pencilOf( 0 ).hidden === false
 	&& screen.activeElement === pencilOf( 0 ) && questions.length === 1 && questions[0].title === 'Rename the section' && questions[0].message === 'Rename the section "hero" to "start"? Its text keys and image slots are moved to the new name when the template is saved.'
-	&& questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'rename,cancel' && builder._doc.model.blocks[0].id === 'hero' && changes === 0 );
-questions[0].onChoose( 'cancel' );
+	&& questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'yes,no' && builder._doc.model.blocks[0].id === 'hero' && changes === 0 );
+questions[0].onChoose( 'no' );
 check( '...Cancel leaves the section as it is', builder._doc.model.blocks[0].id === 'hero' && builder._doc.model.blocks[0].renamedFrom === undefined && frameName( 0 ).textContent === 'hero' );
-questions[0].onChoose( 'rename' );
+questions[0].onChoose( 'yes' );
 check( '...Rename moves it, says where it was renamed from, and draws the preview again with the new name', builder._doc.model.blocks[0].id === 'start' && builder._doc.model.blocks[0].renamedFrom === 'hero' && frameName( 0 ).textContent === 'start' && changes === 1 && builder._unsaved( builder._doc ) === true );
 check( '...and the focus stays with the pencil: the one of the preview that was drawn again, since the one that had it is gone', screen.activeElement === pencilOf( 0 ) && screen.activeElement.isConnected === true );
 
@@ -1806,7 +1848,7 @@ screen.getElementById('builder-save').focus();
 leaving.dispatch('blur');
 check( 'leaving the field takes the name as Enter does - once: the field is gone and the question is asked', fieldOf( 1 ) === null && questions.length === 1 && frameName( 1 ).hidden === false
 	&& questions[0].message === 'Rename the section "services" to "offer"? Its text keys and image slots are moved to the new name when the template is saved.' );
-questions[0].onChoose( 'rename' );
+questions[0].onChoose( 'yes' );
 check( '...and the focus is where the person took it: the preview drawn again for the new name does not take it to the pencil', screen.activeElement === screen.getElementById('builder-save') && frameName( 1 ).textContent === 'offer' );
 check( '...and the way back to the name the section was saved with is no rename at all: nothing is asked - the keys have not moved yet - and the section is as it was saved', ( function() {
 	const section = builder._doc.model.blocks[1];
@@ -1846,7 +1888,7 @@ builder._addComponent( [ 4, 0 ], 'title' );
 rename( 4, 'questions' );
 check( '...one that holds a key is asked as a saved one is - and answered, its sources are written new under the new name: nothing is moved that was never made', ( function() {
 	const asked = questions.length === 1;
-	questions[0].onChoose( 'rename' );
+	questions[0].onChoose( 'yes' );
 	const component = builder._doc.model.blocks[4].cols[0].components[0];
 	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && JSON.stringify( component.create ) === '{}' && builder._fresh.questions === true;
 } )() );
@@ -1879,7 +1921,28 @@ heading.querySelector('.builder-rename').click();
 heading.querySelector('.builder-name-input').value = 'top';
 pressKey( heading.querySelector('.builder-name-input'), 'Enter' );
 check( '...a name that will do asks the same question about the keys', questions.length === 1 && questions[0].message === 'Rename the section "hero" to "top"? Its text keys and image slots are moved to the new name when the template is saved.' && builder._doc.model.blocks[0].id === 'hero' );
-questions[0].onChoose( 'rename' );
+check( 'the question about the keys is the panel\'s to ask as a routine one, since only the document in the editor changes - the weight is the workbench\'s: in Production it is asked, with nothing added about visitors; in Development the name is taken at once, with no question', ( function() {
+	const held = questions;
+	const section = builder._doc.model.blocks[0];
+	const was = section.id;
+	const rename = function( to ) { questions = []; builder._renameTo( [ 0 ], to, function() {}, null ) };
+	let ok = true;
+
+	rename( 'live-one' );
+	ok = ok && questions.length === 1 && questions[0].note === '' && section.id === was;
+	questions[0].onChoose( 'no' );
+	ok = ok && section.id === was;
+
+	shellMode.mode = 'development';
+	rename( 'dev-one' );
+	ok = ok && questions.length === 0 && section.id === 'dev-one';
+	shellMode.mode = 'production';
+	builder._rename( [ 0 ], was );
+
+	questions = held;
+	return ok;
+} )() );
+questions[0].onChoose( 'yes' );
 check( '...and once it is answered the title and the preview have the new name', builder._doc.model.blocks[0].id === 'top' && titleName.textContent === 'top' && frameName( 0 ).textContent === 'top' && builder._doc.model.blocks[0].renamedFrom === 'hero' && problemLine.hidden === true );
 builder._openSettings( [ 0, 0 ] );
 check( 'the dialogs of the other nodes have no name in their title and no pencil', titleName.hidden === true && heading.querySelectorAll('.builder-rename').length === 0 );
@@ -1912,13 +1975,13 @@ check( 'Escape in the field puts the id the section has back and stays in the fi
 	&& pressKey( idField().el, 'Escape' ).defaultPrevented === false );
 change( blockOf('properties'), idLabel, 'top' );
 check( 'a name that will do asks what the pencil asks, since the keys and slots of the section move with its name - and nothing is renamed until it is answered: the section, the title and the field have the id they had',
-	questions.length === 1 && questions[0].message === words['/_admin/builder/confirm/rename'].replace( '%s', 'hero' ).replace( '%s', 'top' ) && questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'rename,cancel'
+	questions.length === 1 && questions[0].message === words['/_admin/builder/confirm/rename'].replace( '%s', 'hero' ).replace( '%s', 'top' ) && questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'yes,no'
 	&& builder._doc.model.blocks[0].id === 'hero' && titleName.textContent === 'hero' && idField().el.value === 'hero' && changes === idBefore );
-questions[0].onChoose( 'cancel' );
+questions[0].onChoose( 'no' );
 check( '...No leaves everything as it is: the id, the title, the field and where the section was renamed from', builder._doc.model.blocks[0].id === 'hero' && builder._doc.model.blocks[0].renamedFrom === undefined && titleName.textContent === 'hero' && idField().el.value === 'hero' );
 questions = [];
 change( blockOf('properties'), idLabel, 'top' );
-questions[0].onChoose( 'rename' );
+questions[0].onChoose( 'yes' );
 check( '...Yes renames the section as the pencil does - it says where it was renamed from, for the server moves the keys - and the title, the field and the preview have the new name', builder._doc.model.blocks[0].id === 'top' && builder._doc.model.blocks[0].renamedFrom === 'hero' && titleName.textContent === 'top'
 	&& idField().el.value === 'top' && frameName( 0 ).textContent === 'top' && problemLine.hidden === true && changes === idBefore + 1 && builder._unsaved( builder._doc ) === true );
 questions = [];
@@ -1933,7 +1996,7 @@ change( blockOf('loop').querySelector('.builder-loop'), words['/_admin/builder/s
 builder._openBlock('properties');
 questions = [];
 change( blockOf('properties'), idLabel, 'contact-us' );
-questions[0].onChoose( 'rename' );
+questions[0].onChoose( 'yes' );
 check( 'the id of the loop that makes the sections is the id of the section, and shows the new one once the section is renamed: it is drawn again', builder._doc.model.blocks[3].id === 'contact-us' && controlOf( blockOf('loop').querySelector('.builder-loop'), loopIdLabel ).el.value === 'contact-us' && idField().el.value === 'contact-us' && titleName.textContent === 'contact-us' );
 builder._closeDialog();
 builder._addSection();
@@ -1952,7 +2015,7 @@ questions = [];
 change( blockOf('properties'), idLabel, 'questions' );
 check( '...one that holds a key is asked as a saved one is and, answered, its sources are written new under the new name - nothing is moved that was never made', ( function() {
 	const asked = questions.length === 1;
-	questions[0].onChoose( 'rename' );
+	questions[0].onChoose( 'yes' );
 	const component = builder._doc.model.blocks[4].cols[0].components[0];
 	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && builder._fresh.questions === true && idField().el.value === 'questions' && titleName.textContent === 'questions';
 } )() );
@@ -4484,14 +4547,14 @@ builder._deleteAt( [ 4 ] );
 check( '...so is a section that holds nothing', builder._doc.model.blocks.length === 4 && questions.length === 0 );
 builder._deleteAt( [ 0 ] );
 check( 'a section with something in it asks first, and nothing is deleted until the answer says so', questions.length === 1 && builder._doc.model.blocks.length === 4 && questions[0].title === 'Section' && questions[0].message === words['/_admin/builder/confirm/delete-node']
-	&& questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'delete,cancel' );
-questions[0].onChoose( 'cancel' );
+	&& questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'yes,no' );
+questions[0].onChoose( 'no' );
 check( '...Cancel leaves it', builder._doc.model.blocks.length === 4 && builder._doc.model.blocks[0].id === 'hero' );
-questions[0].onChoose( 'delete' );
+questions[0].onChoose( 'yes' );
 check( '...Delete takes it, with everything in it', builder._doc.model.blocks.length === 3 && builder._doc.model.blocks[0].id === 'services' && builder._same( builder._sel, [] ) );
 questions = [];
 builder._deleteAt( [ 0, 1 ] );
-check( 'a column with a loop asks too, and the loop takes its components with it', questions.length === 1 && questions[0].title === 'Column' && ( questions[0].onChoose( 'cancel' ), builder._doc.model.blocks[0].cols.length === 2 ) );
+check( 'a column with a loop asks too, and the loop takes its components with it', questions.length === 1 && questions[0].title === 'Column' && ( questions[0].onChoose( 'no' ), builder._doc.model.blocks[0].cols.length === 2 ) );
 questions = [];
 builder._deleteAt( [ 0, 1, 'x' ] );
 check( '...a loop is no node to delete: it is set to Static in its column, and deleting it does nothing - no question, no change', questions.length === 0 && builder._doc.model.blocks[0].cols[1].stack !== null && builder._doc.model.blocks[0].cols[1].components.length === 4 );
@@ -4499,6 +4562,42 @@ builder._doc.model.blocks[0].cols[1].stack = null;
 builder._doc.model.blocks[0].cols[1].components = [];
 builder._deleteAt( [ 0, 1 ] );
 check( '...an empty column is deleted without a question', questions.length === 0 && builder._doc.model.blocks[0].cols.length === 1 );
+check( 'the weight of a delete is the workbench\'s: a template is asked about in both modes, as one that cannot be taken back, and a no sends nothing; a frame that holds others is asked about in Production, red, with nothing added about visitors, and in Development it goes at once', ( function() {
+	const model = builder._doc.model;
+	const keep = JSON.stringify( model.blocks );
+	const selected = builder._sel;
+	const counted = changes;
+	const asked = function( how ) { questions = []; how(); return questions };
+	let ok = builder._children( model, [ 0 ] ) > 0;
+
+	[ 'production', 'development' ].forEach( function( mode ) {
+		shellMode.mode = mode;
+
+		const template = asked( function() { builder._confirmDelete( 'page-home' ) } );
+		ok = ok && template.length === 1 && template[0].choices[0].kind === 'danger' && template[0].choices[1].kind === 'secondary' && template[0].note === '';
+		const sent = requests.length;
+		template[0].onChoose( 'no' );
+		ok = ok && requests.length === sent;
+
+		const frame = asked( function() { builder._deleteAt( [ 0 ] ) } );
+
+		if( mode === 'production' ) {
+			ok = ok && frame.length === 1 && frame[0].choices[0].kind === 'danger' && model.blocks.length === JSON.parse( keep ).length && frame[0].note === '';
+			frame[0].onChoose( 'no' );
+			ok = ok && model.blocks.length === JSON.parse( keep ).length;
+		}
+		else {
+			ok = ok && frame.length === 0 && model.blocks.length === JSON.parse( keep ).length - 1;
+			model.blocks = JSON.parse( keep );
+		}
+	} );
+
+	shellMode.mode = 'production';
+	builder._sel = selected;
+	changes = counted;
+	questions = [];
+	return ok;
+} )() );
 
 doc = open();
 builder._doc.model.animate = true;
@@ -4840,7 +4939,7 @@ console.log( '\nThe refusal to delete' );
 	questions.length = 0;
 	requests.length = 0;
 	builder._confirmDelete( 'page-home' );
-	questions[questions.length - 1].onChoose( 'delete' );
+	questions[questions.length - 1].onChoose( 'yes' );
 	requests[requests.length - 1].callback( 409, { params : [ 'GET://', 'GET://contact', 'POST://form' ] } );
 	builder._el = realEl;
 	builder._loadList = realLoad;
@@ -7073,9 +7172,9 @@ check( '...moving a card moves its children with it', builder._same( builder._se
 questions = [];
 toolOf( '0.1.0', 'delete' ).click();
 check( '...deleting a card that holds children asks first, as a frame that holds work does - and the question names a component; the answer decides', questions.length === 1 && questions[0].title === 'Component' && builder._doc.model.blocks[0].cols[1].components.length === 2 );
-questions[0].onChoose('cancel');
+questions[0].onChoose( 'no' );
 check( '...Cancel leaves it where it is', builder._doc.model.blocks[0].cols[1].components.length === 2 );
-questions[0].onChoose('delete');
+questions[0].onChoose( 'yes' );
 check( '...Delete takes the card with its children out of the column, and selects the column', builder._doc.model.blocks[0].cols[1].components.length === 1 && builder._same( builder._sel, [ 0, 1 ] ) && preview().querySelectorAll('[data-path="0.1"] .builder-card').length === 1 );
 
 openCard();
@@ -7379,7 +7478,7 @@ check( '...a copy raises the stamps of the templates, of the texts and of the sl
 	calm();
 	questions = [];
 	builder._confirmDelete( 'page-home' );
-	questions[0].onChoose( 'delete' );
+	questions[0].onChoose( 'yes' );
 	requests[0].callback( 409, { code : 'builder_in_use', params : [ 'GET://' ] } );
 
 	const kept = stampsNow() === 'templates:0,texts:0,slots:0,elements:0,routes:0,navigations:0';

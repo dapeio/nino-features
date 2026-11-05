@@ -109,6 +109,14 @@
  *												which the screen is then drawn from as well;
  *												it also runs on its own.
  *
+ *												The questions the panel asks - the apply, the missing typefaces, a theme's
+ *												deletion, the way back to the previous version - are weighed by the workbench's
+ *												mode (Nino.adminUi.confirm()): the apply is asked on a live site, with what the
+ *												shell adds above the paths of the files, and not on a site that is being built;
+ *												the deletion and the way back are asked in both modes. Ctrl+S is the entry's
+ *												shortcut: Development applies, Production stores the draft, and a screen with
+ *												no bar says it did not save.
+ *
  *	Usage: node features/Design/tests/design-js-smoke.js
  */
 
@@ -155,12 +163,16 @@ const TEXT = ( function() {
 	texts['/_admin/common/label/on'] = 'on';
 	texts['/_admin/common/label/off'] = 'off';
 	texts['/_admin/common/label/rename'] = 'Rename';
+	texts['/_admin/common/label/delete'] = 'Delete';
 	texts['/_admin/common/label/save'] = 'Save';
 	texts['/_admin/common/label/cancel'] = 'Cancel';
 	texts['/_admin/common/label/back'] = 'Back to list';
 
 	return texts;
 } )();
+
+// What the shell adds under the question of a live site that is not in maintenance - the stand-in's own sentence, the shell's is not the panel's
+const LIVE_NOTE = 'Visitors see this change at once.';
 
 /**
  *	One element, with just enough of the interface admin.js reaches for
@@ -1082,8 +1094,8 @@ function panel( over, shell ) {
 	// The widths the frame was asked to be fitted at, in order - and how tall the port was then, which is what the stand-in of scaleFrame() records
 	const fitted = [];
 
-	/*	What the browser's own question does here: the text it was asked with is
-		kept, and the answer is whatever the test last said it would be - yes	*/
+	/*	What the browser's own question does here: the text it was asked with is kept - the panel asks none, and the checks hold it to that -, and the answer is
+		whatever the test last said it would be - yes	*/
 	const confirms = [];
 	let confirmAnswer = true;
 
@@ -1287,6 +1299,13 @@ function panel( over, shell ) {
 				text.id = 'nino-admin-choice-text';
 				text.textContent = options.message;
 				body.appendChild( text );
+				// What the shell adds under the question, as the kernel draws it: a paragraph of its own
+				if( typeof options.note === 'string' && options.note !== '' ) {
+					const note = element('p');
+					note.id = 'nino-admin-choice-note';
+					note.textContent = options.note;
+					body.appendChild( note );
+				}
 				const buttons = element('div');
 				buttons.className = 'nino-admin-dialog-actions';
 				const ask = { options : options, root : root, open : true, text : text, buttons : buttons,
@@ -1344,6 +1363,42 @@ function panel( over, shell ) {
 
 	// The shell's registry of unsaved input: nothing is unsaved in it unless a test brings its own
 	Nino.admin = { dirty : ( shell || {} ).dirty || { register : function() {}, isDirty : function() { return false }, refresh : function() {} } };
+
+	/*	The workbench's mode and the questions it weighs - as the kernel does. `levels` keeps each question the panel put to it, with
+		the level it was put at and whether the mode asked it. A question that is asked is the dialog's, drawn and held until a test answers it (settle()), as
+		the kernel draws it: one at a time, the answer that goes on red for a destructive level	*/
+	const shellMode = { mode : 'production', maintenance : false };
+	const levels = [];
+
+	{
+		Nino.admin.mode = {
+			current : function() { return shellMode.mode },
+			policy : function( level ) {
+				const live = shellMode.mode === 'production';
+				if( level === 'routine' )
+					return { ask : live, note : '' };
+				if( level === 'big' )
+					return { ask : live, note : live === true && shellMode.maintenance === false ? LIVE_NOTE : '' };
+				return { ask : true, note : '' };
+			},
+		};
+		Nino.adminUi.confirm = function( level, options ) {
+			const policy = Nino.admin.mode.policy( level );
+			levels.push( { level : level, options : options, asked : policy.ask } );
+			if( policy.ask === false ) {
+				options.onChoose( true );
+				return true;
+			}
+			return Nino.adminUi.choiceDialog( {
+				title : options.title, message : options.message, note : policy.note, opener : options.opener,
+				choices : [
+					{ value : 'yes', label : options.yes, kind : options.kind ?? ( level === 'routine' || level === 'big' ? 'primary' : 'danger' ) },
+					{ value : 'no', label : options.no, kind : 'secondary' },
+				],
+				onChoose : function( value ) { options.onChoose( value === 'yes' ) },
+			} );
+		};
+	}
 
 	const sandbox = {
 		console			: console,
@@ -1505,8 +1560,24 @@ function panel( over, shell ) {
 			const observer = typeset.observers[typeset.observers.length - 1];
 			observer.callback( [ { isIntersecting : true, target : row } ] );
 		},
-		/** What the next confirm() answers */
+		/** What settle() answers the question that stands open with */
 		willConfirm	: function( answer ) { confirmAnswer = answer },
+		/** The question of the workbench that stands open, answered as willConfirm() said: the apply's is answered by the check that looks at it, with choose() */
+		settle		: function() {
+			const open = asks.filter( function( ask ) { return ask.open === true } )[0];
+			if( open !== undefined )
+				open.choose( confirmAnswer === false ? 'no' : 'yes' );
+		},
+		/** The questions put to the user, by their text: the dialogs of the workbench, the apply's among them */
+		questions	: function() {
+			return asks.map( function( ask ) { return ask.options.message } );
+		},
+		/** A question of the workbench's own that stands open, so that the next one cannot be asked */
+		holdOpen	: function() { Nino.adminUi.choiceDialog( { message : 'held', choices : [ { value : 'ok', label : 'OK', kind : 'primary' } ], onChoose : function() {} } ) },
+		/** The mode the workbench is in, and whether its maintenance page is up  */
+		setMode	: function( mode, maintenance ) { shellMode.mode = mode; shellMode.maintenance = maintenance === true },
+		/** The questions put to the workbench's confirm(), in order: { level, options, asked } */
+		levels	: levels,
 		/** The oldest request not yet answered, answered - the way the server would */
 		answer	: function( status, response ) {
 			const next = requests.shift();
@@ -2110,7 +2181,7 @@ const kernelTabs = byTag( headed.registry, 'button' );
 const tableObjectKeys = headed.design._data.layout.objects;
 
 check( 'the shell asks two namespaces for the screens of the pane, by the uris of the tabs: Nino.admin.design for the panel\'s own screen and Nino.admin[\'design-typefaces\'] for the loader - each a screen of its own that answers showCurrent() - and the setup is a namespace of the panel\'s, Nino.admin.design.views',
-	Object.keys( headed.admin ).filter( function( key ) { return key !== 'dirty' } ).sort().join() === 'design,design-typefaces'
+	Object.keys( headed.admin ).filter( function( key ) { return key !== 'dirty' && key !== 'mode' } ).sort().join() === 'design,design-typefaces'
 	&& PANE.slice( 0, 2 ).every( function( uri ) { return typeof headed.admin[uri].showCurrent === 'function' && headed.admin[uri].showCurrent !== headed.admin.design.init } )
 	&& headed.setup === headed.admin.design.views && headed.admin.design !== headed.setup && headed.setup !== headed.faces && headed.faces === headed.admin['design-typefaces']
 	&& kernelTabs.map( function( tab ) { return tab.dataset.tab } ).join() === PANE.join() && kernelTabs.map( function( tab ) { return tab.id } ).join() === PANE.map( function( uri ) { return 'admin-tabbutton-'+ uri } ).join() );
@@ -7717,6 +7788,11 @@ const delivered = [
 ];
 
 /** The words of a file in a dialog before an apply: the one of its part, the stylesheet being the look */
+// The paths of the files under a question: what stands right before its buttons, after the text and after what the shell adds to it
+const detailsOf = function( ask ) {
+	const kids = ask.buttons.parent.children;
+	return kids[kids.indexOf( ask.buttons ) - 1];
+};
 const fileWord = function( part ) { return TEXT['/_admin/design/confirm/file/'+ ( part || 'look' )] };
 
 /** The requests a click on "Apply to website" sends, in order */
@@ -7750,7 +7826,7 @@ const lines = question === undefined ? [] : question.options.message.split('\n')
 
 check( 'the question is the workbench\'s own dialog and no confirm() of the browser: titled by the button that asked, with the choice that applies for the primary one and the one that does not for the secondary',
 	asking.confirms.length === 0 && asking.asks.length === 1 && question.options.title === TEXT['/_admin/design/label/apply']
-	&& question.options.choices.map( function( choice ) { return choice.value+ ':'+ choice.kind } ).join() === 'apply:primary,cancel:secondary'
+	&& question.options.choices.map( function( choice ) { return choice.value+ ':'+ choice.kind } ).join() === 'yes:primary,no:secondary'
 	&& question.options.choices[0].label === TEXT['/_admin/design/confirm/yes'] && typeof question.options.onChoose === 'function' );
 check( '...it names the three files by what they are for - the look, the header, the footer -, which of them are not Design\'s, and the shortcode a frame would lose: in words, with no path in the text',
 	lines.indexOf( say( '/_admin/design/confirm/apply', [ fileWord( '' ), fileWord( 'header' ), fileWord( 'footer' ) ].join(', ') ) ) !== -1
@@ -7762,7 +7838,7 @@ check( '...says the present state is kept first, one fact to a line, and no word
 
 /*	The paths are in a <details> that the dialog is given after it has drawn its text, behind it and before the buttons: closed, a summary, and a line for each file - the path
 	and what happens to it, in words	*/
-const detail = question.text.nextSibling;
+const detail = detailsOf( question );
 const detailLines = byTag( detail, 'li' ).map( function( item ) { return [ byTag( item, 'code' )[0].textContent, byClass( item, 'design-confirm-state' )[0].textContent.trim() ] } );
 
 check( 'the paths of the files are in a closed <details> under the text and before the buttons: its summary and a line for each file - the path, as a project knows it, and what happens to the file in words',
@@ -7774,7 +7850,7 @@ check( 'the paths of the files are in a closed <details> under the text and befo
 		[ 'templates/frame-footer.tpl', TEXT['/_admin/design/confirm/state/foreign'] ],
 	] ) && hasClass( question.text, 'design-confirm-text' ) );
 
-question.choose('apply');
+question.choose('yes');
 
 check( '...and only then is the apply sent, with force because a file is not Design\'s',
 	JSON.stringify( endpoints( asking ) ) === JSON.stringify( [ 'apply' ] ) && asking.requests[0].payload.force === true );
@@ -7793,7 +7869,7 @@ const declined = panel( {} );
 declined.byId('design-apply').fire('click');
 declined.answer( 200, {} );
 declined.answer( 200, { files : delivered } );
-declined.asks[0].choose('cancel');
+declined.asks[0].choose('no');
 
 check( 'no in the dialog sends no apply - it reloads the panel',
 	JSON.stringify( endpoints( declined ) ) === JSON.stringify( [ 'list' ] ) && declined.asks.length === 1 && declined.confirms.length === 0 );
@@ -7815,8 +7891,8 @@ ours.answer( 200, { files : [
 	{ target : '/templates/frame-footer.tpl', part : 'footer', exists : true, state : 'ours', changes : false, lost : [] },
 ] } );
 const oursLines = ours.asks[0].options.message.split('\n');
-const oursDetail = byTag( ours.asks[0].text.nextSibling, 'li' ).map( function( item ) { return byClass( item, 'design-confirm-state' )[0].textContent.trim() } );
-ours.asks[0].choose('apply');
+const oursDetail = byTag( detailsOf( ours.asks[0] ), 'li' ).map( function( item ) { return byClass( item, 'design-confirm-state' )[0].textContent.trim() } );
+ours.asks[0].choose('yes');
 
 check( 'with every file Design\'s the apply is sent without force, and nothing is said of files that are not Design\'s',
 	JSON.stringify( endpoints( ours ) ) === JSON.stringify( [ 'apply' ] ) && ours.requests[0].payload.force === false
@@ -7835,7 +7911,7 @@ edited.answer( 200, { files : [
 	{ target : '/templates/frame-footer.tpl', part : 'footer', exists : true, state : 'edited', changes : true, lost : [] },
 ] } );
 const editedLines = edited.asks[0].options.message.split('\n');
-edited.asks[0].choose('apply');
+edited.asks[0].choose('yes');
 
 check( 'a frame that was only edited gets force too - the refusal has something to answer to now - and the dialog says which: by what it is for, and in the details as edited by hand',
 	JSON.stringify( endpoints( edited ) ) === JSON.stringify( [ 'apply' ] ) && edited.requests[0].payload.force === true
@@ -7879,7 +7955,7 @@ const drafting = panel( {} );
 drafting.byId('design-save').fire('click');
 drafting.answer( 200, {} );
 
-check( 'saving a draft sends no plan and asks nothing', drafting.confirms.length === 0 && JSON.stringify( endpoints( drafting ) ) === JSON.stringify( [ 'list' ] ) );
+check( 'saving a draft sends no plan and asks nothing', drafting.questions().length === 0 && JSON.stringify( endpoints( drafting ) ) === JSON.stringify( [ 'list' ] ) );
 
 drafting.answer( 200, listing( { current : false } ) );
 
@@ -7917,13 +7993,15 @@ check( '...and the card that used to hold the button, and the line that dated th
 
 kept.willConfirm( false );
 restoreButton.fire('click');
+kept.settle();
 
 check( 'the button asks first, and a no sends nothing - it is the restore of the screen that is called, with the button itself',
-	kept.confirms.length === 1 && kept.confirms[0] === TEXT['/_admin/design/confirm/restore'] && kept.requests.length === 0
+	kept.questions().length === 1 && kept.questions()[0] === TEXT['/_admin/design/confirm/restore'] && kept.requests.length === 0
 	&& restoreCalls.length === 1 && restoreCalls[0] === restoreButton );
 
 kept.willConfirm( true );
 restoreButton.fire('click');
+kept.settle();
 
 check( 'a yes posts the restore', JSON.stringify( endpoints( kept ) ) === JSON.stringify( [ 'restore' ] ) );
 
@@ -7936,6 +8014,7 @@ check( 'and the panel is drawn again from the new state, saying so in the line o
 const noted = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 noted.willConfirm( true );
 noted.byId('design-restore').fire('click');
+noted.settle();
 noted.answer( 200, { notes : [ 'restored, but could not keep the version it replaced in data/design-previous.php' ] } );
 noted.answer( 200, listing( { current : false } ) );
 
@@ -7945,11 +8024,27 @@ check( 'a restore that went through with a note says restored, and the note besi
 
 const failing = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 failing.byId('design-restore').fire('click');
+failing.settle();
 failing.answer( 500, { error : 'could not write /assets/theme.css' } );
 
 check( 'a restore that failed says why and does not redraw: in the line of the bar, which carries the class of a failure and the whole of it as its title',
 	( failing.byId('design-msg') || {} ).textContent === '(500) could not write /assets/theme.css' && failing.line().className === 'nino-admin-error'
 	&& failing.line().title === '(500) could not write /assets/theme.css' && failing.requests.length === 0 );
+
+/*	The weight of the questions that were the browser's confirm(): the way back to the previous version cannot be taken back as the workbench counts - destructive -,
+	and is asked in both modes	*/
+const MODES = [ 'production', 'development' ];
+
+MODES.forEach( function( mode ) {
+	const weighed = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
+	weighed.setMode( mode );
+	weighed.byId('design-restore').fire('click');
+	weighed.settle();
+	check( 'the way back to the previous version asks in '+ mode+ ', before anything is sent: a destructive question, with the label of the button for the answer that goes on and Cancel for the other, the focus coming back to the button',
+		weighed.questions().length === 1 && weighed.questions()[0] === TEXT['/_admin/design/confirm/restore'] && JSON.stringify( endpoints( weighed ) ) === JSON.stringify( [ 'restore' ] )
+		&& weighed.levels.length === 1 && weighed.levels[0].level === 'destructive' && weighed.levels[0].asked === true && weighed.levels[0].options.yes === TEXT['/_admin/design/label/restore']
+		&& weighed.levels[0].options.no === TEXT['/_admin/common/label/cancel'] && weighed.levels[0].options.opener === weighed.byId('design-restore') );
+} );
 
 // --- Asking the workbench ----------------------------------------------------------
 
@@ -8015,13 +8110,14 @@ nudge( tracked );
 let savedFor = [];
 registered.save( function( ok ) { savedFor.push( ok ) } );
 check( 'the shell\'s Save stores the draft - and asks nothing, since applying is a question of its own',
-	JSON.stringify( endpoints( tracked ) ) === JSON.stringify( [ 'save' ] ) && tracked.confirms.length === 0 && savedFor.length === 0 );
+	JSON.stringify( endpoints( tracked ) ) === JSON.stringify( [ 'save' ] ) && tracked.questions().length === 0 && savedFor.length === 0 );
 
 registered.save( function( ok ) { savedFor.push( ok ) } );
 check( '...a second Save while the first is on its way says it did not save', savedFor.length === 1 && savedFor[0] === false );
 
 tracked.answer( 200, {} );
 check( '...and the first says it did, once the draft is stored', savedFor.length === 2 && savedFor[1] === true );
+check( '...and that is all the shell\'s Save sends: the screen is read again from the store - no plan, no apply', JSON.stringify( endpoints( tracked ) ) === JSON.stringify( [ 'list' ] ) );
 
 const refused = panel( {}, { dirty : registry } );
 nudge( refused );
@@ -8041,6 +8137,110 @@ check( '...and the shell showing the tab again does not wipe the reason, nor the
 registry.entries['design'].discard();
 check( '...while a discard draws the stored selection again, so a leave that does not happen shows the truth',
 	registry.entries['design'].isDirty() === false && refused.byId('design-reset').hidden === true );
+
+// --- The weight of an apply, and Ctrl+S, by the mode of the workbench -----------------------------------------
+
+/*	The press on Apply, up to the answer of design/plan: the screen at the point where the panel asks, or does not. A kernel that weighs its questions asks by the mode
+	(the question is of the level big); one that does not asks every time, and the mode is no business of it	*/
+function planned( mode, maintenance ) {
+
+	const screen = panel( {} );
+
+	screen.setMode( mode, maintenance );
+	screen.byId('design-apply').fire('click');
+	screen.answer( 200, {} );
+	screen.answer( 200, { files : delivered.map( function( file ) { return Object.assign( {}, file ) } ) } );
+
+	return screen;
+}
+
+/** What stands in the dialog of a question, in order: the title, the text, what the shell adds, the paths, the buttons - by what they are */
+function dialogOrder( ask ) {
+	return ask.buttons.parent.children.map( function( el ) { return el.id || el.tagName.toLowerCase() } ).join();
+}
+
+const liveApply = planned( 'production', false );
+const liveAsk = liveApply.asks[0];
+
+check( 'an apply on a live site is asked about, in the workbench\'s dialog, with the words of the apply and the two answers of a question - and the panel owns no sentence about the site being live'
+	+ ': it is a question of the level big',
+	liveApply.asks.length === 1 && liveAsk.options.title === TEXT['/_admin/design/label/apply'] && liveAsk.options.choices[0].label === TEXT['/_admin/design/confirm/yes'] && liveAsk.options.choices[1].label === TEXT['/_admin/common/label/cancel']
+	&& liveApply.levels.length === 1 && liveApply.levels[0].level === 'big' && liveApply.levels[0].asked === true );
+
+check( 'what the shell adds to the question stands as a paragraph of its own between the text and the paths, in that order: the question, the note, the files, the buttons - the paths do not come between the question and what the shell says about it',
+	dialogOrder( liveAsk ) === 'h2,nino-admin-choice-text,nino-admin-choice-note,details,div'
+		&& liveApply.byId('nino-admin-choice-note').textContent === LIVE_NOTE && detailsOf( liveAsk ).tagName === 'DETAILS' );
+
+const kids = liveAsk.buttons.parent.children;
+check( '...and the note is the one the shell gave, the details follow it directly', kids.indexOf( detailsOf( liveAsk ) ) === kids.indexOf( liveApply.byId('nino-admin-choice-note') ) + 1 );
+
+const quiet = planned( 'production', true );
+check( 'a live site in maintenance is asked about as well, with nothing added: no paragraph for the shell, the paths right after the text', quiet.asks.length === 1 && quiet.byId('nino-admin-choice-note') === null
+	&& dialogOrder( quiet.asks[0] ) === 'h2,nino-admin-choice-text,details,div' );
+
+const building = planned( 'development', false );
+check( 'a site that is being built is not asked: design/plan is followed by the apply at once, with no dialog drawn, and the question was the shell\'s to answer',
+	building.asks.length === 0 && JSON.stringify( endpoints( building ) ) === JSON.stringify( [ 'apply' ] ) && building.levels.length === 1 && building.levels[0].level === 'big' && building.levels[0].asked === false );
+check( '...with the take-over of files that are not Design\'s all the same - the plan said so, and the line of the bar says it afterwards where the dialog did not', building.requests[0].payload.force === true );
+
+building.answer( 200, {} );
+building.answer( 200, listing( { exists : true } ) );
+check( '...and the line says that it applied, that files were replaced and what to put back by hand', ( building.byId('design-msg') || {} ).textContent === [ TEXT['/_admin/design/msg/applied'], TEXT['/_admin/design/msg/takenover'], say( '/_admin/design/msg/lost', '[consent-settings]' ) ].join(' ') );
+
+// Ctrl+S: the shell calls what the entry of the panel says for the mode it is in, whether anything is unsaved or not
+const typed = panel( {}, { dirty : registry } );
+const typedEntry = registry.entries['design'];
+
+check( 'the entry has a shortcut with a function for each of the two modes of the workbench, and for no other - the shell names them development and production',
+	typeof typedEntry.shortcut === 'object' && typedEntry.shortcut !== null && Object.keys( typedEntry.shortcut ).sort().join() === 'development,production'
+	&& typeof typedEntry.shortcut.development === 'function' && typeof typedEntry.shortcut.production === 'function' );
+
+( function() {
+	const told = [];
+	typedEntry.shortcut.production( function( ok ) { told.push( ok ) } );
+	check( 'in Production Ctrl+S stores the draft and goes no further: one save, with the whole selection, and nothing asked', JSON.stringify( endpoints( typed ) ) === JSON.stringify( [ 'save' ] ) && told.length === 0 && typed.asks.length === 0 && typed.confirms.length === 0 );
+	typed.answer( 200, {} );
+	check( '...the shell is told that it was stored, once; the screen is drawn again from the store, and neither a plan nor an apply is asked for', JSON.stringify( told ) === JSON.stringify( [ true ] ) && JSON.stringify( endpoints( typed ) ) === JSON.stringify( [ 'list' ] ) );
+	typed.answer( 200, listing( {} ) );
+	check( '...and the line of the bar says the draft is saved', ( typed.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/saved'] && endpoints( typed ).length === 0 && told.length === 1 );
+} )();
+
+( function() {
+	const screen = panel( {}, { dirty : registry } );
+	const entry = registry.entries['design'];
+	const told = [];
+	screen.setMode( 'development' );
+	entry.shortcut.development( function( ok ) { told.push( ok ) } );
+	check( 'in Development Ctrl+S applies what is on screen: it begins with the save of the draft, and the run of the shell is over when the draft is stored', JSON.stringify( endpoints( screen ) ) === JSON.stringify( [ 'save' ] ) && told.length === 0 );
+	entry.shortcut.development( function( ok ) { told.push( ok ) } );
+	check( '...the button of the apply is off while the run is on its way, so that a second one says it did not save and sends nothing more', screen.byId('design-apply').disabled === true && JSON.stringify( told ) === JSON.stringify( [ false ] ) && JSON.stringify( endpoints( screen ) ) === JSON.stringify( [ 'save' ] ) );
+	told.length = 0;
+	screen.answer( 200, {} );
+	check( '...then it asks design/plan, as the button does', JSON.stringify( told ) === JSON.stringify( [ true ] ) && JSON.stringify( endpoints( screen ) ) === JSON.stringify( [ 'plan' ] ) );
+	screen.answer( 200, { files : delivered.map( function( file ) { return Object.assign( {}, file ) } ) } );
+
+	check( '...and applies without a question, on a site that is being built', screen.asks.length === 0 && JSON.stringify( endpoints( screen ) ) === JSON.stringify( [ 'apply' ] ) && told.length === 1 );
+} )();
+
+( function() {
+	// The bar is not there: a screen nothing of which has been read, which has no button to press
+	const cold = panel( {}, { dirty : registry, cold : true } );
+	const entry = registry.entries['design'];
+	const told = [];
+	[ 'development', 'production' ].forEach( function( mode ) { entry.shortcut[mode]( function( ok ) { told.push( ok ) } ) } );
+	check( 'with no bar on screen both functions say they did not save, once each, send nothing and say nothing', JSON.stringify( told ) === JSON.stringify( [ false, false ] ) && cold.requests.length === 0 && cold.byId('design-msg') === null );
+} )();
+
+( function() {
+	const screen = panel( {}, { dirty : registry } );
+	const entry = registry.entries['design'];
+	const told = [];
+	entry.shortcut.production( function( ok ) { told.push( ok ) } );
+	entry.shortcut.production( function( ok ) { told.push( ok ) } );
+	check( 'a second Ctrl+S while the first is on its way says it did not save and sends nothing more', JSON.stringify( told ) === JSON.stringify( [ false ] ) && JSON.stringify( endpoints( screen ) ) === JSON.stringify( [ 'save' ] ) );
+	screen.answer( 500, { error : 'could not write data/design.php' } );
+	check( '...and a draft that is turned down is a Ctrl+S that did not save, with the reason in the line of the bar', JSON.stringify( told ) === JSON.stringify( [ false, false ] ) && ( screen.byId('design-msg') || {} ).textContent === '(500) could not write data/design.php' );
+} )();
 
 // One draft, one question, in both modes of the screen: the list of the themes and the views answer to the one entry
 const unsavedMoved = panel( {}, { dirty : registry } );
@@ -8302,11 +8502,12 @@ check( '...and the focus is on the object that is open then, as it is where the 
 const editingFonts = themed();
 editingFonts.byId('design-theme-edit-magazine').fire('click');
 editingFonts.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter' } ), [ INTER ] ) );
+editingFonts.settle();
 editingFonts.answer( 200, { msg : INTER_INSTALLED } );
 editingFonts.answer( 200, listing( { theme : 'mein-theme', css : ownCss, active : own, options : optionsWith( [ 'inter' ] ) } ) );
 
 check( '...the typefaces the theme names are asked for and installed first, the list read again, and then the views open on the theme',
-	editingFonts.confirms.length === 1 && editingFonts.design._screen === 'setup' && editingFonts.design._edit.theme === 'magazine' && editingFonts.design._edit.fonts.title.family === 'inter' && editingFonts.byId('design-back') !== null );
+	editingFonts.questions().length === 1 && editingFonts.design._screen === 'setup' && editingFonts.design._edit.theme === 'magazine' && editingFonts.design._edit.fonts.title.family === 'inter' && editingFonts.byId('design-back') !== null );
 
 const refusedEdit = themed();
 refusedEdit.byId('design-theme-edit-magazine').fire('click');
@@ -8578,7 +8779,7 @@ flagged.show( 'type' );
 flagged.byId('design-apply').fire('click');
 flagged.answer( 200, {} );
 flagged.answer( 200, { files : delivered } );
-flagged.asks[0].choose('apply');
+flagged.asks[0].choose('yes');
 flagged.answer( 200, {} );
 flagged.answer( 200, listing( { theme : 'mein-theme', running : 'mein-theme', css : ownCss, active : own, size : 1, exists : true } ) );
 
@@ -8623,6 +8824,7 @@ flaggedDelete.move( sizeStrip, 1 );
 const flaggedDeleteChips = tabChips( flaggedDelete ).length;
 flaggedDelete.back();
 flaggedDelete.byId('design-theme-delete-mein-theme').fire('click');
+flaggedDelete.settle();
 flaggedDelete.answer( 200, { themes : THEMES.filter( function( theme ) { return theme.shipped === true } ), theme : '' } );
 
 check( 'the theme that is deleted while it is the active one leaves the screen with none to differ from, and the chip goes from the label although the screen that is open is the list',
@@ -8664,9 +8866,10 @@ check( '...and a press on another button meanwhile posts nothing, whichever it i
 	&& themeControls( loading ).every( function( control ) { return control.disabled === true } ) && loading.design._themeRename === '' );
 
 loading.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
+loading.settle();
 
 check( 'an answer that names typefaces the project has not installed asks once, naming those the list of the Typefaces tab has - one it has not is not offered - and installs the first; nothing is drawn yet',
-	loading.confirms.length === 1 && loading.confirms[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter' )
+	loading.questions().length === 1 && loading.questions()[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter' )
 	&& loading.requests.length === 1 && loading.requests[0].endpoint === 'webfonts/install' && JSON.stringify( loading.requests[0].payload ) === JSON.stringify( { slug : 'inter' } )
 	&& loading.design._edit.theme === 'mein-theme' && loading.design._themeBusy === true );
 
@@ -8726,9 +8929,10 @@ const declining = themed();
 declining.willConfirm( false );
 declining.byId('design-theme-load-magazine').fire('click');
 declining.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
+declining.settle();
 
 check( 'a no installs nothing and takes the theme over at once: the typefaces that are not here are the face of Nino, and every one of them is named in the bar, those the list has as well',
-	declining.confirms.length === 1 && declining.requests.length === 0 && declining.design._edit.theme === 'magazine' && declining.design._edit.fonts.title.family === '' && declining.design._edit.fonts.text.family === ''
+	declining.questions().length === 1 && declining.requests.length === 0 && declining.design._edit.theme === 'magazine' && declining.design._edit.fonts.title.family === '' && declining.design._edit.fonts.text.family === ''
 	&& declining.line().textContent === [ say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'Inter, nowhere-sans' ) ].join(' ') && declining.line().className === 'nino-admin-hint'
 	&& declining.design._themeBusy === false );
 
@@ -8736,9 +8940,33 @@ check( 'a no installs nothing and takes the theme over at once: the typefaces th
 const failingInstall = themed();
 failingInstall.byId('design-theme-load-magazine').fire('click');
 failingInstall.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter', text : 'lora' } ), [ INTER, LORA ] ) );
+failingInstall.settle();
 
 check( 'the typefaces are named together, in the order the theme names them',
-	failingInstall.confirms[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter, Lora' ) && failingInstall.requests[0].endpoint === 'webfonts/install' && failingInstall.requests[0].payload.slug === 'inter' );
+	failingInstall.questions()[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter, Lora' ) && failingInstall.requests[0].endpoint === 'webfonts/install' && failingInstall.requests[0].payload.slug === 'inter' );
+
+/*	A routine question: a live site asks before it installs the typefaces a theme names, a site that is being built installs them - the first of them is on its way at once	*/
+MODES.forEach( function( mode ) {
+	const weighed = themed();
+	const asked = mode === 'production';
+	weighed.setMode( mode );
+	weighed.byId('design-theme-load-magazine').fire('click');
+	weighed.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
+	weighed.settle();
+	check( 'the typefaces a theme names are '+ ( asked === true ? 'asked about' : 'installed without a question' )+ ' in '+ mode+ ': a routine question, the answer that goes on called Install',
+		weighed.questions().length === ( asked === true ? 1 : 0 ) && weighed.requests.length === 1 && weighed.requests[0].endpoint === 'webfonts/install'
+		&& weighed.levels.length === 1 && weighed.levels[0].level === 'routine' && weighed.levels[0].asked === asked && weighed.levels[0].options.yes === TEXT['/_admin/design/typefaces/available/install'] );
+} );
+
+{
+	// A question that cannot be asked, since another stands open, is a no: the theme is taken as it is and the screen is free again
+	const refused = themed();
+	refused.holdOpen();
+	refused.byId('design-theme-load-magazine').fire('click');
+	refused.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
+	check( 'the typefaces a theme names are not installed when their question cannot be asked: no install is sent, the theme is the screen\'s and the panel is not left busy',
+		refused.requests.length === 0 && refused.design._edit.theme === 'magazine' && refused.design._themeBusy === false && refused.levels.length === 1 && refused.levels[0].asked === true );
+}
 
 failingInstall.answer( 500, { error : 'could not fetch the family' } );
 
@@ -8756,6 +8984,7 @@ check( '...(the theme is the working copy; the typefaces that did not come are t
 const unlisted = themed();
 unlisted.byId('design-theme-load-magazine').fire('click');
 unlisted.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter' } ), [ INTER ] ) );
+unlisted.settle();
 unlisted.answer( 200, { msg : INTER_INSTALLED } );
 unlisted.answer( 500, {} );
 
@@ -8767,6 +8996,7 @@ check( 'a list that cannot be read after the installs does not hold the theme ba
 const installing = themed();
 installing.byId('design-theme-load-magazine').fire('click');
 installing.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter', text : 'lora' } ), [ INTER, LORA ] ) );
+installing.settle();
 installing.answer( 200, { msg : INTER_INSTALLED } );
 
 check( 'a yes installs them one after the other: the second is asked for only when the first is answered',
@@ -8785,7 +9015,7 @@ plainLoad.byId('design-theme-load-nino').fire('click');
 plainLoad.answer( 200, themeLoad( 'nino', snapshotOf( listing() ), [] ) );
 
 check( 'a theme that names nothing the project lacks is taken over without a question, the bar saying only that it is loaded - and quietly',
-	plainLoad.confirms.length === 0 && plainLoad.requests.length === 0 && plainLoad.design._edit.theme === 'nino' && plainLoad.line().textContent === say( '/_admin/design/theme/msg/loaded', 'Nino' ) && plainLoad.line().className === ''
+	plainLoad.questions().length === 0 && plainLoad.requests.length === 0 && plainLoad.design._edit.theme === 'nino' && plainLoad.line().textContent === say( '/_admin/design/theme/msg/loaded', 'Nino' ) && plainLoad.line().className === ''
 	&& plainLoad.design._isDirty() === true && plainLoad.design._themeChanged() === false && tabChips( plainLoad ).length === 0 );
 
 /*	A brand colour is the project's. A theme that names no colours - every theme the feature ships - is taken over with the colours the screen has, and the
@@ -8949,7 +9179,7 @@ check( 'the way back while a load is on its way switches the buttons on again',
 late.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
 
 check( '...and the answer that comes after it draws over nothing: the screen is the stored selection and the bar says it was reverted',
-	late.design._edit.theme === 'mein-theme' && late.design._isDirty() === false && late.line().textContent === TEXT['/_admin/design/msg/reverted'] && late.confirms.length === 0 );
+	late.design._edit.theme === 'mein-theme' && late.design._isDirty() === false && late.line().textContent === TEXT['/_admin/design/msg/reverted'] && late.questions().length === 0 );
 
 console.log('');
 
@@ -9200,12 +9430,24 @@ check( '...and the focus the press had is on the Duplicate button of that row ag
 const deleting = themed();
 deleting.willConfirm( false );
 deleting.byId('design-theme-delete-mein-theme').fire('click');
+deleting.settle();
 
 check( 'Delete asks first, naming the theme, and a no does nothing',
-	deleting.confirms.length === 1 && deleting.confirms[0] === say( '/_admin/design/theme/confirm/delete', 'My theme' ) && deleting.requests.length === 0 && deleting.design._themeBusy === false );
+	deleting.questions().length === 1 && deleting.questions()[0] === say( '/_admin/design/theme/confirm/delete', 'My theme' ) && deleting.requests.length === 0 && deleting.design._themeBusy === false );
+
+MODES.forEach( function( mode ) {
+	const weighed = themed();
+	weighed.setMode( mode );
+	weighed.byId('design-theme-delete-mein-theme').fire('click');
+	weighed.settle();
+	check( '...in '+ mode+ ' as well - deleting a theme cannot be taken back, and the shell asks it whatever the mode'+ ': a destructive question, the answer that goes on called Delete',
+		weighed.questions().length === 1 && weighed.questions()[0] === say( '/_admin/design/theme/confirm/delete', 'My theme' ) && JSON.stringify( endpoints( weighed ) ) === JSON.stringify( [ 'theme/delete' ] )
+		&& weighed.levels.length === 1 && weighed.levels[0].level === 'destructive' && weighed.levels[0].asked === true && weighed.levels[0].options.yes === TEXT['/_admin/common/label/delete'] && weighed.levels[0].options.no === TEXT['/_admin/common/label/cancel'] );
+} );
 
 deleting.willConfirm( true );
 deleting.byId('design-theme-delete-mein-theme').fire('click');
+deleting.settle();
 
 check( '...a yes posts design/theme/delete with the slug', deleting.requests.length === 1 && deleting.requests[0].endpoint === 'theme/delete' && JSON.stringify( deleting.requests[0].payload ) === JSON.stringify( { slug : 'mein-theme' } ) );
 
@@ -9219,6 +9461,7 @@ check( 'the answer takes the theme out of the list; it was the active one, so th
 // Deleting a theme that is not the active one leaves the screen alone
 const deletingOther = themed( { themes : withTheme( 'other', 'Other', '' ) } );
 deletingOther.byId('design-theme-delete-other').fire('click');
+deletingOther.settle();
 deletingOther.answer( 200, { themes : THEMES.map( function( theme ) { return Object.assign( {}, theme ) } ), theme : 'mein-theme' } );
 
 check( '...a theme that is not the active one is taken out of the list and the screen stays as it is, the stored setup still naming its theme',
@@ -9228,6 +9471,7 @@ check( '...a theme that is not the active one is taken out of the list and the s
 // A delete that comes after the screen was reverted
 const lateDelete = themed();
 lateDelete.byId('design-theme-delete-mein-theme').fire('click');
+lateDelete.settle();
 lateDelete.byId('design-reset').fire('click');
 lateDelete.answer( 200, { themes : [], theme : '' } );
 
@@ -9332,7 +9576,7 @@ const actions = {
 	rename			: function( screen ) { screen.byId('design-theme-rename-mein-theme').fire('click'); screen.byId('design-theme-rename-save').fire('click') },
 	save 				: function( screen ) { screen.byId('design-theme-save').fire('click') },
 	duplicate		: function( screen ) { screen.byId('design-theme-duplicate-magazine').fire('click') },
-	'delete'		: function( screen ) { screen.byId('design-theme-delete-mein-theme').fire('click') },
+	'delete'		: function( screen ) { screen.byId('design-theme-delete-mein-theme').fire('click'); screen.settle() },
 	'export'		: function( screen ) { screen.byId('design-theme-export-mein-theme').fire('click') },
 	'import'		: function( screen ) {
 		screen.byId('design-theme-import').files = [ picked ];
@@ -9373,7 +9617,7 @@ Object.keys( actions ).forEach( function( action ) {
 		coded.push( action+ ': '+ refusedBy.line().textContent );
 
 	if( themeControls( refusedBy ).some( function( control ) { return control.disabled === true } ) || refusedBy.design._themeBusy === true || refusedBy.design._isDirty() === true
-		|| ( refusedBy.byId('design-theme-save') !== null && refusedBy.byId('design-theme-save').disabled === true ) || refusedBy.design._edit.theme !== 'mein-theme' || refusedBy.requests.length !== 0 || refusedBy.confirms.length !== ( action === 'delete' ? 1 : 0 ) )
+		|| ( refusedBy.byId('design-theme-save') !== null && refusedBy.byId('design-theme-save').disabled === true ) || refusedBy.design._edit.theme !== 'mein-theme' || refusedBy.requests.length !== 0 || refusedBy.questions().length !== ( action === 'delete' ? 1 : 0 ) )
 		unchanged.push( action );
 } );
 
@@ -9868,7 +10112,7 @@ else {
 	const offered = function( screen, role ) { return screen.design._data.options[role] };
 
 	check( 'a theme the server loaded is the working copy as it came: no question, the templates, the knobs, the size and the width, the animation as the file holds them - and the palette as the screen has it, for the file of a theme the feature ships names none - and of the fonts the families the roles are offered, the others the face of Nino',
-		loaded.confirms.length === 0 && loaded.requests.length === 0 && loaded.design._edit.theme === answered.load.slug && loaded.design._edit.css === answered.load.css
+		loaded.questions().length === 0 && loaded.requests.length === 0 && loaded.design._edit.theme === answered.load.slug && loaded.design._edit.css === answered.load.css
 		&& JSON.stringify( loaded.design._edit.parts ) === JSON.stringify( answered.load.setup.parts ) && JSON.stringify( loaded.design._edit.knobs ) === JSON.stringify( answered.load.setup.knobs )
 		&& loaded.design._edit.size === answered.load.setup.size && loaded.design._edit.width === answered.load.setup.width && loaded.design._edit.whitespace === answered.load.setup.whitespace && JSON.stringify( loaded.design._edit.motion ) === JSON.stringify( answered.load.setup.motion )
 		&& loaded.design._edit.radius === answered.load.setup.radius && loaded.design._edit['radius-alt'] === answered.load.setup['radius-alt'] && JSON.stringify( loaded.design._edit.radii ) === JSON.stringify( answered.load.setup.radii )
@@ -9889,9 +10133,10 @@ else {
 	const askable = answered.loadMissing.missing.filter( function( entry ) { return entry.inList === true } );
 	withMissing.byId('design-theme-load-'+ answered.loadMissing.slug).fire('click');
 	withMissing.answer( 200, answered.loadMissing );
+	withMissing.settle();
 
 	check( 'a theme that names typefaces the project has not installed asks for those the list has, by the name the list gives them - the one it does not have is not asked for - and a yes posts the install of the first',
-		askable.length === 1 && answered.loadMissing.missing.length === 2 && withMissing.confirms.length === 1 && withMissing.confirms[0] === say( '/_admin/design/theme/confirm/fonts', askable.map( function( entry ) { return entry.name } ).join(', ') )
+		askable.length === 1 && answered.loadMissing.missing.length === 2 && withMissing.questions().length === 1 && withMissing.questions()[0] === say( '/_admin/design/theme/confirm/fonts', askable.map( function( entry ) { return entry.name } ).join(', ') )
 		&& withMissing.requests.length === 1 && withMissing.requests[0].endpoint === 'webfonts/install' && withMissing.requests[0].payload.slug === askable[0].slug );
 
 	// Rename, save, duplicate, delete, export and import
@@ -9926,6 +10171,7 @@ else {
 
 	const deleted = wholeTab( activeList );
 	deleted.byId('design-theme-delete-'+ activeSlug).fire('click');
+	deleted.settle();
 	deleted.answer( 200, answered.deleted );
 
 	check( 'the answer of a delete: the list as the server has it, and the theme the setup names now - none, since it was the one deleted: the screen has no active theme',

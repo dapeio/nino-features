@@ -3085,16 +3085,14 @@
 			const builder = Nino.admin.builder;
 			const mount = dc.getElementById('builder-templates');
 
-			Nino.adminUi.choiceDialog( {
+			Nino.adminUi.confirm( 'destructive', {
 				title		: Nino.content.getText('/_admin/builder/label/delete'),
 				message	: Nino.content.getText('/_admin/builder/confirm/delete'),
-				choices	: [
-					{ value : 'delete', label : Nino.content.getText('/_admin/builder/label/delete'), kind : 'danger' },
-					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
-				],
-				onChoose	: function( choice ) {
+				yes			: Nino.content.getText('/_admin/builder/label/delete'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				onChoose	: function( yes ) {
 
-					if( choice !== 'delete' )
+					if( yes === false )
 						return;
 
 					builder._apiCall( 'delete', { file : file }, function( status, response ) {
@@ -4500,15 +4498,15 @@
 			if( builder._children( model, path ) === 0 )
 				return builder._delete( path );
 
-			Nino.adminUi.choiceDialog( {
+			Nino.adminUi.confirm( 'routine', {
 				title		: Nino.content.getText( '/_admin/builder/tree/'+ kind ),
 				message	: Nino.content.getText('/_admin/builder/confirm/delete-node'),
-				choices	: [
-					{ value : 'delete', label : Nino.content.getText('/_admin/common/label/delete'), kind : 'danger' },
-					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
-				],
-				onChoose	: function( choice ) {
-					if( choice === 'delete' )
+				yes			: Nino.content.getText('/_admin/common/label/delete'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				// A delete is red, whatever the weight of the question
+				kind		: 'danger',
+				onChoose	: function( yes ) {
+					if( yes === true )
 						builder._delete( path );
 				},
 			} );
@@ -7519,15 +7517,13 @@
 			if( builder._ownKeys( section ) === false )
 				return rename();
 
-			Nino.adminUi.choiceDialog( {
+			Nino.adminUi.confirm( 'routine', {
 				title		: Nino.content.getText('/_admin/builder/state/rename'),
 				message	: Nino.adminUi.format( Nino.content.getText('/_admin/builder/confirm/rename'), section.id, id ),
-				choices	: [
-					{ value : 'rename', label : Nino.content.getText('/_admin/common/label/rename'), kind : 'primary' },
-					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
-				],
-				onChoose	: function( choice ) {
-					if( choice === 'rename' )
+				yes			: Nino.content.getText('/_admin/common/label/rename'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				onChoose	: function( yes ) {
+					if( yes === true )
 						rename();
 				},
 			} );
