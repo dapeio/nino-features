@@ -1,0 +1,59 @@
+/*	@name			Cards
+ *	@name-de		Karten
+ *	@description	Every logo on a card of its own: a ground, rounded corners and a soft shadow, side by side and wrapping.
+ *	@description-de	Jedes Logo auf einer eigenen Karte: ein Grund, gerundete Ecken und ein weicher Schatten, nebeneinander und umbrechend.
+ *
+ *	@knob	height		scale	type		Height of a logo
+ *	@knob-de	height		Höhe eines Logos
+ *	@knob	gap			scale	surfaces	Space between the logos
+ *	@knob-de	gap			Abstand der Logos
+ *	@knob	corners		scale	surfaces	Corners of a cell
+ *	@knob-de	corners		Ecken einer Zelle
+ *	@knob	ground		ground	colours		Ground of a cell	= alt
+ *	@knob-de	ground		Grund einer Zelle
+ *
+ *	The ground is a surface of the palette and brings the roles solved for it. A card is a ground of its own, so it takes the
+ *	text colour of that ground and the pair of the logo of that ground, as a cell of Grid does. Unlike Grid it has no line:
+ *	its shadow, the shadow colour of that ground, lifts it from the section. The cards stand in as many equal columns as fit, none
+ *	narrower than its logo with a little room at the sides, so that two stand side by side on a phone.
+ */
+
+:root {
+	--logos-height--least:	1.5rem;
+	--logos-height--less:	2rem;
+	--logos-height--default:	2.75rem;
+	--logos-height--more:	3.5rem;
+	--logos-height--most:	4.5rem;
+
+	--logos-gap--least:	var(--space-1);
+	--logos-gap--less:	var(--space-2);
+	--logos-gap--default:	var(--space-3);
+	--logos-gap--more:	var(--space-4);
+	--logos-gap--most:	var(--space-5);
+
+	--logos-corners--least:	0rem;
+	--logos-corners--less:	var(--radius-small);
+	--logos-corners--default:	var(--radius-large);
+	--logos-corners--more:	.8rem;
+	--logos-corners--most:	1.5rem;
+}
+
+.nino-logos-strip .nino-logos-strip-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--nino-logos-size) * 18 / 7 + var(--space-1) * 2)), 1fr));
+	gap: var(--logos-gap);
+}
+
+.nino-logos-strip .nino-logos-strip-item {
+	--logo-light: var(--logos-ground-logo-light);
+	--logo-dark: var(--logos-ground-logo-dark);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-2) var(--space-1);
+	border-radius: var(--logos-corners);
+	background-color: var(--logos-ground);
+	box-shadow: 0 .25rem 1rem var(--logos-ground-shadow);
+	color: var(--logos-ground-on);
+}

@@ -1,0 +1,152 @@
+/**
+ *	Nino - Logos
+ *	logos.css		The row of logos [logos] renders, and nothing else. Bundled into
+ *					the project's own /.cache/style.css the same way the kernel bundles
+ *					Nino.css (the manifest's `assets` name it, and see
+ *					docs/development.md, "Assets Are Not Templates") - never
+ *					rendered through the fill/shortcode engine, so nothing in here
+ *					is a textfill.
+ *
+ *					The row is a wrapped, centred line of pictures, as the kernel drew
+ *					its logo strip until now: the space between them, a picture that
+ *					fits its box and grey pictures that take their colour under the
+ *					pointer and under the keyboard focus. Everything else - a grid, a
+ *					band, cards - is a look of the Design feature (design/), and so is
+ *					the choice of the tone of the pictures.
+ *
+ *					The height of a logo comes in as --nino-logos-size, which the
+ *					class of the row sets from --logos-height: s three quarters of it,
+ *					m the height and l one and a half times. The number of logos comes
+ *					in as --nino-logos-count, written onto the row by the shortcode;
+ *					the band reads it for its speed.
+ *
+ *					What a look of the Design feature moves are four properties and
+ *					a ground with its parts - --logos-height, --logos-gap,
+ *					--logos-corners and --logos-ground, with the text colour, the line,
+ *					the shadow and the pair of the logo of that ground - and this file
+ *					declares them with the row as it was drawn until now as their
+ *					default, so that a row looks as it always did until one of them is
+ *					moved. They stand in :where(:root), as the Design feature's manual
+ *					asks of lengths and of a ground. The bundle lists this file after
+ *					the sheet the Design feature writes and :where() has no
+ *					specificity, so a look moves a default by saying it on :root. A
+ *					rule of a look names the row too, for a specificity of its own
+ *					that wins whichever file comes first. No colour literal, no
+ *					!important.
+ *
+ *					The class names are this feature's own. Nino.css, which sits in the
+ *					same bundle, may carry a public .nino-logos and .nino-logos-item -
+ *					the kernel's own logo strip - and two rule sets for one name in a
+ *					bundle both apply. No rule here names a class the kernel
+ *					styles - the three the template gives the pictures, for the
+ *					ground, are the kernel's own and are styled there - and the
+ *					feature's test holds it that way.
+ *
+ *					The second list, the copy, is there for the band and hidden for
+ *					every other look. The pause button after the two lists is hidden
+ *					until logos.js finds a track that runs an animation.
+ */
+
+:where(:root) {
+	/*	The height of a logo at m, and the space between logos. 3.5rem and three rems are what the row has always been	*/
+	--logos-height: 3.5rem;
+	--logos-gap: var(--space-4);
+
+	/*	The time one logo takes to pass in a band: the run of a band is the number of logos times this. Only the look Band reads it	*/
+	--logos-speed: 5s;
+
+	/*	The corners of a cell and its ground, with the parts of a ground a look reads: the text on it, the line round it, the
+		shadow under it and the pair of the logo, which says which picture of a logo with two is seen on it. A cell that has a
+		ground of its own is a surface of the palette and no colour of its own, and it does not follow a dark section: it is the
+		same surface on every section, light on a dark one	*/
+	--logos-corners: var(--radius-large);
+	--logos-ground: var(--color-section-default-bg);
+	--logos-ground-on: var(--color-section-default-text);
+	--logos-ground-border: var(--color-border-default);
+	--logos-ground-shadow: color-mix( in srgb, var(--color-section-default-text) 15%, transparent );
+	--logos-ground-logo-light: var(--color-section-default-logo-light);
+	--logos-ground-logo-dark: var(--color-section-default-logo-dark);
+}
+
+.nino-logos-strip {
+	--nino-logos-size: var(--logos-height);
+}
+.nino-logos-strip--h-s {
+	--nino-logos-size: calc(var(--logos-height) * .75);
+}
+.nino-logos-strip--h-m {
+	--nino-logos-size: var(--logos-height);
+}
+.nino-logos-strip--h-l {
+	--nino-logos-size: calc(var(--logos-height) * 1.5);
+}
+
+.nino-logos-strip-view {
+	margin: 0;
+}
+
+.nino-logos-strip-list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--logos-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/*	The copy is for the band alone: every other look is one list, and the second is not there for a visitor and not for a screen reader	*/
+.nino-logos-strip-copy {
+	display: none;
+}
+
+.nino-logos-strip-item {
+	margin: 0;
+	padding: 0;
+}
+
+.nino-logos-strip-link {
+	display: block;
+}
+
+/*	The button that pauses a band: logos.js takes the attribute off where the track runs an animation. The kernel's own button rule
+	gives it a display, which [hidden] would not beat	*/
+.nino-logos-strip-pause {
+	display: block;
+	margin: var(--space-1) auto 0;
+}
+.nino-logos-strip-pause[hidden] {
+	display: none;
+}
+.nino-logos-strip-link:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 3px;
+}
+
+/*	The picture fills its height and has the width that gives it; the box a logo was cropped to when it was uploaded is the
+	ratio its width and height say, and a picture that is wider than the room it has keeps its proportions inside it	*/
+.nino-logos-strip-img {
+	width: auto;
+	max-width: 100%;
+	height: var(--nino-logos-size);
+	object-fit: contain;
+	opacity: .5;
+	filter: grayscale(1);
+	transition: opacity .2s ease, filter .2s ease;
+}
+
+/*	The tone of the pictures until the Design feature, under Styles, says another: grey, in colour under the pointer and under the
+	focus of the keyboard. :where() keeps the rule as light as the one above, so that the style Grey, which names the row, stays
+	grey under the pointer too	*/
+:where(.nino-logos-strip-item:hover, .nino-logos-strip-item:focus-within) .nino-logos-strip-img {
+	opacity: 1;
+	filter: grayscale(0);
+}
+
+/*	Somebody asked for less movement: the pictures change at once	*/
+@media (prefers-reduced-motion: reduce) {
+	.nino-logos-strip-img {
+		transition: none;
+	}
+}

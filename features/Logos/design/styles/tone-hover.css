@@ -1,0 +1,15 @@
+/*	@name			Hover
+ *	@name-de		Hover
+ *	@description	The logos in grey scale and a little faded, in their own colours and at full strength under the pointer and under the keyboard focus.
+ *	@description-de	Die Logos in Graustufen und etwas verblasst, unter dem Zeiger und unter dem Tastaturfokus in ihren eigenen Farben und in voller Stärke.
+ */
+
+.nino-logos-strip .nino-logos-strip-img {
+	opacity: .5;
+	filter: grayscale(1);
+}
+
+.nino-logos-strip .nino-logos-strip-item:is(:hover, :focus-within) .nino-logos-strip-img {
+	opacity: 1;
+	filter: none;
+}

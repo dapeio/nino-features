@@ -1,0 +1,114 @@
+/*	@name			Band
+ *	@name-de		Band
+ *	@description	The logos run past in one line, over and over, and stand still under the pointer and under the keyboard focus. For these logos; the feature Ticker runs anything.
+ *	@description-de	Die Logos ziehen in einer Zeile vorbei, immer wieder, und stehen unter dem Zeiger und unter dem Tastaturfokus still. Für diese Logos; das Feature Ticker lässt beliebige Inhalte laufen.
+ *
+ *	@knob	height		scale	type		Height of a logo
+ *	@knob-de	height		Höhe eines Logos
+ *	@knob	gap			scale	surfaces	Space between the logos
+ *	@knob-de	gap			Abstand der Logos
+ *	@knob	speed		scale	motion		Time a logo takes to pass
+ *	@knob-de	speed		Zeit, die ein Logo zum Vorbeiziehen braucht
+ *
+ *	The band is the list and its copy side by side, each as wide as the band at least, and both run to the left by their own
+ *	width, so that the copy stands where the list stood when the run starts over and nothing jumps. The time of a run is the
+ *	number of logos times the time one of them takes, which is the knob, so that the speed stays the same whether a band holds
+ *	four logos or forty. The run stops while the band is pointed at and where its button has been pressed, stands at its start
+ *	while something in it has the keyboard focus, and for a visitor who asked for less movement there is no run at all: the list stands still, wrapped like Row, and the copy stays
+ *	hidden. The links in the copy are out of the order of the Tab key, as the markup has them.
+ */
+
+:root {
+	--logos-height--least:	1.75rem;
+	--logos-height--less:	2.25rem;
+	--logos-height--default:	3rem;
+	--logos-height--more:	4rem;
+	--logos-height--most:	5rem;
+
+	--logos-gap--least:	var(--space-2);
+	--logos-gap--less:	var(--space-3);
+	--logos-gap--default:	var(--space-4);
+	--logos-gap--more:	4rem;
+	--logos-gap--most:	var(--space-5);
+
+	/*	The time one logo takes to pass, in seconds: the longer, the slower. The sharp end is the slowest	*/
+	--logos-speed--least:	10s;
+	--logos-speed--less:	7s;
+	--logos-speed--default:	5s;
+	--logos-speed--more:	3.5s;
+	--logos-speed--most:	2.5s;
+}
+
+.nino-logos-strip .nino-logos-strip-view {
+	display: flex;
+	overflow: hidden;
+	padding: var(--space-1) 0;
+	mask-image: linear-gradient(to right, transparent, currentColor 6%, currentColor 94%, transparent);
+}
+
+.nino-logos-strip .nino-logos-strip-list,
+.nino-logos-strip .nino-logos-strip-copy {
+	display: flex;
+	flex: none;
+	flex-wrap: nowrap;
+	justify-content: space-around;
+	gap: var(--logos-gap);
+	min-width: 100%;
+	margin: 0;
+	padding: 0 var(--logos-gap) 0 0;
+	list-style: none;
+	animation: nino-logos-strip-run calc(var(--nino-logos-count) * var(--logos-speed)) linear infinite;
+}
+
+/*	A logo keeps the width its picture gives it, however many there are in the line	*/
+.nino-logos-strip .nino-logos-strip-item {
+	flex: none;
+}
+
+@keyframes nino-logos-strip-run {
+	from { transform: translateX(0); }
+	to { transform: translateX(-100%); }
+}
+
+/*	Stopped while the logos are pointed at, so a logo can be looked at and clicked, and where the button of the band has been pressed - which
+	is the one stop that holds for touch and keyboard and for a visitor whose pointer is elsewhere. The pointer and the focus are the view's, not
+	the whole row's: the button stands outside it, and a band that stays stopped while its own button is pointed at or has the focus could never
+	be started again by it	*/
+.nino-logos-strip .nino-logos-strip-view:hover .nino-logos-strip-list,
+.nino-logos-strip .nino-logos-strip-view:hover .nino-logos-strip-copy,
+.nino-logos-strip--paused .nino-logos-strip-list,
+.nino-logos-strip--paused .nino-logos-strip-copy {
+	animation-play-state: paused;
+}
+
+/*	Under the keyboard focus the band does not stop where it stands - the link in focus may be out of sight, left of the band or
+	beyond its end - but goes back to its start and stays there, and the fade at the edges is gone, so that every stop is at least
+	partly in view and the browser scrolls the rest of it in	*/
+.nino-logos-strip .nino-logos-strip-view:focus-within .nino-logos-strip-list,
+.nino-logos-strip .nino-logos-strip-view:focus-within .nino-logos-strip-copy {
+	animation: none;
+}
+.nino-logos-strip .nino-logos-strip-view:focus-within {
+	mask-image: none;
+}
+
+/*	Somebody asked for less movement, and a band that runs across the screen is the most literal reading of that there is. The
+	logos stand still, wrapped like a row, and the copy is not there	*/
+@media (prefers-reduced-motion: reduce) {
+	.nino-logos-strip .nino-logos-strip-view {
+		display: block;
+		overflow: visible;
+		mask-image: none;
+	}
+	.nino-logos-strip .nino-logos-strip-list {
+		flex-wrap: wrap;
+		justify-content: center;
+		min-width: 0;
+		padding: 0;
+		animation: none;
+	}
+	.nino-logos-strip .nino-logos-strip-copy {
+		display: none;
+		animation: none;
+	}
+}

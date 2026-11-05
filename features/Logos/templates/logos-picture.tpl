@@ -1,0 +1,1 @@
+[image image]<img class="nino-logo-light nino-logos-strip-img" src="[[src]]" width="[[width]]" height="[[height]]" alt="[[name]]" loading="lazy" decoding="async">[/image][image image-dark]<img class="nino-logo-dark nino-logos-strip-img" src="[[src]]" width="[[width]]" height="[[height]]" alt="[[name]]" loading="lazy" decoding="async">[/image]

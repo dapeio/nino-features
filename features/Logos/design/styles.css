@@ -1,0 +1,8 @@
+/*	@style		tone	Tone
+ *	@style-de	tone	Farbton
+ *
+ *	The styles of the logos, for every look at once. The tone is how the pictures are drawn: in their own colours, in grey, or in
+ *	grey until the pointer or the keyboard focus is on them. None is the tone logos.css has, the last one. The rules are the
+ *	options', so this file is the head alone; each option names the row, which is a specificity of its own, and the pictures
+ *	change at once for a visitor who asks for less motion, which logos.css sees to.
+ */

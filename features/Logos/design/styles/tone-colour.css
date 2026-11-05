@@ -1,0 +1,10 @@
+/*	@name			Colour
+ *	@name-de		Farbe
+ *	@description	The logos in their own colours, at full strength, whatever the pointer does.
+ *	@description-de	Die Logos in ihren eigenen Farben, in voller Stärke, was auch der Zeiger tut.
+ */
+
+.nino-logos-strip .nino-logos-strip-img {
+	opacity: 1;
+	filter: none;
+}

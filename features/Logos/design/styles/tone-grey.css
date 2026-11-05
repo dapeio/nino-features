@@ -1,0 +1,10 @@
+/*	@name			Grey
+ *	@name-de		Grau
+ *	@description	The logos in grey scale at full strength, and grey under the pointer and under the keyboard focus too.
+ *	@description-de	Die Logos in Graustufen, in voller Stärke, und auch unter dem Zeiger und unter dem Tastaturfokus grau.
+ */
+
+.nino-logos-strip .nino-logos-strip-img {
+	opacity: 1;
+	filter: grayscale(1);
+}

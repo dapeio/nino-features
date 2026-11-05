@@ -1,0 +1,31 @@
+/*	@name			Row
+ *	@name-de		Reihe
+ *	@description	The logos in a line that wraps, centred, with room between them: grey pictures that take their colour under the pointer and under the keyboard focus.
+ *	@description-de	Die Logos in einer umbrechenden, zentrierten Reihe mit Platz dazwischen: graue Bilder, die unter dem Zeiger und unter dem Tastaturfokus ihre Farbe annehmen.
+ *
+ *	@knob	height		scale	type		Height of a logo
+ *	@knob-de	height		Höhe eines Logos
+ *	@knob	gap			scale	surfaces	Space between the logos
+ *	@knob-de	gap			Abstand der Logos
+ *
+ *	Row is the starting point of this feature: the middle of every ladder is the value logos.css has as its own default, so the
+ *	logos under it are drawn as they are without the Design feature. It sets no property of a look and writes no rule, only the
+ *	ladders. The height is that of a logo at m; s and l are three quarters and one and a half times of it. It has no ground to
+ *	move: the logos are pictures on the ground of the section they stand in.
+ */
+
+:root {
+	/*	The height of a logo at m: a small mark at the sharp end up to a banner	*/
+	--logos-height--least:	2rem;
+	--logos-height--less:	2.75rem;
+	--logos-height--default:	3.5rem;
+	--logos-height--more:	4.5rem;
+	--logos-height--most:	6rem;
+
+	/*	The space between two logos, in a line and between lines	*/
+	--logos-gap--least:	var(--space-2);
+	--logos-gap--less:	var(--space-3);
+	--logos-gap--default:	var(--space-4);
+	--logos-gap--more:	4rem;
+	--logos-gap--most:	var(--space-5);
+}

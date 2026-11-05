@@ -1,0 +1,60 @@
+/*	@name			Grid
+ *	@name-de		Raster
+ *	@description	Every logo in a cell of the same size with a line round it, the cells side by side in as many columns as fit.
+ *	@description-de	Jedes Logo in einer gleich großen Zelle mit einer Linie ringsum, die Zellen nebeneinander in so vielen Spalten, wie passen.
+ *
+ *	@knob	height		scale	type		Height of a logo
+ *	@knob-de	height		Höhe eines Logos
+ *	@knob	gap			scale	surfaces	Space between the logos
+ *	@knob-de	gap			Abstand der Logos
+ *	@knob	corners		scale	surfaces	Corners of a cell
+ *	@knob-de	corners		Ecken einer Zelle
+ *	@knob	ground		ground	colours		Ground of a cell	= default
+ *	@knob-de	ground		Grund einer Zelle
+ *
+ *	The ground is a surface of the palette and brings the roles solved for it. A cell is a ground of its own, so it takes the
+ *	text colour of that ground, which the ring of a focused link is drawn in, and the pair of the logo of that ground: a logo
+ *	with a second picture shows the one made for a light ground on a light cell and the one made for a dark ground on a dark
+ *	cell, whatever the section behind it is. The line is the border the palette solved for that ground, so a cell is told apart
+ *	from a section of the same ground by its line alone.
+ */
+
+:root {
+	--logos-height--least:	1.75rem;
+	--logos-height--less:	2.25rem;
+	--logos-height--default:	3rem;
+	--logos-height--more:	4rem;
+	--logos-height--most:	5rem;
+
+	--logos-gap--least:	0rem;
+	--logos-gap--less:	var(--space-1);
+	--logos-gap--default:	var(--space-2);
+	--logos-gap--more:	var(--space-3);
+	--logos-gap--most:	var(--space-4);
+
+	--logos-corners--least:	0rem;
+	--logos-corners--less:	var(--radius-small);
+	--logos-corners--default:	var(--radius-large);
+	--logos-corners--more:	.8rem;
+	--logos-corners--most:	1.5rem;
+}
+
+.nino-logos-strip .nino-logos-strip-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--nino-logos-size) * 18 / 7 + var(--space-1) * 2 + 2px)), 1fr));
+	gap: var(--logos-gap);
+}
+
+.nino-logos-strip .nino-logos-strip-item {
+	--logo-light: var(--logos-ground-logo-light);
+	--logo-dark: var(--logos-ground-logo-dark);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-2) var(--space-1);
+	border: 1px solid var(--logos-ground-border);
+	border-radius: var(--logos-corners);
+	background-color: var(--logos-ground);
+	color: var(--logos-ground-on);
+}
