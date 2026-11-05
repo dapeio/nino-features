@@ -11,20 +11,20 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[logos /logo image="image" link="url" sort="order"]' => [
-				'en_US' => 'The elements of the type logo that have a picture, as a row of logos, the smaller position first and a logo with no position last. A logo with only the picture for a dark ground is drawn too, and that picture is seen on every ground. A loop of the Components module, written as a single tag and closed nowhere: what stands between a pair of tags is not read. A logo with an address is a link. The Builder offers it as Logos, under Loop.',
-				'de_DE' => 'Die Elemente des Typs logo, die ein Bild haben, als Reihe von Logos, die kleinere Position zuerst und ein Logo ohne Position zuletzt. Auch ein Logo mit nur dem Bild für dunklen Grund wird gezeichnet, und dieses Bild ist auf jedem Grund zu sehen. Ein Loop des Moduls Komponenten, als einzelnes Tag geschrieben und nirgends geschlossen: Was zwischen einem Paar von Tags steht, wird nicht gelesen. Ein Logo mit Adresse ist ein Link. Der Builder bietet sie als Logos an, unter Loop.',
+				'en_US' => 'The elements of the type logo that have a picture, as a row of logos, the smaller position first and a logo with no position last. A logo with only the picture for a dark ground is drawn too, and that picture is seen on every ground. A loop of the Components module, written as a single tag and closed nowhere: what stands between a pair of tags is not read. A logo with an address in the field url is a link. The Builder offers it as Logos, under Loop.',
+				'de_DE' => 'Die Elemente des Typs logo, die ein Bild haben, als Reihe von Logos, die kleinere Position zuerst und ein Logo ohne Position zuletzt. Auch ein Logo mit nur dem Bild für dunklen Grund wird gezeichnet, und dieses Bild ist auf jedem Grund zu sehen. Ein Loop des Moduls Komponenten, als einzelnes Tag geschrieben und nirgends geschlossen: Was zwischen einem Paar von Tags steht, wird nicht gelesen. Ein Logo mit Adresse im Feld url ist ein Link. Der Builder bietet sie als Logos an, unter Loop.',
 			],
 			'[logos /logo image="image" link="url" name="name" dark="image-dark"]' => [
-				'en_US' => 'The fields that make a logo, by name: image the picture, link the address (empty: no link), name the text of the picture, dark the picture for a dark ground. Defaults are image, name, no link and image-dark; an empty field name is the default, so dark="" is image-dark too. A logo has no second picture where its element has none in that field or the type has no such field, and then the first is seen on every ground. A link, name or dark that is no field of the type draws no link, no alt text or no second picture, and no other field is read in its place; an image that is no picture field of the type draws nothing. Any type with a picture field works, so a project with two sets of logos copies the type.',
-				'de_DE' => 'Die Felder, aus denen ein Logo besteht, mit Namen: image das Bild, link die Adresse (leer: kein Link), name der Text des Bildes, dark das Bild für dunklen Grund. Ohne Angabe gelten image, name, kein Link und image-dark; ein leerer Feldname ist der Standard, dark="" ist also ebenfalls image-dark. Ein Logo hat kein zweites Bild, wo sein Element keines in dem Feld hat oder der Typ das Feld nicht kennt, und dann ist das erste auf jedem Grund zu sehen. Ein Link, Name oder dark, das kein Feld des Typs ist, zeichnet keinen Link, keinen Alternativtext oder kein zweites Bild, und kein anderes Feld tritt an seine Stelle; ein image, das kein Bildfeld des Typs ist, zeichnet nichts. Jeder Typ mit einem Bildfeld geht, wer zwei Sätze Logos will, kopiert also den Typ.',
+				'en_US' => 'The fields that make a logo, by name: image the picture, link the address, name the text of the picture, dark the picture for a dark ground. Defaults are image, url, name and image-dark, and a field left out is its default; a field written empty is none, so dark="" draws no second picture, name="" no alt text and link="" no link. A logo has no second picture where its element has none in that field or the type has no such field, and then the first is seen on every ground. A link, name or dark that is no field of the type draws no link, no alt text or no second picture, and no other field is read in its place; an image that is no picture field of the type draws nothing. Any type with a picture field works, so a project with two sets of logos copies the type.',
+				'de_DE' => 'Die Felder, aus denen ein Logo besteht, mit Namen: image das Bild, link die Adresse, name der Text des Bildes, dark das Bild für dunklen Grund. Standard sind image, url, name und image-dark, und ein weggelassenes Feld ist sein Standard; ein leer geschriebenes Feld ist keines, dark="" zeichnet also kein zweites Bild, name="" keinen Alternativtext und link="" keinen Link. Ein Logo hat kein zweites Bild, wo sein Element keines in dem Feld hat oder der Typ das Feld nicht kennt, und dann ist das erste auf jedem Grund zu sehen. Ein Link, Name oder dark, das kein Feld des Typs ist, zeichnet keinen Link, keinen Alternativtext oder kein zweites Bild, und kein anderes Feld tritt an seine Stelle; ein image, das kein Bildfeld des Typs ist, zeichnet nichts. Jeder Typ mit einem Bildfeld geht, wer zwei Sätze Logos will, kopiert also den Typ.',
 			],
 			'[logos /logo sort="name" limit="8"]' => [
 				'en_US' => 'The data are the loop of [elements]: sort by a field ascending, -name descending, several joined by commas, sort="" keeps the order of the elements; limit how many, 0 for all; offset and query as there. Without a sort the order is that of the elements. sort="order" puts a logo whose position is empty last; a position of 0 is a number and stands first.',
 				'de_DE' => 'Die Daten sind der Loop von [elements]: sort nach einem Feld aufsteigend, -name absteigend, mehrere durch Komma getrennt, sort="" behält die Reihenfolge der Elemente; limit wie viele, 0 für alle; offset und query wie dort. Ohne sort gilt die Reihenfolge der Elemente. sort="order" stellt ein Logo mit leerer Position ans Ende; eine Position 0 ist eine Zahl und steht zuerst.',
 			],
 			'[logos /logo links="0"]' => [
-				'en_US' => 'No logo is a link, whatever its address says. A link is drawn only for an https, http or mailto address or a path of the site that starts with one slash; any other address is left out, not changed.',
-				'de_DE' => 'Kein Logo ist ein Link, was auch immer seine Adresse sagt. Ein Link entsteht nur für eine https-, http- oder mailto-Adresse oder einen Pfad der Site mit einem Schrägstrich am Anfang; jede andere Adresse bleibt weg, sie wird nicht verändert.',
+				'en_US' => 'No logo is a link, whatever its address says; with the field of the link written empty, link="", none is either. A link is drawn only for an https, http or mailto address or a path of the site that starts with one slash; any other address is left out, not changed.',
+				'de_DE' => 'Kein Logo ist ein Link, was auch immer seine Adresse sagt; mit leer geschriebenem Linkfeld, link="", ist auch keines einer. Ein Link entsteht nur für eine https-, http- oder mailto-Adresse oder einen Pfad der Site mit einem Schrägstrich am Anfang; jede andere Adresse bleibt weg, sie wird nicht verändert.',
 			],
 			'[logos /logo height="l"]' => [
 				'en_US' => 'The height of the logos: s is three quarters of the height of the look, m the height of the look, l one and a half times. The height of the look is the knob Height under Design.',
@@ -56,8 +56,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Builder: the presentation Logos' => [
-				'en_US' => 'With the Builder feature on, Logos is a presentation of the block Loop in the dialog of a column, beside Grid and Tabs: the type and the data of the loop (query, sort, limit, offset; sort by order for the position of the logos), then the fields that make a logo - Picture, Link, Name and Picture for a dark ground, each a choice among the fields of the type, the Link optional - the Height and Links. It has no content and no cells to place: the Builder writes the call as a single tag and leaves out what stands at its default.',
-				'de_DE' => 'Ist das Feature Builder an, ist Logos eine Darstellung des Blocks Loop im Dialog einer Spalte, neben Raster und Tabs: der Typ und die Daten des Loops (Abfrage, Sortierung, Limit, Offset; für die Position nach order sortieren), dann die Felder, aus denen ein Logo besteht - Bild, Link, Name und Bild für dunklen Grund, jedes eine Auswahl unter den Feldern des Typs, der Link optional - die Höhe und Links. Es hat keinen Inhalt und keine Zellen zu platzieren: Der Builder schreibt den Aufruf als einzelnes Tag und lässt weg, was auf seinem Standard steht.',
+				'en_US' => 'With the Builder feature on, Logos is a presentation of the block Loop in the dialog of a column, beside Grid and Tabs: the type and the data of the loop (query, sort, limit, offset; sort by order for the position of the logos), then the fields that make a logo - Picture, Link, Name and Picture for a dark ground, each a choice among the fields of the type, only the Picture required, and the Link while Links is on; for the others the choice None writes the field empty, and a logo then has no alt text or no second picture - the Height and Links. It has no content and no cells to place: the Builder writes the call as a single tag and leaves out what stands at its default.',
+				'de_DE' => 'Ist das Feature Builder an, ist Logos eine Darstellung des Blocks Loop im Dialog einer Spalte, neben Raster und Tabs: der Typ und die Daten des Loops (Abfrage, Sortierung, Limit, Offset; für die Position nach order sortieren), dann die Felder, aus denen ein Logo besteht - Bild, Link, Name und Bild für dunklen Grund, jedes eine Auswahl unter den Feldern des Typs, verbindlich nur das Bild und der Link, solange Links an ist; bei den anderen schreibt die Wahl Keines das Feld leer, und ein Logo hat dann keinen Alternativtext oder kein zweites Bild - die Höhe und Links. Es hat keinen Inhalt und keine Zellen zu platzieren: Der Builder schreibt den Aufruf als einzelnes Tag und lässt weg, was auf seinem Standard steht.',
 			],
 			'Design: the looks of the logos' => [
 				'en_US' => 'With the Design feature on, the tab Logos of the Design panel offers under Base four looks - Row, as the kernel drew it, Grid, Band and Cards - and a select for the style Tone: None is grey logos that take their colour under the pointer and under the keyboard focus, Colour leaves them as they are, Grey keeps them grey. The knobs are the height of a logo and the space between logos, the corners and the ground of a cell, and for Band its speed under Motion; a knob the look does not answer to is greyed out. Band runs the logos past and stops under the pointer; under the keyboard focus it stands at its start. It has a pause button of its own (Text key /feature/logos/action/pause), and under reduced motion it is a row that wraps. The feature Ticker runs anything.',
@@ -98,6 +98,7 @@ return [
 				'image' => [
 					'type'		=> 'field',
 					'default'	=> 'image',
+					'required'	=> true,
 					'label'		=> [ 'en_US' => 'Picture', 'de_DE' => 'Bild' ],
 					'hint'		=> [
 						'en_US' => 'The picture field of the type that holds the logo. An element with no picture in it is left out, unless it has the picture for a dark ground, which is then seen on every ground.',
@@ -106,11 +107,12 @@ return [
 				],
 				'link' => [
 					'type'		=> 'field',
-					'default'	=> '',
+					'default'	=> 'url',
+					'required'	=> 'links',
 					'label'		=> [ 'en_US' => 'Link', 'de_DE' => 'Link' ],
 					'hint'		=> [
-						'en_US' => 'The field with the address a logo links to. Optional: with none, no logo is a link.',
-						'de_DE' => 'Das Feld mit der Adresse, zu der ein Logo verlinkt. Optional: Ohne Angabe ist kein Logo ein Link.',
+						'en_US' => 'The field with the address a logo links to. Required while Links is on; left empty, no logo is a link.',
+						'de_DE' => 'Das Feld mit der Adresse, zu der ein Logo verlinkt. Verbindlich, solange Links an ist; leer gelassen ist kein Logo ein Link.',
 					],
 				],
 				'name' => [
@@ -118,8 +120,8 @@ return [
 					'default'	=> 'name',
 					'label'		=> [ 'en_US' => 'Name', 'de_DE' => 'Name' ],
 					'hint'		=> [
-						'en_US' => 'The field with the name of the customer, the alt text of the picture.',
-						'de_DE' => 'Das Feld mit dem Namen des Kunden, der Alternativtext des Bildes.',
+						'en_US' => 'The field with the name of the customer, the alt text of the picture. Optional: left empty, the picture has no alt text.',
+						'de_DE' => 'Das Feld mit dem Namen des Kunden, der Alternativtext des Bildes. Optional: leer gelassen hat das Bild keinen Alternativtext.',
 					],
 				],
 				'dark' => [
@@ -127,8 +129,8 @@ return [
 					'default'	=> 'image-dark',
 					'label'		=> [ 'en_US' => 'Picture for a dark ground', 'de_DE' => 'Bild für dunklen Grund' ],
 					'hint'		=> [
-						'en_US' => 'The picture field with the logo for a dark ground. An empty choice is the default, image-dark. A logo that has no picture in the field, or a type without the field, has no second picture, and the first one is seen on every ground.',
-						'de_DE' => 'Das Bildfeld mit dem Logo für einen dunklen Grund. Eine leere Wahl ist der Standard, image-dark. Ein Logo ohne Bild in dem Feld oder ein Typ ohne das Feld hat kein zweites Bild, und das erste ist auf jedem Grund zu sehen.',
+						'en_US' => 'The picture field with the logo for a dark ground. Optional: left empty, a logo has no second picture. A logo that has no picture in the field has none either, and the first one is seen on every ground.',
+						'de_DE' => 'Das Bildfeld mit dem Logo für einen dunklen Grund. Optional: leer gelassen hat ein Logo kein zweites Bild. Ein Logo ohne Bild in dem Feld hat auch keines, und das erste ist auf jedem Grund zu sehen.',
 					],
 				],
 				'height' => [

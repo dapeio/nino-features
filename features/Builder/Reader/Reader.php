@@ -504,6 +504,29 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Whether an attribute of the type field has to be chosen, as the schema says it: 'required' is true, or the name of a bool attribute of
+		 *	the same call, and then it is the value that attribute has - the call's own, else its default - that decides. The Builder knows no
+		 *	attribute by name: the registry hands 'required' out and the model has the switch
+		 *
+		 *	@param		array			$schema				One entry of the registry's stacks
+		 *	@param		string		$attribute		The field attribute
+		 *	@param		array			$values				The attributes of the call, name => value
+		 *
+		 *	@return 	bool
+		 */
+		public static function required( array $schema, string $attribute, array $values ): bool {
+
+			$needs = is_array( $schema['attributes'][$attribute] ?? null ) === true ? ( $schema['attributes'][$attribute]['required'] ?? false ) : false;
+
+			if( is_string( $needs ) === false )
+				return $needs === true;
+
+			$on = array_key_exists( $needs, $values ) === true ? $values[$needs] : ( self::defaults( $schema )[$needs] ?? '0' );
+
+			return $on === true || $on === '1' || $on === 1;
+		}
+
+		/**
 		 *	The two parts of an address that leads to a page of the site and goes on from it - the key that holds the address of the page, and the sub-path after it, which is
 		 *	empty where the address is the page alone - written [[/nino/dir]][[<key>]]<sub-path>. The kernel puts the fills in before it reads the page: the directory the site is
 		 *	served from, which the fill of the key has not (a bare key is given it by the kernel), and the address of the page, so the link leads to the page in the language the

@@ -1953,10 +1953,120 @@
 		// ------------------------------------------------------- Red sources
 
 		/**
+		 *	Whether an attribute of the type field has to be chosen, as the registry says it: 'required' is true, or the name of a bool attribute
+		 *	of the same loop and then the value of that attribute in the model - its default where the model has none - decides. No attribute is
+		 *	known by name: the schema says which one is the switch
+		 *
+		 *	@param		{Object}		declared					The attributes of the schema, name => entry
+		 *	@param		{string}		name							The field attribute
+		 *	@param		{Object}		attributes				Where the values are kept
+		 *
+		 *	@return		{boolean}
+		 */
+		_required : function( declared, name, attributes ) {
+
+			const needs = declared[name] === undefined ? false : declared[name].required;
+
+			if( typeof needs !== 'string' )
+				return needs === true;
+
+			const on = attributes[needs] === undefined || attributes[needs] === null ? ( declared[needs] || {} ).default : attributes[needs];
+
+			return on === true || on === '1' || on === 1;
+		},
+
+		/**
+		 *	The field an attribute of the type field stands for, given the fields of the type: its value where that is one of them. Where it is not - a name the type has not, or
+		 *	nothing where a field has to be chosen - the default of the schema, where the type has that; else nothing. A field that need not be chosen and holds nothing stays
+		 *	nothing: that is the choice made. The select shows it, the red marks what stays unresolved, and a save writes it
+		 *
+		 *	@param		{Object}		declared					The attributes of the schema, name => entry
+		 *	@param		{string}		name							The field attribute
+		 *	@param		{Object}		attributes				Where the values are kept
+		 *	@param		{Object}		fields						The fields of the type, name => field
+		 *
+		 *	@return		{string}
+		 */
+		_resolved : function( declared, name, attributes, fields ) {
+
+			const builder = Nino.admin.builder;
+			const has = function( field ) { return field !== '' && builder.FIELD_NAME.test( field ) === true && Object.prototype.hasOwnProperty.call( fields, field ) === true };
+			const value = String( attributes[name] ?? '' );
+
+			if( has( value ) === true )
+				return value;
+
+			if( value === '' && builder._required( declared, name, attributes ) === false )
+				return '';
+
+			const fallback = String( ( declared[name] || {} ).default ?? '' );
+
+			return has( fallback ) === true ? fallback : '';
+		},
+
+		/**
+		 *	Whether the value of an attribute is what a switch of the schema decides about another: some field attribute has it as its 'required'
+		 *
+		 *	@param		{Object}		declared					The attributes of the schema, name => entry
+		 *	@param		{string}		name							The attribute
+		 *
+		 *	@return		{boolean}
+		 */
+		_decides : function( declared, name ) {
+			return Object.keys( declared ).some( function( other ) { return declared[other].required === name } );
+		},
+
+		/**
+		 *	What the dialogs show, the model says too: an attribute of the type field that holds a name the type has not - or nothing where a field has to be chosen - becomes the
+		 *	default where the type has that, and otherwise none, which is written empty and which the kernel reads as no field. Done to the copy a save sends, over every loop of the page
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		void
+		 */
+		_settle : function( model, registry ) {
+
+			const builder = Nino.admin.builder;
+			const settle = function( stack ) {
+
+				if( stack === null || stack === undefined )
+					return;
+
+				const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
+				const declared = builder._declared( ( registry.stacks || {} )[stack.name] || {} );
+
+				if( type === undefined )
+					return;
+
+				Object.keys( declared ).forEach( function( name ) {
+
+					if( declared[name].type !== 'field' )
+						return;
+
+					const resolved = builder._resolved( declared, name, stack.attributes, type.fields || {} );
+
+					// What cannot be resolved is a field that has to be chosen, which the red has refused before
+					if( resolved !== '' || builder._required( declared, name, stack.attributes ) === false )
+						stack.attributes[name] = resolved;
+				} );
+			};
+
+			model.blocks.forEach( function( block ) {
+
+				if( block.kind !== 'section' )
+					return;
+
+				settle( block.stack );
+				block.cols.forEach( function( col ) { settle( col.stack ) } );
+			} );
+		},
+
+		/**
 		 *	What a source means where it stands, and the ones that mean nothing: a
 		 *	field in a static column (it has no element), a field the stack's type
 		 *	does not have, a stack that loops a type the Elements panel does not
-		 *	know, and an attribute of the loop that names a field the type has not. The picture an attribute names counts as a source, and so do the
+		 *	know, and a required attribute of the loop that names no field or one the type has not. The picture an attribute names counts as a source, and so do the
 		 *	children of a component that holds components. The editor marks them red
 		 *	and does not save with one - the server refuses them as well, and says
 		 *	it a request later
@@ -1964,7 +2074,7 @@
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
 		 *
-		 *	@return		{Array}										[ { path, source, why } ], why being static, field or type
+		 *	@return		{Array}										[ { path, source, why } ], why being static, field, required or type
 		 */
 		_red : function( model, registry ) {
 
@@ -1989,7 +2099,7 @@
 						around = kind.fields || {};
 				}
 
-				// An attribute of the type field is a field of the type its loop runs over
+				// An attribute of the type field the schema requires is a field of the type its loop runs over: red where it holds none, or one the type has not. One that need not be chosen is none where the type has no such field
 				const named = function( stack, fields, path ) {
 
 					const declared = builder._declared( ( registry.stacks || {} )[stack.name] || {} );
@@ -1998,8 +2108,10 @@
 
 						const value = String( stack.attributes[name] ?? '' );
 
-						if( declared[name].type === 'field' && value !== '' && Object.prototype.hasOwnProperty.call( fields, value ) === false )
-							red.push( { path : path, source : value, why : 'field' } );
+						if( declared[name].type !== 'field' || builder._required( declared, name, stack.attributes ) === false || builder._resolved( declared, name, stack.attributes, fields ) !== '' )
+							return;
+
+						red.push( { path : path, source : value, why : value === '' ? 'required' : 'field' } );
 					} );
 				};
 
@@ -2568,7 +2680,14 @@
 		 */
 		_saveRequest : function( doc, force ) {
 
-			const payload = { file : doc.file, model : doc.model, hash : doc.hash };
+			const builder = Nino.admin.builder;
+
+			// What the dialogs showed as the chosen field is written, on a copy: a save that is refused leaves the model as it is
+			const model = builder._clone( doc.model );
+
+			builder._settle( model, builder._registry || {} );
+
+			const payload = { file : doc.file, model : model, hash : doc.hash };
 
 			if( force === true )
 				payload.force = true;
@@ -4255,9 +4374,20 @@
 			const builder = Nino.admin.builder;
 			const declared = builder._declared( ( registry.stacks || {} )[stack.name] || {} );
 			const line = Object.prototype.hasOwnProperty.call( declared, builder.STACK_TEXT ) === true ? String( stack.attributes[builder.STACK_TEXT] ?? '' ) : '';
-			const fields = Object.keys( declared ).filter( function( name ) { return declared[name].type === 'field' && String( stack.attributes[name] ?? '' ) !== '' } );
+			const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
+			// A field the type has not is no title of its cells: the one a field that has to be chosen names stays, as what is wrong
+			const named = function( name ) {
 
-			return line !== '' ? line : fields.map( function( name ) { return '[['+ stack.attributes[name]+ ']]' } ).join(', ');
+				if( declared[name].type !== 'field' )
+					return '';
+
+				const value = type === undefined ? String( stack.attributes[name] ?? '' ) : builder._resolved( declared, name, stack.attributes, type.fields || {} );
+
+				return value !== '' || type === undefined || builder._required( declared, name, stack.attributes ) === false ? value : String( stack.attributes[name] ?? '' );
+			};
+			const fields = Object.keys( declared ).map( named ).filter( function( value ) { return value !== '' } );
+
+			return line !== '' ? line : fields.map( function( value ) { return '[['+ value+ ']]' } ).join(', ');
 		},
 
 		/**
@@ -8481,8 +8611,8 @@
 		},
 
 		/**
-		 *	The select of what a cell shows: a field of the type by its name, and a line of free text. Where the field is none the type has, it is there as it stands, so that it is
-		 *	seen and changed
+		 *	The select of what a cell shows: a field of the type by its name, and a line of free text. Where the field is none the type has, there is no entry for it: the empty choice asks for one, and the
+		 *	red of the column says what is wrong
 		 *
 		 *	@param		{Object}		fields
 		 *	@param		{string}		current						A field, the empty word, FREE, or CONTENT
@@ -8498,15 +8628,18 @@
 			const builder = Nino.admin.builder;
 			const items = builder._valueChoices( fields, pictures );
 
-			if( current !== '' && current !== builder.FREE && current !== builder.CONTENT && items.some( function( item ) { return item.value === current } ) === false )
-				items.push( { value : current, label : current } );
+			// What a cell shows has to be chosen: a field the type has not is no entry, and the empty choice asks for one
+			const stray = current !== builder.FREE && current !== builder.CONTENT && items.some( function( item ) { return item.value === current } ) === false;
+
+			if( stray === true )
+				items.unshift( { value : '', label : Nino.content.getText('/_admin/builder/label/choose-field') } );
 
 			items.push( { value : builder.FREE, label : Nino.content.getText('/_admin/builder/column/free') } );
 
 			if( content === true )
 				items.push( { value : builder.CONTENT, label : Nino.content.getText('/_admin/builder/column/content') } );
 
-			return builder._selectField( label, Nino.content.getText('/_admin/builder/hint/column-value'), items, current, onChange );
+			return builder._selectField( label, Nino.content.getText('/_admin/builder/hint/column-value'), items, stray === true ? '' : current, onChange );
 		},
 
 		/**
@@ -9499,7 +9632,7 @@
 		_attributeFields : function( pane, declared, attributes, context ) {
 
 			const builder = Nino.admin.builder;
-			const here = Object.assign( { roles : builder._roles( declared ) }, context );
+			const here = Object.assign( { roles : builder._roles( declared ), all : declared }, context );
 
 			Object.keys( declared ).forEach( function( name ) { pane.appendChild( builder._keyed( builder._attributeField( name, declared[name], attributes, here ), name ) ) } );
 		},
@@ -9631,9 +9764,17 @@
 
 			if( declared.type === 'bool' ) {
 
+				// A switch that decides whether a field has to be chosen draws the form again, so that the field has what the schema says of it at once
+				const set = function( checked ) {
+
+					write( checked === true ? '1' : '0' );
+
+					if( builder._decides( context.all ?? {}, name ) === true && typeof context.redraw === 'function' )
+						context.redraw();
+				};
 				const field = declared.input === 'checkbox'
-					? builder._checkField( label, hint, value === '1', function( checked ) { write( checked === true ? '1' : '0' ) } )
-					: builder._switchField( label, hint, value === '1', function( checked ) { write( checked === true ? '1' : '0' ) } );
+					? builder._checkField( label, hint, value === '1', set )
+					: builder._switchField( label, hint, value === '1', set );
 
 				// There is a picture to dim, or there is none
 				if( role !== undefined && role.role === 'dim' )
@@ -9648,20 +9789,24 @@
 			if( declared.type === 'lines' )
 				return builder._textField( label, hint, value, write, { multiline : true } );
 
-			// A field of the element: any field of the loop's type - the loop knows what it draws of it, a picture or a title, and the Builder does not -, none, or - as it stands,
-			// to be seen and changed - one the type has not
+			// A field of the element: a field of the loop's type, and no other - the loop knows what it draws of it, a picture or a title, and the Builder does not. Where the schema requires it the
+			// choice has to be made, and none is chosen while the value is no field of the type; any other has the choice none, which is written empty (the kernel reads that as no field),
+			// and a value the type has not is none, whatever the default says
 			if( declared.type === 'field' ) {
 
 				const items = builder._fieldChoices( context.fields ?? {} );
-				// None is a choice only where the attribute's default is none: the kernel reads an empty value as the default, so that for another one it would show what the file does not say
-				const choices = ( declared.default === '' ? [ { value : '', label : Nino.content.getText('/_admin/builder/label/no-field') } ] : [] ).concat( items );
-				const stray = value !== '' && items.some( function( item ) { return item.value === value } ) === false;
+				const all = context.all ?? { [name] : declared };
+				// What the select shows: the field the model has, else - for a name the type has not, or nothing where a field has to be chosen - the default where the type has it
+				const shown = builder._resolved( all, name, attributes, context.fields ?? {} );
+				const known = items.some( function( item ) { return item.value === shown } );
+				const must = builder._required( all, name, attributes );
+				// The empty choice: the words to choose one where one has to be, the choice none where not. A required field shows it only while nothing is chosen
+				const empty = must === true
+					? ( known === true ? [] : [ { value : '', label : Nino.content.getText('/_admin/builder/label/choose-field') } ] )
+					: [ { value : '', label : Nino.content.getText('/_admin/builder/label/no-field') } ];
 
-				if( stray === true )
-					choices.push( { value : value, label : value } );
-
-				// A value the type has not is there until another is chosen
-				return builder._selectField( label, hint, choices, value, stray === true && typeof context.redraw === 'function' ? function( chosen ) { write( chosen ); context.redraw() } : write );
+				// Chosen where nothing was and the form shows the placeholder: it is drawn again, without it
+				return builder._selectField( label, hint, empty.concat( items ), known === true ? shown : '', must === true && known === false && typeof context.redraw === 'function' ? function( chosen ) { write( chosen ); context.redraw() } : write );
 			}
 
 			// The line of free text of a loop, with the fields of the element in it
@@ -11650,6 +11795,7 @@
 				builder._status.fail( Nino.content.getText('/_admin/builder/error/red') );
 				return report( false );
 			}
+
 
 			builder._saving = true;
 			builder._status.saving();

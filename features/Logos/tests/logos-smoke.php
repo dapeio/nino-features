@@ -332,9 +332,16 @@ check( 'a logo is a list item with its picture in the kernel\'s logo set - the p
 check( 'the picture of the field the call names as dark stands beside it in the same set, as nino-logo-dark, for the ground to choose',
 	preg_match( '~<span class="nino-logo-set"><img class="nino-logo-light nino-logos-strip-img"[^>]*alt="Alpha"[^>]*><img class="nino-logo-dark nino-logos-strip-img" src="[^"]*alpha-image-dark\.fit540x210\.webp" width="540" height="203" alt="Alpha" loading="lazy" decoding="async"></span>~', $list ) === 1 );
 check( 'a logo with one picture only draws one: nothing for the kernel to choose between', substr_count( $list, '<img' ) === 10 && substr_count( $list, 'nino-logo-dark' ) === 2 );
-check( 'a call that names no dark field draws the second picture from image-dark, where the element has one - and the logo that has only that one, which is seen on every ground: an empty dark is the default too',
+check( 'a call that leaves dark out draws the second picture from image-dark, where the element has one - and the logo that has only that one, which is seen on every ground',
 	logosNames( logosLists( $plain )[0] ) === $inOrder && substr_count( logosLists( $plain )[0], 'nino-logo-dark' ) === 2 && substr_count( logosLists( $plain )[0], 'nino-logo-light' ) === 8
-	&& $plain === $all && logosPage( $appData, '[logos /logo image="image" link="url" dark="" sort="order"]' ) === $all );
+	&& $plain === $all );
+$noDark = logosPage( $appData, '[logos /logo image="image" link="url" dark="" sort="order"]' );
+check( 'dark="" is no field: no second picture for any logo, no fallback to image-dark, and the logo that has only the picture for a dark ground has no picture and is left out',
+	str_contains( $noDark, 'nino-logo-dark' ) === false && substr_count( logosLists( $noDark )[0], '<img' ) === 8 && logosCount( logosLists( $noDark )[0] ) === 8 && str_contains( $noDark, 'Only dark' ) === false
+	&& str_contains( $noDark, 'alpha-image-dark' ) === false );
+$noName = logosPage( $appData, '[logos /logo image="image" link="url" name="" sort="order"]' );
+check( 'name="" is no field: the pictures have an empty alt text and no other field is read in its place',
+	substr_count( logosLists( $noName )[0], ' alt=""' ) === 10 && str_contains( $noName, 'alt="Alpha"' ) === false && logosCount( logosLists( $noName )[0] ) === 9 );
 check( 'a dark that names the field of image is no second picture: one picture for each logo, not the same one twice',
 	substr_count( logosLists( logosPage( $appData, '[logos /logo image="image" dark="image"]' ) )[0], '<img' ) === 8 && str_contains( logosPage( $appData, '[logos /logo image="image" dark="image"]' ), 'nino-logo-dark' ) === false
 	&& substr_count( logosLists( logosPage( $appData, '[logos /logo image="image-dark"]' ) )[0], '<img' ) === 2 );
@@ -356,9 +363,16 @@ check( 'a link is drawn for an https address - escaped, an ampersand once, a quo
 
 $linkless = logosPage( $appData, '[logos /logo image="image" link="url" links="0"]' );
 
-check( 'links="0" draws no link, whatever an address says', logosCount( logosLists( $linkless )[0] ) === 9 && str_contains( $linkless, '<a ' ) === false && str_contains( $linkless, 'href=' ) === false );
-check( 'the link is the field the call names, and none is a link where it names none: a call with no link, a field there is none of, a picture field and a field that holds no address draw no link',
-	array_filter( [ '[logos /logo image="image"]', '[logos /logo image="image" link=""]', '[logos /logo image="image" link="nofield"]', '[logos /logo image="image" link="image-dark"]', '[logos /logo image="image" link="name"]', '[logos /logo image="image" link="/logo/zeta"]' ],
+check( 'links="0" draws no link, whatever an address says - and with the link field left to its default url as well', logosCount( logosLists( $linkless )[0] ) === 9 && str_contains( $linkless, '<a ' ) === false && str_contains( $linkless, 'href=' ) === false
+	&& str_contains( logosPage( $appData, '[logos /logo image="image" links="0"]' ), '<a ' ) === false && str_contains( logosPage( $appData, '[logos /logo image="image"]' ), '<a ' ) === true );
+$defaultLink = logosPage( $appData, '[logos /logo image="image" sort="order"]' );
+check( 'a call that leaves link out reads the field url, as the schema\'s default says: the same row as with link="url", and so does a value that is no field name; link="" is no field and draws no link',
+	$defaultLink === logosPage( $appData, '[logos /logo image="image" link="url" sort="order"]' ) && substr_count( logosLists( $defaultLink )[0], '<a ' ) === 4
+	&& logosPage( $appData, '[logos /logo image="image" link="/logo/zeta" sort="order"]' ) === $defaultLink
+	&& str_contains( logosPage( $appData, '[logos /logo image="image" link="" sort="order"]' ), '<a ' ) === false
+	&& logosCount( logosLists( logosPage( $appData, '[logos /logo image="image" link="" sort="order"]' ) )[0] ) === 9 );
+check( 'the link is the field the call names, and none is a link where it names none: a call with link written empty, a field there is none of, a picture field and a field that holds no address draw no link',
+	array_filter( [ '[logos /logo image="image" link=""]', '[logos /logo image="image" link="nofield"]', '[logos /logo image="image" link="image-dark"]', '[logos /logo image="image" link="name"]' ],
 		static fn( string $call ): bool => str_contains( logosPage( $appData, $call ), '<a ' ) === true || logosCount( logosLists( logosPage( $appData, $call ) )[0] ) !== 9 ) === [] );
 check( 'every value of an element is escaped and no bracket of it is left to open a fill or a shortcode on the next pass: the markup of a name is text, "[[" is "&#91;&#91;" and the quote of an address ends nothing',
 	str_contains( $all, '<b>' ) === false && str_contains( $all, '[[/project' ) === false && str_contains( $all, '[' ) === false && preg_match( '/\sonmouseover\s*=/', $all ) !== 1 );
@@ -521,8 +535,11 @@ echo "Components - [logos] as a stack the Builder offers\n";
 		$schema['cell'] === 'none' && $schema['grid'] === false && $schema['preview'] === 'image'
 		&& array_map( static fn( array $attribute ): string => $attribute['type'], array_diff_key( $schema['attributes'], [ 'class' => 1 ] ) ) === [ 'image' => 'field', 'link' => 'field', 'name' => 'field', 'dark' => 'field', 'height' => 'select', 'links' => 'bool' ]
 		&& $schema['attributes']['height']['options'] === [ 's', 'm', 'l' ] );
-	check( '...with the defaults of its attributes, as strings - the picture, the name, no link, the picture for a dark ground from image-dark, the middle height, links on - and the loop of the kernel in front of them',
-		\Nino\Modules\Components::defaults( $appData, 'logos', true ) === [ 'sort' => '', 'offset' => '0', 'limit' => '0', 'query' => '', 'callback' => '', 'locale' => '', 'id' => '', 'image' => 'image', 'link' => '', 'name' => 'name', 'dark' => 'image-dark', 'height' => 'm', 'links' => '1', 'class' => '' ] );
+	check( '...with the defaults of its attributes, as strings - the picture, the address from url, the name, the picture for a dark ground from image-dark, the middle height, links on - and the loop of the kernel in front of them',
+		\Nino\Modules\Components::defaults( $appData, 'logos', true ) === [ 'sort' => '', 'offset' => '0', 'limit' => '0', 'query' => '', 'callback' => '', 'locale' => '', 'id' => '', 'image' => 'image', 'link' => 'url', 'name' => 'name', 'dark' => 'image-dark', 'height' => 'm', 'links' => '1', 'class' => '' ] );
+	check( '...and says which of the fields must be chosen, which a tool reads: the picture always, the link while links is on, the name and the picture for a dark ground never',
+		array_map( static fn( array $attribute ): mixed => $attribute['required'], array_intersect_key( $schema['attributes'], array_flip( [ 'image', 'link', 'name', 'dark' ] ) ) ) === [ 'image' => true, 'link' => 'links', 'name' => false, 'dark' => false ]
+		&& $declared['attributes']['link']['required'] === 'links' && $declared['attributes']['link']['default'] === 'url' && ( $declared['attributes']['name']['required'] ?? false ) === false && ( $declared['attributes']['dark']['required'] ?? false ) === false );
 	check( 'the feature registers the shortcode once, through the manifest', count( \Nino\Callbacks::registered( $appData, '/nino/html/shortcode/logos' ) ) === 1 );
 
 	// What the renderer returns goes through the page's own rendering once more, which resolves the two words of the pause button: that is what a page gets

@@ -1478,9 +1478,25 @@ namespace Nino\Modules\Builder {
 
 			foreach( (array) ( $schemas['stacks'][$name]['attributes'] ?? [] ) as $attribute => $declared ) {
 
+				if( is_array( $declared ) === false )
+					continue;
+
 				$value = (string) ( $stack['attributes'][$attribute] ?? '' );
 
-				if( $value === '' || is_array( $declared ) === false )
+				// A field the schema requires has to be chosen, and be a field of the type: a call that leaves it out has its default, which counts as it does. Any other may be none, which the call writes empty
+				if( ( $declared['type'] ?? '' ) === 'field' && Reader::required( (array) ( $schemas['stacks'][$name] ?? [] ), (string) $attribute, (array) ( $stack['attributes'] ?? [] ) ) === true ) {
+
+					$chosen = array_key_exists( $attribute, (array) ( $stack['attributes'] ?? [] ) ) === true ? $value : (string) ( Reader::defaults( (array) ( $schemas['stacks'][$name] ?? [] ) )[$attribute] ?? '' );
+
+					if( $chosen === '' )
+						$problems[] = 'the attribute "'. $attribute. '" of the loop "'. $name. '" is required, and holds no field of the loop\'s type';
+					elseif( isset( $fields[$chosen] ) === false )
+						$problems[] = 'the attribute "'. $attribute. '" of the loop "'. $name. '" is "'. $chosen. '", which is no field of the loop\'s type';
+
+					continue;
+				}
+
+				if( $value === '' )
 					continue;
 
 				if( ( $declared['type'] ?? '' ) === 'field' && isset( $fields[$value] ) === false )

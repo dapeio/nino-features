@@ -1450,7 +1450,7 @@ check( 'what an answer means: saved, a conflict, a model that is not valid with 
 	&& builder._outcome( 409, { code : 'builder_key_exists', params : [ 'k' ] } ).kind === 'error' && builder._outcome( 409, { code : 'builder_key_exists', params : [ 'k' ] } ).problems.join() === 'k'
 	&& builder._outcome( 500, null ).kind === 'error' && builder._outcome( 200, null ).kind === 'error' && builder._outcome( 403, { code : 'builder_permission' } ).kind === 'error' );
 check( 'a conflict is answered by Reload (the file as it is, the changes dropped), by Save anyway (the same model, forced), or by Cancel (nothing)', JSON.stringify( builder._conflictRequest( doc, 'reload' ) ) === JSON.stringify( { action : 'builder/load', payload : { file : 'page-home' } } )
-	&& builder._conflictRequest( doc, 'force' ).action === 'builder/save' && builder._conflictRequest( doc, 'force' ).payload.force === true && builder._conflictRequest( doc, 'force' ).payload.model === model && builder._conflictRequest( doc, 'cancel' ) === null );
+	&& builder._conflictRequest( doc, 'force' ).action === 'builder/save' && builder._conflictRequest( doc, 'force' ).payload.force === true && JSON.stringify( builder._conflictRequest( doc, 'force' ).payload.model ) === JSON.stringify( model ) && builder._conflictRequest( doc, 'cancel' ) === null );
 check( 'a refused save names its blocks by the id of the section or the number of the block', ( function() {
 	const blame = builder._blame( model, [ 'the section "services": the source "x" means nothing', 'block 3 is neither a section nor a block of html', 'the name is one line', 'the section "gone" is not valid', 'block 9 is no block' ] );
 	return blame.blocks[1].length === 1 && blame.blocks[2].length === 1 && blame.general.length === 3 && blame.blocks[0] === undefined;
@@ -3226,6 +3226,12 @@ check( '...a column is added at the end, of the first field, and is a component 
 	tableCol().components.length === 2 && columnRows().length === 2 && tableCol().components[1].name === 'col' && tableCol().components[1].attributes.field === 'title' && tableCol().components[1].text === null );
 change( columnRows()[1], 'Value', 'price' );
 check( '...what a column shows is chosen from the fields, and writes the field', tableCol().components[1].attributes.field === 'price' && valueAt( columnRows()[1], 'Value' ) === 'price' );
+tableCol().components[1].attributes.field = 'gone';
+builder._refreshControls( 'stack' );
+check( '...a field the type has not is no entry of the select of a column either: the empty choice asks for one, the column stays red, and a field chosen is the end of it',
+	optionsOf( columnRows()[1], 'Value' ).split(',')[0] === '='+ word('label/choose-field') && optionsOf( columnRows()[1], 'Value' ).indexOf('gone') === -1 && valueAt( columnRows()[1], 'Value' ) === ''
+	&& builder._red( builder._doc.model, builder._registry ).some( function( entry ) { return entry.source === 'gone' } ) === true
+	&& ( change( columnRows()[1], 'Value', 'price' ), tableCol().components[1].attributes.field === 'price' && builder._red( builder._doc.model, builder._registry ).length === 0 ) );
 change( columnRows()[1], 'Value', '*' );
 check( '...Free text opens an input for a line, with the fields named in its hint as they are written, and takes the field away; a line of free text is the text of the column',
 	tableCol().components[1].text === '' && tableCol().components[1].attributes.field === '' && labelList( columnRows()[1] ).indexOf('Text') !== -1 && columnRows()[1].querySelector('.builder-line-field') !== null
@@ -3269,10 +3275,11 @@ check( '...and the line is kept in the model as it is typed, the fills as they a
 change( loopPane(), titledSchema.attributes.text.label, 'a [[b c' );
 check( '...a double bracket that opens no field is said under the input, as in a column', loopPane().querySelector('.builder-line-warning').hidden === false );
 change( loopPane(), titledSchema.attributes.text.label, '[[title]]' );
-check( '...a field the type has not is shown as it stands, to be seen and changed', ( function() {
+check( '...a field the type has not is no entry of the select - it is none, which is what the select shows, and it is not red: the title of a presentation need not be chosen', ( function() {
 	builder._doc.model.blocks[1].cols[1].stack.attributes.title = 'gone';
 	builder._openSettings( [ 1, 1, 'x' ] );
-	return optionsOf( loopPane(), titledSchema.attributes.title.label ).split(',').indexOf('gone=gone') !== -1;
+	return optionsOf( loopPane(), titledSchema.attributes.title.label ) === '='+ word('label/no-field')+ ',title=title,summary=summary,image=image,price=price' && valueAt( loopPane(), titledSchema.attributes.title.label ) === ''
+		&& builder._red( builder._doc.model, builder._registry ).length === 0;
 } )() );
 check( '...a presentation drawn as a block says what it is in the preview, once, above the cell it shows, with the field or the line the titles are made of - the line wins, as it does in the kernel - and its components stay what each cell shows',
 	registry().stacks[titledName].preview === 'block' && ( builder._doc.model.blocks[1].cols[1].stack.attributes.title = 'summary', builder._renderEditor(), true )
@@ -3319,22 +3326,137 @@ check( '...each attribute of the type field is a select of all the fields of the
 	&& ( change( loopPane(), noneSchema.attributes.image.label, 'title' ), noneCol().stack.attributes.image === 'title' ) && ( change( loopPane(), noneSchema.attributes.image.label, 'image' ), noneCol().stack.attributes.image === 'image' ) );
 check( '...a field is offered by the name the kernel reads for a field - a letter, then letters, digits, hyphens and underscores - and a name with a space or a digit first is not',
 	builder._fieldChoices( { title : { type : 'string' }, 'logo bild' : { type : 'image' }, '9a' : { type : 'string' }, 'a.b' : { type : 'string' }, '-x' : { type : 'string' }, 'image_alt-2' : { type : 'string' } } ).map( function( item ) { return item.value } ).join() === 'title,image_alt-2' );
-check( '...a field the type has not - the default of the attribute, for a type without it - is red on the loop and says so, as a field in a row does: it stays in the select as it stands until another is chosen, then it is gone, and the red with it',
+check( '...a required field that holds a name the type has not, or nothing, shows the default of the schema where the type has it - and is not red then: the select has no entry for the name; a save sends the default and leaves the model as it is',
 	( function() {
 		const attributes = noneCol().stack.attributes;
+		const label = noneSchema.attributes.image.label;
+		const shown = function() { builder._renderEditor(); builder._openSettings( [ 1, 1, 'x' ] ); return optionsOf( loopPane(), label )+ '|'+ valueAt( loopPane(), label ) };
+		const red = function() { return builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } ).length };
 		attributes.image = 'nope';
+		const foreign = shown() === 'title=title,summary=summary,image=image,price=price|image' && red() === 0 && builder._saveRequest( builder._doc, false ).model.blocks[1].cols[1].stack.attributes.image === 'image' && attributes.image === 'nope';
+		attributes.image = '';
+		const empty = shown() === 'title=title,summary=summary,image=image,price=price|image' && red() === 0 && builder._saveRequest( builder._doc, false ).model.blocks[1].cols[1].stack.attributes.image === 'image';
+		attributes.image = 'image';
+		return foreign === true && empty === true;
+	} )() );
+// A field the schema requires has to be chosen, any other may be none: the registry says which, and the value of a switch it names decides while the dialog is open
+const markSchema = registry().stacks.marks;
+const markLabel = function( name ) { return markSchema.attributes[name].label };
+const markRed = function() { return builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } ).map( function( entry ) { return entry.why+ ':'+ entry.source } ).join() };
+const markStack = function() { return builder._doc.model.blocks[1].cols[1].stack };
+const typeFields = 'title=title,summary=summary,image=image,price=price';
+builder._doc.model.blocks[1].cols[1].stack = builder._stackFor( builder._registry, 'marks', null );
+markStack().source = '/services';
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+check( 'a field that has to be chosen shows the fields of the type and no entry for anything else, with the default of the schema chosen where the type has it: the picture is required, its default image is a field of the type',
+	markSchema.attributes.image.required === true && markStack().attributes.image === 'image' && optionsOf( loopPane(), markLabel('image') ) === typeFields && valueAt( loopPane(), markLabel('image') ) === 'image' );
+check( '...a field that need not be chosen has the choice none first, and where the default is no field of the type it is none that is chosen - not the default, which the type has not - whatever the model still holds: the name and the picture for a dark ground',
+	[ 'name', 'dark' ].every( function( name ) { return ( markSchema.attributes[name].required ?? false ) === false && markStack().attributes[name] === markSchema.defaults[name]
+		&& optionsOf( loopPane(), markLabel( name ) ) === '='+ word('label/no-field')+ ','+ typeFields && valueAt( loopPane(), markLabel( name ) ) === '' } )
+	&& markRed() === 'field:url' );
+check( '...a field that has to be chosen and whose default the type has not shows the empty choice to choose one - "Choose a field" - and the loop is red for it, with the sentence of the missing field; choosing one is the end of both',
+	optionsOf( loopPane(), markLabel('link') ) === '='+ word('label/choose-field')+ ','+ typeFields && valueAt( loopPane(), markLabel('link') ) === '' && markRed() === 'field:url'
+	&& ( builder._markRed( preview(), builder._red( builder._doc.model, builder._registry ) ), preview().querySelector('[data-path="1.1.x"]').classList.contains('is-red') === true && preview().querySelector('[data-path="1.1.x"]').title === word('tree/red-field') )
+	&& ( change( loopPane(), markLabel('link'), 'summary' ), markStack().attributes.link === 'summary' ) && optionsOf( loopPane(), markLabel('link') ) === typeFields && valueAt( loopPane(), markLabel('link') ) === 'summary' && markRed() === '' );
+check( '...a required field that is written empty is red with a sentence of its own - the loop needs a field and none is chosen - and so is the picture of any loop',
+	( function() {
+		markStack().attributes.link = '';
 		builder._renderEditor();
 		builder._openSettings( [ 1, 1, 'x' ] );
-		const red = builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } );
-		const stays = optionsOf( loopPane(), noneSchema.attributes.image.label ).split(',').indexOf('nope=nope') !== -1;
-		builder._markRed( preview(), red );
+		builder._markRed( preview(), builder._red( builder._doc.model, builder._registry ) );
 		const marked = preview().querySelector('[data-path="1.1.x"]');
-		change( loopPane(), noneSchema.attributes.image.label, 'title' );
-		const gone = optionsOf( loopPane(), noneSchema.attributes.image.label ).split(',').indexOf('nope=nope') === -1;
-		const clean = builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } ).length === 0;
-		change( loopPane(), noneSchema.attributes.image.label, 'image' );
-		return red.length === 1 && red[0].why === 'field' && red[0].source === 'nope' && stays === true && marked !== null && marked.classList.contains('is-red') === true && marked.title === word('tree/red-field') && gone === true && clean === true;
+		return markRed() === 'required:' && marked.classList.contains('is-red') === true && marked.title === word('tree/red-required') && marked.title !== word('tree/red-field') && valueAt( loopPane(), markLabel('link') ) === '';
 	} )() );
+check( '...and what the switch the schema names says is the value it has in the dialog, at once: with Links off the link is a field that need not be chosen - none is chosen, the loop is not red, the choice none is there - and with it on it has to be again',
+	( function() {
+		change( loopPane(), markLabel('links'), false );
+		const off = optionsOf( loopPane(), markLabel('link') ) === '='+ word('label/no-field')+ ','+ typeFields && valueAt( loopPane(), markLabel('link') ) === '' && markRed() === '' && markStack().attributes.links === '0';
+		change( loopPane(), markLabel('links'), true );
+		const on = optionsOf( loopPane(), markLabel('link') ) === '='+ word('label/choose-field')+ ','+ typeFields && valueAt( loopPane(), markLabel('link') ) === '' && markRed() === 'required:' && markStack().attributes.links === '1';
+		return off === true && on === true;
+	} )() );
+check( '...the switch is read from the model and its default, and no attribute is named: required is true, a name, or none of it',
+	builder._required( markSchema.attributes, 'image', {} ) === true && builder._required( markSchema.attributes, 'name', {} ) === false && builder._required( markSchema.attributes, 'link', {} ) === true
+	&& builder._required( markSchema.attributes, 'link', { links : '0' } ) === false && builder._required( markSchema.attributes, 'link', { links : '1' } ) === true && builder._required( markSchema.attributes, 'nope', {} ) === false
+	&& builder._decides( markSchema.attributes, 'links' ) === true && builder._decides( markSchema.attributes, 'link' ) === false );
+check( 'a save makes the model say what the dialog showed: a field that need not be chosen and the type has not is written empty - the default of the schema too - one the type has stays, and a field that has to be chosen is not touched',
+	( function() {
+		const attributes = markStack().attributes;
+		attributes.link = 'summary';
+		attributes.dark = 'price';
+		attributes.name = 'name';
+		builder._settle( builder._doc.model, builder._registry );
+		const kept = attributes.link === 'summary' && attributes.dark === 'price' && attributes.name === '' && attributes.image === 'image';
+		attributes.link = 'zzz';
+		attributes.dark = 'image-dark';
+		builder._settle( builder._doc.model, builder._registry );
+		return kept === true && attributes.link === 'zzz' && attributes.dark === '';
+	} )() );
+check( '...a name the type has not becomes the default where the type has it, nothing where it has not, and a field that need not be chosen and holds nothing stays nothing: the three readings of a name that is no field of the type',
+	( function() {
+		const schema = builder._registry.stacks.marks;
+		const kept = schema.attributes.dark.default;
+		schema.attributes.dark.default = 'summary';
+		const attributes = markStack().attributes;
+		attributes.link = 'summary';
+		attributes.dark = 'zzz';
+		attributes.name = 'zzz';
+		builder._settle( builder._doc.model, builder._registry );
+		const foreign = attributes.dark === 'summary' && attributes.name === '';
+		attributes.dark = '';
+		builder._settle( builder._doc.model, builder._registry );
+		const none = attributes.dark === '';
+		schema.attributes.link.default = 'summary';
+		attributes.link = '';
+		builder._settle( builder._doc.model, builder._registry );
+		const required = attributes.link === 'summary';
+		schema.attributes.link.default = 'url';
+		schema.attributes.dark.default = kept;
+		attributes.link = 'summary';
+		return foreign === true && none === true && required === true;
+	} )() );
+check( '...and the dialog shows the same: the select of a foreign name shows the default where the type has it, a field that need not be chosen and holds nothing stays on none, and a field that has to be chosen shows the default again once the switch is turned on',
+	( function() {
+		const schema = builder._registry.stacks.marks;
+		schema.attributes.dark.default = 'summary';
+		schema.attributes.link.default = 'summary';
+		const attributes = markStack().attributes;
+		attributes.dark = 'zzz';
+		attributes.link = 'summary';
+		const open = function() { builder._renderEditor(); builder._openSettings( [ 1, 1, 'x' ] ) };
+		open();
+		const foreign = valueAt( loopPane(), markLabel('dark') ) === 'summary';
+		attributes.dark = '';
+		open();
+		const none = valueAt( loopPane(), markLabel('dark') ) === '';
+		change( loopPane(), markLabel('links'), false );
+		change( loopPane(), markLabel('link'), '' );
+		change( loopPane(), markLabel('links'), true );
+		const again = valueAt( loopPane(), markLabel('link') ) === 'summary' && markRed() === '';
+		schema.attributes.dark.default = 'image-dark';
+		schema.attributes.link.default = 'url';
+		attributes.link = 'summary';
+		attributes.dark = '';
+		return foreign === true && none === true && again === true;
+	} )() );
+check( 'the preview names the fields the cells of a loop are made of that the type has: one it has not is left out, and so is a field that need not be chosen and holds nothing',
+	( function() {
+		const attributes = markStack().attributes;
+		attributes.link = 'summary';
+		attributes.name = 'name';
+		attributes.dark = 'image-dark';
+		const stray = builder._loopTitle( builder._registry, markStack() );
+		attributes.name = '';
+		attributes.dark = '';
+		return stray === '[[image]], [[summary]]' && builder._loopTitle( builder._registry, markStack() ) === '[[image]], [[summary]]';
+	} )() );
+change( loopPane(), kindWord, noneName );
+noneCol().stack.attributes.image = 'image';
+noneCol().stack.attributes.link = 'summary';
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+
 check( '...the preview of the column is the block of the loop with the word of the presentation and the fields it names, once, and nothing to add a component to: no components, no button for one',
 	( function() {
 		builder._renderEditor();
@@ -4847,6 +4969,23 @@ const saved = JSON.parse( JSON.stringify( builder._doc.model ) );
 saved.blocks[0].id = 'hero';
 requests[0].callback( 200, { model : saved, hash : 'h2' } );
 check( 'the answer replaces the model and the hash, and the document holds nothing unsaved', builder._doc.hash === 'h2' && builder._doc.model.name === 'Start' && builder._unsaved( builder._doc ) === false && builder._saving === false && builder._status.state === 'saved' && answers[answers.length - 1] === true && builder._fresh.x === undefined );
+
+doc = open();
+builder._doc.model.blocks[1].cols[1].stack = builder._stackFor( builder._registry, 'marks', null );
+builder._doc.model.blocks[1].cols[1].stack.source = '/services';
+builder._doc.model.blocks[1].cols[1].stack.attributes.link = 'summary';
+builder._doc.model.blocks[1].cols[1].stack.attributes.link = '';
+builder._save();
+check( 'a save that is refused for a required field that is empty sends nothing, is red at the loop and leaves the model as it is: what the type has not, the default among it, stays for a type that has the field again',
+	requests.length === 0 && builder._status.state === 'error' && builder._same( builder._sel, [ 1, 1, 'x' ] ) && builder._doc.model.blocks[1].cols[1].stack.attributes.name === 'name' && builder._doc.model.blocks[1].cols[1].stack.attributes.dark === 'image-dark' );
+builder._doc.model.blocks[1].cols[1].stack.attributes.link = 'summary';
+builder._save();
+check( '...and the save that goes sends what the dialog showed: a field that need not be chosen and the type has not - the default of the schema - is sent empty, the ones the type has and the required ones as they are',
+	requests.length === 1 && requests[0].action === 'builder/save' && [ 'name', 'dark' ].every( function( name ) { return requests[0].payload.model.blocks[1].cols[1].stack.attributes[name] === '' } )
+	&& requests[0].payload.model.blocks[1].cols[1].stack.attributes.link === 'summary' && requests[0].payload.model.blocks[1].cols[1].stack.attributes.image === 'image' );
+requests[0].callback( 409, { code : 'builder_conflict', error : 'x' } );
+check( '...and an answer that refuses it - a conflict here - leaves the model as it is: the names the type has not stay, for a type that has the field again',
+	builder._saving === false && builder._doc.model.blocks[1].cols[1].stack.attributes.name === 'name' && builder._doc.model.blocks[1].cols[1].stack.attributes.dark === 'image-dark' && builder._unsaved( builder._doc ) === true );
 
 doc = open();
 builder._doc.model.name = 'Start';

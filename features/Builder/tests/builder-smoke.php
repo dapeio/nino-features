@@ -307,8 +307,21 @@ echo "The registry of the Components module\n";
 	'label'			=> [ 'en_US' => 'Badges', 'de_DE' => 'Siegel' ],
 	'cell'			=> 'none',
 	'attributes'	=> [
-		'image'	=> [ 'type' => 'field', 'default' => 'image', 'label' => 'Picture' ],
-		'link'	=> [ 'type' => 'field', 'default' => '', 'label' => 'Link' ],
+		'image'	=> [ 'type' => 'field', 'default' => 'image', 'required' => true, 'label' => 'Picture' ],
+		'link'	=> [ 'type' => 'field', 'default' => '', 'required' => 'links', 'label' => 'Link' ],
+		'links'	=> [ 'type' => 'bool', 'default' => false, 'label' => 'Links' ],
+	],
+] );
+// ...and one whose optional fields have a default of their own, which is where a field written empty and a field left out differ: required is the picture alone, and the link while the switch is on
+\Nino\Modules\Components::addStack( $appData, 'marks', static fn( array &$appData, array $args ): string => '', [
+	'label'			=> [ 'en_US' => 'Marks', 'de_DE' => 'Zeichen' ],
+	'cell'			=> 'none',
+	'attributes'	=> [
+		'image'	=> [ 'type' => 'field', 'default' => 'image', 'required' => true, 'label' => 'Picture' ],
+		'link'	=> [ 'type' => 'field', 'default' => 'url', 'required' => 'links', 'label' => 'Link' ],
+		'name'	=> [ 'type' => 'field', 'default' => 'name', 'label' => 'Name' ],
+		'dark'	=> [ 'type' => 'field', 'default' => 'image-dark', 'label' => 'Dark' ],
+		'links'	=> [ 'type' => 'bool', 'default' => true, 'label' => 'Links' ],
 	],
 ] );
 $registry = \Nino\Modules\Builder\Document::schemas( $appData );
@@ -4391,7 +4404,7 @@ check( '...a column is a text component to the registry the panel is handed - it
 	$registry['components']['col']['source'] === 'text' && $registry['components']['col']['fields'] === true && $registry['components']['line']['fields'] === true && array_key_exists( 'fields', $registry['components']['text'] ) === false
 	&& \Nino\Modules\Builder\Reader::columnar( $registry['components']['col'] ) === true && array_keys( array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::columnar( $schema ) === true ) ) === [ 'col', 'panel' ]
 	&& array_keys( array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::panelled( $schema ) === true ) ) === [ 'panel' ] && $registry['components']['panel']['source'] === 'content'
-	&& array_map( static fn( array $schema ): string => $schema['cell'] ?? '', $registry['stacks'] ) === [ 'stack' => 'components', 'repeat' => 'components', 'slider' => 'components', 'filter' => 'components', 'tabs' => 'components', 'accordion' => 'components', 'list' => 'row', 'table' => 'columns', 'sections' => 'section', 'badges' => 'none' ]
+	&& array_map( static fn( array $schema ): string => $schema['cell'] ?? '', $registry['stacks'] ) === [ 'stack' => 'components', 'repeat' => 'components', 'slider' => 'components', 'filter' => 'components', 'tabs' => 'components', 'accordion' => 'components', 'list' => 'row', 'table' => 'columns', 'sections' => 'section', 'badges' => 'none', 'marks' => 'none' ]
 	&& \Nino\Modules\Builder\Reader::placeOf( $registry['stacks']['table'] ) === 'table' && \Nino\Modules\Builder\Reader::placeOf( $registry['stacks']['list'] ) === '' );
 check( '...a line of text is a call like another: it reads and writes in a column and in the cell of a loop, with its tag, its fills and its class',
 	( static function() use ( $read, $write, $page, $section ): bool {
@@ -4818,6 +4831,62 @@ check( 'the Document takes the loop with no content as it is read - its fields f
 		$answer = $noneShape( static function( array &$model ) use ( $registry ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['title']['defaults'] ]; } );
 		return $answer['status'] === 400 && str_contains( (string) json_encode( $answer ), 'whose cell is no components, and components next to it' ) === true;
 	} )() );
+
+// A field attribute the schema requires has to be chosen, any other may be none - which a call writes as the attribute empty: the kernel reads x="" as no field and a call that leaves x out as the default
+check( 'the registry hands out what the schema says of each field attribute - required is true, the name of a switch, or false where the schema says nothing - and the Builder reads nothing else of it',
+	$registry['stacks']['badges']['attributes']['image']['required'] === true && $registry['stacks']['badges']['attributes']['link']['required'] === 'links'
+	&& array_map( static fn( array $attribute ): mixed => $attribute['required'] ?? null, array_intersect_key( $registry['stacks']['marks']['attributes'], array_flip( [ 'image', 'link', 'name', 'dark' ] ) ) ) === [ 'image' => true, 'link' => 'links', 'name' => false, 'dark' => false ]
+	&& $registry['stacks']['marks']['defaults']['dark'] === 'image-dark' && $registry['stacks']['marks']['defaults']['links'] === '1' );
+$markAttributes = static fn( array $values ): array => $registry['stacks']['marks']['defaults'] + $values;
+check( 'whether a field has to be chosen is the schema\'s and the value of the switch it names: the switch of the call, else its default - a call that says nothing of it has the default',
+	$reader::required( $registry['stacks']['marks'], 'image', [] ) === true && $reader::required( $registry['stacks']['marks'], 'name', [] ) === false && $reader::required( $registry['stacks']['marks'], 'dark', [ 'links' => '1' ] ) === false
+	&& $reader::required( $registry['stacks']['marks'], 'link', [] ) === true && $reader::required( $registry['stacks']['marks'], 'link', [ 'links' => '1' ] ) === true && $reader::required( $registry['stacks']['marks'], 'link', [ 'links' => '0' ] ) === false
+	&& $reader::required( $registry['stacks']['badges'], 'link', [] ) === false && $reader::required( $registry['stacks']['badges'], 'link', [ 'links' => '1' ] ) === true && $reader::required( $registry['stacks']['badges'], 'nope', [] ) === false );
+
+$emptyCall	= '[marks /services sort="title" name="" dark=""]';
+$emptyModel	= $read( $page( $section( $emptyCall ) ) );
+$emptyStack	= $emptyModel['blocks'][0]['cols'][0]['stack'] ?? [];
+check( 'a field written empty is the value none, which is not the default - dark="" is not image-dark - and a field left out is the default',
+	( $emptyModel['blocks'][0]['kind'] ?? '' ) === 'section' && $emptyStack['attributes']['dark'] === '' && $emptyStack['attributes']['name'] === '' && $emptyStack['attributes']['image'] === 'image' && $emptyStack['attributes']['link'] === 'url'
+	&& $read( $page( $section( '[marks /services]' ) ) )['blocks'][0]['cols'][0]['stack']['attributes']['dark'] === 'image-dark' );
+check( '...and the call is written back as it is, byte for byte, the empty field written empty where its default is a name and left out where the default is none - and read again, it is the same model',
+	str_contains( $write( $emptyModel ), "\t\t\t". $emptyCall. "\n\t\t</div>" ) === true && $write( $emptyModel ) === $inWrap( $page( $section( $emptyCall ) ) ) && $read( $write( $emptyModel ) ) === $emptyModel
+	&& $write( $read( $page( $section( '[badges /services link=""]' ) ) ) ) === $inWrap( $page( $section( '[badges /services]' ) ) ) );
+$markDefault = $read( $page( $section( '[marks /services]' ) ) );
+$markDefault['blocks'][0]['cols'][0]['stack']['attributes']['dark'] = '';
+check( 'the Writer writes none as an empty attribute and an attribute that holds its default not at all: the choice none of a field is dark="", the choice of the default is no word',
+	str_contains( $write( $markDefault ), "\t\t\t[marks /services dark=\"\"]\n" ) === true && str_contains( $write( $emptyModel ), 'image=' ) === false
+	&& str_contains( $write( $read( $page( $section( '[marks /services]' ) ) ) ), "\t\t\t[marks /services]\n" ) === true );
+
+$markProblems = static function( array $values ) use ( &$appData, $registry, $read, $page, $section ): string {
+	$model = $read( $page( $section( '[marks /services]' ) ) );
+	$model['blocks'][0]['cols'][0]['stack']['attributes'] = array_merge( $registry['stacks']['marks']['defaults'], [ 'link' => 'title', 'name' => '', 'dark' => '' ], $values );
+	return implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+};
+check( 'the Document takes a field none that the schema does not require - dark and name written empty - and refuses a required one that is none: the picture always, and the link while the switch is on, not while it is off',
+	$markProblems( [] ) === '' && $markProblems( [ 'dark' => 'title', 'name' => 'summary' ] ) === ''
+	&& str_contains( $markProblems( [ 'image' => '' ] ), 'the attribute "image" of the loop "marks" is required, and holds no field of the loop\'s type' ) === true
+	&& str_contains( $markProblems( [ 'link' => '' ] ), 'the attribute "link" of the loop "marks" is required, and holds no field of the loop\'s type' ) === true
+	&& $markProblems( [ 'link' => '', 'links' => '0' ] ) === '' && $markProblems( [ 'link' => 'title', 'links' => '0' ] ) === '' );
+check( '...and a value that is no field of the type is refused for a field that need not be chosen as for one that must: what the Builder writes for the choice none is empty, not the name the type has not',
+	str_contains( $markProblems( [ 'dark' => 'image-dark' ] ), 'the attribute "dark" of the loop "marks" is "image-dark", which is no field of the loop\'s type' ) === true
+	&& str_contains( $markProblems( [ 'image' => 'photo' ] ), 'the attribute "image" of the loop "marks" is "photo", which is no field of the loop\'s type' ) === true );
+$markMissing = static function( string $left ) use ( &$appData, $registry, $read, $page, $section ): string {
+	$model = $read( $page( $section( '[marks /services]' ) ) );
+	$attributes = array_merge( $registry['stacks']['marks']['defaults'], [ 'link' => 'title', 'name' => '', 'dark' => '' ] );
+	unset( $attributes[$left] );
+	$model['blocks'][0]['cols'][0]['stack']['attributes'] = $attributes;
+	return implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+};
+check( 'an attribute the model leaves out is its default, as a call that leaves it out is: a required field that is left out is the field its default names, and a problem where the type has no such field - the link is "url" - or none at all, and none where the type has it - the picture is "image"',
+	str_contains( $markMissing( 'link' ), 'the attribute "link" of the loop "marks" is "url", which is no field of the loop\'s type' ) === true && $markMissing( 'image' ) === '' && $markMissing( 'name' ) === '' );
+$markSave = static function( array $values ) use ( &$appData, $registry, $read, $page, $section ): array {
+	$model = $read( $page( $section( '[marks /services]' ) ) );
+	$model['blocks'][0]['cols'][0]['stack']['attributes'] = array_merge( $registry['stacks']['marks']['defaults'], [ 'link' => 'title', 'name' => '', 'dark' => '' ], $values );
+	return \Nino\Modules\Builder\Document::source( $appData, $model );
+};
+check( 'the source of a model with none for a field that need not be chosen is written as the call with those attributes empty, dark="" name=""',
+	$markSave( [] )['status'] === 200 && str_contains( (string) json_encode( $markSave( [] ) ), 'name=\\"\\" dark=\\"\\"' ) === true );
 
 echo "\n";
 

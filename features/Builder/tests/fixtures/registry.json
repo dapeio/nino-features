@@ -1413,6 +1413,7 @@
                     "type": "field",
                     "label": "Field",
                     "hint": "The field of the element the cell shows. A line of text, if the column has one, is shown instead.",
+                    "required": false,
                     "default": ""
                 },
                 "align": {
@@ -1616,6 +1617,7 @@
                     "type": "field",
                     "label": "Title field",
                     "hint": "The field of the element whose value is the title. Empty numbers them 1, 2, 3.",
+                    "required": false,
                     "default": ""
                 },
                 "text": {
@@ -1649,6 +1651,7 @@
                     "type": "field",
                     "label": "Title field",
                     "hint": "The field of the element whose value is the title. Empty numbers them 1, 2, 3.",
+                    "required": false,
                     "default": ""
                 },
                 "text": {
@@ -1792,13 +1795,21 @@
                     "type": "field",
                     "label": "Picture",
                     "hint": "",
+                    "required": true,
                     "default": "image"
                 },
                 "link": {
                     "type": "field",
                     "label": "Link",
                     "hint": "",
+                    "required": "links",
                     "default": ""
+                },
+                "links": {
+                    "type": "bool",
+                    "label": "Links",
+                    "hint": "",
+                    "default": false
                 }
             },
             "defaults": {
@@ -1811,6 +1822,65 @@
                 "id": "",
                 "image": "image",
                 "link": "",
+                "links": "0",
+                "class": ""
+            }
+        },
+        "marks": {
+            "label": "Marks",
+            "grid": false,
+            "cell": "none",
+            "panels": false,
+            "preview": "cells",
+            "attributes": {
+                "image": {
+                    "type": "field",
+                    "label": "Picture",
+                    "hint": "",
+                    "required": true,
+                    "default": "image"
+                },
+                "link": {
+                    "type": "field",
+                    "label": "Link",
+                    "hint": "",
+                    "required": "links",
+                    "default": "url"
+                },
+                "name": {
+                    "type": "field",
+                    "label": "Name",
+                    "hint": "",
+                    "required": false,
+                    "default": "name"
+                },
+                "dark": {
+                    "type": "field",
+                    "label": "Dark",
+                    "hint": "",
+                    "required": false,
+                    "default": "image-dark"
+                },
+                "links": {
+                    "type": "bool",
+                    "label": "Links",
+                    "hint": "",
+                    "default": true
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "image": "image",
+                "link": "url",
+                "name": "name",
+                "dark": "image-dark",
+                "links": "1",
                 "class": ""
             }
         }
