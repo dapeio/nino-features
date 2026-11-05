@@ -2751,18 +2751,40 @@
 		 *	another panel wrote before it did: that stays news
 		 *
 		 *	@param		{string}		topic
+		 *	@param		{string}		[uri]					The address of the page of the site the write was about, for the window that follows the site; without it the call has one argument
 		 *
 		 *	@return		void
 		 */
-		_touch : function( topic ) {
+		_touch : function( topic, uri ) {
 
 			const builder = Nino.admin.builder;
 			const current = Nino.admin.stamp( topic ) === builder._seen[topic];
 
-			Nino.admin.touch( topic );
+			if( typeof uri === 'string' && uri !== '' )
+				Nino.admin.touch( topic, uri );
+			else
+				Nino.admin.touch( topic );
 
 			if( current === true )
 				builder._seen[topic] = Nino.admin.stamp( topic );
+		},
+
+		/**
+		 *	The address of the first page of the site that shows a template, as the list of keys told of the pages: the address in the language
+		 *	of the website (httpUri) where there is one, else the uri of the route; a page whose address holds a * is passed over. Undefined where no page shows the template
+		 *
+		 *	@param		{string}		file							The file of the template, without .tpl
+		 *
+		 *	@return		{string|undefined}
+		 */
+		_addressOf : function( file ) {
+
+			const address = function( page ) { return typeof page.httpUri === 'string' && page.httpUri !== '' ? page.httpUri : page.uri };
+
+			// A page a feature routes by a pattern - /shop/* - is no address, as the Routes panel has it
+			const page = Nino.admin.builder._pages.find( function( candidate ) { return candidate.template === file && address( candidate ).indexOf('*') === -1 } );
+
+			return page === undefined ? undefined : address( page );
 		},
 
 		/**
@@ -11296,7 +11318,7 @@
 					// The file, and what the save wrote besides: the other panels that show them look again when they are shown
 					const wrote = builder._writes( doc.model, builder._registry );
 
-					builder._touch('templates');
+					builder._touch( 'templates', builder._addressOf( doc.file ) );
 
 					if( wrote.texts === true )
 						builder._touch('texts');

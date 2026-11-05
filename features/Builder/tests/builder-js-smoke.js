@@ -632,7 +632,9 @@ sandbox.Nino = {
 		sessionLocale : { current : 'en_US' },
 		// What the panels have written, by kind, as the workbench counts it: a panel touches a kind after a write and reads the stamp
 		stamps : {},
-		touch : function( topic ) { this.stamps[topic] = ( this.stamps[topic] ?? 0 ) + 1 },
+		// The arguments of every call, as the workbench got them: a second one is the address of a page, for the follow window
+		told : [],
+		touch : function( topic, uri ) { this.told.push( Array.prototype.slice.call( arguments ) ); this.stamps[topic] = ( this.stamps[topic] ?? 0 ) + 1 },
 		stamp : function( topic ) { return this.stamps[topic] ?? 0 },
 	},
 	// The fields of the workbench, as it makes them: a label with its words and its control
@@ -7518,6 +7520,121 @@ check( '...a save raises the stamp of the templates; with keys for new texts it 
 			requests[0].callback( 400, { code : 'builder_invalid', error : 'x', params : [ 'the name is bad' ] } );
 			return stampsNow() === none;
 		} )();
+} )() );
+check( '...a save of a template that a page shows tells the follow window the address of that page - the address in the language of the website, else the uri of the route - with the touch of the templates alone; the texts and the slots of the same save, a template that no page shows, and a made, copied or deleted template, tell none', ( function() {
+
+	const saveWith = function( pages, change ) {
+
+		doc = open();
+		builder._renderEditor();
+		builder._pages = pages;
+		builder._doc.model.name = 'Start';
+		change();
+		calm();
+		workbench.told = [];
+		builder._save();
+		requests[0].callback( 200, { model : JSON.parse( JSON.stringify( builder._doc.model ) ), hash : 'h2' } );
+
+		return JSON.stringify( workbench.told );
+	};
+	const other = { uri : '/other', httpUri : '/other-page', template : 'page-other' };
+	const shown = sitePages();
+	const noHttp = [ { uri : '/home', httpUri : '', template : 'page-home' }, { uri : '/home-two', httpUri : '/second', template : 'page-home' } ];
+	const gone = builder._pages;
+
+	const ok = saveWith( [ other ].concat( shown ), function() {} ) === '[["templates","/"]]'
+		&& saveWith( shown, function() { builder._addComponent( [ 3, 0 ], 'title' ) } ) === '[["templates","/"],["texts"]]'
+		&& saveWith( noHttp, function() {} ) === '[["templates","/home"]]'
+		&& saveWith( [ { uri : '/home', template : 'page-home' } ], function() {} ) === '[["templates","/home"]]'
+		&& saveWith( [ other ], function() {} ) === '[["templates"]]'
+		&& saveWith( [], function() {} ) === '[["templates"]]';
+
+	builder._pages = shown;
+	workbench.told = [];
+	builder._touch( 'templates' );
+	builder._touch( 'templates', '' );
+
+	builder._pages = gone;
+
+	return ok && JSON.stringify( workbench.told ) === '[["templates"],["templates"]]';
+} )() );
+check( '...a page routed by a pattern, whose address holds a *, is passed over for the next page of the template - and where it is the only one, the save tells no address', ( function() {
+
+	const saveWith = function( pages ) {
+
+		doc = open();
+		builder._renderEditor();
+		builder._pages = pages;
+		builder._doc.model.name = 'Start';
+		calm();
+		workbench.told = [];
+		builder._save();
+		requests[0].callback( 200, { model : JSON.parse( JSON.stringify( builder._doc.model ) ), hash : 'h2' } );
+
+		return JSON.stringify( workbench.told );
+	};
+	const shop = { uri : '/shop/*', httpUri : '/shop/*', template : 'page-home' };
+	const home = { uri : '/home', httpUri : '/', template : 'page-home' };
+	const gone = builder._pages;
+	const ok = saveWith( [ shop, home ] ) === '[["templates","/"]]' && saveWith( [ { uri : '/blog/*', httpUri : '', template : 'page-home' }, home ] ) === '[["templates","/"]]'
+		&& saveWith( [ shop ] ) === '[["templates"]]';
+
+	builder._pages = gone;
+
+	return ok;
+} )() );
+check( '...only the save of a template tells an address: its slots, a template made, a copy and a delete are touched without one, though a page shows the template', ( function() {
+
+	const gone = builder._pages;
+	const pages = [ { uri : '/home', httpUri : '/', template : 'page-home' }, { uri : '/fresh', httpUri : '/fresh', template : 'page-fresh' }, { uri : '/copy', httpUri : '/copy', template : 'page-home-copy' } ];
+
+	doc = open();
+	builder._renderEditor();
+	builder._pages = pages;
+	builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : null, create : { label : 'Background', width : 1600, height : 900 } };
+	calm();
+	workbench.told = [];
+	builder._save();
+	requests[0].callback( 200, { model : JSON.parse( JSON.stringify( builder._doc.model ) ), hash : 'h2' } );
+
+	const saved = JSON.stringify( workbench.told );
+
+	doc = open();
+	builder._pages = pages;
+	builder._doc = null;
+	calm();
+	builder._registry = registry();
+	builder._newTemplate();
+	change( dialogContent(), 'Name', 'Fresh' );
+	workbench.told = [];
+	screen.getElementById('builder-dialog-actions').children[0].click();
+	requests[0].callback( 200, { model : { file : 'page-fresh' } } );
+
+	const made = JSON.stringify( workbench.told );
+
+	doc = open();
+	builder._pages = pages;
+	builder._files = [ { file : 'page-home', name : 'Home', editable : true } ];
+	calm();
+	builder._duplicateTemplate( 'page-home' );
+	workbench.told = [];
+	screen.getElementById('builder-dialog-actions').children[0].click();
+	requests[0].callback( 200, { model : { file : 'page-home-copy' } } );
+
+	const copied = JSON.stringify( workbench.told );
+
+	calm();
+	questions = [];
+	builder._confirmDelete( 'page-home' );
+	workbench.told = [];
+	questions[0].onChoose( 'yes' );
+	requests[0].callback( 200, {} );
+
+	const deleted = JSON.stringify( workbench.told );
+
+	builder._pages = gone;
+
+	return saved === '[["templates","/"],["slots"]]' && made === '[["templates"]]' && copied === '[["templates"],["texts"],["slots"]]' && deleted === '[["templates"]]';
 } )() );
 check( '...and what the panel wrote itself is no news to it: after its own save, shown again or with a dialog closed, it asks for nothing - the registry asked for again would draw the preview again, under the focus - '
 	+ 'while a write of another panel before it, which is news, is still asked for', ( function() {
