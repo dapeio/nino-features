@@ -353,6 +353,12 @@ namespace Nino\Modules\Builder {
 		// the brackets of a fill that is there are not the end of the call - and any other character is itself. See address() for the only fills a call may hold
 		private const string RAW = '(?:\[\[[^\[\]]*+\]\]|[^\]])*+';
 
+		// The places a loop holds the calls of, and a column of a page does not offer: the kernel says them in the 'in' of a component and the 'holds' of a loop
+		public const array LOOP_PLACES = [ 'table' ];
+
+		// A fill in a line of free text: the name of a field of the element, .id, .slug, .uri, or a text key
+		private const string LINE_FILL = '\[\[(\/?[A-Za-z0-9_.\/-]+)\]\]';
+
 		// An address that leads to a page of the site and goes on from it: the directory the site is served from, [[/nino/dir]] - the key that holds the address of the page is
 		// written without it, as the kernel puts it in front of a bare key - then the fill of that key, [[/_nino/webpage/<uri>/uri]], then the sub-path: characters that are none
 		// of a space, a quote, a backslash or a bracket, and the fills of the element of a loop, [[.uri]] or [[title]]
@@ -393,6 +399,10 @@ namespace Nino\Modules\Builder {
 			'stack-neighbour'			=> 'a loop with other components in its column',
 			'stack-in-stack'			=> 'a loop inside a loop',
 			'stack-content'				=> 'the loop holds markup next to its component calls: %s',
+			'table-content'				=> 'the table holds %s, which is no column',
+			'table-empty'					=> 'a table without a column',
+			'col-elsewhere'				=> 'a column of a table outside a table',
+			'col-value'						=> 'a column that shows both a field and a line of text, or neither',
 			'holder-stack'				=> 'a loop inside a component that holds components',
 			'holder-in-holder'		=> 'a component that holds components inside another',
 			'holder-content'			=> 'the component %s holds markup next to its component calls: %s',
@@ -523,6 +533,104 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function holds( array $schema ): bool {
 			return is_string( $schema['holds'] ?? null ) === true && $schema['holds'] !== '';
+		}
+
+		/**
+		 *	The place a loop holds the calls of, as its schema says it ('holds'): the content of a table is its columns, the components of the
+		 *	place table. The Builder knows no loop by name, and this is what makes one a loop of columns
+		 *
+		 *	@param		array			$schema				One entry of the registry's stacks
+		 *
+		 *	@return 	string										'' for a loop whose content is the cell
+		 */
+		public static function placeOf( array $schema ): string {
+			return is_string( $schema['holds'] ?? null ) === true ? $schema['holds'] : '';
+		}
+
+		/**
+		 *	Whether a component is a column of a table, by what its schema says and not by its name: it stands in none of the places a column of a page offers
+		 *	(section, card, hero) but only in a place a loop holds (LOOP_PLACES)
+		 *
+		 *	@param		array			$schema				One entry of the registry's components
+		 *
+		 *	@return 	bool
+		 */
+		public static function columnar( array $schema ): bool {
+
+			$in = $schema['in'] ?? null;
+
+			return is_array( $in ) === true && $in !== [] && array_diff( $in, self::LOOP_PLACES ) === [];
+		}
+
+		/**
+		 *	Whether the fixed text of a component is a line of free text with the fields of the element in it, [[name]]: the Document marks the schema
+		 *	('fields') of the components that read their text so, being the one place that knows the kernel's names for them
+		 *
+		 *	@param		array			$schema				One entry of the registry's components
+		 *
+		 *	@return 	bool
+		 */
+		public static function fielded( array $schema ): bool {
+			return ( $schema['fields'] ?? false ) === true;
+		}
+
+		/**
+		 *	Whether a line of free text can be carried by a call: no line break, and no double bracket that opens no fill - the fills, [[name]], are what the kernel
+		 *	puts in before it reads the call. A quote, an apostrophe, an ampersand and a single bracket are carried as entities (see lineEncode())
+		 *
+		 *	@param		string		$text
+		 *
+		 *	@return 	bool
+		 */
+		public static function lineText( string $text ): bool {
+			return preg_match( '/\r|\n|\[\[/', (string) preg_replace( '/'. self::LINE_FILL. '/', '', $text ) ) !== 1;
+		}
+
+		/**
+		 *	A line of free text as the call carries it: the five characters a call cannot hold, written as the entities the kernel decodes in text="..." - and the fills
+		 *	as they are
+		 *
+		 *	@param		string		$text
+		 *
+		 *	@return 	string
+		 */
+		public static function lineEncode( string $text ): string {
+
+			$parts = preg_split( '/('. self::LINE_FILL. ')/', $text, -1, PREG_SPLIT_DELIM_CAPTURE ) ?: [];
+			$out = '';
+
+			foreach( $parts as $at => $part )
+				if( $at % 3 === 0 )
+					$out .= strtr( $part, [ '&' => '&amp;', '"' => '&quot;', '\'' => '&#39;', '[' => '&#91;', ']' => '&#93;' ] );
+				elseif( $at % 3 === 1 )
+					$out .= $part;
+
+			return $out;
+		}
+
+		/**
+		 *	The text a call carries, read back: the five entities of lineEncode() are the characters they stand for
+		 *
+		 *	@param		string		$raw
+		 *
+		 *	@return 	string
+		 */
+		public static function lineDecode( string $raw ): string {
+			return strtr( $raw, [ '&quot;' => '"', '&#39;' => '\'', '&#91;' => '[', '&#93;' => ']', '&amp;' => '&' ] );
+		}
+
+		/**
+		 *	The fills of a line of free text: the names between the brackets
+		 *
+		 *	@param		string		$text
+		 *
+		 *	@return 	array										The names without brackets, in order, each once
+		 */
+		public static function lineFills( string $text ): array {
+
+			preg_match_all( '/'. self::LINE_FILL. '/', $text, $found );
+
+			return array_values( array_unique( $found[1] ) );
 		}
 
 		/**
@@ -1906,8 +2014,13 @@ namespace Nino\Modules\Builder {
 				[ $call, $pos ] = self::_call( $body, $pos, 0, $registry, 'col-markup' );
 				$call['at'] = $at;
 
-				if( $call['stack'] === true )
-					$call['components'] = self::_sequence( $call['content'], $call['contentAt'], $registry );
+				if( $call['stack'] === true ) {
+
+					$call['components'] = self::_sequence( $call['content'], $call['contentAt'], $registry, '', self::placeOf( (array) $registry['stacks'][$call['node']['name']] ) );
+
+					if( self::placeOf( (array) $registry['stacks'][$call['node']['name']] ) !== '' && $call['components'] === [] )
+						throw self::_fail( 'table-empty', '', $call['at'] );
+				}
 
 				$calls[] = $call;
 			}
@@ -1947,7 +2060,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array										The components
 		 */
-		private static function _sequence( string $content, int $base, array $registry, string $holder = '' ): array {
+		private static function _sequence( string $content, int $base, array $registry, string $holder = '', string $place = '' ): array {
 
 			$components	= [];
 			$pos				= 0;
@@ -1959,7 +2072,7 @@ namespace Nino\Modules\Builder {
 				if( $pos >= strlen( $content ) )
 					return $components;
 
-				[ $call, $pos ] = self::_call( $content, $pos, $base, $registry, $holder === '' ? 'stack-content' : 'holder-content', $holder );
+				[ $call, $pos ] = self::_call( $content, $pos, $base, $registry, $holder === '' ? 'stack-content' : 'holder-content', $holder, false, $place );
 
 				if( $call['stack'] === true )
 					throw self::_fail( 'stack-in-stack', '', $base + $pos );
@@ -1978,10 +2091,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		string		$other				What fails where the text at $pos is no call
 		 *	@param		string		$holder				The name of the container whose content this is, '' elsewhere: a loop and a container are no calls it holds
 		 *	@param		bool			$whole				Whether the call is a loop of sections standing for the tag of a section, which is the only place for one: its attributes are the loop's and the section's alone
+		 *	@param		string		$place				The place the call stands in where it is the content of a loop that holds one (a table's columns), else ''
 		 *
 		 *	@return 	array										[ [ stack, node, content, contentAt ], the position after the call ]
 		 */
-		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image', string $holder = '', bool $whole = false ): array {
+		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image', string $holder = '', bool $whole = false, string $place = '' ): array {
 
 			if( preg_match( '~\G\[([a-z][a-z0-9-]*)(?: ('. self::RAW. '))?\]~', $text, $head, 0, $pos ) !== 1 )
 				throw self::_fail( $other, $holder === '' ? trim( substr( $text, $pos, 24 ) ) : $holder. "\n". (string) preg_replace( '/\s+/', ' ', trim( substr( $text, $pos, 24 ) ) ), $base + $pos );
@@ -1993,6 +2107,14 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'unknown-shortcode', $name, $base + $pos );
 
 			$schema = $isStack === true ? $registry['stacks'][$name] : $registry['components'][$name];
+			$column = $isStack === false && self::columnar( $schema );
+
+			// A column of a table stands in a table and nowhere else, and nothing but columns stands in a table
+			if( $column === true && $place === '' )
+				throw self::_fail( 'col-elsewhere', '', $base + $pos );
+
+			if( $column === false && $place !== '' )
+				throw self::_fail( 'table-content', $name, $base + $pos );
 
 			// A loop of sections is a section, and a section is not inside one
 			if( $isStack === true && $whole === false && ( $schema['cell'] ?? '' ) === 'section' )
@@ -2026,7 +2148,8 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
 
 			foreach( $named as $key => $value )
-				if( str_contains( $value, ']' ) === true && ( in_array( (string) $key, self::addresses( $schema ), true ) === false || self::address( $value ) === null ) )
+				if( str_contains( $value, ']' ) === true && ( in_array( (string) $key, self::addresses( $schema ), true ) === false || self::address( $value ) === null )
+					&& ( $key !== 'text' || self::fielded( $schema ) === false || self::lineText( $value ) === false ) )
 					throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
 
 			$fixed = null;
@@ -2038,6 +2161,17 @@ namespace Nino\Modules\Builder {
 
 				$fixed = $named['text'];
 				unset( $named['text'] );
+
+				// A line of free text carries its quotes, ampersands and brackets as entities, and reads back as the characters: only as it is written is it read
+				if( self::fielded( $schema ) === true ) {
+
+					$text = self::lineDecode( $fixed );
+
+					if( self::lineText( $fixed ) === false || self::lineEncode( $text ) !== $fixed )
+						throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
+
+					$fixed = $text;
+				}
 			}
 
 			// A component that is a surface has its radius apart from the rest of its classes
@@ -2075,6 +2209,13 @@ namespace Nino\Modules\Builder {
 				foreach( self::SPACING as $side )
 					$node[$side] = $sides[$side] ?? '';
 			}
+
+			// A column shows a field or a line of text, one of the two; it has no class, which a cell does not draw
+			if( $column === true && ( ( $node['attributes']['field'] ?? '' ) !== '' ) === is_string( $fixed ) )
+				throw self::_fail( 'col-value', '', $base + $pos );
+
+			if( $column === true && (string) ( $node['attributes']['class'] ?? '' ) !== '' )
+				throw self::_fail( 'unknown-attribute', 'class', $base + $pos );
 
 			if( $isStack === true ) {
 

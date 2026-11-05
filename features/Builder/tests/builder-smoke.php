@@ -155,6 +155,28 @@ check( '...and has an entry of its own for the order of a row, in both languages
 	}
 	return $manifest['manual']['panel']['The order of a section']['en_US'] !== $manifest['manual']['panel']['The order of a section']['de_DE'] && count( $manifest['manual']['panel'] ) <= 40;
 } )() );
+check( '...and has an entry of its own for the loop kinds Table and List, in both languages and under a thousand bytes, which names the kinds, the columns with their title and value, the free text and the kernel a table needs - the entry of the loop mentions both kinds - and a markup entry for the table, the column and the line, told in both',
+	( static function() use ( $manifest ): bool {
+		$entry = $manifest['manual']['panel']['Table and List'] ?? [];
+		$words = [ 'en_US' => [ 'Table', 'List', 'Title', 'Value', 'Free text', '[table]' ], 'de_DE' => [ 'Tabelle', 'Liste', 'Titel', 'Wert', 'Freitext', '[table]' ] ];
+		foreach( $words as $locale => $needles ) {
+			$line = (string) ( $entry[$locale] ?? '' );
+			if( $line === '' || strlen( $line ) >= 1000 )
+				return false;
+			foreach( $needles as $needle )
+				if( str_contains( $line, $needle ) === false )
+					return false;
+			if( str_contains( (string) ( $manifest['manual']['panel']['Loop'][$locale] ?? '' ), 'Table and List' ) === false || strlen( (string) $manifest['manual']['panel']['Loop'][$locale] ) >= 1000 )
+				return false;
+		}
+		$markup = array_filter( $manifest['manual']['markup'], static fn( mixed $line, string $call ): bool => str_starts_with( $call, '[table ' ) === true && str_contains( $call, '[col ' ) === true, ARRAY_FILTER_USE_BOTH );
+		$text = (array) ( array_values( $markup )[0] ?? [] );
+		return $entry['en_US'] !== $entry['de_DE'] && count( $markup ) === 1 && str_contains( (string) ( $text['en_US'] ?? '' ), '[line' ) === true && str_contains( (string) ( $text['de_DE'] ?? '' ), '[line' ) === true && ( $text['en_US'] ?? '' ) !== ( $text['de_DE'] ?? '' )
+			&& str_contains( (string) $text['en_US'], 'a [line] outside a loop ends at a field that nothing fills' ) === true && str_contains( (string) $text['de_DE'], 'außerhalb eines Loops endet an einem Feld, das nichts füllt' ) === true
+			&& str_contains( (string) $manifest['manual']['panel']['Loop']['de_DE'], 'bei einer Tabelle ihre Spalten, bei einer Liste ihre Zeile' ) === true && str_contains( (string) $manifest['manual']['panel']['Loop']['en_US'], 'for a Table its columns, for a List its row' ) === true
+			&& str_contains( (string) $manifest['manual']['panel']['Loop']['de_DE'], 'die gleiche Höhe' ) === true && str_contains( (string) $manifest['manual']['panel']['Loop']['en_US'], 'the equal height' ) === true
+			&& str_contains( (string) $text['en_US'], 'needs the kernel that has [table]' ) === true && str_contains( (string) $text['de_DE'], 'braucht den Kernel, der [table] hat' ) === true && count( $manifest['manual']['panel'] ) <= 40;
+	} )() );
 check( '...and the lists of the blocks name Order - the settings dialogs, the blocks of the dialogs, the dialog of a section of tiles - in both languages, the entry of its own says where it stands for a section and for tiles, that the canvas turns the row, and what a hand-written s or xl tier is; the header of the english text names no number of blocks', ( static function() use ( $manifest, $dir ): bool {
 	$where = [
 		'en_US' => [ 'Settings dialogs' => 'Width and alignment, Order, Loop', 'The blocks of the dialogs' => 'Order: the switch', 'The dialog of a section of tiles' => 'Spacing, Order, Loop', 'The order of a section' => 'Order, in the dialog' ],
@@ -316,7 +338,7 @@ $offerProblems = [];
 
 foreach( $registry['components'] as $name => $schema ) {
 
-	if( in_array( $schema['source'], [ 'text', 'image', 'none' ], true ) === false || \Nino\Modules\Builder\Reader::holds( $schema ) === true )
+	if( in_array( $schema['source'], [ 'text', 'image', 'none' ], true ) === false || \Nino\Modules\Builder\Reader::holds( $schema ) === true || \Nino\Modules\Builder\Reader::columnar( $schema ) === true )
 		continue;
 
 	$source = $schema['source'] === 'none' ? '' : ' /template/page-x/a/'. $name;
@@ -767,6 +789,19 @@ $failures = [
 	'the arrow before the row'										=> [ "<section id=\"a\" class=\"nino-section\">\n\t[". $arrowName. "]\n\t". $row. "\n</section>", 'no-row' ],
 	'the arrow of a loop of sections with a target'			=> [ "[sections /services id=\"news\"]\n". $loopRow. "\n\t[". $arrowName. ' '. $arrowTo. "=\"b\"]\n[/sections]", 'sections-content' ],
 	'a second arrow in a loop of sections'						=> [ "[sections /services id=\"news\"]\n". $loopRow. "\n\t[". $arrowName. "]\n\t[". $arrowName. "]\n[/sections]", 'sections-content' ],
+	// A loop as a table: its content is its columns, and a column stands in a table and nowhere else
+	'a table with a component that is no column'		=> [ $section( "[table /services]\n\t\t\t\t[col field=\"title\"]\n\t\t\t\t[title title]\n\t\t\t[/table]" ), 'table-content', null, 'title' ],
+	'a table with markup next to its columns'			=> [ $section( "[table /services]\n\t\t\t\t<p>x</p>\n\t\t\t\t[col field=\"title\"]\n\t\t\t[/table]" ), 'stack-content' ],
+	'a table with no column'												=> [ $section( "[table /services]\n\t\t\t[/table]" ), 'table-empty' ],
+	'a column outside a table'											=> [ $section( '[col field="title"]' ), 'col-elsewhere' ],
+	'a column in a loop that is no table'				=> [ $section( "[stack /services]\n\t\t\t\t[col field=\"title\"]\n\t\t\t[/stack]" ), 'col-elsewhere' ],
+	'a column in a card'														=> [ $section( "[card]\n\t\t\t\t[col field=\"title\"]\n\t\t\t[/card]" ), 'col-elsewhere' ],
+	'a column of a field and a line of text'			=> [ $section( "[table /services]\n\t\t\t\t[col text=\"a\" field=\"title\"]\n\t\t\t[/table]" ), 'col-value' ],
+	'a column of neither'														=> [ $section( "[table /services]\n\t\t\t\t[col /template/page-x/a/head]\n\t\t\t[/table]" ), 'col-value' ],
+	'a column with a class'													=> [ $section( "[table /services]\n\t\t\t\t[col field=\"title\" class=\"x\"]\n\t\t\t[/table]" ), 'unknown-attribute', null, 'class' ],
+	'a column whose text holds a bracket that is no fill' => [ $section( "[table /services]\n\t\t\t\t[col text=\"a [b] c\"]\n\t\t\t[/table]" ), 'call-arguments' ],
+	'a column with an alignment outside its options' => [ $section( "[table /services]\n\t\t\t\t[col field=\"title\" align=\"left\"]\n\t\t\t[/table]" ), 'attribute-value', null, 'align' ],
+	'a line of text whose text holds a bracket that is no fill' => [ $section( "[line text=\"a [b] c\"]" ), 'call-arguments' ],
 	// What a call is made of
 	'a value outside its options'					=> [ $section( '[title /template/page-x/a/title tag="h9"]' ), 'attribute-value', null, 'tag' ],
 	'an attribute the component has not'	=> [ $section( '[title /template/page-x/a/title colour="red"]' ), 'unknown-attribute', null, 'colour' ],
@@ -2267,12 +2302,12 @@ check( '...a component says where it belongs (in) and what it draws (draws), as 
 	array_filter( $kernelComponents, static fn( array $schema, string $name ): bool => array_filter( [ 'in', 'draws', 'holds', 'link', 'by', 'group' ], static fn( string $key ): bool => array_key_exists( $key, $registryAnswer['components'][$name] ) !== array_key_exists( $key, $schema )
 		|| ( $registryAnswer['components'][$name][$key] ?? null ) !== ( $schema[$key] ?? null ) ) !== [] || $registryAnswer['components'][$name]['label'] !== \Nino\Features::localized( $schema['label'], 'en_US' ), ARRAY_FILTER_USE_BOTH ) === []
 	&& array_filter( $kernelComponents, static fn( array $schema ): bool => isset( $schema['in'] ) === true ) !== [] && array_filter( $kernelComponents, static fn( array $schema ): bool => isset( $schema['in'] ) === false ) !== []
-	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'in', $schema ) === true || array_key_exists( 'draws', $schema ) === true || array_key_exists( 'holds', $schema ) === true
+	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'in', $schema ) === true || array_key_exists( 'draws', $schema ) === true
 		|| array_key_exists( 'link', $schema ) === true || array_key_exists( 'by', $schema ) === true || array_key_exists( 'group', $schema ) === true ) === [] );
-check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card and says where it is offered and what it draws - the three arrive as the kernel has them, which the check above compares, and no other component carries holds, nor does a loop',
+check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card and says where it is offered and what it draws - the three arrive as the kernel has them, which the check above compares, and no other component carries holds; of the loops the table does, the place table, and none says where it stands',
 	array_key_exists( 'in', $registryAnswer['components']['card'] ) === true && array_key_exists( 'draws', $registryAnswer['components']['card'] ) === true && array_key_exists( 'holds', $registryAnswer['components']['card'] ) === true
 	&& $registryAnswer['components']['card']['source'] === 'content' && array_keys( $registryAnswer['components']['card']['attributes'] ) === array_keys( $kernelComponents['card']['attributes'] ) && $kernelComponents['card']['attributes'] !== []
-	&& array_keys( array_filter( $registryAnswer['components'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'card' ] && array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true || array_key_exists( 'in', $schema ) === true ) === []
+	&& array_keys( array_filter( $registryAnswer['components'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'card' ] && array_keys( array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'table' ] && array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'in', $schema ) === true ) === []
 	&& array_key_exists( 'card', $registryAnswer['stacks']['stack']['defaults'] ) === false && array_key_exists( 'card', $registryAnswer['stacks']['filter']['defaults'] ) === false );
 check( '...a component says the icon it is shown by (icon), as the kernel registered it: the parts of a 24 by 24 stroke icon, each a tag and a map of its attributes, all of them strings - every component of the kernel has one, a loop has none, and the key stands right after the preview the component is drawn as',
 	array_filter( $registryAnswer['components'], static fn( array $schema ): bool => is_array( $schema['icon'] ?? null ) === true && array_is_list( $schema['icon'] ) === true && $schema['icon'] !== []
@@ -4270,6 +4305,134 @@ check( 'a container that paints nothing takes no radius and no offset of a groun
 	&& $bandRefused[1]['status'] === 400 && str_contains( implode( ' ', $bandRefused[1]['problems'] ), 'the component "band" with a bgPl, and it is no card' ) === true
 	&& file_get_contents( $bandPath ) === \Nino\Modules\Builder\Document::load( $bandDoc, 'page-home-band' )['source'] );
 unlink( $bandPath );
+
+// --- 7d. A loop as a table and a line of fields -------------------------------
+
+echo "A loop as a table: the columns and the line of fields\n";
+
+$tableCalls	= "[table /services sort=\"title\" style=\"striped\"]\n\t\t\t\t[col /template/page-x/a/head field=\"title\"]\n\t\t\t\t[col field=\"summary\" align=\"right\"]\n\t\t\t\t[col text=\"[[title]],- EUR / [[.id]]\"]\n\t\t\t[/table]";
+$tableModel	= $read( $page( $section( $tableCalls ) ) );
+$tableStack	= $tableModel['blocks'][0]['cols'][0]['stack'] ?? null;
+$tableCols	= $tableModel['blocks'][0]['cols'][0]['components'] ?? [];
+
+check( 'a table is read as a loop whose components are its columns: the stack with its type and its style, and a column for each call - the first argument is the text key of the title, the field and the alignment are attributes, the line of text is the fixed text of the call',
+	$tableModel['blocks'][0]['kind'] === 'section' && $tableStack['name'] === 'table' && $tableStack['source'] === '/services' && $tableStack['attributes']['style'] === 'striped' && $tableStack['attributes']['sort'] === 'title'
+	&& array_column( $tableCols, 'name' ) === [ 'col', 'col', 'col' ] && $tableCols[0]['source'] === '/template/page-x/a/head' && $tableCols[0]['attributes']['field'] === 'title' && $tableCols[0]['text'] === null
+	&& $tableCols[1]['source'] === '' && $tableCols[1]['attributes']['field'] === 'summary' && $tableCols[1]['attributes']['align'] === 'right'
+	&& $tableCols[2]['source'] === '' && $tableCols[2]['attributes']['field'] === '' && $tableCols[2]['text'] === '[[title]],- EUR / [[.id]]' );
+check( '...and written back as it was read, byte for byte: the call of the table, one call of a column to a line, a line of text with its fills as it was typed - and read again, it is the same model',
+	str_contains( $write( $tableModel ), $tableCalls ) === true && $read( $write( $tableModel ) ) === $tableModel && $write( $read( $write( $tableModel ) ) ) === $write( $tableModel ) );
+check( '...a column is a text component to the registry the panel is handed - its first argument the key of a title - and a line is one that has fields in it; the loops say what their cell is: columns for the table, a row for the list, none for the others',
+	$registry['components']['col']['source'] === 'text' && $registry['components']['col']['fields'] === true && $registry['components']['line']['fields'] === true && array_key_exists( 'fields', $registry['components']['text'] ) === false
+	&& \Nino\Modules\Builder\Reader::columnar( $registry['components']['col'] ) === true && array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::columnar( $schema ) === true ) === [ 'col' => $registry['components']['col'] ]
+	&& array_map( static fn( array $schema ): string => $schema['cell'] ?? '', $registry['stacks'] ) === [ 'stack' => '', 'slider' => '', 'filter' => '', 'list' => 'row', 'table' => 'columns', 'sections' => 'section' ]
+	&& \Nino\Modules\Builder\Reader::placeOf( $registry['stacks']['table'] ) === 'table' && \Nino\Modules\Builder\Reader::placeOf( $registry['stacks']['list'] ) === '' );
+check( '...a line of text is a call like another: it reads and writes in a column and in the cell of a loop, with its tag, its fills and its class',
+	( static function() use ( $read, $write, $page, $section ): bool {
+		$calls = "[line text=\"[[title]]: [[.slug]]\" tag=\"span\" class=\"x\"]";
+		$model = $read( $page( $section( "[list /services]\n\t\t\t\t". $calls. "\n\t\t\t[/list]" ) ) );
+		$line = $model['blocks'][0]['cols'][0]['components'][0] ?? [];
+		return $line['name'] === 'line' && $line['text'] === '[[title]]: [[.slug]]' && $line['attributes']['tag'] === 'span' && $line['attributes']['class'] === 'x' && str_contains( $write( $model ), $calls ) === true && $read( $write( $model ) ) === $model;
+	} )() );
+
+// A list whose cell is one field or one line reads as the cell it is; the Builder derives the row from the components, so that the model is the same as any cell's
+$listField	= $read( $page( $section( "[list /services style=\"check\"]\n\t\t\t\t[text title]\n\t\t\t[/list]" ) ) );
+$listLine		= $read( $page( $section( "[list /services]\n\t\t\t\t[line text=\"[[title]],- EUR\"]\n\t\t\t[/list]" ) ) );
+$listCard		= $read( $page( $section( "[list /services]\n\t\t\t\t[card]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/list]" ) ) );
+check( 'a list whose cell is one text of a field and one whose cell is one line are read with that one component as their cell - and a list with a card is read as before, with the card',
+	array_column( $listField['blocks'][0]['cols'][0]['components'], 'source' ) === [ 'title' ] && $listField['blocks'][0]['cols'][0]['stack']['attributes']['style'] === 'check'
+	&& array_column( $listLine['blocks'][0]['cols'][0]['components'], 'text' ) === [ '[[title]],- EUR' ] && array_column( $listLine['blocks'][0]['cols'][0]['components'], 'name' ) === [ 'line']
+	&& array_column( $listCard['blocks'][0]['cols'][0]['components'], 'name' ) === [ 'card' ]
+	&& str_contains( $write( $listField ), "\t\t\t\t[text title]\n" ) === true && str_contains( $write( $listLine ), "\t\t\t\t[line text=\"[[title]],- EUR\"]\n" ) === true && $read( $write( $listCard ) ) === $listCard );
+
+// The Document: what a table needs, and what its columns mean
+$tableProblems = static function( callable $change ) use ( &$appData, $registry, $tableModel ): string {
+	$model = $tableModel;
+	$change( $model );
+	return implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+};
+check( 'a table that reads is a model the Document takes: its title is a key that is made or there, its field is a field of the type and the fills of its line are fields of the type',
+	$tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['source'] = ''; } ) === '' );
+check( '...a table with no column is refused; so is a column that shows neither a field nor a line, and one that shows both',
+	str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'] = []; } ), 'a table without a column' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][1]['attributes']['field'] = ''; } ), 'a column that shows both a field and a line of text, or neither' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['attributes']['field'] = 'title'; } ), 'a column that shows both a field and a line of text, or neither' ) === true );
+check( '...a field that is none of the type is a problem as a picture\'s is, a fill of the line that is none is one, and a title that is no text key is one',
+	str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][1]['attributes']['field'] = 'nope'; } ), 'the field "nope" of a column of column 1 is no field of the loop\'s type' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['text'] = '[[nope]]'; } ), 'the fill [[nope]] of col is no field of the loop\'s type' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['source'] = 'title'; } ), 'the title of a column of column 1 is a text key' ) === true
+	&& $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['text'] = '[[/template/page-x/a/head]] [[.slug]] [[summary]]'; } ) === '' );
+check( '...a column stands in a table and a table holds columns: a column in a column without a loop or in a loop that is none, and a component that is no column in a table, are problems',
+	str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack'] = null; } ), 'a column of a table outside a table' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ) use ( $registry ): void { $model['blocks'][0]['cols'][0]['stack']['name'] = 'stack'; $model['blocks'][0]['cols'][0]['stack']['attributes'] = $registry['stacks']['stack']['defaults']; } ), 'a column of a table outside a table' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ) use ( $registry ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['title']['defaults'] ]; } ), 'the table holds title, which is no column' ) === true );
+check( '...the text of a line carries the fills of the element and no line break and no double bracket that opens none: a break or such a bracket is a problem that names the call, a quote, an apostrophe, an ampersand and a single bracket are none; a line outside a loop means nothing for a fill of a field',
+	str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['text'] = 'a [[b c'; } ), 'text of the component "col" holds a line break or a [[ that opens no field' ) === true
+	&& str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['text'] = "a\nb"; } ), 'text of the component "col" holds a line break or a [[ that opens no field' ) === true
+	&& $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['text'] = 'say "it\'s" [x] & [[title]]'; } ) === ''
+	&& ( static function() use ( $read, $page, $section, &$appData, $registry ): bool {
+		$model = $read( $page( $section( '[line text="[[title]]"]' ) ) );
+		return str_contains( implode( ' ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) ), 'the fill [[title]] of line means nothing in a column without a loop' ) === true;
+	} )() );
+check( '...the Writer does not write what the Document refuses: a line with a double bracket that is no fill or a line break throws, as any value does',
+	( static function() use ( $write, $tableModel ): bool {
+		$thrown = 0;
+		foreach( [ 'a [[b c', "a\nb" ] as $text ) {
+			$model = $tableModel;
+			$model['blocks'][0]['cols'][0]['components'][2]['text'] = $text;
+			try { $write( $model ); }
+			catch( \UnexpectedValueException $exception ) { $thrown++; }
+		}
+		return $thrown === 2;
+	} )() );
+// A quote, an apostrophe, an ampersand and a bracket of a free text are written as the entities the kernel reads in text="..." and read back as the characters
+$priced = 'Preis "ab" [[price]],- € & mehr [x] it\'s';
+$entityCalls = "[table /services]\n\t\t\t\t[col text=\"Preis &quot;ab&quot; [[title]],- € &amp; mehr &#91;x&#93; it&#39;s\"]\n\t\t\t[/table]";
+$entityModel = $read( $page( $section( $entityCalls ) ) );
+$entityModel2 = $entityModel;
+$entityModel2['blocks'][0]['cols'][0]['components'][0]['text'] = 'Preis "ab" [[title]],- € & mehr [x] it\'s';
+check( 'a free text with a quote, an ampersand, an apostrophe and a bracket of its own is read from the entities it is written as and written back as them, byte for byte, the fill as it is; it is the same model read twice',
+	$entityModel['blocks'][0]['kind'] === 'section' && $entityModel['blocks'][0]['cols'][0]['components'][0]['text'] === 'Preis "ab" [[title]],- € & mehr [x] it\'s' && str_contains( $write( $entityModel ), $entityCalls ) === true
+	&& $write( $entityModel2 ) === $write( $entityModel ) && $read( $write( $entityModel2 ) ) === $entityModel
+	&& \Nino\Modules\Builder\Reader::lineDecode( \Nino\Modules\Builder\Reader::lineEncode( '&quot; &amp;amp; &#91;' ) ) === '&quot; &amp;amp; &#91;'
+	&& implode( ' ', \Nino\Modules\Builder\Document::problems( $appData, $entityModel, $registry ) ) === '' );
+check( '...a text that holds such a character as it is - a bare ampersand, a bare bracket, a quote - is no text the builder reads: the section stays a block, as any call that is not written as it is written back',
+	array_filter( [ 'a &amp b', 'a &lt; b', 'a [b] c', "a 'b'" ], static fn( string $text ): bool => $read( $page( $section( "[table /services]\n\t\t\t\t[col text=\"". $text. "\"]\n\t\t\t[/table]" ) ) )['blocks'][0]['kind'] !== 'html' ) === [] );
+$entityDrawn = \Nino\Html::renderHtml( $appData, $write( $entityModel ) );
+check( '...and the kernel shows it as it was typed, escaped, the field filled in: quotes, the ampersand, the apostrophe and the bracket come out right',
+	str_contains( $entityDrawn, '<td>Preis &quot;ab&quot; App,- € &amp; mehr &#91;x] it&#039;s</td>' ) === true || str_contains( $entityDrawn, '<td>Preis &quot;ab&quot; App,- € &amp; mehr &#91;x] it&#39;s</td>' ) === true );
+// The title of a column that shows a line of text is a key all the same: made at the save, with the text typed for it
+$tabs = \Nino\Modules\Builder\Document::create( $appData, 'Tabs' );
+$tabsModel = $tabs['model'];
+$tabsModel['blocks'] = $read( $page( $section( "[table /services]\n\t\t\t\t[col text=\"[[title]],- EUR\"]\n\t\t\t[/table]", 'a' ) ) )['blocks'];
+$tabsModel['blocks'][0]['cols'][0]['components'][0] = array_replace( $tabsModel['blocks'][0]['cols'][0]['components'][0], [ 'source' => '/template/page-tabs/a/head', 'create' => [], 'values' => [ 'en_US' => 'Price list' ] ] );
+$tabsAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-tabs', $tabsModel, $tabs['hash'] );
+check( 'a column that shows a line of text has a title that is made at the save with its text, as the title of a column of a field is; the file has the key and the line',
+	$tabsAnswer['status'] === 200 && ( \Nino\Text::entry( $appData, '/template/page-tabs/a/head' )['values']['en_US'] ?? null ) === 'Price list'
+	&& str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-tabs.tpl' ) ), '[col /template/page-tabs/a/head text="[[title]],- EUR"]' ) === true );
+check( '...a text typed for a component that shows a line and is no column is still refused: its source is no key it can have a text for',
+	( static function() use ( $tabsModel, $tabs, &$appData ): bool {
+		$model = $tabsModel;
+		$model['blocks'][0]['cols'][0]['components'] = [ [ 'name' => 'line', 'source' => '/template/page-tabs/a/head', 'text' => 'x', 'attributes' => [ 'tag' => 'p', 'class' => '' ], 'values' => [ 'en_US' => 'Typed' ] ] ];
+		$model['blocks'][0]['cols'][0]['stack'] = null;
+		return \Nino\Modules\Builder\Document::save( $appData, 'page-tabs', $model, (string) \Nino\Modules\Builder\Document::load( $appData, 'page-tabs' )['hash'] )['status'] === 400;
+	} )() );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-tabs' );
+check( '...an image field is no fill of a line: its path is no text, and the save names it',
+	str_contains( $tableProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][2]['text'] = '[[image]]'; } ), 'the fill [[image]] of col is an image field, which a line cannot print' ) === true );
+
+// The kernel draws what the Builder wrote: a table with its head and its rows, escaped, and a column of a line with its fields filled in
+$drawnTable = '';
+$drawnModel = $tableModel;
+$drawnModel['blocks'][0]['cols'][0]['components'][0]['source'] = '';
+$drawnModel['blocks'][0]['cols'][0]['components'][2]['text'] = '[[title]],- EUR';
+$drawnTable = \Nino\Html::renderHtml( $appData, $write( $drawnModel ) );
+check( 'the page the Builder wrote draws as a table by the kernel: the wrap, the table in the style, a row for each element in the order of the loop, the cells of the columns - a field, a field right-aligned, a line with its field filled in - and no head, since no column has a title',
+	str_contains( $drawnTable, '<div class="nino-table-wrap"><table class="nino-table nino-table--striped"><tbody><tr><td>App</td><td class="nino-table__cell--right"><p>Apps</p></td><td>App,- EUR</td></tr>' ) === true
+	&& str_contains( $drawnTable, '</tr><tr><td>Web</td>' ) === true && str_contains( $drawnTable, '<thead>' ) === false );
+
+echo "\n";
+
 
 // --- 8. Creating and deleting ------------------------------------------------
 

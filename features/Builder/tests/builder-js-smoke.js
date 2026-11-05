@@ -744,6 +744,8 @@ vm.runInContext( source, sandbox, { filename : 'admin.js' } );
 
 const builder = sandbox.Nino.admin.builder;
 const registryFixture = fixture('registry.json');
+// The components a lightbox offers: all but the column of a table, which is made in the form of a table
+const pickable = Object.keys( registryFixture.components ).filter( function( name ) { return builder._columnar( registryFixture.components[name] ) === false } );
 
 // What the registry calls a component in a language of the site: the words of the kernel the PHP suite ran against, so that none is typed here
 const labelIn = function( name, locale ) { return registryFixture.components[name].labels[locale] };
@@ -1509,7 +1511,7 @@ check( '...and a component is chosen in a lightbox, which opens in the dialog an
 	const count = itemsOf( pickAt( [ 1, 0 ] ) ).length;
 
 	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offeredAt( [ 0, 0 ] ) === belonging( 'hero' ) && offeredAt( [ 1, 0 ] ) === belonging( 'section' )
-		&& offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === Object.keys( registryFixture.components ).length
+		&& offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === pickable.length
 		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && dialogContent().querySelector('.builder-blocks') === null;
 } )() );
 check( '...the lightbox is in groups, each with a heading: what the kernel and the modules of a project registered by the group its schema names - the words of the registry, in the order the lightbox lists them - and then the Features for what a feature registered, each in the order of the registry; a group with nothing in it is not drawn, and a feature has a heading of its own where there is more than one', ( function() {
@@ -1517,7 +1519,7 @@ check( '...the lightbox is in groups, each with a heading: what the kernel and t
 	const components = builder._registry.components;
 	const groups = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.dataset.group+ ':'+ itemsOf( group ).map( pickLabel ).join() } ).join(' | ') };
 	// What the registry says each group holds, in its own order: the labels of the components of the kernel that name it
-	const labels = function( word ) { return Object.keys( components ).filter( function( name ) { return components[name].by === 'nino' && components[name].group === word } ).map( function( name ) { return components[name].label } ).join() };
+	const labels = function( word ) { return Object.keys( components ).filter( function( name ) { return components[name].by === 'nino' && components[name].group === word && builder._columnar( components[name] ) === false } ).map( function( name ) { return components[name].label } ).join() };
 	// ...and the words of a list that have such a component: the groups the lightbox draws, whichever and however many the registry has
 	const filled = function( words ) { return words.filter( function( word ) { return labels( word ) !== '' } ) };
 	const listed = function( words ) { return filled( words ).map( function( word ) { return word+ ':'+ labels( word ) } ).join(' | ') };
@@ -3020,7 +3022,7 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0 ] );
 check( 'the loop of a column that runs none is the choice of the loop and nothing else: Static, and the loops of the registry - the plain one called the element loop', JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop' ] ) && valueAt( dialogContent(), 'Loop' ) === ''
-	&& controlOf( dialogContent(), 'Loop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Static,stack=Element loop,slider=Slider,filter=Filter,list=List' && loopPane().querySelectorAll('.builder-group').length === 0 );
+	&& controlOf( dialogContent(), 'Loop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Static,stack=Element loop,slider=Slider,filter=Filter,list=List,table=Table' && loopPane().querySelectorAll('.builder-group').length === 0 );
 change( dialogContent(), 'Loop', 'stack' );
 check( '...a loop that is chosen is the kernel\'s, over the first type of the project, with the attributes it has - and the loop block shows its form in groups: the data it runs over, the order, the grid of the cells', ( function() {
 	const stack = colOf().stack;
@@ -3115,10 +3117,185 @@ check( '...and going on to another loop keeps what both have', ( function() {
 	builder._doc.model.blocks[1].cols[1].stack.attributes.limit = '5';
 	change( loopPane(), 'Loop', 'list' );
 	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.name === 'list' && stack.attributes.limit === '5' && stack.source === '/services' && titlesIn( loopPane() ) === 'Data,Order,Own' && labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Style';
+	return stack.name === 'list' && stack.attributes.limit === '5' && stack.source === '/services' && titlesIn( loopPane() ) === 'Data,Order,Style,Row' && labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Style';
 } )() );
 change( loopPane(), 'Loop', 'filter' );
 check( '...a loop with a grid and attributes of its own has all four groups', titlesIn( loopPane() ) === 'Data,Order,Grid,Own' && labelList( loopPane().querySelectorAll('.builder-group')[3] ).join() === 'Filter by,Label of the first button' );
+
+console.log( '\nA loop as a table, and a list whose cell is a row' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+change( loopPane(), 'Loop', 'table' );
+const tableCol = function() { return builder._doc.model.blocks[1].cols[1] };
+const columnRows = function() { return loopPane().querySelectorAll('.builder-column') };
+check( 'a loop chosen as a table makes the cell its columns: the components of the column that were there are gone - they are no column - and one column stands in their place, of the first field the type has and with no title',
+	tableCol().stack.name === 'table' && tableCol().stack.source === '/services' && tableCol().stack.attributes.style === ''
+	&& tableCol().components.length === 1 && tableCol().components[0].name === 'col' && tableCol().components[0].attributes.field === 'title' && tableCol().components[0].text === null && tableCol().components[0].source === '' );
+check( '...its form has no cells and no grid: the data, the order, the style and the columns - in that order', titlesIn( loopPane() ) === 'Data,Order,Style,Columns'
+	&& labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Style' && loopPane().querySelectorAll('table').length === 0 );
+check( '...the style is a select of the words of the panel, Plain, Striped, Bordered and Striped and bordered, and writes the word of the kernel', optionsOf( loopPane(), 'Style' ) === '=Plain,striped=Striped,bordered=Bordered,striped-bordered=Striped and bordered'
+	&& ( change( loopPane(), 'Style', 'striped-bordered' ), tableCol().stack.attributes.style === 'striped-bordered' ) && valueAt( loopPane(), 'Style' ) === 'striped-bordered' );
+check( '...a column is a title - the source of a text key, found as the source of a title is - and a value: a select of the fields the type has and Free text, which shows a field of the type that the type can show: a picture too',
+	columnRows().length === 1 && columnRows()[0].querySelector('.builder-source') !== null && optionsOf( columnRows()[0], 'Value' ) === 'title=title,summary=summary,image=image,price=price,*=Free text' && valueAt( columnRows()[0], 'Value' ) === 'title' );
+buttonOf( loopPane(), 'Add a column' ).click();
+check( '...a column is added at the end, of the first field, and is a component of the column of the page like any other (a node with a name, a source and a text)',
+	tableCol().components.length === 2 && columnRows().length === 2 && tableCol().components[1].name === 'col' && tableCol().components[1].attributes.field === 'title' && tableCol().components[1].text === null );
+change( columnRows()[1], 'Value', 'price' );
+check( '...what a column shows is chosen from the fields, and writes the field', tableCol().components[1].attributes.field === 'price' && valueAt( columnRows()[1], 'Value' ) === 'price' );
+change( columnRows()[1], 'Value', '*' );
+check( '...Free text opens an input for a line, with the fields named in its hint as they are written, and takes the field away; a line of free text is the text of the column',
+	tableCol().components[1].text === '' && tableCol().components[1].attributes.field === '' && labelList( columnRows()[1] ).indexOf('Text') !== -1 && columnRows()[1].querySelector('.builder-line-field') !== null
+	&& String( tipOf( controlOf( columnRows()[1], 'Text' ) ) ).indexOf('[[title]], [[summary]], [[price]]') !== -1 );
+change( columnRows()[1], 'Text', '[[price]],- EUR' );
+check( '...the line is kept as it is typed, and the warning is out of sight while it can be carried', tableCol().components[1].text === '[[price]],- EUR' && columnRows()[1].querySelector('.builder-line-warning').hidden === true );
+change( columnRows()[1], 'Text', 'a [[b c' );
+check( '...a double bracket that opens no fill is said in a sentence of its own, and the text is kept: the save refuses it', columnRows()[1].querySelector('.builder-line-warning').hidden === false && columnRows()[1].querySelector('.builder-line-warning').textContent === word('hint/line-invalid')
+	&& tableCol().components[1].text === 'a [[b c' && ( change( columnRows()[1], 'Text', 'Preis "ab" it\'s & [x] [[price]]' ), columnRows()[1].querySelector('.builder-line-warning').hidden === true && tableCol().components[1].text === 'Preis "ab" it\'s & [x] [[price]]' ) );
+change( columnRows()[1], 'Text', '[[price]],- EUR' );
+change( columnRows()[1], 'Value', 'summary' );
+check( '...and a field again takes the line away', tableCol().components[1].text === null && tableCol().components[1].attributes.field === 'summary' && labelList( columnRows()[1] ).indexOf('Text') === -1 );
+buttonOf( columnRows()[1], 'Move column up' ).click();
+check( '...a column moves up and down: the first cannot go up and the last cannot go down, and the order is the order of the columns',
+	tableCol().components.map( function( node ) { return node.attributes.field } ).join() === 'summary,title' && buttonOf( columnRows()[0], 'Move column up' ).disabled === true && buttonOf( columnRows()[1], 'Move column down' ).disabled === true
+	&& ( buttonOf( columnRows()[0], 'Move column down' ).click(), tableCol().components.map( function( node ) { return node.attributes.field } ).join() === 'title,summary' ) );
+buttonOf( columnRows()[0], 'Remove column' ).click();
+check( '...a column is taken away; with none left the form says a table needs one, and a column is added again',
+	tableCol().components.length === 1 && tableCol().components[0].attributes.field === 'summary' && ( buttonOf( columnRows()[0], 'Remove column' ).click(), tableCol().components.length === 0 )
+	&& loopPane().textContent.indexOf( word('stack/columns-none') ) !== -1 && columnRows().length === 0 && ( buttonOf( loopPane(), 'Add a column' ).click(), tableCol().components.length === 1 && columnRows().length === 1 ) );
+check( '...the loop of a section that makes sections is not offered a table, and a table is in a column and nowhere else',
+	( function() {
+		builder._openSettings( [ 3 ] );
+		const options = controlOf( dialogContent(), 'Loop' ).el.children.map( function( option ) { return option.value } );
+		return options.indexOf('table') === -1;
+	} )() );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+change( loopPane(), 'Loop', 'table' );
+tableCol().components[0].text = '[[nope]],- EUR';
+tableCol().components[0].attributes.field = '';
+tableCol().components.push( Object.assign( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1 ], 'col', builder._keys ), { attributes : { field : 'nothing', align : '', class : '' } } ) );
+check( 'a field that the type has not, and a fill of a line that is none, are red as a source of a component is: the table is not saved with them',
+	builder._red( builder._doc.model, builder._registry ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ).join() === '1.1.0:nope:field,1.1.1:nothing:field' );
+builder._openSettings( [ 1, 1, 'x' ] );
+check( '...and the column that has one says so beside its title', columnRows().length === 2 && loopPane().textContent.indexOf( word('tree/red-field') ) !== -1 );
+
+// A table in the preview is the table it makes: the head from the titles, none where no column has one, and two rows of what the cells show
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+change( loopPane(), 'Loop', 'table' );
+tableCol().components[0].attributes.field = 'price';
+buttonOf( loopPane(), 'Add a column' ).click();
+change( columnRows()[1], 'Value', '*' );
+change( columnRows()[1], 'Text', '[[title]],- EUR' );
+builder._closeDialog();
+builder._renderEditor();
+const tableDraw = function() { return preview().querySelector('[data-path="1.1"] .builder-table-ph') };
+check( 'a loop that makes a table is drawn as one in the frame of its column: no head while no column has a title, two rows, the field by its name and the line as it is written, and no component and no button that adds one',
+	tableDraw() !== null && tableDraw().querySelectorAll('thead').length === 0 && tableDraw().querySelectorAll('tbody tr').length === 2
+	&& texts( tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td') ) === 'price,[[title]],- EUR' && preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 0
+	&& preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-add-button').length === 0 );
+check( '...the plan says so: the table of the column, with the title and what each shows, from the preview kind the registry gives the loop',
+	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].table ) === JSON.stringify( [ { title : '', value : 'price', red : false }, { title : '', value : '[[title]],- EUR', red : false } ] )
+	&& builder._registry.stacks.table.preview === 'table' && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[0].table === null );
+tableCol().components[0].source = '/template/page-home/hero/title';
+builder._renderEditor();
+check( '...and has a head once a column has a title: the first line of the text of its key', tableDraw().querySelectorAll('thead th').length === 2 && texts( tableDraw().querySelectorAll('thead th') ) === 'Welcome,' );
+builder._openSettings( [ 1, 1, 'x' ] );
+const titleLabel_ = sandbox.Nino.adminUi.format( word('value/label'), builder._localeName( builder._locale ) );
+check( '...the title of a column is a key as the title of a component is: under its source the text of the key in the language of the editor, which is typed in the form and kept for the save',
+	columnRows()[0].querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && valueAt( columnRows()[0], titleLabel_ ) === 'Welcome'
+	&& ( change( columnRows()[0], titleLabel_, 'Product' ), tableCol().components[0].values.en_US === 'Product' ) && columnRows()[1].querySelector('.builder-source-current').textContent === word('label/none') );
+const titlePicks = function() { return pickerPane('pick').querySelectorAll('.builder-pick-item') };
+check( '...and a title that is changed to another key takes the texts typed for the first with it: they were that key\'s',
+	( columnRows()[0].querySelector('button[aria-label="Source"]').click(), titlePicks().find( function( item ) { return item.textContent.indexOf('/template/page-home/hero/subtitle') !== -1 } ) !== undefined )
+	&& ( titlePicks().find( function( item ) { return item.textContent.indexOf('/template/page-home/hero/subtitle') !== -1 } ).click(), tableCol().components[0].source === '/template/page-home/hero/subtitle' && tableCol().components[0].values === undefined ) );
+// A column that shows a line of free text has a title as any column has: the owner's own example is a title and [[price]],- EUR
+tableCol().components[0].attributes.field = '';
+tableCol().components[0].text = '[[price]],- EUR';
+tableCol().components[0].source = '/template/page-home/hero/title';
+delete tableCol().components[0].values;
+builder._renderEditor();
+check( 'a column of free text with a title has the title in the head of the table drawn, and the line in its cells: the key is read apart from the line',
+	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l', { locale : builder._locale, keys : builder._keys } )[1].cols[1].table[0] ) === JSON.stringify( { title : 'Welcome', value : '[[price]],- EUR', red : false } )
+	&& texts( tableDraw().querySelectorAll('thead th') ) === 'Welcome,' );
+builder._openSettings( [ 1, 1, 'x' ] );
+check( '...and the form offers the text of the title under its key, with Free text as the value: it is typed there and kept for the save',
+	valueAt( columnRows()[0], 'Value' ) === '*' && valueAt( columnRows()[0], titleLabel_ ) === 'Welcome' && labelList( columnRows()[0] ).indexOf('Text') !== -1
+	&& ( change( columnRows()[0], titleLabel_, 'Preis' ), tableCol().components[0].values.en_US === 'Preis' && tableCol().components[0].text === '[[price]],- EUR' ) );
+change( columnRows()[0], 'Text', '[[nope]] and [[image]] and [[price]]' );
+check( '...a fill that is none of the type, and an image field, which a line cannot print, are said under the input while it is typed - the list names them, a field that is there is not in it - and the image field is not among the fields the hint names',
+	columnRows()[0].querySelector('.builder-line-unknown').hidden === false && columnRows()[0].querySelector('.builder-line-unknown').textContent.indexOf('[[nope]], [[image]]') !== -1 && columnRows()[0].querySelector('.builder-line-unknown').textContent.indexOf('[[price]]') === -1
+	&& String( tipOf( controlOf( columnRows()[0], 'Text' ) ) ).indexOf('[[image]]') === -1
+	&& ( change( columnRows()[0], 'Text', '[[price]]' ), columnRows()[0].querySelector('.builder-line-unknown').hidden === true ) );
+change( columnRows()[0], 'Text', '[[nope]] [[price]]' );
+builder._closeDialog();
+builder._renderEditor();
+check( '...and the cell of the table that is drawn for such a column is marked red, as the save message says: the cells of the other column are not',
+	tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td')[0].className === 'is-red' && tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td')[1].className === ''
+	&& tableDraw().querySelectorAll('thead th')[0].className === 'is-red' );
+check( '...an image field in a free text is red as a field the type has not is',
+	( tableCol().components[0].text = '[[image]]', builder._red( builder._doc.model, builder._registry ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ).join() === '1.1.0:image:field' ) );
+tableCol().components[0].text = '[[price]],- EUR';
+builder._renderEditor();
+builder._closeDialog();
+builder._closeDialog();
+check( '...a click on the table opens the form of the loop; the head of the frame says the kind of the loop and the type',
+	dialogBox().open === false && ( tableDraw().dispatch('click'), dialogBox().open === true && dialogText('builder-dialog-kind') === 'Column of "services"' && openBlock() === 'loop' ) && preview().querySelector('[data-path="1.1"] .builder-status-item.is-loop').title.indexOf('Table · Services') !== -1 );
+builder._closeDialog();
+
+// A list whose cell is one field or one line: a row, which the form shows as a value and the preview as rows
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+change( loopPane(), 'Loop', 'list' );
+const listCol = function() { return builder._doc.model.blocks[1].cols[1] };
+check( 'a list made of a column with components of its own keeps them, and the form says the cell is theirs: no row to choose',
+	listCol().stack.name === 'list' && listCol().components.length > 1 && titlesIn( loopPane() ) === 'Data,Order,Style,Row' && loopPane().textContent.indexOf( word('stack/row-cells') ) !== -1 && labelList( loopPane() ).indexOf('Value') === -1
+	&& optionsOf( loopPane(), 'Style' ) === '=Plain,check=Checks,numbered=Numbered,columns=Columns' );
+listCol().components = [];
+change( loopPane(), 'Loop', 'stack' );
+change( loopPane(), 'Loop', 'list' );
+check( 'a list in a column with no components starts as a row of the first field the type can show: one text of that field, with the attributes the schema starts it with',
+	listCol().components.length === 1 && listCol().components[0].name === 'text' && listCol().components[0].source === 'title' && listCol().components[0].text === null
+	&& JSON.stringify( listCol().components[0].attributes ) === JSON.stringify( builder._registry.components.text.defaults ) && valueAt( loopPane(), 'Value' ) === 'title' && optionsOf( loopPane(), 'Value' ) === 'title=title,summary=summary,price=price,*=Free text' );
+change( loopPane(), 'Value', 'price' );
+check( '...the row is changed in the form: another field is another text, and Free text a line - the text of a line with the input for it - and back to a field again',
+	listCol().components.length === 1 && listCol().components[0].name === 'text' && listCol().components[0].source === 'price'
+	&& ( change( loopPane(), 'Value', '*' ), listCol().components.length === 1 && listCol().components[0].name === 'line' && listCol().components[0].text === '' && listCol().components[0].source === '' && labelList( loopPane() ).indexOf('Text') !== -1 )
+	&& ( change( loopPane(), 'Text', '[[title]],- EUR' ), listCol().components[0].text === '[[title]],- EUR' )
+	&& ( change( loopPane(), 'Value', 'summary' ), listCol().components[0].name === 'text' && listCol().components[0].source === 'summary' && listCol().components[0].text === null ) );
+change( loopPane(), 'Value', '*' );
+change( loopPane(), 'Text', '[[title]],- EUR' );
+builder._closeDialog();
+builder._renderEditor();
+check( 'a list that is a row is drawn as its rows - a bullet and the line of each, a field in the brackets of a fill - and not as the component, which stands behind the row',
+	texts( preview().querySelector('[data-path="1.1"] .builder-rows-ph').querySelectorAll('.builder-rows-ph-row') ) === '•  [[title]],- EUR,•  [[title]],- EUR,•  [[title]],- EUR'
+	&& preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 0
+	&& JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows ) === JSON.stringify( [ '[[title]],- EUR', '[[title]],- EUR', '[[title]],- EUR' ] ) );
+listCol().components[0].attributes.tag = 'span';
+check( '...a list whose cell is a line with an attribute besides, or other components, is not a row: it is drawn by its components, as before',
+	builder._rowOf( builder._registry, listCol() ) === null && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows === null && ( builder._renderEditor(), preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 1 ) );
+builder._closeDialog();
+
+// A line of fields is a component like another: offered with the others, with its tag and its text, and the column of a table is offered nowhere
+doc = open();
+builder._renderEditor();
+check( 'the lightbox offers the line of fields with the components of any column, and not the column of a table - which is made in the form of a table',
+	itemNamed( pickAt( [ 1, 0 ] ), 'line' ) !== undefined && itemNamed( pickAt( [ 1, 0 ] ), 'col' ) === undefined && pickLabel( itemNamed( pickAt( [ 1, 0 ] ), 'line' ) ) === 'Line of fields' && itemNamed( pickAt( [ 1, 0 ] ), 'line' ).disabled === false );
+builder._closeDialog();
+check( '...and its form is a form of a component: its tag is a select of p, span and div, and its content a source with the fields of a loop named in a hint',
+	( function() {
+		const at = builder._doc.model.blocks[1].cols[1].components.push( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1 ], 'line', builder._keys ) ) - 1;
+		builder._openSettings( [ 1, 1, at ] );
+		return optionsOf( blockOf('properties'), 'HTML tag' ) === 'p=p,span=span,div=div' && blockOf('content').textContent.indexOf('[[title]], [[summary]], [[price]]') !== -1;
+	} )() );
+builder._closeDialog();
+
 
 doc = open();
 builder._renderEditor();
@@ -4342,7 +4519,7 @@ check( '...the buttons of the preview do the same: a section, a column - and a c
 	preview().children[0].querySelector('.builder-add-col').click();
 	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
 	const box = lightboxOf();
-	const opened = dialogBox().open === true && box !== null && itemsOf( box ).length === Object.keys( registryFixture.components ).length && takenIn( box ) === belonging('hero');
+	const opened = dialogBox().open === true && box !== null && itemsOf( box ).length === pickable.length && takenIn( box ) === belonging('hero');
 	itemNamed( box, 'button' ).click();
 	return opened && dialogBox().open === true && lightboxOf() === null && dialogText('builder-dialog-kind') === titleOf('button') && builder._same( builder._sel, [ 0, 0, 3 ] )
 		&& builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
@@ -5999,7 +6176,7 @@ check( 'every item of the lightbox is a button that holds an icon first and its 
 	const box = pickAt( [ 1, 0 ] );
 	const items = itemsOf( box );
 
-	return items.length === Object.keys( registryFixture.components ).length && items.every( function( item ) {
+	return items.length === pickable.length && items.every( function( item ) {
 		return item.localName === 'button' && item.type === 'button' && item.children[0].localName === 'svg' && item.children[1].localName === 'span' && item.children[1].className === 'builder-pick-label'
 			&& ( item.disabled === true ? item.children.length === 3 && item.textContent === pickLabel( item )+ item.title : item.children.length === 2 && item.textContent === pickLabel( item ) );
 	} ) && takenIn( box ) === inSection && texts( items.filter( function( item ) { return item.disabled === false } ) ) === inSection && buttonOf( box, 'Button' ) === items.find( function( item ) { return pickLabel( item ) === 'Button' } )
@@ -6008,7 +6185,7 @@ check( 'every item of the lightbox is a button that holds an icon first and its 
 check( '...the icon of a component of the kernel is the one the registry gives it: the svg holds the parts of its entry, tag by tag and attribute by attribute - every one of them, in the pickers of the hero, of a section and of a card', ( function() {
 
 	const components = builder._registry.components;
-	const names = Object.keys( components );
+	const names = Object.keys( components ).filter( function( name ) { return builder._columnar( components[name] ) === false } );
 	const seen = {};
 	const same = [ [ 0, 0 ], [ 1, 0 ], cardAt ].every( function( path ) {
 		return pickedItems( path ).every( function( item ) {
@@ -6021,7 +6198,7 @@ check( '...the icon of a component of the kernel is the one the registry gives i
 		} );
 	} );
 
-	return same && names.length > 0 && names.length === Object.keys( registryFixture.components ).length && Object.keys( seen ).length === names.length && names.every( function( name ) { return components[name].icon.length > 0 } );
+	return same && names.length > 0 && names.length === pickable.length && Object.keys( seen ).length === names.length && names.every( function( name ) { return components[name].icon.length > 0 } );
 } )() );
 check( '...it is an svg of its own and decoration: made in the namespace of svg, as every part of it is - an element of the page is not -, 24 by 24, out of reach of assistive technology, with the class of the icons and the lightbox\'s, and it draws with its parts, not with the sprite', ( function() {
 
@@ -7921,7 +8098,7 @@ check( '...a component stands where the lightbox would let it stand and nowhere 
 	// The same as the lightbox: a column's end, or - behind a child - the container the child is in
 	const sameAs = function( path, place ) {
 		const reasons = reasonsAt( place );
-		return Object.keys( reg.components ).every( function( name ) { return builder._pasteable( model, reg, path, clipOf( name ) ) === reasons[name] } );
+		return Object.keys( reg.components ).filter( function( name ) { return builder._columnar( reg.components[name] ) === false } ).every( function( name ) { return builder._pasteable( model, reg, path, clipOf( name ) ) === reasons[name] } );
 	};
 
 	// A component that belongs in the hero only and one that does not take a loop, so that every reason there is has an example

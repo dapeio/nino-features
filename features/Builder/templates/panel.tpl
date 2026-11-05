@@ -134,6 +134,7 @@
 		<symbol id="builder-ph-image" viewBox="0 0 48 32"><rect x="4" y="4" width="40" height="24" rx="3"/><circle cx="15" cy="12" r="3"/><path d="m4 24 11-8 8 6 8-7 13 9"/></symbol>
 		<symbol id="builder-ph-button" viewBox="0 0 48 32"><rect x="8" y="9" width="32" height="14" rx="7"/><rect x="16" y="15" width="16" height="2" rx="1" fill="currentColor" stroke="none"/></symbol>
 		<symbol id="builder-ph-block" viewBox="0 0 48 32"><rect x="4" y="4" width="40" height="24" rx="3" stroke-dasharray="4 3"/></symbol>
+		<symbol id="builder-ph-table" viewBox="0 0 48 32"><rect x="4" y="4" width="40" height="24" rx="3"/><path d="M4 12h40M4 20h40M19 4v24"/></symbol>
 		<symbol id="builder-ph-cells" viewBox="0 0 48 32"><rect x="3" y="4" width="12" height="10" rx="2"/><rect x="18" y="4" width="12" height="10" rx="2"/><rect x="33" y="4" width="12" height="10" rx="2"/><rect x="3" y="18" width="12" height="10" rx="2"/><rect x="18" y="18" width="12" height="10" rx="2"/><rect x="33" y="18" width="12" height="10" rx="2"/></symbol>
 	</svg>
 

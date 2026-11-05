@@ -762,8 +762,9 @@ namespace Nino\Modules\Builder {
 			if( (string) ( $node['source'] ?? '' ) !== '' )
 				$call .= ' '. ( ( $schema['source'] ?? '' ) === 'href' ? self::_address( (string) $node['source'], $name, 'source' ) : self::_safe( (string) $node['source'], $name, 'source' ) );
 
+			// A line of free text carries the fills of the element, [[name]], which the kernel puts in before it reads the call
 			if( is_string( $node['text'] ?? null ) === true )
-				$call .= ' text="'. self::_safe( $node['text'], $name, 'text' ). '"';
+				$call .= ' text="'. ( Reader::fielded( $schema ) === true && Reader::lineText( $node['text'] ) === true ? Reader::lineEncode( $node['text'] ) : self::_safe( $node['text'], $name, 'text' ) ). '"';
 
 			// The schema's order, then what it does not know
 			foreach( array_merge( array_keys( $defaults ), array_diff( array_keys( $attributes ), array_keys( $defaults ) ) ) as $attribute ) {

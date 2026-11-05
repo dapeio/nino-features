@@ -1861,3 +1861,80 @@ button.builder-status-item:hover {
 }
 
 }
+
+/* The form of the columns of a table: a card for each column, its buttons in the head, then its title and what its cells show */
+.builder-columns {
+	display: grid;
+	gap: .6rem;
+}
+.builder-column {
+	display: grid;
+	gap: .5rem;
+	padding: .55rem .6rem;
+	border: 1px solid var(--editor-border);
+	border-radius: .4rem;
+}
+.builder-column-head {
+	display: flex;
+	align-items: center;
+	gap: .25rem;
+}
+.builder-column-head .builder-label {
+	margin-right: auto;
+}
+.builder-column-add {
+	justify-self: start;
+}
+.builder-line-field {
+	display: grid;
+	gap: .25rem;
+}
+.builder-line-warning {
+	color: var(--editor-red, #b3261e);
+}
+
+/* The table and the rows a loop makes, in the frame of its column: what the head and the cells will show, drawn small. The whole of it opens the form of the loop */
+.builder-table-ph,
+.builder-rows-ph {
+	min-width: 0;
+	padding: .4rem;
+	border: 1px dashed var(--editor-border);
+	border-radius: .4rem;
+	cursor: pointer;
+	overflow-x: auto;
+}
+.builder-table-ph-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: .72rem;
+}
+.builder-table-ph-table th,
+.builder-table-ph-table td {
+	padding: .2rem .35rem;
+	border-bottom: 1px solid var(--editor-border);
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 12rem;
+}
+.builder-table-ph-table th {
+	font-weight: 700;
+}
+.builder-table-ph-table td {
+	opacity: .7;
+}
+.builder-rows-ph-row {
+	padding: .15rem .25rem;
+	font-size: .78rem;
+	opacity: .75;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.builder-table-ph-table th.is-red,
+.builder-table-ph-table td.is-red {
+	color: var(--editor-red);
+	opacity: 1;
+	text-decoration: underline wavy;
+}

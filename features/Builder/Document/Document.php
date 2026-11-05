@@ -80,6 +80,12 @@ namespace Nino\Modules\Builder {
 		// schemas() marks - 'cell' => 'section' - so that neither the Reader nor the panel has the name
 		private const string SECTION_LOOP = 'sections';
 
+		// The kernel's names for the loop whose cell can be one row of a field or of a line of text, and for the components whose text is a line of free text with
+		// fields in it: the other places that say them, as schemas() marks them - 'cell' => 'row', 'fields' => true. The loop whose content is its columns says so
+		// itself ('holds'), and a column is a component that stands nowhere else (Reader::columnar())
+		private const string ROW_LOOP = 'list';
+		private const array LINES = [ 'line', 'col' ];
+
 		/**
 		 *	Whether a name may be a page template's: the file is page-<slug>
 		 *
@@ -111,6 +117,16 @@ namespace Nino\Modules\Builder {
 				$schemas['components'][$name]['defaults'] = \Nino\Modules\Components::defaults( $appData, (string) $name );
 
 			// The kind of surface is read from what the registry says of a component, and told to the panel, which knows no component by name
+			// The first argument of a column is the text key of its title: for the panel and for the model it is a component with a text source
+			foreach( array_keys( $schemas['components'] ) as $name ) {
+
+				if( Reader::columnar( $schemas['components'][$name] ) === true )
+					$schemas['components'][$name]['source'] = 'text';
+
+				if( in_array( $name, self::LINES, true ) === true )
+					$schemas['components'][$name]['fields'] = true;
+			}
+
 			foreach( array_keys( $schemas['components'] ) as $name ) {
 
 				$surface = Reader::surface( $schemas['components'][$name], $schemas['components'] );
@@ -125,6 +141,10 @@ namespace Nino\Modules\Builder {
 
 				if( $name === self::SECTION_LOOP )
 					$schemas['stacks'][$name]['cell'] = 'section';
+				elseif( Reader::placeOf( $schemas['stacks'][$name] ) !== '' )
+					$schemas['stacks'][$name]['cell'] = 'columns';
+				elseif( $name === self::ROW_LOOP )
+					$schemas['stacks'][$name]['cell'] = 'row';
 			}
 
 			return $schemas;
@@ -1236,9 +1256,13 @@ namespace Nino\Modules\Builder {
 						$schema = (array) ( $schemas['components'][$call['name'] ?? ''] ?? $schemas['stacks'][$call['name'] ?? ''] ?? [] );
 						$values = [ 'source' => $call['source'] ?? null, 'text' => $call['text'] ?? null ] + (array) ( $call['attributes'] ?? [] );
 
+						// The text of a line holds the fills of the element, and no other bracket
+						if( Reader::fielded( $schema ) === true && is_string( $values['text'] ) === true && Reader::lineText( $values['text'] ) === true )
+							$values['text'] = null;
+
 						foreach( $values as $attribute => $value )
 							if( $unsafe( $value, $attribute === 'source' ? ( $schema['source'] ?? '' ) === 'href' : in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ) === true )
-								$problems[] = $at. ': the attribute "'. $attribute. '" of the component "'. (string) ( $call['name'] ?? '' ). '" holds a quote, a bracket or a line break, which a call cannot carry';
+								$problems[] = $at. ': the '. ( $attribute === 'text' && Reader::fielded( $schema ) === true ? 'text' : 'attribute "'. $attribute. '"' ). ' of the component "'. (string) ( $call['name'] ?? '' ). '" holds '. ( $attribute === 'text' && Reader::fielded( $schema ) === true ? 'a line break or a [[ that opens no field' : 'a quote, a bracket or a line break' ). ', which a call cannot carry';
 					}
 				}
 			}
@@ -1293,7 +1317,39 @@ namespace Nino\Modules\Builder {
 				if( is_array( $col['stack'] ?? null ) === true )
 					$fields = self::_fields( $appData, $col['stack'], $problems );
 
-				foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $component ) {
+				$cells = self::_flat( (array) ( $col['components'] ?? [] ) );
+
+				foreach( $cells as $component ) {
+
+					$called = (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] );
+
+					// What a column shows is a field of the type, and its title a text key and never a field. That it shows a field or a line of text, one of the two, that
+					// it stands in a table and that a table has one are the Reader's to say: a section that does not read back as it is written is no section
+					if( Reader::columnar( $called ) === true ) {
+
+						$field = (string) ( $component['attributes']['field'] ?? '' );
+
+						if( $field !== '' && $fields !== null && in_array( $field, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$field] ) === false )
+							$problems[] = 'the field "'. $field. '" of a column of column '. ( (int) $c + 1 ). ' is no field of the loop\'s type';
+
+						if( (string) ( $component['source'] ?? '' ) !== '' && $component['source'][0] !== '/' )
+							$problems[] = 'the title of a column of column '. ( (int) $c + 1 ). ' is a text key, not "'. $component['source']. '"';
+					}
+
+					// The fills of a line of text are fields of the element, and only there
+					if( Reader::fielded( $called ) === true && is_string( $component['text'] ?? null ) === true )
+						foreach( Reader::lineFills( $component['text'] ) as $fill )
+							if( $fill[0] === '/' )
+								continue;
+							elseif( $fields === null )
+								$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' means nothing in a column without a loop';
+							elseif( ( $fields[$fill]['type'] ?? '' ) === 'image' )
+								$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is an image field, which a line cannot print';
+							elseif( in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$fill] ) === false )
+								$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is no field of the loop\'s type';
+				}
+
+				foreach( $cells as $component ) {
 
 					$kind		= (string) ( $schemas['components'][$component['name'] ?? '']['source'] ?? 'text' );
 					$source	= (string) ( $component['source'] ?? '' );
@@ -1588,7 +1644,8 @@ namespace Nino\Modules\Builder {
 						$name		= (string) ( $component['name'] ?? '' );
 						$source	= (string) ( $component['source'] ?? '' );
 
-						if( self::_kind( $schemas, $name ) !== 'text' || $source === '' || $source[0] !== '/' || is_string( $component['text'] ?? null ) === true ) {
+						// The title of a column is a key whatever line the column shows
+						if( self::_kind( $schemas, $name ) !== 'text' || $source === '' || $source[0] !== '/' || ( is_string( $component['text'] ?? null ) === true && Reader::columnar( (array) ( $schemas['components'][$name] ?? [] ) ) === false ) ) {
 							$problems[] = 'the section "'. (string) ( $block['id'] ?? '' ). '" (block '. ( (int) $index + 1 ). '): the component "'. $name. '" has a text, and its source is no text key';
 							continue;
 						}

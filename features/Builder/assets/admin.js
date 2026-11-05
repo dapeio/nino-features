@@ -223,7 +223,18 @@
 		FILE			: /^page-[a-z0-9]+(?:-[a-z0-9]+)*$/,
 
 		// The preview images the registry may name, and the one for the rest
-		PREVIEWS	: [ 'title', 'text', 'image', 'button', 'block', 'cells' ],
+		PREVIEWS	: [ 'title', 'text', 'image', 'button', 'block', 'cells', 'table' ],
+
+		// The places a loop holds the calls of, and a column of a page does not offer (the 'in' of a component, the 'holds' of a loop)
+		LOOP_PLACES	: [ 'table' ],
+
+		// The components a list's row is made of, as the kernel names them: a field of the element is [text <field>], a line of free text with fields in it is [line text="..."]
+		ROW_FIELD	: 'text',
+		ROW_LINE	: 'line',
+		// The types of field a cell can show as text; a column shows a picture besides
+		SHOWN			: [ 'string', 'integer', 'double', 'boolean', 'date', 'datetime' ],
+		// What a select of values calls a line of free text
+		FREE			: '*',
 
 		// What the dialog of an element shows, and the one place that says it: for each kind of element the blocks it has, in the order they are drawn in - the same seven for every kind, in
 		// this order: content, link, surface, spacing, width, loop and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
@@ -1893,6 +1904,25 @@
 						if( source !== '' && kind !== 'none' && kind !== 'content' && source.charAt( 0 ) !== '/' && kind !== 'href' )
 							mark( source, path, false );
 
+						// What a column of a table shows is a field of the element, and so are the fills of a line of free text
+						const called = ( registry.components || {} )[component.name] || {};
+						const shown = builder._columnar( called ) === true ? String( ( component.attributes || {} ).field ?? '' ) : '';
+
+						if( shown !== '' )
+							mark( shown, path, false );
+
+						if( called.fields === true && typeof component.text === 'string' )
+							( component.text.match( /\[\[[A-Za-z0-9_.\/-]+\]\]/g ) || [] ).map( function( fill ) { return fill.slice( 2, -2 ) } ).forEach( function( fill ) {
+								if( fill.charAt(0) === '/' )
+									return;
+
+								// The path of a file is no text: an image field is no fill of a line
+								if( fields !== null && fields[fill] !== undefined && fields[fill].type === 'image' )
+									red.push( { path : path, source : fill, why : 'field' } );
+								else
+									mark( fill, path, false );
+							} );
+
 						// The picture an attribute names is a slot or - in a loop - a field of the element, and not one of the special sources
 						builder._pictures( declared ).forEach( function( attribute ) {
 
@@ -2083,6 +2113,11 @@
 
 				const schema = registry.components[name];
 				const by = typeof schema.by === 'string' ? schema.by : 'nino';
+
+				// A column of a table is made in the form of a table and offered nowhere else
+				if( builder._columnar( schema ) === true )
+					return;
+
 				const item = { name : name, label : schema.label || name, icon : Array.isArray( schema.icon ) === true ? schema.icon : null, reason : builder._placeProblem( where, schema ) };
 
 				if( by !== 'nino' )
@@ -2238,6 +2273,19 @@
 							text			: col.text || '',
 							stackAlign : col.stackAlign || '',
 							stack			: stack === null ? null : { path : [ b, c, 'x' ], label : builder._stackLabel( registry, stack.name ), type : type === undefined || type.title === '' ? stack.source : type.title },
+							// A loop whose content is its columns is drawn as the table it makes, and a list whose cell is a row as its rows: they have no components to place
+							table			: stack !== null && ( ( registry.stacks || {} )[stack.name] || {} ).preview === 'table' ? col.components.map( function( node, k ) {
+
+								const text = texts === undefined ? null : builder._textOf( node, texts.locale, texts.keys, registry );
+
+								return {
+									title	: text === null ? '' : builder._firstLine( builder._shownText( node, text, texts.keys, registry ), builder.LINE_MAX ),
+									value	: typeof node.text === 'string' ? node.text : String( ( node.attributes || {} ).field ?? '' ),
+									// A column the save refuses - a field the type has not, a fill that is none - is red where it is drawn
+									red		: builder._red( model, registry ).some( function( entry ) { return builder._same( entry.path, [ b, c, k ] ) } ),
+								};
+							} ) : null,
+							rows			: stack !== null && builder._cellKind( registry, stack ) === 'row' && builder._rowOf( registry, col ) !== null ? ( function( row ) { return [ row, row, row ].map( function( one ) { return one.text !== undefined ? one.text : '[['+ one.field+ ']]' } ) } )( builder._rowOf( registry, col ) ) : null,
 							components : col.components.map( function( component, k ) { return place( component, [ b, c, k ], builder._surface( block, col ) ) } ),
 						};
 					} ),
@@ -3968,10 +4016,81 @@
 
 			builder._one( frame, '.builder-pcol-head' ).appendChild( builder._tools( col.path, Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/tools-col'), col.path[1] + 1, builder._doc.model.blocks[col.path[0]].id ) ) );
 
+			if( col.table !== null || col.rows !== null ) {
+
+				// The table or the rows the loop makes: one picture of them, which opens the form of the loop
+				const drawing = col.table !== null ? builder._tablePlaceholder( col.table ) : builder._rowsPlaceholder( col.rows );
+
+				drawing.dataset.path = col.stack.path.join('.');
+				drawing.addEventListener( 'click', function() {
+					builder._select( col.stack.path, false );
+					builder._openSettings( col.stack.path );
+				} );
+				body.appendChild( drawing );
+
+				return frame;
+			}
+
 			col.components.forEach( function( component ) { body.appendChild( component.holds === true ? builder._previewCard( component ) : builder._placeholder( component, 'tools' ) ) } );
 			body.appendChild( builder._addsRow( col.path ) );
 
 			return frame;
+		},
+
+		/**
+		 *	The table a loop makes, in the preview: the titles of its columns for a head - none where no column has one - and two rows of what its cells show, a field by its
+		 *	name and a line of text as it is written
+		 *
+		 *	@param		{Array}			columns						[ { title, value } ]
+		 *
+		 *	@return		{Element}
+		 */
+		_tablePlaceholder : function( columns ) {
+
+			const builder = Nino.admin.builder;
+			const wrap = builder._el( 'div', 'builder-table-ph' );
+			const table = builder._el( 'table', 'builder-table-ph-table' );
+			const body = builder._el( 'tbody' );
+
+			if( columns.some( function( column ) { return column.title !== '' } ) === true ) {
+
+				const head = builder._el( 'thead' );
+				const line = builder._el( 'tr' );
+
+				columns.forEach( function( column ) { line.appendChild( builder._el( 'th', column.red === true ? 'is-red' : '', column.title ) ) } );
+				head.appendChild( line );
+				table.appendChild( head );
+			}
+
+			[ 0, 1 ].forEach( function() {
+
+				const line = builder._el( 'tr' );
+
+				columns.forEach( function( column ) { line.appendChild( builder._el( 'td', column.red === true ? 'is-red' : '', column.value ) ) } );
+				body.appendChild( line );
+			} );
+
+			table.appendChild( body );
+			wrap.appendChild( table );
+
+			return wrap;
+		},
+
+		/**
+		 *	The rows a list makes, in the preview: three bullets and the line of each
+		 *
+		 *	@param		{Array}			rows							The lines
+		 *
+		 *	@return		{Element}
+		 */
+		_rowsPlaceholder : function( rows ) {
+
+			const builder = Nino.admin.builder;
+			const list = builder._el( 'div', 'builder-rows-ph' );
+
+			rows.forEach( function( line ) { list.appendChild( builder._el( 'div', 'builder-rows-ph-row', '\u2022  '+ line ) ) } );
+
+			return list;
 		},
 
 		/**
@@ -7841,6 +7960,9 @@
 
 				col.stack = name === '' ? null : builder._stackFor( registry, name, col.stack === null || col.stack === undefined ? null : col.stack );
 
+				if( whole === false )
+					builder._cellFor( registry, path );
+
 				// A call makes no cover of another height
 				if( whole === true && col.stack !== null && section.settings.cover !== null )
 					section.settings.cover = 90;
@@ -7927,15 +8049,485 @@
 				cells.appendChild( id );
 			}
 
-			const declared = builder._declared( schema );
+			const declared = Object.assign( {}, builder._declared( schema ) );
+			const cell = builder._cellKind( registry, stack );
+			const fields = type === undefined ? {} : type.fields;
+
+			// The style of a table and of a list is drawn with the words of the panel
+			if( ( cell === 'columns' || cell === 'row' ) && declared.style !== undefined ) {
+
+				const options = ( declared.style.options || [] ).map( function( word ) {
+					return { value : word, label : Nino.content.getText( '/_admin/builder/stack/style-'+ ( word === '' ? 'plain' : word ) ) };
+				} );
+
+				if( options.some( function( option ) { return option.value === String( stack.attributes.style ) } ) === false )
+					options.push( { value : String( stack.attributes.style ), label : String( stack.attributes.style ) } );
+
+				builder._group( pane, Nino.content.getText('/_admin/builder/group/style') ).appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/style'), '', options, String( stack.attributes.style ), function( value ) {
+					stack.attributes.style = value;
+					builder._changed();
+				} ) );
+
+				delete declared.style;
+			}
 
 			if( Object.keys( declared ).length > 0 )
 				builder._attributeFields( builder._group( pane, Nino.content.getText('/_admin/builder/group/own') ), declared, stack.attributes, {
-					fields	: type === undefined ? {} : type.fields,
+					fields	: fields,
 					section	: section,
 					around	: whole === true ? ( section.settings.color || '' ) : builder._surface( section, col ),
 					redraw	: function() { builder._refreshControls( 'stack' ) },
 				} );
+
+			// What a cell of the loop is made of, where the loop has a form for it: the columns of a table, the row of a list
+			if( cell === 'columns' )
+				builder._columnsEditor( builder._group( pane, Nino.content.getText('/_admin/builder/group/columns') ), path, fields );
+			else if( cell === 'row' )
+				builder._rowEditor( builder._group( pane, Nino.content.getText('/_admin/builder/group/row') ), path, fields );
+		},
+
+		/**
+		 *	What a loop is the cell of, as its schema says it ('cell'): section for the loop of sections, columns for the loop whose content is the columns of a table, row for the loop
+		 *	whose cell may be one row of a field or of a line of text. The Builder asks the schema and has no name for any of them
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		stack						{ name, source, attributes }
+		 *
+		 *	@return		{string}									'' for a loop whose cell is the components of its column
+		 */
+		_cellKind : function( registry, stack ) {
+			return ( ( registry.stacks || {} )[stack.name] || {} ).cell || '';
+		},
+
+		/**
+		 *	Whether a component is a column of a table by its schema and not by its name: it belongs in no place of a page (section, card, hero) but only in a place a loop holds (LOOP_PLACES)
+		 *
+		 *	@param		{Object}		schema						The component's entry of the registry
+		 *
+		 *	@return		{boolean}
+		 */
+		_columnar : function( schema ) {
+
+			const places = Array.isArray( schema.in ) === true ? schema.in : [];
+
+			return places.length > 0 && places.every( function( place ) { return Nino.admin.builder.LOOP_PLACES.indexOf( place ) !== -1 } );
+		},
+
+		/**
+		 *	The fields of a type that a cell can show, by name
+		 *
+		 *	@param		{Object}		fields						name => the field of the type
+		 *	@param		{boolean}		pictures					Whether an image field is one of them
+		 *
+		 *	@return		{Array}										[ { value, label } ]
+		 */
+		_valueChoices : function( fields, pictures ) {
+
+			const builder = Nino.admin.builder;
+
+			return Object.keys( fields ).filter( function( name ) {
+				return builder.SHOWN.indexOf( fields[name].type ) !== -1 || ( pictures === true && fields[name].type === 'image' );
+			} ).map( function( name ) { return { value : name, label : name } } );
+		},
+
+		/**
+		 *	A column that was changed to what its loop holds: a table has columns and nothing else, any other loop has none; a table has one, since it needs at least one,
+		 *	and a list starts as a row of a field - or a line, where its type has no field to show. The components that are not the cell of the loop are dropped
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Array}			path							The column
+		 *
+		 *	@return		void
+		 */
+		_cellFor : function( registry, path ) {
+
+			const builder = Nino.admin.builder;
+			const model = builder._doc.model;
+			const col = model.blocks[path[0]].cols[path[1]];
+			const kind = col.stack === null || col.stack === undefined ? '' : builder._cellKind( registry, col.stack );
+			const columnar = function( component ) { return builder._columnar( ( registry.components || {} )[component.name] || {} ) };
+			const type = col.stack === null || col.stack === undefined ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === col.stack.source } );
+			const first = type === undefined ? [] : builder._valueChoices( type.fields || {}, kind === 'columns' );
+
+			col.components = col.components.filter( function( component ) { return columnar( component ) === ( kind === 'columns' ) } );
+
+			if( kind === 'columns' && col.components.length === 0 ) {
+
+				const node = builder._newComponent( model, registry, builder._doc.file, path, builder._columnName( registry ), builder._keys );
+
+				node.attributes.field = first.length > 0 ? first[0].value : '';
+				col.components.push( node );
+			}
+
+			if( kind === 'row' && col.components.length === 0 )
+				builder._rowSet( registry, path, first.length > 0 ? first[0].value : builder.FREE, '' );
+		},
+
+		/**
+		 *	The name of the component that is a column of a table, as the registry has it
+		 *
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{string}
+		 */
+		_columnName : function( registry ) {
+
+			const builder = Nino.admin.builder;
+
+			return Object.keys( registry.components || {} ).find( function( name ) { return builder._columnar( registry.components[name] ) } ) || '';
+		},
+
+		/**
+		 *	Whether a line of free text can be carried by a call: no line break and no double bracket that opens no fill, [[name]] - a quote, an ampersand and a single bracket are written as entities
+		 *
+		 *	@param		{string}		text
+		 *
+		 *	@return		{boolean}
+		 */
+		_lineValid : function( text ) {
+			return /\r|\n|\[\[/.test( String( text ).replace( /\[\[\/?[A-Za-z0-9_.\/-]+\]\]/g, '' ) ) === false;
+		},
+
+		/**
+		 *	The select of what a cell shows: a field of the type by its name, and a line of free text. Where the field is none the type has, it is there as it stands, so that it is
+		 *	seen and changed
+		 *
+		 *	@param		{Object}		fields
+		 *	@param		{string}		current						A field, the empty word, or FREE
+		 *	@param		{boolean}		pictures					Whether an image field may be shown
+		 *	@param		{string}		label
+		 *	@param		{Function}	onChange					( value )
+		 *
+		 *	@return		{Element}
+		 */
+		_valueSelect : function( fields, current, pictures, label, onChange ) {
+
+			const builder = Nino.admin.builder;
+			const items = builder._valueChoices( fields, pictures );
+
+			if( current !== '' && current !== builder.FREE && items.some( function( item ) { return item.value === current } ) === false )
+				items.push( { value : current, label : current } );
+
+			items.push( { value : builder.FREE, label : Nino.content.getText('/_admin/builder/column/free') } );
+
+			return builder._selectField( label, Nino.content.getText('/_admin/builder/hint/column-value'), items, current, onChange );
+		},
+
+		/**
+		 *	The input of a line of free text, with the fields it can take named in its hint, and the sentence that says the line cannot be carried while it holds a quote or a bracket
+		 *
+		 *	@param		{Object}		fields
+		 *	@param		{string}		text
+		 *	@param		{Function}	onChange					( text )
+		 *
+		 *	@return		{Element}
+		 */
+		_lineField : function( fields, text, onChange ) {
+
+			const builder = Nino.admin.builder;
+			const wrap = builder._el( 'div', 'builder-line-field' );
+			const shown = builder._valueChoices( fields, false ).map( function( item ) { return item.value } );
+			const names = shown.slice( 0, 12 ).map( function( name ) { return '[['+ name+ ']]' } ).join(', ');
+			const warn = builder._el( 'p', 'nino-admin-hint builder-line-warning', Nino.content.getText('/_admin/builder/hint/line-invalid') );
+			const unknown = builder._el( 'p', 'nino-admin-hint builder-line-warning builder-line-unknown' );
+			const check = function( value ) {
+
+				warn.hidden = builder._lineValid( value );
+
+				const lost = builder._lineFills( value ).filter( function( fill ) { return fill.charAt(0) !== '/' && [ '.id', '.uri', '.slug' ].indexOf( fill ) === -1 && shown.indexOf( fill ) === -1 } );
+
+				unknown.hidden = lost.length === 0;
+				unknown.textContent = Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/line-unknown'), lost.map( function( fill ) { return '[['+ fill+ ']]' } ).join(', ') );
+			};
+			const field = builder._textField( Nino.content.getText('/_admin/builder/column/text'), Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/column-text'), names ), text, function( value ) {
+
+				check( value );
+				onChange( value );
+			}, { placeholder : '[[price]],- €' } );
+
+			check( text );
+			wrap.appendChild( field );
+			wrap.appendChild( warn );
+			wrap.appendChild( unknown );
+
+			return wrap;
+		},
+
+		/**
+		 *	The names of the fills of a line of free text, in order
+		 *
+		 *	@param		{string}		text
+		 *
+		 *	@return		{Array}
+		 */
+		_lineFills : function( text ) {
+			return ( String( text ).match( /\[\[\/?[A-Za-z0-9_.\/-]+\]\]/g ) || [] ).map( function( fill ) { return fill.slice( 2, -2 ) } );
+		},
+
+		/**
+		 *	The editor of the columns of a table: a row for each column with the title (the text key of the head of the column, or none) and what its cells show - a field of the
+		 *	type, or a line of free text with fields in it -, the buttons that move a column up and down and take it away, and the button that adds one. A table needs one
+		 *
+		 *	@param		{Element}		pane
+		 *	@param		{Array}			path							The column that runs the table
+		 *	@param		{Object}		fields						The fields of the type the table runs over
+		 *
+		 *	@return		void
+		 */
+		_columnsEditor : function( pane, path, fields ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const section = doc.model.blocks[path[0]];
+			const col = section.cols[path[1]];
+			const registry = builder._registry;
+			const list = builder._el( 'div', 'builder-columns' );
+			const draw = function() {
+
+				builder._columnEditors.splice( 0 ).forEach( function( made ) { made.destroy() } );
+				list.innerHTML = '';
+
+				col.components.forEach( function( node, k ) { list.appendChild( builder._columnRow( col, node, k, section, fields, path.concat( [ k ] ), draw ) ) } );
+
+				if( col.components.length === 0 )
+					list.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/columns-none') ) );
+
+				const add = builder._el( 'button', 'nino-admin-btn-secondary builder-column-add', Nino.content.getText('/_admin/builder/stack/column-add') );
+
+				add.type = 'button';
+				add.addEventListener( 'click', function() {
+
+					const node = builder._newComponent( doc.model, registry, doc.file, path, builder._columnName( registry ), builder._keys );
+					const first = builder._valueChoices( fields, true );
+
+					node.attributes.field = first.length > 0 ? first[0].value : '';
+					col.components.push( node );
+					builder._changed();
+					draw();
+				} );
+				list.appendChild( add );
+			};
+
+			pane.appendChild( list );
+			draw();
+		},
+
+		// The editors of the text under a title key that the form of the columns made: drawn away with the form
+		_columnEditors : [],
+
+		/**
+		 *	One column of a table in the editor of the columns
+		 *
+		 *	@param		{Object}		col								The column of the page, whose components the columns are
+		 *	@param		{Object}		node							The column of the table
+		 *	@param		{number}		k									Its place among them
+		 *	@param		{Object}		section
+		 *	@param		{Object}		fields
+		 *	@param		{Array}			path							The node
+		 *	@param		{Function}	redraw
+		 *
+		 *	@return		{Element}
+		 */
+		_columnRow : function( col, node, k, section, fields, path, redraw ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
+			const row = builder._el( 'div', 'builder-column' );
+			const head = builder._el( 'div', 'builder-column-head' );
+			const move = function( to ) {
+
+				col.components.splice( to, 0, col.components.splice( k, 1 )[0] );
+				builder._changed();
+				redraw();
+			};
+			const up = builder._iconButton( 'up', Nino.content.getText('/_admin/builder/column/up'), function() { move( k - 1 ) } );
+			const down = builder._iconButton( 'down', Nino.content.getText('/_admin/builder/column/down'), function() { move( k + 1 ) } );
+			const remove = builder._iconButton( 'trash', Nino.content.getText('/_admin/builder/column/remove'), function() {
+
+				col.components.splice( k, 1 );
+				builder._changed();
+				redraw();
+			} );
+
+			head.appendChild( builder._el( 'span', 'builder-label', Nino.adminUi.format( Nino.content.getText('/_admin/builder/column/number'), k + 1 ) ) );
+			up.disabled = k === 0;
+			down.disabled = k === col.components.length - 1;
+			head.appendChild( up );
+			head.appendChild( down );
+			head.appendChild( remove );
+			row.appendChild( head );
+
+			// The title: the text key of the head of the column, made here as a title is, or none
+			const extra = builder._el( 'div', 'builder-content-extra' );
+			const fill = function() {
+
+				extra.innerHTML = '';
+
+				const text = builder._textOf( node, builder._locale, builder._keys, registry );
+
+				if( text !== null )
+					extra.appendChild( builder._valueField( node, text, builder._columnEditors ) );
+
+				extra.hidden = extra.children.length === 0;
+			};
+
+			row.appendChild( builder._sourceRow( {
+				kind		: 'text',
+				fixed		: false,
+				create	: true,
+				fields	: null,
+				value		: node.source,
+				text		: null,
+				section	: section,
+				name		: node.name,
+				seed		: Nino.content.getText('/_admin/builder/column/seed'),
+				caption	: '',
+				label		: Nino.content.getText('/_admin/builder/column/title'),
+				red			: builder._red( builder._doc.model, registry ).find( function( entry ) { return builder._same( entry.path, path ) } ),
+				onPick	: function( source, create ) {
+
+					if( source !== node.source )
+						delete node.values;
+
+					node.source = source;
+
+					if( create === null )
+						delete node.create;
+					else {
+						node.create = create;
+						builder._placeholders( registry, node );
+					}
+
+					builder._changed();
+					fill();
+				},
+				onFixed	: function() {},
+			} ) );
+			row.appendChild( extra );
+			fill();
+
+			// What the cells show
+			const free = typeof node.text === 'string';
+
+			row.appendChild( builder._valueSelect( fields, free === true ? builder.FREE : String( node.attributes.field ?? '' ), true, Nino.content.getText('/_admin/builder/column/value'), function( value ) {
+
+				if( value === builder.FREE ) {
+					node.text = node.text ?? '';
+					node.attributes.field = '';
+				} else {
+					node.text = null;
+					node.attributes.field = value;
+				}
+
+				builder._changed();
+				redraw();
+			} ) );
+
+			if( free === true )
+				row.appendChild( builder._lineField( fields, node.text, function( value ) {
+					node.text = value;
+					builder._changed();
+				} ) );
+
+			return row;
+		},
+
+		/**
+		 *	The row of a list, as the cell of the list holds it: exactly one component, the field of the element ([text <field>]) or a line of free text ([line]), with
+		 *	the attributes the schema starts them with and nothing else. A list whose cell is more than that - or other - is not a row
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		col								The column that runs the list
+		 *
+		 *	@return		{Object|null}							{ field } or { text }, null where the cell is the components of the column
+		 */
+		_rowOf : function( registry, col ) {
+
+			const builder = Nino.admin.builder;
+
+			if( col.components.length !== 1 )
+				return null;
+
+			const node = col.components[0];
+			const defaults = ( ( registry.components || {} )[node.name] || {} ).defaults || {};
+			const attributes = node.attributes || {};
+			const plain = Object.keys( defaults ).every( function( key ) { return String( attributes[key] ?? '' ) === String( defaults[key] ) } ) && Object.keys( attributes ).length === Object.keys( defaults ).length
+				&& builder.SIDES.every( function( side ) { return ( node[side] ?? '' ) === '' } ) && ( node.radius ?? '' ) === '' && ( node.hover ?? '' ) === '' && node.create === undefined;
+
+			if( plain === false )
+				return null;
+
+			if( node.name === builder.ROW_FIELD && node.text === null && node.source !== '' && node.source.charAt(0) !== '/' )
+				return { field : node.source };
+
+			if( node.name === builder.ROW_LINE && node.source === '' && typeof node.text === 'string' )
+				return { text : node.text };
+
+			return null;
+		},
+
+		/**
+		 *	The row of a list made anew: the field of the element, or a line of free text where the value is FREE
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Array}			path							The column that runs the list
+		 *	@param		{string}		value							A field, or FREE
+		 *	@param		{string}		text							The line, for FREE
+		 *
+		 *	@return		void
+		 */
+		_rowSet : function( registry, path, value, text ) {
+
+			const builder = Nino.admin.builder;
+			const model = builder._doc.model;
+			const col = model.blocks[path[0]].cols[path[1]];
+			const free = value === builder.FREE;
+			const node = builder._newComponent( model, registry, builder._doc.file, path, free === true ? builder.ROW_LINE : builder.ROW_FIELD, builder._keys );
+
+			if( free === true )
+				node.text = text;
+			else
+				node.source = value;
+
+			col.components = [ node ];
+		},
+
+		/**
+		 *	The row of a list in the form of the loop: what the row shows - a field of the type or a line of free text - for a list whose cell is a row, and a sentence that
+		 *	says the cell is made of components of its own for a list whose cell is more
+		 *
+		 *	@param		{Element}		pane
+		 *	@param		{Array}			path							The column that runs the list
+		 *	@param		{Object}		fields
+		 *
+		 *	@return		void
+		 */
+		_rowEditor : function( pane, path, fields ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
+			const col = builder._doc.model.blocks[path[0]].cols[path[1]];
+			const row = builder._rowOf( registry, col );
+
+			if( row === null ) {
+				pane.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/row-cells') ) );
+				return;
+			}
+
+			const free = row.text !== undefined;
+
+			pane.appendChild( builder._valueSelect( fields, free === true ? builder.FREE : row.field, false, Nino.content.getText('/_admin/builder/column/value'), function( value ) {
+
+				builder._rowSet( registry, path, value, '' );
+				builder._changed();
+				builder._refreshControls( 'stack' );
+			} ) );
+
+			if( free === true )
+				pane.appendChild( builder._lineField( fields, row.text, function( value ) {
+					col.components[0].text = value;
+					builder._changed();
+				} ) );
 		},
 
 		/**
@@ -8494,6 +9086,10 @@
 				else
 					body.appendChild( extra );
 			};
+
+			// A line of free text takes the fields of the element, where there is one, written between double brackets
+			if( schema.fields === true && fields !== null )
+				body.appendChild( builder._el( 'p', 'nino-admin-hint', Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/column-text'), builder._valueChoices( fields, false ).slice( 0, 12 ).map( function( item ) { return '[['+ item.value+ ']]' } ).join(', ') ) ) );
 
 			body.appendChild( builder._sourceRow( {
 				kind		: kind,
@@ -9879,7 +10475,8 @@
 
 			const builder = Nino.admin.builder;
 
-			if( builder._sourceKind( registry, component.name ) !== 'text' || typeof component.text === 'string' || String( component.source ?? '' ).charAt(0) !== '/' )
+			// The title of a column is a key whatever line the column shows: its text is no fixed text of the title
+			if( builder._sourceKind( registry, component.name ) !== 'text' || ( typeof component.text === 'string' && builder._columnar( ( registry.components || {} )[component.name] || {} ) === false ) || String( component.source ?? '' ).charAt(0) !== '/' )
 				return null;
 
 			const entry = builder._keyEntry( keys, component.source );
