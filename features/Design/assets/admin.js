@@ -3507,6 +3507,10 @@
 					return;
 				}
 
+				/*	The frames and theme.css are files of every page: no address to name, so the window beside the workbench loads the
+					page it shows anew, and the panels that show templates ask again when they are shown	*/
+				Nino.admin.touch('templates');
+
 				const lost = [];
 				files.forEach( function( file ) {
 					( file.lost || [] ).forEach( function( token ) { lost.push( token ) } );
@@ -3748,6 +3752,9 @@
 					Nino.admin.design._say( dc.getElementById('design-msg'), Nino.adminUi.api.errorText( status, response, '/_admin/design/error/restore' ), 'nino-admin-error' );
 					return;
 				}
+
+				// The restored files are the templates and theme.css of every page, as an apply writes them
+				Nino.admin.touch('templates');
 
 				Nino.admin.design.init( function() {
 					// What the slot did not hold, or could not keep, is told

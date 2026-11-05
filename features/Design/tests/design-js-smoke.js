@@ -1099,6 +1099,9 @@ function panel( over, shell ) {
 	const confirms = [];
 	let confirmAnswer = true;
 
+	// What the panel told the other panels and the window beside the workbench, as the arguments of each Nino.admin.touch()
+	const touched = [];
+
 	const Nino = {
 		adminUi : {
 			// The workbench's request helper: every request goes through _apiCall,
@@ -1362,7 +1365,10 @@ function panel( over, shell ) {
 		Nino.adminUi.api = shell.api;
 
 	// The shell's registry of unsaved input: nothing is unsaved in it unless a test brings its own
-	Nino.admin = { dirty : ( shell || {} ).dirty || { register : function() {}, isDirty : function() { return false }, refresh : function() {} } };
+	Nino.admin = {
+		dirty : ( shell || {} ).dirty || { register : function() {}, isDirty : function() { return false }, refresh : function() {} },
+		touch : function() { touched.push( Array.prototype.slice.call( arguments ) ) },
+	};
 
 	/*	The workbench's mode and the questions it weighs - as the kernel does. `levels` keeps each question the panel put to it, with
 		the level it was put at and whether the mode asked it. A question that is asked is the dialog's, drawn and held until a test answers it (settle()), as
@@ -1542,6 +1548,7 @@ function panel( over, shell ) {
 			return timers.filter( function( timer ) { return timer !== null && timer[1] === delay } );
 		},
 		confirms: confirms,
+		touched	: touched,
 		/** The questions of the workbench that were asked, in order: { options, root, open, text, buttons, choose( value ) } */
 		asks		: asks,
 		stage		: stage,
@@ -2181,7 +2188,7 @@ const kernelTabs = byTag( headed.registry, 'button' );
 const tableObjectKeys = headed.design._data.layout.objects;
 
 check( 'the shell asks two namespaces for the screens of the pane, by the uris of the tabs: Nino.admin.design for the panel\'s own screen and Nino.admin[\'design-typefaces\'] for the loader - each a screen of its own that answers showCurrent() - and the setup is a namespace of the panel\'s, Nino.admin.design.views',
-	Object.keys( headed.admin ).filter( function( key ) { return key !== 'dirty' && key !== 'mode' } ).sort().join() === 'design,design-typefaces'
+	Object.keys( headed.admin ).filter( function( key ) { return key !== 'dirty' && key !== 'mode' && key !== 'touch' } ).sort().join() === 'design,design-typefaces'
 	&& PANE.slice( 0, 2 ).every( function( uri ) { return typeof headed.admin[uri].showCurrent === 'function' && headed.admin[uri].showCurrent !== headed.admin.design.init } )
 	&& headed.setup === headed.admin.design.views && headed.admin.design !== headed.setup && headed.setup !== headed.faces && headed.faces === headed.admin['design-typefaces']
 	&& kernelTabs.map( function( tab ) { return tab.dataset.tab } ).join() === PANE.join() && kernelTabs.map( function( tab ) { return tab.id } ).join() === PANE.map( function( uri ) { return 'admin-tabbutton-'+ uri } ).join() );
@@ -7916,6 +7923,63 @@ edited.asks[0].choose('yes');
 check( 'a frame that was only edited gets force too - the refusal has something to answer to now - and the dialog says which: by what it is for, and in the details as edited by hand',
 	JSON.stringify( endpoints( edited ) ) === JSON.stringify( [ 'apply' ] ) && edited.requests[0].payload.force === true
 	&& editedLines.indexOf( say( '/_admin/design/confirm/foreign', fileWord( 'footer' ) ) ) !== -1 );
+
+/*	What an apply tells the others: the frames and theme.css are files of every page, so the touch of the templates carries no address - the window beside the
+	workbench loads the page it shows anew, and the panels that show templates ask again when they are shown. After the answer of the server, once, before the panel is
+	drawn again; not for a draft that was only saved, not for a no, not for an apply that failed	*/
+( function() {
+	const told = function( screen ) { return JSON.stringify( screen.touched ) };
+	const toTheApply = function( screen ) {
+		screen.byId('design-apply').fire('click');
+		screen.answer( 200, {} );
+		screen.answer( 200, { files : delivered.map( function( file ) { return Object.assign( {}, file ) } ) } );
+	};
+
+	const applied = panel( {} );
+	toTheApply( applied );
+	applied.asks[0].choose('yes');
+	check( 'saving the draft and asking what an apply would write tell nobody: the touch waits for the apply to be answered', JSON.stringify( endpoints( applied ) ) === JSON.stringify( [ 'apply' ] ) && applied.touched.length === 0 );
+
+	applied.answer( 200, {} );
+	check( 'a successful apply touches the templates once, with that kind alone, before the panel is asked for its listing anew',
+		told( applied ) === JSON.stringify( [ [ 'templates' ] ] ) && JSON.stringify( endpoints( applied ) ) === JSON.stringify( [ 'list' ] ) );
+
+	applied.answer( 200, listing( { exists : true } ) );
+	check( '...and drawing the panel again from the listing touches nothing more', told( applied ) === JSON.stringify( [ [ 'templates' ] ] ) );
+
+	const refused = panel( {} );
+	toTheApply( refused );
+	refused.asks[0].choose('no');
+	refused.answer( 200, listing( {} ) );
+	check( 'a no to the question tells nobody', refused.touched.length === 0 );
+
+	const failed = panel( {} );
+	toTheApply( failed );
+	failed.asks[0].choose('yes');
+	failed.answer( 500, { error : 'could not write /assets/theme.css' } );
+	check( 'an apply that failed tells nobody, and says why', failed.touched.length === 0 && ( failed.byId('design-msg') || {} ).textContent === '(500) could not write /assets/theme.css' );
+
+	const restored = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
+	restored.willConfirm( false );
+	restored.byId('design-restore').fire('click');
+	restored.settle();
+	check( 'a no to the question of the restore tells nobody', restored.touched.length === 0 );
+
+	restored.willConfirm( true );
+	restored.byId('design-restore').fire('click');
+	restored.settle();
+	check( 'the restore tells nobody before the server has answered', JSON.stringify( endpoints( restored ) ) === JSON.stringify( [ 'restore' ] ) && restored.touched.length === 0 );
+
+	restored.answer( 200, {} );
+	check( 'a restore that went through touches the templates once, with that kind alone, before the panel is asked for its listing anew',
+		told( restored ) === JSON.stringify( [ [ 'templates' ] ] ) && JSON.stringify( endpoints( restored ) ) === JSON.stringify( [ 'list' ] ) );
+
+	const lost = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
+	lost.byId('design-restore').fire('click');
+	lost.settle();
+	lost.answer( 500, { error : 'could not write /assets/theme.css' } );
+	check( 'a restore that failed tells nobody', lost.touched.length === 0 );
+} )();
 
 /*	What reading the setup replaced is said once more in the dialog, in the words the notes use - the templates in one line, those that were not there and those that stand
 	in their place, and the theme -, as far as it is still so of the draft: a template chosen since, or a theme named since, is no longer one the dialog has to say	*/
