@@ -1445,6 +1445,55 @@
                 "de_DE": "Spalte",
                 "en_US": "Column"
             }
+        },
+        "panel": {
+            "label": "Panel",
+            "source": "content",
+            "loop": true,
+            "preview": "block",
+            "icon": [
+                [
+                    "rect",
+                    {
+                        "width": "18",
+                        "height": "18",
+                        "x": "3",
+                        "y": "3",
+                        "rx": "2"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M3 9h18"
+                    }
+                ]
+            ],
+            "attributes": {
+                "title": {
+                    "type": "string",
+                    "label": "Title",
+                    "hint": "The tab or the summary. Empty numbers the panels 1, 2, 3.",
+                    "default": ""
+                }
+            },
+            "in": [
+                "panels"
+            ],
+            "stretched": false,
+            "link": false,
+            "by": "nino",
+            "group": "global",
+            "defaults": {
+                "title": "",
+                "class": ""
+            },
+            "columnar": true,
+            "panelled": true,
+            "labels": {
+                "de_DE": "Panel",
+                "en_US": "Panel"
+            }
         }
     },
     "stacks": {
@@ -1452,6 +1501,7 @@
             "label": "Grid",
             "grid": true,
             "cell": "components",
+            "panels": false,
             "preview": "cells",
             "attributes": [],
             "defaults": {
@@ -1472,6 +1522,7 @@
             "label": "Plain repeat",
             "grid": false,
             "cell": "components",
+            "panels": false,
             "preview": "cells",
             "attributes": [],
             "defaults": {
@@ -1489,6 +1540,7 @@
             "label": "Slider",
             "grid": false,
             "cell": "components",
+            "panels": false,
             "preview": "cells",
             "attributes": {
                 "width": {
@@ -1521,6 +1573,7 @@
             "label": "Filter",
             "grid": true,
             "cell": "components",
+            "panels": false,
             "preview": "cells",
             "attributes": {
                 "by": {
@@ -1556,6 +1609,7 @@
             "label": "Tabs",
             "grid": false,
             "cell": "components",
+            "panels": true,
             "preview": "block",
             "attributes": {
                 "title": {
@@ -1588,6 +1642,7 @@
             "label": "Accordion",
             "grid": false,
             "cell": "components",
+            "panels": true,
             "preview": "block",
             "attributes": {
                 "title": {
@@ -1639,6 +1694,7 @@
             "label": "List",
             "grid": false,
             "cell": "row",
+            "panels": false,
             "preview": "block",
             "attributes": {
                 "style": {
@@ -1670,6 +1726,7 @@
             "label": "Table",
             "grid": false,
             "cell": "columns",
+            "panels": false,
             "holds": "table",
             "preview": "table",
             "attributes": {
@@ -1702,6 +1759,7 @@
             "label": "Sections",
             "grid": false,
             "cell": "section",
+            "panels": false,
             "preview": "cells",
             "attributes": {
                 "alternate": {
@@ -1727,6 +1785,7 @@
             "label": "Badges",
             "grid": false,
             "cell": "none",
+            "panels": false,
             "preview": "cells",
             "attributes": {
                 "image": {

@@ -260,6 +260,8 @@
 				// The block of a section of tiles: the controls that are the tiles' own - the ratio, and the gap and the text of the row under the words of tiles - have names of their own, so that a content section has none of them
 				{ id : 'tiles', controls : [ 'ratio', 'tileGap', 'tileText' ] },
 				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
+				// What stands where the row does: the columns, or a group of panels of one of the stacks of the registry that takes them - with the attributes of that stack
+				{ id : 'group', controls : [ 'group' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
 				// The order of the columns of the row, turned round for each viewport by itself - for a content section and for tiles alike
 				{ id : 'order', controls : [ 'reverse' ] },
@@ -267,6 +269,8 @@
 				{ id : 'properties', controls : [ 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
 			],
 			column : [
+				// The title of the panel a column is in a group
+				{ id : 'group', controls : [ 'title' ] },
 				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'linked', 'bgPl', 'bgPr' ] },
 				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
@@ -314,6 +318,7 @@
 
 				block.settings = map( block.settings );
 				block.settings.reverse = Object.assign( { s : false, m : false, l : false }, map( block.settings.reverse ) );
+				block.settings.groupAttributes = map( block.settings.groupAttributes );
 
 				if( block.stack !== null && typeof block.stack === 'object' )
 					block.stack.attributes = map( block.stack.attributes );
@@ -885,7 +890,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, group : '', groupAttributes : {}, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				cols			: kind === 'tiles' ? [ builder._newCol( builder.TILES_WIDTH ), builder._newCol( builder.TILES_WIDTH ) ] : [ builder._newCol() ],
@@ -900,7 +905,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function( width ) {
-			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', title : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
 		},
 
 		/**
@@ -985,6 +990,107 @@
 		 */
 		_stackLabel : function( registry, name ) {
 			return ( ( registry.stacks || {} )[name] || {} ).label || name;
+		},
+
+		/**
+		 *	The stacks a section may be a group of, as the registry says it: those that take panels (panels) - and only where the registry has a component for the panel (panelled)
+		 *	to be written. Nothing is known by name
+		 *
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{Array}										The names, in the order of the registry
+		 */
+		_groups : function( registry ) {
+
+			const components = registry.components || {};
+
+			if( Object.keys( components ).some( function( name ) { return components[name].panelled === true } ) === false )
+				return [];
+
+			return Object.keys( registry.stacks || {} ).filter( function( name ) { return registry.stacks[name].panels === true } );
+		},
+
+		/**
+		 *	What the registry says of the title of a panel - the hint of that attribute of the component that is a panel -, '' where it says nothing
+		 *
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{string}
+		 */
+		_panelHint : function( registry ) {
+
+			const components = registry.components || {};
+			const name = Object.keys( components ).find( function( candidate ) { return components[candidate].panelled === true } );
+
+			return name === undefined ? '' : String( ( ( components[name].attributes || {} ).title || {} ).hint ?? '' );
+		},
+
+		/**
+		 *	The stack a section is a group of, '' for a section of columns - and for one whose group the registry does not know
+		 *
+		 *	@param		{Object}		section
+		 *
+		 *	@return		{string}
+		 */
+		_groupName : function( section ) {
+
+			const builder = Nino.admin.builder;
+			const name = section.kind === 'section' && section.settings !== undefined && typeof section.settings.group === 'string' ? section.settings.group : '';
+
+			return name !== '' && builder._groups( builder._registry ).indexOf( name ) !== -1 ? name : '';
+		},
+
+		/**
+		 *	The attributes of a group's stack that the group keeps, by the schema: its own, but for the ones of the type field and the line of text of a loop, which a call
+		 *	without a type reads neither of
+		 *
+		 *	@param		{Object}		schema						One entry of the registry's stacks
+		 *
+		 *	@return		{Object}									name => the schema's entry
+		 */
+		_groupDeclared : function( schema ) {
+
+			const builder = Nino.admin.builder;
+			const declared = builder._declared( schema );
+			const kept = {};
+
+			Object.keys( declared ).forEach( function( name ) {
+				if( declared[name].type !== 'field' && name !== builder.STACK_TEXT )
+					kept[name] = declared[name];
+			} );
+
+			return kept;
+		},
+
+		/**
+		 *	A section made a group of a stack, or of none: the attributes the group keeps are those of the stack, the ones the section had and the stack has too kept where they
+		 *	take the value. The settings that only a row has stay in the model while the form is open: the section is a row again with the width it had. A section of tiles is
+		 *	no group
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		section
+		 *	@param		{string}		name							The stack, '' for the columns
+		 *
+		 *	@return		void
+		 */
+		_setGroup : function( registry, section, name ) {
+
+			const builder = Nino.admin.builder;
+			const settings = section.settings;
+			const old = settings.groupAttributes || {};
+			const schema = ( registry.stacks || {} )[name] || {};
+			const declared = builder._groupDeclared( schema );
+			const attributes = {};
+
+			Object.keys( declared ).forEach( function( key ) {
+				attributes[key] = String( ( schema.defaults || {} )[key] ?? '' );
+
+				if( Object.prototype.hasOwnProperty.call( old, key ) === true && builder._takes( declared[key], String( old[key] ?? '' ) ) === true )
+					attributes[key] = String( old[key] );
+			} );
+
+			settings.group = name;
+			settings.groupAttributes = name === '' ? {} : attributes;
 		},
 
 		/**
@@ -2264,13 +2370,14 @@
 			return model.blocks.map( function( block, b ) {
 
 				if( block.kind !== 'section' )
-					return { path : [ b ], kind : 'html', id : '', color : '', rowColor : '', inner : false, padded : false, whitespace : '', loop : null, background : false, tiles : false, ratio : '', reason : block.reason || null, cols : [] };
+					return { path : [ b ], kind : 'html', id : '', color : '', rowColor : '', inner : false, padded : false, whitespace : '', loop : null, group : null, background : false, tiles : false, ratio : '', reason : block.reason || null, cols : [] };
 
 				const covered = block.settings.cover !== null && block.settings.cover !== undefined;
 				// A cover and a parallax are the section's own picture: the background is inside - on the row - for no other
 				const inner = block.settings.inner === true && covered === false && block.settings.parallax !== true;
 				const loop = block.stack === null || block.stack === undefined ? null : block.stack;
 				const loops = loop === null ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === loop.source } );
+				const group = builder._groupName( block );
 
 				return {
 					path				: [ b ],
@@ -2283,6 +2390,8 @@
 					padded			: block.settings.padded === true && ( covered === true || block.settings.parallax === true ),
 					whitespace	: block.settings.whitespace || '',
 					loop				: loop === null ? null : { path : [ b ], label : builder._stackLabel( registry, loop.name ), type : loops === undefined || loops.title === '' ? loop.source : loops.title },
+					// A group stands where the row does: its columns are its panels, drawn one above the other, each with the title it has - or the number the kernel gives it
+					group				: group === '' ? null : { path : [ b ], label : builder._stackLabel( registry, group ) },
 					background	: block.background !== null && block.background !== undefined,
 					// A section of tiles is drawn edge to edge, its tiles in its ratio
 					// The order of the columns: the viewports the row is turned round in, and whether it is in the one the preview shows
@@ -2299,9 +2408,11 @@
 
 						return {
 							path			: [ b, c ],
-							width			: parseInt( col.width[shown], 10 ) || 100,
-							hidden		: viewport !== 'g' && col.hidden[viewport] === true,
-							hiddenIn	: builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
+							// A panel has the whole width of its group, and is hidden in no viewport; its name is its title, else its number
+							panel			: group === '' ? null : ( String( col.title ?? '' ).replace( /<[^>]*>/g, '' ).trim() !== '' ? String( col.title ).replace( /<[^>]*>/g, '' ).trim() : String( c + 1 ) ),
+							width			: group !== '' ? 100 : parseInt( col.width[shown], 10 ) || 100,
+							hidden		: group === '' && viewport !== 'g' && col.hidden[viewport] === true,
+							hiddenIn	: group !== '' ? [] : builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
 							// The ground the frame is painted in: none where the column paints none, plain where its ground is the page's - and dark where its picture is
 							// dimmed, whatever colour it names: Nino.css paints a dimmed column as the dark ground (a dimming without a picture is no ground)
 							color			: picture === true && col.dim === true ? 'dark' : ( col.color === undefined || col.color === '' ? '' : ( builder._paints( col.color, block.settings.color || '' ) || 'plain' ) ),
@@ -3734,6 +3845,20 @@
 				if( block.whitespace !== '' )
 					status.appendChild( builder._statusItem( 'whitespace', 'move-vertical', Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/whitespace'), builder._optionLabel( 'whitespace', block.whitespace ) ), '' ) );
 
+				// A group says what it is, and is a button that opens the block it is set in
+				if( block.group !== null ) {
+
+					frame.classList.add('is-group');
+					status.appendChild( builder._statusItem( 'group', 'group', Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/group'), block.group.label ), block.group.label, function() {
+
+						if( builder._mutable() === false )
+							return;
+
+						builder._select( block.path, false );
+						builder._sectionDialog( block.path, builder._blockOf( 'section', 'group' ) );
+					} ) );
+				}
+
 				// A section that makes a section of every element says so as a column that runs a loop does: it is a button, which opens the block Loop of the section
 				if( block.loop !== null ) {
 
@@ -4017,7 +4142,7 @@
 			frame.dataset.path = col.path.join('.');
 			frame.style.setProperty( '--builder-w', String( col.width ) );
 			frame.classList.toggle( 'is-hidden', col.hidden );
-			builder._one( frame, '.builder-col-name' ).textContent = col.width+ '%';
+			builder._one( frame, '.builder-col-name' ).textContent = col.panel !== null ? col.panel : col.width+ '%';
 			builder._pick( frame, col.path );
 
 			// A column that paints a ground is tinted as the section is
@@ -7217,6 +7342,50 @@
 				},
 			};
 
+			// The group: what stands where the row does - the columns, or the panels of one of the stacks that take them. A section of tiles is its row of tiles
+			const groups = builder._groups( builder._registry );
+			const grouped = builder._groupName( section );
+
+			if( groups.length > 0 ) {
+
+				controls.group = {
+					keys	: [ 'group' ],
+					build	: function( body ) {
+
+						const items = [ { value : '', label : word('section/group-columns') } ].concat( groups.map( function( name ) { return { value : name, label : builder._stackLabel( builder._registry, name ) } } ) );
+						const choice = builder._keyed( builder._segmentField( word('section/group'), items, grouped, function( name ) {
+
+							if( name === grouped )
+								return;
+
+							builder._setGroup( builder._registry, section, name );
+							builder._changed();
+							builder._sectionDialog( path, builder._blockOf( 'section', 'group' ) );
+						}, word('hint/group') ), 'group' );
+
+						body.appendChild( choice );
+
+						// What the stack brings of its own, by the types of its schema: the fields of the type and the line of text are the loop's
+						const declared = grouped === '' ? {} : builder._groupDeclared( builder._registry.stacks[grouped] );
+
+						if( Object.keys( declared ).length > 0 )
+							builder._attributeFields( builder._group( body, builder._stackLabel( builder._registry, grouped ) ), declared, settings.groupAttributes, {
+								fields	: {},
+								section	: section,
+								around	: settings.color || '',
+								redraw	: function() {},
+								words		: true,
+								lines		: false,
+							} );
+					},
+					says	: function() { return grouped === '' ? '' : builder._stackLabel( builder._registry, grouped ) },
+				};
+			}
+
+			// The row of a group is a row but for the alignment, the order and the gap of its columns, which the group's one column has nothing to say to
+			if( grouped !== '' )
+				[ 'rowGap', 'rowAlign', 'reverse' ].forEach( function( name ) { delete controls[name] } );
+
 			if( settings.tiles !== true )
 				return controls;
 
@@ -7270,6 +7439,9 @@
 			if( tiles === true ) {
 
 				settings.ratio = builder.TILES_RATIO;
+				// Tiles are the row of a section of tiles: it is no group
+				settings.group = '';
+				settings.groupAttributes = {};
 
 				[ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowBgPl', 'rowBgPr', 'contentPos', 'radius' ].forEach( function( key ) { settings[key] = '' } );
 				[ 'parallax', 'padded', 'inner', 'arrow' ].forEach( function( key ) { settings[key] = false } );
@@ -7914,6 +8086,23 @@
 				},
 			};
 
+			// The panel of a group: a title, the tab or the summary, with the hint of the registry - and none of the width and the viewports it is hidden in, which only a row has, nor of
+			// the picture, its dimming and its offsets: the kernel puts the class of a panel on the element that holds more than its content, where the picture would not cover it
+			if( builder._groupName( section ) !== '' ) {
+
+				controls.title = {
+					keys	: [ 'title' ],
+					build	: function( body ) {
+						body.appendChild( builder._keyed( builder._textField( word('col/panel-title'), builder._panelHint( builder._registry ), col.title ?? '', function( value ) {
+							col.title = value;
+							builder._changed();
+						} ), 'title' ) );
+					},
+					says	: function() { return col.title === '' || col.title === undefined ? '' : col.title },
+				};
+				[ 'width', 'hidden', 'background', 'dim', 'bgPl', 'bgPr' ].forEach( function( name ) { delete controls[name] } );
+			}
+
 			if( tile === false )
 				return controls;
 
@@ -8043,7 +8232,8 @@
 			const whole = path.length === 1;
 			const col = whole === true ? section : section.cols[path[1]];
 			// A section offers every stack whose cell is a whole section, a column every stack whose cell is not: the registry's word, no name
-			const names = Object.keys( registry.stacks || {} ).filter( function( name ) { return ( builder._cellKind( registry, { name : name } ) === 'section' ) === whole } );
+			// The stack of the group a column is a panel of is not offered in it: its call would end the group at its own closing tag
+			const names = Object.keys( registry.stacks || {} ).filter( function( name ) { return ( builder._cellKind( registry, { name : name } ) === 'section' ) === whole && ( whole === true || name !== builder._groupName( section ) ) } );
 			const options = [ { value : '', label : Nino.content.getText('/_admin/builder/stack/static') } ].concat( names.map( function( name ) {
 				return { value : name, label : builder._stackLabel( registry, name ) };
 			} ) );
@@ -8181,6 +8371,18 @@
 		},
 
 		/**
+		 *	Whether a component is a column of a table by its schema: a column of a loop (columnar) that is not the panel of a group (panelled), which stands in the place a stack that
+		 *	takes panels gives them and is made by the section that is the group
+		 *
+		 *	@param		{Object}		schema						The component's entry of the registry
+		 *
+		 *	@return		{boolean}
+		 */
+		_tabular : function( schema ) {
+			return schema.columnar === true && schema.panelled !== true;
+		},
+
+		/**
 		 *	The fields of a type that a cell can show, by name
 		 *
 		 *	@param		{Object}		fields						name => the field of the type
@@ -8235,7 +8437,7 @@
 			const model = builder._doc.model;
 			const col = model.blocks[path[0]].cols[path[1]];
 			const kind = col.stack === null || col.stack === undefined ? '' : builder._cellKind( registry, col.stack );
-			const columnar = function( component ) { return builder._columnar( ( registry.components || {} )[component.name] || {} ) };
+			const columnar = function( component ) { return builder._tabular( ( registry.components || {} )[component.name] || {} ) };
 			const type = col.stack === null || col.stack === undefined ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === col.stack.source } );
 			const first = type === undefined ? [] : builder._valueChoices( type.fields || {}, kind === 'columns' );
 
@@ -8264,7 +8466,7 @@
 
 			const builder = Nino.admin.builder;
 
-			return Object.keys( registry.components || {} ).find( function( name ) { return builder._columnar( registry.components[name] ) } ) || '';
+			return Object.keys( registry.components || {} ).find( function( name ) { return builder._tabular( registry.components[name] ) } ) || '';
 		},
 
 		/**

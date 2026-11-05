@@ -190,7 +190,17 @@ namespace Nino\Modules\Builder {
 	 *											                    are the call's id and class - the attributes of the map hold none of the
 	 *											                    two, they are '' - so it can carry none of the attributes of a tag: a cover
 	 *											                    is as high as Nino.ui.js makes it. The row stands inside the call, and the animation of the section is the row's, with its delay and its duration
-	 *											  cols      list    the columns of the one row
+	 *											  cols      list    the columns of the one row - or the panels of the group
+	 *
+	 *											GROUP, a section whose settings say group: the stack of the registry that takes panels (its schema says panels, see groups()) stands in the row, in one column of the
+	 *											whole width with no class but nino-grid-100, written as [<stack> id="<id of the section>-<stack>" <attributes>] with a [panel title="..." class="..."]...[/panel] for
+	 *											each column of the model between its tags, and read back the same way. The row keeps all its settings but the alignment, the order and the gap of its columns, which
+	 *											are none of a group's: a class that says one is a custom class of the row. A panel has no width, is hidden in no viewport and has no picture of its own, so the width,
+	 *											hidden, background, dim and offsets of its column are not written, and the classes that say them are its own. In a loop of sections the call has no id and the title
+	 *											of a panel may hold the fields of the element, which the kernel puts in before it reads the call.
+	 *											    group           string  '' for the row, else the name of the stack (see groups())
+	 *											    groupAttributes map     the attributes of that stack that the group keeps, a string each: its own, but for the ones of the type field and the
+	 *											                            line of text of a loop - and none of the loop's data, which a call without a type has no use for
 	 *
 	 *											column
 	 *											  width     map     s, m, l: 25 33 50 66 75 100 (ints), what each
@@ -226,6 +236,7 @@ namespace Nino\Modules\Builder {
 	 *											  vpa, vpaSpeed, vpaMode   as the animation in settings, with the classes of the column
 	 *											  vpaDelay, vpaDuration   always ''; a column is written with its classes
 	 *											                    alone, and has no data-vpa-delay or data-vpa-duration
+	 *											  title     string  only in a group: the title of the panel, the tab or the summary; '' numbers the panel (the kernel does)
 	 *											  custom    string
 	 *											  stack     null    the column is a static stack of components
 	 *											            map     name, source (the type's uri), attributes - the
@@ -351,6 +362,10 @@ namespace Nino\Modules\Builder {
 		// The call of the arrow at the foot of a section: the one thing that may stand after its row
 		public const string ARROW = 'scroll-hint';
 
+		// The place a stack that says panels gives its panels - the registry names it by the key of the stack's schema - and the attribute of a panel that holds its title
+		public const string PANELS = 'panels';
+		public const string PANEL_TITLE = 'title';
+
 		// What follows the name of a call up to its closing bracket: a fill, [[...]], is one thing in it - the kernel puts the fills in before it reads a call, so that
 		// the brackets of a fill that is there are not the end of the call - and any other character is itself. See address() for the only fills a call may hold
 		private const string RAW = '(?:\[\[[^\[\]]*+\]\]|[^\]])*+';
@@ -407,6 +422,8 @@ namespace Nino\Modules\Builder {
 			'table-content'				=> 'the table holds %s, which is no column',
 			'table-empty'					=> 'a table without a column',
 			'col-elsewhere'				=> 'a column of a table outside a table',
+			'panel-elsewhere'			=> 'a panel outside a group of panels',
+			'group-content'				=> 'the group of panels holds %s, which is no panel',
 			'col-value'						=> 'a column that shows more than one of a field, a line of text and a content, or none of them, or a content that is empty',
 			'holder-stack'				=> 'a loop inside a component that holds components',
 			'holder-in-holder'		=> 'a component that holds components inside another',
@@ -432,7 +449,7 @@ namespace Nino\Modules\Builder {
 			return [
 				'row' => '', 'rowPlace' => '', 'rowAlign' => '', 'reverse' => [ 's' => false, 'm' => false, 'l' => false ], 'rowGap' => '', 'rowPl' => '', 'rowPr' => '', 'rowPt' => '', 'rowPb' => '', 'rowRadius' => '', 'rowCustom' => '', 'rowBgPl' => '', 'rowBgPr' => '', 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'radius' => '', 'contentPos' => '', 'inner' => false, 'tiles' => false, 'ratio' => '', 'whitespace' => '',
-				...array_fill_keys( self::SPACING, '' ), 'text' => '', 'arrow' => false,
+				...array_fill_keys( self::SPACING, '' ), 'text' => '', 'arrow' => false, 'group' => '', 'groupAttributes' => [],
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
@@ -443,7 +460,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'linked' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'linked' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '', 'title' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -563,6 +580,75 @@ namespace Nino\Modules\Builder {
 		public static function columnar( array $schema ): bool {
 
 			return ( $schema['columnar'] ?? false ) === true;
+		}
+
+		/**
+		 *	Whether a component is a panel of a group, by what its schema says and not by its name: it stands in the place a stack that says panels gives its panels and
+		 *	in no other - a column that is not a column of a table, and one that is offered nowhere (the Document marks it 'panelled' besides 'columnar')
+		 *
+		 *	@param		array			$schema				One entry of the registry's components
+		 *
+		 *	@return 	bool
+		 */
+		public static function panelled( array $schema ): bool {
+			return ( $schema['panelled'] ?? false ) === true;
+		}
+
+		/**
+		 *	The name of the component that is the panel of a group, as the registry has it: the first that stands in the place of the panels and nowhere else
+		 *
+		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
+		 *
+		 *	@return 	string										'' where the registry has none
+		 */
+		public static function panel( array $registry ): string {
+
+			foreach( (array) ( $registry['components'] ?? [] ) as $name => $schema )
+				if( is_array( $schema ) === true && self::panelled( $schema ) === true )
+					return (string) $name;
+
+			return '';
+		}
+
+		/**
+		 *	The stacks a section may be a group of, by what their schema says (panels) and not by their names - in the order of the registry. None where the registry has
+		 *	no component for the panel to write
+		 *
+		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
+		 *
+		 *	@return 	array										The names
+		 */
+		public static function groups( array $registry ): array {
+
+			if( self::panel( $registry ) === '' )
+				return [];
+
+			$names = [];
+
+			foreach( (array) ( $registry['stacks'] ?? [] ) as $name => $schema )
+				if( is_array( $schema ) === true && ( $schema['panels'] ?? false ) === true )
+					$names[] = (string) $name;
+
+			return $names;
+		}
+
+		/**
+		 *	The attributes of a group's stack that the group keeps: its own, but for the ones of the type field and the line of text of a loop (a call without a type reads
+		 *	neither), in the order of its schema. The data of a loop and its id and class are not among them
+		 *
+		 *	@param		array			$schema				One entry of the registry's stacks
+		 *
+		 *	@return 	array										name => the schema's entry
+		 */
+		public static function groupAttributes( array $schema ): array {
+
+			$kept = [];
+
+			foreach( is_array( $schema['attributes'] ?? null ) === true ? $schema['attributes'] : [] as $name => $declared )
+				if( is_array( $declared ) === true && ( $declared['type'] ?? '' ) !== 'field' && (string) $name !== self::STACK_TEXT )
+					$kept[(string) $name] = $declared;
+
+			return $kept;
 		}
 
 		/**
@@ -1313,7 +1399,25 @@ namespace Nino\Modules\Builder {
 			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
 				[ $picture, $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-row-bg' );
 
-			self::_rowSettings( $rowTokens, $tagAttributes, $section, $picture, $rowAt );
+			// A row with one column of the whole width and no class of its own, which holds the call of a stack that takes panels and nothing else, is a group
+			$group = $section['settings']['tiles'] === false ? self::_groupCell( $body, self::_skip( $body, $pos ), $registry ) : null;
+
+			self::_rowSettings( $rowTokens, $tagAttributes, $section, $picture, $rowAt, $group !== null );
+
+			if( $group !== null ) {
+
+				$pos = self::_skip( $body, self::_group( $body, $group[1], $registry, $section, $group[0], $loop ) );
+
+				if( preg_match( '~\G</div\s*>~', $body, $close, 0, $pos ) !== 1 )
+					throw self::_fail( 'group-content', (string) preg_replace( '/\s+/', ' ', trim( substr( $body, $pos, 24 ) ) ), $pos );
+
+				$pos = self::_skip( $body, $pos + strlen( $close[0] ) );
+
+				if( preg_match( '~\G</div\s*>~', $body, $close, 0, $pos ) !== 1 )
+					throw self::_fail( 'row-content', '', $pos );
+
+				return self::_arrow( $body, $pos + strlen( $close[0] ), $section );
+			}
 
 			while( true ) {
 
@@ -1334,7 +1438,20 @@ namespace Nino\Modules\Builder {
 			if( $section['cols'] === [] )
 				throw self::_fail( 'no-cols', '', $pos );
 
-			// The arrow of the section is the call after its row, whitespace between: exactly the call, one with an attribute is content the builder does not keep
+			return self::_arrow( $body, $pos, $section );
+		}
+
+		/**
+		 *	The arrow of a section: the call after its row - or its group -, whitespace between. Exactly the call, one with an attribute is content the builder does not keep
+		 *
+		 *	@param		string		$body
+		 *	@param		int				$pos					Where the row ends
+		 *	@param		array 		&$section			The section: its arrow is set where there is one
+		 *
+		 *	@return 	int											Where the row ends - or the arrow after it, where there is one
+		 */
+		private static function _arrow( string $body, int $pos, array &$section ): int {
+
 			$pos = self::_skip( $body, $pos );
 
 			if( preg_match( '~\G\['. preg_quote( self::ARROW, '~' ). '\]~', $body, $arrow, 0, $pos ) === 1 ) {
@@ -1344,6 +1461,159 @@ namespace Nino\Modules\Builder {
 
 			return $pos;
 		}
+
+		/**
+		 *	The group a call at a position opens, where it stands in the place of a row: a stack that takes panels, called without a type
+		 *
+		 *	@param		string		$body
+		 *	@param		int				$pos
+		 *	@param		array			$registry
+		 *
+		 *	@return 	string										The name of the stack, '' where the call is none of a group
+		 */
+		private static function _groupAt( string $body, int $pos, array $registry ): string {
+
+			$names = self::groups( $registry );
+
+			if( $names === [] || preg_match( '~\G\[('. implode( '|', array_map( static fn( string $name ): string => preg_quote( $name, '~' ), $names ) ). ')(?: ('. self::RAW. '))?\]~', $body, $head, 0, $pos ) !== 1 )
+				return '';
+
+			// A first argument without a name is the type: the loop of a stack, which is no group
+			return preg_match( '~^[^ =]+(?: |$)~', $head[2] ?? '' ) === 1 ? '' : $head[1];
+		}
+
+		/**
+		 *	A pair of tags as the kernel reads it: the call of a name, its arguments and what stands up to the first closing tag of that name
+		 *
+		 *	@param		string		$text
+		 *	@param		string		$name
+		 *	@param		int				$pos					Where the call starts
+		 *
+		 *	@return 	array|null								The match with offsets and null for a group that is none ([2] the arguments, [3] the content - null where there is no closing tag), null where there is no call
+		 */
+		private static function _pair( string $text, string $name, int $pos ): ?array {
+
+			return preg_match( '~\G\[('. preg_quote( $name, '~' ). ')(?: ('. self::RAW. '))?\](?:([^\[]*+(?:\[(?!\/\1\])[^\[]*+)*+)(?:\[\/\1\]))?~', $text, $match, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL, $pos ) === 1 ? $match : null;
+		}
+
+		/**
+		 *	The cell of a row that is a group: the one column of the whole width, written with that class and no other, and in it - the first thing - the call of a stack that takes panels
+		 *
+		 *	@param		string		$body
+		 *	@param		int				$pos					Where the row's content starts
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array|null								[ the name of the stack, where its call starts ], null where the row is none of a group
+		 */
+		private static function _groupCell( string $body, int $pos, array $registry ): ?array {
+
+			[ $tag, $attributes, $after ] = self::_peek( $body, $pos );
+
+			if( $tag !== 'div' || $attributes !== [ 'class' => 'nino-grid-100' ] )
+				return null;
+
+			$at		= self::_skip( $body, $after );
+			$name	= self::_groupAt( $body, $at, $registry );
+
+			return $name === '' ? null : [ $name, $at ];
+		}
+
+		/**
+		 *	A group of panels: the call of its stack with the panels between its tags, a column each, in the one column of the row (see _groupCell()). The id of the call is the section's
+		 *	and the name of the stack - none in a loop of sections, whose sections would all have it -, it has no class, and its attributes are those the group keeps (groupAttributes())
+		 *
+		 *	@param		string		$body					The source
+		 *	@param		int				$pos					Where the call starts
+		 *	@param		array			$registry
+		 *	@param		array 		&$section			The section as far as it is read: its group, its columns and the settings of its classes are set in it
+		 *	@param		string		$name					The stack of the group
+		 *	@param		bool			$loop					Whether the section is a loop of sections, whose cell the group is: its call has no id (the ids of the elements' groups would be one), and its columns are the cell's
+		 *
+		 *	@return 	int											Where its closing tag ends
+		 *
+		 *	@throws 	\RuntimeException					The failure, see _fail()
+		 */
+		private static function _group( string $body, int $pos, array $registry, array &$section, string $name, bool $loop = false ): int {
+
+			$schema = (array) $registry['stacks'][$name];
+			$panel	= self::panel( $registry );
+
+			$match = self::_pair( $body, $name, $pos );
+
+			if( $match === null || $match[3][0] === null )
+				throw self::_fail( 'no-cols', '', $pos );
+
+			[ , $named ]	= self::_arguments( $match[2][0] ?? '', $name, $pos );
+			$attributes		= self::_attributes( $named, $schema, $pos );
+			$kept					= self::groupAttributes( $schema );
+			$id						= $loop === true ? '' : (string) $section['id']. '-'. $name;
+
+			// The id and the classes are the group's own; of the rest of the stack's attributes it keeps those of its kind and no others - a limit means nothing to a call without a type
+			foreach( array_keys( $named ) as $key )
+				if( isset( $kept[$key] ) === false && ( $key !== 'id' || $named['id'] !== $id || $id === '' ) )
+					throw self::_fail( 'unknown-attribute', (string) $key, $pos );
+
+			$section['settings']['group']						= $name;
+			$section['settings']['groupAttributes']	= array_intersect_key( $attributes, $kept );
+
+			$content	= (string) $match[3][0];
+			$base			= (int) $match[3][1];
+			$cursor		= 0;
+
+			try {
+
+				while( true ) {
+
+					$cursor = self::_skip( $content, $cursor );
+
+					if( $cursor >= strlen( $content ) )
+						break;
+
+					// The panels are the calls directly between the tags, and nothing else: the kernel draws no more
+					$one = self::_pair( $content, $panel, $cursor );
+
+					if( $one === null || $one[3][0] === null )
+						throw self::_fail( 'group-content', (string) preg_replace( '/\s+/', ' ', trim( substr( $content, $cursor, 24 ) ) ), $cursor );
+
+					[ $positional, $named ] = self::_arguments( $one[2][0] ?? '', $panel, $cursor );
+
+					if( $positional !== [] )
+						throw self::_fail( 'call-arguments', $panel. ' takes no more than its title and class', $cursor );
+
+					foreach( array_keys( $named ) as $key )
+						if( in_array( $key, [ self::PANEL_TITLE, 'class' ], true ) === false )
+							throw self::_fail( 'unknown-attribute', (string) $key, $cursor );
+
+					// The title is written with the five entities of a line of text and nothing else, and has one line - in a loop of sections the fields of the element stand in it as they are,
+					// as they do in a line of text, for the kernel puts them into the cell before it reads the call
+					$raw		= (string) ( $named[self::PANEL_TITLE] ?? '' );
+					$title	= self::lineDecode( $raw );
+
+					if( preg_match( '/[\r\n]/', $title ) === 1 || ( ( $loop === false || self::lineText( $title ) === false ? self::entityEncode( $title ) : self::lineEncode( $title ) ) !== $raw ) )
+						throw self::_fail( 'attribute-value', self::PANEL_TITLE, $cursor );
+
+					try {
+						[ $col ] = self::_cell( (string) $one[3][0], 0, self::_tokens( (string) ( $named['class'] ?? '' ), $cursor ), [], $registry, $loop, false, true, 0 );
+					}
+					catch( \RuntimeException $e ) {
+						throw new \RuntimeException( $e->getMessage(), (int) $one[3][1] + $e->getCode() );
+					}
+
+					$col['title']					= $title;
+					$section['cols'][]		= $col;
+					$cursor								= (int) $one[0][1] + strlen( $one[0][0] );
+				}
+			}
+			catch( \RuntimeException $e ) {
+				throw new \RuntimeException( $e->getMessage(), $base + $e->getCode() );
+			}
+
+			if( $section['cols'] === [] )
+				throw self::_fail( 'no-cols', '', $pos );
+
+			return (int) $match[0][1] + strlen( $match[0][0] );
+		}
+
 
 		/**
 		 *	@param		string		$body
@@ -1604,12 +1874,13 @@ namespace Nino\Modules\Builder {
 		 *	@param		array 		&$section			The section as far as it is read: its settings, and its background where it has the row's
 		 *	@param		array|null	$picture		The block behind the row, null where it has none
 		 *	@param		int				$at						Where the row starts, for a failure
+		 *	@param		bool			$group					Whether the row is a group's: the alignment, the order and the gap of its columns are none of its settings, and stay classes of its own
 		 *
 		 *	@return 	void
 		 *
 		 *	@throws 	\RuntimeException					A picture behind the row of a section that has a colour, a picture, a cover or a parallax of its own, a delay or a duration that is no css time
 		 */
-		private static function _rowSettings( array $tokens, array $attributes, array &$section, ?array $picture, int $at ): void {
+		private static function _rowSettings( array $tokens, array $attributes, array &$section, ?array $picture, int $at, bool $group = false ): void {
 
 			$s				= &$section['settings'];
 			$custom		= [];
@@ -1638,12 +1909,12 @@ namespace Nino\Modules\Builder {
 					$s['row'] = $m[1];
 				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW_PLACE ). ')$/D', $token, $m ) === 1 && $s['rowPlace'] === '' && $tiles === false )
 					$s['rowPlace'] = $m[1];
-				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
+				elseif( $group === false && preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
 					$s['rowAlign'] = $m[1];
 				// The order of the columns, for each viewport by itself, in the builder's own vocabulary: the base class says the narrowest viewport, a class of the m and of the l tier the
 				// other two, and the first class of a viewport is the setting, a second one is a class of the row's own. The classes of the s and of the xl tier are no setting of the
 				// builder (the narrowest viewport has the base class, xl follows l) and neither is a bare --forward: they stay classes of the row's own, kept as they were
-				elseif( preg_match( '/^nino-grid-row--(?:(m|l)-)?(reverse|forward)$/D', $token, $m ) === 1 && ( $m[1] !== '' || $m[2] === 'reverse' ) ) {
+				elseif( $group === false && preg_match( '/^nino-grid-row--(?:(m|l)-)?(reverse|forward)$/D', $token, $m ) === 1 && ( $m[1] !== '' || $m[2] === 'reverse' ) ) {
 					$viewport = $m[1] === '' ? 's' : $m[1];
 
 					if( isset( $turned[$viewport] ) === false )
@@ -1652,7 +1923,7 @@ namespace Nino\Modules\Builder {
 						$custom[] = $token;
 				}
 				// The gap between the columns is the first class of its kind, as the gap of a stack is a column's: a second is a class of the row's own
-				elseif( preg_match( '/^nino-grid-gap-([0-6])$/D', $token, $m ) === 1 && $s['rowGap'] === '' )
+				elseif( $group === false && preg_match( '/^nino-grid-gap-([0-6])$/D', $token, $m ) === 1 && $s['rowGap'] === '' )
 					$s['rowGap'] = $m[1];
 				// The padding of a side is the first class of its kind, a second is a class of its own as on a section
 				elseif( preg_match( '/^nino-('. implode( '|', array_keys( self::ROW_SPACING ) ). ')-([0-6])$/D', $token, $m ) === 1 && $s[self::ROW_SPACING[$m[1]]] === '' )
@@ -1910,6 +2181,30 @@ namespace Nino\Modules\Builder {
 			if( in_array( 'nino-grid-row', $tokens, true ) === true )
 				throw self::_fail( 'nested-row', '', $pos );
 
+			return self::_cell( $body, $after, $tokens, $attributes, $registry, $loop, $tiles, false, $pos );
+		}
+
+		/**
+		 *	What a column is, once its tag is open: its classes, its picture, and the calls in it up to its closing tag - or, for a panel of a group, to the end of its content.
+		 *	The panel is a column all the same, but for what only the grid of a row says: it has no width, it is not hidden anywhere, and the classes that say them are its own
+		 *
+		 *	@param		string		$body					The source - or the content of the panel
+		 *	@param		int				$pos					Where the tag ends - 0 for the content of a panel
+		 *	@param		array			$tokens				The classes of the tag
+		 *	@param		array			$attributes		The attributes of the tag: the delay and the duration of the animation
+		 *	@param		array			$registry
+		 *	@param		bool			$loop					Whether the column is one of a loop of sections, whose cell it is
+		 *	@param		bool			$tiles				Whether the column is a tile
+		 *	@param		bool			$panel				Whether the column is the panel of a group
+		 *	@param		int				$at						Where the tag starts, for a failure
+		 *
+		 *	@return 	array										[ the column, the position after its closing tag ]
+		 */
+		private static function _cell( string $body, int $pos, array $tokens, array $attributes, array $registry, bool $loop, bool $tiles, bool $panel, int $at ): array {
+
+			$after = $pos;
+			$pos = $at;
+
 			// The spacing is read apart from the other classes, as a section's is
 			[ $sides, $tokens ] = self::_sides( $tokens, true );
 
@@ -1929,7 +2224,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( $tokens as $token ) {
 
-				if( preg_match( '/^nino-grid-(?:(s|m|l)-)?(25|33|50|66|75|100)$/D', $token, $m ) === 1 ) {
+				if( $panel === false && preg_match( '/^nino-grid-(?:(s|m|l)-)?(25|33|50|66|75|100)$/D', $token, $m ) === 1 ) {
 
 					if( $m[1] === '' && $m[2] !== '100' )
 						throw self::_fail( 'col-width', '', $pos );
@@ -1941,7 +2236,7 @@ namespace Nino\Modules\Builder {
 					else
 						$custom[] = $token;
 				}
-				elseif( preg_match( '/^nino-hide-(s|m|l)$/D', $token, $m ) === 1 )
+				elseif( $panel === false && preg_match( '/^nino-hide-(s|m|l)$/D', $token, $m ) === 1 )
 					$col['hidden'][$m[1]] = true;
 				elseif( preg_match( '/^nino-grid--(counter|alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 && $col['color'] === '' )
 					$col['color'] = $m[1];
@@ -1977,17 +2272,18 @@ namespace Nino\Modules\Builder {
 			$width['m'] = $widths['m'] ?? $width['s'];
 			$width['l'] = $widths['l'] ?? $width['m'];
 
-			if( $width['s'] === null )
+			if( $panel === false && $width['s'] === null )
 				throw self::_fail( 'col-width', '', $pos );
 
-			$col['width'] = $width;
+			// A panel takes the whole width of its group, in every viewport
+			$col['width'] = $panel === true ? [ 's' => 100, 'm' => 100, 'l' => 100 ] : $width;
 
 			self::_animationAttributes( $attributes, $col, $pos );
 
 			// The picture behind the column is the first thing in it, in a block of its own as a section has one before its row
 			$pos = self::_skip( $body, $after );
 
-			if( self::_isDiv( $body, $pos, 'nino-grid-bg' ) === true )
+			if( $panel === false && self::_isDiv( $body, $pos, 'nino-grid-bg' ) === true )
 				[ $col['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-bg', $loop );
 
 			// There is nothing to darken without a picture: the class of a column that has none is a class of its own, and stays where it stood among the others
@@ -2019,7 +2315,11 @@ namespace Nino\Modules\Builder {
 
 				$pos = self::_skip( $body, $pos );
 
-				if( preg_match( '~\G</div\s*>~', $body, $close, 0, $pos ) === 1 ) {
+				// The content of a panel ends with the panel, a column with its tag
+				if( $panel === true && $pos >= strlen( $body ) )
+					break;
+
+				if( $panel === false && preg_match( '~\G</div\s*>~', $body, $close, 0, $pos ) === 1 ) {
 					$pos += strlen( $close[0] );
 					break;
 				}
@@ -2124,6 +2424,11 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'unknown-shortcode', $name, $base + $pos );
 
 			$schema = $isStack === true ? $registry['stacks'][$name] : $registry['components'][$name];
+
+			// A panel is read by its group, which is not read here: wherever this reads one it stands outside a group
+			if( $isStack === false && self::panelled( $schema ) === true )
+				throw self::_fail( 'panel-elsewhere', '', $base + $pos );
+
 			$column = $isStack === false && self::columnar( $schema );
 
 			// A column of a table stands in a table and nowhere else, and nothing but columns stands in a table

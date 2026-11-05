@@ -2138,22 +2138,22 @@ const sideLabel = function( side, place ) { return word('section/spacing-cell').
 const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
 const stepsOf = function( box ) { return box.querySelectorAll('select').map( function( select ) { return select.dataset.key } ).join() };
 
-check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, width, order, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
-	&& blockIds().join() === 'surface,spacing,width,order,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
+check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, group, width, order, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
+	&& blockIds().join() === 'surface,spacing,group,width,order,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
 check( '...every block is named by the words of its own key: a head that is a button with the name in it - and no block but the first has what it says of the element in front of the name', blockIds().every( function( id ) {
 	return headOf( id ).localName === 'button' && headOf( id ).querySelector('.builder-block-name').textContent === word('block/'+ id+ '/label') && word('block/'+ id+ '/label') !== '';
 } ) );
 check( '...the blocks are an accordion: the head controls its body and says whether it is open, the body is a region the head names, and exactly one block is open - the first where no other was open before', blockIds().every( function( id ) {
 	const body = blockOf( id );
 	return headOf( id ).getAttribute('aria-controls') === body.id && body.getAttribute('role') === 'region' && body.getAttribute('aria-labelledby') === headOf( id ).id && dialogContent().contains( body );
-} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false,false,false' && openBlock() === 'surface'
-	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true,true,true' );
+} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false,false,false,false' && openBlock() === 'surface'
+	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true,true,true,true' );
 headOf('width').click();
 const pressed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
 headOf('width').click();
 const closed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
 headOf('surface').click();
-check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,true,false,false,false' && closed === '/false,false,false,false,false,false' && openBlock() === 'surface' );
+check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,false,true,false,false,false' && closed === '/false,false,false,false,false,false,false' && openBlock() === 'surface' );
 // The controls the table lists for a block, as the dialog has drawn them, and the keys they write
 const heldIn = function( id ) { return builder._dialogBlocks.parts[id].spec.held };
 const keysHeld = function( id ) { return Array.from( new Set( [].concat( ...heldIn( id ).map( function( control ) { return control.keys } ) ) ) ) };
@@ -2720,7 +2720,7 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 3 ] );
 const loopTab = function() { return blockOf('loop').querySelector('.builder-loop') };
-check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
+check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","group","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
 	&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( loopTab(), kindWord ) === '' && optionsOf( loopTab(), kindWord ) === '='+ word('stack/static')+ ',sections='+ registry().stacks.sections.label && loopTab().querySelectorAll('.builder-group').length === 0
 	);
 change( loopTab(), kindWord, 'sections' );
@@ -2915,8 +2915,8 @@ builder._renderEditor();
 builder._lastBlock = {};
 builder._openSettings( [ 0, 0 ] );
 const colOf = function() { return builder._doc.model.blocks[0].cols[0] };
-check( 'the dialog of a column has the blocks the table has for it, in the order of the table - surface, spacing, width, loop and properties - and opens on the first: the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
-	&& JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.column.map( function( block ) { return block.id } ) ) && blockIds().join() === 'surface,spacing,width,loop,properties' && openBlock() === 'surface' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
+check( 'the dialog of a column has the blocks the table has for it, in the order of the table - surface, spacing, width, loop and properties, but for the block of the group, whose title only the column of a group has - and opens on the first: the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
+	&& JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.column.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'group' } ) ) && blockIds().join() === 'surface,spacing,width,loop,properties' && openBlock() === 'surface' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
 check( '...the section\'s dialog and the column\'s are of their own: the block that was open last in a dialog of a section is not the one a column opens on - the builder keeps the last one for each kind of element, in memory and nowhere else', ( function() {
 	headOf('width').click();
 	builder._closeDialog();
@@ -3735,7 +3735,7 @@ const everyComponent = function( then ) {
 	} );
 };
 
-check( 'the table lists every control of a section and of a column once, and nothing that is none: the names of the table and the controls the dialog makes are the same - but for the controls of the tiles, which a content section and a column of one have none of: the ratio, the gap and the text of a section of tiles, and the link over the whole of a tile', [ [ 'section', builder._sectionControls( [ 0 ] ), [ 'ratio', 'tileGap', 'tileText' ] ], [ 'column', builder._colControls( [ 0, 0 ] ), [ 'linked' ] ] ].every( function( pair ) {
+check( 'the table lists every control of a section and of a column once, and nothing that is none: the names of the table and the controls the dialog makes are the same - but for the controls of the tiles, which a content section and a column of one have none of: the ratio, the gap and the text of a section of tiles, and the link over the whole of a tile - and the title of a panel, which only the column of a group has', [ [ 'section', builder._sectionControls( [ 0 ] ), [ 'ratio', 'tileGap', 'tileText' ] ], [ 'column', builder._colControls( [ 0, 0 ] ), [ 'linked', 'title' ] ] ].every( function( pair ) {
 
 	const listed = [].concat( ...builder.BLOCKS[pair[0]].map( function( block ) { return block.controls } ) );
 
@@ -3798,7 +3798,7 @@ openWith( [ 0 ], ( function() {
 	table.section.find( function( block ) { return block.id === 'width' } ).controls = [];
 	return table;
 } )() );
-check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other five blocks, in the order of the table', blockIds().join() === 'surface,spacing,order,loop,properties' );
+check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other six blocks, in the order of the table', blockIds().join() === 'surface,spacing,group,order,loop,properties' );
 openWith( [ 0 ] );
 settingsOf().custom = 'one';
 settingsOf().rowCustom = 'two';
@@ -9372,7 +9372,7 @@ check( 'the editor of HTML+ that is opened from the tool for it and cancelled le
 
 console.log( '\nThe seven blocks, the background image, the pictures and the link of a card' );
 
-check( 'the table names eight blocks in all - content, link, surface, tiles, spacing, width, order, loop and properties, the tiles being those of a section of tiles - and the loop is a block of its own, between the order and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
+check( 'the table names ten blocks in all - content, link, group, surface, tiles, spacing, width, order, loop and properties, the tiles being those of a section of tiles and the group the block of the group of panels a section is and the title of a panel its column has - and the loop is a block of its own, between the order and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
 
 	const ids = {};
 	const ofKind = function( kind ) { return builder.BLOCKS[kind].map( function( block ) { return block.id } ).join() };
@@ -9380,13 +9380,13 @@ check( 'the table names eight blocks in all - content, link, surface, tiles, spa
 
 	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { ids[block.id] = true } ) } );
 
-	return Object.keys( ids ).sort().join() === 'content,link,loop,order,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,width,order,loop,properties' && ofKind('column') === 'surface,spacing,width,loop,properties'
+	return Object.keys( ids ).sort().join() === 'content,group,link,loop,order,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,group,width,order,loop,properties' && ofKind('column') === 'group,surface,spacing,width,loop,properties'
 		&& ofKind('component') === 'content,link,surface,spacing,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && JSON.stringify( loop('column').controls ) === '["stack"]'
 		&& [ 'section', 'column' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
 		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop';
 } )() );
 check( '...the surface of a section lists the line, the colour, the background inside and the corners first and then the picture with what depends on it, the arrow last; the surface of a column the colour and the corners first, then the picture, the dimming, the link over the whole of a tile and the offset', JSON.stringify( builder.BLOCKS.section[0].controls )
-	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[0].controls ) === '["color","radius","background","dim","linked","bgPl","bgPr"]' );
+	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[1].controls ) === '["color","radius","background","dim","linked","bgPl","bgPr"]' );
 
 doc = open();
 builder._renderEditor();
@@ -9890,7 +9890,7 @@ const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'sect
 check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Order, Loop and Properties - no block of the width',
 	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
 check( '...and Order, after Spacing, with the switch of each viewport that is shown - a section of tiles is a row like any other, and its tiles turn round the way columns do: one switch in the view of one viewport, the model a switch for each', labelList( blockOf('order') ).join() === word('section/reverse-in').replace( '%s', builder._viewport === 'g' ? 'Mobile' : word( 'viewport/'+ builder._viewport ) )+ ( builder._viewport === 'g' ? ',Reversed (Tablet),Reversed (Desktop)' : '' )
-	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 2 );
+	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 3 );
 check( '...Surface has the colour - between the tiles - and the border, and the group Background image: the picture behind the whole section with its focus and its dimming, which a section of tiles has as a content section does; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background inside, offset, arrow or radius',
 	[ word('section/color-tiles'), word('section/border'), word('section/border-primary') ].every( function( label ) { return blockOf('surface').all().some( function( el ) { return controlsIn( blockOf('surface') ).some( function( control ) { return control.label === label } ) } ) } )
 	&& labelList( blockOf('surface') ).indexOf( word('section/dim') ) !== -1 && labelList( blockOf('surface') ).indexOf( word('picture/upload') ) !== -1 && titlesIn( blockOf('surface') ) === word('group/background-image')
@@ -10194,7 +10194,7 @@ check( 'the kind of a section is switched in its dialog, which is drawn again fo
 	const tiles = builder._doc.model.blocks[0].settings.tiles === true && builder._doc.model.blocks[0].settings.ratio === '4-3' && dialogText('builder-dialog-kind') === 'Tiles' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && openBlock() === 'properties'
 		&& builder._doc.model.blocks[0].settings.cover === null && changes === was + 1 && preview().children[0].classList.contains('is-tiles') === true;
 	change( blockOf('properties'), word('section/kind'), 'content' );
-	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
+	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,group,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
 } )() );
 
 // The preview
@@ -10215,6 +10215,165 @@ check( '...it is drawn as it is on the page: edge to edge - the frame says so, a
 		return frame.classList.contains('is-tiles') === true && preview().children[1].classList.contains('is-tiles') === true && frame.querySelector('.builder-frame-kind').textContent === 'Tiles' && frame.querySelector('.builder-frame-name').textContent === 'work'
 			&& mark !== null && iconOf( mark ) === 'link' && plain === null && frame.querySelector('.builder-add-col').textContent === '+ Tile' && ( function() { doc = open(); builder._renderEditor(); return preview().children[0].querySelector('.builder-add-col').textContent === '+ Column' && preview().children[0].querySelector('.builder-frame-kind') === null } )()
 			&& /\.builder-frame\.is-tiles\s*\{[^}]*--builder-gap:\s*0px/.test( stylesheet ) && /\.builder-frame\.is-tiles > \.builder-frame-body\s*\{[^}]*padding:\s*0/.test( stylesheet ) && /\.builder-frame\.is-tiles \.builder-pcol\s*\{[^}]*aspect-ratio:\s*var\(--builder-ratio/.test( stylesheet );
+	} )() );
+
+console.log( '\nA section as a group of panels' );
+
+// The stacks that take panels, as the registry says it: the Builder knows none of them by name
+const groupTakers = function() { return Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].panels === true } ) };
+const groupOwn = function( name ) {
+	const declared = registry().stacks[name].attributes;
+	return Object.keys( declared ).filter( function( key ) { return declared[key].type !== 'field' && key !== 'text' } );
+};
+const groupStack = function() { return groupTakers().find( function( name ) { return groupOwn( name ).length > 0 } ) };
+
+doc = open();
+builder._lastBlock = {};
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+
+check( 'a section has the block Group, after the spacing and before the width, with the segment Group: Columns, and the words of the stacks that take panels - from the registry, in its order, none by name in the panel',
+	groupTakers().length >= 2 && blockIds().indexOf('group') === blockIds().indexOf('spacing') + 1 && word('block/group/label') === 'Group' && labelList( blockOf('group') ).join() === word('section/group')
+	&& JSON.stringify( radiosOf( controlOf( blockOf('group'), word('section/group') ).el ).map( function( radio ) { return radio.value } ) ) === JSON.stringify( [ '' ].concat( groupTakers() ) )
+	&& JSON.stringify( controlOf( blockOf('group'), word('section/group') ).el.querySelectorAll('.builder-segment-face').map( function( face ) { return face.textContent } ) ) === JSON.stringify( [ word('section/group-columns') ].concat( groupTakers().map( function( name ) { return registry().stacks[name].label } ) ) )
+	&& currentOf( controlOf( blockOf('group'), word('section/group') ) ) === '' && builder._doc.model.blocks[0].settings.group === '' );
+
+const groupRow = JSON.stringify( [ builder._doc.model.blocks[0].settings.reverse, builder._doc.model.blocks[0].settings.row, builder._doc.model.blocks[0].cols.map( function( col ) { return col.width } ) ] );
+const groupBefore = changes;
+
+change( blockOf('group'), word('section/group'), groupStack() );
+
+check( 'the segment sets the group: the section is that stack, its attributes are those of the stack that the group keeps - its own, with their defaults, and no field, no line of text and none of the data of a loop - the dialog is drawn again on the block, and the change is one',
+	builder._doc.model.blocks[0].settings.group === groupStack() && JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.groupAttributes ) ) === JSON.stringify( groupOwn( groupStack() ) )
+	&& groupOwn( groupStack() ).every( function( key ) { return builder._doc.model.blocks[0].settings.groupAttributes[key] === String( registry().stacks[groupStack()].defaults[key] ) } )
+	&& changes === groupBefore + 1 && openBlock() === 'group' && currentOf( controlOf( blockOf('group'), word('section/group') ) ) === groupStack() );
+check( '...and the block shows the attributes of the stack under its name, a field each by the type of the schema and with the label of the registry, and none of the loop\'s data or of a field',
+	titlesIn( blockOf('group') ) === registry().stacks[groupStack()].label && JSON.stringify( labelList( blockOf('group') ).slice( 1 ) ) === JSON.stringify( groupOwn( groupStack() ).map( function( key ) { return registry().stacks[groupStack()].attributes[key].label } ) ) );
+
+const groupSwitch = groupOwn( groupStack() ).find( function( key ) { return registry().stacks[groupStack()].attributes[key].type === 'bool' } );
+const groupSwitchLabel = registry().stacks[groupStack()].attributes[groupSwitch].label;
+const groupWas = builder._doc.model.blocks[0].settings.groupAttributes[groupSwitch];
+
+change( blockOf('group'), groupSwitchLabel, groupWas !== '1' );
+
+check( '...a switch of the stack writes "1" or "0" into the attributes of the group',
+	builder._doc.model.blocks[0].settings.groupAttributes[groupSwitch] === ( groupWas === '1' ? '0' : '1' ) );
+check( 'only what the grid of the columns of a row says is not drawn for a group - the alignment, the order and the gap of the columns - and the row is the row it was: its width and place, its padding, the ground, the picture and the radius inside it, the animation with its delay and its duration, and the classes of the section and the row stay',
+	( function() {
+		const controls = builder._sectionControls( [ 0 ] );
+		const gone = [ 'rowAlign', 'reverse', 'rowGap' ];
+		const kept = [ 'width', 'row', 'rowPlace', 'inner', 'rowRadius', 'rowBgPl', 'rowBgPr', 'vpaDelay', 'vpaDuration', 'color', 'border', 'background', 'cover', 'whitespace', 'mt', 'rowPt', 'text', 'contentPos', 'stack', 'vpa', 'custom', 'rowCustom', 'id', 'kind', 'group' ];
+		return gone.every( function( name ) { return controls[name] === undefined } ) && kept.every( function( name ) { return controls[name] !== undefined } ) && blockIds().indexOf('order') === -1;
+	} )() );
+check( '...the form of a section that is a group is drawn from the same table: every control it makes is listed once, as for a row',
+	( function() {
+		const listed = [].concat( ...builder.BLOCKS.section.map( function( block ) { return block.controls } ) );
+		return Object.keys( builder._sectionControls( [ 0 ] ) ).every( function( name ) { return listed.indexOf( name ) !== -1 } );
+	} )() );
+
+builder._closeDialog();
+builder._openSettings( [ 0, 0 ] );
+
+check( 'the column of a group has a block Group with a field Title - the tab or the summary, with the hint the registry gives that attribute of the panel - and no width, no viewport it is hidden in and no picture with its dimming and its offsets, which the kernel\'s panel cannot carry; a column of a row has neither the field nor the block, and has all of those',
+	blockIds().indexOf('group') === 0 && labelList( blockOf('group') ).join() === word('col/panel-title') && builder._panelHint( registry() ) !== '' && tipOf( controlOf( blockOf('group'), word('col/panel-title') ) ) === builder._panelHint( registry() )
+	&& [ 'width', 'hidden', 'background', 'dim', 'bgPl', 'bgPr' ].every( function( name ) { return builder._colControls( [ 0, 0 ] )[name] === undefined } )
+	&& ( function() { const keep = builder._doc.model.blocks[0].settings.group; builder._doc.model.blocks[0].settings.group = ''; const row = builder._colControls( [ 0, 0 ] ); builder._doc.model.blocks[0].settings.group = keep; return row.title === undefined && [ 'width', 'hidden', 'background', 'dim', 'bgPl', 'bgPr' ].every( function( name ) { return row[name] !== undefined } ) } )() );
+
+const groupTitled = changes;
+
+change( blockOf('group'), word('col/panel-title'), 'Prices & terms' );
+
+check( '...the title is written into the column as it is typed, and is one change; an empty one numbers the panel', builder._doc.model.blocks[0].cols[0].title === 'Prices & terms' && changes === groupTitled + 1 && builder._newCol().title === '' );
+
+builder._closeDialog();
+builder._renderEditor();
+
+check( 'the preview draws a group as a frame of its own, its panels one above the other at the whole width and none of them hidden, each named by its title or - where it has none - by its number, with the label of the stack as a button that opens the block Group',
+	( function() {
+		const plan = builder._preview( builder._doc.model, registry(), 'l' );
+		const frame = preview().children[0];
+		const names = frame.querySelectorAll('.builder-col-name').map( function( el ) { return el.textContent } );
+		const mark = frame.querySelector('.builder-head-status .is-group');
+		return plan[0].group.label === registry().stacks[groupStack()].label && plan[0].cols.map( function( col ) { return col.panel } ).join() === [ 'Prices & terms' ].concat( plan[0].cols.slice( 1 ).map( function( col, at ) { return String( at + 2 ) } ) ).join()
+			&& plan[0].cols.every( function( col ) { return col.width === 100 && col.hidden === false } ) && plan[1].group === null && plan[1].cols[0].panel === null
+			&& frame.classList.contains('is-group') === true && names.join() === plan[0].cols.map( function( col ) { return col.panel } ).join() && mark !== null && iconOf( mark ) === 'group' && mark.title.indexOf( registry().stacks[groupStack()].label ) !== -1
+			&& /\.builder-frame\.is-group > \.builder-frame-body\s*\{[^}]*flex-direction:\s*column/.test( stylesheet ) && preview().children[1].classList.contains('is-group') === false;
+	} )() );
+check( '...a click on the mark opens the dialog of the section on the block Group', ( function() {
+	frameOf('0').querySelector('.builder-head-status .is-group').dispatch('click');
+	const on = dialogBox().open === true && openBlock() === 'group';
+	builder._closeDialog();
+	return on;
+} )() );
+
+check( 'a panel is no component to add, to paste or to put in a table: the lightbox does not offer it, it is columnar by the place the stacks give their panels and not a column of a table - a table\'s column is the first one that is - and every component that stands in a place of a page is offered as before',
+	( function() {
+		const panelled = Object.keys( registry().components ).filter( function( name ) { return registry().components[name].panelled === true } );
+		const offered = [];
+		builder._pickChoices( builder._doc.model, [ 1, 0 ], registry() ).forEach( function( group ) { group.rows.forEach( function( row ) { row.items.forEach( function( item ) { offered.push( item.name ) } ) } ) } );
+		return panelled.length === 1 && builder._columnar( registry().components[panelled[0]] ) === true && builder._tabular( registry().components[panelled[0]] ) === false && offered.indexOf( panelled[0] ) === -1
+			&& registry().components[panelled[0]].in.every( function( place ) { return groupTakers().some( function( name ) { return place === 'panels' } ) } ) && builder._tabular( registry().components[builder._columnName( registry() )] ) === true && builder._columnName( registry() ) !== panelled[0]
+			&& offered.length > 0;
+	} )() );
+
+check( 'the hint of the group names no stack - the words come from the registry - and says what saving a group does not write: it is the tip of the segment, and has the words of the key',
+	( function() {
+		builder._openSettings( [ 0 ] );
+		builder._openBlock('group');
+		const tip = tipOf( controlOf( blockOf('group'), word('section/group') ) );
+		builder._closeDialog();
+		return tip === words['/_admin/builder/hint/group'] && groupTakers().every( function( name ) { return tip.toLowerCase().indexOf( registry().stacks[name].label.toLowerCase() ) === -1 } ) && /widths/.test( tip ) && /gap/.test( tip ) && /alignment/.test( tip ) && /order/.test( tip ) && /picture/.test( tip );
+	} )() );
+check( 'the stack of the group is not offered as the presentation of one of its columns - its loop would end the group at its own closing tag - and the others are, and in a section that is no group every stack is',
+	( function() {
+		const offered = function( at ) {
+			builder._openSettings( at );
+			const options = controlOf( blockOf('loop'), word('stack/kind') ).el.children.map( function( option ) { return option.value } );
+			builder._closeDialog();
+			return options;
+		};
+		const grouped = offered( [ 0, 0 ] );
+		const stack = builder._doc.model.blocks[0].settings.group;
+		builder._doc.model.blocks[0].settings.group = '';
+		const plain = offered( [ 0, 0 ] );
+		builder._doc.model.blocks[0].settings.group = stack;
+		return grouped.indexOf( stack ) === -1 && plain.indexOf( stack ) !== -1 && grouped.length === plain.length - 1 && grouped.indexOf('') === 0 && grouped.indexOf('stack') !== -1;
+	} )() );
+check( 'a title with markup is drawn in the preview as the page shows it, without the tags - and a title that is nothing but tags is numbered',
+	( function() {
+		const model = builder._doc.model;
+		model.blocks[0].cols.push( builder._newCol() );
+		model.blocks[0].cols[0].title = '<b>Prices</b> & <i>terms</i>';
+		model.blocks[0].cols[1].title = '<b></b>';
+		const plan = builder._preview( model, registry(), 'l' );
+		model.blocks[0].cols.pop();
+		model.blocks[0].cols[0].title = 'Prices & terms';
+		return plan[0].cols[0].panel === 'Prices & terms' && plan[0].cols[1].panel === '2';
+	} )() );
+check( 'a group can be given up again, and the section is the row it was: the widths of the columns and the order they had are in the model still, the attributes of the group are gone, and a section of tiles is no group',
+	( function() {
+		builder._openSettings( [ 0 ] );
+		change( blockOf('group'), word('section/group'), '' );
+		const settings = builder._doc.model.blocks[0].settings;
+		const row = JSON.stringify( [ settings.reverse, settings.row, builder._doc.model.blocks[0].cols.map( function( col ) { return col.width } ) ] ) === groupRow && settings.group === '' && JSON.stringify( settings.groupAttributes ) === '{}'
+			&& builder._groupName( builder._doc.model.blocks[0] ) === '' && builder._colControls( [ 0, 0 ] ).width !== undefined;
+		change( blockOf('group'), word('section/group'), groupStack() );
+		change( blockOf('properties'), word('section/kind'), 'tiles' );
+		const tiles = settings.tiles === true && settings.group === '' && JSON.stringify( settings.groupAttributes ) === '{}' && blockIds().indexOf('group') === -1;
+		builder._closeDialog();
+		return row && tiles;
+	} )() );
+
+check( 'a section that makes a section of every element can be a group: its presentation is not held where the section is one, and the group is not held where it makes sections',
+	( function() {
+		doc = open();
+		builder._renderEditor();
+		builder._setGroup( registry(), builder._doc.model.blocks[1], groupStack() );
+		builder._doc.model.blocks[1].stack = builder._stackFor( registry(), 'sections', null );
+		builder._openSettings( [ 1 ] );
+		const free = controlOf( blockOf('loop'), word('stack/kind') ).el.disabled !== true && controlOf( blockOf('group'), word('section/group') ).el.querySelectorAll('input').every( function( radio ) { return radio.disabled !== true } );
+		builder._closeDialog();
+		return free;
 	} )() );
 
 console.log( '\nThe screens' );

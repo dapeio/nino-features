@@ -698,6 +698,15 @@ button.builder-status-item:hover {
 	padding: 0;
 	justify-content: flex-start;
 }
+/* A group shows its panels one above the other, each across the whole width with the title it has in its head, and in the order of the markup */
+.builder-frame.is-group > .builder-frame-body {
+	flex-direction: column;
+	flex-wrap: nowrap;
+	align-items: stretch;
+}
+.builder-frame.is-group > .builder-frame-body > .builder-pcol {
+	flex: 0 0 auto;
+}
 .builder-frame.is-tiles .builder-pcol {
 	aspect-ratio: var(--builder-ratio, auto);
 }
@@ -1020,6 +1029,9 @@ button.builder-status-item:hover {
 }
 .builder-blocks:has(> :nth-child(7)) {
 	--builder-count: 7;
+}
+.builder-blocks:has(> :nth-child(8)) {
+	--builder-count: 8;
 }
 .builder-block {
 	display: flex;

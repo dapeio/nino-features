@@ -121,6 +121,7 @@
 		<symbol id="builder-icon-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
 		<symbol id="builder-icon-frame" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></symbol>
 		<symbol id="builder-icon-arrow-left-right" viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></symbol>
+		<symbol id="builder-icon-group" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol>
 		<symbol id="builder-icon-move-vertical" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="m8 18 4 4 4-4"/><path d="m8 6 4-4 4 4"/></symbol>
 		<symbol id="builder-icon-width-content" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M22 4v16"/><rect width="10" height="10" x="7" y="7" rx="1"/></symbol>
 		<symbol id="builder-icon-width-full" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M22 4v16"/><rect width="16" height="10" x="4" y="7" rx="1"/></symbol>
