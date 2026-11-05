@@ -124,7 +124,7 @@
 	outline-offset: 3px;
 }
 
-/*	The picture fills its height and has the width that gives it; the box a logo was cropped to when it was uploaded is the
+/*	The picture fills its height and has the width that gives it; the size of the file a logo was set into its box as is the
 	ratio its width and height say, and a picture that is wider than the room it has keeps its proportions inside it	*/
 .nino-logos-strip-img {
 	width: auto;

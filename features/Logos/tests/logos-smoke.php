@@ -6,13 +6,15 @@ declare(strict_types=1);
  *	logos-smoke.php		Contract test for the Logos feature (Modules\Logos): the
  *										manifest, the element type the activation brings -
  *										add-only, a second activation changes nothing and a type
- *										the project has stays - the row the shortcode and the
- *										component draw, which are one: the logos in the order
- *										of the elements, those without a picture left out, a link
- *										only for an address a link may have, the second picture
- *										of a logo for a dark ground, every value of an element
- *										escaped, the bounds of the call, a type that is none and
- *										the copy of the list a band runs behind the first one -,
+ *										the project has stays - the row the loop draws, a stack of
+ *										the cell none that reads the fields its call names: the
+ *										logos in the order the kernel's loop gives them, those
+ *										without a picture left out, a link only for an address a
+ *										link may have and only from a field there is, the second
+ *										picture of a logo for a dark ground, the pictures set into
+ *										their box and not cut, every value of an element escaped,
+ *										a type that is none and the copy of the list a band runs
+ *										behind the first one -,
  *										and the looks, the style and the block that the Design
  *										feature reads, as files and compiled through it.
  *
@@ -46,23 +48,25 @@ function logosImage( int $width, int $height ): string {
 
 /**
  *	A logo: the element, and the pictures of the fields it is given. The pictures go through the
- *	kernel's own crop, to the box the type declares, as an upload of the Elements panel does
+ *	kernel's own fit, into the box the type declares, as an upload of the Elements panel does for a field that says fit
  *
  *	@param		array 		&$appData
  *	@param		string		$slug
  *	@param		array			$data					The fields of the element
  *	@param		array			$pictures			The image fields it has a picture for
+ *	@param		int				$width				The width of the uploaded picture
+ *	@param		int				$height			Its height
  *
  *	@return 	void
  */
-function logosAdd( array &$appData, string $slug, array $data, array $pictures = [ 'image' ] ): void {
+function logosAdd( array &$appData, string $slug, array $data, array $pictures = [ 'image' ], int $width = 800, int $height = 300 ): void {
 
 	\Nino\Elements::insertElement( $appData, '/logo/'. $slug, $data );
 
 	$files = [];
 
 	foreach( $pictures as $field )
-		$files[$field] = \Nino\Images::process( $appData, logosImage( 800, 300 ), 540, 210, 'elements/logo/'. $slug. '-'. $field );
+		$files[$field] = \Nino\Images::fit( $appData, logosImage( $width, $height ), 540, 210, 'elements/logo/'. $slug. '-'. $field );
 
 	if( $files !== [] )
 		\Nino\Elements::updateElement( $appData, '/logo/'. $slug, $files );
@@ -212,6 +216,8 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) && \Nino\Features::localized( $manifest['name'], 'de_DE' ) !== '' );
 check( 'it is filed under marketing, requires nothing, owns no file under data/ and has no setting - the logos are elements, and the look is the Design feature\'s',
 	$manifest['category'] === 'marketing' && $manifest['requires'] === [] && $manifest['data'] === [] && $manifest['settings'] === [] );
+check( 'it declares the row as a stack of the cell none and no component: the kernel brings the loop, the call names the fields',
+	array_keys( $manifest['stacks'] ) === [ 'logos' ] && $manifest['components'] === [] && $manifest['stacks']['logos']['cell'] === 'none' && $manifest['stacks']['logos']['grid'] === false );
 check( 'its stylesheet and its one script go into the site\'s bundle and there is no panel and no privacy section',
 	$manifest['assets'] === [ '/features/Logos/assets/logos.css', '/features/Logos/assets/logos.js' ] && is_file( $dir. '/assets/logos.css' ) === true && is_file( $dir. '/assets/logos.js' ) === true && is_dir( $dir. '/Admin' ) === false
 	&& is_file( $dir. '/install/elements/privacy.php' ) === false );
@@ -238,9 +244,9 @@ check( 'activation lists the class, records the version and brings the type', \N
 
 $type = \Nino\Filesystem::getFileContent( $appData, '/elements/logo.php', [] );
 
-check( 'the type has the five fields: a name, a picture, an address, a picture for a dark ground and a position, the pictures of the box a row of logos is made for, and no element',
+check( 'the type has the five fields: a name, a picture, an address, a picture for a dark ground and a position, the pictures set into the box a row of logos is made for - fit, not cut - and no element',
 	array_keys( (array) ( $type['model'] ?? [] ) ) === [ 'name', 'image', 'url', 'image-dark', 'order' ] && $type['model']['order'] === [ 'type' => 'integer' ] && ( $type['model']['name']['html'] ?? false ) !== true && $type['model']['name']['required'] === true
-	&& $type['model']['image'] === [ 'type' => 'image', 'width' => 540, 'height' => 210 ] && $type['model']['image-dark'] === $type['model']['image']
+	&& $type['model']['image'] === [ 'type' => 'image', 'width' => 540, 'height' => 210, 'fit' => true ] && $type['model']['image-dark'] === $type['model']['image']
 	&& ( $type['model']['image']['required'] ?? false ) !== true && $type['model']['url']['type'] === 'string' && \Nino\Elements::queryElements( $appData, '/logo', [], '', [] ) === [] );
 
 $before = (string) file_get_contents( $typeFile );
@@ -268,7 +274,8 @@ check( 'the activation puts a label for every field of the type and the word of 
 check( 'the label of the address names the schemes and the path, and says that empty is no link, in both languages; the position says smaller first and empty last',
 	str_contains( $enLabels[$labels[2]], 'a path of the website like /contact' ) === true && str_contains( $enLabels[$labels[2]], 'empty: no link' ) === true
 	&& str_contains( $deLabels[$labels[2]], 'ein Pfad der Website wie /kontakt' ) === true && str_contains( $deLabels[$labels[2]], 'leer: kein Link' ) === true
-	&& str_contains( $enLabels[$labels[4]], '10, 20' ) === true && str_contains( $enLabels[$labels[4]], 'empty or 0 goes last' ) === true && str_contains( $deLabels[$labels[4]], 'leer oder 0 kommt ans Ende' ) === true );
+	&& str_contains( $enLabels[$labels[4]], '10, 20' ) === true && str_contains( $enLabels[$labels[4]], 'empty goes last' ) === true && str_contains( $deLabels[$labels[4]], 'leer kommt ans Ende' ) === true
+	&& str_contains( $enLabels[$labels[4]], '0 goes' ) === false && str_contains( $deLabels[$labels[4]], 'oder 0' ) === false );
 check( 'the unit blacklists the labels - the workbench\'s words, not the site\'s - and not the word of the button, which the site keeps in the Text panel, without a quote in it',
 	$unit['blacklist'] === array_map( static fn( string $key ): string => trim( $key, '[]' ), $labels )
 	&& in_array( '/feature/logos/action/pause', (array) \Nino\Filesystem::getFileContent( $appData, '/text/blacklist.php', [] ), true ) === false
@@ -289,14 +296,14 @@ echo "\n";
 
 // --- The row --------------------------------------------------------------------
 
-echo "[logos] - the row the shortcode and the component draw\n";
+echo "[logos] - the row the loop draws\n";
 
 \Nino\Html::init( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 ninoWarnings();
 
 // Not in the order of their names, so that the order of the elements, a sort by name and the position are three different things: Alpha has the
-// position 9 and Mid 10, which sort that way as numbers and the other way as text, and the others have none
+// position 9 and Mid 10, which sort that way as numbers and the other way as text, Zero has 0, and the others have none
 logosAdd( $appData, 'zeta', [ 'name' => 'Zeta & Co', 'url' => 'https://zeta.example/?a=1&b=2' ] );
 logosAdd( $appData, 'alpha', [ 'name' => 'Alpha', 'url' => '/about', 'order' => 9 ], [ 'image', 'image-dark' ] );
 logosAdd( $appData, 'mid', [ 'name' => 'Mid', 'url' => 'mailto:hello@example.com', 'order' => 10 ] );
@@ -308,36 +315,51 @@ logosAdd( $appData, 'relative', [ 'name' => 'Relative', 'url' => '//evil.example
 logosAdd( $appData, 'dark', [ 'name' => 'Only dark' ], [ 'image-dark' ] );
 logosAdd( $appData, 'ill', [ 'name' => '<b>Bold</b> [[/project/company/general/name]] [x] "q"', 'url' => 'https://ill.example/"onmouseover="x' ] );
 
-$all			= logosPage( $appData, '[logos]' );
+// The call the manual recommends, and the same with the second picture
+$call			= '[logos /logo image="image" link="url" sort="order"]';
+$callDark	= '[logos /logo image="image" link="url" name="name" dark="image-dark" sort="order"]';
+$plain		= logosPage( $appData, $call );
+$all			= logosPage( $appData, $callDark );
 [ $list, $copy ] = logosLists( $all );
+$illName	= '&lt;b&gt;Bold&lt;/b&gt; &#91;&#91;/project/company/general/name]] &#91;x] &quot;q&quot;';
+$inOrderElements = [ 'Zeta &amp; Co', 'Alpha', 'Mid', 'Zero', 'No link', 'Script', 'Relative', 'Only dark', $illName ];
+$inOrder	= [ 'Zero', 'Alpha', 'Mid', 'Zeta &amp; Co', 'No link', 'Script', 'Relative', 'Only dark', $illName ];
 
 check( 'the row is a div of the class nino-logos-strip, the height m and the number of logos on its style, with the word of the pause button, the list and the copy of it in a view of their own, and the pause button - hidden, for the script to show',
 	preg_match( '~^<div class="nino-logos-strip nino-logos-strip--h-m" style="--nino-logos-count:9" data-logos-pause="[^"[]+">\s*<div class="nino-logos-strip-view">\s*<ul class="nino-logos-strip-list" role="list">.*</ul>\s*<ul class="nino-logos-strip-copy" aria-hidden="true">.*</ul>\s*</div>\s*<button type="button" class="nino-btn nino-btn--outline nino-btn--small nino-logos-strip-pause" aria-pressed="false" hidden></button>\s*</div>$~s', $all ) === 1 && ninoWarnings() === [] );
-check( 'a logo is a list item with its picture in the kernel\'s logo set - the picture of the field image as nino-logo-light - with the size of the field, a lazy load and the name as its alt text',
-	str_contains( $list, '<li class="nino-logos-strip-item"><a class="nino-logos-strip-link" href="/about" rel="noopener"><span class="nino-logo-set"><img class="nino-logo-light nino-logos-strip-img" src="/public/images/elements/logo/alpha-image.540x210.webp" width="540" height="210" alt="Alpha" loading="lazy" decoding="async">' ) === true );
-check( 'the picture of image-dark stands beside it in the same set, as nino-logo-dark, for the ground to choose',
-	preg_match( '~<span class="nino-logo-set"><img class="nino-logo-light nino-logos-strip-img"[^>]*alt="Alpha"[^>]*><img class="nino-logo-dark nino-logos-strip-img" src="[^"]*alpha-image-dark\.540x210\.webp" width="540" height="210" alt="Alpha" loading="lazy" decoding="async"></span>~', $list ) === 1 );
+check( 'a logo is a list item with its picture in the kernel\'s logo set - the picture of the field the call names as image is nino-logo-light - with the size of the file the upload stored, a lazy load and the name as its alt text',
+	str_contains( $list, '<li class="nino-logos-strip-item"><a class="nino-logos-strip-link" href="/about" rel="noopener"><span class="nino-logo-set"><img class="nino-logo-light nino-logos-strip-img" src="/public/images/elements/logo/alpha-image.fit540x210.webp" width="540" height="203" alt="Alpha" loading="lazy" decoding="async">' ) === true );
+check( 'the picture of the field the call names as dark stands beside it in the same set, as nino-logo-dark, for the ground to choose',
+	preg_match( '~<span class="nino-logo-set"><img class="nino-logo-light nino-logos-strip-img"[^>]*alt="Alpha"[^>]*><img class="nino-logo-dark nino-logos-strip-img" src="[^"]*alpha-image-dark\.fit540x210\.webp" width="540" height="203" alt="Alpha" loading="lazy" decoding="async"></span>~', $list ) === 1 );
 check( 'a logo with one picture only draws one: nothing for the kernel to choose between', substr_count( $list, '<img' ) === 10 && substr_count( $list, 'nino-logo-dark' ) === 2 );
-$illName = '&lt;b&gt;Bold&lt;/b&gt; &#91;&#91;/project/company/general/name&#93;&#93; &#91;x&#93; &quot;q&quot;';
+check( 'a call that names no dark field draws the second picture from image-dark, where the element has one - and the logo that has only that one, which is seen on every ground: an empty dark is the default too',
+	logosNames( logosLists( $plain )[0] ) === $inOrder && substr_count( logosLists( $plain )[0], 'nino-logo-dark' ) === 2 && substr_count( logosLists( $plain )[0], 'nino-logo-light' ) === 8
+	&& $plain === $all && logosPage( $appData, '[logos /logo image="image" link="url" dark="" sort="order"]' ) === $all );
+check( 'a dark that names the field of image is no second picture: one picture for each logo, not the same one twice',
+	substr_count( logosLists( logosPage( $appData, '[logos /logo image="image" dark="image"]' ) )[0], '<img' ) === 8 && str_contains( logosPage( $appData, '[logos /logo image="image" dark="image"]' ), 'nino-logo-dark' ) === false
+	&& substr_count( logosLists( logosPage( $appData, '[logos /logo image="image-dark"]' ) )[0], '<img' ) === 2 );
 
-check( 'without a sort the logos stand by their position - 9 before 10, as numbers - and those with none or with 0 after them, in the order of the elements: the Elements panel saves a position left empty as 0, and Zero is not in front; a logo with no picture at all is left out, but not one that has the picture for a dark ground alone',
-	logosNames( $list ) === [ 'Alpha', 'Mid', 'Zeta &amp; Co', 'Zero', 'No link', 'Script', 'Relative', 'Only dark', $illName ] );
-check( '...and the limit is applied after that order: a limit of 3 is the two with a position and the first without one, never the logo with 0',
-	logosNames( logosLists( logosPage( $appData, '[logos limit="3"]' ) )[0] ) === [ 'Alpha', 'Mid', 'Zeta &amp; Co' ] && logosNames( logosLists( logosPage( $appData, '[logos limit="3"]' ) )[1] ) === [ 'Alpha', 'Mid', 'Zeta &amp; Co' ]
-	&& logosNames( logosLists( logosPage( $appData, '[logos sort="order"]' ) )[0] ) === logosNames( $list ) );
-check( 'sort="" is no sort: the order of the elements', logosNames( logosLists( logosPage( $appData, '[logos sort=""]' ) )[0] ) === [ 'Zeta &amp; Co', 'Alpha', 'Mid', 'Zero', 'No link', 'Script', 'Relative', 'Only dark', $illName ] );
-check( 'a sort the call names is the kernel\'s: -order is descending, and 0 is a number there, before the logos with none',
-	array_slice( logosNames( logosLists( logosPage( $appData, '[logos sort="-order"]' ) )[0] ), 0, 4 ) === [ 'Mid', 'Alpha', 'Zero', 'Zeta &amp; Co' ] );
+check( 'sort="order" is the kernel\'s sort: by the position, 9 before 10 as numbers, 0 a number before them, and the logos with no position after them in the order of the elements; a logo with no picture at all is left out, but not one that has the picture for a dark ground alone',
+	logosNames( $list ) === $inOrder );
+check( '...and the limit is applied after that order: a limit of 3 is the three with a position',
+	logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="order" limit="3"]' ) )[0] ) === [ 'Zero', 'Alpha', 'Mid' ] && logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="order" limit="3"]' ) )[1] ) === [ 'Zero', 'Alpha', 'Mid' ] );
+check( 'a call with no sort, and sort="", keeps the order of the elements',
+	logosNames( logosLists( $plain = logosPage( $appData, '[logos /logo image="image" link="url"]' ) )[0] ) === [ 'Zeta &amp; Co', 'Alpha', 'Mid', 'Zero', 'No link', 'Script', 'Relative', 'Only dark', $illName ]
+	&& logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" link="url" sort=""]' ) )[0] ) === logosNames( logosLists( $plain )[0] ) );
+check( 'a sort the call names is the kernel\'s: -order is descending, with the logos that have none last in either direction',
+	array_slice( logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="-order"]' ) )[0] ), 0, 4 ) === [ 'Mid', 'Alpha', 'Zero', 'Zeta &amp; Co' ] );
 
 preg_match_all( '~<a class="nino-logos-strip-link" href="([^"]*)"~', $list, $hrefs );
 
 check( 'a link is drawn for an https address - escaped, an ampersand once, a quote as &quot; - a path of the site and a mailto address, and for no other: javascript: and a protocol-relative address have none',
 	$hrefs[1] === [ '/about', 'mailto:hello@example.com', 'https://zeta.example/?a=1&amp;b=2', 'https://ill.example/&quot;onmouseover=&quot;x' ] && substr_count( $list, '<a ' ) === 4 && substr_count( $list, '<li ' ) === 9 );
 
-$linkless = logosPage( $appData, '[logos link="0"]' );
+$linkless = logosPage( $appData, '[logos /logo image="image" link="url" links="0"]' );
 
-check( 'link="0" draws no link, whatever an address says', logosCount( logosLists( $linkless )[0] ) === 9 && str_contains( $linkless, '<a ' ) === false && str_contains( $linkless, 'href=' ) === false );
-
+check( 'links="0" draws no link, whatever an address says', logosCount( logosLists( $linkless )[0] ) === 9 && str_contains( $linkless, '<a ' ) === false && str_contains( $linkless, 'href=' ) === false );
+check( 'the link is the field the call names, and none is a link where it names none: a call with no link, a field there is none of, a picture field and a field that holds no address draw no link',
+	array_filter( [ '[logos /logo image="image"]', '[logos /logo image="image" link=""]', '[logos /logo image="image" link="nofield"]', '[logos /logo image="image" link="image-dark"]', '[logos /logo image="image" link="name"]', '[logos /logo image="image" link="/logo/zeta"]' ],
+		static fn( string $call ): bool => str_contains( logosPage( $appData, $call ), '<a ' ) === true || logosCount( logosLists( logosPage( $appData, $call ) )[0] ) !== 9 ) === [] );
 check( 'every value of an element is escaped and no bracket of it is left to open a fill or a shortcode on the next pass: the markup of a name is text, "[[" is "&#91;&#91;" and the quote of an address ends nothing',
 	str_contains( $all, '<b>' ) === false && str_contains( $all, '[[/project' ) === false && str_contains( $all, '[' ) === false && preg_match( '/\sonmouseover\s*=/', $all ) !== 1 );
 
@@ -348,13 +370,16 @@ check( 'the copy is the same logos in the same order, each link out of the order
 	&& str_contains( $list, 'tabindex' ) === false && str_contains( $all, '<ul class="nino-logos-strip-copy" aria-hidden="true">' ) === true );
 
 check( 'the heights are the class of the row: s, m and l, and anything else is m',
-	array_map( static fn( string $height ): bool => str_contains( logosPage( $appData, '[logos height="'. $height. '"]' ), 'nino-logos-strip--h-'. ( in_array( $height, [ 's', 'm', 'l' ], true ) === true ? $height : 'm' ). '"' ), [ 's', 'm', 'l', 'xl', '', 'L' ] ) === array_fill( 0, 6, true ) );
-check( 'limit cuts the list, the copy with it, and 0 and a number that is none draw all of them', array_map( static fn( string $limit ): int => logosCount( logosLists( logosPage( $appData, '[logos limit="'. $limit. '"]' ) )[0] ), [ '2', '1', '0', '-4', 'many', '9000' ] ) === [ 2, 1, 9, 9, 9, 9 ]
-	&& logosCount( logosLists( logosPage( $appData, '[logos limit="3"]' ) )[1] ) === 3 && str_contains( logosPage( $appData, '[logos limit="3"]' ), '--nino-logos-count:3' ) === true );
+	array_map( static fn( string $height ): bool => str_contains( logosPage( $appData, '[logos /logo image="image" height="'. $height. '"]' ), 'nino-logos-strip--h-'. ( in_array( $height, [ 's', 'm', 'l' ], true ) === true ? $height : 'm' ). '"' ), [ 's', 'm', 'l', 'xl', '', 'L' ] ) === array_fill( 0, 6, true ) );
+check( 'limit cuts the list, the copy with it, and 0 and a number that is none draw all of them', array_map( static fn( string $limit ): int => logosCount( logosLists( logosPage( $appData, '[logos /logo image="image" dark="image-dark" limit="'. $limit. '"]' ) )[0] ), [ '2', '1', '0', '-4', 'many', '9000' ] ) === [ 2, 1, 9, 9, 9, 9 ]
+	&& logosCount( logosLists( logosPage( $appData, '[logos /logo image="image" limit="3"]' ) )[1] ) === 3 && str_contains( logosPage( $appData, '[logos /logo image="image" limit="3"]' ), '--nino-logos-count:3' ) === true );
 check( 'sort is the sort of the loop of [elements]: by a field, and descending with a minus',
-	( logosNames( logosLists( logosPage( $appData, '[logos sort="name"]' ) )[0] )[0] === $illName ) === true
-	&& logosNames( logosLists( logosPage( $appData, '[logos sort="-name"]' ) )[0] )[0] === 'Zeta &amp; Co'
-	&& logosNames( logosLists( logosPage( $appData, '[logos sort="-name"]' ) )[0] ) === array_reverse( logosNames( logosLists( logosPage( $appData, '[logos sort="name"]' ) )[0] ) ) );
+	( logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="name"]' ) )[0] )[0] === $illName ) === true
+	&& logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="-name"]' ) )[0] )[0] === 'Zeta &amp; Co'
+	&& logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="-name"]' ) )[0] ) === array_reverse( logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="name"]' ) )[0] ) ) );
+check( 'the other arguments of the kernel\'s loop are its own: offset skips, query asks, and the type is the first argument of the call',
+	logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" sort="order" offset="1" limit="2"]' ) )[0] ) === [ 'Alpha', 'Mid' ]
+	&& logosNames( logosLists( logosPage( $appData, '[logos /logo image="image" query="name=Mid"]' ) )[0] ) === [ 'Mid' ] );
 check( 'the pause button\'s word is the text key of the unit, resolved in the language of the page, English and German - and there is no second word for a state: that is aria-pressed',
 	( static function( array &$appData ): bool {
 		$kept = $appData['./nino/locales/current'];
@@ -362,15 +387,70 @@ check( 'the pause button\'s word is the text key of the unit, resolved in the la
 
 		foreach( [ 'en_US' => 'Pause logos', 'de_DE' => 'Logos anhalten' ] as $locale => $expected ) {
 			$appData['./nino/locales/current'] = $locale;
-			$said[$locale] = str_contains( logosPage( $appData, '[logos limit="1"]' ), 'data-logos-pause="'. $expected. '">' ) && str_contains( logosPage( $appData, '[logos limit="1"]' ), 'data-logos-play' ) === false;
+			$said[$locale] = str_contains( logosPage( $appData, '[logos /logo image="image" limit="1"]' ), 'data-logos-pause="'. $expected. '">' ) && str_contains( logosPage( $appData, '[logos /logo image="image" limit="1"]' ), 'data-logos-play' ) === false;
 		}
 
 		$appData['./nino/locales/current'] = $kept;
 
 		return $said === [ 'en_US' => true, 'de_DE' => true ];
 	} )( $appData ) );
-check( 'a class of the call is added to the classes of the row, escaped', str_contains( logosPage( $appData, '[logos class="my-class nino-mb-3"]' ), 'nino-logos-strip--h-m my-class nino-mb-3" style=' ) === true
-	&& str_contains( logosPage( $appData, '[logos class="x&y"]' ), 'nino-logos-strip--h-m x&amp;y" style=' ) === true );
+check( 'a class of the call is added to the classes of the row, escaped', str_contains( logosPage( $appData, '[logos /logo image="image" class="my-class nino-mb-3"]' ), 'nino-logos-strip--h-m my-class nino-mb-3" style=' ) === true
+	&& str_contains( logosPage( $appData, '[logos /logo image="image" class="x&y"]' ), 'nino-logos-strip--h-m x&amp;y" style=' ) === true );
+
+// --- The fields the call names
+$names = static fn( string $call ): array => logosNames( logosLists( logosPage( $appData, $call ) )[0] );
+
+check( 'the picture is the field the call names: the one for a dark ground, drawn as the picture of the logo, leaves out the logos that have none in it',
+	$names( '[logos /logo image="image-dark" sort="order"]' ) === [ 'Alpha', 'Only dark' ] && substr_count( logosLists( logosPage( $appData, '[logos /logo image="image-dark" sort="order"]' ) )[0], 'alpha-image-dark.fit540x210' ) === 1 );
+check( 'an image that is no picture field of the type draws nothing - a field of text, a field there is none of, the name of a slot - and the name of a slot is no field name: it reads as the default, and the slot is not looked up',
+	array_filter( [ 'name', 'url', 'nofield', 'order' ], static fn( string $field ): bool => logosPage( $appData, '[logos /logo image="'. $field. '" dark="image-dark" link="url"]' ) !== '' ) === []
+	&& logosPage( $appData, '[logos /logo image="/logo" sort="order"]' ) === logosPage( $appData, '[logos /logo sort="order"]' ) && logosPage( $appData, '[logos /logo sort="order"]' ) !== '' );
+check( 'a dark that is no picture field of the type is no second picture: a field of text and a field there is none of - and a logo with only that picture is left out with it',
+	array_filter( [ 'name', 'nofield', 'url' ], static fn( string $field ): bool => str_contains( logosPage( $appData, '[logos /logo image="image" dark="'. $field. '"]' ), 'nino-logo-dark' ) === true ) === []
+	&& $names( '[logos /logo image="image" dark="name"]' ) === array_values( array_diff( $inOrderElements, [ 'Only dark' ] ) ) );
+check( 'the alt text is the field the call names for the name: another field, and none where it names a field there is none of or a picture - no field is read in its place',
+	str_contains( logosPage( $appData, '[logos /logo image="image" name="url" query="name=Alpha"]' ), ' alt="/about" ' ) === true
+	&& str_contains( logosPage( $appData, '[logos /logo image="image" name="nofield" query="name=Alpha"]' ), ' alt="" ' ) === true && str_contains( logosPage( $appData, '[logos /logo image="image" name="nofield" query="name=Alpha"]' ), 'Alpha"' ) === false
+	&& str_contains( logosPage( $appData, '[logos /logo image="image" name="image" query="name=Alpha"]' ), ' alt="" ' ) === true
+	&& substr_count( logosPage( $appData, '[logos /logo image="image" name="nofield"]' ), ' alt=""' ) === 10 * 2 );
+
+check( 'the call is a single tag: a pair is the same row, what stands between its tags is not read, and what stands around the tag stays',
+	logosPage( $appData, $call. 'x[button z][/logos]' ) === logosPage( $appData, $call ) && str_contains( logosPage( $appData, $call. 'x[button z][/logos]' ), 'nino-btn nino-btn--outline nino-btn--small nino-logos-strip-pause' ) === true
+	&& substr_count( logosPage( $appData, $call. 'x[button z][/logos]' ), '<button' ) === 1
+	&& str_starts_with( logosPage( $appData, '<p>a</p>'. $call. '<p>b</p>' ), '<p>a</p><div class="nino-logos-strip' ) === true && str_ends_with( logosPage( $appData, '<p>a</p>'. $call. '<p>b</p>' ), '</div><p>b</p>' ) === true );
+
+// --- The pictures are set into their box, not cut to it
+logosAdd( $appData, 'wide', [ 'name' => 'Wide' ], [ 'image' ], 800, 100 );
+logosAdd( $appData, 'tall', [ 'name' => 'Tall' ], [ 'image' ], 100, 400 );
+logosAdd( $appData, 'small', [ 'name' => 'Small' ], [ 'image' ], 100, 40 );
+
+$sizes = [];
+
+foreach( [ 'Wide', 'Tall', 'Small' ] as $fitted ) {
+	$one = logosPage( $appData, '[logos /logo image="image" query="name='. $fitted. '"]' );
+	preg_match( '~<img [^>]*src="/public/images/([^"]+)" width="(\d+)" height="(\d+)"~', $one, $img );
+	$stored = isset( $img[1] ) === true ? \Nino\Images::dimensions( $appData, $img[1] ) : false;
+	$sizes[$fitted] = $stored !== false && [ (int) $img[2], (int) $img[3] ] === [ $stored['width'], $stored['height'] ] ? $stored['width']. 'x'. $stored['height'] : 'off';
+}
+
+check( 'a wide logo, a tall one and a small one keep their proportions and every edge: the width and the height the picture is drawn with are those of the file the upload stored - the longest side takes the box, the small one is not scaled up - and not the box',
+	$sizes === [ 'Wide' => '540x68', 'Tall' => '53x210', 'Small' => '100x40' ] );
+
+// A key an element holds that its type has no field for - a type file edited by hand - is no field: the call cannot name it for a link or a name
+\Nino\Filesystem::putFileContent( $appData, '/elements/strays.php', [ 'title' => 'Strays', 'model' => [ 'name' => [ 'type' => 'string' ], 'image' => [ 'type' => 'image', 'width' => 540, 'height' => 210, 'fit' => true ] ],
+	'*' => [ 'one' => [ 'name' => 'Stray', 'site' => 'https://stray.example/', 'who' => 'Stray who', 'image' => \Nino\Images::fit( $appData, logosImage( 800, 300 ), 540, 210, 'elements/strays/one' ) ] ] ] );
+$stray = logosPage( $appData, '[logos /strays image="image" link="site" name="who"]' );
+check( 'a link or a name that is no field of the type is nothing, even where the element holds a value under that name: no link, no alt text, and no other field in its place',
+	logosCount( logosLists( $stray )[0] ) === 1 && str_contains( $stray, '<a ' ) === false && str_contains( $stray, ' alt="" ' ) === true && str_contains( $stray, 'stray.example' ) === false && str_contains( $stray, 'Stray' ) === false
+	&& str_contains( logosPage( $appData, '[logos /strays image="image" link="name"]' ), '<a ' ) === false && str_contains( logosPage( $appData, '[logos /strays image="image"]' ), ' alt="Stray" ' ) === true );
+
+// A control character anywhere in an address - a tab in a path - is no link: a browser drops it and reads another address
+$hrefImage = \Nino\Images::fit( $appData, logosImage( 800, 300 ), 540, 210, 'elements/hrefs/one' );
+\Nino\Filesystem::putFileContent( $appData, '/elements/hrefs.php', [ 'title' => 'Hrefs', 'model' => [ 'name' => [ 'type' => 'string' ], 'image' => [ 'type' => 'image', 'width' => 540, 'height' => 210, 'fit' => true ], 'url' => [ 'type' => 'string' ] ],
+	'*' => [ 'tab' => [ 'name' => 'Tab', 'url' => "/\t/evil.example", 'image' => $hrefImage ], 'ctl' => [ 'name' => 'Ctl', 'url' => "https://a.example/\x01b", 'image' => $hrefImage ], 'ok' => [ 'name' => 'Ok', 'url' => '/fine', 'image' => $hrefImage ] ] ] );
+preg_match_all( '~<a class="nino-logos-strip-link" href="([^"]*)"~', logosLists( logosPage( $appData, '[logos /hrefs image="image" link="url"]' ) )[0], $controlled );
+check( 'an address with a control character in it - a tab after the first slash, a byte below the space - draws no link, and the logos are drawn all the same',
+	$controlled[1] === [ '/fine' ] && logosCount( logosLists( logosPage( $appData, '[logos /hrefs image="image" link="url"]' ) )[0] ) === 3 );
 
 echo "\n";
 
@@ -382,67 +462,75 @@ echo "[logos] - what draws nothing, and says nothing\n";
 ninoWarnings();
 
 \Nino\Filesystem::putFileContent( $appData, '/elements/empty.php', [ 'title' => 'Empty', 'model' => [ 'name' => [ 'type' => 'string' ], 'image' => [ 'type' => 'image', 'width' => 540, 'height' => 210 ] ], '*' => [ '*' => [] ] ] );
-\Nino\Filesystem::putFileContent( $appData, '/elements/nopicture.php', [ 'title' => 'No picture', 'model' => [ 'name' => [ 'type' => 'string' ] ], '*' => [ '*' => [ 'one' => [ 'name' => 'One' ] ] ] ] );
+\Nino\Filesystem::putFileContent( $appData, '/elements/nopicture.php', [ 'title' => 'No picture', 'model' => [ 'name' => [ 'type' => 'string' ] ], '*' => [ 'one' => [ 'name' => 'One' ] ] ] );
 
-check( 'a type with no element draws nothing', logosPage( $appData, '[logos type="empty"]' ) === '' );
-check( 'a type there is none of draws nothing, and raises nothing - not the notice the kernel raises for a type file it cannot read', logosPage( $appData, '[logos type="nowhere"]' ) === '' && ninoWarnings() === [] );
-check( 'a type that is no type name draws nothing: a path, a dot, a capital, a space', array_filter( [ '../logo', 'logo/x', '.logo', 'Logo', 'lo go', '-logo' ], static fn( string $type ): bool => logosPage( $appData, '[logos type="'. $type. '"]' ) !== '' ) === [] && ninoWarnings() === [] );
-check( 'a type with no field image that is a picture draws nothing', logosPage( $appData, '[logos type="nopicture"]' ) === '' );
-check( 'type="logo" is the type that is read where the call says nothing', logosPage( $appData, '[logos type="logo"]' ) === $all );
+check( 'a call with no type draws nothing', logosPage( $appData, '[logos image="image"]' ) === '' && logosPage( $appData, '[logos]' ) === '' );
+check( 'a type with no element draws nothing', logosPage( $appData, '[logos /empty image="image"]' ) === '' );
+check( 'a type there is none of draws nothing, and the kernel says so once, as it does for any loop', logosPage( $appData, '[logos /nowhere image="image"]' ) === '' && count( ninoWarnings() ) === 1 );
+check( 'a type that is no type name draws nothing: a path, a dot, a capital, a space', array_filter( [ '../logo', 'logo/x', '.logo', 'Logo', 'lo go', '-logo' ], static fn( string $type ): bool => logosPage( $appData, '[logos /'. $type. ' image="image"]' ) !== '' ) === [] && ninoWarnings() !== [] );
+check( 'a type with no picture field draws nothing', logosPage( $appData, '[logos /nopicture image="image"]' ) === '' && logosPage( $appData, '[logos /nopicture image="name"]' ) === '' );
 
-$withoutImage = $appData;
-unset( $withoutImage[\Nino\Modules\Components::REGISTRY]['image'] );
-check( 'a site on which the Components module does not know [image] draws nothing, rather than the shortcodes of its pictures', \Nino\Modules\Logos::componentLogos( $withoutImage, [] ) === '' );
-
-\Nino\Filesystem::putFileContent( $appData, '/elements/nameless.php', [ 'title' => 'Nameless', 'model' => [ 'image' => [ 'type' => 'image', 'width' => 540, 'height' => 210 ] ], '*' => [ '*' => [] ] ] );
+\Nino\Filesystem::putFileContent( $appData, '/elements/nameless.php', [ 'title' => 'Nameless', 'model' => [ 'image' => [ 'type' => 'image', 'width' => 540, 'height' => 210, 'fit' => true ] ], '*' => [ '*' => [] ] ] );
 \Nino\Elements::insertElement( $appData, '/nameless/one', [] );
-\Nino\Elements::updateElement( $appData, '/nameless/one', [ 'image' => \Nino\Images::process( $appData, logosImage( 800, 300 ), 540, 210, 'elements/nameless/one' ) ] );
+\Nino\Elements::updateElement( $appData, '/nameless/one', [ 'image' => \Nino\Images::fit( $appData, logosImage( 800, 300 ), 540, 210, 'elements/nameless/one' ) ] );
 
-check( 'a type with a picture and no field name draws nothing, rather than a picture whose alt text is the literal [[name]]', logosPage( $appData, '[logos type="nameless"]' ) === '' && ninoWarnings() === [] );
+ninoWarnings();
+check( 'a type with a picture and no field name draws its logo with an empty alt text, rather than a picture whose alt text is the literal [[name]]', substr_count( logosPage( $appData, '[logos /nameless image="image"]' ), '<img ' ) === 2
+	&& str_contains( logosPage( $appData, '[logos /nameless image="image"]' ), ' alt="" ' ) === true && str_contains( logosPage( $appData, '[logos /nameless image="image"]' ), '[[' ) === false && ninoWarnings() === [] );
 
-/*	The name is written into the alt attribute from the fill of its field, and a field that keeps markup or the breaks of its text leaves the quote in it:
-	the one value in the row that is not escaped for an attribute. A type that says html or breaks for its name - by a call's type, or because somebody
-	switched it on for the type - draws nothing, however the element looks	*/
-$hostile = 'A <em>x</em> " onmouseover="alert(1)';
+/*	The name is written into the alt attribute, and a field that keeps markup or the breaks of its text leaves the quote in it: the one value in
+	the row that is not escaped for an attribute by the field. It is read as a line of text - the tags dropped, the entities the characters they
+	stand for - and escaped once, whatever the field keeps	*/
+$hostile = 'A <em>x</em> " onmouseover="alert(1) &amp; <b>[[/project/company/general/name]]</b>';
 
-foreach( [ 'htmlname' => [ 'html' => true ], 'breakname' => [ 'breaks' => true ], 'numname' => [ 'type' => 'integer' ] ] as $kind => $declared ) {
+foreach( [ 'htmlname' => [ 'html' => true ], 'blockname' => [ 'html' => true, 'blocks' => true ], 'breakname' => [ 'breaks' => true ], 'plainname' => [], 'numname' => [ 'type' => 'integer' ] ] as $kind => $declared ) {
 	\Nino\Filesystem::putFileContent( $appData, '/elements/'. $kind. '.php', [ 'title' => $kind, 'model' => [ 'name' => array_merge( [ 'type' => 'string' ], $declared ), 'image' => [ 'type' => 'image', 'width' => 540, 'height' => 210 ] ], '*' => [ '*' => [] ] ] );
-	\Nino\Elements::insertElement( $appData, '/'. $kind. '/one', [ 'name' => $kind === 'numname' ? 7 : $hostile ] );
+	\Nino\Elements::insertElement( $appData, '/'. $kind. '/one', [ 'name' => $kind === 'numname' ? 7 : ( $kind === 'blockname' ? '<p>Block</p><p>Two <br>lines</p>' : $hostile ) ] );
 	\Nino\Elements::updateElement( $appData, '/'. $kind. '/one', [ 'image' => \Nino\Images::process( $appData, logosImage( 800, 300 ), 540, 210, 'elements/'. $kind. '/one' ) ] );
 }
 
-check( 'a type whose name keeps html - markup with a quote in it - or the breaks of its text, or is no text at all, draws nothing: no attribute is written from a value that is not escaped for one',
-	array_filter( [ 'htmlname', 'breakname', 'numname' ], static fn( string $kind ): bool => logosPage( $appData, '[logos type="'. $kind. '"]' ) !== '' ) === [] && ninoWarnings() === [] );
+$altOf = static function( string $kind ) use ( $appData ): string {
+	preg_match( '~<img [^>]* alt="([^"]*)"~', logosPage( $appData, '[logos /'. $kind. ' image="image"]' ), $found );
+	return $found[1] ?? 'none';
+};
+
+check( 'the name is a line of text whatever the field keeps: html is read as the text it says - tags dropped, the entity the character, a block a space - and every kind of it is escaped once, so that no quote ends the attribute and no bracket opens a fill',
+	$altOf( 'htmlname' ) === 'A x &quot; onmouseover=&quot;alert(1) &amp; &#91;&#91;/project/company/general/name]]'
+	&& $altOf( 'blockname' ) === 'Block Two lines'
+	&& $altOf( 'breakname' ) === 'A &lt;em&gt;x&lt;/em&gt; &quot; onmouseover=&quot;alert(1) &amp;amp; &lt;b&gt;&#91;&#91;/project/company/general/name]]&lt;/b&gt;'
+	&& $altOf( 'plainname' ) === $altOf( 'breakname' ) && $altOf( 'numname' ) === '7'
+	&& array_filter( array_map( static fn( string $kind ): array => preg_match_all( '~<img\b[^>]*>~', logosPage( $appData, '[logos /'. $kind. ' image="image"]' ), $tags ) === 2 ? $tags[0] : [ 'none' ], [ 'htmlname', 'blockname', 'breakname', 'plainname', 'numname' ] ),
+		static fn( array $tags ): bool => array_filter( $tags, static fn( string $tag ): bool => preg_match( '~^<img class="nino-logo-light nino-logos-strip-img" src="[^"]+" width="\d+" height="\d+" alt="[^"]*" loading="lazy" decoding="async">$~', $tag ) !== 1 || str_contains( $tag, '[[' ) === true ) !== [] ) === []
+	&& ninoWarnings() === [] );
 
 echo "\n";
 
 
-// --- The shortcode by hand, and the component ---------------------------------------
+// --- The stack, as the Builder offers it ----------------------------------------------
 
-echo "Components - [logos] as the Builder offers it\n";
+echo "Components - [logos] as a stack the Builder offers\n";
 
-( static function( array $appData ) use ( $all, $manifest ): void {
+( static function( array $appData ) use ( $all, $callDark, $manifest ): void {
 
-	$declared = $manifest['components'] ?? [];
-	$schema		= \Nino\Modules\Components::components( $appData )['logos'] ?? [];
+	$declared	= $manifest['stacks']['logos'] ?? [];
+	$schema		= \Nino\Modules\Components::stacks( $appData )['logos'] ?? [];
 
-	check( 'the component is registered from the manifest with the schema it declares, as the feature\'s own', $schema !== [] && ( $schema['by'] ?? '' ) === 'logos'
-		&& array_diff_key( $schema, [ 'by' => 1 ] ) === array_diff_key( $declared['logos'], [ 'by' => 1 ] ) );
-	check( '...with the defaults of its attributes, as strings - the sort by the position the type brings', \Nino\Modules\Components::defaults( $appData, 'logos' ) === [ 'type' => 'logo', 'limit' => '0', 'sort' => 'order', 'link' => '1', 'height' => 'm', 'class' => '' ] );
-	check( '...of a kind the Builder draws and a place it stands in: an image, a div with the class of the row, in a section and the hero, with the geometry of an icon',
-		$schema['preview'] === 'image' && $schema['draws'] === 'div .nino-logos-strip' && $schema['in'] === [ 'section', 'hero' ] && $schema['source'] === 'none' && count( $schema['icon'] ) === 3 );
-	check( '...whose bounds are the kernel\'s to hold: a limit of 0 to 200, a height of three words', $schema['attributes']['limit']['min'] === 0 && $schema['attributes']['limit']['max'] === 200
-		&& $schema['attributes']['height']['options'] === [ 's', 'm', 'l' ] && $schema['attributes']['link']['default'] === true );
-
-	check( 'init() registers the callback the loop orders by and nothing else: the manifest declares the component, no plain shortcode stands beside it', count( \Nino\Callbacks::registered( $appData, \Nino\Modules\Logos::ORDER ) ) === 1
-		&& count( \Nino\Callbacks::registered( $appData, '/nino/html/shortcode/logos' ) ) === 1 );
+	check( 'the stack is registered from the manifest, as the feature\'s own, and the component registry does not hold it', $schema !== [] && isset( \Nino\Modules\Components::components( $appData )['logos'] ) === false
+		&& array_diff_key( $schema, [ 'by' => 1 ] ) === array_diff_key( $declared, [ 'by' => 1 ] ) );
+	check( '...a loop with no content (the cell none) and no grid, drawn in the Builder as a picture, with the six attributes of the logos and the fields as the choice: four of them fields of the type, the height a choice of three, the links a flag',
+		$schema['cell'] === 'none' && $schema['grid'] === false && $schema['preview'] === 'image'
+		&& array_map( static fn( array $attribute ): string => $attribute['type'], array_diff_key( $schema['attributes'], [ 'class' => 1 ] ) ) === [ 'image' => 'field', 'link' => 'field', 'name' => 'field', 'dark' => 'field', 'height' => 'select', 'links' => 'bool' ]
+		&& $schema['attributes']['height']['options'] === [ 's', 'm', 'l' ] );
+	check( '...with the defaults of its attributes, as strings - the picture, the name, no link, the picture for a dark ground from image-dark, the middle height, links on - and the loop of the kernel in front of them',
+		\Nino\Modules\Components::defaults( $appData, 'logos', true ) === [ 'sort' => '', 'offset' => '0', 'limit' => '0', 'query' => '', 'callback' => '', 'locale' => '', 'id' => '', 'image' => 'image', 'link' => '', 'name' => 'name', 'dark' => 'image-dark', 'height' => 'm', 'links' => '1', 'class' => '' ] );
+	check( 'the feature registers the shortcode once, through the manifest', count( \Nino\Callbacks::registered( $appData, '/nino/html/shortcode/logos' ) ) === 1 );
 
 	// What the renderer returns goes through the page's own rendering once more, which resolves the two words of the pause button: that is what a page gets
-	$direct = static fn( array $args ): string => logosPage( $appData, \Nino\Modules\Logos::componentLogos( $appData, $args ) );
+	$direct = static fn( array $args ): string => logosPage( $appData, \Nino\Modules\Logos::stackLogos( $appData, $args + \Nino\Modules\Components::defaults( $appData, 'logos', true ) + [ 'source' => '/logo', 'content' => '', 'grid' => false ] ) );
 
-	check( 'the renderer is the same whichever way it is called: the arguments of the wrapper and those of a page - and a call that says no sort is the sort the component defaults to',
-		$direct( [ 'limit' => '2', 'height' => 's', 'link' => '1', 'class' => '', 'sort' => 'order', 'type' => 'logo' ] ) === logosPage( $appData, '[logos limit="2" height="s"]' )
-		&& $direct( [ 'limit' => '2' ] ) === $direct( [ 'limit' => '2', 'sort' => 'order' ] ) && $all !== '' );
+	check( 'the renderer is the same whichever way it is called: the arguments the Components module makes ready, and those of a page',
+		$direct( [ 'image' => 'image', 'link' => 'url', 'name' => 'name', 'dark' => 'image-dark', 'sort' => 'order' ] ) === logosPage( $appData, $callDark ) && $all !== ''
+		&& $direct( [ 'image' => 'image', 'link' => 'url', 'sort' => 'order', 'limit' => '2', 'height' => 's' ] ) === logosPage( $appData, '[logos /logo image="image" link="url" sort="order" limit="2" height="s"]' ) );
 
 	ninoWarnings();
 } )( $appData );
@@ -864,12 +952,17 @@ check( '...and each cell of it is the item the shortcode draws, link, set and pi
 $manualProblems = [];
 
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
-	$text = ( (array) ( $manifest['manual']['panel'] ?? [] ) )['Design: the looks of the logos'][$locale] ?? null;
+	foreach( [ 'Design: the looks of the logos', 'Builder: the presentation Logos' ] as $entry ) {
+		$text = ( (array) ( $manifest['manual']['panel'] ?? [] ) )[$entry][$locale] ?? null;
 
-	if( is_string( $text ) === false || trim( $text ) === '' || max( array_map( 'strlen', explode( "\n", $text ) ) ) >= 1000 )
-		$manualProblems[] = $locale;
+		if( is_string( $text ) === false || trim( $text ) === '' || max( array_map( 'strlen', explode( "\n", $text ) ) ) >= 1000 )
+			$manualProblems[] = $locale. ' '. $entry;
+	}
 
-	foreach( [ '[logos]', '[logos type="logo" limit="8"]', '[logos sort="name"]', '[logos link="0"]', '[logos height="l"]' ] as $handle )
+	if( str_contains( (string) ( $manifest['manual']['panel']['Builder: the presentation Logos'][$locale] ?? '' ), 'order' ) === false )
+		$manualProblems[] = $locale. ' the Builder line names the sort by order';
+
+	foreach( [ '[logos /logo image="image" link="url" sort="order"]', '[logos /logo image="image" link="url" name="name" dark="image-dark"]', '[logos /logo sort="name" limit="8"]', '[logos /logo links="0"]', '[logos /logo height="l"]' ] as $handle )
 		if( trim( (string) ( $manifest['manual']['shortcodes'][$handle][$locale] ?? '' ) ) === '' )
 			$manualProblems[] = $locale. ' '. $handle;
 
@@ -878,7 +971,7 @@ foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 			$manualProblems[] = $locale. ' markup '. $handle;
 }
 
-check( 'the manual names the looks, the knobs and the style under panel, the shortcodes with their attributes and the properties and the copy under markup, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
+check( 'the manual names the looks, the knobs and the style and the loop of the Builder under panel, the shortcodes with their attributes and the properties and the copy under markup, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
 
 echo "\n";
 

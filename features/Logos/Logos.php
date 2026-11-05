@@ -16,23 +16,23 @@ namespace Nino\Modules {
 	 *	Logos							A row of logos - the customers a site is proud of - drawn
 	 *										from the elements of one type.
 	 *
-	 *										A logo is an element, so the editors keep them where they
-	 *										keep every repeated thing, in the Elements panel, and the
-	 *										feature reads them the way the stacks of the kernel do:
-	 *										the loop is \Nino\Modules\Components::renderStack(), the
-	 *										same query, sort and limit as [elements], and each logo's
-	 *										picture is the kernel's own [image] with an image field
-	 *										of the element as its source. The feature writes no
-	 *										markup of the picture and reads no file of its own.
+	 *										The row is a loop of the Components module, a stack of the
+	 *										cell none: the data (the type, the sort, the limit, the
+	 *										query) are the kernel's, as they are in [elements], and the
+	 *										call names the fields of the type that make a logo - its
+	 *										picture, its address, its name and the picture for a dark
+	 *										ground - as the Builder offers them. The feature writes no
+	 *										markup of the picture and reads no file of its own: each
+	 *										picture is the kernel's own [image] with an image field of
+	 *										the element as its source.
 	 *
 	 *										A logo can have a second picture for a dark ground. It is
 	 *										written beside the first in the kernel's logo set, the
 	 *										two classes Nino.css shows by the ground the set stands
 	 *										on, so nothing in this class knows a ground.
 	 *
-	 *										The class has no init(): the manifest declares the component
-	 *										and the Components module registers it, and without that
-	 *										module there is nothing to draw the pictures with.
+	 *										The class has no init(): the manifest declares the stack
+	 *										and the Components module registers it.
 	 *
 	 *										The list is written twice: once to be read, and once more
 	 *										as a copy a screen reader skips and a stylesheet shows
@@ -52,108 +52,45 @@ namespace Nino\Modules {
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Logos/templates';
 
-		// The element type the install unit brings, and the one [logos] reads
-		// where it is not told another
-		public const string TYPE = 'logo';
-
-		// The heights of a logo: the class of the row, relative to the height
-		// the Design feature sets for the middle one
-		public const array HEIGHTS = [ 's', 'm', 'l' ];
-
-		// The sort of a call that says nothing: by the position the type brings,
-		// smaller first, a logo with none or with 0 last
-		public const string SORT = 'order';
-
-		// The callback that orders the logos by their position, registered by init() and named by componentLogos()
-		public const string ORDER = '/logos/order';
-
-		// The most logos a call asks for. A row of more is a wall, and the
-		// copy of a band doubles it
-		public const int MOST = 200;
-
 		/**
-		 *	The one thing the feature registers besides what its manifest declares: the
-		 *	callback the loop of a row orders its logos by, see callbackOrder()
+		 *	[logos /logo image="image" link="url"] - the elements of a type as a row of logos.
+		 *
+		 *	The call names the fields: image the picture, link the address, name the text of the
+		 *	picture and dark the picture for a dark ground. A logo without a picture is left out,
+		 *	and so is one whose image is no image field of the type. A link, a name or a dark that
+		 *	is no field of the type is nothing - no link, no alt text, no second picture - and no
+		 *	other field is read in its place.
+		 *
+		 *	A logo with an address is a link where the address is an https, http or mailto address
+		 *	or a path of the site, and where the call does not say links="0". Anything else - a
+		 *	javascript: address, a protocol-relative one - is drawn without the link, not with a
+		 *	changed one.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		public static function init( array &$appData ): void {
-			\Nino\Callbacks::registerCallback( $appData, self::ORDER, [ self::class, 'callbackOrder' ] );
-		}
-
-		/**
-		 *	[logos] - the elements of a type as a row of logos.
-		 *
-		 *	A logo without a picture is left out; a type with none to draw, a type that
-		 *	is no element type with a picture field image and a plain text field name, and a site
-		 *	on which the Components module does not know [image] draw nothing. The same arguments are read
-		 *	whether the Components module made them ready or a page wrote them by
-		 *	hand: a bound is applied here, so that a call with a limit of 9000 or a
-		 *	height of xl is the nearest call that means something.
-		 *
-		 *	A logo with an address is a link where the address is an https, http or
-		 *	mailto address or a path of the site, and where the call does not say
-		 *	link="0". Anything else - a javascript: address, a protocol-relative one -
-		 *	is drawn without the link, not with a changed one.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					type, limit, sort, link, height and class
+		 *	@param		array			$args					What the Components module made ready: the type as source, the loop's
+		 *																	arguments, image, link, name, dark, height, links and class
 		 *
 		 *	@return 	string								The row, or '' where there is nothing to draw
 		 */
-		public static function componentLogos( array &$appData, array $args ): string {
+		public static function stackLogos( array &$appData, array $args ): string {
 
-			$type = trim( (string) ( $args['type'] ?? '' ) );
-			$type = $type === '' ? self::TYPE : $type;
+			$links	= \Nino\Feature::flag( $args, 'links', true );
+			$items	= [];
+			$copy		= [];
 
-			if( preg_match( '#^[a-z][a-z0-9_-]*$#D', $type ) !== 1 )
-				return '';
+			// One run of the loop makes both lists: each logo is written twice, as an item and as its copy
+			\Nino\Modules\Components::renderStack( $appData, $args, static function( string $inner, array $element ) use ( &$appData, $args, $links, &$items, &$copy ): string {
 
-			if( isset( \Nino\Modules\Components::registered( $appData )['image'] ) === false )
-				return '';
+				$model		= (array) ( \Nino\Modules\Components::element( $appData )['model'] ?? [] );
+				$pictures	= self::_pictures( $appData, $args, $element, $model );
 
-			if( \Nino\Filesystem::fileExists( $appData, '/elements/'. $type. '.php' ) === false )
-				return '';
-
-			$model = \Nino\Elements::getElementModel( $appData, '/'. $type );
-
-			// The name is the alt text of the picture, written into an attribute from the fill of the field: a field that keeps
-			// markup or the line breaks of its text (html, breaks) leaves a quote in it, and a field of another kind is none
-			$name = $model['name'] ?? [];
-
-			if( ( $model['image']['type'] ?? '' ) !== 'image' || ( $name['type'] ?? '' ) !== 'string' || ( $name['html'] ?? false ) === true || ( $name['breaks'] ?? false ) === true )
-				return '';
-
-			$height = (string) ( $args['height'] ?? '' );
-			$sort = array_key_exists( 'sort', $args ) === true ? trim( (string) $args['sort'] ) : self::SORT;
-			$loop = [
-				'source'	=> $type,
-				'content'	=> \Nino\Feature::template( $appData, self::TEMPLATES, 'logos-picture' ),
-				'sort'		=> $sort,
-				'limit'		=> max( 0, min( self::MOST, (int) ( $args['limit'] ?? 0 ) ) ),
-			];
-
-			/*	The position is no field the kernel's sort can read: the Elements panel saves a field it was left empty in as 0, which would put a logo
-				with no position in front of one with a position of 10. The loop is told no sort and a callback orders what it found - between the
-				query and the limit, which is applied to what the callback let through - with 0, none and empty last	*/
-			if( $sort === self::SORT ) {
-				$loop['sort'] = '';
-				$loop['callback'] = self::ORDER;
-			}
-			$links = \Nino\Feature::flag( $args, 'link', true );
-			$items = [];
-			$copy = [];
-
-			// One run of the loop makes both lists: the cell is the pictures of one logo, and each logo is written twice, as an item and as its copy
-			\Nino\Modules\Components::renderStack( $appData, $loop, static function( string $pictures, array $element ) use ( &$appData, $links, &$items, &$copy ): string {
-
-				if( trim( $pictures ) === '' )
+				if( $pictures === '' )
 					return '';
 
-				$items[] = self::_item( $appData, $pictures, $element, $links, false );
-				$copy[] = self::_item( $appData, $pictures, $element, $links, true );
+				$href = $links === true ? self::href( self::_field( $element, $model, (string) $args['link'] ) ) : '';
+
+				$items[]	= self::_item( $appData, $pictures, $href, false );
+				$copy[]		= self::_item( $appData, $pictures, $href, true );
 
 				return '';
 			} );
@@ -163,45 +100,101 @@ namespace Nino\Modules {
 
 			return str_replace(
 				[ '[[classes]]', '[[height]]', '[[count]]', '[[items]]', '[[copy]]' ],
-				[
-					\Nino\Feature::classes( $args ),
-					in_array( $height, self::HEIGHTS, true ) === true ? $height : 'm',
-					(string) count( $items ),
-					implode( '', $items ),
-					implode( '', $copy ),
-				],
+				[ \Nino\Feature::classes( $args ), (string) $args['height'], (string) count( $items ), implode( '', $items ), implode( '', $copy ) ],
 				\Nino\Feature::template( $appData, self::TEMPLATES, 'logos' )
 			);
 		}
 
 		/**
-		 *	The logos by their position, the smaller first: a logo whose position is 0, empty or missing stands last, in the order the
-		 *	elements were found in (the sort is stable). Registered by init() for the callback the loop of a row names
+		 *	The pictures of one logo: the field image as the light one and, where the call names one,
+		 *	the field dark as the picture for a dark ground, each through the kernel's [image] - the
+		 *	size of the file it stored, the alt text the name gives
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		mixed			&$elements		(reference) The elements the loop found
+		 *	@param		array			$args					The arguments of the stack
+		 *	@param		array			$element			The element
+		 *	@param		array			$model				The model of its type
 		 *
-		 *	@return 	array											The same elements, ordered
+		 *	@return 	string								'' where the logo has no picture of the field image
 		 */
-		public static function callbackOrder( array &$appData, mixed &$elements ): array {
+		private static function _pictures( array &$appData, array $args, array $element, array $model ): string {
 
-			$elements = is_array( $elements ) === true ? $elements : [];
+			if( self::_isImage( $model, (string) $args['image'] ) === false )
+				return '';
 
-			usort( $elements, static fn( mixed $a, mixed $b ): int => self::_position( $a ) <=> self::_position( $b ) );
+			$alt			= self::_name( $element, $model, (string) $args['name'] );
+			$pictures	= '';
 
-			return $elements;
+			foreach( [ [ 'image', 'logos-picture' ], [ 'dark', 'logos-picture-dark' ] ] as [ $attribute, $template ] ) {
+
+				// The second picture is another field than the first: a dark that names the field of image is no second picture
+				if( self::_isImage( $model, (string) $args[$attribute] ) === false || ( $attribute === 'dark' && $args['dark'] === $args['image'] ) )
+					continue;
+
+				$pictures .= \Nino\Modules\Components::componentImage( $appData, [
+					'source'	=> $args[$attribute],
+					'alt'			=> $alt,
+					'content'	=> \Nino\Feature::template( $appData, self::TEMPLATES, $template ),
+					'focus'		=> '',
+					'ratio'		=> '',
+					'class'		=> '',
+				] );
+			}
+
+			return $pictures;
 		}
 
 		/**
-		 *	@param		mixed			$element			One element as the loop found it
+		 *	Whether a name is a field of the type that holds a picture: [image] reads any other
+		 *	name as the uri of a slot, which is no logo of the element
 		 *
-		 *	@return 	float										Its position, or INF for none: empty, missing or 0
+		 *	@param		array			$model				The model of the type
+		 *	@param		string		$field
+		 *
+		 *	@return 	bool
 		 */
-		private static function _position( mixed $element ): float {
+		private static function _isImage( array $model, string $field ): bool {
+			return $field !== '' && ( $model[$field]['type'] ?? '' ) === 'image';
+		}
 
-			$order = is_array( $element ) === true ? ( $element['order'] ?? null ) : null;
+		/**
+		 *	The value of a field of the element that is no picture, as it is stored: '' for a name that is
+		 *	no field of the type, for a picture and for a value that is not a scalar
+		 *
+		 *	@param		array			$element			The element
+		 *	@param		array			$model				The model of its type
+		 *	@param		string		$field
+		 *
+		 *	@return 	string
+		 */
+		private static function _field( array $element, array $model, string $field ): string {
 
-			return is_numeric( $order ) === true && (float) $order !== 0.0 ? (float) $order : INF;
+			if( $field === '' || isset( $model[$field] ) === false || self::_isImage( $model, $field ) === true || is_scalar( $element[$field] ?? null ) === false )
+				return '';
+
+			return (string) $element[$field];
+		}
+
+		/**
+		 *	The alt text of a logo, as a line of text and not yet escaped: the picture escapes it once. A field
+		 *	that keeps html is read as the text it says - the tags dropped, a block's end and a break a space and the
+		 *	entities the characters they stand for - as the kernel reads a field in the line of a row of a table;
+		 *	the kernel keeps that reading private, so it is made here of the helpers it makes public
+		 *
+		 *	@param		array			$element			The element
+		 *	@param		array			$model				The model of its type
+		 *	@param		string		$field				The field the call names for the name
+		 *
+		 *	@return 	string
+		 */
+		private static function _name( array $element, array $model, string $field ): string {
+
+			$value = self::_field( $element, $model, $field );
+
+			if( in_array( \Nino\Html::fieldFormat( $model[$field] ?? [] ), [ 'inline', 'blocks' ], true ) === false )
+				return $value;
+
+			return trim( (string) preg_replace( '/\s+/', ' ', html_entity_decode( strip_tags( \Nino\Html::breaksToNewlines( $value ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) );
 		}
 
 		/**
@@ -210,17 +203,15 @@ namespace Nino\Modules {
 		 *	keyboard can reach and a screen reader cannot see is a stop nobody can name
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$pictures			The pictures of the logo, as the stack rendered them
-		 *	@param		array			$element			The element
-		 *	@param		bool			$links				Whether a logo with an address is a link
+		 *	@param		string		$pictures			The pictures of the logo
+		 *	@param		string		$href					The address it links to, escaped, '' for none
 		 *	@param		bool			$copy					Whether this is the copy
 		 *
 		 *	@return 	string
 		 */
-		private static function _item( array &$appData, string $pictures, array $element, bool $links, bool $copy ): string {
+		private static function _item( array &$appData, string $pictures, string $href, bool $copy ): string {
 
 			$inner = str_replace( '[[inner]]', $pictures, \Nino\Feature::template( $appData, self::TEMPLATES, 'logos-set' ) );
-			$href = $links === true ? self::href( (string) ( $element['url'] ?? '' ) ) : '';
 
 			if( $href !== '' )
 				$inner = str_replace(

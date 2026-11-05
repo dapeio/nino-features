@@ -9,7 +9,7 @@
 // fields and the word of the pause button of a band, merged into
 // text/<locale>.php. The labels are the workbench's words, not the site's, so the
 // unit blacklists them and the Text panel leaves them out. No template, no route:
-// [logos] is written where a row of logos belongs.
+// [logos /logo ...] is written where a row of logos belongs.
 return [
 	'elementTypes'	=> [ 'logo.php' ],
 	'blacklist'			=> [

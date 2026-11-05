@@ -10,27 +10,27 @@ return [
 	],
 	'manual'			=> [
 		'shortcodes' => [
-			'[logos]' => [
-				'en_US' => 'Every element of the type logo that has a picture, as a row of logos, by the field order - the smaller position first, a logo with none, an empty one or 0 last. A logo with an address is a link. The Builder offers it as Logos.',
-				'de_DE' => 'Jedes Element des Typs logo, das ein Bild hat, als Reihe von Logos, nach dem Feld order - die kleinere Position zuerst, ein Logo ohne eine, mit leerer oder mit 0 zuletzt. Ein Logo mit Adresse ist ein Link. Der Builder bietet es als Logos an.',
+			'[logos /logo image="image" link="url" sort="order"]' => [
+				'en_US' => 'The elements of the type logo that have a picture, as a row of logos, the smaller position first and a logo with no position last. A logo with only the picture for a dark ground is drawn too, and that picture is seen on every ground. A loop of the Components module, written as a single tag and closed nowhere: what stands between a pair of tags is not read. A logo with an address is a link. The Builder offers it as Logos, under Loop.',
+				'de_DE' => 'Die Elemente des Typs logo, die ein Bild haben, als Reihe von Logos, die kleinere Position zuerst und ein Logo ohne Position zuletzt. Auch ein Logo mit nur dem Bild für dunklen Grund wird gezeichnet, und dieses Bild ist auf jedem Grund zu sehen. Ein Loop des Moduls Komponenten, als einzelnes Tag geschrieben und nirgends geschlossen: Was zwischen einem Paar von Tags steht, wird nicht gelesen. Ein Logo mit Adresse ist ein Link. Der Builder bietet sie als Logos an, unter Loop.',
 			],
-			'[logos type="logo" limit="8"]' => [
-				'en_US' => 'type: the element type that is read, logo where left out. It needs the fields name (plain text: a field with html or breaks draws nothing), image, url and, optionally, image-dark and order: a project that wants two sets of logos copies the type. limit: how many, 0 for all, up to 200.',
-				'de_DE' => 'type: der Elementtyp, der gelesen wird, ohne Angabe logo. Er braucht die Felder name (einfacher Text: ein Feld mit html oder breaks zeichnet nichts), image, url und, wenn gewünscht, image-dark und order: Wer zwei Sätze Logos will, kopiert den Typ. limit: wie viele, 0 für alle, bis 200.',
+			'[logos /logo image="image" link="url" name="name" dark="image-dark"]' => [
+				'en_US' => 'The fields that make a logo, by name: image the picture, link the address (empty: no link), name the text of the picture, dark the picture for a dark ground. Defaults are image, name, no link and image-dark; an empty field name is the default, so dark="" is image-dark too. A logo has no second picture where its element has none in that field or the type has no such field, and then the first is seen on every ground. A link, name or dark that is no field of the type draws no link, no alt text or no second picture, and no other field is read in its place; an image that is no picture field of the type draws nothing. Any type with a picture field works, so a project with two sets of logos copies the type.',
+				'de_DE' => 'Die Felder, aus denen ein Logo besteht, mit Namen: image das Bild, link die Adresse (leer: kein Link), name der Text des Bildes, dark das Bild für dunklen Grund. Ohne Angabe gelten image, name, kein Link und image-dark; ein leerer Feldname ist der Standard, dark="" ist also ebenfalls image-dark. Ein Logo hat kein zweites Bild, wo sein Element keines in dem Feld hat oder der Typ das Feld nicht kennt, und dann ist das erste auf jedem Grund zu sehen. Ein Link, Name oder dark, das kein Feld des Typs ist, zeichnet keinen Link, keinen Alternativtext oder kein zweites Bild, und kein anderes Feld tritt an seine Stelle; ein image, das kein Bildfeld des Typs ist, zeichnet nichts. Jeder Typ mit einem Bildfeld geht, wer zwei Sätze Logos will, kopiert also den Typ.',
 			],
-			'[logos sort="name"]' => [
-				'en_US' => 'The order of the loop of [elements]: a field, ascending, -name descending, several joined by commas; sort="" keeps the order of the elements. Without the attribute it is order, which puts a logo with no position, an empty one or 0 last: the Elements panel saves an empty field as 0.',
-				'de_DE' => 'Die Reihenfolge der Schleife von [elements]: ein Feld aufsteigend, -name absteigend, mehrere durch Komma getrennt; sort="" behält die Reihenfolge der Elemente. Ohne das Attribut gilt order, das ein Logo ohne Position, mit leerer oder mit 0 ans Ende stellt: Das Elemente-Panel speichert ein leeres Feld als 0.',
+			'[logos /logo sort="name" limit="8"]' => [
+				'en_US' => 'The data are the loop of [elements]: sort by a field ascending, -name descending, several joined by commas, sort="" keeps the order of the elements; limit how many, 0 for all; offset and query as there. Without a sort the order is that of the elements. sort="order" puts a logo whose position is empty last; a position of 0 is a number and stands first.',
+				'de_DE' => 'Die Daten sind der Loop von [elements]: sort nach einem Feld aufsteigend, -name absteigend, mehrere durch Komma getrennt, sort="" behält die Reihenfolge der Elemente; limit wie viele, 0 für alle; offset und query wie dort. Ohne sort gilt die Reihenfolge der Elemente. sort="order" stellt ein Logo mit leerer Position ans Ende; eine Position 0 ist eine Zahl und steht zuerst.',
 			],
-			'[logos link="0"]' => [
+			'[logos /logo links="0"]' => [
 				'en_US' => 'No logo is a link, whatever its address says. A link is drawn only for an https, http or mailto address or a path of the site that starts with one slash; any other address is left out, not changed.',
 				'de_DE' => 'Kein Logo ist ein Link, was auch immer seine Adresse sagt. Ein Link entsteht nur für eine https-, http- oder mailto-Adresse oder einen Pfad der Site mit einem Schrägstrich am Anfang; jede andere Adresse bleibt weg, sie wird nicht verändert.',
 			],
-			'[logos height="l"]' => [
+			'[logos /logo height="l"]' => [
 				'en_US' => 'The height of the logos: s is three quarters of the height of the look, m the height of the look, l one and a half times. The height of the look is the knob Height under Design.',
 				'de_DE' => 'Die Höhe der Logos: s ist drei Viertel der Höhe des Looks, m die Höhe des Looks, l das Anderthalbfache. Die Höhe des Looks ist der Regler Höhe unter Design.',
 			],
-			'[logos ... class="my-class"]' => [
+			'[logos /logo ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the row. What the Builder writes for its custom classes, such as its spacing classes.',
 				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Reihe. Das schreibt der Builder für seine eigenen Klassen, etwa die Abstands-Klassen.',
 			],
@@ -41,8 +41,8 @@ return [
 				'de_DE' => 'Die Reihe: --h-s, --h-m oder --h-l nach der Höhe des Aufrufs, und die Zahl der Logos als --nino-logos-count im style-Attribut, das das Band für seine Geschwindigkeit liest. Darin stehen nino-logos-strip-view mit zwei Listen, den Logos und einer Kopie von ihnen, und ein Pause-Knopf, den logos.js nur zeigt, wo die Spur eine Animation hat; sein Wort steht im Attribut data-logos-pause, und ein Druck ändert aria-pressed und die Klasse nino-logos-strip--paused, nicht das Wort.',
 			],
 			'<li class="nino-logos-strip-item">' => [
-				'en_US' => 'One logo. The picture is the kernel\'s logo set, nino-logo-set, with the picture of the field image as nino-logo-light and, where the element has one, the picture of image-dark as nino-logo-dark: the ground the row stands on says which is seen. The alt text is the name, the pictures load lazily and carry the size of the field. A link is nino-logos-strip-link with rel="noopener".',
-				'de_DE' => 'Ein Logo. Das Bild ist das Logo-Set des Kernels, nino-logo-set, mit dem Bild des Feldes image als nino-logo-light und, wo das Element eines hat, dem Bild von image-dark als nino-logo-dark: Der Grund, auf dem die Reihe steht, bestimmt, welches zu sehen ist. Der Alternativtext ist der Name, die Bilder laden träge und tragen das Maß des Feldes. Ein Link ist nino-logos-strip-link mit rel="noopener".',
+				'en_US' => 'One logo. The picture is the kernel\'s logo set, nino-logo-set, with the picture of the field image as nino-logo-light and, where the call names a field dark and the element has a picture in it, that picture as nino-logo-dark: the ground the row stands on says which is seen. The alt text is the name, the pictures load lazily and carry the size of the file they were set into the box as. A link is nino-logos-strip-link with rel="noopener".',
+				'de_DE' => 'Ein Logo. Das Bild ist das Logo-Set des Kernels, nino-logo-set, mit dem Bild des Feldes image als nino-logo-light und, wo der Aufruf ein Feld dark nennt und das Element darin ein Bild hat, diesem Bild als nino-logo-dark: Der Grund, auf dem die Reihe steht, bestimmt, welches zu sehen ist. Der Alternativtext ist der Name, die Bilder laden träge und tragen das Maß der Datei, die in die Box eingepasst wurde. Ein Link ist nino-logos-strip-link mit rel="noopener".',
 			],
 			'<ul class="nino-logos-strip-copy" aria-hidden="true">' => [
 				'en_US' => 'The copy of the list that the look Band runs behind the first one, so that the band has no seam. Every other look hides it with display: none. A screen reader skips it and the links in it are out of the order of the Tab key. Under the keyboard focus the band stops and stands at its start, so that every stop is in view.',
@@ -55,21 +55,20 @@ return [
 		],
 		'routes' => [],
 		'panel' => [
+			'Builder: the presentation Logos' => [
+				'en_US' => 'With the Builder feature on, Logos is a presentation of the block Loop in the dialog of a column, beside Grid and Tabs: the type and the data of the loop (query, sort, limit, offset; sort by order for the position of the logos), then the fields that make a logo - Picture, Link, Name and Picture for a dark ground, each a choice among the fields of the type, the Link optional - the Height and Links. It has no content and no cells to place: the Builder writes the call as a single tag and leaves out what stands at its default.',
+				'de_DE' => 'Ist das Feature Builder an, ist Logos eine Darstellung des Blocks Loop im Dialog einer Spalte, neben Raster und Tabs: der Typ und die Daten des Loops (Abfrage, Sortierung, Limit, Offset; für die Position nach order sortieren), dann die Felder, aus denen ein Logo besteht - Bild, Link, Name und Bild für dunklen Grund, jedes eine Auswahl unter den Feldern des Typs, der Link optional - die Höhe und Links. Es hat keinen Inhalt und keine Zellen zu platzieren: Der Builder schreibt den Aufruf als einzelnes Tag und lässt weg, was auf seinem Standard steht.',
+			],
 			'Design: the looks of the logos' => [
 				'en_US' => 'With the Design feature on, the tab Logos of the Design panel offers under Base four looks - Row, as the kernel drew it, Grid, Band and Cards - and a select for the style Tone: None is grey logos that take their colour under the pointer and under the keyboard focus, Colour leaves them as they are, Grey keeps them grey. The knobs are the height of a logo and the space between logos, the corners and the ground of a cell, and for Band its speed under Motion; a knob the look does not answer to is greyed out. Band runs the logos past and stops under the pointer; under the keyboard focus it stands at its start. It has a pause button of its own (Text key /feature/logos/action/pause), and under reduced motion it is a row that wraps. The feature Ticker runs anything.',
 				'de_DE' => 'Ist das Feature Design an, bietet der Tab Logos des Design-Panels unter Grundlage vier Looks an - Reihe, wie der Kernel sie zeichnete, Raster, Band und Karten - und eine Auswahl für den Stil Farbton: Keiner sind graue Logos, die unter dem Zeiger und dem Tastaturfokus ihre Farbe annehmen, Farbe lässt sie, wie sie sind, Grau hält sie grau. Die Regler sind die Höhe eines Logos und der Abstand der Logos, die Ecken und der Grund einer Zelle, beim Band seine Geschwindigkeit unter Bewegung; ein Regler, auf den der Look nicht antwortet, steht ausgegraut da. Das Band lässt die Logos vorbeiziehen und steht unter dem Zeiger still; unter dem Tastaturfokus steht es an seinem Anfang. Es hat einen eigenen Pause-Knopf (Text-Schlüssel /feature/logos/action/pause), und bei reduzierter Bewegung ist es eine umbrechende Reihe. Das Feature Ticker lässt beliebige Inhalte laufen.',
 			],
 		],
-		'callbacks' => [
-			'/logos/order' => [
-				'en_US' => 'The callback a row without a sort of its own orders its logos by: smaller positions first, a logo whose position is empty, missing or 0 last, in the order the elements were found in; registered by init(), applied between the query and the limit of the loop.',
-				'de_DE' => 'Der Callback, nach dem eine Reihe ohne eigene Sortierung ihre Logos ordnet: kleinere Positionen zuerst, ein Logo mit leerer, fehlender oder 0 als Position zuletzt, in der Reihenfolge der Elemente; von init() registriert, zwischen Query und Limit der Loop angewandt.',
-			],
-		],
+		'callbacks' => [],
 		'install' => [
 			'logo.php' => [
-				'en_US' => 'The element type logo, copied to /elements where the project has none: name, image, url, image-dark and order, no element. The pictures are cropped to 540 by 210 pixels when they are uploaded, so a logo of another ratio loses its edges. After the activation, add the logos under Elements and write [logos] where the row belongs.',
-				'de_DE' => 'Der Elementtyp logo, nach /elements kopiert, wo das Projekt keinen hat: name, image, url, image-dark und order, kein Element. Die Bilder werden beim Hochladen auf 540 mal 210 Pixel zugeschnitten, ein Logo eines anderen Seitenverhältnisses verliert also seine Ränder. Nach der Aktivierung legst Du die Logos unter Elemente an und schreibst [logos] dorthin, wo die Reihe stehen soll.',
+				'en_US' => 'The element type logo, copied to /elements where the project has none: name, image, url, image-dark and order, no element. The two pictures are set into a box of 540 by 210 pixels when they are uploaded - fitted, not cropped: the longest side takes the box, nothing is cut off and a smaller picture is not scaled up. After the activation, add the logos under Elements and write the row where it belongs, in the Builder or as [logos /logo image="image" link="url" sort="order"].',
+				'de_DE' => 'Der Elementtyp logo, nach /elements kopiert, wo das Projekt keinen hat: name, image, url, image-dark und order, kein Element. Die beiden Bilder werden beim Hochladen in eine Box von 540 mal 210 Pixel eingepasst - nicht beschnitten: Die längere Seite nimmt die Box, nichts wird abgeschnitten und ein kleineres Bild nicht vergrößert. Nach der Aktivierung legst Du die Logos unter Elemente an und schreibst die Reihe dorthin, wo sie stehen soll, im Builder oder als [logos /logo image="image" link="url" sort="order"].',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'The labels of the fields of the type in the Elements panel (blacklisted: the workbench\'s words) and the word of the pause button of a band, into the Text panel: Pause logos.',
@@ -88,49 +87,48 @@ return [
 	// The row's stylesheet goes into the site's style bundle; the band is an animation, and the script only draws the button that pauses it
 	'assets'			=> [ '/features/Logos/assets/logos.css', '/features/Logos/assets/logos.js' ],
 	'settings'		=> [],
-	/*	The shortcode as the Builder offers it	*/
-	'components'	=> [
+	// The row is a loop, a stack of the cell none: the kernel brings the data (type, sort, limit, query) and the Builder offers the fields it draws from
+	'components'	=> [],
+	'stacks'		=> [
 		'logos' => [
 			'label'			=> [ 'en_US' => 'Logos', 'de_DE' => 'Logos' ],
-			'source'		=> 'none',
-			'loop'			=> false,
+			'cell'			=> 'none',
+			'grid'			=> false,
 			'attributes'	=> [
-				'type' => [
-					'type'		=> 'string',
-					'default'	=> 'logo',
-					'label'		=> [ 'en_US' => 'Element type', 'de_DE' => 'Elementtyp' ],
+				'image' => [
+					'type'		=> 'field',
+					'default'	=> 'image',
+					'label'		=> [ 'en_US' => 'Picture', 'de_DE' => 'Bild' ],
 					'hint'		=> [
-						'en_US' => 'The type whose elements are the logos. It needs the fields name, image and url, and image-dark if there are pictures for a dark ground.',
-						'de_DE' => 'Der Typ, dessen Elemente die Logos sind. Er braucht die Felder name, image und url, und image-dark, wenn es Bilder für einen dunklen Grund gibt.',
-					],
-				],
-				'limit' => [
-					'type'		=> 'int',
-					'min'			=> 0,
-					'max'			=> 200,
-					'default'	=> 0,
-					'label'		=> [ 'en_US' => 'Number', 'de_DE' => 'Anzahl' ],
-					'hint'		=> [
-						'en_US' => 'How many logos at most. 0 draws all of them.',
-						'de_DE' => 'Wie viele Logos höchstens. 0 zeichnet alle.',
-					],
-				],
-				'sort' => [
-					'type'		=> 'string',
-					'default'	=> 'order',
-					'label'		=> [ 'en_US' => 'Order', 'de_DE' => 'Reihenfolge' ],
-					'hint'		=> [
-						'en_US' => 'A field to sort by: order, the position of the element, name, or -name for descending. Empty keeps the order of the elements.',
-						'de_DE' => 'Ein Feld, nach dem sortiert wird: order, die Position des Elements, name, oder -name für absteigend. Leer behält die Reihenfolge der Elemente.',
+						'en_US' => 'The picture field of the type that holds the logo. An element with no picture in it is left out, unless it has the picture for a dark ground, which is then seen on every ground.',
+						'de_DE' => 'Das Bildfeld des Typs, in dem das Logo liegt. Ein Element ohne Bild darin entfällt, außer es hat das Bild für dunklen Grund, das dann auf jedem Grund zu sehen ist.',
 					],
 				],
 				'link' => [
-					'type'		=> 'bool',
-					'default'	=> true,
-					'label'		=> [ 'en_US' => 'Links', 'de_DE' => 'Links' ],
+					'type'		=> 'field',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Link', 'de_DE' => 'Link' ],
 					'hint'		=> [
-						'en_US' => 'A logo with an address is a link. Off, none is.',
-						'de_DE' => 'Ein Logo mit Adresse ist ein Link. Aus: Keines ist ein Link.',
+						'en_US' => 'The field with the address a logo links to. Optional: with none, no logo is a link.',
+						'de_DE' => 'Das Feld mit der Adresse, zu der ein Logo verlinkt. Optional: Ohne Angabe ist kein Logo ein Link.',
+					],
+				],
+				'name' => [
+					'type'		=> 'field',
+					'default'	=> 'name',
+					'label'		=> [ 'en_US' => 'Name', 'de_DE' => 'Name' ],
+					'hint'		=> [
+						'en_US' => 'The field with the name of the customer, the alt text of the picture.',
+						'de_DE' => 'Das Feld mit dem Namen des Kunden, der Alternativtext des Bildes.',
+					],
+				],
+				'dark' => [
+					'type'		=> 'field',
+					'default'	=> 'image-dark',
+					'label'		=> [ 'en_US' => 'Picture for a dark ground', 'de_DE' => 'Bild für dunklen Grund' ],
+					'hint'		=> [
+						'en_US' => 'The picture field with the logo for a dark ground. An empty choice is the default, image-dark. A logo that has no picture in the field, or a type without the field, has no second picture, and the first one is seen on every ground.',
+						'de_DE' => 'Das Bildfeld mit dem Logo für einen dunklen Grund. Eine leere Wahl ist der Standard, image-dark. Ein Logo ohne Bild in dem Feld oder ein Typ ohne das Feld hat kein zweites Bild, und das erste ist auf jedem Grund zu sehen.',
 					],
 				],
 				'height' => [
@@ -144,15 +142,17 @@ return [
 						'de_DE' => 'Die Höhe der Logos: drei Viertel der Höhe des Looks, diese Höhe, das Anderthalbfache.',
 					],
 				],
+				'links' => [
+					'type'		=> 'bool',
+					'default'	=> true,
+					'label'		=> [ 'en_US' => 'Links', 'de_DE' => 'Links' ],
+					'hint'		=> [
+						'en_US' => 'A logo with an address is a link. Off, none is.',
+						'de_DE' => 'Ein Logo mit Adresse ist ein Link. Aus: Keines ist ein Link.',
+					],
+				],
 			],
 			'preview'		=> 'image',
-			'draws'			=> 'div .nino-logos-strip',
-			'in'			=> [ 'section', 'hero' ],
-			'icon'			=> [
-				[ 'rect', [ 'width' => '18', 'height' => '18', 'x' => '3', 'y' => '3', 'rx' => '2' ] ],
-				[ 'path', [ 'd' => 'M9 3v18' ] ],
-				[ 'path', [ 'd' => 'M15 3v18' ] ],
-			],
 		],
 	],
 ];

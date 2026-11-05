@@ -10,7 +10,7 @@ return [
 	'[[/_admin/elements/field/logo/image]]'			=> 'Logo',
 	'[[/_admin/elements/field/logo/url]]'				=> 'Link (https://, http://, mailto: or a path of the website like /contact; empty: no link)',
 	'[[/_admin/elements/field/logo/image-dark]]'	=> 'Logo for a dark ground (optional)',
-	'[[/_admin/elements/field/logo/order]]'			=> 'Position (10, 20, … - empty or 0 goes last)',
+	'[[/_admin/elements/field/logo/order]]'			=> 'Position (10, 20, … - empty goes last)',
 
 	// What the button says that pauses the moving band; it stays the same word, and the state is aria-pressed
 	'[[/feature/logos/action/pause]]'	=> 'Pause logos',
