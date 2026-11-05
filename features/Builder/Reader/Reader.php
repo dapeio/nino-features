@@ -253,7 +253,9 @@ namespace Nino\Modules\Builder {
 	 *											                    offsets of the ground, in the order of SPACING. The kernel's nino-p-<n> is no setting of a call: a card's padding attribute says the same
 	 *											                    for its four sides, and the Builder keeps the two apart
 	 *											  content   string  only for a component whose source is 'content' and whose
-	 *											                    schema does not say 'holds'
+	 *											                    schema does not say 'holds', and for a column of a loop (a component
+	 *											                    that stands in a place a loop holds), whose content is the markup
+	 *											                    of its cells, as it stands between its tags
 	 *											  components list  only for a component whose schema says 'holds' (a container):
 	 *											                    the component nodes between its tags, in order, one level
 	 *											                    deep - none of them has 'components' - and never a
@@ -353,8 +355,10 @@ namespace Nino\Modules\Builder {
 		// the brackets of a fill that is there are not the end of the call - and any other character is itself. See address() for the only fills a call may hold
 		private const string RAW = '(?:\[\[[^\[\]]*+\]\]|[^\]])*+';
 
-		// The places a loop holds the calls of, and a column of a page does not offer: the kernel says them in the 'in' of a component and the 'holds' of a loop
-		public const array LOOP_PLACES = [ 'table' ];
+		// The attribute of a loop that is a line of free text with the fields of the element in it, as the fixed text of a component is: the kernel's name for it, the one place
+		// the Builder says it; and the name of a field of the element, which the kernel holds the attributes of the type field to
+		public const string STACK_TEXT = 'text';
+		private const string FIELD = '/^[A-Za-z][A-Za-z0-9_-]*$/D';
 
 		// A fill in a line of free text: the name of a field of the element, .id, .slug, .uri, or a text key
 		private const string LINE_FILL = '\[\[(\/?[A-Za-z0-9_.\/-]+)\]\]';
@@ -402,7 +406,7 @@ namespace Nino\Modules\Builder {
 			'table-content'				=> 'the table holds %s, which is no column',
 			'table-empty'					=> 'a table without a column',
 			'col-elsewhere'				=> 'a column of a table outside a table',
-			'col-value'						=> 'a column that shows both a field and a line of text, or neither',
+			'col-value'						=> 'a column that shows more than one of a field, a line of text and a content, or none of them, or a content that is empty',
 			'holder-stack'				=> 'a loop inside a component that holds components',
 			'holder-in-holder'		=> 'a component that holds components inside another',
 			'holder-content'			=> 'the component %s holds markup next to its component calls: %s',
@@ -548,8 +552,8 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Whether a component is a column of a table, by what its schema says and not by its name: it stands in none of the places a column of a page offers
-		 *	(section, card, hero) but only in a place a loop holds (LOOP_PLACES)
+		 *	Whether a component is a column of a loop, by what its schema says and not by its name: it stands in none of the places a column of a page offers
+		 *	(section, card, hero) but only in a place a loop holds, which the Document marks ('columnar')
 		 *
 		 *	@param		array			$schema				One entry of the registry's components
 		 *
@@ -557,9 +561,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function columnar( array $schema ): bool {
 
-			$in = $schema['in'] ?? null;
-
-			return is_array( $in ) === true && $in !== [] && array_diff( $in, self::LOOP_PLACES ) === [];
+			return ( $schema['columnar'] ?? false ) === true;
 		}
 
 		/**
@@ -617,6 +619,18 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function lineDecode( string $raw ): string {
 			return strtr( $raw, [ '&quot;' => '"', '&#39;' => '\'', '&#91;' => '[', '&#93;' => ']', '&amp;' => '&' ] );
+		}
+
+		/**
+		 *	The text of a loop as the call of it carries it: the call is read up to its first closing bracket, so every bracket - those of the fields of the element
+		 *	included - is the entity the call decodes, [[title]] is &#91;&#91;title&#93;&#93;
+		 *
+		 *	@param		string		$text
+		 *
+		 *	@return 	string
+		 */
+		public static function entityEncode( string $text ): string {
+			return strtr( $text, [ '&' => '&amp;', '"' => '&quot;', '\'' => '&#39;', '[' => '&#91;', ']' => '&#93;' ] );
 		}
 
 		/**
@@ -868,21 +882,22 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The stack whose cell is a whole section - the loop of sections. The schema says so ('cell' =>
-		 *	'section', which the Document puts there, being the one place that knows the kernel's name for
-		 *	it), and the Builder asks the schema and not the name
+		 *	The stacks whose cell is a whole section - the loops of sections, the kernel's and any a feature
+		 *	registers. The schema says so ('cell' => 'section'), and the Builder asks the schema and not a name
 		 *
 		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
 		 *
-		 *	@return 	string										Its name, '' where the registry has none
+		 *	@return 	array										Their names, in the order of the registry; none where the registry has none
 		 */
-		public static function loopsSections( array $registry ): string {
+		public static function loopsSections( array $registry ): array {
+
+			$names = [];
 
 			foreach( (array) ( $registry['stacks'] ?? [] ) as $name => $schema )
 				if( is_array( $schema ) === true && ( $schema['cell'] ?? '' ) === 'section' )
-					return (string) $name;
+					$names[] = (string) $name;
 
-			return '';
+			return $names;
 		}
 
 		/**
@@ -1067,11 +1082,11 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		string		$body
 		 *	@param		int				$from					The start of the failed block
-		 *	@param		string		$loop					The name of the loop of sections, '' where the registry has none
+		 *	@param		array			$loops				The names of the loops of sections, none where the registry has none
 		 *
 		 *	@return 	int|null								The start of the line, null where there is none
 		 */
-		private static function _candidate( string $body, int $from, string $loop = '' ): ?int {
+		private static function _candidate( string $body, int $from, array $loops = [] ): ?int {
 
 			$newline = strpos( $body, "\n", $from );
 
@@ -1079,8 +1094,9 @@ namespace Nino\Modules\Builder {
 				return null;
 
 			$search	= $newline + 1;
-			$open		= $loop === '' ? '' : '\['. preg_quote( $loop, '~' ). '(?=[ \]])';
-			$close	= $loop === '' ? '' : '\[/'. preg_quote( $loop, '~' ). '\]';
+			$names	= implode( '|', array_map( static fn( string $name ): string => preg_quote( $name, '~' ), $loops ) );
+			$open		= $names === '' ? '' : '\[(?:'. $names. ')(?=[ \]])';
+			$close	= $names === '' ? '' : '\[/(?:'. $names. ')\]';
 
 			while( preg_match( '~(?<![^\n])[\t ]*(?:<(?:section\b|!--[\t ]*nino:html[\t ]*-->)'. ( $open === '' ? '' : '|'. $open ). ')~', $body, $match, PREG_OFFSET_CAPTURE, $search ) === 1 ) {
 
@@ -1088,7 +1104,7 @@ namespace Nino\Modules\Builder {
 				$passed	= substr( $body, $from, $at - $from );
 				$depth	= preg_match_all( '~<section\b~', $passed ) - preg_match_all( '~</section\s*>~', $passed );
 
-				if( $loop !== '' )
+				if( $names !== '' )
 					$depth += preg_match_all( '~'. $open. '~', $passed ) - preg_match_all( '~'. $close. '~', $passed );
 
 				if( $depth <= 0 )
@@ -1151,10 +1167,10 @@ namespace Nino\Modules\Builder {
 		private static function _section( string $body, int $pos, array $registry, array $ids ): array {
 
 			$pos		= self::_skip( $body, $pos );
-			$loop		= self::loopsSections( $registry );
+			$loops	= self::loopsSections( $registry );
 
 			// A loop of sections has no tag of its own: its call is the tag
-			if( $loop !== '' && preg_match( '~\G\['. preg_quote( $loop, '~' ). '(?=[ \]])~', $body, $call, 0, $pos ) === 1 )
+			if( $loops !== [] && preg_match( '~\G\[(?:'. implode( '|', array_map( static fn( string $name ): string => preg_quote( $name, '~' ), $loops ) ). ')(?=[ \]])~', $body, $call, 0, $pos ) === 1 )
 				return self::_loop( $body, $pos, $registry, $ids );
 
 			[ $attributes, $pos ] = self::_open( $body, $pos, 'section', 'not-a-section' );
@@ -2125,7 +2141,8 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( $isStack === true ? 'holder-stack' : 'holder-in-holder', '', $base + $pos );
 
 			// The expression the kernel finds a call and its content with - but for the fills in the address of a link (see RAW), which the kernel has put in by then
-			preg_match( '~\G\[('. preg_quote( $name, '~' ). ')(?: ('. self::RAW. '))?\](?:([^\[]*+(?:\[(?!\/\1\])[^\[]*+)*+)(?:\[\/\1\]))?~', $text, $match, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL, $pos );
+			// The content of a column ends at the first closing tag, and a column that opens before it has none: the table reads a bare column and one with a content side by side
+			preg_match( '~\G\[('. preg_quote( $name, '~' ). ')(?: ('. self::RAW. '))?\](?:([^\[]*+(?:\[(?!\/\1\]'. ( $column === true ? '|\1[ \]]' : '' ). ')[^\[]*+)*+)(?:\[\/\1\]))?~', $text, $match, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL, $pos );
 
 			$raw				= $match[2][0] ?? '';
 			$content		= $match[3][0] ?? null;
@@ -2154,7 +2171,8 @@ namespace Nino\Modules\Builder {
 
 			$fixed = null;
 
-			if( array_key_exists( 'text', $named ) === true ) {
+			// The text of a loop is an attribute of its own (see below), the fixed text of a component is not
+			if( $isStack === false && array_key_exists( 'text', $named ) === true ) {
 
 				if( in_array( $kind, [ 'text', 'href', 'image' ], true ) === false )
 					throw self::_fail( 'unknown-attribute', 'text', $base + $pos );
@@ -2210,8 +2228,20 @@ namespace Nino\Modules\Builder {
 					$node[$side] = $sides[$side] ?? '';
 			}
 
-			// A column shows a field or a line of text, one of the two; it has no class, which a cell does not draw
-			if( $column === true && ( ( $node['attributes']['field'] ?? '' ) !== '' ) === is_string( $fixed ) )
+			// The text of a loop - a title line, say - carries the fields of the element as entities, and is the characters in the model
+			if( $isStack === true && is_array( $schema['attributes'][self::STACK_TEXT] ?? null ) === true ) {
+
+				$raw			= (string) ( $node['attributes'][self::STACK_TEXT] ?? '' );
+				$decoded	= self::lineDecode( $raw );
+
+				if( self::entityEncode( $decoded ) !== $raw || self::lineText( $decoded ) === false )
+					throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
+
+				$node['attributes'][self::STACK_TEXT] = $decoded;
+			}
+
+			// A column shows a field, a line of text or a content, one of the three; it has no class, which a cell does not draw
+			if( $column === true && ( $content !== null && trim( $content ) === '' || count( array_filter( [ ( $node['attributes']['field'] ?? '' ) !== '', is_string( $fixed ), $content !== null ] ) ) !== 1 ) )
 				throw self::_fail( 'col-value', '', $base + $pos );
 
 			if( $column === true && (string) ( $node['attributes']['class'] ?? '' ) !== '' )
@@ -2235,6 +2265,16 @@ namespace Nino\Modules\Builder {
 					throw self::_fail( 'nested-call', $name, $base + $contentAt );
 
 				$node['content'] = (string) $content;
+			}
+			elseif( $column === true && $content !== null ) {
+
+				// The markup of a cell is html+ with the fields of the element in it and the components of a cell, and no loop
+				$loops = array_keys( (array) ( $registry['stacks'] ?? [] ) );
+
+				if( $loops !== [] && preg_match( '~\[(?:'. implode( '|', array_map( static fn( string $n ): string => preg_quote( $n, '~' ), $loops ) ). ')(?: [^\]]*)?\]~', $content ) === 1 )
+					throw self::_fail( 'stack-in-stack', '', $base + $contentAt );
+
+				$node['content'] = $content;
 			}
 			elseif( $content !== null )
 				throw self::_fail( 'component-content', $name, $base + $pos );
@@ -2323,6 +2363,8 @@ namespace Nino\Modules\Builder {
 						|| ( is_array( $declared['optionLabels'] ?? null ) === true && ( $type === 'select' || preg_match( self::WORD, $value ) === 1 ) ),
 					'int'			=> preg_match( '/^-?\d{1,9}$/D', $value ) === 1 && (int) $value >= ( $declared['min'] ?? PHP_INT_MIN ) && (int) $value <= ( $declared['max'] ?? PHP_INT_MAX ),
 					'bool'		=> $value === '0' || $value === '1',
+					// A field of the element is a name, or none
+					'field'		=> $value === '' || preg_match( self::FIELD, $value ) === 1,
 					default		=> true,
 				};
 

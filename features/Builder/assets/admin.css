@@ -1932,6 +1932,12 @@ button.builder-status-item:hover {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+.builder-table-ph-table td.is-content {
+	font-style: italic;
+}
+.builder-ph.builder-loop-block {
+	border-style: dashed;
+}
 .builder-table-ph-table th.is-red,
 .builder-table-ph-table td.is-red {
 	color: var(--editor-red);

@@ -196,6 +196,8 @@ Object.assign( words, {
 
 // A word of the panel by its key under /_admin/builder/: a sentence is pinned by where it stands and what it is filled with, never by what it says
 const word = function( key ) { return words['/_admin/builder/'+ key] };
+// The select that chooses how a loop is shown, by its label
+const kindWord = word('stack/kind');
 
 // ------------------------------------------------------------ A small stand-in of the page
 
@@ -1211,7 +1213,7 @@ check( '...a section with nothing in it, as a new one is, holds nothing', builde
 
 console.log( '\nThe loop\'s name, the animation of the template and of a section, the order of a loop, the widths of a column' );
 
-check( 'the plain stack of the kernel is called the loop, the others by the label they registered', builder._stackLabel( registry(), 'stack' ) === 'Element loop' && builder._stackLabel( registry(), 'slider' ) === 'Slider' && builder._stackLabel( registry(), 'nothing' ) === 'nothing' );
+check( 'a stack is called by the label it registered, whichever it is - the plain one is not called anything else', builder._stackLabel( registry(), 'stack' ) === registry().stacks.stack.label && registry().stacks.stack.label === 'Grid' && builder._stackLabel( registry(), 'slider' ) === 'Slider' && builder._stackLabel( registry(), 'nothing' ) === 'nothing' );
 
 check( 'an effect and its strength are one word of the model, and the plain effect, which has neither, is none', builder._effectJoin( 'zoom', 'soft' ) === 'zoom-soft' && builder._effectJoin( 'zoom-out', 'hard' ) === 'zoom-out-hard' && builder._effectJoin( 'slide-left', 'medium' ) === 'slide-left-medium'
 	&& builder._effectJoin( '', 'hard' ) === '' );
@@ -1418,8 +1420,8 @@ model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : 
 check( '...a component the registry does not know and one that names no image are blocks, labelled with what they are', plan('l')[0].cols[0].components.slice( 3 ).map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'block:unknown-one,block:Spacer' );
 check( 'a loop is no frame of the preview: the column that runs it says so - the label of the loop, the type it runs over by the title the Elements panel gives it, where its settings are - and keeps its components, which are what each cell shows', ( function() {
 	const stack = plan('l')[1].cols[1].stack;
-	return JSON.stringify( Object.keys( stack ) ) === '["path","label","type"]' && stack.label === 'Element loop' && stack.type === 'Services' && builder._same( stack.path, [ 1, 1, 'x' ] )
-		&& plan('s')[1].cols[1].stack.label === 'Element loop' && plan('l')[1].cols[0].stack === null && plan('l')[1].cols[1].components.length === 4;
+	return JSON.stringify( Object.keys( stack ) ) === '["path","label","type"]' && stack.label === registry().stacks.stack.label && stack.type === 'Services' && builder._same( stack.path, [ 1, 1, 'x' ] )
+		&& plan('s')[1].cols[1].stack.label === registry().stacks.stack.label && plan('l')[1].cols[0].stack === null && plan('l')[1].cols[1].components.length === 4;
 } )() );
 check( '...a type the Elements panel does not know, or that has no title there, is told by its uri', ( function() {
 	model.blocks[1].cols[1].stack.source = '/nowhere';
@@ -1523,10 +1525,10 @@ check( '...what is said of a section is a picture behind it, as an icon with its
 } )() );
 
 const loopItem = function() { return preview().querySelector('.builder-status-item.is-loop') };
-check( 'the loop is no frame of its own: the column that runs it says "Element loop · <type>" in its head, as a button that has the settings of the loop for its title - and the components sit directly in the column', ( function() {
+check( 'the loop is no frame of its own: the column that runs it says "<label of the presentation> · <type>" in its head, as a button that has the settings of the loop for its title - and the components sit directly in the column', ( function() {
 	const item = loopItem();
 	const col = preview().querySelector('[data-path="1.1"]');
-	return preview().querySelectorAll('.builder-status-item.is-loop').length === 1 && item.localName === 'button' && item.textContent === 'Element loop · Services' && item.title === 'Settings of the loop: Element loop · Services' && iconOf( item ) === 'loop'
+	return preview().querySelectorAll('.builder-status-item.is-loop').length === 1 && item.localName === 'button' && item.textContent === registry().stacks.stack.label+ ' \u00b7 Services' && item.title === 'Settings of the loop: '+ item.textContent && iconOf( item ) === 'loop'
 		&& col.querySelector('.builder-head-status').contains( item ) && classes( col.querySelector('.builder-col-body').children ) === 'builder-ph builder-pick,builder-ph has-draws builder-pick,builder-ph builder-pick,builder-ph has-draws builder-pick,builder-adds'
 		&& preview().all().filter( function( el ) { return el.classList.contains('builder-pick') && /\.x$/.test( el.dataset.path ?? '' ) } ).length === 0 && preview().querySelector('.builder-stack') === null;
 } )() );
@@ -1679,7 +1681,7 @@ check( '...what cannot go where the lightbox was opened is there all the same, g
 	const plain = item( [ 0, 0 ], 'Stub hero' );
 	const found = [ reasonOf( [ 1, 0 ], 'Title (Card)' ), reasonOf( [ 1, 0 ], 'Stub hero' ), reasonOf( [ 0, 0 ], 'Stub hero' ), reasonOf( [ 1, 0 ], 'Stub else' ), reasonOf( [ 1, 1 ], 'Stub alone' ), reasonOf( [ 1, 0 ], 'Stub alone' ) ].join(' | ');
 
-	return found === 'Only in a card | Only in the first section |  | Not offered here | Not in an element loop | ' && reasonOf( [ 1, 0 ], 'Nothing' ) === null
+	return found === 'Only in a card | Only in the first section |  | Not offered here | '+ word('reason/pick-no-loop')+ ' | ' && reasonOf( [ 1, 0 ], 'Nothing' ) === null
 		&& grey.disabled === true && grey.title === 'Only in the first section' && grey.children.length === 3 && grey.children[2].localName === 'span' && grey.children[2].className === 'nino-admin-sr-only' && grey.children[2].textContent === grey.title
 		&& plain.disabled === false && plain.title === '' && plain.children.length === 2 && plain.querySelector('.nino-admin-sr-only') === null;
 } )() );
@@ -2719,28 +2721,28 @@ builder._renderEditor();
 builder._openSettings( [ 3 ] );
 const loopTab = function() { return blockOf('loop').querySelector('.builder-loop') };
 check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
-	&& JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && valueAt( loopTab(), 'Loop' ) === '' && optionsOf( loopTab(), 'Loop' ) === '=Static,sections=Element loop' && loopTab().querySelectorAll('.builder-group').length === 0
-	&& builder._sectionLoop( builder._registry ) === 'sections' && builder._sectionLoop( { stacks : { stack : { grid : true } } } ) === '' );
-change( loopTab(), 'Loop', 'sections' );
-check( '...the loop that is chosen runs over the first type of the project with the attributes the stack has, and the block shows its form in two groups, Data and Order - no cells, no gap, no equal height: a section is the cell -, with the id of the loop that is the id of the section, shown and not to be typed, and the sentence that says how the sections are numbered after it', ( function() {
+	&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( loopTab(), kindWord ) === '' && optionsOf( loopTab(), kindWord ) === '='+ word('stack/static')+ ',sections='+ registry().stacks.sections.label && loopTab().querySelectorAll('.builder-group').length === 0
+	);
+change( loopTab(), kindWord, 'sections' );
+check( '...the loop that is chosen runs over the first type of the project with the attributes the stack has, and the block shows its form in the group Data and, for what the presentation brings of its own, a group named after it - no cells, no gap, no equal height: a section is the cell -, with the id of the loop that is the id of the section, shown and not to be typed, and the sentence that says how the sections are numbered after it', ( function() {
 
 	const loop = blockAt( 3 ).stack;
 	const id = controlOf( loopTab(), 'Id of the loop' );
 
-	// The attributes of the stack's own, where the registry gives it some, stand in a third group after the two
+	// The attributes of the stack's own, where the registry gives it some, stand in a group of their own after the data
 	const own = Object.keys( registry().stacks.sections.attributes || {} );
 
-	return loop.name === 'sections' && loop.source === '/services' && loop.attributes.id === '' && titlesIn( loopTab() ) === ( own.length > 0 ? 'Data,Order,Own' : 'Data,Order' )
-		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Id of the loop', 'Sort by', 'Direction', 'Limit', 'Offset' ].concat( own.map( function( key ) { return registry().stacks.sections.attributes[key].label } ) ) )
+	return loop.name === 'sections' && loop.source === '/services' && loop.attributes.id === '' && titlesIn( loopTab() ) === ( own.length > 0 ? 'Data,'+ registry().stacks.sections.label : 'Data' )
+		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord, 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Id of the loop' ].concat( own.map( function( key ) { return registry().stacks.sections.attributes[key].label } ) ) )
 		&& id.el.readOnly === true && id.el.value === 'contact' && tipOf( id ) === words['/_admin/builder/hint/sections-id'].replace( /%s/g, 'contact' );
 } )() );
-check( '...a section that runs a loop says so in its head, as a column does: "Element loop" and the type, a button that opens the loop of the section - and the loop is in no other block\'s way: the columns of the section are the cell, once for each element', ( function() {
+check( '...a section that runs a loop says so in its head, as a column does: the label of its presentation and the type, a button that opens the loop of the section - and the loop is in no other block\'s way: the columns of the section are the cell, once for each element', ( function() {
 
 	builder._closeDialog();
 	builder._renderEditor();
 
 	const item = preview().children[3].querySelector('.builder-frame-head .builder-status-item.is-loop');
-	const opened = item !== null && item.localName === 'button' && item.textContent === 'Element loop · Services' && item.title === 'Settings of the loop: Element loop · Services' && iconOf( item ) === 'loop';
+	const opened = item !== null && item.localName === 'button' && item.textContent === registry().stacks.sections.label+ ' \u00b7 Services' && item.title === 'Settings of the loop: '+ item.textContent && iconOf( item ) === 'loop';
 
 	item.click();
 
@@ -2762,7 +2764,7 @@ check( '...what the loop of a section takes of the other blocks is its own: the 
 	const height = controlOf( dialogContent(), heightLabel );
 	const free = height.el.disabled === false && String( height.el.value ) === '100';
 
-	change( dialogContent(), 'Loop', 'sections' );
+	change( dialogContent(), kindWord, 'sections' );
 
 	return free === true && controlOf( dialogContent(), heightLabel ).el.disabled === true && String( controlOf( dialogContent(), heightLabel ).el.value ) === '90' && settingsAt( 0 ).cover === 90
 		&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( before ) && before.indexOf('Delay') !== -1 && before.indexOf('Duration') !== -1 && settingsAt( 0 ).vpaDelay === '200ms' && settingsAt( 0 ).vpaDuration === '1s';
@@ -2772,24 +2774,24 @@ check( '...a column of such a section may not run a loop of its own, and the loo
 	builder._closeDialog();
 	builder._openSettings( [ 0, 0 ] );
 
-	const column = controlOf( dialogContent(), 'Loop' ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('The section makes a section of every element') === 0;
+	const column = controlOf( dialogContent(), kindWord ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('The section makes a section of every element') === 0;
 
 	builder._closeDialog();
 	builder._openSettings( [ 1 ] );
 
-	return column && controlOf( dialogContent(), 'Loop' ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
+	return column && controlOf( dialogContent(), kindWord ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
 } )() );
 check( '...and the picker of a column of such a section holds back what a loop does not take, as it does in the column that runs one', ( function() {
 	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
-	const looped = reasonOf( [ 0, 0 ], 'Stub alone' ) === 'Not in an element loop';
+	const looped = reasonOf( [ 0, 0 ], 'Stub alone' ) === word('reason/pick-no-loop');
 	const plain = reasonOf( [ 1, 0 ], 'Stub alone' ) === '';
 	delete builder._registry.components['stub-alone'];
 	return looped && plain;
 } )() );
 builder._closeDialog();
 builder._openSettings( [ 0 ] );
-change( dialogContent(), 'Loop', '' );
-check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && settingsAt( 0 ).cover === 90 && controlOf( dialogContent(), heightLabel ).el.disabled === false );
+change( dialogContent(), kindWord, '' );
+check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord ] ) && settingsAt( 0 ).cover === 90 && controlOf( dialogContent(), heightLabel ).el.disabled === false );
 builder._closeDialog();
 
 console.log( '\nWhat the preview says of a section and of a link, and where a click leaves the page' );
@@ -3086,12 +3088,12 @@ check( '...and the other way round', blockOf('width').querySelectorAll('tbody tr
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0 ] );
-check( 'the loop of a column that runs none is the choice of the loop and nothing else: Static, and the loops of the registry - the plain one called the element loop', JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop' ] ) && valueAt( dialogContent(), 'Loop' ) === ''
-	&& controlOf( dialogContent(), 'Loop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Static,stack=Element loop,slider=Slider,filter=Filter,list=List,table=Table' && loopPane().querySelectorAll('.builder-group').length === 0 );
-change( dialogContent(), 'Loop', 'stack' );
+check( 'the loop of a column that runs none is the choice of the loop and nothing else: Static, and the loops of the registry - every one that may stand in a column, in the order of the registry, with the label it registered', JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( dialogContent(), kindWord ) === ''
+	&& controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '='+ word('stack/static')+ ','+ Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell !== 'section' } ).map( function( name ) { return name+ '='+ registry().stacks[name].label } ).join() && loopPane().querySelectorAll('.builder-group').length === 0 );
+change( dialogContent(), kindWord, 'stack' );
 check( '...a loop that is chosen is the kernel\'s, over the first type of the project, with the attributes it has - and the loop block shows its form in groups: the data it runs over, the order, the grid of the cells', ( function() {
 	const stack = colOf().stack;
-	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '' && titlesIn( loopPane() ) === 'Data,Order,Grid' && builder._doc.model.blocks[0].cols[0].components.length === 3;
+	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '' && titlesIn( loopPane() ) === 'Data,Grid' && builder._doc.model.blocks[0].cols[0].components.length === 3;
 } )() );
 
 doc = open();
@@ -3099,11 +3101,11 @@ builder._renderEditor();
 builder._setView('g');
 builder._openSettings( [ 1, 1, 'x' ] );
 check( 'the loop of a column opens the form of the column on its loop (the loop is no frame, but the column\'s own settings)', dialogText('builder-dialog-kind') === 'Column of "services"' && openBlock() === 'loop' );
-check( 'the form of the loop: the kind, then the groups - Data (the type, a note, the query), Order (the field and the direction, the limit and the offset), Grid (the cells of each viewport, the gap and the equal height, the id) - and no field for the cards of the cells: the loop is the grid alone', titlesIn( loopPane() ) === 'Data,Order,Grid'
-	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height', 'Id of the loop' ] ) );
-check( '...the groups hold what they are called after: the type and the query in Data, the order in Order, the cells in Grid with the gap, the equal height and the id below - one field under the other', ( function() {
+check( 'the form of the loop: the presentation, then the groups - Data (the type, a note, the query, the order, the limit, the offset and the id: the same for every presentation), Grid (the cells of each viewport, the gap and the equal height) - and no field for the cards of the cells: the loop is the grid alone', titlesIn( loopPane() ) === 'Data,Grid'
+	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ kindWord, 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Id of the loop', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height' ] ) );
+check( '...the groups hold what they are called after: the type, the query, the order and the id in Data, the cells in Grid with the gap and the equal height - one field under the other', ( function() {
 	const groups = loopPane().querySelectorAll('.builder-group');
-	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query~Sort by|Direction|Limit|Offset~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height|Id of the loop'
+	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query|Sort by|Direction|Limit|Offset|Id of the loop~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height'
 		&& loopPane().querySelector('.builder-line') === null;
 } )() );
 const stackNow = function() { return builder._doc.model.blocks[1].cols[1].stack };
@@ -3164,46 +3166,61 @@ builder._doc.model.blocks[1].cols[1].stack.attributes.sort = 'a,-b';
 change( loopPane(), 'Type', '/team' );
 check( 'a list of fields is a line of text that is left as it is, with no arrows beside it', labelList( loopPane() ).indexOf( 'Direction' ) === -1 && valueAt( loopPane(), 'Sort by' ) === 'a,-b' );
 check( 'a loop of another type leaves the components where they are - what their sources mean there is red until changed', builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 3 && builder._doc.model.blocks[1].cols[1].stack.source === '/team'
-	&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === 'Element loop · Team' && preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: Element loop · Team' );
-change( loopPane(), 'Loop', '' );
+	&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === registry().stacks.stack.label+ ' \u00b7 Team' && preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: '+ registry().stacks.stack.label+ ' \u00b7 Team' );
+change( loopPane(), kindWord, '' );
 check( 'Static drops the loop and keeps the components, and every field of the element is red - the status of the loop is gone from the head of the column', builder._doc.model.blocks[1].cols[1].stack === null && builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 4
-	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop' ] ) && preview().querySelector('[data-path="1.1"] .is-loop') === null );
-change( loopPane(), 'Loop', 'slider' );
-check( 'a registered loop comes with its own attributes and the loop it has, over a type of the project; one with no grid has no group for it, and its id is among the data - its own attributes are a group of their own', ( function() {
+	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ kindWord ] ) && preview().querySelector('[data-path="1.1"] .is-loop') === null );
+change( loopPane(), kindWord, 'slider' );
+check( 'a registered loop comes with its own attributes and the loop it has, over a type of the project; one with no grid has no group for it, and its id is among the data - its own attributes are a group of their own, named after it', ( function() {
 	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.name === 'slider' && stack.source === '/services' && stack.attributes.width === '75%' && stack.attributes.limit === '0' && builder._red( builder._doc.model, builder._registry ).length === 0 && titlesIn( loopPane() ) === 'Data,Order,Own'
-		&& labelList( loopPane().querySelectorAll('.builder-group')[0] ).join() === 'Type,Query,Id of the loop' && labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Slide width,Least slide width' && preview().querySelector('[data-path="1.1"] .is-loop').textContent === 'Slider · Services'
+	return stack.name === 'slider' && stack.source === '/services' && stack.attributes.width === '75%' && stack.attributes.limit === '0' && builder._red( builder._doc.model, builder._registry ).length === 0 && titlesIn( loopPane() ) === 'Data,Slider'
+		&& labelList( loopPane().querySelectorAll('.builder-group')[0] ).join() === 'Type,Query,Sort by,Direction,Limit,Offset,Id of the loop' && labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Slide width,Least slide width' && preview().querySelector('[data-path="1.1"] .is-loop').textContent === 'Slider · Services'
 		&& preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: Slider · Services';
 } )() );
 change( loopPane(), 'Slide width', '60%' );
 check( '...and what the attributes of its own write is a string', builder._doc.model.blocks[1].cols[1].stack.attributes.width === '60%' );
-change( loopPane(), 'Loop', 'stack' );
+change( loopPane(), kindWord, 'stack' );
 check( '...and going on to another loop keeps what both have', ( function() {
 	builder._doc.model.blocks[1].cols[1].stack.attributes.limit = '5';
-	change( loopPane(), 'Loop', 'list' );
+	change( loopPane(), kindWord, 'list' );
 	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.name === 'list' && stack.attributes.limit === '5' && stack.source === '/services' && titlesIn( loopPane() ) === 'Data,Order,Style,Row' && labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Style';
+	return stack.name === 'list' && stack.attributes.limit === '5' && stack.source === '/services' && titlesIn( loopPane() ) === 'Data,List,Row' && labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Style';
 } )() );
-change( loopPane(), 'Loop', 'filter' );
-check( '...a loop with a grid and attributes of its own has all four groups', titlesIn( loopPane() ) === 'Data,Order,Grid,Own' && labelList( loopPane().querySelectorAll('.builder-group')[3] ).join() === 'Filter by,Label of the first button' );
+change( loopPane(), kindWord, 'filter' );
+check( '...a loop with a grid and attributes of its own has all three groups, the grid after what the presentation brings of its own', titlesIn( loopPane() ) === 'Data,Filter,Grid' && labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Filter by,Label of the first button' );
 
 console.log( '\nA loop as a table, and a list whose cell is a row' );
 
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), 'Loop', 'table' );
+change( loopPane(), kindWord, 'table' );
 const tableCol = function() { return builder._doc.model.blocks[1].cols[1] };
 const columnRows = function() { return loopPane().querySelectorAll('.builder-column') };
 check( 'a loop chosen as a table makes the cell its columns: the components of the column that were there are gone - they are no column - and one column stands in their place, of the first field the type has and with no title',
 	tableCol().stack.name === 'table' && tableCol().stack.source === '/services' && tableCol().stack.attributes.style === ''
 	&& tableCol().components.length === 1 && tableCol().components[0].name === 'col' && tableCol().components[0].attributes.field === 'title' && tableCol().components[0].text === null && tableCol().components[0].source === '' );
-check( '...its form has no cells and no grid: the data, the order, the style and the columns - in that order', titlesIn( loopPane() ) === 'Data,Order,Style,Columns'
-	&& labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Style' && loopPane().querySelectorAll('table').length === 0 );
+check( '...its form has no cells and no grid: the data, what the presentation brings of its own (the style) and the columns - in that order', titlesIn( loopPane() ) === 'Data,Table,Columns'
+	&& labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Style' && loopPane().querySelectorAll('table').length === 0 );
+check( 'every option of an attribute of a loop that is a choice has a word of its own in the panel: the loops of the registry would else show the value as it is typed', ( function() {
+	const stacks = registry().stacks;
+	const missing = [];
+	Object.keys( stacks ).forEach( function( name ) {
+		const declared = stacks[name].attributes;
+		Object.keys( declared ).forEach( function( attribute ) {
+			if( declared[attribute].type === 'select' || declared[attribute].type === 'variant' )
+				declared[attribute].options.forEach( function( option ) {
+					if( word( 'option/attribute-'+ attribute+ '-'+ ( option === '' ? 'default' : option ) ) === undefined )
+						missing.push( name+ '.'+ attribute+ '='+ option );
+				} );
+		} );
+	} );
+	return missing.length === 0;
+} )() );
 check( '...the style is a select of the words of the panel, Plain, Striped, Bordered and Striped and bordered, and writes the word of the kernel', optionsOf( loopPane(), 'Style' ) === '=Plain,striped=Striped,bordered=Bordered,striped-bordered=Striped and bordered'
 	&& ( change( loopPane(), 'Style', 'striped-bordered' ), tableCol().stack.attributes.style === 'striped-bordered' ) && valueAt( loopPane(), 'Style' ) === 'striped-bordered' );
 check( '...a column is a title - the source of a text key, found as the source of a title is - and a value: a select of the fields the type has and Free text, which shows a field of the type that the type can show: a picture too',
-	columnRows().length === 1 && columnRows()[0].querySelector('.builder-source') !== null && optionsOf( columnRows()[0], 'Value' ) === 'title=title,summary=summary,image=image,price=price,*=Free text' && valueAt( columnRows()[0], 'Value' ) === 'title' );
+	columnRows().length === 1 && columnRows()[0].querySelector('.builder-source') !== null && optionsOf( columnRows()[0], 'Value' ) === 'title=title,summary=summary,image=image,price=price,*=Free text,+=Content' && valueAt( columnRows()[0], 'Value' ) === 'title' );
 buttonOf( loopPane(), 'Add a column' ).click();
 check( '...a column is added at the end, of the first field, and is a component of the column of the page like any other (a node with a name, a source and a text)',
 	tableCol().components.length === 2 && columnRows().length === 2 && tableCol().components[1].name === 'col' && tableCol().components[1].attributes.field === 'title' && tableCol().components[1].text === null );
@@ -3232,14 +3249,126 @@ check( '...a column is taken away; with none left the form says a table needs on
 check( '...the loop of a section that makes sections is not offered a table, and a table is in a column and nowhere else',
 	( function() {
 		builder._openSettings( [ 3 ] );
-		const options = controlOf( dialogContent(), 'Loop' ).el.children.map( function( option ) { return option.value } );
+		const options = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } );
 		return options.indexOf('table') === -1;
 	} )() );
+
+// The presentations that bring a field and a line of text of their own, drawn from their schema
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+const titledName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].attributes.title !== undefined && registry().stacks[name].attributes.text !== undefined } );
+const titledSchema = registry().stacks[titledName];
+change( loopPane(), kindWord, titledName );
+check( 'a presentation with an attribute of the type field gets a select of the fields of the loop\'s type that a cell can print - none first, no picture among them - and writes the name; the line of text beside it is an input that names the fields',
+	titledSchema.attributes.title.type === 'field' && optionsOf( loopPane(), titledSchema.attributes.title.label ) === '='+ word('label/none')+ ',title=title,summary=summary,price=price' && valueAt( loopPane(), titledSchema.attributes.title.label ) === ''
+	&& ( change( loopPane(), titledSchema.attributes.title.label, 'summary' ), builder._doc.model.blocks[1].cols[1].stack.attributes.title === 'summary' )
+	&& String( tipOf( controlOf( loopPane(), titledSchema.attributes.text.label ) ) ).indexOf('[[title]], [[summary]], [[price]]') !== -1 && titlesIn( loopPane() ) === 'Data,'+ titledSchema.label );
+change( loopPane(), titledSchema.attributes.text.label, '[[title]] (&) "x"' );
+check( '...and the line is kept in the model as it is typed, the fills as they are written: the call carries them as entities, which the server writes', builder._doc.model.blocks[1].cols[1].stack.attributes.text === '[[title]] (&) "x"' && loopPane().querySelector('.builder-line-warning').hidden === true );
+change( loopPane(), titledSchema.attributes.text.label, 'a [[b c' );
+check( '...a double bracket that opens no field is said under the input, as in a column', loopPane().querySelector('.builder-line-warning').hidden === false );
+change( loopPane(), titledSchema.attributes.text.label, '[[title]]' );
+check( '...a field the type has not is shown as it stands, to be seen and changed', ( function() {
+	builder._doc.model.blocks[1].cols[1].stack.attributes.title = 'gone';
+	builder._openSettings( [ 1, 1, 'x' ] );
+	return optionsOf( loopPane(), titledSchema.attributes.title.label ).split(',').indexOf('gone=gone') !== -1;
+} )() );
+check( '...a presentation drawn as a block says what it is in the preview, once, above the cell it shows, with the field or the line the titles are made of - the line wins, as it does in the kernel - and its components stay what each cell shows',
+	registry().stacks[titledName].preview === 'block' && ( builder._doc.model.blocks[1].cols[1].stack.attributes.title = 'summary', builder._renderEditor(), true )
+	&& ( function() {
+		const col = preview().querySelector('[data-path="1.1"]');
+		const blocks = col.querySelectorAll('.builder-loop-block');
+		return blocks.length === 1 && blocks[0].querySelector('.builder-ph-label').textContent === titledSchema.label+ ' \u00b7 [[title]]' && blocks[0].title === titledSchema.label && blocks[0].dataset.path === undefined
+			&& col.querySelectorAll('.builder-ph').length === 5 && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block.label === titledSchema.label;
+	} )()
+	&& ( builder._doc.model.blocks[1].cols[1].stack.attributes.text = '', builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block.title === '[[summary]]' ) );
+check( '...a presentation drawn as the cell once has no block of its own: only the status of its head', ( function() {
+	const cellsName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].preview === 'cells' && registry().stacks[name].cell === 'components' } );
+	builder._doc.model.blocks[1].cols[1].stack = builder._stackFor( builder._registry, cellsName, null );
+	builder._renderEditor();
+	return builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block === null && preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-loop-block').length === 0
+		&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === registry().stacks[cellsName].label+ ' · Services';
+} )() );
+check( 'the cell of a presentation that says components is the components of the column, and the cell kinds the panel knows besides are the three the registry names: a section, columns, a row - nothing else is asked of a name', ( function() {
+	const kinds = {};
+	Object.keys( registry().stacks ).forEach( function( name ) { kinds[ builder._cellKind( builder._registry, { name : name } ) ] = true } );
+	return Object.keys( kinds ).sort().join() === 'columns,components,row,section' && builder._columnName( builder._registry ) === 'col' && builder._cellKind( builder._registry, { name : titledName } ) === 'components';
+} )() );
+check( 'a loop that a feature registered stands in the choice of a column like the others, in the place the registry gives it, and its own attributes make the form: a field, a bool, a number, a text, a choice', ( function() {
+	doc = open();
+	builder._registry.stacks.zeta = { label : 'Zeta', grid : false, cell : 'components', preview : 'cells', defaults : { sort : '', offset : '0', limit : '0', query : '', callback : '', locale : '', id : '', pick : '', flag : '0', count : '3', note : '', mode : 'a', class : '' }, attributes : {
+		pick : { type : 'field', label : 'Pick', default : '' }, flag : { type : 'bool', label : 'Flag', default : false }, count : { type : 'int', label : 'Count', min : 1, max : 9, default : 3 },
+		note : { type : 'string', label : 'Note', default : '' }, mode : { type : 'select', label : 'Mode', options : [ 'a', 'b' ], default : 'a' } } };
+	builder._renderEditor();
+	builder._openSettings( [ 1, 1, 'x' ] );
+	const listed = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ).indexOf('zeta') !== -1;
+	builder._openSettings( [ 3 ] );
+	const notInSection = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ).indexOf('zeta') === -1;
+	builder._openSettings( [ 1, 1, 'x' ] );
+	change( loopPane(), kindWord, 'zeta' );
+	const labels = labelList( loopPane().querySelectorAll('.builder-group')[1] ).join();
+	change( loopPane(), 'Flag', true );
+	change( loopPane(), 'Count', 5 );
+	change( loopPane(), 'Pick', 'price' );
+	change( loopPane(), 'Note', 'n' );
+	const attributes = builder._doc.model.blocks[1].cols[1].stack.attributes;
+	delete builder._registry.stacks.zeta;
+	return listed && notInSection && labels === 'Pick,Flag,Count,Note,Mode' && attributes.flag === '1' && attributes.count === '5' && attributes.pick === 'price' && attributes.note === 'n';
+} )() );
+check( '...a second loop whose cell is a whole section stands in the choice of a section beside the first and in no column - the choice of a place is made by the cell and not by a name', ( function() {
+	doc = open();
+	builder._registry.stacks.omega = { label : 'Omega', grid : false, cell : 'section', preview : 'cells', defaults : { sort : '', offset : '0', limit : '0', query : '', callback : '', locale : '', id : '', class : '' }, attributes : {} };
+	builder._renderEditor();
+	builder._openSettings( [ 1, 1, 'x' ] );
+	const inColumn = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } );
+	builder._openSettings( [ 3 ] );
+	const inSection = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } );
+	delete builder._registry.stacks.omega;
+	return inColumn.indexOf('omega') === -1 && inColumn.indexOf('sections') === -1 && inColumn.length > 3 && inSection.join() === ',sections,omega';
+} )() );
+check( '...a loop that is changed for another keeps its data and the attributes the other has by the same name and takes - a choice among its options, a number within its bounds - and leaves the rest at the default: a choice outside the options and a switch that is none', ( function() {
+	const stacks = builder._registry.stacks;
+	const old = { name : 'list', source : '/services', attributes : Object.assign( builder._clone( stacks.list.defaults ), { sort : 'title', limit : '3', style : 'check' } ) };
+	const table = builder._stackFor( builder._registry, 'table', old );
+	const list = builder._stackFor( builder._registry, 'list', old );
+	const tabs = { name : 'tabs', source : '/services', attributes : Object.assign( builder._clone( stacks.tabs.defaults ), { title : 'price', text : 'a' } ) };
+	const accordion = builder._stackFor( builder._registry, 'accordion', Object.assign( {}, tabs, { attributes : Object.assign( {}, tabs.attributes, { exclusive : '2', open : 'first' } ) } ) );
+	const repeat = builder._stackFor( builder._registry, 'repeat', tabs );
+	return table.source === '/services' && table.attributes.sort === 'title' && table.attributes.limit === '3' && table.attributes.style === stacks.table.defaults.style && list.attributes.style === 'check'
+		&& accordion.attributes.title === 'price' && accordion.attributes.text === 'a' && accordion.attributes.exclusive === stacks.accordion.defaults.exclusive && accordion.attributes.open === 'first'
+		&& Object.prototype.hasOwnProperty.call( repeat.attributes, 'title' ) === false && builder._takes( { type : 'int', min : 1, max : 9 }, '10' ) === false && builder._takes( { type : 'int', min : 1, max : 9 }, '9' ) === true;
+} )() );
+
+// A column of a table with a content of its own
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+change( loopPane(), kindWord, 'table' );
+change( columnRows()[0], 'Value', builder.CONTENT );
+check( 'a column whose value is Content has an input for the html+ of its cell, a few lines high, and none of the line of free text: it starts as the field the column showed, in its fill, so that it says something',
+	tableCol().components[0].content === '[[title]]' && tableCol().components[0].text === null && tableCol().components[0].attributes.field === '' && valueAt( columnRows()[0], 'Value' ) === builder.CONTENT
+	&& controlOf( columnRows()[0], word('column/content') ).el.localName === 'textarea' && labelList( columnRows()[0] ).indexOf('Text') === -1 );
+change( columnRows()[0], word('column/content'), '<b>[[title]]</b>\n[button .uri text="More"]' );
+check( '...what is typed is kept as it is, line breaks included, and the warning is out of sight', tableCol().components[0].content === '<b>[[title]]</b>\n[button .uri text="More"]' && columnRows()[0].querySelector('.builder-line-warning').hidden === true );
+change( columnRows()[0], word('column/content'), 'a [list /services][text title][/list]' );
+check( '...a loop in it is said in a sentence of its own, and so is a content that is empty - the save refuses both', columnRows()[0].querySelector('.builder-line-warning').hidden === false && columnRows()[0].querySelector('.builder-line-warning').textContent === word('hint/content-invalid')
+	&& ( change( columnRows()[0], word('column/content'), ' ' ), columnRows()[0].querySelector('.builder-line-warning').hidden === false ) );
+change( columnRows()[0], word('column/content'), '<b>[[title]]</b>' );
+builder._closeDialog();
+builder._renderEditor();
+check( '...the preview of the table says Content and the first characters of it in the cell (the first line of it, as markup is never drawn), in a cell of its own kind, and the plan has the mark', ( function() {
+	const cell = preview().querySelector('[data-path="1.1"] .builder-table-ph').querySelectorAll('tbody tr')[0].querySelectorAll('td')[0];
+	return cell.textContent === word('column/content')+ ' · [[title]]' && cell.classList.contains('is-content') === true && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].table[0].content === true;
+} )() );
+builder._openSettings( [ 1, 1, 'x' ] );
+change( columnRows()[0], 'Value', 'price' );
+check( '...a field again takes the content away', tableCol().components[0].content === undefined && tableCol().components[0].attributes.field === 'price' && labelList( columnRows()[0] ).indexOf( word('column/content') ) === -1 );
 
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), 'Loop', 'table' );
+change( loopPane(), kindWord, 'table' );
 tableCol().components[0].text = '[[nope]],- EUR';
 tableCol().components[0].attributes.field = '';
 tableCol().components.push( Object.assign( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1 ], 'col', builder._keys ), { attributes : { field : 'nothing', align : '', class : '' } } ) );
@@ -3252,7 +3381,7 @@ check( '...and the column that has one says so beside its title', columnRows().l
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), 'Loop', 'table' );
+change( loopPane(), kindWord, 'table' );
 tableCol().components[0].attributes.field = 'price';
 buttonOf( loopPane(), 'Add a column' ).click();
 change( columnRows()[1], 'Value', '*' );
@@ -3265,7 +3394,7 @@ check( 'a loop that makes a table is drawn as one in the frame of its column: no
 	&& texts( tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td') ) === 'price,[[title]],- EUR' && preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 0
 	&& preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-add-button').length === 0 );
 check( '...the plan says so: the table of the column, with the title and what each shows, from the preview kind the registry gives the loop',
-	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].table ) === JSON.stringify( [ { title : '', value : 'price', red : false }, { title : '', value : '[[title]],- EUR', red : false } ] )
+	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].table ) === JSON.stringify( [ { title : '', value : 'price', content : false, red : false }, { title : '', value : '[[title]],- EUR', content : false, red : false } ] )
 	&& builder._registry.stacks.table.preview === 'table' && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[0].table === null );
 tableCol().components[0].source = '/template/page-home/hero/title';
 builder._renderEditor();
@@ -3286,7 +3415,7 @@ tableCol().components[0].source = '/template/page-home/hero/title';
 delete tableCol().components[0].values;
 builder._renderEditor();
 check( 'a column of free text with a title has the title in the head of the table drawn, and the line in its cells: the key is read apart from the line',
-	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l', { locale : builder._locale, keys : builder._keys } )[1].cols[1].table[0] ) === JSON.stringify( { title : 'Welcome', value : '[[price]],- EUR', red : false } )
+	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l', { locale : builder._locale, keys : builder._keys } )[1].cols[1].table[0] ) === JSON.stringify( { title : 'Welcome', value : '[[price]],- EUR', content : false, red : false } )
 	&& texts( tableDraw().querySelectorAll('thead th') ) === 'Welcome,' );
 builder._openSettings( [ 1, 1, 'x' ] );
 check( '...and the form offers the text of the title under its key, with Free text as the value: it is typed there and kept for the save',
@@ -3317,14 +3446,14 @@ builder._closeDialog();
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), 'Loop', 'list' );
+change( loopPane(), kindWord, 'list' );
 const listCol = function() { return builder._doc.model.blocks[1].cols[1] };
 check( 'a list made of a column with components of its own keeps them, and the form says the cell is theirs: no row to choose',
-	listCol().stack.name === 'list' && listCol().components.length > 1 && titlesIn( loopPane() ) === 'Data,Order,Style,Row' && loopPane().textContent.indexOf( word('stack/row-cells') ) !== -1 && labelList( loopPane() ).indexOf('Value') === -1
+	listCol().stack.name === 'list' && listCol().components.length > 1 && titlesIn( loopPane() ) === 'Data,List,Row' && loopPane().textContent.indexOf( word('stack/row-cells') ) !== -1 && labelList( loopPane() ).indexOf('Value') === -1
 	&& optionsOf( loopPane(), 'Style' ) === '=Plain,check=Checks,numbered=Numbered,columns=Columns' );
 listCol().components = [];
-change( loopPane(), 'Loop', 'stack' );
-change( loopPane(), 'Loop', 'list' );
+change( loopPane(), kindWord, 'stack' );
+change( loopPane(), kindWord, 'list' );
 check( 'a list in a column with no components starts as a row of the first field the type can show: one text of that field, with the attributes the schema starts it with',
 	listCol().components.length === 1 && listCol().components[0].name === 'text' && listCol().components[0].source === 'title' && listCol().components[0].text === null
 	&& JSON.stringify( listCol().components[0].attributes ) === JSON.stringify( builder._registry.components.text.defaults ) && valueAt( loopPane(), 'Value' ) === 'title' && optionsOf( loopPane(), 'Value' ) === 'title=title,summary=summary,price=price,*=Free text' );
@@ -3344,7 +3473,7 @@ check( 'a list that is a row is drawn as its rows - a bullet and the line of eac
 	&& JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows ) === JSON.stringify( [ '[[title]],- EUR', '[[title]],- EUR', '[[title]],- EUR' ] ) );
 listCol().components[0].attributes.tag = 'span';
 check( '...a list whose cell is a line with an attribute besides, or other components, is not a row: it is drawn by its components, as before',
-	builder._rowOf( builder._registry, listCol() ) === null && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows === null && ( builder._renderEditor(), preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 1 ) );
+	builder._rowOf( builder._registry, listCol() ) === null && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows === null && ( builder._renderEditor(), preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').filter( function( ph ) { return ph.classList.contains('builder-loop-block') === false } ).length === 1 ) );
 builder._closeDialog();
 
 // A line of fields is a component like another: offered with the others, with its tag and its text, and the column of a table is offered nowhere
@@ -3365,7 +3494,7 @@ builder._closeDialog();
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), 'Loop', 'filter' );
+change( loopPane(), kindWord, 'filter' );
 check( 'the kernel\'s filter stack has the grid and its id like the plain one, and no row for cards: the attribute is not carried over to it', labelList( loopPane() ).indexOf('Id of the loop') !== -1 && labelList( loopPane() ).indexOf('Cards') === -1 && stackNow().name === 'filter'
 	&& Object.prototype.hasOwnProperty.call( stackNow().attributes, 'card' ) === false && stackNow().attributes.gap === '2' );
 
@@ -9309,10 +9438,10 @@ builder._closeDialog();
 builder._openSettings( [ 3 ] );
 builder._openBlock('loop');
 check( 'the loop of a section is the block Loop, with its own name: a head that says what the control says - nothing while there is no loop, the words of the loop once there is one - and the properties keep the animation, the classes and the id', headOf('loop').querySelector('.builder-block-name').textContent === 'Loop'
-	&& saysOf('loop').hidden === true && labelList( blockOf('properties') ).indexOf( word('stack/kind') ) === -1 && ( change( blockOf('loop'), word('stack/kind'), 'sections' ), saysOf('loop').textContent === word('stack/sections') && saysOf('loop').hidden === false ) );
+	&& saysOf('loop').hidden === true && labelList( blockOf('properties') ).indexOf( word('stack/kind') ) === -1 && ( change( blockOf('loop'), word('stack/kind'), 'sections' ), saysOf('loop').textContent === registry().stacks.sections.label && saysOf('loop').hidden === false ) );
 builder._closeDialog();
 builder._openSettings( [ 1, 1 ] );
-check( '...and the loop of a column is the block as well, and says its name in the head - the tables of the viewports in it are drawn again with the others', blockIds().join() === 'surface,spacing,width,loop,properties' && saysOf('loop').textContent === 'Element loop' && blockOf('loop').querySelector('table') !== null );
+check( '...and the loop of a column is the block as well, and says its name in the head - the tables of the viewports in it are drawn again with the others', blockIds().join() === 'surface,spacing,width,loop,properties' && saysOf('loop').textContent === registry().stacks.stack.label && blockOf('loop').querySelector('table') !== null );
 builder._closeDialog();
 
 // The words and the hints of the width
@@ -9615,7 +9744,7 @@ check( 'the lightbox of a container offers what belongs to the place the contain
 builder._closeDialog();
 
 check( '...and the container itself is offered where its schema says it belongs: in a column of the first section, which is the hero - and not in the column of a loop, which its schema says it is no for, nor in a card, which holds none',
-	reasonOf( [ 0, 1 ], 'Band' ) === '' && reasonOf( [ 1, 0 ], 'Band' ) === 'Not in an element loop' && reasonOf( [ 1, 0, 0 ], 'Band' ) === 'Not in a card' );
+	reasonOf( [ 0, 1 ], 'Band' ) === '' && reasonOf( [ 1, 0 ], 'Band' ) === word('reason/pick-no-loop') && reasonOf( [ 1, 0, 0 ], 'Band' ) === 'Not in a card' );
 builder._closeDialog();
 
 openBand();

@@ -76,14 +76,9 @@ namespace Nino\Modules\Builder {
 		// The longest alt text the Images panel keeps of a picture
 		private const int ALT_MAX = 250;
 
-		// The kernel's name for the stack whose cell is a whole section: the one place the Builder says it. Everything else asks the schema, which
-		// schemas() marks - 'cell' => 'section' - so that neither the Reader nor the panel has the name
-		private const string SECTION_LOOP = 'sections';
-
-		// The kernel's names for the loop whose cell can be one row of a field or of a line of text, and for the components whose text is a line of free text with
-		// fields in it: the other places that say them, as schemas() marks them - 'cell' => 'row', 'fields' => true. The loop whose content is its columns says so
-		// itself ('holds'), and a column is a component that stands nowhere else (Reader::columnar())
-		private const string ROW_LOOP = 'list';
+		// The names of the components whose text is a line of free text with fields in it, which schemas() marks - 'fields' => true - so that the Reader and the panel have no name:
+		// the kernel does not mark them (yet). The stack whose cell is a whole section, the one whose cell is a row and the one whose cell is its columns are the registry's ('cell'),
+		// and a column is a component that stands in a place a loop holds only (schemas() marks it 'columnar')
 		private const array LINES = [ 'line', 'col' ];
 
 		/**
@@ -104,10 +99,10 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'components' => name => schema, 'stacks' => name => schema ]; the stack
-		 *																	that makes whole sections says 'cell' => 'section' besides, and a component that is
-		 *																	a surface says 'surface' => its kind (see Reader::surface()), which the panel offers
-		 *																	the radius of the page for
+		 *	@return 	array										[ 'components' => name => schema, 'stacks' => name => schema ]; a component that stands
+		 *																	in the places a loop holds only says 'columnar' => true, a component whose text is a line of
+		 *																	fields 'fields' => true, and one that is a surface says 'surface' => its kind (see
+		 *																	Reader::surface()), which the panel offers the radius of the page for
 		 */
 		public static function schemas( array &$appData ): array {
 
@@ -115,6 +110,17 @@ namespace Nino\Modules\Builder {
 
 			foreach( array_keys( $schemas['components'] ) as $name )
 				$schemas['components'][$name]['defaults'] = \Nino\Modules\Components::defaults( $appData, (string) $name );
+
+			// A component that belongs in the places a loop holds and in no other is a column of that loop: the registry says the places in 'holds' of the stacks and in 'in' of the components
+			$held = array_values( array_filter( array_map( static fn( mixed $schema ): string => is_array( $schema ) === true ? Reader::placeOf( $schema ) : '', $schemas['stacks'] ), static fn( string $place ): bool => $place !== '' ) );
+
+			foreach( array_keys( $schemas['components'] ) as $name ) {
+
+				$in = $schemas['components'][$name]['in'] ?? null;
+
+				if( is_array( $in ) === true && $in !== [] && array_diff( $in, $held ) === [] )
+					$schemas['components'][$name]['columnar'] = true;
+			}
 
 			// The kind of surface is read from what the registry says of a component, and told to the panel, which knows no component by name
 			// The first argument of a column is the text key of its title: for the panel and for the model it is a component with a text source
@@ -138,13 +144,6 @@ namespace Nino\Modules\Builder {
 			foreach( array_keys( $schemas['stacks'] ) as $name ) {
 
 				$schemas['stacks'][$name]['defaults'] = \Nino\Modules\Components::defaults( $appData, (string) $name, true );
-
-				if( $name === self::SECTION_LOOP )
-					$schemas['stacks'][$name]['cell'] = 'section';
-				elseif( Reader::placeOf( $schemas['stacks'][$name] ) !== '' )
-					$schemas['stacks'][$name]['cell'] = 'columns';
-				elseif( $name === self::ROW_LOOP )
-					$schemas['stacks'][$name]['cell'] = 'row';
 			}
 
 			return $schemas;
@@ -1230,6 +1229,10 @@ namespace Nino\Modules\Builder {
 
 					$values = [ 'source' => $call['source'] ?? null ] + (array) ( $call['attributes'] ?? [] );
 
+					// The text of a loop holds the fills of the element, and no other bracket
+					if( is_string( $values[Reader::STACK_TEXT] ?? null ) === true && Reader::lineText( $values[Reader::STACK_TEXT] ) === true )
+						$values[Reader::STACK_TEXT] = null;
+
 					foreach( $values as $attribute => $value )
 						if( $unsafe( $value ) === true )
 							$problems[] = $at. ': the attribute "'. $attribute. '" of the loop "'. (string) ( $call['name'] ?? '' ). '" holds a quote, a bracket or a line break, which a call cannot carry';
@@ -1255,6 +1258,11 @@ namespace Nino\Modules\Builder {
 
 						$schema = (array) ( $schemas['components'][$call['name'] ?? ''] ?? $schemas['stacks'][$call['name'] ?? ''] ?? [] );
 						$values = [ 'source' => $call['source'] ?? null, 'text' => $call['text'] ?? null ] + (array) ( $call['attributes'] ?? [] );
+
+						// A loop has no fixed text but its attribute of that name, which holds the fills of the element, and no other bracket
+						if( isset( $schemas['stacks'][$call['name'] ?? ''] ) === true ) {
+							$values[Reader::STACK_TEXT] = Reader::lineText( (string) ( $call['attributes'][Reader::STACK_TEXT] ?? '' ) ) === true ? null : $call['attributes'][Reader::STACK_TEXT];
+						}
 
 						// The text of a line holds the fills of the element, and no other bracket
 						if( Reader::fielded( $schema ) === true && is_string( $values['text'] ) === true && Reader::lineText( $values['text'] ) === true )
@@ -1294,6 +1302,9 @@ namespace Nino\Modules\Builder {
 			// The cells of a loop of sections are its columns: the fields they name are the type's, as in a loop of a column
 			$cell = is_array( $section['stack'] ?? null ) === true ? self::_fields( $appData, $section['stack'], $problems ) : null;
 
+			if( is_array( $section['stack'] ?? null ) === true )
+				array_push( $problems, ...self::_loopValues( $section['stack'], $schemas, $cell ) );
+
 			foreach( (array) ( $section['cols'] ?? [] ) as $c => $col ) {
 
 				$fields = $cell;
@@ -1314,8 +1325,10 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the background "'. $field. '" of column '. ( (int) $c + 1 ). ' is no image field of the loop\'s type';
 				}
 
-				if( is_array( $col['stack'] ?? null ) === true )
+				if( is_array( $col['stack'] ?? null ) === true ) {
 					$fields = self::_fields( $appData, $col['stack'], $problems );
+					array_push( $problems, ...self::_loopValues( $col['stack'], $schemas, $fields ) );
+				}
 
 				$cells = self::_flat( (array) ( $col['components'] ?? [] ) );
 
@@ -1393,6 +1406,47 @@ namespace Nino\Modules\Builder {
 					if( $valid === false )
 						$problems[] = 'the source "'. $source. '" of '. ( $component['name'] ?? '' ). ( $fields === null ? ' means nothing in a column without a loop: it is a text key or an image slot' : ' is no field of the loop\'s type' );
 				}
+			}
+
+			return $problems;
+		}
+
+		/**
+		 *	What the attributes of a loop mean against the type it runs over: an attribute of the type field is a field of the type that holds a text or a number - no
+		 *	picture -, and the text of a loop has the fields of the type for its fills (a site text and the number, the uri and the slug of the element as well)
+		 *
+		 *	@param		array			$stack				The loop of the model: name, source, attributes
+		 *	@param		array			$schemas
+		 *	@param		array|null	$fields			The fields of the type, null where the type is none (told already)
+		 *
+		 *	@return 	array										Sentences
+		 */
+		private static function _loopValues( array $stack, array $schemas, ?array $fields ): array {
+
+			$problems	= [];
+			$name			= (string) ( $stack['name'] ?? '' );
+
+			if( $fields === null )
+				return $problems;
+
+			foreach( (array) ( $schemas['stacks'][$name]['attributes'] ?? [] ) as $attribute => $declared ) {
+
+				$value = (string) ( $stack['attributes'][$attribute] ?? '' );
+
+				if( $value === '' || is_array( $declared ) === false )
+					continue;
+
+				if( ( $declared['type'] ?? '' ) === 'field' && ( isset( $fields[$value] ) === false || ( $fields[$value]['type'] ?? '' ) === 'image' ) )
+					$problems[] = 'the attribute "'. $attribute. '" of the loop "'. $name. '" is "'. $value. '", which is no field of the loop\'s type that a loop can print';
+
+				if( $attribute === Reader::STACK_TEXT && ( $declared['type'] ?? '' ) === 'string' )
+					foreach( Reader::lineFills( $value ) as $fill )
+						if( $fill[0] === '/' || in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === true )
+							continue;
+						elseif( ( $fields[$fill]['type'] ?? '' ) === 'image' )
+							$problems[] = 'the fill [['. $fill. ']] of the loop "'. $name. '" is an image field, which a line cannot print';
+						elseif( isset( $fields[$fill] ) === false )
+							$problems[] = 'the fill [['. $fill. ']] of the loop "'. $name. '" is no field of the loop\'s type';
 			}
 
 			return $problems;
@@ -2457,7 +2511,7 @@ namespace Nino\Modules\Builder {
 
 					if( $wrong !== '' )
 						$problems[] = $at. ' has '. $wrong;
-					elseif( (string) ( $block['stack']['name'] ?? '' ) !== Reader::loopsSections( $schemas ) )
+					elseif( in_array( (string) ( $block['stack']['name'] ?? '' ), Reader::loopsSections( $schemas ), true ) === false )
 						$problems[] = $at. ' has the loop "'. (string) ( $block['stack']['name'] ?? '' ). '", which makes no sections';
 					elseif( array_key_exists( 'components', $block['stack'] ) === true )
 						$problems[] = $at. ' has the loop "'. (string) ( $block['stack']['name'] ?? '' ). '" with components, and it holds none';

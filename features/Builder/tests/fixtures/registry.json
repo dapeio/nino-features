@@ -259,6 +259,58 @@
                 "en_US": "Text"
             }
         },
+        "line": {
+            "label": "Line of fields",
+            "source": "text",
+            "loop": true,
+            "preview": "text",
+            "icon": [
+                [
+                    "path",
+                    {
+                        "d": "M21 5H3"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M15 12H3"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M17 19H3"
+                    }
+                ]
+            ],
+            "attributes": {
+                "tag": {
+                    "type": "select",
+                    "label": "HTML tag",
+                    "hint": "",
+                    "options": [
+                        "p",
+                        "span",
+                        "div"
+                    ],
+                    "default": "p"
+                }
+            },
+            "stretched": false,
+            "link": false,
+            "by": "nino",
+            "group": "global",
+            "defaults": {
+                "tag": "p",
+                "class": ""
+            },
+            "fields": true,
+            "labels": {
+                "de_DE": "Zeile aus Feldern",
+                "en_US": "Line of fields"
+            }
+        },
         "card-title": {
             "label": "Title (Card)",
             "source": "text",
@@ -885,7 +937,7 @@
                 "background": {
                     "type": "image",
                     "label": "Background picture",
-                    "hint": "A slot, or in a stack an image field of the element, laid behind the content.",
+                    "hint": "A slot, or in a loop an image field of the element, laid behind the content.",
                     "tab": "background",
                     "default": ""
                 },
@@ -986,7 +1038,7 @@
                 "href": {
                     "type": "href",
                     "label": "Link",
-                    "hint": "A text key, an address, or in a stack a field of the element.",
+                    "hint": "A text key, an address, or in a loop a field of the element.",
                     "default": ""
                 },
                 "style": {
@@ -1147,6 +1199,67 @@
                 "en_US": "Image"
             }
         },
+        "logo": {
+            "label": "Logo",
+            "source": "none",
+            "loop": true,
+            "preview": "block",
+            "icon": [
+                [
+                    "circle",
+                    {
+                        "cx": "12",
+                        "cy": "12",
+                        "r": "10"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M12 18a6 6 0 0 0 0-12v12z"
+                    }
+                ]
+            ],
+            "attributes": {
+                "light": {
+                    "type": "image",
+                    "label": "Picture for a light ground",
+                    "hint": "A slot, or in a loop an image field of the element. Empty leaves the picture out.",
+                    "default": "/logo"
+                },
+                "dark": {
+                    "type": "image",
+                    "label": "Picture for a dark ground",
+                    "hint": "A slot, or in a loop an image field of the element. Empty leaves the picture out.",
+                    "default": "/logo/dark"
+                },
+                "alt": {
+                    "type": "string",
+                    "label": "Alternative text",
+                    "hint": "Used where the slot has no text of its own. Empty marks the picture as decoration.",
+                    "default": ""
+                }
+            },
+            "in": [
+                "hero",
+                "section"
+            ],
+            "draws": "span .nino-logo-set",
+            "stretched": false,
+            "link": false,
+            "by": "nino",
+            "group": "global",
+            "defaults": {
+                "light": "/logo",
+                "dark": "/logo/dark",
+                "alt": "",
+                "class": ""
+            },
+            "labels": {
+                "de_DE": "Logo",
+                "en_US": "Logo"
+            }
+        },
         "html": {
             "label": "HTML",
             "source": "content",
@@ -1271,12 +1384,74 @@
                 "de_DE": "Scroll-Hinweis",
                 "en_US": "Scroll hint"
             }
+        },
+        "col": {
+            "label": "Column",
+            "source": "text",
+            "loop": true,
+            "preview": "block",
+            "icon": [
+                [
+                    "rect",
+                    {
+                        "width": "18",
+                        "height": "18",
+                        "x": "3",
+                        "y": "3",
+                        "rx": "2"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M3 9h18"
+                    }
+                ]
+            ],
+            "attributes": {
+                "field": {
+                    "type": "field",
+                    "label": "Field",
+                    "hint": "The field of the element the cell shows. A line of text, if the column has one, is shown instead.",
+                    "default": ""
+                },
+                "align": {
+                    "type": "select",
+                    "label": "Alignment",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "right",
+                        "center"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "table"
+            ],
+            "stretched": false,
+            "link": false,
+            "by": "nino",
+            "group": "global",
+            "defaults": {
+                "field": "",
+                "align": "",
+                "class": ""
+            },
+            "columnar": true,
+            "fields": true,
+            "labels": {
+                "de_DE": "Spalte",
+                "en_US": "Column"
+            }
         }
     },
     "stacks": {
         "stack": {
-            "label": "Stack",
+            "label": "Grid",
             "grid": true,
+            "cell": "components",
             "preview": "cells",
             "attributes": [],
             "defaults": {
@@ -1293,9 +1468,27 @@
                 "class": ""
             }
         },
+        "repeat": {
+            "label": "Plain repeat",
+            "grid": false,
+            "cell": "components",
+            "preview": "cells",
+            "attributes": [],
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "class": ""
+            }
+        },
         "slider": {
             "label": "Slider",
             "grid": false,
+            "cell": "components",
             "preview": "cells",
             "attributes": {
                 "width": {
@@ -1327,6 +1520,7 @@
         "filter": {
             "label": "Filter",
             "grid": true,
+            "cell": "components",
             "preview": "cells",
             "attributes": {
                 "by": {
@@ -1358,9 +1552,93 @@
                 "class": ""
             }
         },
+        "tabs": {
+            "label": "Tabs",
+            "grid": false,
+            "cell": "components",
+            "preview": "block",
+            "attributes": {
+                "title": {
+                    "type": "field",
+                    "label": "Title field",
+                    "hint": "The field of the element whose value is the title. Empty numbers them 1, 2, 3.",
+                    "default": ""
+                },
+                "text": {
+                    "type": "string",
+                    "label": "Title line",
+                    "hint": "A line of text with fields of the element in it. It takes the place of the title field.",
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "title": "",
+                "text": "",
+                "class": ""
+            }
+        },
+        "accordion": {
+            "label": "Accordion",
+            "grid": false,
+            "cell": "components",
+            "preview": "block",
+            "attributes": {
+                "title": {
+                    "type": "field",
+                    "label": "Title field",
+                    "hint": "The field of the element whose value is the title. Empty numbers them 1, 2, 3.",
+                    "default": ""
+                },
+                "text": {
+                    "type": "string",
+                    "label": "Title line",
+                    "hint": "A line of text with fields of the element in it. It takes the place of the title field.",
+                    "default": ""
+                },
+                "exclusive": {
+                    "type": "bool",
+                    "label": "One open at a time",
+                    "hint": "The panels share a name, and the browser closes the others when one opens.",
+                    "default": true
+                },
+                "open": {
+                    "type": "select",
+                    "label": "Open at the start",
+                    "hint": "",
+                    "input": "segment",
+                    "options": [
+                        "",
+                        "first"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "title": "",
+                "text": "",
+                "exclusive": "1",
+                "open": "",
+                "class": ""
+            }
+        },
         "list": {
             "label": "List",
             "grid": false,
+            "cell": "row",
             "preview": "block",
             "attributes": {
                 "style": {
@@ -1388,9 +1666,42 @@
                 "class": ""
             }
         },
+        "table": {
+            "label": "Table",
+            "grid": false,
+            "cell": "columns",
+            "holds": "table",
+            "preview": "table",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "striped",
+                        "bordered",
+                        "striped-bordered"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "style": "",
+                "class": ""
+            }
+        },
         "sections": {
             "label": "Sections",
             "grid": false,
+            "cell": "section",
             "preview": "cells",
             "attributes": {
                 "alternate": {
@@ -1410,8 +1721,7 @@
                 "id": "",
                 "alternate": "0",
                 "class": ""
-            },
-            "cell": "section"
+            }
         }
     },
     "groups": [
