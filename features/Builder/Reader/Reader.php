@@ -358,7 +358,7 @@ namespace Nino\Modules\Builder {
 		// The attribute of a loop that is a line of free text with the fields of the element in it, as the fixed text of a component is: the kernel's name for it, the one place
 		// the Builder says it; and the name of a field of the element, which the kernel holds the attributes of the type field to
 		public const string STACK_TEXT = 'text';
-		private const string FIELD = '/^[A-Za-z][A-Za-z0-9_-]*$/D';
+		public const string FIELD = '/^[A-Za-z][A-Za-z0-9_-]*$/D';
 
 		// A fill in a line of free text: the name of a field of the element, .id, .slug, .uri, or a text key
 		private const string LINE_FILL = '\[\[(\/?[A-Za-z0-9_.\/-]+)\]\]';
@@ -403,6 +403,7 @@ namespace Nino\Modules\Builder {
 			'stack-neighbour'			=> 'a loop with other components in its column',
 			'stack-in-stack'			=> 'a loop inside a loop',
 			'stack-content'				=> 'the loop holds markup next to its component calls: %s',
+			'stack-no-content'		=> 'the loop has no content, but its call is a pair of tags',
 			'table-content'				=> 'the table holds %s, which is no column',
 			'table-empty'					=> 'a table without a column',
 			'col-elsewhere'				=> 'a column of a table outside a table',
@@ -2148,6 +2149,10 @@ namespace Nino\Modules\Builder {
 			$content		= $match[3][0] ?? null;
 			$contentAt	= $match[3][1] ?? 0;
 			$end				= $pos + strlen( $match[0][0] );
+
+			// A loop of the cell none has no content: its call is a single tag, and a pair - empty or not - is not what the Writer writes
+			if( $isStack === true && ( $schema['cell'] ?? '' ) === 'none' && $content !== null )
+				throw self::_fail( 'stack-no-content', '', $base + $contentAt );
 
 			[ $positional, $named ] = self::_arguments( $raw, $name, $base + $pos );
 

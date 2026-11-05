@@ -53,6 +53,7 @@ return [
 	'[[/_admin/builder/label/sections]]'			=> 'Sections',
 	'[[/_admin/builder/label/used-by]]'				=> 'Used by',
 	'[[/_admin/builder/label/none]]'					=> 'none',
+	'[[/_admin/builder/label/no-field]]'				=> 'no field',
 	'[[/_admin/builder/label/not-offered]]'			=> '%s (not offered)',
 	'[[/_admin/builder/label/open]]'					=> 'Open',
 	'[[/_admin/builder/label/duplicate]]'				=> 'Duplicate',
@@ -128,6 +129,7 @@ return [
 	'[[/_admin/builder/reason/stack-neighbour]]'		=> 'A loop with other components in its column',
 	'[[/_admin/builder/reason/stack-in-stack]]'		=> 'A loop inside a loop',
 	'[[/_admin/builder/reason/stack-content]]'			=> 'The loop holds markup next to its component calls: %s',
+	'[[/_admin/builder/reason/stack-no-content]]'		=> 'The loop has no content, but its call is a pair of tags',
 	'[[/_admin/builder/reason/holder-stack]]'			=> 'A loop inside a component that holds components',
 	'[[/_admin/builder/reason/table-content]]'			=> 'The table holds %s, which is no column',
 	'[[/_admin/builder/reason/table-empty]]'				=> 'A table without a column',
@@ -148,6 +150,7 @@ return [
 	'[[/_admin/builder/reason/paste-empty]]'		=> 'Nothing has been copied yet.',
 	'[[/_admin/builder/reason/paste-unknown]]'	=> 'The copy holds a component this project does not have: %s.',
 	'[[/_admin/builder/reason/paste-place]]'		=> 'The copy cannot be pasted here: %s.',
+	'[[/_admin/builder/reason/paste-none]]'		=> 'A loop without content holds no components: the copy cannot be pasted into this column.',
 
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Preview',

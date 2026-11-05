@@ -3260,8 +3260,8 @@ builder._openSettings( [ 1, 1, 'x' ] );
 const titledName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].attributes.title !== undefined && registry().stacks[name].attributes.text !== undefined } );
 const titledSchema = registry().stacks[titledName];
 change( loopPane(), kindWord, titledName );
-check( 'a presentation with an attribute of the type field gets a select of the fields of the loop\'s type that a cell can print - none first, no picture among them - and writes the name; the line of text beside it is an input that names the fields',
-	titledSchema.attributes.title.type === 'field' && optionsOf( loopPane(), titledSchema.attributes.title.label ) === '='+ word('label/none')+ ',title=title,summary=summary,price=price' && valueAt( loopPane(), titledSchema.attributes.title.label ) === ''
+check( 'a presentation with an attribute of the type field gets a select of all the fields of the loop\'s type - none first, the picture among them: the loop knows what it draws of a field - and writes the name; the line of text beside it is an input that names the fields',
+	titledSchema.attributes.title.type === 'field' && optionsOf( loopPane(), titledSchema.attributes.title.label ) === '='+ word('label/no-field')+ ',title=title,summary=summary,image=image,price=price' && valueAt( loopPane(), titledSchema.attributes.title.label ) === ''
 	&& ( change( loopPane(), titledSchema.attributes.title.label, 'summary' ), builder._doc.model.blocks[1].cols[1].stack.attributes.title === 'summary' )
 	&& String( tipOf( controlOf( loopPane(), titledSchema.attributes.text.label ) ) ).indexOf('[[title]], [[summary]], [[price]]') !== -1 && titlesIn( loopPane() ) === 'Data,'+ titledSchema.label );
 change( loopPane(), titledSchema.attributes.text.label, '[[title]] (&) "x"' );
@@ -3290,11 +3290,74 @@ check( '...a presentation drawn as the cell once has no block of its own: only t
 	return builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block === null && preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-loop-block').length === 0
 		&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === registry().stacks[cellsName].label+ ' · Services';
 } )() );
-check( 'the cell of a presentation that says components is the components of the column, and the cell kinds the panel knows besides are the three the registry names: a section, columns, a row - nothing else is asked of a name', ( function() {
+check( 'the cell of a presentation that says components is the components of the column, and the cell kinds the panel knows besides are the four the registry names: a section, columns, a row, none - nothing else is asked of a name', ( function() {
 	const kinds = {};
 	Object.keys( registry().stacks ).forEach( function( name ) { kinds[ builder._cellKind( builder._registry, { name : name } ) ] = true } );
-	return Object.keys( kinds ).sort().join() === 'columns,components,row,section' && builder._columnName( builder._registry ) === 'col' && builder._cellKind( builder._registry, { name : titledName } ) === 'components';
+	return Object.keys( kinds ).sort().join() === 'columns,components,none,row,section' && builder._columnName( builder._registry ) === 'col' && builder._cellKind( builder._registry, { name : titledName } ) === 'components';
 } )() );
+// A presentation whose cell is none: no components, the fields its attributes name, a block in the preview
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 'x' ] );
+const noneName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].cell === 'none' } );
+const noneSchema = registry().stacks[noneName];
+const noneCol = function() { return builder._doc.model.blocks[1].cols[1] };
+const noneOptions = function( where ) { return controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ) };
+check( 'a presentation whose cell is none is in the choice of a column, in the place the registry gives it with its word, and in the choice of no section - the choice of a place is made by the cell',
+	noneName !== undefined && noneOptions().indexOf( noneName ) === Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell !== 'section' } ).indexOf( noneName ) + 1
+	&& controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.textContent } )[noneOptions().indexOf( noneName )] === noneSchema.label
+	&& ( builder._openSettings( [ 3 ] ), noneOptions().indexOf( noneName ) === -1 ) && ( builder._openSettings( [ 1, 1, 'x' ] ), true ) );
+check( '...the column that has components when it is chosen has none after it: a cell with no content holds nothing, and the loop and its data are what is left',
+	noneCol().components.length > 0 && ( change( loopPane(), kindWord, noneName ), noneCol().components.length === 0 ) && noneCol().stack.name === noneName && noneCol().stack.source === '/services' );
+check( '...its dialog has the data of every presentation and its own attributes under its name, and no grid, no columns and no row: the cell is not made of anything the panel edits',
+	titlesIn( loopPane() ) === 'Data,'+ noneSchema.label && loopPane().querySelector('.builder-cells') === null && labelList( loopPane() ).indexOf( word('stack/gap') ) === -1 && loopPane().textContent.indexOf( word('stack/columns-none') ) === -1 );
+check( '...each attribute of the type field is a select of all the fields of the loop\'s type - the picture among them - with the entry none only for the one whose default is none: the kernel reads an empty value as the default, so for the other it would say what the file does not, the default selected, and writes the name',
+	Object.keys( noneSchema.attributes ).filter( function( name ) { return noneSchema.attributes[name].type === 'field' } ).length === 2
+	&& noneSchema.attributes.image.default === 'image' && noneSchema.attributes.link.default === ''
+	&& optionsOf( loopPane(), noneSchema.attributes.image.label ) === 'title=title,summary=summary,image=image,price=price' && optionsOf( loopPane(), noneSchema.attributes.link.label ) === '='+ word('label/no-field')+ ',title=title,summary=summary,image=image,price=price' && valueAt( loopPane(), noneSchema.attributes.image.label ) === 'image'
+	&& valueAt( loopPane(), noneSchema.attributes.link.label ) === '' && ( change( loopPane(), noneSchema.attributes.link.label, 'summary' ), noneCol().stack.attributes.link === 'summary' )
+	&& ( change( loopPane(), noneSchema.attributes.image.label, 'title' ), noneCol().stack.attributes.image === 'title' ) && ( change( loopPane(), noneSchema.attributes.image.label, 'image' ), noneCol().stack.attributes.image === 'image' ) );
+check( '...a field is offered by the name the kernel reads for a field - a letter, then letters, digits, hyphens and underscores - and a name with a space or a digit first is not',
+	builder._fieldChoices( { title : { type : 'string' }, 'logo bild' : { type : 'image' }, '9a' : { type : 'string' }, 'a.b' : { type : 'string' }, '-x' : { type : 'string' }, 'image_alt-2' : { type : 'string' } } ).map( function( item ) { return item.value } ).join() === 'title,image_alt-2' );
+check( '...a field the type has not - the default of the attribute, for a type without it - is red on the loop and says so, as a field in a row does: it stays in the select as it stands until another is chosen, then it is gone, and the red with it',
+	( function() {
+		const attributes = noneCol().stack.attributes;
+		attributes.image = 'nope';
+		builder._renderEditor();
+		builder._openSettings( [ 1, 1, 'x' ] );
+		const red = builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } );
+		const stays = optionsOf( loopPane(), noneSchema.attributes.image.label ).split(',').indexOf('nope=nope') !== -1;
+		builder._markRed( preview(), red );
+		const marked = preview().querySelector('[data-path="1.1.x"]');
+		change( loopPane(), noneSchema.attributes.image.label, 'title' );
+		const gone = optionsOf( loopPane(), noneSchema.attributes.image.label ).split(',').indexOf('nope=nope') === -1;
+		const clean = builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } ).length === 0;
+		change( loopPane(), noneSchema.attributes.image.label, 'image' );
+		return red.length === 1 && red[0].why === 'field' && red[0].source === 'nope' && stays === true && marked !== null && marked.classList.contains('is-red') === true && marked.title === word('tree/red-field') && gone === true && clean === true;
+	} )() );
+check( '...the preview of the column is the block of the loop with the word of the presentation and the fields it names, once, and nothing to add a component to: no components, no button for one',
+	( function() {
+		builder._renderEditor();
+		const col = preview().querySelector('[data-path="1.1"]');
+		const shown = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1];
+		return col.querySelectorAll('.builder-loop-block').length === 1 && col.querySelectorAll('.builder-ph').length === 1 && col.querySelector('.builder-adds') === null
+			&& col.querySelector('.builder-loop-block .builder-ph-label').textContent === noneSchema.label+ ' · [[image]], [[summary]]' && shown.block.bare === true && shown.block.image === 'block' && shown.components.length === 0;
+	} )() );
+check( '...a presentation whose preview is the picture of an image draws its block as that picture, as its schema says, and no name is asked',
+	( function() {
+		const schema = builder._registry.stacks[noneName];
+		const kept = schema.preview;
+		schema.preview = 'image';
+		builder._renderEditor();
+		const drawn = preview().querySelector('[data-path="1.1"] .builder-loop-block');
+		const result = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block.image === 'image' && drawn.dataset.image === 'image';
+		schema.preview = kept;
+		builder._renderEditor();
+		return result;
+	} )() );
+check( '...a column of another presentation has its components to add again, and a column that is changed to the presentation with no content loses the ones it had',
+	( change( loopPane(), kindWord, Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].cell === 'components' } ) ), builder._renderEditor(), preview().querySelector('[data-path="1.1"] .builder-adds') !== null )
+	&& ( noneCol().components.push( builder._clone( builder._doc.model.blocks[1].cols[0].components[0] ) ), change( loopPane(), kindWord, noneName ), noneCol().components.length === 0 ) );
 check( 'a loop that a feature registered stands in the choice of a column like the others, in the place the registry gives it, and its own attributes make the form: a field, a bool, a number, a text, a choice', ( function() {
 	doc = open();
 	builder._registry.stacks.zeta = { label : 'Zeta', grid : false, cell : 'components', preview : 'cells', defaults : { sort : '', offset : '0', limit : '0', query : '', callback : '', locale : '', id : '', pick : '', flag : '0', count : '3', note : '', mode : 'a', class : '' }, attributes : {
@@ -8293,6 +8356,23 @@ check( '...a card is pasted as a card behind the card, with its children, each w
 		&& cardIn( model ).components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text,/template/page-home-card/story/button'
 		&& builder._pasteable( model, registry(), [ 0, 1, 0, 0 ], clip ) === word('reason/pick-not-card') && builder._paste( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], clip ) !== null;
 } ) );
+check( 'a component is not pasted into a column whose loop has no content - there is no place for it, and the reason says why, where the copy cannot be pasted for any other - while a column is, with its loop',
+	attempt( function() {
+
+		const columnClip = copied( [ 1, 0 ], undefined, 'page-home' );
+		const model = builder._doc.model;
+		const col = model.blocks[1].cols[1];
+		const clip = handmade( 'title', { source : '/template/page-other/intro/title' } );
+		const ordinary = builder._pasteable( model, registry(), [ 1, 1 ], clip );
+
+		col.stack = builder._stackFor( builder._registry, noneName, col.stack );
+		col.components = [];
+
+		return ordinary === '' && builder._pastePlace( model, registry(), [ 1, 1 ], clip ) === null && builder._pasteable( model, registry(), [ 1, 1 ], clip ) === word('reason/paste-none')
+			&& builder._paste( model, registry(), 'page-home', [ 1, 1 ], clip ) === null && col.components.length === 0
+			&& builder._pasteable( model, registry(), [ 1, 1 ], columnClip ) === '' && builder._paste( model, registry(), 'page-home', [ 1, 1 ], columnClip ) !== null
+			&& builder._pastePlace( model, registry(), [ 1, 0 ], clip ) !== null;
+	} ) );
 check( 'a column is pasted after the column the tool is of, and at the end of the columns of a section: its components take keys beside those of the section they go into, whatever section the column was in', attempt( function() {
 
 	const clip = copied( [ 0, 0 ] );

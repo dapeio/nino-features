@@ -142,6 +142,10 @@ check( '...and names the blocks of a dialog - the loop is one of them - and the 
 			if( isset( $manifest['manual']['panel'][$name][$locale] ) === false || strlen( $manifest['manual']['panel'][$name][$locale] ) >= 1000 )
 				return false;
 	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'Presentation' ) === true && str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'Darstellung' ) === true
+		&& str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'cell none' ) === true && str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'single call' ) === true
+		&& str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'Zelle none' ) === true && str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'einzelner Aufruf' ) === true
+		&& str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'removes the components of the column' ) === true && str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'entfernt die der Spalte' ) === true
+		&& str_contains( $manifest['manual']['panel']['Plain repeat, Tabs and Accordion']['en_US'], 'a picture or an empty one numbers them' ) === true && str_contains( $manifest['manual']['panel']['Plain repeat, Tabs and Accordion']['de_DE'], 'ein Bild oder ein leeres nummeriert sie' ) === true
 		&& str_contains( $manifest['manual']['panel']['Table and List']['en_US'], 'Content' ) === true && str_contains( $manifest['manual']['panel']['Plain repeat, Tabs and Accordion']['de_DE'], 'Titelfeld' ) === true && str_contains( $manifest['manual']['panel']['The blocks of the dialogs']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The blocks of the dialogs']['de_DE'], 'Loop:' ) === true
 		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Properties of a card']['de_DE'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true
 		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], ' Du ' ) === true
@@ -274,6 +278,16 @@ echo "\n";
 echo "The registry of the Components module\n";
 
 \Nino\Modules\Components::init( $appData );
+
+// A loop a feature brings whose cell is none, as the kernel's own test has it: it draws its pictures from the fields its attributes name and holds no content
+\Nino\Modules\Components::addStack( $appData, 'badges', static fn( array &$appData, array $args ): string => '', [
+	'label'			=> [ 'en_US' => 'Badges', 'de_DE' => 'Siegel' ],
+	'cell'			=> 'none',
+	'attributes'	=> [
+		'image'	=> [ 'type' => 'field', 'default' => 'image', 'label' => 'Picture' ],
+		'link'	=> [ 'type' => 'field', 'default' => '', 'label' => 'Link' ],
+	],
+] );
 $registry = \Nino\Modules\Builder\Document::schemas( $appData );
 
 $kernelComponents	= \Nino\Modules\Components::components( $appData );
@@ -4353,7 +4367,7 @@ check( '...and written back as it was read, byte for byte: the call of the table
 check( '...a column is a text component to the registry the panel is handed - its first argument the key of a title - and a line is one that has fields in it; the loops say what their cell is, the registry word for each: the components between its tags for most, columns for the table, a row for the list, a section for the loop of sections',
 	$registry['components']['col']['source'] === 'text' && $registry['components']['col']['fields'] === true && $registry['components']['line']['fields'] === true && array_key_exists( 'fields', $registry['components']['text'] ) === false
 	&& \Nino\Modules\Builder\Reader::columnar( $registry['components']['col'] ) === true && array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::columnar( $schema ) === true ) === [ 'col' => $registry['components']['col'] ]
-	&& array_map( static fn( array $schema ): string => $schema['cell'] ?? '', $registry['stacks'] ) === [ 'stack' => 'components', 'repeat' => 'components', 'slider' => 'components', 'filter' => 'components', 'tabs' => 'components', 'accordion' => 'components', 'list' => 'row', 'table' => 'columns', 'sections' => 'section' ]
+	&& array_map( static fn( array $schema ): string => $schema['cell'] ?? '', $registry['stacks'] ) === [ 'stack' => 'components', 'repeat' => 'components', 'slider' => 'components', 'filter' => 'components', 'tabs' => 'components', 'accordion' => 'components', 'list' => 'row', 'table' => 'columns', 'sections' => 'section', 'badges' => 'none' ]
 	&& \Nino\Modules\Builder\Reader::placeOf( $registry['stacks']['table'] ) === 'table' && \Nino\Modules\Builder\Reader::placeOf( $registry['stacks']['list'] ) === '' );
 check( '...a line of text is a call like another: it reads and writes in a column and in the cell of a loop, with its tag, its fills and its class',
 	( static function() use ( $read, $write, $page, $section ): bool {
@@ -4474,9 +4488,9 @@ $titledProblems = static function( callable $change ) use ( &$appData, $registry
 };
 check( 'a loop whose field is a field of the type and whose text fills fields of the type is a model the Document takes - and a site text, the number and the slug of the element are fills too',
 	$titledProblems( static function( array &$model ): void {} ) === '' && $titledProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['text'] = '[[/template/page-x/a/head]] [[.id]] [[.slug]]'; } ) === '' );
-check( '...a field that is none of the type, or a picture, is a problem naming the loop and the attribute; so is a fill that is none, or a picture',
+check( '...a field that is none of the type is a problem naming the loop and the attribute, a picture is a field like another - the loop says by what it draws whether it fits - and a fill that is none, or a picture, is a problem',
 	str_contains( $titledProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['title'] = 'nope'; } ), 'the attribute "title" of the loop "'. $titled[0]. '" is "nope", which is no field of the loop\'s type' ) === true
-	&& str_contains( $titledProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['title'] = 'image'; } ), 'the attribute "title" of the loop' ) === true
+	&& $titledProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['title'] = 'image'; } ) === ''
 	&& str_contains( $titledProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['text'] = '[[nope]]'; } ), 'the fill [[nope]] of the loop "'. $titled[0]. '" is no field of the loop\'s type' ) === true
 	&& str_contains( $titledProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['text'] = '[[image]]'; } ), 'the fill [[image]] of the loop "'. $titled[0]. '" is an image field' ) === true );
 check( '...and the text of a loop that holds a line break or a double bracket that opens no field is a problem as the text of a line is',
@@ -4540,6 +4554,87 @@ check( 'the page the Builder wrote draws as a table by the kernel: the wrap, the
 
 echo "\n";
 
+
+// --- 7e. A loop with no content: the cell none -----------------------------------
+
+echo "A loop whose cell is none: a single call\n";
+
+$noneCalls	= '[badges /services sort="title" id="logos" image="title" link="summary" class="x"]';
+$noneModel	= $read( $page( $section( $noneCalls ) ) );
+$noneCol		= $noneModel['blocks'][0]['cols'][0] ?? [];
+
+check( 'a single call of a loop whose cell is none is read as the loop of its column, with its data and its fields, and no component: the registry says the cell, the Reader names no loop',
+	$noneModel['blocks'][0]['kind'] === 'section' && ( $noneCol['stack']['name'] ?? '' ) === 'badges' && $noneCol['stack']['source'] === '/services' && $noneCol['stack']['attributes']['image'] === 'title' && $noneCol['stack']['attributes']['link'] === 'summary'
+	&& $noneCol['stack']['attributes']['sort'] === 'title' && $noneCol['stack']['attributes']['id'] === 'logos' && $noneCol['stack']['attributes']['class'] === 'x' && $noneCol['components'] === []
+	&& $registry['stacks']['badges']['cell'] === 'none' );
+check( '...and written back as the single call it was, byte for byte, with nothing after it and no closing tag - and read again, it is the same model',
+	str_contains( $write( $noneModel ), "\t\t\t". $noneCalls. "\n\t\t</div>" ) === true && str_contains( $write( $noneModel ), '[/badges]' ) === false && $write( $noneModel ) === $inWrap( $page( $section( $noneCalls ) ) )
+	&& $read( $write( $noneModel ) ) === $noneModel );
+$noneBare = $read( $page( $section( '[badges /services]' ) ) );
+check( '...the attributes that are the defaults are left out of the call, as for any loop: a field left empty is "Keines"',
+	$noneBare['blocks'][0]['cols'][0]['stack']['attributes']['image'] === 'image' && $noneBare['blocks'][0]['cols'][0]['stack']['attributes']['link'] === '' && str_contains( $write( $noneBare ), "\t\t\t[badges /services]\n" ) === true );
+check( '...a field attribute takes the name of any field, a picture included, and a name that is none is refused as the attribute of any loop',
+	$read( $page( $section( '[badges /services image="summary" link="image"]' ) ) )['blocks'][0]['kind'] === 'section' && $read( $page( $section( '[badges /services image="a b"]' ) ) )['blocks'][0]['reason']['code'] === 'attribute-value' );
+
+$noneWhy = [];
+
+foreach( [
+	'a component before it'		=> "[title /template/page-x/a/title]\n\t\t\t[badges /services]",
+	'a component after it'		=> "[badges /services]\n\t\t\t[title /template/page-x/a/title]",
+	'a pair with a component'	=> "[badges /services]\n\t\t\t\t[title title]\n\t\t\t[/badges]",
+	'a pair with markup'			=> "[badges /services]\n\t\t\t\t<p>Hi</p>\n\t\t\t[/badges]",
+	'a pair with nothing in it'	=> '[badges /services][/badges]',
+	'a pair with a space in it'	=> "[badges /services]\n\t\t\t[/badges]",
+	'a loop after it'					=> "[badges /services]\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]",
+	'a loop in a pair'				=> "[badges /services]\n\t\t\t\t[stack /services]\n\t\t\t\t\t[title title]\n\t\t\t\t[/stack]\n\t\t\t[/badges]",
+	'it in a loop'						=> "[stack /services]\n\t\t\t\t[badges /services]\n\t\t\t[/stack]",
+	'it in a card'						=> "[card]\n\t\t\t\t[badges /services]\n\t\t\t[/card]",
+] as $label => $calls ) {
+
+	$block = $read( $page( $section( $calls ) ) )['blocks'][0];
+	$noneWhy[$label] = $block['kind'] === 'html' ? $block['reason']['code'] : 'read';
+}
+
+check( 'a call of a loop with no content that stands next to a component or a loop is no page for the Builder, as any loop; a pair of tags is one however little it holds - the call is a single tag, and the Writer would not write the pair back',
+	$noneWhy === [ 'a component before it' => 'stack-neighbour', 'a component after it' => 'stack-neighbour', 'a pair with a component' => 'stack-no-content', 'a pair with markup' => 'stack-no-content', 'a pair with nothing in it' => 'stack-no-content',
+		'a pair with a space in it' => 'stack-no-content', 'a loop after it' => 'stack-neighbour', 'a loop in a pair' => 'stack-no-content', 'it in a loop' => 'stack-in-stack', 'it in a card' => 'holder-stack' ] );
+$nonePair = $page( $section( "[badges /services]\n\t\t\t\t[title title]\n\t\t\t[/badges]" ) );
+$nonePairBlock = $read( $nonePair )['blocks'][0];
+check( '...and the reason is told at the line of the call, which the reason of a pair names as it names any loop\'s: the line of the tag the pair opens with',
+	$nonePairBlock['reason']['code'] === 'stack-no-content' && $nonePairBlock['reason']['line'] === substr_count( substr( $nonePair, 0, (int) strpos( $nonePair, '[badges' ) ), "\n" ) + 1 && $nonePairBlock['reason']['line'] > 1 );
+$noneStray = $noneModel;
+$noneStray['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['title']['defaults'] ];
+check( '...the Writer leaves out what stands next to a loop with no content - the call is a single tag whatever the model holds, and no closing tag follows it',
+	$write( $noneStray ) === $write( $noneModel ) && str_contains( $write( $noneStray ), '[title' ) === false && str_contains( $write( $noneStray ), '[/badges]' ) === false );
+check( '...the reason has its words in both languages, and is the Reader\'s own; the reason of markup in a loop is another',
+	array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
+		$texts = (array) include $dir. '/text/'. $locale. '.php';
+		return trim( (string) ( $texts['[[/_admin/builder/reason/stack-no-content]]'] ?? '' ) ) === '' || ( $texts['[[/_admin/builder/reason/stack-no-content]]'] ?? '' ) === ( $texts['[[/_admin/builder/reason/stack-content]]'] ?? '' );
+	} ) === [] && array_key_exists( 'stack-no-content', \Nino\Modules\Builder\Reader::REASONS ) === true && \Nino\Modules\Builder\Reader::REASONS['stack-no-content'] !== \Nino\Modules\Builder\Reader::REASONS['stack-content'] );
+
+$noneProblems = static function( callable $change ) use ( &$appData, $registry, $read, $page, $section, $noneCalls ): string {
+	$model = $read( $page( $section( $noneCalls ) ) );
+	$change( $model );
+	return implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+};
+check( '...a field attribute holds the name of a field as the kernel reads one: a name with a space - which the Reader would not read back from the call - is a problem of its own, for the loop that has it',
+	str_contains( $noneProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['image'] = 'logo bild'; } ), 'the attribute "image" of the loop "badges" is "logo bild", which is no name of a field' ) === true
+	&& str_contains( $noneProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['link'] = '9a'; } ), 'is no name of a field' ) === true );
+$noneShape = static function( callable $change ) use ( &$appData, $read, $page, $section, $noneCalls ): array {
+	$model = $read( $page( $section( $noneCalls ) ) );
+	$change( $model );
+	return \Nino\Modules\Builder\Document::source( $appData, $model );
+};
+check( 'the Document takes the loop with no content as it is read - its fields fields of the type, a picture among them - and refuses a field the type has not, and a component next to the loop, which the Writer would leave out',
+	$noneProblems( static function( array &$model ): void {} ) === '' && $noneShape( static function( array &$model ): void {} )['status'] === 200
+	&& $noneProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['link'] = 'image'; } ) === ''
+	&& str_contains( $noneProblems( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['stack']['attributes']['link'] = 'nope'; } ), 'the attribute "link" of the loop "badges" is "nope", which is no field of the loop\'s type' ) === true
+	&& ( static function() use ( $noneShape, $registry ): bool {
+		$answer = $noneShape( static function( array &$model ) use ( $registry ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['title']['defaults'] ]; } );
+		return $answer['status'] === 400 && str_contains( (string) json_encode( $answer ), 'whose cell is no components, and components next to it' ) === true;
+	} )() );
+
+echo "\n";
 
 // --- 8. Creating and deleting ------------------------------------------------
 

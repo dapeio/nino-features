@@ -16,6 +16,7 @@ return [
 	'[[/_admin/builder/label/sections]]'			=> 'Sektionen',
 	'[[/_admin/builder/label/used-by]]'				=> 'Verwendet von',
 	'[[/_admin/builder/label/none]]'					=> 'keiner',
+	'[[/_admin/builder/label/no-field]]'				=> 'keines',
 	'[[/_admin/builder/label/not-offered]]'			=> '%s (nicht angeboten)',
 	'[[/_admin/builder/label/open]]'					=> 'Öffnen',
 	'[[/_admin/builder/label/duplicate]]'				=> 'Duplizieren',
@@ -91,6 +92,7 @@ return [
 	'[[/_admin/builder/reason/stack-neighbour]]'		=> 'Ein Loop mit weiteren Komponenten in seiner Col',
 	'[[/_admin/builder/reason/stack-in-stack]]'		=> 'Ein Loop in einem Loop',
 	'[[/_admin/builder/reason/stack-content]]'			=> 'Im Loop steht Markup neben den Komponentenaufrufen: %s',
+	'[[/_admin/builder/reason/stack-no-content]]'		=> 'Der Loop hat keinen Inhalt, aber sein Aufruf ist ein Tag-Paar',
 	'[[/_admin/builder/reason/holder-stack]]'			=> 'Ein Loop in einer Komponente, die Komponenten enthält',
 	'[[/_admin/builder/reason/table-content]]'			=> 'Die Tabelle enthält %s, und das ist keine Spalte',
 	'[[/_admin/builder/reason/table-empty]]'				=> 'Eine Tabelle ohne Spalte',
@@ -111,6 +113,7 @@ return [
 	'[[/_admin/builder/reason/paste-empty]]'		=> 'Es wurde noch nichts kopiert.',
 	'[[/_admin/builder/reason/paste-unknown]]'	=> 'Die Kopie enthält eine Komponente, die es in diesem Projekt nicht gibt: %s.',
 	'[[/_admin/builder/reason/paste-place]]'		=> 'Die Kopie lässt sich hier nicht einfügen: %s.',
+	'[[/_admin/builder/reason/paste-none]]'		=> 'Ein Loop ohne Inhalt hat keine Komponenten: Die Kopie lässt sich in diese Spalte nicht einfügen.',
 
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Vorschau',

@@ -1183,6 +1183,27 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The attributes of a call that are of the type field and hold a name the kernel does not read as a field's: the Reader would take the call back as a block of html
+		 *
+		 *	@param		array			$call					The loop of the model
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The section, as the sentences name it
+		 *
+		 *	@return 	array										Sentences
+		 */
+		private static function _fieldNames( array $call, array $schemas, string $at ): array {
+
+			$problems = [];
+
+			foreach( (array) ( $schemas['stacks'][$call['name'] ?? '']['attributes'] ?? [] ) as $attribute => $declared )
+				if( is_array( $declared ) === true && ( $declared['type'] ?? '' ) === 'field' && is_string( $call['attributes'][$attribute] ?? null ) === true
+					&& $call['attributes'][$attribute] !== '' && preg_match( Reader::FIELD, $call['attributes'][$attribute] ) !== 1 )
+					$problems[] = $at. ': the attribute "'. $attribute. '" of the loop "'. (string) $call['name']. '" is "'. $call['attributes'][$attribute]. '", which is no name of a field: letters, digits, hyphens and underscores, starting with a letter';
+
+			return $problems;
+		}
+
+		/**
 		 *	The values of a model that no call can carry: a quote, a bracket
 		 *	or a line break in a fixed text, a source, an attribute (the class
 		 *	and the href among them) or a custom class - the classes of the wrap
@@ -1236,6 +1257,8 @@ namespace Nino\Modules\Builder {
 					foreach( $values as $attribute => $value )
 						if( $unsafe( $value ) === true )
 							$problems[] = $at. ': the attribute "'. $attribute. '" of the loop "'. (string) ( $call['name'] ?? '' ). '" holds a quote, a bracket or a line break, which a call cannot carry';
+
+					array_push( $problems, ...self::_fieldNames( (array) $call, $schemas, $at ) );
 				}
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col ) {
@@ -1267,6 +1290,9 @@ namespace Nino\Modules\Builder {
 						// The text of a line holds the fills of the element, and no other bracket
 						if( Reader::fielded( $schema ) === true && is_string( $values['text'] ) === true && Reader::lineText( $values['text'] ) === true )
 							$values['text'] = null;
+
+						if( isset( $schemas['stacks'][$call['name'] ?? ''] ) === true )
+							array_push( $problems, ...self::_fieldNames( $call, $schemas, $at ) );
 
 						foreach( $values as $attribute => $value )
 							if( $unsafe( $value, $attribute === 'source' ? ( $schema['source'] ?? '' ) === 'href' : in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ) === true )
@@ -1412,8 +1438,8 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What the attributes of a loop mean against the type it runs over: an attribute of the type field is a field of the type that holds a text or a number - no
-		 *	picture -, and the text of a loop has the fields of the type for its fills (a site text and the number, the uri and the slug of the element as well)
+		 *	What the attributes of a loop mean against the type it runs over: an attribute of the type field is a field of the type, whatever it holds (its name is
+		 *	checked with the values a call carries, see _values()), and the text of a loop has the fields of the type for its fills (a site text and the number, the uri and the slug of the element as well)
 		 *
 		 *	@param		array			$stack				The loop of the model: name, source, attributes
 		 *	@param		array			$schemas
@@ -1436,8 +1462,8 @@ namespace Nino\Modules\Builder {
 				if( $value === '' || is_array( $declared ) === false )
 					continue;
 
-				if( ( $declared['type'] ?? '' ) === 'field' && ( isset( $fields[$value] ) === false || ( $fields[$value]['type'] ?? '' ) === 'image' ) )
-					$problems[] = 'the attribute "'. $attribute. '" of the loop "'. $name. '" is "'. $value. '", which is no field of the loop\'s type that a loop can print';
+				if( ( $declared['type'] ?? '' ) === 'field' && isset( $fields[$value] ) === false )
+					$problems[] = 'the attribute "'. $attribute. '" of the loop "'. $name. '" is "'. $value. '", which is no field of the loop\'s type';
 
 				if( $attribute === Reader::STACK_TEXT && ( $declared['type'] ?? '' ) === 'string' )
 					foreach( Reader::lineFills( $value ) as $fill )
@@ -2607,6 +2633,10 @@ namespace Nino\Modules\Builder {
 					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
 					foreach( $col['components'] ?? [] as $component )
 						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeHover( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ) );
+
+					// A loop of the cell none has no cells made of components: the Writer would leave them out and the kernel reads none
+					if( is_array( $col['stack'] ?? null ) === true && ( $schemas['stacks'][$col['stack']['name'] ?? '']['cell'] ?? '' ) === 'none' && ( $col['components'] ?? [] ) !== [] )
+						$problems[] = $at. ' has the loop "'. (string) ( $col['stack']['name'] ?? '' ). '", whose cell is no components, and components next to it';
 
 					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
 					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )

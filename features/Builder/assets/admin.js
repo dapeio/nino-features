@@ -230,6 +230,8 @@
 		// The attribute of a loop that is a line of free text with the fields of the element in it, as the fixed text of a component is: the kernel's name for it. The call carries
 		// its brackets as entities, which the server does; the model has the line as it is typed
 		STACK_TEXT	: 'text',
+		// What the kernel reads as the name of a field
+		FIELD_NAME	: /^[A-Za-z][A-Za-z0-9_-]*$/,
 
 		// The components a list's row is made of, as the kernel names them: a field of the element is [text <field>], a line of free text with fields in it is [line text="..."]
 		ROW_FIELD	: 'text',
@@ -1702,8 +1704,9 @@
 				return path.length === 2 ? { list : model.blocks[path[0]].cols, index : path[1] + 1, parent : path.slice( 0, 1 ) } : null;
 			}
 
+			// A column whose loop has no content holds no components
 			if( path.length === 2 )
-				return { list : node.components, index : node.components.length, parent : path };
+				return builder._bare( registry, node ) === true ? null : { list : node.components, index : node.components.length, parent : path };
 
 			if( path.length < 3 )
 				return null;
@@ -1746,7 +1749,7 @@
 			const place = builder._pastePlace( model, registry, path, clip );
 
 			if( place === null )
-				return text( 'paste-place', builder._clipWord( clip ) );
+				return clip.kind === 'component' && path.length === 2 && builder._bare( registry, builder._get( model, path ) ) === true ? text('paste-none') : text( 'paste-place', builder._clipWord( clip ) );
 
 			if( clip.kind === 'column' ) {
 
@@ -1847,7 +1850,7 @@
 		 *	What a source means where it stands, and the ones that mean nothing: a
 		 *	field in a static column (it has no element), a field the stack's type
 		 *	does not have, a stack that loops a type the Elements panel does not
-		 *	know. The picture an attribute names counts as a source, and so do the
+		 *	know, and an attribute of the loop that names a field the type has not. The picture an attribute names counts as a source, and so do the
 		 *	children of a component that holds components. The editor marks them red
 		 *	and does not save with one - the server refuses them as well, and says
 		 *	it a request later
@@ -1880,6 +1883,23 @@
 						around = kind.fields || {};
 				}
 
+				// An attribute of the type field is a field of the type its loop runs over
+				const named = function( stack, fields, path ) {
+
+					const declared = builder._declared( ( registry.stacks || {} )[stack.name] || {} );
+
+					Object.keys( declared ).forEach( function( name ) {
+
+						const value = String( stack.attributes[name] ?? '' );
+
+						if( declared[name].type === 'field' && value !== '' && Object.prototype.hasOwnProperty.call( fields, value ) === false )
+							red.push( { path : path, source : value, why : 'field' } );
+					} );
+				};
+
+				if( around !== null )
+					named( block.stack, around, [ b ] );
+
 				block.cols.forEach( function( col, c ) {
 
 					let fields = around;
@@ -1890,8 +1910,10 @@
 
 						if( type === undefined )
 							red.push( { path : [ b, c, 'x' ], source : col.stack.source, why : 'type' } );
-						else
+						else {
 							fields = type.fields || {};
+							named( col.stack, fields, [ b, c, 'x' ] );
+						}
 					}
 
 					const looped = builder._loopOf( block, col ) !== null;
@@ -2304,7 +2326,8 @@
 								};
 							} ) : null,
 							// A loop that is drawn as a block says what it is and, where it has a title, which: the field or the line the titles are made of
-							block			: stack !== null && ( ( registry.stacks || {} )[stack.name] || {} ).preview === 'block' ? { label : builder._stackLabel( registry, stack.name ), title : builder._loopTitle( registry, stack ) } : null,
+							// A loop whose cell is none has no components to place: it is the block alone, whatever the picture its schema names for it
+							block			: stack !== null && ( ( ( registry.stacks || {} )[stack.name] || {} ).preview === 'block' || builder._cellKind( registry, stack ) === 'none' ) ? { label : builder._stackLabel( registry, stack.name ), title : builder._loopTitle( registry, stack ), image : ( registry.stacks[stack.name] || {} ).preview === 'image' ? 'image' : 'block', bare : builder._cellKind( registry, stack ) === 'none' } : null,
 							rows			: stack !== null && builder._cellKind( registry, stack ) === 'row' && builder._rowOf( registry, col ) !== null ? ( function( row ) { return [ row, row, row ].map( function( one ) { return one.text !== undefined ? one.text : '[['+ one.field+ ']]' } ) } )( builder._rowOf( registry, col ) ) : null,
 							components : col.components.map( function( component, k ) { return place( component, [ b, c, k ], builder._surface( block, col ) ) } ),
 						};
@@ -4074,13 +4097,17 @@
 			// A loop drawn as a block stands over its cell, once: the cell is what the components below are
 			if( col.block !== null ) {
 
-				const block = builder._placeholder( { path : col.path, label : col.block.label, image : 'block', line : col.block.title === '' ? '' : col.block.label+ ' \u00b7 '+ col.block.title, picture : '', draws : '' }, 'none' );
+				const block = builder._placeholder( { path : col.path, label : col.block.label, image : col.block.image, line : col.block.title === '' ? '' : col.block.label+ ' \u00b7 '+ col.block.title, picture : '', draws : '' }, 'none' );
 
 				// It is no frame to pick: a click on it is a click on the column
 				block.removeAttribute('data-path');
 				block.classList.remove('builder-pick');
 				block.classList.add('builder-loop-block');
 				body.appendChild( block );
+
+				// What has no components has nothing to add them to
+				if( col.block.bare === true )
+					return frame;
 			}
 
 			col.components.forEach( function( component ) { body.appendChild( component.holds === true ? builder._previewCard( component ) : builder._placeholder( component, 'tools' ) ) } );
@@ -4090,7 +4117,7 @@
 		},
 
 		/**
-		 *	What the titles of a loop are made of, as its schema says it: the line of text if it has one, else the field of the element, written as a fill. Nothing where the loop
+		 *	What the titles of a loop are made of, as its schema says it: the line of text if it has one, else the fields of the element its attributes name, written as fills. Nothing where the loop
 		 *	has neither - the attributes of the type field and the line of a loop are the schema's, no loop is known by name
 		 *
 		 *	@param		{Object}		registry
@@ -4103,9 +4130,9 @@
 			const builder = Nino.admin.builder;
 			const declared = builder._declared( ( registry.stacks || {} )[stack.name] || {} );
 			const line = Object.prototype.hasOwnProperty.call( declared, builder.STACK_TEXT ) === true ? String( stack.attributes[builder.STACK_TEXT] ?? '' ) : '';
-			const field = Object.keys( declared ).filter( function( name ) { return declared[name].type === 'field' && String( stack.attributes[name] ?? '' ) !== '' } )[0];
+			const fields = Object.keys( declared ).filter( function( name ) { return declared[name].type === 'field' && String( stack.attributes[name] ?? '' ) !== '' } );
 
-			return line !== '' ? line : ( field === undefined ? '' : '[['+ stack.attributes[field]+ ']]' );
+			return line !== '' ? line : fields.map( function( name ) { return '[['+ stack.attributes[name]+ ']]' } ).join(', ');
 		},
 
 		/**
@@ -7999,7 +8026,7 @@
 		 *	The loop of a column, in the order the call is thought of: how the elements are shown (the presentation: none, or one of the stacks of the registry that may stand
 		 *	here), the data they come from (the type, the query, the order, the limit, the offset and the id - the same for every presentation), and then what the presentation
 		 *	brings of its own, made from its schema: its attributes by the type each has, the grid of the cells where it is a grid, the columns of a table, the row of a list. The
-		 *	components of the column stay where they are when it changes; what their sources mean there is checked, and a source that means nothing is red until it is changed. The
+		 *	components of the column stay where they are when it changes - unless the new presentation has no content, which takes them away, or is a table, which keeps only columns; what their sources mean there is checked, and a source that means nothing is red until it is changed. The
 		 *	loop of a section is the same without the grid - none, or the presentation whose cell is the section: its id is the section's, shown and not changed here. A loop in a
 		 *	loop is none: a section that makes sections has no column that runs a loop, and one with such a column cannot start to
 		 *
@@ -8135,7 +8162,7 @@
 		 *	@param		{Object}		registry
 		 *	@param		{Object}		stack						{ name, source, attributes }
 		 *
-		 *	@return		{string}									components for a loop whose cell is the components of its column - the normal case, which needs nothing of its own - and section, columns or row for the three special ones
+		 *	@return		{string}									components for a loop whose cell is the components of its column - the normal case, which needs nothing of its own - and section, columns, row or none (a loop with no content: no components stand in its column) for the special ones
 		 */
 		_cellKind : function( registry, stack ) {
 			return ( ( registry.stacks || {} )[stack.name] || {} ).cell || '';
@@ -8171,7 +8198,30 @@
 		},
 
 		/**
-		 *	A column that was changed to what its loop holds: a table has columns and nothing else, any other loop has none; a table has one, since it needs at least one,
+		 *	Every field of a type that the kernel reads as the name of a field, by its name: what an attribute of the type field offers, whatever the field holds
+		 *
+		 *	@param		{Object}		fields						name => the field of the type
+		 *
+		 *	@return		{Array}										[ { value, label } ]
+		 */
+		_fieldChoices : function( fields ) {
+			return Object.keys( fields ).filter( function( name ) { return Nino.admin.builder.FIELD_NAME.test( name ) } ).map( function( name ) { return { value : name, label : name } } );
+		},
+
+		/**
+		 *	Whether the loop of a column has no content, as its schema says it ('cell' none): no component can stand in the column
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		col
+		 *
+		 *	@return		{boolean}
+		 */
+		_bare : function( registry, col ) {
+			return col.stack !== null && col.stack !== undefined && Nino.admin.builder._cellKind( registry, col.stack ) === 'none';
+		},
+
+		/**
+		 *	A column that was changed to what its loop holds: a table has columns and nothing else, a loop whose cell is none has no components at all, any other loop has none of columns; a table has one, since it needs at least one,
 		 *	and a list starts as a row of a field - or a line, where its type has no field to show. The components that are not the cell of the loop are dropped
 		 *
 		 *	@param		{Object}		registry
@@ -8189,7 +8239,7 @@
 			const type = col.stack === null || col.stack === undefined ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === col.stack.source } );
 			const first = type === undefined ? [] : builder._valueChoices( type.fields || {}, kind === 'columns' );
 
-			col.components = col.components.filter( function( component ) { return columnar( component ) === ( kind === 'columns' ) } );
+			col.components = kind === 'none' ? [] : col.components.filter( function( component ) { return columnar( component ) === ( kind === 'columns' ) } );
 
 			if( kind === 'columns' && col.components.length === 0 ) {
 
@@ -9396,16 +9446,20 @@
 			if( declared.type === 'lines' )
 				return builder._textField( label, hint, value, write, { multiline : true } );
 
-			// A field of the element: one of the fields of the loop's type that a cell can print, none, or - as it stands, to be seen and changed - one the type has not
+			// A field of the element: any field of the loop's type - the loop knows what it draws of it, a picture or a title, and the Builder does not -, none, or - as it stands,
+			// to be seen and changed - one the type has not
 			if( declared.type === 'field' ) {
 
-				const items = builder._valueChoices( context.fields ?? {}, false );
-				const choices = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ].concat( items );
+				const items = builder._fieldChoices( context.fields ?? {} );
+				// None is a choice only where the attribute's default is none: the kernel reads an empty value as the default, so that for another one it would show what the file does not say
+				const choices = ( declared.default === '' ? [ { value : '', label : Nino.content.getText('/_admin/builder/label/no-field') } ] : [] ).concat( items );
+				const stray = value !== '' && items.some( function( item ) { return item.value === value } ) === false;
 
-				if( value !== '' && items.some( function( item ) { return item.value === value } ) === false )
+				if( stray === true )
 					choices.push( { value : value, label : value } );
 
-				return builder._selectField( label, hint, choices, value, write );
+				// A value the type has not is there until another is chosen
+				return builder._selectField( label, hint, choices, value, stray === true && typeof context.redraw === 'function' ? function( chosen ) { write( chosen ); context.redraw() } : write );
 			}
 
 			// The line of free text of a loop, with the fields of the element in it

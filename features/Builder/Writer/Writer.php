@@ -241,10 +241,14 @@ namespace Nino\Modules\Builder {
 
 					$lines[] = "\t\t\t". self::_call( (array) $col['stack'], $registry['stacks'][$col['stack']['name'] ?? ''] ?? [] );
 
-					foreach( (array) ( $col['components'] ?? [] ) as $component )
-						array_push( $lines, ...self::_component( (array) $component, $registry, "\t\t\t\t" ) );
+					// A loop of the cell none has no content: its call is a single tag, with nothing after it
+					if( ( $registry['stacks'][$col['stack']['name'] ?? '']['cell'] ?? '' ) !== 'none' ) {
 
-					$lines[] = "\t\t\t[/". (string) ( $col['stack']['name'] ?? '' ). ']';
+						foreach( (array) ( $col['components'] ?? [] ) as $component )
+							array_push( $lines, ...self::_component( (array) $component, $registry, "\t\t\t\t" ) );
+
+						$lines[] = "\t\t\t[/". (string) ( $col['stack']['name'] ?? '' ). ']';
+					}
 				}
 				else
 					foreach( (array) ( $col['components'] ?? [] ) as $component )

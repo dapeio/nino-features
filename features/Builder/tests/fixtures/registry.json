@@ -1722,6 +1722,38 @@
                 "alternate": "0",
                 "class": ""
             }
+        },
+        "badges": {
+            "label": "Badges",
+            "grid": false,
+            "cell": "none",
+            "preview": "cells",
+            "attributes": {
+                "image": {
+                    "type": "field",
+                    "label": "Picture",
+                    "hint": "",
+                    "default": "image"
+                },
+                "link": {
+                    "type": "field",
+                    "label": "Link",
+                    "hint": "",
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "image": "image",
+                "link": "",
+                "class": ""
+            }
         }
     },
     "groups": [
