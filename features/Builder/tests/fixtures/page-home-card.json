@@ -92,7 +92,6 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": null,
                     "components": [
                         {
                             "name": "image",
@@ -147,7 +146,6 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": null,
                     "components": [
                         {
                             "name": "card",
@@ -324,69 +322,71 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": {
-                        "name": "stack",
-                        "source": "/services",
-                        "attributes": {
-                            "sort": "title",
-                            "offset": "0",
-                            "limit": "3",
-                            "query": "",
-                            "callback": "",
-                            "locale": "",
-                            "id": "",
-                            "cols": "100 50 50",
-                            "gap": "2",
-                            "autoheight": "1",
-                            "class": ""
-                        }
-                    },
                     "components": [
                         {
-                            "name": "card",
-                            "source": "",
-                            "text": null,
+                            "name": "stack",
+                            "source": "/services",
                             "attributes": {
-                                "fill": "1",
-                                "padding": "",
-                                "vertical": "",
-                                "align": "",
-                                "ground": "",
-                                "borderless": "0",
-                                "linked": "0",
-                                "background": "image",
-                                "focus": "5",
-                                "dim": "1",
+                                "sort": "title",
+                                "offset": "0",
+                                "limit": "3",
+                                "query": "",
+                                "callback": "",
+                                "locale": "",
+                                "id": "",
+                                "cols": "100 50 50",
+                                "gap": "2",
+                                "autoheight": "1",
                                 "class": ""
                             },
-                            "radius": "",
-                            "bgPl": "",
-                            "bgPr": "",
-                            "mt": "",
-                            "mb": "",
-                            "pt": "",
-                            "pb": "",
-                            "pl": "",
-                            "pr": "",
                             "components": [
                                 {
-                                    "name": "card-title",
-                                    "source": "title",
+                                    "name": "card",
+                                    "source": "",
                                     "text": null,
                                     "attributes": {
-                                        "tag": "h3",
-                                        "style": "",
-                                        "color": "",
-                                        "href": "",
-                                        "target": "",
+                                        "fill": "1",
+                                        "padding": "",
+                                        "vertical": "",
+                                        "align": "",
+                                        "ground": "",
+                                        "borderless": "0",
+                                        "linked": "0",
+                                        "background": "image",
+                                        "focus": "5",
+                                        "dim": "1",
                                         "class": ""
                                     },
+                                    "radius": "",
+                                    "bgPl": "",
+                                    "bgPr": "",
                                     "mt": "",
                                     "mb": "",
                                     "pt": "",
                                     "pb": "",
                                     "pl": "",
-                                    "pr": ""
+                                    "pr": "",
+                                    "components": [
+                                        {
+                                            "name": "card-title",
+                                            "source": "title",
+                                            "text": null,
+                                            "attributes": {
+                                                "tag": "h3",
+                                                "style": "",
+                                                "color": "",
+                                                "href": "",
+                                                "target": "",
+                                                "class": ""
+                                            },
+                                            "mt": "",
+                                            "mb": "",
+                                            "pt": "",
+                                            "pb": "",
+                                            "pl": "",
+                                            "pr": ""
+                                        }
+                                    ]
                                 }
                             ]
                         }

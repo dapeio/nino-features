@@ -76,8 +76,8 @@
 		_doc			: null,
 
 		// What is selected, as a path into the model: [] the template, [b] a
-		// section, [b, c] a column, [b, c, k] a component, [b, c, 'x'] the loop,
-		// [b, c, k, j] a component inside one that holds components
+		// section, [b, c] a column, [b, c, k] a component or a loop,
+		// [b, c, k, j] a component inside one that holds components or inside a loop
 		_sel			: [],
 		// The viewport the preview shows - s, m or l, or g for all of them at once - and
 		// the frame the pointer is over: the innermost one, whose tools are seen
@@ -95,6 +95,8 @@
 		// well, so that it survives a reload and a change of page: it is read from there when the editor opens
 		_clip			: null,
 		CLIP_KEY	: 'nino-admin-builder-clip',
+		// The loops of the preview that are open - the nodes themselves, so that a loop that moves in its column stays open: a loop is shut when the page is loaded
+		_open			: new WeakSet(),
 		// The text keys of the project, for the source field: null until they were
 		// asked for, [] where this account may not read them
 		_keys			: null,
@@ -244,15 +246,15 @@
 		CONTENT		: '+',
 
 		// What the dialog of an element shows, and the one place that says it: for each kind of element the blocks it has, in the order they are drawn in - the same seven for every kind, in
-		// this order: content, link, surface, spacing, width, loop and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
+		// this order: content, link, surface, spacing, width, loop and properties; a loop of a column has three of its own, data, presentation and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
 		// control that writes several settings stands under each of them and is drawn once, at the first (the box of the six sides, the two offsets of a ground, the width of a column and where
 		// it is hidden); one that is no setting of its own stands under its own name (the width of the row of a section, which is the maximum width, the padding at its sides and the full
 		// width in one choice). _blocksOf() draws what stands here and nothing else: a control that is moved is drawn in its new block, one that is struck out is not drawn at all, and a
 		// block none of whose controls the element has is not drawn (a card has no content: its title, its text and its picture are components with a form of their own). The controls of
-		// a section and of a column are made by _sectionControls() and _colControls(). A component has the controls of its schema, by group - the source, the attributes that are a
+		// a section and of a column are made by _sectionControls() and _colControls(), those of a loop by _loopControls(). A component has the controls of its schema, by group - the source, the attributes that are a
 		// link, those on the tab of the background, the variants and the other attributes, each group a control - and the settings every component has (_componentControls()). The
 		// surface of a section and of a column is the colours and the lines first and then, from the picture on, one group of its own, the picture behind it with what depends on it
-		// (the table lists the controls of the group in a row and each of them builds into it, see _groupIn()); the loop of a section and of a column is a block of its own, which a
+		// (the table lists the controls of the group in a row and each of them builds into it, see _groupIn()); the loop of a section is a block of its own, which a
 		// card has no control for
 		BLOCKS		: {
 			section : [
@@ -274,8 +276,13 @@
 				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'linked', 'bgPl', 'bgPr' ] },
 				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
-				{ id : 'loop', controls : [ 'stack' ] },
 				{ id : 'properties', controls : [ 'vpa', 'vpaSpeed', 'vpaMode', 'custom' ] },
+			],
+			// A loop of a column is an entry of it with a dialog of its own: the data it runs over, what the stack shows them as, its id and its class
+			loop : [
+				{ id : 'data', controls : [ 'source', 'query', 'sort', 'limit', 'offset' ] },
+				{ id : 'presentation', controls : [ 'attributes', 'grid', 'columns', 'row' ] },
+				{ id : 'properties', controls : [ 'id', 'class' ] },
 			],
 			component : [
 				{ id : 'content', controls : [ 'source' ] },
@@ -323,21 +330,19 @@
 				if( block.stack !== null && typeof block.stack === 'object' )
 					block.stack.attributes = map( block.stack.attributes );
 
+				// A loop is an entry of the components of a column like any other, with its own children - which may hold children of their own
+				const call = function( node ) {
+
+					node.attributes = map( node.attributes );
+					( node.components || [] ).forEach( call );
+				};
+
 				( block.cols || [] ).forEach( function( col ) {
 
 					col.hidden = map( col.hidden );
 					col.width = map( col.width );
 					col.components = Array.isArray( col.components ) === true ? col.components : [];
-
-					if( col.stack !== null && typeof col.stack === 'object' )
-						col.stack.attributes = map( col.stack.attributes );
-
-					col.components.forEach( function( component ) {
-
-						component.attributes = map( component.attributes );
-
-						( component.components || [] ).forEach( function( child ) { child.attributes = map( child.attributes ) } );
-					} );
+					col.components.forEach( call );
 				} );
 			} );
 
@@ -348,7 +353,7 @@
 		 *	The node a path names
 		 *
 		 *	@param		{Object}		model
-		 *	@param		{Array}			path							[], [b], [b, c], [b, c, k], [b, c, 'x'] or - inside a component that holds components - [b, c, k, j]
+		 *	@param		{Array}			path							[], [b], [b, c], [b, c, k] - a component or a loop - or, inside a component that holds components or a loop, [b, c, k, j] and deeper
 		 *
 		 *	@return		{Object|null}							null for a path the model has nothing at
 		 */
@@ -362,26 +367,18 @@
 			if( block === undefined || path.length === 1 )
 				return block === undefined ? null : block;
 
-			const col = block.kind === 'section' ? ( block.cols || [] )[path[1]] : undefined;
+			let node = block.kind === 'section' ? ( block.cols || [] )[path[1]] ?? null : null;
 
-			if( col === undefined || path.length === 2 )
-				return col === undefined ? null : col;
+			for( let at = 2; at < path.length && node !== null; at++ )
+				node = ( node.components ?? [] )[path[at]] ?? null;
 
-			if( path[2] === 'x' )
-				return path.length === 3 && col.stack !== null && col.stack !== undefined ? col.stack : null;
-
-			const component = col.components[path[2]] ?? null;
-
-			if( path.length === 3 || component === null )
-				return component;
-
-			return path.length === 4 ? ( component.components ?? [] )[path[3]] ?? null : null;
+			return node;
 		},
 
 		/**
 		 *	The list a node stands in and its place there - the one a node can be
 		 *	moved in: the components of a column, or the children of a component
-		 *	that holds components. The template and a stack stand in none
+		 *	that holds components or of a loop. The template stands in none
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -390,7 +387,7 @@
 		 */
 		_place : function( model, path ) {
 
-			if( path.length === 0 || path[path.length - 1] === 'x' || Nino.admin.builder._get( model, path ) === null )
+			if( path.length === 0 || Nino.admin.builder._get( model, path ) === null )
 				return null;
 
 			const parent = Nino.admin.builder._get( model, path.slice( 0, -1 ) );
@@ -412,8 +409,9 @@
 		},
 
 		/**
-		 *	What a node is: template, section, html, col, stack or component - a component
-		 *	that holds components is one, and so are its children
+		 *	What a node is: template, section, html, col, loop or component - a component
+		 *	that holds components is one, and so are its children; a loop is the entry of a column
+		 *	whose name is a stack of the registry
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -428,7 +426,86 @@
 			if( path.length === 1 )
 				return ( model.blocks[path[0]] || {} ).kind === 'section' ? 'section' : 'html';
 
-			return path.length === 2 ? 'col' : ( path[2] === 'x' ? 'stack' : 'component' );
+			const builder = Nino.admin.builder;
+
+			return path.length === 2 ? 'col' : ( builder._isLoop( builder._get( model, path ) ) === true ? 'loop' : 'component' );
+		},
+
+		/**
+		 *	Whether an entry of the components of a column is a loop: its name is a stack of the registry. The Builder knows no stack by name
+		 *
+		 *	@param		{Object|null}	node
+		 *	@param		{Object}		[registry]				The panel's own by default
+		 *
+		 *	@return		{boolean}
+		 */
+		_isLoop : function( node, registry ) {
+
+			const stacks = ( registry ?? Nino.admin.builder._registry ?? {} ).stacks;
+
+			return node !== null && node !== undefined && typeof node.name === 'string' && stacks !== null && typeof stacks === 'object' && Object.prototype.hasOwnProperty.call( stacks, node.name ) === true;
+		},
+
+		/**
+		 *	The loops that were open in a model are open in the one that replaces it - what a save answers is a model of new nodes: the same place in the same column
+		 *
+		 *	@param		{Object}		before
+		 *	@param		{Object}		after
+		 *
+		 *	@return		void
+		 */
+		_keepOpen : function( before, after ) {
+
+			const builder = Nino.admin.builder;
+			const walk = function( from, to ) {
+
+				( from.components || [] ).forEach( function( node, k ) {
+
+					const other = ( to.components || [] )[k];
+
+					if( other === undefined )
+						return;
+
+					if( builder._open.has( node ) === true )
+						builder._open.add( other );
+
+					walk( node, other );
+				} );
+			};
+
+			( before.blocks || [] ).forEach( function( block, b ) {
+
+				const other = ( after.blocks || [] )[b];
+
+				if( block.kind === 'section' && other !== undefined && other.kind === 'section' )
+					block.cols.forEach( function( col, c ) { if( other.cols[c] !== undefined ) walk( col, other.cols[c] ) } );
+			} );
+		},
+
+		/**
+		 *	The loop the components at a path are the cell of: the nearest loop among the nodes on the way down - the loop at the path itself too, which the
+		 *	cell of it belongs to -, and where there is none the loop of the section, whose columns are the cell of each element
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The column, a component or a loop
+		 *
+		 *	@return		{Object|null}							{ name, source, attributes } - null where no loop is running
+		 */
+		_loopAt : function( model, path ) {
+
+			const builder = Nino.admin.builder;
+
+			for( let length = path.length; length > 2; length-- ) {
+
+				const node = builder._get( model, path.slice( 0, length ) );
+
+				if( builder._isLoop( node ) === true )
+					return node;
+			}
+
+			const section = model.blocks[path[0]];
+
+			return section === undefined || section.stack === null || section.stack === undefined ? null : section.stack;
 		},
 
 		/**
@@ -502,8 +579,9 @@
 		 *	What the tools of a frame offer, and whether each can be used now: a
 		 *	section can be edited as HTML+, a node moves where it has a neighbour
 		 *	in its level, and the one column of a section is not deleted - a
-		 *	section has at least one. A loop is no frame and has no tools: it is
-		 *	set in the block Loop of its column
+		 *	section has at least one. A loop has settings, up, down, copy and delete,
+		 *	and paste where its cell takes components - it is copied and pasted, and
+		 *	not duplicated
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -511,35 +589,36 @@
 		 *	@return		{Object|null}							settings, html, up, down, duplicate, copy, paste and delete: null for a tool the
 		 *															frame does not have, false for one it has and cannot use now - paste is so
 		 *															where nothing was copied or the copy does not fit the frame (see _pasteable());
-		 *															null for the template and a loop, which have none
+		 *															null for the template, which has none
 		 */
 		_toolbar : function( model, path ) {
 
 			const builder = Nino.admin.builder;
 			const kind = builder._kind( model, path );
 
-			if( kind === 'template' || kind === 'stack' )
+			if( kind === 'template' )
 				return null;
 
 			const place = builder._place( model, path );
+			const node = kind === 'loop' ? builder._get( model, path ) : null;
 
 			return {
 				settings	: true,
 				html			: kind === 'section' ? true : null,
 				up				: place !== null && place.index > 0,
 				down			: place !== null && place.index < place.list.length - 1,
-				duplicate	: place !== null,
+				duplicate	: kind === 'loop' ? null : place !== null,
 				copy			: place !== null,
-				paste			: place !== null && builder._pasteable( model, builder._registry, path, builder._clip ) === '',
+				// A loop takes a paste into its cell where the cell is components
+				paste			: kind === 'loop' && builder._cellKind( builder._registry, node ) !== 'components' ? null : place !== null && builder._pasteable( model, builder._registry, path, builder._clip ) === '',
 				delete		: place !== null && ( kind !== 'col' || place.list.length > 1 ),
 			};
 		},
 
 		/**
-		 *	How much a frame holds that is somebody's work: the components of a
-		 *	column, and its loop, everything in a section, the children of a
-		 *	component that holds components. A frame that holds none is deleted
-		 *	without asking
+		 *	How much a frame holds that is somebody's work: the components and the loops of a
+		 *	column, everything in a section, the children of a component that holds components
+		 *	and of a loop. A frame that holds none is deleted without asking
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -551,18 +630,17 @@
 			const builder = Nino.admin.builder;
 			const kind = builder._kind( model, path );
 			const node = builder._get( model, path );
-			const inside = function( col ) { return col.components.length + ( col.stack === null || col.stack === undefined ? 0 : 1 ) };
 
 			if( node === null )
 				return 0;
 
 			if( kind === 'section' )
-				return node.cols.reduce( function( sum, col ) { return sum + inside( col ) }, 0 );
+				return node.cols.reduce( function( sum, col ) { return sum + col.components.length }, 0 );
 
 			if( kind === 'col' )
-				return inside( node );
+				return node.components.length;
 
-			return kind === 'component' && Array.isArray( node.components ) === true ? node.components.length : 0;
+			return ( kind === 'component' || kind === 'loop' ) && Array.isArray( node.components ) === true ? node.components.length : 0;
 		},
 
 		// ------------------------------------------------------- Names and keys
@@ -905,7 +983,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function( width ) {
-			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', title : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', title : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
 		},
 
 		/**
@@ -926,14 +1004,14 @@
 		},
 
 		/**
-		 *	The loop of a column as it is made for a stack of the registry: the
-		 *	attributes the stack has, the ones an earlier loop of the column set
+		 *	The loop of a section as it is made for a stack of the registry: the
+		 *	attributes the stack has, the ones an earlier loop of the section set
 		 *	and this one has too kept, and the type the earlier one looped or the
-		 *	first the project has
+		 *	first the project has - and, for a loop of a column that is made new, no old
 		 *
 		 *	@param		{Object}		registry
 		 *	@param		{string}		name							The registered stack
-		 *	@param		{Object|null}	old							The loop the column has
+		 *	@param		{Object|null}	old							The loop the section has
 		 *
 		 *	@return		{Object}									{ name, source, attributes }
 		 */
@@ -1103,23 +1181,6 @@
 		 */
 		_looping : function( section ) {
 			return section.stack !== null && section.stack !== undefined;
-		},
-
-		/**
-		 *	The loop the components of a column are the cell of: the column's own - or, where it has none and its section makes
-		 *	sections out of the elements, the section's: the columns of such a section are the cell, once for each element
-		 *
-		 *	@param		{Object}		section
-		 *	@param		{Object}		col
-		 *
-		 *	@return		{Object|null}							{ name, source, attributes }
-		 */
-		_loopOf : function( section, col ) {
-
-			if( col.stack !== null && col.stack !== undefined )
-				return col.stack;
-
-			return section.stack === null || section.stack === undefined ? null : section.stack;
 		},
 
 		/**
@@ -1345,6 +1406,20 @@
 		},
 
 		/**
+		 *	What the head of a block says of the order of a loop: the field it sorts by, with an arrow down where it is descending - nothing where there is none
+		 *
+		 *	@param		{Object}		stack
+		 *
+		 *	@return		{string}
+		 */
+		_sortSaid : function( stack ) {
+
+			const state = Nino.admin.builder._sortState( stack );
+
+			return state.field === '' ? '' : Nino.content.getText('/_admin/builder/stack/sort')+ ' '+ state.field+ ( state.descending === true ? ' \u2193' : '' );
+		},
+
+		/**
 		 *	The order of a loop, written: a field and a direction; none for no field
 		 *
 		 *	@param		{Object}		stack
@@ -1400,7 +1475,7 @@
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
 		 *	@param		{string}		file
-		 *	@param		{Array}			at								The path of the column - or of the component that holds components, for a child
+		 *	@param		{Array}			at								The path of the column - or of the component that holds components or of the loop, for a child
 		 *	@param		{string}		name							The component's name
 		 *	@param		{Array}			[known]
 		 *
@@ -1437,7 +1512,7 @@
 			else if( kind === 'content' )
 				component.content = '';
 
-			if( builder._loopOf( section, section.cols[at[1]] ) === null && ( kind === 'text' || kind === 'image' ) && builder.SEGMENT.test( section.id ) === true ) {
+			if( builder._loopAt( model, at ) === null && ( kind === 'text' || kind === 'image' ) && builder.SEGMENT.test( section.id ) === true ) {
 
 				const slug = builder._keyName( section, file, name, known );
 
@@ -1680,7 +1755,7 @@
 		 */
 		_clipWord : function( clip ) {
 
-			const word = { section : 'section', html : 'html-block', column : 'col', component : 'component' }[clip.kind];
+			const word = { section : 'section', html : 'html-block', column : 'col', component : Nino.admin.builder._isLoop( clip.node ) === true ? 'loop' : 'component' }[clip.kind];
 
 			return Nino.content.getText( '/_admin/builder/tree/'+ word )+ ( clip.kind === 'section' ? ' '+ clip.node.id : '' );
 		},
@@ -1696,6 +1771,7 @@
 		 */
 		_clipMissing : function( registry, clip ) {
 
+			const builder = Nino.admin.builder;
 			const has = function( map, name ) { return Object.prototype.hasOwnProperty.call( map || {}, name ) };
 			const types = registry.types || [];
 			const loop = function( stack ) {
@@ -1709,6 +1785,10 @@
 				return types.some( function( type ) { return type.uri === stack.source } ) === true ? '' : ( stack.source || stack.name );
 			};
 			const component = function( node ) {
+
+				// A loop is an entry among the components: the stack and the type, then the children of its cell
+				if( builder._isLoop( node, registry ) === true )
+					return loop( node ) || list( node.components );
 
 				if( has( registry.components, node.name ) === false )
 					return node.name;
@@ -1727,16 +1807,15 @@
 
 				return '';
 			};
-			const column = function( col ) { return loop( col.stack ) || list( col.components ) };
 
 			if( clip.kind === 'component' )
 				return component( clip.node );
 
 			if( clip.kind === 'column' )
-				return column( clip.node );
+				return list( clip.node.components );
 
 			if( clip.kind === 'section' )
-				return loop( clip.node.stack ) || ( clip.node.cols || [] ).reduce( function( found, col ) { return found || column( col ) }, '' );
+				return loop( clip.node.stack ) || ( clip.node.cols || [] ).reduce( function( found, col ) { return found || list( col.components ) }, '' );
 
 			return '';
 		},
@@ -1753,8 +1832,31 @@
 		_componentsProblem : function( registry, components, where ) {
 
 			const builder = Nino.admin.builder;
+			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
 
 			for( const node of components ) {
+
+				// A loop stands in a column and nowhere else: not in the cell of a loop, not in a component that holds components, not as the group of the panel it is in
+				if( builder._isLoop( node, registry ) === true ) {
+
+					if( where.inside === true )
+						return text('holder-stack');
+
+					if( where.looped === true )
+						return text('loop-in-loop');
+
+					if( where.group !== undefined && where.group === node.name )
+						return text('loop-in-group');
+
+					// The cell is the place its schema holds - the columns of a table - else that of the column, and it is a loop's
+					const held = ( ( registry.stacks || {} )[node.name] || {} ).holds;
+					const inner = builder._componentsProblem( registry, node.components || [], { place : typeof held === 'string' && held !== '' ? held : where.place, inside : false, looped : true } );
+
+					if( inner !== '' )
+						return inner;
+
+					continue;
+				}
 
 				const problem = builder._placeProblem( where, registry.components[node.name] );
 
@@ -1776,8 +1878,8 @@
 		/**
 		 *	Where a clip goes for a path: the list it is put into and the place in it, and the path of the node that list belongs to. A section or a
 		 *	block of html goes after a section or a block (a path of one part) or - for the template, the path [] - at the end of the page; a column
-		 *	after a column or at the end of the columns of a section; a component after a component or a child, at the end of a column and at the
-		 *	end of a component that holds components when that one takes it, else after that component
+		 *	after a column or at the end of the columns of a section; a component or a loop after a component, a loop or a child, at the end of a column and at the
+		 *	end of a component that holds components or of a loop whose cell is components when that one takes it, else after that component
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
@@ -1791,7 +1893,7 @@
 			const builder = Nino.admin.builder;
 			const node = builder._get( model, path );
 
-			if( node === null || path[path.length - 1] === 'x' )
+			if( node === null )
 				return null;
 
 			if( clip.kind === 'section' || clip.kind === 'html' ) {
@@ -1810,9 +1912,8 @@
 				return path.length === 2 ? { list : model.blocks[path[0]].cols, index : path[1] + 1, parent : path.slice( 0, 1 ) } : null;
 			}
 
-			// A column whose loop has no content holds no components
 			if( path.length === 2 )
-				return builder._bare( registry, node ) === true ? null : { list : node.components, index : node.components.length, parent : path };
+				return { list : node.components, index : node.components.length, parent : path };
 
 			if( path.length < 3 )
 				return null;
@@ -1820,6 +1921,11 @@
 			// Into the component that holds components, where it takes the clip: the place its 'holds' names, and whatever the column is
 			if( path.length === 3 && builder._holds( registry, node.name ) !== '' && Array.isArray( node.components ) === true
 				&& builder._componentsProblem( registry, [ clip.node ], { place : builder._holds( registry, node.name ), inside : true, looped : builder._placeOf( model, path.slice( 0, 2 ), registry ).looped } ) === '' )
+				return { list : node.components, index : node.components.length, parent : path };
+
+			// Into the cell of a loop whose cell is components, where it takes the clip - a loop it does not
+			if( builder._isLoop( node, registry ) === true && builder._cellKind( registry, node ) === 'components' && Array.isArray( node.components ) === true && builder._isLoop( clip.node, registry ) === false
+				&& builder._componentsProblem( registry, [ clip.node ], builder._placeOf( model, path, registry ) ) === '' )
 				return { list : node.components, index : node.components.length, parent : path };
 
 			const place = builder._place( model, path );
@@ -1855,17 +1961,14 @@
 			const place = builder._pastePlace( model, registry, path, clip );
 
 			if( place === null )
-				return clip.kind === 'component' && path.length === 2 && builder._bare( registry, builder._get( model, path ) ) === true ? text('paste-none') : text( 'paste-place', builder._clipWord( clip ) );
+				return text( 'paste-place', builder._clipWord( clip ) );
 
 			if( clip.kind === 'column' ) {
 
 				const section = model.blocks[place.parent[0]];
-				const looping = clip.node.stack !== null && clip.node.stack !== undefined;
 
-				if( looping === true && builder._looping( section ) === true )
-					return text('stack-in-stack');
-
-				return builder._componentsProblem( registry, clip.node.components || [], { place : builder._where( model, place.parent.slice( 0, 1 ), registry ), inside : false, looped : looping || builder._looping( section ) } );
+				// What stands outside a loop of the column is in no loop's cell unless the section is one, and the loops of the column carry their cells with them
+				return builder._componentsProblem( registry, clip.node.components || [], { place : builder._where( model, place.parent.slice( 0, 1 ), registry ), inside : false, looped : builder._looping( section ), group : builder._groupName( section ) } );
 			}
 
 			return clip.kind === 'component' ? builder._componentsProblem( registry, [ clip.node ], builder._placeOf( model, place.parent, registry ) ) : '';
@@ -2058,7 +2161,7 @@
 					return;
 
 				settle( block.stack );
-				block.cols.forEach( function( col ) { settle( col.stack ) } );
+				block.cols.forEach( function( col ) { col.components.forEach( function( node ) { if( builder._isLoop( node, registry ) === true ) settle( node ) } ) } );
 			} );
 		},
 
@@ -2120,29 +2223,6 @@
 
 				block.cols.forEach( function( col, c ) {
 
-					let fields = around;
-
-					if( col.stack !== null && col.stack !== undefined ) {
-
-						const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === col.stack.source } );
-
-						if( type === undefined )
-							red.push( { path : [ b, c, 'x' ], source : col.stack.source, why : 'type' } );
-						else {
-							fields = type.fields || {};
-							named( col.stack, fields, [ b, c, 'x' ] );
-						}
-					}
-
-					const looped = builder._loopOf( block, col ) !== null;
-					// Whether a value that is no key and no slot means something here: a field of the element in a loop, nothing in a column without one
-					const mark = function( source, path, plain ) {
-
-						if( looped === false )
-							red.push( { path : path, source : source, why : 'static' } );
-						else if( fields !== null && ( plain === true || [ '.id', '.uri', '.slug' ].indexOf( source ) === -1 ) && Object.prototype.hasOwnProperty.call( fields, source ) === false )
-							red.push( { path : path, source : source, why : 'field' } );
-					};
 					// The picture behind a column may be an image field of the element where the section is a loop: elsewhere, or for a field the type has not or that is no image, it is red
 					if( col.background !== null && col.background !== undefined && ( col.background.field ?? '' ) !== '' ) {
 
@@ -2152,21 +2232,30 @@
 							red.push( { path : [ b, c ], source : col.background.field, why : 'background-field' } );
 					}
 
-					const check = function( component, path ) {
+					// Whether a value that is no key and no slot means something where it stands: a field of the element in the cell of a loop, nothing outside one - in the column of a loop of sections
+					// it is the loop of the section whose cell it is
+					const mark = function( source, path, plain, scope ) {
+
+						if( scope.looped === false )
+							red.push( { path : path, source : source, why : 'static' } );
+						else if( scope.fields !== null && ( plain === true || [ '.id', '.uri', '.slug' ].indexOf( source ) === -1 ) && Object.prototype.hasOwnProperty.call( scope.fields, source ) === false )
+							red.push( { path : path, source : source, why : 'field' } );
+					};
+					const check = function( component, path, scope ) {
 
 						const kind = builder._sourceKind( registry, component.name );
 						const source = component.source || '';
 						const declared = builder._declared( ( registry.components || {} )[component.name] || {} );
 
 						if( source !== '' && kind !== 'none' && kind !== 'content' && source.charAt( 0 ) !== '/' && kind !== 'href' )
-							mark( source, path, false );
+							mark( source, path, false, scope );
 
 						// What a column of a table shows is a field of the element, and so are the fills of a line of free text
 						const called = ( registry.components || {} )[component.name] || {};
 						const shown = builder._columnar( called ) === true ? String( ( component.attributes || {} ).field ?? '' ) : '';
 
 						if( shown !== '' )
-							mark( shown, path, false );
+							mark( shown, path, false, scope );
 
 						if( called.fields === true && typeof component.text === 'string' )
 							( component.text.match( /\[\[[A-Za-z0-9_.\/-]+\]\]/g ) || [] ).map( function( fill ) { return fill.slice( 2, -2 ) } ).forEach( function( fill ) {
@@ -2174,10 +2263,10 @@
 									return;
 
 								// The path of a file is no text: an image field is no fill of a line
-								if( fields !== null && fields[fill] !== undefined && fields[fill].type === 'image' )
+								if( scope.fields !== null && scope.fields[fill] !== undefined && scope.fields[fill].type === 'image' )
 									red.push( { path : path, source : fill, why : 'field' } );
 								else
-									mark( fill, path, false );
+									mark( fill, path, false, scope );
 							} );
 
 						// The picture an attribute names is a slot or - in a loop - a field of the element, and not one of the special sources
@@ -2186,13 +2275,29 @@
 							const picture = String( ( component.attributes || {} )[attribute] ?? '' );
 
 							if( picture !== '' && picture.charAt( 0 ) !== '/' )
-								mark( picture, path, true );
+								mark( picture, path, true, scope );
 						} );
 
-						( component.components || [] ).forEach( function( child, j ) { check( child, path.concat( [ j ] ) ) } );
+						( component.components || [] ).forEach( function( child, j ) { check( child, path.concat( [ j ] ), scope ) } );
 					};
+					// What stands outside a loop is of the column: a column of a loop of sections is the cell of that loop, any other has no element
+					const outside = { fields : around, looped : block.stack !== null && block.stack !== undefined };
 
-					col.components.forEach( function( component, k ) { check( component, [ b, c, k ] ) } );
+					col.components.forEach( function( node, k ) {
+
+						if( builder._isLoop( node, registry ) === false )
+							return check( node, [ b, c, k ], outside );
+
+						const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === node.source } );
+						const inside = { fields : type === undefined ? null : type.fields || {}, looped : true };
+
+						if( type === undefined )
+							red.push( { path : [ b, c, k ], source : node.source, why : 'type' } );
+						else
+							named( node, inside.fields, [ b, c, k ] );
+
+						( node.components || [] ).forEach( function( child, j ) { check( child, [ b, c, k, j ], inside ) } );
+					} );
 				} );
 			} );
 
@@ -2272,7 +2377,7 @@
 		 *	matter (its 'loop'), and is not asked here
 		 *
 		 *	@param		{Object}		model
-		 *	@param		{Array}			path							The column, or the component that holds components
+		 *	@param		{Array}			path							The column, the component that holds components or the loop
 		 *	@param		{Object}		[registry]					Where the 'holds' is read, the panel's own by default
 		 *
 		 *	@return		{string}									hero or section - or the place the container holds
@@ -2281,7 +2386,7 @@
 
 			const builder = Nino.admin.builder;
 
-			if( path.length > 2 )
+			if( path.length > 2 && builder._isLoop( builder._get( model, path ), registry ) === false )
 				return builder._holds( registry ?? builder._registry, builder._get( model, path ).name );
 
 			return path[0] === 0 ? 'hero' : 'section';
@@ -2292,7 +2397,7 @@
 		 *	that holds components, and whether they are the cell of a loop
 		 *
 		 *	@param		{Object}		model
-		 *	@param		{Array}			path							The column, or the component that holds components
+		 *	@param		{Array}			path							The column, the component that holds components or the loop
 		 *	@param		{Object}		registry
 		 *
 		 *	@return		{Object}									{ place, inside, looped }
@@ -2300,9 +2405,8 @@
 		_placeOf : function( model, path, registry ) {
 
 			const builder = Nino.admin.builder;
-			const section = model.blocks[path[0]];
 
-			return { place : builder._where( model, path, registry ), inside : path.length > 2, looped : builder._loopOf( section, section.cols[path[1]] ) !== null };
+			return { place : builder._where( model, path, registry ), inside : path.length > 2 && builder._isLoop( builder._get( model, path ), registry ) === false, looped : builder._loopAt( model, path ) !== null, group : builder._groupName( model.blocks[path[0]] ) };
 		},
 
 		/**
@@ -2392,7 +2496,44 @@
 				} ) },
 			] );
 
+			// The loops are a group of their own, in the lightbox of a column: the cell of a loop holds none
+			const loops = path.length === 2 ? builder._pickLoops( model, path, registry ) : [];
+
+			if( loops.length > 0 )
+				result.push( { id : 'loops', label : Nino.content.getText('/_admin/builder/pick/loops'), rows : [ { label : '', items : loops } ] } );
+
 			return result.filter( function( group ) { return group.rows.some( function( row ) { return row.items.length > 0 } ) } );
+		},
+
+		/**
+		 *	The loops the lightbox of a column offers: every stack of the registry that may stand in a column ('loops'), in the order of the registry, each with its word and the
+		 *	picture its schema names ('preview'). One that cannot go here says why: the column is the cell of a loop of sections, and a loop inside a loop cannot be; or it is a
+		 *	panel of a group of that very stack, whose closing tag it would end. The Builder knows no stack by name
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The column
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{Array}										[ { name, label, image, loop, reason } ]
+		 */
+		_pickLoops : function( model, path, registry ) {
+
+			const builder = Nino.admin.builder;
+			const section = model.blocks[path[0]];
+			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
+
+			return ( registry.loops || [] ).map( function( name ) {
+
+				const schema = ( registry.stacks || {} )[name] || {};
+				let reason = '';
+
+				if( builder._looping( section ) === true )
+					reason = text('loop-in-loop');
+				else if( name === builder._groupName( section ) )
+					reason = text('loop-in-group');
+
+				return { name : name, label : schema.label || name, image : builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview, loop : true, icon : null, reason : reason };
+			} );
 		},
 
 		/**
@@ -2423,10 +2564,10 @@
 		 *	with its colour and whether it has a picture behind it, its columns at the
 		 *	width and the visibility of one viewport and in the ground each paints - dark
 		 *	where its picture is dimmed -, in a column its components as
-		 *	placeholders with the image the registry names, and for a column that runs a
-		 *	loop what the loop is, and the type it runs over by the title the Elements
-		 *	panel gives it - it is said in the head of the column, whose components are
-		 *	the cell of each element. A viewport changes nothing but
+		 *	placeholders with the image the registry names, and a loop among them as an
+		 *	entry of its own: the stack, the type it runs over by the title the Elements
+		 *	panel gives it, the state it is in, and its children - the cell of each
+		 *	element. A viewport changes nothing but
 		 *	widths and visibility; all of them at once (g) is drawn at the widths of
 		 *	the widest, with no column greyed - which viewports hide a column is
 		 *	what it says in its head. Where it is told the language and the keys, the
@@ -2447,7 +2588,11 @@
 
 			const builder = Nino.admin.builder;
 			const shown = viewport === 'g' ? 'l' : viewport;
+			const reds = builder._red( model, registry );
 			const place = function( component, path, surface ) {
+
+				if( builder._isLoop( component, registry ) === true )
+					return loop( component, path, surface );
 
 				const schema = ( registry.components || {} )[component.name] || {};
 				const text = texts === undefined ? null : builder._textOf( component, texts.locale, texts.keys, registry );
@@ -2477,6 +2622,54 @@
 					background	: look.picture,
 					children		: ( component.components || [] ).map( function( child, j ) { return place( child, path.concat( [ j ] ), surface ) } ),
 				} );
+			};
+
+			// A loop of a column: the stack by its word, the type it runs over and the order, the state it is in, and what it shows of its cell - the components of it, the columns of a table
+			// as lines, or a sentence for the cell that has no components to place
+			const loop = function( node, path, surface ) {
+
+				const schema = ( registry.stacks || {} )[node.name] || {};
+				const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === node.source } );
+				const cell = builder._cellKind( registry, node );
+				const row = cell === 'row' ? builder._rowOf( registry, node ) : null;
+				const sorted = builder._sortState( node ).field;
+				// The loop's own entry first, else the first one inside its cell: a red child is seen on the shut row as well
+				const problem = reds.find( function( entry ) { return builder._same( entry.path, path ) } ) || reds.find( function( entry ) { return entry.path.length > path.length && path.every( function( part, at ) { return entry.path[at] === part } ) } );
+				const shows = cell === 'columns' ? 'columns' : ( cell === 'none' || row !== null ? 'hint' : 'children' );
+				const title = function( one, k ) {
+
+					const text = texts === undefined ? null : builder._textOf( one, texts.locale, texts.keys, registry );
+
+					return {
+						path		: path.concat( [ k ] ),
+						title		: text === null ? '' : builder._firstLine( builder._shownText( one, text, texts.keys, registry ), builder.LINE_MAX ),
+						value		: typeof one.content === 'string' ? Nino.content.getText('/_admin/builder/column/content')+ ' \u00b7 '+ builder._firstLine( one.content, builder.CONTENT_SAID ) : ( typeof one.text === 'string' ? one.text : String( ( one.attributes || {} ).field ?? '' ) ),
+						content	: typeof one.content === 'string',
+						// A column the save refuses - a field the type has not, a fill that is none - is red where it is drawn
+						red		: reds.some( function( entry ) { return builder._same( entry.path, path.concat( [ k ] ) ) } ),
+					};
+				};
+
+				return {
+					path			: path,
+					loop			: true,
+					name			: node.name,
+					label			: builder._stackLabel( registry, node.name ),
+					// What the row says of the data: the type by the title the Elements panel gives it, and the field it is sorted by
+					type			: type === undefined || type.title === '' ? node.source : type.title,
+					sorted		: sorted,
+					cell			: cell,
+					shows			: shows,
+					// The state: the first thing wrong with the loop, as the sources are red (see _red()), else none
+					problem		: problem === undefined ? null : problem.why,
+					children	: shows === 'children' ? ( node.components || [] ).map( function( child, j ) { return place( child, path.concat( [ j ] ), surface ) } ) : [],
+					columns		: shows === 'columns' ? ( node.components || [] ).map( title ) : [],
+					count			: cell === 'components' || cell === 'columns' ? ( node.components || [] ).length : null,
+					// What a cell without components of its own draws: the row of a list, or the fields a loop of no content draws from
+					row				: row === null ? null : ( row.text !== undefined ? row.text : '[['+ row.field+ ']]' ),
+					fields		: cell === 'none' ? builder._loopTitle( registry, node ) : '',
+					image			: builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview,
+				};
 			};
 
 			return model.blocks.map( function( block, b ) {
@@ -2514,8 +2707,6 @@
 					reason			: null,
 					cols				: block.cols.map( function( col, c ) {
 
-						const stack = col.stack === null || col.stack === undefined ? null : col.stack;
-						const type = stack === null ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
 						const picture = col.background !== null && col.background !== undefined;
 
 						return {
@@ -2534,25 +2725,8 @@
 							linked		: block.settings.tiles === true && col.linked === true,
 							text			: col.text || '',
 							stackAlign : col.stackAlign || '',
-							stack			: stack === null ? null : { path : [ b, c, 'x' ], label : builder._stackLabel( registry, stack.name ), type : type === undefined || type.title === '' ? stack.source : type.title },
-							// A loop whose content is its columns is drawn as the table it makes, and a list whose cell is a row as its rows: they have no components to place
-							table			: stack !== null && ( ( registry.stacks || {} )[stack.name] || {} ).preview === 'table' ? col.components.map( function( node, k ) {
-
-								const text = texts === undefined ? null : builder._textOf( node, texts.locale, texts.keys, registry );
-
-								return {
-									title	: text === null ? '' : builder._firstLine( builder._shownText( node, text, texts.keys, registry ), builder.LINE_MAX ),
-									value	: typeof node.content === 'string' ? Nino.content.getText('/_admin/builder/column/content')+ ' \u00b7 '+ builder._firstLine( node.content, builder.CONTENT_SAID ) : ( typeof node.text === 'string' ? node.text : String( ( node.attributes || {} ).field ?? '' ) ),
-									content : typeof node.content === 'string',
-									// A column the save refuses - a field the type has not, a fill that is none - is red where it is drawn
-									red		: builder._red( model, registry ).some( function( entry ) { return builder._same( entry.path, [ b, c, k ] ) } ),
-								};
-							} ) : null,
-							// A loop that is drawn as a block says what it is and, where it has a title, which: the field or the line the titles are made of
-							// A loop whose cell is none has no components to place: it is the block alone, whatever the picture its schema names for it
-							block			: stack !== null && ( ( ( registry.stacks || {} )[stack.name] || {} ).preview === 'block' || builder._cellKind( registry, stack ) === 'none' ) ? { label : builder._stackLabel( registry, stack.name ), title : builder._loopTitle( registry, stack ), image : ( registry.stacks[stack.name] || {} ).preview === 'image' ? 'image' : 'block', bare : builder._cellKind( registry, stack ) === 'none' } : null,
-							rows			: stack !== null && builder._cellKind( registry, stack ) === 'row' && builder._rowOf( registry, col ) !== null ? ( function( row ) { return [ row, row, row ].map( function( one ) { return one.text !== undefined ? one.text : '[['+ one.field+ ']]' } ) } )( builder._rowOf( registry, col ) ) : null,
-							components : col.components.map( function( component, k ) { return place( component, [ b, c, k ], builder._surface( block, col ) ) } ),
+							// The components and the loops of the column, in their order: a loop is an entry like any other, and carries what it shows of its cell
+							components : col.components.map( function( node, k ) { return place( node, [ b, c, k ], builder._surface( block, col ) ) } ),
 						};
 					} ),
 				};
@@ -3567,6 +3741,7 @@
 				builder._doc = { file : file, hash : answers.load.hash, model : model, saved : JSON.stringify( model ), usedBy : entry === undefined ? [] : entry.usedBy };
 				builder._sel = [];
 				builder._fresh = {};
+				builder._open = new WeakSet();
 				builder._problems = [];
 				builder._saving = false;
 
@@ -3978,7 +4153,7 @@
 					} ) );
 				}
 
-				// A section that makes a section of every element says so as a column that runs a loop does: it is a button, which opens the block Loop of the section
+				// A section that makes a section of every element says so: it is a button, which opens the block Loop of the section
 				if( block.loop !== null ) {
 
 					const says = block.loop.label+ ' · '+ block.loop.type;
@@ -4053,7 +4228,8 @@
 
 				const el = mount.querySelector( '[data-path="'+ entry.path.join('.')+ '"]' );
 
-				if( el === null )
+				// A loop says what is wrong with it in a chip of its own (see _previewLoop())
+				if( el === null || el.classList.contains('builder-loop') === true )
 					return;
 
 				el.classList.add('is-red');
@@ -4238,13 +4414,12 @@
 		/**
 		 *	One column of the preview, at the width and the visibility of the
 		 *	viewport, in the ground it paints. Its head has the width for a title;
-		 *	what it says of the column is a picture behind it, the loop it runs - a
-		 *	button, which opens the block Loop -, an alignment that is not the default
-		 *	- the icon of the choice, a button that opens the Layout tab - and that it
-		 *	is hidden: where the view is one viewport, in that one, else in which
-		 *	ones. A column with a loop has the components of its cell in it, as one
-		 *	without has its own; one that holds components is a frame of its own in it
-		 *	(see _previewCard())
+		 *	what it says of the column is a picture behind it, an alignment that is
+		 *	not the default - the icon of the choice, a button that opens the Layout
+		 *	tab - and that it is hidden: where the view is one viewport, in that one,
+		 *	else in which ones. Its components stand in it, a loop among them as a row of
+		 *	its own (see _previewLoop()); one that holds components is a frame of its own
+		 *	in it (see _previewCard())
 		 *
 		 *	@param		{Object}		col						An entry of _preview()
 		 *
@@ -4288,20 +4463,6 @@
 			if( col.linked === true )
 				status.appendChild( builder._statusItem( 'linked', 'link', Nino.content.getText('/_admin/builder/preview/linked'), '' ) );
 
-			if( col.stack !== null ) {
-
-				// What the head says of the loop is in the title as well: in a narrow column the text is cut off, the title is not
-				const says = col.stack.label+ ' · '+ col.stack.type;
-				const loop = builder._statusItem( 'loop', 'loop', Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/loop'), says ), says, function() {
-					builder._select( col.stack.path, false );
-					builder._openSettings( col.stack.path );
-				} );
-
-				// The type of the loop is red when the project has none like it, and says so here
-				loop.dataset.path = col.stack.path.join('.');
-				status.appendChild( loop );
-			}
-
 			// An alignment that is not the default is the icon of the choice, as the dialog has it, in every view - it is no property of a viewport
 			[ { key : 'stackAlign', group : 'stack-align', words : 'align-stack' }, { key : 'text', group : 'text', words : 'align-text' } ].forEach( function( how ) {
 
@@ -4323,38 +4484,9 @@
 
 			builder._one( frame, '.builder-pcol-head' ).appendChild( builder._tools( col.path, Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/tools-col'), col.path[1] + 1, builder._doc.model.blocks[col.path[0]].id ) ) );
 
-			if( col.table !== null || col.rows !== null ) {
-
-				// The table or the rows the loop makes: one picture of them, which opens the form of the loop
-				const drawing = col.table !== null ? builder._tablePlaceholder( col.table ) : builder._rowsPlaceholder( col.rows );
-
-				drawing.dataset.path = col.stack.path.join('.');
-				drawing.addEventListener( 'click', function() {
-					builder._select( col.stack.path, false );
-					builder._openSettings( col.stack.path );
-				} );
-				body.appendChild( drawing );
-
-				return frame;
-			}
-
-			// A loop drawn as a block stands over its cell, once: the cell is what the components below are
-			if( col.block !== null ) {
-
-				const block = builder._placeholder( { path : col.path, label : col.block.label, image : col.block.image, line : col.block.title === '' ? '' : col.block.label+ ' \u00b7 '+ col.block.title, picture : '', draws : '' }, 'none' );
-
-				// It is no frame to pick: a click on it is a click on the column
-				block.removeAttribute('data-path');
-				block.classList.remove('builder-pick');
-				block.classList.add('builder-loop-block');
-				body.appendChild( block );
-
-				// What has no components has nothing to add them to
-				if( col.block.bare === true )
-					return frame;
-			}
-
-			col.components.forEach( function( component ) { body.appendChild( component.holds === true ? builder._previewCard( component ) : builder._placeholder( component, 'tools' ) ) } );
+			col.components.forEach( function( component ) {
+				body.appendChild( component.loop === true ? builder._previewLoop( component ) : ( component.holds === true ? builder._previewCard( component ) : builder._placeholder( component, 'tools' ) ) );
+			} );
 			body.appendChild( builder._addsRow( col.path ) );
 
 			return frame;
@@ -4391,59 +4523,106 @@
 		},
 
 		/**
-		 *	The table a loop makes, in the preview: the titles of its columns for a head - none where no column has one - and two rows of what its cells show, a field by its
-		 *	name and a line of text as it is written
+		 *	A loop of a column, in the preview: a row with a rail in the colour of the loops, an arrow, the word of the stack, the word Loop, what it runs over and in which order,
+		 *	and a chip that says what is wrong with it - red - or how much its cell holds, and its tools. It is shut until it is opened - the arrow, a click on the row - and
+		 *	then shows its cell: the components it repeats for each element, one level in from a dashed line, with a button that adds one; the columns of a table as lines, with a
+		 *	button that adds one; or, for a cell with no components of its own, a sentence that says what it draws
 		 *
-		 *	@param		{Array}			columns						[ { title, value } ]
+		 *	@param		{Object}		loop							An entry of _preview() that is a loop
 		 *
 		 *	@return		{Element}
 		 */
-		_tablePlaceholder : function( columns ) {
+		_previewLoop : function( loop ) {
 
 			const builder = Nino.admin.builder;
-			const wrap = builder._el( 'div', 'builder-table-ph' );
-			const table = builder._el( 'table', 'builder-table-ph-table' );
-			const body = builder._el( 'tbody' );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
+			const frame = builder._fragment('loop');
+			const bar = builder._one( frame, '.builder-loop-bar' );
+			const toggle = builder._one( frame, '.builder-loop-toggle' );
+			const status = builder._one( frame, '.builder-head-status' );
+			const body = builder._one( frame, '.builder-loop-body' );
+			const cell = builder._one( frame, '.builder-loop-cell' );
+			const node = builder._get( builder._doc.model, loop.path );
+			// A loop is open when it was opened, and while what is selected stands in it: a component that was just added to its cell is seen
+			const within = builder._sel.length > loop.path.length && loop.path.every( function( part, at ) { return builder._sel[at] === part } );
+			const set = function( open ) {
 
-			if( columns.some( function( column ) { return column.title !== '' } ) === true ) {
+				frame.classList.toggle( 'is-open', open );
+				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+				body.hidden = open === false;
+			};
 
-				const head = builder._el( 'thead' );
-				const line = builder._el( 'tr' );
+			frame.dataset.path = loop.path.join('.');
+			frame.dataset.cell = loop.cell;
+			frame.dataset.stack = loop.name;
+			builder._one( frame, '.builder-loop-name' ).textContent = loop.label;
+			builder._one( frame, '.builder-loop-kind' ).textContent = word('kind');
+			builder._one( frame, '.builder-loop-cell-label' ).textContent = loop.shows === 'columns' ? word('columns') : word('cell');
+			toggle.setAttribute( 'aria-label', Nino.adminUi.format( word('toggle'), loop.label ) );
+			set( node !== null && ( builder._open.has( node ) === true || within === true ) );
 
-				columns.forEach( function( column ) { line.appendChild( builder._el( 'th', column.red === true ? 'is-red' : '', column.title ) ) } );
-				head.appendChild( line );
-				table.appendChild( head );
+			// What the row says of the data it runs over: the type, and the field it is sorted by
+			status.appendChild( builder._el( 'span', 'builder-chip is-loop', loop.type+ ( loop.sorted === '' ? '' : ' · '+ Nino.adminUi.format( word('sorted'), loop.sorted ) ) ) );
+
+			// The state: red where something is wrong - the words of the tip are the ones a red source has had - else how much the cell holds
+			if( loop.problem !== null ) {
+
+				const red = builder._el( 'span', 'builder-chip is-red', word('problem') );
+
+				red.title = Nino.content.getText( '/_admin/builder/tree/red-'+ loop.problem );
+				status.appendChild( red );
+			} else if( loop.count !== null ) {
+
+				const count = builder._el( 'span', 'builder-chip', String( loop.count ) );
+
+				count.title = Nino.adminUi.format( word( loop.cell === 'columns' ? 'count-columns' : 'count-components' ), loop.count );
+				status.appendChild( count );
 			}
 
-			[ 0, 1 ].forEach( function() {
+			// A click on the row opens and shuts it, on the arrow too; a double click opens the settings. The tools are not the row
+			bar.addEventListener( 'click', function( ev ) {
 
-				const line = builder._el( 'tr' );
+				if( ev.target.closest('.builder-tools') !== null || node === null )
+					return;
 
-				columns.forEach( function( column ) { line.appendChild( builder._el( 'td', [ column.red === true ? 'is-red' : '', column.content === true ? 'is-content' : '' ].filter( function( word ) { return word !== '' } ).join(' '), column.value ) ) } );
-				body.appendChild( line );
+				builder._select( loop.path, false );
+
+				if( builder._open.has( node ) === true )
+					builder._open.delete( node );
+				else
+					builder._open.add( node );
+
+				set( builder._open.has( node ) === true );
 			} );
+			builder._pick( frame, loop.path );
+			bar.appendChild( builder._tools( loop.path, loop.label ) );
 
-			table.appendChild( body );
-			wrap.appendChild( table );
+			if( loop.shows === 'children' ) {
 
-			return wrap;
-		},
+				loop.children.forEach( function( child ) { cell.appendChild( child.holds === true ? builder._previewCard( child ) : builder._placeholder( child, 'tools' ) ) } );
+				cell.appendChild( builder._addsRow( loop.path ) );
+			} else if( loop.shows === 'columns' ) {
 
-		/**
-		 *	The rows a list makes, in the preview: three bullets and the line of each
-		 *
-		 *	@param		{Array}			rows							The lines
-		 *
-		 *	@return		{Element}
-		 */
-		_rowsPlaceholder : function( rows ) {
+				loop.columns.forEach( function( column ) {
 
-			const builder = Nino.admin.builder;
-			const list = builder._el( 'div', 'builder-rows-ph' );
+					const line = builder._el( 'div', 'builder-loop-column'+ ( column.red === true ? ' is-red' : '' ) );
 
-			rows.forEach( function( line ) { list.appendChild( builder._el( 'div', 'builder-rows-ph-row', '\u2022  '+ line ) ) } );
+					line.dataset.path = column.path.join('.');
+					line.appendChild( builder._el( 'span', 'builder-loop-column-title', column.title === '' ? '–' : column.title ) );
+					line.appendChild( builder._el( 'span', 'builder-loop-column-value'+ ( column.content === true ? ' is-content' : '' ), column.value ) );
+					line.addEventListener( 'click', function( ev ) { ev.stopPropagation(); builder._select( loop.path, false ) } );
+					line.addEventListener( 'dblclick', function( ev ) { ev.stopPropagation(); builder._openSettings( loop.path, builder._blockOf( 'loop', 'columns' ) ) } );
+					cell.appendChild( line );
+				} );
 
-			return list;
+				const adds = builder._el( 'div', 'builder-adds' );
+
+				adds.appendChild( builder._addButton( 'table-column', function() { builder._addColumn( loop.path ) } ) );
+				cell.appendChild( adds );
+			} else
+				cell.appendChild( builder._el( 'p', 'builder-loop-says', loop.cell === 'none' ? Nino.adminUi.format( word('none-says'), loop.fields === '' ? '–' : loop.fields ) : Nino.adminUi.format( word('row-says'), loop.row ) ) );
+
+			return frame;
 		},
 
 		/**
@@ -4482,11 +4661,11 @@
 		},
 
 		/**
-		 *	The button at the end of a column: a component, which goes in the column
-		 *	and - where it runs a loop - in the cell of the loop; at the end of a
-		 *	component that holds components it is a child
+		 *	The button at the end of a column: a component, which goes in the column;
+		 *	at the end of a component that holds components, or of the cell of a loop,
+		 *	it is a child
 		 *
-		 *	@param		{Array}			path							The column, or the component that holds components
+		 *	@param		{Array}			path							The column, the component that holds components or the loop
 		 *
 		 *	@return		{Element}
 		 */
@@ -4665,7 +4844,7 @@
 		},
 
 		/**
-		 *	Copy a section, a column or a component: the clip is what the next paste puts in. The document is not changed, and so is not unsaved. The
+		 *	Copy a section, a column, a component or a loop with its children: the clip is what the next paste puts in. The document is not changed, and so is not unsaved. The
 		 *	clip carries the text each key under the section's prefix has in each language - the stored one with what was typed for it and is not saved
 		 *	yet over it - so that the words travel when the page is left, or the key is renamed
 		 *
@@ -4684,7 +4863,7 @@
 
 			const kind = builder._kind( doc.model, path );
 			const section = doc.model.blocks[path[0]];
-			const clip = { kind : kind === 'col' ? 'column' : kind, file : doc.file, section : kind === 'html' ? '' : builder._keyId( section ), node : builder._clone( place.list[place.index] ), values : {} };
+			const clip = { kind : kind === 'col' ? 'column' : ( kind === 'loop' ? 'component' : kind ), file : doc.file, section : kind === 'html' ? '' : builder._keyId( section ), node : builder._clone( place.list[place.index] ), values : {} };
 			const prefix = builder._keyUri( doc.file, clip.section, '' );
 			const visit = function( component ) {
 
@@ -4992,8 +5171,15 @@
 
 			const builder = Nino.admin.builder;
 			const button = builder._el( 'button', 'builder-pick-item' );
-			// A component that names no parts - or an empty list of them - wears the puzzle of the sprite
-			const icon = Array.isArray( item.icon ) === true && item.icon.length > 0 ? builder._shape( item.icon ) : builder._icon( 'puzzle' );
+			let icon;
+
+			// A loop wears the picture its schema names for the preview. A component that names no parts - or an empty list of them - wears the puzzle of the sprite
+			if( item.loop === true ) {
+				icon = builder._one( builder._fragment('ph'), '.builder-ph-icon' );
+				builder._one( icon, 'use' ).setAttribute( 'href', '#builder-ph-'+ item.image );
+				button.classList.add('is-loop');
+			} else
+				icon = Array.isArray( item.icon ) === true && item.icon.length > 0 ? builder._shape( item.icon ) : builder._icon( 'puzzle' );
 
 			icon.classList.add('builder-pick-icon');
 			button.type = 'button';
@@ -5007,7 +5193,7 @@
 				button.title = item.reason;
 				button.appendChild( builder._el( 'span', 'nino-admin-sr-only', item.reason ) );
 			} else
-				button.addEventListener( 'click', function() { builder._insert( path, item.name ) } );
+				button.addEventListener( 'click', function() { item.loop === true ? builder._insertLoop( path, item.name ) : builder._insert( path, item.name ) } );
 
 			return button;
 		},
@@ -5042,10 +5228,37 @@
 		},
 
 		/**
-		 *	A component at the end of a column - or of the loop it has -, or a child at the end
-		 *	of a component that holds components
+		 *	Add a loop and open its settings in the dialog the choice was made in, with the focus on the first control
 		 *
-		 *	@param		{Array}			path					The column, or the component that holds components
+		 *	@param		{Array}			path					The column
+		 *	@param		{string}		name					The stack
+		 *
+		 *	@return		void
+		 */
+		_insertLoop : function( path, name ) {
+
+			const builder = Nino.admin.builder;
+			const before = builder._get( builder._doc.model, path ).components.length;
+
+			builder._addLoop( path, name );
+
+			if( builder._get( builder._doc.model, path ).components.length === before )
+				return;
+
+			builder._openSettings( builder._sel );
+
+			const open = Array.from( dc.querySelectorAll('#builder-dialog-content .builder-block-body') ).find( function( candidate ) { return candidate.hidden === false } );
+			const first = open === undefined ? null : open.querySelector('input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)');
+
+			if( first !== null )
+				first.focus();
+		},
+
+		/**
+		 *	A component at the end of a column, or a child at the end of a component that holds components
+		 *	or of a loop
+		 *
+		 *	@param		{Array}			path					The column, the component that holds components or the loop
 		 *	@param		{string}		name					The component
 		 *
 		 *	@return		void
@@ -5054,7 +5267,7 @@
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
-			// The components of the column, or the children of the component that holds components
+			// The components of the column, or the children of the component that holds components or of the loop
 			const list = ( builder._get( doc.model, path ) || {} ).components;
 
 			if( builder._mutable() === false || Array.isArray( list ) === false )
@@ -5826,7 +6039,7 @@
 			link.type = 'button';
 			link.addEventListener( 'click', function() {
 				builder._setView('g');
-				builder._refreshControls( 'width', 'stack', 'reverse' );
+				builder._refreshControls( 'width', 'stack', 'reverse', 'grid' );
 			} );
 
 			return link;
@@ -6858,8 +7071,8 @@
 			if( kind === 'col' )
 				return builder._colDialog( path, block );
 
-			if( kind === 'stack' )
-				return builder._colDialog( path.slice( 0, 2 ), builder._blockOf( 'column', 'stack' ) );
+			if( kind === 'loop' )
+				return builder._loopDialog( path, block );
 
 			if( kind === 'html' )
 				return builder._editBlock( path );
@@ -7379,7 +7592,7 @@
 					keys	: [ 'stack' ],
 					build	: function( body ) {
 
-						const loop = builder._el( 'div', 'builder-loop' );
+						const loop = builder._el( 'div', 'builder-loop-form' );
 
 						builder._stackForm( loop, path );
 						body.appendChild( loop );
@@ -8191,17 +8404,6 @@
 					build	: function( body ) { body.appendChild( setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) ) },
 					says	: function() { return col.text === '' ? '' : builder._optionLabel( 'text', col.text ) },
 				},
-				stack : {
-					keys	: [ 'stack' ],
-					build	: function( body ) {
-
-						const loop = builder._el( 'div', 'builder-loop' );
-
-						builder._stackForm( loop, path );
-						body.appendChild( loop );
-					},
-					says	: function() { return col.stack === null || col.stack === undefined ? '' : builder._stackLabel( builder._registry, col.stack.name ) },
-				},
 				vpa : {
 					keys	: [ 'vpa' ],
 					build	: function( body ) { animations.vpa.build( builder._groupIn( body, 'animation' ) ) },
@@ -8342,15 +8544,14 @@
 		},
 
 		/**
-		 *	The loop of a column, in the order the call is thought of: how the elements are shown (the presentation: none, or one of the stacks of the registry that may stand
-		 *	here), the data they come from (the type, the query, the order, the limit, the offset and the id - the same for every presentation), and then what the presentation
-		 *	brings of its own, made from its schema: its attributes by the type each has, the grid of the cells where it is a grid, the columns of a table, the row of a list. The
-		 *	components of the column stay where they are when it changes - unless the new presentation has no content, which takes them away, or is a table, which keeps only columns; what their sources mean there is checked, and a source that means nothing is red until it is changed. The
-		 *	loop of a section is the same without the grid - none, or the presentation whose cell is the section: its id is the section's, shown and not changed here. A loop in a
-		 *	loop is none: a section that makes sections has no column that runs a loop, and one with such a column cannot start to
+		 *	The loop of a section, in the order the call is thought of: how the elements are shown (the presentation: none, or the stack of the registry whose cell is a whole
+		 *	section), the data they come from (the type, the query, the order, the limit and the offset - the same for every presentation, and the id, which is the section's: shown
+		 *	and not changed here), and then what the presentation brings of its own, made from its schema: its attributes by the type each has. A loop in a loop is none: a
+		 *	section that makes sections has no column that runs a loop, and one with such a column cannot start to. The loop of a column is a component with a dialog of its own
+		 *	(see _loopDialog())
 		 *
 		 *	@param		{Element}		pane
-		 *	@param		{Array}			path					The column - or the section
+		 *	@param		{Array}			path					The section
 		 *
 		 *	@return		void
 		 */
@@ -8359,25 +8560,19 @@
 			const builder = Nino.admin.builder;
 			const registry = builder._registry;
 			const section = builder._doc.model.blocks[path[0]];
-			const whole = path.length === 1;
-			const col = whole === true ? section : section.cols[path[1]];
-			// A section offers every stack whose cell is a whole section, a column every stack whose cell is not: the registry's word, no name
-			// The stack of the group a column is a panel of is not offered in it: its call would end the group at its own closing tag
-			const names = Object.keys( registry.stacks || {} ).filter( function( name ) { return ( builder._cellKind( registry, { name : name } ) === 'section' ) === whole && ( whole === true || name !== builder._groupName( section ) ) } );
+			// A section offers every stack whose cell is a whole section: the registry's word, no name
+			const names = Object.keys( registry.stacks || {} ).filter( function( name ) { return builder._cellKind( registry, { name : name } ) === 'section' } );
 			const options = [ { value : '', label : Nino.content.getText('/_admin/builder/stack/static') } ].concat( names.map( function( name ) {
 				return { value : name, label : builder._stackLabel( registry, name ) };
 			} ) );
 			// The one that would be the loop in a loop is held back, and says why
-			const held = whole === true ? ( builder._looping( section ) === false && section.cols.some( function( other ) { return other.stack !== null && other.stack !== undefined } ) === true ) : builder._looping( section ) === true;
-			const kind = builder._selectField( Nino.content.getText('/_admin/builder/stack/kind'), '', options, col.stack === null || col.stack === undefined ? '' : col.stack.name, function( name ) {
+			const held = builder._looping( section ) === false && section.cols.some( function( other ) { return other.components.some( function( node ) { return builder._isLoop( node ) } ) } ) === true;
+			const kind = builder._selectField( Nino.content.getText('/_admin/builder/stack/kind'), '', options, section.stack === null || section.stack === undefined ? '' : section.stack.name, function( name ) {
 
-				col.stack = name === '' ? null : builder._stackFor( registry, name, col.stack === null || col.stack === undefined ? null : col.stack );
-
-				if( whole === false )
-					builder._cellFor( registry, path );
+				section.stack = name === '' ? null : builder._stackFor( registry, name, section.stack === null || section.stack === undefined ? null : section.stack );
 
 				// A call makes no cover of another height
-				if( whole === true && col.stack !== null && section.settings.cover !== null )
+				if( section.stack !== null && section.settings.cover !== null )
 					section.settings.cover = 90;
 
 				builder._changed();
@@ -8388,13 +8583,49 @@
 			pane.appendChild( kind );
 
 			if( held === true )
-				pane.appendChild( Nino.adminUi.notice( Nino.content.getText( whole === true ? '/_admin/builder/stack/in-column' : '/_admin/builder/stack/in-section' ) ) );
+				pane.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/in-column') ) );
 
-			if( col.stack === null || col.stack === undefined )
+			if( section.stack === null || section.stack === undefined )
 				return;
 
-			const stack = col.stack;
+			const stack = section.stack;
 			const schema = registry.stacks[stack.name] || {};
+			const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
+			const fields = type === undefined ? {} : type.fields;
+
+			// The data: the same for every presentation. The id of a loop that makes sections is the id of the section, which is changed in the title: the sections are numbered after it
+			builder._loopData( builder._group( pane, Nino.content.getText('/_admin/builder/group/data') ), stack, function() { builder._refreshControls( 'stack' ) }, Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/sections-id'), section.id, section.id ), section.id );
+
+			const declared = builder._declared( schema );
+
+			// What the presentation brings of its own, under its own name: its attributes by their types, in the order of its schema
+			if( Object.keys( declared ).length > 0 )
+				builder._attributeFields( builder._group( pane, builder._stackLabel( registry, stack.name ) ), declared, stack.attributes, {
+					fields	: fields,
+					section	: section,
+					around	: section.settings.color || '',
+					redraw	: function() { builder._refreshControls( 'stack' ) },
+					words		: true,
+					lines		: true,
+				} );
+		},
+
+		/**
+		 *	The data of a loop, for every presentation alike: what it runs over (the type, with a sentence and a link to the Elements panel where the project has none like it), the
+		 *	query, the order, the limit and the offset - and the id, unless it is told what the id is (a loop of sections takes the id of its section, shown and not changed)
+		 *
+		 *	@param		{Element}		pane
+		 *	@param		{Object}		stack							The loop: { name, source, attributes }
+		 *	@param		{Function}	redraw						Called when a choice changes what the form shows (the type: the fields of it)
+		 *	@param		{string}		[idHint]					The hint of an id that is read-only
+		 *	@param		{string}		[id]							The id that is shown and not changed
+		 *
+		 *	@return		void
+		 */
+		_loopData : function( pane, stack, redraw, idHint, id ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
 			const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
 			const typeOptions = ( registry.types || [] ).map( function( candidate ) { return { value : candidate.uri, label : candidate.title+ ' ('+ candidate.uri+ ')' } } );
 			const number = function( key, label, hint ) {
@@ -8407,72 +8638,259 @@
 			if( type === undefined )
 				typeOptions.unshift( { value : stack.source, label : stack.source === '' ? Nino.content.getText('/_admin/builder/label/none') : stack.source } );
 
-			// The data: the same for every presentation. What the loop runs over, in which order, how many - and its id, which a loop that makes sections takes from the section
-			const data = builder._group( pane, Nino.content.getText('/_admin/builder/group/data') );
-
-			data.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/type'), Nino.content.getText('/_admin/builder/stack/type-hint'), typeOptions, stack.source, function( value ) {
+			pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/type'), Nino.content.getText('/_admin/builder/stack/type-hint'), typeOptions, stack.source, function( value ) {
 				stack.source = value;
 				builder._changed();
-				builder._refreshControls( 'stack' );
+				redraw();
 			} ) );
 
 			// A type the project does not have is a thing to say where it is, and to point to the panel that makes it
 			if( type === undefined )
-				data.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/type-missing'), { href : '#types', label : Nino.content.getText('/_admin/builder/stack/types-link') } ) );
+				pane.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/type-missing'), { href : '#types', label : Nino.content.getText('/_admin/builder/stack/types-link') } ) );
 
-			data.appendChild( builder._textField( Nino.content.getText('/_admin/builder/stack/query'), Nino.content.getText('/_admin/builder/hint/query'), stack.attributes.query, function( value ) {
+			pane.appendChild( builder._textField( Nino.content.getText('/_admin/builder/stack/query'), Nino.content.getText('/_admin/builder/hint/query'), stack.attributes.query, function( value ) {
 				stack.attributes.query = value;
 				builder._changed();
 			} ) );
 
-			builder._sortField( data, stack, type === undefined ? {} : type.fields );
-			data.appendChild( number( 'limit', '/_admin/builder/stack/limit', '/_admin/builder/hint/limit' ) );
-			data.appendChild( number( 'offset', '/_admin/builder/stack/offset' ) );
-			// The id of a loop that makes sections is the id of the section, which is changed in the title: the sections are numbered after it
-			data.appendChild( whole === true
-				? builder._textField( Nino.content.getText('/_admin/builder/stack/id'), Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/sections-id'), section.id, section.id ), section.id, function() {}, { readonly : true } )
-				: builder._textField( Nino.content.getText('/_admin/builder/stack/id'), Nino.content.getText('/_admin/builder/hint/stack-id'), stack.attributes.id, function( value ) {
-					stack.attributes.id = value;
-					builder._changed();
-				} ) );
+			builder._sortField( pane, stack, type === undefined ? {} : type.fields );
+			pane.appendChild( number( 'limit', '/_admin/builder/stack/limit', '/_admin/builder/hint/limit' ) );
+			pane.appendChild( number( 'offset', '/_admin/builder/stack/offset' ) );
 
+			if( id !== undefined )
+				pane.appendChild( builder._textField( Nino.content.getText('/_admin/builder/stack/id'), idHint ?? '', id, function() {}, { readonly : true } ) );
+		},
+
+		/**
+		 *	A loop as the editor makes a new one: the stack of the registry with its defaults, the first type the project has to loop, and no children yet (see _cellFor())
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{string}		name							The registered stack
+		 *
+		 *	@return		{Object}									{ name, source, attributes, components }
+		 */
+		_newLoop : function( registry, name ) {
+
+			const loop = Nino.admin.builder._stackFor( registry, name, null );
+
+			loop.components = [];
+
+			return loop;
+		},
+
+		/**
+		 *	A loop at the end of a column, with the cell it needs to start with, and its settings open
+		 *
+		 *	@param		{Array}			path							The column
+		 *	@param		{string}		name							The stack
+		 *
+		 *	@return		void
+		 */
+		_addLoop : function( path, name ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const col = builder._get( doc.model, path );
+
+			if( builder._mutable() === false || col === null || builder._pickLoops( doc.model, path, builder._registry ).some( function( item ) { return item.name === name && item.reason === '' } ) === false )
+				return;
+
+			col.components.push( builder._newLoop( builder._registry, name ) );
+
+			const at = path.concat( [ col.components.length - 1 ] );
+
+			builder._cellFor( builder._registry, at );
+			builder._open.add( col.components[col.components.length - 1] );
+			builder._sel = at;
+			builder._changed();
+			builder._paintSelection( true );
+		},
+
+		/**
+		 *	The dialog of a loop: its data, its presentation and its properties, three blocks of the table (BLOCKS.loop), the controls of which are made by _loopControls()
+		 *
+		 *	@param		{Array}			path							The loop
+		 *	@param		{string}		[block]						The block to open
+		 *
+		 *	@return		void
+		 */
+		_loopDialog : function( path, block ) {
+
+			const builder = Nino.admin.builder;
+			const loop = builder._get( builder._doc.model, path );
+
+			builder._dialog( {
+				title		: Nino.adminUi.format( Nino.content.getText('/_admin/builder/loop/title'), builder._stackLabel( builder._registry, loop.name ) ),
+				blame		: path[0],
+				returnTo	: path,
+				kind		: 'loop',
+				block		: block,
+				blocks	: builder._blocksOf( 'loop', builder._loopControls( path ) ),
+			} );
+		},
+
+		/**
+		 *	The controls of the form of a loop, by the name the table lists them under (see BLOCKS and _sectionControls()): the data - the type, the query, the order, the limit and the
+		 *	offset -, the presentation - the attributes the stack brings by the type each has, the grid of a stack that is one, the columns of a table or the row of a list, whatever the
+		 *	schema says its cell is - and the properties, the id and the class of its own. The fields a cell can show are those of the type
+		 *
+		 *	@param		{Array}			path							The loop
+		 *
+		 *	@return		{Object}									name of the control => its entry (see _blocksOf())
+		 */
+		_loopControls : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
+			const model = builder._doc.model;
+			const loop = builder._get( model, path );
+			const section = model.blocks[path[0]];
+			const col = section.cols[path[1]];
+			const schema = ( registry.stacks || {} )[loop.name] || {};
+			const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === loop.source } );
+			const fields = type === undefined ? {} : type.fields || {};
 			const declared = builder._declared( schema );
-			const cell = builder._cellKind( registry, stack );
-			const fields = type === undefined ? {} : type.fields;
-
-			// What the presentation brings of its own, under its own name: its attributes by their types, in the order of its schema
-			if( Object.keys( declared ).length > 0 )
-				builder._attributeFields( builder._group( pane, builder._stackLabel( registry, stack.name ) ), declared, stack.attributes, {
-					fields	: fields,
-					section	: section,
-					around	: whole === true ? ( section.settings.color || '' ) : builder._surface( section, col ),
-					redraw	: function() { builder._refreshControls( 'stack' ) },
-					words		: true,
-					lines		: true,
+			const cell = builder._cellKind( registry, loop );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			// The data are the block of their own: a control draws what is its own into the body
+			const data = function( keys, draw ) {
+				return {
+					keys	: keys,
+					build	: draw,
+					says	: function() { return '' },
+				};
+			};
+			const number = function( key, label, hint ) {
+				return builder._numberField( word( label ), hint === undefined ? '' : word( hint ), parseInt( loop.attributes[key], 10 ) || 0, 0, 100000, function( value ) {
+					loop.attributes[key] = String( value === null ? 0 : value );
+					builder._changed();
 				} );
+			};
+			const controls = {
+				source : {
+					keys	: [ 'source' ],
+					build	: function( body ) {
+
+						const typeOptions = ( registry.types || [] ).map( function( candidate ) { return { value : candidate.uri, label : candidate.title+ ' ('+ candidate.uri+ ')' } } );
+						const pane = body;
+
+						if( type === undefined )
+							typeOptions.unshift( { value : loop.source, label : loop.source === '' ? word('label/none') : loop.source } );
+
+						pane.appendChild( builder._selectField( word('stack/type'), word('stack/type-hint'), typeOptions, loop.source, function( value ) {
+							loop.source = value;
+							builder._changed();
+							builder._refreshControls();
+						} ) );
+
+						// A type the project does not have is a thing to say where it is, and to point to the panel that makes it
+						if( type === undefined )
+							pane.appendChild( Nino.adminUi.notice( word('stack/type-missing'), { href : '#types', label : word('stack/types-link') } ) );
+					},
+					says	: function() { return type === undefined ? loop.source : ( type.title || loop.source ) },
+				},
+				query : data( [ 'query' ], function( pane ) {
+					pane.appendChild( builder._textField( word('stack/query'), word('hint/query'), loop.attributes.query, function( value ) {
+						loop.attributes.query = value;
+						builder._changed();
+					} ) );
+				} ),
+				sort : {
+					keys	: [ 'sort', 'order' ],
+					build	: function( body ) { builder._sortField( body, loop, fields ) },
+					says	: function() { return builder._sortSaid( loop ) },
+				},
+				limit : {
+					keys	: [ 'limit' ],
+					build	: function( body ) { body.appendChild( number( 'limit', 'stack/limit', 'hint/limit' ) ) },
+					says	: function() { return String( loop.attributes.limit ?? '0' ) === '0' ? '' : word('stack/limit')+ ' '+ loop.attributes.limit },
+				},
+				offset : {
+					keys	: [ 'offset' ],
+					build	: function( body ) { body.appendChild( number( 'offset', 'stack/offset' ) ) },
+					says	: function() { return String( loop.attributes.offset ?? '0' ) === '0' ? '' : word('stack/offset')+ ' '+ loop.attributes.offset },
+				},
+				// What the stack brings of its own: its attributes by their types, in the order of its schema
+				attributes : {
+					keys	: Object.keys( declared ),
+					build	: function( body ) {
+
+						if( Object.keys( declared ).length === 0 && cell !== 'columns' && cell !== 'row' && schema.grid !== true ) {
+							body.appendChild( Nino.adminUi.notice( word('stack/no-presentation') ) );
+							return;
+						}
+
+						if( Object.keys( declared ).length > 0 )
+							builder._attributeFields( body, declared, loop.attributes, {
+								fields	: fields,
+								section	: section,
+								around	: builder._surface( section, col ),
+								redraw	: function() { builder._refreshControls( 'attributes' ) },
+								words		: true,
+								lines		: true,
+							} );
+					},
+					says	: function() { return '' },
+				},
+			};
 
 			// The cells of a grid: how wide in each viewport, how far apart, as high as the highest
-			if( whole === false && schema.grid === true ) {
+			if( schema.grid === true )
+				controls.grid = {
+					keys	: [ 'grid' ],
+					build	: function( body ) {
 
-				const cells = builder._group( pane, Nino.content.getText('/_admin/builder/group/grid') );
+						const cells = builder._group( body, word('group/grid') );
 
-				builder._cellsTable( cells, stack );
-
-				cells.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/gap'), '', builder._options( 'space', builder.SPACES.slice( 1 ) ), String( stack.attributes.gap ), function( value ) {
-					stack.attributes.gap = value;
-					builder._changed();
-				} ) );
-				cells.appendChild( builder._switchField( Nino.content.getText('/_admin/builder/stack/autoheight'), '', stack.attributes.autoheight === '1', function( checked ) {
-					stack.attributes.autoheight = checked === true ? '1' : '0';
-					builder._changed();
-				} ) );
-			}
+						builder._cellsTable( cells, loop );
+						cells.appendChild( builder._selectField( word('stack/gap'), '', builder._options( 'space', builder.SPACES.slice( 1 ) ), String( loop.attributes.gap ), function( value ) {
+							loop.attributes.gap = value;
+							builder._changed();
+						} ) );
+						cells.appendChild( builder._switchField( word('stack/autoheight'), '', loop.attributes.autoheight === '1', function( checked ) {
+							loop.attributes.autoheight = checked === true ? '1' : '0';
+							builder._changed();
+						} ) );
+					},
+					says	: function() { return '' },
+				};
 
 			// What a cell of the loop is made of, where the loop has a form for it: the columns of a table, the row of a list
 			if( cell === 'columns' )
-				builder._columnsEditor( builder._group( pane, Nino.content.getText('/_admin/builder/group/columns') ), path, fields );
+				controls.columns = {
+					keys	: [ 'columns' ],
+					build	: function( body ) { builder._columnsEditor( builder._group( body, word('group/columns') ), path, fields ) },
+					says	: function() { return loop.components.length === 0 ? '' : Nino.adminUi.format( word('loop/columns-said'), loop.components.length ) },
+				};
 			else if( cell === 'row' )
-				builder._rowEditor( builder._group( pane, Nino.content.getText('/_admin/builder/group/row') ), path, fields );
+				controls.row = {
+					keys	: [ 'row' ],
+					build	: function( body ) { builder._rowEditor( builder._group( body, word('group/row') ), path, fields ) },
+					says	: function() { return '' },
+				};
+
+			controls.id = {
+				keys	: [ 'id' ],
+				build	: function( body ) {
+					body.appendChild( builder._textField( word('stack/id'), word('hint/stack-id'), loop.attributes.id, function( value ) {
+						loop.attributes.id = value;
+						builder._changed();
+					} ) );
+				},
+				says	: function() { return loop.attributes.id === '' ? '' : '#'+ loop.attributes.id },
+			};
+			controls.class = {
+				keys	: [ 'class' ],
+				build	: function( body ) {
+					body.appendChild( builder._textField( word('loop/class'), word('hint/custom'), loop.attributes.class ?? '', function( value ) {
+						loop.attributes.class = value;
+						builder._changed();
+					} ) );
+				},
+				says	: function() { return ( loop.attributes.class ?? '' ) === '' ? '' : word('group/custom') },
+			};
+
+			return controls;
 		},
 
 		/**
@@ -8541,23 +8959,12 @@
 		},
 
 		/**
-		 *	Whether the loop of a column has no content, as its schema says it ('cell' none): no component can stand in the column
+		 *	A loop that was changed to what its cell holds: a table has columns and nothing else, a loop whose cell is none has no children at all, any other loop has none of columns;
+		 *	a table has one, since it needs at least one, and a list starts as a row of a field - or a line, where its type has no field to show. The children that are not the
+		 *	cell of the loop are dropped
 		 *
 		 *	@param		{Object}		registry
-		 *	@param		{Object}		col
-		 *
-		 *	@return		{boolean}
-		 */
-		_bare : function( registry, col ) {
-			return col.stack !== null && col.stack !== undefined && Nino.admin.builder._cellKind( registry, col.stack ) === 'none';
-		},
-
-		/**
-		 *	A column that was changed to what its loop holds: a table has columns and nothing else, a loop whose cell is none has no components at all, any other loop has none of columns; a table has one, since it needs at least one,
-		 *	and a list starts as a row of a field - or a line, where its type has no field to show. The components that are not the cell of the loop are dropped
-		 *
-		 *	@param		{Object}		registry
-		 *	@param		{Array}			path							The column
+		 *	@param		{Array}			path							The loop
 		 *
 		 *	@return		void
 		 */
@@ -8565,23 +8972,23 @@
 
 			const builder = Nino.admin.builder;
 			const model = builder._doc.model;
-			const col = model.blocks[path[0]].cols[path[1]];
-			const kind = col.stack === null || col.stack === undefined ? '' : builder._cellKind( registry, col.stack );
+			const loop = builder._get( model, path );
+			const kind = builder._cellKind( registry, loop );
 			const columnar = function( component ) { return builder._tabular( ( registry.components || {} )[component.name] || {} ) };
-			const type = col.stack === null || col.stack === undefined ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === col.stack.source } );
+			const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === loop.source } );
 			const first = type === undefined ? [] : builder._valueChoices( type.fields || {}, kind === 'columns' );
 
-			col.components = kind === 'none' ? [] : col.components.filter( function( component ) { return columnar( component ) === ( kind === 'columns' ) } );
+			loop.components = kind === 'none' ? [] : loop.components.filter( function( component ) { return builder._isLoop( component ) === false && columnar( component ) === ( kind === 'columns' ) } );
 
-			if( kind === 'columns' && col.components.length === 0 ) {
+			if( kind === 'columns' && loop.components.length === 0 ) {
 
 				const node = builder._newComponent( model, registry, builder._doc.file, path, builder._columnName( registry ), builder._keys );
 
 				node.attributes.field = first.length > 0 ? first[0].value : '';
-				col.components.push( node );
+				loop.components.push( node );
 			}
 
-			if( kind === 'row' && col.components.length === 0 )
+			if( kind === 'row' && loop.components.length === 0 )
 				builder._rowSet( registry, path, first.length > 0 ? first[0].value : builder.FREE, '' );
 		},
 
@@ -8728,7 +9135,7 @@
 		 *	type, or a line of free text with fields in it -, the buttons that move a column up and down and take it away, and the button that adds one. A table needs one
 		 *
 		 *	@param		{Element}		pane
-		 *	@param		{Array}			path							The column that runs the table
+		 *	@param		{Array}			path							The loop that makes the table
 		 *	@param		{Object}		fields						The fields of the type the table runs over
 		 *
 		 *	@return		void
@@ -8738,8 +9145,7 @@
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
 			const section = doc.model.blocks[path[0]];
-			const col = section.cols[path[1]];
-			const registry = builder._registry;
+			const col = builder._get( doc.model, path );
 			const list = builder._el( 'div', 'builder-columns' );
 			const draw = function() {
 
@@ -8756,12 +9162,7 @@
 				add.type = 'button';
 				add.addEventListener( 'click', function() {
 
-					const node = builder._newComponent( doc.model, registry, doc.file, path, builder._columnName( registry ), builder._keys );
-					const first = builder._valueChoices( fields, true );
-
-					node.attributes.field = first.length > 0 ? first[0].value : '';
-					col.components.push( node );
-					builder._changed();
+					builder._addColumn( path );
 					draw();
 				} );
 				list.appendChild( add );
@@ -8769,6 +9170,27 @@
 
 			pane.appendChild( list );
 			draw();
+		},
+
+		/**
+		 *	A column more at the end of the table a loop makes: it shows the first field of the type that a cell can show
+		 *
+		 *	@param		{Array}			path							The loop
+		 *
+		 *	@return		void
+		 */
+		_addColumn : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const loop = builder._get( doc.model, path );
+			const type = ( builder._registry.types || [] ).find( function( candidate ) { return candidate.uri === loop.source } );
+			const node = builder._newComponent( doc.model, builder._registry, doc.file, path, builder._columnName( builder._registry ), builder._keys );
+			const first = builder._valueChoices( type === undefined ? {} : type.fields || {}, true );
+
+			node.attributes.field = first.length > 0 ? first[0].value : '';
+			loop.components.push( node );
+			builder._changed();
 		},
 
 		// The editors of the text under a title key that the form of the columns made: drawn away with the form
@@ -8915,18 +9337,18 @@
 		 *	the attributes the schema starts them with and nothing else. A list whose cell is more than that - or other - is not a row
 		 *
 		 *	@param		{Object}		registry
-		 *	@param		{Object}		col								The column that runs the list
+		 *	@param		{Object}		loop							The loop that makes the list
 		 *
-		 *	@return		{Object|null}							{ field } or { text }, null where the cell is the components of the column
+		 *	@return		{Object|null}							{ field } or { text }, null where the cell is more than that
 		 */
-		_rowOf : function( registry, col ) {
+		_rowOf : function( registry, loop ) {
 
 			const builder = Nino.admin.builder;
 
-			if( col.components.length !== 1 )
+			if( loop.components.length !== 1 )
 				return null;
 
-			const node = col.components[0];
+			const node = loop.components[0];
 			const defaults = ( ( registry.components || {} )[node.name] || {} ).defaults || {};
 			const attributes = node.attributes || {};
 			const plain = Object.keys( defaults ).every( function( key ) { return String( attributes[key] ?? '' ) === String( defaults[key] ) } ) && Object.keys( attributes ).length === Object.keys( defaults ).length
@@ -8948,7 +9370,7 @@
 		 *	The row of a list made anew: the field of the element, or a line of free text where the value is FREE
 		 *
 		 *	@param		{Object}		registry
-		 *	@param		{Array}			path							The column that runs the list
+		 *	@param		{Array}			path							The loop that makes the list
 		 *	@param		{string}		value							A field, or FREE
 		 *	@param		{string}		text							The line, for FREE
 		 *
@@ -8958,7 +9380,7 @@
 
 			const builder = Nino.admin.builder;
 			const model = builder._doc.model;
-			const col = model.blocks[path[0]].cols[path[1]];
+			const col = builder._get( model, path );
 			const free = value === builder.FREE;
 			const node = builder._newComponent( model, registry, builder._doc.file, path, free === true ? builder.ROW_LINE : builder.ROW_FIELD, builder._keys );
 
@@ -8975,7 +9397,7 @@
 		 *	says the cell is made of components of its own for a list whose cell is more
 		 *
 		 *	@param		{Element}		pane
-		 *	@param		{Array}			path							The column that runs the list
+		 *	@param		{Array}			path							The loop that makes the list
 		 *	@param		{Object}		fields
 		 *
 		 *	@return		void
@@ -8984,7 +9406,7 @@
 
 			const builder = Nino.admin.builder;
 			const registry = builder._registry;
-			const col = builder._doc.model.blocks[path[0]].cols[path[1]];
+			const col = builder._get( builder._doc.model, path );
 			const row = builder._rowOf( registry, col );
 
 			if( row === null ) {
@@ -8998,7 +9420,7 @@
 
 				builder._rowSet( registry, path, value, '' );
 				builder._changed();
-				builder._refreshControls( 'stack' );
+				builder._refreshControls( 'row' );
 			} ) );
 
 			if( free === true )
@@ -9098,16 +9520,16 @@
 		// --------------------------------------------------------- Components
 
 		/**
-		 *	The fields of the type the loop of a column runs over - its own, or the loop of the section whose cell the column is
+		 *	The fields of the type of the loop whose cell a node is - the loop it stands in, or the loop of the section whose cell the column is
 		 *
-		 *	@param		{Object}		section
-		 *	@param		{Object}		col
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The column, a component, a loop
 		 *
-		 *	@return		{Object|null}							null for a column that runs no loop, no fields for a type the project does not have
+		 *	@return		{Object|null}							null where no loop is running, no fields for a type the project does not have
 		 */
-		_typeFields : function( section, col ) {
+		_typeFields : function( model, path ) {
 
-			const loop = Nino.admin.builder._loopOf( section, col );
+			const loop = Nino.admin.builder._loopAt( model, path );
 
 			if( loop === null )
 				return null;
@@ -9213,7 +9635,7 @@
 			const surface = builder._surfaceOf( schema );
 			const section = doc.model.blocks[path[0]];
 			const col = section.cols[path[1]];
-			const fields = builder._typeFields( section, col );
+			const fields = builder._typeFields( doc.model, path );
 			const declared = builder._declared( schema );
 			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
 			// What the attributes of the schema are to each other, told by the whole schema: the focus and the dimming of a picture follow it wherever they stand
@@ -9509,8 +9931,7 @@
 			const schema = ( builder._registry.components || {} )[component.name] || {};
 			const kind = builder._sourceKind( builder._registry, component.name );
 			const section = doc.model.blocks[path[0]];
-			const col = section.cols[path[1]];
-			const fields = builder._typeFields( section, col );
+			const fields = builder._typeFields( doc.model, path );
 
 			if( kind === 'content' ) {
 
@@ -9539,7 +9960,7 @@
 				if( text !== null )
 					extra.appendChild( builder._valueField( component, text, state.editors ) );
 
-				if( kind === 'image' && ( component.source.charAt(0) === '/' || ( component.source === '' && builder._loopOf( section, col ) === null ) ) )
+				if( kind === 'image' && ( component.source.charAt(0) === '/' || ( component.source === '' && builder._loopAt( doc.model, path ) === null ) ) )
 					extra.appendChild( builder._pictureField( {
 						owner		: {
 							get : function() { return { uri : component.source, create : component.create } },
@@ -10693,20 +11114,10 @@
 
 			wrap.dataset.key = 'background';
 
-			// A column with a loop of its own has the picture outside it: one picture for every cell, which the form says
-			if( column === true && holder.stack !== null && holder.stack !== undefined ) {
-
-				const said = Nino.content.getText('/_admin/builder/source/background-image');
-				const own = builder._hinted( builder._el( 'span', 'builder-label', said ), Nino.content.getText('/_admin/builder/hint/background-own-loop'), said );
-
-				own.classList.add('builder-background-own-loop');
-				wrap.appendChild( own );
-			}
-
 			// A column that is a cell of a loop of sections takes an image field of the element for its picture, instead of a slot: the control offers the image fields of the
-			// type, and the focus. (A column with a loop of its own has its picture outside that loop, where there is no element; a column of a loop of sections has none.) A column
+			// type, and the focus. (A loop in a column stands over the picture of the column, which is the column's and not the element's; a column of a loop of sections has no loop.) A column
 			// that has a slot already keeps the controls of the slot
-			const cell = column === true && section.stack !== null && section.stack !== undefined ? builder._typeFields( section, holder ) : null;
+			const cell = column === true && section.stack !== null && section.stack !== undefined ? builder._typeFields( builder._doc.model, path ) : null;
 
 			if( cell !== null && ( has === false || ( holder.background.field ?? '' ) !== '' ) ) {
 
@@ -11616,7 +12027,10 @@
 					return;
 				}
 
+				const was = doc.model;
+
 				doc.model = builder._normalise( response.model );
+				builder._keepOpen( was, doc.model );
 
 				if( old !== null && old.kind === 'section' )
 					builder._carry( old, doc.model.blocks[path[0]] );
@@ -11820,7 +12234,10 @@
 					if( wrote.slots === true )
 						builder._touch('slots');
 
+					const was = doc.model;
+
 					doc.model = builder._normalise( response.model );
+					builder._keepOpen( was, doc.model );
 					doc.hash = response.hash;
 					doc.saved = JSON.stringify( doc.model );
 					builder._fresh = {};

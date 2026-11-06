@@ -20,7 +20,7 @@ namespace Nino\Modules\Builder {
 	 *
 	 *											What canonical means: tabs for the indentation (the section
 	 *											at the margin, the row one tab in, the columns two, their
-	 *											calls three - in a stack four, the stack's own tags three;
+	 *											calls three - in a loop, which may stand between them, four, the loop's own tags three;
 	 *											a component that holds components has its call on a line,
 	 *											each of its children one tab deeper on a line of its own, and
 	 *											its closing tag on a line of its own at its own depth),
@@ -300,22 +300,8 @@ namespace Nino\Modules\Builder {
 			if( $panel === false && self::_pictured( $col ) === true )
 				$lines[] = $indent. self::_background( (array) $col['background'], 'nino-grid-bg' );
 
-			if( is_array( $col['stack'] ?? null ) === true ) {
-
-				$lines[] = $indent. self::_call( (array) $col['stack'], $registry['stacks'][$col['stack']['name'] ?? ''] ?? [] );
-
-				// A loop of the cell none has no content: its call is a single tag, with nothing after it
-				if( ( $registry['stacks'][$col['stack']['name'] ?? '']['cell'] ?? '' ) !== 'none' ) {
-
-					foreach( (array) ( $col['components'] ?? [] ) as $component )
-						array_push( $lines, ...self::_component( (array) $component, $registry, $indent. "\t" ) );
-
-					$lines[] = $indent. '[/'. (string) ( $col['stack']['name'] ?? '' ). ']';
-				}
-			}
-			else
-				foreach( (array) ( $col['components'] ?? [] ) as $component )
-					array_push( $lines, ...self::_component( (array) $component, $registry, $indent ) );
+			foreach( (array) ( $col['components'] ?? [] ) as $component )
+				array_push( $lines, ...self::_component( (array) $component, $registry, $indent ) );
 
 			return $lines;
 		}
@@ -802,6 +788,23 @@ namespace Nino\Modules\Builder {
 		private static function _component( array $node, array $registry, string $indent ): array {
 
 			$name		= (string) ( $node['name'] ?? '' );
+
+			// A loop is written as a component that holds its cell: the calls one tab deeper and the closing tag at its own depth - a loop of the cell none is the single tag
+			if( isset( $registry['stacks'][$name] ) === true ) {
+
+				$lines = [ $indent. self::_call( $node, (array) $registry['stacks'][$name] ) ];
+
+				if( ( $registry['stacks'][$name]['cell'] ?? '' ) === 'none' )
+					return $lines;
+
+				foreach( (array) ( $node['components'] ?? [] ) as $child )
+					array_push( $lines, ...self::_component( (array) $child, $registry, $indent. "\t" ) );
+
+				$lines[] = $indent. '[/'. $name. ']';
+
+				return $lines;
+			}
+
 			$schema	= (array) ( $registry['components'][$name] ?? [] );
 			$lines	= [ $indent. self::_call( $node, $schema ) ];
 

@@ -19,6 +19,7 @@ declare(strict_types=1);
 //   /_admin/builder/template/...  the fields of the template form
 //   /_admin/builder/col/...       the fields of the column form
 //   /_admin/builder/stack/...     the fields of the loop form (the model and the kernel call it a stack)
+//   /_admin/builder/loop/...      a loop of a column in the preview - its row and its cell - and the title of its dialog
 //   /_admin/builder/component/... the title and the content of the component form
 //   /_admin/builder/common/...    what the forms of a section, a column and a component have in common: the toggle of
 //                                 the radius of a surface and the hover of a picture
@@ -127,11 +128,11 @@ return [
 	'[[/_admin/builder/reason/component-content]]'	=> 'The component %s takes no content',
 	'[[/_admin/builder/reason/nested-call]]'				=> 'A call inside the content of %s',
 	'[[/_admin/builder/reason/stack-source]]'			=> 'A loop without the type it loops over',
-	'[[/_admin/builder/reason/stack-neighbour]]'		=> 'A loop with other components in its column',
-	'[[/_admin/builder/reason/stack-in-stack]]'		=> 'A loop inside a loop',
+	'[[/_admin/builder/reason/loop-in-loop]]'		=> 'A loop inside a loop',
 	'[[/_admin/builder/reason/stack-content]]'			=> 'The loop holds markup next to its component calls: %s',
 	'[[/_admin/builder/reason/stack-no-content]]'		=> 'The loop has no content, but its call is a pair of tags',
 	'[[/_admin/builder/reason/holder-stack]]'			=> 'A loop inside a component that holds components',
+	'[[/_admin/builder/reason/loop-in-group]]'	=> 'A loop of this kind would end the group at its own closing tag',
 	'[[/_admin/builder/reason/table-content]]'			=> 'The table holds %s, which is no column',
 	'[[/_admin/builder/reason/table-empty]]'				=> 'A table without a column',
 	'[[/_admin/builder/reason/col-elsewhere]]'			=> 'A column of a table outside a table',
@@ -153,7 +154,6 @@ return [
 	'[[/_admin/builder/reason/paste-empty]]'		=> 'Nothing has been copied yet.',
 	'[[/_admin/builder/reason/paste-unknown]]'	=> 'The copy holds a component this project does not have: %s.',
 	'[[/_admin/builder/reason/paste-place]]'		=> 'The copy cannot be pasted here: %s.',
-	'[[/_admin/builder/reason/paste-none]]'		=> 'A loop without content holds no components: the copy cannot be pasted into this column.',
 
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Preview',
@@ -194,6 +194,8 @@ return [
 	'[[/_admin/builder/tree/html-block]]'					=> 'HTML+ block',
 	'[[/_admin/builder/tree/col]]'							=> 'Column',
 	'[[/_admin/builder/tree/component]]'					=> 'Component',
+	'[[/_admin/builder/tree/loop]]'	=> 'Loop',
+	'[[/_admin/builder/tree/table-column]]'	=> 'Column',
 	'[[/_admin/builder/tree/red-static]]'					=> 'A field of an element means nothing in a column without a loop. Choose a text key or a fixed value.',
 	'[[/_admin/builder/tree/red-field]]'					=> 'The type of the loop has no such field. Choose another source.',
 	'[[/_admin/builder/tree/red-required]]'				=> 'The loop needs a field here, and none is chosen. Choose a field of the type.',
@@ -212,6 +214,19 @@ return [
 	'[[/_admin/builder/menu/tools-col]]'				=> 'Column %s of %s',
 	'[[/_admin/builder/menu/rename]]'						=> 'Rename',
 	'[[/_admin/builder/menu/loop]]'							=> 'Settings of the loop: %s',
+	'[[/_admin/builder/loop/title]]'	=> 'Loop: %s',
+	'[[/_admin/builder/loop/kind]]'	=> 'Loop',
+	'[[/_admin/builder/loop/cell]]'	=> 'The cell of each element',
+	'[[/_admin/builder/loop/columns]]'	=> 'The columns of the table',
+	'[[/_admin/builder/loop/toggle]]'	=> 'Open or close the loop: %s',
+	'[[/_admin/builder/loop/sorted]]'	=> 'by %s',
+	'[[/_admin/builder/loop/problem]]'	=> 'Problem',
+	'[[/_admin/builder/loop/count-components]]'	=> 'In the cell: %s',
+	'[[/_admin/builder/loop/count-columns]]'	=> 'Columns in the table: %s',
+	'[[/_admin/builder/loop/none-says]]'	=> 'Drawn from fields: %s',
+	'[[/_admin/builder/loop/row-says]]'	=> 'One line for each element: %s',
+	'[[/_admin/builder/loop/class]]'	=> 'Class of the loop',
+	'[[/_admin/builder/loop/columns-said]]'	=> '%s columns',
 	'[[/_admin/builder/menu/group]]'	=> 'Settings of the group: %s',
 
 	// The words of the forms
@@ -225,6 +240,8 @@ return [
 	'[[/_admin/builder/block/width/label]]'	=> 'Width and alignment',
 	'[[/_admin/builder/block/order/label]]'	=> 'Order',
 	'[[/_admin/builder/block/loop/label]]'	=> 'Loop',
+	'[[/_admin/builder/block/data/label]]'	=> 'Data',
+	'[[/_admin/builder/block/presentation/label]]'	=> 'Presentation',
 	'[[/_admin/builder/block/group/label]]'	=> 'Group',
 	'[[/_admin/builder/block/properties/label]]'	=> 'Properties',
 	'[[/_admin/builder/spacing/outside]]'	=> 'outside',
@@ -311,8 +328,8 @@ return [
 	'[[/_admin/builder/stack/gap]]'							=> 'Gap between the cells',
 	'[[/_admin/builder/stack/autoheight]]'					=> 'Cells of equal height',
 	'[[/_admin/builder/stack/id]]'							=> 'Id of the loop',
-	'[[/_admin/builder/stack/in-column]]'	=> 'A column of this section runs a loop of its own, and a loop inside a loop cannot be. Set the presentation of that column to None first.',
-	'[[/_admin/builder/stack/in-section]]'	=> 'The section makes a section of every element: its columns are the cell of it, and a loop inside a loop cannot be. Set the presentation of the section to None first.',
+	'[[/_admin/builder/stack/no-presentation]]'	=> 'This kind of loop has no settings of its own.',
+	'[[/_admin/builder/stack/in-column]]'	=> 'A column of this section holds a loop of its own, and a loop inside a loop cannot be. Take that loop out first.',
 	'[[/_admin/builder/group/columns]]'					=> 'Columns',
 	'[[/_admin/builder/group/row]]'							=> 'Row',
 	'[[/_admin/builder/stack/columns-none]]'				=> 'A table needs at least one column: without one it cannot be saved.',
@@ -344,6 +361,7 @@ return [
 	'[[/_admin/builder/pick/card]]'	=> 'Card',
 	'[[/_admin/builder/pick/global]]'	=> 'General',
 	'[[/_admin/builder/pick/features]]'	=> 'Features',
+	'[[/_admin/builder/pick/loops]]'	=> 'Loops',
 	'[[/_admin/builder/link/href]]'	=> 'Link',
 	'[[/_admin/builder/link/target]]'	=> 'Opens in',
 	'[[/_admin/builder/link/no-stretched]]'	=> 'The card has no component whose link it can take. Add one of these and give it the target: %s.',
@@ -458,7 +476,6 @@ return [
 	'[[/_admin/builder/hint/query]]'						=> 'Keeps only the elements that match: field=value, several joined with &, and % as a wildcard at either end of a value. It is the query of the elements shortcode, and empty keeps every element of the type.',
 	'[[/_admin/builder/hint/stack-id]]'						=> 'The name the loop is known by: filters and sliders find the loop by this id, and the cells set to equal height are one group under it. Left empty, the loop has no name, and its equal-height cells are a group of their own.',
 	'[[/_admin/builder/hint/field]]'						=> 'In a loop every cell is one element, and the component shows this field of it - for a text, a line of text, a number or a date of the element may be chosen -, so each cell gets its own value. Only fields that fit what the component shows are listed, and a choice here becomes the source.',
-	'[[/_admin/builder/hint/background-own-loop]]'	=> 'The picture of a column with a loop of its own stands outside that loop: it is one picture, the same behind every cell. For each element\'s own picture make the section a loop of sections, or give the card in the loop its picture.',
 	'[[/_admin/builder/hint/background-field]]'	=> 'In a loop every cell is one element, and the picture behind the column is this image field of it, shown behind the whole cell at its full height, so each cell gets its own picture. Only the image fields of the type are offered; the choice none takes the picture away. The focus says which part of the picture stays in view when it is cut to the cell.',
 	'[[/_admin/builder/hint/fixed]]'						=> 'The value is written into the template itself instead of a text key: it is the same in every language, and the editors of the texts cannot change it. Use it for something that never changes.',
 	'[[/_admin/builder/hint/typed]]'						=> 'Your account may not read the keys of the project, so you type the key instead. A key of this template looks like /template/<file>/<section>/<name>, and it is used as soon as it is written like that.',

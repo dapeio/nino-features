@@ -95,7 +95,6 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": null,
                     "components": [
                         {
                             "name": "title",
@@ -242,7 +241,6 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": null,
                     "components": [
                         {
                             "name": "title",
@@ -315,102 +313,104 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": {
-                        "name": "stack",
-                        "source": "/services",
-                        "attributes": {
-                            "sort": "title",
-                            "offset": "0",
-                            "limit": "6",
-                            "query": "",
-                            "callback": "",
-                            "locale": "",
-                            "id": "",
-                            "cols": "100 50 50",
-                            "gap": "2",
-                            "autoheight": "1",
-                            "class": ""
-                        }
-                    },
                     "components": [
                         {
-                            "name": "image",
-                            "source": "image",
-                            "text": null,
+                            "name": "stack",
+                            "source": "/services",
                             "attributes": {
-                                "alt": "",
-                                "focus": "5",
-                                "ratio": "",
-                                "href": "",
-                                "target": "",
+                                "sort": "title",
+                                "offset": "0",
+                                "limit": "6",
+                                "query": "",
+                                "callback": "",
+                                "locale": "",
+                                "id": "",
+                                "cols": "100 50 50",
+                                "gap": "2",
+                                "autoheight": "1",
                                 "class": ""
                             },
-                            "radius": "",
-                            "hover": "",
-                            "mt": "",
-                            "mb": "",
-                            "pt": "",
-                            "pb": "",
-                            "pl": "",
-                            "pr": ""
-                        },
-                        {
-                            "name": "title",
-                            "source": "title",
-                            "text": null,
-                            "attributes": {
-                                "tag": "h3",
-                                "style": "",
-                                "color": "",
-                                "href": "",
-                                "target": "",
-                                "class": ""
-                            },
-                            "mt": "",
-                            "mb": "",
-                            "pt": "",
-                            "pb": "",
-                            "pl": "",
-                            "pr": ""
-                        },
-                        {
-                            "name": "text",
-                            "source": "summary",
-                            "text": null,
-                            "attributes": {
-                                "format": "blocks",
-                                "tag": "p",
-                                "style": "",
-                                "color": "",
-                                "href": "",
-                                "target": "",
-                                "class": ""
-                            },
-                            "mt": "",
-                            "mb": "",
-                            "pt": "",
-                            "pb": "",
-                            "pl": "",
-                            "pr": ""
-                        },
-                        {
-                            "name": "button",
-                            "source": ".uri",
-                            "text": "Mehr",
-                            "attributes": {
-                                "href": "",
-                                "style": "",
-                                "size": "",
-                                "width": "",
-                                "target": "",
-                                "class": ""
-                            },
-                            "mt": "",
-                            "mb": "",
-                            "pt": "",
-                            "pb": "",
-                            "pl": "",
-                            "pr": ""
+                            "components": [
+                                {
+                                    "name": "image",
+                                    "source": "image",
+                                    "text": null,
+                                    "attributes": {
+                                        "alt": "",
+                                        "focus": "5",
+                                        "ratio": "",
+                                        "href": "",
+                                        "target": "",
+                                        "class": ""
+                                    },
+                                    "radius": "",
+                                    "hover": "",
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
+                                },
+                                {
+                                    "name": "title",
+                                    "source": "title",
+                                    "text": null,
+                                    "attributes": {
+                                        "tag": "h3",
+                                        "style": "",
+                                        "color": "",
+                                        "href": "",
+                                        "target": "",
+                                        "class": ""
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
+                                },
+                                {
+                                    "name": "text",
+                                    "source": "summary",
+                                    "text": null,
+                                    "attributes": {
+                                        "format": "blocks",
+                                        "tag": "p",
+                                        "style": "",
+                                        "color": "",
+                                        "href": "",
+                                        "target": "",
+                                        "class": ""
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
+                                },
+                                {
+                                    "name": "button",
+                                    "source": ".uri",
+                                    "text": "Mehr",
+                                    "attributes": {
+                                        "href": "",
+                                        "style": "",
+                                        "size": "",
+                                        "width": "",
+                                        "target": "",
+                                        "class": ""
+                                    },
+                                    "mt": "",
+                                    "mb": "",
+                                    "pt": "",
+                                    "pb": "",
+                                    "pl": "",
+                                    "pr": ""
+                                }
+                            ]
                         }
                     ]
                 }
@@ -505,7 +505,6 @@
                     "vpaDelay": "",
                     "vpaDuration": "",
                     "custom": "",
-                    "stack": null,
                     "components": [
                         {
                             "name": "title",

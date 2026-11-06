@@ -200,6 +200,26 @@
 		</div>
 	</template>
 
+	<!-- A loop in the preview: a row of a head - the arrow and the word of the stack, what is said of the loop, its tools, which the script puts in last -, and
+	     under it, until it is shut, its cell: the label of it, the children it repeats for each element and the button that adds one -->
+	<template id="builder-tpl-loop">
+		<div class="builder-loop">
+			<header class="builder-loop-bar">
+				<button type="button" class="builder-loop-toggle" aria-expanded="false">
+					<span class="builder-loop-caret" aria-hidden="true"></span>
+					<span class="builder-loop-name"></span>
+					<span class="builder-loop-kind"></span>
+				</button>
+				<span class="builder-head-status"></span>
+			</header>
+			<div class="builder-loop-body" hidden>
+				<div class="builder-loop-cell">
+					<span class="builder-loop-cell-label"></span>
+				</div>
+			</div>
+		</div>
+	</template>
+
 	<!-- A component in the preview: the image its schema names, or - where its slot has a picture - the picture; its label, or - where its
 	     key has a text - the first line of the text -->
 	<template id="builder-tpl-ph">

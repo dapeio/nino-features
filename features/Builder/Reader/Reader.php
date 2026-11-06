@@ -22,20 +22,23 @@ namespace Nino\Modules\Builder {
 	 *											The grammar it reads is the one the Writer writes: a block
 	 *											is a section (a <section>, an optional background, exactly
 	 *											one row with an optional background of its own, columns, and
-	 *											in each column an optional background of its own and either
-	 *											component calls or one stack call) or a foreign block. Where the
+	 *											in each column an optional background of its own and the calls
+	 *											of components and of loops, in their order) or a foreign block. Where the
 	 *											registry has a stack whose cell is a whole section, its call
 	 *											[sections ...] stands for the tag of a section and holds what a
 	 *											section holds between its tags. A component whose schema says it holds
 	 *											components ('holds', the place of the ones it holds: the
 	 *											kernel's card) is a container: its call has the calls of its
 	 *											children between its tags, one level deep, in a column and
-	 *											inside a stack. A section is
+	 *											inside a loop. A loop - the call of a stack of the registry whose
+	 *											cell is not a whole section - is an entry of a column like a
+	 *											component, with the calls of its cell between its tags: components,
+	 *											the columns of a table, the one row of a list, or nothing. A section is
 	 *											read whole or not at all - whatever it holds that the model
 	 *											cannot keep (a second row, a column without a width, a
-	 *											shortcode that is no component, markup next to a stack or
+	 *											shortcode that is no component, markup next to a loop or
 	 *											next to the calls of a container, a loop or a container
-	 *											inside a container, a background that is not the first thing
+	 *											inside a container or a loop inside a loop, a background that is not the first thing
 	 *											in its column, a nested call, an attribute the schema does
 	 *											not know) makes
 	 *											the whole section a foreign block, with the line and the
@@ -225,10 +228,10 @@ namespace Nino\Modules\Builder {
 	 *											                    the page's own for ''; on a column that paints neither the two classes are idle and stay custom ones
 	 *											  background null|map  as that of a section: slot, focus, create; the
 	 *											            div.nino-grid-bg, the first thing in the column - before its
-	 *											            stack or its components
+	 *											            components, a loop among them
 	 *											  text      ''|left|center|right
-	 *											  stackAlign ''|start|center|end   nino-stack-<x>
-	 *											  stackGap  ''|0..6                nino-stack-gap-<n>
+	 *											  stackAlign ''|start|center|end   nino-stack-<x>: where the components of the column stand, up and down
+	 *											  stackGap  ''|0..6                nino-stack-gap-<n>: the gap between the components of the column. Both are the column's, whatever it holds
 	 *											  mt mb pt pb pl pr ''|0..6        the six sides of the spacing of the column, read and written as those of a section: nino-mt-<n> to nino-pr-<n>,
 	 *											                    and the kernel's nino-p-<n> for the four inside sides at once
 	 *											  bgPl, bgPr ''|0..3               nino-bg-pl-<n>, nino-bg-pr-<n>: how far in from the left and from the right the picture of the column starts, a step of the
@@ -238,11 +241,17 @@ namespace Nino\Modules\Builder {
 	 *											                    alone, and has no data-vpa-delay or data-vpa-duration
 	 *											  title     string  only in a group: the title of the panel, the tab or the summary; '' numbers the panel (the kernel does)
 	 *											  custom    string
-	 *											  stack     null    the column is a static stack of components
-	 *											            map     name, source (the type's uri), attributes - the
-	 *											                    registered stack that loops its components
-	 *											  components list  of component, in order; inside the stack's content
-	 *											                    where the column has one
+	 *											  components list  of component and loop, in order
+	 *
+	 *											loop, an entry of components whose name is a stack of the registry (see loops(); a loop of sections is the setting of a section, see stack above)
+	 *											  name      string  the registered stack
+	 *											  source    string  the type's uri, which the loop runs over
+	 *											  attributes map    every attribute of the schema, a string each: the data of the loop - query, sort, order, limit,
+	 *											                    offset, id - and its class, then those of its kind - the default where the call does not set it
+	 *											  components list   the calls of its cell, by what the schema says the cell is ('cell'): components - the components of the
+	 *											                    column, none of them a loop, each of the cell once for every element; columns - the columns of a table
+	 *											                    (a component that stands in the place the loop holds, 'holds'), at least one; row - the row of a list, one
+	 *											                    component, a field or a line of text; none - [], the call is a single tag
 	 *
 	 *											component
 	 *											  name      string  a registered component
@@ -415,8 +424,7 @@ namespace Nino\Modules\Builder {
 			'component-content'		=> 'the component %s takes no content',
 			'nested-call'					=> 'a call inside the content of %s',
 			'stack-source'				=> 'a loop without the type it loops',
-			'stack-neighbour'			=> 'a loop with other components in its column',
-			'stack-in-stack'			=> 'a loop inside a loop',
+			'loop-in-loop'			=> 'a loop inside a loop',
 			'stack-content'				=> 'the loop holds markup next to its component calls: %s',
 			'stack-no-content'		=> 'the loop has no content, but its call is a pair of tags',
 			'table-content'				=> 'the table holds %s, which is no column',
@@ -1005,6 +1013,25 @@ namespace Nino\Modules\Builder {
 
 			foreach( (array) ( $registry['stacks'] ?? [] ) as $name => $schema )
 				if( is_array( $schema ) === true && ( $schema['cell'] ?? '' ) === 'section' )
+					$names[] = (string) $name;
+
+			return $names;
+		}
+
+		/**
+		 *	The stacks that may stand in a column as a loop, by what their schema says ('cell') and not by their names: every one whose cell is not a whole section - the
+		 *	components, the columns of a table, a row, or none - in the order of the registry. A loop of sections is the setting of a section
+		 *
+		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
+		 *
+		 *	@return 	array										Their names; none where the registry has none
+		 */
+		public static function loops( array $registry ): array {
+
+			$names = [];
+
+			foreach( (array) ( $registry['stacks'] ?? [] ) as $name => $schema )
+				if( is_array( $schema ) === true && in_array( $schema['cell'] ?? 'components', [ 'components', 'columns', 'row', 'none' ], true ) === true )
 					$names[] = (string) $name;
 
 			return $names;
@@ -2231,7 +2258,7 @@ namespace Nino\Modules\Builder {
 			// The spacing is read apart from the other classes, as a section's is
 			[ $sides, $tokens ] = self::_sides( $tokens, true );
 
-			$col = array_replace( [ 'width' => [], 'hidden' => [] ] + self::colDefaults() + [ 'stack' => null, 'components' => [] ], $sides );
+			$col = array_replace( [ 'width' => [], 'hidden' => [] ] + self::colDefaults() + [ 'components' => [] ], $sides );
 			$custom = [];
 			$dim = false;
 			$radii = [];
@@ -2332,7 +2359,6 @@ namespace Nino\Modules\Builder {
 				}
 
 			$col['custom'] = implode( ' ', $custom );
-			$calls = [];
 
 			while( true ) {
 
@@ -2352,38 +2378,22 @@ namespace Nino\Modules\Builder {
 
 				$at = $pos;
 				[ $call, $pos ] = self::_call( $body, $pos, 0, $registry, 'col-markup' );
-				$call['at'] = $at;
 
+				// A loop is an entry among the others, with the calls of its cell for its children. The cell of a loop of sections is a loop's, and holds none
 				if( $call['stack'] === true ) {
 
-					$call['components'] = self::_sequence( $call['content'], $call['contentAt'], $registry, '', self::placeOf( (array) $registry['stacks'][$call['node']['name']] ) );
+					if( $loop === true )
+						throw self::_fail( 'loop-in-loop', '', $at );
 
-					if( self::placeOf( (array) $registry['stacks'][$call['node']['name']] ) !== '' && $call['components'] === [] )
-						throw self::_fail( 'table-empty', '', $call['at'] );
+					$place = self::placeOf( (array) $registry['stacks'][$call['node']['name']] );
+					$call['node']['components'] = self::_sequence( $call['content'], $call['contentAt'], $registry, '', $place );
+
+					if( $place !== '' && $call['node']['components'] === [] )
+						throw self::_fail( 'table-empty', '', $at );
 				}
 
-				$calls[] = $call;
-			}
-
-			$stacks = array_filter( $calls, static fn( array $call ): bool => $call['stack'] === true );
-
-			if( $stacks !== [] ) {
-
-				if( $loop === true )
-					throw self::_fail( 'stack-in-stack', '', $calls[array_key_first( $stacks )]['at'] );
-
-				if( count( $calls ) > 1 )
-					throw self::_fail( 'stack-neighbour', '', $calls[1]['at'] );
-
-				$stack = $calls[0];
-				$col['stack'] = $stack['node'];
-				$col['components'] = $stack['components'];
-
-				return [ $col, $pos ];
-			}
-
-			foreach( $calls as $call )
 				$col['components'][] = $call['node'];
+			}
 
 			return [ $col, $pos ];
 		}
@@ -2415,7 +2425,7 @@ namespace Nino\Modules\Builder {
 				[ $call, $pos ] = self::_call( $content, $pos, $base, $registry, $holder === '' ? 'stack-content' : 'holder-content', $holder, false, $place );
 
 				if( $call['stack'] === true )
-					throw self::_fail( 'stack-in-stack', '', $base + $pos );
+					throw self::_fail( 'loop-in-loop', '', $base + $pos );
 
 				$components[] = $call['node'];
 			}
@@ -2605,7 +2615,7 @@ namespace Nino\Modules\Builder {
 				$loops = array_keys( (array) ( $registry['stacks'] ?? [] ) );
 
 				if( $loops !== [] && preg_match( '~\[(?:'. implode( '|', array_map( static fn( string $n ): string => preg_quote( $n, '~' ), $loops ) ). ')(?: [^\]]*)?\]~', $content ) === 1 )
-					throw self::_fail( 'stack-in-stack', '', $base + $contentAt );
+					throw self::_fail( 'loop-in-loop', '', $base + $contentAt );
 
 				$node['content'] = $content;
 			}

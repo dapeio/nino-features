@@ -179,7 +179,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'groups', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native', 'radii' => kind => strength ]
+		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'loops' (the names of the stacks that may stand in a column, in the order of the registry), 'groups', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native', 'radii' => kind => strength ]
 		 */
 		public static function registry( array &$appData ): array {
 
@@ -266,6 +266,7 @@ namespace Nino\Modules\Builder {
 				'status'			=> 200,
 				'components'	=> $schemas['components'],
 				'stacks'			=> $schemas['stacks'],
+				'loops'				=> Reader::loops( $schemas ),
 				'groups'			=> \Nino\Modules\Components::GROUPS,
 				'features'		=> $features,
 				'types'				=> $types,
@@ -484,7 +485,7 @@ namespace Nino\Modules\Builder {
 
 			// A loop of sections makes the ids of its sections of its own id and a number: a section that stands in the file by such an id is the id of two
 			// sections of the page. What was saved so, the Reader reads as it always did
-			$taken		= self::_loopIds( $model );
+			$taken		= self::_loopIds( $model, $schemas );
 
 			if( $taken !== [] )
 				return self::_error( 409, 'a section has an id that a loop of sections or a group of panels makes for its own elements', 'section-id-taken', $taken );
@@ -584,25 +585,38 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The ids of the sections that stand where a loop of sections makes its own: a loop on the section "news"
-		 *	makes news-1, news-2 and so on, and a section that is none of a loop and is called news-2 would be the id
-		 *	of two sections of the page - and so is one that is called as the call of a group, faq-tabs, or as a panel of it, faq-tabs-1
+		 *	The ids of the sections that stand where a loop makes ids of its own: a loop on the section "news" makes news-1, news-2 and so on, and a section that is none of a
+		 *	loop and is called news-2 would be the id of two sections of the page - and so is one that is called as the call of a group, faq-tabs, or as a panel of it, faq-tabs-1,
+		 *	and one that is called as a cell of a loop in a column that names its panels by its id (faq-1 for the loop faq). Every stack that says panels reserves them, whatever
+		 *	its name: the kernel numbers the panels of tabs and does not number those of an accordion, and the Builder knows no stack by name, so it holds back the ids of both
 		 *
 		 *	@param		array			$model
+		 *	@param		array			$schemas			As schemas() answers
 		 *
 		 *	@return 	array										The ids, in the order of the sections; [] for a model with none
 		 */
-		private static function _loopIds( array $model ): array {
+		private static function _loopIds( array $model, array $schemas ): array {
 
 			$loops	= [];
 			$groups	= [];
 			$taken	= [];
 
-			foreach( (array) ( $model['blocks'] ?? [] ) as $block )
-				if( is_array( $block ) === true && ( $block['kind'] ?? '' ) === 'section' && is_array( $block['stack'] ?? null ) === true )
+			foreach( (array) ( $model['blocks'] ?? [] ) as $block ) {
+
+				if( is_array( $block ) === false || ( $block['kind'] ?? '' ) !== 'section' )
+					continue;
+
+				if( is_array( $block['stack'] ?? null ) === true )
 					$loops[] = (string) ( $block['id'] ?? '' );
-				elseif( is_array( $block ) === true && ( $block['kind'] ?? '' ) === 'section' && (string) ( $block['settings']['group'] ?? '' ) !== '' && (string) ( $block['id'] ?? '' ) !== '' )
+				elseif( (string) ( $block['settings']['group'] ?? '' ) !== '' && (string) ( $block['id'] ?? '' ) !== '' )
 					$groups[] = [ (string) $block['id'], (string) $block['id']. '-'. (string) $block['settings']['group'] ];
+
+				// The loops of its columns, the cells of which a stack that says panels numbers by the id of its call
+				foreach( (array) ( $block['cols'] ?? [] ) as $col )
+					foreach( (array) ( is_array( $col ) === true ? $col['components'] ?? [] : [] ) as $component )
+						if( self::_isLoop( $component, $schemas ) === true && ( $schemas['stacks'][$component['name']]['panels'] ?? false ) === true && (string) ( $component['attributes']['id'] ?? '' ) !== '' )
+							$loops[] = (string) $component['attributes']['id'];
+			}
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $block ) {
 
@@ -1290,12 +1304,7 @@ namespace Nino\Modules\Builder {
 					if( $unsafe( $col['custom'] ?? null ) === true )
 						$problems[] = $at. ': the custom classes of column '. ( (int) $c + 1 ). ' hold a quote, a bracket or a line break, which a call cannot carry';
 
-					$calls = self::_flat( (array) ( $col['components'] ?? [] ) );
-
-					if( is_array( $col['stack'] ?? null ) === true )
-						$calls[] = $col['stack'];
-
-					foreach( $calls as $call ) {
+					foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $call ) {
 
 						if( is_array( $call ) === false )
 							continue;
@@ -1354,8 +1363,6 @@ namespace Nino\Modules\Builder {
 
 			foreach( (array) ( $section['cols'] ?? [] ) as $c => $col ) {
 
-				$fields = $cell;
-
 				// The picture behind a column is a slot, or - in a loop of sections, whose cell the column is - an image field of the element
 				if( is_array( $col['background'] ?? null ) === true ) {
 
@@ -1372,86 +1379,100 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the background "'. $field. '" of column '. ( (int) $c + 1 ). ' is no image field of the loop\'s type';
 				}
 
-				if( is_array( $col['stack'] ?? null ) === true ) {
-					$fields = self::_fields( $appData, $col['stack'], $problems );
-					array_push( $problems, ...self::_loopValues( $col['stack'], $schemas, $fields ) );
-				}
+				// What is outside a loop is a static column's: the fields of the section's own loop, where the section makes sections, else none. What is inside a loop is in the type that loop runs over
+				$groups = [];
+				$loose = [];
 
-				$cells = self::_flat( (array) ( $col['components'] ?? [] ) );
+				foreach( (array) ( $col['components'] ?? [] ) as $component ) {
 
-				foreach( $cells as $component ) {
-
-					$called = (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] );
-
-					// What a column shows is a field of the type, and its title a text key and never a field. That it shows a field or a line of text, one of the two, that
-					// it stands in a table and that a table has one are the Reader's to say: a section that does not read back as it is written is no section
-					if( Reader::columnar( $called ) === true ) {
-
-						$field = (string) ( $component['attributes']['field'] ?? '' );
-
-						if( $field !== '' && $fields !== null && in_array( $field, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$field] ) === false )
-							$problems[] = 'the field "'. $field. '" of a column of column '. ( (int) $c + 1 ). ' is no field of the loop\'s type';
-
-						if( (string) ( $component['source'] ?? '' ) !== '' && $component['source'][0] !== '/' )
-							$problems[] = 'the title of a column of column '. ( (int) $c + 1 ). ' is a text key, not "'. $component['source']. '"';
+					if( self::_isLoop( $component, $schemas ) === false ) {
+						$loose[] = $component;
+						continue;
 					}
 
-					// The fills of a line of text are fields of the element, and only there
-					if( Reader::fielded( $called ) === true && is_string( $component['text'] ?? null ) === true )
-						foreach( Reader::lineFills( $component['text'] ) as $fill )
-							if( $fill[0] === '/' )
-								continue;
-							elseif( $fields === null )
-								$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' means nothing in a column without a loop';
-							elseif( ( $fields[$fill]['type'] ?? '' ) === 'image' )
-								$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is an image field, which a line cannot print';
-							elseif( in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$fill] ) === false )
-								$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is no field of the loop\'s type';
+					$inside = self::_fields( $appData, $component, $problems );
+					array_push( $problems, ...self::_loopValues( $component, $schemas, $inside ) );
+					$groups[] = [ $inside, self::_flat( (array) ( $component['components'] ?? [] ) ) ];
 				}
 
-				foreach( $cells as $component ) {
+				array_unshift( $groups, [ $cell, self::_flat( $loose ) ] );
 
-					$kind		= (string) ( $schemas['components'][$component['name'] ?? '']['source'] ?? 'text' );
-					$source	= (string) ( $component['source'] ?? '' );
+				foreach( $groups as [ $fields, $cells ] ) {
 
-					// The picture an image attribute names stands where the source of a picture does: a slot, or in a loop a field of the type
-					foreach( self::_pictures( $schemas, (string) ( $component['name'] ?? '' ) ) as $attribute ) {
+					foreach( $cells as $component ) {
 
-						$picture = (string) ( $component['attributes'][$attribute] ?? '' );
+						$called = (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] );
 
-						if( $picture === '' || ( $picture[0] === '/' ? preg_match( self::SLOT, $picture ) === 1 : ( $fields !== null && isset( $fields[$picture] ) === true ) ) )
+						// What a column shows is a field of the type, and its title a text key and never a field. That it shows a field or a line of text, one of the two, that
+						// it stands in a table and that a table has one are the Reader's to say: a section that does not read back as it is written is no section
+						if( Reader::columnar( $called ) === true ) {
+
+							$field = (string) ( $component['attributes']['field'] ?? '' );
+
+							if( $field !== '' && $fields !== null && in_array( $field, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$field] ) === false )
+								$problems[] = 'the field "'. $field. '" of a column of column '. ( (int) $c + 1 ). ' is no field of the loop\'s type';
+
+							if( (string) ( $component['source'] ?? '' ) !== '' && $component['source'][0] !== '/' )
+								$problems[] = 'the title of a column of column '. ( (int) $c + 1 ). ' is a text key, not "'. $component['source']. '"';
+						}
+
+						// The fills of a line of text are fields of the element, and only there
+						if( Reader::fielded( $called ) === true && is_string( $component['text'] ?? null ) === true )
+							foreach( Reader::lineFills( $component['text'] ) as $fill )
+								if( $fill[0] === '/' )
+									continue;
+								elseif( $fields === null )
+									$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' means nothing in a column without a loop';
+								elseif( ( $fields[$fill]['type'] ?? '' ) === 'image' )
+									$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is an image field, which a line cannot print';
+								elseif( in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$fill] ) === false )
+									$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is no field of the loop\'s type';
+					}
+
+					foreach( $cells as $component ) {
+
+						$kind		= (string) ( $schemas['components'][$component['name'] ?? '']['source'] ?? 'text' );
+						$source	= (string) ( $component['source'] ?? '' );
+
+						// The picture an image attribute names stands where the source of a picture does: a slot, or in a loop a field of the type
+						foreach( self::_pictures( $schemas, (string) ( $component['name'] ?? '' ) ) as $attribute ) {
+
+							$picture = (string) ( $component['attributes'][$attribute] ?? '' );
+
+							if( $picture === '' || ( $picture[0] === '/' ? preg_match( self::SLOT, $picture ) === 1 : ( $fields !== null && isset( $fields[$picture] ) === true ) ) )
+								continue;
+
+							$problems[] = 'the picture "'. $picture. '" of '. ( $component['name'] ?? '' ). ( $picture[0] === '/' ? ' is no image slot' : ( $fields === null ? ' means nothing in a column without a loop: it is an image slot' : ' is no field of the loop\'s type' ) );
+						}
+
+						// A link that goes on from a page of the site holds the fills of the element only in a loop, and only the ones the dialog of the Builder offers there
+						$addressed = [ 'the source' => $kind === 'href' ? $source : '' ];
+
+						foreach( Reader::addresses( (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] ) ) as $attribute )
+							$addressed['the attribute "'. $attribute. '"'] = (string) ( $component['attributes'][$attribute] ?? '' );
+
+						foreach( $addressed as $what => $address ) {
+
+							preg_match_all( '~\[\[([^\[\]]+)\]\]~', (string) ( Reader::address( $address )['postfix'] ?? '' ), $found );
+
+							foreach( array_unique( $found[1] ) as $fill )
+								if( $fields === null || in_array( $fill, self::_fills( $fields ), true ) === false )
+									$problems[] = 'the sub-path of '. $what. ' of '. ( $component['name'] ?? '' ). ' holds the fill [['. $fill. ']], which '. ( $fields === null ? 'means nothing in a column without a loop' : ( isset( $fields[$fill] ) === true ? 'is a field of the loop\'s type that is no line of text or number' : 'is no field of the loop\'s type' ) );
+						}
+
+						if( $source === '' || in_array( $kind, [ 'none', 'content' ], true ) === true )
 							continue;
 
-						$problems[] = 'the picture "'. $picture. '" of '. ( $component['name'] ?? '' ). ( $picture[0] === '/' ? ' is no image slot' : ( $fields === null ? ' means nothing in a column without a loop: it is an image slot' : ' is no field of the loop\'s type' ) );
+						if( $source[0] === '/' )
+							$valid = $kind === 'image' ? preg_match( self::SLOT, $source ) === 1 : \Nino\Text::isGrammarKey( $source ) === true || str_starts_with( $source, '/_nino/' ) === true || \Nino\Text::entry( $appData, $source ) !== null;
+						elseif( $fields === null )
+							$valid = $kind === 'href';
+						else
+							$valid = in_array( $source, [ '.id', '.uri', '.slug' ], true ) === true || isset( $fields[$source] ) === true || $kind === 'href';
+
+						if( $valid === false )
+							$problems[] = 'the source "'. $source. '" of '. ( $component['name'] ?? '' ). ( $fields === null ? ' means nothing in a column without a loop: it is a text key or an image slot' : ' is no field of the loop\'s type' );
 					}
-
-					// A link that goes on from a page of the site holds the fills of the element only in a loop, and only the ones the dialog of the Builder offers there
-					$addressed = [ 'the source' => $kind === 'href' ? $source : '' ];
-
-					foreach( Reader::addresses( (array) ( $schemas['components'][$component['name'] ?? ''] ?? [] ) ) as $attribute )
-						$addressed['the attribute "'. $attribute. '"'] = (string) ( $component['attributes'][$attribute] ?? '' );
-
-					foreach( $addressed as $what => $address ) {
-
-						preg_match_all( '~\[\[([^\[\]]+)\]\]~', (string) ( Reader::address( $address )['postfix'] ?? '' ), $found );
-
-						foreach( array_unique( $found[1] ) as $fill )
-							if( $fields === null || in_array( $fill, self::_fills( $fields ), true ) === false )
-								$problems[] = 'the sub-path of '. $what. ' of '. ( $component['name'] ?? '' ). ' holds the fill [['. $fill. ']], which '. ( $fields === null ? 'means nothing in a column without a loop' : ( isset( $fields[$fill] ) === true ? 'is a field of the loop\'s type that is no line of text or number' : 'is no field of the loop\'s type' ) );
-					}
-
-					if( $source === '' || in_array( $kind, [ 'none', 'content' ], true ) === true )
-						continue;
-
-					if( $source[0] === '/' )
-						$valid = $kind === 'image' ? preg_match( self::SLOT, $source ) === 1 : \Nino\Text::isGrammarKey( $source ) === true || str_starts_with( $source, '/_nino/' ) === true || \Nino\Text::entry( $appData, $source ) !== null;
-					elseif( $fields === null )
-						$valid = $kind === 'href';
-					else
-						$valid = in_array( $source, [ '.id', '.uri', '.slug' ], true ) === true || isset( $fields[$source] ) === true || $kind === 'href';
-
-					if( $valid === false )
-						$problems[] = 'the source "'. $source. '" of '. ( $component['name'] ?? '' ). ( $fields === null ? ' means nothing in a column without a loop: it is a text key or an image slot' : ' is no field of the loop\'s type' );
 				}
 			}
 
@@ -2378,7 +2399,7 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	Whether a section that was written and read again is the one that
 		 *	was written: the same loop of sections or none, the same columns, in
-		 *	each the same stack or none, the same components with the same sources
+		 *	each the same components and loops with the same sources
 		 *
 		 *	@param		array			$posted				The section of the model
 		 *	@param		array			$read					The section the Reader made of what the Writer wrote
@@ -2418,15 +2439,8 @@ namespace Nino\Modules\Builder {
 			foreach( $cols as $index => $col ) {
 
 				$other = $read['cols'][$index];
-				$stack = $col['stack'] ?? null;
 
 				if( $group !== '' && (string) ( $col['title'] ?? '' ) !== (string) $other['title'] )
-					return false;
-
-				if( is_array( $stack ) !== is_array( $other['stack'] ) )
-					return false;
-
-				if( is_array( $stack ) === true && ( (string) ( $stack['name'] ?? '' ) !== $other['stack']['name'] || (string) ( $stack['source'] ?? '' ) !== $other['stack']['source'] ) )
 					return false;
 
 				if( self::_sameCalls( (array) ( $col['components'] ?? [] ), $other['components'] ) === false )
@@ -2438,7 +2452,7 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Whether the components that were written and read again are the ones that were written: the
-		 *	same names with the same sources, and in a component that holds components the same children
+		 *	same names with the same sources, and in a component that holds components or a loop the same children
 		 *
 		 *	@param		array			$posted				The components of the model
 		 *	@param		array			$read					The components the Reader made of what the Writer wrote
@@ -2688,16 +2702,7 @@ namespace Nino\Modules\Builder {
 					if( is_array( $col['background'] ?? null ) === true && $place( $col['background']['focus'] ?? null ) === false )
 						$problems[] = $of. ' has a background with a focus that is no place from 1 to 9';
 
-					$calls = $col['components'] ?? [];
-
-					if( ( $col['stack'] ?? null ) !== null )
-						$calls[] = $col['stack'];
-
-					// The cell of a loop of sections is its columns': a loop of their own would be a loop inside a loop
-					if( ( $col['stack'] ?? null ) !== null && ( $block['stack'] ?? null ) !== null )
-						$problems[] = $of. ' has a loop, and it is a column of a loop of sections';
-
-					foreach( $calls as $call ) {
+					foreach( $col['components'] ?? [] as $call ) {
 
 						$wrong = self::_callWrong( $call );
 
@@ -2705,18 +2710,85 @@ namespace Nino\Modules\Builder {
 							$problems[] = $at. ' has '. $wrong;
 					}
 
-					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
-					foreach( $col['components'] ?? [] as $component )
+					foreach( $col['components'] ?? [] as $component ) {
+
+						// A loop is an entry of the column with the calls of its cell for children
+						if( self::_isLoop( $component, $schemas ) === true ) {
+
+							// The cell of a loop of sections is its columns': a loop of their own would be a loop inside a loop
+							if( ( $block['stack'] ?? null ) !== null )
+								$problems[] = $of. ' has a loop, and it is a column of a loop of sections';
+
+							$problems = array_merge( $problems, self::_shapeLoop( $component, $schemas, $at ) );
+							continue;
+						}
+
+						// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
 						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeHover( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ) );
-
-					// A loop of the cell none has no cells made of components: the Writer would leave them out and the kernel reads none
-					if( is_array( $col['stack'] ?? null ) === true && ( $schemas['stacks'][$col['stack']['name'] ?? '']['cell'] ?? '' ) === 'none' && ( $col['components'] ?? [] ) !== [] )
-						$problems[] = $at. ' has the loop "'. (string) ( $col['stack']['name'] ?? '' ). '", whose cell is no components, and components next to it';
-
-					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
-					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )
-						$problems[] = $at. ' has the loop "'. (string) ( $col['stack']['name'] ?? '' ). '" with components, and it holds none';
+					}
 				}
+			}
+
+			return $problems;
+		}
+
+		/**
+		 *	Whether an entry of the components of a column is a loop: it is a call whose name is a stack of the registry
+		 *
+		 *	@param		mixed			$call
+		 *	@param		array			$schemas
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isLoop( mixed $call, array $schemas ): bool {
+			return is_array( $call ) === true && is_string( $call['name'] ?? null ) === true && isset( $schemas['stacks'][$call['name']] ) === true;
+		}
+
+		/**
+		 *	What is wrong with the loop of a column in its shape: a stack that may stand in a column (its cell is not a whole section), its calls a list of components of its
+		 *	cell - none for the cell none, and none of them a loop, which a loop does not hold - each looked at as a component of a column is
+		 *
+		 *	@param		mixed			$loop					The entry of the column
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeLoop( mixed $loop, array $schemas, string $at ): array {
+
+			// A call that is none has been told already
+			if( is_array( $loop ) === false || self::_callWrong( $loop ) !== '' )
+				return [];
+
+			$name		= (string) ( $loop['name'] ?? '' );
+			$cell		= (string) ( $schemas['stacks'][$name]['cell'] ?? '' );
+
+			if( in_array( $name, Reader::loops( $schemas ), true ) === false )
+				return [ $at. ' has the loop "'. $name. '", which cannot stand in a column' ];
+
+			// What stands between the tags of a loop is the calls of its cell, in a list: no content
+			if( array_key_exists( 'content', $loop ) === true )
+				return [ $at. ' has the loop "'. $name. '" with a content, and it holds calls' ];
+
+			if( is_array( $loop['components'] ?? [] ) === false || array_is_list( (array) ( $loop['components'] ?? [] ) ) === false )
+				return [ $at. ' has the loop "'. $name. '" with children that are no list' ];
+
+			// A loop of the cell none has no cells made of components: the Writer would leave them out and the kernel reads none
+			if( $cell === 'none' && ( $loop['components'] ?? [] ) !== [] )
+				return [ $at. ' has the loop "'. $name. '", whose cell is no components, and children' ];
+
+			$problems = [];
+
+			foreach( (array) ( $loop['components'] ?? [] ) as $child ) {
+
+				$wrong = self::_callWrong( $child );
+
+				if( $wrong !== '' )
+					$problems[] = $at. ' has '. $wrong;
+				elseif( self::_isLoop( $child, $schemas ) === true )
+					$problems[] = $at. ' has the loop "'. (string) $child['name']. '" inside the loop "'. $name. '", and a loop does not hold one';
+				else
+					$problems = array_merge( $problems, self::_shapeHeld( $child, $schemas, $at, false ), self::_shapeRadius( $child, $schemas, $at ), self::_shapeHover( $child, $schemas, $at ), self::_shapeGround( $child, $schemas, $at ), self::_shapeSpacing( $child, $at ) );
 			}
 
 			return $problems;

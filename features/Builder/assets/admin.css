@@ -590,12 +590,16 @@ button.builder-status-item:hover {
 	--builder-chip-ink: currentColor;
 	--builder-chip-line: color-mix(in srgb, currentColor 30%, transparent);
 	--builder-chip-hover: color-mix(in srgb, #fff 18%, color-mix(in srgb, #000 35%, transparent));
+	--builder-red-ink: #fca5a5;
+	--builder-red-line: #f87171;
 }
 :is(.builder-color-alt, .builder-color-tint, .builder-color-brand-alt, .builder-color-plain) {
 	--builder-chip-bg: initial;
 	--builder-chip-ink: initial;
 	--builder-chip-line: initial;
 	--builder-chip-hover: initial;
+	--builder-red-ink: initial;
+	--builder-red-line: initial;
 }
 .builder-head-title,
 .builder-head-status .builder-status-item,
@@ -1121,8 +1125,8 @@ button.builder-status-item:hover {
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 }
-/* The form of the loop of a section or a column: its choice and, where it runs one, its groups */
-.builder-loop {
+/* The form of the loop of a section: its choice and, where it runs one, its groups */
+.builder-loop-form {
 	display: grid;
 	gap: .6rem;
 }
@@ -1905,54 +1909,137 @@ button.builder-status-item:hover {
 	color: var(--editor-red, #b3261e);
 }
 
-/* The table and the rows a loop makes, in the frame of its column: what the head and the cells will show, drawn small. The whole of it opens the form of the loop */
-.builder-table-ph,
-.builder-rows-ph {
+/* A loop of a column in the preview: a row with a rail in the colour of the loops - one colour for one meaning, its own and not the blue of the selection, so that a selected loop keeps it - an arrow,
+   the word of the stack, what it runs over and in which order, its state and its tools. It is shut until it is opened, and then shows its cell one level in from a dashed line:
+   the components it repeats for each element, the columns of a table as lines, or a sentence for a cell that has no components of its own */
+.builder-loop {
+	--builder-loop-rail: #7a7ff5;
 	min-width: 0;
-	padding: .4rem;
-	border: 1px dashed var(--editor-border);
-	border-radius: .4rem;
-	cursor: pointer;
-	overflow-x: auto;
+	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+	border-left: 3px solid var(--builder-loop-rail);
+	border-radius: var(--editor-radius-sm);
+	background: color-mix(in srgb, var(--builder-loop-rail) 8%, transparent);
 }
-.builder-table-ph-table {
-	width: 100%;
-	border-collapse: collapse;
+.builder-loop-bar {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	min-width: 0;
+	padding: .25rem .35rem .25rem .3rem;
+	font-size: .72rem;
+	cursor: pointer;
+}
+.builder-loop-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: .4rem;
+	flex: 0 0 auto;
+	min-width: 24px;
+	min-height: 24px;
+	margin: 0;
+	padding: .15rem .25rem;
+	border: 0;
+	border-radius: var(--editor-radius-sm);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+.builder-loop-name {
+	font-weight: 600;
+}
+.builder-loop-kind {
+	opacity: .65;
+}
+.builder-loop-caret {
+	flex: 0 0 auto;
+	width: 0;
+	height: 0;
+	border: .3rem solid transparent;
+	border-left-color: currentColor;
+	border-right-width: 0;
+	transition: transform .15s;
+}
+.builder-loop.is-open > .builder-loop-bar .builder-loop-caret {
+	transform: rotate(90deg);
+}
+.builder-loop-bar .builder-head-status {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+}
+.builder-chip {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	padding: .05rem .4rem;
+	border: 1px solid var(--builder-chip-line, var(--editor-border));
+	border-radius: 999px;
+	background: var(--builder-chip-bg, var(--editor-bg-elevated));
+	color: var(--builder-chip-ink, var(--editor-text));
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.builder-chip.is-loop {
+	border-color: var(--builder-loop-rail);
+}
+.builder-chip.is-red {
+	border-color: var(--builder-red-line, var(--editor-red));
+	color: var(--builder-red-ink, var(--editor-red));
+}
+.builder-loop-body {
+	padding: .1rem .5rem .5rem .8rem;
+}
+.builder-loop-cell {
+	display: grid;
+	gap: .3rem;
+	min-width: 0;
+	padding-left: .6rem;
+	border-left: 1px dashed color-mix(in srgb, currentColor 40%, transparent);
+}
+.builder-loop-cell-label {
+	font-size: .6rem;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+	opacity: .65;
+}
+.builder-loop-column {
+	display: flex;
+	gap: .6rem;
+	min-width: 0;
+	padding: .25rem .4rem;
+	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+	border-radius: var(--editor-radius-sm);
+	background: color-mix(in srgb, currentColor 6%, transparent);
 	font-size: .72rem;
 }
-.builder-table-ph-table th,
-.builder-table-ph-table td {
-	padding: .2rem .35rem;
-	border-bottom: 1px solid var(--editor-border);
-	text-align: left;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: 12rem;
+.builder-loop-column-title {
+	flex: 0 0 auto;
+	font-weight: 600;
 }
-.builder-table-ph-table th {
-	font-weight: 700;
-}
-.builder-table-ph-table td {
-	opacity: .7;
-}
-.builder-rows-ph-row {
-	padding: .15rem .25rem;
-	font-size: .78rem;
+.builder-loop-column-value {
+	min-width: 0;
 	opacity: .75;
-	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
 }
-.builder-table-ph-table td.is-content {
+.builder-loop-column-value.is-content {
 	font-style: italic;
 }
-.builder-ph.builder-loop-block {
-	border-style: dashed;
+.builder-loop-column.is-red {
+	outline: 2px solid var(--editor-red);
+	outline-offset: -2px;
 }
-.builder-table-ph-table th.is-red,
-.builder-table-ph-table td.is-red {
-	color: var(--editor-red);
-	opacity: 1;
-	text-decoration: underline wavy;
+.builder-loop-says {
+	margin: 0;
+	font-size: .72rem;
+	opacity: .75;
+}
+/* A little deeper than the rail of the row: the item is lit blue under the hand and the rail has to stand out of that too */
+.builder-pick-item.is-loop {
+	--builder-loop-rail: #7076f2;
+	border-left: 3px solid var(--builder-loop-rail);
 }

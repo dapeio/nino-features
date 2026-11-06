@@ -1885,6 +1885,18 @@
             }
         }
     },
+    "loops": [
+        "stack",
+        "repeat",
+        "slider",
+        "filter",
+        "tabs",
+        "accordion",
+        "list",
+        "table",
+        "badges",
+        "marks"
+    ],
     "groups": [
         "section",
         "hero",

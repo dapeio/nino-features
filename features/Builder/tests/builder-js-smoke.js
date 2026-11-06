@@ -1069,7 +1069,10 @@ const iconsKnown = function( root ) {
 // those that are not greyed, which are the components that can be added where it was opened. The label is in the span of its own
 const lightboxOf = function() { return screen.getElementById('builder-dialog-content').querySelector('.builder-lightbox') };
 const pickLabel = function( item ) { return item.children[1].textContent };
-const itemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item') };
+const itemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item').filter( function( item ) { return item.classList.contains('is-loop') === false } ) };
+// The loops of the lightbox are a group of their own, and the components are the others
+const loopItemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item').filter( function( item ) { return item.classList.contains('is-loop') === true } ) };
+const componentGroups = function( box ) { return box.children.filter( function( group ) { return group.dataset.group !== 'loops' } ) };
 const pickAt = function( path ) { builder._pickComponent( path ); return lightboxOf() };
 // An item by the name of its component, which is the registry's. Its label is the kernel's wording in the language of the workbench, and nothing to find it by
 const itemNamed = function( box, name ) { return itemsOf( box ).find( function( item ) { return item.dataset.name === name } ) };
@@ -1100,24 +1103,46 @@ const rowOf = function( pane, label ) {
 
 console.log( 'The model' );
 
+builder._registry = registry();
+
 let model = page();
 
 check( 'the model php sends has its empty maps as lists, and they are maps here', Array.isArray( fixture('page-home.json').blocks[0].cols[0].hidden ) === true
 	&& JSON.stringify( model.blocks[0].cols[0].hidden ) === '{}' && model.blocks[0].cols[0].components[0].attributes.tag === 'h3' );
-check( 'a path names its node: the template, a section, a column, a component, a stack', builder._get( model, [] ) === model && builder._get( model, [ 0 ] ).id === 'hero' && builder._get( model, [ 1, 1 ] ).stack.name === 'stack'
-	&& builder._get( model, [ 0, 0, 2 ] ).name === 'button' && builder._get( model, [ 1, 1, 'x' ] ).source === '/services' && builder._get( model, [ 1, 0, 'x' ] ) === null && builder._get( model, [ 9 ] ) === null && builder._get( model, [ 2, 0 ] ) === null );
-check( 'what a node is: template, section, a block of html, column, stack, component', [ [], [ 0 ], [ 2 ], [ 0, 0 ], [ 1, 1, 'x' ], [ 0, 0, 1 ] ].map( function( at ) { return builder._kind( model, at ) } ).join() === 'template,section,html,col,stack,component' );
+check( '...a loop and its children have their empty maps as maps here as well, whatever the level they stand at', ( function() {
+	const made = builder._normalise( { blocks : [ { kind : 'section', settings : [], cols : [ { hidden : [], width : [], components : [ { name : 'stack', attributes : [], components : [ { name : 'card', attributes : [], components : [ { name : 'title', attributes : [] } ] } ] } ] } ] } ] } );
+	const loop = made.blocks[0].cols[0].components[0];
+	return JSON.stringify( loop.attributes ) === '{}' && JSON.stringify( loop.components[0].attributes ) === '{}' && JSON.stringify( loop.components[0].components[0].attributes ) === '{}';
+} )() );
+check( 'a path names its node: the template, a section, a column, a component, a loop among the components of its column and a child of the loop', builder._get( model, [] ) === model && builder._get( model, [ 0 ] ).id === 'hero' && builder._get( model, [ 1, 1 ] ).components[0].name === 'stack'
+	&& builder._get( model, [ 0, 0, 2 ] ).name === 'button' && builder._get( model, [ 1, 1, 0 ] ).source === '/services' && builder._get( model, [ 1, 1, 0, 1 ] ).source === 'title' && builder._get( model, [ 1, 0, 5 ] ) === null && builder._get( model, [ 1, 1, 0, 9 ] ) === null && builder._get( model, [ 9 ] ) === null && builder._get( model, [ 2, 0 ] ) === null );
+check( 'what a node is: template, section, a block of html, column, loop, component - a child of a loop is a component', [ [], [ 0 ], [ 2 ], [ 0, 0 ], [ 1, 1, 0 ], [ 0, 0, 1 ], [ 1, 1, 0, 1 ] ].map( function( at ) { return builder._kind( model, at ) } ).join() === 'template,section,html,col,loop,component,component' );
+check( 'a loop is known by the registry and by no name: an entry whose name is a stack of it; the loop a node is the cell of is the nearest on the way down, else the loop of the section - none in a column of a plain section',
+	builder._isLoop( builder._get( model, [ 1, 1, 0 ] ) ) === true && builder._isLoop( builder._get( model, [ 1, 1, 0, 0 ] ) ) === false && builder._isLoop( builder._get( model, [ 0, 0, 0 ] ) ) === false && builder._isLoop( null ) === false
+	&& builder._loopAt( model, [ 1, 1, 0, 2 ] ) === model.blocks[1].cols[1].components[0] && builder._loopAt( model, [ 1, 1, 0 ] ) === model.blocks[1].cols[1].components[0] && builder._loopAt( model, [ 1, 1 ] ) === null && builder._loopAt( model, [ 0, 0, 1 ] ) === null
+	&& ( builder._loopAt( { blocks : [ { kind : 'section', stack : { name : 'sections' }, cols : [ { components : [] } ] } ] }, [ 0, 0 ] ) || {} ).name === 'sections' );
+check( 'the loop of a section is the loop of its columns, and of every component in them: the column and a component of the column of a loop of sections have the loop of the section for the loop they are the cell of - its type gives the fields, and the place says it is looped - a column of a plain section has none', ( function() {
+	const first = builder._newSection( model );
+	const sections = { blocks : [ Object.assign( first, { stack : { name : 'sections', source : '/services', attributes : {} }, cols : [ { components : [ { name : 'text', attributes : {}, components : [] } ] } ] } ), Object.assign( builder._newSection( model ), { stack : null, cols : [ { components : [] } ] } ) ], animate : false };
+	const loop = sections.blocks[0].stack;
+	const fields = builder._typeFields( sections, [ 0, 0 ] );
+	return builder._loopAt( sections, [ 0, 0 ] ) === loop && builder._loopAt( sections, [ 0, 0, 0 ] ) === loop && builder._loopAt( sections, [ 1, 0 ] ) === null
+		&& fields !== null && Object.keys( fields ).join() === Object.keys( builder._registry.types.find( function( type ) { return type.uri === '/services' } ).fields ).join() && builder._typeFields( sections, [ 1, 0 ] ) === null
+		&& builder._placeOf( sections, [ 0, 0 ], builder._registry ).looped === true && builder._placeOf( sections, [ 1, 0 ], builder._registry ).looped === false;
+} )() );
 
 console.log( '\nMoving, copying, deleting' );
 
 check( 'a section moves to the place of another and the others close up', builder._move( model, [ 0 ], [ 1 ] ) === true && model.blocks.map( function( block ) { return block.id || 'html' } ).join() === 'services,hero,html,contact' );
 check( '...and back', builder._move( model, [ 1 ], [ 0 ] ) === true && model.blocks[0].id === 'hero' );
-check( 'a column moves inside its section, a component inside its column', builder._move( model, [ 1, 0 ], [ 1, 1 ] ) === true && model.blocks[1].cols[0].stack !== null
+check( 'a column moves inside its section, a component inside its column', builder._move( model, [ 1, 0 ], [ 1, 1 ] ) === true && builder._isLoop( model.blocks[1].cols[0].components[0] ) === true
 	&& builder._move( model, [ 0, 0, 0 ], [ 0, 0, 2 ] ) === true && model.blocks[0].cols[0].components.map( function( component ) { return component.name } ).join() === 'subtitle,button,title' );
 model = page();
-check( 'nothing moves across levels: a component into another column, a column into another section, a section into a column, a stack at all',
+check( 'nothing moves across levels: a component into another column, a column into another section, a section into a column, a child of a loop out of it',
 	builder._move( model, [ 0, 0, 0 ], [ 1, 0, 0 ] ) === false && builder._move( model, [ 0, 0 ], [ 1, 0 ] ) === false && builder._move( model, [ 0 ], [ 0, 0 ] ) === false
-	&& builder._move( model, [ 1, 1, 'x' ], [ 1, 1, 0 ] ) === false && builder._move( model, [], [ 0 ] ) === false );
+	&& builder._move( model, [ 1, 1, 0, 0 ], [ 1, 1, 0 ] ) === false && builder._move( model, [ 1, 1, 0 ], [ 1, 1, 0, 0 ] ) === false && builder._move( model, [], [ 0 ] ) === false );
+check( '...a loop moves in its column as a component does, and the children of a loop among themselves', builder._move( model, [ 1, 1, 0, 0 ], [ 1, 1, 0, 3 ] ) === true && model.blocks[1].cols[1].components[0].components.map( function( component ) { return component.name } ).join() === 'title,text,button,image' );
+model = page();
 check( '...nor to its own place, nor to one that is not there', builder._move( model, [ 0 ], [ 0 ] ) === false && builder._move( model, [ 0 ], [ 9 ] ) === false && JSON.stringify( model ) === JSON.stringify( page() ) );
 check( 'a step up from the first place and down from the last are none, and a step is a move', builder._step( model, [ 0 ], -1 ) === null && builder._step( model, [ 3 ], 1 ) === null && builder._same( builder._step( model, [ 3 ], -1 ), [ 2 ] ) && model.blocks[2].id === 'contact' );
 model = page();
@@ -1182,17 +1207,19 @@ check( 'a column that has no picture is copied without one', ( function() {
 	return model.blocks[1].cols[1].background === null && model.blocks[1].cols[1].color === '' && model.blocks[1].cols[1].dim === false;
 } )() );
 model = page();
-check( 'a block of html is copied as it is, a stack cannot be copied', ( function() {
+check( 'a block of html is copied as it is, and a loop as a component is - with its children, which are not the original\'s', ( function() {
 	const html = builder._duplicate( model, registry(), 'page-home', [ 2 ] );
-	return builder._same( html, [ 3 ] ) && model.blocks[3].kind === 'html' && model.blocks[3].source === model.blocks[2].source && model.blocks[3] !== model.blocks[2] && builder._duplicate( model, registry(), 'page-home', [ 1, 1, 'x' ] ) === null;
+	const loop = builder._duplicate( model, registry(), 'page-home', [ 1, 1, 0 ] );
+	const cell = model.blocks[1].cols[1].components;
+	return builder._same( html, [ 3 ] ) && model.blocks[3].kind === 'html' && model.blocks[3].source === model.blocks[2].source && model.blocks[3] !== model.blocks[2]
+		&& builder._same( loop, [ 1, 1, 1 ] ) && cell.length === 2 && cell[1] !== cell[0] && cell[1].components !== cell[0].components && JSON.stringify( cell[1] ) === JSON.stringify( cell[0] );
 } )() );
 
 model = page();
-check( 'delete takes a section, a column or a component out', builder._remove( model, [ 1, 1, 0 ] ) === true && model.blocks[1].cols[1].components.length === 3
+check( 'delete takes a section, a column, a component or a loop out - a loop with its children, a child of a loop alone', builder._remove( model, [ 1, 1, 0, 3 ] ) === true && model.blocks[1].cols[1].components[0].components.length === 3 && builder._remove( model, [ 1, 1, 0 ] ) === true && model.blocks[1].cols[1].components.length === 0
 	&& builder._remove( model, [ 2 ] ) === true && model.blocks.length === 3 && builder._remove( model, [ 0, 0 ] ) === true && model.blocks[0].cols.length === 0 && builder._remove( model, [ 9 ] ) === false && builder._remove( model, [] ) === false );
 model = page();
-check( '...a loop is not taken out like that: it is set to Static in the properties of its column, and the components stay', builder._remove( model, [ 1, 1, 'x' ] ) === false && model.blocks[1].cols[1].stack !== null && model.blocks[1].cols[1].components.length === 4
-	&& builder._remove( model, [ 1, 0, 'x' ] ) === false && builder._remove( model, [ 0, 5, 'x' ] ) === false && model.blocks[1].cols.length === 2 );
+check( '...a path the model has nothing at takes nothing out: a component that is not there, a child of a loop that is not there', builder._remove( model, [ 1, 0, 9 ] ) === false && builder._remove( model, [ 0, 5, 0 ] ) === false && builder._remove( model, [ 1, 1, 0, 9 ] ) === false && model.blocks[1].cols.length === 2 && model.blocks[1].cols[1].components[0].components.length === 4 );
 
 console.log( '\nThe tools of a frame' );
 
@@ -1202,13 +1229,15 @@ check( 'a section has settings, HTML+, up, down, duplicate, copy, paste and dele
 	&& builder._toolbar( model, [ 0 ] ).up === false && builder._toolbar( model, [ 0 ] ).down === true && builder._toolbar( model, [ 3 ] ).down === false && builder._toolbar( model, [ 3 ] ).up === true );
 check( '...a block of html has no tool of its own to edit it as HTML+: its settings are the editor', builder._toolbar( model, [ 2 ] ).html === null && builder._toolbar( model, [ 2 ] ).settings === true && builder._toolbar( model, [ 2 ] ).duplicate === true );
 check( '...a column and a component move inside their level: the first of two cannot go up, the last cannot go down', builder._toolbar( model, [ 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 0 ] ).down === true && builder._toolbar( model, [ 1, 1 ] ).down === false
-	&& builder._toolbar( model, [ 1, 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 1, 3 ] ).down === false && builder._toolbar( model, [ 1, 1, 3 ] ).up === true && builder._toolbar( model, [ 1, 1, 0 ] ).html === null );
+	&& builder._toolbar( model, [ 1, 1, 0, 0 ] ).up === false && builder._toolbar( model, [ 1, 1, 0, 3 ] ).down === false && builder._toolbar( model, [ 1, 1, 0, 3 ] ).up === true && builder._toolbar( model, [ 1, 1, 0 ] ).html === null );
 check( '...the only column of a section is not deleted: a section has one at least', builder._toolbar( model, [ 0, 0 ] ).delete === false && builder._toolbar( model, [ 1, 0 ] ).delete === true && builder._toolbar( model, [ 0, 0, 0 ] ).delete === true );
-check( '...a loop is no frame and has no tools: it is set in the properties of its column', builder._toolbar( model, [ 1, 1, 'x' ] ) === null );
+check( '...a loop has settings, up, down, copy and delete, and paste where its cell is components - it is copied and pasted, and not duplicated', toolbar( [ 1, 1, 0 ] ) === '{"settings":true,"html":null,"up":false,"down":false,"duplicate":null,"copy":true,"paste":false,"delete":true}'
+	&& ( model.blocks[1].cols[1].components.push( builder._newLoop( registry(), 'stack' ) ), builder._toolbar( model, [ 1, 1, 1 ] ).up === true && builder._toolbar( model, [ 1, 1, 0 ] ).down === true )
+	&& ( model.blocks[1].cols[1].components.push( builder._newLoop( registry(), 'badges' ) ), builder._toolbar( model, [ 1, 1, 2 ] ).paste === null && builder._toolbar( model, [ 1, 1, 1 ] ).paste === false ) && ( model = page(), true ) );
 check( '...the template has no tools, and a path the model has nothing at has none to use', builder._toolbar( model, [] ) === null && builder._toolbar( model, [ 9, 0, 0 ] ).up === false && builder._toolbar( model, [ 9, 0, 0 ] ).delete === false );
 
-check( 'what a frame holds that a delete would take with it: the components of a column and its loop, all of a section - a loop holds nothing of its own, it is the column\'s', builder._children( model, [ 0 ] ) === 3 && builder._children( model, [ 1 ] ) === 7 && builder._children( model, [ 0, 0 ] ) === 3
-	&& builder._children( model, [ 1, 1 ] ) === 5 && builder._children( model, [ 1, 1, 'x' ] ) === 0 && builder._children( model, [ 0, 0, 0 ] ) === 0 && builder._children( model, [ 2 ] ) === 0 && builder._children( model, [ 9 ] ) === 0 );
+check( 'what a frame holds that a delete would take with it: the components and loops of a column, all of a section (the children of a loop are the loop\'s), the children of a loop', builder._children( model, [ 0 ] ) === 3 && builder._children( model, [ 1 ] ) === 3 && builder._children( model, [ 0, 0 ] ) === 3
+	&& builder._children( model, [ 1, 1 ] ) === 1 && builder._children( model, [ 1, 1, 0 ] ) === 4 && builder._children( model, [ 0, 0, 0 ] ) === 0 && builder._children( model, [ 2 ] ) === 0 && builder._children( model, [ 9 ] ) === 0 );
 check( '...a section with nothing in it, as a new one is, holds nothing', builder._children( { blocks : [ builder._newSection( model ) ] }, [ 0 ] ) === 0 );
 
 console.log( '\nThe loop\'s name, the animation of the template and of a section, the order of a loop, the widths of a column' );
@@ -1361,7 +1390,7 @@ check( 'a new component has the attributes of its schema, and in a static column
 	return title.source === '/template/page-home/hero/title-2' && JSON.stringify( title.create ) === '{}' && title.values === undefined && title.attributes.tag === 'h3' && title.text === null
 		&& image.source === '/template/page-home/hero/image' && image.create.label === 'Image' && image.create.width === 1600 && html.content === '' && html.source === '' && html.create === undefined && spacer.source === '' && spacer.create === undefined;
 } )() );
-check( '...and in a stack none: its source is a field, chosen in the form', builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).source === '' && builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).create === undefined );
+check( '...and in the cell of a loop none: its source is a field, chosen in the form', builder._newComponent( model, reg, 'page-home', [ 1, 1, 0 ], 'title', [] ).source === '' && builder._newComponent( model, reg, 'page-home', [ 1, 1, 0 ], 'title', [] ).create === undefined && builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).source !== '' );
 
 	// A loop of sections owns the names <its id>-<n>: a new section beside a loop called section is not section-2, which the save would refuse, and a copy of the loop is not news-2
 	const looped = { blocks : [ Object.assign( builder._newSection( model ), { id : 'section', stack : { name : 'sections', attributes : { id : 'section' } } } ), Object.assign( builder._newSection( model ), { id : 'news', stack : { name : 'sections', attributes : {} } } ) ], animate : false };
@@ -1372,28 +1401,37 @@ check( '...and in a stack none: its source is a field, chosen in the form', buil
 console.log( '\nThe red source' );
 
 model = page();
+// The loop of the services column is the one entry of it; the column without the loop keeps the children of its cell, and a loop around them again is the loop it was
+const servicesLoop = function() { return model.blocks[1].cols[1].components[0] };
+const loopless = function() { const col = model.blocks[1].cols[1]; const loop = col.components[0]; col.components = loop.components; return loop };
+const wrapped = function( loop ) { loop.components = model.blocks[1].cols[1].components; model.blocks[1].cols[1].components = [ loop ] };
 check( 'the example page has no source that means nothing where it stands', builder._red( model, reg ).length === 0 );
-model.blocks[1].cols[1].stack = null;
-check( 'a stack changed to static: every field of the element is red in that column - and nothing else', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return [ entry.path.join('.'), entry.source, entry.why ] } ) )
+let taken = loopless();
+check( 'a loop taken away: every field of the element is red in that column, where it has no loop - and nothing else', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return [ entry.path.join('.'), entry.source, entry.why ] } ) )
 	=== JSON.stringify( [ [ '1.1.0', 'image', 'static' ], [ '1.1.1', 'title', 'static' ], [ '1.1.2', 'summary', 'static' ], [ '1.1.3', '.uri', 'static' ] ] ) );
-model.blocks[1].cols[1].stack = { name : 'stack', source : '/services', attributes : { cols : '100 50 50' } };
-check( 'and the stack back: nothing is red', builder._red( model, reg ).length === 0 );
-model.blocks[1].cols[1].components[1].source = '.slug';
+wrapped( taken );
+check( 'and the loop back: nothing is red', builder._red( model, reg ).length === 0 );
+servicesLoop().components[1].source = '.slug';
 check( 'the slug of the element is a source of a loop as the id and the uri are: nothing is red for it in the type that has the fields, nor in one that has not - and in a column without a loop it is red',
-	builder._red( model, reg ).length === 0 && ( model.blocks[1].cols[1].stack.source = '/team', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ 'image:field', 'summary:field' ] ) )
-	&& ( model.blocks[1].cols[1].stack = null, JSON.stringify( builder._red( model, reg ).filter( function( entry ) { return entry.source === '.slug' } ).map( function( entry ) { return entry.why } ) ) === JSON.stringify( [ 'static' ] ) ) );
-model.blocks[1].cols[1].components[1].source = 'title';
-model.blocks[1].cols[1].stack = { name : 'stack', source : '/services', attributes : { cols : '100 50 50' } };
-model.blocks[1].cols[1].stack.source = '/team';
-check( 'a stack of a type that has not the fields: the fields it has not are red, the ones it has (.uri, a key) are not', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ 'image:field', 'title:field', 'summary:field' ] ) );
-model.blocks[1].cols[1].stack.source = '/nowhere';
-check( 'a stack of a type the Elements panel does not know is red itself, and its components are not judged by it', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.why } ) ) === JSON.stringify( [ '1.1.x:type' ] ) );
-model.blocks[1].cols[1].stack.source = '/services';
-model.blocks[1].cols[1].components[1].source = '/template/page-home/services/title';
-model.blocks[1].cols[1].components[2].source = '';
+	builder._red( model, reg ).length === 0 && ( servicesLoop().source = '/team', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ 'image:field', 'summary:field' ] ) )
+	&& ( taken = loopless(), JSON.stringify( builder._red( model, reg ).filter( function( entry ) { return entry.source === '.slug' } ).map( function( entry ) { return entry.why } ) ) === JSON.stringify( [ 'static' ] ) ) );
+wrapped( taken );
+servicesLoop().components[1].source = 'title';
+check( 'a loop of a type that has not the fields: the fields it has not are red, the ones it has (.uri, a key) are not', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ 'image:field', 'title:field', 'summary:field' ] ) );
+servicesLoop().source = '/nowhere';
+check( 'a loop of a type the Elements panel does not know is red itself, at its own path, and its components are not judged by it', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.why } ) ) === JSON.stringify( [ '1.1.0:type' ] ) );
+servicesLoop().source = '/services';
+servicesLoop().components[1].source = '/template/page-home/services/title';
+servicesLoop().components[2].source = '';
 check( 'a key stands anywhere, and no source is none', builder._red( model, reg ).length === 0 );
 model.blocks[0].cols[0].components[0].source = 'title';
-check( 'a field name in a column that has no stack is red, and nothing else on the page is', builder._red( model, reg ).length === 1 && builder._red( model, reg )[0].why === 'static' && builder._same( builder._red( model, reg )[0].path, [ 0, 0, 0 ] ) );
+check( 'a field name in a column that has no loop is red, and nothing else on the page is', builder._red( model, reg ).length === 1 && builder._red( model, reg )[0].why === 'static' && builder._same( builder._red( model, reg )[0].path, [ 0, 0, 0 ] ) );
+model = page();
+model.blocks[1].cols[1].components.unshift( { name : 'title', source : 'title', text : null, attributes : {} } );
+check( 'a field outside a loop that stands beside one in the same column is red, and the same field inside the loop is none: the cell of a loop is the loop\'s alone', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ '1.1.0:title:static' ] ) );
+model = page();
+servicesLoop().components.push( { name : 'text', source : 'nothing', text : null, attributes : {} } );
+check( '...a field the loop\'s type has not is red at the path of the child, a level below the loop', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ '1.1.0.4:nothing:field' ] ) );
 
 console.log( '\nThe preview' );
 
@@ -1418,20 +1456,22 @@ check( 'a component is a placeholder with the image the registry names - the ker
 model.blocks[0].cols[0].components.push( { name : 'unknown-one', source : '', text : null, attributes : {} } );
 model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : {} } );
 check( '...a component the registry does not know and one that names no image are blocks, labelled with what they are', plan('l')[0].cols[0].components.slice( 3 ).map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'block:unknown-one,block:Spacer' );
-check( 'a loop is no frame of the preview: the column that runs it says so - the label of the loop, the type it runs over by the title the Elements panel gives it, where its settings are - and keeps its components, which are what each cell shows', ( function() {
-	const stack = plan('l')[1].cols[1].stack;
-	return JSON.stringify( Object.keys( stack ) ) === '["path","label","type"]' && stack.label === registry().stacks.stack.label && stack.type === 'Services' && builder._same( stack.path, [ 1, 1, 'x' ] )
-		&& plan('s')[1].cols[1].stack.label === registry().stacks.stack.label && plan('l')[1].cols[0].stack === null && plan('l')[1].cols[1].components.length === 4;
+check( 'a loop is an entry of the column like a component: the label of its stack, the type it runs over by the title the Elements panel gives it, the field it is sorted by, what its cell is and holds - and the column keeps nothing of a loop of its own', ( function() {
+	const entry = plan('l')[1].cols[1].components[0];
+	return JSON.stringify( Object.keys( entry ) ) === '["path","loop","name","label","type","sorted","cell","shows","problem","children","columns","count","row","fields","image"]' && entry.loop === true && entry.name === 'stack' && entry.label === registry().stacks.stack.label && entry.type === 'Services'
+		&& entry.sorted === 'title' && entry.cell === 'components' && entry.shows === 'children' && entry.problem === null && builder._same( entry.path, [ 1, 1, 0 ] ) && entry.count === 4 && entry.children.length === 4 && builder._same( entry.children[1].path, [ 1, 1, 0, 1 ] )
+		&& plan('s')[1].cols[1].components[0].label === registry().stacks.stack.label && plan('l')[1].cols[0].components.every( function( component ) { return component.loop === undefined } ) && plan('l')[1].cols[1].components.length === 1 && 'stack' in plan('l')[1].cols[1] === false;
 } )() );
-check( '...a type the Elements panel does not know, or that has no title there, is told by its uri', ( function() {
-	model.blocks[1].cols[1].stack.source = '/nowhere';
-	const unknown = plan('l')[1].cols[1].stack.type;
-	const untitled = builder._preview( model, Object.assign( registry(), { types : [ { uri : '/nowhere', title : '', fields : {} } ] } ), 'l' )[1].cols[1].stack.type;
-	model.blocks[1].cols[1].stack.source = '/services';
-	return unknown === '/nowhere' && untitled === '/nowhere';
+check( '...a type the Elements panel does not know, or that has no title there, is told by its uri - and the loop is red', ( function() {
+	model.blocks[1].cols[1].components[0].source = '/nowhere';
+	const unknown = plan('l')[1].cols[1].components[0];
+	const untitled = builder._preview( model, Object.assign( registry(), { types : [ { uri : '/nowhere', title : '', fields : {} } ] } ), 'l' )[1].cols[1].components[0].type;
+	model.blocks[1].cols[1].components[0].source = '/services';
+	return unknown.type === '/nowhere' && untitled === '/nowhere' && unknown.problem === 'type';
 } )() );
-model.blocks[1].cols[1].stack.name = 'slider';
-check( '...a registered loop is called by the label it registered', plan('l')[1].cols[1].stack.label === 'Slider' );
+model.blocks[1].cols[1].components[0].name = 'slider';
+check( '...a registered loop is called by the label it registered', plan('l')[1].cols[1].components[0].label === 'Slider' );
+model.blocks[1].cols[1].components[0].name = 'stack';
 
 console.log( '\nUnsaved changes and saving' );
 
@@ -1524,28 +1564,61 @@ check( '...what is said of a section is a picture behind it, as an icon with its
 		&& preview().children[1].querySelector('.builder-frame-head .builder-head-status').children.length === 0;
 } )() );
 
-const loopItem = function() { return preview().querySelector('.builder-status-item.is-loop') };
-check( 'the loop is no frame of its own: the column that runs it says "<label of the presentation> · <type>" in its head, as a button that has the settings of the loop for its title - and the components sit directly in the column', ( function() {
-	const item = loopItem();
-	const col = preview().querySelector('[data-path="1.1"]');
-	return preview().querySelectorAll('.builder-status-item.is-loop').length === 1 && item.localName === 'button' && item.textContent === registry().stacks.stack.label+ ' \u00b7 Services' && item.title === 'Settings of the loop: '+ item.textContent && iconOf( item ) === 'loop'
-		&& col.querySelector('.builder-head-status').contains( item ) && classes( col.querySelector('.builder-col-body').children ) === 'builder-ph builder-pick,builder-ph has-draws builder-pick,builder-ph builder-pick,builder-ph has-draws builder-pick,builder-adds'
-		&& preview().all().filter( function( el ) { return el.classList.contains('builder-pick') && /\.x$/.test( el.dataset.path ?? '' ) } ).length === 0 && preview().querySelector('.builder-stack') === null;
+const loopRow = function( at ) { return preview().querySelector('.builder-loop[data-path="'+ ( at ?? '1.1.0' )+ '"]') };
+const barOf = function( row ) { return row.querySelector('.builder-loop-bar') };
+check( 'a loop is a row among the components of its column, with the class that gives it its colour: the arrow and the word of its stack and the word Loop, the chips - what it runs over and in which order, how much its cell holds - and its tools last; it is shut as the page is loaded', ( function() {
+	const row = loopRow();
+	const bar = barOf( row );
+	return preview().querySelectorAll('.builder-loop').length === 1 && row.parentNode === preview().querySelector('[data-path="1.1"] .builder-col-body') && classes( row.parentNode.children ) === 'builder-loop builder-pick,builder-adds'
+		&& classes( bar.children ) === 'builder-loop-toggle,builder-head-status,builder-tools' && bar.localName === 'header' && row.querySelector('.builder-loop-name').textContent === registry().stacks.stack.label && row.querySelector('.builder-loop-kind').textContent === 'Loop'
+		&& texts( bar.querySelectorAll('.builder-chip') ) === 'Services · by title,4' && bar.querySelectorAll('.builder-chip')[0].classList.contains('is-loop') && bar.querySelectorAll('.builder-chip')[1].title === 'In the cell: 4'
+		&& row.querySelector('.builder-loop-toggle').getAttribute('aria-expanded') === 'false' && row.querySelector('.builder-loop-body').hidden === true && row.classList.contains('is-open') === false
+		&& bar.querySelectorAll('.builder-tools button').filter( function( button ) { return button.hidden === false } ).map( function( button ) { return button.dataset.tool } ).join() === 'settings,up,down,copy,paste,delete';
 } )() );
-check( '...its title carries the status as well, since in a narrow column the text of the button is cut off and the title is not: the settings of the loop, a colon and the status - and the words of the title have a place for it in both languages', ( function() {
-	const german = /^\s*'\[\[\/_admin\/builder\/menu\/loop\]\]'\s*=>\s*'(.*)',\s*$/m.exec( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ) );
-	return loopItem().title === 'Settings of the loop: '+ loopItem().textContent && words['/_admin/builder/menu/loop'].split('%s').length === 2 && german !== null && german[1].split('%s').length === 2;
+check( '...the cell of an open loop stands one level in from a dashed line, and its rail has a colour of its own: not the blue of the selection', /\.builder-loop-cell \{[^}]*padding-left: [^;]+;\n\tborder-left: 1px dashed /.test( stylesheet ) === true && /\.builder-loop \{\n\t--builder-loop-rail: #[0-9a-f]{6};/.test( stylesheet ) === true );
+check( '...the red chip is red on every ground: a light red ink and line in a section of a dark, a black or the brand ground - where the ink of the workbench would not read - and the red of the workbench on the others', /:is\(\.builder-color-dark, \.builder-color-black, \.builder-color-primary\) \{[^}]*--builder-red-ink: #[0-9a-f]{6};[^}]*--builder-red-line: #[0-9a-f]{6};/.test( stylesheet ) === true && /\.builder-chip\.is-red \{\n\tborder-color: var\(--builder-red-line, var\(--editor-red\)\);\n\tcolor: var\(--builder-red-ink, var\(--editor-red\)\);/.test( stylesheet ) === true && /--builder-red-ink: initial;/.test( stylesheet ) === true );
+check( '...the colour of a loop is a class of the stylesheet and nothing the script paints: the rail is one custom property, which the row, its chip and its item in the lightbox share, and the row carries no style of its own', /\.builder-loop \{[^}]*--builder-loop-rail:[^}]*border-left: 3px solid var\(--builder-loop-rail\);/.test( stylesheet ) === true && /\.builder-chip\.is-loop \{\n\tborder-color: var\(--builder-loop-rail\);/.test( stylesheet ) === true
+	&& /\.builder-pick-item\.is-loop \{[^}]*--builder-loop-rail:/.test( stylesheet ) === true && loopRow().getAttribute('style') === null );
+check( '...a click on the row, on the arrow too, opens it and a second one shuts it again: then its cell is seen, one level in under the label "The cell of each element", with its components and the button that adds one; the tools do not open it', ( function() {
+	const row = loopRow();
+	row.querySelector('.builder-loop-toggle').click();
+	const open = loopRow();
+	const opened = open.classList.contains('is-open') === true && open.querySelector('.builder-loop-body').hidden === false && open.querySelector('.builder-loop-toggle').getAttribute('aria-expanded') === 'true'
+		&& open.querySelector('.builder-loop-cell-label').textContent === 'The cell of each element' && open.querySelectorAll('.builder-loop-cell > .builder-ph').length === 4 && open.querySelectorAll('.builder-loop-cell > .builder-adds .builder-add-button').map( function( button ) { return button.textContent } ).join() === '+ Component'
+		&& builder._same( builder._sel, [ 1, 1, 0 ] );
+	barOf( open ).querySelector('[data-tool="up"]').click();
+	const tooled = loopRow().classList.contains('is-open');
+	barOf( loopRow() ).click();
+	const shut = loopRow().classList.contains('is-open') === false && loopRow().querySelector('.builder-loop-body').hidden === true;
+	return opened && tooled === true && shut;
 } )() );
-check( '...and the loop is set in the block of its own in the dialog of the column: the status opens the column dialog on it', ( function() {
-	loopItem().click();
-	const opened = dialogBox().open === true && openBlock() === 'loop' && dialogText('builder-dialog-kind') === 'Column of "services"' && builder._same( builder._sel, [ 1, 1, 'x' ] );
+check( '...a repaint keeps what is open: the loop is the node of the model, and not a place', ( function() {
+	loopRow().querySelector('.builder-loop-toggle').click();
+	builder._renderPreview();
+	const kept = loopRow().classList.contains('is-open') === true;
+	builder._open.delete( builder._get( builder._doc.model, [ 1, 1, 0 ] ) );
+	builder._renderPreview();
+	return kept && loopRow().classList.contains('is-open') === false && loopRow().querySelector('.builder-loop-body').hidden === true;
+} )() );
+check( '...and a save, whose answer is a model of new nodes, keeps what was open: the loop at the same place in the same column is open again, one that was shut is not', ( function() {
+	const before = builder._doc.model;
+	builder._open.add( builder._get( before, [ 1, 1, 0 ] ) );
+	const after = builder._normalise( JSON.parse( JSON.stringify( before ) ) );
+	builder._keepOpen( before, after );
+	const kept = builder._open.has( builder._get( after, [ 1, 1, 0 ] ) ) === true && builder._open.has( builder._get( after, [ 1, 0, 0 ] ) ) === false;
+	builder._open.delete( builder._get( before, [ 1, 1, 0 ] ) );
+	return kept;
+} )() );
+check( '...a double click on the row opens the dialog of the loop, in three blocks: the data, the presentation and the properties', ( function() {
+	loopRow().dispatch( 'dblclick', {} );
+	const opened = dialogBox().open === true && blockIds().join() === 'data,presentation,properties' && dialogText('builder-dialog-kind') === 'Loop: '+ registry().stacks.stack.label;
 	dialogBox().open = false;
 	return opened;
 } )() );
 
-check( 'every level ends in a button that adds to it - a section a column, a column a component - and there is no button for a loop', ( function() {
+check( 'every level ends in a button that adds to it - a section a column, a column a component, the cell of a loop a component - and there is no button for a loop in the preview: it is added in the lightbox', ( function() {
 	const adds = preview().querySelectorAll('.builder-add-button').map( function( button ) { return button.textContent } );
-	return adds.filter( function( text ) { return text === '+ Component' } ).length === 4 && adds.filter( function( text ) { return text === '+ Column' } ).length === 3 && adds.length === 7 && adds.every( function( text ) { return /loop/i.test( text ) === false } );
+	return adds.filter( function( text ) { return text === '+ Component' } ).length === 5 && adds.filter( function( text ) { return text === '+ Column' } ).length === 3 && adds.length === 8 && adds.every( function( text ) { return /loop/i.test( text ) === false } );
 } )() );
 check( '...the end of a column is a button for a component and nothing else - where the column has a loop as well as where it has none', ( function() {
 	const plain = builder._addsRow( [ 0, 0 ] );
@@ -1557,20 +1630,20 @@ check( '...and a component is chosen in a lightbox, which opens in the dialog an
 	const count = itemsOf( pickAt( [ 1, 0 ] ) ).length;
 
 	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offeredAt( [ 0, 0 ] ) === belonging( 'hero' ) && offeredAt( [ 1, 0 ] ) === belonging( 'section' )
-		&& offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === pickable.length
+		&& offeredAt( [ 1, 1, 0 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === pickable.length
 		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && dialogContent().querySelector('.builder-blocks') === null;
 } )() );
 check( '...the lightbox is in groups, each with a heading: what the kernel and the modules of a project registered by the group its schema names - the words of the registry, in the order the lightbox lists them - and then the Features for what a feature registered, each in the order of the registry; a group with nothing in it is not drawn, and a feature has a heading of its own where there is more than one', ( function() {
 
 	const components = builder._registry.components;
-	const groups = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.dataset.group+ ':'+ itemsOf( group ).map( pickLabel ).join() } ).join(' | ') };
+	const groups = function() { return componentGroups( pickAt( [ 1, 0 ] ) ).map( function( group ) { return group.dataset.group+ ':'+ itemsOf( group ).map( pickLabel ).join() } ).join(' | ') };
 	// What the registry says each group holds, in its own order: the labels of the components of the kernel that name it
 	const labels = function( word ) { return Object.keys( components ).filter( function( name ) { return components[name].by === 'nino' && components[name].group === word && builder._columnar( components[name] ) === false } ).map( function( name ) { return components[name].label } ).join() };
 	// ...and the words of a list that have such a component: the groups the lightbox draws, whichever and however many the registry has
 	const filled = function( words ) { return words.filter( function( word ) { return labels( word ) !== '' } ) };
 	const listed = function( words ) { return filled( words ).map( function( word ) { return word+ ':'+ labels( word ) } ).join(' | ') };
 	const heading = function( box ) { return box.querySelectorAll('.builder-lightbox-sub').map( function( sub ) { return sub.textContent } ).join() };
-	const headings = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.children[0].textContent } ).join() };
+	const headings = function() { return componentGroups( pickAt( [ 1, 0 ] ) ).map( function( group ) { return group.children[0].textContent } ).join() };
 	const kernel = groups();
 	const said = headings();
 
@@ -1618,7 +1691,7 @@ check( '...a component of a feature stands under the feature whatever else its s
 	components['stub-forms'] = { label : 'Stub forms', preview : 'block', by : 'forms', group : groupWords[0] };
 
 	// Where the stub stands in each group that is drawn: in none of the registry's, and first in the Features, which come last
-	const stands = pickAt( [ 1, 0 ] ).children.map( function( group ) { return [ group.dataset.group, itemsOf( group ).map( pickLabel ).indexOf( 'Stub forms' ) ] } );
+	const stands = componentGroups( pickAt( [ 1, 0 ] ) ).map( function( group ) { return [ group.dataset.group, itemsOf( group ).map( pickLabel ).indexOf( 'Stub forms' ) ] } );
 	const last = stands.length - 1;
 
 	delete components['stub-forms'];
@@ -1656,14 +1729,14 @@ check( '...a component that says where it belongs (its "in") can be added there 
 	components['stub-any'] = { label : 'Stub any', preview : 'block', group : 'global' };
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
 
-	const found = [ offered( [ 0, 0 ] ), offered( [ 1, 0 ] ), offered( [ 1, 1 ] ), offered( [ 3, 0 ] ) ].join(' | ');
+	const found = [ offered( [ 0, 0 ] ), offered( [ 1, 0 ] ), offered( [ 1, 1, 0 ] ), offered( [ 3, 0 ] ) ].join(' | ');
 
 	// The first section is no cover: it is the hero all the same; the second is one, and is no hero for that
 	blocks[0].settings.cover = null;
 	blocks[1].settings.cover = 90;
 
 	return found === 'Stub hero,Stub any,Stub alone | Stub two,Stub any,Stub alone | Stub two,Stub any | Stub two,Stub any,Stub alone'
-		&& offered( [ 0, 0 ] ) === 'Stub hero,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any';
+		&& offered( [ 0, 0 ] ) === 'Stub hero,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1, 0 ] ) === 'Stub two,Stub any';
 } )() );
 check( '...what cannot go where the lightbox was opened is there all the same, greyed, and says why: a disabled button with the reason for its title and - for whoever does not see the grey - in a span of its own that only a screen reader reads; the reason is that it belongs in a card only, in the first section only or in other places, or that an element loop does not take it - and what can go is a button with nothing of the kind', ( function() {
 
@@ -1679,7 +1752,7 @@ check( '...what cannot go where the lightbox was opened is there all the same, g
 	const item = function( path, label ) { return itemsOf( pickAt( path ) ).find( function( candidate ) { return pickLabel( candidate ) === label } ) };
 	const grey = item( [ 1, 0 ], 'Stub hero' );
 	const plain = item( [ 0, 0 ], 'Stub hero' );
-	const found = [ reasonOf( [ 1, 0 ], 'Title (Card)' ), reasonOf( [ 1, 0 ], 'Stub hero' ), reasonOf( [ 0, 0 ], 'Stub hero' ), reasonOf( [ 1, 0 ], 'Stub else' ), reasonOf( [ 1, 1 ], 'Stub alone' ), reasonOf( [ 1, 0 ], 'Stub alone' ) ].join(' | ');
+	const found = [ reasonOf( [ 1, 0 ], 'Title (Card)' ), reasonOf( [ 1, 0 ], 'Stub hero' ), reasonOf( [ 0, 0 ], 'Stub hero' ), reasonOf( [ 1, 0 ], 'Stub else' ), reasonOf( [ 1, 1, 0 ], 'Stub alone' ), reasonOf( [ 1, 0 ], 'Stub alone' ) ].join(' | ');
 
 	return found === 'Only in a card | Only in the first section |  | Not offered here | '+ word('reason/pick-no-loop')+ ' | ' && reasonOf( [ 1, 0 ], 'Nothing' ) === null
 		&& grey.disabled === true && grey.title === 'Only in the first section' && grey.children.length === 3 && grey.children[2].localName === 'span' && grey.children[2].className === 'nino-admin-sr-only' && grey.children[2].textContent === grey.title
@@ -1805,7 +1878,7 @@ check( 'a double click selects no text: the second mousedown of it is prevented 
 
 	preview().querySelector('[data-path="0.0.0"] .builder-ph-label').dispatch('dblclick');
 
-	return frames.length === 20 && counted === '0,20,20,0' && dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Title (Section)"';
+	return frames.length === 21 && counted === '0,21,21,0' && frames.filter( function( el ) { return el.classList.contains('builder-loop') } ).length === 1 && dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Title (Section)"';
 } )() );
 builder._closeDialog();
 console.log( '\nRenaming a section where its name stands' );
@@ -1996,12 +2069,12 @@ check( 'the pencil in the title and the field are one rename: what the pencil re
 builder._closeDialog();
 builder._openSettings( [ 3 ] );
 builder._openBlock('loop');
-change( blockOf('loop').querySelector('.builder-loop'), words['/_admin/builder/stack/kind'], 'sections' );
+change( blockOf('loop').querySelector('.builder-loop-form'), words['/_admin/builder/stack/kind'], 'sections' );
 builder._openBlock('properties');
 questions = [];
 change( blockOf('properties'), idLabel, 'contact-us' );
 questions[0].onChoose( 'yes' );
-check( 'the id of the loop that makes the sections is the id of the section, and shows the new one once the section is renamed: it is drawn again', builder._doc.model.blocks[3].id === 'contact-us' && controlOf( blockOf('loop').querySelector('.builder-loop'), loopIdLabel ).el.value === 'contact-us' && idField().el.value === 'contact-us' && titleName.textContent === 'contact-us' );
+check( 'the id of the loop that makes the sections is the id of the section, and shows the new one once the section is renamed: it is drawn again', builder._doc.model.blocks[3].id === 'contact-us' && controlOf( blockOf('loop').querySelector('.builder-loop-form'), loopIdLabel ).el.value === 'contact-us' && idField().el.value === 'contact-us' && titleName.textContent === 'contact-us' );
 builder._closeDialog();
 builder._addSection();
 questions = [];
@@ -2719,7 +2792,7 @@ builder._closeDialog();
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 3 ] );
-const loopTab = function() { return blockOf('loop').querySelector('.builder-loop') };
+const loopTab = function() { return blockOf('loop').querySelector('.builder-loop-form') };
 check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","group","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
 	&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( loopTab(), kindWord ) === '' && optionsOf( loopTab(), kindWord ) === '='+ word('stack/static')+ ',sections='+ registry().stacks.sections.label && loopTab().querySelectorAll('.builder-group').length === 0
 	);
@@ -2769,17 +2842,23 @@ check( '...what the loop of a section takes of the other blocks is its own: the 
 	return free === true && controlOf( dialogContent(), heightLabel ).el.disabled === true && String( controlOf( dialogContent(), heightLabel ).el.value ) === '90' && settingsAt( 0 ).cover === 90
 		&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( before ) && before.indexOf('Delay') !== -1 && before.indexOf('Duration') !== -1 && settingsAt( 0 ).vpaDelay === '200ms' && settingsAt( 0 ).vpaDuration === '1s';
 } )() );
-check( '...a column of such a section may not run a loop of its own, and the loop of the section is not put in a loop: the one that would be the loop in a loop is held back, in the loop of the section as in that of a column, with the reason', ( function() {
+check( '...a column of such a section may not hold a loop of its own, and the loop of the section is not put in a loop: the lightbox of its column offers the loops greyed, with the reason, and the loop of the section is held back where a column of the section holds one - the dialog of the column has no loop to set', ( function() {
+
+	builder._closeDialog();
+
+	const box = pickAt( [ 0, 0 ] );
+	const items = loopItemsOf( box );
+	const column = items.length === registry().loops.length && items.every( function( item ) { return item.disabled === true && item.title === word('reason/loop-in-loop') } );
 
 	builder._closeDialog();
 	builder._openSettings( [ 0, 0 ] );
 
-	const column = controlOf( dialogContent(), kindWord ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('The section makes a section of every element') === 0;
+	const dialog = JSON.stringify( blockIds() ) === '["surface","spacing","width","properties"]';
 
 	builder._closeDialog();
 	builder._openSettings( [ 1 ] );
 
-	return column && controlOf( dialogContent(), kindWord ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
+	return column && dialog && controlOf( dialogContent(), kindWord ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section holds a loop of its own') === 0 && blockAt( 1 ).stack === null;
 } )() );
 check( '...and the picker of a column of such a section holds back what a loop does not take, as it does in the column that runs one', ( function() {
 	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
@@ -2871,7 +2950,7 @@ screen.scrolled = [];
 const target = frameOf( '1.0.0' );
 target.click();
 check( 'a click on what is in the preview selects it and does not scroll the page: the frame is marked, and nothing was brought into view', builder._same( builder._sel, [ 1, 0, 0 ] ) && target.classList.contains('is-selected') && screen.scrolled.length === 0 );
-check( '...nor does a double click, which opens the form, nor a click on a section or a column, nor the tools of a frame - the settings - nor what is said in its head: a loop and an alignment', ( function() {
+check( '...nor does a double click, which opens the form, nor a click on a section or a column, nor the tools of a frame - the settings - nor the row of a loop, which opens and shuts, nor what is said in its head: an alignment', ( function() {
 
 	target.dispatch('dblclick');
 	const form = dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Title (Section)"';
@@ -2882,10 +2961,12 @@ check( '...nor does a double click, which opens the form, nor a click on a secti
 	builder._closeDialog();
 	toolOf( '1.0.0', 'settings' ).click();
 	builder._closeDialog();
-	preview().querySelector('[data-path="1.1"] .builder-status-item.is-loop').click();
+	toolOf( '1.1.0', 'settings' ).click();
 	builder._closeDialog();
+	loopRow().querySelector('.builder-loop-toggle').click();
+	loopRow().querySelector('.builder-loop-toggle').click();
 
-	return form && screen.scrolled.length === 0 && builder._same( builder._sel, [ 1, 1, 'x' ] );
+	return form && screen.scrolled.length === 0 && builder._same( builder._sel, [ 1, 1, 0 ] );
 } )() );
 check( '...a preview drawn again keeps the selection and does not scroll either', ( function() {
 	builder._renderEditor();
@@ -2915,8 +2996,8 @@ builder._renderEditor();
 builder._lastBlock = {};
 builder._openSettings( [ 0, 0 ] );
 const colOf = function() { return builder._doc.model.blocks[0].cols[0] };
-check( 'the dialog of a column has the blocks the table has for it, in the order of the table - surface, spacing, width, loop and properties, but for the block of the group, whose title only the column of a group has - and opens on the first: the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
-	&& JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.column.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'group' } ) ) && blockIds().join() === 'surface,spacing,width,loop,properties' && openBlock() === 'surface' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
+check( 'the dialog of a column has the blocks the table has for it, in the order of the table - surface, spacing, width and properties, but for the block of the group, whose title only the column of a group has - and has no block of the loop, which is a component with a dialog of its own - and opens on the first: the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
+	&& JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.column.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'group' } ) ) && blockIds().join() === 'surface,spacing,width,properties' && openBlock() === 'surface' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
 check( '...the section\'s dialog and the column\'s are of their own: the block that was open last in a dialog of a section is not the one a column opens on - the builder keeps the last one for each kind of element, in memory and nowhere else', ( function() {
 	headOf('width').click();
 	builder._closeDialog();
@@ -3069,46 +3150,87 @@ check( '...a picture taken away takes the dimming with it: the column has no bac
 
 console.log( '\nThe loop of a column' );
 
-const loopPane = function() { return blockOf('loop').querySelector('.builder-loop') };
+// The dialog of the loop in the services column: the data, the presentation and the properties are three blocks of it, and its controls are found in all of them
+const loopPane = function() { return dialogContent() };
+const loopNode = function() { return builder._doc.model.blocks[1].cols[1].components[0] };
+// The editor adds a loop of another stack in the place of this one - a loop is a component, and is not changed to another presentation - over the type the first of the project is
+const asLoop = function( name ) {
+	const col = builder._doc.model.blocks[1].cols[1];
+	col.components = [ builder._newLoop( builder._registry, name ) ];
+	builder._cellFor( builder._registry, [ 1, 1, 0 ] );
+	builder._renderEditor();
+	builder._openSettings( [ 1, 1, 0 ] );
+};
 
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1 ] );
-check( 'in the view of one viewport the cells of a loop are a row, with the link to all of them under the table', loopPane().querySelectorAll('tbody tr').length === 1 && loopPane().querySelectorAll('.builder-link-btn').length === 1 && loopPane().querySelector('tbody th').textContent === 'Desktop' );
-headOf('width').click();
-buttonOf( blockOf('width'), 'All viewports' ).click();
-check( '...the link pressed in the block of the width has the loop show all of them as well, which is not the block that is open', loopPane().querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('.builder-link-btn').length === 0 && blockOf('width').querySelectorAll('tbody tr').length === 3
-	&& openBlock() === 'width' );
-doc = open();
-builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
+builder._openSettings( [ 1, 1, 0 ] );
+check( 'in the view of one viewport the cells of a loop are a row, with the link to all of them under the table - in the block of the presentation, the loop having no block of the width', loopPane().querySelectorAll('tbody tr').length === 1 && loopPane().querySelectorAll('.builder-link-btn').length === 1 && loopPane().querySelector('tbody th').textContent === 'Desktop'
+	&& blockOf('presentation').querySelectorAll('tbody tr').length === 1 && blockOf('width') === null );
 buttonOf( loopPane(), 'All viewports' ).click();
-check( '...and the other way round', blockOf('width').querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('tbody tr').length === 3 && openBlock() === 'loop' );
+check( '...the link pressed has the loop show all of them, and the dialog stays on the block it was open on', loopPane().querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('.builder-link-btn').length === 0 && builder._viewport === 'g' && blockOf('presentation').querySelectorAll('tbody tr').length === 3 );
 
+// A loop is added in the lightbox of a column, and its dialog opens on the first block, in three
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 0, 0 ] );
-check( 'the loop of a column that runs none is the choice of the loop and nothing else: Static, and the loops of the registry - every one that may stand in a column, in the order of the registry, with the label it registered', JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( dialogContent(), kindWord ) === ''
-	&& controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '='+ word('stack/static')+ ','+ Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell !== 'section' } ).map( function( name ) { return name+ '='+ registry().stacks[name].label } ).join() && loopPane().querySelectorAll('.builder-group').length === 0 );
-change( dialogContent(), kindWord, 'stack' );
-check( '...a loop that is chosen is the kernel\'s, over the first type of the project, with the attributes it has - and the loop block shows its form in groups: the data it runs over, the order, the grid of the cells', ( function() {
-	const stack = colOf().stack;
-	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '' && titlesIn( loopPane() ) === 'Data,Grid' && builder._doc.model.blocks[0].cols[0].components.length === 3;
+builder._closeDialog();
+builder._pickComponent( [ 0, 0 ] );
+check( 'the lightbox of a column has the group Loops, last: every stack of the registry that may stand in a column, in the order of the registry, with the word it registered and the picture its schema names - and none of the sections\' - and the lightbox of the cell of a loop has none',
+	lightboxOf().children[lightboxOf().children.length - 1].dataset.group === 'loops' && lightboxOf().children[lightboxOf().children.length - 1].children[0].textContent === 'Loops'
+	&& loopItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name+ '='+ pickLabel( item ) } ).join() === registry().loops.map( function( name ) { return name+ '='+ registry().stacks[name].label } ).join() && registry().loops.indexOf('sections') === -1
+	&& loopItemsOf( lightboxOf() ).every( function( item ) { return item.disabled === false && item.querySelector('use').getAttribute('href') === '#builder-ph-'+ ( [ 'title', 'text', 'image', 'button', 'block', 'cells', 'table' ].indexOf( registry().stacks[item.dataset.name].preview ) === -1 ? 'block' : registry().stacks[item.dataset.name].preview ) } )
+	&& ( builder._closeDialog(), pickAt( [ 1, 1, 0 ] ), groupIn( lightboxOf(), 'loops' ) === undefined && builder._closeDialog(), pickAt( [ 1, 1 ] ), groupIn( lightboxOf(), 'loops' ) !== undefined ) );
+builder._closeDialog();
+const loopsBefore = builder._doc.model.blocks[0].cols[0].components.length;
+builder._pickComponent( [ 0, 0 ] );
+loopItemsOf( lightboxOf() ).find( function( item ) { return item.dataset.name === 'stack' } ).click();
+check( '...a click on a loop adds it at the end of the column - over the first type of the project, with the attributes the stack has, the cell it starts with - and goes on to its settings in the same dialog: three blocks, the data first, the focus on its first control',
+	( function() {
+		const loop = builder._doc.model.blocks[0].cols[0].components[loopsBefore];
+		return builder._doc.model.blocks[0].cols[0].components.length === loopsBefore + 1 && loop.name === 'stack' && loop.source === '/services' && loop.attributes.cols === '100 50 33' && Array.isArray( loop.components ) === true && loop.components.length === 0
+			&& builder._same( builder._sel, [ 0, 0, loopsBefore ] ) && dialogText('builder-dialog-kind') === 'Loop: '+ registry().stacks.stack.label && JSON.stringify( blockIds() ) === '["data","presentation","properties"]' && openBlock() === 'data'
+			&& screen.activeElement !== null && dialogContent().contains( screen.activeElement ) && changes > 0;
+	} )() );
+builder._closeDialog();
+check( '...the loop is open in the preview where it was just added, its cell with a button that adds a component, though nobody opened it', ( function() {
+	const row = loopRow( '0.0.'+ loopsBefore );
+	return row !== null && row.classList.contains('is-open') === true && row.querySelector('.builder-loop-cell .builder-add-button').textContent === '+ Component';
+} )() );
+check( '...a loop that a column of a loop of sections cannot hold is not added: the stack is greyed in its lightbox, and a click does nothing', ( function() {
+	builder._doc.model.blocks[3].stack = builder._stackFor( builder._registry, 'sections', null );
+	const before = builder._doc.model.blocks[3].cols[0].components.length;
+	builder._addLoop( [ 3, 0 ], 'stack' );
+	const same = builder._doc.model.blocks[3].cols[0].components.length === before;
+	builder._doc.model.blocks[3].stack = null;
+	return same;
 } )() );
 
+check( '...a loop added as a table has its one column from the start, and the lightbox of a place inside a loop offers no loop', ( function() {
+	const col = builder._doc.model.blocks[0].cols[0];
+	builder._addLoop( [ 0, 0 ], 'table' );
+	const added = col.components[col.components.length - 1];
+	const inside = builder._pickChoices( builder._doc.model, [ 0, 0, col.components.length - 1 ], registry() ).some( function( group ) { return group.id === 'loops' } );
+	col.components.pop();
+	builder._closeDialog();
+	return added.name === 'table' && added.components.length === 1 && inside === false;
+} )() );
+doc = open();
+builder._renderEditor();
 doc = open();
 builder._renderEditor();
 builder._setView('g');
-builder._openSettings( [ 1, 1, 'x' ] );
-check( 'the loop of a column opens the form of the column on its loop (the loop is no frame, but the column\'s own settings)', dialogText('builder-dialog-kind') === 'Column of "services"' && openBlock() === 'loop' );
-check( 'the form of the loop: the presentation, then the groups - Data (the type, a note, the query, the order, the limit, the offset and the id: the same for every presentation), Grid (the cells of each viewport, the gap and the equal height) - and no field for the cards of the cells: the loop is the grid alone', titlesIn( loopPane() ) === 'Data,Grid'
-	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ kindWord, 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Id of the loop', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height' ] ) );
-check( '...the groups hold what they are called after: the type, the query, the order and the id in Data, the cells in Grid with the gap and the equal height - one field under the other', ( function() {
-	const groups = loopPane().querySelectorAll('.builder-group');
-	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query|Sort by|Direction|Limit|Offset|Id of the loop~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height'
-		&& loopPane().querySelector('.builder-line') === null;
+builder._openSettings( [ 1, 1, 0 ] );
+check( 'the loop of a column opens its own dialog, titled with the word of its stack, in three blocks - the data it runs over, the presentation, the properties - and none of the column\'s', dialogText('builder-dialog-kind') === 'Loop: '+ registry().stacks.stack.label && JSON.stringify( blockIds() ) === '["data","presentation","properties"]' && openBlock() === 'data'
+	&& builder.BLOCKS.loop.map( function( block ) { return block.id } ).join() === 'data,presentation,properties' && builder.BLOCKS.column.every( function( block ) { return block.id !== 'loop' } ) );
+check( 'the form of the loop: the data first - the type, the query, the order, the limit and the offset: the same for every stack - then the presentation, which for a grid is the cells of each viewport, the gap and the equal height, and the properties, the id of the loop and its class of its own - and no field for the cards of the cells: the loop is the grid alone',
+	JSON.stringify( labelList( blockOf('data') ) ) === JSON.stringify( [ 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset' ] ) && titlesIn( blockOf('presentation') ) === 'Grid'
+	&& JSON.stringify( labelList( blockOf('presentation') ) ) === JSON.stringify( [ 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height' ] )
+	&& JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [ 'Id of the loop', 'Class of the loop' ] ) );
+check( '...the groups hold what they are called after: the cells in Grid with the gap and the equal height - one field under the other', ( function() {
+	const groups = blockOf('presentation').querySelectorAll('.builder-group');
+	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height' && loopPane().querySelector('.builder-line') === null;
 } )() );
-const stackNow = function() { return builder._doc.model.blocks[1].cols[1].stack };
+const stackNow = function() { return builder._doc.model.blocks[1].cols[1].components[0] };
 check( '...the stacks of the kernel carry no attribute for the cards of the cells any more - the cell is a div, and what stands in it is the cell\'s components -, so the loop has none to set and writes none: the grid is all it brings', ( function() {
 	const kernel = Object.keys( builder._registry.stacks ).every( function( name ) { return Object.prototype.hasOwnProperty.call( builder._registry.stacks[name].defaults, 'card' ) === false } );
 	change( loopPane(), 'Gap between the cells', '4' );
@@ -3124,10 +3246,10 @@ check( '...the type is one of the Elements panel\'s, with the title it has there
 check( '...the cells are a table with a row for each viewport - the device with its icon -, in the view of all of them', loopPane().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor'
 	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && texts( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
 check( '...a loop that names fewer widths than there are viewports takes the last for the others: two widths are three cells, one is three of one - and a width that is chosen writes all three', ( function() {
-	const stack = builder._doc.model.blocks[1].cols[1].stack;
+	const stack = builder._doc.model.blocks[1].cols[1].components[0];
 	const shown = function( cols ) {
 		stack.attributes.cols = cols;
-		builder._openSettings( [ 1, 1, 'x' ] );
+		builder._openSettings( [ 1, 1, 0 ] );
 		return [ 'Mobile', 'Tablet', 'Desktop' ].map( function( device ) { return valueAt( loopPane(), 'Cell width, '+ device ) } ).join();
 	};
 	const two = shown( '100 50' );
@@ -3135,7 +3257,7 @@ check( '...a loop that names fewer widths than there are viewports takes the las
 	change( loopPane(), 'Cell width, Mobile', '25' );
 	const written = stack.attributes.cols;
 	stack.attributes.cols = '100 50 50';
-	builder._openSettings( [ 1, 1, 'x' ] );
+	builder._openSettings( [ 1, 1, 0 ] );
 	return two === '100,50,50' && one === '33,33,33' && written === '25 33 33';
 } )() );
 check( '...the order is a field and two toggles: arrows up and down, a group of two radio buttons with the word for each as the title and the label - of which the one for ascending is on where the loop says title', ( function() {
@@ -3153,55 +3275,100 @@ change( loopPane(), 'Gap between the cells', '4' );
 change( loopPane(), 'Id of the loop', 'services-loop' );
 change( loopPane(), 'Query', 'status=1' );
 check( 'what the form writes is what the call carries: a field and a direction as the loop reads them, the numbers as text, the cells as three widths', ( function() {
-	const stack = builder._doc.model.blocks[1].cols[1].stack;
+	const stack = builder._doc.model.blocks[1].cols[1].components[0];
 	return stack.attributes.sort === '-summary' && stack.attributes.limit === '12' && stack.attributes.offset === '3' && stack.attributes.cols === '100 33 50' && stack.attributes.autoheight === '0' && stack.attributes.gap === '4' && stack.attributes.id === 'services-loop' && stack.attributes.query === 'status=1';
 } )() );
 change( loopPane(), 'Direction', 'asc' );
-check( '...the other arrow is ascending, and the field stays', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === 'summary' && valueAt( loopPane(), 'Sort by' ) === 'summary' );
+check( '...the other arrow is ascending, and the field stays', builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === 'summary' && valueAt( loopPane(), 'Sort by' ) === 'summary' );
 change( loopPane(), 'Sort by', 'price' );
-check( '...and the direction stays where a field is chosen after it', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === 'price' && ( change( loopPane(), 'Direction', 'desc' ), builder._doc.model.blocks[1].cols[1].stack.attributes.sort === '-price' ) );
+check( '...and the direction stays where a field is chosen after it', builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === 'price' && ( change( loopPane(), 'Direction', 'desc' ), builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === '-price' ) );
 change( loopPane(), 'Sort by', '' );
-check( '...no field is no order', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === '' );
-builder._doc.model.blocks[1].cols[1].stack.attributes.sort = 'a,-b';
+check( '...no field is no order', builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === '' );
+builder._doc.model.blocks[1].cols[1].components[0].attributes.sort = 'a,-b';
 change( loopPane(), 'Type', '/team' );
 check( 'a list of fields is a line of text that is left as it is, with no arrows beside it', labelList( loopPane() ).indexOf( 'Direction' ) === -1 && valueAt( loopPane(), 'Sort by' ) === 'a,-b' );
-check( 'a loop of another type leaves the components where they are - what their sources mean there is red until changed', builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 3 && builder._doc.model.blocks[1].cols[1].stack.source === '/team'
-	&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === registry().stacks.stack.label+ ' \u00b7 Team' && preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: '+ registry().stacks.stack.label+ ' \u00b7 Team' );
-change( loopPane(), kindWord, '' );
-check( 'Static drops the loop and keeps the components, and every field of the element is red - the status of the loop is gone from the head of the column', builder._doc.model.blocks[1].cols[1].stack === null && builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 4
-	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ kindWord ] ) && preview().querySelector('[data-path="1.1"] .is-loop') === null );
-change( loopPane(), kindWord, 'slider' );
-check( 'a registered loop comes with its own attributes and the loop it has, over a type of the project; one with no grid has no group for it, and its id is among the data - its own attributes are a group of their own, named after it', ( function() {
-	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.name === 'slider' && stack.source === '/services' && stack.attributes.width === '75%' && stack.attributes.limit === '0' && builder._red( builder._doc.model, builder._registry ).length === 0 && titlesIn( loopPane() ) === 'Data,Slider'
-		&& labelList( loopPane().querySelectorAll('.builder-group')[0] ).join() === 'Type,Query,Sort by,Direction,Limit,Offset,Id of the loop' && labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Slide width,Least slide width' && preview().querySelector('[data-path="1.1"] .is-loop').textContent === 'Slider · Services'
-		&& preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: Slider · Services';
+check( 'a loop of another type leaves the children where they are - what their sources mean there is red until changed, each child where it stands, in the cell of the loop; and the row of the loop says so with a chip of the word Problem, the sentence of the first red child for its title, for a shut loop shows no cell', ( function() {
+	builder._renderEditor();
+	const chips = loopRow().querySelectorAll('.builder-chip');
+	return builder._doc.model.blocks[1].cols[1].components[0].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 3 && builder._doc.model.blocks[1].cols[1].components[0].source === '/team'
+		&& texts( chips ) === 'Team \u00b7 by a,-b,Problem' && loopRow().querySelectorAll('.builder-loop-cell .is-red').length === 3 && loopRow().querySelectorAll('.builder-chip.is-red').length === 1 && chips[1].title === word('tree/red-field');
+} )() );
+check( '...and a shut loop shows it as well: no red in the cell is seen, and the one chip of its row is red, with the title of the first red child', ( function() {
+	builder._open.delete( builder._doc.model.blocks[1].cols[1].components[0] );
+	builder._sel = [];
+	builder._renderEditor();
+	const row = loopRow();
+	const chip = row.querySelector('.builder-chip.is-red');
+	return row.classList.contains('is-open') === false && row.querySelector('.builder-loop-body').hidden === true && chip !== null && chip.title === word('tree/red-field') && row.querySelectorAll('.builder-head-status .is-red').length === 1;
+} )() );
+check( '...a red child is red on its own loop only: a loop of another column that has no red child shows none, though a red child stands elsewhere on the page', ( function() {
+	const col = builder._doc.model.blocks[0].cols[0];
+	col.components.push( builder._newLoop( registry(), 'stack' ) );
+	builder._renderEditor();
+	const clean = loopRow( '0.0.'+ ( col.components.length - 1 ) );
+	const other = loopRow();
+	const ok = builder._red( builder._doc.model, builder._registry ).length > 0 && clean !== null && clean.querySelectorAll('.builder-chip.is-red').length === 0 && other.querySelectorAll('.builder-head-status .is-red').length === 1;
+	col.components.pop();
+	builder._renderEditor();
+	return ok;
+} )() );
+check( '...a shut loop is open while something in its cell is selected - and shut again when the selection leaves it', ( function() {
+	builder._sel = [ 1, 1, 0, 1 ];
+	builder._renderEditor();
+	const open = loopRow().classList.contains('is-open') === true && loopRow().querySelector('.builder-loop-body').hidden === false && loopRow().querySelector('.builder-loop-toggle').getAttribute('aria-expanded') === 'true';
+	builder._sel = [ 1, 1, 0 ];
+	builder._renderEditor();
+	const own = loopRow().classList.contains('is-open') === false;
+	builder._sel = [];
+	builder._renderEditor();
+	return open && own && loopRow().classList.contains('is-open') === false && builder._open.has( builder._doc.model.blocks[1].cols[1].components[0] ) === false;
+} )() );
+builder._doc.model.blocks[1].cols[1].components[0].source = '/nowhere';
+builder._renderEditor();
+check( '...a type the Elements panel does not know makes the row red: a chip of the word Problem with the sentence of the missing type for its title - and nothing else on the row is red', ( function() {
+	const chips = loopRow().querySelectorAll('.builder-chip');
+	return texts( chips ) === '/nowhere \u00b7 by a,-b,Problem' && chips[1].classList.contains('is-red') === true && chips[1].title === word('tree/red-type') && loopRow().classList.contains('is-red') === false;
+} )() );
+asLoop( 'slider' );
+check( 'a registered loop comes with its own attributes over the first type of the project; one with no grid has no group for it - its own attributes are the presentation, a field each, with no heading of their own - and the data are the data of every loop', ( function() {
+	const stack = loopNode();
+	return stack.name === 'slider' && stack.source === '/services' && stack.attributes.width === '75%' && stack.attributes.limit === '0' && builder._red( builder._doc.model, builder._registry ).length === 0 && titlesIn( blockOf('presentation') ) === ''
+		&& JSON.stringify( labelList( blockOf('data') ) ) === JSON.stringify( [ 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset' ] ) && labelList( blockOf('presentation') ).join() === 'Slide width,Least slide width'
+		&& dialogText('builder-dialog-kind') === 'Loop: Slider' && loopRow().querySelector('.builder-loop-name').textContent === 'Slider' && texts( loopRow().querySelectorAll('.builder-chip') ).indexOf('Services') === 0;
 } )() );
 change( loopPane(), 'Slide width', '60%' );
-check( '...and what the attributes of its own write is a string', builder._doc.model.blocks[1].cols[1].stack.attributes.width === '60%' );
-change( loopPane(), kindWord, 'stack' );
-check( '...and going on to another loop keeps what both have', ( function() {
-	builder._doc.model.blocks[1].cols[1].stack.attributes.limit = '5';
-	change( loopPane(), kindWord, 'list' );
-	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.name === 'list' && stack.attributes.limit === '5' && stack.source === '/services' && titlesIn( loopPane() ) === 'Data,List,Row' && labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Style';
+check( '...and what the attributes of its own write is a string', loopNode().attributes.width === '60%' );
+asLoop( 'list' );
+check( '...a list has the row in the presentation: the style of the list and the row, which is a field of the type or a line of free text', ( function() {
+	const stack = loopNode();
+	return stack.name === 'list' && stack.source === '/services' && titlesIn( blockOf('presentation') ) === 'Row' && labelList( blockOf('presentation') ).indexOf('Style') === 0 && stack.components.length === 1;
 } )() );
-change( loopPane(), kindWord, 'filter' );
-check( '...a loop with a grid and attributes of its own has all three groups, the grid after what the presentation brings of its own', titlesIn( loopPane() ) === 'Data,Filter,Grid' && labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Filter by,Label of the first button' );
+asLoop( 'filter' );
+check( '...a loop with a grid and attributes of its own has them in the one block, the attributes of the stack first and the grid after them', labelList( blockOf('presentation') ).slice( 0, 2 ).join() === 'Filter by,Label of the first button' && titlesIn( blockOf('presentation') ) === 'Grid' );
+check( '...a loop that has nothing of its own to set says so in the block of the presentation, which every loop has', ( function() {
+	asLoop( 'repeat' );
+	return blockOf('presentation').querySelector('.nino-admin-notice').textContent === word('stack/no-presentation') && JSON.stringify( blockIds() ) === '["data","presentation","properties"]';
+} )() );
+check( 'the id and the class of the loop are its properties, and are written as the attributes of the call', ( function() {
+	asLoop( 'stack' );
+	change( blockOf('properties'), 'Id of the loop', 'services-loop' );
+	change( blockOf('properties'), 'Class of the loop', 'my-loop' );
+	return loopNode().attributes.id === 'services-loop' && loopNode().attributes.class === 'my-loop' && blockOf('properties').querySelectorAll('.builder-group').length === 0;
+} )() );
 
 console.log( '\nA loop as a table, and a list whose cell is a row' );
 
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), kindWord, 'table' );
-const tableCol = function() { return builder._doc.model.blocks[1].cols[1] };
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'table' );
+const tableCol = loopNode;
 const columnRows = function() { return loopPane().querySelectorAll('.builder-column') };
-check( 'a loop chosen as a table makes the cell its columns: the components of the column that were there are gone - they are no column - and one column stands in their place, of the first field the type has and with no title',
-	tableCol().stack.name === 'table' && tableCol().stack.source === '/services' && tableCol().stack.attributes.style === ''
+check( 'a loop added as a table makes the cell its columns: one column stands in the cell, of the first field the type has and with no title',
+	tableCol().name === 'table' && tableCol().source === '/services' && tableCol().attributes.style === ''
 	&& tableCol().components.length === 1 && tableCol().components[0].name === 'col' && tableCol().components[0].attributes.field === 'title' && tableCol().components[0].text === null && tableCol().components[0].source === '' );
-check( '...its form has no cells and no grid: the data, what the presentation brings of its own (the style) and the columns - in that order', titlesIn( loopPane() ) === 'Data,Table,Columns'
-	&& labelList( loopPane().querySelectorAll('.builder-group')[1] ).join() === 'Style' && loopPane().querySelectorAll('table').length === 0 );
+check( '...its form has no cells and no grid: the data, then in the presentation what the stack brings of its own (the style) and the columns', titlesIn( blockOf('presentation') ) === 'Columns'
+	&& labelList( blockOf('presentation') )[0] === 'Style' && loopPane().querySelectorAll('table').length === 0 && loopPane().querySelectorAll('.builder-cells').length === 0 );
 check( 'every option of an attribute of a loop that is a choice has a word of its own in the panel: the loops of the registry would else show the value as it is typed', ( function() {
 	const stacks = registry().stacks;
 	const missing = [];
@@ -3218,7 +3385,7 @@ check( 'every option of an attribute of a loop that is a choice has a word of it
 	return missing.length === 0;
 } )() );
 check( '...the style is a select of the words of the panel, Plain, Striped, Bordered and Striped and bordered, and writes the word of the kernel', optionsOf( loopPane(), 'Style' ) === '=Plain,striped=Striped,bordered=Bordered,striped-bordered=Striped and bordered'
-	&& ( change( loopPane(), 'Style', 'striped-bordered' ), tableCol().stack.attributes.style === 'striped-bordered' ) && valueAt( loopPane(), 'Style' ) === 'striped-bordered' );
+	&& ( change( loopPane(), 'Style', 'striped-bordered' ), tableCol().attributes.style === 'striped-bordered' ) && valueAt( loopPane(), 'Style' ) === 'striped-bordered' );
 check( '...a column is a title - the source of a text key, found as the source of a title is - and a value: a select of the fields the type has and Free text, which shows a field of the type that the type can show: a picture too',
 	columnRows().length === 1 && columnRows()[0].querySelector('.builder-source') !== null && optionsOf( columnRows()[0], 'Value' ) === 'title=title,summary=summary,image=image,price=price,*=Free text,+=Content' && valueAt( columnRows()[0], 'Value' ) === 'title' );
 buttonOf( loopPane(), 'Add a column' ).click();
@@ -3227,7 +3394,7 @@ check( '...a column is added at the end, of the first field, and is a component 
 change( columnRows()[1], 'Value', 'price' );
 check( '...what a column shows is chosen from the fields, and writes the field', tableCol().components[1].attributes.field === 'price' && valueAt( columnRows()[1], 'Value' ) === 'price' );
 tableCol().components[1].attributes.field = 'gone';
-builder._refreshControls( 'stack' );
+builder._refreshControls();
 check( '...a field the type has not is no entry of the select of a column either: the empty choice asks for one, the column stays red, and a field chosen is the end of it',
 	optionsOf( columnRows()[1], 'Value' ).split(',')[0] === '='+ word('label/choose-field') && optionsOf( columnRows()[1], 'Value' ).indexOf('gone') === -1 && valueAt( columnRows()[1], 'Value' ) === ''
 	&& builder._red( builder._doc.model, builder._registry ).some( function( entry ) { return entry.source === 'gone' } ) === true
@@ -3262,42 +3429,33 @@ check( '...the loop of a section that makes sections is not offered a table, and
 // The presentations that bring a field and a line of text of their own, drawn from their schema
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
+builder._openSettings( [ 1, 1, 0 ] );
 const titledName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].attributes.title !== undefined && registry().stacks[name].attributes.text !== undefined } );
 const titledSchema = registry().stacks[titledName];
-change( loopPane(), kindWord, titledName );
+asLoop( titledName );
 check( 'a presentation with an attribute of the type field gets a select of all the fields of the loop\'s type - none first, the picture among them: the loop knows what it draws of a field - and writes the name; the line of text beside it is an input that names the fields',
 	titledSchema.attributes.title.type === 'field' && optionsOf( loopPane(), titledSchema.attributes.title.label ) === '='+ word('label/no-field')+ ',title=title,summary=summary,image=image,price=price' && valueAt( loopPane(), titledSchema.attributes.title.label ) === ''
-	&& ( change( loopPane(), titledSchema.attributes.title.label, 'summary' ), builder._doc.model.blocks[1].cols[1].stack.attributes.title === 'summary' )
-	&& String( tipOf( controlOf( loopPane(), titledSchema.attributes.text.label ) ) ).indexOf('[[title]], [[summary]], [[price]]') !== -1 && titlesIn( loopPane() ) === 'Data,'+ titledSchema.label );
+	&& ( change( loopPane(), titledSchema.attributes.title.label, 'summary' ), builder._doc.model.blocks[1].cols[1].components[0].attributes.title === 'summary' )
+	&& String( tipOf( controlOf( loopPane(), titledSchema.attributes.text.label ) ) ).indexOf('[[title]], [[summary]], [[price]]') !== -1 && titlesIn( loopPane() ) === '' );
 change( loopPane(), titledSchema.attributes.text.label, '[[title]] (&) "x"' );
-check( '...and the line is kept in the model as it is typed, the fills as they are written: the call carries them as entities, which the server writes', builder._doc.model.blocks[1].cols[1].stack.attributes.text === '[[title]] (&) "x"' && loopPane().querySelector('.builder-line-warning').hidden === true );
+check( '...and the line is kept in the model as it is typed, the fills as they are written: the call carries them as entities, which the server writes', builder._doc.model.blocks[1].cols[1].components[0].attributes.text === '[[title]] (&) "x"' && loopPane().querySelector('.builder-line-warning').hidden === true );
 change( loopPane(), titledSchema.attributes.text.label, 'a [[b c' );
 check( '...a double bracket that opens no field is said under the input, as in a column', loopPane().querySelector('.builder-line-warning').hidden === false );
 change( loopPane(), titledSchema.attributes.text.label, '[[title]]' );
 check( '...a field the type has not is no entry of the select - it is none, which is what the select shows, and it is not red: the title of a presentation need not be chosen', ( function() {
-	builder._doc.model.blocks[1].cols[1].stack.attributes.title = 'gone';
-	builder._openSettings( [ 1, 1, 'x' ] );
+	builder._doc.model.blocks[1].cols[1].components[0].attributes.title = 'gone';
+	builder._openSettings( [ 1, 1, 0 ] );
 	return optionsOf( loopPane(), titledSchema.attributes.title.label ) === '='+ word('label/no-field')+ ',title=title,summary=summary,image=image,price=price' && valueAt( loopPane(), titledSchema.attributes.title.label ) === ''
 		&& builder._red( builder._doc.model, builder._registry ).length === 0;
 } )() );
-check( '...a presentation drawn as a block says what it is in the preview, once, above the cell it shows, with the field or the line the titles are made of - the line wins, as it does in the kernel - and its components stay what each cell shows',
-	registry().stacks[titledName].preview === 'block' && ( builder._doc.model.blocks[1].cols[1].stack.attributes.title = 'summary', builder._renderEditor(), true )
-	&& ( function() {
-		const col = preview().querySelector('[data-path="1.1"]');
-		const blocks = col.querySelectorAll('.builder-loop-block');
-		return blocks.length === 1 && blocks[0].querySelector('.builder-ph-label').textContent === titledSchema.label+ ' \u00b7 [[title]]' && blocks[0].title === titledSchema.label && blocks[0].dataset.path === undefined
-			&& col.querySelectorAll('.builder-ph').length === 5 && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block.label === titledSchema.label;
-	} )()
-	&& ( builder._doc.model.blocks[1].cols[1].stack.attributes.text = '', builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block.title === '[[summary]]' ) );
-check( '...a presentation drawn as the cell once has no block of its own: only the status of its head', ( function() {
-	const cellsName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].preview === 'cells' && registry().stacks[name].cell === 'components' } );
-	builder._doc.model.blocks[1].cols[1].stack = builder._stackFor( builder._registry, cellsName, null );
+check( '...a loop is drawn as one row in the preview whatever its schema names as the picture: the row says the stack, and the cell shows its components, each what a cell shows', ( function() {
+	loopNode().attributes.title = 'summary';
 	builder._renderEditor();
-	return builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block === null && preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-loop-block').length === 0
-		&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === registry().stacks[cellsName].label+ ' · Services';
+	const entry = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0];
+	return registry().stacks[titledName].preview === 'block' && loopRow().querySelector('.builder-loop-name').textContent === titledSchema.label && entry.shows === 'children' && entry.children.length === 0 && entry.image === 'block'
+		&& preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-loop').length === 1 && loopRow().querySelectorAll('.builder-loop-cell > .builder-add-button, .builder-loop-cell > .builder-adds').length === 1;
 } )() );
-check( 'the cell of a presentation that says components is the components of the column, and the cell kinds the panel knows besides are the four the registry names: a section, columns, a row, none - nothing else is asked of a name', ( function() {
+check( 'the cell of a stack that says components is the components of the loop, and the cell kinds the panel knows besides are the four the registry names: a section, columns, a row, none - nothing else is asked of a name', ( function() {
 	const kinds = {};
 	Object.keys( registry().stacks ).forEach( function( name ) { kinds[ builder._cellKind( builder._registry, { name : name } ) ] = true } );
 	return Object.keys( kinds ).sort().join() === 'columns,components,none,row,section' && builder._columnName( builder._registry ) === 'col' && builder._cellKind( builder._registry, { name : titledName } ) === 'components';
@@ -3305,50 +3463,49 @@ check( 'the cell of a presentation that says components is the components of the
 // A presentation whose cell is none: no components, the fields its attributes name, a block in the preview
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
+builder._openSettings( [ 1, 1, 0 ] );
 const noneName = Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].cell === 'none' } );
 const noneSchema = registry().stacks[noneName];
-const noneCol = function() { return builder._doc.model.blocks[1].cols[1] };
-const noneOptions = function( where ) { return controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ) };
-check( 'a presentation whose cell is none is in the choice of a column, in the place the registry gives it with its word, and in the choice of no section - the choice of a place is made by the cell',
-	noneName !== undefined && noneOptions().indexOf( noneName ) === Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell !== 'section' } ).indexOf( noneName ) + 1
-	&& controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.textContent } )[noneOptions().indexOf( noneName )] === noneSchema.label
-	&& ( builder._openSettings( [ 3 ] ), noneOptions().indexOf( noneName ) === -1 ) && ( builder._openSettings( [ 1, 1, 'x' ] ), true ) );
-check( '...the column that has components when it is chosen has none after it: a cell with no content holds nothing, and the loop and its data are what is left',
-	noneCol().components.length > 0 && ( change( loopPane(), kindWord, noneName ), noneCol().components.length === 0 ) && noneCol().stack.name === noneName && noneCol().stack.source === '/services' );
-check( '...its dialog has the data of every presentation and its own attributes under its name, and no grid, no columns and no row: the cell is not made of anything the panel edits',
-	titlesIn( loopPane() ) === 'Data,'+ noneSchema.label && loopPane().querySelector('.builder-cells') === null && labelList( loopPane() ).indexOf( word('stack/gap') ) === -1 && loopPane().textContent.indexOf( word('stack/columns-none') ) === -1 );
+const noneCol = loopNode;
+check( 'a stack whose cell is none is in the lightbox of a column among the loops, in the place the registry gives it with its word, and in the choice of no section - the choice of a place is made by the cell',
+	noneName !== undefined && registry().loops.indexOf( noneName ) === Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell !== 'section' } ).indexOf( noneName ) && registry().loops.indexOf('sections') === -1
+	&& ( builder._closeDialog(), builder._pickComponent( [ 1, 1 ] ), pickLabel( loopItemsOf( lightboxOf() )[registry().loops.indexOf( noneName )] ) === noneSchema.label ) && ( builder._closeDialog(), true ) );
+asLoop( noneName );
+check( '...added, it has no children: a cell with no content holds nothing, and the loop and its data are what is left - and the row in the preview is a row with a sentence and no button that adds a component',
+	noneCol().components.length === 0 && noneCol().name === noneName && noneCol().source === '/services' && loopRow().dataset.cell === 'none' && loopRow().querySelectorAll('.builder-add-button').length === 0 && loopRow().querySelector('.builder-loop-says') !== null );
+check( '...its dialog has the data of every stack and its own attributes, and no grid, no columns and no row: the cell is not made of anything the panel edits',
+	titlesIn( loopPane() ) === '' && loopPane().querySelector('.builder-cells') === null && labelList( loopPane() ).indexOf( word('stack/gap') ) === -1 && loopPane().textContent.indexOf( word('stack/columns-none') ) === -1 );
 check( '...each attribute of the type field is a select of all the fields of the loop\'s type - the picture among them - with the entry none only for the one whose default is none: the kernel reads an empty value as the default, so for the other it would say what the file does not, the default selected, and writes the name',
 	Object.keys( noneSchema.attributes ).filter( function( name ) { return noneSchema.attributes[name].type === 'field' } ).length === 2
 	&& noneSchema.attributes.image.default === 'image' && noneSchema.attributes.link.default === ''
 	&& optionsOf( loopPane(), noneSchema.attributes.image.label ) === 'title=title,summary=summary,image=image,price=price' && optionsOf( loopPane(), noneSchema.attributes.link.label ) === '='+ word('label/no-field')+ ',title=title,summary=summary,image=image,price=price' && valueAt( loopPane(), noneSchema.attributes.image.label ) === 'image'
-	&& valueAt( loopPane(), noneSchema.attributes.link.label ) === '' && ( change( loopPane(), noneSchema.attributes.link.label, 'summary' ), noneCol().stack.attributes.link === 'summary' )
-	&& ( change( loopPane(), noneSchema.attributes.image.label, 'title' ), noneCol().stack.attributes.image === 'title' ) && ( change( loopPane(), noneSchema.attributes.image.label, 'image' ), noneCol().stack.attributes.image === 'image' ) );
+	&& valueAt( loopPane(), noneSchema.attributes.link.label ) === '' && ( change( loopPane(), noneSchema.attributes.link.label, 'summary' ), noneCol().attributes.link === 'summary' )
+	&& ( change( loopPane(), noneSchema.attributes.image.label, 'title' ), noneCol().attributes.image === 'title' ) && ( change( loopPane(), noneSchema.attributes.image.label, 'image' ), noneCol().attributes.image === 'image' ) );
 check( '...a field is offered by the name the kernel reads for a field - a letter, then letters, digits, hyphens and underscores - and a name with a space or a digit first is not',
 	builder._fieldChoices( { title : { type : 'string' }, 'logo bild' : { type : 'image' }, '9a' : { type : 'string' }, 'a.b' : { type : 'string' }, '-x' : { type : 'string' }, 'image_alt-2' : { type : 'string' } } ).map( function( item ) { return item.value } ).join() === 'title,image_alt-2' );
 check( '...a required field that holds a name the type has not, or nothing, shows the default of the schema where the type has it - and is not red then: the select has no entry for the name; a save sends the default and leaves the model as it is',
 	( function() {
-		const attributes = noneCol().stack.attributes;
+		const attributes = noneCol().attributes;
 		const label = noneSchema.attributes.image.label;
-		const shown = function() { builder._renderEditor(); builder._openSettings( [ 1, 1, 'x' ] ); return optionsOf( loopPane(), label )+ '|'+ valueAt( loopPane(), label ) };
-		const red = function() { return builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } ).length };
+		const shown = function() { builder._renderEditor(); builder._openSettings( [ 1, 1, 0 ] ); return optionsOf( loopPane(), label )+ '|'+ valueAt( loopPane(), label ) };
+		const red = function() { return builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 0 ] ) } ).length };
 		attributes.image = 'nope';
-		const foreign = shown() === 'title=title,summary=summary,image=image,price=price|image' && red() === 0 && builder._saveRequest( builder._doc, false ).model.blocks[1].cols[1].stack.attributes.image === 'image' && attributes.image === 'nope';
+		const foreign = shown() === 'title=title,summary=summary,image=image,price=price|image' && red() === 0 && builder._saveRequest( builder._doc, false ).model.blocks[1].cols[1].components[0].attributes.image === 'image' && attributes.image === 'nope';
 		attributes.image = '';
-		const empty = shown() === 'title=title,summary=summary,image=image,price=price|image' && red() === 0 && builder._saveRequest( builder._doc, false ).model.blocks[1].cols[1].stack.attributes.image === 'image';
+		const empty = shown() === 'title=title,summary=summary,image=image,price=price|image' && red() === 0 && builder._saveRequest( builder._doc, false ).model.blocks[1].cols[1].components[0].attributes.image === 'image';
 		attributes.image = 'image';
 		return foreign === true && empty === true;
 	} )() );
 // A field the schema requires has to be chosen, any other may be none: the registry says which, and the value of a switch it names decides while the dialog is open
 const markSchema = registry().stacks.marks;
 const markLabel = function( name ) { return markSchema.attributes[name].label };
-const markRed = function() { return builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 'x' ] ) } ).map( function( entry ) { return entry.why+ ':'+ entry.source } ).join() };
-const markStack = function() { return builder._doc.model.blocks[1].cols[1].stack };
+const markRed = function() { return builder._red( builder._doc.model, builder._registry ).filter( function( entry ) { return builder._same( entry.path, [ 1, 1, 0 ] ) } ).map( function( entry ) { return entry.why+ ':'+ entry.source } ).join() };
+const markStack = function() { return builder._doc.model.blocks[1].cols[1].components[0] };
 const typeFields = 'title=title,summary=summary,image=image,price=price';
-builder._doc.model.blocks[1].cols[1].stack = builder._stackFor( builder._registry, 'marks', null );
+builder._doc.model.blocks[1].cols[1].components[0] = builder._newLoop( builder._registry, 'marks' );
 markStack().source = '/services';
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
+builder._openSettings( [ 1, 1, 0 ] );
 check( 'a field that has to be chosen shows the fields of the type and no entry for anything else, with the default of the schema chosen where the type has it: the picture is required, its default image is a field of the type',
 	markSchema.attributes.image.required === true && markStack().attributes.image === 'image' && optionsOf( loopPane(), markLabel('image') ) === typeFields && valueAt( loopPane(), markLabel('image') ) === 'image' );
 check( '...a field that need not be chosen has the choice none first, and where the default is no field of the type it is none that is chosen - not the default, which the type has not - whatever the model still holds: the name and the picture for a dark ground',
@@ -3357,16 +3514,15 @@ check( '...a field that need not be chosen has the choice none first, and where 
 	&& markRed() === 'field:url' );
 check( '...a field that has to be chosen and whose default the type has not shows the empty choice to choose one - "Choose a field" - and the loop is red for it, with the sentence of the missing field; choosing one is the end of both',
 	optionsOf( loopPane(), markLabel('link') ) === '='+ word('label/choose-field')+ ','+ typeFields && valueAt( loopPane(), markLabel('link') ) === '' && markRed() === 'field:url'
-	&& ( builder._markRed( preview(), builder._red( builder._doc.model, builder._registry ) ), preview().querySelector('[data-path="1.1.x"]').classList.contains('is-red') === true && preview().querySelector('[data-path="1.1.x"]').title === word('tree/red-field') )
+	&& ( builder._markRed( preview(), builder._red( builder._doc.model, builder._registry ) ), loopRow().querySelector('.builder-chip.is-red') !== null && loopRow().querySelector('.builder-chip.is-red').title === word('tree/red-field') )
 	&& ( change( loopPane(), markLabel('link'), 'summary' ), markStack().attributes.link === 'summary' ) && optionsOf( loopPane(), markLabel('link') ) === typeFields && valueAt( loopPane(), markLabel('link') ) === 'summary' && markRed() === '' );
 check( '...a required field that is written empty is red with a sentence of its own - the loop needs a field and none is chosen - and so is the picture of any loop',
 	( function() {
 		markStack().attributes.link = '';
 		builder._renderEditor();
-		builder._openSettings( [ 1, 1, 'x' ] );
-		builder._markRed( preview(), builder._red( builder._doc.model, builder._registry ) );
-		const marked = preview().querySelector('[data-path="1.1.x"]');
-		return markRed() === 'required:' && marked.classList.contains('is-red') === true && marked.title === word('tree/red-required') && marked.title !== word('tree/red-field') && valueAt( loopPane(), markLabel('link') ) === '';
+		builder._openSettings( [ 1, 1, 0 ] );
+		const marked = loopRow().querySelector('.builder-chip.is-red');
+		return markRed() === 'required:' && marked !== null && marked.title === word('tree/red-required') && marked.title !== word('tree/red-field') && valueAt( loopPane(), markLabel('link') ) === '';
 	} )() );
 check( '...and what the switch the schema names says is the value it has in the dialog, at once: with Links off the link is a field that need not be chosen - none is chosen, the loop is not red, the choice none is there - and with it on it has to be again',
 	( function() {
@@ -3424,7 +3580,7 @@ check( '...and the dialog shows the same: the select of a foreign name shows the
 		const attributes = markStack().attributes;
 		attributes.dark = 'zzz';
 		attributes.link = 'summary';
-		const open = function() { builder._renderEditor(); builder._openSettings( [ 1, 1, 'x' ] ) };
+		const open = function() { builder._renderEditor(); builder._openSettings( [ 1, 1, 0 ] ) };
 		open();
 		const foreign = valueAt( loopPane(), markLabel('dark') ) === 'summary';
 		attributes.dark = '';
@@ -3451,68 +3607,63 @@ check( 'the preview names the fields the cells of a loop are made of that the ty
 		attributes.dark = '';
 		return stray === '[[image]], [[summary]]' && builder._loopTitle( builder._registry, markStack() ) === '[[image]], [[summary]]';
 	} )() );
-change( loopPane(), kindWord, noneName );
-noneCol().stack.attributes.image = 'image';
-noneCol().stack.attributes.link = 'summary';
+asLoop( noneName );
+noneCol().attributes.image = 'image';
+noneCol().attributes.link = 'summary';
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
+builder._openSettings( [ 1, 1, 0 ] );
 
-check( '...the preview of the column is the block of the loop with the word of the presentation and the fields it names, once, and nothing to add a component to: no components, no button for one',
+check( '...the row of a loop of no content says what it draws, once - the fields it names, those the type has - and has no button that adds a component to its cell: no children, no button for one',
 	( function() {
 		builder._renderEditor();
-		const col = preview().querySelector('[data-path="1.1"]');
-		const shown = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1];
-		return col.querySelectorAll('.builder-loop-block').length === 1 && col.querySelectorAll('.builder-ph').length === 1 && col.querySelector('.builder-adds') === null
-			&& col.querySelector('.builder-loop-block .builder-ph-label').textContent === noneSchema.label+ ' · [[image]], [[summary]]' && shown.block.bare === true && shown.block.image === 'block' && shown.components.length === 0;
+		const shown = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0];
+		return loopRow().querySelector('.builder-loop-says').textContent === 'Drawn from fields: [[image]], [[summary]]' && loopRow().querySelectorAll('.builder-add-button').length === 0 && shown.shows === 'hint' && shown.fields === '[[image]], [[summary]]' && shown.children.length === 0 && shown.count === null;
 	} )() );
-check( '...a presentation whose preview is the picture of an image draws its block as that picture, as its schema says, and no name is asked',
+check( '...a stack whose preview is the picture of an image names it, as its schema says, and no name is asked: the lightbox shows the item with it',
 	( function() {
 		const schema = builder._registry.stacks[noneName];
 		const kept = schema.preview;
 		schema.preview = 'image';
-		builder._renderEditor();
-		const drawn = preview().querySelector('[data-path="1.1"] .builder-loop-block');
-		const result = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].block.image === 'image' && drawn.dataset.image === 'image';
+		const result = builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].image === 'image' && ( builder._closeDialog(), builder._pickComponent( [ 1, 1 ] ), loopItemsOf( lightboxOf() ).find( function( item ) { return item.dataset.name === noneName } ).querySelector('use').getAttribute('href') === '#builder-ph-image' );
 		schema.preview = kept;
-		builder._renderEditor();
+		builder._closeDialog();
 		return result;
 	} )() );
-check( '...a column of another presentation has its components to add again, and a column that is changed to the presentation with no content loses the ones it had',
-	( change( loopPane(), kindWord, Object.keys( registry().stacks ).find( function( name ) { return registry().stacks[name].cell === 'components' } ) ), builder._renderEditor(), preview().querySelector('[data-path="1.1"] .builder-adds') !== null )
-	&& ( noneCol().components.push( builder._clone( builder._doc.model.blocks[1].cols[0].components[0] ) ), change( loopPane(), kindWord, noneName ), noneCol().components.length === 0 ) );
 check( 'a loop that a feature registered stands in the choice of a column like the others, in the place the registry gives it, and its own attributes make the form: a field, a bool, a number, a text, a choice', ( function() {
 	doc = open();
 	builder._registry.stacks.zeta = { label : 'Zeta', grid : false, cell : 'components', preview : 'cells', defaults : { sort : '', offset : '0', limit : '0', query : '', callback : '', locale : '', id : '', pick : '', flag : '0', count : '3', note : '', mode : 'a', class : '' }, attributes : {
 		pick : { type : 'field', label : 'Pick', default : '' }, flag : { type : 'bool', label : 'Flag', default : false }, count : { type : 'int', label : 'Count', min : 1, max : 9, default : 3 },
 		note : { type : 'string', label : 'Note', default : '' }, mode : { type : 'select', label : 'Mode', options : [ 'a', 'b' ], default : 'a' } } };
+	builder._registry.loops.push('zeta');
 	builder._renderEditor();
-	builder._openSettings( [ 1, 1, 'x' ] );
-	const listed = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ).indexOf('zeta') !== -1;
+	const listed = loopItemsOf( pickAt( [ 1, 1 ] ) ).some( function( item ) { return item.dataset.name === 'zeta' && pickLabel( item ) === 'Zeta' } );
+	builder._closeDialog();
 	builder._openSettings( [ 3 ] );
 	const notInSection = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ).indexOf('zeta') === -1;
-	builder._openSettings( [ 1, 1, 'x' ] );
-	change( loopPane(), kindWord, 'zeta' );
-	const labels = labelList( loopPane().querySelectorAll('.builder-group')[1] ).join();
+	builder._closeDialog();
+	asLoop( 'zeta' );
+	const labels = labelList( blockOf('presentation') ).join();
 	change( loopPane(), 'Flag', true );
 	change( loopPane(), 'Count', 5 );
 	change( loopPane(), 'Pick', 'price' );
 	change( loopPane(), 'Note', 'n' );
-	const attributes = builder._doc.model.blocks[1].cols[1].stack.attributes;
+	const attributes = builder._doc.model.blocks[1].cols[1].components[0].attributes;
 	delete builder._registry.stacks.zeta;
+	builder._registry.loops.pop();
 	return listed && notInSection && labels === 'Pick,Flag,Count,Note,Mode' && attributes.flag === '1' && attributes.count === '5' && attributes.pick === 'price' && attributes.note === 'n';
 } )() );
-check( '...a second loop whose cell is a whole section stands in the choice of a section beside the first and in no column - the choice of a place is made by the cell and not by a name', ( function() {
+check( '...a second stack whose cell is a whole section stands in the choice of a section beside the first and in the lightbox of no column - the choice of a place is made by the cell and not by a name', ( function() {
 	doc = open();
 	builder._registry.stacks.omega = { label : 'Omega', grid : false, cell : 'section', preview : 'cells', defaults : { sort : '', offset : '0', limit : '0', query : '', callback : '', locale : '', id : '', class : '' }, attributes : {} };
 	builder._renderEditor();
-	builder._openSettings( [ 1, 1, 'x' ] );
-	const inColumn = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } );
+	const inColumn = loopItemsOf( pickAt( [ 1, 1 ] ) ).map( function( item ) { return item.dataset.name } );
+	builder._closeDialog();
 	builder._openSettings( [ 3 ] );
 	const inSection = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } );
 	delete builder._registry.stacks.omega;
 	return inColumn.indexOf('omega') === -1 && inColumn.indexOf('sections') === -1 && inColumn.length > 3 && inSection.join() === ',sections,omega';
 } )() );
-check( '...a loop that is changed for another keeps its data and the attributes the other has by the same name and takes - a choice among its options, a number within its bounds - and leaves the rest at the default: a choice outside the options and a switch that is none', ( function() {
+check( '...the loop of a section that is changed for another keeps its data and the attributes the other has by the same name and takes - a choice among its options, a number within its bounds - and leaves the rest at the default: a choice outside the options and a switch that is none', ( function() {
 	const stacks = builder._registry.stacks;
 	const old = { name : 'list', source : '/services', attributes : Object.assign( builder._clone( stacks.list.defaults ), { sort : 'title', limit : '3', style : 'check' } ) };
 	const table = builder._stackFor( builder._registry, 'table', old );
@@ -3528,8 +3679,8 @@ check( '...a loop that is changed for another keeps its data and the attributes 
 // A column of a table with a content of its own
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), kindWord, 'table' );
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'table' );
 change( columnRows()[0], 'Value', builder.CONTENT );
 check( 'a column whose value is Content has an input for the html+ of its cell, a few lines high, and none of the line of free text: it starts as the field the column showed, in its fill, so that it says something',
 	tableCol().components[0].content === '[[title]]' && tableCol().components[0].text === null && tableCol().components[0].attributes.field === '' && valueAt( columnRows()[0], 'Value' ) === builder.CONTENT
@@ -3542,49 +3693,52 @@ check( '...a loop in it is said in a sentence of its own, and so is a content th
 change( columnRows()[0], word('column/content'), '<b>[[title]]</b>' );
 builder._closeDialog();
 builder._renderEditor();
-check( '...the preview of the table says Content and the first characters of it in the cell (the first line of it, as markup is never drawn), in a cell of its own kind, and the plan has the mark', ( function() {
-	const cell = preview().querySelector('[data-path="1.1"] .builder-table-ph').querySelectorAll('tbody tr')[0].querySelectorAll('td')[0];
-	return cell.textContent === word('column/content')+ ' · [[title]]' && cell.classList.contains('is-content') === true && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].table[0].content === true;
+check( '...the preview of the table says Content and the first characters of it in the line of the column (the first line of it, as markup is never drawn), in a line of its own kind, and the plan has the mark', ( function() {
+	const line = loopRow().querySelectorAll('.builder-loop-column')[0];
+	return line.querySelector('.builder-loop-column-value').textContent === word('column/content')+ ' · [[title]]' && line.querySelector('.builder-loop-column-value').classList.contains('is-content') === true && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].columns[0].content === true;
 } )() );
-builder._openSettings( [ 1, 1, 'x' ] );
+builder._openSettings( [ 1, 1, 0 ] );
 change( columnRows()[0], 'Value', 'price' );
 check( '...a field again takes the content away', tableCol().components[0].content === undefined && tableCol().components[0].attributes.field === 'price' && labelList( columnRows()[0] ).indexOf( word('column/content') ) === -1 );
 
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), kindWord, 'table' );
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'table' );
 tableCol().components[0].text = '[[nope]],- EUR';
 tableCol().components[0].attributes.field = '';
-tableCol().components.push( Object.assign( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1 ], 'col', builder._keys ), { attributes : { field : 'nothing', align : '', class : '' } } ) );
-check( 'a field that the type has not, and a fill of a line that is none, are red as a source of a component is: the table is not saved with them',
-	builder._red( builder._doc.model, builder._registry ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ).join() === '1.1.0:nope:field,1.1.1:nothing:field' );
-builder._openSettings( [ 1, 1, 'x' ] );
+tableCol().components.push( Object.assign( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1, 0 ], 'col', builder._keys ), { attributes : { field : 'nothing', align : '', class : '' } } ) );
+check( 'a field that the type has not, and a fill of a line that is none, are red as a source of a component is: the table is not saved with them - each column at its own path, a level below the loop',
+	builder._red( builder._doc.model, builder._registry ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ).join() === '1.1.0.0:nope:field,1.1.0.1:nothing:field' );
+builder._openSettings( [ 1, 1, 0 ] );
 check( '...and the column that has one says so beside its title', columnRows().length === 2 && loopPane().textContent.indexOf( word('tree/red-field') ) !== -1 );
 
-// A table in the preview is the table it makes: the head from the titles, none where no column has one, and two rows of what the cells show
+// A table in the preview is its columns as lines: the title and what the cells show, a button that adds a column - and the lines of a column the save refuses are red
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), kindWord, 'table' );
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'table' );
 tableCol().components[0].attributes.field = 'price';
 buttonOf( loopPane(), 'Add a column' ).click();
 change( columnRows()[1], 'Value', '*' );
 change( columnRows()[1], 'Text', '[[title]],- EUR' );
 builder._closeDialog();
 builder._renderEditor();
-const tableDraw = function() { return preview().querySelector('[data-path="1.1"] .builder-table-ph') };
-check( 'a loop that makes a table is drawn as one in the frame of its column: no head while no column has a title, two rows, the field by its name and the line as it is written, and no component and no button that adds one',
-	tableDraw() !== null && tableDraw().querySelectorAll('thead').length === 0 && tableDraw().querySelectorAll('tbody tr').length === 2
-	&& texts( tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td') ) === 'price,[[title]],- EUR' && preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 0
-	&& preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-add-button').length === 0 );
-check( '...the plan says so: the table of the column, with the title and what each shows, from the preview kind the registry gives the loop',
-	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].table ) === JSON.stringify( [ { title : '', value : 'price', content : false, red : false }, { title : '', value : '[[title]],- EUR', content : false, red : false } ] )
-	&& builder._registry.stacks.table.preview === 'table' && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[0].table === null );
+const tableLines = function() { return loopRow().querySelectorAll('.builder-loop-column') };
+check( 'a loop that makes a table is drawn as its columns in the cell of its row: a line for each - the title or a dash where it has none, the field by its name and the line as it is written - under the label "The columns of the table", the button that adds a column, and no component and no button that adds one',
+	tableLines().length === 2 && texts( tableLines().map( function( line ) { return line.querySelector('.builder-loop-column-title') } ) ) === '–,–' && texts( tableLines().map( function( line ) { return line.querySelector('.builder-loop-column-value') } ) ) === 'price,[[title]],- EUR'
+	&& loopRow().querySelector('.builder-loop-cell-label').textContent === 'The columns of the table' && loopRow().querySelectorAll('.builder-loop-cell > .builder-ph').length === 0 && loopRow().querySelectorAll('.builder-add-button').map( function( button ) { return button.textContent } ).join() === '+ Column'
+	&& texts( loopRow().querySelectorAll('.builder-chip') ) === 'Services,2' && loopRow().querySelectorAll('.builder-chip')[1].title === 'Columns in the table: 2' );
+check( '...the plan says so: the columns of the loop, with the title and what each shows, from the cell the registry gives the stack',
+	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].columns.map( function( column ) { return [ column.title, column.value, column.content, column.red ] } ) ) === JSON.stringify( [ [ '', 'price', false, false ], [ '', '[[title]],- EUR', false, false ] ] )
+	&& builder._registry.stacks.table.cell === 'columns' && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].shows === 'columns' );
+loopRow().querySelector('.builder-loop-cell .builder-add-button').click();
+check( '...the button of the cell adds a column, of the first field the type can show, and the preview draws it', tableCol().components.length === 3 && tableCol().components[2].attributes.field === 'title' && tableLines().length === 3 );
+tableCol().components.pop();
 tableCol().components[0].source = '/template/page-home/hero/title';
 builder._renderEditor();
-check( '...and has a head once a column has a title: the first line of the text of its key', tableDraw().querySelectorAll('thead th').length === 2 && texts( tableDraw().querySelectorAll('thead th') ) === 'Welcome,' );
-builder._openSettings( [ 1, 1, 'x' ] );
+check( '...and a line has a title once a column has one: the first line of the text of its key', texts( tableLines().map( function( line ) { return line.querySelector('.builder-loop-column-title') } ) ) === 'Welcome,–' );
+builder._openSettings( [ 1, 1, 0 ] );
 const titleLabel_ = sandbox.Nino.adminUi.format( word('value/label'), builder._localeName( builder._locale ) );
 check( '...the title of a column is a key as the title of a component is: under its source the text of the key in the language of the editor, which is typed in the form and kept for the save',
 	columnRows()[0].querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && valueAt( columnRows()[0], titleLabel_ ) === 'Welcome'
@@ -3599,10 +3753,10 @@ tableCol().components[0].text = '[[price]],- EUR';
 tableCol().components[0].source = '/template/page-home/hero/title';
 delete tableCol().components[0].values;
 builder._renderEditor();
-check( 'a column of free text with a title has the title in the head of the table drawn, and the line in its cells: the key is read apart from the line',
-	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l', { locale : builder._locale, keys : builder._keys } )[1].cols[1].table[0] ) === JSON.stringify( { title : 'Welcome', value : '[[price]],- EUR', content : false, red : false } )
-	&& texts( tableDraw().querySelectorAll('thead th') ) === 'Welcome,' );
-builder._openSettings( [ 1, 1, 'x' ] );
+check( 'a column of free text with a title has the title in its line of the table drawn, and the line in its cells: the key is read apart from the line',
+	JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l', { locale : builder._locale, keys : builder._keys } )[1].cols[1].components[0].columns[0] ) === JSON.stringify( { path : [ 1, 1, 0, 0 ], title : 'Welcome', value : '[[price]],- EUR', content : false, red : false } )
+	&& tableLines()[0].querySelector('.builder-loop-column-title').textContent === 'Welcome' );
+builder._openSettings( [ 1, 1, 0 ] );
 check( '...and the form offers the text of the title under its key, with Free text as the value: it is typed there and kept for the save',
 	valueAt( columnRows()[0], 'Value' ) === '*' && valueAt( columnRows()[0], titleLabel_ ) === 'Welcome' && labelList( columnRows()[0] ).indexOf('Text') !== -1
 	&& ( change( columnRows()[0], titleLabel_, 'Preis' ), tableCol().components[0].values.en_US === 'Preis' && tableCol().components[0].text === '[[price]],- EUR' ) );
@@ -3614,32 +3768,32 @@ check( '...a fill that is none of the type, and an image field, which a line can
 change( columnRows()[0], 'Text', '[[nope]] [[price]]' );
 builder._closeDialog();
 builder._renderEditor();
-check( '...and the cell of the table that is drawn for such a column is marked red, as the save message says: the cells of the other column are not',
-	tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td')[0].className === 'is-red' && tableDraw().querySelectorAll('tbody tr')[0].querySelectorAll('td')[1].className === ''
-	&& tableDraw().querySelectorAll('thead th')[0].className === 'is-red' );
+check( '...and the line of the table that is drawn for such a column is marked red, as the save message says: the line of the other column is not',
+	tableLines()[0].classList.contains('is-red') === true && tableLines()[1].classList.contains('is-red') === false );
 check( '...an image field in a free text is red as a field the type has not is',
-	( tableCol().components[0].text = '[[image]]', builder._red( builder._doc.model, builder._registry ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ).join() === '1.1.0:image:field' ) );
+	( tableCol().components[0].text = '[[image]]', builder._red( builder._doc.model, builder._registry ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ).join() === '1.1.0.0:image:field' ) );
 tableCol().components[0].text = '[[price]],- EUR';
 builder._renderEditor();
 builder._closeDialog();
-builder._closeDialog();
-check( '...a click on the table opens the form of the loop; the head of the frame says the kind of the loop and the type',
-	dialogBox().open === false && ( tableDraw().dispatch('click'), dialogBox().open === true && dialogText('builder-dialog-kind') === 'Column of "services"' && openBlock() === 'loop' ) && preview().querySelector('[data-path="1.1"] .builder-status-item.is-loop').title.indexOf('Table · Services') !== -1 );
+check( '...a double click on a line of the table opens the dialog of the loop on its presentation, where the columns are edited; a click on it selects the loop, and a line is no frame to pick',
+	dialogBox().open === false && ( tableLines()[0].dispatch('click'), builder._same( builder._sel, [ 1, 1, 0 ] ) ) && ( tableLines()[0].dispatch('dblclick'), dialogBox().open === true && dialogText('builder-dialog-kind') === 'Loop: Table' && openBlock() === 'presentation' ) && tableLines()[0].classList.contains('builder-pick') === false );
 builder._closeDialog();
 
 // A list whose cell is one field or one line: a row, which the form shows as a value and the preview as rows
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), kindWord, 'list' );
-const listCol = function() { return builder._doc.model.blocks[1].cols[1] };
-check( 'a list made of a column with components of its own keeps them, and the form says the cell is theirs: no row to choose',
-	listCol().stack.name === 'list' && listCol().components.length > 1 && titlesIn( loopPane() ) === 'Data,List,Row' && loopPane().textContent.indexOf( word('stack/row-cells') ) !== -1 && labelList( loopPane() ).indexOf('Value') === -1
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'list' );
+const listCol = loopNode;
+asLoop( 'list' );
+listCol().components = [ builder._clone( builder._doc.model.blocks[1].cols[0].components[0] ), builder._clone( builder._doc.model.blocks[1].cols[0].components[1] ) ];
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 0 ] );
+check( 'a list whose cell is components of its own keeps them, and the form says the cell is theirs: no row to choose',
+	listCol().name === 'list' && listCol().components.length > 1 && titlesIn( blockOf('presentation') ) === 'Row' && loopPane().textContent.indexOf( word('stack/row-cells') ) !== -1 && labelList( loopPane() ).indexOf('Value') === -1
 	&& optionsOf( loopPane(), 'Style' ) === '=Plain,check=Checks,numbered=Numbered,columns=Columns' );
-listCol().components = [];
-change( loopPane(), kindWord, 'stack' );
-change( loopPane(), kindWord, 'list' );
-check( 'a list in a column with no components starts as a row of the first field the type can show: one text of that field, with the attributes the schema starts it with',
+asLoop( 'list' );
+check( 'a list added to a column starts as a row of the first field the type can show: one text of that field, with the attributes the schema starts it with',
 	listCol().components.length === 1 && listCol().components[0].name === 'text' && listCol().components[0].source === 'title' && listCol().components[0].text === null
 	&& JSON.stringify( listCol().components[0].attributes ) === JSON.stringify( builder._registry.components.text.defaults ) && valueAt( loopPane(), 'Value' ) === 'title' && optionsOf( loopPane(), 'Value' ) === 'title=title,summary=summary,price=price,*=Free text' );
 change( loopPane(), 'Value', 'price' );
@@ -3652,13 +3806,12 @@ change( loopPane(), 'Value', '*' );
 change( loopPane(), 'Text', '[[title]],- EUR' );
 builder._closeDialog();
 builder._renderEditor();
-check( 'a list that is a row is drawn as its rows - a bullet and the line of each, a field in the brackets of a fill - and not as the component, which stands behind the row',
-	texts( preview().querySelector('[data-path="1.1"] .builder-rows-ph').querySelectorAll('.builder-rows-ph-row') ) === '•  [[title]],- EUR,•  [[title]],- EUR,•  [[title]],- EUR'
-	&& preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').length === 0
-	&& JSON.stringify( builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows ) === JSON.stringify( [ '[[title]],- EUR', '[[title]],- EUR', '[[title]],- EUR' ] ) );
+check( 'a list that is a row is drawn as a sentence in the cell of its row - one line for each element, a field in the brackets of a fill - and not as the component, which stands behind the row: no placeholder, no button that adds one',
+	loopRow().querySelector('.builder-loop-says').textContent === 'One line for each element: [[title]],- EUR' && loopRow().querySelectorAll('.builder-ph').length === 0 && loopRow().querySelectorAll('.builder-add-button').length === 0
+	&& builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].row === '[[title]],- EUR' && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].shows === 'hint' );
 listCol().components[0].attributes.tag = 'span';
-check( '...a list whose cell is a line with an attribute besides, or other components, is not a row: it is drawn by its components, as before',
-	builder._rowOf( builder._registry, listCol() ) === null && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].rows === null && ( builder._renderEditor(), preview().querySelector('[data-path="1.1"]').querySelectorAll('.builder-ph').filter( function( ph ) { return ph.classList.contains('builder-loop-block') === false } ).length === 1 ) );
+check( '...a list whose cell is a line with an attribute besides, or other components, is not a row: it is drawn by its components, with the button that adds one',
+	builder._rowOf( builder._registry, listCol() ) === null && builder._preview( builder._doc.model, builder._registry, 'l' )[1].cols[1].components[0].row === null && ( builder._renderEditor(), loopRow().querySelectorAll('.builder-loop-cell > .builder-ph').length === 1 && loopRow().querySelectorAll('.builder-add-button').length === 1 ) );
 builder._closeDialog();
 
 // A line of fields is a component like another: offered with the others, with its tag and its text, and the column of a table is offered nowhere
@@ -3669,8 +3822,8 @@ check( 'the lightbox offers the line of fields with the components of any column
 builder._closeDialog();
 check( '...and its form is a form of a component: its tag is a select of p, span and div, and its content a source with the fields of a loop named in a hint',
 	( function() {
-		const at = builder._doc.model.blocks[1].cols[1].components.push( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1 ], 'line', builder._keys ) ) - 1;
-		builder._openSettings( [ 1, 1, at ] );
+		const at = builder._doc.model.blocks[1].cols[1].components[0].components.push( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 1, 1, 0 ], 'line', builder._keys ) ) - 1;
+		builder._openSettings( [ 1, 1, 0, at ] );
 		return optionsOf( blockOf('properties'), 'HTML tag' ) === 'p=p,span=span,div=div' && blockOf('content').textContent.indexOf('[[title]], [[summary]], [[price]]') !== -1;
 	} )() );
 builder._closeDialog();
@@ -3678,8 +3831,8 @@ builder._closeDialog();
 
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), kindWord, 'filter' );
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'filter' );
 check( 'the kernel\'s filter stack has the grid and its id like the plain one, and no row for cards: the attribute is not carried over to it', labelList( loopPane() ).indexOf('Id of the loop') !== -1 && labelList( loopPane() ).indexOf('Cards') === -1 && stackNow().name === 'filter'
 	&& Object.prototype.hasOwnProperty.call( stackNow().attributes, 'card' ) === false && stackNow().attributes.gap === '2' );
 
@@ -3728,7 +3881,7 @@ doc = open();
 builder._renderEditor();
 builder._lastBlock = {};
 builder._openSettings( [ 0, 0, 0 ] );
-const componentAt = function( at ) { return builder._doc.model.blocks[at[0]].cols[at[1]].components[at[2]] };
+const componentAt = function( at ) { return builder._get( builder._doc.model, at ) };
 // Whether the blocks of a dialog are some of the blocks the table has for the kind of element, in the order of the table
 const inTableOrder = function( kind, ids ) {
 	const order = builder.BLOCKS[kind].map( function( block ) { return block.id } );
@@ -3779,7 +3932,7 @@ check( 'a link is a source of its own - the address stands in the link block wit
 check( '...a choice of a few the schema says is a segment is a row of buttons - the size and the width of a button, with the words of the panel - and writes the value like a select does, the empty one for the default', segmentOf( dialogContent(), 'Size' ) === ':Normal,small:Small,big:Big' && segmentOf( dialogContent(), 'Width' ) === ':Automatic,full:Full width'
 	&& valueAt( dialogContent(), 'Size' ) === '' && ( change( dialogContent(), 'Width', 'full' ), componentAt( [ 0, 0, 2 ] ).attributes.width === 'full' ) && valueAt( dialogContent(), 'Width' ) === 'full'
 	&& ( change( dialogContent(), 'Size', 'big' ), componentAt( [ 0, 0, 2 ] ).attributes.size === 'big' ) && ( change( dialogContent(), 'Size', '' ), componentAt( [ 0, 0, 2 ] ).attributes.size === '' ) );
-builder._openSettings( [ 1, 1, 0 ] );
+builder._openSettings( [ 1, 1, 0, 0 ] );
 check( '...the image has a block for its surface, which holds the toggle of its radius and the one of its hover, and its properties in the order of the schema - the focus, the switch for none and the nine places, among them - with its class last', ( function() {
 
 	const attributes = registry().components.image.attributes;
@@ -3944,12 +4097,12 @@ const stays = drawnIn( 'width', 'width' ) === viewports && drawnIn( 'width', 'hi
 openWith( [ 0, 0 ], tableMoved( tableMoved( tableWith(), 'column', 'width', 'properties' ), 'column', 'hidden', 'properties' ) );
 check( '...a control that writes several settings goes with all of its names: the table of the viewports - the width of the column and where it is hidden - stays where the other name stands when one of them is moved, and is in the properties, one row to a viewport and none left behind, when both are', stays === true
 	&& drawnIn( 'properties', 'width' ) === viewports && drawnIn( 'properties', 'hidden' ) === viewports && drawnIn( 'width', 'width' ) === 0 && drawnIn( 'width', 'hidden' ) === 0 );
-check( '...and the status of a frame that opens the dialog on a block opens the one the table has put the control in: the loop of a section and of a column, the alignments of a column - wherever the table has them', ( function() {
+check( '...and the status of a frame that opens the dialog on a block opens the one the table has put the control in: the loop of a section, the columns of a loop, the alignments of a column - wherever the table has them', ( function() {
 	const original = builder.BLOCKS;
 	builder.BLOCKS = tableMoved( tableWith(), 'column', 'stackAlign', 'surface' );
 	const block = builder._blockOf( 'column', 'stackAlign' );
 	builder.BLOCKS = original;
-	return block === 'surface' && builder._blockOf( 'column', 'stackAlign' ) === 'width' && builder._blockOf( 'column', 'text' ) === 'width' && builder._blockOf( 'section', 'stack' ) === 'loop' && builder._blockOf( 'column', 'stack' ) === 'loop' && builder._blockOf( 'column', 'nothing' ) === undefined;
+	return block === 'surface' && builder._blockOf( 'column', 'stackAlign' ) === 'width' && builder._blockOf( 'column', 'text' ) === 'width' && builder._blockOf( 'section', 'stack' ) === 'loop' && builder._blockOf( 'column', 'stack' ) === undefined && builder._blockOf( 'loop', 'columns' ) === 'presentation' && builder._blockOf( 'loop', 'sort' ) === 'data' && builder._blockOf( 'column', 'nothing' ) === undefined;
 } )() );
 openWith( [ 0, 0, 0 ], tableMoved( tableMoved( tableWith(), 'component', 'class', 'spacing' ), 'component', 'attributes' ) );
 check( 'a component has its controls by the table too: its class, moved to Spacing, is a field of the spacing and none of the properties, and its other attributes, struck out, are not drawn - the HTML tag of a title', drawnIn( 'spacing', 'class' ) === 1 && drawnIn( 'properties', 'class' ) === 0 && drawnAnywhere( 'tag' ) === 0 );
@@ -4053,7 +4206,7 @@ check( '...a field with nothing to say has no mark - the sentences are behind th
 		return clean;
 	};
 
-	return tipOf( controlOf( blockOf('properties'), 'HTML tag' ) ) === null && [ [ 0 ], [ 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 2 ], [ 1, 1, 0 ], [ 1, 1 ] ].every( none );
+	return tipOf( controlOf( blockOf('properties'), 'HTML tag' ) ) === null && [ [ 0 ], [ 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 2 ], [ 1, 1, 0, 0 ], [ 1, 1, 0 ], [ 1, 1 ] ].every( none );
 } )() );
 
 doc = open();
@@ -4334,7 +4487,7 @@ check( 'the slots of the project come with the picture they have for the thumbna
 
 doc = open();
 builder._renderEditor();
-builder._openSettings( [ 1, 1, 0 ] );
+builder._openSettings( [ 1, 1, 0, 0 ] );
 sourceButton( dialogContent() ).click();
 check( 'in a loop the source of a picture is a field of the element first - the fields of the type that hold a picture, and none - then the slots of the project', ( function() {
 	const field = controlOf( pickerPane('pick'), 'Field of the element' );
@@ -4342,21 +4495,21 @@ check( 'in a loop the source of a picture is a field of the element first - the 
 		&& tipOf( field ) === words['/_admin/builder/hint/field'] && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickItems().length === 0;
 } )() );
 change( pickerPane('pick'), 'Field of the element', '' );
-check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && dialogContent().querySelector('.builder-source-current').textContent === 'none' );
-builder._openSettings( [ 1, 1, 1 ] );
+check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0, 0 ] ).source === '' && pickerBox().open === false && dialogContent().querySelector('.builder-source-current').textContent === 'none' );
+builder._openSettings( [ 1, 1, 0, 1 ] );
 sourceButton( dialogContent() ).click();
 check( 'the source of a text in a loop is a field of the element that holds a line of text, a number or a date, the id or the slug of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,price,.id,.slug'
-	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' && pickItems().length === 2 && ( change( pickerPane('pick'), 'Field of the element', 'summary' ), componentAt( [ 1, 1, 1 ] ).source === 'summary' ) );
-builder._openSettings( [ 1, 1, 3 ] );
+	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' && pickItems().length === 2 && ( change( pickerPane('pick'), 'Field of the element', 'summary' ), componentAt( [ 1, 1, 0, 1 ] ).source === 'summary' ) );
+builder._openSettings( [ 1, 1, 0, 3 ] );
 check( 'the button in a loop has the source it has and the fixed text it has: the dialog opens on the fixed value', dialogContent().querySelector('.builder-source-current').textContent === '.uri' && ( sourceButton( dialogContent() ).click(), shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' ) );
-builder._openSettings( [ 1, 1, 3 ] );
+builder._openSettings( [ 1, 1, 0, 3 ] );
 buttonOf( blockOf('link'), 'Source' ).click();
 check( 'the link of a button in a loop may be the uri or the id of the element - or a fixed address, which is a value that stands in the template', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.uri,.slug'
 	&& JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' );
 buttonOf( pickerStrip(), 'Static' ).click();
 fixedField().value = '/contact';
 buttonOf( pickerPane('fixed'), 'Use it' ).click();
-check( '...an attribute has no key to make: it has no Create new, and what is used as a fixed value is written as it is', componentAt( [ 1, 1, 3 ] ).attributes.href === '/contact' && pickerBox().open === false && blockOf('link').querySelector('.builder-source-current').textContent === '“/contact”' );
+check( '...an attribute has no key to make: it has no Create new, and what is used as a fixed value is written as it is', componentAt( [ 1, 1, 0, 3 ] ).attributes.href === '/contact' && pickerBox().open === false && blockOf('link').querySelector('.builder-source-current').textContent === '“/contact”' );
 
 doc = open();
 builder._openSettings( [ 0, 0, 2 ] );
@@ -4532,21 +4685,21 @@ check( '...and it is a source and no address typed in: a field of the element, a
 	&& builder._isSource( '.slug', null ) === true && builder._isSource( '/contact/[[.uri]]', null ) === false && builder._isSource( '[[/template/page-home/hero/title]]/x', null ) === false && builder._isSource( '/artikel', null ) === false );
 
 doc = open();
-openInternal( [ 1, 1, 3 ] );
+openInternal( [ 1, 1, 0, 3 ] );
 check( 'in a loop the fields of the element are listed under the field, small, as the fills they are - the slug of the element first, then its uri and its number, then the fields of the type that are a line of text or a number: not a picture',
 	JSON.stringify( pickerPane('internal').querySelectorAll('.builder-postfix-token').map( function( token ) { return token.textContent } ) ) === '["[[.slug]]","[[.uri]]","[[.id]]","[[title]]","[[summary]]","[[price]]"]'
 	&& JSON.stringify( builder._fillsOf( servicesFields ) ) === '["[[.slug]]","[[.uri]]","[[.id]]","[[title]]","[[summary]]","[[price]]"]'
 	&& pickerPane('internal').querySelector('.builder-postfix-fields').textContent.indexOf( words['/_admin/builder/source/postfix-fields'] ) === 0 && pickerPane('internal').querySelector('.builder-postfix-fields').classList.contains('nino-admin-hint') );
 changes = 0;
 buttonOf( pickerPane('internal'), '[[.uri]]' ).click();
-check( '...a click puts a field in the box - with the slash an address needs in front where the box is empty - and is no answer: with no page chosen the button cannot be used', postfixOf().el.value === '/[[.uri]]' && pickerBox().open === true && changes === 0 && componentAt( [ 1, 1, 3 ] ).attributes.href === '' && useOf().disabled === true );
+check( '...a click puts a field in the box - with the slash an address needs in front where the box is empty - and is no answer: with no page chosen the button cannot be used', postfixOf().el.value === '/[[.uri]]' && pickerBox().open === true && changes === 0 && componentAt( [ 1, 1, 0, 3 ] ).attributes.href === '' && useOf().disabled === true );
 change( pickerPane('internal'), words['/_admin/builder/source/page'], pageKey( 0 ) );
-check( '...and a page chosen after it waits for the button', pickerBox().open === true && changes === 0 && useOf().disabled === false && componentAt( [ 1, 1, 3 ] ).attributes.href === '' );
+check( '...and a page chosen after it waits for the button', pickerBox().open === true && changes === 0 && useOf().disabled === false && componentAt( [ 1, 1, 0, 3 ] ).attributes.href === '' );
 check( '...a field the type has not is refused in a loop as it is outside one - the sentence, the button off - and one it has is none to refuse', ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[nope]]' ), useOf().disabled === true && pickerPane('internal').querySelector('.builder-postfix-message').textContent === words['/_admin/builder/source/postfix-invalid'] )
 	&& ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[image]]' ), useOf().disabled === true ) && ( change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[title]]' ), useOf().disabled === false && pickerPane('internal').querySelector('.builder-postfix-message').textContent === '' ) );
 change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.uri]]' );
 useOf().click();
-check( '...and the sub-path /[[.uri]] after the page is the address of the link: the template holds the fill of the key of the page and the fill of the element, which the kernel puts in for each cell', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]' && pickerBox().open === false
+check( '...and the sub-path /[[.uri]] after the page is the address of the link: the template holds the fill of the key of the page and the fill of the element, which the kernel puts in for each cell', componentAt( [ 1, 1, 0, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]' && pickerBox().open === false
 	&& blockOf('link').querySelector('.builder-source-current').textContent === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]' );
 
 buttonOf( blockOf('link'), 'Source' ).click();
@@ -4561,13 +4714,13 @@ buttonOf( pickerPane('internal'), '[[title]]' ).click();
 check( '...a field put in the middle of the text stands where the caret was, and the caret goes behind it, where the next character is typed', caretBox.value === '/a[[title]]b' && JSON.stringify( caretBox.caret ) === '[11,11]' && postfixOf().el.value === '/a[[title]]b' );
 change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.uri]]/more' );
 useOf().click();
-check( '...and a sub-path after a field is one as well: it is written as it was typed', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]/more' );
+check( '...and a sub-path after a field is one as well: it is written as it was typed', componentAt( [ 1, 1, 0, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.uri]]/more' );
 buttonOf( blockOf('link'), 'Source' ).click();
 buttonOf( pickerPane('internal'), '[[.slug]]' ).click();
 check( '...the slug of the element is put in as any field is, and is the sub-path a link to a page of the element needs', postfixOf().el.value === '/[[.uri]]/more[[.slug]]' );
 change( pickerPane('internal'), words['/_admin/builder/source/postfix'], '/[[.slug]]' );
 useOf().click();
-check( '...and the sub-path /[[.slug]] after the page is the address of the link: the kernel puts the name of each element in', componentAt( [ 1, 1, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.slug]]' && pickerBox().open === false );
+check( '...and the sub-path /[[.slug]] after the page is the address of the link: the kernel puts the name of each element in', componentAt( [ 1, 1, 0, 3 ] ).attributes.href === '[[/nino/dir]][['+ pageKey( 0 )+ ']]/[[.slug]]' && pickerBox().open === false );
 buttonOf( blockOf('link'), 'Source' ).click();
 buttonOf( pickerStrip(), words['/_admin/builder/source/tab-pick'] ).click();
 check( '...Choose a value does not offer a page with a sub-path as the field it is not: the select of the fields stands on none, the page is not marked as the current one in the list', valueAt( pickerPane('pick'), 'Field of the element' ) === '' && pickItems().filter( function( item ) { return item.classList.contains('is-current') } ).length === 0 );
@@ -4814,12 +4967,14 @@ component.delete.dispatch( 'click' );
 check( '...delete takes it away at once, as it holds nothing', builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.name+ ':'+ node.source.split('/').pop() } ).join() === 'subtitle:subtitle-2,title:title,button:name' && changes === 3 && questions.length === 0 );
 const section = toolsOf( [ 0 ] );
 check( 'the tools of a section have one for HTML+ more', section.html.hidden === false && section.up.disabled === true && section.down.disabled === false && section.settings.hidden === false && section.delete.disabled === false );
-check( '...and the loop has none: every frame, every column and every component has its tools in its head, and the loop - which is the status of its column - is not among them', ( function() {
+check( '...and the loop has them too, in the head of its row: every frame, every column, every component and every loop has its tools in its head - the children of a loop among them, in its cell - and the row of a loop has the tools a loop has', ( function() {
 	const model = builder._doc.model;
 	const frames = model.blocks.length;
 	const cols = model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).length }, 0 );
-	const components = model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).reduce( function( inner, col ) { return inner + col.components.length }, 0 ) }, 0 );
-	return preview().querySelectorAll('.builder-tools').length === frames + cols + components && preview().querySelector('.is-loop').querySelector('.builder-tools') === null;
+	const count = function( components ) { return components.reduce( function( sum, node ) { return sum + 1 + count( node.components || [] ) }, 0 ) };
+	const components = model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).reduce( function( inner, col ) { return inner + count( col.components ) }, 0 ) }, 0 );
+	return preview().querySelectorAll('.builder-tools').length === frames + cols + components && preview().querySelector('.builder-loop-bar').querySelector('.builder-tools') !== null
+		&& toolsOf( [ 1, 1, 0 ] ).duplicate.hidden === true && toolsOf( [ 1, 1, 0 ] ).html.hidden === true && toolsOf( [ 1, 1, 0 ] ).copy.hidden === false && toolsOf( [ 1, 1, 0 ] ).delete.disabled === false && toolsOf( [ 1, 1, 0 ] ).paste.hidden === false;
 } )() );
 requests = [];
 section.html.dispatch( 'click' );
@@ -4834,10 +4989,10 @@ check( '...a copy of a component stands behind it, with a key beside the old one
 	builder._duplicateAt( [ 0, 0 ] );
 	return first[1].name === 'title' && first[1].source === '/template/page-home/hero/title-2' && JSON.stringify( first[1].create ) === '{}' && JSON.stringify( first[1].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && builder._doc.model.blocks[0].cols.length === 2 && builder._same( builder._sel, [ 0, 1 ] );
 } )() );
-check( '...and a loop is not copied: it has no tool for it', ( function() {
-	const before = JSON.stringify( builder._doc.model );
-	builder._duplicateAt( [ 2, 1, 'x' ] );
-	return JSON.stringify( builder._doc.model ) === before;
+check( '...and a loop is copied with its children behind it, as a component is - its tool for that is hidden, for it is copied and pasted - and the copy is a loop of its own, open only if it is opened', ( function() {
+	builder._duplicateAt( [ 2, 1, 0 ] );
+	const cell = builder._doc.model.blocks[2].cols[1].components;
+	return cell.length === 2 && cell[1].components.length === 4 && cell[1] !== cell[0] && builder._same( builder._sel, [ 2, 1, 1 ] ) && builder._open.has( cell[1] ) === false;
 } )() );
 
 doc = open();
@@ -4851,7 +5006,7 @@ builder._stepNode( [ 1 ], -1 );
 check( '...a section moves among the sections', builder._doc.model.blocks.map( function( block ) { return block.id || 'html' } ).join() === 'services,hero,html,contact' && builder._same( builder._sel, [ 0 ] ) );
 builder._stepNode( [ 0, 0 ], 1 );
 builder._stepNode( [ 0, 1 ], -1 );
-check( '...and a column among the columns of its section', changes === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].stack === null && builder._doc.model.blocks[0].cols[1].stack !== null );
+check( '...and a column among the columns of its section', builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[1].components.length === 1 );
 
 doc = open();
 changes = 0;
@@ -4870,11 +5025,22 @@ questions[0].onChoose( 'yes' );
 check( '...Delete takes it, with everything in it', builder._doc.model.blocks.length === 3 && builder._doc.model.blocks[0].id === 'services' && builder._same( builder._sel, [] ) );
 questions = [];
 builder._deleteAt( [ 0, 1 ] );
-check( 'a column with a loop asks too, and the loop takes its components with it', questions.length === 1 && questions[0].title === 'Column' && ( questions[0].onChoose( 'no' ), builder._doc.model.blocks[0].cols.length === 2 ) );
+check( 'a column with a loop asks too, and the loop takes its children with it', questions.length === 1 && questions[0].title === 'Column' && ( questions[0].onChoose( 'no' ), builder._doc.model.blocks[0].cols.length === 2 ) );
 questions = [];
-builder._deleteAt( [ 0, 1, 'x' ] );
-check( '...a loop is no node to delete: it is set to Static in its column, and deleting it does nothing - no question, no change', questions.length === 0 && builder._doc.model.blocks[0].cols[1].stack !== null && builder._doc.model.blocks[0].cols[1].components.length === 4 );
-builder._doc.model.blocks[0].cols[1].stack = null;
+builder._deleteAt( [ 0, 1, 0 ] );
+check( '...a loop is a node to delete as a component is: with children it asks, titled with the word Loop, and a no changes nothing', questions.length === 1 && questions[0].title === 'Loop' && ( questions[0].onChoose( 'no' ), builder._doc.model.blocks[0].cols[1].components.length === 1 && builder._doc.model.blocks[0].cols[1].components[0].components.length === 4 ) );
+check( '...and a yes takes it out with its children; a loop that holds nothing goes at once', ( function() {
+	questions = [];
+	builder._deleteAt( [ 0, 1, 0 ] );
+	questions[0].onChoose( 'yes' );
+	const gone = builder._doc.model.blocks[0].cols[1].components.length === 0;
+	builder._doc.model.blocks[0].cols[1].components.push( builder._newLoop( builder._registry, 'stack' ) );
+	questions = [];
+	builder._deleteAt( [ 0, 1, 0 ] );
+	const quick = questions.length === 0 && builder._doc.model.blocks[0].cols[1].components.length === 0;
+	builder._doc.model.blocks[0].cols[1].components.push( builder._clone( JSON.parse( JSON.stringify( fixture('page-home.json').blocks[1].cols[1].components[0] ) ) ) );
+	return gone && quick;
+} )() );
 builder._doc.model.blocks[0].cols[1].components = [];
 builder._deleteAt( [ 0, 1 ] );
 check( '...an empty column is deleted without a question', questions.length === 0 && builder._doc.model.blocks[0].cols.length === 1 );
@@ -4924,9 +5090,9 @@ check( 'a new section is below the last, fresh, with the animation of the templa
 	&& builder._animationMode( true, builder._doc.model.blocks[4].settings ) === 'like' && builder._doc.model.blocks[0].cols.length === 2 && JSON.stringify( builder._doc.model.blocks[0].cols[1].width ) === '{"s":100,"m":100,"l":100}' && JSON.stringify( builder._doc.model.blocks[0].cols[0].width ) === '{"s":100,"m":100,"l":66}'
 	&& builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].source === '/template/page-home/hero/button' && JSON.stringify( builder._doc.model.blocks[0].cols[0].components[3].create ) === '{}' && builder._same( builder._sel, [ 0, 0, 3 ] ) );
 builder._addCol( [ 1 ] );
-builder._addComponent( [ 1, 1 ], 'title' );
-check( '...at the end of the level they are meant for: the column of the services is the third, the component stands last in the loop', builder._doc.model.blocks[1].cols.length === 3 && builder._doc.model.blocks[1].cols[1].components.length === 5 && builder._doc.model.blocks[1].cols[1].components[4].name === 'title'
-	&& builder._doc.model.blocks[1].cols[1].components[4].source === '' && builder._doc.model.blocks[1].cols[1].components[4].create === undefined && builder._doc.model.blocks.length === 5 );
+builder._addComponent( [ 1, 1, 0 ], 'title' );
+check( '...at the end of the level they are meant for: the column of the services is the third, the component stands last in the cell of the loop, and has no key, as a field is its source', builder._doc.model.blocks[1].cols.length === 3 && builder._doc.model.blocks[1].cols[1].components.length === 1 && builder._doc.model.blocks[1].cols[1].components[0].components.length === 5 && builder._doc.model.blocks[1].cols[1].components[0].components[4].name === 'title'
+	&& builder._doc.model.blocks[1].cols[1].components[0].components[4].source === '' && builder._doc.model.blocks[1].cols[1].components[0].components[4].create === undefined && builder._doc.model.blocks.length === 5 && builder._same( builder._sel, [ 1, 1, 0, 4 ] ) );
 check( '...the buttons of the preview do the same: a section, a column - and a component, which is chosen in the lightbox the button opens, and goes in at once: the dialog stays and shows its settings', ( function() {
 	doc = open();
 	builder._renderEditor();
@@ -4967,25 +5133,27 @@ check( 'a save sends the file, the model and the hash, and nothing else while it
 	&& requests[0].payload.force === undefined && builder._saving === true && ( builder._save(), requests.length === 1 ) );
 const saved = JSON.parse( JSON.stringify( builder._doc.model ) );
 saved.blocks[0].id = 'hero';
+builder._open.add( builder._get( builder._doc.model, [ 1, 1, 0 ] ) );
 requests[0].callback( 200, { model : saved, hash : 'h2' } );
 check( 'the answer replaces the model and the hash, and the document holds nothing unsaved', builder._doc.hash === 'h2' && builder._doc.model.name === 'Start' && builder._unsaved( builder._doc ) === false && builder._saving === false && builder._status.state === 'saved' && answers[answers.length - 1] === true && builder._fresh.x === undefined );
+check( '...and the loops that were open are open in it: the answer is a model of new nodes, and the loop at the same place is the one that stays open', builder._open.has( builder._get( builder._doc.model, [ 1, 1, 0 ] ) ) === true && builder._open.has( builder._get( builder._doc.model, [ 1, 0, 0 ] ) ) === false );
 
 doc = open();
-builder._doc.model.blocks[1].cols[1].stack = builder._stackFor( builder._registry, 'marks', null );
-builder._doc.model.blocks[1].cols[1].stack.source = '/services';
-builder._doc.model.blocks[1].cols[1].stack.attributes.link = 'summary';
-builder._doc.model.blocks[1].cols[1].stack.attributes.link = '';
+builder._doc.model.blocks[1].cols[1].components[0] = builder._newLoop( builder._registry, 'marks' );
+builder._doc.model.blocks[1].cols[1].components[0].source = '/services';
+builder._doc.model.blocks[1].cols[1].components[0].attributes.link = 'summary';
+builder._doc.model.blocks[1].cols[1].components[0].attributes.link = '';
 builder._save();
 check( 'a save that is refused for a required field that is empty sends nothing, is red at the loop and leaves the model as it is: what the type has not, the default among it, stays for a type that has the field again',
-	requests.length === 0 && builder._status.state === 'error' && builder._same( builder._sel, [ 1, 1, 'x' ] ) && builder._doc.model.blocks[1].cols[1].stack.attributes.name === 'name' && builder._doc.model.blocks[1].cols[1].stack.attributes.dark === 'image-dark' );
-builder._doc.model.blocks[1].cols[1].stack.attributes.link = 'summary';
+	requests.length === 0 && builder._status.state === 'error' && builder._same( builder._sel, [ 1, 1, 0 ] ) && builder._doc.model.blocks[1].cols[1].components[0].attributes.name === 'name' && builder._doc.model.blocks[1].cols[1].components[0].attributes.dark === 'image-dark' );
+builder._doc.model.blocks[1].cols[1].components[0].attributes.link = 'summary';
 builder._save();
 check( '...and the save that goes sends what the dialog showed: a field that need not be chosen and the type has not - the default of the schema - is sent empty, the ones the type has and the required ones as they are',
-	requests.length === 1 && requests[0].action === 'builder/save' && [ 'name', 'dark' ].every( function( name ) { return requests[0].payload.model.blocks[1].cols[1].stack.attributes[name] === '' } )
-	&& requests[0].payload.model.blocks[1].cols[1].stack.attributes.link === 'summary' && requests[0].payload.model.blocks[1].cols[1].stack.attributes.image === 'image' );
+	requests.length === 1 && requests[0].action === 'builder/save' && [ 'name', 'dark' ].every( function( name ) { return requests[0].payload.model.blocks[1].cols[1].components[0].attributes[name] === '' } )
+	&& requests[0].payload.model.blocks[1].cols[1].components[0].attributes.link === 'summary' && requests[0].payload.model.blocks[1].cols[1].components[0].attributes.image === 'image' );
 requests[0].callback( 409, { code : 'builder_conflict', error : 'x' } );
 check( '...and an answer that refuses it - a conflict here - leaves the model as it is: the names the type has not stay, for a type that has the field again',
-	builder._saving === false && builder._doc.model.blocks[1].cols[1].stack.attributes.name === 'name' && builder._doc.model.blocks[1].cols[1].stack.attributes.dark === 'image-dark' && builder._unsaved( builder._doc ) === true );
+	builder._saving === false && builder._doc.model.blocks[1].cols[1].components[0].attributes.name === 'name' && builder._doc.model.blocks[1].cols[1].components[0].attributes.dark === 'image-dark' && builder._unsaved( builder._doc ) === true );
 
 doc = open();
 builder._doc.model.name = 'Start';
@@ -5092,9 +5260,9 @@ const drawn = function( what, run ) {
 
 doc = open();
 builder._renderEditor();
-builder._doc.model.blocks[1].cols[1].stack.attributes.sort = 'a,b';
-builder._doc.model.blocks[1].cols[1].components.push( { name : 'html', source : '', text : null, attributes : { 'class' : '' }, content : '<p>x</p>' } );
-builder._doc.model.blocks[1].cols[1].components.push( { name : 'spacer', source : '', text : null, attributes : { size : '2' } } );
+builder._doc.model.blocks[1].cols[1].components[0].attributes.sort = 'a,b';
+builder._doc.model.blocks[1].cols[1].components[0].components.push( { name : 'html', source : '', text : null, attributes : { 'class' : '' }, content : '<p>x</p>' } );
+builder._doc.model.blocks[1].cols[1].components[0].components.push( { name : 'spacer', source : '', text : null, attributes : { size : '2' } } );
 builder._doc.model.blocks[3].cols.push( builder._newCol() );
 builder._doc.model.blocks[3].cols[1].components.push( { name : 'image', source : '/template/page-home/contact/image', text : null, attributes : {}, create : { label : 'Image', width : 1600, height : 900 } } );
 
@@ -5103,9 +5271,8 @@ builder._doc.model.blocks.forEach( function( block, b ) {
 	paths.push( [ b ] );
 	( block.cols || [] ).forEach( function( col, c ) {
 		paths.push( [ b, c ] );
-		if( col.stack !== null )
-			paths.push( [ b, c, 'x' ] );
-		col.components.forEach( function( component, k ) { paths.push( [ b, c, k ] ) } );
+		const walk = function( components, at ) { components.forEach( function( component, k ) { paths.push( at.concat( [ k ] ) ); walk( component.components || [], at.concat( [ k ] ) ) } ) };
+		walk( col.components, [ b, c ] );
 	} );
 } );
 paths.push( [] );
@@ -5385,9 +5552,9 @@ builder._setLocale('en_US');
 doc = open();
 builder._renderEditor();
 const stripped = {
-	'a fixed text'								: [ 1, 1, 3 ],
-	'the field of a loop'					: [ 1, 1, 1 ],
-	'a picture in a loop'					: [ 1, 1, 0 ],
+	'a fixed text'								: [ 1, 1, 0, 3 ],
+	'the field of a loop'					: [ 1, 1, 0, 1 ],
+	'a picture in a loop'					: [ 1, 1, 0, 0 ],
 	'a key nobody knows'					: [ 0, 0, 2 ],
 };
 check( 'the text has a field where the source is a text key the project knows - and not for a fixed text, the field of an element in a loop, a picture, a key that is not in the list (the account may not read them, or it is hidden)', Object.keys( stripped ).every( function( what ) {
@@ -5519,7 +5686,7 @@ const contactPh = function() { return preview().querySelector('[data-path="3.0.0
 check( 'the placeholder of a text component says the first line of the text in the language of the editor, cut to sixty characters, with the label of the component for its title - and has a mark that it says a text', contactPh().querySelector('.builder-ph-label').textContent === 'A very long first line of a text that goes on and on and on…'
 	&& Array.from( contactPh().querySelector('.builder-ph-label').textContent ).length === 60 && contactPh().title === 'Title (Section)' && contactPh().classList.contains('has-line') && preview().querySelector('[data-path="0.0.0"]').classList.contains('has-line') );
 check( '...a placeholder with no text to say is as it was: the label of the component, no title, no mark - the ones of a key nobody knows, a key with no text in the language, a field of a loop, a fixed text', preview().querySelector('[data-path="0.0.2"] .builder-ph-label').textContent === 'Button'
-	&& preview().querySelector('[data-path="0.0.2"]').title === '' && preview().querySelector('[data-path="0.0.2"]').classList.contains('has-line') === false && preview().querySelector('[data-path="1.1.1"] .builder-ph-label').textContent === 'Title (Section)' && preview().querySelector('[data-path="1.1.3"] .builder-ph-label').textContent === 'Button' );
+	&& preview().querySelector('[data-path="0.0.2"]').title === '' && preview().querySelector('[data-path="0.0.2"]').classList.contains('has-line') === false && preview().querySelector('[data-path="1.1.0.1"] .builder-ph-label').textContent === 'Title (Section)' && preview().querySelector('[data-path="1.1.0.3"] .builder-ph-label').textContent === 'Button' );
 builder._setLocale('de_DE');
 check( '...the text is set as text and is never markup: an escaped tag is a tag shown, a tag that is none is gone with its attributes', contactPh().querySelector('.builder-ph-label').textContent === '<b>Zwei</b> & Drei' && contactPh().querySelectorAll('b').length === 0 && contactPh().querySelector('.builder-ph-label').children.length === 0
 	&& contactPh().querySelectorAll('img').every( function( image ) { return image.className === 'builder-ph-picture' && image.src === '' } ) );
@@ -5591,7 +5758,7 @@ const pictureAt = function( index ) { return preview().querySelector('[data-path
 check( 'the placeholder of a picture shows the picture of its slot where the slot has one - in place of the image of its kind -, and keeps the image where it has none', pictureAt( 4 ).classList.contains('has-picture') && pictureAt( 4 ).querySelector('.builder-ph-picture').src === '/uploads/hero.1600x900.jpg'
 	&& pictureAt( 4 ).title === 'Image' && pictureAt( 4 ).querySelector('.builder-ph-label').textContent === 'Image' && pictureAt( 5 ).classList.contains('has-picture') === false && pictureAt( 5 ).querySelector('.builder-ph-picture').src === ''
 	&& pictureAt( 5 ).title === '' && builder._preview( builder._doc.model, builder._registry, 'l', { locale : 'en_US', keys : [] } )[0].cols[0].components.map( function( component ) { return component.picture } ).join() === ',,,,/uploads/hero.1600x900.jpg,' );
-check( '...the picture is the slot\'s and nothing of the loop\'s: the field of a picture in a loop has none to show', preview().querySelector('[data-path="1.1.0"]').classList.contains('has-picture') === false );
+check( '...the picture is the slot\'s and nothing of the loop\'s: the field of a picture in a loop has none to show', preview().querySelector('[data-path="1.1.0.0"]').classList.contains('has-picture') === false );
 check( '...the stylesheet shows the picture only where there is one, in place of the icon, and the bar has room for the language', stylesheet.indexOf( '.builder-ph.has-picture .builder-ph-picture {\n\tdisplay: block;' ) !== -1 && stylesheet.indexOf( '.builder-ph.has-picture .builder-ph-icon {\n\tdisplay: none;' ) !== -1
 	&& stylesheet.indexOf( '.builder-ph-picture {\n\tdisplay: none;' ) !== -1 && stylesheet.indexOf( '.builder-pane-tools {' ) !== -1 && stylesheet.indexOf( '.builder-locale[hidden] {\n\tdisplay: none;' ) !== -1
 	&& stylesheet.indexOf( '.builder-picture-message.is-warning {\n\tcolor: var(--editor-orange);' ) !== -1 && stylesheet.indexOf( '.builder-picture-message.is-error {\n\tcolor: var(--editor-red);' ) !== -1 );
@@ -6138,8 +6305,8 @@ check( 'a component whose schema has "holds" is a container, and the place it ho
 
 const cardModel = cardPage();
 check( 'a path into a container is one deeper - block, column, component, child: the child is a node, the container is one, and a path that leads nowhere is null', builder._get( cardModel, [ 0, 1, 0, 1 ] ).name === 'text' && builder._get( cardModel, cardAt ).name === 'card'
-	&& builder._get( cardModel, [ 0, 1, 0, 3 ] ) === null && builder._get( cardModel, [ 0, 1, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 0, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 1, 0, 'x', 0 ] ) === null
-	&& builder._get( cardModel, [ 1, 0, 'x' ] ) === cardModel.blocks[1].cols[0].stack && builder._get( cardModel, [ 1, 0, 0, 0 ] ).source === 'title' );
+	&& builder._get( cardModel, [ 0, 1, 0, 3 ] ) === null && builder._get( cardModel, [ 0, 1, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 0, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 1, 0, 1, 0 ] ) === null
+	&& builder._get( cardModel, [ 1, 0, 0 ] ) === cardModel.blocks[1].cols[0].components[0] && builder._isLoop( builder._get( cardModel, [ 1, 0, 0 ] ) ) === true && builder._get( cardModel, [ 1, 0, 0, 0 ] ).name === 'card' && builder._get( cardModel, [ 1, 0, 0, 0, 0 ] ).source === 'title' && builder._get( cardModel, [ 1, 0, 0, 0, 5 ] ) === null );
 check( '...a child stands in the list of its container, a container in the list of its column; both are components, and a container holds its children as work', builder._place( cardModel, [ 0, 1, 0, 2 ] ).list === cardIn( cardModel ).components && builder._place( cardModel, [ 0, 1, 0, 2 ] ).index === 2
 	&& builder._place( cardModel, cardAt ).list === cardModel.blocks[0].cols[1].components && builder._place( cardModel, [ 0, 1, 0, 9 ] ) === null && builder._kind( cardModel, [ 0, 1, 0, 2 ] ) === 'component' && builder._kind( cardModel, cardAt ) === 'component'
 	&& builder._children( cardModel, cardAt ) === 3 && builder._children( cardModel, [ 0, 1, 0, 2 ] ) === 0 && builder._children( cardModel, [ 0, 0, 0 ] ) === 0 );
@@ -6263,14 +6430,14 @@ check( 'what a source means where it stands is told in a container as in a colum
 	const clean = redOf( model );
 
 	cardIn( model ).components[0].source = 'title';
-	builder._get( model, [ 1, 0, 0, 0 ] ).source = 'nothing-like-it';
+	builder._get( model, [ 1, 0, 0, 0, 0 ] ).source = 'nothing-like-it';
 
-	return clean === '' && redOf( model ) === '0.1.0.0:static:title,1.0.0.0:field:nothing-like-it';
+	return clean === '' && redOf( model ) === '0.1.0.0:static:title,1.0.0.0.0:field:nothing-like-it';
 } )() );
 check( '...and so does the picture an attribute names: in a loop an image field of the element or a slot, in a static column a slot only - a field that is none, or a special source of a text, is red on the container', ( function() {
 
 	const model = cardPage();
-	const loopCard = function() { return builder._get( model, [ 1, 0, 0 ] ) };
+	const loopCard = function() { return builder._get( model, [ 1, 0, 0, 0 ] ) };
 	const states = [];
 
 	// A field of the element
@@ -6292,14 +6459,14 @@ check( '...and so does the picture an attribute names: in a loop an image field 
 	cardIn( model ).attributes.background = '/template/page-home-card/story/card-picture';
 	states.push( redOf( model ) );
 
-	return states.join(' | ') === ' | 1.0.0:field:photo | 1.0.0:field:.id |  | 0.1.0:static:image | ';
+	return states.join(' | ') === ' | 1.0.0.0:field:photo | 1.0.0.0:field:.id |  | 0.1.0:static:image | ';
 } )() );
 
 doc = openCard();
 check( 'where a component would stand: inside a container the place it holds, in a column the hero where the column is in the first section - a cover or none - and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
 
 	const model = builder._doc.model;
-	const before = [ builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ), builder._where( model, [ 1, 0, 0 ] ) ].join();
+	const before = [ builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ), builder._where( model, [ 1, 0, 0, 0 ] ), builder._where( model, [ 1, 0, 0 ] ) ].join();
 
 	model.blocks[0].settings.cover = 90;
 
@@ -6307,7 +6474,7 @@ check( 'where a component would stand: inside a container the place it holds, in
 
 	own.components.card.holds = 'tile';
 
-	return before === 'hero,card,section,card' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
+	return before === 'hero,card,section,card,section' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
 		&& builder._where( model, cardAt, own ) === 'tile';
 } )() );
 
@@ -6353,7 +6520,7 @@ check( 'the preview of a container is its label, the ground it paints, whether i
 
 	const plan = builder._preview( cardPage(), registry(), 'l', { locale : 'en_US', keys : [] } );
 	const card = plan[0].cols[1].components[0];
-	const loopCard = plan[1].cols[0].components[0];
+	const loopCard = plan[1].cols[0].components[0].children[0];
 
 	return card.holds === true && card.label === 'Card' && card.color === 'alt' && card.background === false && JSON.stringify( card.path ) === '[0,1,0]' && card.children.length === 3
 		&& card.children.map( function( child ) { return child.path.join('.')+ ':'+ child.label+ ':'+ child.draws } ).join() === '0.1.0.0:Title (Card):H3 .nino-card-title,0.1.0.1:Text:,0.1.0.2:Button:A .nino-btn' && card.children.every( function( child ) { return child.holds === undefined } )
@@ -6391,7 +6558,7 @@ check( '...in the first section it is offered as well, whether it is a cover or 
 	builder._doc.model.blocks[0].settings.cover = null;
 	return without.join() === [ inHero, inHero ].join() && offered === inHero;
 } )() );
-check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others; what it does not offer stands there greyed, and says it is not for a card', offeredAt( cardAt ) === inCard && offeredAt( [ 1, 0, 0 ] ) === inCard
+check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others; what it does not offer stands there greyed, and says it is not for a card', offeredAt( cardAt ) === inCard && offeredAt( [ 1, 0, 0, 0 ] ) === inCard
 	&& offeredAt( cardAt ).split(',').indexOf('Card') === -1 && offeredAt( [ 0, 1 ] ).split(',').indexOf('Title (Card)') === -1 && offeredAt( [ 1, 0 ] ).split(',').indexOf('Title (Card)') === -1
 	&& reasonOf( cardAt, 'Card' ) === 'Not in a card' && reasonOf( cardAt, 'Title (Section)' ) === 'Not in a card' && reasonOf( cardAt, 'Title (Card)' ) === '' && reasonOf( [ 1, 0 ], 'Card' ) === '' );
 check( '...the button of the card in the preview opens the same lightbox, and the button of its column the column\'s', ( function() {
@@ -6407,7 +6574,7 @@ check( '...the button of the card in the preview opens the same lightbox, and th
 	return adds.length === 2 && own === inCard && takenIn( lightboxOf() ) === inHero;
 } )() );
 
-check( '...a component a loop does not take is offered in no column that runs one, and in no card inside it - at depth three and at depth four alike - and everywhere else; a container that says it belongs in a card is offered in none', ( function() {
+check( '...a component a loop does not take is offered in no cell of a loop, and in no card inside it - at depth four and at depth five alike - and everywhere else, the column that holds the loop among them; a container that says it belongs in a card is offered in none', ( function() {
 
 	const components = builder._registry.components;
 
@@ -6415,12 +6582,12 @@ check( '...a component a loop does not take is offered in no column that runs on
 	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'hero', 'section', 'card' ], holds : 'card', group : 'global' };
 
 	const stub = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
-	const found = [ stub( [ 0, 1 ] ), stub( cardAt ), stub( [ 1, 0 ] ), stub( [ 1, 0, 0 ] ) ].join(' | ');
+	const found = [ stub( [ 0, 1 ] ), stub( cardAt ), stub( [ 1, 0 ] ), stub( [ 1, 0, 0 ] ), stub( [ 1, 0, 0, 0 ] ) ].join(' | ');
 
 	delete components['stub-alone'];
 	delete components['stub-holder'];
 
-	return found === 'Stub alone,Stub holder | Stub alone | Stub holder | ';
+	return found === 'Stub alone,Stub holder | Stub alone | Stub alone,Stub holder | Stub holder | ';
 } )() );
 
 check( 'a card added to a column is its last component, with no children, selected - and drawn as a frame of its own with a button that adds to it', ( function() {
@@ -6572,9 +6739,9 @@ cardOffered.click();
 check( 'in a card the component goes in as a child at the end of the card, and the settings are the child\'s, in the dialog the lightbox was in', dialogText('builder-dialog-kind') === titleOf( cardOffered.dataset.name ) && cardIn( builder._doc.model ).components.length === 4
 	&& cardIn( builder._doc.model ).components[3].name === cardOffered.dataset.name && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && lightboxOf() === null && blockIds().join() === 'content,link,spacing,properties' );
 dialogBox().close();
-itemNamed( pickAt( [ 1, 0 ] ), 'image' ).click();
-check( '...in a column that runs a loop it goes in as a component of the cell, with no key of its own to make - and a picture, the settings of which have the content of a picture', builder._get( builder._doc.model, [ 1, 0, 1 ] ).name === 'image' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).source === '' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).create === undefined
-	&& dialogText('builder-dialog-kind') === titleOf('image') && builder._same( builder._sel, [ 1, 0, 1 ] ) && dialogContent() !== null );
+itemNamed( pickAt( [ 1, 0, 0 ] ), 'image' ).click();
+check( '...in the cell of a loop it goes in as a component of the cell, with no key of its own to make - and a picture, the settings of which have the content of a picture', builder._get( builder._doc.model, [ 1, 0, 0, 1 ] ).name === 'image' && builder._get( builder._doc.model, [ 1, 0, 0, 1 ] ).source === '' && builder._get( builder._doc.model, [ 1, 0, 0, 1 ] ).create === undefined
+	&& dialogText('builder-dialog-kind') === titleOf('image') && builder._same( builder._sel, [ 1, 0, 0, 1 ] ) && dialogContent() !== null );
 dialogBox().close();
 check( '...and what a card says it does not take stands in its lightbox greyed, and a click on it does nothing: the card is not put in a card, the title of a section is not put in one', ( function() {
 
@@ -7411,22 +7578,22 @@ builder._closeDialog();
 
 openCard();
 builder._renderEditor();
-builder._openSettings( [ 1, 0, 0 ] );
+builder._openSettings( [ 1, 0, 0, 0 ] );
 check( 'the picture behind a card in a loop is a field of the element or a slot: the dialog of the sources offers the image fields of the type next to the slots, and the card of the page reads the field "image"', holderPane().querySelector('.builder-source-current').textContent === 'image' && fileField( holderPane() ) === null
 	&& buttonOf( holderPane(), 'Remove the picture' ).disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && valueAt( holderPane(), 'Dim the picture' ) === true && valueAt( holderPane(), 'Focus' ) === '5' );
 buttonOf( holderPane(), 'Source' ).click();
 check( '...Choose a value: the field of the element - the fields of the type that hold a picture, and none - above the slots', labelList( pickerPane('pick') )[0] === 'Field of the element' && controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,image=image'
 	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'image' );
 change( pickerPane('pick'), 'Field of the element', '' );
-check( '...none empties the attribute, which takes the dimming with it and leaves nothing to upload to: the upload is there for a slot that is yet to be, and the form is drawn again', builder._get( builder._doc.model, [ 1, 0, 0 ] ).attributes.background === '' && builder._get( builder._doc.model, [ 1, 0, 0 ] ).attributes.dim === '0'
+check( '...none empties the attribute, which takes the dimming with it and leaves nothing to upload to: the upload is there for a slot that is yet to be, and the form is drawn again', builder._get( builder._doc.model, [ 1, 0, 0, 0 ] ).attributes.background === '' && builder._get( builder._doc.model, [ 1, 0, 0, 0 ] ).attributes.dim === '0'
 	&& fileField( holderPane() ) !== null && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false && pickerBox().open === false );
 builder._closeDialog();
 
-builder._get( builder._doc.model, [ 1, 0, 0 ] ).attributes.background = 'photo';
+builder._get( builder._doc.model, [ 1, 0, 0, 0 ] ).attributes.background = 'photo';
 builder._repaint();
-builder._openSettings( [ 1, 0, 0 ] );
+builder._openSettings( [ 1, 0, 0, 0 ] );
 check( '...a field the type has no such field of is red where the source stands, in the form and on the card in the preview, and the document is not saved with it', holderPane().querySelector('.builder-source-red').hidden === false && holderPane().querySelector('.builder-source-red').textContent === words['/_admin/builder/tree/red-field']
-	&& preview().querySelector('[data-path="1.0.0"]').classList.contains('is-red') === true && ( function() { requests = []; builder._save(); return requests.length === 0 && builder._status.state === 'error' } )() );
+	&& preview().querySelector('[data-path="1.0.0.0"]').classList.contains('is-red') === true && ( function() { requests = []; builder._save(); return requests.length === 0 && builder._status.state === 'error' } )() );
 builder._closeDialog();
 
 console.log( '\nThe card in the preview' );
@@ -7443,8 +7610,8 @@ check( '...its body has its children as placeholders, in order, each a frame of 
 	&& frameOf('0.1.0.0').querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' && frameOf('0.1.0').querySelector('.builder-adds .builder-add-button').textContent === '+ Component' );
 check( '...a card with no picture behind it says nothing in its head; the head of the column and the head of the section say nothing of the card', frameOf('0.1.0').querySelector('.builder-head-status').children.length === 0 && frameOf('0.1').querySelector('.builder-pcol-head .builder-head-status').children.length === 0
 	&& frameOf('0.1.0').querySelector('.builder-card-head .builder-rename') === null );
-check( '...a card in a loop is drawn once, in the cell of each element as the components of the column are - and the loop is in the head of its column, not in the card', preview().querySelectorAll('[data-path="1.0"] .builder-card').length === 1 && frameOf('1.0.0').querySelectorAll('.builder-ph').length === 1
-	&& frameOf('1.0').querySelector('.builder-pcol-head .is-loop') !== null && frameOf('1.0.0').querySelector('.is-loop') === null );
+check( '...a card in a loop is drawn once, in the cell of the loop as the components of the column are - and the loop is a row of its column, with the card in its cell, not in the card', preview().querySelectorAll('[data-path="1.0"] .builder-card').length === 1 && frameOf('1.0.0.0').querySelectorAll('.builder-ph').length === 1
+	&& frameOf('1.0').querySelector('.builder-pcol-head .is-loop') === null && frameOf('1.0.0').classList.contains('builder-loop') === true && frameOf('1.0.0').querySelector('.builder-loop-cell > .builder-card') === frameOf('1.0.0.0') && frameOf('1.0.0.0').querySelector('.builder-loop') === null );
 
 const cardTintOf = function( around, color, ground, picture, dim ) {
 	openCard();
@@ -7552,7 +7719,7 @@ console.log( '\nEvery form of a card, what it says when it is not read, and what
 
 openCard();
 builder._renderEditor();
-builder._doc.model.blocks[1].cols[0].components[0].attributes.background = '';
+builder._doc.model.blocks[1].cols[0].components[0].components[0].attributes.background = '';
 cardIn( builder._doc.model ).attributes.background = '/project/logo/header/image';
 
 const cardPaths = [];
@@ -7560,12 +7727,8 @@ builder._doc.model.blocks.forEach( function( block, b ) {
 	cardPaths.push( [ b ] );
 	( block.cols || [] ).forEach( function( col, c ) {
 		cardPaths.push( [ b, c ] );
-		if( col.stack !== null )
-			cardPaths.push( [ b, c, 'x' ] );
-		col.components.forEach( function( component, k ) {
-			cardPaths.push( [ b, c, k ] );
-			( component.components || [] ).forEach( function( child, j ) { cardPaths.push( [ b, c, k, j ] ) } );
-		} );
+		const walk = function( components, at ) { components.forEach( function( component, k ) { cardPaths.push( at.concat( [ k ] ) ); walk( component.components || [], at.concat( [ k ] ) ) } ) };
+		walk( col.components, [ b, c ] );
 	} );
 } );
 cardPaths.push( [] );
@@ -8039,7 +8202,9 @@ const toolbarsNamed = function() {
 		if( path.length === 2 )
 			return words['/_admin/builder/menu/tools-col'].replace( '%s', String( path[1] + 1 ) ).replace( '%s', model.blocks[path[0]].id );
 
-		return registryFixture.components[ builder._get( model, path ).name ].label;
+		const node = builder._get( model, path );
+
+		return ( registryFixture.components[node.name] || registryFixture.stacks[node.name] ).label;
 	};
 	const bars = preview().querySelectorAll('.builder-tools');
 
@@ -8127,12 +8292,12 @@ check( 'a column added to a row is the last of it and has the whole width in eve
 
 	return row.cols[2] === added && sharedBy( row, 'l' ) === '50,25,100' && sharedBy( row, 'm' ) === '50,25,100' && sharedBy( row, 's' ) === '100,100,100' && builder._share === undefined && builder.BESIDE === undefined;
 } )() );
-check( '...the new column is a column of its own in every way: it is not hidden anywhere, has no loop and no components, and none of the six sides of its spacing is set', ( function() {
+check( '...the new column is a column of its own in every way: it is not hidden anywhere, holds no loop and no components, and none of the six sides of its spacing is set', ( function() {
 
 	const row = { cols : [ builder._newCol() ] };
 	const added = builder._addedCol( row );
 
-	return JSON.stringify( added.hidden ) === '{}' && added.stack === null && added.components.length === 0 && builder.SIDES.every( function( side ) { return added[side] === '' } ) && added.p === undefined;
+	return JSON.stringify( added.hidden ) === '{}' && 'stack' in added === false && added.components.length === 0 && builder.SIDES.every( function( side ) { return added[side] === '' } ) && added.p === undefined;
 } )() );
 doc = open();
 builder._renderEditor();
@@ -8232,7 +8397,7 @@ check( '...a site with one language has nothing typed for a second, and one with
 		&& more.values === undefined && JSON.stringify( more.create ) === '{}' && moreImage.create.alt.fr_FR === registryFixture.components.image.label && Object.keys( moreImage.create.alt ).length === 3;
 } )() );
 check( '...a component that stands where no key is made - the cell of a loop - has no placeholder to write', ( function() {
-	const made = builder._newComponent( page(), registry(), 'page-home', [ 1, 1 ], 'title', [] );
+	const made = builder._newComponent( page(), registry(), 'page-home', [ 1, 1, 0 ], 'title', [] );
 	return made.create === undefined && made.values === undefined;
 } )() );
 check( '...the placeholders are written for a picture alone: a text that has nothing typed gets none, whatever the languages of the site', ( function() {
@@ -8390,9 +8555,11 @@ check( '...the children of a component that holds components count: their words 
 
 	return clip.kind === 'component' && clip.node.components.length === 3 && Object.keys( again.values ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text' && JSON.stringify( again.values['/template/page-home-card/story/text'] ) === '{"de_DE":"Text"}';
 } ) );
-check( '...a loop has nothing to copy, and the clip stays what it was', attempt( function() {
-	const clip = copied( [ 0, 0, 0 ] );
-	return builder._copyAt( [ 1, 1, 'x' ] ) === null && builder._copyAt( [] ) === null && builder._copyAt( [ 9, 0 ] ) === null && builder._clip === clip;
+check( '...a loop is copied with its children, as the clip of a component that is a loop: its word is Loop, its children are the clip\'s own and share nothing with the page - and a path with nothing at it has nothing to copy, and the clip stays what it was', attempt( function() {
+	const clip = copied( [ 1, 1, 0 ] );
+	const loop = clip.kind === 'component' && builder._isLoop( clip.node ) === true && clip.node.components.length === 4 && clip.node !== builder._get( builder._doc.model, [ 1, 1, 0 ] ) && clip.node.components !== builder._get( builder._doc.model, [ 1, 1, 0 ] ).components
+		&& clip.section === 'services' && builder._clipWord( clip ) === 'Loop';
+	return loop && builder._copyAt( [] ) === null && builder._copyAt( [ 9, 0 ] ) === null && builder._copyAt( [ 1, 1, 9 ] ) === null && builder._clip === clip;
 } ) );
 
 check( 'the clip is kept in the storage of the browser under one key of the Builder, and read from there when the editor opens: after a reload, and on another page', attempt( function() {
@@ -8495,22 +8662,25 @@ check( '...a card is pasted as a card behind the card, with its children, each w
 		&& cardIn( model ).components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text,/template/page-home-card/story/button'
 		&& builder._pasteable( model, registry(), [ 0, 1, 0, 0 ], clip ) === word('reason/pick-not-card') && builder._paste( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], clip ) !== null;
 } ) );
-check( 'a component is not pasted into a column whose loop has no content - there is no place for it, and the reason says why, where the copy cannot be pasted for any other - while a column is, with its loop',
+check( 'a component is pasted into the cell of a loop whose cell is components, at the end of it, and behind a loop whose cell holds none - there is no place for it in that cell, and it goes behind the loop in its column: the paste is where the node is a loop, and the tool of such a loop says so; a column is pasted with its loops',
 	attempt( function() {
 
 		const columnClip = copied( [ 1, 0 ], undefined, 'page-home' );
 		const model = builder._doc.model;
 		const col = model.blocks[1].cols[1];
 		const clip = handmade( 'title', { source : '/template/page-other/intro/title' } );
-		const ordinary = builder._pasteable( model, registry(), [ 1, 1 ], clip );
+		const cell = builder._pastePlace( model, registry(), [ 1, 1, 0 ], clip );
+		const ordinary = builder._pasteable( model, registry(), [ 1, 1, 0 ], clip );
+		const loopClip = handmade( 'stack', {} );
 
-		col.stack = builder._stackFor( builder._registry, noneName, col.stack );
-		col.components = [];
+		col.components = [ builder._newLoop( builder._registry, noneName ) ];
 
-		return ordinary === '' && builder._pastePlace( model, registry(), [ 1, 1 ], clip ) === null && builder._pasteable( model, registry(), [ 1, 1 ], clip ) === word('reason/paste-none')
-			&& builder._paste( model, registry(), 'page-home', [ 1, 1 ], clip ) === null && col.components.length === 0
-			&& builder._pasteable( model, registry(), [ 1, 1 ], columnClip ) === '' && builder._paste( model, registry(), 'page-home', [ 1, 1 ], columnClip ) !== null
-			&& builder._pastePlace( model, registry(), [ 1, 0 ], clip ) !== null;
+		const behind = builder._pastePlace( model, registry(), [ 1, 1, 0 ], clip );
+		const loopNext = builder._pastePlace( model, registry(), [ 1, 1, 0 ], Object.assign( loopClip, { node : builder._newLoop( builder._registry, 'stack' ) } ) );
+
+		return ( ordinary === '' && pathOf( cell.parent ) === '[1,1,0]' && cell.index === 4 && behind.list === col.components && behind.index === 1 && pathOf( behind.parent ) === '[1,1]'
+			&& builder._pasteable( model, registry(), [ 1, 1, 0 ], clip ) === '' && loopNext.list === col.components && loopNext.index === 1
+			&& builder._pasteable( model, registry(), [ 1, 1 ], columnClip ) === '' && builder._paste( model, registry(), 'page-home', [ 1, 1 ], columnClip ) !== null && builder._pastePlace( model, registry(), [ 1, 0 ], clip ) !== null );
 	} ) );
 check( 'a column is pasted after the column the tool is of, and at the end of the columns of a section: its components take keys beside those of the section they go into, whatever section the column was in', attempt( function() {
 
@@ -8618,12 +8788,12 @@ check( '...a clip that holds a component, a loop or a type the project does not 
 	const reg = builder._registry;
 	const say = function( name ) { return sandbox.Nino.adminUi.format( word('reason/paste-unknown'), name ) };
 	const column = { kind : 'column', file : 'page-home', section : 'hero', values : {}, node : { components : [ { name : 'title' }, { name : 'card', components : [ { name : 'unheard' } ] } ], stack : null } };
-	const loop = function( stack ) { return { kind : 'column', file : 'page-home', section : 'hero', values : {}, node : { components : [], stack : stack } } };
+	const loop = function( stack ) { return { kind : 'component', file : 'page-home', section : 'hero', values : {}, node : Object.assign( { components : [] }, stack ) } };
 	const section = { kind : 'section', file : 'page-home', section : 'hero', values : {}, node : { kind : 'section', id : 'x', stack : { name : 'unheardof', source : '/services' }, cols : [] } };
 
 	return builder._pasteable( model, reg, [ 0, 0, 0 ], handmade('nothing-like-it') ) === say('nothing-like-it') && builder._pasteable( model, reg, [ 0, 0 ], handmade('toString') ) === say('toString') && builder._pasteable( model, reg, [ 0, 0 ], handmade('title') ) === ''
-		&& builder._pasteable( model, reg, [ 0, 0 ], column ) === say('unheard') && builder._pasteable( model, reg, [ 1 ], loop( { name : 'nothing', source : '/services' } ) ) === say('nothing') && builder._pasteable( model, reg, [ 1 ], loop( { name : 'stack', source : '/nothing' } ) ) === say('/nothing')
-		&& builder._pasteable( model, reg, [ 0 ], loop( { name : 'stack', source : '/services' } ) ) === '' && builder._pasteable( model, reg, [ 1 ], section ) === say('unheardof') && builder._pasteable( model, reg, [ 1 ], { kind : 'section', file : 'p', section : 'x', values : {}, node : Object.assign( {}, section.node, { stack : null, cols : [ { components : [ { name : 'nothing-like-it' } ], stack : null } ] } ) } ) === say('nothing-like-it');
+		&& builder._pasteable( model, reg, [ 0, 0 ], column ) === say('unheard') && builder._pasteable( model, reg, [ 1, 0 ], loop( { name : 'nothing', source : '/services' } ) ) === say('nothing') && builder._pasteable( model, reg, [ 1, 0 ], loop( { name : 'stack', source : '/nothing' } ) ) === say('/nothing')
+		&& builder._pasteable( model, reg, [ 0, 0 ], loop( { name : 'stack', source : '/services' } ) ) === '' && builder._pasteable( model, reg, [ 0, 0 ], loop( { name : 'stack', source : '/services', components : [ { name : 'unheard' } ] } ) ) === say('unheard') && builder._pasteable( model, reg, [ 1 ], section ) === say('unheardof') && builder._pasteable( model, reg, [ 1 ], { kind : 'section', file : 'p', section : 'x', values : {}, node : Object.assign( {}, section.node, { stack : null, cols : [ { components : [ { name : 'nothing-like-it' } ], stack : null } ] } ) } ) === say('nothing-like-it');
 } ) );
 check( '...a clip does not fit a node of another kind: a section or a block of html goes beside a section or a block and at the end of the page, a column beside a column and into a section, a component beside a component and into a column - and into nothing else, a loop least of all', attempt( function() {
 
@@ -8632,8 +8802,8 @@ check( '...a clip does not fit a node of another kind: a section or a block of h
 	const model = builder._doc.model;
 	const reg = builder._registry;
 	const clips = { section : copied( [ 0 ] ), html : copied( [ 2 ] ), column : copied( [ 0, 0 ] ), component : copied( [ 0, 0, 0 ] ) };
-	const ok = { section : [ [], [ 0 ], [ 2 ] ], html : [ [], [ 1 ], [ 2 ] ], column : [ [ 0 ], [ 1 ], [ 1, 0 ] ], component : [ [ 0, 0 ], [ 1, 1 ], [ 0, 0, 1 ] ] };
-	const every = [ [], [ 0 ], [ 2 ], [ 0, 0 ], [ 1, 1 ], [ 0, 0, 1 ], [ 1, 1, 'x' ] ];
+	const ok = { section : [ [], [ 0 ], [ 2 ] ], html : [ [], [ 1 ], [ 2 ] ], column : [ [ 0 ], [ 1 ], [ 1, 0 ] ], component : [ [ 0, 0 ], [ 1, 1 ], [ 0, 0, 1 ], [ 1, 1, 0 ] ] };
+	const every = [ [], [ 0 ], [ 2 ], [ 0, 0 ], [ 1, 1 ], [ 0, 0, 1 ], [ 1, 1, 0 ] ];
 	const wrong = every.filter( function( at ) { return [ 'section', 'html', 'column', 'component' ].some( function( kind ) {
 		return builder._pasteable( model, reg, at, clips[kind] ) !== '' && ok[kind].some( function( good ) { return builder._same( good, at ) } );
 	} ) } );
@@ -8641,13 +8811,13 @@ check( '...a clip does not fit a node of another kind: a section or a block of h
 
 	return wrong.length === 0 && Object.keys( ok ).every( function( kind ) { return ok[kind].every( function( at ) { return builder._pasteable( model, reg, at, clips[kind] ) === '' } ) }, this )
 		&& refused( 'section', [ 0, 0 ] ) && refused( 'section', [ 0, 0, 0 ] ) && refused( 'html', [ 0, 0 ] ) && refused( 'column', [] ) && refused( 'column', [ 2 ] ) && refused( 'column', [ 0, 0, 0 ] ) && refused( 'component', [] ) && refused( 'component', [ 0 ] ) && refused( 'component', [ 2 ] )
-		&& refused( 'section', [ 1, 1, 'x' ] ) && refused( 'component', [ 1, 1, 'x' ] ) && refused( 'component', [ 9 ] ) && refused( 'column', [ 9, 9 ] ) && builder._paste( model, reg, 'page-home', [ 0, 0, 0 ], clips.column ) === null && builder._paste( model, reg, 'page-home', [], clips.component ) === null;
+		&& refused( 'section', [ 1, 1, 0 ] ) && refused( 'column', [ 1, 1, 0 ] ) && refused( 'component', [ 9 ] ) && refused( 'column', [ 9, 9 ] ) && builder._paste( model, reg, 'page-home', [ 0, 0, 0 ], clips.column ) === null && builder._paste( model, reg, 'page-home', [], clips.component ) === null;
 } ) );
 check( '...a kind word tells the clip in the title: a section by its id', attempt( function() {
 	const clips = { section : copied( [ 1 ] ), html : copied( [ 2 ] ), column : copied( [ 0, 0 ] ), component : copied( [ 0, 0, 0 ] ) };
 	return builder._clipWord( clips.section ) === word('tree/section')+ ' services' && builder._clipWord( clips.html ) === word('tree/html-block') && builder._clipWord( clips.column ) === word('tree/col') && builder._clipWord( clips.component ) === word('tree/component');
 } ) );
-check( '...a component stands where the lightbox would let it stand and nowhere else: for every component of the registry and a place, the answer of the paste is the reason the lightbox gives - in a column of the first section, of another, in a column that runs a loop, in a component that holds components', attempt( function() {
+check( '...a component stands where the lightbox would let it stand and nowhere else: for every component of the registry and a place, the answer of the paste is the reason the lightbox gives - in a column of the first section, of another, in the cell of a loop, in a component that holds components', attempt( function() {
 
 	const reg = registry();
 	const model = cardPage();
@@ -8669,13 +8839,13 @@ check( '...a component stands where the lightbox would let it stand and nowhere 
 	reg.components['scroll-hint']['in'] = [ 'hero' ];
 	reg.components.spacer.loop = false;
 
-	const same = places.every( function( place ) { return sameAs( place, place ) } ) && sameAs( [ 0, 1, 0, 0 ], cardAt );
+	const same = places.every( function( place ) { return sameAs( place, place ) } ) && sameAs( [ 0, 1, 0, 0 ], cardAt ) && sameAs( [ 1, 0, 0, 0 ], [ 1, 0, 0 ] );
 
 	delete found[''];
 
 	return same && Object.keys( found ).sort().join() === [ word('reason/pick-no-loop'), word('reason/pick-not-card'), word('reason/pick-only-card'), word('reason/pick-only-hero') ].sort().join();
 } ) );
-check( '...a component that does not take a loop is refused in the cell of one - at the end of the column, behind a component in it - and so is a column that carries such a component into a section that is a loop', attempt( function() {
+check( '...a component that does not take a loop is refused in the cell of one - behind a child of it, and into the cell, where the paste goes behind the loop in its column instead - and so is a column that carries such a component into a section that is a loop', attempt( function() {
 
 	const reg = registry();
 	const model = page();
@@ -8689,7 +8859,7 @@ check( '...a component that does not take a loop is refused in the cell of one -
 
 	looped.blocks[3].stack = { name : 'sections', source : '/services', attributes : {} };
 
-	return builder._pasteable( model, reg, [ 1, 1 ], clip ) === reason && builder._pasteable( model, reg, [ 1, 1, 0 ], clip ) === reason && builder._pasteable( model, reg, [ 1, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 3, 0 ], clip ) === ''
+	return builder._pasteable( model, reg, [ 1, 1 ], clip ) === '' && builder._pasteable( model, reg, [ 1, 1, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 1, 1, 0, 0 ], clip ) === reason && builder._pasteable( model, reg, [ 1, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 3, 0 ], clip ) === ''
 		&& builder._pasteable( looped, reg, [ 3 ], column ) === reason && builder._pasteable( looped, reg, [ 3, 0 ], column ) === reason && builder._pasteable( model, reg, [ 3 ], column ) === ''
 		&& ( function() {
 
@@ -8700,7 +8870,7 @@ check( '...a component that does not take a loop is refused in the cell of one -
 
 			own.components.text.loop = false;
 
-			return builder._pasteable( cards, registry(), [ 1, 0 ], holder ) === '' && builder._pasteable( cards, own, [ 1, 0 ], holder ) === reason && builder._pasteable( cards, own, [ 0, 1 ], holder ) === '';
+			return builder._pasteable( cards, registry(), [ 1, 0, 0, 0 ], holder ) === '' && builder._pasteable( cards, own, [ 1, 0, 0, 0 ], holder ) === reason && builder._pasteable( cards, own, [ 1, 0 ], holder ) === '' && builder._pasteable( cards, own, [ 0, 1 ], holder ) === '';
 		} )();
 } ) );
 check( '...a loop is not put in a loop: a column that has one, into a section that makes a section of every element - and a column that has none into it is fine; the section that is a loop itself is pasted anywhere', attempt( function() {
@@ -8713,8 +8883,38 @@ check( '...a loop is not put in a loop: a column that has one, into a section th
 	const loopSection = copied( [ 3 ], looped );
 	const reg = registry();
 
-	return loopColumn.node.stack !== null && builder._pasteable( looped, reg, [ 3 ], loopColumn ) === word('reason/stack-in-stack') && builder._pasteable( looped, reg, [ 3, 0 ], loopColumn ) === word('reason/stack-in-stack') && builder._pasteable( looped, reg, [ 1 ], loopColumn ) === ''
+	return loopColumn.node.components.some( function( node ) { return builder._isLoop( node ) } ) === true && builder._pasteable( looped, reg, [ 3 ], loopColumn ) === word('reason/loop-in-loop') && builder._pasteable( looped, reg, [ 3, 0 ], loopColumn ) === word('reason/loop-in-loop') && builder._pasteable( looped, reg, [ 1 ], loopColumn ) === ''
 		&& builder._pasteable( looped, reg, [ 1, 1 ], loopColumn ) === '' && builder._pasteable( looped, reg, [ 0 ], loopSection ) === '' && builder._pasteable( looped, reg, [], loopSection ) === '';
+} ) );
+check( '...a loop is pasted where a loop may stand: in a column, behind a component or a loop of it, and in none of the places a loop does not stand in - the cell of a loop, a component that holds components (where a paste on the container itself goes behind it), a column of a section that is a loop - and the reasons are the lightbox\'s', attempt( function() {
+
+	const clip = copied( [ 1, 1, 0 ] );
+	const model = page();
+	const cards = cardPage();
+	const looped = page();
+	const reg = registry();
+
+	looped.blocks[3].stack = { name : 'sections', source : '/services', attributes : {} };
+
+	const moved = builder._paste( model, reg, 'page-home', [ 0, 0 ], clip );
+	const behind = builder._paste( model, reg, 'page-home', [ 1, 1, 0 ], clip );
+
+	return clip.kind === 'component' && builder._pasteable( model, reg, [ 0, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 0, 0, 1 ], clip ) === '' && builder._pasteable( model, reg, [ 1, 1, 0 ], clip ) === '' && pathOf( behind ) === '[1,1,1]' && pathOf( moved ) === '[0,0,3]'
+		&& builder._pasteable( model, reg, [ 1, 1, 0, 0 ], clip ) === word('reason/loop-in-loop') && builder._pasteable( cards, reg, [ 0, 1, 0 ], clip ) === '' && builder._pasteable( cards, reg, [ 0, 1, 0, 0 ], clip ) === word('reason/holder-stack')
+		&& builder._pasteable( looped, reg, [ 3, 0 ], clip ) === word('reason/loop-in-loop') && builder._pasteable( model, reg, [ 0 ], clip ) === sandbox.Nino.adminUi.format( word('reason/paste-place'), builder._clipWord( clip ) )
+		&& model.blocks[0].cols[0].components[3].components.length === 4 && model.blocks[0].cols[0].components[3] !== clip.node && builder._isLoop( model.blocks[0].cols[0].components[3] ) === true;
+} ) );
+check( '...the paste tool of a loop puts the copy of a loop behind it in its column and never in its cell, whatever the cell holds - and the place of a component for the same tool is the end of that cell, where the cell is components', attempt( function() {
+
+	const clip = copied( [ 1, 1, 0 ] );
+	const model = page();
+	const reg = registry();
+	const col = model.blocks[1].cols[1];
+	const loopPlace = builder._pastePlace( model, reg, [ 1, 1, 0 ], clip );
+	const componentPlace = builder._pastePlace( model, reg, [ 1, 1, 0 ], Object.assign( {}, clip, { node : { name : 'title', source : 'title', attributes : {}, components : [] }, kind : 'component' } ) );
+
+	return builder._isLoop( clip.node ) === true && loopPlace.list === col.components && loopPlace.index === 1 && loopPlace.parent.join() === '1,1' && loopPlace.list !== col.components[0].components
+		&& componentPlace.list === col.components[0].components && componentPlace.index === col.components[0].components.length;
 } ) );
 check( '...where the first section is the place, a component that belongs in the hero only is refused behind it', attempt( function() {
 
@@ -8731,7 +8931,7 @@ check( '...an unusable path is refused: a paste does not change the model it can
 	const clip = copied( [ 0, 0, 0 ] );
 	const model = page();
 	const before = JSON.stringify( model );
-	return builder._paste( model, registry(), 'page-home', [ 1, 1, 'x' ], clip ) === null && builder._paste( model, registry(), 'page-home', [ 9, 0 ], clip ) === null && JSON.stringify( model ) === before;
+	return builder._paste( model, registry(), 'page-home', [ 1, 1, 0, 9 ], clip ) === null && builder._paste( model, registry(), 'page-home', [ 9, 0 ], clip ) === null && builder._paste( model, registry(), 'page-home', [ 0, 0 ], copied( [ 0 ] ) ) === null && JSON.stringify( model ) === before;
 } ) );
 
 console.log( '\nThe tools that copy and paste' );
@@ -8742,8 +8942,8 @@ check( 'the toolbar answers copy as it answers duplicate and paste by what the c
 	const model = builder._doc.model;
 	const tools = function( at ) { return builder._toolbar( model, at ) };
 
-	return clip !== null && tools( [ 0, 0, 1 ] ).paste === true && tools( [ 0, 0 ] ).paste === true && tools( [ 1, 1, 3 ] ).paste === true && tools( [ 0 ] ).paste === false && tools( [ 2 ] ).paste === false && tools( [ 0, 0, 1 ] ).copy === true && tools( [ 2 ] ).copy === true
-		&& tools( [ 9, 0, 0 ] ).copy === false && tools( [ 9, 0, 0 ] ).paste === false && builder._toolbar( model, [ 1, 1, 'x' ] ) === null && builder._toolbar( model, [] ) === null
+	return clip !== null && tools( [ 0, 0, 1 ] ).paste === true && tools( [ 0, 0 ] ).paste === true && tools( [ 1, 1, 0, 3 ] ).paste === true && tools( [ 1, 1, 0 ] ).paste === true && tools( [ 0 ] ).paste === false && tools( [ 2 ] ).paste === false && tools( [ 0, 0, 1 ] ).copy === true && tools( [ 2 ] ).copy === true
+		&& tools( [ 9, 0, 0 ] ).copy === false && tools( [ 9, 0, 0 ] ).paste === false && tools( [ 1, 1, 0 ] ).duplicate === null && builder._toolbar( model, [] ) === null
 		&& JSON.stringify( tools( [ 0 ] ) ) === '{"settings":true,"html":true,"up":false,"down":true,"duplicate":true,"copy":true,"paste":false,"delete":true}'
 		&& JSON.stringify( tools( [ 0, 0, 1 ] ) ) === '{"settings":true,"html":null,"up":true,"down":true,"duplicate":true,"copy":true,"paste":true,"delete":true}';
 } ) );
@@ -8753,7 +8953,7 @@ check( '...every frame of the preview has the two tools, in the order settings, 
 
 	const bars = preview().querySelectorAll('.builder-tools');
 	const model = builder._doc.model;
-	const count = model.blocks.length + model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).length + ( block.cols || [] ).reduce( function( inner, col ) { return inner + col.components.length }, 0 ) }, 0 );
+	const count = model.blocks.length + model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).length + ( block.cols || [] ).reduce( function( inner, col ) { return inner + col.components.length + col.components.reduce( function( more, node ) { return more + ( node.components || [] ).length }, 0 ) }, 0 ) }, 0 );
 
 	return bars.length === count && bars.every( function( bar ) { return bar.querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' } );
 } ) );
@@ -8850,7 +9050,7 @@ check( '...a tool that is off pastes nothing, and nothing is changed by a press 
 	const before = JSON.stringify( builder._doc.model );
 
 	builder._pasteAt( [ 0 ] );
-	builder._pasteAt( [ 1, 1, 'x' ] );
+	builder._pasteAt( [ 2 ] );
 	toolOf( '0', 'paste' ).click();
 
 	return JSON.stringify( builder._doc.model ) === before && changes === 0 && builder._unsaved( builder._doc ) === false;
@@ -9047,7 +9247,7 @@ check( 'a storage that reads and does not write keeps no old clip: a copy takes 
 } ) );
 check( 'a copy from a loop pasted outside one keeps its fields and is marked red until they are given a key: it is pasted all the same - the loop\'s cell is not a place a component is refused in - and the save would refuse it', attempt( function() {
 
-	const clip = copied( [ 1, 1, 2 ] );
+	const clip = copied( [ 1, 1, 0, 2 ] );
 	const model = page();
 	const at = builder._paste( model, registry(), 'page-home', [ 0, 0 ], clip );
 	const red = builder._red( model, registry() ).filter( function( entry ) { return builder._same( entry.path, at ) } );
@@ -9511,7 +9711,7 @@ check( 'the editor of HTML+ that is opened from the tool for it and cancelled le
 
 console.log( '\nThe seven blocks, the background image, the pictures and the link of a card' );
 
-check( 'the table names ten blocks in all - content, link, group, surface, tiles, spacing, width, order, loop and properties, the tiles being those of a section of tiles and the group the block of the group of panels a section is and the title of a panel its column has - and the loop is a block of its own, between the order and the properties, for a section and a column: the one control stack, which no other block lists - a component has no loop', ( function() {
+check( 'the table names twelve blocks in all - content, link, group, surface, tiles, spacing, width, order, loop and properties, and, for a loop of a column, data and presentation; the tiles being those of a section of tiles and the group the block of the group of panels a section is and the title of a panel its column has - the loop of a section is a block of its own, between the order and the properties: the one control stack, which no other block lists - a component has no loop, and neither has a column: its loop is a component with a dialog of its own', ( function() {
 
 	const ids = {};
 	const ofKind = function( kind ) { return builder.BLOCKS[kind].map( function( block ) { return block.id } ).join() };
@@ -9519,10 +9719,10 @@ check( 'the table names ten blocks in all - content, link, group, surface, tiles
 
 	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { ids[block.id] = true } ) } );
 
-	return Object.keys( ids ).sort().join() === 'content,group,link,loop,order,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,group,width,order,loop,properties' && ofKind('column') === 'group,surface,spacing,width,loop,properties'
-		&& ofKind('component') === 'content,link,surface,spacing,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && JSON.stringify( loop('column').controls ) === '["stack"]'
-		&& [ 'section', 'column' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
-		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop';
+	return Object.keys( ids ).sort().join() === 'content,data,group,link,loop,order,presentation,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,group,width,order,loop,properties' && ofKind('column') === 'group,surface,spacing,width,properties'
+		&& ofKind('component') === 'content,link,surface,spacing,properties' && ofKind('loop') === 'data,presentation,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && loop('column') === undefined
+		&& [ 'section' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
+		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && builder.BLOCKS.column.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop' && word('block/data/label') === 'Data' && word('block/presentation/label') === 'Presentation';
 } )() );
 check( '...the surface of a section lists the line, the colour, the background inside and the corners first and then the picture with what depends on it, the arrow last; the surface of a column the colour and the corners first, then the picture, the dimming, the link over the whole of a tile and the offset', JSON.stringify( builder.BLOCKS.section[0].controls )
 	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[1].controls ) === '["color","radius","background","dim","linked","bgPl","bgPr"]' );
@@ -9659,8 +9859,8 @@ builder._openBlock('loop');
 check( 'the loop of a section is the block Loop, with its own name: a head that says what the control says - nothing while there is no loop, the words of the loop once there is one - and the properties keep the animation, the classes and the id', headOf('loop').querySelector('.builder-block-name').textContent === 'Loop'
 	&& saysOf('loop').hidden === true && labelList( blockOf('properties') ).indexOf( word('stack/kind') ) === -1 && ( change( blockOf('loop'), word('stack/kind'), 'sections' ), saysOf('loop').textContent === registry().stacks.sections.label && saysOf('loop').hidden === false ) );
 builder._closeDialog();
-builder._openSettings( [ 1, 1 ] );
-check( '...and the loop of a column is the block as well, and says its name in the head - the tables of the viewports in it are drawn again with the others', blockIds().join() === 'surface,spacing,width,loop,properties' && saysOf('loop').textContent === registry().stacks.stack.label && blockOf('loop').querySelector('table') !== null );
+builder._openSettings( [ 1, 1, 0 ] );
+check( '...the loop of a column has no block of that name: its blocks say what is in them in their heads - the type and the order for the data, nothing for a presentation that is the default, the id for the properties - and the table of the cells is drawn in the presentation', blockIds().join() === 'data,presentation,properties' && saysOf('data').textContent === 'Services · Sort by title · Limit 6' && saysOf('properties').hidden === true && blockOf('presentation').querySelector('table') !== null );
 builder._closeDialog();
 
 // The words and the hints of the width
@@ -9827,7 +10027,7 @@ check( 'a placeholder says what it draws: the image of the registry as data-imag
 	const title = phOf('0.0.0');
 	const subtitle = phOf('0.0.1');
 	const button = phOf('0.0.2');
-	const image = phOf('1.1.0');
+	const image = phOf('1.1.0.0');
 
 	return title.dataset.image === 'title' && title.dataset.tag === 'h3' && subtitle.dataset.image === 'title' && subtitle.dataset.tag === 'div' && button.dataset.image === 'button' && button.dataset.tag === 'a'
 		&& image.dataset.image === 'image' && image.dataset.tag === undefined;
@@ -9858,8 +10058,8 @@ check( 'a column has no frame until the pointer is over it or it is selected: th
 	&& ruleHas( '.builder-card', [ 'background: rgba(155, 155, 155, .15)' ] ) && /\n\tborder: /.test( ruleOf('.builder-card') ) === false && stylesheet.indexOf( '.builder-card.builder-color-alt {' ) !== -1 );
 check( 'in a section of a dark ground the chips of a head and the tools are inverted - a dark half transparent ground, the ink of the frame, a light line - for dark, black and the brand colour alone, and a light ground inside takes the workbench\'s colours back; the hover of a button of the status lightens', ( function() {
 
-	const dark = ':is(.builder-color-dark, .builder-color-black, .builder-color-primary) {\n\t--builder-chip-bg: color-mix(in srgb, #000 35%, transparent);\n\t--builder-chip-ink: currentColor;\n\t--builder-chip-line: color-mix(in srgb, currentColor 30%, transparent);\n\t--builder-chip-hover: color-mix(in srgb, #fff 18%, color-mix(in srgb, #000 35%, transparent));\n}';
-	const light = ':is(.builder-color-alt, .builder-color-tint, .builder-color-brand-alt, .builder-color-plain) {\n\t--builder-chip-bg: initial;\n\t--builder-chip-ink: initial;\n\t--builder-chip-line: initial;\n\t--builder-chip-hover: initial;\n}';
+	const dark = ':is(.builder-color-dark, .builder-color-black, .builder-color-primary) {\n\t--builder-chip-bg: color-mix(in srgb, #000 35%, transparent);\n\t--builder-chip-ink: currentColor;\n\t--builder-chip-line: color-mix(in srgb, currentColor 30%, transparent);\n\t--builder-chip-hover: color-mix(in srgb, #fff 18%, color-mix(in srgb, #000 35%, transparent));\n\t--builder-red-ink: #fca5a5;\n\t--builder-red-line: #f87171;\n}';
+	const light = ':is(.builder-color-alt, .builder-color-tint, .builder-color-brand-alt, .builder-color-plain) {\n\t--builder-chip-bg: initial;\n\t--builder-chip-ink: initial;\n\t--builder-chip-line: initial;\n\t--builder-chip-hover: initial;\n\t--builder-red-ink: initial;\n\t--builder-red-line: initial;\n}';
 
 	return stylesheet.indexOf( dark ) !== -1 && stylesheet.indexOf( light ) !== -1 && ruleHas( '.builder-head-status button.builder-status-item:hover', [ 'background: var(--builder-chip-hover, color-mix(in srgb, var(--editor-text) 10%, var(--editor-bg-elevated)))' ] );
 } )() );
@@ -9962,8 +10162,8 @@ check( 'the lightbox of a container offers what belongs to the place the contain
 	} )() );
 builder._closeDialog();
 
-check( '...and the container itself is offered where its schema says it belongs: in a column of the first section, which is the hero - and not in the column of a loop, which its schema says it is no for, nor in a card, which holds none',
-	reasonOf( [ 0, 1 ], 'Band' ) === '' && reasonOf( [ 1, 0 ], 'Band' ) === word('reason/pick-no-loop') && reasonOf( [ 1, 0, 0 ], 'Band' ) === 'Not in a card' );
+check( '...and the container itself is offered where its schema says it belongs: in a column of the first section, which is the hero, and in a column that holds a loop - and not in the cell of a loop, which its schema says it is no for, nor in a card, which holds none',
+	reasonOf( [ 0, 1 ], 'Band' ) === '' && reasonOf( [ 1, 0 ], 'Band' ) === '' && reasonOf( [ 1, 0, 0 ], 'Band' ) === word('reason/pick-no-loop') && reasonOf( [ 1, 0, 0, 0 ], 'Band' ) === 'Not in a card' );
 builder._closeDialog();
 
 openBand();
@@ -10181,14 +10381,12 @@ check( '...a field in a tile that stands in no loop is red as well - a static se
 check( 'the placeholder of a field is a layer behind the content of the column: absolute over the whole frame, under the head and the body, no pointer events - and the frame is the box it is placed in',
 	/\.builder-col-bg \{[^}]*position: absolute;[^}]*inset: 0;[^}]*z-index: 0;[^}]*pointer-events: none;/.test( stylesheet ) === true && /\.builder-pcol \{\n\tposition: relative;/.test( stylesheet ) === true
 	&& /\.builder-pcol-head,\n\.builder-col-body \{\n\tposition: relative;\n\tz-index: 1;/.test( stylesheet ) === true );
-check( 'a column with a loop of its own says in the form, under Background image, that its picture stands outside the loop and is the same behind every cell - and a column of a loop of sections, or none, says nothing',
+check( 'the picture of a column is the column\'s whatever it holds - a loop among its components stands over it, and the form says nothing of the loop under Background image: the sentence for a column with a loop of its own is gone, from the form and from both languages',
 	( function() {
 		const own = page();
 		own.blocks[1].cols[1].background = null;
 		const content = dialogOf( own, [ 1, 1 ] );
-		const hints = function( root ) { return root.querySelectorAll('.builder-background-own-loop') };
-		const said = hints( content ).length === 1 && hints( content )[0].querySelector('.builder-help-tip').textContent === word('hint/background-own-loop') && hints( content )[0].parentNode.dataset.key === 'background';
-		return said && hints( dialogOf( fieldLoop( false ) ) ).length === 0 && hints( dialogOf( page() ) ).length === 0 && wordIn( englishFile, 'hint/background-own-loop' ) === true && wordIn( germanFile, 'hint/background-own-loop' ) === true;
+		return content.querySelectorAll('.builder-background-own-loop').length === 0 && wordIn( englishFile, 'hint/background-own-loop' ) === false && wordIn( germanFile, 'hint/background-own-loop' ) === false;
 	} )() );
 check( '...a type the Elements panel has not makes the loop red and not the picture, which cannot be judged by a type that is not there',
 	fieldRed( function( model ) { model.blocks[0].stack.source = '/nowhere' } ) === '0:type:/nowhere' );
@@ -10463,21 +10661,25 @@ check( 'the hint of the group names no stack - the words come from the registry 
 		builder._closeDialog();
 		return tip === words['/_admin/builder/hint/group'] && groupTakers().every( function( name ) { return tip.toLowerCase().indexOf( registry().stacks[name].label.toLowerCase() ) === -1 } ) && /widths/.test( tip ) && /gap/.test( tip ) && /alignment/.test( tip ) && /order/.test( tip ) && /picture/.test( tip );
 	} )() );
-check( 'the stack of the group is not offered as the presentation of one of its columns - its loop would end the group at its own closing tag - and the others are, and in a section that is no group every stack is',
+check( 'the stack of the group is not offered as a loop in one of its columns - its call would end the group at its own closing tag: the lightbox greys it, with the reason, and offers the others - and in a section that is no group every stack is offered',
 	( function() {
 		const offered = function( at ) {
-			builder._openSettings( at );
-			const options = controlOf( blockOf('loop'), word('stack/kind') ).el.children.map( function( option ) { return option.value } );
+			builder._pickComponent( at );
+			const items = loopItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name+ ':'+ ( item.disabled === true ? item.title : '' ) } );
 			builder._closeDialog();
-			return options;
+			return items;
 		};
 		const grouped = offered( [ 0, 0 ] );
 		const stack = builder._doc.model.blocks[0].settings.group;
 		builder._doc.model.blocks[0].settings.group = '';
 		const plain = offered( [ 0, 0 ] );
 		builder._doc.model.blocks[0].settings.group = stack;
-		return grouped.indexOf( stack ) === -1 && plain.indexOf( stack ) !== -1 && grouped.length === plain.length - 1 && grouped.indexOf('') === 0 && grouped.indexOf('stack') !== -1;
+		return grouped.indexOf( stack+ ':'+ word('reason/loop-in-group') ) !== -1 && plain.indexOf( stack+ ':' ) !== -1 && grouped.filter( function( item ) { return /:$/.test( item ) } ).length === plain.length - 1 && grouped.length === plain.length && grouped.indexOf('stack:') !== -1;
 	} )() );
+check( '...and a loop of that stack cannot be added to a column of the group by the paste either', ( function() {
+	const clip = { kind : 'component', file : 'page-home', section : 'hero', values : {}, node : Object.assign( builder._newLoop( registry(), builder._doc.model.blocks[0].settings.group ), { source : '/services' } ) };
+	return builder._pasteable( builder._doc.model, registry(), [ 0, 0 ], clip ) === word('reason/loop-in-group');
+} )() );
 check( 'a title with markup is drawn in the preview as the page shows it, without the tags - and a title that is nothing but tags is numbered',
 	( function() {
 		const model = builder._doc.model;
