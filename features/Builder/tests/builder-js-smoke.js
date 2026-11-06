@@ -197,7 +197,7 @@ Object.assign( words, {
 // A word of the panel by its key under /_admin/builder/: a sentence is pinned by where it stands and what it is filled with, never by what it says
 const word = function( key ) { return words['/_admin/builder/'+ key] };
 // The select that chooses how a loop is shown, by its label
-const kindWord = word('stack/kind');
+const kindWord = word('stack/mode');
 
 // ------------------------------------------------------------ A small stand-in of the page
 
@@ -1069,10 +1069,14 @@ const iconsKnown = function( root ) {
 // those that are not greyed, which are the components that can be added where it was opened. The label is in the span of its own
 const lightboxOf = function() { return screen.getElementById('builder-dialog-content').querySelector('.builder-lightbox') };
 const pickLabel = function( item ) { return item.children[1].textContent };
-const itemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item').filter( function( item ) { return item.classList.contains('is-loop') === false } ) };
-// The loops of the lightbox are a group of their own, and the components are the others
+const itemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item').filter( function( item ) { return item.classList.contains('is-loop') === false && item.classList.contains('is-group') === false } ) };
+// The loops of the registry that are not groups of panels: the lightbox lists those as the Loops, and the stacks that take panels as the Groups
+const plainLoops = function() { return registry().loops.filter( function( name ) { return registry().stacks[name].panels !== true } ) };
+// The groups of panels of the lightbox
+const groupItemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item').filter( function( item ) { return item.classList.contains('is-group') === true } ) };
+// The loops and the groups of panels of the lightbox are groups of their own, and the components are the others
 const loopItemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item').filter( function( item ) { return item.classList.contains('is-loop') === true } ) };
-const componentGroups = function( box ) { return box.children.filter( function( group ) { return group.dataset.group !== 'loops' } ) };
+const componentGroups = function( box ) { return box.children.filter( function( group ) { return group.dataset.group !== 'loops' && group.dataset.group !== 'groups' } ) };
 const pickAt = function( path ) { builder._pickComponent( path ); return lightboxOf() };
 // An item by the name of its component, which is the registry's. Its label is the kernel's wording in the language of the workbench, and nothing to find it by
 const itemNamed = function( box, name ) { return itemsOf( box ).find( function( item ) { return item.dataset.name === name } ) };
@@ -2069,7 +2073,7 @@ check( 'the pencil in the title and the field are one rename: what the pencil re
 builder._closeDialog();
 builder._openSettings( [ 3 ] );
 builder._openBlock('loop');
-change( blockOf('loop').querySelector('.builder-loop-form'), words['/_admin/builder/stack/kind'], 'sections' );
+change( blockOf('loop').querySelector('.builder-loop-form'), words['/_admin/builder/stack/mode'], 'sections' );
 builder._openBlock('properties');
 questions = [];
 change( blockOf('properties'), idLabel, 'contact-us' );
@@ -2211,22 +2215,22 @@ const sideLabel = function( side, place ) { return word('section/spacing-cell').
 const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
 const stepsOf = function( box ) { return box.querySelectorAll('select').map( function( select ) { return select.dataset.key } ).join() };
 
-check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, group, width, order, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
-	&& blockIds().join() === 'surface,spacing,group,width,order,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
+check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, width, order, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
+	&& blockIds().join() === 'surface,spacing,width,order,loop,properties' && screen.getElementById('builder-dialog-tabs') === null && dialogContent().querySelector('.builder-tabpane') === null );
 check( '...every block is named by the words of its own key: a head that is a button with the name in it - and no block but the first has what it says of the element in front of the name', blockIds().every( function( id ) {
 	return headOf( id ).localName === 'button' && headOf( id ).querySelector('.builder-block-name').textContent === word('block/'+ id+ '/label') && word('block/'+ id+ '/label') !== '';
 } ) );
 check( '...the blocks are an accordion: the head controls its body and says whether it is open, the body is a region the head names, and exactly one block is open - the first where no other was open before', blockIds().every( function( id ) {
 	const body = blockOf( id );
 	return headOf( id ).getAttribute('aria-controls') === body.id && body.getAttribute('role') === 'region' && body.getAttribute('aria-labelledby') === headOf( id ).id && dialogContent().contains( body );
-} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false,false,false,false' && openBlock() === 'surface'
-	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true,true,true,true' );
+} ) && blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join() === 'true,false,false,false,false,false' && openBlock() === 'surface'
+	&& blockIds().map( function( id ) { return blockOf( id ).hidden } ).join() === 'false,true,true,true,true,true' );
 headOf('width').click();
 const pressed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
 headOf('width').click();
 const closed = openBlock()+ '/'+ blockIds().map( function( id ) { return headOf( id ).getAttribute('aria-expanded') } ).join();
 headOf('surface').click();
-check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,false,true,false,false,false' && closed === '/false,false,false,false,false,false,false' && openBlock() === 'surface' );
+check( '...a head pressed opens its block and closes the one that was open, one at a time; pressed once more it closes its block, and none is open', pressed === 'width/false,false,true,false,false,false' && closed === '/false,false,false,false,false,false' && openBlock() === 'surface' );
 // The controls the table lists for a block, as the dialog has drawn them, and the keys they write
 const heldIn = function( id ) { return builder._dialogBlocks.parts[id].spec.held };
 const keysHeld = function( id ) { return Array.from( new Set( [].concat( ...heldIn( id ).map( function( control ) { return control.keys } ) ) ) ) };
@@ -2793,8 +2797,8 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 3 ] );
 const loopTab = function() { return blockOf('loop').querySelector('.builder-loop-form') };
-check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( blockIds() ) === '["surface","spacing","group","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
-	&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( loopTab(), kindWord ) === '' && optionsOf( loopTab(), kindWord ) === '='+ word('stack/static')+ ',sections='+ registry().stacks.sections.label && loopTab().querySelectorAll('.builder-group').length === 0
+check( 'a section has its loop in a block of its own, between the order and the properties, with the choice of what repeats and nothing else while there is none: Nothing, Section for each element and Row for each element - the loops of the registry whose cell is a section, and those whose cell is the components of a column (a stack that says so is the only one of the first, none of the second is among its words)', JSON.stringify( blockIds() ) === '["surface","spacing","width","order","loop","properties"]' && blockOf('loop').children[0] === loopTab() && blockOf('loop').children.length === 1
+	&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord ] ) && valueAt( loopTab(), kindWord ) === '' && radiosOf( controlOf( loopTab(), kindWord ).el ).map( function( radio ) { return radio.value } ).join() === ',sections,row' && loopTab().querySelectorAll('.builder-group').length === 0
 	);
 change( loopTab(), kindWord, 'sections' );
 check( '...the loop that is chosen runs over the first type of the project with the attributes the stack has, and the block shows its form in the group Data and, for what the presentation brings of its own, a group named after it - no cells, no gap, no equal height: a section is the cell -, with the id of the loop that is the id of the section, shown and not to be typed, and the sentence that says how the sections are numbered after it', ( function() {
@@ -2809,18 +2813,21 @@ check( '...the loop that is chosen runs over the first type of the project with 
 		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ kindWord, 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Id of the loop' ].concat( own.map( function( key ) { return registry().stacks.sections.attributes[key].label } ) ) )
 		&& id.el.readOnly === true && id.el.value === 'contact' && tipOf( id ) === words['/_admin/builder/hint/sections-id'].replace( /%s/g, 'contact' );
 } )() );
-check( '...a section that runs a loop says so in its head, as a column does: the label of its presentation and the type, a button that opens the loop of the section - and the loop is in no other block\'s way: the columns of the section are the cell, once for each element', ( function() {
+check( '...a section that runs a loop of sections is drawn as a block around the section, in the colour of the loops: its bar has the word Sections and "for each element", the type and the order it runs over, and a button that opens the block Loop of the section; the head of the section stays in it, and a section that runs none is drawn as it was', ( function() {
 
 	builder._closeDialog();
 	builder._renderEditor();
 
-	const item = preview().children[3].querySelector('.builder-frame-head .builder-status-item.is-loop');
-	const opened = item !== null && item.localName === 'button' && item.textContent === registry().stacks.sections.label+ ' \u00b7 Services' && item.title === 'Settings of the loop: '+ item.textContent && iconOf( item ) === 'loop';
+	const block = preview().children[3];
+	const chips = block.querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } );
+	const gear = block.querySelector('.builder-tools-around button');
+	const opened = block.classList.contains('builder-loop') && block.classList.contains('is-sections') && block.querySelector('.builder-loop-name').textContent === word('loop/sections') && block.querySelector('.builder-loop-kind').textContent === word('loop/each')
+		&& chips[0] === 'Services' && block.querySelector('.builder-frame-head') !== null && block.querySelector('.builder-frame-name').textContent === 'contact';
 
-	item.click();
+	gear.click();
 
 	return opened && dialogText('builder-dialog-kind') === 'Content' && openBlock() === 'loop' && builder._same( builder._sel, [ 3 ] )
-		&& preview().children[0].querySelector('.builder-frame-head .builder-status-item.is-loop') === null;
+		&& preview().children[0].classList.contains('builder-loop') === false && preview().children[0].querySelector('.builder-frame-head') !== null;
 } )() );
 check( '...what the loop of a section takes of the other blocks is its own: the cover is as high as the page makes it - the height is asleep and is 90, the one height a call has - and the animation is the section\'s as it was, delay and duration among it: the document takes them of a loop, so the fields stay and what they hold is kept', ( function() {
 
@@ -2848,7 +2855,7 @@ check( '...a column of such a section may not hold a loop of its own, and the lo
 
 	const box = pickAt( [ 0, 0 ] );
 	const items = loopItemsOf( box );
-	const column = items.length === registry().loops.length && items.every( function( item ) { return item.disabled === true && item.title === word('reason/loop-in-loop') } );
+	const column = items.length === plainLoops().length && items.every( function( item ) { return item.disabled === true && item.title === word('reason/loop-in-loop') } );
 
 	builder._closeDialog();
 	builder._openSettings( [ 0, 0 ] );
@@ -2858,7 +2865,7 @@ check( '...a column of such a section may not hold a loop of its own, and the lo
 	builder._closeDialog();
 	builder._openSettings( [ 1 ] );
 
-	return column && dialog && controlOf( dialogContent(), kindWord ).el.disabled === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section holds a loop of its own') === 0 && blockAt( 1 ).stack === null;
+	return column && dialog && controlOf( dialogContent(), kindWord ).el.classList.contains('is-disabled') === true && dialogContent().querySelector('.nino-admin-notice').textContent.indexOf('A column of this section holds a loop of its own') === 0 && blockAt( 1 ).stack === null;
 } )() );
 check( '...and the picker of a column of such a section holds back what a loop does not take, as it does in the column that runs one', ( function() {
 	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
@@ -3177,7 +3184,7 @@ builder._closeDialog();
 builder._pickComponent( [ 0, 0 ] );
 check( 'the lightbox of a column has the group Loops, last: every stack of the registry that may stand in a column, in the order of the registry, with the word it registered and the picture its schema names - and none of the sections\' - and the lightbox of the cell of a loop has none',
 	lightboxOf().children[lightboxOf().children.length - 1].dataset.group === 'loops' && lightboxOf().children[lightboxOf().children.length - 1].children[0].textContent === 'Loops'
-	&& loopItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name+ '='+ pickLabel( item ) } ).join() === registry().loops.map( function( name ) { return name+ '='+ registry().stacks[name].label } ).join() && registry().loops.indexOf('sections') === -1
+	&& loopItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name+ '='+ pickLabel( item ) } ).join() === plainLoops().map( function( name ) { return name+ '='+ registry().stacks[name].label } ).join() && registry().loops.indexOf('sections') === -1
 	&& loopItemsOf( lightboxOf() ).every( function( item ) { return item.disabled === false && item.querySelector('use').getAttribute('href') === '#builder-ph-'+ ( [ 'title', 'text', 'image', 'button', 'block', 'cells', 'table' ].indexOf( registry().stacks[item.dataset.name].preview ) === -1 ? 'block' : registry().stacks[item.dataset.name].preview ) } )
 	&& ( builder._closeDialog(), pickAt( [ 1, 1, 0 ] ), groupIn( lightboxOf(), 'loops' ) === undefined && builder._closeDialog(), pickAt( [ 1, 1 ] ), groupIn( lightboxOf(), 'loops' ) !== undefined ) );
 builder._closeDialog();
@@ -3469,7 +3476,7 @@ const noneSchema = registry().stacks[noneName];
 const noneCol = loopNode;
 check( 'a stack whose cell is none is in the lightbox of a column among the loops, in the place the registry gives it with its word, and in the choice of no section - the choice of a place is made by the cell',
 	noneName !== undefined && registry().loops.indexOf( noneName ) === Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell !== 'section' } ).indexOf( noneName ) && registry().loops.indexOf('sections') === -1
-	&& ( builder._closeDialog(), builder._pickComponent( [ 1, 1 ] ), pickLabel( loopItemsOf( lightboxOf() )[registry().loops.indexOf( noneName )] ) === noneSchema.label ) && ( builder._closeDialog(), true ) );
+	&& ( builder._closeDialog(), builder._pickComponent( [ 1, 1 ] ), pickLabel( loopItemsOf( lightboxOf() )[plainLoops().indexOf( noneName )] ) === noneSchema.label ) && ( builder._closeDialog(), true ) );
 asLoop( noneName );
 check( '...added, it has no children: a cell with no content holds nothing, and the loop and its data are what is left - and the row in the preview is a row with a sentence and no button that adds a component',
 	noneCol().components.length === 0 && noneCol().name === noneName && noneCol().source === '/services' && loopRow().dataset.cell === 'none' && loopRow().querySelectorAll('.builder-add-button').length === 0 && loopRow().querySelector('.builder-loop-says') !== null );
@@ -3639,7 +3646,7 @@ check( 'a loop that a feature registered stands in the choice of a column like t
 	const listed = loopItemsOf( pickAt( [ 1, 1 ] ) ).some( function( item ) { return item.dataset.name === 'zeta' && pickLabel( item ) === 'Zeta' } );
 	builder._closeDialog();
 	builder._openSettings( [ 3 ] );
-	const notInSection = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } ).indexOf('zeta') === -1;
+	const notInSection = radiosOf( controlOf( dialogContent(), kindWord ).el ).map( function( radio ) { return radio.value } ).join() === ',sections,row';
 	builder._closeDialog();
 	asLoop( 'zeta' );
 	const labels = labelList( blockOf('presentation') ).join();
@@ -3658,10 +3665,11 @@ check( '...a second stack whose cell is a whole section stands in the choice of 
 	builder._renderEditor();
 	const inColumn = loopItemsOf( pickAt( [ 1, 1 ] ) ).map( function( item ) { return item.dataset.name } );
 	builder._closeDialog();
+	builder._doc.model.blocks[3].stack = builder._stackFor( builder._registry, 'sections', null );
 	builder._openSettings( [ 3 ] );
-	const inSection = controlOf( dialogContent(), kindWord ).el.children.map( function( option ) { return option.value } );
+	const inSection = controlOf( dialogContent(), word('stack/kind') ).el.children.map( function( option ) { return option.value } );
 	delete builder._registry.stacks.omega;
-	return inColumn.indexOf('omega') === -1 && inColumn.indexOf('sections') === -1 && inColumn.length > 3 && inSection.join() === ',sections,omega';
+	return inColumn.indexOf('omega') === -1 && inColumn.indexOf('sections') === -1 && inColumn.length > 3 && inSection.join() === 'sections,omega';
 } )() );
 check( '...the loop of a section that is changed for another keeps its data and the attributes the other has by the same name and takes - a choice among its options, a number within its bounds - and leaves the rest at the default: a choice outside the options and a switch that is none', ( function() {
 	const stacks = builder._registry.stacks;
@@ -3776,7 +3784,7 @@ tableCol().components[0].text = '[[price]],- EUR';
 builder._renderEditor();
 builder._closeDialog();
 check( '...a double click on a line of the table opens the dialog of the loop on its presentation, where the columns are edited; a click on it selects the loop, and a line is no frame to pick',
-	dialogBox().open === false && ( tableLines()[0].dispatch('click'), builder._same( builder._sel, [ 1, 1, 0 ] ) ) && ( tableLines()[0].dispatch('dblclick'), dialogBox().open === true && dialogText('builder-dialog-kind') === 'Loop: Table' && openBlock() === 'presentation' ) && tableLines()[0].classList.contains('builder-pick') === false );
+	dialogBox().open === false && ( tableLines()[0].dispatch('click'), builder._same( builder._sel, [ 1, 1, 0, 0 ] ) ) && ( tableLines()[0].dispatch('dblclick'), dialogBox().open === true && dialogText('builder-dialog-kind') === 'Loop: Table' && openBlock() === 'presentation' ) && tableLines()[0].classList.contains('builder-pick') === false );
 builder._closeDialog();
 
 // A list whose cell is one field or one line: a row, which the form shows as a value and the preview as rows
@@ -4073,7 +4081,7 @@ openWith( [ 0 ], ( function() {
 	table.section.find( function( block ) { return block.id === 'width' } ).controls = [];
 	return table;
 } )() );
-check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other six blocks, in the order of the table', blockIds().join() === 'surface,spacing,group,order,loop,properties' );
+check( 'a block none of whose controls the table lists is not drawn: the dialog of a section with no control in Width and alignment has the other five blocks, in the order of the table', blockIds().join() === 'surface,spacing,order,loop,properties' );
 openWith( [ 0 ] );
 settingsOf().custom = 'one';
 settingsOf().rowCustom = 'two';
@@ -4122,7 +4130,7 @@ check( 'what is said of a frame in the preview opens its dialog on the block the
 	builder.BLOCKS = tableMoved( tableMoved( tableWith(), 'section', 'stack', 'surface' ), 'column', 'stackAlign', 'surface' );
 
 	try {
-		preview().children[3].querySelector('.builder-frame-head .builder-status-item.is-loop').click();
+		preview().children[3].querySelector('.builder-tools-around button').click();
 
 		const loop = openBlock() === 'surface' && dialogText('builder-dialog-kind') === 'Content';
 
@@ -9057,7 +9065,7 @@ check( '...a tool that is off pastes nothing, and nothing is changed by a press 
 } ) );
 
 const addBar = function() { return screen.getElementById('builder-add-bar') };
-check( 'the add bar of the page has a button to paste after its three: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
+check( 'the add bar of the page has a button to paste after its four: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
 
 	doc = open();
 	builder._clip = null;
@@ -9066,7 +9074,7 @@ check( 'the add bar of the page has a button to paste after its three: made by t
 	const buttons = addBar().querySelectorAll('button');
 	const paste = addBar().querySelector('.builder-add-paste');
 
-	return buttons.length === 4 && buttons[3] === paste && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Content' && buttons[1].textContent === '+ Tiles' && buttons[2].textContent === '+ HTML+ block'
+	return buttons.length === 5 && buttons[4] === paste && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Content' && buttons[1].textContent === '+ Tiles' && buttons[2].textContent === '+ Loop' && buttons[3].textContent === '+ HTML+ block'
 		&& addBar().className === 'builder-add-bar';
 } ) );
 check( '...a section or a block of html clip makes it ready: its title is Paste and the kind word, a press puts the clip at the end of the page, selected, and the button is not made twice', attempt( function() {
@@ -9084,7 +9092,7 @@ check( '...a section or a block of html clip makes it ready: its title is Paste 
 	const ids = builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join();
 
 	return ready && ids === 'hero,services,html,contact,hero-2' && builder._same( builder._sel, [ 4 ] ) && builder._fresh['hero-2'] === true && changes === 1 && screen.activeElement === toolOf( '4', 'paste' )
-		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 4;
+		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 5;
 } ) );
 check( '...a column or a component clip cannot go to the end of the page: the button is off and says why, and a press changes nothing', attempt( function() {
 
@@ -9711,7 +9719,7 @@ check( 'the editor of HTML+ that is opened from the tool for it and cancelled le
 
 console.log( '\nThe seven blocks, the background image, the pictures and the link of a card' );
 
-check( 'the table names twelve blocks in all - content, link, group, surface, tiles, spacing, width, order, loop and properties, and, for a loop of a column, data and presentation; the tiles being those of a section of tiles and the group the block of the group of panels a section is and the title of a panel its column has - the loop of a section is a block of its own, between the order and the properties: the one control stack, which no other block lists - a component has no loop, and neither has a column: its loop is a component with a dialog of its own', ( function() {
+check( 'the table names the blocks of every kind of element - content, link, surface, tiles, spacing, width, order, loop and properties, and, for a loop of a column, data and presentation, for a group of panels fill, presentation and properties, for a panel content and properties; the tiles being those of a section of tiles - the loop of a section is a block of its own, between the order and the properties: the one control stack, which no other block lists - a component has no loop, and neither has a column: its loop is a component with a dialog of its own', ( function() {
 
 	const ids = {};
 	const ofKind = function( kind ) { return builder.BLOCKS[kind].map( function( block ) { return block.id } ).join() };
@@ -9719,13 +9727,13 @@ check( 'the table names twelve blocks in all - content, link, group, surface, ti
 
 	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { ids[block.id] = true } ) } );
 
-	return Object.keys( ids ).sort().join() === 'content,data,group,link,loop,order,presentation,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,group,width,order,loop,properties' && ofKind('column') === 'group,surface,spacing,width,properties'
-		&& ofKind('component') === 'content,link,surface,spacing,properties' && ofKind('loop') === 'data,presentation,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && loop('column') === undefined
+	return Object.keys( ids ).sort().join() === 'content,data,fill,link,loop,order,presentation,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,width,order,loop,properties' && ofKind('column') === 'surface,spacing,width,properties'
+		&& ofKind('component') === 'content,link,surface,spacing,properties' && ofKind('loop') === 'data,presentation,properties' && ofKind('group') === 'fill,presentation,properties' && ofKind('panel') === 'content,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && loop('column') === undefined
 		&& [ 'section' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
-		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && builder.BLOCKS.column.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop' && word('block/data/label') === 'Data' && word('block/presentation/label') === 'Presentation';
+		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && builder.BLOCKS.column.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop' && word('block/data/label') === 'Data' && word('block/presentation/label') === 'Presentation' && word('block/fill/label') === 'Filling';
 } )() );
 check( '...the surface of a section lists the line, the colour, the background inside and the corners first and then the picture with what depends on it, the arrow last; the surface of a column the colour and the corners first, then the picture, the dimming, the link over the whole of a tile and the offset', JSON.stringify( builder.BLOCKS.section[0].controls )
-	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[1].controls ) === '["color","radius","background","dim","linked","bgPl","bgPr"]' );
+	=== '["border","borderPrimary","color","inner","radius","rowRadius","background","cover","parallax","dim","padded","rowBgPl","rowBgPr","arrow"]' && JSON.stringify( builder.BLOCKS.column[0].controls ) === '["color","radius","background","dim","linked","bgPl","bgPr"]' );
 
 doc = open();
 builder._renderEditor();
@@ -9857,7 +9865,7 @@ builder._closeDialog();
 builder._openSettings( [ 3 ] );
 builder._openBlock('loop');
 check( 'the loop of a section is the block Loop, with its own name: a head that says what the control says - nothing while there is no loop, the words of the loop once there is one - and the properties keep the animation, the classes and the id', headOf('loop').querySelector('.builder-block-name').textContent === 'Loop'
-	&& saysOf('loop').hidden === true && labelList( blockOf('properties') ).indexOf( word('stack/kind') ) === -1 && ( change( blockOf('loop'), word('stack/kind'), 'sections' ), saysOf('loop').textContent === registry().stacks.sections.label && saysOf('loop').hidden === false ) );
+	&& saysOf('loop').hidden === true && labelList( blockOf('properties') ).indexOf( word('stack/mode') ) === -1 && ( change( blockOf('loop'), word('stack/mode'), 'sections' ), saysOf('loop').textContent === registry().stacks.sections.label && saysOf('loop').hidden === false ) );
 builder._closeDialog();
 builder._openSettings( [ 1, 1, 0 ] );
 check( '...the loop of a column has no block of that name: its blocks say what is in them in their heads - the type and the order for the data, nothing for a presentation that is the default, the id for the properties - and the table of the cells is drawn in the presentation', blockIds().join() === 'data,presentation,properties' && saysOf('data').textContent === 'Services · Sort by title · Limit 6' && saysOf('properties').hidden === true && blockOf('presentation').querySelector('table') !== null );
@@ -10229,7 +10237,7 @@ const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'sect
 check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Order, Loop and Properties - no block of the width',
 	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
 check( '...and Order, after Spacing, with the switch of each viewport that is shown - a section of tiles is a row like any other, and its tiles turn round the way columns do: one switch in the view of one viewport, the model a switch for each', labelList( blockOf('order') ).join() === word('section/reverse-in').replace( '%s', builder._viewport === 'g' ? 'Mobile' : word( 'viewport/'+ builder._viewport ) )+ ( builder._viewport === 'g' ? ',Reversed (Tablet),Reversed (Desktop)' : '' )
-	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 3 );
+	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 2 );
 check( '...Surface has the colour - between the tiles - and the border, and the group Background image: the picture behind the whole section with its focus and its dimming, which a section of tiles has as a content section does; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background inside, offset, arrow or radius',
 	[ word('section/color-tiles'), word('section/border'), word('section/border-primary') ].every( function( label ) { return blockOf('surface').all().some( function( el ) { return controlsIn( blockOf('surface') ).some( function( control ) { return control.label === label } ) } ) } )
 	&& labelList( blockOf('surface') ).indexOf( word('section/dim') ) !== -1 && labelList( blockOf('surface') ).indexOf( word('picture/upload') ) !== -1 && titlesIn( blockOf('surface') ) === word('group/background-image')
@@ -10531,7 +10539,7 @@ check( 'the kind of a section is switched in its dialog, which is drawn again fo
 	const tiles = builder._doc.model.blocks[0].settings.tiles === true && builder._doc.model.blocks[0].settings.ratio === '4-3' && dialogText('builder-dialog-kind') === 'Tiles' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && openBlock() === 'properties'
 		&& builder._doc.model.blocks[0].settings.cover === null && changes === was + 1 && preview().children[0].classList.contains('is-tiles') === true;
 	change( blockOf('properties'), word('section/kind'), 'content' );
-	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,group,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
+	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
 } )() );
 
 // The preview
@@ -10554,168 +10562,607 @@ check( '...it is drawn as it is on the page: edge to edge - the frame says so, a
 			&& /\.builder-frame\.is-tiles\s*\{[^}]*--builder-gap:\s*0px/.test( stylesheet ) && /\.builder-frame\.is-tiles > \.builder-frame-body\s*\{[^}]*padding:\s*0/.test( stylesheet ) && /\.builder-frame\.is-tiles \.builder-pcol\s*\{[^}]*aspect-ratio:\s*var\(--builder-ratio/.test( stylesheet );
 	} )() );
 
-console.log( '\nA section as a group of panels' );
+console.log( '\nGroups of panels, the loop around a row, the loop of sections as a block' );
+{
 
-// The stacks that take panels, as the registry says it: the Builder knows none of them by name
-const groupTakers = function() { return Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].panels === true } ) };
-const groupOwn = function( name ) {
-	const declared = registry().stacks[name].attributes;
-	return Object.keys( declared ).filter( function( key ) { return declared[key].type !== 'field' && key !== 'text' } );
+// The stacks that take panels, as the registry says it, and the group at a path of the model
+const groupNames = function() { return registry().loops.filter( function( name ) { return registry().stacks[name].panels === true } ) };
+const nodeAt = function( at ) { return builder._get( builder._doc.model, at ) };
+// A group with panels made by hand, in the column of the second section: two panels, a text in the first
+const withGroup = function( name ) {
+
+	doc = open();
+	builder._registry = registry();
+
+	const col = builder._doc.model.blocks[1].cols[1];
+	const group = builder._newGroup( registry(), name ?? 'tabs' );
+
+	group.panels.push( builder._newPanel() );
+	group.panels[0].title = 'Prices';
+	group.panels[1].title = 'Details';
+	group.panels[0].components.push( builder._newComponent( builder._doc.model, registry(), 'page-home', [ 1, 1, col.components.length, 0 ], 'text', builder._keys ) );
+	col.components = [ group ];
+	builder._renderEditor();
+	builder._closeDialog();
+
+	return group;
 };
-const groupStack = function() { return groupTakers().find( function( name ) { return groupOwn( name ).length > 0 } ) };
 
+withGroup();
+builder._closeDialog();
+builder._pickComponent( [ 0, 0 ] );
+check( 'the lightbox of a column has the group Groups before the group Loops, last: every stack of the registry that takes panels, in the order of the registry, with the word it registered and the picture its schema names - and the Loops are the others', ( function() {
+
+	const last = lightboxOf().children.slice( -2 );
+	const loops = loopItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name } );
+
+	return last.map( function( group ) { return group.dataset.group } ).join() === 'groups,loops' && last[0].children[0].textContent === word('pick/groups') && groupNames().length > 1
+		&& groupItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name+ '='+ pickLabel( item ) } ).join() === groupNames().map( function( name ) { return name+ '='+ registry().stacks[name].label } ).join()
+		&& groupItemsOf( lightboxOf() ).every( function( item ) { return item.disabled === false && item.querySelector('use').getAttribute('href') === '#builder-ph-'+ registry().stacks[item.dataset.name].preview } )
+		&& loops.length > 0 && loops.every( function( name ) { return groupNames().indexOf( name ) === -1 } ) && itemsOf( lightboxOf() ).every( function( item ) { return groupNames().indexOf( item.dataset.name ) === -1 } );
+} )() );
+builder._closeDialog();
+builder._pickComponent( [ 1, 1, 0, 0 ] );
+check( '...in the lightbox of a panel the groups are greyed with the reason, a group standing in none; the loops are there and the loop of a section is not offered; the lightbox of the cell of a loop has neither group', groupItemsOf( lightboxOf() ).length === groupNames().length
+	&& groupItemsOf( lightboxOf() ).every( function( item ) { return item.disabled === true && item.title === word('reason/group-in-group') } ) && loopItemsOf( lightboxOf() ).every( function( item ) { return item.disabled === false } )
+	&& ( builder._closeDialog(), withGroup(), builder._doc.model.blocks[1].cols[1].components.push( builder._newLoop( registry(), 'repeat' ) ), builder._pickComponent( [ 1, 1, 1 ] ), groupIn( lightboxOf(), 'groups' ) === undefined && groupIn( lightboxOf(), 'loops' ) === undefined ) );
+builder._closeDialog();
+
+// Adding a group: the stack with no type, one panel, and the dialog open on how it is filled
 doc = open();
-builder._lastBlock = {};
+builder._renderEditor();
+builder._pickComponent( [ 0, 0 ] );
+groupItemsOf( lightboxOf() )[0].click();
+const added = builder._doc.model.blocks[0].cols[0].components.slice( -1 )[0];
+const addedAt = [ 0, 0, builder._doc.model.blocks[0].cols[0].components.length - 1 ];
+check( 'a group is added in the lightbox: the stack with no type, an id and a class that are empty and the attributes it keeps at their defaults, one panel with no title, no class and nothing in it, selected - and its dialog opens, on the filling', added.name === groupNames()[0] && added.source === '' && JSON.stringify( Object.keys( added ) ) === '["name","source","attributes","panels"]'
+	&& added.attributes.id === '' && added.attributes.class === '' && added.panels.length === 1 && JSON.stringify( added.panels[0] ) === '{"title":"","class":"","components":[]}' && Object.keys( added ).indexOf('components') === -1
+	&& builder._same( builder._sel, addedAt ) && dialogText('builder-dialog-kind') === 'Group: '+ registry().stacks[added.name].label && builder._kind( builder._doc.model, addedAt ) === 'group' && builder._isGroup( added ) === true && builder._isGroup( added, registry() ) === true );
+check( '...a group of the stack that has attributes of its own keeps those of the types that are no field and no line of text: its dialog has the blocks Filling, Presentation and Properties, the presentation the attributes, the properties the id and the class; tabs have none of their own, and no block for them', ( function() {
+
+	const names = groupNames();
+	const bare = names.find( function( name ) { return Object.keys( builder._groupDeclared( registry().stacks[name] ) ).length === 0 } );
+	const own = names.find( function( name ) { return Object.keys( builder._groupDeclared( registry().stacks[name] ) ).length > 0 } );
+
+	builder._closeDialog();
+	builder._pickComponent( [ 0, 0 ] );
+	groupItemsOf( lightboxOf() ).find( function( item ) { return item.dataset.name === own } ).click();
+
+	const withOwn = blockIds().join() === 'fill,presentation,properties' && labelList( blockOf('presentation') ).join() === Object.keys( builder._groupDeclared( registry().stacks[own] ) ).map( function( key ) { return registry().stacks[own].attributes[key].label } ).join()
+		&& labelList( blockOf('properties') ).join() === [ word('group/id'), word('group/class') ].join() && builder._doc.model.blocks[0].cols[0].components.slice( -1 )[0].attributes.exclusive !== undefined;
+
+	builder._closeDialog();
+	builder._pickComponent( [ 0, 0 ] );
+	groupItemsOf( lightboxOf() ).find( function( item ) { return item.dataset.name === bare } ).click();
+
+	return withOwn && blockIds().join() === 'fill,properties' && Object.keys( builder._doc.model.blocks[0].cols[0].components.slice( -1 )[0].attributes ).join() === 'id,class';
+} )() );
+builder._closeDialog();
+
+// How a group is filled
+withGroup();
+builder._openSettings( [ 1, 1, 0 ] );
+check( 'a group is filled by hand or from a type, a segment in the first block of its dialog: fixed is chosen when it is added; the loop of the same stack has the segment as well, as the first control of its data - a stack that takes no panels has none', valueAt( blockOf('fill'), word('group/fill') ) === 'fixed'
+	&& radiosOf( controlOf( blockOf('fill'), word('group/fill') ).el ).map( function( radio ) { return radio.value } ).join() === 'fixed,type' && saysOf('fill').textContent === word('group/fill-fixed') );
+check( '...turned to a type it is a loop in the place it stands: the stack with the first type of the project, the attributes it kept, an empty cell and no panels - and the dialog is the loop\'s, on the data, with the segment set to a type; a group with something in its panels asks first, in the dialog, and changes nothing until it is told to', ( function() {
+
+	const node = nodeAt( [ 1, 1, 0 ] );
+	const was = JSON.stringify( node );
+
+	change( blockOf('fill'), word('group/fill'), 'type' );
+
+	const asked = dialogContent().querySelector('.builder-fill-ask').querySelectorAll('button');
+	const kept = JSON.stringify( node ) === was && asked.length === 2 && dialogContent().querySelector('.builder-fill-ask').querySelector('.nino-admin-notice') !== null && builder._isGroup( node ) === true;
+
+	asked[1].click();
+
+	const refused = builder._isGroup( nodeAt( [ 1, 1, 0 ] ) ) === true && valueAt( blockOf('fill'), word('group/fill') ) === 'fixed' && dialogContent().querySelector('.builder-fill-ask').children.length === 0;
+
+	change( blockOf('fill'), word('group/fill'), 'type' );
+	dialogContent().querySelector('.builder-fill-ask').querySelectorAll('button')[0].click();
+
+	const now = nodeAt( [ 1, 1, 0 ] );
+
+	return kept && refused && builder._isGroup( now ) === false && now === node && builder._kind( builder._doc.model, [ 1, 1, 0 ] ) === 'loop' && now.name === 'tabs' && now.source === registry().types[0].uri && Array.isArray( now.components ) === true && now.components.length === 0
+		&& now.panels === undefined && now.attributes.sort === '' && dialogText('builder-dialog-kind') === 'Loop: '+ registry().stacks.tabs.label && blockIds().join() === 'data,presentation,properties' && openBlock() === 'data' && valueAt( blockOf('data'), word('group/fill') ) === 'type';
+} )() );
+check( '...and turned back to fixed it is a group with one panel: the cell is lost, after a question where it holds something - and without one where it holds nothing; the id and the class of the call stay', ( function() {
+
+	const node = nodeAt( [ 1, 1, 0 ] );
+
+	node.attributes.id = 'faq';
+	node.attributes.class = 'wide';
+	change( blockOf('data'), word('group/fill'), 'fixed' );
+
+	const direct = builder._isGroup( node ) === true && node.panels.length === 1 && node.components === undefined && node.source === '' && node.attributes.id === 'faq' && node.attributes.class === 'wide' && dialogText('builder-dialog-kind') === 'Group: '+ registry().stacks.tabs.label && Object.keys( node.attributes ).indexOf('sort') === -1;
+
+	change( blockOf('fill'), word('group/fill'), 'type' );
+	node.components.push( builder._newComponent( builder._doc.model, registry(), 'page-home', [ 1, 1, 0, 0 ], 'title', builder._keys ) );
+	builder._openSettings( [ 1, 1, 0 ] );
+	change( blockOf('data'), word('group/fill'), 'fixed' );
+
+	const asked = dialogContent().querySelector('.builder-fill-ask').querySelectorAll('button').length === 2 && builder._isGroup( node ) === false && node.components.length === 1;
+
+	dialogContent().querySelector('.builder-fill-ask').querySelectorAll('button')[0].click();
+
+	return direct && asked && builder._isGroup( node ) === true && node.panels.length === 1 && node.panels[0].components.length === 0;
+} )() );
+builder._closeDialog();
+
+// The preview of a group: orange, its panels as rows
+withGroup();
+const groupBox = function() { return preview().querySelector('[data-path="1.1.0"]') };
+check( 'a group is a box with its own colour in the column: the class that gives it, the word of its stack, "fixed", one chip with the titles of its panels, and its tools - settings, up, down, copy, paste and delete, no duplicate; shut until it is opened', groupBox().classList.contains('builder-loop') && groupBox().classList.contains('is-group')
+	&& groupBox().dataset.fill === 'fixed' && groupBox().dataset.stack === 'tabs' && groupBox().querySelector('.builder-loop-name').textContent === registry().stacks.tabs.label && groupBox().querySelector('.builder-loop-kind').textContent === word('loop/fixed')
+	&& groupBox().querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } ).join() === 'Prices · Details' && groupBox().querySelector('.builder-loop-body').hidden === true && groupBox().classList.contains('is-open') === false
+	&& [ 'settings', 'up', 'down', 'copy', 'paste', 'delete' ].every( function( tool ) { return toolOf( '1.1.0', tool ).hidden === false } ) && toolOf( '1.1.0', 'duplicate' ).hidden === true );
+groupBox().querySelector('.builder-loop-bar').dispatch('click');
+const panelRows = function() { return groupBox().querySelectorAll('.builder-panel') };
+check( '...open, its panels are rows - the title as a chip, an arrow, the tools of the row - shut each until it is opened, and under them the button that adds a panel; a panel opened shows what it holds one level in, and the button that adds a component', panelRows().length === 2 && groupBox().classList.contains('is-open') && panelRows().map( function( row ) { return row.querySelector('.builder-panel-title').textContent } ).join() === 'Prices,Details'
+	&& panelRows().every( function( row ) { return row.classList.contains('is-open') === false && row.querySelector('.builder-panel-body').hidden === true } ) && panelRows().map( function( row ) { return row.dataset.path } ).join() === '1.1.0.0,1.1.0.1'
+	&& [ 'settings', 'up', 'down', 'copy', 'paste', 'delete' ].every( function( tool ) { return toolOf( '1.1.0.0', tool ).hidden === false } ) && toolOf( '1.1.0.0', 'duplicate' ).hidden === true && toolOf( '1.1.0.0', 'up' ).disabled === true && toolOf( '1.1.0.1', 'down' ).disabled === true
+	&& buttonOf( groupBox().querySelector('.builder-loop-cell'), '+ Panel' ) !== null );
+panelRows()[0].querySelector('.builder-panel-bar').dispatch('click');
+check( '...', panelRows()[0].classList.contains('is-open') && panelRows()[0].querySelector('.builder-panel-body').hidden === false && panelRows()[0].querySelector('.builder-panel-body').querySelectorAll('.builder-ph').length === 1
+	&& buttonOf( panelRows()[0].querySelector('.builder-panel-body'), '+ Component' ) !== null && builder._same( builder._sel, [ 1, 1, 0, 0 ] ) && builder._kind( builder._doc.model, [ 1, 1, 0, 0 ] ) === 'panel' && builder._kind( builder._doc.model, [ 1, 1, 0, 0, 0 ] ) === 'component' );
+check( '...a repaint keeps what is open - the group and its panel are nodes of the model - and a save, whose answer is a model of new nodes, keeps them at the same place', ( function() {
+
+	builder._renderEditor();
+
+	const same = groupBox().classList.contains('is-open') && panelRows()[0].classList.contains('is-open') && panelRows()[1].classList.contains('is-open') === false;
+	const after = builder._clone( builder._doc.model );
+
+	builder._keepOpen( builder._doc.model, after );
+
+	const kept = builder._open.has( after.blocks[1].cols[1].components[0] ) && builder._open.has( after.blocks[1].cols[1].components[0].panels[0] ) && builder._open.has( after.blocks[1].cols[1].components[0].panels[1] ) === false;
+
+	return same && kept;
+} )() );
+
+// Panels: add, move, delete, copy, paste, and the dialog
+buttonOf( groupBox().querySelector('.builder-loop-cell'), '+ Panel' ).click();
+check( 'the button that adds a panel puts an empty one last, open and selected', nodeAt( [ 1, 1, 0 ] ).panels.length === 3 && JSON.stringify( nodeAt( [ 1, 1, 0, 2 ] ) ) === '{"title":"","class":"","components":[]}' && builder._same( builder._sel, [ 1, 1, 0, 2 ] )
+	&& panelRows()[2].classList.contains('is-open') && panelRows()[2].querySelector('.builder-panel-title').textContent === '3' );
+toolOf( '1.1.0.2', 'up' ).click();
+check( '...a panel moves in its group and is selected where it went; the group keeps its order of titles', nodeAt( [ 1, 1, 0 ] ).panels.map( function( panel ) { return panel.title } ).join() === 'Prices,,Details' && builder._same( builder._sel, [ 1, 1, 0, 1 ] ) );
+toolOf( '1.1.0.1', 'delete' ).click();
+check( '...and goes with a click on delete - empty, without a question; the last panel of a group stays', nodeAt( [ 1, 1, 0 ] ).panels.length === 2 && toolOf( '1.1.0.0', 'delete' ).disabled === false && ( builder._deleteAt( [ 1, 1, 0, 1 ] ), nodeAt( [ 1, 1, 0 ] ).panels.length === 1 ) && toolOf( '1.1.0.0', 'delete' ).disabled === true
+	&& builder._remove( builder._doc.model, [ 1, 1, 0, 0 ] ) === true );
+withGroup();
+builder._openSettings( [ 1, 1, 0, 1 ] );
+check( 'the dialog of a panel has its title and its class: the blocks Content and Properties, the title with the hint of the registry, written as it is typed, and the row of the preview is drawn again with it', dialogText('builder-dialog-kind') === 'Panel: Details' && blockIds().join() === 'content,properties' && labelList( blockOf('content') ).join() === word('col/panel-title') && labelList( blockOf('properties') ).join() === word('panel/class')
+	&& ( change( blockOf('content'), word('col/panel-title'), 'Facts' ), change( blockOf('properties'), word('panel/class'), 'mine' ), true ) && nodeAt( [ 1, 1, 0, 1 ] ).title === 'Facts' && nodeAt( [ 1, 1, 0, 1 ] ).class === 'mine' && saysOf('content').textContent === 'Facts'
+	&& groupBox().querySelectorAll('.builder-panel').map( function( row ) { return row.querySelector('.builder-panel-title').textContent } ).join() === 'Prices,Facts' );
+builder._closeDialog();
+builder._openSettings( [ 1, 1, 0, 0 ] );
+check( '...the title of a panel is a panel of the title in the dialog of the column no longer: a column has no title field', JSON.stringify( blockIds() ) === '["content","properties"]' && ( builder._closeDialog(), builder._openSettings( [ 1, 1 ] ), labelList( dialogContent() ).indexOf( word('col/panel-title') ) === -1 && blockIds().indexOf('group') === -1 ) );
+builder._closeDialog();
+
+// Copy and paste: a group with its panels, a panel into a group, a component into a panel
+withGroup();
+builder._doc.model.blocks[0].cols[0].components.push( builder._newComponent( builder._doc.model, registry(), 'page-home', [ 0, 0, 0 ], 'title', builder._keys ) );
+builder._renderEditor();
+const clip = builder._copyAt( [ 1, 1, 0 ] );
+check( 'a group is copied with its panels as a component, and a panel as a panel: the clip says what it is by its word, and the paste tool of a column, of a component and of the page is ready for the group where the kind fits', clip.kind === 'component' && builder._isGroup( clip.node ) === true && clip.node.panels.length === 2 && builder._clipWord( clip ) === word('tree/group')
+	&& builder._pasteable( builder._doc.model, registry(), [ 0, 0 ], clip ) === '' && builder._pasteable( builder._doc.model, registry(), [ 0, 0, 0 ], clip ) === '' && builder._pasteable( builder._doc.model, registry(), [], clip ) !== ''
+	&& builder._clipWord( builder._copyAt( [ 1, 1, 0, 1 ] ) ) === word('tree/panel') && builder._copyAt( [ 1, 1, 0, 1 ] ).kind === 'panel' );
+builder._copyAt( [ 1, 1, 0 ] );
+const heroEnd = builder._doc.model.blocks[0].cols[0].components.length;
+const into = builder._paste( builder._doc.model, registry(), 'page-home', [ 0, 0 ], builder._clip );
+check( '...pasted in a column it is a group of its own with the same panels and a copy of what they hold - the keys of the texts in them are new ones, under the section it goes into - and the original stays', ( function() {
+
+	const copy = nodeAt( into );
+	const original = nodeAt( [ 1, 1, 0 ] );
+
+	return builder._same( into, [ 0, 0, heroEnd ] ) && builder._isGroup( copy ) === true && copy !== original && copy.panels.map( function( panel ) { return panel.title } ).join() === 'Prices,Details' && copy.panels[0].components.length === 1
+		&& copy.panels[0].components[0].source !== original.panels[0].components[0].source && copy.panels[0].components[0].source.indexOf('/template/page-home/hero/') === 0 && copy.panels[0].components[0].create !== undefined;
+} )() );
+builder._copyAt( [ 1, 1, 0, 0 ] );
+check( '...a panel is pasted into a group, at its end, and after a panel it is pasted at; not into a column, a component or the page; a group does not go into a panel, and a component goes into a panel at its end', ( function() {
+
+	const panelClip = builder._clip;
+	const group = nodeAt( [ 1, 1, 0 ] );
+	const before = group.panels.length;
+	const at = builder._paste( builder._doc.model, registry(), 'page-home', [ 1, 1, 0 ], panelClip );
+	const after = builder._paste( builder._doc.model, registry(), 'page-home', [ 1, 1, 0, 0 ], panelClip );
+
+	builder._copyAt( [ 1, 1, 0 ] );
+
+	const groupClip = builder._clip;
+
+	builder._copyAt( [ 0, 0, 0 ] );
+
+	const text = builder._clip;
+	const placed = builder._paste( builder._doc.model, registry(), 'page-home', [ 1, 1, 0, 1 ], text );
+
+	return group.panels.length === before + 2 && builder._same( at, [ 1, 1, 0, before ] ) && builder._same( after, [ 1, 1, 0, 1 ] ) && builder._pasteable( builder._doc.model, registry(), [ 0, 0 ], panelClip ) !== '' && builder._pasteable( builder._doc.model, registry(), [ 0, 0, 0 ], panelClip ) !== ''
+		&& builder._pasteable( builder._doc.model, registry(), [], panelClip ) !== '' && builder._pasteable( builder._doc.model, registry(), [ 1, 1, 0, 0 ], groupClip ) === word('reason/group-in-group') && builder._same( placed, [ 1, 1, 0, 1, group.panels[1].components.length - 1 ] );
+} )() );
+check( '...a group is not pasted into the cell of a loop, as a loop is not: pasted at a loop it goes after it in the column; and one written into a cell is refused by the lightbox\'s rule for the cell, the reason being the one a loop in a loop has', ( function() {
+
+	withGroup();
+	builder._doc.model.blocks[0].cols[0].components.push( builder._newLoop( registry(), 'repeat' ) );
+
+	const loopAt = [ 0, 0, builder._doc.model.blocks[0].cols[0].components.length - 1 ];
+
+	builder._cellFor( registry(), loopAt );
+	builder._renderEditor();
+	builder._copyAt( [ 1, 1, 0 ] );
+
+	const where = builder._placeOf( builder._doc.model, loopAt, registry() );
+	const placed = builder._paste( builder._doc.model, registry(), 'page-home', loopAt, builder._clip );
+
+	return builder._same( placed, [ 0, 0, loopAt[2] + 1 ] ) && builder._componentsProblem( registry(), [ builder._clip.node ], where ) === word('reason/group-in-loop') && where.cell === true
+		&& builder._componentsProblem( registry(), [ builder._clip.node ], builder._placeOf( builder._doc.model, [ 0, 0 ], registry() ) ) === '';
+} )() );
+
+// The loop around a row: the choice in the block Loop of the section
+doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0 ] );
+builder._openBlock('loop');
+const pickLoopsReasons = function( at ) { return builder._pickLoops( builder._doc.model, at, registry() ).map( function( item ) { return item.reason } ) };
+const rowNames = function() { return Object.keys( registry().stacks ).filter( function( name ) { return registry().stacks[name].cell === 'components' } ) };
+check( 'the block Loop of a section chooses what repeats: nothing, the section for each element or the row for each element - a segment of the words of the panel - and the data and the presentation under it; the row is made with the first stack that loops components, on the first type of the project, with its columns as its cell', ( function() {
 
-check( 'a section has the block Group, after the spacing and before the width, with the segment Group: Columns, and the words of the stacks that take panels - from the registry, in its order, none by name in the panel',
-	groupTakers().length >= 2 && blockIds().indexOf('group') === blockIds().indexOf('spacing') + 1 && word('block/group/label') === 'Group' && labelList( blockOf('group') ).join() === word('section/group')
-	&& JSON.stringify( radiosOf( controlOf( blockOf('group'), word('section/group') ).el ).map( function( radio ) { return radio.value } ) ) === JSON.stringify( [ '' ].concat( groupTakers() ) )
-	&& JSON.stringify( controlOf( blockOf('group'), word('section/group') ).el.querySelectorAll('.builder-segment-face').map( function( face ) { return face.textContent } ) ) === JSON.stringify( [ word('section/group-columns') ].concat( groupTakers().map( function( name ) { return registry().stacks[name].label } ) ) )
-	&& currentOf( controlOf( blockOf('group'), word('section/group') ) ) === '' && builder._doc.model.blocks[0].settings.group === '' );
+	const loopTab = function() { return blockOf('loop').querySelector('.builder-loop-form') };
 
-const groupRow = JSON.stringify( [ builder._doc.model.blocks[0].settings.reverse, builder._doc.model.blocks[0].settings.row, builder._doc.model.blocks[0].cols.map( function( col ) { return col.width } ) ] );
-const groupBefore = changes;
+	change( loopTab(), kindWord, 'row' );
 
-change( blockOf('group'), word('section/group'), groupStack() );
+	const section = builder._doc.model.blocks[0];
 
-check( 'the segment sets the group: the section is that stack, its attributes are those of the stack that the group keeps - its own, with their defaults, and no field, no line of text and none of the data of a loop - the dialog is drawn again on the block, and the change is one',
-	builder._doc.model.blocks[0].settings.group === groupStack() && JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.groupAttributes ) ) === JSON.stringify( groupOwn( groupStack() ) )
-	&& groupOwn( groupStack() ).every( function( key ) { return builder._doc.model.blocks[0].settings.groupAttributes[key] === String( registry().stacks[groupStack()].defaults[key] ) } )
-	&& changes === groupBefore + 1 && openBlock() === 'group' && currentOf( controlOf( blockOf('group'), word('section/group') ) ) === groupStack() );
-check( '...and the block shows the attributes of the stack under its name, a field each by the type of the schema and with the label of the registry, and none of the loop\'s data or of a field',
-	titlesIn( blockOf('group') ) === registry().stacks[groupStack()].label && JSON.stringify( labelList( blockOf('group') ).slice( 1 ) ) === JSON.stringify( groupOwn( groupStack() ).map( function( key ) { return registry().stacks[groupStack()].attributes[key].label } ) ) );
+	return section.stack === null && section.rowLoop !== null && section.rowLoop.name === rowNames()[0] && section.rowLoop.source === registry().types[0].uri && JSON.stringify( Object.keys( section.rowLoop ) ) === '["name","source","attributes"]'
+		&& valueAt( loopTab(), kindWord ) === 'row' && titlesIn( loopTab() ).split(',')[0] === 'Data' && labelList( loopTab() ).indexOf('Type') !== -1 && labelList( loopTab() ).indexOf('Id of the loop') !== -1 && labelList( loopTab() ).indexOf( word('loop/class') ) !== -1
+		&& saysOf('loop').textContent === registry().stacks[rowNames()[0]].label && labelList( loopTab() ).indexOf( word('stack/kind') ) !== -1;
+} )() );
+check( '...the choice among the stacks is a select of the stacks that loop components - tabs and the accordion among them: a tab for each element, each with a row - and changing it keeps the data; the section is a row and no loop of sections', ( function() {
 
-const groupSwitch = groupOwn( groupStack() ).find( function( key ) { return registry().stacks[groupStack()].attributes[key].type === 'bool' } );
-const groupSwitchLabel = registry().stacks[groupStack()].attributes[groupSwitch].label;
-const groupWas = builder._doc.model.blocks[0].settings.groupAttributes[groupSwitch];
+	const loopTab = function() { return blockOf('loop').querySelector('.builder-loop-form') };
+	const section = builder._doc.model.blocks[0];
 
-change( blockOf('group'), groupSwitchLabel, groupWas !== '1' );
+	section.rowLoop.attributes.sort = 'title';
+	change( loopTab(), word('stack/kind'), 'accordion' );
 
-check( '...a switch of the stack writes "1" or "0" into the attributes of the group',
-	builder._doc.model.blocks[0].settings.groupAttributes[groupSwitch] === ( groupWas === '1' ? '0' : '1' ) );
-check( 'only what the grid of the columns of a row says is not drawn for a group - the alignment, the order and the gap of the columns - and the row is the row it was: its width and place, its padding, the ground, the picture and the radius inside it, the animation with its delay and its duration, and the classes of the section and the row stay',
-	( function() {
-		const controls = builder._sectionControls( [ 0 ] );
-		const gone = [ 'rowAlign', 'reverse', 'rowGap' ];
-		const kept = [ 'width', 'row', 'rowPlace', 'inner', 'rowRadius', 'rowBgPl', 'rowBgPr', 'vpaDelay', 'vpaDuration', 'color', 'border', 'background', 'cover', 'whitespace', 'mt', 'rowPt', 'text', 'contentPos', 'stack', 'vpa', 'custom', 'rowCustom', 'id', 'kind', 'group' ];
-		return gone.every( function( name ) { return controls[name] === undefined } ) && kept.every( function( name ) { return controls[name] !== undefined } ) && blockIds().indexOf('order') === -1;
-	} )() );
-check( '...the form of a section that is a group is drawn from the same table: every control it makes is listed once, as for a row',
-	( function() {
-		const listed = [].concat( ...builder.BLOCKS.section.map( function( block ) { return block.controls } ) );
-		return Object.keys( builder._sectionControls( [ 0 ] ) ).every( function( name ) { return listed.indexOf( name ) !== -1 } );
-	} )() );
+	return controlOf( loopTab(), word('stack/kind') ).el.children.map( function( option ) { return option.value } ).join() === rowNames().join() && section.rowLoop.name === 'accordion' && section.rowLoop.attributes.sort === 'title' && section.rowLoop.source === registry().types[0].uri && section.stack === null;
+} )() );
+check( '...the loop of sections and the loop around the row are one choice: the one given up for the other, the data the one had going over to the other', ( function() {
 
+	const loopTab = function() { return blockOf('loop').querySelector('.builder-loop-form') };
+	const section = builder._doc.model.blocks[0];
+
+	change( loopTab(), kindWord, 'sections' );
+
+	const sections = section.stack !== null && section.stack.name === 'sections' && section.rowLoop === null && section.stack.attributes.sort === 'title' && section.settings.cover === 90;
+
+	change( loopTab(), kindWord, '' );
+
+	return sections && section.stack === null && section.rowLoop === null && valueAt( loopTab(), kindWord ) === '';
+} )() );
 builder._closeDialog();
-builder._openSettings( [ 0, 0 ] );
+builder._doc.model.blocks[0].rowLoop = builder._stackFor( registry(), 'repeat', null );
+builder._renderEditor();
+const aroundBox = function() { return preview().children[0].querySelector('.builder-loop.is-around') };
+check( 'the loop around a row is a box in the colour of the loops around the columns of the section, inside its frame and under its head: the word of the stack, "Loop around the row", the type, the number of columns and a button for the settings - open, the row for its cell', aroundBox() !== null && aroundBox().parentNode === preview().children[0].querySelector('.builder-frame-body') && aroundBox().classList.contains('is-open')
+	&& aroundBox().querySelector('.builder-loop-name').textContent === registry().stacks.repeat.label && aroundBox().querySelector('.builder-loop-kind').textContent === word('loop/around') && aroundBox().querySelector('.builder-loop-cell-label').textContent === word('loop/row')
+	&& aroundBox().querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } ).join() === 'Services,1' && aroundBox().querySelector('.builder-loop-cell').querySelectorAll('.builder-pcol').length === 1
+	&& aroundBox().querySelector('.builder-loop-cell').querySelector('.builder-add-col') !== null && preview().children[0].querySelector('.builder-frame-head') !== null && preview().children[1].querySelector('.builder-loop.is-around') === null );
+aroundBox().querySelector('.builder-loop-bar').dispatch('click');
+check( '...it is shut and opened by a click on its bar, the columns staying where they are in the model; its settings open the block Loop of the section', aroundBox().querySelector('.builder-loop-body').hidden === true && ( aroundBox().querySelector('.builder-loop-bar').dispatch('click'), aroundBox().querySelector('.builder-loop-body').hidden === false )
+	&& ( aroundBox().querySelector('.builder-tools-around button').click(), dialogText('builder-dialog-kind') === 'Content' && openBlock() === 'loop' ) );
+builder._closeDialog();
+check( 'the loop around the row is the cell of its columns: a field of the type is no mistake in them, nothing else is, and a type the project does not have is red on the section - and a loop in a column of such a section is refused as one is in a loop of sections', ( function() {
 
-check( 'the column of a group has a block Group with a field Title - the tab or the summary, with the hint the registry gives that attribute of the panel - and no width, no viewport it is hidden in and no picture with its dimming and its offsets, which the kernel\'s panel cannot carry; a column of a row has neither the field nor the block, and has all of those',
-	blockIds().indexOf('group') === 0 && labelList( blockOf('group') ).join() === word('col/panel-title') && builder._panelHint( registry() ) !== '' && tipOf( controlOf( blockOf('group'), word('col/panel-title') ) ) === builder._panelHint( registry() )
-	&& [ 'width', 'hidden', 'background', 'dim', 'bgPl', 'bgPr' ].every( function( name ) { return builder._colControls( [ 0, 0 ] )[name] === undefined } )
-	&& ( function() { const keep = builder._doc.model.blocks[0].settings.group; builder._doc.model.blocks[0].settings.group = ''; const row = builder._colControls( [ 0, 0 ] ); builder._doc.model.blocks[0].settings.group = keep; return row.title === undefined && [ 'width', 'hidden', 'background', 'dim', 'bgPl', 'bgPr' ].every( function( name ) { return row[name] !== undefined } ) } )() );
+	const section = builder._doc.model.blocks[0];
 
-const groupTitled = changes;
+	section.cols[0].components[0].source = 'title';
 
-change( blockOf('group'), word('col/panel-title'), 'Prices & terms' );
+	const clean = builder._red( builder._doc.model, registry() ).filter( function( entry ) { return entry.path[0] === 0 } ).length === 0;
 
-check( '...the title is written into the column as it is typed, and is one change; an empty one numbers the panel', builder._doc.model.blocks[0].cols[0].title === 'Prices & terms' && changes === groupTitled + 1 && builder._newCol().title === '' );
+	section.rowLoop.source = '/nothing';
 
+	const red = builder._red( builder._doc.model, registry() ).filter( function( entry ) { return entry.path[0] === 0 && entry.why === 'type' } ).length === 1;
+
+	section.rowLoop.source = '/services';
+
+	return clean && red && builder._loopAt( builder._doc.model, [ 0, 0 ] ) === section.rowLoop && builder._loopAt( builder._doc.model, [ 0, 0, 0 ] ) === section.rowLoop && builder._cellOf( section ) === section.rowLoop && builder._inCell( builder._doc.model, [ 0, 0, 0 ] ) === false
+		&& pickLoopsReasons( [ 0, 0 ] ).every( function( reason ) { return reason === word('reason/loop-in-loop') } );
+} )() );
+doc = open();
+builder._doc.model.blocks[0].cols[0].components.push( builder._newLoop( registry(), 'repeat' ) );
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+builder._openBlock('loop');
+check( '...and a section whose column holds a loop of its own cannot be given a loop: the choice is off and says why - a group in its columns is no loop of its own', ( function() {
+
+	const held = controlOf( blockOf('loop'), kindWord ).el.classList.contains('is-disabled') === true && blockOf('loop').querySelector('.nino-admin-notice') !== null;
+
+	builder._closeDialog();
+	builder._doc.model.blocks[0].cols[0].components = [ builder._newGroup( registry(), 'tabs' ) ];
+	builder._openSettings( [ 0 ] );
+	builder._openBlock('loop');
+
+	return held && controlOf( blockOf('loop'), kindWord ).el.classList.contains('is-disabled') === false;
+} )() );
+builder._closeDialog();
+
+// The loop of sections is a block around the section; the page has a button for one
+doc = open();
+builder._renderEditor();
+addBar().querySelector('#builder-add-loop').click();
+check( 'the page has the button "+ Loop" after the one for the tiles: it adds a section that makes a section of every element - the first stack that does it, the first type of the project - selected, with an id that is free, and drawn as a block around the section, shut until it is opened', ( function() {
+
+	const section = builder._doc.model.blocks.slice( -1 )[0];
+
+	return addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() === '+ Content,+ Tiles,+ Loop,+ HTML+ block,'+ word('menu/paste') && section.kind === 'section' && section.stack !== null && section.stack.name === 'sections' && section.stack.source === registry().types[0].uri
+		&& section.rowLoop === null && builder._same( builder._sel, [ builder._doc.model.blocks.length - 1 ] ) && builder._fresh[section.id] === true && builder._doc.model.blocks.filter( function( block ) { return block.id === section.id } ).length === 1
+		&& preview().children.slice( -1 )[0].classList.contains('is-sections') && builder._loopNames( builder._doc.model ).indexOf( section.id ) !== -1;
+} )() );
+check( '...a block of sections that is shut shows its bar and nothing of the section; pressed, it shows the section with its head, and what is selected in it opens it', ( function() {
+
+	builder._sel = [];
+	builder._renderEditor();
+
+	const block = preview().children.slice( -1 )[0];
+	const shut = block.querySelector('.builder-loop-body').hidden === true;
+
+	block.querySelector('.builder-loop-bar').dispatch('click');
+
+	const open = preview().children.slice( -1 )[0].querySelector('.builder-loop-body').hidden === false && preview().children.slice( -1 )[0].querySelector('.builder-frame-head') !== null;
+
+	builder._sel = [ 0 ];
+	builder._renderEditor();
+	builder._sel = [ builder._doc.model.blocks.length - 1, 0 ];
+	builder._open = new WeakSet();
+	builder._renderEditor();
+
+	return shut && open && preview().children.slice( -1 )[0].querySelector('.builder-loop-body').hidden === false;
+} )() );
+
+// What a panel holds is the section's as much as what a column holds: the keys of it, the texts typed for them, the section that is renamed
+check( 'the components in the panels of a group are among the names of a section: a key made for a component in one panel is free of the ones the components in another have', ( function() {
+
+	withGroup();
+
+	const group = nodeAt( [ 1, 1, 0 ] );
+	const second = builder._newComponent( builder._doc.model, registry(), 'page-home', [ 1, 1, 0, 1, 0 ], 'text', builder._keys );
+
+	return second.source !== group.panels[0].components[0].source && builder._names( builder._doc.model.blocks[1], 'page-home', [] )[group.panels[0].components[0].source.split('/').pop()] === true;
+} )() );
+check( '...a text typed for the key of a component in a panel is a text to write, a section edited as HTML+ keeps it for the component in the panel it reads again, and a section renamed before it is saved takes the keys in its panels along', ( function() {
+
+	withGroup();
+
+	const section = builder._doc.model.blocks[1];
+	const group = nodeAt( [ 1, 1, 0 ] );
+	const text = group.panels[0].components[0];
+
+	text.values = { en_US : 'Hello' };
+
+	const wrote = builder._writes( builder._doc.model, registry() ).texts === true;
+	const again = builder._clone( section );
+
+	delete again.cols[1].components[0].panels[0].components[0].values;
+	builder._carry( section, again );
+
+	const kept = JSON.stringify( again.cols[1].components[0].panels[0].components[0].values ) === '{"en_US":"Hello"}';
+
+	builder._fresh.services = true;
+	questions = [];
+	builder._renameTo( [ 1 ], 'offers', function() {}, null );
+
+	if( questions.length > 0 )
+		questions[0].onChoose( 'yes' );
+
+	return wrote && kept && text.source === '/template/page-home/offers/'+ text.source.split('/').pop() && section.id === 'offers';
+} )() );
+
+check( 'a model is settled when it is loaded: a field a loop names that its type has not is none, and one it has stays - in the loop around a row, and in a loop in a panel, as in a column', ( function() {
+
+	const model = page();
+	const typed = function( node ) { node.source = '/services'; return node };
+
+	model.blocks[0].rowLoop = typed( builder._stackFor( registry(), 'marks', null ) );
+
+	const group = builder._newGroup( registry(), 'accordion' );
+	const inner = typed( builder._newLoop( registry(), 'marks' ) );
+
+	group.panels[0].components.push( inner );
+	model.blocks[1].cols[0].components = [ group ];
+
+	const before = [ model.blocks[0].rowLoop.attributes.name, inner.attributes.name ].join();
+
+	builder._settle( model, registry() );
+
+	return before === 'name,name' && model.blocks[0].rowLoop.attributes.name === '' && inner.attributes.name === '' && model.blocks[0].rowLoop.attributes.image === 'image' && inner.attributes.image === 'image';
+} )() );
+
+// Where a group may stand, and what is red of it
+check( 'a group in the cell of a loop has no id to give - the dialog does not offer the field - and one that has it in the model is red; the title of its panel is looked at as a line of text is: a field of the type is none, one it has not and a picture are red, at the panel', ( function() {
+
+	withGroup();
+
+	const section = builder._doc.model.blocks[1];
+	const group = nodeAt( [ 1, 1, 0 ] );
+
+	section.stack = builder._stackFor( registry(), 'sections', null );
+	section.stack.source = '/services';
+	group.attributes.id = 'g';
+	builder._openSettings( [ 1, 1, 0 ] );
+
+	const offered = labelList( blockOf('properties') ).indexOf( word('group/id') ) !== -1;
+	const redId = builder._red( builder._doc.model, registry() ).filter( function( entry ) { return entry.why === 'group-id' && builder._same( entry.path, [ 1, 1, 0 ] ) } ).length === 1;
+
+	builder._closeDialog();
+	group.attributes.id = '';
+	group.panels[0].title = '[[title]]';
+	group.panels[1].title = '[[nope]]';
+	group.panels.push( builder._newPanel() );
+	group.panels[2].title = '[[image]]';
+
+	const reds = builder._red( builder._doc.model, registry() ).filter( function( entry ) { return entry.why === 'field' } ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source } ).join();
+
+	return offered === false && redId && reds === '1.1.0.1:nope,1.1.0.2:image';
+} )() );
+check( '...a filling that would put a loop in a loop, or a group in a panel, is held back in the segment with the reason the lightbox gives, and a model that has the one or the other is red - at the node, with words of its own', ( function() {
+
+	withGroup();
+
+	const section = builder._doc.model.blocks[1];
+
+	section.rowLoop = builder._stackFor( registry(), 'repeat', null );
+	builder._openSettings( [ 1, 1, 0 ] );
+
+	const radios = radiosOf( controlOf( blockOf('fill'), word('group/fill') ).el );
+	const typeOff = radios.find( function( radio ) { return radio.value === 'type' } ).disabled === true && radios.find( function( radio ) { return radio.value === 'fixed' } ).disabled === false
+		&& builder._fillProblem( builder._doc.model, [ 1, 1, 0 ] ) === word('reason/loop-in-loop') && blockOf('fill').querySelector('.nino-admin-notice').textContent === word('reason/loop-in-loop');
+
+	builder._closeDialog();
+	section.rowLoop = null;
+	nodeAt( [ 1, 1, 0 ] ).panels[0].components.push( builder._newLoop( registry(), 'accordion' ) );
+	builder._openSettings( [ 1, 1, 0, 0, 0 ] );
+
+	const inner = nodeAt( [ 1, 1, 0, 0, 0 ] );
+	const held = builder._fillProblem( builder._doc.model, [ 1, 1, 0, 0, 0 ] );
+
+	builder._closeDialog();
+	section.rowLoop = builder._stackFor( registry(), 'repeat', null );
+	section.cols[1].components.push( builder._newLoop( registry(), 'stack' ) );
+
+	const hasWhy = function( why, at ) { return builder._red( builder._doc.model, registry() ).some( function( entry ) { return entry.why === why && builder._same( entry.path, at ) } ) };
+	const nestedLoop = hasWhy( 'loop-in-loop', [ 1, 1, 1 ] );
+
+	section.rowLoop = null;
+	nodeAt( [ 1, 1, 0 ] ).panels[0].components = [ builder._newGroup( registry(), 'accordion' ) ];
+
+	const nestedGroup = hasWhy( 'group-in-group', [ 1, 1, 0, 0, 0 ] );
+
+	nodeAt( [ 1, 1, 0 ] ).panels[0].components = [ builder._newLoop( registry(), 'tabs' ) ];
+
+	const loopInGroup = hasWhy( 'loop-in-group', [ 1, 1, 0, 0, 0 ] );
+	const cell = builder._newLoop( registry(), 'repeat' );
+
+	cell.components = [ builder._newGroup( registry(), 'accordion' ) ];
+	section.cols[1].components = [ cell ];
+
+	const groupInLoop = hasWhy( 'group-in-loop', [ 1, 1, 0, 0 ] );
+
+	return groupInLoop && typeOff && inner !== null && held === word('reason/group-in-group') && nestedLoop && nestedGroup && loopInGroup
+		&& [ 'loop-in-loop', 'group-in-group', 'loop-in-group', 'group-in-loop', 'group-id' ].every( function( why ) { return typeof words['/_admin/builder/tree/red-'+ why] === 'string' } );
+} )() );
+check( 'a group and a panel that are shut say what is wrong in them, as a loop does: a red chip with the words of the red source as its title - on the bar of the group and on the row of the panel', ( function() {
+
+	withGroup();
+	nodeAt( [ 1, 1, 0 ] ).panels[1].components.push( builder._newComponent( builder._doc.model, registry(), 'page-home', [ 1, 1, 0, 1, 0 ], 'text', builder._keys ) );
+	nodeAt( [ 1, 1, 0, 1, 0 ] ).source = 'summary';
+	builder._open = new WeakSet();
+	builder._sel = [];
+	builder._renderEditor();
+
+	const box = preview().querySelector('[data-path="1.1.0"]');
+	const chips = box.querySelector('.builder-loop-bar').querySelectorAll('.builder-chip.is-red');
+	const row = preview().querySelector('[data-path="1.1.0.1"]');
+	const first = preview().querySelector('[data-path="1.1.0.0"]');
+
+	box.querySelector('.builder-loop-bar').dispatch('click');
+
+	return chips.length === 1 && chips[0].title === word('tree/red-static') && row.querySelector('.builder-panel-bar').querySelectorAll('.builder-chip.is-red').length === 1 && first.querySelector('.builder-panel-bar').querySelectorAll('.builder-chip.is-red').length === 0;
+} )() );
+check( 'a group is a box whose panels are rows: no label over them, so no dashed cell around them, and the words of the toggles are the group\'s and the panel\'s own, not the loop\'s', ( function() {
+
+	withGroup();
+
+	const box = preview().querySelector('[data-path="1.1.0"]');
+	const label = box.querySelector('.builder-loop-cell-label');
+	const toggle = function( el ) { return el.querySelector('.builder-loop-toggle').getAttribute('aria-label') };
+
+	return label.textContent === '' && toggle( box ) === word('group/toggle').replace( '%s', registry().stacks.tabs.label ) && toggle( box.querySelector('.builder-panel') ) === word('panel/toggle').replace( '%s', 'Prices' )
+		&& word('group/toggle').indexOf('loop') === -1 && word('panel/toggle').indexOf('loop') === -1 && box.querySelectorAll('.builder-panel').every( function( row ) { return row.parentNode === box.querySelector('.builder-loop-cell') } );
+} )() );
+check( 'a loop in a panel gives an id of the page as one in a column does: the calls of a section are those of the panels too', ( function() {
+
+	withGroup();
+
+	const loop = builder._newLoop( registry(), 'repeat' );
+
+	loop.attributes.id = 'inner';
+	nodeAt( [ 1, 1, 0 ] ).panels[0].components.push( loop );
+
+	return builder._calls( builder._doc.model.blocks[1] ).indexOf( loop ) !== -1 && builder._sectionTaken( builder._doc.model, 'inner' ) === true;
+} )() );
+check( 'the sentence of the refusal for an id the page has twice has its place for the ids in both languages, once, and is the same key in both: the words are not pinned', ( function() {
+
+	const key = '/_admin/builder/error/section-id-taken';
+	const german = fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' );
+	const found = new RegExp( "\\[\\["+ key.replace( /\//g, '\\/' )+ "\\]\\]'\\s*=> '([^']*(?:\\\\'[^']*)*)'" ).exec( german );
+
+	return typeof words[key] === 'string' && words[key].split('%s').length === 2 && found !== null && found[1].split('%s').length === 2 && words[key].indexOf('A section has') === -1;
+} )() );
+
+// The ids of the page
+check( 'the ids a loop or a group gives are taken, and so are the ones the kernel makes of them: a section called as a group, or as a panel of a stack with panels (faq-1), cannot be made', ( function() {
+
+	withGroup();
+
+	const group = nodeAt( [ 1, 1, 0 ] );
+
+	group.attributes.id = 'faq';
+
+	return builder._sectionTaken( builder._doc.model, 'faq' ) === true && builder._sectionTaken( builder._doc.model, 'faq-1' ) === true && builder._sectionTaken( builder._doc.model, 'faq-12' ) === true && builder._sectionTaken( builder._doc.model, 'faq-x' ) === false
+		&& builder._loopNames( builder._doc.model ).indexOf('faq') !== -1 && builder._calls( builder._doc.model.blocks[1] ).length === 1 && builder._newSection( builder._doc.model ).id === 'section';
+} )() );
+
+// A column of a table is a row of its loop
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1, 0 ] );
+asLoop( 'table' );
+buttonOf( loopPane(), 'Add a column' ).click();
 builder._closeDialog();
 builder._renderEditor();
+check( 'a column of a table is a row with the tools of a row - settings, up, down and delete, and none of the others: the first cannot go up and the last cannot go down, and the last one left is not deleted; its settings are the columns of the loop\'s dialog', ( function() {
 
-check( 'the preview draws a group as a frame of its own, its panels one above the other at the whole width and none of them hidden, each named by its title or - where it has none - by its number, with the label of the stack as a button that opens the block Group',
-	( function() {
-		const plan = builder._preview( builder._doc.model, registry(), 'l' );
-		const frame = preview().children[0];
-		const names = frame.querySelectorAll('.builder-col-name').map( function( el ) { return el.textContent } );
-		const mark = frame.querySelector('.builder-head-status .is-group');
-		return plan[0].group.label === registry().stacks[groupStack()].label && plan[0].cols.map( function( col ) { return col.panel } ).join() === [ 'Prices & terms' ].concat( plan[0].cols.slice( 1 ).map( function( col, at ) { return String( at + 2 ) } ) ).join()
-			&& plan[0].cols.every( function( col ) { return col.width === 100 && col.hidden === false } ) && plan[1].group === null && plan[1].cols[0].panel === null
-			&& frame.classList.contains('is-group') === true && names.join() === plan[0].cols.map( function( col ) { return col.panel } ).join() && mark !== null && iconOf( mark ) === 'group' && mark.title.indexOf( registry().stacks[groupStack()].label ) !== -1
-			&& /\.builder-frame\.is-group > \.builder-frame-body\s*\{[^}]*flex-direction:\s*column/.test( stylesheet ) && preview().children[1].classList.contains('is-group') === false;
-	} )() );
-check( '...a click on the mark opens the dialog of the section on the block Group', ( function() {
-	frameOf('0').querySelector('.builder-head-status .is-group').dispatch('click');
-	const on = dialogBox().open === true && openBlock() === 'group';
+	const lines = loopRow().querySelectorAll('.builder-loop-column');
+	const tools = function( at ) { return [ 'settings', 'up', 'down', 'duplicate', 'copy', 'paste', 'delete' ].filter( function( tool ) { return toolOf( at, tool ).hidden === false } ).join() };
+
+	if( lines.length !== 2 )
+		return false;
+
+	const first = tools( '1.1.0.0' );
+	const ups = toolOf( '1.1.0.0', 'up' ).disabled === true && toolOf( '1.1.0.1', 'down' ).disabled === true && toolOf( '1.1.0.0', 'delete' ).disabled === false;
+
+	toolOf( '1.1.0.0', 'settings' ).click();
+
+	const opened = dialogText('builder-dialog-kind') === 'Loop: Table' && openBlock() === 'presentation';
+
 	builder._closeDialog();
-	return on;
+	toolOf( '1.1.0.1', 'up' ).click();
+
+	const moved = builder._same( builder._sel, [ 1, 1, 0, 0 ] );
+
+	builder._renderEditor();
+	toolOf( '1.1.0.1', 'delete' ).click();
+
+	return first === 'settings,up,down,delete' && ups && opened && moved && nodeAt( [ 1, 1, 0 ] ).components.length === 1 && builder._toolbar( builder._doc.model, [ 1, 1, 0, 0 ] ).delete === false;
 } )() );
 
-check( 'a panel is no component to add, to paste or to put in a table: the lightbox does not offer it, it is columnar by the place the stacks give their panels and not a column of a table - a table\'s column is the first one that is - and every component that stands in a place of a page is offered as before',
-	( function() {
-		const panelled = Object.keys( registry().components ).filter( function( name ) { return registry().components[name].panelled === true } );
-		const offered = [];
-		builder._pickChoices( builder._doc.model, [ 1, 0 ], registry() ).forEach( function( group ) { group.rows.forEach( function( row ) { row.items.forEach( function( item ) { offered.push( item.name ) } ) } ) } );
-		return panelled.length === 1 && builder._columnar( registry().components[panelled[0]] ) === true && builder._tabular( registry().components[panelled[0]] ) === false && offered.indexOf( panelled[0] ) === -1
-			&& registry().components[panelled[0]].in.every( function( place ) { return groupTakers().some( function( name ) { return place === 'panels' } ) } ) && builder._tabular( registry().components[builder._columnName( registry() )] ) === true && builder._columnName( registry() ) !== panelled[0]
-			&& offered.length > 0;
-	} )() );
+// The words of the patch are in both interface languages
+check( 'every word the patch needs is in both interface languages, and the two say them differently: the groups and their fill, the panels, the loop around the row and the segment that chooses what repeats', ( function() {
 
-check( 'the hint of the group names no stack - the words come from the registry - and says what saving a group does not write: it is the tip of the segment, and has the words of the key',
-	( function() {
-		builder._openSettings( [ 0 ] );
-		builder._openBlock('group');
-		const tip = tipOf( controlOf( blockOf('group'), word('section/group') ) );
-		builder._closeDialog();
-		return tip === words['/_admin/builder/hint/group'] && groupTakers().every( function( name ) { return tip.toLowerCase().indexOf( registry().stacks[name].label.toLowerCase() ) === -1 } ) && /widths/.test( tip ) && /gap/.test( tip ) && /alignment/.test( tip ) && /order/.test( tip ) && /picture/.test( tip );
-	} )() );
-check( 'the stack of the group is not offered as a loop in one of its columns - its call would end the group at its own closing tag: the lightbox greys it, with the reason, and offers the others - and in a section that is no group every stack is offered',
-	( function() {
-		const offered = function( at ) {
-			builder._pickComponent( at );
-			const items = loopItemsOf( lightboxOf() ).map( function( item ) { return item.dataset.name+ ':'+ ( item.disabled === true ? item.title : '' ) } );
-			builder._closeDialog();
-			return items;
-		};
-		const grouped = offered( [ 0, 0 ] );
-		const stack = builder._doc.model.blocks[0].settings.group;
-		builder._doc.model.blocks[0].settings.group = '';
-		const plain = offered( [ 0, 0 ] );
-		builder._doc.model.blocks[0].settings.group = stack;
-		return grouped.indexOf( stack+ ':'+ word('reason/loop-in-group') ) !== -1 && plain.indexOf( stack+ ':' ) !== -1 && grouped.filter( function( item ) { return /:$/.test( item ) } ).length === plain.length - 1 && grouped.length === plain.length && grouped.indexOf('stack:') !== -1;
-	} )() );
-check( '...and a loop of that stack cannot be added to a column of the group by the paste either', ( function() {
-	const clip = { kind : 'component', file : 'page-home', section : 'hero', values : {}, node : Object.assign( builder._newLoop( registry(), builder._doc.model.blocks[0].settings.group ), { source : '/services' } ) };
-	return builder._pasteable( builder._doc.model, registry(), [ 0, 0 ], clip ) === word('reason/loop-in-group');
+	const keys = [ 'pick/groups', 'tree/panel', 'tree/group', 'loop/around', 'loop/row', 'loop/sections', 'loop/each', 'loop/section', 'loop/fixed', 'loop/panels', 'loop/count-columns-row', 'menu/tools-panel', 'stack/mode', 'stack/mode-none', 'stack/mode-sections', 'stack/mode-row', 'hint/stack-mode',
+		'group/properties', 'group/fill', 'group/fill-fixed', 'group/fill-type', 'group/fill-lose-panels', 'group/fill-lose-cell', 'group/fill-turn', 'group/title', 'panel/title', 'hint/group-fill', 'hint/group-id', 'hint/panel-class', 'panel/class', 'block/fill/label', 'group/toggle', 'panel/toggle', 'group/id', 'group/class', 'tree/red-group-id', 'tree/red-loop-in-loop', 'tree/red-group-in-group', 'tree/red-loop-in-group', 'tree/red-group-in-loop', 'error/section-id-taken', 'reason/group-in-loop', 'reason/group-in-group', 'reason/no-panels' ];
+	const german = {};
+
+	fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( '\n' ).forEach( function( line ) {
+		const found = /^\s*'\[\[(\/[^\]]+)\]\]'\s*=>\s*'(.*)',\s*$/.exec( line );
+		if( found !== null )
+			german[found[1]] = found[2];
+	} );
+
+	return keys.every( function( key ) { return typeof words['/_admin/builder/'+ key] === 'string' && words['/_admin/builder/'+ key] !== '' && typeof german['/_admin/builder/'+ key] === 'string' && german['/_admin/builder/'+ key] !== '' } )
+		&& [ 'pick/groups', 'loop/around', 'stack/mode-sections', 'stack/mode-row', 'group/fill-fixed', 'group/fill-type' ].every( function( key ) { return german['/_admin/builder/'+ key] !== words['/_admin/builder/'+ key] } )
+		&& words['/_admin/builder/stack/mode-sections'] === 'Section for each element' && german['/_admin/builder/stack/mode-sections'] === 'Sektion je Element' && german['/_admin/builder/stack/mode-row'] === 'Reihe je Element';
 } )() );
-check( 'a title with markup is drawn in the preview as the page shows it, without the tags - and a title that is nothing but tags is numbered',
-	( function() {
-		const model = builder._doc.model;
-		model.blocks[0].cols.push( builder._newCol() );
-		model.blocks[0].cols[0].title = '<b>Prices</b> & <i>terms</i>';
-		model.blocks[0].cols[1].title = '<b></b>';
-		const plan = builder._preview( model, registry(), 'l' );
-		model.blocks[0].cols.pop();
-		model.blocks[0].cols[0].title = 'Prices & terms';
-		return plan[0].cols[0].panel === 'Prices & terms' && plan[0].cols[1].panel === '2';
-	} )() );
-check( 'a group can be given up again, and the section is the row it was: the widths of the columns and the order they had are in the model still, the attributes of the group are gone, and a section of tiles is no group',
-	( function() {
-		builder._openSettings( [ 0 ] );
-		change( blockOf('group'), word('section/group'), '' );
-		const settings = builder._doc.model.blocks[0].settings;
-		const row = JSON.stringify( [ settings.reverse, settings.row, builder._doc.model.blocks[0].cols.map( function( col ) { return col.width } ) ] ) === groupRow && settings.group === '' && JSON.stringify( settings.groupAttributes ) === '{}'
-			&& builder._groupName( builder._doc.model.blocks[0] ) === '' && builder._colControls( [ 0, 0 ] ).width !== undefined;
-		change( blockOf('group'), word('section/group'), groupStack() );
-		change( blockOf('properties'), word('section/kind'), 'tiles' );
-		const tiles = settings.tiles === true && settings.group === '' && JSON.stringify( settings.groupAttributes ) === '{}' && blockIds().indexOf('group') === -1;
-		builder._closeDialog();
-		return row && tiles;
-	} )() );
-
-check( 'a section that makes a section of every element can be a group: its presentation is not held where the section is one, and the group is not held where it makes sections',
-	( function() {
-		doc = open();
-		builder._renderEditor();
-		builder._setGroup( registry(), builder._doc.model.blocks[1], groupStack() );
-		builder._doc.model.blocks[1].stack = builder._stackFor( registry(), 'sections', null );
-		builder._openSettings( [ 1 ] );
-		const free = controlOf( blockOf('loop'), word('stack/kind') ).el.disabled !== true && controlOf( blockOf('group'), word('section/group') ).el.querySelectorAll('input').every( function( radio ) { return radio.disabled !== true } );
-		builder._closeDialog();
-		return free;
-	} )() );
+}
 
 console.log( '\nThe screens' );
 

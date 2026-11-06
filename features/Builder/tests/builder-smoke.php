@@ -115,11 +115,11 @@ check( '...and tells of the loop, of the lightbox, of the components by place an
 	} ) === [] );
 $groupLines = isset( $manifest['manual']['panel']['Group'] ) === true ? [ \Nino\Features::localized( $manifest['manual']['panel']['Group'], 'en_US' ), \Nino\Features::localized( $manifest['manual']['panel']['Group'], 'de_DE' ) ] : [];
 $groupMarkup = array_values( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_contains( $handle, '[panel' ) === true ) );
-check( '...and tells of the group of panels a section can be, in both languages and in a line each under a thousand bytes - the setting in the panel, and the call with its panels in the markup - with no more than forty lines in either section',
+check( '...and tells of the group of panels a column can hold, in both languages and in a line each under a thousand bytes - the component in the panel, and the call with its panels in the markup, and the loop around the row beside it - with no more than forty lines in either section',
 	count( $groupLines ) === 2 && $groupLines[0] !== $groupLines[1] && strlen( $groupLines[0] ) < 1000 && strlen( $groupLines[1] ) < 1000 && count( $groupMarkup ) === 1
 	&& array_reduce( [ \Nino\Features::localized( $manifest['manual']['markup'][$groupMarkup[0] ?? ''] ?? '', 'en_US' ), \Nino\Features::localized( $manifest['manual']['markup'][$groupMarkup[0] ?? ''] ?? '', 'de_DE' ) ], static fn( bool $carry, string $line ): bool => $carry === true && $line !== '' && strlen( $line ) < 1000, true )
 	&& count( $manifest['manual']['panel'] ) <= 40 && count( $manifest['manual']['markup'] ) <= 40 );
-$groupNamed = [ 'Settings dialogs' => [ 'en_US' => 'Spacing, Group, Width', 'de_DE' => 'Abstände, Gruppe, Breite' ], 'The blocks of the dialogs' => [ 'en_US' => 'Group: Columns', 'de_DE' => 'Gruppe: Spalten' ], 'The dialog of a section' => [ 'en_US' => 'Group sets a group of panels', 'de_DE' => 'Gruppe setzt eine Gruppe von Panels' ] ];
+$groupNamed = [ 'Settings dialogs' => [ 'en_US' => 'Spacing, Width', 'de_DE' => 'Abstände, Breite' ], 'The blocks of the dialogs' => [ 'en_US' => 'Loop: what a section repeats', 'de_DE' => 'Loop: was eine Section wiederholt' ], 'The dialog of a section' => [ 'en_US' => 'Loop chooses what repeats', 'de_DE' => 'Loop wählt, was sich wiederholt' ] ];
 $groupNamedMissing = [];
 $longLines = [];
 
@@ -134,7 +134,7 @@ foreach( $manifest['manual'] as $section => $entries )
 			if( strlen( \Nino\Features::localized( $line, $locale ) ) >= 1000 )
 				$longLines[] = $section. ' '. $handle. ' '. $locale;
 
-check( '...the lists of the blocks of a dialog and the entry of the dialog of a section name the group, in both languages, and no line of the manual is a thousand bytes or more',
+check( '...the lists of the blocks of a dialog and the entry of the spacing of a section name what a section repeats and no longer a group, in both languages, and no line of the manual is a thousand bytes or more',
 	$groupNamedMissing === [] && $longLines === [] );
 $loopLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Loop'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Loop'], 'de_DE' ) ];
 $columnLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'de_DE' ) ];
@@ -1592,7 +1592,7 @@ check( 'a loop that makes sections is read as a section: its id is the call\'s, 
 	&& $loopBlock['stack']['attributes']['id'] === '' && $loopBlock['stack']['attributes']['class'] === ''
 	&& count( $loopBlock['cols'] ) === 1 && array_column( $loopBlock['cols'][0]['components'], 'source' ) === [ 'title' ] && $loopBlock['cols'][0]['stack'] === null && $loopBlock['background'] === null );
 check( '...every section has the key, and a section that is a <section> has no loop: null, in the model and in the file',
-	array_filter( $model['blocks'], static fn( array $block ): bool => $block['kind'] === 'section' && ( array_key_exists( 'stack', $block ) === false || $block['stack'] !== null ) ) === [] && array_keys( $blank ) === [ 'kind', 'id', 'settings', 'background', 'stack', 'cols' ] && $blank['stack'] === null );
+	array_filter( $model['blocks'], static fn( array $block ): bool => $block['kind'] === 'section' && ( array_key_exists( 'stack', $block ) === false || $block['stack'] !== null || array_key_exists( 'rowLoop', $block ) === false || $block['rowLoop'] !== null ) ) === [] && array_keys( $blank ) === [ 'kind', 'id', 'settings', 'background', 'stack', 'rowLoop', 'cols' ] && $blank['stack'] === null && $blank['rowLoop'] === null );
 check( '...and it is written back byte for byte: the call at the margin with the attributes of the loop in the order of its schema, then the id, then the class - the row and the columns as they stand in a section, one tab in - and the closing tag where the call is',
 	$write( $read( $page( $loopFile ) ) ) === $inWrap( $page( $loopFile ) ) && $read( $write( $read( $page( $loopFile ) ) ) ) === $read( $page( $loopFile ) )
 	&& str_contains( $write( $read( $page( $loopFile ) ) ), "\n[sections /services sort=\"title\" limit=\"3\" id=\"news\" class=\"nino-section--alt nino-pt-2\"]\n\t<div class=\"nino-grid-row\">\n" ) === true );
@@ -1782,8 +1782,8 @@ check( 'an element has six sides of spacing - mt, mb, pt, pb, pl and pr, each of
 	$spaceWrong === [] && $reader::SPACING === [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] && $reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
 check( '...the six stand in one order, that of Reader::SPACING: in the defaults of a section and of a column, and in the node of a component - which has no spacing of its own but them - and each is none until a class says so',
 	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'reverse', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'tiles', 'ratio', 'whitespace',
-		'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'group', 'groupAttributes', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
-	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'title', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
+		'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
+	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
 
 $spacedSection	= $spaceOf( 'section', 'nino-pr-4 nino-text-right nino-pl-2 nino-pb-6 nino-mb-0 nino-whitespace--less nino-pt-3 nino-mt-1' );
@@ -4424,108 +4424,134 @@ check( '...a line of text is a call like another: it reads and writes in a colum
 		return $line['name'] === 'line' && $line['text'] === '[[title]]: [[.slug]]' && $line['attributes']['tag'] === 'span' && $line['attributes']['class'] === 'x' && str_contains( $write( $model ), $calls ) === true && $read( $write( $model ) ) === $model;
 	} )() );
 
-// A section can be a group instead of columns: the stack of the registry that takes panels, a panel for each column - tabs and the accordion are two. It stands in the row of the section,
-// in one column of the whole width, and the Reader reads the call without a type there as the group; the Writer writes it back byte for byte
+// A group of panels is a component of a column: the stack of the registry that takes panels, called with no type, with a [panel] for each panel between its tags. The row of one column of the
+// whole width that holds nothing but that call is a section, its row, its column and the group in it, and the Writer writes it back byte for byte
 $groupRow = static fn( string $call, string $id = 'faq', string $rowClass = 'nino-grid-row', string $class = 'nino-section', string $cell = 'nino-grid-100' ): string => '<section id="'. $id. '" class="'. $class. "\">\n\t<div class=\"". $rowClass. "\">\n\t\t<div class=\"". $cell. "\">\n\t\t\t". $call. "\n\t\t</div>\n\t</div>\n</section>";
 $groupTabs = "<section id=\"faq\" class=\"nino-section nino-mt-2\">\n\t<div class=\"nino-grid-row nino-grid-row--narrow nino-pt-2 nino-vpa extra\" data-vpa-delay=\"2s\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel title=\"Prices &amp; &quot;terms&quot; &#91;1&#93;\" class=\"nino-grid--alt nino-text-center nino-pt-1 mine\"]\n\t\t\t\t\t[text /template/page-x/faq/prices]\n\t\t\t\t[/panel]\n\t\t\t\t[panel]\n\t\t\t\t\t[text /template/page-x/faq/more]\n\t\t\t\t\t[button /template/page-x/faq/go href=\"/_nino/webpage/contact/uri\"]\n\t\t\t\t[/panel]\n\t\t\t\t[panel title=\"Ünïcode\"]\n\t\t\t\t\t[repeat /services]\n\t\t\t\t\t\t[text title]\n\t\t\t\t\t[/repeat]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n\t[scroll-hint]\n</section>";
 $groupAccordion = "<section id=\"faq\" class=\"nino-section\">\n\t<div class=\"nino-section-bg\">[image /template/page-x/faq/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[accordion id=\"faq-accordion\" exclusive=\"0\" open=\"first\"]\n\t\t\t\t[panel title=\"One\"]\n\t\t\t\t\t[text /template/page-x/faq/one-text]\n\t\t\t\t[/panel]\n\t\t\t[/accordion]\n\t\t</div>\n\t</div>\n</section>";
 $groupModel		= $read( $page( $groupTabs ) );
 $groupSection	= $groupModel['blocks'][0] ?? [];
+$groupNode		= $groupSection['cols'][0]['components'][0] ?? [];
 $groupAccord	= $read( $page( $groupAccordion ) )['blocks'][0] ?? [];
-check( 'a row with one column of the whole width and no class of its own, whose call is that of a stack that takes panels with no type, is a group: the stack with the attributes the group keeps - none for tabs, whose own attributes are a field and a line of text - and a column for each panel with its title, its classes and what it holds, a loop of the cell among it; the row is read as any row is: its width, its padding, its animation with its delay and its classes',
-	( $groupModel['blocks'][0]['kind'] ?? '' ) === 'section' && $groupSection['settings']['group'] === 'tabs' && $groupSection['settings']['groupAttributes'] === [] && $groupSection['stack'] === null && $groupSection['settings']['arrow'] === true
+$accordNode		= $groupAccord['cols'][0]['components'][0] ?? [];
+check( 'a row with one column of the whole width that holds the call of a stack that takes panels with no type is a section with its row and its column, and the group a component of that column: the stack with its id and class and the attributes the group keeps - none for tabs, whose own attributes are a field and a line of text -, a panel for each [panel] with its title, its classes as they are written and what it holds, a loop of another stack among it; the row is read as any row is: its width, its padding, its animation with its delay and its classes',
+	( $groupModel['blocks'][0]['kind'] ?? '' ) === 'section' && array_key_exists( 'group', $groupSection['settings'] ) === false && array_key_exists( 'groupAttributes', $groupSection['settings'] ) === false && $groupSection['stack'] === null && $groupSection['rowLoop'] === null && $groupSection['settings']['arrow'] === true
 	&& $groupSection['settings']['row'] === 'narrow' && $groupSection['settings']['rowPt'] === '2' && $groupSection['settings']['vpa'] === '' && $groupSection['settings']['vpaDelay'] === '2s' && $groupSection['settings']['rowCustom'] === 'extra' && $groupSection['settings']['mt'] === '2'
-	&& array_column( $groupSection['cols'], 'title' ) === [ 'Prices & "terms" [1]', '', 'Ünïcode' ] && $groupSection['cols'][0]['color'] === 'alt' && $groupSection['cols'][0]['text'] === 'center' && $groupSection['cols'][0]['pt'] === '1' && $groupSection['cols'][0]['custom'] === 'mine'
-	&& array_column( $groupSection['cols'][1]['components'], 'name' ) === [ 'text', 'button' ] && $groupSection['cols'][2]['components'][0]['name'] === 'repeat' && $groupSection['cols'][2]['components'][0]['source'] === '/services' && array_column( $groupSection['cols'][2]['components'][0]['components'], 'source' ) === [ 'title' ]
-	&& $groupSection['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 100 ] && $groupSection['cols'][0]['hidden'] === [] && $groupSection['cols'][0]['background'] === null );
-check( '...and written back as it was read, byte for byte - the row with its classes and its delay, in it the one column, the call with its id and no class, the panels one tab deeper than the call and what they hold one deeper again - and read again, it is the same model',
+	&& count( $groupSection['cols'] ) === 1 && $groupSection['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 100 ] && array_key_exists( 'title', $groupSection['cols'][0] ) === false && count( $groupSection['cols'][0]['components'] ) === 1
+	&& array_keys( $groupNode ) === [ 'name', 'source', 'attributes', 'panels' ] && $groupNode['name'] === 'tabs' && $groupNode['source'] === '' && $groupNode['attributes'] === [ 'id' => 'faq-tabs', 'class' => '' ]
+	&& array_column( $groupNode['panels'], 'title' ) === [ 'Prices & "terms" [1]', '', 'Ünïcode' ] && array_column( $groupNode['panels'], 'class' ) === [ 'nino-grid--alt nino-text-center nino-pt-1 mine', '', '' ]
+	&& array_keys( $groupNode['panels'][0] ) === [ 'title', 'class', 'components' ] && array_column( $groupNode['panels'][1]['components'], 'name' ) === [ 'text', 'button' ]
+	&& $groupNode['panels'][2]['components'][0]['name'] === 'repeat' && $groupNode['panels'][2]['components'][0]['source'] === '/services' && array_column( $groupNode['panels'][2]['components'][0]['components'], 'source' ) === [ 'title' ] );
+check( '...and written back as it was read, byte for byte - the row with its classes and its delay, in it the one column, the call with its id, the panels one tab deeper than the call and what they hold one deeper again - and read again, it is the same model',
 	str_contains( $write( $groupModel ), $groupTabs. "\n" ) === true && $read( $write( $groupModel ) ) === $groupModel && $write( $read( $write( $groupModel ) ) ) === $write( $groupModel ) );
-check( '...an accordion keeps the attributes of its own, those of the types that are no field and no line of text - and the picture behind the section stays the section\'s; both read back as they were written',
-	$groupAccord['settings']['group'] === 'accordion' && $groupAccord['settings']['groupAttributes'] === [ 'exclusive' => '0', 'open' => 'first' ] && $groupAccord['background']['slot'] === '/template/page-x/faq/background'
+check( '...an accordion keeps the attributes of its own, those of the types that are no field and no line of text, with its id - and the picture behind the section stays the section\'s; both read back as they were written',
+	$accordNode['attributes'] === [ 'id' => 'faq-accordion', 'exclusive' => '0', 'open' => 'first', 'class' => '' ] && $groupAccord['background']['slot'] === '/template/page-x/faq/background'
 	&& str_contains( $write( $read( $page( $groupAccordion ) ) ), $groupAccordion. "\n" ) === true && $read( $write( $read( $page( $groupAccordion ) ) ) ) === $read( $page( $groupAccordion ) ) );
 
-// The row of a group keeps everything but what only the grid of its columns says: the gap between them, their alignment and their order. A panel has no width and no viewport it is hidden in, and no picture of
-// its own, the kernel puts its class on an element that holds more than its content. The id of the call is the section's and the name of the stack, and none where the section has none
-$rowBound = $groupModel;
-$rowBound['blocks'][0]['settings'] = array_replace( $rowBound['blocks'][0]['settings'], [ 'rowPlace' => 'left', 'rowAlign' => 'middle', 'reverse' => [ 's' => true, 'm' => true, 'l' => false ], 'rowGap' => '3', 'inner' => true, 'color' => 'dark', 'rowRadius' => 'alternative' ] );
-$rowBound['blocks'][0]['cols'][0]['width'] = [ 's' => 100, 'm' => 50, 'l' => 25 ];
-$rowBound['blocks'][0]['cols'][1]['hidden'] = [ 's' => true ];
-$rowBound['blocks'][0]['cols'][1]['background'] = [ 'slot' => '/template/page-x/faq/panel', 'focus' => null ];
-$rowBound['blocks'][0]['cols'][1]['dim'] = true;
-$rowBound['blocks'][0]['cols'][1]['bgPl'] = '1';
-$rowBoundSource = $write( $rowBound );
-$rowBoundRead = $read( $rowBoundSource )['blocks'][0] ?? [];
-$withoutId = $groupModel;
-$withoutId['blocks'][0]['id'] = '';
-check( 'a group is written without the gap, the alignment and the order of its columns, and without the width and the viewports of a column and its picture, its dimming and its offsets - the row keeps its width, its place, its ground and its radius - and reads back as the group it was',
-	preg_match( '/nino-grid-(100 nino-grid-|middle|gap)|nino-grid-row--reverse|nino-hide|nino-grid-bg|nino-grid--dim|nino-bg-p/', $rowBoundSource ) === 0 && str_contains( $rowBoundSource, '<section id="faq" class="nino-section nino-mt-2">' ) === true
-	&& str_contains( $rowBoundSource, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-row--left nino-grid-row--dark nino-pt-2 nino-radius-alt nino-vpa extra" data-vpa-delay="2s">' ) === true
-	&& ( $rowBoundRead['settings']['group'] ?? '' ) === 'tabs' && $rowBoundRead['settings']['inner'] === true && $rowBoundRead['settings']['color'] === 'dark' && $rowBoundRead['settings']['rowPlace'] === 'left' && $rowBoundRead['settings']['rowRadius'] === 'alternative' && $rowBoundRead['settings']['rowGap'] === '' && $rowBoundRead['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 100 ] );
-check( '...the alignment, the order and the gap that a template says of the row of a group are classes of its own, as they were written, and the row of a group of a section without an id has none on its call',
+// The group stands among the components of a column, text before and after it, beside a second column; the id is the user's, a class on the call is the group's, and with no id the call has none
+$groupMixed = "<section id=\"faq\" class=\"nino-section\">\n\t<div class=\"nino-grid-row nino-grid-middle\">\n\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-50\">\n\t\t\t[text /template/page-x/faq/before]\n\t\t\t[accordion id=\"questions\" open=\"first\" class=\"wide\"]\n\t\t\t\t[panel title=\"One\" class=\"mine\"]\n\t\t\t\t\t[text /template/page-x/faq/one]\n\t\t\t\t[/panel]\n\t\t\t\t[panel title=\"Two\"]\n\t\t\t\t\t[button /template/page-x/faq/two href=\"/_nino/webpage/contact/uri\"]\n\t\t\t\t[/panel]\n\t\t\t[/accordion]\n\t\t\t[text /template/page-x/faq/after]\n\t\t</div>\n\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-50\">\n\t\t\t[tabs]\n\t\t\t\t[panel]\n\t\t\t\t\t[text /template/page-x/faq/side]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n</section>";
+$mixedModel		= $read( $page( $groupMixed ) );
+$mixedCols		= $mixedModel['blocks'][0]['cols'] ?? [];
+check( 'a group stands among the components of a column, text before and after it, and a second column beside it holds a group of its own: the row keeps its alignment, the id is what the call says and none where it says none, the class of the call is the group\'s - and the page is written back byte for byte',
+	( $mixedModel['blocks'][0]['kind'] ?? '' ) === 'section' && array_column( $mixedCols[0]['components'], 'name' ) === [ 'text', 'accordion', 'text' ] && $mixedModel['blocks'][0]['settings']['rowAlign'] === 'middle'
+	&& $mixedCols[0]['components'][1]['attributes'] === [ 'id' => 'questions', 'exclusive' => '1', 'open' => 'first', 'class' => 'wide' ] && $mixedCols[1]['components'][0]['attributes'] === [ 'id' => '', 'class' => '' ]
+	&& array_column( $mixedCols[0]['components'][1]['panels'], 'class' ) === [ 'mine', '' ] && $mixedCols[0]['width']['l'] === 50
+	&& str_contains( $write( $mixedModel ), $groupMixed. "\n" ) === true && $read( $write( $mixedModel ) ) === $mixedModel );
+
+// A group in a section of tiles is a component of a tile, as it is of a column
+check( '...a group in a tile is read and written as in a column',
 	( static function() use ( $read, $write, $page, $groupRow ): bool {
-		$source = $page( $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]", 'faq', 'nino-grid-row nino-grid-middle nino-grid-gap-2 nino-grid-row--reverse' ) );
+		$source = $page( $groupRow( "[tabs]\n\t\t\t\t[panel]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]", 'faq', 'nino-grid-row', 'nino-section nino-tiles' ) );
 		$model = $read( $source )['blocks'][0] ?? [];
-		return ( $model['settings']['group'] ?? '' ) === 'tabs' && $model['settings']['rowAlign'] === '' && $model['settings']['rowGap'] === '' && $model['settings']['reverse'] === [ 's' => false, 'm' => false, 'l' => false ]
-			&& $model['settings']['rowCustom'] === 'nino-grid-middle nino-grid-gap-2 nino-grid-row--reverse' && str_contains( $write( $read( $source ) ), 'nino-grid-row nino-grid-middle nino-grid-gap-2 nino-grid-row--reverse"' ) === true;
-	} )()
-	&& str_contains( $write( $withoutId ), "\t\t\t[tabs]\n" ) === true && str_contains( $write( $withoutId ), 'id="faq-tabs"' ) === false );
-check( '...and a title with a line break is not carried',
-	( static function() use ( $write, $groupModel ): bool {
-		$broken = $groupModel;
-		$broken['blocks'][0]['cols'][1]['title'] = "a\nb";
-		try { $write( $broken ); return false; } catch( \UnexpectedValueException ) { return true; }
+		return ( $model['kind'] ?? '' ) === 'section' && $model['settings']['tiles'] === true && ( $model['cols'][0]['components'][0]['panels'][0]['components'][0]['source'] ?? '' ) === '/template/page-x/faq/a' && str_contains( $write( $read( $source ) ), $source ) === true;
 	} )() );
 
-// A group in a row whose ground is a picture inside the row: the block of the picture is the first thing in the row, and the cell of the group follows it after the line break
+// The row of a section with a group is a row like any other: its alignment, its order and its gap are its settings, and the picture inside it is the row's, the first thing in it
 $groupInner = $groupModel;
-$groupInner['blocks'][0]['settings'] = array_replace( $groupInner['blocks'][0]['settings'], [ 'inner' => true, 'color' => 'dark', 'dim' => true ] );
+$groupInner['blocks'][0]['settings'] = array_replace( $groupInner['blocks'][0]['settings'], [ 'inner' => true, 'color' => 'dark', 'dim' => true, 'rowAlign' => 'middle', 'rowGap' => '3', 'reverse' => [ 's' => true, 'm' => true, 'l' => false ] ] );
 $groupInner['blocks'][0]['background'] = [ 'slot' => '/template/page-x/faq/background', 'focus' => 5 ];
 $groupInnerSource = $write( $groupInner );
 $groupInnerRead = $read( $groupInnerSource )['blocks'][0] ?? [];
-check( 'a group whose row has the picture inside it reads and writes back byte for byte - the picture is the row\'s, the first thing in it, and the group stays the group with its panels',
+check( 'the row of a section with a group is a row like any other: the alignment, the order and the gap of its columns are its settings, the picture inside it is the first thing in it, and the group stays the group with its panels - written and read back byte for byte',
 	str_contains( $groupInnerSource, "\t\t<div class=\"nino-grid-row-bg nino-img-focus--5\">[image /template/page-x/faq/background alt=\"\"]</div>\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs id=\"faq-tabs\"]" ) === true
-	&& ( $groupInnerRead['kind'] ?? '' ) === 'section' && $groupInnerRead['settings']['group'] === 'tabs' && $groupInnerRead['settings']['inner'] === true && $groupInnerRead['background']['slot'] === '/template/page-x/faq/background' && count( $groupInnerRead['cols'] ) === 3
-	&& $write( $read( $groupInnerSource ) ) === $groupInnerSource && $read( $write( $read( $groupInnerSource ) ) ) === $read( $groupInnerSource ) );
+	&& str_contains( $groupInnerSource, 'nino-grid-middle' ) === true && str_contains( $groupInnerSource, 'nino-grid-gap-3' ) === true && str_contains( $groupInnerSource, 'nino-grid-row--reverse' ) === true
+	&& ( $groupInnerRead['kind'] ?? '' ) === 'section' && $groupInnerRead['settings']['inner'] === true && $groupInnerRead['settings']['rowAlign'] === 'middle' && $groupInnerRead['settings']['rowGap'] === '3' && $groupInnerRead['background']['slot'] === '/template/page-x/faq/background'
+	&& count( $groupInnerRead['cols'][0]['components'][0]['panels'] ) === 3 && $write( $read( $groupInnerSource ) ) === $groupInnerSource && $read( $write( $read( $groupInnerSource ) ) ) === $read( $groupInnerSource ) );
+check( '...a title with a line break is not carried',
+	( static function() use ( $write, $groupModel ): bool {
+		$broken = $groupModel;
+		$broken['blocks'][0]['cols'][0]['components'][0]['panels'][1]['title'] = "a\nb";
+		try { $write( $broken ); return false; } catch( \UnexpectedValueException ) { return true; }
+	} )() );
 
-// A group is the row of a loop of sections too: the kernel fills the fields of the element into its panels - the title of a panel among them, which stands as it is - and its call has no id, as the ids of the groups of the elements would be one
+// A group in a loop of sections, or in the row a loop makes: the kernel fills the fields of the element into its panels - the title of a panel among them, which stands as it is - and a call with an id
+// would give the groups of all the elements one
 $groupLoop = "[sections /services id=\"news\" class=\"nino-mt-1\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[accordion open=\"first\"]\n\t\t\t\t[panel title=\"[[title]] &amp; more\"]\n\t\t\t\t\t[text title]\n\t\t\t\t[/panel]\n\t\t\t[/accordion]\n\t\t</div>\n\t</div>\n[/sections]";
 $groupLoopRead = $read( $page( $groupLoop ) )['blocks'][0] ?? [];
 $noLoop = $read( $page( $groupLoop ) );
 $noLoop['blocks'][0]['stack'] = null;
-check( 'a group in the row of a loop of sections, called without an id, reads and writes back byte for byte - the title of its panel has the fields of the element in it as they are, the other characters as entities, and a title with a field in a group without a loop is written as entities only - and its panels are the cell: the model says the group, the loop and the title',
-	( $groupLoopRead['settings']['group'] ?? '' ) === 'accordion' && ( $groupLoopRead['stack']['name'] ?? '' ) === 'sections' && ( $groupLoopRead['cols'][0]['title'] ?? '' ) === '[[title]] & more' && $groupLoopRead['settings']['groupAttributes'] === [ 'exclusive' => '1', 'open' => 'first' ]
+check( 'a group in the row of a loop of sections, called without an id, reads and writes back byte for byte - the title of its panel has the fields of the element in it as they are, the other characters as entities, and a title with a field in a group without a loop is written as entities only',
+	( $groupLoopRead['stack']['name'] ?? '' ) === 'sections' && ( $groupLoopRead['cols'][0]['components'][0]['name'] ?? '' ) === 'accordion' && ( $groupLoopRead['cols'][0]['components'][0]['panels'][0]['title'] ?? '' ) === '[[title]] & more'
+	&& $groupLoopRead['cols'][0]['components'][0]['attributes'] === [ 'id' => '', 'exclusive' => '1', 'open' => 'first', 'class' => '' ]
 	&& str_contains( $write( $read( $page( $groupLoop ) ) ), $groupLoop. "\n" ) === true && $read( $write( $read( $page( $groupLoop ) ) ) ) === $read( $page( $groupLoop ) )
 	&& str_contains( $write( $noLoop ), '[panel title="&#91;&#91;title&#93;&#93; &amp; more"]' ) === true );
 
-// The reasons a group is not read, and the attributes it does not keep
+// The loop around the row: a section holds, in the place of its row, the call of a stack whose cell is components, with the row between its tags. The picture behind the section stands before it,
+// the arrow after it; the columns are the cell, with the fills of the element and a group of their own, and the loop has the attributes of any loop
+$aroundFile = "<section id=\"team\" class=\"nino-section nino-mt-2\">\n\t<div class=\"nino-section-bg\">[image /template/page-x/team/background alt=\"\"]</div>\n\t[repeat /services sort=\"title\" limit=\"3\" id=\"people\"]\n\t\t<div class=\"nino-grid-row nino-grid-row--narrow nino-pt-2\">\n\t\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-33 nino-grid-l-33\">\n\t\t\t\t[title title]\n\t\t\t\t[line text=\"[[title]] ([[.id]])\"]\n\t\t\t</div>\n\t\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-66 nino-grid-l-66\">\n\t\t\t\t[text summary]\n\t\t\t\t[tabs]\n\t\t\t\t\t[panel title=\"[[title]]\"]\n\t\t\t\t\t\t[text summary]\n\t\t\t\t\t[/panel]\n\t\t\t\t[/tabs]\n\t\t\t</div>\n\t\t</div>\n\t[/repeat]\n\t[scroll-hint]\n</section>";
+$aroundModel	= $read( $page( $aroundFile ) );
+$aroundBlock	= $aroundModel['blocks'][0] ?? [];
+check( 'a section whose row is between the tags of a stack that loops components, called with a type, has a loop around its row: the stack with its type and its attributes, the settings of the row, the picture behind the section, the columns with the fills of the element - and a group of their own - and the arrow after the loop',
+	( $aroundBlock['kind'] ?? '' ) === 'section' && $aroundBlock['stack'] === null && array_keys( $aroundBlock['rowLoop'] ) === [ 'name', 'source', 'attributes' ] && $aroundBlock['rowLoop']['name'] === 'repeat' && $aroundBlock['rowLoop']['source'] === '/services'
+	&& $aroundBlock['rowLoop']['attributes']['sort'] === 'title' && $aroundBlock['rowLoop']['attributes']['limit'] === '3' && $aroundBlock['rowLoop']['attributes']['id'] === 'people'
+	&& $aroundBlock['settings']['row'] === 'narrow' && $aroundBlock['settings']['rowPt'] === '2' && $aroundBlock['settings']['mt'] === '2' && $aroundBlock['settings']['arrow'] === true && $aroundBlock['background']['slot'] === '/template/page-x/team/background'
+	&& count( $aroundBlock['cols'] ) === 2 && array_column( $aroundBlock['cols'][0]['components'], 'name' ) === [ 'title', 'line' ] && $aroundBlock['cols'][0]['components'][0]['source'] === 'title' && $aroundBlock['cols'][0]['width']['l'] === 33
+	&& array_column( $aroundBlock['cols'][1]['components'], 'name' ) === [ 'text', 'tabs' ] && $aroundBlock['cols'][1]['components'][1]['panels'][0]['title'] === '[[title]]' );
+check( '...and written back as it was read, byte for byte: the call one tab in after the picture, the row one tab deeper than it is without the loop, its closing tag at the depth of the call and the arrow after it - and read again, it is the same model',
+	str_contains( $write( $aroundModel ), $aroundFile. "\n" ) === true && $read( $write( $aroundModel ) ) === $aroundModel && $write( $read( $write( $aroundModel ) ) ) === $write( $aroundModel ) );
+check( '...a stack that makes tabs or an accordion of a type is such a loop too - a tab for each element, each with a row - and a section with a row and no loop writes the row where it was, two tabs in',
+	( static function() use ( $read, $write, $page, $aroundFile ): bool {
+		$tabbed = str_replace( [ '[repeat /services', '[/repeat]', 'id="people"]' ], [ '[accordion /services', '[/accordion]', 'id="people" title="title"]' ], $aroundFile );
+		$model = $read( $page( $tabbed ) )['blocks'][0] ?? [];
+		$plain = $model;
+		$plain['rowLoop'] = null;
+		return ( $model['rowLoop']['name'] ?? '' ) === 'accordion' && $model['rowLoop']['attributes']['title'] === 'title' && str_contains( $write( $read( $page( $tabbed ) ) ), $tabbed. "\n" ) === true
+			&& str_contains( $write( [ 'blocks' => [ $plain ] ] ), "\t<div class=\"nino-grid-row nino-grid-row--narrow nino-pt-2\">\n\t\t<div class=\"nino-grid-100 nino-grid-s-100 nino-grid-m-33 nino-grid-l-33\">\n\t\t\t[title title]" ) === true;
+	} )() );
+
+// The reasons a group or the loop around a row is not read, and the attributes a group does not keep
 $groupPanel = "\n\t\t\t\t[panel]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]";
+$aroundRow = "\n\t\t<div class=\"nino-grid-row\">\n\t\t\t<div class=\"nino-grid-100\">\n\t\t\t\t[text title]\n\t\t\t</div>\n\t\t</div>";
 $groupFails = [
 	'markup next to the panels'								=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t<p>x</p>". $groupPanel. "\n\t\t\t[/tabs]" ), 'group-content' ],
 	'a call next to the panels'								=> [ $groupRow( "[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t\t\t\t[text /template/page-x/faq/b]\n\t\t\t[/tabs]" ), 'group-content' ],
 	'a panel that is never closed'						=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t[/tabs]" ), 'group-content' ],
-	'a group without a panel'									=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t[/tabs]" ), 'no-cols' ],
-	'markup after the group in its column'		=> [ $groupRow( "[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t\t\t[/tabs]\n\t\t\t<p>x</p>" ), 'group-content' ],
-	'a second column next to the group'				=> [ str_replace( "\t\t</div>\n\t</div>\n</section>", "\t\t</div>\n\t\t<div class=\"nino-grid-100\">[text /template/page-x/faq/b]</div>\n\t</div>\n</section>", $groupRow( "[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t\t\t[/tabs]" ) ), 'row-content' ],
-	'a column of the group with a class of its own'	=> [ $groupRow( "[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t\t\t[/tabs]", 'faq', 'nino-grid-row', 'nino-section', 'nino-grid-100 nino-grid-m-50' ), 'stack-source' ],
+	'a group without a panel'									=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t[/tabs]" ), 'no-panels' ],
+	'a group that is never closed'						=> [ $groupRow( "[tabs id=\"faq-tabs\"]" ), 'no-panels' ],
+	'markup after the group in its column'		=> [ $groupRow( "[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t\t\t[/tabs]\n\t\t\t<p>x</p>" ), 'col-markup' ],
 	'a picture in a panel'										=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/faq/p alt=\"\"]</div>\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'grid-background' ],
 	'a group without a row'										=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t[/tabs]\n</section>", 'no-row' ],
 	'a panel in a column'											=> [ $section( "[panel title=\"x\"]\n\t\t\t\t[text /template/page-x/a/b]\n\t\t\t[/panel]" ), 'panel-elsewhere' ],
 	'a panel in a loop that has a type'				=> [ $section( "[tabs /services]\n\t\t\t\t[panel title=\"x\"]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'panel-elsewhere' ],
 	'a panel in a panel of a group'						=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[panel title=\"x\"]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'panel-elsewhere' ],
 	'a panel in a table'											=> [ $section( "[table /services]\n\t\t\t\t[panel title=\"x\"]\n\t\t\t[/table]" ), 'panel-elsewhere' ],
-	'a group in a section of tiles'						=> [ $groupRow( "[tabs id=\"faq-tabs\"]". $groupPanel. "\n\t\t\t[/tabs]", 'faq', 'nino-grid-row', 'nino-section nino-tiles' ), 'stack-source' ],
-	'a stack with a type in the place of the row'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[tabs /services id=\"faq-tabs\"]\n\t\t[text title]\n\t[/tabs]\n</section>", 'no-row' ],
-	'an id that is not the section\'s'				=> [ $groupRow( "[tabs id=\"other\"]". $groupPanel. "\n\t\t\t[/tabs]" ), 'unknown-attribute' ],
-	'an id in a loop of sections'							=> [ "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs id=\"news-tabs\"]". $groupPanel. "\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n[/sections]", 'unknown-attribute' ],
-	'a class on the call, which the row has'	=> [ $groupRow( "[tabs id=\"faq-tabs\" class=\"x\"]". $groupPanel. "\n\t\t\t[/tabs]" ), 'unknown-attribute' ],
+	'a stack with a type in the place of the row, with no row in it'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[tabs /services id=\"faq-tabs\"]\n\t\t[text title]\n\t[/tabs]\n</section>", 'no-row' ],
+	'a stack whose cell is no components in the place of the row'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[list /services]". $aroundRow. "\n\t[/list]\n</section>", 'no-row' ],
+	'a second row in the loop around the row'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[repeat /services]". $aroundRow. $aroundRow. "\n\t[/repeat]\n</section>", 'second-row' ],
+	'markup next to the row in the loop around it'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[repeat /services]". $aroundRow. "\n\t\t<p>x</p>\n\t[/repeat]\n</section>", 'section-content' ],
+	'a loop around the row inside a loop of sections'	=> [ "[sections /services id=\"news\"]\n\t[repeat /services]". $aroundRow. "\n\t[/repeat]\n[/sections]", 'loop-in-loop' ],
+	'a loop in a column of the loop around the row'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[repeat /services]\n\t\t<div class=\"nino-grid-row\">\n\t\t\t<div class=\"nino-grid-100\">\n\t\t\t\t[stack /services]\n\t\t\t\t\t[text title]\n\t\t\t\t[/stack]\n\t\t\t</div>\n\t\t</div>\n\t[/repeat]\n</section>", 'loop-in-loop' ],
+	'a group from a type in a column of the loop around the row'	=> [ "<section id=\"faq\" class=\"nino-section\">\n\t[repeat /services]\n\t\t<div class=\"nino-grid-row\">\n\t\t\t<div class=\"nino-grid-100\">\n\t\t\t\t[tabs /services]\n\t\t\t\t\t[text title]\n\t\t\t\t[/tabs]\n\t\t\t</div>\n\t\t</div>\n\t[/repeat]\n</section>", 'loop-in-loop' ],
+	'a group in the cell of a loop'						=> [ $section( "[repeat /services]\n\t\t\t\t[tabs]". $groupPanel. "\n\t\t\t\t[/tabs]\n\t\t\t[/repeat]" ), 'group-in-loop' ],
+	'a group in a panel of a group'						=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[accordion]\n\t\t\t\t\t\t[panel]\n\t\t\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t\t[/accordion]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'group-in-group' ],
 	'a limit, which a call without a type has no use for'	=> [ $groupRow( "[tabs id=\"faq-tabs\" limit=\"3\"]". $groupPanel. "\n\t\t\t[/tabs]" ), 'unknown-attribute' ],
 	'a title field, which a call without a type does not read'	=> [ $groupRow( "[tabs id=\"faq-tabs\" title=\"name\"]". $groupPanel. "\n\t\t\t[/tabs]" ), 'unknown-attribute' ],
 	'a panel with an attribute of its own'		=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel title=\"x\" id=\"y\"]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'unknown-attribute' ],
 	'a panel with a title the call cannot carry'	=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel title=\"a &lt; b\"]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'attribute-value' ],
-	'a title with a field outside a loop of sections'	=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel title=\"[[title]]\"]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'attribute-value' ],
+	'a title with a field outside a loop'			=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel title=\"[[title]]\"]\n\t\t\t\t\t[text /template/page-x/faq/a]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'attribute-value' ],
 	'a value of an attribute that is none of its options'	=> [ $groupRow( "[accordion id=\"faq-accordion\" open=\"last\"]". $groupPanel. "\n\t\t\t[/accordion]", 'faq' ), 'attribute-value' ],
 	'a title that is the entities of a field in a loop of sections'	=> [ "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs]\n\t\t\t\t[panel title=\"&#91;&#91;title&#93;&#93;\"]\n\t\t\t\t\t[text title]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n[/sections]", 'attribute-value' ],
-	'a loop in a panel with a stack of the same name'	=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[tabs /services]\n\t\t\t\t\t\t[text title]\n\t\t\t\t\t[/tabs]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'group-content' ],
+	'a loop of the same stack in a panel'		=> [ $groupRow( "[tabs id=\"faq-tabs\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[tabs /services]\n\t\t\t\t\t\t[text title]\n\t\t\t\t\t[/tabs]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]" ), 'loop-in-group' ],
 	'a loop in a panel of a group in a loop of sections'	=> [ "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs]\n\t\t\t\t[panel]\n\t\t\t\t\t[repeat /services]\n\t\t\t\t\t\t[text title]\n\t\t\t\t\t[/repeat]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n[/sections]", 'loop-in-loop' ],
 ];
 $groupMissed = [];
@@ -4538,52 +4564,206 @@ foreach( $groupFails as $what => [ $source, $code ] ) {
 		$groupMissed[] = $what. ' ('. ( $failed['reason']['code'] ?? $failed['kind'] ?? 'none' ). ')';
 }
 
-check( 'a group is not read where it is none: markup or a call next to its panels or after it in its column, a panel that is never closed, a second column in its row, a column with a class of its own, a picture in a panel, a stack without a row, a panel in a column, in a loop with a type, in a table and in another panel, a group in a section of tiles, a stack with a type in the place of the row, an id that is not the section\'s - or one in a loop of sections -, a class, a limit or a title field on the call, an attribute of a panel but its title and class, a title with a character the call does not carry, a field outside a loop of sections or the entities of one inside it, an option the stack has not, a loop in a panel - each a block of html with its reason',
+check( 'a group and a loop around a row are not read where they are none: markup or a call next to the panels or after the group in its column, a panel that is never closed, a group with no panel or never closed, a picture in a panel, a group without a row, a panel in a column, in a loop with a type, in a table and in another panel, a stack with a type or of another cell in the place of the row, a second row or markup beside the row of the loop around it, a loop around the row in a loop of sections, a loop or a group from a type in its columns, a group in the cell of a loop or in a panel, a limit or a title field on the call of a group, an attribute of a panel but its title and class, a title with a character the call does not carry, a field outside a loop or the entities of one inside it, an option the stack has not, a loop of the stack of the group in one of its panels, a loop in a panel of a group in a loop - each a block of html with its reason: '. count( $groupFails ). ' cases'. ( $groupMissed === [] ? '' : ' - '. implode( ', ', $groupMissed ) ),
 	$groupMissed === [] );
-check( '...the reasons say it in a sentence: the panel outside a group, what the group holds that is no panel with the first characters of it, and the id a group in a loop of sections cannot have',
+check( '...the reasons say it in a sentence: the panel outside a group, what the group holds that is no panel with the first characters of it, and the group with no panel',
 	( $read( $page( $groupFails['a panel in a column'][0] ) )['blocks'][0]['reason']['text'] ?? '' ) === 'a panel outside a group of panels' && str_starts_with( $read( $page( $groupFails['markup next to the panels'][0] ) )['blocks'][0]['reason']['text'] ?? '', 'the group of panels holds <p>x</p> ' ) === true
-	&& ( $read( $page( $groupFails['an id in a loop of sections'][0] ) )['blocks'][0]['reason']['code'] ?? '' ) === 'unknown-attribute' );
+	&& ( $read( $page( $groupFails['a group without a panel'][0] ) )['blocks'][0]['reason']['text'] ?? '' ) === 'the group of panels has no panel' );
+check( '...a block that is a group in a column of the loop of sections, inside the cell of the loop, is read as a section when the group is fixed',
+	( $read( $page( "[sections /services id=\"news\"]\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs]". $groupPanel. "\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n[/sections]" ) )['blocks'][0]['kind'] ?? '' ) === 'section' );
 
-// The registry the panel is handed: which stacks a section can be a group of, and the component a panel is, by the places the schemas name
-check( '...the stacks that take panels are the group a section can be, and the panel is the component that stands in the place they give and nowhere else: the Reader knows neither by name, and a registry without a panel offers no group',
+// The registry the panel is handed: which stacks can be a group, and the component a panel is, by the places the schemas name
+check( '...the stacks that take panels are the groups a column can hold, and the panel is the component that stands in the place they give and nowhere else: the Reader knows neither by name, and a registry without a panel offers no group',
 	\Nino\Modules\Builder\Reader::groups( $registry ) === [ 'tabs', 'accordion' ] && \Nino\Modules\Builder\Reader::panel( $registry ) === 'panel' && \Nino\Modules\Builder\Reader::groups( [ 'components' => [], 'stacks' => $registry['stacks'] ] ) === []
 	&& array_keys( \Nino\Modules\Builder\Reader::groupAttributes( $registry['stacks']['tabs'] ) ) === [] && array_keys( \Nino\Modules\Builder\Reader::groupAttributes( $registry['stacks']['accordion'] ) ) === [ 'exclusive', 'open' ]
 	&& $registry['components']['panel']['in'] === [ 'panels' ] && $registry['stacks']['tabs']['panels'] === true && ( $registry['stacks']['stack']['panels'] ?? false ) === false );
 
-// The Document: the shape of the group, the title, and a save that reads back
-$groupProblems = static function( callable $break ) use ( $call, $groupModel, $registry ): array {
-	$model = $groupModel;
+// The Document: the shape of a group and of the loop around a row, and a save that reads back
+$modelBroken = static function( array $model, callable $break ) use ( $call, $registry ): string {
 	$break( $model );
-	return $call( '_shape', [ $model, $registry ] );
+	return implode( ' | ', $call( '_shape', [ $model, $registry ] ) );
 };
-$groupSaid = static fn( callable $break, string $sentence ): bool => in_array( $sentence, $groupProblems( $break ), true );
-check( 'the shape of a model refuses a group that is no stack that takes panels - a stack that loops, one that is not there, a value that is no text - one that is a section of tiles, attributes the group does not keep and a title that is no line of text; a group as the Reader reads it is none of these',
-	$call( '_shape', [ $groupModel, $registry ] ) === [] && $call( '_shape', [ $read( $page( $groupAccordion ) ), $registry ] ) === []
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['settings']['group'] = 'stack'; }, 'the group of block 1 is none of the stacks that take panels' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['settings']['group'] = 'nothing'; }, 'the group of block 1 is none of the stacks that take panels' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['settings']['group'] = 5; }, 'the group of block 1 is none of the stacks that take panels' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['settings']['tiles'] = true; }, 'block 1 is a section of tiles and a group of panels, and its row is its tiles' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['settings']['groupAttributes'] = [ 'limit' => '3' ]; }, 'the attributes of the group of block 1 are none the group keeps' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['cols'][0]['title'] = 5; }, 'the title of column 1 of block 1 is no line of text' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['cols'][0]['title'] = "a\nb"; }, 'the title of column 1 of block 1 is no line of text' )
-	&& $groupSaid( static function( array &$m ): void { $m['blocks'][0]['settings']['groupAttributes'] = [ 'a' => 'x"y' ]; $m['blocks'][0]['settings']['group'] = 'accordion'; }, 'the attributes of the group of block 1 are none the group keeps' ) );
+$groupAt = static function( array &$m ): array { return $m['blocks'][0]['cols'][0]['components'][0]; };
+check( 'the shape of a model refuses a group whose attributes it does not keep, with no panels or with panels that are no list, a panel that is none or whose title is no line of text, a group in a panel, a loop of the group\'s own stack in a panel and a loop in a panel of a group in the cell of a loop; a group as the Reader reads it is none of these',
+	$call( '_shape', [ $groupModel, $registry ] ) === [] && $call( '_shape', [ $read( $page( $groupAccordion ) ), $registry ] ) === [] && $call( '_shape', [ $mixedModel, $registry ] ) === [] && $call( '_shape', [ $aroundModel, $registry ] ) === []
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['attributes']['limit'] = '3'; } ), 'block 1 has the group "tabs" with attributes it does not keep' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['panels'] = []; } ), 'block 1 has the group "tabs" with no panels, or with panels that are no list' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { unset( $m['blocks'][0]['cols'][0]['components'][0]['panels'] ); } ), 'block 1 has the group "tabs" with no panels, or with panels that are no list' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['panels'][1] = 'x'; } ), 'panel 2 of the group "tabs" of block 1 is none' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['panels'][0]['title'] = 5; } ), 'panel 1 of the group "tabs" of block 1 is none' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['panels'][0]['title'] = "a\nb"; } ), 'the title of panel 1 of the group "tabs" of block 1 is no line of text' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['components'] = []; } ), 'block 1 has the group "tabs" with components, and it holds panels' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ) use ( $read, $page, $groupAccordion ): void { $m['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][] = $read( $page( $groupAccordion ) )['blocks'][0]['cols'][0]['components'][0]; } ), 'a group does not stand in a panel' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][] = [ 'name' => 'tabs', 'source' => '/services', 'attributes' => [], 'components' => [] ]; } ), 'a loop of the stack "tabs", which would end the group at its own closing tag' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ): void { $m['blocks'][0]['stack'] = [ 'name' => 'sections', 'source' => '/services', 'attributes' => $m['blocks'][0]['stack']['attributes'] ?? [] ]; } ), 'a loop, and the group is in the cell of a loop' ) === true
+	&& str_contains( $modelBroken( $groupModel, static function( array &$m ) use ( $groupNode ): void { $m['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'repeat', 'source' => '/services', 'attributes' => [], 'components' => [ $groupNode ] ]; } ), 'has the group "tabs" inside the loop "repeat", and a loop does not hold one' ) === true );
+check( '...and of the loop around a row: a stack whose cell is components, with a type, in a section that runs no loop of sections, with no components of its own - a loop in its columns is refused with the column named',
+	str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['rowLoop']['name'] = 'list'; } ), 'block 1 has the loop "list" around its row, which holds no row' ) === true
+	&& str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['rowLoop']['name'] = 'sections'; } ), 'block 1 has the loop "sections" around its row, which holds no row' ) === true
+	&& str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['rowLoop']['source'] = ''; } ), 'block 1 has the loop "repeat" around its row with no type' ) === true
+	&& str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['rowLoop']['components'] = []; } ), 'block 1 has the loop "repeat" around its row with components, and its child is the row' ) === true
+	&& str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['stack'] = [ 'name' => 'sections', 'source' => '/services', 'attributes' => [] ]; } ), 'block 1 has a loop of sections and a loop around its row, and a loop does not hold one' ) === true
+	&& str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['rowLoop'] = 'x'; } ), 'block 1 has a call that is none' ) === true
+	&& str_contains( $modelBroken( $aroundModel, static function( array &$m ): void { $m['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'stack', 'source' => '/services', 'attributes' => [], 'components' => [] ]; } ), 'column 1 of block 1 has a loop, and it is a column of a loop around the row' ) === true );
 
-// The ids a group makes: its call has the id of the section and the stack, the kernel makes the ids of its panels of that and a number - a section called so is the id of two elements. A save names them
-$groupIds = [ 'blocks' => [ $groupSection ] ];
+// A group of the page reads back as it was written, in a save, the texts of its panels and the pictures in them going where a column's go: the keys made, the file the Writer's
+$groupPage = \Nino\Modules\Builder\Document::create( $appData, 'Groups' );
+$groupEdit = $groupPage['model'];
+$groupEdit['blocks'][] = $groupSection;
+$groupEdit['blocks'][0]['id'] = 'faq';
+$groupEdit['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-groups/faq/note', 'text' => null,
+	'attributes' => [ 'format' => 'blocks', 'style' => '', 'class' => '' ], 'create' => [], 'values' => [ 'en_US' => '<p>In a panel.</p>' ] ];
+$groupSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-groups', $groupEdit, $groupPage['hash'] );
+$groupWritten = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-groups.tpl' ) );
+check( 'a save of a page with a group writes what the Writer makes of the model, answers the model as it reads back, and makes the key a component in a panel names - with the text typed for it, in the language it was typed in',
+	$groupSaved['status'] === 200 && $groupWritten === $write( $groupEdit ) && str_contains( $groupWritten, "\t\t\t\t[panel title=\"Prices &amp; &quot;terms&quot; &#91;1&#93;\" class=\"nino-grid--alt nino-text-center nino-pt-1 mine\"]\n\t\t\t\t\t[text /template/page-x/faq/prices]\n\t\t\t\t\t[text /template/page-groups/faq/note]\n" ) === true
+	&& ( \Nino\Text::entry( $appData, '/template/page-groups/faq/note' )['values']['en_US'] ?? null ) === '<p>In a panel.</p>' && isset( $groupSaved['model']['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][1]['values'] ) === false
+	&& $groupSaved['model']['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][1]['source'] === '/template/page-groups/faq/note' );
+$groupSource = \Nino\Modules\Builder\Document::source( $appData, $groupEdit );
+$groupWrong = $groupSaved['model'];
+$groupWrong['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['source'] = 'nope';
+$groupWrongSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-groups', $groupWrong, $groupSaved['hash'] );
+check( '...what stands in a panel is looked at as what stands in a column is: a source that is no key is a problem of the save, nothing is written, and the source view writes the group',
+	$groupSource['status'] === 200 && str_contains( (string) $groupSource['source'], '[tabs id="faq-tabs"]' ) === true && $groupWrongSaved['status'] === 400 && $groupWrongSaved['code'] === 'invalid'
+	&& str_contains( implode( ' ', $groupWrongSaved['problems'] ), 'the source "nope" of text means nothing in a column without a loop' ) === true && (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-groups.tpl' ) ) === $groupWritten );
+$groupRenamed = $groupSaved['model'];
+$groupRenamed['blocks'][0]['renamedFrom'] = 'faq';
+$groupRenamed['blocks'][0]['id'] = 'questions';
+$groupRenamedSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-groups', $groupRenamed, $groupSaved['hash'] );
+check( '...a section that is renamed takes the keys of the components in its panels along',
+	$groupRenamedSaved['status'] === 200 && ( $groupRenamedSaved['model']['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][1]['source'] ?? '' ) === '/template/page-groups/questions/note'
+	&& ( \Nino\Text::entry( $appData, '/template/page-groups/questions/note' )['values']['en_US'] ?? null ) === '<p>In a panel.</p>' );
 
-foreach( [ 'faq-tabs', 'faq-tabs-1', 'faq-tabs-12', 'faq-tabs-x', 'faq-accordion', 'faq-2' ] as $id )
-	$groupIds['blocks'][] = [ 'kind' => 'section', 'id' => $id, 'settings' => [], 'stack' => null, 'cols' => [] ];
+// What does not read back as it was written is a problem of the save: the classes of a panel with two spaces in them are read as one class each
+$groupSpaced = $groupModel;
+$groupSpaced['blocks'][0]['cols'][0]['components'][0]['panels'][0]['class'] = 'a  b';
+$groupSpacedProblems = \Nino\Modules\Builder\Document::problems( $appData, $groupSpaced, $registry );
+check( 'a panel whose classes do not read back as they were written - two spaces between them - is a problem of the save that names the section, where the model that is the file read is none',
+	count( $groupSpacedProblems ) === 1 && str_contains( $groupSpacedProblems[0], 'the section "faq" does not read back as it was written' ) === true && \Nino\Modules\Builder\Document::problems( $appData, $groupModel, $registry ) === [] );
 
-check( 'the ids a group makes are taken: faq-tabs beside a group of tabs on faq, and faq-tabs-1 and faq-tabs-12 for its panels - the section of the group itself is not, and neither are faq-tabs-x, faq-accordion and faq-2',
-	$call( '_loopIds', [ $groupIds, [] ] ) === [ 'faq-tabs', 'faq-tabs-1', 'faq-tabs-12' ] && $call( '_loopIds', [ [ 'blocks' => [ $groupSection ] ], [] ] ) === [] );
-
-// The attributes of a group are written into its call, and one a call cannot carry is a problem of the save, with the section named - and no exception
+// A quote in a class of a panel or in an attribute of the call is a problem that names the section and the stack's group - the save is refused with it, where the Writer would have thrown
 $groupQuote = $read( $page( $groupAccordion ) );
-$groupQuote['blocks'][0]['settings']['groupAttributes']['open'] = 'x"y';
+$groupQuote['blocks'][0]['cols'][0]['components'][0]['attributes']['open'] = 'x"y';
+$groupQuote['blocks'][0]['cols'][0]['components'][0]['panels'][0]['class'] = 'a"b';
 $groupQuoted = \Nino\Modules\Builder\Document::problems( $appData, $groupQuote, $registry );
-check( 'an attribute of the group that holds a quote is a problem that names the section, the attribute and the stack\'s group - the save is refused with it, where the Writer would have thrown',
-	count( $groupQuoted ) === 1 && str_contains( $groupQuoted[0], 'the section "faq" (block 1): the attribute "open" of the group holds a quote, a bracket or a line break, which a call cannot carry' ) === true
+check( 'an attribute of a group that holds a quote, or the classes of a panel that do, are problems that name the section, the attribute and the stack - the save is refused with them, where the Writer would have thrown',
+	count( $groupQuoted ) === 2 && str_contains( implode( ' | ', $groupQuoted ), 'the section "faq" (block 1): the attribute "open" of the component "accordion" holds a quote, a bracket or a line break, which a call cannot carry' ) === true
+	&& str_contains( implode( ' | ', $groupQuoted ), 'the section "faq" (block 1): the classes of a panel of the group "accordion" hold a quote, a bracket or a line break, which a call cannot carry' ) === true
 	&& callBuilderAction( $appData, 'apiSource', [ 'model' => $groupQuote ] )[0] === 400 );
+
+// What a panel holds is looked at for what no call can carry, as a column is: a quote in a class of a component in a panel
+$panelQuote = $read( $page( $groupTabs ) );
+$panelQuote['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['attributes']['class'] = 'x"y';
+check( 'a component in a panel that holds a quote is a problem of the save, as one in a column is: the section, the attribute and the component are named',
+	str_contains( implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $panelQuote, $registry ) ), 'the section "faq" (block 1): the attribute "class" of the component "text" holds a quote, a bracket or a line break, which a call cannot carry' ) === true );
+
+// The id of a group in the cell of a loop: one call stands for every element, and the id would be the id of all of them - the Reader, the shape and the editor refuse it, outside a cell it is the editor's
+$idCell = static fn( string $head, string $tail = '' ): string => $head. "\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[tabs id=\"g\"]\n\t\t\t\t[panel]\n\t\t\t\t\t[text title]\n\t\t\t\t[/panel]\n\t\t\t[/tabs]\n\t\t</div>\n\t</div>\n". $tail;
+$idInSections = $read( $page( $idCell( "[sections /services id=\"news\"]", "[/sections]" ) ) )['blocks'][0] ?? [];
+$idInRow = $read( $page( "<section id=\"a\" class=\"nino-section\">\n\t[repeat /services]". str_replace( "\n", "\n\t", "\n". $idCell( '', '' ) ). "\t[/repeat]\n</section>" ) )['blocks'][0] ?? [];
+$idShape = $read( $page( str_replace( ' id="g"', '', $idCell( "[sections /services id=\"news\"]", "[/sections]" ) ) ) );
+$idShape['blocks'][0]['cols'][0]['components'][0]['attributes']['id'] = 'g';
+check( 'a group with an id in the cell of a loop of sections, or of a loop around the row, is not read - the reason is the one a call with an attribute it does not keep has - and the shape of a model refuses it, as it refuses an id with a space or a control character anywhere',
+	( $idInSections['kind'] ?? '' ) === 'html' && ( $idInSections['reason']['code'] ?? '' ) === 'unknown-attribute' && ( $idInRow['kind'] ?? '' ) === 'html' && ( $idInRow['reason']['code'] ?? '' ) === 'unknown-attribute'
+	&& str_contains( implode( ' | ', $call( '_shape', [ $idShape, $registry ] ) ), 'with an id, and it is in the cell of a loop' ) === true
+	&& str_contains( implode( ' | ', $call( '_shape', [ array_replace_recursive( $groupModel, [ 'blocks' => [ [ 'cols' => [ [ 'components' => [ [ 'attributes' => [ 'id' => 'a b' ] ] ] ] ] ] ] ] ), $registry ] ) ), 'with an id that holds a space or a control character' ) === true
+	&& str_contains( implode( ' | ', $call( '_shape', [ array_replace_recursive( $groupModel, [ 'blocks' => [ [ 'cols' => [ [ 'components' => [ [ 'attributes' => [ 'id' => "a\0b" ] ] ] ] ] ] ] ] ), $registry ] ) ), 'with an id that holds a space or a control character' ) === true );
+
+// The title of a panel in the cell of a loop is a line of text with the fields of the element in it, and is looked at as a line is
+$titleLoop = $read( $page( $groupLoop ) );
+$titled = static function( string $title ) use ( $titleLoop, &$appData, $registry ): array {
+	$model = $titleLoop;
+	$model['blocks'][0]['cols'][0]['components'][0]['panels'][0]['title'] = $title;
+	return \Nino\Modules\Builder\Document::problems( $appData, $model, $registry );
+};
+check( 'a field in the title of a panel in the cell of a loop is looked at as one in a line: one the type has is none, one it has not and a picture are problems that name the fill - and so is the same in a line in that cell',
+	$titled( '[[title]] and [[.slug]]' ) === [] && str_contains( implode( ' | ', $titled( '[[nope]]' ) ), 'the fill [[nope]] in the title of a panel of accordion is no field of the loop\'s type' ) === true
+	&& str_contains( implode( ' | ', $titled( '[[image]]' ) ), 'the fill [[image]] in the title of a panel of accordion is an image field, which a title cannot print' ) === true );
+
+// A control character in the title, the classes or the id of a group is refused by the Writer and the shape: it would stand in the file as it is
+check( 'a title with a tab or a nul byte, and classes with a control character, are refused - by the Writer where it writes the title, by the shape where it is the classes',
+	( static function() use ( $write, $groupModel, $call, $registry ): bool {
+		$bad = 0;
+		foreach( [ "a\tb", "a\0b" ] as $title ) {
+			$model = $groupModel;
+			$model['blocks'][0]['cols'][0]['components'][0]['panels'][1]['title'] = $title;
+			try { $write( $model ); } catch( \UnexpectedValueException ) { $bad++; }
+		}
+		$tabbed = $groupModel;
+		$tabbed['blocks'][0]['cols'][0]['components'][0]['panels'][1]['title'] = "a\tb";
+		$model = $groupModel;
+		$model['blocks'][0]['cols'][0]['components'][0]['panels'][1]['class'] = "a\tb";
+		return $bad === 2 && str_contains( implode( ' | ', $call( '_shape', [ $tabbed, $registry ] ) ), 'is no line of text' ) === true && str_contains( implode( ' | ', $call( '_shape', [ $model, $registry ] ) ), 'hold a control character' ) === true;
+	} )() );
+
+// The ids of the page are told over the panels as well: a loop with an id in a panel and a section called so
+$idPanel = [ 'kind' => 'section', 'id' => 'a', 'settings' => [], 'stack' => null, 'rowLoop' => null, 'cols' => [ [ 'components' => [ [ 'name' => 'tabs', 'source' => '', 'attributes' => [ 'id' => '' ], 'panels' => [ [ 'title' => '', 'class' => '', 'components' => [ [ 'name' => 'repeat', 'source' => '/services', 'attributes' => [ 'id' => 'b' ], 'components' => [] ] ] ] ] ] ] ] ] ];
+check( 'a loop in a panel of a group names an id of the page as one in a column does: a section called so is the id of two elements',
+	$call( '_loopIds', [ [ 'blocks' => [ $idPanel, [ 'kind' => 'section', 'id' => 'b', 'settings' => [], 'stack' => null, 'rowLoop' => null, 'cols' => [] ] ] ], $registry ] ) === [ 'b' ] && $call( '_loopIds', [ [ 'blocks' => [ $idPanel ] ], $registry ] ) === [] );
+
+// A page that is the model it is read as, with a text typed for a key of a component in a panel that is there, has the text written and its file left as it is: nothing is
+// written that the model says already, and a file that is not in the Writer's own form - here with no wrap - stays so
+$spacedPath = \Nino\Filesystem::path( $appData, '/templates/page-spaced.tpl' );
+$spacedFile = str_replace( '/template/page-x/faq/prices', '/template/page-home/hero/title', $groupTabs ). "\n";
+file_put_contents( $spacedPath, $spacedFile );
+
+// The key is made by a first save, and the file put back as it was
+$spacedFirst = \Nino\Modules\Builder\Document::load( $appData, 'page-spaced' );
+$spacedMake = $spacedFirst['model'];
+$spacedMake['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['create'] = [];
+$spacedMake['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['values'] = [ 'en_US' => 'Hello' ];
+\Nino\Modules\Builder\Document::save( $appData, 'page-spaced', $spacedMake, $spacedFirst['hash'] );
+file_put_contents( $spacedPath, $spacedFile );
+
+$spacedLoaded = \Nino\Modules\Builder\Document::load( $appData, 'page-spaced' );
+$spacedEdit = $spacedLoaded['model'];
+$spacedEdit['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['values'] = [ 'en_US' => 'Hello again' ];
+$spacedSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-spaced', $spacedEdit, $spacedLoaded['hash'] );
+check( 'the text typed for the key of a component in a panel is written to the key and the file is not touched: the model that is the file, but for the staged text, is the file',
+	$spacedSaved['status'] === 200 && (string) file_get_contents( $spacedPath ) === $spacedFile && ( \Nino\Text::entry( $appData, '/template/page-home/hero/title' )['values']['en_US'] ?? null ) === '<p>Hello again</p>'
+	&& isset( $spacedSaved['model']['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['values'] ) === false );
+@unlink( $spacedPath );
+
+// The loop around a row: its type is looked at, the fields of its columns are the type's, and the page saves and reads back
+$aroundPage = \Nino\Modules\Builder\Document::create( $appData, 'Around' );
+$aroundEdit = $aroundPage['model'];
+$aroundEdit['blocks'] = [ $aroundBlock ];
+$aroundEdit['blocks'][0]['id'] = 'team';
+$aroundSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-around', $aroundEdit, $aroundPage['hash'] );
+$aroundWritten = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-around.tpl' ) );
+$aroundTyped = $aroundSaved['model'];
+$aroundTyped['blocks'][0]['rowLoop']['source'] = '/nothing';
+$aroundTyped = \Nino\Modules\Builder\Document::save( $appData, 'page-around', $aroundTyped, $aroundSaved['hash'] );
+$aroundFielded = $aroundSaved['model'];
+$aroundFielded['blocks'][0]['cols'][0]['components'][0]['source'] = 'nope';
+$aroundFielded = \Nino\Modules\Builder\Document::save( $appData, 'page-around', $aroundFielded, $aroundSaved['hash'] );
+check( 'a page with a loop around its row is saved as the Writer writes it and reads back as the model it was: the loop, its type, and the columns with the fields of the type in them',
+	$aroundSaved['status'] === 200 && $aroundWritten === $write( $aroundEdit ) && str_contains( $aroundWritten, "\t[repeat /services sort=\"title\" limit=\"3\" id=\"people\"]\n\t\t<div class=\"nino-grid-row nino-grid-row--narrow nino-pt-2\">\n" ) === true
+	&& $aroundSaved['model']['blocks'][0]['rowLoop']['source'] === '/services' && $aroundSaved['model'] === \Nino\Modules\Builder\Document::load( $appData, 'page-around' )['model'] );
+check( '...the type is one the Elements panel knows, and the sources in its columns are that type\'s fields: a fill that is none is a problem of the save, a type that is none too',
+	$aroundTyped['status'] === 400 && str_contains( implode( ' | ', $aroundTyped['problems'] ?? [] ), 'the loop runs over "nothing", which is no element type' ) === true
+	&& $aroundFielded['status'] === 400 && str_contains( implode( ' | ', $aroundFielded['problems'] ?? [] ), 'the source "nope" of title is no field of the loop\'s type' ) === true
+	&& (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-around.tpl' ) ) === $aroundWritten );
+
+// The ids of the page: a group or a loop with an id, the section of a loop of sections and the panels a stack numbers are all ids of the page, and one that two elements have is told
+$idsOf = static function( array $sections ) use ( $call, $registry ): array {
+	return $call( '_loopIds', [ [ 'blocks' => $sections ], $registry ] );
+};
+$idSection = static fn( string $id, array $components = [], array $extra = [] ): array => array_replace( [ 'kind' => 'section', 'id' => $id, 'settings' => [], 'stack' => null, 'rowLoop' => null, 'cols' => [ [ 'components' => $components ] ] ], $extra );
+$idGroup = static fn( string $id, string $name = 'tabs' ): array => [ 'name' => $name, 'source' => '', 'attributes' => [ 'id' => $id ], 'panels' => [ [ 'title' => '', 'class' => '', 'components' => [] ] ] ];
+$idLoop = static fn( string $id, string $name = 'repeat' ): array => [ 'name' => $name, 'source' => '/services', 'attributes' => [ 'id' => $id ], 'components' => [] ];
+check( 'the ids a page makes are told over every id it names: a group on faq-tabs beside a section called so, and a section called as one of its panels (faq-tabs-1, faq-tabs-12) are the id of two elements - a section called faq-tabs-x, faq-accordion or faq-2 is not, nor the group alone',
+	$idsOf( [ $idSection( 'faq', [ $idGroup( 'faq-tabs' ) ] ), $idSection( 'faq-tabs' ), $idSection( 'faq-tabs-1' ), $idSection( 'faq-tabs-12' ), $idSection( 'faq-tabs-x' ), $idSection( 'faq-accordion' ), $idSection( 'faq-2' ) ] ) === [ 'faq-tabs', 'faq-tabs-1', 'faq-tabs-12' ]
+	&& $idsOf( [ $idSection( 'faq', [ $idGroup( 'faq-tabs' ) ] ) ] ) === [] );
+check( '...two groups or loops with one id, a loop and a section with one id, a loop around a row that numbers its panels and the section of a loop of sections they collide with - and two sections with one id, which problems() tells in its own way, are not',
+	$idsOf( [ $idSection( 'a', [ $idGroup( 'x' ) ] ), $idSection( 'b', [ $idGroup( 'x', 'accordion' ) ] ) ] ) === [ 'x' ] && $idsOf( [ $idSection( 'a', [ $idLoop( 'x' ) ] ), $idSection( 'x' ) ] ) === [ 'x' ]
+	&& $idsOf( [ $idSection( 'a', [], [ 'rowLoop' => $idLoop( 'tab', 'tabs' ) ] ), $idSection( 'tab-3' ) ] ) === [ 'tab-3' ] && $idsOf( [ $idSection( 'a', [], [ 'rowLoop' => $idLoop( 'rep' ) ] ), $idSection( 'rep-3' ) ] ) === []
+	&& $idsOf( [ $idSection( 'a', [ $idGroup( 'g' ) ] ), $idSection( 'b', [ $idLoop( 'g-2', 'repeat' ) ] ) ] ) === [ 'g-2' ]
+	&& $idsOf( [ [ 'kind' => 'section', 'id' => 'news', 'settings' => [], 'stack' => $idLoop( '' ), 'cols' => [] ], $idSection( 'news-2', [ $idGroup( 'news-1' ) ] ) ] ) === [ 'news-2', 'news-1' ]
+	&& $idsOf( [ $idSection( 'same' ), $idSection( 'same' ) ] ) === [] && $idsOf( [ $idSection( 'a', [ $idGroup( 'g', 'tabs' ) ] ), $idSection( 'b', [ [ 'name' => 'text', 'source' => '/template/page-x/b/t', 'attributes' => [ 'id' => 'g' ] ] ] ) ] ) === [] );
+
+\Nino\Modules\Builder\Document::delete( $appData, 'page-groups' );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-around' );
 
 // A list whose cell is one field or one line reads as the cell it is; the Builder derives the row from the components, so that the model is the same as any cell's
 $listField	= $read( $page( $section( "[list /services style=\"check\"]\n\t\t\t\t[text title]\n\t\t\t[/list]" ) ) );
@@ -5013,8 +5193,8 @@ $idModel = static function( string $id ) use ( $read, $page, $section ): array {
 	return $model;
 };
 $idTaken = new \ReflectionMethod( \Nino\Modules\Builder\Document::class, '_loopIds' );
-check( 'a section called as a cell of a loop in a column that numbers its cells by its id - faq-1 for the loop faq of a stack that says panels - is the id of two elements and is refused by the save with 409; a loop that numbers none (a grid), the id of the loop alone and a section that is none of these are not',
-	$idTaken->invoke( null, $idModel( 'faq-2' ), $registry ) === [ 'faq-2' ] && $idTaken->invoke( null, $idModel( 'faq-2' ), [] ) === [] && $idTaken->invoke( null, $idModel( 'faq' ), $registry ) === [] && $idTaken->invoke( null, $idModel( 'faq-x' ), $registry ) === []
+check( 'a section called as a cell of a loop in a column that numbers its cells by its id - faq-1 for the loop faq of a stack that says panels - is the id of two elements and is refused by the save with 409, and so is a section called as the loop itself; a loop that numbers none (a grid) and a section that is none of these are not',
+	$idTaken->invoke( null, $idModel( 'faq-2' ), $registry ) === [ 'faq-2' ] && $idTaken->invoke( null, $idModel( 'faq-2' ), [] ) === [] && $idTaken->invoke( null, $idModel( 'faq' ), $registry ) === [ 'faq' ] && $idTaken->invoke( null, $idModel( 'faq-x' ), $registry ) === []
 	&& $idTaken->invoke( null, ( static function() use ( $idModel ): array { $model = $idModel( 'faq-2' ); $model['blocks'][0]['cols'][0]['components'][0]['name'] = 'stack'; return $model; } )(), $registry ) === [] );
 
 echo "\n";

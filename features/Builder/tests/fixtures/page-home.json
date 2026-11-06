@@ -50,8 +50,6 @@
                 "pr": "",
                 "text": "",
                 "arrow": true,
-                "group": "",
-                "groupAttributes": [],
                 "vpa": "",
                 "vpaSpeed": "",
                 "vpaMode": "",
@@ -64,6 +62,7 @@
                 "focus": 5
             },
             "stack": null,
+            "rowLoop": null,
             "cols": [
                 {
                     "width": {
@@ -88,7 +87,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -199,8 +197,6 @@
                 "pr": "",
                 "text": "",
                 "arrow": false,
-                "group": "",
-                "groupAttributes": [],
                 "vpa": "",
                 "vpaSpeed": "",
                 "vpaMode": "",
@@ -210,6 +206,7 @@
             },
             "background": null,
             "stack": null,
+            "rowLoop": null,
             "cols": [
                 {
                     "width": {
@@ -234,7 +231,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -306,7 +302,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -463,8 +458,6 @@
                 "pr": "",
                 "text": "center",
                 "arrow": false,
-                "group": "",
-                "groupAttributes": [],
                 "vpa": null,
                 "vpaSpeed": "",
                 "vpaMode": "",
@@ -474,6 +467,7 @@
             },
             "background": null,
             "stack": null,
+            "rowLoop": null,
             "cols": [
                 {
                     "width": {
@@ -498,7 +492,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",

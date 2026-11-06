@@ -456,9 +456,9 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array										[ 'status' => 200, 'model', 'hash' ] - the model as it reads back; 400 with
 		 *																	'problems', 403, 404, 409 for a file that changed, a key or slot a
-		 *																	move would overwrite ('key-exists') or a static section that has the
-		 *																	id a loop of sections makes for one of its own ('section-id-taken',
-		 *																	with the ids), or what a panel that makes a key or a slot or writes
+		 *																	move would overwrite ('key-exists') or an id the page has twice, or that a
+		 *																	loop of sections or a group of panels makes for one of its own
+		 *																	('section-id-taken', with the ids), or what a panel that makes a key or a slot or writes
 		 *																	a text answered
 		 */
 		public static function save( array &$appData, string $file, array $model, string $hash, bool $force = false ): array {
@@ -483,12 +483,12 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
 
-			// A loop of sections makes the ids of its sections of its own id and a number: a section that stands in the file by such an id is the id of two
-			// sections of the page. What was saved so, the Reader reads as it always did
+			// A loop of sections makes the ids of its sections of its own id and a number, and so does a group of panels or a loop that numbers its panels: an element that stands
+			// in the file by such an id is the id of two elements of the page, as are two that have one id. What was saved so, the Reader reads as it always did
 			$taken		= self::_loopIds( $model, $schemas );
 
 			if( $taken !== [] )
-				return self::_error( 409, 'a section has an id that a loop of sections or a group of panels makes for its own elements', 'section-id-taken', $taken );
+				return self::_error( 409, 'an id of the page is made twice, or is one that a loop of sections or a group of panels makes for its own elements', 'section-id-taken', $taken );
 
 			$model		= self::_again( $model, $schemas );
 			$moves		= self::_rename( $model, $file, $schemas );
@@ -585,55 +585,89 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The ids of the sections that stand where a loop makes ids of its own: a loop on the section "news" makes news-1, news-2 and so on, and a section that is none of a
-		 *	loop and is called news-2 would be the id of two sections of the page - and so is one that is called as the call of a group, faq-tabs, or as a panel of it, faq-tabs-1,
-		 *	and one that is called as a cell of a loop in a column that names its panels by its id (faq-1 for the loop faq). Every stack that says panels reserves them, whatever
-		 *	its name: the kernel numbers the panels of tabs and does not number those of an accordion, and the Builder knows no stack by name, so it holds back the ids of both
+		 *	The ids of the page that are the id of two elements: every id the page names - a section's, the id of a loop around a row, of a loop or of a group in a column - and the
+		 *	ids the kernel makes of them. A loop of sections on the section "news" makes news-1, news-2 and so on, a stack that says panels - a group, or a loop from a type, a
+		 *	loop around a row among them - makes the ids of its panels of its own id and a number (faq-1 for the id faq), and the Builder knows no stack by name: every one of
+		 *	them holds back the ids of both kinds, whatever the kernel numbers. An element called so, or one that has an id another element has (two sections with one id are
+		 *	problems() to tell), is the id of two elements
 		 *
 		 *	@param		array			$model
 		 *	@param		array			$schemas			As schemas() answers
 		 *
-		 *	@return 	array										The ids, in the order of the sections; [] for a model with none
+		 *	@return 	array										The ids, in the order they stand in the page; [] for a model with none
 		 */
 		private static function _loopIds( array $model, array $schemas ): array {
 
-			$loops	= [];
-			$groups	= [];
-			$taken	= [];
+			// Every id the page names, with whether it is a section's, and every id a number is made onto
+			$named	= [];
+			$series	= [];
+
+			$name = static function( mixed $call, array $schemas ) use ( &$named, &$series ): void {
+
+				$id = is_array( $call ) === true ? (string) ( $call['attributes']['id'] ?? '' ) : '';
+
+				if( $id === '' )
+					return;
+
+				$named[] = [ $id, false ];
+
+				if( ( $schemas['stacks'][$call['name'] ?? '']['panels'] ?? false ) === true )
+					$series[$id] = true;
+			};
+
+			$walk = static function( array $components ) use ( &$walk, $name, $schemas ): void {
+
+				foreach( $components as $component ) {
+
+					if( self::_isLoop( $component, $schemas ) === true || self::_isGroup( $component, $schemas ) === true )
+						$name( $component, $schemas );
+
+					if( is_array( $component ) === false )
+						continue;
+
+					$walk( (array) ( $component['components'] ?? [] ) );
+
+					foreach( (array) ( $component['panels'] ?? [] ) as $panel )
+						$walk( (array) ( is_array( $panel ) === true ? $panel['components'] ?? [] : [] ) );
+				}
+			};
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $block ) {
 
 				if( is_array( $block ) === false || ( $block['kind'] ?? '' ) !== 'section' )
 					continue;
 
-				if( is_array( $block['stack'] ?? null ) === true )
-					$loops[] = (string) ( $block['id'] ?? '' );
-				elseif( (string) ( $block['settings']['group'] ?? '' ) !== '' && (string) ( $block['id'] ?? '' ) !== '' )
-					$groups[] = [ (string) $block['id'], (string) $block['id']. '-'. (string) $block['settings']['group'] ];
+				$id = (string) ( $block['id'] ?? '' );
 
-				// The loops of its columns, the cells of which a stack that says panels numbers by the id of its call
+				if( is_array( $block['stack'] ?? null ) === true ) {
+
+					if( $id !== '' )
+						$series[$id] = true;
+				}
+				elseif( $id !== '' )
+					$named[] = [ $id, true ];
+
+				if( is_array( $block['rowLoop'] ?? null ) === true )
+					$name( $block['rowLoop'], $schemas );
+
 				foreach( (array) ( $block['cols'] ?? [] ) as $col )
-					foreach( (array) ( is_array( $col ) === true ? $col['components'] ?? [] : [] ) as $component )
-						if( self::_isLoop( $component, $schemas ) === true && ( $schemas['stacks'][$component['name']]['panels'] ?? false ) === true && (string) ( $component['attributes']['id'] ?? '' ) !== '' )
-							$loops[] = (string) $component['attributes']['id'];
+					$walk( (array) ( is_array( $col ) === true ? $col['components'] ?? [] : [] ) );
 			}
 
-			foreach( (array) ( $model['blocks'] ?? [] ) as $block ) {
+			$taken = [];
 
-				if( is_array( $block ) === false || ( $block['kind'] ?? '' ) !== 'section' || is_array( $block['stack'] ?? null ) === true )
-					continue;
+			foreach( $named as $at => [ $id, $section ] ) {
 
-				foreach( $loops as $loop )
-					if( $loop !== '' && preg_match( '/^'. preg_quote( $loop, '/' ). '-[0-9]+$/D', (string) ( $block['id'] ?? '' ) ) === 1 )
-						$taken[] = (string) $block['id'];
+				foreach( array_keys( $series ) as $prefix )
+					if( preg_match( '/^'. preg_quote( (string) $prefix, '/' ). '-[0-9]+$/D', $id ) === 1 )
+						$taken[] = $id;
 
-				// A group's call has the id of its section and its stack, and the kernel makes the ids of the panels of that and a number: a section called so is the id of two elements
-				foreach( $groups as $group )
-					if( $group[0] !== (string) ( $block['id'] ?? '' ) && preg_match( '/^'. preg_quote( $group[1], '/' ). '(?:-[0-9]+)?$/D', (string) ( $block['id'] ?? '' ) ) === 1 )
-						$taken[] = (string) $block['id'];
+				foreach( $named as $other => [ $same, $sectionToo ] )
+					if( $other > $at && $same === $id && ( $section === false || $sectionToo === false ) )
+						$taken[] = $id;
 			}
 
-			return $taken;
+			return array_values( array_unique( $taken ) );
 		}
 
 		/**
@@ -1290,11 +1324,20 @@ namespace Nino\Modules\Builder {
 					array_push( $problems, ...self::_fieldNames( (array) $call, $schemas, $at ) );
 				}
 
-				// The attributes of a group are written into the call of its stack
-				if( is_array( $block['settings']['groupAttributes'] ?? null ) === true )
-					foreach( $block['settings']['groupAttributes'] as $attribute => $value )
+				// The loop around the row is a call as the loop of a column is
+				foreach( is_array( $block['rowLoop'] ?? null ) === true ? [ $block['rowLoop'] ] : [] as $call ) {
+
+					$values = [ 'source' => $call['source'] ?? null ] + (array) ( $call['attributes'] ?? [] );
+
+					if( is_string( $values[Reader::STACK_TEXT] ?? null ) === true && Reader::lineText( $values[Reader::STACK_TEXT] ) === true )
+						$values[Reader::STACK_TEXT] = null;
+
+					foreach( $values as $attribute => $value )
 						if( $unsafe( $value ) === true )
-							$problems[] = $at. ': the attribute "'. $attribute. '" of the group holds a quote, a bracket or a line break, which a call cannot carry';
+							$problems[] = $at. ': the attribute "'. $attribute. '" of the loop "'. (string) ( $call['name'] ?? '' ). '" around the row holds a quote, a bracket or a line break, which a call cannot carry';
+
+					array_push( $problems, ...self::_fieldNames( (array) $call, $schemas, $at ) );
+				}
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col ) {
 
@@ -1311,6 +1354,11 @@ namespace Nino\Modules\Builder {
 
 						$schema = (array) ( $schemas['components'][$call['name'] ?? ''] ?? $schemas['stacks'][$call['name'] ?? ''] ?? [] );
 						$values = [ 'source' => $call['source'] ?? null, 'text' => $call['text'] ?? null ] + (array) ( $call['attributes'] ?? [] );
+
+						// The classes of a panel of a group are written into its call
+						foreach( (array) ( $call['panels'] ?? [] ) as $panel )
+							if( is_array( $panel ) === true && $unsafe( $panel['class'] ?? null ) === true )
+								$problems[] = $at. ': the classes of a panel of the group "'. (string) ( $call['name'] ?? '' ). '" hold a quote, a bracket or a line break, which a call cannot carry';
 
 						// A loop has no fixed text but its attribute of that name, which holds the fills of the element, and no other bracket
 						if( isset( $schemas['stacks'][$call['name'] ?? ''] ) === true ) {
@@ -1355,15 +1403,16 @@ namespace Nino\Modules\Builder {
 			if( is_array( $section['background'] ?? null ) === true && preg_match( self::SLOT, (string) ( $section['background']['slot'] ?? '' ) ) !== 1 )
 				$problems[] = 'the background is not an image slot';
 
-			// The cells of a loop of sections are its columns: the fields they name are the type's, as in a loop of a column
-			$cell = is_array( $section['stack'] ?? null ) === true ? self::_fields( $appData, $section['stack'], $problems ) : null;
+			// The cells of a loop of sections, and of a loop around the row, are its columns: the fields they name are the type's, as in a loop of a column
+			$around = is_array( $section['stack'] ?? null ) === true ? $section['stack'] : ( is_array( $section['rowLoop'] ?? null ) === true ? $section['rowLoop'] : null );
+			$cell = $around !== null ? self::_fields( $appData, $around, $problems ) : null;
 
-			if( is_array( $section['stack'] ?? null ) === true )
-				array_push( $problems, ...self::_loopValues( $section['stack'], $schemas, $cell ) );
+			if( $around !== null )
+				array_push( $problems, ...self::_loopValues( $around, $schemas, $cell ) );
 
 			foreach( (array) ( $section['cols'] ?? [] ) as $c => $col ) {
 
-				// The picture behind a column is a slot, or - in a loop of sections, whose cell the column is - an image field of the element
+				// The picture behind a column is a slot, or - in the cell of a loop, which the column is - an image field of the element
 				if( is_array( $col['background'] ?? null ) === true ) {
 
 					$field = (string) ( $col['background']['field'] ?? '' );
@@ -1383,17 +1432,45 @@ namespace Nino\Modules\Builder {
 				$groups = [];
 				$loose = [];
 
-				foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+				// A group has the loops and the components of its panels among the column's: the panels are no cell of their own
+				$sort = static function( array $components ) use ( &$sort, &$groups, &$loose, &$appData, &$problems, $schemas, $cell ): void {
 
-					if( self::_isLoop( $component, $schemas ) === false ) {
-						$loose[] = $component;
-						continue;
+					foreach( $components as $component ) {
+
+						if( self::_isGroup( $component, $schemas ) === true ) {
+
+							$loose[] = array_diff_key( (array) $component, [ 'panels' => true ] );
+
+							foreach( (array) ( $component['panels'] ?? [] ) as $panel ) {
+
+								// The title of a panel in the cell of a loop is a line of text with the fields of the element in it, as a line is
+								if( $cell !== null && is_array( $panel ) === true && is_string( $panel['title'] ?? null ) === true )
+									foreach( Reader::lineFills( $panel['title'] ) as $fill )
+										if( $fill[0] === '/' )
+											continue;
+										elseif( ( $cell[$fill]['type'] ?? '' ) === 'image' )
+											$problems[] = 'the fill [['. $fill. ']] in the title of a panel of '. ( $component['name'] ?? '' ). ' is an image field, which a title cannot print';
+										elseif( in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === false && isset( $cell[$fill] ) === false )
+											$problems[] = 'the fill [['. $fill. ']] in the title of a panel of '. ( $component['name'] ?? '' ). ' is no field of the loop\'s type';
+
+								$sort( (array) ( is_array( $panel ) === true ? $panel['components'] ?? [] : [] ) );
+							}
+
+							continue;
+						}
+
+						if( self::_isLoop( $component, $schemas ) === false ) {
+							$loose[] = $component;
+							continue;
+						}
+
+						$inside = self::_fields( $appData, $component, $problems );
+						array_push( $problems, ...self::_loopValues( $component, $schemas, $inside ) );
+						$groups[] = [ $inside, self::_flat( (array) ( $component['components'] ?? [] ) ) ];
 					}
+				};
 
-					$inside = self::_fields( $appData, $component, $problems );
-					array_push( $problems, ...self::_loopValues( $component, $schemas, $inside ) );
-					$groups[] = [ $inside, self::_flat( (array) ( $component['components'] ?? [] ) ) ];
-				}
+				$sort( (array) ( $col['components'] ?? [] ) );
 
 				array_unshift( $groups, [ $cell, self::_flat( $loose ) ] );
 
@@ -1676,6 +1753,10 @@ namespace Nino\Modules\Builder {
 
 						if( is_array( $component['components'] ?? null ) === true )
 							$follow( $components[$k]['components'] );
+
+						foreach( is_array( $component['panels'] ?? null ) === true ? array_keys( $component['panels'] ) : [] as $panel )
+							if( is_array( $component['panels'][$panel]['components'] ?? null ) === true )
+								$follow( $components[$k]['panels'][$panel]['components'] );
 					}
 				};
 
@@ -1830,6 +1911,10 @@ namespace Nino\Modules\Builder {
 
 				if( is_array( $component['components'] ?? null ) === true )
 					$components[$k]['components'] = self::_unstage( $component['components'] );
+
+				foreach( is_array( $component['panels'] ?? null ) === true ? array_keys( $component['panels'] ) : [] as $panel )
+					if( is_array( $component['panels'][$panel]['components'] ?? null ) === true )
+						$components[$k]['panels'][$panel]['components'] = self::_unstage( $component['panels'][$panel]['components'] );
 			}
 
 			return $components;
@@ -2416,20 +2501,14 @@ namespace Nino\Modules\Builder {
 			if( is_array( $loop ) === true && ( (string) ( $loop['name'] ?? '' ) !== $read['stack']['name'] || (string) ( $loop['source'] ?? '' ) !== $read['stack']['source'] ) )
 				return false;
 
-			// A group reads back as the same stack with the same attributes, and each column as a panel with its title
-			$group = (string) ( $posted['settings']['group'] ?? '' );
+			// The loop around the row reads back as the same stack over the same type
+			$around = $posted['rowLoop'] ?? null;
 
-			if( $group !== (string) ( $read['settings']['group'] ?? '' ) )
+			if( is_array( $around ) !== is_array( $read['rowLoop'] ?? null ) )
 				return false;
 
-			if( $group !== '' ) {
-
-				$kept = (array) ( $posted['settings']['groupAttributes'] ?? [] );
-
-				foreach( (array) ( $read['settings']['groupAttributes'] ?? [] ) as $name => $value )
-					if( array_key_exists( $name, $kept ) === true && (string) $kept[$name] !== (string) $value )
-						return false;
-			}
+			if( is_array( $around ) === true && ( (string) ( $around['name'] ?? '' ) !== $read['rowLoop']['name'] || (string) ( $around['source'] ?? '' ) !== $read['rowLoop']['source'] ) )
+				return false;
 
 			$cols = array_values( (array) ( $posted['cols'] ?? [] ) );
 
@@ -2439,9 +2518,6 @@ namespace Nino\Modules\Builder {
 			foreach( $cols as $index => $col ) {
 
 				$other = $read['cols'][$index];
-
-				if( $group !== '' && (string) ( $col['title'] ?? '' ) !== (string) $other['title'] )
-					return false;
 
 				if( self::_sameCalls( (array) ( $col['components'] ?? [] ), $other['components'] ) === false )
 					return false;
@@ -2473,6 +2549,20 @@ namespace Nino\Modules\Builder {
 
 				if( self::_sameCalls( (array) ( $component['components'] ?? [] ), (array) ( $read[$at]['components'] ?? [] ) ) === false )
 					return false;
+
+				// A group reads back with the same panels: the same titles and classes, and in each the same components
+				if( is_array( $component['panels'] ?? null ) !== is_array( $read[$at]['panels'] ?? null ) )
+					return false;
+
+				$panels = array_values( (array) ( $component['panels'] ?? [] ) );
+
+				if( count( $panels ) !== count( (array) ( $read[$at]['panels'] ?? [] ) ) )
+					return false;
+
+				foreach( $panels as $index => $panel )
+					if( (string) ( $panel['title'] ?? '' ) !== (string) $read[$at]['panels'][$index]['title'] || (string) ( $panel['class'] ?? '' ) !== (string) $read[$at]['panels'][$index]['class']
+						|| self::_sameCalls( (array) ( $panel['components'] ?? [] ), (array) $read[$at]['panels'][$index]['components'] ) === false )
+						return false;
 			}
 
 			return true;
@@ -2599,20 +2689,22 @@ namespace Nino\Modules\Builder {
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::BG_STEPS ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 3';
 
-				// A group: the stack of the registry that takes panels, in the place of the row - and then none of the row's own, nor tiles, which cannot hold one
-				$group = $block['settings']['group'] ?? '';
+				// The loop around the row: a stack whose cell is components, called with a type - and no loop of sections beside it, which would be a loop inside a loop
+				if( ( $block['rowLoop'] ?? null ) !== null ) {
 
-				if( is_string( $group ) === false || ( $group !== '' && in_array( $group, Reader::groups( $schemas ), true ) === false ) )
-					$problems[] = 'the group of '. $at. ' is none of the stacks that take panels';
-				elseif( $group !== '' ) {
+					$wrong = self::_callWrong( $block['rowLoop'] );
+					$named = (string) ( is_array( $block['rowLoop'] ) === true ? $block['rowLoop']['name'] ?? '' : '' );
 
-					if( ( $block['settings']['tiles'] ?? false ) === true )
-						$problems[] = $at. ' is a section of tiles and a group of panels, and its row is its tiles';
-
-					$kept = Reader::groupAttributes( (array) $schemas['stacks'][$group] );
-
-					if( is_array( $block['settings']['groupAttributes'] ?? [] ) === false || array_filter( (array) ( $block['settings']['groupAttributes'] ?? [] ), static fn( mixed $value, mixed $key ): bool => is_scalar( $value ) === false || isset( $kept[$key] ) === false, ARRAY_FILTER_USE_BOTH ) !== [] )
-						$problems[] = 'the attributes of the group of '. $at. ' are none the group keeps';
+					if( $wrong !== '' )
+						$problems[] = $at. ' has '. $wrong;
+					elseif( ( $block['stack'] ?? null ) !== null )
+						$problems[] = $at. ' has a loop of sections and a loop around its row, and a loop does not hold one';
+					elseif( in_array( $named, Reader::loops( $schemas ), true ) === false || (string) ( $schemas['stacks'][$named]['cell'] ?? '' ) !== 'components' )
+						$problems[] = $at. ' has the loop "'. $named. '" around its row, which holds no row';
+					elseif( (string) ( $block['rowLoop']['source'] ?? '' ) === '' )
+						$problems[] = $at. ' has the loop "'. $named. '" around its row with no type';
+					elseif( array_key_exists( 'components', $block['rowLoop'] ) === true || array_key_exists( 'panels', $block['rowLoop'] ) === true || array_key_exists( 'content', $block['rowLoop'] ) === true )
+						$problems[] = $at. ' has the loop "'. $named. '" around its row with components, and its child is the row';
 				}
 
 				// A loop of sections: the call of the stack that makes them - which has no attribute of a tag for what a section has one for
@@ -2652,10 +2744,6 @@ namespace Nino\Modules\Builder {
 
 					$of = 'column '. ( (int) $c + 1 ). ' of '. $at;
 
-					// The title of a panel is one line of text
-					if( $text( $col['title'] ?? null ) === false || preg_match( '/[\r\n]/', (string) ( $col['title'] ?? '' ) ) === 1 )
-						$problems[] = 'the title of '. $of. ' is no line of text';
-
 					if( in_array( $col['color'] ?? '', array_merge( [ '' ], Reader::COL_COLOR ), true ) === false )
 						$problems[] = 'the color of '. $of. ' is none that Nino.css has';
 
@@ -2690,7 +2778,7 @@ namespace Nino\Modules\Builder {
 
 						if( is_string( $col['background']['field'] ) === false || preg_match( '/^[A-Za-z0-9_-]+$/D', $col['background']['field'] ) !== 1 )
 							$problems[] = $of. ' has a background with a field that is no name';
-						elseif( ( $block['stack'] ?? null ) === null )
+						elseif( ( $block['stack'] ?? null ) === null && ( $block['rowLoop'] ?? null ) === null )
 							$problems[] = $of. ' has a background that names a field of the element, and the section runs no loop';
 						elseif( (string) ( $col['background']['slot'] ?? '' ) !== '' || array_key_exists( 'create', $col['background'] ) === true )
 							$problems[] = $of. ' has a background that names a field and a slot';
@@ -2710,14 +2798,23 @@ namespace Nino\Modules\Builder {
 							$problems[] = $at. ' has '. $wrong;
 					}
 
+					// The cell of a loop of sections, or of a loop around the row, is the columns': a loop of their own would be a loop inside a loop
+					$looped = ( $block['stack'] ?? null ) !== null || ( $block['rowLoop'] ?? null ) !== null;
+
 					foreach( $col['components'] ?? [] as $component ) {
+
+						// A group is an entry of the column with its panels
+						if( self::_isGroup( $component, $schemas ) === true ) {
+
+							$problems = array_merge( $problems, self::_shapeGroup( $component, $schemas, $at, $looped ) );
+							continue;
+						}
 
 						// A loop is an entry of the column with the calls of its cell for children
 						if( self::_isLoop( $component, $schemas ) === true ) {
 
-							// The cell of a loop of sections is its columns': a loop of their own would be a loop inside a loop
-							if( ( $block['stack'] ?? null ) !== null )
-								$problems[] = $of. ' has a loop, and it is a column of a loop of sections';
+							if( $looped === true )
+								$problems[] = $of. ' has a loop, and it is a column of a loop '. ( ( $block['stack'] ?? null ) !== null ? 'of sections' : 'around the row' );
 
 							$problems = array_merge( $problems, self::_shapeLoop( $component, $schemas, $at ) );
 							continue;
@@ -2741,7 +2838,105 @@ namespace Nino\Modules\Builder {
 		 *	@return 	bool
 		 */
 		private static function _isLoop( mixed $call, array $schemas ): bool {
-			return is_array( $call ) === true && is_string( $call['name'] ?? null ) === true && isset( $schemas['stacks'][$call['name']] ) === true;
+			return is_array( $call ) === true && is_string( $call['name'] ?? null ) === true && isset( $schemas['stacks'][$call['name']] ) === true && self::_isGroup( $call, $schemas ) === false;
+		}
+
+		/**
+		 *	Whether an entry of the components of a column is a group of panels: a call whose name is a stack of the registry that says panels, with no type - the same stack
+		 *	with a type is a loop
+		 *
+		 *	@param		mixed			$call
+		 *	@param		array			$schemas
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isGroup( mixed $call, array $schemas ): bool {
+			return is_array( $call ) === true && is_string( $call['name'] ?? null ) === true && ( $schemas['stacks'][$call['name']]['panels'] ?? false ) === true && (string) ( $call['source'] ?? '' ) === '';
+		}
+
+		/**
+		 *	What is wrong with the group of a column in its shape: a stack that takes panels, called with no type; the attributes it keeps and its id and class; its panels a list
+		 *	of at least one, each with a title of one line, classes, and the components of the column's - a loop among them, but not in the cell of a loop and not the group's own
+		 *	stack, and no group
+		 *
+		 *	@param		mixed			$group				The entry of the column
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *	@param		bool			$looped				Whether the column is in the cell of a loop
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeGroup( mixed $group, array $schemas, string $at, bool $looped ): array {
+
+			// A call that is none has been told already
+			if( is_array( $group ) === false || self::_callWrong( $group ) !== '' )
+				return [];
+
+			$name		= (string) ( $group['name'] ?? '' );
+			$kept		= Reader::groupAttributes( (array) $schemas['stacks'][$name] ) + [ 'id' => true, 'class' => true ];
+			$text		= static fn( mixed $value ): bool => is_string( $value ) === true;
+
+			if( in_array( $name, Reader::groups( $schemas ), true ) === false )
+				return [ $at. ' has the group "'. $name. '", which is no stack that takes panels' ];
+
+			if( array_filter( (array) ( $group['attributes'] ?? [] ), static fn( mixed $value, mixed $key ): bool => isset( $kept[$key] ) === false, ARRAY_FILTER_USE_BOTH ) !== [] )
+				return [ $at. ' has the group "'. $name. '" with attributes it does not keep' ];
+
+			// In the cell of a loop one call stands for every element, and an id would be the id of all of them; elsewhere it names the group: no space, no control character
+			$id = (string) ( $group['attributes']['id'] ?? '' );
+
+			$problems = [];
+
+			if( $id !== '' && $looped === true )
+				$problems[] = $at. ' has the group "'. $name. '" with an id, and it is in the cell of a loop';
+
+			if( preg_match( '/[\x00-\x20\x7f]/', $id ) === 1 )
+				$problems[] = $at. ' has the group "'. $name. '" with an id that holds a space or a control character';
+
+			if( array_key_exists( 'components', $group ) === true || array_key_exists( 'content', $group ) === true )
+				return [ $at. ' has the group "'. $name. '" with components, and it holds panels' ];
+
+			if( is_array( $group['panels'] ?? null ) === false || array_is_list( $group['panels'] ) === false || $group['panels'] === [] )
+				return array_merge( $problems, [ $at. ' has the group "'. $name. '" with no panels, or with panels that are no list' ] );
+
+			foreach( $group['panels'] as $index => $panel ) {
+
+				$of = 'panel '. ( (int) $index + 1 ). ' of the group "'. $name. '" of '. $at;
+
+				if( is_array( $panel ) === false || $text( $panel['title'] ?? '' ) === false || $text( $panel['class'] ?? '' ) === false || is_array( $panel['components'] ?? [] ) === false || array_is_list( (array) ( $panel['components'] ?? [] ) ) === false ) {
+					$problems[] = $of. ' is none';
+					continue;
+				}
+
+				if( preg_match( '/[\x00-\x1f\x7f]/', (string) ( $panel['title'] ?? '' ) ) === 1 )
+					$problems[] = 'the title of '. $of. ' is no line of text';
+
+				if( preg_match( '/[\x00-\x1f\x7f]/', (string) ( $panel['class'] ?? '' ) ) === 1 )
+					$problems[] = 'the classes of '. $of. ' hold a control character';
+
+				foreach( (array) ( $panel['components'] ?? [] ) as $call ) {
+
+					$wrong = self::_callWrong( $call );
+
+					if( $wrong !== '' )
+						$problems[] = $at. ' has '. $wrong;
+					elseif( self::_isGroup( $call, $schemas ) === true )
+						$problems[] = $of. ' has the group "'. (string) $call['name']. '" in it, and a group does not stand in a panel';
+					elseif( self::_isLoop( $call, $schemas ) === true ) {
+
+						if( $looped === true )
+							$problems[] = $of. ' has a loop, and the group is in the cell of a loop';
+						elseif( (string) $call['name'] === $name )
+							$problems[] = $of. ' has a loop of the stack "'. $name. '", which would end the group at its own closing tag';
+						else
+							$problems = array_merge( $problems, self::_shapeLoop( $call, $schemas, $at ) );
+					}
+					else
+						$problems = array_merge( $problems, self::_shapeHeld( $call, $schemas, $at, false ), self::_shapeRadius( $call, $schemas, $at ), self::_shapeHover( $call, $schemas, $at ), self::_shapeGround( $call, $schemas, $at ), self::_shapeSpacing( $call, $at ) );
+				}
+			}
+
+			return $problems;
 		}
 
 		/**
@@ -2787,6 +2982,8 @@ namespace Nino\Modules\Builder {
 					$problems[] = $at. ' has '. $wrong;
 				elseif( self::_isLoop( $child, $schemas ) === true )
 					$problems[] = $at. ' has the loop "'. (string) $child['name']. '" inside the loop "'. $name. '", and a loop does not hold one';
+				elseif( self::_isGroup( $child, $schemas ) === true )
+					$problems[] = $at. ' has the group "'. (string) $child['name']. '" inside the loop "'. $name. '", and a loop does not hold one';
 				else
 					$problems = array_merge( $problems, self::_shapeHeld( $child, $schemas, $at, false ), self::_shapeRadius( $child, $schemas, $at ), self::_shapeHover( $child, $schemas, $at ), self::_shapeGround( $child, $schemas, $at ), self::_shapeSpacing( $child, $at ) );
 			}
@@ -2988,7 +3185,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The components of a column in the order of the file, each followed by the children it holds
+		 *	The components of a column in the order of the file, each followed by the children it holds and the components of its panels
 		 *
 		 *	@param		array			$components
 		 *
@@ -3004,6 +3201,11 @@ namespace Nino\Modules\Builder {
 
 				if( is_array( $component ) === true && is_array( $component['components'] ?? null ) === true )
 					$flat = array_merge( $flat, self::_flat( $component['components'] ) );
+
+				// The panels of a group hold components of their own
+				foreach( is_array( $component ) === true && is_array( $component['panels'] ?? null ) === true ? $component['panels'] : [] as $panel )
+					if( is_array( $panel ) === true && is_array( $panel['components'] ?? null ) === true )
+						$flat = array_merge( $flat, self::_flat( $panel['components'] ) );
 			}
 
 			return $flat;

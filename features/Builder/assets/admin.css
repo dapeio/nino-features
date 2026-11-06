@@ -702,15 +702,6 @@ button.builder-status-item:hover {
 	padding: 0;
 	justify-content: flex-start;
 }
-/* A group shows its panels one above the other, each across the whole width with the title it has in its head, and in the order of the markup */
-.builder-frame.is-group > .builder-frame-body {
-	flex-direction: column;
-	flex-wrap: nowrap;
-	align-items: stretch;
-}
-.builder-frame.is-group > .builder-frame-body > .builder-pcol {
-	flex: 0 0 auto;
-}
 .builder-frame.is-tiles .builder-pcol {
 	aspect-ratio: var(--builder-ratio, auto);
 }
@@ -2042,4 +2033,114 @@ button.builder-status-item:hover {
 .builder-pick-item.is-loop {
 	--builder-loop-rail: #7076f2;
 	border-left: 3px solid var(--builder-loop-rail);
+}
+
+/* A group of panels with its panels by hand: a box like the loop's, in a colour of its own - orange, the loops being blue and a thing that repeats nothing being fixed -, a token as the loops' rail is,
+   so that it can be told by its colour from across the page. 3 : 1 against the dark ground of the canvas, as much against the light one */
+.builder-loop.is-group,
+.builder-pick-item.is-group {
+	--builder-group-rail: #d97706;
+	--builder-loop-rail: var(--builder-group-rail);
+	border-left: 3px solid var(--builder-group-rail);
+}
+.builder-pick-item.is-group {
+	--builder-group-rail: #d97706;
+}
+/* A lighter tint than the loops': the rail keeps 3 : 1 against the tint on the light ground as well */
+.builder-loop.is-group {
+	background: color-mix(in srgb, var(--builder-group-rail) 5%, transparent);
+}
+.builder-chip.is-group {
+	border-color: var(--builder-group-rail, #d97706);
+}
+/* A panel of a group is a row in the box and no box of its own: the arrow, the title as a chip, the tools of the row; opened it shows what it holds, indented under the row */
+.builder-loop.is-group > .builder-loop-body {
+	padding: 0 .4rem .4rem;
+}
+.builder-loop.is-group > .builder-loop-body > .builder-loop-cell {
+	padding-left: 0;
+	border-left: 0;
+}
+.builder-loop-cell-label:empty {
+	display: none;
+}
+.builder-panel {
+	min-width: 0;
+}
+.builder-panel-bar {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	min-width: 0;
+	padding: .2rem .35rem .2rem .3rem;
+	border-radius: var(--editor-radius-sm);
+	font-size: .72rem;
+	cursor: pointer;
+}
+.builder-panel-bar:hover {
+	background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.builder-panel.is-open > .builder-panel-bar .builder-loop-caret {
+	transform: rotate(90deg);
+}
+.builder-panel-body {
+	display: grid;
+	gap: .3rem;
+	min-width: 0;
+	padding: .1rem 0 .4rem 1.2rem;
+}
+.builder-panel-title {
+	min-width: 0;
+}
+/* The tools of a row that is no frame of its own: a column of a table, the settings of a box around a row - seen under the pointer, on the row that is selected and where the focus is in them */
+.builder-loop-column {
+	align-items: center;
+}
+.builder-loop-column > .builder-tools,
+.builder-tools-around {
+	margin-left: auto;
+}
+.builder-loop-column:hover > .builder-tools,
+.builder-loop-column.is-selected > .builder-tools,
+.builder-tools-around {
+	opacity: 1;
+	pointer-events: auto;
+}
+/* The loop around a row and the loop of sections hold frames, and take the width of what they hold */
+.builder-loop.is-around > .builder-loop-body,
+.builder-loop.is-sections > .builder-loop-body {
+	padding-left: .5rem;
+}
+/* The loop around the row stands in the row of the frame across its whole width, and its cell is the row: the columns at their widths, as the body of the frame draws them */
+.builder-frame-body > .builder-loop.is-around {
+	flex: 1 1 100%;
+}
+.builder-loop.is-around > .builder-loop-body > .builder-loop-cell {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--builder-gap);
+	justify-content: center;
+}
+.builder-loop.is-around > .builder-loop-body > .builder-loop-cell > .builder-loop-cell-label {
+	flex: 0 0 100%;
+}
+.builder-frame.is-reversed .builder-loop.is-around > .builder-loop-body > .builder-loop-cell {
+	flex-direction: row-reverse;
+	flex-wrap: wrap-reverse;
+}
+.builder-frame.is-reversed .builder-loop.is-around > .builder-loop-body > .builder-loop-cell > .builder-add-col {
+	order: -1;
+}
+.builder-frame.is-tiles .builder-loop.is-around > .builder-loop-body > .builder-loop-cell {
+	justify-content: flex-start;
+}
+.builder-fill-ask {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+	margin-top: .5rem;
+}
+.builder-fill-ask:empty {
+	display: none;
 }

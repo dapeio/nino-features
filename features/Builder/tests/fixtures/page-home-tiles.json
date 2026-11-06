@@ -50,8 +50,6 @@
                 "pr": "",
                 "text": "",
                 "arrow": false,
-                "group": "",
-                "groupAttributes": [],
                 "vpa": null,
                 "vpaSpeed": "",
                 "vpaMode": "",
@@ -61,6 +59,7 @@
             },
             "background": null,
             "stack": null,
+            "rowLoop": null,
             "cols": [
                 {
                     "width": {
@@ -88,7 +87,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -140,7 +138,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -252,8 +249,6 @@
                 "pr": "",
                 "text": "",
                 "arrow": false,
-                "group": "",
-                "groupAttributes": [],
                 "vpa": null,
                 "vpaSpeed": "",
                 "vpaMode": "",
@@ -263,6 +258,7 @@
             },
             "background": null,
             "stack": null,
+            "rowLoop": null,
             "cols": [
                 {
                     "width": {
@@ -287,7 +283,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -339,7 +334,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -391,7 +385,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",
@@ -464,8 +457,6 @@
                 "pr": "",
                 "text": "",
                 "arrow": false,
-                "group": "",
-                "groupAttributes": [],
                 "vpa": null,
                 "vpaSpeed": "",
                 "vpaMode": "",
@@ -489,6 +480,7 @@
                     "class": ""
                 }
             },
+            "rowLoop": null,
             "cols": [
                 {
                     "width": {
@@ -513,7 +505,6 @@
                     "pr": "",
                     "bgPl": "",
                     "bgPr": "",
-                    "title": "",
                     "vpa": null,
                     "vpaSpeed": "",
                     "vpaMode": "",

@@ -36,9 +36,11 @@ namespace Nino\Modules\Builder {
 	 *											call's, its row and the rest as they stand in a <section>; a
 	 *											background that is the row's (inner) is the first thing in
 	 *											the row, two tabs in, as the one of a column is in its column.
-	 *											A section that is a group has its row as any other has, but for the alignment, the order and the gap of its columns, and in it one column, nino-grid-100 and no other class, that holds
-	 *											the call of its stack - [tabs id="<id>-tabs"], three tabs in, with the attributes the group keeps and no class - with a [panel title="..." class="..."]...[/panel] for each column,
-	 *											one tab deeper, what the column holds one deeper again, and the closing tag of the stack at the depth of the call (see panelClasses()).
+	 *											A section whose model has a loop around its row (rowLoop) writes the call of that loop one tab in, after the picture behind
+	 *											the section, the row one tab deeper than it is otherwise, with everything in it, and the closing tag of the loop at the depth
+	 *											of its call; the arrow follows it. A group of panels is an entry of a column like a loop: its call on a line, a [panel title="..."
+	 *											class="..."]...[/panel] for each panel one tab deeper, what the panel holds one deeper again, and the closing tag at the depth
+	 *											of the call (see _group()).
 	 *
 	 *											The radius of a surface is a class of the page, nino-radius or
 	 *											nino-radius-alt, and a setting of the model: it stands after the
@@ -202,8 +204,10 @@ namespace Nino\Modules\Builder {
 			$stack		= is_array( $section['stack'] ?? null ) === true ? $section['stack'] : null;
 			// A section of tiles has the picture behind it as a content section has, and none in its row (the model has none): its tiles hold their own
 			$tiles		= $settings['tiles'] === true;
-			// A group is the one column of its row. A section of tiles is none
-			$group		= $tiles === false && in_array( (string) $settings['group'], Reader::groups( $registry ), true ) === true ? (string) $settings['group'] : '';
+			// The loop around the row: a section that runs a loop of sections has none
+			$around		= $stack === null && is_array( $section['rowLoop'] ?? null ) === true ? $section['rowLoop'] : null;
+			// The cell of a loop: the fields of the element stand in the title of a panel as they are
+			$looped		= $stack !== null || $around !== null;
 
 			$pictured	= self::_pictured( $section );
 			$inner		= self::_inner( $settings );
@@ -230,48 +234,30 @@ namespace Nino\Modules\Builder {
 			if( $pictured === true && $inner === false )
 				$lines[] = "\t". self::_background( (array) $section['background'], 'nino-section-bg' );
 
-			$lines[] = "\t". self::_fill( 'row-open', [ '[[class]]' => self::_class( self::rowClasses( $settings, $pictured, $group !== '' ) ), '[[attributes]]' => self::_animationAttributes( $settings ) ] );
+			// The row, with the picture behind it and its columns; inside a loop around it one tab deeper
+			$row = [ "\t". self::_fill( 'row-open', [ '[[class]]' => self::_class( self::rowClasses( $settings, $pictured ) ), '[[attributes]]' => self::_animationAttributes( $settings ) ] ) ];
 
 			// The picture behind the row is the first thing in it, as a column's is in the column
 			if( $pictured === true && $inner === true )
-				$lines[] = "\t\t". self::_background( (array) $section['background'], 'nino-grid-row-bg' );
+				$row[] = "\t\t". self::_background( (array) $section['background'], 'nino-grid-row-bg' );
 
-			// A group is the one column of the whole width of its row, and holds the call of its stack
-			if( $group !== '' ) {
+			foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
 
-				$panel	= Reader::panel( $registry );
-				$schema	= (array) $registry['stacks'][$group];
-				$call		= [ 'name' => $group, 'source' => '', 'attributes' => [ 'id' => (string) ( $section['id'] ?? '' ) !== '' && $stack === null ? (string) $section['id']. '-'. $group : '' ]
-					+ array_intersect_key( (array) $settings['groupAttributes'], Reader::groupAttributes( $schema ) ) ];
+				$row[] = "\t\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::colClasses( (array) $col, $tiles ) ) ] );
+				array_push( $row, ...self::_colLines( (array) $col, $registry, "\t\t\t", $looped ) );
+				$row[] = "\t\t</div>";
+			}
 
-				$lines[] = "\t\t". self::_fill( 'div-open', [ '[[class]]' => 'nino-grid-100' ] );
-				$lines[] = "\t\t\t". self::_call( $call, $schema );
+			$row[] = "\t</div>";
 
-				foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
+			if( $around !== null ) {
 
-					$classes	= implode( ' ', array_unique( self::panelClasses( (array) $col ) ) );
-					$title		= self::_title( (string) ( $col['title'] ?? '' ) );
-
-					// In a loop of sections the fields of the element stand in the title as they are, which the kernel puts in before it reads the call
-					$lines[] = "\t\t\t\t[". $panel
-						. ( $title !== '' ? ' '. Reader::PANEL_TITLE. '="'. ( $stack !== null && Reader::lineText( $title ) === true ? Reader::lineEncode( $title ) : Reader::entityEncode( $title ) ). '"' : '' )
-						. ( $classes !== '' ? ' class="'. self::_safe( $classes, $panel, 'class' ). '"' : '' ). ']';
-					array_push( $lines, ...self::_colLines( (array) $col, $registry, "\t\t\t\t\t", true ) );
-					$lines[] = "\t\t\t\t[/". $panel. ']';
-				}
-
-				$lines[] = "\t\t\t[/". $group. ']';
-				$lines[] = "\t\t</div>";
+				$lines[] = "\t". self::_call( $around, (array) ( $registry['stacks'][$around['name'] ?? ''] ?? [] ) );
+				array_push( $lines, ...array_map( static fn( string $line ): string => "\t". $line, $row ) );
+				$lines[] = "\t[/". (string) ( $around['name'] ?? '' ). ']';
 			}
 			else
-				foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
-
-					$lines[] = "\t\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::colClasses( (array) $col, $tiles ) ) ] );
-					array_push( $lines, ...self::_colLines( (array) $col, $registry ) );
-					$lines[] = "\t\t</div>";
-				}
-
-			$lines[] = "\t</div>";
+				array_push( $lines, ...$row );
 
 			// The arrow is the last thing in the section, after its row
 			if( $settings['arrow'] === true )
@@ -283,25 +269,25 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What a column holds: the picture behind it, then its loop with the components of its cell and the closing tag, or its components - one indent in from $indent for the
-		 *	cell. The same in the div of a row and in the panel of a group, which has no picture of its own
+		 *	What a column holds: the picture behind it, then its components - a loop with the components of its cell and the closing tag, a group with its panels -, one indent in from
+		 *	$indent for what a loop or a group holds
 		 *
 		 *	@param		array			$col
 		 *	@param		array			$registry
 		 *	@param		string		$indent				The tabs in front of what the column holds
-		 *	@param		bool			$panel				Whether the column is the panel of a group
+		 *	@param		bool			$looped				Whether the column is in the cell of a loop
 		 *
 		 *	@return 	array										The lines
 		 */
-		private static function _colLines( array $col, array $registry, string $indent = "\t\t\t", bool $panel = false ): array {
+		private static function _colLines( array $col, array $registry, string $indent = "\t\t\t", bool $looped = false ): array {
 
 			$lines = [];
 
-			if( $panel === false && self::_pictured( $col ) === true )
+			if( self::_pictured( $col ) === true )
 				$lines[] = $indent. self::_background( (array) $col['background'], 'nino-grid-bg' );
 
 			foreach( (array) ( $col['components'] ?? [] ) as $component )
-				array_push( $lines, ...self::_component( (array) $component, $registry, $indent ) );
+				array_push( $lines, ...self::_component( (array) $component, $registry, $indent, $looped ) );
 
 			return $lines;
 		}
@@ -317,22 +303,10 @@ namespace Nino\Modules\Builder {
 		 */
 		private static function _title( string $title ): string {
 
-			if( preg_match( '/[\r\n]/', $title ) === 1 )
-				throw new \UnexpectedValueException( 'The value of "'. Reader::PANEL_TITLE. '" of a panel holds a line break, which a call cannot carry.' );
+			if( preg_match( '/[\x00-\x1f\x7f]/', $title ) === 1 )
+				throw new \UnexpectedValueException( 'The value of "'. Reader::PANEL_TITLE. '" of a panel holds a line break or a control character, which a call cannot carry.' );
 
 			return $title;
-		}
-
-		/**
-		 *	The classes of a panel: those of a column but for its width and the viewports it is hidden in, which only a row has, and the dimming and the offsets of a picture, which a panel has none of
-		 *
-		 *	@param		array			$col
-		 *
-		 *	@return 	array										Class names, none for none
-		 */
-		public static function panelClasses( array $col ): array {
-
-			return self::colClasses( $col, false, true );
 		}
 
 		/**
@@ -457,11 +431,10 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array			$s						The section's settings
 		 *	@param		bool			$pictured			Whether the section has a picture, which is the row's where inner: a scrim over none is not written
-		 *	@param		bool			$group				Whether the row is a group's, which has no alignment, no order and no gap of its columns to write
 		 *
 		 *	@return 	array
 		 */
-		public static function rowClasses( array $s, bool $pictured = false, bool $group = false ): array {
+		public static function rowClasses( array $s, bool $pictured = false ): array {
 
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-grid-row' ];
@@ -483,13 +456,13 @@ namespace Nino\Modules\Builder {
 					$class[] = 'nino-grid-row--dim';
 			}
 
-			if( (string) $s['rowAlign'] !== '' && $group === false )
+			if( (string) $s['rowAlign'] !== '' )
 				$class[] = 'nino-grid-'. $s['rowAlign'];
 
 			// The order of the columns: the narrowest viewport says it for every width, each wider one only where it differs from the one before
 			$before = false;
 
-			foreach( $group === true ? [] : Reader::VIEWPORTS as $viewport ) {
+			foreach( Reader::VIEWPORTS as $viewport ) {
 
 				$turned = ( (array) $s['reverse'] )[$viewport] ?? false;
 
@@ -501,7 +474,7 @@ namespace Nino\Modules\Builder {
 				$before = $turned;
 			}
 
-			if( (string) $s['rowGap'] !== '' && $group === false )
+			if( (string) $s['rowGap'] !== '' )
 				$class[] = 'nino-grid-gap-'. $s['rowGap'];
 
 			foreach( Reader::ROW_SPACING as $side => $key )
@@ -526,34 +499,29 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array			$col
 		 *	@param		bool			$tiles				Whether it is a tile, a column of a section of tiles: it can be linked, as a whole
-		 *	@param		bool			$panel				Whether it is the panel of a group, which has the whole width of the group and is hidden in no viewport: the classes that say a width or a viewport are none of the panel's
 		 *
 		 *	@return 	array
 		 */
-		public static function colClasses( array $col, bool $tiles = false, bool $panel = false ): array {
+		public static function colClasses( array $col, bool $tiles = false ): array {
 
 			$col		= $col + Reader::colDefaults();
 			$width	= [];
 			$class	= [];
-			// A panel has no picture of its own, and so nothing to dim and no offsets of one
-			$pictured = $panel === false && self::_pictured( $col );
+			$pictured = self::_pictured( $col );
 
-			if( $panel === false ) {
+			foreach( Reader::VIEWPORTS as $viewport )
+				$width[$viewport] = (int) ( $col['width'][$viewport] ?? 100 );
 
+			// Nino.css is mobile first and its first tier starts at 640px: a column that is not 100 in every viewport has the base class, full width, before its tiers, so that it is full width until the first one applies
+			$class = [ 'nino-grid-100' ];
+
+			if( $width !== [ 's' => 100, 'm' => 100, 'l' => 100 ] )
 				foreach( Reader::VIEWPORTS as $viewport )
-					$width[$viewport] = (int) ( $col['width'][$viewport] ?? 100 );
+					$class[] = 'nino-grid-'. $viewport. '-'. $width[$viewport];
 
-				// Nino.css is mobile first and its first tier starts at 640px: a column that is not 100 in every viewport has the base class, full width, before its tiers, so that it is full width until the first one applies
-				$class = [ 'nino-grid-100' ];
-
-				if( $width !== [ 's' => 100, 'm' => 100, 'l' => 100 ] )
-					foreach( Reader::VIEWPORTS as $viewport )
-						$class[] = 'nino-grid-'. $viewport. '-'. $width[$viewport];
-
-				foreach( Reader::VIEWPORTS as $viewport )
-					if( ( $col['hidden'][$viewport] ?? false ) === true )
-						$class[] = 'nino-hide-'. $viewport;
-			}
+			foreach( Reader::VIEWPORTS as $viewport )
+				if( ( $col['hidden'][$viewport] ?? false ) === true )
+					$class[] = 'nino-hide-'. $viewport;
 
 			if( (string) $col['color'] !== '' )
 				$class[] = 'nino-grid--'. $col['color'];
@@ -782,12 +750,17 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$node					The component of the model
 		 *	@param		array			$registry
 		 *	@param		string		$indent				The tabs in front of the call
+		 *	@param		bool			$looped				Whether it stands in the cell of a loop
 		 *
 		 *	@return 	array										The lines
 		 */
-		private static function _component( array $node, array $registry, string $indent ): array {
+		private static function _component( array $node, array $registry, string $indent, bool $looped = false ): array {
 
 			$name		= (string) ( $node['name'] ?? '' );
+
+			// A group of panels: the call, each panel one tab deeper and what it holds one deeper again
+			if( isset( $registry['stacks'][$name] ) === true && is_array( $node['panels'] ?? null ) === true )
+				return self::_group( $node, $registry, $indent, $looped );
 
 			// A loop is written as a component that holds its cell: the calls one tab deeper and the closing tag at its own depth - a loop of the cell none is the single tag
 			if( isset( $registry['stacks'][$name] ) === true ) {
@@ -813,6 +786,46 @@ namespace Nino\Modules\Builder {
 
 			foreach( (array) ( $node['components'] ?? [] ) as $child )
 				array_push( $lines, ...self::_component( (array) $child, $registry, $indent. "\t" ) );
+
+			$lines[] = $indent. '[/'. $name. ']';
+
+			return $lines;
+		}
+
+		/**
+		 *	A group of panels as the lines it is written in: its call, a [panel title="..." class="..."] for each panel one indent deeper with what the panel holds one deeper
+		 *	again, and the closing tag at the indent of the call
+		 *
+		 *	@param		array			$node					The group of the model
+		 *	@param		array			$registry
+		 *	@param		string		$indent				The tabs in front of the call
+		 *	@param		bool			$looped				Whether it stands in the cell of a loop: the fields of the element stand in the title of a panel as they are, which the kernel puts in before it reads the call
+		 *
+		 *	@return 	array										The lines
+		 *
+		 *	@throws		\UnexpectedValueException		Where a title holds a line break
+		 */
+		private static function _group( array $node, array $registry, string $indent, bool $looped ): array {
+
+			$name		= (string) ( $node['name'] ?? '' );
+			$panel	= Reader::panel( $registry );
+			$lines	= [ $indent. self::_call( $node, (array) $registry['stacks'][$name] ) ];
+
+			foreach( (array) $node['panels'] as $one ) {
+
+				$title	= self::_title( (string) ( $one['title'] ?? '' ) );
+				$class	= trim( (string) ( $one['class'] ?? '' ) );
+
+				// In the cell of a loop the fields of the element stand in the title as they are, which the kernel puts in before it reads the call
+				$lines[] = $indent. "\t[". $panel
+					. ( $title !== '' ? ' '. Reader::PANEL_TITLE. '="'. ( $looped === true && Reader::lineText( $title ) === true ? Reader::lineEncode( $title ) : Reader::entityEncode( $title ) ). '"' : '' )
+					. ( $class !== '' ? ' class="'. self::_safe( $class, $panel, 'class' ). '"' : '' ). ']';
+
+				foreach( (array) ( $one['components'] ?? [] ) as $component )
+					array_push( $lines, ...self::_component( (array) $component, $registry, $indent. "\t\t", $looped ) );
+
+				$lines[] = $indent. "\t[/". $panel. ']';
+			}
 
 			$lines[] = $indent. '[/'. $name. ']';
 

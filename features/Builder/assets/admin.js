@@ -97,6 +97,8 @@
 		CLIP_KEY	: 'nino-admin-builder-clip',
 		// The loops of the preview that are open - the nodes themselves, so that a loop that moves in its column stays open: a loop is shut when the page is loaded
 		_open			: new WeakSet(),
+		// The loops around a row that were shut by hand: they are open as the row is the section's content
+		_shut			: new WeakSet(),
 		// The text keys of the project, for the source field: null until they were
 		// asked for, [] where this account may not read them
 		_keys			: null,
@@ -211,6 +213,8 @@
 		FORMATS			: [ 'plain', 'inline', 'lines', 'blocks' ],
 		SLOT_SIZE		: { width : 1600, height : 900 },
 		LINE_MAX		: 60,
+		// How many characters of the titles of a group's panels its row says of them
+		TITLES_MAX	: 40,
 
 		// What a text key and a section id are made of: lower-case words of letters
 		// and digits joined by hyphens - the grammar \Nino\Text::isGrammarKey() holds
@@ -262,8 +266,6 @@
 				// The block of a section of tiles: the controls that are the tiles' own - the ratio, and the gap and the text of the row under the words of tiles - have names of their own, so that a content section has none of them
 				{ id : 'tiles', controls : [ 'ratio', 'tileGap', 'tileText' ] },
 				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
-				// What stands where the row does: the columns, or a group of panels of one of the stacks of the registry that takes them - with the attributes of that stack
-				{ id : 'group', controls : [ 'group' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
 				// The order of the columns of the row, turned round for each viewport by itself - for a content section and for tiles alike
 				{ id : 'order', controls : [ 'reverse' ] },
@@ -271,8 +273,6 @@
 				{ id : 'properties', controls : [ 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ] },
 			],
 			column : [
-				// The title of the panel a column is in a group
-				{ id : 'group', controls : [ 'title' ] },
 				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'linked', 'bgPl', 'bgPr' ] },
 				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
@@ -280,9 +280,20 @@
 			],
 			// A loop of a column is an entry of it with a dialog of its own: the data it runs over, what the stack shows them as, its id and its class
 			loop : [
-				{ id : 'data', controls : [ 'source', 'query', 'sort', 'limit', 'offset' ] },
+				{ id : 'data', controls : [ 'fill', 'source', 'query', 'sort', 'limit', 'offset' ] },
 				{ id : 'presentation', controls : [ 'attributes', 'grid', 'columns', 'row' ] },
 				{ id : 'properties', controls : [ 'id', 'class' ] },
+			],
+			// A group of panels in a column is a stack with its panels by hand: how it is filled, the attributes of the stack it keeps, its id and its class
+			group : [
+				{ id : 'fill', controls : [ 'fill' ] },
+				{ id : 'presentation', controls : [ 'attributes' ] },
+				{ id : 'properties', controls : [ 'id', 'class' ] },
+			],
+			// A panel of a group: its title and its class
+			panel : [
+				{ id : 'content', controls : [ 'title' ] },
+				{ id : 'properties', controls : [ 'class' ] },
 			],
 			component : [
 				{ id : 'content', controls : [ 'source' ] },
@@ -325,16 +336,26 @@
 
 				block.settings = map( block.settings );
 				block.settings.reverse = Object.assign( { s : false, m : false, l : false }, map( block.settings.reverse ) );
-				block.settings.groupAttributes = map( block.settings.groupAttributes );
 
 				if( block.stack !== null && typeof block.stack === 'object' )
 					block.stack.attributes = map( block.stack.attributes );
 
-				// A loop is an entry of the components of a column like any other, with its own children - which may hold children of their own
+				// The loop around the row is a call as the loop of sections is: none, or a map with attributes
+				if( block.rowLoop !== null && typeof block.rowLoop === 'object' )
+					block.rowLoop.attributes = map( block.rowLoop.attributes );
+				else
+					block.rowLoop = null;
+
+				// A loop is an entry of the components of a column like any other, with its own children - which may hold children of their own - and a group has panels, each with components of its own
 				const call = function( node ) {
 
 					node.attributes = map( node.attributes );
 					( node.components || [] ).forEach( call );
+					( node.panels || [] ).forEach( function( panel ) {
+
+						panel.components = Array.isArray( panel.components ) === true ? panel.components : [];
+						panel.components.forEach( call );
+					} );
 				};
 
 				( block.cols || [] ).forEach( function( col ) {
@@ -353,7 +374,8 @@
 		 *	The node a path names
 		 *
 		 *	@param		{Object}		model
-		 *	@param		{Array}			path							[], [b], [b, c], [b, c, k] - a component or a loop - or, inside a component that holds components or a loop, [b, c, k, j] and deeper
+		 *	@param		{Array}			path							[], [b], [b, c], [b, c, k] - a component, a loop or a group - or, inside a component that holds components or a loop, [b, c, k, j] and deeper - inside a group
+															the j is a panel, and the next part a component in it
 		 *
 		 *	@return		{Object|null}							null for a path the model has nothing at
 		 */
@@ -370,7 +392,7 @@
 			let node = block.kind === 'section' ? ( block.cols || [] )[path[1]] ?? null : null;
 
 			for( let at = 2; at < path.length && node !== null; at++ )
-				node = ( node.components ?? [] )[path[at]] ?? null;
+				node = ( Array.isArray( node.panels ) === true ? node.panels : ( node.components ?? [] ) )[path[at]] ?? null;
 
 			return node;
 		},
@@ -391,7 +413,7 @@
 				return null;
 
 			const parent = Nino.admin.builder._get( model, path.slice( 0, -1 ) );
-			const list = path.length === 1 ? parent.blocks : ( path.length === 2 ? parent.cols : parent.components );
+			const list = path.length === 1 ? parent.blocks : ( path.length === 2 ? parent.cols : ( Array.isArray( parent.panels ) === true ? parent.panels : parent.components ) );
 
 			return { list : list, index : path[path.length - 1] };
 		},
@@ -409,9 +431,10 @@
 		},
 
 		/**
-		 *	What a node is: template, section, html, col, loop or component - a component
+		 *	What a node is: template, section, html, col, loop, group, panel or component - a component
 		 *	that holds components is one, and so are its children; a loop is the entry of a column
-		 *	whose name is a stack of the registry
+		 *	whose name is a stack of the registry and which has a type, a group the same with panels
+		 *	for children (the panel is a node with no name)
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -428,11 +451,33 @@
 
 			const builder = Nino.admin.builder;
 
-			return path.length === 2 ? 'col' : ( builder._isLoop( builder._get( model, path ) ) === true ? 'loop' : 'component' );
+			if( path.length === 2 )
+				return 'col';
+
+			const node = builder._get( model, path );
+
+			if( node !== null && typeof node === 'object' && typeof node.name !== 'string' )
+				return 'panel';
+
+			return builder._isGroup( node ) === true ? 'group' : ( builder._isLoop( node ) === true ? 'loop' : 'component' );
 		},
 
 		/**
-		 *	Whether an entry of the components of a column is a loop: its name is a stack of the registry. The Builder knows no stack by name
+		 *	Whether an entry of the components of a column is a group of panels: a stack of the registry that has its panels by hand, called with no type. The
+		 *	same stack with a type is a loop. The Builder knows no stack by name
+		 *
+		 *	@param		{Object|null}	node
+		 *	@param		{Object}		[registry]				The panel's own by default
+		 *
+		 *	@return		{boolean}
+		 */
+		_isGroup : function( node, registry ) {
+			return Nino.admin.builder._isLoop( node, registry ) === true && Array.isArray( node.panels ) === true;
+		},
+
+		/**
+		 *	Whether an entry of the components of a column is a call of a stack of the registry: a loop, or - with panels for its children - a group of panels
+		 *	(see _isGroup()). The Builder knows no stack by name
 		 *
 		 *	@param		{Object|null}	node
 		 *	@param		{Object}		[registry]				The panel's own by default
@@ -470,6 +515,20 @@
 						builder._open.add( other );
 
 					walk( node, other );
+
+					// The panels of a group are open as they were, and what they hold with them
+					( node.panels || [] ).forEach( function( panel, j ) {
+
+						const same = ( other.panels || [] )[j];
+
+						if( same === undefined )
+							return;
+
+						if( builder._open.has( panel ) === true )
+							builder._open.add( same );
+
+						walk( panel, same );
+					} );
 				} );
 			};
 
@@ -499,13 +558,75 @@
 
 				const node = builder._get( model, path.slice( 0, length ) );
 
-				if( builder._isLoop( node ) === true )
+				if( builder._isLoop( node ) === true && builder._isGroup( node ) === false )
 					return node;
 			}
 
 			const section = model.blocks[path[0]];
 
-			return section === undefined || section.stack === null || section.stack === undefined ? null : section.stack;
+			return section === undefined ? null : builder._cellOf( section );
+		},
+
+		/**
+		 *	The loop a section's columns are the cell of: the loop of sections it is, or the loop around its row
+		 *
+		 *	@param		{Object}		section
+		 *
+		 *	@return		{Object|null}							{ name, source, attributes } - null for a section that runs none
+		 */
+		_cellOf : function( section ) {
+
+			if( section.stack !== null && section.stack !== undefined )
+				return section.stack;
+
+			return section.rowLoop === null || section.rowLoop === undefined ? null : section.rowLoop;
+		},
+
+		/**
+		 *	Whether the node at a path, or one above it, is a loop from a type whose cell the components at the path stand in - not the loop of the section, whose cell the
+		 *	columns are
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path
+		 *
+		 *	@return		{boolean}
+		 */
+		_inCell : function( model, path ) {
+
+			const builder = Nino.admin.builder;
+
+			for( let length = path.length; length > 2; length-- ) {
+
+				const node = builder._get( model, path.slice( 0, length ) );
+
+				if( builder._isLoop( node ) === true && builder._isGroup( node ) === false )
+					return true;
+			}
+
+			return false;
+		},
+
+		/**
+		 *	The stack of the group the components at a path stand in a panel of - the nearest one above the path -, '' where they stand in none
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path
+		 *
+		 *	@return		{string}
+		 */
+		_groupAt : function( model, path ) {
+
+			const builder = Nino.admin.builder;
+
+			for( let length = path.length - 1; length > 2; length-- ) {
+
+				const node = builder._get( model, path.slice( 0, length ) );
+
+				if( builder._isGroup( node ) === true )
+					return node.name;
+			}
+
+			return '';
 		},
 
 		/**
@@ -579,9 +700,9 @@
 		 *	What the tools of a frame offer, and whether each can be used now: a
 		 *	section can be edited as HTML+, a node moves where it has a neighbour
 		 *	in its level, and the one column of a section is not deleted - a
-		 *	section has at least one. A loop has settings, up, down, copy and delete,
+		 *	section has at least one, and a group at least one panel. A loop has settings, up, down, copy and delete,
 		 *	and paste where its cell takes components - it is copied and pasted, and
-		 *	not duplicated
+		 *	not duplicated - and so is a group, which takes a panel, and a panel, which takes a component
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path
@@ -602,16 +723,21 @@
 			const place = builder._place( model, path );
 			const node = kind === 'loop' ? builder._get( model, path ) : null;
 
+			// A column of a table is a row of its loop: it moves, has its settings and goes, and is made in the loop's form, so it is neither copied nor pasted
+			if( builder._ofColumns( model, path ) === true )
+				return { settings : true, html : null, up : place !== null && place.index > 0, down : place !== null && place.index < place.list.length - 1, duplicate : null, copy : null, paste : null, delete : place !== null && place.list.length > 1 };
+
 			return {
 				settings	: true,
 				html			: kind === 'section' ? true : null,
 				up				: place !== null && place.index > 0,
 				down			: place !== null && place.index < place.list.length - 1,
-				duplicate	: kind === 'loop' ? null : place !== null,
+				duplicate	: kind === 'loop' || kind === 'group' || kind === 'panel' ? null : place !== null,
 				copy			: place !== null,
 				// A loop takes a paste into its cell where the cell is components
 				paste			: kind === 'loop' && builder._cellKind( builder._registry, node ) !== 'components' ? null : place !== null && builder._pasteable( model, builder._registry, path, builder._clip ) === '',
-				delete		: place !== null && ( kind !== 'col' || place.list.length > 1 ),
+				// A section has a column, and a group a panel: the last one stays
+				delete		: place !== null && ( ( kind !== 'col' && kind !== 'panel' ) || place.list.length > 1 ),
 			};
 		},
 
@@ -637,8 +763,11 @@
 			if( kind === 'section' )
 				return node.cols.reduce( function( sum, col ) { return sum + col.components.length }, 0 );
 
-			if( kind === 'col' )
+			if( kind === 'col' || kind === 'panel' )
 				return node.components.length;
+
+			if( kind === 'group' )
+				return node.panels.length;
 
 			return ( kind === 'component' || kind === 'loop' ) && Array.isArray( node.components ) === true ? node.components.length : 0;
 		},
@@ -664,21 +793,68 @@
 		},
 
 		/**
-		 *	The ids of the sections that are a loop of sections: a loop makes
-		 *	<its id>-<n> for the sections it renders, and the save refuses a
-		 *	static section named like one of them
+		 *	The ids the page makes more of: the id of a loop of sections, which makes <its id>-<n> for the sections it renders, and the id of every stack that says panels - a group,
+		 *	a loop from a type, a loop around a row - which makes <its id>-<n> for its panels. The save refuses an element named like one of them
 		 *
 		 *	@param		{Object}		model
 		 *
 		 *	@return		{Array}										ids
 		 */
 		_loopNames : function( model ) {
-			return model.blocks.filter( function( block ) { return block.kind === 'section' && block.stack !== null && block.stack !== undefined } ).map( function( block ) { return block.id } );
+
+			const builder = Nino.admin.builder;
+			const names = [];
+
+			model.blocks.forEach( function( block ) {
+
+				if( block.kind !== 'section' )
+					return;
+
+				if( block.stack !== null && block.stack !== undefined )
+					names.push( block.id );
+
+				builder._calls( block ).forEach( function( call ) {
+					if( ( ( builder._registry.stacks || {} )[call.name] || {} ).panels === true && String( call.attributes.id ?? '' ) !== '' )
+						names.push( call.attributes.id );
+				} );
+			} );
+
+			return names;
 		},
 
 		/**
-		 *	Whether a section id is taken: by a block, or by a loop of sections
-		 *	whose own sections it would be named like
+		 *	Every call of a stack in a section that has an id of its own to give - the loop around its row, the loops and the groups of its columns and of the panels of those
+		 *
+		 *	@param		{Object}		section
+		 *
+		 *	@return		{Array}										The nodes
+		 */
+		_calls : function( section ) {
+
+			const builder = Nino.admin.builder;
+			const found = [];
+			const walk = function( components ) {
+
+				components.forEach( function( node ) {
+
+					if( builder._isLoop( node ) === true )
+						found.push( node );
+
+					( node.panels || [] ).forEach( function( panel ) { walk( panel.components || [] ) } );
+				} );
+			};
+
+			if( section.rowLoop !== null && section.rowLoop !== undefined )
+				found.push( section.rowLoop );
+
+			( section.cols || [] ).forEach( function( col ) { walk( col.components || [] ) } );
+
+			return found;
+		},
+
+		/**
+		 *	Whether a section id is taken: by a block, by an id a loop, a group or a loop around a row gives, or by an id a loop of sections or a stack with panels would make for
+		 *	its own elements
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{string}		name
@@ -686,8 +862,12 @@
 		 *	@return		{boolean}
 		 */
 		_sectionTaken : function( model, name ) {
-			return model.blocks.some( function( block ) { return block.id === name } )
-				|| Nino.admin.builder._loopNames( model ).some( function( id ) { return new RegExp( '^'+ id.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' )+ '-\\d+$' ).test( name ) } );
+
+			const builder = Nino.admin.builder;
+
+			return model.blocks.some( function( block ) {
+				return block.id === name || ( block.kind === 'section' && block.stack === null && builder._calls( block ).some( function( call ) { return String( call.attributes.id ?? '' ) === name } ) );
+			} ) || builder._loopNames( model ).some( function( id ) { return new RegExp( '^'+ id.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' )+ '-\\d+$' ).test( name ) } );
 		},
 
 		/**
@@ -756,6 +936,7 @@
 				note( component.source );
 				Object.keys( component.attributes || {} ).forEach( function( name ) { note( component.attributes[name] ) } );
 				( component.components || [] ).forEach( visit );
+				( component.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( visit ) } );
 			};
 
 			( section.cols || [] ).forEach( function( col ) {
@@ -968,9 +1149,10 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, group : '', groupAttributes : {}, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
+				rowLoop		: null,
 				cols			: kind === 'tiles' ? [ builder._newCol( builder.TILES_WIDTH ), builder._newCol( builder.TILES_WIDTH ) ] : [ builder._newCol() ],
 			};
 		},
@@ -983,7 +1165,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function( width ) {
-			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', title : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
+			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
 		},
 
 		/**
@@ -1071,8 +1253,8 @@
 		},
 
 		/**
-		 *	The stacks a section may be a group of, as the registry says it: those that take panels (panels) - and only where the registry has a component for the panel (panelled)
-		 *	to be written. Nothing is known by name
+		 *	The stacks that can be a group of panels, as the registry says it: those that take panels (panels) - and only where the registry has a component for the panel (panelled)
+		 *	to be written. Each is a loop from a type as well. Nothing is known by name
 		 *
 		 *	@param		{Object}		registry
 		 *
@@ -1104,23 +1286,8 @@
 		},
 
 		/**
-		 *	The stack a section is a group of, '' for a section of columns - and for one whose group the registry does not know
-		 *
-		 *	@param		{Object}		section
-		 *
-		 *	@return		{string}
-		 */
-		_groupName : function( section ) {
-
-			const builder = Nino.admin.builder;
-			const name = section.kind === 'section' && section.settings !== undefined && typeof section.settings.group === 'string' ? section.settings.group : '';
-
-			return name !== '' && builder._groups( builder._registry ).indexOf( name ) !== -1 ? name : '';
-		},
-
-		/**
 		 *	The attributes of a group's stack that the group keeps, by the schema: its own, but for the ones of the type field and the line of text of a loop, which a call
-		 *	without a type reads neither of
+		 *	without a type reads neither of - its id and its class the group has besides
 		 *
 		 *	@param		{Object}		schema						One entry of the registry's stacks
 		 *
@@ -1141,34 +1308,80 @@
 		},
 
 		/**
-		 *	A section made a group of a stack, or of none: the attributes the group keeps are those of the stack, the ones the section had and the stack has too kept where they
-		 *	take the value. The settings that only a row has stay in the model while the form is open: the section is a row again with the width it had. A section of tiles is
-		 *	no group
+		 *	A group as the editor makes a new one: the stack of the registry with the attributes the group keeps at their defaults, no type, and one panel with nothing in it - a
+		 *	group without a panel is none. Its id is the editor's to give: the kernel numbers the call where it has none
 		 *
 		 *	@param		{Object}		registry
-		 *	@param		{Object}		section
-		 *	@param		{string}		name							The stack, '' for the columns
+		 *	@param		{string}		name							The registered stack
+		 *
+		 *	@return		{Object}									{ name, source, attributes, panels }
+		 */
+		_newGroup : function( registry, name ) {
+
+			const builder = Nino.admin.builder;
+			const schema = ( registry.stacks || {} )[name] || {};
+			const attributes = { id : '' };
+
+			Object.keys( builder._groupDeclared( schema ) ).forEach( function( key ) { attributes[key] = String( ( schema.defaults || {} )[key] ?? '' ) } );
+			attributes.class = '';
+
+			return { name : name, source : '', attributes : attributes, panels : [ builder._newPanel() ] };
+		},
+
+		/**
+		 *	A panel as the editor makes a new one: no title (the kernel numbers it), no class, nothing in it
+		 *
+		 *	@return		{Object}									{ title, class, components }
+		 */
+		_newPanel : function() {
+			return { title : '', class : '', components : [] };
+		},
+
+		/**
+		 *	A group made a loop from a type, in the place it stands: the same stack with the type, the data and the attributes the loop has - the ones the group kept where the loop
+		 *	has an attribute of that name that takes the value, the id and the class among them - and an empty cell. The panels fall away; a node is changed in place, so that
+		 *	its place in the column, its open state and the path to it stay
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		node							The group
 		 *
 		 *	@return		void
 		 */
-		_setGroup : function( registry, section, name ) {
+		_toLoop : function( registry, node ) {
 
 			const builder = Nino.admin.builder;
-			const settings = section.settings;
-			const old = settings.groupAttributes || {};
-			const schema = ( registry.stacks || {} )[name] || {};
-			const declared = builder._groupDeclared( schema );
-			const attributes = {};
+			const made = builder._stackFor( registry, node.name, { source : '', attributes : node.attributes } );
 
-			Object.keys( declared ).forEach( function( key ) {
-				attributes[key] = String( ( schema.defaults || {} )[key] ?? '' );
+			made.source = ( registry.types || [] ).length > 0 ? registry.types[0].uri : '';
+			node.source = made.source;
+			node.attributes = made.attributes;
+			node.components = [];
+			delete node.panels;
+		},
 
-				if( Object.prototype.hasOwnProperty.call( old, key ) === true && builder._takes( declared[key], String( old[key] ?? '' ) ) === true )
-					attributes[key] = String( old[key] );
+		/**
+		 *	A loop made a group, fixed: the same stack with no type, the attributes the group keeps - those the loop had where they take the value - and one panel. What the cell
+		 *	held is not kept: the panels are another thing
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		node							The loop
+		 *
+		 *	@return		void
+		 */
+		_toGroup : function( registry, node ) {
+
+			const builder = Nino.admin.builder;
+			const made = builder._newGroup( registry, node.name );
+
+			Object.keys( made.attributes ).forEach( function( key ) {
+				if( Object.prototype.hasOwnProperty.call( node.attributes, key ) === true && builder._takes( builder._declared( ( registry.stacks || {} )[node.name] || {} )[key], String( node.attributes[key] ?? '' ) ) === true )
+					made.attributes[key] = String( node.attributes[key] );
 			} );
 
-			settings.group = name;
-			settings.groupAttributes = name === '' ? {} : attributes;
+			node.source = '';
+			node.attributes = made.attributes;
+			node.panels = made.panels;
+			delete node.components;
 		},
 
 		/**
@@ -1719,6 +1932,7 @@
 				} );
 
 				( node.components || [] ).forEach( component );
+				( node.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( component ) } );
 			};
 
 			// The picture behind a copy of a section is a new slot, and so is the one behind each of its columns - and behind a copy of a column
@@ -1755,7 +1969,8 @@
 		 */
 		_clipWord : function( clip ) {
 
-			const word = { section : 'section', html : 'html-block', column : 'col', component : Nino.admin.builder._isLoop( clip.node ) === true ? 'loop' : 'component' }[clip.kind];
+			const builder = Nino.admin.builder;
+			const word = { section : 'section', html : 'html-block', column : 'col', panel : 'panel', component : builder._isGroup( clip.node ) === true ? 'group' : ( builder._isLoop( clip.node ) === true ? 'loop' : 'component' ) }[clip.kind];
 
 			return Nino.content.getText( '/_admin/builder/tree/'+ word )+ ( clip.kind === 'section' ? ' '+ clip.node.id : '' );
 		},
@@ -1786,6 +2001,19 @@
 			};
 			const component = function( node ) {
 
+				// A group is an entry among the components: the stack, then what its panels hold
+				if( builder._isGroup( node, registry ) === true ) {
+
+					if( has( registry.stacks, node.name ) === false )
+						return node.name;
+
+					for( const panel of node.panels )
+						if( list( panel.components ) !== '' )
+							return list( panel.components );
+
+					return '';
+				}
+
 				// A loop is an entry among the components: the stack and the type, then the children of its cell
 				if( builder._isLoop( node, registry ) === true )
 					return loop( node ) || list( node.components );
@@ -1811,11 +2039,11 @@
 			if( clip.kind === 'component' )
 				return component( clip.node );
 
-			if( clip.kind === 'column' )
+			if( clip.kind === 'column' || clip.kind === 'panel' )
 				return list( clip.node.components );
 
 			if( clip.kind === 'section' )
-				return loop( clip.node.stack ) || ( clip.node.cols || [] ).reduce( function( found, col ) { return found || list( col.components ) }, '' );
+				return loop( clip.node.stack ) || loop( clip.node.rowLoop ) || ( clip.node.cols || [] ).reduce( function( found, col ) { return found || list( col.components ) }, '' );
 
 			return '';
 		},
@@ -1836,7 +2064,31 @@
 
 			for( const node of components ) {
 
-				// A loop stands in a column and nowhere else: not in the cell of a loop, not in a component that holds components, not as the group of the panel it is in
+				// A group stands in a column and nowhere else: not in the cell of a loop, not in a component that holds components, not in a panel
+				if( builder._isGroup( node, registry ) === true ) {
+
+					if( where.inside === true )
+						return text('holder-stack');
+
+					if( where.cell === true )
+						return text('group-in-loop');
+
+					if( where.group !== undefined && where.group !== '' )
+						return text('group-in-group');
+
+					// What its panels hold stands in a column of the page, in a panel of this stack
+					for( const panel of node.panels ) {
+
+						const inner = builder._componentsProblem( registry, panel.components || [], { place : where.place, inside : false, looped : where.looped, cell : false, group : node.name } );
+
+						if( inner !== '' )
+							return inner;
+					}
+
+					continue;
+				}
+
+				// A loop stands in a column and nowhere else: not in the cell of a loop, not in a component that holds components, not in a panel of the group it is the stack of
 				if( builder._isLoop( node, registry ) === true ) {
 
 					if( where.inside === true )
@@ -1850,7 +2102,7 @@
 
 					// The cell is the place its schema holds - the columns of a table - else that of the column, and it is a loop's
 					const held = ( ( registry.stacks || {} )[node.name] || {} ).holds;
-					const inner = builder._componentsProblem( registry, node.components || [], { place : typeof held === 'string' && held !== '' ? held : where.place, inside : false, looped : true } );
+					const inner = builder._componentsProblem( registry, node.components || [], { place : typeof held === 'string' && held !== '' ? held : where.place, inside : false, looped : true, cell : true } );
 
 					if( inner !== '' )
 						return inner;
@@ -1865,7 +2117,7 @@
 
 				if( Array.isArray( node.components ) === true ) {
 
-					const inner = builder._componentsProblem( registry, node.components, { place : builder._holds( registry, node.name ), inside : true, looped : where.looped } );
+					const inner = builder._componentsProblem( registry, node.components, { place : builder._holds( registry, node.name ), inside : true, looped : where.looped, cell : where.cell } );
 
 					if( inner !== '' )
 						return inner;
@@ -1912,11 +2164,24 @@
 				return path.length === 2 ? { list : model.blocks[path[0]].cols, index : path[1] + 1, parent : path.slice( 0, 1 ) } : null;
 			}
 
+			if( clip.kind === 'panel' ) {
+
+				// Into a group at the end of its panels, or after the panel it is pasted at
+				if( builder._isGroup( node, registry ) === true )
+					return { list : node.panels, index : node.panels.length, parent : path };
+
+				return builder._kind( model, path ) === 'panel' ? { list : builder._place( model, path ).list, index : path[path.length - 1] + 1, parent : path.slice( 0, -1 ) } : null;
+			}
+
 			if( path.length === 2 )
 				return { list : node.components, index : node.components.length, parent : path };
 
 			if( path.length < 3 )
 				return null;
+
+			// Into a panel, at the end of what it holds: whether it takes the clip is for _pasteable() to say, with the reason
+			if( builder._kind( model, path ) === 'panel' )
+				return { list : node.components, index : node.components.length, parent : path };
 
 			// Into the component that holds components, where it takes the clip: the place its 'holds' names, and whatever the column is
 			if( path.length === 3 && builder._holds( registry, node.name ) !== '' && Array.isArray( node.components ) === true
@@ -1924,7 +2189,7 @@
 				return { list : node.components, index : node.components.length, parent : path };
 
 			// Into the cell of a loop whose cell is components, where it takes the clip - a loop it does not
-			if( builder._isLoop( node, registry ) === true && builder._cellKind( registry, node ) === 'components' && Array.isArray( node.components ) === true && builder._isLoop( clip.node, registry ) === false
+			if( builder._isLoop( node, registry ) === true && builder._isGroup( node, registry ) === false && builder._cellKind( registry, node ) === 'components' && Array.isArray( node.components ) === true && builder._isLoop( clip.node, registry ) === false
 				&& builder._componentsProblem( registry, [ clip.node ], builder._placeOf( model, path, registry ) ) === '' )
 				return { list : node.components, index : node.components.length, parent : path };
 
@@ -1968,7 +2233,15 @@
 				const section = model.blocks[place.parent[0]];
 
 				// What stands outside a loop of the column is in no loop's cell unless the section is one, and the loops of the column carry their cells with them
-				return builder._componentsProblem( registry, clip.node.components || [], { place : builder._where( model, place.parent.slice( 0, 1 ), registry ), inside : false, looped : builder._looping( section ), group : builder._groupName( section ) } );
+				return builder._componentsProblem( registry, clip.node.components || [], { place : builder._where( model, place.parent.slice( 0, 1 ), registry ), inside : false, looped : builder._cellOf( section ) !== null, cell : false, group : '' } );
+			}
+
+			// A panel goes into a group: what it holds stands in a panel of that stack
+			if( clip.kind === 'panel' ) {
+
+				const group = builder._get( model, place.parent );
+
+				return builder._componentsProblem( registry, clip.node.components || [], Object.assign( builder._placeOf( model, place.parent, registry ), { group : group.name } ) );
 			}
 
 			return clip.kind === 'component' ? builder._componentsProblem( registry, [ clip.node ], builder._placeOf( model, place.parent, registry ) ) : '';
@@ -2011,7 +2284,7 @@
 
 				const section = model.blocks[place.parent[0]];
 
-				builder._rekey( clip.kind === 'column' ? copy : { cols : [ { components : [ copy ] } ] }, registry, builder._keyUri( clip.file, clip.section, '' ), builder._keyUri( file, builder._keyId( section ), '' ), true, section, file, valuesOf );
+				builder._rekey( clip.kind === 'column' ? copy : { cols : [ { components : clip.kind === 'panel' ? copy.components : [ copy ] } ] }, registry, builder._keyUri( clip.file, clip.section, '' ), builder._keyUri( file, builder._keyId( section ), '' ), true, section, file, valuesOf );
 			}
 
 			place.list.splice( place.index, 0, copy );
@@ -2049,7 +2322,7 @@
 
 			const object = function( value ) { return value !== null && typeof value === 'object' && Array.isArray( value ) === false };
 
-			return object( clip ) === true && [ 'section', 'html', 'column', 'component' ].indexOf( clip.kind ) !== -1 && typeof clip.file === 'string' && typeof clip.section === 'string'
+			return object( clip ) === true && [ 'section', 'html', 'column', 'panel', 'component' ].indexOf( clip.kind ) !== -1 && typeof clip.file === 'string' && typeof clip.section === 'string'
 				&& object( clip.node ) === true && object( clip.values ) === true ? clip : null;
 		},
 
@@ -2161,7 +2434,20 @@
 					return;
 
 				settle( block.stack );
-				block.cols.forEach( function( col ) { col.components.forEach( function( node ) { if( builder._isLoop( node, registry ) === true ) settle( node ) } ) } );
+				settle( block.rowLoop );
+
+				const each = function( components ) {
+
+					components.forEach( function( node ) {
+
+						if( builder._isGroup( node, registry ) === true )
+							node.panels.forEach( function( panel ) { each( panel.components || [] ) } );
+						else if( builder._isLoop( node, registry ) === true )
+							settle( node );
+					} );
+				};
+
+				block.cols.forEach( function( col ) { each( col.components ) } );
 			} );
 		},
 
@@ -2189,15 +2475,16 @@
 				if( block.kind !== 'section' )
 					return;
 
-				// The type a loop of sections runs over: red on the section, whose loop it is
+				// The type a loop of sections, or a loop around the row, runs over: red on the section, whose loop it is
+				const cell = builder._cellOf( block );
 				let around = null;
 
-				if( block.stack !== null && block.stack !== undefined ) {
+				if( cell !== null ) {
 
-					const kind = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === block.stack.source } );
+					const kind = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === cell.source } );
 
 					if( kind === undefined )
-						red.push( { path : [ b ], source : block.stack.source, why : 'type' } );
+						red.push( { path : [ b ], source : cell.source, why : 'type' } );
 					else
 						around = kind.fields || {};
 				}
@@ -2219,14 +2506,14 @@
 				};
 
 				if( around !== null )
-					named( block.stack, around, [ b ] );
+					named( cell, around, [ b ] );
 
 				block.cols.forEach( function( col, c ) {
 
 					// The picture behind a column may be an image field of the element where the section is a loop: elsewhere, or for a field the type has not or that is no image, it is red
 					if( col.background !== null && col.background !== undefined && ( col.background.field ?? '' ) !== '' ) {
 
-						if( block.stack === null || block.stack === undefined )
+						if( cell === null )
 							red.push( { path : [ b, c ], source : col.background.field, why : 'background-static' } );
 						else if( around !== null && ( Object.prototype.hasOwnProperty.call( around, col.background.field ) === false || around[col.background.field].type !== 'image' ) )
 							red.push( { path : [ b, c ], source : col.background.field, why : 'background-field' } );
@@ -2280,24 +2567,71 @@
 
 						( component.components || [] ).forEach( function( child, j ) { check( child, path.concat( [ j ] ), scope ) } );
 					};
-					// What stands outside a loop is of the column: a column of a loop of sections is the cell of that loop, any other has no element
-					const outside = { fields : around, looped : block.stack !== null && block.stack !== undefined };
+					// What stands outside a loop is of the column: a column of a loop of sections, or of a loop around the row, is the cell of that loop, any other has no element
+					const outside = { fields : around, looped : cell !== null };
 
-					col.components.forEach( function( node, k ) {
+					// The components of a column or of a panel: a group has the components of its panels among them, and a loop its cell
+					// What stands in a place that has none of it is red: a loop in the cell of a loop, a group in a panel or in the cell of a loop, the loop of the group's own stack in its panel, an id on a group in a cell
+					const walk = function( components, base, scope, within ) {
 
-						if( builder._isLoop( node, registry ) === false )
-							return check( node, [ b, c, k ], outside );
+						components.forEach( function( node, k ) {
 
-						const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === node.source } );
-						const inside = { fields : type === undefined ? null : type.fields || {}, looped : true };
+							const path = base.concat( [ k ] );
 
-						if( type === undefined )
-							red.push( { path : [ b, c, k ], source : node.source, why : 'type' } );
-						else
-							named( node, inside.fields, [ b, c, k ] );
+							if( builder._isGroup( node, registry ) === true ) {
 
-						( node.components || [] ).forEach( function( child, j ) { check( child, [ b, c, k, j ], inside ) } );
-					} );
+								if( within !== undefined )
+									red.push( { path : path, source : node.name, why : 'group-in-group' } );
+
+								if( scope.looped === true && String( node.attributes.id ?? '' ) !== '' )
+									red.push( { path : path, source : node.attributes.id, why : 'group-id' } );
+
+								return node.panels.forEach( function( panel, j ) {
+
+									const at = path.concat( [ j ] );
+
+									// The title of a panel is a line of text with the fields of the element in it, as a line is
+									( String( panel.title ?? '' ).match( /\[\[[A-Za-z0-9_.\/-]+\]\]/g ) || [] ).map( function( fill ) { return fill.slice( 2, -2 ) } ).forEach( function( fill ) {
+
+										if( fill.charAt(0) === '/' )
+											return;
+
+										if( scope.fields !== null && scope.fields[fill] !== undefined && scope.fields[fill].type === 'image' )
+											red.push( { path : at, source : fill, why : 'field' } );
+										else
+											mark( fill, at, false, scope );
+									} );
+									walk( panel.components || [], at, scope, node.name );
+								} );
+							}
+
+							if( builder._isLoop( node, registry ) === false )
+								return check( node, path, scope );
+
+							if( scope.looped === true )
+								red.push( { path : path, source : node.name, why : 'loop-in-loop' } );
+							else if( within === node.name )
+								red.push( { path : path, source : node.name, why : 'loop-in-group' } );
+
+							const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === node.source } );
+							const inside = { fields : type === undefined ? null : type.fields || {}, looped : true };
+
+							if( type === undefined )
+								red.push( { path : path, source : node.source, why : 'type' } );
+							else
+								named( node, inside.fields, path );
+
+							( node.components || [] ).forEach( function( child, j ) {
+
+								if( builder._isLoop( child, registry ) === true )
+									red.push( { path : path.concat( [ j ] ), source : child.name, why : builder._isGroup( child, registry ) === true ? 'group-in-loop' : 'loop-in-loop' } );
+								else
+									check( child, path.concat( [ j ] ), inside );
+							} );
+						} );
+					};
+
+					walk( col.components, [ b, c ], outside );
 				} );
 			} );
 
@@ -2386,8 +2720,11 @@
 
 			const builder = Nino.admin.builder;
 
-			if( path.length > 2 && builder._isLoop( builder._get( model, path ), registry ) === false )
-				return builder._holds( registry ?? builder._registry, builder._get( model, path ).name );
+			const node = path.length > 2 ? builder._get( model, path ) : null;
+
+			// A component that holds components: the place it holds; a loop, a group and a panel stand as the column does
+			if( node !== null && typeof node.name === 'string' && builder._isLoop( node, registry ) === false )
+				return builder._holds( registry ?? builder._registry, node.name );
 
 			return path[0] === 0 ? 'hero' : 'section';
 		},
@@ -2400,13 +2737,23 @@
 		 *	@param		{Array}			path							The column, the component that holds components or the loop
 		 *	@param		{Object}		registry
 		 *
-		 *	@return		{Object}									{ place, inside, looped }
+		 *	@return		{Object}									{ place, inside, looped, cell, group }
 		 */
 		_placeOf : function( model, path, registry ) {
 
 			const builder = Nino.admin.builder;
 
-			return { place : builder._where( model, path, registry ), inside : path.length > 2 && builder._isLoop( builder._get( model, path ), registry ) === false, looped : builder._loopAt( model, path ) !== null, group : builder._groupName( model.blocks[path[0]] ) };
+			const node = path.length > 2 ? builder._get( model, path ) : null;
+
+			return {
+				place		: builder._where( model, path, registry ),
+				inside	: node !== null && typeof node.name === 'string' && builder._isLoop( node, registry ) === false,
+				looped	: builder._loopAt( model, path ) !== null,
+				// Whether they are the cell of a loop from a type, in which neither a group nor a loop stands - as against the columns of a section that runs a loop
+				cell		: builder._inCell( model, path ),
+				// The stack of the group whose panel they stand in
+				group		: builder._groupAt( model, path ),
+			};
 		},
 
 		/**
@@ -2496,8 +2843,13 @@
 				} ) },
 			] );
 
-			// The loops are a group of their own, in the lightbox of a column: the cell of a loop holds none
-			const loops = path.length === 2 ? builder._pickLoops( model, path, registry ) : [];
+			// The groups of panels and the loops are groups of their own, in the lightbox of a column and of a panel: the cell of a loop holds neither
+			const kind = builder._kind( model, path );
+			const groups2 = kind === 'col' || kind === 'panel' ? builder._pickGroups( model, path, registry ) : [];
+			const loops = kind === 'col' || kind === 'panel' ? builder._pickLoops( model, path, registry ) : [];
+
+			if( groups2.length > 0 )
+				result.push( { id : 'groups', label : Nino.content.getText('/_admin/builder/pick/groups'), rows : [ { label : '', items : groups2 } ] } );
 
 			if( loops.length > 0 )
 				result.push( { id : 'loops', label : Nino.content.getText('/_admin/builder/pick/loops'), rows : [ { label : '', items : loops } ] } );
@@ -2506,12 +2858,37 @@
 		},
 
 		/**
-		 *	The loops the lightbox of a column offers: every stack of the registry that may stand in a column ('loops'), in the order of the registry, each with its word and the
-		 *	picture its schema names ('preview'). One that cannot go here says why: the column is the cell of a loop of sections, and a loop inside a loop cannot be; or it is a
-		 *	panel of a group of that very stack, whose closing tag it would end. The Builder knows no stack by name
+		 *	The groups of panels the lightbox of a column offers: every stack of the registry that takes panels (see _groups()), in the order of the registry, each with its word and the
+		 *	picture its schema names ('preview'). It is made with its panels by hand; the dialog turns it into a loop over a type. One that cannot go here says why: it is in a panel,
+		 *	and a group stands in none. The Builder knows no stack by name
 		 *
 		 *	@param		{Object}		model
-		 *	@param		{Array}			path							The column
+		 *	@param		{Array}			path							The column, or a panel
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{Array}										[ { name, label, image, loop, group, reason } ]
+		 */
+		_pickGroups : function( model, path, registry ) {
+
+			const builder = Nino.admin.builder;
+			const where = builder._placeOf( model, path, registry );
+			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
+
+			return builder._groups( registry ).map( function( name ) {
+
+				const schema = ( registry.stacks || {} )[name] || {};
+
+				return { name : name, label : schema.label || name, image : builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview, loop : false, group : true, icon : null, reason : where.group !== '' ? text('group-in-group') : '' };
+			} );
+		},
+
+		/**
+		 *	The loops the lightbox of a column offers: every stack of the registry that may stand in a column ('loops') and is not one of the groups (see _pickGroups(), which are
+		 *	loops as well), in the order of the registry, each with its word and the picture its schema names ('preview'). One that cannot go here says why: the column is the cell of a
+		 *	loop of sections or of a loop around a row, and a loop inside a loop cannot be; or it is a panel of a group of that very stack, whose closing tag it would end. The Builder knows no stack by name
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The column, or a panel
 		 *	@param		{Object}		registry
 		 *
 		 *	@return		{Array}										[ { name, label, image, loop, reason } ]
@@ -2519,17 +2896,18 @@
 		_pickLoops : function( model, path, registry ) {
 
 			const builder = Nino.admin.builder;
-			const section = model.blocks[path[0]];
+			const where = builder._placeOf( model, path, registry );
 			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
+			const grouped = builder._groups( registry );
 
-			return ( registry.loops || [] ).map( function( name ) {
+			return ( registry.loops || [] ).filter( function( name ) { return grouped.indexOf( name ) === -1 } ).map( function( name ) {
 
 				const schema = ( registry.stacks || {} )[name] || {};
 				let reason = '';
 
-				if( builder._looping( section ) === true )
+				if( where.looped === true )
 					reason = text('loop-in-loop');
-				else if( name === builder._groupName( section ) )
+				else if( where.group !== '' && name === where.group )
 					reason = text('loop-in-group');
 
 				return { name : name, label : schema.label || name, image : builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview, loop : true, icon : null, reason : reason };
@@ -2591,6 +2969,9 @@
 			const reds = builder._red( model, registry );
 			const place = function( component, path, surface ) {
 
+				if( builder._isGroup( component, registry ) === true )
+					return group( component, path, surface );
+
 				if( builder._isLoop( component, registry ) === true )
 					return loop( component, path, surface );
 
@@ -2622,6 +3003,42 @@
 					background	: look.picture,
 					children		: ( component.components || [] ).map( function( child, j ) { return place( child, path.concat( [ j ] ), surface ) } ),
 				} );
+			};
+
+			// A group of panels in a column: the stack by its word, the titles of its panels, and each panel with what it holds. A panel is named by its title, else by its number
+			const group = function( node, path, surface ) {
+
+				const schema = ( registry.stacks || {} )[node.name] || {};
+				const named = function( panel, j ) {
+
+					const title = String( panel.title ?? '' ).replace( /<[^>]*>/g, '' ).trim();
+
+					return title !== '' ? title : String( j + 1 );
+				};
+
+				const first = function( at ) {
+					return reds.find( function( entry ) { return builder._same( entry.path, at ) } ) || reds.find( function( entry ) { return entry.path.length > at.length && at.every( function( part, i ) { return entry.path[i] === part } ) } );
+				};
+				const bad = function( at ) { const found = first( at ); return found === undefined ? null : found.why };
+
+				return {
+					path			: path,
+					group			: true,
+					loop			: false,
+					problem		: bad( path ),
+					name			: node.name,
+					label			: builder._stackLabel( registry, node.name ),
+					titles		: node.panels.map( named ),
+					panels		: node.panels.map( function( panel, j ) {
+						return {
+							path			: path.concat( [ j ] ),
+							title			: named( panel, j ),
+							problem		: bad( path.concat( [ j ] ) ),
+							components	: ( panel.components || [] ).map( function( child, i ) { return place( child, path.concat( [ j, i ] ), surface ) } ),
+						};
+					} ),
+					image			: builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview,
+				};
 			};
 
 			// A loop of a column: the stack by its word, the type it runs over and the order, the state it is in, and what it shows of its cell - the components of it, the columns of a table
@@ -2675,14 +3092,17 @@
 			return model.blocks.map( function( block, b ) {
 
 				if( block.kind !== 'section' )
-					return { path : [ b ], kind : 'html', id : '', color : '', rowColor : '', inner : false, padded : false, whitespace : '', loop : null, group : null, background : false, tiles : false, ratio : '', reason : block.reason || null, cols : [] };
+					return { path : [ b ], kind : 'html', id : '', color : '', rowColor : '', inner : false, padded : false, whitespace : '', loop : null, rowLoop : null, background : false, tiles : false, ratio : '', reason : block.reason || null, cols : [] };
 
 				const covered = block.settings.cover !== null && block.settings.cover !== undefined;
 				// A cover and a parallax are the section's own picture: the background is inside - on the row - for no other
 				const inner = block.settings.inner === true && covered === false && block.settings.parallax !== true;
 				const loop = block.stack === null || block.stack === undefined ? null : block.stack;
 				const loops = loop === null ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === loop.source } );
-				const group = builder._groupName( block );
+				// The loop around the row, which the row stands in
+				const around = block.rowLoop === null || block.rowLoop === undefined ? null : block.rowLoop;
+				const arounds = around === null ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === around.source } );
+				const problem = function( at ) { return reds.find( function( entry ) { return builder._same( entry.path, at ) } ) };
 
 				return {
 					path				: [ b ],
@@ -2694,9 +3114,10 @@
 					inner				: inner,
 					padded			: block.settings.padded === true && ( covered === true || block.settings.parallax === true ),
 					whitespace	: block.settings.whitespace || '',
-					loop				: loop === null ? null : { path : [ b ], label : builder._stackLabel( registry, loop.name ), type : loops === undefined || loops.title === '' ? loop.source : loops.title },
-					// A group stands where the row does: its columns are its panels, drawn one above the other, each with the title it has - or the number the kernel gives it
-					group				: group === '' ? null : { path : [ b ], label : builder._stackLabel( registry, group ) },
+					// A loop of sections is a block around the section: the stack by its word, what it runs over, the order, and the state it is in
+					loop				: loop === null ? null : { path : [ b ], label : builder._stackLabel( registry, loop.name ), type : loops === undefined || loops.title === '' ? loop.source : loops.title, sorted : builder._sortState( loop ).field, problem : problem( [ b ] ) === undefined ? null : problem( [ b ] ).why },
+					// A loop around the row is a block around the row
+					rowLoop			: around === null ? null : { path : [ b ], label : builder._stackLabel( registry, around.name ), type : arounds === undefined || arounds.title === '' ? around.source : arounds.title, sorted : builder._sortState( around ).field, problem : problem( [ b ] ) === undefined ? null : problem( [ b ] ).why, columns : block.cols.length },
 					background	: block.background !== null && block.background !== undefined,
 					// A section of tiles is drawn edge to edge, its tiles in its ratio
 					// The order of the columns: the viewports the row is turned round in, and whether it is in the one the preview shows
@@ -2711,11 +3132,9 @@
 
 						return {
 							path			: [ b, c ],
-							// A panel has the whole width of its group, and is hidden in no viewport; its name is its title, else its number
-							panel			: group === '' ? null : ( String( col.title ?? '' ).replace( /<[^>]*>/g, '' ).trim() !== '' ? String( col.title ).replace( /<[^>]*>/g, '' ).trim() : String( c + 1 ) ),
-							width			: group !== '' ? 100 : parseInt( col.width[shown], 10 ) || 100,
-							hidden		: group === '' && viewport !== 'g' && col.hidden[viewport] === true,
-							hiddenIn	: group !== '' ? [] : builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
+							width			: parseInt( col.width[shown], 10 ) || 100,
+							hidden		: viewport !== 'g' && col.hidden[viewport] === true,
+							hiddenIn	: builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
 							// The ground the frame is painted in: none where the column paints none, plain where its ground is the page's - and dark where its picture is
 							// dimmed, whatever colour it names: Nino.css paints a dimmed column as the dark ground (a dimming without a picture is no ground)
 							color			: picture === true && col.dim === true ? 'dark' : ( col.color === undefined || col.color === '' ? '' : ( builder._paints( col.color, block.settings.color || '' ) || 'plain' ) ),
@@ -2773,6 +3192,7 @@
 					writes.slots = true;
 
 				( component.components || [] ).forEach( visit );
+				( component.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( visit ) } );
 			};
 
 			model.blocks.forEach( function( block ) {
@@ -3658,6 +4078,7 @@
 			dc.getElementById('builder-source').addEventListener( 'click', builder._showSource );
 			dc.getElementById('builder-add-content').addEventListener( 'click', function() { builder._addSection( 'content' ) } );
 			dc.getElementById('builder-add-tiles').addEventListener( 'click', function() { builder._addSection( 'tiles' ) } );
+			dc.getElementById('builder-add-loop').addEventListener( 'click', function() { builder._addSection( 'loop' ) } );
 			dc.getElementById('builder-add-html').addEventListener( 'click', function() { builder._editBlock( null ) } );
 			dc.getElementById('builder-template-settings').addEventListener( 'click', function() { builder._select( [] ); builder._openSettings( [] ) } );
 
@@ -3742,6 +4163,7 @@
 				builder._sel = [];
 				builder._fresh = {};
 				builder._open = new WeakSet();
+				builder._shut = new WeakSet();
 				builder._problems = [];
 				builder._saving = false;
 
@@ -4139,35 +4561,6 @@
 				if( block.whitespace !== '' )
 					status.appendChild( builder._statusItem( 'whitespace', 'move-vertical', Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/whitespace'), builder._optionLabel( 'whitespace', block.whitespace ) ), '' ) );
 
-				// A group says what it is, and is a button that opens the block it is set in
-				if( block.group !== null ) {
-
-					frame.classList.add('is-group');
-					status.appendChild( builder._statusItem( 'group', 'group', Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/group'), block.group.label ), block.group.label, function() {
-
-						if( builder._mutable() === false )
-							return;
-
-						builder._select( block.path, false );
-						builder._sectionDialog( block.path, builder._blockOf( 'section', 'group' ) );
-					} ) );
-				}
-
-				// A section that makes a section of every element says so: it is a button, which opens the block Loop of the section
-				if( block.loop !== null ) {
-
-					const says = block.loop.label+ ' · '+ block.loop.type;
-
-					status.appendChild( builder._statusItem( 'loop', 'loop', Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/loop'), says ), says, function() {
-
-						if( builder._mutable() === false )
-							return;
-
-						builder._select( block.path, false );
-						builder._sectionDialog( block.path, builder._blockOf( 'section', 'stack' ) );
-					} ) );
-				}
-
 				if( block.reason !== null )
 					status.appendChild( builder._statusItem( 'warning', 'warning', builder._reasonText( block.reason ), '' ) );
 
@@ -4177,13 +4570,17 @@
 				if( block.kind === 'html' )
 					body.appendChild( builder._placeholder( { path : block.path, label : 'HTML+', image : 'block' }, 'none' ) );
 
-				block.cols.forEach( function( col ) { body.appendChild( builder._previewCol( col ) ) } );
+				// The row stands in the loop around it, where there is one: a box of its own, with the row for its cell
+				const row = block.rowLoop === null ? body : builder._previewAround( block.rowLoop, body );
+
+				block.cols.forEach( function( col ) { row.appendChild( builder._previewCol( col ) ) } );
 
 				// The end of the row: a column more
 				if( block.kind === 'section' )
-					body.appendChild( builder._addButton( block.tiles === true ? 'tile' : 'col', function() { builder._addCol( block.path ) }, 'builder-add-col' ) );
+					row.appendChild( builder._addButton( block.tiles === true ? 'tile' : 'col', function() { builder._addCol( block.path ) }, 'builder-add-col' ) );
 
-				mount.appendChild( frame );
+				// A loop of sections is a block around the section, which keeps its head
+				mount.appendChild( block.loop === null ? frame : builder._previewSections( block, frame ) );
 			} );
 
 			builder._paintAddBar();
@@ -4436,7 +4833,7 @@
 			frame.dataset.path = col.path.join('.');
 			frame.style.setProperty( '--builder-w', String( col.width ) );
 			frame.classList.toggle( 'is-hidden', col.hidden );
-			builder._one( frame, '.builder-col-name' ).textContent = col.panel !== null ? col.panel : col.width+ '%';
+			builder._one( frame, '.builder-col-name' ).textContent = col.width+ '%';
 			builder._pick( frame, col.path );
 
 			// A column that paints a ground is tinted as the section is
@@ -4484,10 +4881,323 @@
 
 			builder._one( frame, '.builder-pcol-head' ).appendChild( builder._tools( col.path, Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/tools-col'), col.path[1] + 1, builder._doc.model.blocks[col.path[0]].id ) ) );
 
-			col.components.forEach( function( component ) {
-				body.appendChild( component.loop === true ? builder._previewLoop( component ) : ( component.holds === true ? builder._previewCard( component ) : builder._placeholder( component, 'tools' ) ) );
-			} );
+			col.components.forEach( function( component ) { body.appendChild( builder._previewEntry( component ) ) } );
 			body.appendChild( builder._addsRow( col.path ) );
+
+			return frame;
+		},
+
+		/**
+		 *	An entry of a column, of a panel, of the cell of a loop or of a component that holds components, as the preview draws it: a group is a box of its own, with its panels as
+		 *	rows, a loop a box of its own, a card a frame of its own, and anything else a placeholder
+		 *
+		 *	@param		{Object}		entry							An entry of _preview()
+		 *
+		 *	@return		{Element}
+		 */
+		_previewEntry : function( entry ) {
+
+			const builder = Nino.admin.builder;
+
+			if( entry.group === true )
+				return builder._previewGroup( entry );
+
+			return entry.loop === true ? builder._previewLoop( entry ) : ( entry.holds === true ? builder._previewCard( entry ) : builder._placeholder( entry, 'tools' ) );
+		},
+
+		/**
+		 *	The box a loop of the page is drawn in, and the open and shut of it: the bar with the arrow, the word of the stack and what kind it is, what it is said by (a chip), the tools in it, and
+		 *	the body with its cell. Shut until it is opened, and open while what is selected stands in it. The loop of a column, the loop around a row and the loop of sections are the same box in
+		 *	the colour of the loops, and a group of panels in the colour of the groups
+		 *
+		 *	@param		{Object}		options
+		 *	@param		{Array}			options.path					Where the node is
+		 *	@param		{Object}		options.node					The node of the model, which the open state is kept on
+		 *	@param		{string}		options.label					The word of the stack
+		 *	@param		{string}		options.kind					What it is, said after the word
+		 *	@param		{string}		options.cellLabel			The label of the cell
+		 *	@param		{string}		options.tools					The name the tools are of
+		 *	@param		{string}		[options.toggle]			The key of the words that name the toggle, loop/toggle by default
+		 *	@param		{boolean}		[options.open]				Open where nothing was said: the row of a loop around it
+		 *	@param		{boolean}		[options.within]			Whether what is selected stands in it
+		 *
+		 *	@return		{Object}									{ frame, status, cell, bar, set }
+		 */
+		_box : function( options ) {
+
+			const builder = Nino.admin.builder;
+			const frame = builder._fragment('loop');
+			const bar = builder._one( frame, '.builder-loop-bar' );
+			const toggle = builder._one( frame, '.builder-loop-toggle' );
+			const body = builder._one( frame, '.builder-loop-body' );
+			const set = function( open ) {
+
+				frame.classList.toggle( 'is-open', open );
+				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+				body.hidden = open === false;
+			};
+			const node = options.node;
+			const shut = options.open === true ? builder._shut.has( node ) === true : builder._open.has( node ) === false;
+
+			frame.dataset.path = options.path.join('.');
+			builder._one( frame, '.builder-loop-name' ).textContent = options.label;
+			builder._one( frame, '.builder-loop-kind' ).textContent = options.kind;
+			builder._one( frame, '.builder-loop-cell-label' ).textContent = options.cellLabel;
+			toggle.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText( '/_admin/builder/'+ ( options.toggle ?? 'loop/toggle' ) ), options.label ) );
+			set( options.within === true || shut === false );
+
+			// A click on the row opens and shuts it, on the arrow too. The tools are not the row
+			bar.addEventListener( 'click', function( ev ) {
+
+				if( ev.target.closest('.builder-tools') !== null )
+					return;
+
+				builder._select( options.path, false );
+
+				if( options.open === true ) {
+					if( builder._shut.has( node ) === true )
+						builder._shut.delete( node );
+					else
+						builder._shut.add( node );
+
+					set( builder._shut.has( node ) === false );
+				} else {
+					if( builder._open.has( node ) === true )
+						builder._open.delete( node );
+					else
+						builder._open.add( node );
+
+					set( builder._open.has( node ) === true );
+				}
+			} );
+
+			return { frame : frame, bar : bar, status : builder._one( frame, '.builder-head-status' ), cell : builder._one( frame, '.builder-loop-cell' ), set : set };
+		},
+
+		/**
+		 *	The red chip of a row that has something wrong in it: the word Problem and, as its title, the words a red source has
+		 *
+		 *	@param		{Element}		status
+		 *	@param		{string}		why								The code of the red entry (see _red())
+		 *
+		 *	@return		void
+		 */
+		_redChip : function( status, why ) {
+
+			const red = Nino.admin.builder._el( 'span', 'builder-chip is-red', Nino.content.getText('/_admin/builder/loop/problem') );
+
+			red.title = Nino.content.getText( '/_admin/builder/tree/red-'+ why );
+			status.appendChild( red );
+		},
+
+		/**
+		 *	The chips a loop is said by: what it runs over, in which order, and the state it is in - red where something is wrong with it (the words of the tip are the ones a red source
+		 *	has), else how much its cell holds
+		 *
+		 *	@param		{Element}		status
+		 *	@param		{Object}		loop							An entry of _preview() that is a loop, or the part of a section that says one
+		 *	@param		{number|null}	[count]
+		 *	@param		{string}		[countWord]
+		 *
+		 *	@return		void
+		 */
+		_loopChips : function( status, loop, count, countWord ) {
+
+			const builder = Nino.admin.builder;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
+
+			status.appendChild( builder._el( 'span', 'builder-chip is-loop', loop.type+ ( loop.sorted === '' ? '' : ' \u00b7 '+ Nino.adminUi.format( word('sorted'), loop.sorted ) ) ) );
+
+			if( loop.problem !== null ) {
+
+				const red = builder._el( 'span', 'builder-chip is-red', word('problem') );
+
+				red.title = Nino.content.getText( '/_admin/builder/tree/red-'+ loop.problem );
+				status.appendChild( red );
+			} else if( count !== null && count !== undefined ) {
+
+				const chip = builder._el( 'span', 'builder-chip', String( count ) );
+
+				chip.title = Nino.adminUi.format( word( countWord ), count );
+				status.appendChild( chip );
+			}
+		},
+
+		/**
+		 *	The loop around the row, in the preview: a box in the colour of the loops, open, around the columns of the row, with the stack, what it runs over and the order in its bar, and
+		 *	the tools of the section's settings - its settings open the block Loop of the section, and it is taken away there. Its cell is the row
+		 *
+		 *	@param		{Object}		loop							The rowLoop of an entry of _preview()
+		 *	@param		{Element}		body							The body of the frame of the section, which the box is put in
+		 *
+		 *	@return		{Element}									The cell, which the columns go into
+		 */
+		_previewAround : function( loop, body ) {
+
+			const builder = Nino.admin.builder;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
+			const section = builder._doc.model.blocks[loop.path[0]];
+			const box = builder._box( { path : loop.path, node : section.rowLoop, label : loop.label, kind : word('around'), cellLabel : word('row'), open : true, within : false } );
+
+			box.frame.classList.add( 'is-around' );
+			box.frame.dataset.around = loop.path.join('.');
+			box.frame.removeAttribute('data-path');
+			builder._loopChips( box.status, loop, loop.columns, 'count-columns-row' );
+
+			const tools = builder._el( 'span', 'builder-tools builder-tools-around' );
+			const gear = builder._el( 'button', 'builder-icon-btn' );
+
+			gear.type = 'button';
+			gear.title = Nino.content.getText('/_admin/builder/menu/settings');
+			gear.setAttribute( 'aria-label', gear.title );
+			gear.appendChild( builder._icon('gear') );
+			gear.addEventListener( 'click', function( ev ) {
+				ev.stopPropagation();
+				builder._select( loop.path, false );
+				builder._sectionDialog( loop.path, builder._blockOf( 'section', 'stack' ) );
+			} );
+			tools.appendChild( gear );
+			box.bar.appendChild( tools );
+			body.appendChild( box.frame );
+
+			return box.cell;
+		},
+
+		/**
+		 *	A loop of sections, in the preview: a block around the section in the colour of the loops, with the stack in its bar - the sections, once for each element -, what it runs over and the
+		 *	order. The head of the section stays in it, and so do the tools of the section; the settings of the loop are the block Loop of the section's dialog. Shut, it shows its bar alone
+		 *
+		 *	@param		{Object}		block							An entry of _preview() with a loop of sections
+		 *	@param		{Element}		frame							The frame of the section
+		 *
+		 *	@return		{Element}
+		 */
+		_previewSections : function( block, frame ) {
+
+			const builder = Nino.admin.builder;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
+			const section = builder._doc.model.blocks[block.path[0]];
+			const within = builder._sel.length > 0 && builder._sel[0] === block.path[0];
+			const box = builder._box( { path : block.path, node : section.stack, label : word('sections'), kind : word('each'), cellLabel : word('section'), within : within } );
+
+			box.frame.classList.add( 'is-sections' );
+			box.frame.dataset.sections = block.path.join('.');
+			box.frame.removeAttribute('data-path');
+			builder._loopChips( box.status, block.loop, null );
+
+			const tools = builder._el( 'span', 'builder-tools builder-tools-around' );
+			const gear = builder._el( 'button', 'builder-icon-btn' );
+
+			gear.type = 'button';
+			gear.title = Nino.content.getText('/_admin/builder/menu/settings');
+			gear.setAttribute( 'aria-label', gear.title );
+			gear.appendChild( builder._icon('gear') );
+			gear.addEventListener( 'click', function( ev ) {
+				ev.stopPropagation();
+				builder._select( block.path, false );
+				builder._sectionDialog( block.path, builder._blockOf( 'section', 'stack' ) );
+			} );
+			tools.appendChild( gear );
+			box.bar.appendChild( tools );
+			box.cell.appendChild( frame );
+
+			return box.frame;
+		},
+
+		/**
+		 *	A group of panels, in the preview: a box in the colour of the groups with the word of the stack, "fixed", and a chip with the titles of its panels, shut until it is opened; open,
+		 *	its panels as rows - the title, the tools of the row - and, under them, a button that adds a panel. A panel is shut until it is opened and then shows what it holds, one level
+		 *	in, with the button that adds a component
+		 *
+		 *	@param		{Object}		group							An entry of _preview() that is a group
+		 *
+		 *	@return		{Element}
+		 */
+		_previewGroup : function( group ) {
+
+			const builder = Nino.admin.builder;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
+			const node = builder._get( builder._doc.model, group.path );
+			const within = builder._sel.length > group.path.length && group.path.every( function( part, at ) { return builder._sel[at] === part } );
+			const box = builder._box( { path : group.path, node : node, label : group.label, kind : word('fixed'), cellLabel : '', toggle : 'group/toggle', tools : group.label, within : within } );
+			const titles = group.titles.join(' \u00b7 ');
+
+			box.frame.classList.add( 'is-group' );
+			box.frame.dataset.stack = group.name;
+			box.frame.dataset.fill = 'fixed';
+			builder._pick( box.frame, group.path );
+			box.bar.appendChild( builder._tools( group.path, group.label ) );
+
+			// The panels by their titles, cut where they would fill the row
+			const chip = builder._el( 'span', 'builder-chip is-group', titles.length > builder.TITLES_MAX ? titles.slice( 0, builder.TITLES_MAX - 1 )+ '\u2026' : titles );
+
+			chip.title = titles;
+			box.status.appendChild( chip );
+
+			// Shut, a group says what is wrong in it as a loop does
+			if( group.problem !== null )
+				builder._redChip( box.status, group.problem );
+
+			group.panels.forEach( function( panel ) { box.cell.appendChild( builder._previewPanel( panel ) ) } );
+
+			const adds = builder._el( 'div', 'builder-adds' );
+
+			adds.appendChild( builder._addButton( 'panel', function() { builder._addPanel( group.path ) } ) );
+			box.cell.appendChild( adds );
+
+			return box.frame;
+		},
+
+		/**
+		 *	A panel of a group, in the preview: a row with an arrow, the title as a chip and the tools of the row; shut until it is opened, then what it holds, one level in, and the button that
+		 *	adds a component
+		 *
+		 *	@param		{Object}		panel							An entry of _preview(): { path, title, components }
+		 *
+		 *	@return		{Element}
+		 */
+		_previewPanel : function( panel ) {
+
+			const builder = Nino.admin.builder;
+			const frame = builder._fragment('panel');
+			const toggle = builder._one( frame, '.builder-loop-toggle' );
+			const body = builder._one( frame, '.builder-panel-body' );
+			const node = builder._get( builder._doc.model, panel.path );
+			const within = builder._sel.length > panel.path.length && panel.path.every( function( part, at ) { return builder._sel[at] === part } );
+			const set = function( open ) {
+
+				frame.classList.toggle( 'is-open', open );
+				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+				body.hidden = open === false;
+			};
+
+			frame.dataset.path = panel.path.join('.');
+			builder._one( frame, '.builder-panel-title' ).textContent = panel.title;
+			toggle.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText('/_admin/builder/panel/toggle'), panel.title ) );
+			set( within === true || builder._open.has( node ) === true );
+			builder._one( frame, '.builder-panel-bar' ).addEventListener( 'click', function( ev ) {
+
+				if( ev.target.closest('.builder-tools') !== null )
+					return;
+
+				builder._select( panel.path, false );
+
+				if( builder._open.has( node ) === true )
+					builder._open.delete( node );
+				else
+					builder._open.add( node );
+
+				set( builder._open.has( node ) === true );
+			} );
+			builder._pick( frame, panel.path );
+
+			if( panel.problem !== null )
+				builder._redChip( builder._one( frame, '.builder-panel-bar' ), panel.problem );
+
+			builder._one( frame, '.builder-panel-bar' ).appendChild( builder._tools( panel.path, Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/tools-panel'), panel.title ) ) );
+
+			panel.components.forEach( function( component ) { body.appendChild( builder._previewEntry( component ) ) } );
+			body.appendChild( builder._addsRow( panel.path ) );
 
 			return frame;
 		},
@@ -4610,8 +5320,16 @@
 					line.dataset.path = column.path.join('.');
 					line.appendChild( builder._el( 'span', 'builder-loop-column-title', column.title === '' ? '–' : column.title ) );
 					line.appendChild( builder._el( 'span', 'builder-loop-column-value'+ ( column.content === true ? ' is-content' : '' ), column.value ) );
-					line.addEventListener( 'click', function( ev ) { ev.stopPropagation(); builder._select( loop.path, false ) } );
-					line.addEventListener( 'dblclick', function( ev ) { ev.stopPropagation(); builder._openSettings( loop.path, builder._blockOf( 'loop', 'columns' ) ) } );
+					// A column of a table is a row of its own, with the tools of a row: its settings are the columns of the loop's dialog
+					line.addEventListener( 'click', function( ev ) {
+
+						if( ev.target.closest('.builder-tools') === null ) {
+							ev.stopPropagation();
+							builder._select( column.path, false );
+						}
+					} );
+					line.addEventListener( 'dblclick', function( ev ) { ev.stopPropagation(); builder._openSettings( column.path ) } );
+					line.appendChild( builder._tools( column.path, column.title === '' ? column.value : column.title ) );
 					cell.appendChild( line );
 				} );
 
@@ -4863,7 +5581,7 @@
 
 			const kind = builder._kind( doc.model, path );
 			const section = doc.model.blocks[path[0]];
-			const clip = { kind : kind === 'col' ? 'column' : ( kind === 'loop' ? 'component' : kind ), file : doc.file, section : kind === 'html' ? '' : builder._keyId( section ), node : builder._clone( place.list[place.index] ), values : {} };
+			const clip = { kind : kind === 'col' ? 'column' : ( kind === 'loop' || kind === 'group' ? 'component' : kind ), file : doc.file, section : kind === 'html' ? '' : builder._keyId( section ), node : builder._clone( place.list[place.index] ), values : {} };
 			const prefix = builder._keyUri( doc.file, clip.section, '' );
 			const visit = function( component ) {
 
@@ -4878,11 +5596,12 @@
 				}
 
 				( component.components || [] ).forEach( visit );
+				( component.panels || [] ).forEach( function( panel ) { panel.components.forEach( visit ) } );
 			};
 
 			if( clip.kind === 'section' )
 				clip.node.cols.forEach( function( col ) { col.components.forEach( visit ) } );
-			else if( clip.kind === 'column' )
+			else if( clip.kind === 'column' || clip.kind === 'panel' )
 				clip.node.components.forEach( visit );
 			else if( clip.kind === 'component' )
 				visit( clip.node );
@@ -5065,7 +5784,7 @@
 		/**
 		 *	A new section below the last one, with the animation of the template
 		 *
-		 *	@param		{string}		[kind]						content, the default, or tiles
+		 *	@param		{string}		[kind]						content, the default, tiles, or loop - a section that is made once for each element of a type
 		 *
 		 *	@return		void
 		 */
@@ -5077,7 +5796,18 @@
 			if( builder._mutable() === false )
 				return;
 
-			const section = builder._newSection( model, kind );
+			const section = builder._newSection( model, kind === 'tiles' ? 'tiles' : 'content' );
+
+			// A loop of sections: a section that is made of every element of a type - the first the project has - with the first stack that makes sections
+			if( kind === 'loop' ) {
+
+				const names = Object.keys( builder._registry.stacks || {} ).filter( function( name ) { return builder._cellKind( builder._registry, { name : name } ) === 'section' } );
+
+				if( names.length === 0 )
+					return;
+
+				section.stack = builder._stackFor( builder._registry, names[0], null );
+			}
 
 			model.blocks.push( section );
 			builder._fresh[section.id] = true;
@@ -5173,11 +5903,11 @@
 			const button = builder._el( 'button', 'builder-pick-item' );
 			let icon;
 
-			// A loop wears the picture its schema names for the preview. A component that names no parts - or an empty list of them - wears the puzzle of the sprite
-			if( item.loop === true ) {
+			// A loop and a group of panels wear the picture their schema names for the preview. A component that names no parts - or an empty list of them - wears the puzzle of the sprite
+			if( item.loop === true || item.group === true ) {
 				icon = builder._one( builder._fragment('ph'), '.builder-ph-icon' );
 				builder._one( icon, 'use' ).setAttribute( 'href', '#builder-ph-'+ item.image );
-				button.classList.add('is-loop');
+				button.classList.add( item.group === true ? 'is-group' : 'is-loop' );
 			} else
 				icon = Array.isArray( item.icon ) === true && item.icon.length > 0 ? builder._shape( item.icon ) : builder._icon( 'puzzle' );
 
@@ -5193,7 +5923,7 @@
 				button.title = item.reason;
 				button.appendChild( builder._el( 'span', 'nino-admin-sr-only', item.reason ) );
 			} else
-				button.addEventListener( 'click', function() { item.loop === true ? builder._insertLoop( path, item.name ) : builder._insert( path, item.name ) } );
+				button.addEventListener( 'click', function() { item.group === true ? builder._insertGroup( path, item.name ) : ( item.loop === true ? builder._insertLoop( path, item.name ) : builder._insert( path, item.name ) ) } );
 
 			return button;
 		},
@@ -5228,19 +5958,35 @@
 		},
 
 		/**
-		 *	Add a loop and open its settings in the dialog the choice was made in, with the focus on the first control
+		 *	Add a group of panels, with its panel, and open its settings in the dialog the choice was made in
 		 *
-		 *	@param		{Array}			path					The column
+		 *	@param		{Array}			path					The column, or a panel
 		 *	@param		{string}		name					The stack
 		 *
 		 *	@return		void
 		 */
-		_insertLoop : function( path, name ) {
+		_insertGroup : function( path, name ) {
+			Nino.admin.builder._insertLoop( path, name, true );
+		},
+
+		/**
+		 *	Add a loop and open its settings in the dialog the choice was made in, with the focus on the first control
+		 *
+		 *	@param		{Array}			path					The column, or a panel
+		 *	@param		{string}		name					The stack
+		 *	@param		{boolean}		[group]				Whether it is a group of panels (see _addGroup())
+		 *
+		 *	@return		void
+		 */
+		_insertLoop : function( path, name, group ) {
 
 			const builder = Nino.admin.builder;
 			const before = builder._get( builder._doc.model, path ).components.length;
 
-			builder._addLoop( path, name );
+			if( group === true )
+				builder._addGroup( path, name );
+			else
+				builder._addLoop( path, name );
 
 			if( builder._get( builder._doc.model, path ).components.length === before )
 				return;
@@ -7074,10 +7820,40 @@
 			if( kind === 'loop' )
 				return builder._loopDialog( path, block );
 
+			if( kind === 'group' )
+				return builder._groupDialog( path, block );
+
+			if( kind === 'panel' )
+				return builder._panelDialog( path, block );
+
 			if( kind === 'html' )
 				return builder._editBlock( path );
 
+			// A column of a table is a row of its loop, and its form is the columns of the loop's
+			if( builder._ofColumns( builder._doc.model, path ) === true )
+				return builder._loopDialog( path.slice( 0, -1 ), builder._blockOf( 'loop', 'columns' ) );
+
 			builder._componentDialog( path, block );
+		},
+
+		/**
+		 *	Whether the node at a path is a column of a table: a child of a loop whose cell is columns
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path
+		 *
+		 *	@return		{boolean}
+		 */
+		_ofColumns : function( model, path ) {
+
+			const builder = Nino.admin.builder;
+
+			if( path.length < 4 )
+				return false;
+
+			const parent = builder._get( model, path.slice( 0, -1 ) );
+
+			return builder._isLoop( parent ) === true && builder._isGroup( parent ) === false && builder._cellKind( builder._registry, parent ) === 'columns';
 		},
 
 		/**
@@ -7597,7 +8373,7 @@
 						builder._stackForm( loop, path );
 						body.appendChild( loop );
 					},
-					says	: function() { return builder._looping( section ) === true ? builder._stackLabel( builder._registry, section.stack.name ) : '' },
+					says	: function() { return builder._cellOf( section ) !== null ? builder._stackLabel( builder._registry, builder._cellOf( section ).name ) : '' },
 				},
 				vpa : {
 					keys	: [ 'vpa' ],
@@ -7685,50 +8461,6 @@
 				},
 			};
 
-			// The group: what stands where the row does - the columns, or the panels of one of the stacks that take them. A section of tiles is its row of tiles
-			const groups = builder._groups( builder._registry );
-			const grouped = builder._groupName( section );
-
-			if( groups.length > 0 ) {
-
-				controls.group = {
-					keys	: [ 'group' ],
-					build	: function( body ) {
-
-						const items = [ { value : '', label : word('section/group-columns') } ].concat( groups.map( function( name ) { return { value : name, label : builder._stackLabel( builder._registry, name ) } } ) );
-						const choice = builder._keyed( builder._segmentField( word('section/group'), items, grouped, function( name ) {
-
-							if( name === grouped )
-								return;
-
-							builder._setGroup( builder._registry, section, name );
-							builder._changed();
-							builder._sectionDialog( path, builder._blockOf( 'section', 'group' ) );
-						}, word('hint/group') ), 'group' );
-
-						body.appendChild( choice );
-
-						// What the stack brings of its own, by the types of its schema: the fields of the type and the line of text are the loop's
-						const declared = grouped === '' ? {} : builder._groupDeclared( builder._registry.stacks[grouped] );
-
-						if( Object.keys( declared ).length > 0 )
-							builder._attributeFields( builder._group( body, builder._stackLabel( builder._registry, grouped ) ), declared, settings.groupAttributes, {
-								fields	: {},
-								section	: section,
-								around	: settings.color || '',
-								redraw	: function() {},
-								words		: true,
-								lines		: false,
-							} );
-					},
-					says	: function() { return grouped === '' ? '' : builder._stackLabel( builder._registry, grouped ) },
-				};
-			}
-
-			// The row of a group is a row but for the alignment, the order and the gap of its columns, which the group's one column has nothing to say to
-			if( grouped !== '' )
-				[ 'rowGap', 'rowAlign', 'reverse' ].forEach( function( name ) { delete controls[name] } );
-
 			if( settings.tiles !== true )
 				return controls;
 
@@ -7782,10 +8514,6 @@
 			if( tiles === true ) {
 
 				settings.ratio = builder.TILES_RATIO;
-				// Tiles are the row of a section of tiles: it is no group
-				settings.group = '';
-				settings.groupAttributes = {};
-
 				[ 'row', 'rowPlace', 'rowAlign', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowBgPl', 'rowBgPr', 'contentPos', 'radius' ].forEach( function( key ) { settings[key] = '' } );
 				[ 'parallax', 'padded', 'inner', 'arrow' ].forEach( function( key ) { settings[key] = false } );
 				settings.cover = null;
@@ -8205,6 +8933,7 @@
 					follow( node, 'source' );
 					builder._pictures( builder._declared( ( builder._registry.components || {} )[node.name] || {} ) ).forEach( function( attribute ) { follow( node.attributes, attribute ) } );
 					( node.components || [] ).forEach( move );
+					( node.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( move ) } );
 				};
 
 				if( section.background )
@@ -8418,23 +9147,6 @@
 				},
 			};
 
-			// The panel of a group: a title, the tab or the summary, with the hint of the registry - and none of the width and the viewports it is hidden in, which only a row has, nor of
-			// the picture, its dimming and its offsets: the kernel puts the class of a panel on the element that holds more than its content, where the picture would not cover it
-			if( builder._groupName( section ) !== '' ) {
-
-				controls.title = {
-					keys	: [ 'title' ],
-					build	: function( body ) {
-						body.appendChild( builder._keyed( builder._textField( word('col/panel-title'), builder._panelHint( builder._registry ), col.title ?? '', function( value ) {
-							col.title = value;
-							builder._changed();
-						} ), 'title' ) );
-					},
-					says	: function() { return col.title === '' || col.title === undefined ? '' : col.title },
-				};
-				[ 'width', 'hidden', 'background', 'dim', 'bgPl', 'bgPr' ].forEach( function( name ) { delete controls[name] } );
-			}
-
 			if( tile === false )
 				return controls;
 
@@ -8560,16 +9272,37 @@
 			const builder = Nino.admin.builder;
 			const registry = builder._registry;
 			const section = builder._doc.model.blocks[path[0]];
-			// A section offers every stack whose cell is a whole section: the registry's word, no name
-			const names = Object.keys( registry.stacks || {} ).filter( function( name ) { return builder._cellKind( registry, { name : name } ) === 'section' } );
-			const options = [ { value : '', label : Nino.content.getText('/_admin/builder/stack/static') } ].concat( names.map( function( name ) {
-				return { value : name, label : builder._stackLabel( registry, name ) };
-			} ) );
-			// The one that would be the loop in a loop is held back, and says why
-			const held = builder._looping( section ) === false && section.cols.some( function( other ) { return other.components.some( function( node ) { return builder._isLoop( node ) } ) } ) === true;
-			const kind = builder._selectField( Nino.content.getText('/_admin/builder/stack/kind'), '', options, section.stack === null || section.stack === undefined ? '' : section.stack.name, function( name ) {
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			// A loop of sections: the stacks whose cell is a whole section; a loop around the row: those whose cell is the components of a column, tabs and the accordion among them
+			const cells = function( cell ) { return Object.keys( registry.stacks || {} ).filter( function( name ) { return builder._cellKind( registry, { name : name } ) === cell } ) };
+			const sections = cells('section');
+			const rows = cells('components');
+			const mode = builder._looping( section ) === true ? 'sections' : ( section.rowLoop !== null && section.rowLoop !== undefined ? 'row' : '' );
+			const current = builder._cellOf( section );
+			// A loop of the section would be a loop inside a loop where a column holds one of its own: the loops of the columns are held back, and say why
+			const held = mode === '' && section.cols.some( function( other ) { return other.components.some( function( node ) { return builder._isLoop( node ) === true && builder._isGroup( node ) === false } ) } ) === true;
+			const items = [ { value : '', label : word('stack/mode-none') } ];
 
-				section.stack = name === '' ? null : builder._stackFor( registry, name, section.stack === null || section.stack === undefined ? null : section.stack );
+			if( sections.length > 0 )
+				items.push( { value : 'sections', label : word('stack/mode-sections') } );
+
+			if( rows.length > 0 )
+				items.push( { value : 'row', label : word('stack/mode-row') } );
+
+			const choice = builder._segmentField( word('stack/mode'), items, mode, function( value ) {
+
+				if( value === mode )
+					return;
+
+				const old = current;
+
+				section.stack = null;
+				section.rowLoop = null;
+
+				if( value === 'sections' )
+					section.stack = builder._stackFor( registry, sections[0], old );
+				else if( value === 'row' )
+					section.rowLoop = builder._stackFor( registry, rows[0], old );
 
 				// A call makes no cover of another height
 				if( section.stack !== null && section.settings.cover !== null )
@@ -8577,24 +9310,43 @@
 
 				builder._changed();
 				builder._refreshControls();
-			} );
+			}, word('hint/stack-mode') );
 
-			kind.querySelector('select').disabled = held === true;
-			pane.appendChild( kind );
+			choice.setDisabled( held === true );
+			pane.appendChild( choice );
 
 			if( held === true )
-				pane.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/builder/stack/in-column') ) );
+				pane.appendChild( Nino.adminUi.notice( word('stack/in-column') ) );
 
-			if( section.stack === null || section.stack === undefined )
+			if( current === null )
 				return;
 
-			const stack = section.stack;
+			const stack = current;
+			const names = mode === 'sections' ? sections : rows;
 			const schema = registry.stacks[stack.name] || {};
 			const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
 			const fields = type === undefined ? {} : type.fields;
 
+			// The kind of the loop: the stacks of the cell the mode names. One alone is not a choice
+			if( names.length > 1 )
+				pane.appendChild( builder._selectField( word('stack/kind'), '', names.map( function( name ) { return { value : name, label : builder._stackLabel( registry, name ) } } ), stack.name, function( name ) {
+
+					const made = builder._stackFor( registry, name, stack );
+
+					if( mode === 'sections' )
+						section.stack = made;
+					else
+						section.rowLoop = made;
+
+					builder._changed();
+					builder._refreshControls();
+				} ) );
+
 			// The data: the same for every presentation. The id of a loop that makes sections is the id of the section, which is changed in the title: the sections are numbered after it
-			builder._loopData( builder._group( pane, Nino.content.getText('/_admin/builder/group/data') ), stack, function() { builder._refreshControls( 'stack' ) }, Nino.adminUi.format( Nino.content.getText('/_admin/builder/hint/sections-id'), section.id, section.id ), section.id );
+			if( mode === 'sections' )
+				builder._loopData( builder._group( pane, word('group/data') ), stack, function() { builder._refreshControls( 'stack' ) }, Nino.adminUi.format( word('hint/sections-id'), section.id, section.id ), section.id );
+			else
+				builder._loopData( builder._group( pane, word('group/data') ), stack, function() { builder._refreshControls( 'stack' ) } );
 
 			const declared = builder._declared( schema );
 
@@ -8608,6 +9360,21 @@
 					words		: true,
 					lines		: true,
 				} );
+
+			// The loop around a row has an id and a class of its own, as the loop of a column has; the loop of sections has the id and the class of its section
+			if( mode === 'row' ) {
+
+				const own = builder._group( pane, word('group/properties') );
+
+				own.appendChild( builder._textField( word('stack/id'), word('hint/stack-id'), stack.attributes.id, function( value ) {
+					stack.attributes.id = value;
+					builder._changed();
+				} ) );
+				own.appendChild( builder._textField( word('loop/class'), word('hint/custom'), stack.attributes.class ?? '', function( value ) {
+					stack.attributes.class = value;
+					builder._changed();
+				} ) );
+			}
 		},
 
 		/**
@@ -8707,6 +9474,295 @@
 		},
 
 		/**
+		 *	A group of panels at the end of a column, with its one panel, both open
+		 *
+		 *	@param		{Array}			path							The column
+		 *	@param		{string}		name							The stack
+		 *
+		 *	@return		void
+		 */
+		_addGroup : function( path, name ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const col = builder._get( doc.model, path );
+
+			if( builder._mutable() === false || col === null || builder._pickGroups( doc.model, path, builder._registry ).some( function( item ) { return item.name === name && item.reason === '' } ) === false )
+				return;
+
+			const group = builder._newGroup( builder._registry, name );
+
+			col.components.push( group );
+			builder._open.add( group );
+			builder._open.add( group.panels[0] );
+			builder._sel = path.concat( [ col.components.length - 1 ] );
+			builder._changed();
+			builder._paintSelection( true );
+		},
+
+		/**
+		 *	A panel at the end of a group, open, with the focus on it
+		 *
+		 *	@param		{Array}			path							The group
+		 *
+		 *	@return		void
+		 */
+		_addPanel : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const group = builder._get( builder._doc.model, path );
+
+			if( builder._mutable() === false || builder._isGroup( group ) === false )
+				return;
+
+			const panel = builder._newPanel();
+
+			group.panels.push( panel );
+			builder._open.add( group );
+			builder._open.add( panel );
+			builder._sel = path.concat( [ group.panels.length - 1 ] );
+			builder._changed();
+			builder._paintSelection( true );
+		},
+
+		/**
+		 *	How a group is filled, as the control of its dialog: fixed - the panels are made by hand - or from a type, where the stack is a loop and the panels are its cell. A choice turns the
+		 *	node into the other, in the place it stands; what the one holds and the other has no place for - the panels, or the cell - is not kept, and a choice that would lose some asks first,
+		 *	in the dialog. The form is drawn again as the node it has become
+		 *
+		 *	@param		{Array}			path							The group, or the loop of a stack that has panels
+		 *
+		 *	@return		{Object}									{ keys, build( body ), says() }
+		 */
+		_fillControl : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
+			const node = builder._get( builder._doc.model, path );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			const fixed = builder._isGroup( node ) === true;
+
+			return {
+				keys	: [ 'fill' ],
+				build	: function( body ) {
+
+					const ask = builder._el( 'div', 'builder-fill-ask' );
+					const turn = function() {
+
+						if( fixed === true )
+							builder._toLoop( registry, node );
+						else
+							builder._toGroup( registry, node );
+
+						builder._changed();
+						builder._openSettings( path, builder._blockOf( fixed === true ? 'group' : 'loop', 'fill' ) );
+					};
+					const choice = builder._keyed( builder._segmentField( word('group/fill'), [ { value : 'fixed', label : word('group/fill-fixed') }, { value : 'type', label : word('group/fill-type') } ], fixed === true ? 'fixed' : 'type', function( value ) {
+
+						if( ( value === 'fixed' ) === fixed )
+							return;
+
+						ask.innerHTML = '';
+
+						// What the other form has no place for: the panels with a title or something in them, the cell of the loop
+						const loses = fixed === true
+							? node.panels.some( function( panel ) { return panel.components.length > 0 || panel.title !== '' || panel.class !== '' } )
+							: ( node.components || [] ).length > 0;
+
+						if( loses === false )
+							return turn();
+
+						ask.appendChild( Nino.adminUi.notice( word( fixed === true ? 'group/fill-lose-panels' : 'group/fill-lose-cell' ) ) );
+
+						const yes = builder._el( 'button', 'nino-admin-btn-primary', word('group/fill-turn') );
+						const no = builder._el( 'button', 'nino-admin-btn-secondary', Nino.content.getText('/_admin/common/label/cancel') );
+
+						yes.type = 'button';
+						no.type = 'button';
+						yes.addEventListener( 'click', turn );
+						no.addEventListener( 'click', function() { builder._openSettings( path, builder._blockOf( fixed === true ? 'group' : 'loop', 'fill' ) ) } );
+						ask.appendChild( yes );
+						ask.appendChild( no );
+					}, word('hint/group-fill') ), 'fill' );
+
+					body.appendChild( choice );
+
+					// The other filling is held back where the node stands in a place that has none of it, and says why, as the lightbox does
+					const held = builder._fillProblem( builder._doc.model, path );
+
+					if( held !== '' ) {
+
+						const radio = Array.from( choice.querySelectorAll('input') ).find( function( input ) { return input.value === ( fixed === true ? 'type' : 'fixed' ) } );
+
+						if( radio !== undefined ) {
+							radio.disabled = true;
+							radio.parentNode.title = held;
+						}
+
+						body.appendChild( Nino.adminUi.notice( held ) );
+					}
+
+					body.appendChild( ask );
+				},
+				says	: function() { return word( fixed === true ? 'group/fill-fixed' : 'group/fill-type' ) },
+			};
+		},
+
+		/**
+		 *	Why a group cannot be filled from a type, or a loop of a stack that takes panels cannot be filled by hand, where it stands: a loop is none in the cell of a loop, a group
+		 *	is none in the panel of a group - the reasons of the lightbox
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The group, or the loop
+		 *
+		 *	@return		{string}									'' where either filling can stand there
+		 */
+		_fillProblem : function( model, path ) {
+
+			const builder = Nino.admin.builder;
+			const node = builder._get( model, path );
+			const where = builder._placeOf( model, path.slice( 0, -1 ), builder._registry );
+			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
+
+			if( builder._isGroup( node ) === true )
+				return where.looped === true ? text('loop-in-loop') : '';
+
+			return where.group !== '' ? text('group-in-group') : ( where.cell === true ? text('group-in-loop') : '' );
+		},
+
+		/**
+		 *	The dialog of a group of panels: how it is filled, the attributes of its stack it keeps, its id and its class
+		 *
+		 *	@param		{Array}			path							The group
+		 *	@param		{string}		[block]						The block to open
+		 *
+		 *	@return		void
+		 */
+		_groupDialog : function( path, block ) {
+
+			const builder = Nino.admin.builder;
+			const group = builder._get( builder._doc.model, path );
+
+			builder._dialog( {
+				title		: Nino.adminUi.format( Nino.content.getText('/_admin/builder/group/title'), builder._stackLabel( builder._registry, group.name ) ),
+				blame		: path[0],
+				returnTo	: path,
+				kind		: 'group',
+				block		: block,
+				blocks	: builder._blocksOf( 'group', builder._groupControls( path ) ),
+			} );
+		},
+
+		/**
+		 *	The controls of the form of a group, by the name BLOCKS.group lists them under: the fill; what the stack brings of its own, by the types of its schema but for the fields of the
+		 *	type and the line of text, which are the loop's; and its id and class
+		 *
+		 *	@param		{Array}			path							The group
+		 *
+		 *	@return		{Object}
+		 */
+		_groupControls : function( path ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry;
+			const model = builder._doc.model;
+			const group = builder._get( model, path );
+			const section = model.blocks[path[0]];
+			const col = section.cols[path[1]];
+			const declared = builder._groupDeclared( ( registry.stacks || {} )[group.name] || {} );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			const controls = { fill : builder._fillControl( path ) };
+
+			if( Object.keys( declared ).length > 0 )
+				controls.attributes = {
+					keys	: Object.keys( declared ),
+					build	: function( body ) {
+						builder._attributeFields( body, declared, group.attributes, {
+							fields	: {},
+							section	: section,
+							around	: builder._surface( section, col ),
+							redraw	: function() { builder._refreshControls( 'attributes' ) },
+							words		: true,
+							lines		: false,
+						} );
+					},
+					says	: function() { return '' },
+				};
+
+			// In the cell of a loop one call stands for every element: it has no id
+			if( builder._loopAt( model, path ) === null )
+				controls.id = {
+				keys	: [ 'id' ],
+				build	: function( body ) {
+					body.appendChild( builder._keyed( builder._textField( word('group/id'), word('hint/group-id'), group.attributes.id, function( value ) {
+						group.attributes.id = value;
+						builder._changed();
+					} ), 'id' ) );
+				},
+				says	: function() { return group.attributes.id === '' ? '' : '#'+ group.attributes.id },
+			};
+			controls.class = {
+				keys	: [ 'class' ],
+				build	: function( body ) {
+					body.appendChild( builder._textField( word('group/class'), word('hint/custom'), group.attributes.class ?? '', function( value ) {
+						group.attributes.class = value;
+						builder._changed();
+					} ) );
+				},
+				says	: function() { return ( group.attributes.class ?? '' ) === '' ? '' : word('group/custom') },
+			};
+
+			return controls;
+		},
+
+		/**
+		 *	The dialog of a panel: its title and its class
+		 *
+		 *	@param		{Array}			path							The panel
+		 *	@param		{string}		[block]						The block to open
+		 *
+		 *	@return		void
+		 */
+		_panelDialog : function( path, block ) {
+
+			const builder = Nino.admin.builder;
+			const panel = builder._get( builder._doc.model, path );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			const named = String( panel.title ?? '' ).replace( /<[^>]*>/g, '' ).trim() !== '' ? String( panel.title ).replace( /<[^>]*>/g, '' ).trim() : String( path[path.length - 1] + 1 );
+			const controls = {
+				title : {
+					keys	: [ 'title' ],
+					build	: function( body ) {
+						body.appendChild( builder._keyed( builder._textField( word('col/panel-title'), builder._panelHint( builder._registry ), panel.title ?? '', function( value ) {
+							panel.title = value;
+							builder._changed();
+						} ), 'title' ) );
+					},
+					says	: function() { return panel.title === '' || panel.title === undefined ? '' : panel.title },
+				},
+				class : {
+					keys	: [ 'class' ],
+					build	: function( body ) {
+						body.appendChild( builder._keyed( builder._textField( word('panel/class'), word('hint/panel-class'), panel.class ?? '', function( value ) {
+							panel.class = value;
+							builder._changed();
+						} ), 'class' ) );
+					},
+					says	: function() { return ( panel.class ?? '' ) === '' ? '' : word('group/custom') },
+				},
+			};
+
+			builder._dialog( {
+				title		: Nino.adminUi.format( word('panel/title'), named ),
+				blame		: path[0],
+				returnTo	: path,
+				kind		: 'panel',
+				block		: block,
+				blocks	: builder._blocksOf( 'panel', controls ),
+			} );
+		},
+
+		/**
 		 *	The dialog of a loop: its data, its presentation and its properties, three blocks of the table (BLOCKS.loop), the controls of which are made by _loopControls()
 		 *
 		 *	@param		{Array}			path							The loop
@@ -8766,7 +9822,13 @@
 					builder._changed();
 				} );
 			};
-			const controls = {
+			const controls = {};
+
+			// A stack that has panels can be filled by hand, too: the choice is the first of the data
+			if( builder._groups( registry ).indexOf( loop.name ) !== -1 )
+				controls.fill = builder._fillControl( path );
+
+			Object.assign( controls, {
 				source : {
 					keys	: [ 'source' ],
 					build	: function( body ) {
@@ -8832,7 +9894,7 @@
 					},
 					says	: function() { return '' },
 				},
-			};
+			} );
 
 			// The cells of a grid: how wide in each viewport, how far apart, as high as the highest
 			if( schema.grid === true )
@@ -12087,6 +13149,7 @@
 				} );
 
 				( component.components || [] ).forEach( gather );
+				( component.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( gather ) } );
 			};
 			const restore = function( component ) {
 
@@ -12108,6 +13171,7 @@
 				} );
 
 				( component.components || [] ).forEach( restore );
+				( component.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( restore ) } );
 			};
 
 			old.cols.forEach( function( col ) {
