@@ -73,7 +73,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -126,7 +130,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "1",
@@ -300,7 +308,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",

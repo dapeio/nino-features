@@ -76,7 +76,11 @@
                         "slot": "/template/page-home-tiles/work/picture",
                         "focus": 5
                     },
-                    "text": "left",
+                    "text": {
+                        "s": "left",
+                        "m": "left",
+                        "l": "left"
+                    },
                     "stackAlign": "end",
                     "stackGap": "",
                     "mt": "",
@@ -127,7 +131,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "center",
+                    "text": {
+                        "s": "center",
+                        "m": "center",
+                        "l": "center"
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -272,7 +280,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -323,7 +335,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -374,7 +390,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -494,7 +514,11 @@
                     "linked": true,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",

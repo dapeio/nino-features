@@ -1900,8 +1900,8 @@ button.builder-status-item:hover {
 	color: var(--editor-red, #b3261e);
 }
 
-/* A loop of a column in the preview: a row with a rail in the colour of the loops - one colour for one meaning, its own and not the blue of the selection, so that a selected loop keeps it - an arrow,
-   the word of the stack, what it runs over and in which order, its state and its tools. It is shut until it is opened, and then shows its cell one level in from a dashed line:
+/* A loop of a column in the preview: a row with a rail in the colour of the loops - one colour for one meaning, its own and not the blue of the selection, so that a selected loop keeps it -
+   the word of the stack, what it runs over and in which order, its state and its tools. It folds nothing; under the row stands its cell one level in from a dashed line:
    the components it repeats for each element, the columns of a table as lines, or a sentence for a cell that has no components of its own */
 .builder-loop {
 	--builder-loop-rail: #7a7ff5;
@@ -1916,44 +1916,23 @@ button.builder-status-item:hover {
 	align-items: center;
 	gap: .5rem;
 	min-width: 0;
-	padding: .25rem .35rem .25rem .3rem;
+	padding: .1rem .35rem .1rem .3rem;
 	font-size: .72rem;
 	cursor: pointer;
 }
-.builder-loop-toggle {
+.builder-loop-title {
 	display: inline-flex;
 	align-items: center;
 	gap: .4rem;
 	flex: 0 0 auto;
-	min-width: 24px;
 	min-height: 24px;
-	margin: 0;
-	padding: .15rem .25rem;
-	border: 0;
-	border-radius: var(--editor-radius-sm);
-	background: transparent;
-	box-shadow: none;
-	color: inherit;
-	font: inherit;
-	cursor: pointer;
+	padding: 0 .25rem;
 }
 .builder-loop-name {
 	font-weight: 600;
 }
 .builder-loop-kind {
 	opacity: .65;
-}
-.builder-loop-caret {
-	flex: 0 0 auto;
-	width: 0;
-	height: 0;
-	border: .3rem solid transparent;
-	border-left-color: currentColor;
-	border-right-width: 0;
-	transition: transform .15s;
-}
-.builder-loop.is-open > .builder-loop-bar .builder-loop-caret {
-	transform: rotate(90deg);
 }
 .builder-loop-bar .builder-head-status {
 	flex: 1 1 auto;
@@ -2053,7 +2032,7 @@ button.builder-status-item:hover {
 .builder-chip.is-group {
 	border-color: var(--builder-group-rail, #d97706);
 }
-/* A panel of a group is a row in the box and no box of its own: the arrow, the title as a chip, the tools of the row; opened it shows what it holds, indented under the row */
+/* A panel of a group is a row in the box and no box of its own: the title as a chip, the tools of the row; under it what it holds, indented under the row */
 .builder-loop.is-group > .builder-loop-body {
 	padding: 0 .4rem .4rem;
 }
@@ -2072,16 +2051,13 @@ button.builder-status-item:hover {
 	align-items: center;
 	gap: .5rem;
 	min-width: 0;
-	padding: .2rem .35rem .2rem .3rem;
+	padding: .1rem .35rem .1rem .3rem;
 	border-radius: var(--editor-radius-sm);
 	font-size: .72rem;
 	cursor: pointer;
 }
 .builder-panel-bar:hover {
 	background: color-mix(in srgb, currentColor 7%, transparent);
-}
-.builder-panel.is-open > .builder-panel-bar .builder-loop-caret {
-	transform: rotate(90deg);
 }
 .builder-panel-body {
 	display: grid;

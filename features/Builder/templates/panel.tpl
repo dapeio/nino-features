@@ -199,19 +199,18 @@
 		</div>
 	</template>
 
-	<!-- A loop in the preview: a row of a head - the arrow and the word of the stack, what is said of the loop, its tools, which the script puts in last -, and
-	     under it, until it is shut, its cell: the label of it, the children it repeats for each element and the button that adds one -->
+	<!-- A loop in the preview: a row of a head - the word of the stack, what is said of the loop, its tools, which the script puts in last -, and
+	     under it its cell: the label of it, the children it repeats for each element and the button that adds one -->
 	<template id="builder-tpl-loop">
 		<div class="builder-loop">
 			<header class="builder-loop-bar">
-				<button type="button" class="builder-loop-toggle" aria-expanded="false">
-					<span class="builder-loop-caret" aria-hidden="true"></span>
+				<span class="builder-loop-title">
 					<span class="builder-loop-name"></span>
 					<span class="builder-loop-kind"></span>
-				</button>
+				</span>
 				<span class="builder-head-status"></span>
 			</header>
-			<div class="builder-loop-body" hidden>
+			<div class="builder-loop-body">
 				<div class="builder-loop-cell">
 					<span class="builder-loop-cell-label"></span>
 				</div>
@@ -219,16 +218,13 @@
 		</div>
 	</template>
 
-	<!-- A panel of a group in the preview: a row with an arrow, the title and the tools of the row, and under it, until it is shut, what the panel holds -->
+	<!-- A panel of a group in the preview: a row with the title and the tools of the row, and under it what the panel holds -->
 	<template id="builder-tpl-panel">
 		<div class="builder-panel">
 			<header class="builder-panel-bar">
-				<button type="button" class="builder-loop-toggle" aria-expanded="false">
-					<span class="builder-loop-caret" aria-hidden="true"></span>
-					<span class="builder-chip builder-panel-title"></span>
-				</button>
+				<span class="builder-chip builder-panel-title"></span>
 			</header>
-			<div class="builder-panel-body" hidden></div>
+			<div class="builder-panel-body"></div>
 		</div>
 	</template>
 

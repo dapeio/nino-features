@@ -95,10 +95,6 @@
 		// well, so that it survives a reload and a change of page: it is read from there when the editor opens
 		_clip			: null,
 		CLIP_KEY	: 'nino-admin-builder-clip',
-		// The loops of the preview that are open - the nodes themselves, so that a loop that moves in its column stays open: a loop is shut when the page is loaded
-		_open			: new WeakSet(),
-		// The loops around a row that were shut by hand: they are open as the row is the section's content
-		_shut			: new WeakSet(),
 		// The text keys of the project, for the source field: null until they were
 		// asked for, [] where this account may not read them
 		_keys			: null,
@@ -362,6 +358,7 @@
 
 					col.hidden = map( col.hidden );
 					col.width = map( col.width );
+					col.text = Object.assign( { s : '', m : '', l : '' }, map( col.text ) );
 					col.components = Array.isArray( col.components ) === true ? col.components : [];
 					col.components.forEach( call );
 				} );
@@ -489,56 +486,6 @@
 			const stacks = ( registry ?? Nino.admin.builder._registry ?? {} ).stacks;
 
 			return node !== null && node !== undefined && typeof node.name === 'string' && stacks !== null && typeof stacks === 'object' && Object.prototype.hasOwnProperty.call( stacks, node.name ) === true;
-		},
-
-		/**
-		 *	The loops that were open in a model are open in the one that replaces it - what a save answers is a model of new nodes: the same place in the same column
-		 *
-		 *	@param		{Object}		before
-		 *	@param		{Object}		after
-		 *
-		 *	@return		void
-		 */
-		_keepOpen : function( before, after ) {
-
-			const builder = Nino.admin.builder;
-			const walk = function( from, to ) {
-
-				( from.components || [] ).forEach( function( node, k ) {
-
-					const other = ( to.components || [] )[k];
-
-					if( other === undefined )
-						return;
-
-					if( builder._open.has( node ) === true )
-						builder._open.add( other );
-
-					walk( node, other );
-
-					// The panels of a group are open as they were, and what they hold with them
-					( node.panels || [] ).forEach( function( panel, j ) {
-
-						const same = ( other.panels || [] )[j];
-
-						if( same === undefined )
-							return;
-
-						if( builder._open.has( panel ) === true )
-							builder._open.add( same );
-
-						walk( panel, same );
-					} );
-				} );
-			};
-
-			( before.blocks || [] ).forEach( function( block, b ) {
-
-				const other = ( after.blocks || [] )[b];
-
-				if( block.kind === 'section' && other !== undefined && other.kind === 'section' )
-					block.cols.forEach( function( col, c ) { if( other.cols[c] !== undefined ) walk( col, other.cols[c] ) } );
-			} );
 		},
 
 		/**
@@ -1165,7 +1112,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function( width ) {
-			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : '', stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
+			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : { s : '', m : '', l : '' }, stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
 		},
 
 		/**
@@ -1674,6 +1621,46 @@
 				col.hidden[viewport] = true;
 			else
 				delete col.hidden[viewport];
+		},
+
+		/**
+		 *	The alignment of the text of a column in one viewport, mobile first like the width: a viewport that says nothing (value '', for tablet and desktop) has what the one before
+		 *	it has, and a viewport that had what the one before it had follows when that one is changed, so that a change of mobile reaches the viewports that were not set apart.
+		 *	No class takes an alignment back, so a viewport is none only where the one before it is none: what is set here is always a map the Writer can say
+		 *
+		 *	@param		{Object}		col
+		 *	@param		{string}		viewport					s, m or l
+		 *	@param		{string}		value							''|left|center|right
+		 *
+		 *	@return		void
+		 */
+		_setText : function( col, viewport, value ) {
+
+			const builder = Nino.admin.builder;
+			const at = builder.VIEWPORTS.indexOf( viewport );
+			const was = col.text[viewport];
+			const now = value === '' && at > 0 ? col.text[builder.VIEWPORTS[at - 1]] : value;
+
+			col.text[viewport] = now;
+
+			for( let next = at + 1; next < builder.VIEWPORTS.length && col.text[builder.VIEWPORTS[next]] === was; next++ )
+				col.text[builder.VIEWPORTS[next]] = now;
+		},
+
+		/**
+		 *	What a select of the alignment of a column's text shows for a viewport: the word, or - where the viewport has what the one before it has - the choice "like" that one
+		 *
+		 *	@param		{Object}		col
+		 *	@param		{string}		viewport
+		 *
+		 *	@return		{string}
+		 */
+		_textShown : function( col, viewport ) {
+
+			const builder = Nino.admin.builder;
+			const at = builder.VIEWPORTS.indexOf( viewport );
+
+			return at > 0 && col.text[viewport] === col.text[builder.VIEWPORTS[at - 1]] ? '' : col.text[viewport];
 		},
 
 		/**
@@ -3050,7 +3037,7 @@
 				const cell = builder._cellKind( registry, node );
 				const row = cell === 'row' ? builder._rowOf( registry, node ) : null;
 				const sorted = builder._sortState( node ).field;
-				// The loop's own entry first, else the first one inside its cell: a red child is seen on the shut row as well
+				// The loop's own entry first, else the first one inside its cell: a red child is seen on the row of the loop as well
 				const problem = reds.find( function( entry ) { return builder._same( entry.path, path ) } ) || reds.find( function( entry ) { return entry.path.length > path.length && path.every( function( part, at ) { return entry.path[at] === part } ) } );
 				const shows = cell === 'columns' ? 'columns' : ( cell === 'none' || row !== null ? 'hint' : 'children' );
 				const title = function( one, k ) {
@@ -3142,7 +3129,10 @@
 							// The image field of the element that is the picture of a column in a loop of sections, '' for a slot
 							backgroundField : picture === true ? String( col.background.field ?? '' ) : '',
 							linked		: block.settings.tiles === true && col.linked === true,
-							text			: col.text || '',
+							// How the text is aligned: in the viewport the preview shows, or - where it shows all of them - in each viewport that differs from the one before it
+							texts			: viewport === 'g'
+								? builder.VIEWPORTS.map( function( at, k ) { return { viewport : at, value : col.text[at] || '', before : k === 0 ? '' : col.text[builder.VIEWPORTS[k - 1]] || '' } } ).filter( function( entry ) { return entry.value !== '' && entry.value !== entry.before } )
+								: ( ( col.text[viewport] || '' ) === '' ? [] : [ { viewport : viewport, value : col.text[viewport] } ] ),
 							stackAlign : col.stackAlign || '',
 							// The components and the loops of the column, in their order: a loop is an entry like any other, and carries what it shows of its cell
 							components : col.components.map( function( node, k ) { return place( node, [ b, c, k ], builder._surface( block, col ) ) } ),
@@ -4162,8 +4152,6 @@
 				builder._doc = { file : file, hash : answers.load.hash, model : model, saved : JSON.stringify( model ), usedBy : entry === undefined ? [] : entry.usedBy };
 				builder._sel = [];
 				builder._fresh = {};
-				builder._open = new WeakSet();
-				builder._shut = new WeakSet();
 				builder._problems = [];
 				builder._saving = false;
 
@@ -4860,18 +4848,26 @@
 			if( col.linked === true )
 				status.appendChild( builder._statusItem( 'linked', 'link', Nino.content.getText('/_admin/builder/preview/linked'), '' ) );
 
-			// An alignment that is not the default is the icon of the choice, as the dialog has it, in every view - it is no property of a viewport
-			[ { key : 'stackAlign', group : 'stack-align', words : 'align-stack' }, { key : 'text', group : 'text', words : 'align-text' } ].forEach( function( how ) {
+			// The alignment of the components is no property of a viewport; the alignment of the text is: the view of one viewport shows its alignment, the view of all of them each alignment
+			// that starts in one - the icon of the choice, as the dialog has it, and where it starts when it does not start at the first
+			const align = function( key, icon, title ) {
 
-				const icon = builder.ALIGN_ICONS[how.key][col[how.key]];
-
-				if( col[how.key] === '' || icon === undefined )
-					return;
-
-				status.appendChild( builder._statusItem( 'align', icon, Nino.adminUi.format( Nino.content.getText( '/_admin/builder/preview/'+ how.words ), builder._optionLabel( how.group, col[how.key] ) ), '', function() {
+				status.appendChild( builder._statusItem( 'align', icon, Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/align-'+ ( key === 'text' ? 'text' : 'stack' ) ), title ), '', function() {
 					builder._select( col.path, false );
-					builder._openSettings( col.path, builder._blockOf( 'column', how.key ) );
+					builder._openSettings( col.path, builder._blockOf( 'column', key ) );
 				} ) );
+			};
+
+			if( col.stackAlign !== '' && builder.ALIGN_ICONS.stackAlign[col.stackAlign] !== undefined )
+				align( 'stackAlign', builder.ALIGN_ICONS.stackAlign[col.stackAlign], builder._optionLabel( 'stack-align', col.stackAlign ) );
+
+			col.texts.forEach( function( entry ) {
+
+				const said = builder._optionLabel( 'text', entry.value );
+				const named = all === true && ( col.texts.length > 1 || entry.viewport !== 's' );
+
+				if( builder.ALIGN_ICONS.text[entry.value] !== undefined )
+					align( 'text', builder.ALIGN_ICONS.text[entry.value], named ? Nino.content.getText( '/_admin/builder/viewport/'+ entry.viewport )+ ': '+ said : said );
 			} );
 
 			if( all === true ? col.hiddenIn.length > 0 : col.hidden === true )
@@ -4906,72 +4902,52 @@
 		},
 
 		/**
-		 *	The box a loop of the page is drawn in, and the open and shut of it: the bar with the arrow, the word of the stack and what kind it is, what it is said by (a chip), the tools in it, and
-		 *	the body with its cell. Shut until it is opened, and open while what is selected stands in it. The loop of a column, the loop around a row and the loop of sections are the same box in
-		 *	the colour of the loops, and a group of panels in the colour of the groups
+		 *	The box a loop of the page is drawn in: the bar with the word of the stack and what kind it is, what it is said by (chips), the tools in it, and the body with its cell. It is always
+		 *	open - nothing in the preview folds - and a click on the bar selects what the box is of, a double click opens its settings. The loop of a column, the loop around a row and the loop
+		 *	of sections are the same box in the colour of the loops, and a group of panels one in the colour of the groups
 		 *
 		 *	@param		{Object}		options
 		 *	@param		{Array}			options.path					Where the node is
-		 *	@param		{Object}		options.node					The node of the model, which the open state is kept on
 		 *	@param		{string}		options.label					The word of the stack
 		 *	@param		{string}		options.kind					What it is, said after the word
 		 *	@param		{string}		options.cellLabel			The label of the cell
-		 *	@param		{string}		options.tools					The name the tools are of
-		 *	@param		{string}		[options.toggle]			The key of the words that name the toggle, loop/toggle by default
-		 *	@param		{boolean}		[options.open]				Open where nothing was said: the row of a loop around it
-		 *	@param		{boolean}		[options.within]			Whether what is selected stands in it
+		 *	@param		{Function}	[options.settings]		Opens the settings of what the box is of, where the box is no frame that can be picked
 		 *
-		 *	@return		{Object}									{ frame, status, cell, bar, set }
+		 *	@return		{Object}									{ frame, status, cell, bar }
 		 */
 		_box : function( options ) {
 
 			const builder = Nino.admin.builder;
 			const frame = builder._fragment('loop');
 			const bar = builder._one( frame, '.builder-loop-bar' );
-			const toggle = builder._one( frame, '.builder-loop-toggle' );
-			const body = builder._one( frame, '.builder-loop-body' );
-			const set = function( open ) {
-
-				frame.classList.toggle( 'is-open', open );
-				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
-				body.hidden = open === false;
-			};
-			const node = options.node;
-			const shut = options.open === true ? builder._shut.has( node ) === true : builder._open.has( node ) === false;
 
 			frame.dataset.path = options.path.join('.');
 			builder._one( frame, '.builder-loop-name' ).textContent = options.label;
 			builder._one( frame, '.builder-loop-kind' ).textContent = options.kind;
 			builder._one( frame, '.builder-loop-cell-label' ).textContent = options.cellLabel;
-			toggle.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText( '/_admin/builder/'+ ( options.toggle ?? 'loop/toggle' ) ), options.label ) );
-			set( options.within === true || shut === false );
 
-			// A click on the row opens and shuts it, on the arrow too. The tools are not the row
-			bar.addEventListener( 'click', function( ev ) {
+			if( options.settings !== undefined ) {
 
-				if( ev.target.closest('.builder-tools') !== null )
-					return;
+				// As on any row: the second mousedown of a double click does not select a word, and the tools are not the row
+				bar.addEventListener( 'mousedown', function( ev ) {
+					if( ev.detail > 1 )
+						ev.preventDefault();
+				} );
+				bar.addEventListener( 'click', function( ev ) {
+					if( ev.target.closest('.builder-tools') === null ) {
+						ev.stopPropagation();
+						builder._select( options.path, false );
+					}
+				} );
+				bar.addEventListener( 'dblclick', function( ev ) {
+					if( ev.target.closest('.builder-tools') === null ) {
+						ev.stopPropagation();
+						options.settings();
+					}
+				} );
+			}
 
-				builder._select( options.path, false );
-
-				if( options.open === true ) {
-					if( builder._shut.has( node ) === true )
-						builder._shut.delete( node );
-					else
-						builder._shut.add( node );
-
-					set( builder._shut.has( node ) === false );
-				} else {
-					if( builder._open.has( node ) === true )
-						builder._open.delete( node );
-					else
-						builder._open.add( node );
-
-					set( builder._open.has( node ) === true );
-				}
-			} );
-
-			return { frame : frame, bar : bar, status : builder._one( frame, '.builder-head-status' ), cell : builder._one( frame, '.builder-loop-cell' ), set : set };
+			return { frame : frame, bar : bar, status : builder._one( frame, '.builder-head-status' ), cell : builder._one( frame, '.builder-loop-cell' ) };
 		},
 
 		/**
@@ -5036,8 +5012,11 @@
 
 			const builder = Nino.admin.builder;
 			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
-			const section = builder._doc.model.blocks[loop.path[0]];
-			const box = builder._box( { path : loop.path, node : section.rowLoop, label : loop.label, kind : word('around'), cellLabel : word('row'), open : true, within : false } );
+			const settings = function() {
+				builder._select( loop.path, false );
+				builder._sectionDialog( loop.path, builder._blockOf( 'section', 'stack' ) );
+			};
+			const box = builder._box( { path : loop.path, label : loop.label, kind : word('around'), cellLabel : word('row'), settings : settings } );
 
 			box.frame.classList.add( 'is-around' );
 			box.frame.dataset.around = loop.path.join('.');
@@ -5053,8 +5032,7 @@
 			gear.appendChild( builder._icon('gear') );
 			gear.addEventListener( 'click', function( ev ) {
 				ev.stopPropagation();
-				builder._select( loop.path, false );
-				builder._sectionDialog( loop.path, builder._blockOf( 'section', 'stack' ) );
+				settings();
 			} );
 			tools.appendChild( gear );
 			box.bar.appendChild( tools );
@@ -5065,7 +5043,7 @@
 
 		/**
 		 *	A loop of sections, in the preview: a block around the section in the colour of the loops, with the stack in its bar - the sections, once for each element -, what it runs over and the
-		 *	order. The head of the section stays in it, and so do the tools of the section; the settings of the loop are the block Loop of the section's dialog. Shut, it shows its bar alone
+		 *	order. The head of the section stays in it, and so do the tools of the section; the settings of the loop are the block Loop of the section's dialog.
 		 *
 		 *	@param		{Object}		block							An entry of _preview() with a loop of sections
 		 *	@param		{Element}		frame							The frame of the section
@@ -5076,9 +5054,11 @@
 
 			const builder = Nino.admin.builder;
 			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
-			const section = builder._doc.model.blocks[block.path[0]];
-			const within = builder._sel.length > 0 && builder._sel[0] === block.path[0];
-			const box = builder._box( { path : block.path, node : section.stack, label : word('sections'), kind : word('each'), cellLabel : word('section'), within : within } );
+			const settings = function() {
+				builder._select( block.path, false );
+				builder._sectionDialog( block.path, builder._blockOf( 'section', 'stack' ) );
+			};
+			const box = builder._box( { path : block.path, label : word('sections'), kind : word('each'), cellLabel : word('section'), settings : settings } );
 
 			box.frame.classList.add( 'is-sections' );
 			box.frame.dataset.sections = block.path.join('.');
@@ -5094,8 +5074,7 @@
 			gear.appendChild( builder._icon('gear') );
 			gear.addEventListener( 'click', function( ev ) {
 				ev.stopPropagation();
-				builder._select( block.path, false );
-				builder._sectionDialog( block.path, builder._blockOf( 'section', 'stack' ) );
+				settings();
 			} );
 			tools.appendChild( gear );
 			box.bar.appendChild( tools );
@@ -5105,9 +5084,8 @@
 		},
 
 		/**
-		 *	A group of panels, in the preview: a box in the colour of the groups with the word of the stack, "fixed", and a chip with the titles of its panels, shut until it is opened; open,
-		 *	its panels as rows - the title, the tools of the row - and, under them, a button that adds a panel. A panel is shut until it is opened and then shows what it holds, one level
-		 *	in, with the button that adds a component
+		 *	A group of panels, in the preview: a box in the colour of the groups with the word of the stack, "fixed", and a chip with the titles of its panels, and under the bar
+		 *	its panels as rows - the title, the tools of the row - and a button that adds a panel. A panel shows what it holds under its row, one level in, with the button that adds a component
 		 *
 		 *	@param		{Object}		group							An entry of _preview() that is a group
 		 *
@@ -5117,9 +5095,7 @@
 
 			const builder = Nino.admin.builder;
 			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
-			const node = builder._get( builder._doc.model, group.path );
-			const within = builder._sel.length > group.path.length && group.path.every( function( part, at ) { return builder._sel[at] === part } );
-			const box = builder._box( { path : group.path, node : node, label : group.label, kind : word('fixed'), cellLabel : '', toggle : 'group/toggle', tools : group.label, within : within } );
+			const box = builder._box( { path : group.path, label : group.label, kind : word('fixed'), cellLabel : '' } );
 			const titles = group.titles.join(' \u00b7 ');
 
 			box.frame.classList.add( 'is-group' );
@@ -5134,7 +5110,7 @@
 			chip.title = titles;
 			box.status.appendChild( chip );
 
-			// Shut, a group says what is wrong in it as a loop does
+			// A group says what is wrong in it as a loop does
 			if( group.problem !== null )
 				builder._redChip( box.status, group.problem );
 
@@ -5149,8 +5125,8 @@
 		},
 
 		/**
-		 *	A panel of a group, in the preview: a row with an arrow, the title as a chip and the tools of the row; shut until it is opened, then what it holds, one level in, and the button that
-		 *	adds a component
+		 *	A panel of a group, in the preview: a row with the title as a chip and the tools of the row, and under it what the panel holds, one level in, and the button that adds a
+		 *	component
 		 *
 		 *	@param		{Object}		panel							An entry of _preview(): { path, title, components }
 		 *
@@ -5160,35 +5136,10 @@
 
 			const builder = Nino.admin.builder;
 			const frame = builder._fragment('panel');
-			const toggle = builder._one( frame, '.builder-loop-toggle' );
 			const body = builder._one( frame, '.builder-panel-body' );
-			const node = builder._get( builder._doc.model, panel.path );
-			const within = builder._sel.length > panel.path.length && panel.path.every( function( part, at ) { return builder._sel[at] === part } );
-			const set = function( open ) {
-
-				frame.classList.toggle( 'is-open', open );
-				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
-				body.hidden = open === false;
-			};
 
 			frame.dataset.path = panel.path.join('.');
 			builder._one( frame, '.builder-panel-title' ).textContent = panel.title;
-			toggle.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText('/_admin/builder/panel/toggle'), panel.title ) );
-			set( within === true || builder._open.has( node ) === true );
-			builder._one( frame, '.builder-panel-bar' ).addEventListener( 'click', function( ev ) {
-
-				if( ev.target.closest('.builder-tools') !== null )
-					return;
-
-				builder._select( panel.path, false );
-
-				if( builder._open.has( node ) === true )
-					builder._open.delete( node );
-				else
-					builder._open.add( node );
-
-				set( builder._open.has( node ) === true );
-			} );
 			builder._pick( frame, panel.path );
 
 			if( panel.problem !== null )
@@ -5233,10 +5184,10 @@
 		},
 
 		/**
-		 *	A loop of a column, in the preview: a row with a rail in the colour of the loops, an arrow, the word of the stack, the word Loop, what it runs over and in which order,
-		 *	and a chip that says what is wrong with it - red - or how much its cell holds, and its tools. It is shut until it is opened - the arrow, a click on the row - and
-		 *	then shows its cell: the components it repeats for each element, one level in from a dashed line, with a button that adds one; the columns of a table as lines, with a
-		 *	button that adds one; or, for a cell with no components of its own, a sentence that says what it draws
+		 *	A loop of a column, in the preview: a row with a rail in the colour of the loops, the word of the stack, the word Loop, what it runs over and in which order,
+		 *	and a chip that says what is wrong with it - red - or how much its cell holds, and its tools. A click on the row selects the loop, a double click opens its dialog; it folds
+		 *	nothing. Under the row stands its cell: the components it repeats for each element, one level in from a dashed line, with a button that adds one; the columns of a table as lines,
+		 *	with a button that adds one; or, for a cell with no components of its own, a sentence that says what it draws
 		 *
 		 *	@param		{Object}		loop							An entry of _preview() that is a loop
 		 *
@@ -5248,19 +5199,8 @@
 			const word = function( key ) { return Nino.content.getText( '/_admin/builder/loop/'+ key ) };
 			const frame = builder._fragment('loop');
 			const bar = builder._one( frame, '.builder-loop-bar' );
-			const toggle = builder._one( frame, '.builder-loop-toggle' );
 			const status = builder._one( frame, '.builder-head-status' );
-			const body = builder._one( frame, '.builder-loop-body' );
 			const cell = builder._one( frame, '.builder-loop-cell' );
-			const node = builder._get( builder._doc.model, loop.path );
-			// A loop is open when it was opened, and while what is selected stands in it: a component that was just added to its cell is seen
-			const within = builder._sel.length > loop.path.length && loop.path.every( function( part, at ) { return builder._sel[at] === part } );
-			const set = function( open ) {
-
-				frame.classList.toggle( 'is-open', open );
-				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
-				body.hidden = open === false;
-			};
 
 			frame.dataset.path = loop.path.join('.');
 			frame.dataset.cell = loop.cell;
@@ -5268,8 +5208,6 @@
 			builder._one( frame, '.builder-loop-name' ).textContent = loop.label;
 			builder._one( frame, '.builder-loop-kind' ).textContent = word('kind');
 			builder._one( frame, '.builder-loop-cell-label' ).textContent = loop.shows === 'columns' ? word('columns') : word('cell');
-			toggle.setAttribute( 'aria-label', Nino.adminUi.format( word('toggle'), loop.label ) );
-			set( node !== null && ( builder._open.has( node ) === true || within === true ) );
 
 			// What the row says of the data it runs over: the type, and the field it is sorted by
 			status.appendChild( builder._el( 'span', 'builder-chip is-loop', loop.type+ ( loop.sorted === '' ? '' : ' · '+ Nino.adminUi.format( word('sorted'), loop.sorted ) ) ) );
@@ -5289,21 +5227,6 @@
 				status.appendChild( count );
 			}
 
-			// A click on the row opens and shuts it, on the arrow too; a double click opens the settings. The tools are not the row
-			bar.addEventListener( 'click', function( ev ) {
-
-				if( ev.target.closest('.builder-tools') !== null || node === null )
-					return;
-
-				builder._select( loop.path, false );
-
-				if( builder._open.has( node ) === true )
-					builder._open.delete( node );
-				else
-					builder._open.add( node );
-
-				set( builder._open.has( node ) === true );
-			} );
 			builder._pick( frame, loop.path );
 			bar.appendChild( builder._tools( loop.path, loop.label ) );
 
@@ -9062,10 +8985,14 @@
 				if( hidden.length > 0 )
 					words.push( Nino.adminUi.format( word('preview/hidden-in'), hidden.map( function( viewport ) { return word( 'viewport/'+ viewport ) } ).join(', ') ) );
 
+				// The alignment of the text, for each viewport, where there is one
+				if( builder.VIEWPORTS.some( function( viewport ) { return col.text[viewport] !== '' } ) === true )
+					words.push( builder.VIEWPORTS.map( function( viewport ) { return col.text[viewport] === '' ? '\u2013' : builder._optionLabel( 'text', col.text[viewport] ) } ).join(' / ') );
+
 				return builder._said( words );
 			};
 			const width = {
-				keys	: [ 'width', 'hidden' ],
+				keys	: [ 'width', 'hidden', 'text' ],
 				build	: function( body ) { builder._widthTable( body, col ) },
 				says	: widthSaid,
 			};
@@ -9128,11 +9055,8 @@
 					build	: function( body ) { body.appendChild( setting( { key : 'stackAlign', type : 'segment', label : tile === true ? '/_admin/builder/tile/stack-align' : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ) ) },
 					says	: function() { return col.stackAlign === '' ? '' : builder._optionLabel( 'stack-align', col.stackAlign ) },
 				},
-				text : {
-					keys	: [ 'text' ],
-					build	: function( body ) { body.appendChild( setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) ) },
-					says	: function() { return col.text === '' ? '' : builder._optionLabel( 'text', col.text ) },
-				},
+				// The alignment of the text is a column of the table of the viewports, as the width is: one control, drawn once
+				text : width,
 				vpa : {
 					keys	: [ 'vpa' ],
 					build	: function( body ) { animations.vpa.build( builder._groupIn( body, 'animation' ) ) },
@@ -9165,7 +9089,8 @@
 
 		/**
 		 *	The viewports of a column as a table, a row for each that is shown (see
-		 *	_viewportTable()): the width the column has there and whether it is hidden there
+		 *	_viewportTable()): the width the column has there, whether it is hidden there and how its text is aligned there. The alignment is a select as the width is: a table of
+		 *	three rows and four columns has no room for three icons in a cell, and a choice "like the viewport before" is a word. Tablet and desktop offer that choice in the place of "none"
 		 *
 		 *	@param		{Element}		pane
 		 *	@param		{Object}		col
@@ -9176,9 +9101,22 @@
 
 			const builder = Nino.admin.builder;
 
-			builder._viewportTable( pane, [ Nino.content.getText('/_admin/builder/col/head-width'), Nino.content.getText('/_admin/builder/col/head-hidden') ], function( viewport ) {
+			const texts = [];
+			const shown = function() { texts.forEach( function( entry ) { entry.select.value = builder._textShown( col, entry.viewport ) } ) };
+
+			builder._viewportTable( pane, [ Nino.content.getText('/_admin/builder/col/head-width'), Nino.content.getText('/_admin/builder/col/head-hidden'), Nino.content.getText('/_admin/builder/col/head-text') ], function( viewport ) {
 
 				const device = Nino.content.getText( '/_admin/builder/viewport/'+ viewport );
+				const before = builder.VIEWPORTS[builder.VIEWPORTS.indexOf( viewport ) - 1];
+				const words = [ { value : '', label : before === undefined ? Nino.content.getText('/_admin/builder/option/text-default') : Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/text-like'), Nino.content.getText( '/_admin/builder/viewport/'+ before ) ) } ]
+					.concat( builder.TEXTS.filter( function( value ) { return value !== '' } ).map( function( value ) { return { value : value, label : builder._optionLabel( 'text', value ) } } ) );
+				const text = builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/text'), device ), words, builder._textShown( col, viewport ), function( value ) {
+					builder._setText( col, viewport, value );
+					shown();
+					builder._changed();
+				} );
+
+				texts.push( { viewport : viewport, select : text } );
 
 				return [
 					builder._keyed( builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), builder._widths(), col.width[viewport], function( value ) {
@@ -9189,6 +9127,7 @@
 						builder._setHidden( col, viewport, checked );
 						builder._changed();
 					} ), 'hidden' ),
+					builder._keyed( text, 'text' ),
 				];
 			} );
 		},
@@ -9467,14 +9406,13 @@
 			const at = path.concat( [ col.components.length - 1 ] );
 
 			builder._cellFor( builder._registry, at );
-			builder._open.add( col.components[col.components.length - 1] );
 			builder._sel = at;
 			builder._changed();
 			builder._paintSelection( true );
 		},
 
 		/**
-		 *	A group of panels at the end of a column, with its one panel, both open
+		 *	A group of panels at the end of a column, with its one panel
 		 *
 		 *	@param		{Array}			path							The column
 		 *	@param		{string}		name							The stack
@@ -9493,15 +9431,13 @@
 			const group = builder._newGroup( builder._registry, name );
 
 			col.components.push( group );
-			builder._open.add( group );
-			builder._open.add( group.panels[0] );
 			builder._sel = path.concat( [ col.components.length - 1 ] );
 			builder._changed();
 			builder._paintSelection( true );
 		},
 
 		/**
-		 *	A panel at the end of a group, open, with the focus on it
+		 *	A panel at the end of a group, selected
 		 *
 		 *	@param		{Array}			path							The group
 		 *
@@ -9518,8 +9454,6 @@
 			const panel = builder._newPanel();
 
 			group.panels.push( panel );
-			builder._open.add( group );
-			builder._open.add( panel );
 			builder._sel = path.concat( [ group.panels.length - 1 ] );
 			builder._changed();
 			builder._paintSelection( true );
@@ -13089,10 +13023,7 @@
 					return;
 				}
 
-				const was = doc.model;
-
 				doc.model = builder._normalise( response.model );
-				builder._keepOpen( was, doc.model );
 
 				if( old !== null && old.kind === 'section' )
 					builder._carry( old, doc.model.blocks[path[0]] );
@@ -13298,10 +13229,7 @@
 					if( wrote.slots === true )
 						builder._touch('slots');
 
-					const was = doc.model;
-
 					doc.model = builder._normalise( response.model );
-					builder._keepOpen( was, doc.model );
 					doc.hash = response.hash;
 					doc.saved = JSON.stringify( doc.model );
 					builder._fresh = {};

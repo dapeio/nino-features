@@ -2748,9 +2748,13 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the color of '. $of. ' is none that Nino.css has';
 
 					// How the text of the column and the components of its stack are aligned: a word of Nino.css or none
-					foreach( [ 'text' => Reader::TEXT, 'stackAlign' => Reader::STACK_ALIGN, 'radius' => Reader::RADIUS ] as $key => $words )
+					foreach( [ 'stackAlign' => Reader::STACK_ALIGN, 'radius' => Reader::RADIUS ] as $key => $words )
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none that Nino.css has';
+
+					// The text is aligned for each viewport, and a viewport takes back what the one before it said only by saying nothing - which no class says
+					if( Reader::textSayable( array_key_exists( 'text', $col ) === true ? $col['text'] : [ 's' => '', 'm' => '', 'l' => '' ] ) === false )
+						$problems[] = 'the text of '. $of. ' is none that a class of Nino.css says for the three viewports';
 
 					foreach( [ 'dim', 'linked' ] as $key )
 						if( is_bool( $col[$key] ?? false ) === false )

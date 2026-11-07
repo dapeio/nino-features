@@ -1570,48 +1570,42 @@ check( '...what is said of a section is a picture behind it, as an icon with its
 
 const loopRow = function( at ) { return preview().querySelector('.builder-loop[data-path="'+ ( at ?? '1.1.0' )+ '"]') };
 const barOf = function( row ) { return row.querySelector('.builder-loop-bar') };
-check( 'a loop is a row among the components of its column, with the class that gives it its colour: the arrow and the word of its stack and the word Loop, the chips - what it runs over and in which order, how much its cell holds - and its tools last; it is shut as the page is loaded', ( function() {
+check( 'a loop is a row among the components of its column, with the class that gives it its colour: the word of its stack and the word Loop, the chips - what it runs over and in which order, how much its cell holds - and its tools last; it has no switch, and its cell is there as the page is loaded', ( function() {
 	const row = loopRow();
 	const bar = barOf( row );
 	return preview().querySelectorAll('.builder-loop').length === 1 && row.parentNode === preview().querySelector('[data-path="1.1"] .builder-col-body') && classes( row.parentNode.children ) === 'builder-loop builder-pick,builder-adds'
-		&& classes( bar.children ) === 'builder-loop-toggle,builder-head-status,builder-tools' && bar.localName === 'header' && row.querySelector('.builder-loop-name').textContent === registry().stacks.stack.label && row.querySelector('.builder-loop-kind').textContent === 'Loop'
+		&& classes( bar.children ) === 'builder-loop-title,builder-head-status,builder-tools' && bar.localName === 'header' && row.querySelector('.builder-loop-name').textContent === registry().stacks.stack.label && row.querySelector('.builder-loop-kind').textContent === 'Loop'
 		&& texts( bar.querySelectorAll('.builder-chip') ) === 'Services · by title,4' && bar.querySelectorAll('.builder-chip')[0].classList.contains('is-loop') && bar.querySelectorAll('.builder-chip')[1].title === 'In the cell: 4'
-		&& row.querySelector('.builder-loop-toggle').getAttribute('aria-expanded') === 'false' && row.querySelector('.builder-loop-body').hidden === true && row.classList.contains('is-open') === false
+		&& bar.querySelectorAll('button').filter( function( button ) { return button.dataset.tool === undefined } ).length === 0 && row.querySelector('.builder-loop-body').hidden === false && row.querySelectorAll('.builder-loop-cell > .builder-ph').length === 4
 		&& bar.querySelectorAll('.builder-tools button').filter( function( button ) { return button.hidden === false } ).map( function( button ) { return button.dataset.tool } ).join() === 'settings,up,down,copy,paste,delete';
 } )() );
 check( '...the cell of an open loop stands one level in from a dashed line, and its rail has a colour of its own: not the blue of the selection', /\.builder-loop-cell \{[^}]*padding-left: [^;]+;\n\tborder-left: 1px dashed /.test( stylesheet ) === true && /\.builder-loop \{\n\t--builder-loop-rail: #[0-9a-f]{6};/.test( stylesheet ) === true );
 check( '...the red chip is red on every ground: a light red ink and line in a section of a dark, a black or the brand ground - where the ink of the workbench would not read - and the red of the workbench on the others', /:is\(\.builder-color-dark, \.builder-color-black, \.builder-color-primary\) \{[^}]*--builder-red-ink: #[0-9a-f]{6};[^}]*--builder-red-line: #[0-9a-f]{6};/.test( stylesheet ) === true && /\.builder-chip\.is-red \{\n\tborder-color: var\(--builder-red-line, var\(--editor-red\)\);\n\tcolor: var\(--builder-red-ink, var\(--editor-red\)\);/.test( stylesheet ) === true && /--builder-red-ink: initial;/.test( stylesheet ) === true );
 check( '...the colour of a loop is a class of the stylesheet and nothing the script paints: the rail is one custom property, which the row, its chip and its item in the lightbox share, and the row carries no style of its own', /\.builder-loop \{[^}]*--builder-loop-rail:[^}]*border-left: 3px solid var\(--builder-loop-rail\);/.test( stylesheet ) === true && /\.builder-chip\.is-loop \{\n\tborder-color: var\(--builder-loop-rail\);/.test( stylesheet ) === true
 	&& /\.builder-pick-item\.is-loop \{[^}]*--builder-loop-rail:/.test( stylesheet ) === true && loopRow().getAttribute('style') === null );
-check( '...a click on the row, on the arrow too, opens it and a second one shuts it again: then its cell is seen, one level in under the label "The cell of each element", with its components and the button that adds one; the tools do not open it', ( function() {
-	const row = loopRow();
-	row.querySelector('.builder-loop-toggle').click();
+// What a row of the preview is under the pointer: it is selected by a click and its settings are opened by a double click - nothing in it folds
+const hiddenIn = function( el ) {
+	for( let at = el; at !== null && at !== undefined && at.nodeType === 1; at = at.parentNode )
+		if( at.hidden === true )
+			return true;
+	return false;
+};
+check( '...a click on the row selects the loop and changes nothing else, on the word as on the bar: its cell stays where it is, one level in under the label "The cell of each element", with its components and the button that adds one; the tools are not the row', ( function() {
+	loopRow().querySelector('.builder-loop-name').click();
+	const selected = builder._same( builder._sel, [ 1, 1, 0 ] );
 	const open = loopRow();
-	const opened = open.classList.contains('is-open') === true && open.querySelector('.builder-loop-body').hidden === false && open.querySelector('.builder-loop-toggle').getAttribute('aria-expanded') === 'true'
-		&& open.querySelector('.builder-loop-cell-label').textContent === 'The cell of each element' && open.querySelectorAll('.builder-loop-cell > .builder-ph').length === 4 && open.querySelectorAll('.builder-loop-cell > .builder-adds .builder-add-button').map( function( button ) { return button.textContent } ).join() === '+ Component'
-		&& builder._same( builder._sel, [ 1, 1, 0 ] );
+	const seen = open.querySelector('.builder-loop-cell-label').textContent === 'The cell of each element' && open.querySelectorAll('.builder-loop-cell > .builder-ph').length === 4 && open.querySelectorAll('.builder-loop-cell > .builder-adds .builder-add-button').map( function( button ) { return button.textContent } ).join() === '+ Component'
+		&& hiddenIn( open.querySelector('.builder-loop-cell') ) === false;
 	barOf( open ).querySelector('[data-tool="up"]').click();
-	const tooled = loopRow().classList.contains('is-open');
 	barOf( loopRow() ).click();
-	const shut = loopRow().classList.contains('is-open') === false && loopRow().querySelector('.builder-loop-body').hidden === true;
-	return opened && tooled === true && shut;
+	return selected && seen && hiddenIn( loopRow().querySelector('.builder-loop-cell') ) === false && loopRow().querySelectorAll('.builder-loop-cell > .builder-ph').length === 4;
 } )() );
-check( '...a repaint keeps what is open: the loop is the node of the model, and not a place', ( function() {
-	loopRow().querySelector('.builder-loop-toggle').click();
+check( '...a repaint draws the same: the cell is there, there is no state of the row to keep', ( function() {
 	builder._renderPreview();
-	const kept = loopRow().classList.contains('is-open') === true;
-	builder._open.delete( builder._get( builder._doc.model, [ 1, 1, 0 ] ) );
+	const first = loopRow().querySelectorAll('.builder-loop-cell > .builder-ph').length;
+	builder._sel = [];
 	builder._renderPreview();
-	return kept && loopRow().classList.contains('is-open') === false && loopRow().querySelector('.builder-loop-body').hidden === true;
-} )() );
-check( '...and a save, whose answer is a model of new nodes, keeps what was open: the loop at the same place in the same column is open again, one that was shut is not', ( function() {
-	const before = builder._doc.model;
-	builder._open.add( builder._get( before, [ 1, 1, 0 ] ) );
-	const after = builder._normalise( JSON.parse( JSON.stringify( before ) ) );
-	builder._keepOpen( before, after );
-	const kept = builder._open.has( builder._get( after, [ 1, 1, 0 ] ) ) === true && builder._open.has( builder._get( after, [ 1, 0, 0 ] ) ) === false;
-	builder._open.delete( builder._get( before, [ 1, 1, 0 ] ) );
-	return kept;
+	return first === 4 && loopRow().querySelectorAll('.builder-loop-cell > .builder-ph').length === 4 && hiddenIn( loopRow().querySelector('.builder-loop-body') ) === false;
 } )() );
 check( '...a double click on the row opens the dialog of the loop, in three blocks: the data, the presentation and the properties', ( function() {
 	loopRow().dispatch( 'dblclick', {} );
@@ -1787,7 +1781,7 @@ check( '...in the view of all the viewports it is not hidden, and the head says 
 check( '...a block of html that cannot be read says why in its head', ( builder._setView('l'), preview().children[2].querySelector('.builder-head-status .is-warning').getAttribute('aria-label') === 'Line 3: The section has more than one row' ) );
 
 doc = open();
-doc.model.blocks[1].cols[0].text = 'center';
+doc.model.blocks[1].cols[0].text = { s : 'center', m : 'center', l : 'center' };
 doc.model.blocks[1].cols[0].stackAlign = 'end';
 builder._renderEditor();
 const alignOf = function( path ) { return preview().querySelector('[data-path="'+ path+ '"] .builder-pcol-head .builder-head-status').querySelectorAll('.is-align') };
@@ -1795,7 +1789,21 @@ const alignList = function( path ) { return alignOf( path ).map( function( item 
 check( 'a column whose alignment is not the default says so in its head, with the icon of the choice and no text: the vertical alignment of its components, then the horizontal one - each a button with the alignment and its word for the title and the label', alignList('1.0')
 	=== 'button:stack-end:Vertical alignment: End:Vertical alignment: End:|button:align-center:Horizontal alignment: Centre:Horizontal alignment: Centre:' );
 check( '...the default shows nothing: a column that is left as it is has no item - and the one that has the horizontal alignment only has that one', alignOf('1.1').length === 0 && alignOf('3.0').length === 0 && alignList('0.0') === 'button:align-left:Horizontal alignment: Left:Horizontal alignment: Left:' );
-check( '...the same in every view: the alignment is no property of a viewport, and the view of all of them says it too', [ 's', 'm', 'l', 'g' ].every( function( view ) { return builder._setView( view ), alignOf('1.0').length === 2 && alignOf('0.0').length === 1 } ) && ( builder._setView('l'), true ) );
+check( '...the same in every view while the alignment is the same in every viewport, and the view of all of them says it once', [ 's', 'm', 'l', 'g' ].every( function( view ) { return builder._setView( view ), alignOf('1.0').length === 2 && alignOf('0.0').length === 1 } ) && ( builder._setView('l'), true ) );
+check( '...an alignment that differs by viewport is said by the view of one viewport as that viewport has it - none where it has none - and by the view of all of them for each viewport it starts in, with the viewport named', ( function() {
+	doc.model.blocks[1].cols[0].text = { s : 'center', m : 'left', l : 'left' };
+	builder._renderEditor();
+	const views = [ 's', 'm', 'l', 'g' ].map( function( view ) { return builder._setView( view ), alignOf('1.0').map( function( item ) { return iconOf( item )+ ':'+ item.title } ).join('|') } );
+	doc.model.blocks[1].cols[0].text = { s : '', m : 'right', l : 'right' };
+	builder._renderEditor();
+	const late = [ 's', 'm', 'g' ].map( function( view ) { return builder._setView( view ), alignOf('1.0').map( function( item ) { return iconOf( item )+ ':'+ item.title } ).join('|') } );
+	doc.model.blocks[1].cols[0].text = { s : 'center', m : 'center', l : 'center' };
+	builder._setView('l');
+	builder._renderEditor();
+	return JSON.stringify( views ) === JSON.stringify( [ 'stack-end:Vertical alignment: End|align-center:Horizontal alignment: Centre', 'stack-end:Vertical alignment: End|align-left:Horizontal alignment: Left', 'stack-end:Vertical alignment: End|align-left:Horizontal alignment: Left',
+		'stack-end:Vertical alignment: End|align-center:Horizontal alignment: Mobile: Centre|align-left:Horizontal alignment: Tablet: Left' ] )
+		&& JSON.stringify( late ) === JSON.stringify( [ 'stack-end:Vertical alignment: End', 'stack-end:Vertical alignment: End|align-right:Horizontal alignment: Right', 'stack-end:Vertical alignment: End|align-right:Horizontal alignment: Tablet: Right' ] );
+} )() );
 check( '...the words of the titles have a place for the alignment in both languages', ( function() {
 	const german = fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' );
 	return [ 'align-text', 'align-stack' ].every( function( word ) {
@@ -2970,8 +2978,8 @@ check( '...nor does a double click, which opens the form, nor a click on a secti
 	builder._closeDialog();
 	toolOf( '1.1.0', 'settings' ).click();
 	builder._closeDialog();
-	loopRow().querySelector('.builder-loop-toggle').click();
-	loopRow().querySelector('.builder-loop-toggle').click();
+	loopRow().querySelector('.builder-loop-name').click();
+	loopRow().querySelector('.builder-loop-name').click();
 
 	return form && screen.scrolled.length === 0 && builder._same( builder._sel, [ 1, 1, 0 ] );
 } )() );
@@ -3026,19 +3034,21 @@ headOf('width').click();
 const widths = function() { return blockOf('width').querySelector('table') };
 check( 'in a viewport the table of the widths has the row of that viewport only - the device with its icon and its word, the width, whether the column is hidden there - and under it a link to all of them', ( function() {
 	const rows = widths().querySelectorAll('tbody tr');
-	return texts( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
+	return texts( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden,Text' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
 		&& valueAt( dialogContent(), 'Width, Desktop' ) === '66' && valueAt( dialogContent(), 'Hidden, Desktop' ) === false && controlOf( dialogContent(), 'Hidden, Desktop' ).kind === 'box'
+		&& controlOf( dialogContent(), 'Text alignment, Desktop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like Tablet,left=Left,center=Centre,right=Right' && valueAt( dialogContent(), 'Text alignment, Desktop' ) === ''
 		&& controlOf( dialogContent(), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && blockOf('width').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
 		&& widths().nextSibling === blockOf('width').querySelector('.builder-link-btn');
 } )() );
-check( '...and the rest of the block: the vertical alignment of the components and the horizontal alignment of the text, in this order, both as icons - the vertical one with Off as a word, and without a sentence - one under the other', JSON.stringify( labelList( blockOf('width') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal text alignment' ] )
-	&& valueAt( dialogContent(), 'Horizontal text alignment' ) === 'left' && valueAt( dialogContent(), 'Vertical alignment' ) === '' && controlOf( dialogContent(), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
+check( '...and the rest of the block: the alignment of the text is the last cell of that row - a select, as the width is, which says "like" the viewport before it where it has what that one has - and under the table the vertical alignment of the components as icons, with Off as a word, and without a sentence', JSON.stringify( labelList( blockOf('width') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Text alignment, Desktop', 'Vertical alignment' ] )
+	&& colOf().text.l === 'left' && valueAt( dialogContent(), 'Vertical alignment' ) === '' && controlOf( dialogContent(), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
 		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && tipOf( controlOf( dialogContent(), 'Vertical alignment' ) ) === null && blockOf('width').querySelector('.builder-line') === null );
 change( dialogContent(), 'Width, Desktop', '33' );
-change( dialogContent(), 'Horizontal text alignment', 'right' );
+change( dialogContent(), 'Text alignment, Desktop', 'right' );
 change( dialogContent(), 'Vertical alignment', 'center' );
-check( '...what the block writes is the width of the viewport and the alignments', colOf().width.l === 33 && colOf().text === 'right' && colOf().stackAlign === 'center' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}' );
-check( '...the head of the block says the widths of the three viewports, and that the column is hidden where it is, and the alignments - the widths where one is not the whole width', saysOf('width').textContent === [ '100/100/33 %', builder._optionLabel( 'stack-align', 'center' ), builder._optionLabel( 'text', 'right' ) ].join(' · ') );
+check( '...what the block writes is the width of the viewport and the alignments: the text of the viewport, and no other', colOf().width.l === 33 && JSON.stringify( colOf().text ) === '{"s":"left","m":"left","l":"right"}' && colOf().stackAlign === 'center' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}'
+	&& valueAt( dialogContent(), 'Text alignment, Desktop' ) === 'right' );
+check( '...the head of the block says the widths of the three viewports, and that the column is hidden where it is, and the alignments - the widths where one is not the whole width, the text for each viewport', saysOf('width').textContent === [ '100/100/33 % \u00b7 '+ [ 'left', 'left', 'right' ].map( function( value ) { return builder._optionLabel( 'text', value ) } ).join(' / '), builder._optionLabel( 'stack-align', 'center' ) ].join(' \u00b7 ') );
 
 headOf('spacing').click();
 const colBoxes = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
@@ -3064,7 +3074,7 @@ headOf('width').click();
 buttonOf( dialogContent(), 'All viewports' ).click();
 check( 'the link shows all the viewports: the preview is in the view of all of them (and its button the pressed one), and the tables of the dialog have a row for each - the link is gone, the block is where it was', builder._viewport === 'g' && preview().dataset.viewport === 'g' && screen.getElementById('builder-viewport-g').getAttribute('aria-pressed') === 'true'
 	&& widths().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && blockOf('width').querySelector('.builder-link-btn') === null
-	&& JSON.stringify( labelList( blockOf('width') ).slice( 0, 6 ) ) === JSON.stringify( [ 'Width, Mobile', 'Hidden, Mobile', 'Width, Tablet', 'Hidden, Tablet', 'Width, Desktop', 'Hidden, Desktop' ] ) && openBlock() === 'width' && dialogBox().open === true );
+	&& JSON.stringify( labelList( blockOf('width') ).slice( 0, 9 ) ) === JSON.stringify( [ 'Width, Mobile', 'Hidden, Mobile', 'Text alignment, Mobile', 'Width, Tablet', 'Hidden, Tablet', 'Text alignment, Tablet', 'Width, Desktop', 'Hidden, Desktop', 'Text alignment, Desktop' ] ) && openBlock() === 'width' && dialogBox().open === true );
 builder._openSettings( [ 0, 0 ] );
 check( 'in the view of all the viewports a dialog opened has the three rows from the start - and no link', widths().querySelectorAll('tbody tr').length === 3 && blockOf('width').querySelector('.builder-link-btn') === null );
 change( dialogContent(), 'Width, Mobile', '50' );
@@ -3073,6 +3083,46 @@ change( dialogContent(), 'Hidden, Tablet', true );
 change( dialogContent(), 'Hidden, Mobile', true );
 change( dialogContent(), 'Hidden, Mobile', false );
 check( '...what the table writes is the width of each viewport, and the viewports that hide the column: none that shows it', colOf().width.s === 50 && colOf().width.l === 25 && colOf().width.m === 100 && JSON.stringify( colOf().hidden ) === '{"m":true}' );
+const textSelects = function() { return [ 'Mobile', 'Tablet', 'Desktop' ].map( function( device ) { return controlOf( dialogContent(), 'Text alignment, '+ device ).el } ) };
+const textValues = function() { return textSelects().map( function( select ) { return select.value } ).join() };
+check( '...the alignment of the text has a select in each row: Mobile offers Inherited for none, Tablet and Desktop offer "like" the row above in its place', ( function() {
+	const first = textSelects().map( function( select ) { return select.children.map( function( option ) { return option.textContent } ).join('/') } );
+	return first.join('|') === 'Inherited/Left/Centre/Right|Like Mobile/Left/Centre/Right|Like Tablet/Left/Centre/Right';
+} )() );
+change( dialogContent(), 'Text alignment, Desktop', '' );
+change( dialogContent(), 'Text alignment, Mobile', '' );
+check( '...centred on Mobile it is centred on Tablet and Desktop as well, as they were like it; Left on Tablet then takes Desktop with it, and the selects say which is set apart: Mobile and Tablet, Desktop being like Tablet - and the model holds the three words that a file says as nino-text-center nino-text-m-left', ( function() {
+	change( dialogContent(), 'Text alignment, Mobile', 'center' );
+	const centred = JSON.stringify( colOf().text ) === '{"s":"center","m":"center","l":"center"}' && textValues() === 'center,,';
+	change( dialogContent(), 'Text alignment, Tablet', 'left' );
+	return centred && JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"left"}' && textValues() === 'center,left,';
+} )() );
+check( '...Desktop set apart is its own: Right there leaves Tablet as it is, and Like Tablet puts it back; Inherited on Mobile takes back what the rows below were like it and keeps the ones set apart', ( function() {
+	change( dialogContent(), 'Text alignment, Desktop', 'right' );
+	const apart = JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"right"}' && textValues() === 'center,left,right';
+	change( dialogContent(), 'Text alignment, Desktop', '' );
+	const back = JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"left"}' && textValues() === 'center,left,';
+	change( dialogContent(), 'Text alignment, Mobile', '' );
+	return apart && back && JSON.stringify( colOf().text ) === '{"s":"","m":"left","l":"left"}' && textValues() === ',left,';
+} )() );
+check( '...no choice makes a map that a class cannot say: after any of them a viewport is none only where the one before it is none', ( function() {
+	const words = [ '', 'left', 'center', 'right' ];
+	let sayable = true;
+	[ 'Mobile', 'Tablet', 'Desktop' ].forEach( function( device ) {
+		words.forEach( function( value ) {
+			words.forEach( function( other ) {
+				change( dialogContent(), 'Text alignment, Mobile', other );
+				change( dialogContent(), 'Text alignment, '+ device, value );
+				const text = colOf().text;
+				if( ( text.m === '' && text.s !== '' ) || ( text.l === '' && text.m !== '' ) )
+					sayable = false;
+			} );
+		} );
+	} );
+	change( dialogContent(), 'Text alignment, Mobile', '' );
+	change( dialogContent(), 'Text alignment, Tablet', '' );
+	return sayable === true && JSON.stringify( colOf().text ) === '{"s":"","m":"","l":""}';
+} )() );
 
 [ [ 's', 'Mobile', 'smartphone' ], [ 'm', 'Tablet', 'tablet' ] ].forEach( function( view ) {
 	builder._setView( view[0] );
@@ -3199,9 +3249,9 @@ check( '...a click on a loop adds it at the end of the column - over the first t
 			&& screen.activeElement !== null && dialogContent().contains( screen.activeElement ) && changes > 0;
 	} )() );
 builder._closeDialog();
-check( '...the loop is open in the preview where it was just added, its cell with a button that adds a component, though nobody opened it', ( function() {
+check( '...the loop stands in the preview where it was just added, its cell with a button that adds a component', ( function() {
 	const row = loopRow( '0.0.'+ loopsBefore );
-	return row !== null && row.classList.contains('is-open') === true && row.querySelector('.builder-loop-cell .builder-add-button').textContent === '+ Component';
+	return row !== null && hiddenIn( row.querySelector('.builder-loop-cell') ) === false && row.querySelector('.builder-loop-cell .builder-add-button').textContent === '+ Component';
 } )() );
 check( '...a loop that a column of a loop of sections cannot hold is not added: the stack is greyed in its lightbox, and a click does nothing', ( function() {
 	builder._doc.model.blocks[3].stack = builder._stackFor( builder._registry, 'sections', null );
@@ -3294,19 +3344,18 @@ check( '...no field is no order', builder._doc.model.blocks[1].cols[1].component
 builder._doc.model.blocks[1].cols[1].components[0].attributes.sort = 'a,-b';
 change( loopPane(), 'Type', '/team' );
 check( 'a list of fields is a line of text that is left as it is, with no arrows beside it', labelList( loopPane() ).indexOf( 'Direction' ) === -1 && valueAt( loopPane(), 'Sort by' ) === 'a,-b' );
-check( 'a loop of another type leaves the children where they are - what their sources mean there is red until changed, each child where it stands, in the cell of the loop; and the row of the loop says so with a chip of the word Problem, the sentence of the first red child for its title, for a shut loop shows no cell', ( function() {
+check( 'a loop of another type leaves the children where they are - what their sources mean there is red until changed, each child where it stands, in the cell of the loop; and the row of the loop says so with a chip of the word Problem, the sentence of the first red child for its title, which gathers what is wrong in its cell', ( function() {
 	builder._renderEditor();
 	const chips = loopRow().querySelectorAll('.builder-chip');
 	return builder._doc.model.blocks[1].cols[1].components[0].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 3 && builder._doc.model.blocks[1].cols[1].components[0].source === '/team'
 		&& texts( chips ) === 'Team \u00b7 by a,-b,Problem' && loopRow().querySelectorAll('.builder-loop-cell .is-red').length === 3 && loopRow().querySelectorAll('.builder-chip.is-red').length === 1 && chips[1].title === word('tree/red-field');
 } )() );
-check( '...and a shut loop shows it as well: no red in the cell is seen, and the one chip of its row is red, with the title of the first red child', ( function() {
-	builder._open.delete( builder._doc.model.blocks[1].cols[1].components[0] );
+check( '...the one chip of its row is red, with the title of the first red child, and the cell shows its red children besides', ( function() {
 	builder._sel = [];
 	builder._renderEditor();
 	const row = loopRow();
 	const chip = row.querySelector('.builder-chip.is-red');
-	return row.classList.contains('is-open') === false && row.querySelector('.builder-loop-body').hidden === true && chip !== null && chip.title === word('tree/red-field') && row.querySelectorAll('.builder-head-status .is-red').length === 1;
+	return row.querySelectorAll('.builder-loop-cell .is-red').length === 3 && chip !== null && chip.title === word('tree/red-field') && row.querySelectorAll('.builder-head-status .is-red').length === 1;
 } )() );
 check( '...a red child is red on its own loop only: a loop of another column that has no red child shows none, though a red child stands elsewhere on the page', ( function() {
 	const col = builder._doc.model.blocks[0].cols[0];
@@ -3318,17 +3367,6 @@ check( '...a red child is red on its own loop only: a loop of another column tha
 	col.components.pop();
 	builder._renderEditor();
 	return ok;
-} )() );
-check( '...a shut loop is open while something in its cell is selected - and shut again when the selection leaves it', ( function() {
-	builder._sel = [ 1, 1, 0, 1 ];
-	builder._renderEditor();
-	const open = loopRow().classList.contains('is-open') === true && loopRow().querySelector('.builder-loop-body').hidden === false && loopRow().querySelector('.builder-loop-toggle').getAttribute('aria-expanded') === 'true';
-	builder._sel = [ 1, 1, 0 ];
-	builder._renderEditor();
-	const own = loopRow().classList.contains('is-open') === false;
-	builder._sel = [];
-	builder._renderEditor();
-	return open && own && loopRow().classList.contains('is-open') === false && builder._open.has( builder._doc.model.blocks[1].cols[1].components[0] ) === false;
 } )() );
 builder._doc.model.blocks[1].cols[1].components[0].source = '/nowhere';
 builder._renderEditor();
@@ -4103,8 +4141,10 @@ openWith( [ 0, 0 ], tableMoved( tableWith(), 'column', 'width', 'properties' ) )
 const viewports = builder._views().length;
 const stays = drawnIn( 'width', 'width' ) === viewports && drawnIn( 'width', 'hidden' ) === viewports && drawnAnywhere( 'width' ) === viewports;
 openWith( [ 0, 0 ], tableMoved( tableMoved( tableWith(), 'column', 'width', 'properties' ), 'column', 'hidden', 'properties' ) );
-check( '...a control that writes several settings goes with all of its names: the table of the viewports - the width of the column and where it is hidden - stays where the other name stands when one of them is moved, and is in the properties, one row to a viewport and none left behind, when both are', stays === true
-	&& drawnIn( 'properties', 'width' ) === viewports && drawnIn( 'properties', 'hidden' ) === viewports && drawnIn( 'width', 'width' ) === 0 && drawnIn( 'width', 'hidden' ) === 0 );
+const staysText = drawnIn( 'width', 'text' ) === viewports && drawnIn( 'width', 'width' ) === viewports;
+openWith( [ 0, 0 ], tableMoved( tableMoved( tableMoved( tableWith(), 'column', 'width', 'properties' ), 'column', 'hidden', 'properties' ), 'column', 'text', 'properties' ) );
+check( '...a control that writes several settings goes with all of its names: the table of the viewports - the width of the column, where it is hidden and how its text is aligned - stays where the other names stand when one or two of them are moved, and is in the properties, one row to a viewport and none left behind, when all three are', stays === true && staysText === true
+	&& drawnIn( 'properties', 'width' ) === viewports && drawnIn( 'properties', 'hidden' ) === viewports && drawnIn( 'properties', 'text' ) === viewports && drawnIn( 'width', 'width' ) === 0 && drawnIn( 'width', 'hidden' ) === 0 && drawnIn( 'width', 'text' ) === 0 );
 check( '...and the status of a frame that opens the dialog on a block opens the one the table has put the control in: the loop of a section, the columns of a loop, the alignments of a column - wherever the table has them', ( function() {
 	const original = builder.BLOCKS;
 	builder.BLOCKS = tableMoved( tableWith(), 'column', 'stackAlign', 'surface' );
@@ -4997,10 +5037,10 @@ check( '...a copy of a component stands behind it, with a key beside the old one
 	builder._duplicateAt( [ 0, 0 ] );
 	return first[1].name === 'title' && first[1].source === '/template/page-home/hero/title-2' && JSON.stringify( first[1].create ) === '{}' && JSON.stringify( first[1].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && builder._doc.model.blocks[0].cols.length === 2 && builder._same( builder._sel, [ 0, 1 ] );
 } )() );
-check( '...and a loop is copied with its children behind it, as a component is - its tool for that is hidden, for it is copied and pasted - and the copy is a loop of its own, open only if it is opened', ( function() {
+check( '...and a loop is copied with its children behind it, as a component is - its tool for that is hidden, for it is copied and pasted - and the copy is a loop of its own', ( function() {
 	builder._duplicateAt( [ 2, 1, 0 ] );
 	const cell = builder._doc.model.blocks[2].cols[1].components;
-	return cell.length === 2 && cell[1].components.length === 4 && cell[1] !== cell[0] && builder._same( builder._sel, [ 2, 1, 1 ] ) && builder._open.has( cell[1] ) === false;
+	return cell.length === 2 && cell[1].components.length === 4 && cell[1] !== cell[0] && builder._same( builder._sel, [ 2, 1, 1 ] );
 } )() );
 
 doc = open();
@@ -5141,10 +5181,8 @@ check( 'a save sends the file, the model and the hash, and nothing else while it
 	&& requests[0].payload.force === undefined && builder._saving === true && ( builder._save(), requests.length === 1 ) );
 const saved = JSON.parse( JSON.stringify( builder._doc.model ) );
 saved.blocks[0].id = 'hero';
-builder._open.add( builder._get( builder._doc.model, [ 1, 1, 0 ] ) );
 requests[0].callback( 200, { model : saved, hash : 'h2' } );
 check( 'the answer replaces the model and the hash, and the document holds nothing unsaved', builder._doc.hash === 'h2' && builder._doc.model.name === 'Start' && builder._unsaved( builder._doc ) === false && builder._saving === false && builder._status.state === 'saved' && answers[answers.length - 1] === true && builder._fresh.x === undefined );
-check( '...and the loops that were open are open in it: the answer is a model of new nodes, and the loop at the same place is the one that stays open', builder._open.has( builder._get( builder._doc.model, [ 1, 1, 0 ] ) ) === true && builder._open.has( builder._get( builder._doc.model, [ 1, 0, 0 ] ) ) === false );
 
 doc = open();
 builder._doc.model.blocks[1].cols[1].components[0] = builder._newLoop( builder._registry, 'marks' );
@@ -8703,6 +8741,24 @@ check( 'a column is pasted after the column the tool is of, and at the end of th
 		&& JSON.stringify( model.blocks[1].cols[1].components[0].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && JSON.stringify( model.blocks[1].cols[1].components[0].create ) === '{}' && model.blocks[1].cols[1].components[2].create === undefined
 		&& model.blocks[1].cols[1] !== clip.node && model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title';
 } ) );
+check( '...the alignment of the text of a column travels with it: a column copied with an alignment for each viewport is pasted with the same map - a map of its own, not the one of the original - and so is a copy beside it', attempt( function() {
+
+	doc = open();
+	doc.model.blocks[0].cols[0].text = { s : 'center', m : 'left', l : 'left' };
+	builder._renderEditor();
+	builder._clip = null;
+	storage.items = {};
+
+	const clip = builder._copyAt( [ 0, 0 ] );
+	const model = page();
+	const after = builder._paste( model, registry(), 'page-home', [ 1, 0 ], clip );
+	const beside = builder._duplicate( doc.model, registry(), 'page-home', [ 0, 0 ] );
+
+	model.blocks[1].cols[1].text.s = 'right';
+
+	return JSON.stringify( clip.node.text ) === '{"s":"center","m":"left","l":"left"}' && pathOf( after ) === '[1,1]' && JSON.stringify( model.blocks[1].cols[1].text ) === '{"s":"right","m":"left","l":"left"}' && clip.node.text.s === 'center'
+		&& JSON.stringify( doc.model.blocks[0].cols[beside[1]].text ) === '{"s":"center","m":"left","l":"left"}' && doc.model.blocks[0].cols[beside[1]].text !== doc.model.blocks[0].cols[0].text;
+} ) );
 check( 'a section is pasted after the section the tool is of and at the end of the page: with an id that is free - hero-2, and one that is not the id a loop of sections would make - and with its keys and slots new under it', attempt( function() {
 
 	const clip = copied( [ 0 ] );
@@ -10692,37 +10748,22 @@ builder._closeDialog();
 // The preview of a group: orange, its panels as rows
 withGroup();
 const groupBox = function() { return preview().querySelector('[data-path="1.1.0"]') };
-check( 'a group is a box with its own colour in the column: the class that gives it, the word of its stack, "fixed", one chip with the titles of its panels, and its tools - settings, up, down, copy, paste and delete, no duplicate; shut until it is opened', groupBox().classList.contains('builder-loop') && groupBox().classList.contains('is-group')
+check( 'a group is a box with its own colour in the column: the class that gives it, the word of its stack, "fixed", one chip with the titles of its panels, and its tools - settings, up, down, copy, paste and delete, no duplicate; it has no switch', groupBox().classList.contains('builder-loop') && groupBox().classList.contains('is-group')
 	&& groupBox().dataset.fill === 'fixed' && groupBox().dataset.stack === 'tabs' && groupBox().querySelector('.builder-loop-name').textContent === registry().stacks.tabs.label && groupBox().querySelector('.builder-loop-kind').textContent === word('loop/fixed')
-	&& groupBox().querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } ).join() === 'Prices · Details' && groupBox().querySelector('.builder-loop-body').hidden === true && groupBox().classList.contains('is-open') === false
+	&& groupBox().querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } ).join() === 'Prices · Details' && groupBox().querySelector('.builder-loop-body').hidden === false && groupBox().querySelector('.builder-loop-bar').querySelectorAll('button').every( function( button ) { return button.dataset.tool !== undefined } )
 	&& [ 'settings', 'up', 'down', 'copy', 'paste', 'delete' ].every( function( tool ) { return toolOf( '1.1.0', tool ).hidden === false } ) && toolOf( '1.1.0', 'duplicate' ).hidden === true );
-groupBox().querySelector('.builder-loop-bar').dispatch('click');
 const panelRows = function() { return groupBox().querySelectorAll('.builder-panel') };
-check( '...open, its panels are rows - the title as a chip, an arrow, the tools of the row - shut each until it is opened, and under them the button that adds a panel; a panel opened shows what it holds one level in, and the button that adds a component', panelRows().length === 2 && groupBox().classList.contains('is-open') && panelRows().map( function( row ) { return row.querySelector('.builder-panel-title').textContent } ).join() === 'Prices,Details'
-	&& panelRows().every( function( row ) { return row.classList.contains('is-open') === false && row.querySelector('.builder-panel-body').hidden === true } ) && panelRows().map( function( row ) { return row.dataset.path } ).join() === '1.1.0.0,1.1.0.1'
+check( '...its panels are rows as the page is loaded - the title as a chip and the tools of the row, no arrow - and under them the button that adds a panel; a panel shows what it holds one level in, and the button that adds a component', panelRows().length === 2 && panelRows().map( function( row ) { return row.querySelector('.builder-panel-title').textContent } ).join() === 'Prices,Details'
+	&& panelRows().every( function( row ) { return row.querySelector('.builder-panel-body').hidden === false && row.querySelector('.builder-loop-caret') === null && row.querySelector('.builder-panel-bar').querySelectorAll('button').every( function( button ) { return button.dataset.tool !== undefined } ) } ) && panelRows().map( function( row ) { return row.dataset.path } ).join() === '1.1.0.0,1.1.0.1'
 	&& [ 'settings', 'up', 'down', 'copy', 'paste', 'delete' ].every( function( tool ) { return toolOf( '1.1.0.0', tool ).hidden === false } ) && toolOf( '1.1.0.0', 'duplicate' ).hidden === true && toolOf( '1.1.0.0', 'up' ).disabled === true && toolOf( '1.1.0.1', 'down' ).disabled === true
 	&& buttonOf( groupBox().querySelector('.builder-loop-cell'), '+ Panel' ) !== null );
 panelRows()[0].querySelector('.builder-panel-bar').dispatch('click');
-check( '...', panelRows()[0].classList.contains('is-open') && panelRows()[0].querySelector('.builder-panel-body').hidden === false && panelRows()[0].querySelector('.builder-panel-body').querySelectorAll('.builder-ph').length === 1
+check( '...a click on a panel row selects the panel and folds nothing: what it holds stays where it is', panelRows()[0].querySelector('.builder-panel-body').hidden === false && panelRows()[0].querySelector('.builder-panel-body').querySelectorAll('.builder-ph').length === 1
 	&& buttonOf( panelRows()[0].querySelector('.builder-panel-body'), '+ Component' ) !== null && builder._same( builder._sel, [ 1, 1, 0, 0 ] ) && builder._kind( builder._doc.model, [ 1, 1, 0, 0 ] ) === 'panel' && builder._kind( builder._doc.model, [ 1, 1, 0, 0, 0 ] ) === 'component' );
-check( '...a repaint keeps what is open - the group and its panel are nodes of the model - and a save, whose answer is a model of new nodes, keeps them at the same place', ( function() {
-
-	builder._renderEditor();
-
-	const same = groupBox().classList.contains('is-open') && panelRows()[0].classList.contains('is-open') && panelRows()[1].classList.contains('is-open') === false;
-	const after = builder._clone( builder._doc.model );
-
-	builder._keepOpen( builder._doc.model, after );
-
-	const kept = builder._open.has( after.blocks[1].cols[1].components[0] ) && builder._open.has( after.blocks[1].cols[1].components[0].panels[0] ) && builder._open.has( after.blocks[1].cols[1].components[0].panels[1] ) === false;
-
-	return same && kept;
-} )() );
-
 // Panels: add, move, delete, copy, paste, and the dialog
 buttonOf( groupBox().querySelector('.builder-loop-cell'), '+ Panel' ).click();
-check( 'the button that adds a panel puts an empty one last, open and selected', nodeAt( [ 1, 1, 0 ] ).panels.length === 3 && JSON.stringify( nodeAt( [ 1, 1, 0, 2 ] ) ) === '{"title":"","class":"","components":[]}' && builder._same( builder._sel, [ 1, 1, 0, 2 ] )
-	&& panelRows()[2].classList.contains('is-open') && panelRows()[2].querySelector('.builder-panel-title').textContent === '3' );
+check( 'the button that adds a panel puts an empty one last, selected', nodeAt( [ 1, 1, 0 ] ).panels.length === 3 && JSON.stringify( nodeAt( [ 1, 1, 0, 2 ] ) ) === '{"title":"","class":"","components":[]}' && builder._same( builder._sel, [ 1, 1, 0, 2 ] )
+	&& panelRows()[2].querySelector('.builder-panel-title').textContent === '3' );
 toolOf( '1.1.0.2', 'up' ).click();
 check( '...a panel moves in its group and is selected where it went; the group keeps its order of titles', nodeAt( [ 1, 1, 0 ] ).panels.map( function( panel ) { return panel.title } ).join() === 'Prices,,Details' && builder._same( builder._sel, [ 1, 1, 0, 1 ] ) );
 toolOf( '1.1.0.1', 'delete' ).click();
@@ -10842,13 +10883,42 @@ builder._closeDialog();
 builder._doc.model.blocks[0].rowLoop = builder._stackFor( registry(), 'repeat', null );
 builder._renderEditor();
 const aroundBox = function() { return preview().children[0].querySelector('.builder-loop.is-around') };
-check( 'the loop around a row is a box in the colour of the loops around the columns of the section, inside its frame and under its head: the word of the stack, "Loop around the row", the type, the number of columns and a button for the settings - open, the row for its cell', aroundBox() !== null && aroundBox().parentNode === preview().children[0].querySelector('.builder-frame-body') && aroundBox().classList.contains('is-open')
+check( 'the loop around a row is a box in the colour of the loops around the columns of the section, inside its frame and under its head: the word of the stack, "Loop around the row", the type, the number of columns and a button for the settings - the row for its cell', aroundBox() !== null && aroundBox().parentNode === preview().children[0].querySelector('.builder-frame-body') && aroundBox().querySelector('.builder-loop-body').hidden === false
 	&& aroundBox().querySelector('.builder-loop-name').textContent === registry().stacks.repeat.label && aroundBox().querySelector('.builder-loop-kind').textContent === word('loop/around') && aroundBox().querySelector('.builder-loop-cell-label').textContent === word('loop/row')
 	&& aroundBox().querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } ).join() === 'Services,1' && aroundBox().querySelector('.builder-loop-cell').querySelectorAll('.builder-pcol').length === 1
 	&& aroundBox().querySelector('.builder-loop-cell').querySelector('.builder-add-col') !== null && preview().children[0].querySelector('.builder-frame-head') !== null && preview().children[1].querySelector('.builder-loop.is-around') === null );
 aroundBox().querySelector('.builder-loop-bar').dispatch('click');
-check( '...it is shut and opened by a click on its bar, the columns staying where they are in the model; its settings open the block Loop of the section', aroundBox().querySelector('.builder-loop-body').hidden === true && ( aroundBox().querySelector('.builder-loop-bar').dispatch('click'), aroundBox().querySelector('.builder-loop-body').hidden === false )
-	&& ( aroundBox().querySelector('.builder-tools-around button').click(), dialogText('builder-dialog-kind') === 'Content' && openBlock() === 'loop' ) );
+check( '...a click on its bar selects the section and folds nothing, the columns staying where they are', aroundBox().querySelector('.builder-loop-body').hidden === false && builder._same( builder._sel, [ 0 ] ) && aroundBox().querySelector('.builder-loop-cell').querySelectorAll('.builder-pcol').length === 1 );
+// The dialog opens the block that was open last: another one is open before the settings are asked for, so that it is the settings that choose the block Loop
+const loopBlockFrom = function( open ) {
+	builder._openSettings( [ 0 ] );
+	builder._openBlock('properties');
+	builder._closeDialog();
+	open();
+	const block = dialogBox().open === true && dialogText('builder-dialog-kind') === 'Content' ? openBlock() : '';
+	builder._closeDialog();
+	return block;
+};
+check( '...its settings open the block Loop of the section, whichever block was open last', loopBlockFrom( function() { aroundBox().querySelector('.builder-tools-around button').click() } ) === 'loop' );
+check( '...and so does a double click on the bar, which selects and asks for the dialog once: no second call for the section as a frame, and a click on the bar selects once', ( function() {
+	const calls = [];
+	const dialog = builder._sectionDialog, settings = builder._openSettings, select = builder._select;
+	builder._sectionDialog = function() { calls.push( 'dialog' ); return dialog.apply( builder, arguments ) };
+	builder._select = function() { calls.push( 'select' ); return select.apply( builder, arguments ) };
+	const block = loopBlockFrom( function() {
+		calls.length = 0;
+		builder._openSettings = function() { calls.push( 'settings' ); return settings.apply( builder, arguments ) };
+		aroundBox().querySelector('.builder-loop-bar').dispatch('dblclick', {} );
+		builder._openSettings = settings;
+	} );
+	const opened = calls.join();
+	calls.length = 0;
+	aroundBox().querySelector('.builder-loop-bar').dispatch('click');
+	const clicked = calls.join();
+	builder._sectionDialog = dialog;
+	builder._select = select;
+	return block === 'loop' && opened === 'select,dialog' && clicked === 'select';
+} )() );
 builder._closeDialog();
 check( 'the loop around the row is the cell of its columns: a field of the type is no mistake in them, nothing else is, and a type the project does not have is red on the section - and a loop in a column of such a section is refused as one is in a loop of sections', ( function() {
 
@@ -10897,25 +10967,26 @@ check( 'the page has the button "+ Loop" after the one for the tiles: it adds a 
 		&& section.rowLoop === null && builder._same( builder._sel, [ builder._doc.model.blocks.length - 1 ] ) && builder._fresh[section.id] === true && builder._doc.model.blocks.filter( function( block ) { return block.id === section.id } ).length === 1
 		&& preview().children.slice( -1 )[0].classList.contains('is-sections') && builder._loopNames( builder._doc.model ).indexOf( section.id ) !== -1;
 } )() );
-check( '...a block of sections that is shut shows its bar and nothing of the section; pressed, it shows the section with its head, and what is selected in it opens it', ( function() {
+check( '...a block of sections shows its bar and the section with its head under it as the page is loaded, and a click on the bar selects the section and shows nothing else; a double click on it opens the block Loop of the section', ( function() {
 
 	builder._sel = [];
 	builder._renderEditor();
 
+	const last = builder._doc.model.blocks.length - 1;
 	const block = preview().children.slice( -1 )[0];
-	const shut = block.querySelector('.builder-loop-body').hidden === true;
+	const shown = block.querySelector('.builder-loop-body').hidden === false && block.querySelector('.builder-frame-head') !== null;
 
 	block.querySelector('.builder-loop-bar').dispatch('click');
 
-	const open = preview().children.slice( -1 )[0].querySelector('.builder-loop-body').hidden === false && preview().children.slice( -1 )[0].querySelector('.builder-frame-head') !== null;
+	const open = builder._same( builder._sel, [ last ] ) && preview().children.slice( -1 )[0].querySelector('.builder-loop-body').hidden === false && preview().children.slice( -1 )[0].querySelector('.builder-frame-head') !== null;
 
-	builder._sel = [ 0 ];
-	builder._renderEditor();
-	builder._sel = [ builder._doc.model.blocks.length - 1, 0 ];
-	builder._open = new WeakSet();
-	builder._renderEditor();
+	preview().children.slice( -1 )[0].querySelector('.builder-loop-bar').dispatch('dblclick', {});
 
-	return shut && open && preview().children.slice( -1 )[0].querySelector('.builder-loop-body').hidden === false;
+	const dialog = dialogBox().open === true && openBlock() === 'loop';
+
+	builder._closeDialog();
+
+	return shown && open && dialog;
 } )() );
 
 // What a panel holds is the section's as much as what a column holds: the keys of it, the texts typed for them, the section that is renamed
@@ -11049,12 +11120,11 @@ check( '...a filling that would put a loop in a loop, or a group in a panel, is 
 	return groupInLoop && typeOff && inner !== null && held === word('reason/group-in-group') && nestedLoop && nestedGroup && loopInGroup
 		&& [ 'loop-in-loop', 'group-in-group', 'loop-in-group', 'group-in-loop', 'group-id' ].every( function( why ) { return typeof words['/_admin/builder/tree/red-'+ why] === 'string' } );
 } )() );
-check( 'a group and a panel that are shut say what is wrong in them, as a loop does: a red chip with the words of the red source as its title - on the bar of the group and on the row of the panel', ( function() {
+check( 'a group and a panel say what is wrong in them, as a loop does: a red chip with the words of the red source as its title - on the bar of the group and on the row of the panel', ( function() {
 
 	withGroup();
 	nodeAt( [ 1, 1, 0 ] ).panels[1].components.push( builder._newComponent( builder._doc.model, registry(), 'page-home', [ 1, 1, 0, 1, 0 ], 'text', builder._keys ) );
 	nodeAt( [ 1, 1, 0, 1, 0 ] ).source = 'summary';
-	builder._open = new WeakSet();
 	builder._sel = [];
 	builder._renderEditor();
 
@@ -11063,20 +11133,65 @@ check( 'a group and a panel that are shut say what is wrong in them, as a loop d
 	const row = preview().querySelector('[data-path="1.1.0.1"]');
 	const first = preview().querySelector('[data-path="1.1.0.0"]');
 
-	box.querySelector('.builder-loop-bar').dispatch('click');
-
 	return chips.length === 1 && chips[0].title === word('tree/red-static') && row.querySelector('.builder-panel-bar').querySelectorAll('.builder-chip.is-red').length === 1 && first.querySelector('.builder-panel-bar').querySelectorAll('.builder-chip.is-red').length === 0;
 } )() );
-check( 'a group is a box whose panels are rows: no label over them, so no dashed cell around them, and the words of the toggles are the group\'s and the panel\'s own, not the loop\'s', ( function() {
+check( 'a group is a box whose panels are rows: no label over them, so no dashed cell around them, and the rows are the cell\'s children', ( function() {
 
 	withGroup();
 
 	const box = preview().querySelector('[data-path="1.1.0"]');
 	const label = box.querySelector('.builder-loop-cell-label');
-	const toggle = function( el ) { return el.querySelector('.builder-loop-toggle').getAttribute('aria-label') };
 
-	return label.textContent === '' && toggle( box ) === word('group/toggle').replace( '%s', registry().stacks.tabs.label ) && toggle( box.querySelector('.builder-panel') ) === word('panel/toggle').replace( '%s', 'Prices' )
-		&& word('group/toggle').indexOf('loop') === -1 && word('panel/toggle').indexOf('loop') === -1 && box.querySelectorAll('.builder-panel').every( function( row ) { return row.parentNode === box.querySelector('.builder-loop-cell') } );
+	return label.textContent === '' && box.querySelectorAll('.builder-panel').length === 2 && box.querySelectorAll('.builder-panel').every( function( row ) { return row.parentNode === box.querySelector('.builder-loop-cell') } );
+} )() );
+check( 'nothing in the preview folds: a page with a loop, a group with panels that hold a loop, a loop around a row and a loop of sections has no switch on any row, every row is a bar with its tools, and every child - the cell of each loop, the panels and what they hold - is in the page as it is loaded', ( function() {
+
+	const group = withGroup();
+	const inner = builder._newLoop( registry(), 'repeat' );
+
+	group.panels[1].components.push( inner );
+	builder._doc.model.blocks[1].cols[1].components.push( builder._newLoop( registry(), 'repeat' ) );
+	builder._doc.model.blocks[0].rowLoop = builder._stackFor( registry(), 'repeat', null );
+	builder._doc.model.blocks[3].stack = builder._stackFor( registry(), 'sections', null );
+	builder._sel = [];
+	builder._renderEditor();
+
+	const rows = preview().querySelectorAll('.builder-loop-bar, .builder-panel-bar');
+	const bodies = preview().querySelectorAll('.builder-loop-body, .builder-panel-body, .builder-loop-cell');
+	const holders = preview().querySelectorAll('.builder-loop, .builder-panel');
+	const leaves = preview().querySelectorAll('.builder-ph');
+	const around = preview().children[0].querySelector('.builder-loop.is-around');
+	const sections = preview().children[3];
+
+	return rows.length >= 7 && bodies.length >= 9 && leaves.length >= 5 && rows.every( function( row ) { return row.querySelectorAll('button').every( function( button ) { return button.closest('.builder-tools') !== null } ) && row.querySelector('[aria-expanded]') === null } )
+		&& bodies.every( function( body ) { return hiddenIn( body ) === false } ) && leaves.every( function( leaf ) { return hiddenIn( leaf ) === false } ) && holders.every( function( holder ) { return holder.classList.contains('is-open') === false && holder.querySelector('.builder-loop-caret') === null } )
+		&& around !== null && sections.classList.contains('is-sections') && hiddenIn( around.querySelector('.builder-loop-cell') ) === false && hiddenIn( sections.querySelector('.builder-loop-cell') ) === false
+		&& preview().querySelectorAll('.builder-panel').length === 2 && preview().querySelectorAll('[data-path="1.1.0.1"] .builder-loop').length === 1 && hiddenIn( preview().querySelector('[data-path="1.1.0.1"] .builder-loop-cell') ) === false;
+} )() );
+check( '...a click on the bar of a group, of a panel and of a loop only selects it - the tools are not the row - and a double click on any of the three, as on any row, opens the dialog of its node', ( function() {
+
+	withGroup();
+
+	const rows = [ [ '1.1.0', '.builder-loop-bar', 'Group: ' ], [ '1.1.0.1', '.builder-panel-bar', 'Panel: ' ] ];
+
+	return rows.every( function( row ) {
+
+		const bar = preview().querySelector('[data-path="'+ row[0]+ '"] '+ row[1]);
+		const before = preview().querySelectorAll('.builder-ph').length;
+
+		builder._sel = [];
+		bar.dispatch('click');
+
+		const picked = builder._same( builder._sel, row[0].split('.').map( Number ) ) && preview().querySelectorAll('.builder-ph').length === before && hiddenIn( preview().querySelector('[data-path="'+ row[0]+ '"]') ) === false;
+
+		bar.dispatch('dblclick', {});
+
+		const opened = dialogBox().open === true && dialogText('builder-dialog-kind').indexOf( row[2] ) === 0;
+
+		builder._closeDialog();
+
+		return picked && opened;
+	} );
 } )() );
 check( 'a loop in a panel gives an id of the page as one in a column does: the calls of a section are those of the panels too', ( function() {
 
@@ -11149,7 +11264,7 @@ check( 'a column of a table is a row with the tools of a row - settings, up, dow
 check( 'every word the patch needs is in both interface languages, and the two say them differently: the groups and their fill, the panels, the loop around the row and the segment that chooses what repeats', ( function() {
 
 	const keys = [ 'pick/groups', 'tree/panel', 'tree/group', 'loop/around', 'loop/row', 'loop/sections', 'loop/each', 'loop/section', 'loop/fixed', 'loop/panels', 'loop/count-columns-row', 'menu/tools-panel', 'stack/mode', 'stack/mode-none', 'stack/mode-sections', 'stack/mode-row', 'hint/stack-mode',
-		'group/properties', 'group/fill', 'group/fill-fixed', 'group/fill-type', 'group/fill-lose-panels', 'group/fill-lose-cell', 'group/fill-turn', 'group/title', 'panel/title', 'hint/group-fill', 'hint/group-id', 'hint/panel-class', 'panel/class', 'block/fill/label', 'group/toggle', 'panel/toggle', 'group/id', 'group/class', 'tree/red-group-id', 'tree/red-loop-in-loop', 'tree/red-group-in-group', 'tree/red-loop-in-group', 'tree/red-group-in-loop', 'error/section-id-taken', 'reason/group-in-loop', 'reason/group-in-group', 'reason/no-panels' ];
+		'group/properties', 'group/fill', 'group/fill-fixed', 'group/fill-type', 'group/fill-lose-panels', 'group/fill-lose-cell', 'group/fill-turn', 'group/title', 'panel/title', 'hint/group-fill', 'hint/group-id', 'hint/panel-class', 'panel/class', 'block/fill/label', 'group/id', 'group/class', 'tree/red-group-id', 'tree/red-loop-in-loop', 'tree/red-group-in-group', 'tree/red-loop-in-group', 'tree/red-group-in-loop', 'error/section-id-taken', 'reason/group-in-loop', 'reason/group-in-group', 'reason/no-panels' ];
 	const german = {};
 
 	fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( '\n' ).forEach( function( line ) {

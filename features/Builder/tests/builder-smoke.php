@@ -451,7 +451,7 @@ check( 'the hero: its classes are settings', $hero['settings']['color'] === 'bla
 	&& $hero['settings']['parallax'] === false && $hero['settings']['dim'] === true && $hero['settings']['contentPos'] === '' && $hero['settings']['vpa'] === '' && $hero['settings']['row'] === 'wide' && $hero['settings']['rowAlign'] === 'middle'
 	&& $hero['settings']['custom'] === '' );
 check( '...its background is a slot with a focus', $hero['background'] === [ 'slot' => '/template/page-home/hero/background', 'focus' => 5 ] );
-check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === 'left'
+check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === [ 's' => 'left', 'm' => 'left', 'l' => 'left' ]
 	&& array_key_exists( 'stack', $hero['cols'][0] ) === false && array_column( $hero['cols'][0]['components'], 'name' ) === [ 'title', 'subtitle', 'button' ] );
 check( '...a call carries its source and its attributes, every one of the schema, the default where the call is silent - and after them the six sides of its spacing, none where its class says none',
 	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'color' => '', 'href' => '', 'target' => '', 'class' => '' ] ] + array_fill_keys( \Nino\Modules\Builder\Reader::SPACING, '' ) );
@@ -1070,7 +1070,7 @@ $styled['settings'] = [
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
 $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden' => [ 's' => true ], 'color' => 'dark', 'dim' => true, 'background' => [ 'slot' => '/template/page-x/a/photo', 'focus' => 8 ],
-	'text' => 'center', 'stackAlign' => 'end', 'stackGap' => '4', 'vpa' => '', 'custom' => 'my-col' ] + $blank['cols'][0];
+	'text' => [ 's' => 'center', 'm' => 'center', 'l' => 'center' ], 'stackAlign' => 'end', 'stackGap' => '4', 'vpa' => '', 'custom' => 'my-col' ] + $blank['cols'][0];
 $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
@@ -1132,6 +1132,60 @@ $mixedUp = $columnOf( $groundOf( 'nino-text-left nino-grid--alt my-col nino-hide
 check( '...the classes of a column are read in any order and written in one: the widths, the hidden ones, the ground, the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
 	$mixedUp['color'] === 'alt' && $mixedUp['custom'] === 'my-col' && str_contains( $write( [ 'blocks' => [ $read( $groundOf( 'nino-text-left nino-grid--alt my-col nino-hide-s nino-stack-gap-3 nino-grid-s-100 nino-stack-center nino-grid-m-50 nino-grid-l-33' ) )['blocks'][0] ] ] ),
 		'<div class="nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--alt nino-stack-center nino-stack-gap-3 nino-text-left my-col">' ) === true );
+
+// The alignment of the text is a map of the three viewports, mobile first like the width: nino-text-<x> is mobile and holds everywhere, the classes with m and l start at their viewport
+$aligned = static fn( string $classes ): array => $columnOf( $groundOf( 'nino-grid-100 '. $classes ) )['text'];
+$alignedClasses = static fn( string $classes ): string => (string) preg_replace( '/^.*<div class="nino-grid-100([^"]*)">.*$/s', '$1', $write( $read( $groundOf( 'nino-grid-100 '. $classes ) ) ) );
+$textFiles = [ 'page-home', 'page-home-wrap', 'page-home-concept', 'page-home-card', 'page-home-tiles' ];
+check( 'the alignment of the text of a column is a map of its viewports: nino-text-<x> is mobile and the two viewports above it have it as well, nino-text-m-<x> starts at tablet and nino-text-l-<x> at desktop, and what is not said is none',
+	$aligned( 'nino-text-center' ) === [ 's' => 'center', 'm' => 'center', 'l' => 'center' ] && $aligned( 'nino-text-center nino-text-m-left' ) === [ 's' => 'center', 'm' => 'left', 'l' => 'left' ]
+	&& $aligned( 'nino-text-center nino-text-l-right' ) === [ 's' => 'center', 'm' => 'center', 'l' => 'right' ] && $aligned( 'nino-text-m-left' ) === [ 's' => '', 'm' => 'left', 'l' => 'left' ]
+	&& $aligned( 'nino-text-l-right' ) === [ 's' => '', 'm' => '', 'l' => 'right' ] && $aligned( 'nino-grid--alt' ) === [ 's' => '', 'm' => '', 'l' => '' ]
+	&& $aligned( 'nino-text-l-right nino-text-center nino-text-m-left' ) === [ 's' => 'center', 'm' => 'left', 'l' => 'right' ] );
+check( '...it is written as the classes that say it, each only where the viewport differs from the one before it, in the order mobile, tablet, desktop - nino-text-center is the same three words and one class',
+	$alignedClasses( 'nino-text-center' ) === ' nino-text-center' && $alignedClasses( 'nino-text-center nino-text-m-left' ) === ' nino-text-center nino-text-m-left'
+	&& $alignedClasses( 'nino-text-l-right nino-text-m-left nino-text-center' ) === ' nino-text-center nino-text-m-left nino-text-l-right' && $alignedClasses( 'nino-text-m-left' ) === ' nino-text-m-left'
+	&& $alignedClasses( 'nino-text-center nino-text-m-center nino-text-l-center' ) === ' nino-text-center' && $alignedClasses( 'nino-text-center nino-text-m-left nino-text-l-left' ) === ' nino-text-center nino-text-m-left'
+	&& $alignedClasses( 'nino-text-left nino-text-m-center nino-text-l-left' ) === ' nino-text-left nino-text-m-center nino-text-l-left'
+	&& $write( $read( $groundOf( 'nino-grid-100 nino-text-center nino-text-m-left' ) ) ) === $write( $read( $write( $read( $groundOf( 'nino-grid-100 nino-text-center nino-text-m-left' ) ) ) ) ) );
+check( '...a second class for a viewport, and the classes of the stages a column has no setting for (nino-text-s-<x>, nino-text-xl-<x>), are classes of the column\'s own, kept where they are written',
+	$columnOf( $groundOf( 'nino-grid-100 nino-text-center nino-text-left nino-text-m-left nino-text-m-right' ) )['text'] === [ 's' => 'center', 'm' => 'left', 'l' => 'left' ]
+	&& $columnOf( $groundOf( 'nino-grid-100 nino-text-center nino-text-left nino-text-m-left nino-text-m-right' ) )['custom'] === 'nino-text-left nino-text-m-right'
+	&& $columnOf( $groundOf( 'nino-grid-100 nino-text-s-left nino-text-xl-right' ) )['text'] === [ 's' => '', 'm' => '', 'l' => '' ] && $columnOf( $groundOf( 'nino-grid-100 nino-text-s-left nino-text-xl-right' ) )['custom'] === 'nino-text-s-left nino-text-xl-right'
+	&& $alignedClasses( 'nino-text-s-left nino-text-center nino-text-xl-right' ) === ' nino-text-center nino-text-s-left nino-text-xl-right' );
+check( '...every example page of the fixtures has the classes it had: the same nino-text classes before and after a read and a write, all of them the one class for every viewport, and a second read gives the same model',
+	( static function() use ( $read, $write, $textFiles ): bool {
+		$seen = 0;
+
+		foreach( $textFiles as $name ) {
+			$text = (string) file_get_contents( __DIR__. '/fixtures/'. $name. '.tpl' );
+			$seen += preg_match_all( '/class="nino-grid-100[^"]*nino-text-/', $text );
+			$again = $write( $read( $text ) );
+			$stages = [];
+
+			foreach( $read( $text )['blocks'] as $block )
+				foreach( $block['cols'] ?? [] as $col )
+					$stages[] = count( array_unique( $col['text'] ) ) === 1;
+
+			if( preg_match_all( '/nino-text-[a-z-]+/', $text, $before ) !== preg_match_all( '/nino-text-[a-z-]+/', $again, $after ) || $before[0] !== $after[0] || preg_match( '/nino-text-[ml]-/', $again ) === 1 || in_array( false, $stages, true ) === true || $read( $again ) !== $read( $text ) )
+				return false;
+		}
+
+		return $seen > 0;
+	} )() );
+check( '...a tile is a column of the same kind and has the same map, and the Writer refuses a map that no class says: tablet taken back after mobile, desktop after tablet, a word of the old model',
+	$writer::colClasses( [ 'text' => [ 's' => 'center', 'm' => 'left', 'l' => 'left' ] ], true ) === [ 'nino-grid-100', 'nino-text-center', 'nino-text-m-left' ] && $writer::colClasses( [ 'text' => [ 's' => '', 'm' => '', 'l' => 'right' ] ] ) === [ 'nino-grid-100', 'nino-text-l-right' ]
+	&& ( static function() use ( $writer ): bool {
+		foreach( [ [ 's' => 'center', 'm' => '', 'l' => '' ], [ 's' => '', 'm' => 'left', 'l' => '' ], 'left', [ 's' => 'left' ] ] as $unsayable ) {
+			try {
+				$writer::colClasses( [ 'text' => $unsayable ] );
+				return false;
+			} catch( \UnexpectedValueException ) {
+			}
+		}
+
+		return true;
+	} )() );
 
 $second = $columnOf( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) );
 check( '...a second ground is a class of its own: kept, not lost', $second['color'] === 'alt' && $second['custom'] === 'nino-grid--dark' && $write( $read( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) ) ) === $inWrap( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) ) );
@@ -2306,7 +2360,7 @@ check( 'the Writer says the classes of a section of tiles as the model has them 
 	&& $writer::sectionClasses( [ 'tiles' => false, 'cover' => 60, 'color' => 'tint' ] ) === [ 'nino-section', 'nino-section--tint', 'nino-cover' ] );
 check( '...its row has no width, no place and no ground - the alignment of its columns, the gap, the padding and its own classes stay - and a tile has its link after its ground and its dimming and before the place of its words',
 	$writer::rowClasses( $tilesSection ) === [ 'nino-grid-row', 'nino-grid-middle', 'nino-grid-gap-1', 'nino-pt-2', 'row-extra' ] && $writer::rowClasses( array_replace( $tilesSection, [ 'tiles' => false ] ) ) === [ 'nino-grid-row', 'nino-grid-row--wide', 'nino-grid-row--left', 'nino-grid-middle', 'nino-grid-gap-1', 'nino-pt-2', 'row-extra' ]
-	&& $writer::colClasses( [ 'linked' => true, 'color' => 'alt', 'stackAlign' => 'end', 'text' => 'left' ], true ) === [ 'nino-grid-100', 'nino-grid--alt', 'nino-grid--linked', 'nino-stack-end', 'nino-text-left' ]
+	&& $writer::colClasses( [ 'linked' => true, 'color' => 'alt', 'stackAlign' => 'end', 'text' => [ 's' => 'left', 'm' => 'left', 'l' => 'left' ] ], true ) === [ 'nino-grid-100', 'nino-grid--alt', 'nino-grid--linked', 'nino-stack-end', 'nino-text-left' ]
 	&& $writer::colClasses( [ 'linked' => true, 'color' => 'alt' ] ) === [ 'nino-grid-100', 'nino-grid--alt' ] && $writer::colClasses( [ 'linked' => false ], true ) === [ 'nino-grid-100' ] );
 check( '...a tile has no offsets of its picture: the Writer says none for a tile whose model holds them, a column of a content section says them, and a file that has them on a tile keeps them as the tile\'s own classes, byte for byte',
 	$writer::colClasses( [ 'background' => [ 'slot' => '/a' ], 'bgPl' => '2', 'bgPr' => '1' ], true ) === [ 'nino-grid-100' ] && $writer::colClasses( [ 'background' => [ 'slot' => '/a' ], 'bgPl' => '2', 'bgPr' => '1' ] ) === [ 'nino-grid-100', 'nino-bg-pl-2', 'nino-bg-pr-1' ]
@@ -3347,8 +3401,14 @@ $wordBad = [
 	'a whitespace that is none of the four'		=> [ 'section', 'whitespace', 'wider', 'the whitespace of block %d is none that Nino.css has' ],
 	'a whitespace in capitals'					=> [ 'section', 'whitespace', 'More', 'the whitespace of block %d is none that Nino.css has' ],
 	'an alignment of the text that is a number'	=> [ 'section', 'text', 0, 'the text of block %d is none that Nino.css has' ],
-	'an alignment of a column that is a list'		=> [ 'column', 'text', [ 'left' ], 'the text of column 1 of block %d is none that Nino.css has' ],
-	'an alignment of a column with a space'			=> [ 'column', 'text', 'left ', 'the text of column 1 of block %d is none that Nino.css has' ],
+	'an alignment of a column that is a list'		=> [ 'column', 'text', [ 'left' ], 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column that is null'		=> [ 'column', 'text', null, 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column that is one word'		=> [ 'column', 'text', 'left', 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column with a space'			=> [ 'column', 'text', [ 's' => 'left ', 'm' => 'left ', 'l' => 'left ' ], 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column that lacks a viewport'	=> [ 'column', 'text', [ 's' => 'left', 'm' => 'left' ], 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column with a fourth viewport'	=> [ 'column', 'text', [ 's' => 'left', 'm' => 'left', 'l' => 'left', 'xl' => 'left' ], 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column that takes tablet back'	=> [ 'column', 'text', [ 's' => 'center', 'm' => '', 'l' => '' ], 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
+	'an alignment of a column that takes desktop back'	=> [ 'column', 'text', [ 's' => '', 'm' => 'left', 'l' => '' ], 'the text of column 1 of block %d is none that a class of Nino.css says for the three viewports' ],
 	'an alignment of a stack that is none'			=> [ 'column', 'stackAlign', 'middle', 'the stackAlign of column 1 of block %d is none that Nino.css has' ],
 ];
 $wordRefused	= [];
@@ -3363,10 +3423,17 @@ foreach( [ 0, 3 ] as $at )
 		else
 			$model['blocks'][$at]['cols'][0][$key] = $value;
 
-		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+		// An exception of the Writer is a refusal that was not made: it is a failed case, and not the end of the suite
+		try {
+			$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+			$source = \Nino\Modules\Builder\Document::source( $appData, $model );
+		} catch( \Throwable $thrown ) {
+			$wordRefused[] = $what. ' of block '. ( $at + 1 ). ' (thrown: '. $thrown->getMessage(). ')';
+			continue;
+		}
 
 		if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ sprintf( $sentence, $at + 1 ) ]
-			|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+			|| $source['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
 			$wordRefused[] = $what. ' of block '. ( $at + 1 );
 	}
 
@@ -3401,7 +3468,6 @@ foreach( [
 	[ 'section', 'contentPos', [ 'top', 'bottom' ], 'nino-cover-%s' ],
 	[ 'section', 'whitespace', [ 'least', 'less', 'more', 'most' ], 'nino-whitespace--%s' ],
 	[ 'section', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
-	[ 'column', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
 	[ 'column', 'stackAlign', [ 'start', 'center', 'end' ], 'nino-stack-%s' ],
 ] as [ $owner, $key, $words, $class ] )
 	foreach( $words as $word ) {
@@ -3424,6 +3490,14 @@ check( 'the vocabularies the Reader keeps are the words the Builder writes, no m
 	&& \Nino\Modules\Builder\Reader::CONTENT_POS === [ 'top', 'bottom' ] && \Nino\Modules\Builder\Reader::WHITESPACE === [ 'least', 'less', 'more', 'most' ] && \Nino\Modules\Builder\Reader::TEXT === [ 'left', 'center', 'right' ]
 	&& \Nino\Modules\Builder\Reader::STACK_ALIGN === [ 'start', 'center', 'end' ] );
 check( '...and every word the Reader keeps in a setting of its own is none of that: the source view writes it as the class it is read from'. ( $wordWrong === [] ? '' : ' - '. implode( ', ', $wordWrong ) ), $wordWrong === [] );
+
+// The alignment of the text of a column for each viewport: said in the model, it is the classes of the source view and of a save
+$textModel = $loaded['model'];
+$textModel['blocks'][0]['cols'][0]['text'] = [ 's' => 'center', 'm' => 'left', 'l' => 'left' ];
+$textSource = \Nino\Modules\Builder\Document::source( $appData, $textModel );
+$textBack = $textSource['status'] === 200 ? $read( $textSource['parts'][1]['source'] ) : [ 'blocks' => [] ];
+check( 'the alignment of the text of a column for each viewport is written by the source view as nino-text-center nino-text-m-left, and the source reads back as the model it was written from',
+	$textSource['status'] === 200 && preg_match( '/<div class="[^"]*\bnino-text-center nino-text-m-left\b[^"]*">/', $textSource['parts'][1]['source'] ) === 1 && ( $textBack['blocks'][0]['cols'][0]['text'] ?? null ) === [ 's' => 'center', 'm' => 'left', 'l' => 'left' ] );
 
 // The padding of a row on each side is a step of the space scale or none, as the padding and the margins of a column are: a step too far, a word, a number where the model has the step as text, a switch, a list
 $stepBad		= [ 'a step too far' => '7', 'two digits' => '10', 'a word' => 'big', 'a step with a space' => '1 ', 'a number' => 3, 'a switch' => true, 'a list' => [ '1' ], 'an empty list' => [] ];

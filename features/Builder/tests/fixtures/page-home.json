@@ -76,7 +76,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "left",
+                    "text": {
+                        "s": "left",
+                        "m": "left",
+                        "l": "left"
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -220,7 +224,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -291,7 +299,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",
@@ -481,7 +493,11 @@
                     "linked": false,
                     "radius": "",
                     "background": null,
-                    "text": "",
+                    "text": {
+                        "s": "",
+                        "m": "",
+                        "l": ""
+                    },
                     "stackAlign": "",
                     "stackGap": "",
                     "mt": "",

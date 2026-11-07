@@ -1547,7 +1547,7 @@
                 "width": {
                     "type": "string",
                     "label": "Slide width",
-                    "hint": "In percent of the slider or in pixels: 60% or 320px.",
+                    "hint": "In percent of the slider or in pixels: 60%, 320px or 320.",
                     "default": "75%"
                 },
                 "min": {

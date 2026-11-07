@@ -225,7 +225,14 @@ namespace Nino\Modules\Builder {
 	 *											  background null|map  as that of a section: slot, focus, create; the
 	 *											            div.nino-grid-bg, the first thing in the column - before its
 	 *											            components, a loop among them
-	 *											  text      ''|left|center|right
+	 *											  text      map     s, m, l: ''|left|center|right, what each viewport ends up with, mobile first like the width: nino-text-<x> is s and holds in
+	 *											                    every viewport, nino-text-m-<x> is m from tablet up and nino-text-l-<x> is l from desktop up; a viewport without a class of its own has
+	 *											                    the one before it. A column is written nino-text-<s> nino-text-m-<m> nino-text-l-<l>, each only where it differs from the viewport before
+	 *											                    it, so that nino-text-center is {center, center, center} and reads and writes the same. None is said only where the viewport before it
+	 *											                    has none: no class takes an alignment back, and a map that would need one is refused by the Document. The first class of a viewport is the
+	 *											                    setting, a second one is a class of its own; nino-text-s-<x> and nino-text-xl-<x> are none of the three viewports and stay custom classes. A
+	 *											                    stage that says what the one before it says is not written: nino-text-center nino-text-m-center is read as {center, center, center} and written
+	 *											                    nino-text-center
 	 *											  stackAlign ''|start|center|end   nino-stack-<x>: where the components of the column stand, up and down
 	 *											  stackGap  ''|0..6                nino-stack-gap-<n>: the gap between the components of the column. Both are the column's, whatever it holds
 	 *											  mt mb pt pb pl pr ''|0..6        the six sides of the spacing of the column, read and written as those of a section: nino-mt-<n> to nino-pr-<n>,
@@ -480,7 +487,50 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'linked' => false, 'radius' => '', 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'linked' => false, 'radius' => '', 'background' => null, 'text' => [ 's' => '', 'm' => '', 'l' => '' ], 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+		}
+
+		/**
+		 *	The alignment of the text of a column as the three viewports have it, mobile first like the width: a viewport that says nothing has the one before it, and the first
+		 *	has none. $said holds the stages a class said (s for nino-text-<x>, m for nino-text-m-<x>, l for nino-text-l-<x>)
+		 *
+		 *	@param		array			$said					Stage => ''|left|center|right, any of the three
+		 *
+		 *	@return 	array										s, m, l => ''|left|center|right
+		 */
+		public static function textStages( array $said ): array {
+
+			$text = [ 's' => (string) ( $said['s'] ?? '' ) ];
+			$text['m'] = (string) ( $said['m'] ?? $text['s'] );
+			$text['l'] = (string) ( $said['l'] ?? $text['m'] );
+
+			return $text;
+		}
+
+		/**
+		 *	Whether a value is an alignment of the text of a column that a class can say: a map of the three viewports, each a word of Nino.css or none, and none only
+		 *	where the viewport before it has none as well - there is no class that takes an alignment back
+		 *
+		 *	@param		mixed			$text
+		 *
+		 *	@return 	bool
+		 */
+		public static function textSayable( mixed $text ): bool {
+
+			if( is_array( $text ) === false || count( $text ) !== count( self::VIEWPORTS ) )
+				return false;
+
+			$before = '';
+
+			foreach( self::VIEWPORTS as $viewport ) {
+
+				if( is_string( $text[$viewport] ?? null ) === false || in_array( $text[$viewport], array_merge( [ '' ], self::TEXT ), true ) === false || ( $text[$viewport] === '' && $before !== '' ) )
+					return false;
+
+				$before = $text[$viewport];
+			}
+
+			return true;
 		}
 
 		/**
@@ -2347,6 +2397,8 @@ namespace Nino\Modules\Builder {
 			// the column, a second one for a viewport is kept as a class of its own
 			$base		= null;
 			$widths	= [];
+			// The alignment of the text is read the same way: nino-text-<x> is mobile, nino-text-m-<x> and nino-text-l-<x> their viewports up
+			$aligns	= [];
 
 			foreach( $tokens as $token ) {
 
@@ -2388,8 +2440,8 @@ namespace Nino\Modules\Builder {
 					$col['stackAlign'] = $m[1];
 				elseif( preg_match( '/^nino-stack-gap-([0-6])$/D', $token, $m ) === 1 && $col['stackGap'] === '' )
 					$col['stackGap'] = $m[1];
-				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 && $col['text'] === '' )
-					$col['text'] = $m[1];
+				elseif( preg_match( '/^nino-text-(?:(m|l)-)?('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 && isset( $aligns[$m[1] === '' ? 's' : $m[1]] ) === false )
+					$aligns[$m[1] === '' ? 's' : $m[1]] = $m[2];
 				elseif( self::_animation( $token, $col ) === false )
 					$custom[] = $token;
 			}
@@ -2402,6 +2454,7 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'col-width', '', $pos );
 
 			$col['width'] = $width;
+			$col['text'] = self::textStages( $aligns );
 
 			self::_animationAttributes( $attributes, $col, $pos );
 

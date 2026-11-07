@@ -540,8 +540,19 @@ namespace Nino\Modules\Builder {
 			if( (string) $col['stackGap'] !== '' )
 				$class[] = 'nino-stack-gap-'. $col['stackGap'];
 
-			if( (string) $col['text'] !== '' )
-				$class[] = 'nino-text-'. $col['text'];
+			// The alignment of the text, one class for the viewport it starts in and one for each viewport that differs from the one before it
+			if( Reader::textSayable( $col['text'] ) === false )
+				throw new \UnexpectedValueException( 'The alignment of the text of a column is none that a class can say.' );
+
+			$before = '';
+
+			foreach( Reader::VIEWPORTS as $viewport ) {
+
+				if( $col['text'][$viewport] !== $before )
+					$class[] = 'nino-text-'. ( $viewport === 's' ? '' : $viewport. '-' ). $col['text'][$viewport];
+
+				$before = $col['text'][$viewport];
+			}
 
 			// The six sides of the spacing, as a section has them
 			$class = array_merge( $class, self::_spacing( $col, true ) );
