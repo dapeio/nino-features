@@ -1,0 +1,54 @@
+/*	@name			Pills
+ *	@description	The open tab is a surface, rounded all round, and there is no line: a bar of tabs that reads as buttons.
+ *	@description-de	Der offene Tab ist eine Fläche, ringsum gerundet, und es gibt keine Linie: eine Leiste, die wie Schaltflächen liest.
+ *
+ *	@knob	scale		Type size of the tabs
+ *	@knob	space		Space inside a tab
+ *	@knob	active		Colour of the text of the open tab
+ *
+ *	The bar has no rule under it and the open tab none under itself. What shows
+ *	which one is open is its ground: the ink of the page on the ground the group
+ *	stands on, mixed into that ground by an eighth, so that it is a tint of the
+ *	pair the palette solved on every ground - light, alt, dark or brand - and the
+ *	text on it stays legible. The tab is round at its whole edge, a pill.
+ *
+ *	The ladders are the ones tabs regular declares and say what they are: the
+ *	scale and the space as there, the space half the padding across. The line
+ *	is no knob here, since there is no line. The open tab is written in the ink
+ *	of the page, which is the tone this set gives the ink of the open tab: the
+ *	accent is a tone for a line, and on a tint of the ink it is a colour the
+ *	ground does not promise.
+ */
+
+:root {
+	--tabs-scale--least: 		.8;
+	--tabs-scale--less: 		.9;
+	--tabs-scale--default: 		1;
+	--tabs-scale--more: 		1.15;
+	--tabs-scale--most: 		1.3;
+
+	--tabs-space--least: 		calc( var(--space-1) * .4 );
+	--tabs-space--less: 		calc( var(--space-1) * .7 );
+	--tabs-space--default: 		var(--space-1);
+	--tabs-space--more: 		calc( var(--space-1) * 1.5 );
+	--tabs-space--most: 		calc( var(--space-1) * 2.2 );
+}
+
+/*	The ink of the open tab, on every element (see tabs regular): the ink of the ground	*/
+:root, :root * {
+	--tabs-active--default: 	var(--color-ink);
+}
+
+.nino-tabs-nav {
+	font-size: calc( 1em * var(--tabs-scale) );
+	border-bottom-width: 0;
+}
+.nino-tabs-tab {
+	padding: var(--tabs-space) calc( var(--tabs-space) * 2 );
+	border-bottom-width: 0;
+	border-radius: 999px;
+}
+.nino-tabs-tab.nino-is-active {
+	background-color: color-mix( in srgb, var(--color-ink) 12%, var(--color-ground) );
+	color: var(--tabs-active);
+}

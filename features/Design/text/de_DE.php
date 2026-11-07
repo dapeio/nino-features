@@ -15,7 +15,7 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Vorversion wiederherstellen',
 	'[[/_admin/design/label/state]]'								=> 'Angewendete Datei',
 
-	// Die sechs Aspekte des Designs, die Blöcke unter einem Objekt, und die zehn Objekte, die Reiter oben (die Features, die Varianten mitbringen, heißen nach sich selbst)
+	// Die sechs Aspekte des Designs, die Blöcke unter einem Objekt, und die zwölf Objekte, die Reiter oben (die Features, die Varianten mitbringen, heißen nach sich selbst)
 	'[[/_admin/design/tab/templates/label]]'						=> 'Grundlage',
 	'[[/_admin/design/tab/type/label]]'								=> 'Text',
 	'[[/_admin/design/tab/surfaces/label]]'							=> 'Fläche',
@@ -32,6 +32,8 @@ return [
 	'[[/_admin/design/object/lists/label]]'							=> 'Listen',
 	'[[/_admin/design/object/tables/label]]'							=> 'Tabellen',
 	'[[/_admin/design/object/forms/label]]'							=> 'Formular',
+	'[[/_admin/design/object/tabs/label]]'							=> 'Tabs',
+	'[[/_admin/design/object/accordion/label]]'							=> 'Accordion',
 
 	// Die Themes: die Liste mit einer Zeile je Theme, ihren Knöpfen und dem Import – und was ein Theme von sich sagt. Das eigene CSS eines Themes ist die Ansicht CSS des Setups
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
@@ -82,6 +84,8 @@ return [
 	'[[/_admin/design/part/lists]]'							=> 'Vorlage Listen',
 	'[[/_admin/design/part/tables]]'							=> 'Vorlage Tabellen',
 	'[[/_admin/design/part/forms]]'							=> 'Vorlage Formular',
+	'[[/_admin/design/part/tabs]]'							=> 'Vorlage Tabs',
+	'[[/_admin/design/part/accordion]]'							=> 'Vorlage Accordion',
 	'[[/_admin/design/label/size]]'								=> 'Grundgröße',
 	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Breite',
@@ -449,6 +453,31 @@ return [
 	'[[/_admin/design/knob/forms/label/note]]'							=> 'die Farbe der Wörter einer Beschriftung',
 	'[[/_admin/design/knob/forms/label-case/label]]'							=> 'Beschriftungen, Großbuchstaben',
 	'[[/_admin/design/knob/forms/label-case/note]]'							=> 'Großbuchstaben an oder aus',
+
+	'[[/_admin/design/knob/tabs/scale/label]]'							=> 'Textgröße',
+	'[[/_admin/design/knob/tabs/scale/note]]'							=> 'kleiner ↔ größer',
+	'[[/_admin/design/knob/tabs/space/label]]'							=> 'Abstand',
+	'[[/_admin/design/knob/tabs/space/note]]'							=> 'enger ↔ weiter',
+	'[[/_admin/design/knob/tabs/line/label]]'							=> 'Linien',
+	'[[/_admin/design/knob/tabs/line/note]]'							=> 'keine ↔ dick',
+	'[[/_admin/design/knob/tabs/active/label]]'							=> 'Farbe des offenen Tabs',
+	'[[/_admin/design/knob/tabs/active/note]]'							=> 'die Farbe des Tabs, der offen ist',
+
+	'[[/_admin/design/knob/accordion/scale/label]]'							=> 'Textgröße',
+	'[[/_admin/design/knob/accordion/scale/note]]'							=> 'kleiner ↔ größer',
+	'[[/_admin/design/knob/accordion/space/label]]'							=> 'Abstand',
+	'[[/_admin/design/knob/accordion/space/note]]'							=> 'enger ↔ weiter',
+	'[[/_admin/design/knob/accordion/line/label]]'							=> 'Linien',
+	'[[/_admin/design/knob/accordion/line/note]]'							=> 'keine ↔ dick',
+	'[[/_admin/design/knob/accordion/marker/label]]'							=> 'Zeichen',
+	'[[/_admin/design/knob/accordion/marker/note]]'							=> 'das Zeichen vor einem Titel',
+	'[[/_admin/design/knob/accordion/marker/less]]'							=> 'Keines',
+	'[[/_admin/design/knob/accordion/marker/default]]'							=> 'Plus',
+	'[[/_admin/design/knob/accordion/marker/more]]'							=> 'Pfeil',
+	'[[/_admin/design/knob/accordion/marker-ink/label]]'							=> 'Zeichenfarbe',
+	'[[/_admin/design/knob/accordion/marker-ink/note]]'							=> 'die Farbe des Zeichens vor einem Titel',
+	'[[/_admin/design/knob/accordion/weight/label]]'							=> 'Titel, normales Gewicht',
+	'[[/_admin/design/knob/accordion/weight/note]]'							=> 'normales Gewicht an oder aus',
 
 	// Was der Dialog vor dem Anwenden sagt, eine Zeile je Tatsache in Worten – im Skript des Panels gebaut und mit Zeilenumbrüchen verbunden, deshalb trägt hier kein Wert einen.
 	// Die Dateien selbst, mit ihren Pfaden, stehen in den Details darunter

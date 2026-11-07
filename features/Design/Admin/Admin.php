@@ -24,7 +24,7 @@ namespace Nino\Modules\Design {
 	 *										row - and, reached by Edit on a row and left by Back to list,
 	 *										the setup by its objects, over the same preview and bar -
 	 *										a tab for each object - the page, the header, the footer, a section, a
-	 *										card, the buttons, the lists and the tables, and each feature that brings
+	 *										card, the buttons, the lists, the tables, the forms, the tabs and the accordion, and each feature that brings
 	 *										variants - and under it a block for each aspect the object has a control
 	 *										on: Base, the choice of a set - and under it a select
 	 *										for each style the set brings (see Setup::styles()); Text, Surface, Colour
@@ -299,7 +299,7 @@ namespace Nino\Modules\Design {
 					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
-				// Where the panel puts what it sets: the six aspects, the nine objects - and one more for each feature that
+				// Where the panel puts what it sets: the six aspects, the twelve objects - and one more for each feature that
 				// brings variants - and the table that says, for every control of the setup, its aspect, its object and its place
 				// in the row, the rows of the features among them - the screen draws an object from it and from nothing else
 				'layout' 	=> [ 'tabs' => Setup::TABS, 'objects' => Setup::objects( $appData ), 'controls' => Setup::layout( $appData ) ],
@@ -714,7 +714,7 @@ namespace Nino\Modules\Design {
 			$css 			= Preview::css( $appData, $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );
 			$document = '';
 
-			/*	Seven of the nine parts are a stylesheet and nothing else, and so
+			/*	Nine of the eleven parts are a stylesheet and nothing else, and so
 				are the knobs, the size, the width, the animation, the hover of the
 				pictures, the fonts and the palette: for those the screen swaps
 				one <style> inside the frame it already has, and neither the

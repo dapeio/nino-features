@@ -19,14 +19,14 @@ namespace Nino\Modules\Design {
 	 *										here that cannot be worked out again from what is on disk.
 	 *
 	 *										One model for the panel (the loader of the typefaces installs
-	 *										families and keeps nothing here): the nine
+	 *										families and keeps nothing here): the eleven
 	 *										templates (header and footer bring markup and a stylesheet,
-	 *										section, tiles, card, buttons, lists, tables and forms are one stylesheet
+	 *										section, tiles, card, buttons, lists, tables, forms, tabs and accordion are one stylesheet
 	 *										each), the root size, the width and the whitespace of the
 	 *										page, the radius of its surfaces - two strengths and, for
 	 *										each kind of surface, the one it takes -, its animation and
 	 *										the hover of its pictures, a position for every named knob
-	 *										of the nine templates, the five font roles and the
+	 *										of the eleven templates, the five font roles and the
 	 *										palette - and, for the list of the themes and the view CSS,
 	 *										the slug of the theme these choices were taken from and
 	 *										the custom css that goes with them (see Themes: a theme is
@@ -104,8 +104,10 @@ namespace Nino\Modules\Design {
 			calls Content; the tiles the other kind, a section of tiles, its tiles and what is on them; the card a card and the parts of it; the
 			buttons .nino-btn and its variants; the lists .nino-list and its two markers; the
 			tables .nino-table, its cells, its lines and its stripes; the forms the fields of a
-			form, their labels, the status line, the checkbox and the radio group. The blocks -
-			badge, alert, pricing table, accordion and timeline - are no part: the kernel draws
+			form, their labels, the status line, the checkbox and the radio group; the tabs the
+			bar of a group of tabs, a tab, the one that is open and the panels, and the accordion
+			the group of entries, an entry, its title with the sign in front of it and its panel.
+			The blocks - badge, alert, pricing table and timeline - are no part: the kernel draws
 			them, until the features that bring blocks bring their own. The kernel draws a form
 			as well - Nino.css holds the rules and the defaults of the properties --forms-* -, and
 			the sets of the forms are the ladders of those properties and the looks they make.
@@ -119,7 +121,11 @@ namespace Nino\Modules\Design {
 			sensible pair and a person can still mix them. The tables are what is left of the components set, whose
 			fields and blocks the kernel draws now: its table rules, five sets of them. The forms
 			are the ninth part, four sets of them, which declare no rule of their own: the rules
-			are the kernel's, and a set says what the properties they read are	*/
+			are the kernel's, and a set says what the properties they read are. The tabs and the
+			accordion are the tenth and the eleventh, two sets each, and are made the way the lists
+			and the tables are: a set carries rules of its own over the selectors of the kernel
+			(.nino-tabs-tab, .nino-accordion-trigger ...) beside its ladders, the middle of every
+			ladder is what Nino.css draws, and Nino.css itself says nothing of them	*/
 		public const array PARTS = [
 			'header' 			=> 'frame',
 			'footer' 			=> 'frame',
@@ -130,6 +136,8 @@ namespace Nino\Modules\Design {
 			'lists' 			=> 'set',
 			'tables' 			=> 'set',
 			'forms' 			=> 'set',
+			'tabs' 				=> 'set',
+			'accordion' 		=> 'set',
 		];
 
 		/*	What a knob can be set to, as the words a stylesheet declares its values
@@ -248,7 +256,17 @@ namespace Nino\Modules\Design {
 							labels				where the label of a field stands: beside it, above it or floating on its edge (a choice)
 							edge				the colour of the lines of a field (an ink)
 							label				the colour of the labels (an ink)
-							label-case			the labels in capitals (a toggle)	*/
+							label-case			the labels in capitals (a toggle)
+				tabs		scale				the type size of the tabs
+							space				the padding of a tab
+							line				the weight of the line under the bar and under the open tab
+							active				the colour of the open tab (an ink)
+				accordion	scale				the type size of the entries
+							space				the padding of a title and the room under an open entry
+							line				the weight of the line of an entry
+							marker				the sign in front of a title: none, a plus and a minus, or an arrow (a choice)
+							marker-ink			the colour of that sign (an ink)
+							weight				the titles in the weight of the text instead of bold (a toggle)	*/
 		public const array KNOBS = [
 			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
@@ -259,13 +277,15 @@ namespace Nino\Modules\Design {
 			'lists' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'marker' => 'choice' ],
 			'tables' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'stripes' => 'scale' ],
 			'forms' 		=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'line' => 'scale', 'labels' => 'choice', 'edge' => 'ink', 'label' => 'ink', 'label-case' => 'toggle' ],
+			'tabs' 			=> [ 'scale' => 'scale', 'space' => 'scale', 'line' => 'scale', 'active' => 'ink' ],
+			'accordion' 	=> [ 'scale' => 'scale', 'space' => 'scale', 'line' => 'scale', 'marker' => 'choice', 'marker-ink' => 'ink', 'weight' => 'toggle' ],
 		];
 
 		/*	The setup in two axes. A tab is a property of the design - the templates, the type,
 			the surfaces, the colours, the motion, and the css of the theme - and an object is what
 			a property is set on: the page, the header, the footer, a section, a card, the buttons,
-			the lists, the tables and the forms. TABS are the six views of the panel's setup screen, in the
-			order they are shown in, and OBJECTS the nine objects in the order their rows follow one
+			the lists, the tables, the forms, the tabs and the accordion. TABS are the six views of the panel's setup screen, in the
+			order they are shown in, and OBJECTS the twelve objects in the order their rows follow one
 			another on a view that draws rows, which is every view but the last: the templates, the
 			type, the surfaces, the colours and the motion, each an accordion of one block for each
 			object that has a control on it - the css is one field with no object. The themes and the
@@ -274,13 +294,13 @@ namespace Nino\Modules\Design {
 			objects are /_admin/design/tab/<tab>/label and /_admin/design/object/<object>/label.
 
 			Every part but the page has an object of its own, named as the part is: the header and
-			the footer, the section, the card, the buttons, the lists, the tables and the forms. The page is
+			the footer, the section, the card, the buttons, the lists, the tables, the forms, the tabs and the accordion. The page is
 			the one object that is no part - its controls are the root size, the width, the
 			whitespace, the radius, the five font roles, the palette, the animation and the
 			hover of the pictures	*/
 		public const array TABS = [ 'templates', 'type', 'surfaces', 'colours', 'motion', 'css' ];
 
-		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'tiles', 'card', 'buttons', 'lists', 'tables', 'forms' ];
+		public const array OBJECTS = [ 'page', 'header', 'footer', 'section', 'tiles', 'card', 'buttons', 'lists', 'tables', 'forms', 'tabs', 'accordion' ];
 
 		/*	Where every control of the panel stands, and the only place that says: one entry for
 			each thing the setup lets a person choose, keyed by where the choice is kept in it -
@@ -292,9 +312,9 @@ namespace Nino\Modules\Design {
 			stand at one place are one control: the cover, the row and the column of a section
 			take the strength of their corners from one choice, and the second colour is the
 			swatch at the end of the row of Harmony. An object with no control on a tab has no
-			row there. Every entry names one of OBJECTS: the nine templates stand under the
+			row there. Every entry names one of OBJECTS: the eleven templates stand under the
 			object each is the template of - the header, the footer, the section, the tiles, the card, the
-			buttons, the lists, the tables and the forms -, and the knobs under the object of their part,
+			buttons, the lists, the tables, the forms, the tabs and the accordion -, and the knobs under the object of their part,
 			the frames' among them: a header and a footer have a ladder each for their type, their
 			surfaces and their ground. The colours and the motion are the page's palette, its
 			animation and the hover of its pictures, and each object that has a ladder of colour
@@ -308,7 +328,7 @@ namespace Nino\Modules\Design {
 			Nothing is stored under a place: a setup, and a theme file, keep every choice by
 			its key, as before	*/
 		public const array LAYOUT = [
-			// The templates: the choice of a set for each of the nine parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled -, and how a section and a card stand on the page: where their words are and how wide the column of a section is
+			// The templates: the choice of a set for each of the eleven parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled -, and how a section and a card stand on the page: where their words are and how wide the column of a section is
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
 			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
 			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
@@ -325,8 +345,10 @@ namespace Nino\Modules\Design {
 			'parts/lists' 							=> [ 'templates', 'lists', 1 ],
 			'parts/tables' 						=> [ 'templates', 'tables', 1 ],
 			'parts/forms' 							=> [ 'templates', 'forms', 1 ],
+			'parts/tabs' 							=> [ 'templates', 'tabs', 1 ],
+			'parts/accordion' 						=> [ 'templates', 'accordion', 1 ],
 
-			// The type: the root size and the five roles are the page's; the size of the links of the header, the type of the footer, the sizes of the titles and the type of a list and of a table are the object's own, and so is the case of a thing, a switch under the sizes of its object
+			// The type: the root size and the five roles are the page's; the size of the links of the header, the type of the footer, the sizes of the titles and the type of a list, of a table, of the tabs and of the accordion are the object's own, and so is the case of a thing and the weight of a title, a switch under the sizes of its object
 			'size' 									=> [ 'type', 'page', 1 ],
 			'fonts/title' 							=> [ 'type', 'page', 2 ],
 			'fonts/subtitle' 						=> [ 'type', 'page', 3 ],
@@ -361,8 +383,11 @@ namespace Nino\Modules\Design {
 			'knobs/tables/scale' 					=> [ 'type', 'tables', 1 ],
 			'knobs/forms/scale' 					=> [ 'type', 'forms', 1 ],
 			'knobs/forms/label-case' 				=> [ 'type', 'forms', 2 ],
+			'knobs/tabs/scale' 						=> [ 'type', 'tabs', 1 ],
+			'knobs/accordion/scale' 				=> [ 'type', 'accordion', 1 ],
+			'knobs/accordion/weight' 				=> [ 'type', 'accordion', 2 ],
 
-			// The surfaces: the space, the corners, the lines and the shadows of each object, the height, the logo and the line of the frames - the shadow of the bar and the divider of the footer besides -, how long the rule under a section title is and the shadow of that title, and the marker of a list. The three kinds of a section share one place: they are one choice
+			// The surfaces: the space, the corners, the lines and the shadows of each object, the height, the logo and the line of the frames - the shadow of the bar and the divider of the footer besides -, how long the rule under a section title is and the shadow of that title, the marker of a list, and the space, the line and the sign of the tabs and the accordion. The three kinds of a section share one place: they are one choice
 			'width' 								=> [ 'surfaces', 'page', 1 ],
 			'whitespace' 							=> [ 'surfaces', 'page', 2 ],
 			'radius' 								=> [ 'surfaces', 'page', 3 ],
@@ -406,8 +431,13 @@ namespace Nino\Modules\Design {
 			'knobs/forms/corners' 					=> [ 'surfaces', 'forms', 2 ],
 			'knobs/forms/line' 						=> [ 'surfaces', 'forms', 3 ],
 			'knobs/forms/labels' 					=> [ 'surfaces', 'forms', 4 ],
+			'knobs/tabs/space' 						=> [ 'surfaces', 'tabs', 1 ],
+			'knobs/tabs/line' 						=> [ 'surfaces', 'tabs', 2 ],
+			'knobs/accordion/space' 				=> [ 'surfaces', 'accordion', 1 ],
+			'knobs/accordion/line' 					=> [ 'surfaces', 'accordion', 2 ],
+			'knobs/accordion/marker' 				=> [ 'surfaces', 'accordion', 3 ],
 
-			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming, the ground of the title and the colour of the rule of a section, the tone of the shadow and the ground of the title of a card, the stripes of a table; the forms have the colour of their lines and of their labels, and the titles and the subtitles of a section, of the tiles and of a card have their colour, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
+			// The colours: the palette is the page's, the frames have the ground of their bar and the colour of its line, and three objects have a ladder of colour of their own - the dimming, the ground of the title and the colour of the rule of a section, the tone of the shadow and the ground of the title of a card, the stripes of a table; the forms have the colour of their lines and of their labels, the tabs the colour of the open tab and the accordion that of its sign, and the titles and the subtitles of a section, of the tiles and of a card have their colour, which are inks. The second colour is the swatch at the end of the row of Harmony: one control
 			'colours/primary' 						=> [ 'colours', 'page', 1 ],
 			'colours/secondary' 					=> [ 'colours', 'page', 2 ],
 			'colours/harmony' 						=> [ 'colours', 'page', 2 ],
@@ -435,6 +465,8 @@ namespace Nino\Modules\Design {
 			'knobs/tables/stripes' 					=> [ 'colours', 'tables', 1 ],
 			'knobs/forms/edge' 						=> [ 'colours', 'forms', 1 ],
 			'knobs/forms/label' 					=> [ 'colours', 'forms', 2 ],
+			'knobs/tabs/active' 					=> [ 'colours', 'tabs', 1 ],
+			'knobs/accordion/marker-ink' 			=> [ 'colours', 'accordion', 1 ],
 
 			// The motion: the animation of the page and the hover of its pictures, and what a card and a button do under the pointer
 			'motion/effect' 						=> [ 'motion', 'page', 1 ],
@@ -1762,7 +1794,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The objects the blocks of the panel are of: the nine of OBJECTS and, after the forms, one for each feature
+		 *	The objects the blocks of the panel are of: the twelve of OBJECTS and, after the accordion, one for each feature
 		 *	that brings variants, in the order of the catalogue
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data

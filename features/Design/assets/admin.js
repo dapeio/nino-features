@@ -22,13 +22,13 @@
  *													project, stands in the action bar while the views are open.
  *													The views draw the setup in two axes, the objects it is set on and the aspects of the design,
  *													and the objects come first: on top, a strip of tabs with the page, the header, the footer,
- *													a section, a card, the buttons, the lists and the tables and, after them, each feature that
+ *													a section, a card, the buttons, the lists, the tables, the form, the tabs and the accordion and, after them, each feature that
  *													brings variants under its name - below 64rem, the width where the rail of the workbench
  *													gives its links up for a select, the same choice is a select - and under it the aspects of the
  *													object that is open, an accordion of one open block: Base, Text, Surface, Colour and
  *													Motion, and for the page CSS as well, in that order and only those the object has a
  *													control on. Base has the choice of the set of the part of the object - the header, the
- *													footer, the section, the card, the buttons, the lists or the tables - with its name, its
+ *													footer, the section, the card, the buttons, the lists, the tables, the form, the tabs or the accordion - with its name, its
  *													description and the word of the one chosen, under it a select for each style the template brings -
  *													"None" first, then the css files that stand beside the template, each under its name, and the
  *													description of the one chosen under it - and the strips the table puts there, such as the position and the
@@ -120,13 +120,13 @@
 			change of one control is looked at, by the object it stands under (see Setup::OBJECTS): the page at the
 			top of it (#global) - the root size and the roles of the fonts as much as the width, the corners and the
 			animation -, a header at the top of it and a footer at its foot (#footer, the id the page has at its end), a section in the first section of the
-			page, which the hero is (#content), the tiles in their own section (#tiles), a card in the cards (#cards), the buttons in their block and the lists
-			and the tables in theirs (#lists, #tables). An aspect has none: opening one moves nothing, the object is what is looked
+			page, which the hero is (#content), the tiles in their own section (#tiles), a card in the cards (#cards), the buttons in their block, the lists and
+			the tables in theirs (#lists, #tables), and the tabs and the accordion in the sections of their own (#tabs, #accordion). An aspect has none: opening one moves nothing, the object is what is looked
 			at. A control with an entry of its own (CONTROL_ANCHORS) goes there. A feature is looked at in the block it brings to the
 			specimen (its `anchor`, see _anchorOf()), and at the top of the page where it has none. The page has an id at its end,
 			footer, which only the footer is looked at in. The list of the themes has an anchor of its own, THEMES_ANCHOR. The maps are
 			told together in the docblock of _jump()	*/
-		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', tiles : 'tiles', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables', forms : 'forms' },
+		OBJECT_ANCHORS	: { page : 'global', header : 'global', footer : 'footer', section : 'content', tiles : 'tiles', card : 'cards', buttons : 'buttons', lists : 'lists', tables : 'tables', forms : 'forms', tabs : 'tabs', accordion : 'accordion' },
 
 		/*	The controls that are looked at elsewhere than their object is, by the key the table has them under: the
 			eight controls of the palette, which are the page's and are looked at in the grounds (#colours), where the
@@ -414,6 +414,15 @@
 			'forms/labels' : 'move-horizontal',
 			'forms/edge' : 'palette',
 			'forms/label' : 'palette',
+			'tabs/scale' : 'a-large-small',
+			'tabs/space' : 'align-vertical-space-around',
+			'tabs/line' : 'minus',
+			'tabs/active' : 'palette',
+			'accordion/scale' : 'a-large-small',
+			'accordion/space' : 'align-vertical-space-around',
+			'accordion/line' : 'minus',
+			'accordion/marker' : 'list',
+			'accordion/marker-ink' : 'palette',
 			'colours/primary' : 'palette',
 			'colours/harmony' : 'palette',
 			'colours/temperature' : 'thermometer',
@@ -3044,7 +3053,7 @@
 		 *	Scroll the page in the frame to where the open object is looked at, smoothly.
 		 *
 		 *	The specimen is one page with an element for each place the panel looks at (ids global,
-		 *	content, cards, buttons, lists, tables, forms, colours and, at its end, footer - see OBJECT_ANCHORS), and
+		 *	content, cards, buttons, lists, tables, forms, tabs, accordion, colours and, at its end, footer - see OBJECT_ANCHORS), and
 		 *	the frame is the page of this very origin: the panel scrolls the
 		 *	frame's own window by hand, which needs neither a message to the page
 		 *	nor a hash it would have to read. Done after an object is opened and after

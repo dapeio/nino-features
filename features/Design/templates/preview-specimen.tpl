@@ -437,9 +437,71 @@
 	</div>
 </section>
 
+<section id="tabs" class="nino-section" aria-label="Tabs">
+	<div class="nino-grid-row">
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Tabs</h2></div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<div class="nino-tabs" id="specimen-tabs">
+				<nav class="nino-tabs-nav">
+					<button type="button" class="nino-tabs-tab nino-is-active" data-tabs-target="specimen-tabs-1">Overview</button>
+					<button type="button" class="nino-tabs-tab" data-tabs-target="specimen-tabs-2">Details</button>
+					<button type="button" class="nino-tabs-tab" data-tabs-target="specimen-tabs-3">Prices</button>
+				</nav>
+				<div class="nino-tabs-panel nino-is-active" id="specimen-tabs-1"><p>One group of tabs, and the first panel open. [[short]]</p></div>
+				<div class="nino-tabs-panel" id="specimen-tabs-2" hidden><p>The second panel, shown when its tab is pressed.</p></div>
+				<div class="nino-tabs-panel" id="specimen-tabs-3" hidden><p>And the third.</p></div>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3 nino-grid--dark">
+			<div class="nino-tabs" id="specimen-tabs-dark">
+				<nav class="nino-tabs-nav">
+					<button type="button" class="nino-tabs-tab nino-is-active" data-tabs-target="specimen-tabs-dark-1">On a dark ground</button>
+					<button type="button" class="nino-tabs-tab" data-tabs-target="specimen-tabs-dark-2">Second</button>
+				</nav>
+				<div class="nino-tabs-panel nino-is-active" id="specimen-tabs-dark-1"><p>The open tab takes the colours of the ground it stands on.</p></div>
+				<div class="nino-tabs-panel" id="specimen-tabs-dark-2" hidden><p>The second panel.</p></div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="accordion" class="nino-section nino-section--alt" aria-label="Accordion">
+	<div class="nino-grid-row">
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Accordion</h2></div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<div class="nino-accordion-group" id="specimen-accordion">
+				<details class="nino-accordion" name="specimen-faq" open>
+					<summary class="nino-accordion-trigger">What is included in the price?</summary>
+					<div class="nino-accordion-panel"><p>One question to a details element, and the answer under it.</p></div>
+				</details>
+				<details class="nino-accordion" name="specimen-faq">
+					<summary class="nino-accordion-trigger">How long does it take?</summary>
+					<div class="nino-accordion-panel"><p>The shared name keeps one answer open at a time.</p></div>
+				</details>
+				<details class="nino-accordion" name="specimen-faq">
+					<summary class="nino-accordion-trigger">Can I change it later?</summary>
+					<div class="nino-accordion-panel"><p>Yes. Everything on this page is a choice of the Design panel.</p></div>
+				</details>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3 nino-grid--dark">
+			<div class="nino-accordion-group">
+				<details class="nino-accordion" name="specimen-faq-dark" open>
+					<summary class="nino-accordion-trigger">On a dark ground</summary>
+					<div class="nino-accordion-panel"><p>The sign and the line take the colours of the ground they stand on.</p></div>
+				</details>
+				<details class="nino-accordion" name="specimen-faq-dark">
+					<summary class="nino-accordion-trigger">A second entry</summary>
+					<div class="nino-accordion-panel"><p>Closed until it is opened.</p></div>
+				</details>
+			</div>
+		</div>
+	</div>
+</section>
+
 <section class="nino-section nino-section--tint" aria-label="Blocks">
 	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Blocks</h2><p class="nino-section-subtitle">Pricing, figures, questions, badges, alerts and steps</p></div>
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Blocks</h2><p class="nino-section-subtitle">Pricing, figures, badges, alerts and steps</p></div>
 		<div class="nino-grid-100 nino-mb-3">
 			<div class="nino-pricing-row">
 				<div class="nino-pricing-item nino-vpa nino-vpa--repeat">
@@ -465,21 +527,7 @@
 		<div class="nino-grid-100 nino-grid-m-33 nino-text-center nino-mb-3 nino-vpa nino-vpa--repeat"><div class="nino-stat-counter" data-stat-counter-to="12" data-stat-counter-suffix="">12</div><p>Years</p></div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-text-center nino-mb-3 nino-vpa nino-vpa--repeat"><div class="nino-stat-counter" data-stat-counter-to="480" data-stat-counter-suffix="+">480+</div><p>Projects</p></div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-text-center nino-mb-3 nino-vpa nino-vpa--repeat"><div class="nino-stat-counter" data-stat-counter-to="99" data-stat-counter-suffix="%">99%</div><p>Kept</p></div>
-		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
-			<details class="nino-accordion" name="specimen-faq" open>
-				<summary class="nino-accordion-trigger">What is included in the price?</summary>
-				<div class="nino-accordion-panel"><p>One question to a details element, and the answer under it.</p></div>
-			</details>
-			<details class="nino-accordion" name="specimen-faq">
-				<summary class="nino-accordion-trigger">How long does it take?</summary>
-				<div class="nino-accordion-panel"><p>The shared name keeps one answer open at a time.</p></div>
-			</details>
-			<details class="nino-accordion" name="specimen-faq">
-				<summary class="nino-accordion-trigger">Can I change it later?</summary>
-				<div class="nino-accordion-panel"><p>Yes. Everything on this page is a choice of the Design panel.</p></div>
-			</details>
-		</div>
-		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+		<div class="nino-grid-100 nino-mb-3">
 			<p class="nino-badge-cloud nino-badge-cloud--left"><span class="nino-badge">plain</span> <span class="nino-badge nino-badge--primary">primary</span> <span class="nino-badge nino-badge--success">success</span> <span class="nino-badge nino-badge--error">error</span> <span class="nino-badge nino-badge--pill">pill</span></p>
 			<p class="nino-alert nino-mb-1">A neutral alert</p>
 			<p class="nino-alert nino-alert--info nino-mb-1">An alert in the accent colour</p>

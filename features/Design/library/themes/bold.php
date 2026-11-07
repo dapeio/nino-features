@@ -16,7 +16,7 @@ return [
 		'radius-alt'	=> -2,
 		'radii'		=> [ 'cover' => 'standard', 'row' => 'standard', 'column' => 'standard', 'tile' => 'standard', 'card' => 'standard', 'image' => 'standard' ],
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
-		'parts'		=> [ 'header' => 'pill-menu', 'footer' => 'two-panels', 'section' => 'panel', 'tiles' => 'regular', 'card' => 'box', 'buttons' => 'hard', 'lists' => 'regular', 'tables' => 'contrast', 'forms' => 'contrast' ],
+		'parts'		=> [ 'header' => 'pill-menu', 'footer' => 'two-panels', 'section' => 'panel', 'tiles' => 'regular', 'card' => 'box', 'buttons' => 'hard', 'lists' => 'regular', 'tables' => 'contrast', 'forms' => 'contrast', 'tabs' => 'pills', 'accordion' => 'boxed' ],
 		'knobs'		=> [
 			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'shadow' => 0, 'position' => 0, 'cta' => 1, 'behaviour' => 0, 'nav-case' => 0 ],
 			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'divider' => 0, 'position' => 0, 'nav-case' => 0 ],
@@ -27,6 +27,8 @@ return [
 			'lists' 		=> [ 'scale' => 0, 'space' => 0, 'marker' => 0 ],
 			'tables' 		=> [ 'scale' => 0, 'space' => 0, 'border' => 0, 'zebra' => 0, 'stripes' => 0 ],
 			'forms' 		=> [ 'scale' => 0, 'space' => 0, 'corners' => 0, 'line' => 0, 'labels' => 0, 'edge' => '', 'label' => '', 'label-case' => 0 ],
+			'tabs' 			=> [ 'scale' => 0, 'space' => 0, 'line' => 0, 'active' => '' ],
+			'accordion' 	=> [ 'scale' => 0, 'space' => 0, 'line' => 0, 'marker' => 0, 'marker-ink' => '', 'weight' => 0 ],
 		],
 		'styles'	=> [
 			'header' => [],
@@ -38,6 +40,8 @@ return [
 			'lists' => [],
 			'tables' => [],
 			'forms' => [],
+			'tabs' => [],
+			'accordion' => [],
 		],
 		'features'	=> [],
 		'fonts'		=> [

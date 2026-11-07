@@ -1,0 +1,88 @@
+/*	@name			Regular
+ *	@description	The framework as it is: the middle of every ladder. A line under the bar, and a line under the tab that is open.
+ *	@description-de	Das Framework, wie es ist: die Mitte jeder Leiter. Eine Linie unter der Leiste und eine unter dem offenen Tab.
+ *
+ *	@knob	scale		Type size of the tabs
+ *	@knob	space		Space inside a tab
+ *	@knob	line		Weight of the line under the bar and under the open tab
+ *	@knob	active		Colour of the open tab
+ *
+ *	Regular is the starting point, not a design. Every value it declares is the
+ *	framework's own, so a group of tabs under it looks as it does under Nino.css
+ *	alone - and every one of them is a ladder, so each knob has something to
+ *	reach: the five values of a scale, the middle of them Nino.css and the others
+ *	two steps to each side, and for an ink the tone Nino.css gives it.
+ *
+ *	Two rules for a set:
+ *
+ *	  - Only the classes of this template: the bar, its tabs, the tab that is
+ *	    open and the panels. A set of buttons does not touch a tab, however
+ *	    tempting.
+ *	  - Colours through the roles, never as literals. Nor the font: the face
+ *	    and the weight of the text are the roles of the type tab.
+ *
+ *	The size of the tabs is the size of the text round them, times the scale.
+ *	The space is half the padding of a tab across, and all of it above and
+ *	below - the proportion Nino.css has, which is one step and two. The line is
+ *	the weight of the rule under the bar; the rule under the open tab is a
+ *	ladder beside it, named after the knob and an aspect of it
+ *	(--tabs-line-open--less ...), as long as the knob's own: they move together,
+ *	the compiler selects every ladder of a knob where it stands. The colour of
+ *	the open tab is the text and the rule under it: an ink, written on every
+ *	element, so that on a dark section it is the accent of that section.
+ *
+ *	Nino.css has the classes the script and the markup use; a set changes how
+ *	they look and nothing of what they do. Copy this file under a name of your
+ *	own and start there.
+ */
+
+:root {
+	/*	The type size of the tabs is the size of the text around them, times this	*/
+	--tabs-scale--least: 		.8;
+	--tabs-scale--less: 		.9;
+	--tabs-scale--default: 		1;
+	--tabs-scale--more: 		1.15;
+	--tabs-scale--most: 		1.3;
+
+	/*	Half the padding of a tab across. A tab's space is finer than a card's, so the
+		steps are fractions of the middle and not steps of the scale	*/
+	--tabs-space--least: 		calc( var(--space-1) * .4 );
+	--tabs-space--less: 		calc( var(--space-1) * .7 );
+	--tabs-space--default: 		var(--space-1);
+	--tabs-space--more: 		calc( var(--space-1) * 1.5 );
+	--tabs-space--most: 		calc( var(--space-1) * 2.2 );
+
+	/*	The rule under the bar. The half pixel is a hairline where the screen can draw one, and 1px where it cannot	*/
+	--tabs-line--least: 		0px;
+	--tabs-line--less: 			.5px;
+	--tabs-line--default: 		1px;
+	--tabs-line--more: 			2px;
+	--tabs-line--most: 			3px;
+
+	/*	The rule under the open tab: twice the rule under the bar at the middle, as Nino.css has it	*/
+	--tabs-line-open--least: 	0px;
+	--tabs-line-open--less: 	1px;
+	--tabs-line-open--default: 	2px;
+	--tabs-line-open--more: 	3px;
+	--tabs-line-open--most: 	4px;
+}
+
+/*	The colour of the open tab is the accent of the ground it stands on, so the rung of the ink is declared on every element
+	(see Nino.css): the accent of the roles is the page's on :root, and on a dark section the tab would keep the one of a light
+	one. The rung is the tone this set gives; the knob selects it, or a tone of its own	*/
+:root, :root * {
+	--tabs-active--default: 	var(--color-accent);
+}
+
+.nino-tabs-nav {
+	font-size: calc( 1em * var(--tabs-scale) );
+	border-bottom-width: var(--tabs-line);
+}
+.nino-tabs-tab {
+	padding: var(--tabs-space) calc( var(--tabs-space) * 2 );
+	border-bottom-width: var(--tabs-line-open);
+}
+.nino-tabs-tab.nino-is-active {
+	color: var(--tabs-active);
+	border-bottom-color: var(--tabs-active);
+}

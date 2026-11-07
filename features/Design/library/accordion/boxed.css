@@ -1,0 +1,99 @@
+/*	@name			Boxed
+ *	@description	Every entry is a box of its own, a line round it and the corners of the surfaces, the words of the panel indented under the title.
+ *	@description-de	Jeder Eintrag ist eine eigene Box, eine Linie ringsum und die Ecken der Flächen, der Text des Panels unter dem Titel eingerückt.
+ *
+ *	@knob	scale		Type size of the entries
+ *	@knob	space		Space inside an entry
+ *	@knob	line		Weight of the line round an entry
+ *	@knob	marker		The sign in front of the title
+ *	@knob	marker-ink	Colour of the sign
+ *	@knob	weight		The titles in the weight of the text instead of bold
+ *
+ *	The entries of a group stand apart, a step of the scale between them, and
+ *	each has a line all round it in the colour of the border of the ground it
+ *	stands on, cut by the radius of the surfaces - the page's, whatever the
+ *	Radius of the Surfaces view says. The title and the words of the panel
+ *	have the room of the space on every side, and the words stand under the
+ *	title rather than under its sign: the panel is indented by the room the sign
+ *	stands in, as in accordion regular.
+ *
+ *	The ladders are the ones accordion regular declares and say what they are.
+ *	The line is the weight of the line round the entry, no longer of one under
+ *	it.
+ */
+
+:root {
+	--accordion-scale--least: 		.8;
+	--accordion-scale--less: 		.9;
+	--accordion-scale--default: 	1;
+	--accordion-scale--more: 		1.15;
+	--accordion-scale--most: 		1.3;
+
+	/*	The padding on every side of the title and under the panel: --space-2, with the steps accordion regular gives it	*/
+	--accordion-space--least: 		calc( var(--space-2) * .4 );
+	--accordion-space--less: 		calc( var(--space-2) * .7 );
+	--accordion-space--default: 	var(--space-2);
+	--accordion-space--more: 		calc( var(--space-2) * 1.5 );
+	--accordion-space--most: 		calc( var(--space-2) * 2.2 );
+
+	--accordion-line--least: 		0px;
+	--accordion-line--less: 		.5px;
+	--accordion-line--default: 		1px;
+	--accordion-line--more: 		2px;
+	--accordion-line--most: 		3px;
+
+	--accordion-marker--less: 		"";
+	--accordion-marker--default: 		"+";
+	--accordion-marker--more: 		"\203A";
+
+	--accordion-marker-open--less: 			"";
+	--accordion-marker-open--default: 		"\2212";
+	--accordion-marker-open--more: 			"\203A";
+
+	--accordion-marker-turn--less: 			0deg;
+	--accordion-marker-turn--default: 		0deg;
+	--accordion-marker-turn--more: 			90deg;
+
+	--accordion-marker-align--less: 		match-parent;
+	--accordion-marker-align--default: 	match-parent;
+	--accordion-marker-align--more: 		center;
+
+	--accordion-marker-box--less: 			0em;
+	--accordion-marker-box--default: 		1em;
+	--accordion-marker-box--more: 			1em;
+
+	--accordion-weight--default: 			bold;
+	--accordion-weight--more: 				normal;
+}
+
+:root, :root * {
+	--accordion-marker-ink--default: 		var(--color-accent);
+}
+
+/*	The entries stand apart: a step of the scale between one and the next, whether they stand in a group or are written one after the other	*/
+.nino-accordion + .nino-accordion {
+	margin-top: var(--space-1);
+}
+.nino-accordion {
+	font-size: calc( 1em * var(--accordion-scale) );
+	border: var(--accordion-line) solid var(--color-border);
+	border-radius: var(--radius-surface);
+}
+.nino-accordion-trigger {
+	padding: var(--accordion-space);
+	font-weight: var(--accordion-weight);
+}
+.nino-accordion-trigger::before {
+	content: var(--accordion-marker);
+	width: var(--accordion-marker-box);
+	text-align: var(--accordion-marker-align);
+	color: var(--accordion-marker-ink);
+	transition: transform .2s ease;
+}
+.nino-accordion[open] > .nino-accordion-trigger::before {
+	content: var(--accordion-marker-open);
+	transform: rotate( var(--accordion-marker-turn) );
+}
+.nino-accordion-panel {
+	padding: 0 var(--accordion-space) var(--accordion-space) calc( var(--accordion-space) + var(--accordion-marker-box) );
+}
