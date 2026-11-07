@@ -221,6 +221,10 @@
 	margin-inline: auto 0;
 }
 @media (min-width: 640px) {
+	.nino-text-s-left :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-s-left:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: 0;
+	}
 	.nino-text-s-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
 	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-s-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
 		margin-inline: auto;
@@ -231,6 +235,10 @@
 	}
 }
 @media (min-width: 768px) {
+	.nino-text-m-left :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-m-left:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: 0;
+	}
 	.nino-text-m-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
 	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-m-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
 		margin-inline: auto;
@@ -241,6 +249,10 @@
 	}
 }
 @media (min-width: 1024px) {
+	.nino-text-l-left :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-l-left:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: 0;
+	}
 	.nino-text-l-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
 	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-l-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
 		margin-inline: auto;
@@ -251,6 +263,10 @@
 	}
 }
 @media (min-width: 1280px) {
+	.nino-text-xl-left :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
+	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-xl-left:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
+		margin-inline: 0;
+	}
 	.nino-text-xl-center :is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
 	:is(.nino-card-title, .nino-card-title--quiet, .nino-card-title--loud).nino-text-xl-center:where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])) {
 		margin-inline: auto;

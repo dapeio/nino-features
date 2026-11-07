@@ -1753,7 +1753,7 @@ foreach( [ 'section' => '.nino-section-title', 'card' => '.nino-card-title' ] as
 
 		foreach( $guardedRules as $guardedRule ) {
 
-			if( preg_match( '/\.nino-text-(?:[a-z]+-)?(?:center|right)(?![\w-])/', $guardedRule['selector'] ) === 1 && preg_match( '/margin-inline\s*:/', $guardedRule['body'] ) === 1 ) {
+			if( preg_match( '/\.nino-text-(?:[a-z]+-)?(?:left|center|right)(?![\w-])/', $guardedRule['selector'] ) === 1 && preg_match( '/margin-inline\s*:/', $guardedRule['body'] ) === 1 ) {
 
 				foreach( $splitSelectors( $guardedRule['selector'] ) as $guardedSelector )
 					foreach( [ 'nino-m-', 'nino-mx-', 'nino-ml-', 'nino-mr-' ] as $marginClass )
@@ -1787,25 +1787,57 @@ check( 'a margin class of a page is the page\'s: every rule of a section or a ca
 check( '...and a title that says the brand ink or the muted one takes the share of the ground in its words: one rule for each in every set, which reads the aspect the ground of the title has for it'
 	. ( $inkProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $inkProblems, 0, 3 ) ) ), $inkProblems === [] );
 
-/*	A class that aligns from a breakpoint moves the words of a title only on the title itself: a title carries a text-align of its own and Nino.css has the ancestor form for the classes
-	that align at every width alone. So the mirrors of a section set - the margins and the place of the rule, from each breakpoint - name the title and not what it stands in, or the box and the
-	rule would move and the words not. The words of a card are inherited from the card, so there the ancestor form is the right one and the card sets keep it	*/
-$ancestorMirrors	= [];
-$titleMirrors			= 0;
+/*	A class that aligns from a breakpoint moves the boxes the way the class alone does: Nino.css has the ancestor form for every step - the words of the title, the subtitle, the text and the hero follow a class on
+	what they stand in - so the mirrors of a set, the margins and, for a section title, the place of the rule, have both forms for each step and each alignment: the class on the element and the class on what
+	the element stands in. A margin mirror names the elements the rule of the alignment at every width names, none fewer, or the boxes it leaves would stand where the words do not; it carries the value of its
+	alignment - 0 for left, auto for centre, auto 0 for right - and the guard against the margin classes of the page on the element in both forms	*/
+$mirrorForms	= [];
+$mirrorCount	= 0;
+$mirrorValues	= [ 'left' => '0', 'center' => 'auto', 'right' => 'auto 0' ];
 
-foreach( Setup::available( $library, 'section' ) as $set )
-	foreach( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) ) ) as $mirrorRule )
-		foreach( $splitSelectors( $mirrorRule['selector'] ) as $mirrorSelector )
-			if( preg_match( '/\.nino-text-(?:s|m|l|xl)-(?:left|center|right)(?![\w-])/', $mirrorSelector ) === 1 ) {
+foreach( [ 'section', 'card' ] as $mirrorPart ) {
 
-				$titleMirrors++;
+	foreach( Setup::available( $library, $mirrorPart ) as $set ) {
 
-				if( preg_match( '/^:is\([^()]*\)\.nino-text-(?:s|m|l|xl)-(?:left|center|right)(?::where\(.*\))?$/', $mirrorSelector ) !== 1 )
-					$ancestorMirrors[] = 'section/'. $set. ' '. substr( $mirrorSelector, 0, 40 );
-			}
+		$found		= [];
+		$baseList	= '';
+		$mirrorRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, $mirrorPart, $set ) ) ) );
 
-check( 'the mirrors of a class that aligns from a breakpoint name the title of a section itself, in every set: its margins and the place of its rule follow the words, which Nino.css moves by the class on the title alone'
-	. ( $ancestorMirrors === [] ? '' : ' - '. implode( ' | ', array_slice( $ancestorMirrors, 0, 3 ) ) ), $ancestorMirrors === [] && $titleMirrors === 3 * 4 * 5 );
+		foreach( $mirrorRules as $baseRule )
+			if( preg_match( '/^\.nino-text-center (:is\([^()]*\)):where\(/', $baseRule['selector'], $baseFound ) === 1 && $baseRule['within'] === '' && preg_match( '/margin-inline\s*:\s*auto\s*;/', $baseRule['body'] ) === 1 )
+				$baseList = $baseFound[1];
+
+		if( $baseList === '' )
+			$mirrorForms[] = $mirrorPart. '/'. $set. ' has no rule of the alignment at every width';
+
+		foreach( $mirrorRules as $mirrorRule )
+			foreach( $splitSelectors( $mirrorRule['selector'] ) as $mirrorSelector )
+				if( preg_match( '/\.nino-text-(s|m|l|xl)-(left|center|right)(?![\w-])/', $mirrorSelector, $mirror ) === 1 ) {
+
+					$mirrorCount++;
+					$mirrorKind = preg_match( '/margin-inline\s*:\s*([^;]*);/', $mirrorRule['body'], $mirrorValue ) === 1 ? 'margin' : ( preg_match( '/background-position\s*:/', $mirrorRule['body'] ) === 1 ? 'rule' : 'other' );
+					$mirrorForm = preg_match( '/^\.nino-text-(?:s|m|l|xl)-(?:left|center|right) (:is\([^()]*\))(?::where\(.*\))?$/', $mirrorSelector, $mirrorList ) === 1 ? 'ancestor'
+						: ( preg_match( '/^(:is\([^()]*\))\.nino-text-(?:s|m|l|xl)-(?:left|center|right)(?::where\(.*\))?$/', $mirrorSelector, $mirrorList ) === 1 ? 'title' : 'other' );
+
+					if( $mirrorKind === 'other' || $mirrorForm === 'other' )
+						$mirrorForms[] = $mirrorPart. '/'. $set. ' '. substr( $mirrorSelector, 0, 40 );
+					elseif( $mirrorKind === 'margin' && ( str_contains( $mirrorSelector, '[class*="nino-mr-"]' ) === false || $mirrorList[1] !== $baseList || trim( $mirrorValue[1] ) !== $mirrorValues[ $mirror[2] ] ) )
+						$mirrorForms[] = $mirrorPart. '/'. $set. ' '. substr( $mirrorSelector, 0, 40 ). ' has the wrong elements, guard or value';
+
+					$found[ $mirror[1]. '-'. $mirror[2]. ' '. $mirrorKind. ' '. $mirrorForm ] = true;
+				}
+
+		foreach( [ 's', 'm', 'l', 'xl' ] as $mirrorStep )
+			foreach( [ 'left', 'center', 'right' ] as $mirrorAlign )
+				foreach( $mirrorPart === 'section' ? [ 'margin', 'rule' ] : [ 'margin' ] as $mirrorKind )
+					foreach( [ 'ancestor', 'title' ] as $mirrorForm )
+						if( isset( $found[ $mirrorStep. '-'. $mirrorAlign. ' '. $mirrorKind. ' '. $mirrorForm ] ) === false )
+							$mirrorForms[] = $mirrorPart. '/'. $set. ' lacks '. $mirrorStep. '-'. $mirrorAlign. ' '. $mirrorKind. ' '. $mirrorForm;
+	}
+}
+
+check( 'the mirrors of a class that aligns from a breakpoint have both forms in every section set and every card set, for each step and each alignment: the class on the element and the class on what it stands in, for its margins - the elements of the rule at every width, the value of the alignment, the guard of the margin classes - and, in a section, for the place of the rule under the title'
+	. ( $mirrorForms === [] ? '' : ' - '. implode( ' | ', array_slice( $mirrorForms, 0, 3 ) ) ), $mirrorForms === [] && $mirrorCount === 3 * 4 * 3 * 2 * 2 + 5 * 4 * 3 * 2 );
 
 /*	A card that draws a line on every side - the box - is not left with the words against the line on a phone: below 768px Nino.css pads the content of a card with nothing, since the card
 	insets it from there, and a card with no padding at its sides would write against its own border. The content takes the card-space where Nino.css leaves it none. And a card turned on
