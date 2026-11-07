@@ -188,7 +188,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'ui',
-	'version'			=> '2.3.0',
+	'version' => '2.4.0',
 	/*	Two floors, and the higher one wins. 1.2 is where the wizard stopped
 		asking about the look and the base unit started delivering
 		assets/theme.css as one file; everything here writes over that file, so

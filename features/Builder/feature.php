@@ -229,7 +229,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.2.0',
+	'version' => '1.3.0',
 	// 1.10, for what the builder draws and writes: the section of tiles
 	// (nino-tiles, its ratio classes, the tile as a kind of surface and
 	// nino-grid--linked on a tile), on top of what 1.9 brought - the card that
