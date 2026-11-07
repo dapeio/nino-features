@@ -10267,8 +10267,8 @@ const madeKinds = ( function() {
 	const model = page();
 	return { content : builder._newSection( model, 'content' ), tiles : builder._newSection( model, 'tiles' ), plain : builder._newSection( model ) };
 } )();
-check( 'a new section of tiles has the ratio 4 : 3 and two tiles - the whole width on a phone, a half from 768px - with the settings in the order the Reader reads them; a content section is as it was, one column over the whole width, and none says which kind it wants is a content section',
-	madeKinds.tiles.settings.tiles === true && madeKinds.tiles.settings.ratio === '4-3' && madeKinds.tiles.cols.length === 2 && madeKinds.tiles.cols.every( function( col ) { return JSON.stringify( col.width ) === '{"s":100,"m":50,"l":50}' && col.linked === false } )
+check( 'a new section of tiles has the ratio 4 : 3 and two tiles - the whole row on a phone and a tablet, a half at the desktop - with the settings in the order the Reader reads them; a content section is as it was, one column over the whole width, and none says which kind it wants is a content section',
+	madeKinds.tiles.settings.tiles === true && madeKinds.tiles.settings.ratio === '4-3' && madeKinds.tiles.cols.length === 2 && madeKinds.tiles.cols.every( function( col ) { return JSON.stringify( col.width ) === '{"s":100,"m":100,"l":50}' && col.linked === false } )
 	&& Object.keys( madeKinds.tiles.settings ).join() === Object.keys( tilesPage().blocks[0].settings ).join() && Object.keys( madeKinds.tiles.cols[0] ).join() === Object.keys( tilesPage().blocks[0].cols[0] ).join()
 	&& madeKinds.content.settings.tiles === false && madeKinds.content.settings.ratio === '' && madeKinds.content.cols.length === 1 && JSON.stringify( madeKinds.content.cols[0].width ) === '{"s":100,"m":100,"l":100}' && JSON.stringify( madeKinds.plain ) === JSON.stringify( madeKinds.content )
 	&& builder._newCol().linked === false && madeKinds.tiles.cols[0].width !== builder.TILES_WIDTH );

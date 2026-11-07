@@ -936,6 +936,8 @@ check( '...and the column is written with its three widths and read again as the
 	$text = $write( [ 'blocks' => [ $block ] ] );
 	return str_contains( $text, 'nino-grid-s-100 nino-grid-m-50 nino-grid-l-50' ) === true && $read( $text )['blocks'][0] === $block;
 } )() );
+check( '...and the width a new tile starts with, the whole row on a phone and a tablet and a half at the desktop, is written as the three classes and read back as the same width',
+	str_contains( $write( [ 'blocks' => [ $column( 'nino-grid-l-50 nino-grid-100' ) ] ] ), 'nino-grid-s-100 nino-grid-m-100 nino-grid-l-50' ) === true );
 
 $twice = $column( 'nino-grid-s-50 nino-grid-s-100' )['cols'][0];
 check( 'a second width for the same viewport is not lost: the first one is the width, the other stays a class of the column', $twice['width'] === [ 's' => 50, 'm' => 50, 'l' => 50 ] && $twice['custom'] === 'nino-grid-s-100'

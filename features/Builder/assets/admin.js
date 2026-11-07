@@ -142,9 +142,9 @@
 		RATIOS		: [ '', '1-1', '4-3', '3-2', '16-9', '21-9', '4-1', '5-1' ],
 		// The kinds of section: the content kind, which has no setting of its own, and the tiles
 		KINDS			: [ 'content', 'tiles' ],
-		// What a new tiles section starts as: the ratio of its tiles, and the widths of the two tiles it has - the whole width on a phone, a half from 768px
+		// What a new tiles section starts as: the ratio of its tiles, and the widths of the two tiles it has - the whole row on a phone and a tablet (a row is as high as its highest tile, and a tile beside a long text would stretch), a half from the desktop
 		TILES_RATIO	: '4-3',
-		TILES_WIDTH	: { s : 100, m : 50, l : 50 },
+		TILES_WIDTH	: { s : 100, m : 100, l : 50 },
 		// How much room a section keeps, on the scale of the page's whitespace (the Design's): none is the page's own
 		WHITESPACE	: [ '', 'least', 'less', 'more', 'most' ],
 		// Where a component that is a link opens: the second of the two attributes every one has (the schema does not declare them)
