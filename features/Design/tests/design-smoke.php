@@ -2707,8 +2707,11 @@ foreach( [ 'header' => '.nino-frame-header', 'footer' => 'footer' ] as $framePar
 		}
 
 		// Put on the frame beside the other roles it hands down - the rule that sets --color-border to the aspect of the ground sets the pair too
-		if( preg_match( '/(?:^|\})\s*'. preg_quote( $frameRule, '/' ). '\s*\{[^{}]*--color-border:\s*var\(--'. $framePart. '-ground-border\);[^{}]*--logo-light:\s*var\(--'. $framePart. '-ground-logo-light\);\s*--logo-dark:\s*var\(--'. $framePart. '-ground-logo-dark\);/', $frameCss ) !== 1
-			&& preg_match( '/'. preg_quote( $frameRule, '/' ). '\s*\{[^{}]*--logo-light:\s*var\(--'. $framePart. '-ground-logo-light\);\s*--logo-dark:\s*var\(--'. $framePart. '-ground-logo-dark\);[^{}]*\}/', $frameCss ) !== 1 )
+		// ...read as the role of the ground, or behind the role of a cover the bar lies on, which is read first: var(--x, var(--header-ground-logo-light))
+		$frameBehind = '(?:var\(--[a-z0-9-]+,\s*)?';
+
+		if( preg_match( '/(?:^|\})\s*'. preg_quote( $frameRule, '/' ). '\s*\{[^{}]*--color-border:\s*'. $frameBehind. 'var\(--'. $framePart. '-ground-border\)\)?;[^{}]*--logo-light:\s*'. $frameBehind. 'var\(--'. $framePart. '-ground-logo-light\)\)?;\s*--logo-dark:\s*'. $frameBehind. 'var\(--'. $framePart. '-ground-logo-dark\)\)?;/', $frameCss ) !== 1
+			&& preg_match( '/'. preg_quote( $frameRule, '/' ). '\s*\{[^{}]*--logo-light:\s*'. $frameBehind. 'var\(--'. $framePart. '-ground-logo-light\)\)?;\s*--logo-dark:\s*'. $frameBehind. 'var\(--'. $framePart. '-ground-logo-dark\)\)?;[^{}]*\}/', $frameCss ) !== 1 )
 			$frameWrong[] = $framePart. '/'. $frameSet. ': the pair is not put on '. $frameRule. ' beside the roles';
 	}
 
@@ -2718,6 +2721,200 @@ check( 'every header and every footer of the library declares the pair of the lo
 // The mark of the overlay menu stands above the overlay, which is the page's ground at every setting - it has the page's ink while the menu is open, and the page's pair with it
 check( '...the overlay menu says the page\'s pair for its mark while the menu is open, as it says the page\'s ink: the mark is above the overlay, and the bar behind it may be dark',
 	preg_match( '/\.nino-frame-header:has\(\.nino-nav-burger > button\[aria-expanded="true"\]\) \.nino-frame-header-brand\s*\{[^{}]*color:\s*var\(--color-text\);\s*--logo-light:\s*var\(--color-logo-light\);\s*--logo-dark:\s*var\(--color-logo-dark\);/', designPlain( (string) file_get_contents( Setup::file( $library, 'header', 'overlay-menu' ) ) ) ) === 1 );
+
+/*	The four findings of a look at a site that was built with the library: the links of the footer of one row break onto a second line and a column instead of one line over the other, a small button can be set smaller than a person can read, the link of a logo can be shorter than a finger-sized target, and a bar that is see-through at rest puts the page's own mark on the dark picture it lies on	*/
+$uiWrong = [];
+
+// A footer that holds the navigation and the legal links in one flex box wraps them, and one under the width of a tablet puts them in one column
+$uiRows = 0;
+
+foreach( Setup::available( $library, 'footer' ) as $uiSet ) {
+
+	$uiTemplate = designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $uiSet, 'template' ) ) );
+
+	if( preg_match( '/<nav\b[^>]*\bclass="[^"]*\b(nino-[a-z-]*footer-nav)\b[^"]*"[^>]*>(?:(?!<\/nav>).)*html-footer-nav(?:(?!<\/nav>).)*nav="legal"/s', $uiTemplate, $uiNav ) !== 1 )
+		continue;
+
+	$uiRows++;
+	$uiCss = designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $uiSet, 'style' ) ) );
+	$uiBox = preg_match( '/(?:^|\})\s*\.'. preg_quote( $uiNav[1], '/' ). '\s*\{([^{}]*)\}/', $uiCss, $uiHit ) === 1 ? $uiHit[1] : '';
+
+	if( preg_match( '/display:\s*flex;/', $uiBox ) !== 1 || preg_match( '/flex-wrap:\s*wrap;/', $uiBox ) !== 1 || preg_match( '/row-gap:\s*var\(--space-1\);/', $uiBox ) !== 1 )
+		$uiWrong[] = 'footer/'. $uiSet. ': the box of the links is no wrapping flex box with a row gap';
+
+	if( preg_match( '/@media \(max-width:\s*767\.98px\)\s*\{\s*\.'. preg_quote( $uiNav[1], '/' ). '\s*\{[^{}]*flex-direction:\s*column;[^{}]*align-items:\s*flex-start;/', $uiCss ) !== 1 )
+		$uiWrong[] = 'footer/'. $uiSet. ': no column of the links under 768px';
+}
+
+check( 'a footer that holds the footer navigation and the legal links in one box lets the box wrap, with a row gap, and puts the links in one column from the phone up to the tablet'
+	. ( $uiWrong === [] ? '' : ' - '. implode( '; ', $uiWrong ) ), $uiWrong === [] && $uiRows === 1 );
+
+// A small button is never set under three quarters of a rem, whatever the size and the spread are
+$uiWrong = [];
+$uiSets = 0;
+
+foreach( Setup::available( $library, 'buttons' ) as $uiSet ) {
+
+	$uiSets++;
+	$uiCss = designPlain( (string) file_get_contents( Setup::file( $library, 'buttons', $uiSet, 'style' ) ) );
+
+	if( preg_match( '/\.nino-btn--small\s*\{[^{}]*font-size:\s*max\(\s*calc\(\s*var\(--font-button-size\)[^;{}]*\),\s*\.75rem\s*\);/', $uiCss ) !== 1 )
+		$uiWrong[] = 'buttons/'. $uiSet;
+}
+
+check( 'every set of the buttons keeps the type of a small button at .75rem at the least, as the smaller of the size and the spread asks for'
+	. ( $uiWrong === [] ? '' : ' - '. implode( '; ', $uiWrong ) ), $uiWrong === [] && $uiSets === 5 );
+
+// The link of the logo of a header is at least 24px high wherever a rule of the set sizes it, and is a flex box that centres the picture so that the bar keeps its height
+$uiWrong = [];
+$uiSets = 0;
+
+foreach( Setup::available( $library, 'header' ) as $uiSet ) {
+
+	$uiSets++;
+	$uiCss = designPlain( (string) file_get_contents( Setup::file( $library, 'header', $uiSet, 'style' ) ) );
+	$uiCalls = preg_match_all( '/\.nino-frame-header \.(?:nino-logo|nino-frame-header-brand)\s*\{([^{}]*)\}/', $uiCss, $uiRules );
+	$uiFirst = $uiRules[1][0] ?? '';
+
+	if( $uiCalls < 1 || preg_match( '/min-height:\s*24px;/', $uiFirst ) !== 1 || preg_match( '/display:\s*flex;/', $uiFirst ) !== 1 || preg_match( '/align-items:\s*center;/', $uiFirst ) !== 1 )
+		$uiWrong[] = 'header/'. $uiSet. ': the link of the logo has not 24px, flex and centred';
+
+	foreach( $uiRules[1] as $uiRule )
+		if( preg_match( '/min-height:\s*+(?!(?:2[4-9]|[3-9]\d|\d{3,})(?:\.\d+)?px)/', $uiRule ) === 1 )
+			$uiWrong[] = 'header/'. $uiSet. ': a rule sets the link of the logo under 24px';
+}
+
+check( 'the link of the logo is 24px high at the least in every header, as a flex box that centres the picture, in every rule of the set that sizes it'
+	. ( $uiWrong === [] ? '' : ' - '. implode( '; ', $uiWrong ) ), $uiWrong === [] && $uiSets === 7 );
+
+// A bar that is see-through at rest takes the roles of a dark ground the first cover of the page stands on - one rule for each dark ground, and nothing of it once the menu is open or the bar is drawn
+$uiWrong = [];
+$uiSets = 0;
+$uiDark = [
+	'black'			=> [ ':is(.nino-section--black)', '--color-section-black-text', '--color-accent-black', '--color-focus-black', '--color-border-black', '--color-section-black-logo-light', '--color-section-black-logo-dark' ],
+	'dark'			=> [ ':is(.nino-section--dark)', '--color-section-dark-text', '--color-accent-dark', '--color-focus-dark', '--color-border-dark', '--color-section-dark-logo-light', '--color-section-dark-logo-dark' ],
+	'primary'		=> [ ':is(.nino-section--primary)', '--color-primary-text', '--color-primary-text', '--color-primary-text', '--color-border-primary', '--color-primary-logo-light', '--color-primary-logo-dark' ],
+	'brand-alt'	=> [ ':is(.nino-section--brand-alt)', '--color-brand-alt-text', '--color-brand-alt-text', '--color-brand-alt-text', '--color-border-brand-alt', '--color-brand-alt-logo-light', '--color-brand-alt-logo-dark' ],
+	// A dimmed cover with a margin round it is no ground under the bar: the bar lies on the page beside the picture
+	'dim'				=> [ ':is(.nino-cover--dim, .nino-parallex--dim):not(.nino-cover--padded)', '--color-section-black-text', '--color-accent-black', '--color-focus-black', '--color-border-black', '--color-section-black-logo-light', '--color-section-black-logo-dark' ],
+];
+
+// What a token of the kernel is, with a var() of another token followed: the pair of a brand ground is the pair of the primary ground
+$uiKernel = static function( string $token ) use ( $ninoCss ): string {
+
+	for( $uiStep = 0; $uiStep < 4; $uiStep++ ) {
+
+		if( preg_match( '/'. preg_quote( $token, '/' ). ':\s*([^;]+);/', $ninoCss, $uiValue ) !== 1 )
+			return '';
+
+		if( preg_match( '/^var\((--[a-z0-9-]+)\)$/', trim( $uiValue[1] ), $uiNext ) !== 1 )
+			return trim( $uiValue[1] );
+
+		$token = $uiNext[1];
+	}
+
+	return '';
+};
+
+foreach( Setup::available( $library, 'header' ) as $uiSet ) {
+
+	$uiCss = designPlain( (string) file_get_contents( Setup::file( $library, 'header', $uiSet, 'style' ) ) );
+
+	// A set whose ground at rest is see-through is the one that has it
+	if( preg_match( '/--header-ground-rest--(?:least|less|default|more|most):\s*transparent;/', $uiCss ) !== 1 )
+		continue;
+
+	$uiSets++;
+
+	preg_match_all( '/--header-ground-rest--(less|default|more):\s*([^;]+);/', $uiCss, $uiRest, PREG_SET_ORDER );
+	preg_match_all( '/--header-ground-rest-cover--(less|default|more):([^;]*);/', $uiCss, $uiGate, PREG_SET_ORDER );
+	$uiRestAt = [];
+	$uiGateAt = [];
+
+	foreach( $uiRest as $uiHit )
+		$uiRestAt[ $uiHit[1] ] = trim( $uiHit[2] );
+
+	foreach( $uiGate as $uiHit )
+		$uiGateAt[ $uiHit[1] ] = trim( $uiHit[2] );
+
+	// ...and of the behaviour: a bar that goes with the page stands above the cover on the page's ground and takes none, the two fixed bars lie on the cover
+	preg_match_all( '/--header-behaviour-cover--(less|default|more):([^;]*);/', $uiCss, $uiFlow, PREG_SET_ORDER );
+	$uiFlowAt = [];
+
+	foreach( $uiFlow as $uiHit )
+		$uiFlowAt[ $uiHit[1] ] = trim( $uiHit[2] );
+
+	if( $uiFlowAt !== [ 'less' => 'initial', 'default' => '', 'more' => '' ] )
+		$uiWrong[] = $uiSet. ': the aspect of the behaviour does not refuse the roles for the bar that goes with the page alone - '. json_encode( $uiFlowAt );
+
+	if( count( $uiRestAt ) !== 3 || count( $uiGateAt ) !== 3 )
+		$uiWrong[] = $uiSet. ': the rungs of the ground at rest or of the aspect that says whether it takes the roles are not three each';
+	else
+		foreach( $uiRestAt as $uiRung => $uiValue )
+			if( $uiGateAt[$uiRung] !== ( $uiValue === 'transparent' ? '' : 'initial' ) )
+				$uiWrong[] = $uiSet. ' '. $uiRung. ': the roles are taken at a rung where the bar is '. $uiValue;
+
+	foreach( $uiDark as $uiName => $uiRoles ) {
+
+		// Only before the kernel has said a direction: with one said, the bar is drawn on the way up and folded on the way down, and the roles are the set's
+		$uiPattern = '/body\.nino-scroll-atf:not\(\.nino-scroll-up, \.nino-scroll-down\):has\(:is\(main, main > \.nino-wrap\) > :is\(\.nino-cover, \.nino-parallex\):first-child'. preg_quote( $uiRoles[0], '/' ). '\) \.nino-frame-header:not\(:has\(\.nino-nav-burger > button\[aria-expanded="true"\]\)\)\s*\{([^{}]*)\}/';
+
+		if( preg_match( $uiPattern, $uiCss, $uiRule ) !== 1 ) {
+			$uiWrong[] = $uiSet. ': no rule for the ground '. $uiName;
+			continue;
+		}
+
+		foreach( [ 'ink' => 1, 'title' => 1, 'accent' => 2, 'focus' => 3, 'border' => 4, 'logo-light' => 5, 'logo-dark' => 6 ] as $uiRole => $uiAt )
+			if( str_contains( $uiRule[1], '--rest-cover-'. $uiRole. ': var(--header-ground-rest-cover) var(--header-behaviour-cover) var('. $uiRoles[$uiAt]. ');' ) === false )
+				$uiWrong[] = $uiSet. ' '. $uiName. ': the role '. $uiRole. ' is not '. $uiRoles[$uiAt]. ' behind the two aspects';
+
+		// What the rule reads is there in the kernel, and the ground is a dark one: the pair that shows the picture for a dark ground
+		foreach( array_slice( $uiRoles, 1 ) as $uiToken )
+			if( $uiKernel( $uiToken ) === '' )
+				$uiWrong[] = $uiSet. ' '. $uiName. ': the kernel has no '. $uiToken;
+
+		if( $uiKernel( $uiRoles[5] ) !== 'none' || $uiKernel( $uiRoles[6] ) !== 'block' )
+			$uiWrong[] = $uiSet. ' '. $uiName. ': the kernel\'s pair of the ground is not the one for a dark ground';
+	}
+
+	// Every rule that sets the roles waits for the page that has not been scrolled at all
+	preg_match_all( '/([^{}]+)\{[^{}]*--rest-cover-title:/', $uiCss, $uiSelectors );
+
+	foreach( $uiSelectors[1] as $uiSelector )
+		if( str_contains( $uiSelector, 'body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down)' ) === false )
+			$uiWrong[] = $uiSet. ': a rule sets the roles of a cover once the page has been scrolled - '. trim( $uiSelector );
+
+	// Only the four dark grounds have a rule: a light or unknown ground leaves the bar as the set draws it
+	if( preg_match_all( '/--rest-cover-title:/', $uiCss ) !== count( $uiDark ) )
+		$uiWrong[] = $uiSet. ': a ground other than the dark ones sets the roles';
+
+	foreach( [ 'title' => 'color-title', 'accent' => 'color-accent', 'focus' => 'color-focus', 'border' => 'color-border', 'logo-light' => 'logo-light', 'logo-dark' => 'logo-dark' ] as $uiRole => $uiProperty )
+		if( preg_match( '/(?:^|\})\s*\.nino-frame-header\s*\{[^{}]*--'. $uiProperty. ':\s*var\(--rest-cover-'. $uiRole. ',\s*var\(--header-ground-'. $uiRole. '\)\);/', $uiCss ) !== 1 )
+			$uiWrong[] = $uiSet. ': the frame does not read the role '. $uiRole. ' of the cover first and its own after';
+
+	// The line under the bar before the page is scrolled is an aspect of the ground: none at the middle, where the bar is not there, and the line of the bar where the ground at rest is one - read by the frame only before a direction is said
+	preg_match_all( '/--header-ground-rest-border--(less|default|more):\s*([^;]+);/', $uiCss, $uiLine, PREG_SET_ORDER );
+	$uiLineAt = [];
+
+	foreach( $uiLine as $uiHit )
+		$uiLineAt[ $uiHit[1] ] = trim( $uiHit[2] );
+
+	if( count( $uiLineAt ) !== 3 )
+		$uiWrong[] = $uiSet. ': the line under the bar at rest is not an aspect of three rungs';
+	else
+		foreach( $uiRestAt as $uiRung => $uiValue )
+			if( ( $uiLineAt[$uiRung] ?? '' ) !== ( $uiValue === 'transparent' ? 'transparent' : 'var(--header-border-color)' ) )
+				$uiWrong[] = $uiSet. ' '. $uiRung. ': the line at rest is '. ( $uiLineAt[$uiRung] ?? '-' ). ' where the bar is '. $uiValue;
+
+	if( preg_match( '/(?:^|\})\s*body\.nino-scroll-atf:not\(\.nino-scroll-up, \.nino-scroll-down\) \.nino-frame-header\s*\{[^{}]*border-bottom-color:\s*var\(--header-ground-rest-border\);/', $uiCss ) !== 1 )
+		$uiWrong[] = $uiSet. ': the line of the frame does not read the aspect before the page is scrolled';
+
+	if( preg_match( '/\.nino-scroll-header\s*\{[^{}]*color:\s*var\(--rest-cover-ink,\s*var\(--header-ground-ink\)\);/', $uiCss ) !== 1 )
+		$uiWrong[] = $uiSet. ': the ink of the bar does not read the one of the cover first';
+}
+
+check( 'a header whose bar is see-through at rest takes the roles of a dark first cover - one rule for black, dark, the two brand grounds and the dimmed ground without a margin, each the title, accent, focus, line and logo pair of that ground, in the kernel, only while the menu is shut and before the page has been scrolled in any direction - only at the rungs of its ground where the bar is see-through and of its behaviour where the bar is fixed, and the line under the bar is then an aspect of the ground, none at the middle'
+	. ( $uiWrong === [] ? '' : ' - '. implode( '; ', $uiWrong ) ), $uiWrong === [] && $uiSets === 1 );
 
 // The templates write the logo as the component: the headers as [logo alt=""] in the link of the frame and the footers as [logo class="nino-footer-logo"]
 $logoTemplates = [];

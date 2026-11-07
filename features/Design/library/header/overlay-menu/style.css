@@ -47,6 +47,13 @@
  *	or the dark one at the others, so that the ink of a ground is never put on the page itself.
  *	The links are the ones of the overlay, which is the page's ground at every setting, and nav is
  *	their size.
+ *
+ *	The bar before the page is scrolled lies on whatever the page starts with. Where that is a
+ *	cover on a dark ground - black, dark, the two brand grounds or dimmed, but not a dimmed cover
+ *	with a margin round it - the bar takes the roles of that ground (title, accent, focus, line and
+ *	the pair of the logo) while it is see-through, the menu is shut and the page has not been
+ *	scrolled; the aspects --header-ground-rest-cover and --header-behaviour-cover say at which rungs of the ground and of the behaviour it does, and
+ *	--header-ground-rest-border is the line under the bar then: none where the bar is not there.
  */
 
 :root {
@@ -122,6 +129,16 @@
 	--header-ground-rest--default:	transparent;
 	--header-ground-rest--more:	var(--color-section-dark-bg);
 
+	/*	Whether the bar before the page is scrolled up takes the roles of the ground of a dark first cover it lies on - as the bar is see-through at the middle, the mark and the icon would be the page's own on the cover's picture. Where the bar is a ground of its own at rest, it stays what the ground says. The blank is the yes, initial the no	*/
+	--header-ground-rest-cover--less:	initial;
+	--header-ground-rest-cover--default:	;
+	--header-ground-rest-cover--more:	initial;
+
+	/*	The line under the bar before the page is scrolled up: none where the bar is not there - a line under a bar that is not there would be a line across the page - and the line of the bar where the ground at rest is one	*/
+	--header-ground-rest-border--less:	var(--header-border-color);
+	--header-ground-rest-border--default:	transparent;
+	--header-ground-rest-border--more:	var(--header-border-color);
+
 	/*	The shadow of the bar before the page is scrolled up: the bar's own where the ground at rest is one, none where it is not - a shadow under a bar that is not there would be a shadow of the page	*/
 	--header-ground-rest-shadow--less:	var(--header-shadow);
 	--header-ground-rest-shadow--default:	none;
@@ -163,17 +180,72 @@
 	--header-behaviour-shadow--less:	var(--header-ground-rest-shadow);
 	--header-behaviour-shadow--default:	var(--header-ground-rest-shadow);
 	--header-behaviour-shadow--more:	var(--header-shadow);
+
+	/*	Whether the bar takes the roles of a dark first cover: a bar that goes with the page stands in the flow above the cover, on the page's ground, and takes none; the fixed bars lie on the cover. The blank is the yes, initial the no, as with the aspect of the ground at rest	*/
+	--header-behaviour-cover--less:	initial;
+	--header-behaviour-cover--default:	;
+	--header-behaviour-cover--more:	;
 }
 
 .nino-frame-header {
 	position: var(--header-behaviour);
-	--color-title: var(--header-ground-title);
-	--color-accent: var(--header-ground-accent);
-	--color-focus: var(--header-ground-focus);
-	--color-border: var(--header-ground-border);
-	--logo-light: var(--header-ground-logo-light);
-	--logo-dark: var(--header-ground-logo-dark);
+	--color-title: var(--rest-cover-title, var(--header-ground-title));
+	--color-accent: var(--rest-cover-accent, var(--header-ground-accent));
+	--color-focus: var(--rest-cover-focus, var(--header-ground-focus));
+	--color-border: var(--rest-cover-border, var(--header-ground-border));
+	--logo-light: var(--rest-cover-logo-light, var(--header-ground-logo-light));
+	--logo-dark: var(--rest-cover-logo-dark, var(--header-ground-logo-dark));
 	border-bottom: solid var(--header-border-color) var(--header-border-size);
+}
+
+/*	The bar before the page is scrolled lies on the page, and where the first thing of the page is a cover on a dark ground it lies on that: the title role of the icon, the accent, the ring of the focus, the line and the pair of the logo are then the ones of the ground, as the cover's own are. The ground says them below, one rule for each, in the --rest-cover-* roles, each behind the two aspects that say whether the bar takes them, and the roles of the bar above read them first and its own after. They are there only while the bar is see-through, the menu is shut and the page has not been scrolled at all: once the kernel has said a direction, the bar is drawn on the way up and folded on the way down, and its colours are the set's again. A light or unknown ground sets none, and the bar is the bar of the set; a dimmed cover with a margin round it is no ground under the bar, which lies on the page beside the picture	*/
+body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down) .nino-frame-header {
+	border-bottom-color: var(--header-ground-rest-border);
+}
+body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down):has(:is(main, main > .nino-wrap) > :is(.nino-cover, .nino-parallex):first-child:is(.nino-section--black)) .nino-frame-header:not(:has(.nino-nav-burger > button[aria-expanded="true"])) {
+	--rest-cover-ink: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-text);
+	--rest-cover-title: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-text);
+	--rest-cover-accent: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-accent-black);
+	--rest-cover-focus: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-focus-black);
+	--rest-cover-border: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-border-black);
+	--rest-cover-logo-light: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-logo-light);
+	--rest-cover-logo-dark: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-logo-dark);
+}
+body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down):has(:is(main, main > .nino-wrap) > :is(.nino-cover, .nino-parallex):first-child:is(.nino-section--dark)) .nino-frame-header:not(:has(.nino-nav-burger > button[aria-expanded="true"])) {
+	--rest-cover-ink: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-dark-text);
+	--rest-cover-title: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-dark-text);
+	--rest-cover-accent: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-accent-dark);
+	--rest-cover-focus: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-focus-dark);
+	--rest-cover-border: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-border-dark);
+	--rest-cover-logo-light: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-dark-logo-light);
+	--rest-cover-logo-dark: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-dark-logo-dark);
+}
+body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down):has(:is(main, main > .nino-wrap) > :is(.nino-cover, .nino-parallex):first-child:is(.nino-section--primary)) .nino-frame-header:not(:has(.nino-nav-burger > button[aria-expanded="true"])) {
+	--rest-cover-ink: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-primary-text);
+	--rest-cover-title: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-primary-text);
+	--rest-cover-accent: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-primary-text);
+	--rest-cover-focus: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-primary-text);
+	--rest-cover-border: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-border-primary);
+	--rest-cover-logo-light: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-primary-logo-light);
+	--rest-cover-logo-dark: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-primary-logo-dark);
+}
+body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down):has(:is(main, main > .nino-wrap) > :is(.nino-cover, .nino-parallex):first-child:is(.nino-section--brand-alt)) .nino-frame-header:not(:has(.nino-nav-burger > button[aria-expanded="true"])) {
+	--rest-cover-ink: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-brand-alt-text);
+	--rest-cover-title: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-brand-alt-text);
+	--rest-cover-accent: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-brand-alt-text);
+	--rest-cover-focus: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-brand-alt-text);
+	--rest-cover-border: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-border-brand-alt);
+	--rest-cover-logo-light: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-brand-alt-logo-light);
+	--rest-cover-logo-dark: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-brand-alt-logo-dark);
+}
+body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down):has(:is(main, main > .nino-wrap) > :is(.nino-cover, .nino-parallex):first-child:is(.nino-cover--dim, .nino-parallex--dim):not(.nino-cover--padded)) .nino-frame-header:not(:has(.nino-nav-burger > button[aria-expanded="true"])) {
+	--rest-cover-ink: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-text);
+	--rest-cover-title: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-text);
+	--rest-cover-accent: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-accent-black);
+	--rest-cover-focus: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-focus-black);
+	--rest-cover-border: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-border-black);
+	--rest-cover-logo-light: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-logo-light);
+	--rest-cover-logo-dark: var(--header-ground-rest-cover) var(--header-behaviour-cover) var(--color-section-black-logo-dark);
 }
 
 .nino-frame-header .nino-grid-row {
@@ -184,7 +256,7 @@
 .nino-frame-header .nino-scroll-header {
 	min-height: var(--header-height);
 	opacity: 1;
-	color: var(--header-ground-ink);
+	color: var(--rest-cover-ink, var(--header-ground-ink));
 	display: flex;
 	background-color: var(--header-ground-rest);
 	box-shadow: var(--header-ground-rest-shadow);
@@ -216,7 +288,9 @@ body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:fo
 	width: calc( clamp(7rem, 9vw, 9rem) * var(--header-logo) );
 	height: auto;
 	min-width: 0;
-	min-height: 0;
+	min-height: 24px;
+	display: flex;
+	align-items: center;
 	margin: 0;
 	background-image: none;
 }

@@ -14,7 +14,7 @@
  *	under the finger is the thing people press twice. The shadow is what makes
  *	the movement visible, so the two are one decision - and the outline variant
  *	and a button that is off cast none. The ladders are Nino's, value for value: a
- *	small key is the size times 1 less the spread and a big one the size times 1
+ *	small key is the size times 1 less the spread, its type never under .75rem, and a big one the size times 1
  *	plus it, the tracking is the letter-spacing of the label and the outline the
  *	weight of the line of the outline key, times the size - as in regular.
  *
@@ -89,7 +89,7 @@
 	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	font-size: max( calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ), .75rem );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {

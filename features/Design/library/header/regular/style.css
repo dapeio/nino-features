@@ -219,7 +219,9 @@ body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:fo
 	width: calc( clamp(7.5rem, 10vw, 10rem) * var(--header-logo) );
 	height: auto;
 	min-width: 0;
-	min-height: 0;
+	min-height: 24px;
+	display: flex;
+	align-items: center;
 	margin: 0;
 	background-image: none;
 }

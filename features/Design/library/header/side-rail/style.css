@@ -173,7 +173,9 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-rail {
 	width: calc( clamp(7rem, 10vw, 9rem) * var(--header-logo) );
 	height: auto;
 	min-width: 0;
-	min-height: 0;
+	min-height: 24px;
+	display: flex;
+	align-items: center;
 	margin: var(--header-position-logo);
 	background-image: none;
 }

@@ -29,8 +29,8 @@
  *
  *	The size is what the padding, the type and the radius of a button are
  *	multiplied by. The variants are that size times a number, in Nino.css as
- *	here: a small button is the size times 1 less the spread, a big one the
- *	size times 1 plus it.
+ *	here: a small button is the size times 1 less the spread - its type never under
+ *	.75rem - a big one the size times 1 plus it.
  *
  *	The tracking is the letter-spacing of the label, in em, so that a small and a
  *	big button space their letters in proportion; none at the middle, as Nino.css
@@ -135,7 +135,7 @@
 	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	font-size: max( calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ), .75rem );
 	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
