@@ -29,7 +29,7 @@ namespace Nino\Modules\Design {
 	 *										in one atomic putFileContent(). var_export() carries any
 	 *										bytes a stylesheet or a template can hold. Nothing in it is
 	 *										an id and nothing a request names, so no path can come from
-	 *										one: the three targets are the constants of Compiler.
+	 *										one: the targets are the constants of Compiler.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -41,7 +41,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The files Design writes, as virtual paths: the stylesheet, then the
-		 *	templates of the frames in the order the parts are declared in
+		 *	templates of the frames in the order the parts are declared in, then
+		 *	the files the frames include their navigations from (see Compiler::NAV_TARGET)
 		 *
 		 *	@return 	array									Virtual paths
 		 */
@@ -53,7 +54,37 @@ namespace Nino\Modules\Design {
 				if( $kind === 'frame' )
 					$targets[] = sprintf( Compiler::FRAME_TARGET, $part );
 
+			foreach( Setup::NAV_PARTS as $part )
+				$targets[] = sprintf( Compiler::NAV_TARGET, $part );
+
 			return $targets;
+		}
+
+		/**
+		 *	The files the frames include their navigations from, as virtual paths
+		 *
+		 *	@return 	array									Virtual paths
+		 */
+		public static function navTargets(): array {
+			return array_map( static fn( string $part ): string => sprintf( Compiler::NAV_TARGET, $part ), Setup::NAV_PARTS );
+		}
+
+		/**
+		 *	The files of a capture without the navigations that are not Design's to put back: a navigation file that is not among the
+		 *	files an apply writes and is not one Design wrote is the project's own, and is none in the version that is kept
+		 *
+		 *	@param		array 		$files				target => bytes|null, as capture() has them
+		 *	@param		array 		$written			The targets the apply writes
+		 *
+		 *	@return 	array									The same, with null for those
+		 */
+		public static function untouched( array $files, array $written ): array {
+
+			foreach( self::navTargets() as $target )
+				if( in_array( $target, $written, true ) === false && is_string( $files[$target] ?? null ) === true && Compiler::ownership( $files[$target], true ) !== 'ours' )
+					$files[$target] = null;
+
+			return $files;
 		}
 
 		/**

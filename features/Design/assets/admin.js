@@ -569,7 +569,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, styles, features, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, navs, knobs, styles, features, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -588,6 +588,7 @@
 
 			return {
 				parts 	: parts,
+				navs 		: Object.assign( { header : '', footer : '' }, data.navs || {} ),
 				knobs 	: knobs,
 				styles 	: Nino.admin.design._stylesOf( data.styles, Object.keys( parts ) ),
 				features : Nino.admin.design._entriesOf( data.features, 'picked' ),
@@ -748,6 +749,10 @@
 
 			const design = Nino.admin.design;
 			const params = Array.isArray( note.params ) === true ? note.params.slice() : [];
+
+			// design_navigation_missing: the frame, by the word of its object, and the key of the option the setup named
+			if( note.code === 'design_navigation_missing' && params.length === 2 )
+				params[0] = Nino.content.getText('/_admin/design/object/'+ params[0]+ '/label') || params[0];
 
 			// design_set_missing: the part - or the feature -, the set the file named, the set that stands in its place
 			if( note.code === 'design_set_missing' && params.length === 3 ) {
@@ -1588,7 +1593,7 @@
 		_snapshotOf : function( edit, theme ) {
 
 			const snapshot = { size : edit.size, width : edit.width, whitespace : edit.whitespace, radius : edit.radius, 'radius-alt' : edit['radius-alt'], radii : edit.radii,
-				motion : edit.motion, parts : edit.parts, knobs : edit.knobs, styles : edit.styles, fonts : edit.fonts };
+				motion : edit.motion, parts : edit.parts, navs : edit.navs, knobs : edit.knobs, styles : edit.styles, fonts : edit.fonts };
 
 			if( theme === undefined || theme.colours !== undefined )
 				snapshot.colours = edit.colours;
@@ -1886,7 +1891,7 @@
 				return ( response.missing || [] ).filter( function( entry ) { return entry.slug === family } ).map( function( entry ) { return entry.name } )[0] || family;
 			} );
 
-			design._edit = { parts : setup.parts, knobs : setup.knobs, styles : design._stylesOf( setup.styles, Object.keys( setup.parts ) ), size : setup.size, width : setup.width, whitespace : setup.whitespace,
+			design._edit = { parts : setup.parts, navs : Object.assign( { header : '', footer : '' }, setup.navs || {} ), knobs : setup.knobs, styles : design._stylesOf( setup.styles, Object.keys( setup.parts ) ), size : setup.size, width : setup.width, whitespace : setup.whitespace,
 				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
 				colours : setup.colours === undefined ? design._edit.colours : setup.colours,
 				features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
@@ -2904,7 +2909,7 @@
 			if( frame === null || edit === null )
 				return;
 
-			const frames = edit.parts.header + '|' + edit.parts.footer;
+			const frames = [ edit.parts.header, edit.parts.footer, edit.navs.header, edit.navs.footer ].join('|');
 			const full 	 = Nino.admin.design._frames !== frames;
 
 			/*	The line is one line, whatever it says - the head the chip stands in does
@@ -3682,7 +3687,7 @@
 		 *	@return		{string}
 		 */
 		_fileWord : function( file ) {
-			return Nino.content.getText('/_admin/design/confirm/file/'+ ( file.part || 'look' ) ) || Nino.admin.design._name( file.target );
+			return Nino.content.getText('/_admin/design/confirm/file/'+ ( file.part === '' || file.part === undefined ? 'look' : file.part + ( file.kind === 'nav' ? '-nav' : '' ) ) ) || Nino.admin.design._name( file.target );
 		},
 
 		/**
@@ -4521,6 +4526,14 @@
 				return JSON.stringify( value ) === JSON.stringify( found.meta['default'] ) ? [] : [ views._featureSaid( found.meta, value ) ];
 			}
 
+			// The navigation of a frame: said where one is chosen, by the title of the option; '' is the file as the project has it and says nothing
+			if( path[0] === 'navs' ) {
+
+				const chosen = ( edit.navs || {} )[ path[1] ] || '';
+
+				return chosen === ( ( normal.navs || {} )[ path[1] ] || '' ) ? [] : [ Nino.content.getText('/_admin/design/navigation/label')+ ' '+ views._navTitle( path[1], chosen ) ];
+			}
+
 			if( path[0] === 'radii' ) {
 
 				const strip = views._radiiStrip( keys, object );
@@ -4670,6 +4683,10 @@
 					put( views._partField( design._row( path[1] ) ) );
 					return views._styleFields( path[1] ).forEach( function( field ) { card.appendChild( field ) } );
 				}
+
+				// The navigation of a frame: a select of its own after the template
+				if( path[0] === 'navs' )
+					return put( views._navField( path[1] ) );
 
 				// A feature that brings variants: the choice of the variant on Templates, a knob of the variant on the tab its head names
 				if( path[0] === 'features' && path[2] === 'set' ) {
@@ -4922,6 +4939,74 @@
 			);
 
 			return field;
+		},
+
+		/**
+		 *	The options a frame can take as its navigation, as design/list answered them
+		 *
+		 *	@param		{string}	part			'header' or 'footer'
+		 *
+		 *	@return		{Array}						{ key, title, group }, none where there are none
+		 */
+		_navOptions : function( part ) {
+			return ( ( ( Nino.admin.design._data || {} ).navigations || {} )[part] ) || [];
+		},
+
+		/**
+		 *	What an option is called, as the select shows it; the key where the option is no longer offered
+		 *
+		 *	@param		{string}	part
+		 *	@param		{string}	key
+		 *
+		 *	@return		{string}
+		 */
+		_navTitle : function( part, key ) {
+
+			const found = Nino.admin.design.views._navOptions( part ).filter( function( option ) { return option.key === key } )[0];
+
+			return found === undefined ? key : found.title;
+		},
+
+		/**
+		 *	The select a frame's navigation is chosen in, after the one of its template: "As the project has it" first, and then the
+		 *	options in a group each - the kernel's menus under Kernel, what the features offer under Features. The groups are the two
+		 *	the answer names; a feature is not a group of its own, since an option carries no word about the feature that offers it
+		 *
+		 *	@param		{string}	part			'header' or 'footer'
+		 *
+		 *	@return		{Element}
+		 */
+		_navField : function( part ) {
+
+			const views = Nino.admin.design.views;
+			const groups = { kernel : Nino.content.getText('/_admin/design/navigation/kernel'), features : Nino.content.getText('/_admin/design/navigation/features') };
+			const options = [ { value : '', label : Nino.content.getText('/_admin/design/navigation/project') } ];
+
+			views._navOptions( part ).forEach( function( option ) {
+				options.push( { value : option.key, label : option.title, group : groups[ option.group ] } );
+			} );
+
+			return views._select(
+				'design-nav-'+ part, Nino.content.getText('/_admin/design/navigation/label'), options, Nino.admin.design._edit.navs[part],
+				function( value ) { views._setNav( part, value ) } );
+		},
+
+		/**
+		 *	Choose the navigation of a frame: the preview rebuilds the frame with the call of the option in the place of the
+		 *	include of the project's file, and looks at the frame
+		 *
+		 *	@param		{string}	part			'header' or 'footer'
+		 *	@param		{string}	key				The key of an option, '' for the file as the project has it
+		 *
+		 *	@return		void
+		 */
+		_setNav : function( part, key ) {
+
+			const design = Nino.admin.design;
+
+			design._edit.navs[part] = key;
+			design._target = design.views._anchorOf( 'navs/'+ part );
+			design._preview();
 		},
 
 		/**
@@ -6443,7 +6528,7 @@
 		 *
 		 *	@param		{string}		id
 		 *	@param		{string}		label			'' draws none
-		 *	@param		{Array}			options		{ value, label }
+		 *	@param		{Array}			options		{ value, label, group }; an option with a group stands in an optgroup of that name
 		 *	@param		{string}		current
 		 *	@param		{Function}	onChange
 		 *	@param		{string}		[note]		What the control is for, as the line under it.
@@ -6481,13 +6566,26 @@
 				select.disabled = true;
 			}
 
+			// An option that names a group stands in an optgroup of that name, made at its first option
+			const grouped = {};
+
 			options.forEach( function( option ) {
 				const node = dc.createElement('option');
 				node.value = option.value;
 				node.textContent = option.label;
 				if( option.value === current )
 					node.selected = true;
-				select.appendChild( node );
+
+				if( typeof option.group !== 'string' )
+					return select.appendChild( node );
+
+				if( grouped[option.group] === undefined ) {
+					grouped[option.group] = dc.createElement('optgroup');
+					grouped[option.group].label = option.group;
+					select.appendChild( grouped[option.group] );
+				}
+
+				grouped[option.group].appendChild( node );
 			} );
 
 			select.addEventListener( 'change', function() { onChange( select.value ) } );

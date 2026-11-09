@@ -271,6 +271,26 @@ namespace Nino\Modules\Design {
 				];
 			}
 
+			/*	What the navigation of each frame can be: the options of Setup::navigations() in their order, each with its
+				group - the kernel's menus, or what a feature offers - for the screen to draw the select with. What a feature
+				offered wrongly is named in the notes, once	*/
+			$navigations = [];
+
+			foreach( Setup::NAV_PARTS as $part ) {
+
+				$found 	= [];
+				$kernel = Setup::kernelNavigations( $appData, $part );
+
+				foreach( Setup::navigations( $appData, $part, $found ) as $key => $option )
+					$navigations[$part][] = [ 'key' => $key, 'title' => $option['title'], 'group' => isset( $kernel[$key] ) === true ? 'kernel' : 'features' ];
+
+				$navigations[$part] ??= [];
+
+				foreach( $found as $note )
+					if( in_array( $note, $notes, true ) === false )
+						$notes[] = $note;
+			}
+
 			$families = [];
 
 			foreach( Fonts::families( $appData ) as $slug => $family )
@@ -290,6 +310,9 @@ namespace Nino\Modules\Design {
 				// to. The five words are the steps a choice is named by, and the size and
 				// the width are positions as well
 				'knobs' 	=> $setup['knobs'],
+				// The navigation chosen for the header and for the footer: the key of an option, '' for the file the project has - and the options each can be (key, title, group), as they are asked at this request
+				'navs' 		=> $setup['navs'],
+				'navigations' => $navigations,
 				// The styles chosen for the templates, per part: style => option, an empty list for a part that chose none. What each template offers is in its entry of the catalogue above
 				'styles' 	=> $setup['styles'],
 				'kinds' 	=> Setup::KNOBS,
@@ -522,6 +545,11 @@ namespace Nino\Modules\Design {
 			$files = [];
 
 			foreach( Previous::targets() as $target ) {
+
+				// The file of a navigation is Design's only for a frame that chose one: the project's own is no foreign file otherwise
+				foreach( Setup::NAV_PARTS as $part )
+					if( $target === sprintf( Compiler::NAV_TARGET, $part ) && (string) ( $setup['navs'][$part] ?? '' ) === '' )
+						continue 2;
 
 				$file 		= \Nino\Filesystem::path( $appData, $target );
 				$present 	= $file !== '' && is_file( $file ) === true;
@@ -1271,7 +1299,7 @@ namespace Nino\Modules\Design {
 				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 
-			foreach( [ 'radii', 'motion', 'parts', 'knobs', 'styles', 'features', 'fonts', 'colours' ] as $key )
+			foreach( [ 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'fonts', 'colours' ] as $key )
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );

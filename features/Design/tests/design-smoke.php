@@ -1265,9 +1265,11 @@ foreach( [ 'en_US', 'de_DE' ] as $variantLocale ) {
 
 check( 'the manual tells the features that bring variants twice, in both languages: once for the person who chooses - the folder, the view the variant is chosen on, the ratio below which a colour is said to fall short - and once for the person who writes a variant - the five kinds, the tags of a head with the German line of a knob among them, the two places a default may stand',
 	$variantEntries === [ 'en_US' => [ 1, 1 ], 'de_DE' => [ 1, 1 ] ] );
-check( 'the manual names the one callback the feature registers, on /nino/http/output, in both languages, and the setting that callback reads',
-	array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) ) === [ '/nino/http/output' ]
-	&& trim( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'en_US' ) ) !== '' && trim( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'de_DE' ) ) !== ''
+$calls = array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) );
+sort( $calls );
+check( 'the manual names the one callback the feature registers, on /nino/http/output, and the one it fires, /feature/design/navigations, in both languages, and the setting that callback reads',
+	$calls === [ '/feature/design/navigations', '/nino/http/output' ] && Setup::NAV_HOOK === '/feature/design/navigations'
+	&& array_filter( $calls, static fn( string $call ): bool => trim( \Nino\Features::localized( $feature['manual']['callbacks'][$call], 'en_US' ) ) === '' || trim( \Nino\Features::localized( $feature['manual']['callbacks'][$call], 'de_DE' ) ) === '' ) === []
 	&& isset( $feature['settings']['webfontsUrl']['label']['en_US'], $feature['settings']['webfontsUrl']['label']['de_DE'] ) === true );
 
 // The themes: where the themes of the project are kept
@@ -3525,8 +3527,8 @@ check( 'the keys that share a place are the controls that are one: the cover, th
 	&& array_slice( Setup::SURFACES, 0, 3 ) === [ 'cover', 'row', 'column' ] );
 check( '...and the table puts every control in the row of its object: each template under the object it is the template of - the header, the footer, the section, the tiles, the card, the buttons, the lists, the tables, the forms, the tabs and the accordion, in the order of the objects -; the type and the surfaces row by row - page, header, footer, section, tiles, card, buttons, lists, tables, forms, tabs and accordion - with the sizes of the titles under the object whose titles they are; the colours and the motion with the page, and with the object whose dimming, shadow, stripes or hover they are',
 	$laidOut === [
-		'templates/header' 			=> [ 'parts/header', 'knobs/header/position', 'knobs/header/cta', 'knobs/header/behaviour' ],
-		'templates/footer' 			=> [ 'parts/footer', 'knobs/footer/position' ],
+		'templates/header' 			=> [ 'parts/header', 'navs/header', 'knobs/header/position', 'knobs/header/cta', 'knobs/header/behaviour' ],
+		'templates/footer' 			=> [ 'parts/footer', 'navs/footer', 'knobs/footer/position' ],
 		'templates/section' 		=> [ 'parts/section', 'knobs/section/align', 'knobs/section/measure' ],
 		'templates/tiles' 			=> [ 'parts/tiles' ],
 		'templates/card' 				=> [ 'parts/card', 'knobs/card/align' ],
@@ -4891,7 +4893,7 @@ $beforeFamilies = static function( array $setup ) use ( $library ): string {
 	}
 
 	// ...and before the features and the styles of the templates had a key of their own in it
-	unset( $setup['compiled'], $setup['features'], $setup['styles'] );
+	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'] );
 
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
@@ -5560,8 +5562,8 @@ $beforeRevision = static function( array $setup, string $lib ): string {
 		$printFile 					= Setup::file( $lib, $printPart, $printSet );
 		$files[$printPart] 	= [ $printSet, ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
-	// ...as it was written before the features and the styles of the templates had a key of their own in it
-	unset( $setup['compiled'], $setup['features'], $setup['styles'] );
+	// ...as it was written before the features, the styles of the templates and the navigations had a key of their own in it
+	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'] );
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
 $moved = $sandboxSetup;
@@ -6492,7 +6494,9 @@ check( '...and so does every other key of it',
 echo "\nApplying asks first, keeps the version before, and restores it\n";
 
 $slotPath	= \Nino\Filesystem::path( $appData, Previous::PATH );
-$targets	= Previous::targets();
+$every		= Previous::targets();
+// The stylesheet and the two frames: what the sequences below write. The files of the navigations are written only for a frame that chose one, and have a section of their own
+$targets	= array_slice( $every, 0, 3 );
 $pathOf		= static fn( string $target ): string => \Nino\Filesystem::path( $appData, $target );
 
 /*	The frames the sequences below write, taken from the library by what they write and not by name: one set of a part for each
@@ -6525,13 +6529,18 @@ $onDisk = static function() use ( $targets, $pathOf ): array {
 	return $files;
 };
 
+/** The files of the previous version that are the stylesheet and the two frames: the slot holds the files of the navigations as well, none where there was none */
+$slotFiles = static function() use ( &$appData, $targets ): array {
+	return array_intersect_key( Previous::read( $appData )['files'] ?? [], array_flip( $targets ) );
+};
+
 /** A plan, by target */
 $planOf = static function() use ( &$appData ): array {
 	return array_column( (array) ( callDesignAction( $appData, 'apiPlan' )[1]['files'] ?? [] ), null, 'target' );
 };
 
-check( 'the files Design writes are the stylesheet and the two frames, in that order',
-	$targets === [ '/assets/theme.css', '/templates/frame-header.tpl', '/templates/frame-footer.tpl' ] );
+check( 'the files Design writes are the stylesheet and the two frames, in that order, and then the file each frame includes its navigation from',
+	$every === [ '/assets/theme.css', '/templates/frame-header.tpl', '/templates/frame-footer.tpl', '/templates/html-header-nav.tpl', '/templates/html-footer-nav.tpl' ] );
 check( 'the previous version is declared under data, so a backup carries it too',
 	in_array( Previous::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 
@@ -6557,7 +6566,8 @@ check( '...all three delivered, so all three not ours, existing, and different f
 	count( array_filter( $plan, static fn( array $file ): bool => $file['state'] === 'foreign' && $file['exists'] === true && $file['changes'] === true ) ) === 3 );
 check( '...each by the part it is for - none for the stylesheet, the part of the frame for a frame: what the screen names a file by, in words, and not by its path',
 	array_column( $plan, 'part', 'target' ) === [ Compiler::TARGET => '', sprintf( Compiler::FRAME_TARGET, 'header' ) => 'header', sprintf( Compiler::FRAME_TARGET, 'footer' ) => 'footer' ]
-	&& array_keys( reset( $plan ) ) === [ 'target', 'part', 'exists', 'state', 'changes', 'lost' ] );
+	&& array_keys( reset( $plan ) ) === [ 'target', 'part', 'kind', 'exists', 'state', 'changes', 'lost' ]
+	&& array_column( $plan, 'kind', 'target' ) === [ Compiler::TARGET => 'look', sprintf( Compiler::FRAME_TARGET, 'header' ) => 'frame', sprintf( Compiler::FRAME_TARGET, 'footer' ) => 'frame' ] );
 check( '...and the footer is told apart by the shortcode somebody put in it that the variant replacing it does not have',
 	$plan['/templates/frame-footer.tpl']['lost'] === [ '[consent-settings]' ]
 	&& $plan['/templates/frame-header.tpl']['lost'] === [] && $plan['/assets/theme.css']['lost'] === [] );
@@ -6575,7 +6585,8 @@ $slot 		= Previous::read( $appData );
 $applied 	= $onDisk();
 $setupApplied = Setup::read( $appData, $library );
 
-check( 'the previous version holds the old bytes of all three files', $slot !== null && $slot['files'] === $delivered );
+check( 'the previous version holds the old bytes of all three files, and a place for each file of a navigation - none, as there was none', $slot !== null && array_keys( $slot['files'] ) === $every
+	&& array_intersect_key( $slot['files'], $delivered ) === $delivered && array_filter( array_diff_key( $slot['files'], $delivered ) ) === [] );
 check( '...and when it was kept - with no setup, because the delivered files were written under none of Design\'s: the record in data/design.php names another stylesheet', $slot !== null && $slot['setup'] === null
 	&& ( $setupBefore['compiled']['sha'] ?? '' ) !== hash( 'sha256', $delivered['/assets/theme.css'] )
 	&& preg_match( '/^\d{4}-\d{2}-\d{2}T/', $slot['at'] ) === 1 );
@@ -6600,7 +6611,7 @@ check( 'applying again with nothing changed leaves the previous version exactly 
 
 check( 'restoring puts the three files back byte for byte', $status === 200 && $onDisk() === $delivered );
 check( '...and the slot now holds what was applied, so the swap can be undone',
-	( Previous::read( $appData )['files'] ?? [] ) === $applied );
+	$slotFiles() === $applied );
 $afterApply = $setupApplied;
 unset( $afterApply['compiled'] );
 check( '...and with no setup in the slot only the record of what was compiled goes: the choices stay, and nothing claims the files answer to them',
@@ -6621,7 +6632,7 @@ check( 'a restore the Csrf check already failed writes nothing',
 
 check( 'restoring again returns to what was applied',
 	callDesignAction( $appData, 'apiRestore' )[0] === 200 && $onDisk() === $applied
-	&& ( Previous::read( $appData )['files'] ?? [] ) === $delivered );
+	&& $slotFiles() === $delivered );
 
 // What came back is an older Design output with its own setup, which is a
 // file that answers to the setup beside it. Without a setup in the slot
@@ -6717,7 +6728,7 @@ $filesB = $onDisk();
 check( 'the two versions of the sequence differ in files, choices, size and colours', $filesA !== $filesB && $setupA !== $setupB
 	&& $setupA['size'] === 0 && $setupB['size'] === 1 && $setupB['parts']['header'] === $pairs[1]['header'] && $setupB['colours']['contrast'] === 5 );
 check( 'the slot holds the choices the files were written under, not the draft the panel saved a moment before the apply',
-	( Previous::read( $appData )['files'] ?? [] ) === $filesA
+	$slotFiles() === $filesA
 	&& $sans( (array) ( Previous::read( $appData )['setup'] ?? [] ) ) === $setupA );
 
 [ $status, $back ] = callDesignAction( $appData, 'apiRestore' );
@@ -6739,7 +6750,7 @@ callDesignAction( $appData, 'apiSave', [ 'parts' => $pairs[2], 'knobs' => [], 's
 callDesignAction( $appData, 'apiApply' );
 
 check( 'a third apply keeps what the second one wrote, with the choices that wrote it',
-	( Previous::read( $appData )['files'] ?? [] ) === $filesB
+	$slotFiles() === $filesB
 	&& $sans( (array) ( Previous::read( $appData )['setup'] ?? [] ) ) === $setupB );
 
 // A project that applied with the release before this one has a record
@@ -6886,7 +6897,7 @@ check( 'a frame the apply had only just made is taken away again: the project ha
 $reset( true );
 check( 'the same apply goes through once the disk allows it, and keeps the version it found',
 	callDesignAction( $appData, 'apiApply' )[0] === 200 && $onDisk() !== $old
-	&& ( Previous::read( $appData )['files'] ?? [] ) === $old );
+	&& $slotFiles() === $old );
 
 // What the preview tests further down take for the stored setup
 callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0 ] );
@@ -8268,7 +8279,7 @@ check( '...and with a logo uploaded they come out as the whole page too, each fr
 
 $notes = [];
 check( 'a frame with no template is named rather than quietly left out',
-	Preview::frame( $library, [ 'parts' => [ 'header' => 'nope' ] ], 'header', $notes ) === ''
+	Preview::frame( $appData, $library, [ 'parts' => [ 'header' => 'nope' ] ], 'header', $notes ) === ''
 	&& count( $notes ) === 1 && str_contains( $notes[0], '"header"' ) === true );
 
 $notes = [];
@@ -8804,7 +8815,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	};
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
-		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ]
+		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ]
 		&& array_keys( Setup::defaults( $library ) ) === Setup::KEYS && Setup::defaults( $library )['theme'] === '' && Setup::defaults( $library )['css'] === '' );
 	check( '...and the format of the file stays 2: a file without the two keys reads as none and no css, which is what every project had, with no note and nothing migrated',
 		Setup::FORMAT === 2 && \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'size' => 1, 'width' => -1 ] ) === true
@@ -9822,6 +9833,10 @@ foreach( Setup::PARTS as $part => $kind )
 	if( $kind === 'frame' )
 		$wanted[] = 'confirm/file/'. $part;
 
+// ...and the file a frame includes its navigation from, named by the part and -nav
+foreach( Setup::NAV_PARTS as $part )
+	$wanted[] = 'confirm/file/'. $part. '-nav';
+
 foreach( [ 'missing', 'ours', 'edited', 'foreign', 'same' ] as $state )
 	$wanted[] = 'confirm/state/'. $state;
 
@@ -9895,7 +9910,8 @@ check( 'the texts have a word for everything the model draws by name ('. count( 
 	. ( $missingWords === [] ? '' : ' - missing: '. implode( ', ', array_slice( $missingWords, 0, 6 ) ) ), $missingWords === [] && count( $choiceKnobs ) === 24 );
 
 // ...and nothing else: a key is either one of those, or a literal the script names, or the one page title the server renders
-$accounted = array_merge( $wanted, array_values( array_unique( $scriptKeys[1] ) ), [ 'preview/page' ] );
+// ...and the sentence that titles a menu of the kernel, which the server fills (see Setup::kernelNavigations())
+$accounted = array_merge( $wanted, array_values( array_unique( $scriptKeys[1] ) ), [ 'preview/page', 'navigation/title' ] );
 $leftover = array_filter( $textEn, static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/design/' ) === true
 	&& in_array( substr( $key, strlen( '[[/_admin/design/' ), -2 ), $accounted, true ) === false );
 
@@ -11934,6 +11950,448 @@ else
 $appData['./nino/locales/current'] = $sfLocale;
 $appData['/nino/modules'] = $sfModules;
 unset( $appData['./nino/filesystem/cache'][Setup::PATH], $appData['./nino/features/all'], $appData['./nino/features/listed'], $appData['./design/features'] );
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+
+// --- The navigation of the header and of the footer ----------------------------------
+
+echo "\nThe navigation of a frame: the options, the choice, the file it writes, the plan, the restore and the preview\n";
+
+$navLocale 	= $appData['./nino/locales/current'];
+$navFills 	= $appData['./nino/html/fills'] ?? null;
+$navMenus 	= $appData['/nino/html/navs'] ?? null;
+$navHooks 	= $appData['./nino/callbacks'][Setup::NAV_HOOK] ?? null;
+$navSetup 	= \Nino\Filesystem::getFileContent( $appData, Setup::PATH, [] );
+$navSlot 		= is_file( $slotPath ) === true ? (string) file_get_contents( $slotPath ) : null;
+$navPaths 	= [ 'header' => $pathOf( '/templates/html-header-nav.tpl' ), 'footer' => $pathOf( '/templates/html-footer-nav.tpl' ), 'frame-header' => $pathOf( '/templates/frame-header.tpl' ), 'frame-footer' => $pathOf( '/templates/frame-footer.tpl' ), 'theme' => $pathOf( '/assets/theme.css' ) ];
+$navKept 		= array_map( static fn( string $path ): ?string => is_file( $path ) === true ? (string) file_get_contents( $path ) : null, $navPaths );
+
+\Nino\Html::addFills( $appData, (array) include __DIR__. '/../text/en_US.php', 'en_US' );
+\Nino\Html::addFills( $appData, (array) include __DIR__. '/../text/de_DE.php', 'de_DE' );
+$appData['./nino/locales/current'] = 'en_US';
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+$appData['/nino/html/navs'] = [ 'main', 'footer', 'legal' ];
+unset( $appData['./nino/callbacks'][Setup::NAV_HOOK] );
+
+// A feature that answers the hook: one good option with a title in two languages, one with a plain title, and the entries that are none
+$offered = [
+	'menu-main' 	=> [ 'shortcode' => '[menu /main burger]', 'title' => [ 'de_DE' => 'Hauptmenü', 'en_US' => 'Main menu' ] ],
+	'plain' 			=> [ 'shortcode' => '[menu]', 'title' => 'Plain' ],
+];
+$spoiled = [
+	'two-calls' 	=> [ 'shortcode' => '[menu /a][menu /b]', 'title' => 'x' ],
+	'brackets' 		=> [ 'shortcode' => '[menu [[/a]]]', 'title' => 'x' ],
+	'a-fill' 			=> [ 'shortcode' => '[menu "[[/a]]"]', 'title' => 'x' ],
+	'closing' 		=> [ 'shortcode' => '[/menu]', 'title' => 'x' ],
+	'two-lines' 	=> [ 'shortcode' => "[menu\n/a]", 'title' => 'x' ],
+	'a-null' 			=> [ 'shortcode' => "[menu \0]", 'title' => 'x' ],
+	'text-first' 	=> [ 'shortcode' => 'menu', 'title' => 'x' ],
+	'no-title' 		=> [ 'shortcode' => '[menu]' ],
+	'long-title' 	=> [ 'shortcode' => '[menu]', 'title' => str_repeat( 'x', Setup::NAV_TITLE + 1 ) ],
+	'long-word' 	=> [ 'shortcode' => '[menu]', 'title' => [ 'en_US' => 'ok', 'de_DE' => str_repeat( 'ä', Setup::NAV_TITLE + 1 ) ] ],
+	'null-title' 	=> [ 'shortcode' => '[menu]', 'title' => "a\0b" ],
+	'a-list' 			=> [ 'shortcode' => '[menu]', 'title' => [ 'a', 'b' ] ],
+	'a-number' 		=> [ 'shortcode' => '[menu]', 'title' => 12 ],
+	'nav-main' 		=> [ 'shortcode' => '[menu /main]', 'title' => 'Takes a key of the kernel' ],
+	'Not A Slug' 	=> [ 'shortcode' => '[menu]', 'title' => 'x' ],
+	'a--b' 				=> [ 'shortcode' => '[menu]', 'title' => 'x' ],
+	'empty-title' => [ 'shortcode' => '[menu]', 'title' => '' ],
+	'blank-title' => [ 'shortcode' => '[menu]', 'title' => " \t " ],
+	'empty-map' 	=> [ 'shortcode' => '[menu]', 'title' => [] ],
+	'blank-map' 	=> [ 'shortcode' => '[menu]', 'title' => [ 'en_US' => 'ok', 'de_DE' => '  ' ] ],
+	'c1-call' 		=> [ 'shortcode' => "[menu \u{85}]", 'title' => 'x' ],
+	'sep-call' 		=> [ 'shortcode' => "[menu \u{2028}]", 'title' => 'x' ],
+	'bad-call' 		=> [ 'shortcode' => "[menu \xff]", 'title' => 'x' ],
+	'c1-title' 		=> [ 'shortcode' => '[menu]', 'title' => "a\u{85}b" ],
+	'sep-title' 	=> [ 'shortcode' => '[menu]', 'title' => "a\u{2029}b" ],
+	'bad-title' 	=> [ 'shortcode' => '[menu]', 'title' => "a\xffb" ],
+	'not-an-entry' => 'x',
+];
+$navArgs = [];
+$answering = static function( array &$appData, array &$args ) use ( $offered, $spoiled, &$navArgs ): void {
+	$navArgs[] = $args;
+	$args['options'] = $args['options'] + $offered + $spoiled;
+};
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+
+$navNotes = [];
+$heads 		= Setup::navigations( $appData, 'header', $navNotes );
+$feet 		= Setup::navigations( $appData, 'footer' );
+
+// What the kernel's own two files hold, read from the checkout, with the whitespace of their indentation made one
+$kernelFile = static fn( string $name ): string => trim( (string) preg_replace( '/\s+/', ' ', (string) file_get_contents( $root. '/_nino/Nino/Modules/Navigation/install/templates/'. $name ) ) );
+$squash 		= static fn( string $text ): string => trim( (string) preg_replace( '/\s+/', ' ', $text ) );
+
+check( 'navigations() lists a menu of the kernel for each key it registers - nav-<key> - in the order it registers them',
+	array_slice( array_keys( $heads ), 0, 3 ) === [ 'nav-main', 'nav-footer', 'nav-legal' ] && array_slice( array_keys( $feet ), 0, 3 ) === [ 'nav-main', 'nav-footer', 'nav-legal' ]
+	&& Setup::kernelNavigations( $appData, 'footer' ) === array_slice( $feet, 0, 3 ) && Setup::navigations( $appData, 'section' ) === [] );
+check( '...the option of the header is what the kernel\'s own html-header-nav.tpl holds with the key of the menu in it: the burger with the logo block inside, and the footer\'s what html-footer-nav.tpl holds: the heading with its fill and the call with its id',
+	$squash( $heads['nav-main']['shortcode'] ) === $kernelFile( 'html-header-nav.tpl' ) && $squash( $feet['nav-footer']['shortcode'] ) === $kernelFile( 'html-footer-nav.tpl' )
+	&& $squash( $heads['nav-legal']['shortcode'] ) === str_replace( 'nav="main"', 'nav="legal"', $kernelFile( 'html-header-nav.tpl' ) )
+	&& $squash( $feet['nav-main']['shortcode'] ) === str_replace( 'nav="footer"', 'nav="main"', $kernelFile( 'html-footer-nav.tpl' ) )
+	&& str_contains( $heads['nav-main']['shortcode'], '[logo alt=""]' ) === true && str_contains( $heads['nav-main']['shortcode'], ' burger]' ) === true
+	&& str_contains( $feet['nav-main']['shortcode'], '[[/template/common/navigation/footer]]' ) === true && str_contains( $feet['nav-main']['shortcode'], 'id="footer__nav"' ) === true
+	&& str_contains( $feet['nav-main']['shortcode'], 'burger' ) === false );
+// The kernel's own two files cannot be read: its menus are not offered, with a note, and what features answer stays
+$kernelDir = ninoSandboxDir( $appData ). '/_nino';
+rename( $kernelDir, $kernelDir. '.away' );
+$unreadNotes = [];
+$unread = Setup::navigations( $appData, 'header', $unreadNotes );
+rename( $kernelDir. '.away', $kernelDir );
+check( '...a kernel file that cannot be read drops the kernel\'s options of that frame with a note and puts no markup of the feature in their place, and the options of the features stay',
+	array_keys( $unread ) === [ 'menu-main', 'plain', 'nav-main' ] && $unread['menu-main'] === $heads['menu-main'] && $unread['nav-main']['shortcode'] === '[menu /main]' && Setup::kernelNavigations( $appData, 'header' ) !== []
+	&& count( array_filter( $unreadNotes, static fn( string $note ): bool => str_contains( $note, 'header' ) === true && str_contains( $note, 'kernel' ) === true ) ) >= 1 );
+$titleEn = (string) \Nino\Html::renderTextfill( $appData, '/_admin/design/navigation/title' );
+$appData['./nino/locales/current'] = 'de_DE';
+$titleDe = (string) \Nino\Html::renderTextfill( $appData, '/_admin/design/navigation/title' );
+check( '...titled by the sentence of the panel with the key in it, in the language of the workbench: the text key of each language, which is not the other\'s',
+	$titleEn !== '' && $titleDe !== '' && $titleEn !== $titleDe && $heads['nav-main']['title'] === str_replace( '%s', 'main', $titleEn )
+	&& Setup::navigations( $appData, 'header' )['nav-main']['title'] === str_replace( '%s', 'main', $titleDe ) );
+$appData['./nino/locales/current'] = 'en_US';
+check( '...and then what a callback adds: the hook is fired with the part and an empty list of options, an entry that is right is listed with the shortcode as it is and the title in the language of the workbench - a map is chosen from, a string stands',
+	isset( $heads['menu-main'], $heads['plain'] ) === true && $heads['menu-main'] === [ 'shortcode' => '[menu /main burger]', 'title' => 'Main menu' ] && $heads['plain'] === [ 'shortcode' => '[menu]', 'title' => 'Plain' ]
+	&& array_slice( array_keys( $heads ), 3 ) === [ 'menu-main', 'plain' ] && $navArgs !== [] && $navArgs[0] === [ 'part' => 'header', 'options' => [] ] && in_array( [ 'part' => 'footer', 'options' => [] ], $navArgs, true ) === true );
+$appData['./nino/locales/current'] = 'de_DE';
+check( '...a map of titles is read in the language of the workbench',
+	Setup::navigations( $appData, 'header' )['menu-main']['title'] === 'Hauptmenü' );
+$appData['./nino/locales/current'] = 'en_US';
+check( '...every entry that is not right is dropped, and named in the notes with its key: two calls, a [[ , a fill, a closing tag, two lines, a null byte, a shortcode with no bracket, no title, a title over '. Setup::NAV_TITLE. ' characters in a word of a map, a null byte in a title, a list, a number, a key of the kernel\'s own, a key that is no slug - and an entry that is no list',
+	array_diff( array_keys( $heads ), [ 'nav-main', 'nav-footer', 'nav-legal', 'menu-main', 'plain' ] ) === [] && count( $navNotes ) === count( $spoiled )
+	&& array_filter( array_keys( $spoiled ), static fn( string $key ): bool => array_filter( $navNotes, static fn( string $note ): bool => str_contains( $note, '"'. $key. '"' ) === true ) === [] ) === [] );
+check( '...a title of exactly '. Setup::NAV_TITLE. ' characters, counted as characters, and a shortcode that takes arguments with quotes, a slash and a letter beyond ascii, and one of exactly 500 bytes - not one of 501 - are right',
+	( function() use ( &$appData ): bool {
+		\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+		\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, static function( array &$appData, array &$args ): void {
+			$args['options']['edge'] = [ 'shortcode' => '[menu /main style="a b" burger]', 'title' => str_repeat( 'ä', Setup::NAV_TITLE ) ];
+			$args['options']['exact'] = [ 'shortcode' => '[m'. str_repeat( 'a', Setup::NAV_CALL - 3 ). ']', 'title' => 'x' ];
+			$args['options']['over'] = [ 'shortcode' => '[m'. str_repeat( 'a', Setup::NAV_CALL - 2 ). ']', 'title' => 'x' ];
+			$args['options']['accented'] = [ 'shortcode' => '[menu /über-uns]', 'title' => 'x' ];
+		} );
+		$edge = Setup::navigations( $appData, 'header' );
+		return isset( $edge['edge'] ) === true && mb_strlen( $edge['edge']['title'] ) === Setup::NAV_TITLE
+			&& Setup::NAV_CALL === 500 && isset( $edge['exact'] ) === true && strlen( $edge['exact']['shortcode'] ) === 500 && isset( $edge['over'] ) === false && isset( $edge['accented'] ) === true;
+	} )() );
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, static function( array &$appData, array &$args ): array { return [ 'options' => 'broken' ]; }, 9 );
+check( '...a callback that answers something that is no list of options is no harm: the options are the kernel\'s, and nothing throws',
+	array_keys( Setup::navigations( $appData, 'header' ) ) === [ 'nav-main', 'nav-footer', 'nav-legal' ] );
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+
+// --- the model
+$norm = static function( array $raw, array &$notes = [] ) use ( &$appData, $library ): array {
+	return Setup::normalize( $appData, $raw, $library, $notes );
+};
+$noted = [];
+
+check( 'a setup without navs reads as none for both frames, and a fresh one has the key, after the parts and before the knobs',
+	$norm( [] )['navs'] === [ 'header' => '', 'footer' => '' ] && Setup::defaults( $library )['navs'] === [ 'header' => '', 'footer' => '' ]
+	&& array_slice( array_keys( Setup::defaults( $library ) ), 9, 3 ) === [ 'parts', 'navs', 'knobs' ] && in_array( 'navs', Setup::KEYS, true ) === true );
+check( 'normalize() keeps an option that is offered for the part and empties one that is not, naming it - an option of the kernel, of a feature, one that is gone, one that is none',
+	$norm( [ 'navs' => [ 'header' => 'nav-main', 'footer' => 'menu-main' ] ] )['navs'] === [ 'header' => 'nav-main', 'footer' => 'menu-main' ]
+	&& $norm( [ 'navs' => [ 'header' => 'nav-nothing', 'footer' => 'gone' ] ], $noted )['navs'] === [ 'header' => '', 'footer' => '' ] && count( $noted ) === 2
+	&& array_column( $noted, 'code' ) === [ 'design_navigation_missing', 'design_navigation_missing' ] && $noted[0]['params'] === [ 'header', 'nav-nothing' ] && $noted[1]['params'] === [ 'footer', 'gone' ]
+	&& array_keys( $noted[0] ) === [ 'error', 'code', 'params' ] && str_contains( $noted[0]['error'], 'nav-nothing' ) === true
+	&& trim( (string) \Nino\Html::renderTextfill( $appData, '/_admin/error/design_navigation_missing' ) ) !== '' );
+$noted = [];
+check( '...what is no slug, no string or a part that is none is dropped with a note, whatever it is: a path, a null byte, a number, a list, a quote, a bracket',
+	$norm( [ 'navs' => [ 'header' => '../x', 'footer' => "menu-main\0" ] ], $noted )['navs'] === [ 'header' => '', 'footer' => '' ] && count( $noted ) === 2
+	&& $norm( [ 'navs' => [ 'header' => 5, 'footer' => [ 'menu-main' ] ] ] )['navs'] === [ 'header' => '', 'footer' => '' ]
+	&& $norm( [ 'navs' => [ 'header' => 'menu-main"]', 'footer' => '[menu]' ] ] )['navs'] === [ 'header' => '', 'footer' => '' ]
+	&& ( $partNotes = [] ) === [] && $norm( [ 'navs' => [ 'header' => 'menu-main', 'section' => 'menu-main' ] ], $partNotes )['navs'] === [ 'header' => 'menu-main', 'footer' => '' ]
+	&& count( $partNotes ) === 1 && str_contains( (string) $partNotes[0], '"section"' ) === true
+	&& $norm( [ 'navs' => 'menu-main' ] )['navs'] === [ 'header' => '', 'footer' => '' ] );
+$navArgs = [];
+$norm( [] );
+$norm( [ 'navs' => [ 'header' => '../x', 'footer' => 'Not A Slug' ] ] );
+check( '...a setup that chooses none, or something that is no slug, asks the features nothing',
+	$navArgs === [] );
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+$noted = [];
+check( '...a feature switched off - nobody answers the hook - is the option gone: the choice is none again and the notes name it',
+	$norm( [ 'navs' => [ 'header' => 'menu-main' ] ], $noted )['navs'] === [ 'header' => '', 'footer' => '' ] && count( $noted ) === 1 && str_contains( $noted[0]['error'], 'menu-main' ) === true
+	&& $norm( [ 'navs' => [ 'header' => 'nav-legal' ] ] )['navs']['header'] === 'nav-legal' );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+$appData['/nino/html/navs'] = [ 'main', 'footer', 'my_menu', 'x--y' ];
+$menuNotes = [];
+check( '...a menu of the kernel whose key is no slug has no option and is named',
+	array_keys( Setup::kernelNavigations( $appData, 'header', $menuNotes ) ) === [ 'nav-main', 'nav-footer' ] && count( $menuNotes ) === 2 );
+$appData['/nino/html/navs'] = [ 'main', 'footer', 'legal' ];
+
+// --- the fingerprint and the theme
+$navPlain = $norm( [] );
+$navChosen = $norm( [ 'navs' => [ 'header' => 'nav-main' ] ] );
+$navOther = $norm( [ 'navs' => [ 'header' => 'menu-main' ] ] );
+$print = static function( array $setup ) use ( &$appData, $library ): string {
+	return \Nino\Modules\Design::fingerprint( $appData, $setup, $library );
+};
+
+check( 'the fingerprint follows the navigation: a choice is another fingerprint, so is another option and the other frame, and none is the fingerprint the setup had without the key',
+	$print( $navChosen ) !== $print( $navPlain ) && $print( $navChosen ) !== $print( $navOther ) && $print( $norm( [ 'navs' => [ 'footer' => 'nav-main' ] ] ) ) !== $print( $navChosen )
+	&& $print( $navPlain ) === $beforeFamilies( $navPlain ) );
+$callNow = '[menu /a]';
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, static function( array &$appData, array &$args ) use ( &$callNow ): void {
+	$args['options']['menu-main'] = [ 'shortcode' => $callNow, 'title' => 'x' ];
+} );
+$printA = $print( $navOther );
+$callNow = '[menu /b]';
+$printB = $print( $navOther );
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+check( '...and it follows what the option writes: the same key with another call is another fingerprint',
+	$printA !== $printB );
+check( 'a theme keeps the choice with the others: the snapshot of a setup has navs after the parts, and a theme file with none reads as none',
+	array_keys( Themes::snapshot( $navChosen ) ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) ) && Themes::snapshot( $navChosen )['navs']['header'] === 'nav-main'
+	&& Themes::snapshot( Setup::defaults( $library ) )['navs'] === [ 'header' => '', 'footer' => '' ] );
+
+// --- the files
+foreach( [ 'header', 'footer' ] as $navPart )
+	file_put_contents( $navPaths[$navPart], "[navigation nav=\"main\"]\n" );
+
+$navDelivered = [ "[navigation nav=\"main\"]\n", "[navigation nav=\"main\"]\n" ];
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0 ] );
+@unlink( $slotPath );
+check( 'a setup that chose no navigation has no output for them: the plan names the stylesheet and the two frames, and applying leaves the two files as the project has them',
+	array_keys( $planOf() ) === $targets && callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200
+	&& file_get_contents( $navPaths['header'] ) === $navDelivered[0] && file_get_contents( $navPaths['footer'] ) === $navDelivered[1]
+	&& array_keys( Previous::read( $appData )['files'] ) === $every );
+// The project edits its navigation file by hand while it chose none: the apply does not write it, and a Restore does not put anything back over it
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 1 ] );
+check( 'an apply that chose no navigation keeps none of the files of the navigations - the project\'s own are not Design\'s to put back - and the frames and the stylesheet it wrote are in the slot',
+	callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200 && Previous::read( $appData )['files']['/templates/html-header-nav.tpl'] === null && Previous::read( $appData )['files']['/templates/html-footer-nav.tpl'] === null
+	&& Previous::read( $appData )['files']['/assets/theme.css'] !== null );
+file_put_contents( $navPaths['header'], "<p>hand edit</p>\n" );
+[ $status, $leftAlone ] = callDesignAction( $appData, 'apiRestore' );
+check( '...a hand edit of the file made after that apply is left by Restore, with no note about the file, and the stylesheet is the older one\'s',
+	$status === 200 && file_get_contents( $navPaths['header'] ) === "<p>hand edit</p>\n" && file_get_contents( $navPaths['footer'] ) === $navDelivered[1]
+	&& str_contains( json_encode( $leftAlone['notes'] ), 'html-header-nav' ) === false && Previous::read( $appData )['files']['/templates/html-header-nav.tpl'] === null );
+check( '...and restoring again leaves it as well: what the swap keeps is the stylesheet and the frames',
+	callDesignAction( $appData, 'apiRestore' )[0] === 200 && file_get_contents( $navPaths['header'] ) === "<p>hand edit</p>\n" );
+// A file Design wrote and somebody edited is the project's again: an apply that chose none keeps nothing of it, and Restore leaves it
+$editedStamped = Compiler::nav( 'header', '[menu /main burger]', 'menu-main' ). "<p>edited</p>\n";
+file_put_contents( $navPaths['header'], $editedStamped );
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 2 ] );
+callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+$slotEdited = Previous::read( $appData )['files']['/templates/html-header-nav.tpl'];
+callDesignAction( $appData, 'apiRestore' );
+check( 'a stamped file somebody edited is none in the slot of an apply that chose no navigation, and Restore leaves it as it is',
+	Compiler::ownership( $editedStamped, true ) === 'edited' && $slotEdited === null && file_get_contents( $navPaths['header'] ) === $editedStamped );
+file_put_contents( $navPaths['header'], $navDelivered[0] );
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0 ] );
+[ , $listed ] = callDesignAction( $appData, 'apiList' );
+check( 'design/list carries the choice and the options of each frame, with the group of each - the menus of the kernel, then what a feature offers - and the state lists the files of a navigation only for a frame that chose one',
+	$listed['navs'] === [ 'header' => '', 'footer' => '' ] && array_keys( $listed['navigations'] ) === [ 'header', 'footer' ]
+	&& array_column( $listed['navigations']['header'], 'key' ) === array_keys( $heads ) && array_column( $listed['navigations']['header'], 'group' ) === [ 'kernel', 'kernel', 'kernel', 'features', 'features' ]
+	&& array_column( $listed['navigations']['footer'], 'title', 'key' )['menu-main'] === 'Main menu'
+	&& array_column( $listed['files'], 'target' ) === $targets
+	&& $listed['layout']['controls']['navs/header'] === [ 'templates', 'header', 2 ] && $listed['layout']['controls']['navs/footer'] === [ 'templates', 'footer', 2 ]
+	&& array_diff( array_map( 'strval', array_column( $listed['notes'], 'error' ) ), [] ) === [] && $listed['defaults']['navs'] === [ 'header' => '', 'footer' => '' ]
+	&& array_filter( $listed['notes'], static fn( mixed $note ): bool => is_string( $note ) === true && str_contains( $note, '"two-calls"' ) === true ) !== [] );
+
+[ $status, $saved ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'menu-main', 'footer' => 'nav-footer' ] ] );
+check( 'design/save takes navs as it takes parts: held to the options, stored, and the answer lists the files of the two navigations in the state',
+	$status === 200 && Setup::read( $appData, $library )['navs'] === [ 'header' => 'menu-main', 'footer' => 'nav-footer' ]
+	&& array_column( (array) $saved['files'], 'target' ) === $every && array_column( (array) $saved['files'], 'state', 'target' )['/templates/html-header-nav.tpl'] === 'foreign' );
+[ , $saved ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'bad key', 'footer' => 'nav-nothing' ] ] );
+check( '...and an option that is none is stored as none, with the note',
+	Setup::read( $appData, $library )['navs'] === [ 'header' => '', 'footer' => '' ] && count( $saved['notes'] ) === 2 );
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'menu-main', 'footer' => 'nav-footer' ] ] );
+
+$plan = $planOf();
+check( 'the plan names the two files after their frames, with the state they are in - the delivered ones are not Design\'s - and what a frame is told by: its part and the kind nav',
+	array_keys( $plan ) === [ '/assets/theme.css', '/templates/frame-header.tpl', '/templates/html-header-nav.tpl', '/templates/frame-footer.tpl', '/templates/html-footer-nav.tpl' ]
+	&& $plan['/templates/html-header-nav.tpl']['state'] === 'foreign' && $plan['/templates/html-header-nav.tpl']['part'] === 'header' && $plan['/templates/html-header-nav.tpl']['kind'] === 'nav'
+	&& $plan['/templates/html-footer-nav.tpl']['part'] === 'footer' && $plan['/templates/html-footer-nav.tpl']['changes'] === true && $plan['/templates/html-footer-nav.tpl']['exists'] === true
+	&& $plan['/templates/html-header-nav.tpl']['lost'] === [ '[navigation nav="main"]' ] && $plan['/templates/html-footer-nav.tpl']['lost'] === [ '[navigation nav="main"]' ] );
+check( 'applying without force is refused, the file the project has is not overwritten, and nothing else was written either',
+	callDesignAction( $appData, 'apiApply' )[0] === 409 && file_get_contents( $navPaths['header'] ) === $navDelivered[0] && file_get_contents( $navPaths['footer'] ) === $navDelivered[1]
+	&& str_contains( (string) ( callDesignAction( $appData, 'apiApply' )[1]['error'] ?? '' ), 'html-header-nav.tpl' ) === true );
+
+$beforeNav = $onDisk() + [ 'header-nav' => (string) file_get_contents( $navPaths['header'] ) ];
+check( 'applying with force writes the call of the option as the bytes of the file under the stamp of a frame, after the frame of its part - one line, and a line break at its end',
+	callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200
+	&& file_get_contents( $navPaths['header'] ) === Compiler::nav( 'header', '[menu /main burger]', 'menu-main' ) && file_get_contents( $navPaths['footer'] ) === Compiler::nav( 'footer', $feet['nav-footer']['shortcode'], 'nav-footer' )
+	&& str_ends_with( (string) file_get_contents( $navPaths['header'] ), "\n[menu /main burger]\n" ) === true && count( explode( "\n", rtrim( (string) file_get_contents( $navPaths['header'] ), "\n" ) ) ) === 3
+	&& Compiler::ownership( (string) file_get_contents( $navPaths['header'] ), true ) === 'ours' && Compiler::stampedFrame( (string) file_get_contents( $navPaths['footer'] ) ) === true );
+check( '...and the previous version holds the files the project had, so that Restore puts them back, byte for byte, with the frames and the stylesheet',
+	Previous::read( $appData )['files']['/templates/html-header-nav.tpl'] === $navDelivered[0] && Previous::read( $appData )['files']['/templates/html-footer-nav.tpl'] === $navDelivered[1]
+	&& callDesignAction( $appData, 'apiRestore' )[0] === 200 && file_get_contents( $navPaths['header'] ) === $navDelivered[0] && file_get_contents( $navPaths['footer'] ) === $navDelivered[1] );
+check( '...restoring again returns to what was applied, and the plan then finds the two files ours and nothing to change',
+	callDesignAction( $appData, 'apiRestore' )[0] === 200 && Compiler::ownership( (string) file_get_contents( $navPaths['header'] ), true ) === 'ours'
+	&& callDesignAction( $appData, 'apiApply' )[0] === 200 && array_filter( array_column( $planOf(), 'changes' ) ) === [] && array_unique( array_column( $planOf(), 'state' ) ) === [ 'ours' ] );
+
+file_put_contents( $navPaths['footer'], (string) file_get_contents( $navPaths['footer'] ). "<p>by hand</p>\n" );
+$plan = $planOf();
+check( 'a file somebody edited is told so by the plan, and applying over it is refused without force and leaves it, the stylesheet and the frames as they are',
+	$plan['/templates/html-footer-nav.tpl']['state'] === 'edited' && callDesignAction( $appData, 'apiApply' )[0] === 409 && str_contains( (string) file_get_contents( $navPaths['footer'] ), '<p>by hand</p>' ) === true );
+$forced = callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0];
+check( '...and with force it goes through, and the file is the call of the option again',
+	$forced === 200 && str_contains( (string) file_get_contents( $navPaths['footer'] ), '<p>by hand</p>' ) === false );
+check( '...and what the project edited is in the previous version',
+	str_contains( (string) Previous::read( $appData )['files']['/templates/html-footer-nav.tpl'], '<p>by hand</p>' ) === true );
+
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'nav-legal' ] ] );
+callDesignAction( $appData, 'apiApply' );
+check( 'another option is another call in the file, and a frame that chose none is left as the apply before wrote it: the file is not removed and not rewritten',
+	str_contains( (string) file_get_contents( $navPaths['header'] ), '[navigation nav="legal" burger]' ) === true && Compiler::ownership( (string) file_get_contents( $navPaths['footer'] ), true ) === 'ours'
+	&& str_contains( (string) file_get_contents( $navPaths['footer'] ), 'nav="footer"' ) === true );
+
+$wasThere = (string) file_get_contents( $navPaths['header'] );
+unlink( $navPaths['header'] );
+check( 'a file that is not there is created, and the plan says so',
+	$planOf()['/templates/html-header-nav.tpl']['state'] === 'missing' && callDesignAction( $appData, 'apiApply' )[0] === 200 && file_get_contents( $navPaths['header'] ) === $wasThere );
+
+// A navigation file Design wrote is part of the version it was written in: an apply that chose none keeps it, and Restore puts it back
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'menu-main' ] ] );
+callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+$writtenByDesign = (string) file_get_contents( $navPaths['header'] );
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 1, 'navs' => [] ] );
+callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+file_put_contents( $navPaths['header'], "<p>mine</p>\n" );
+check( 'a navigation file Design wrote stays in the slot when the next apply chose none, and Restore puts it back',
+	Previous::read( $appData )['files']['/templates/html-header-nav.tpl'] === $writtenByDesign && Compiler::ownership( $writtenByDesign, true ) === 'ours'
+	&& callDesignAction( $appData, 'apiRestore' )[0] === 200 && file_get_contents( $navPaths['header'] ) === $writtenByDesign );
+
+// An option that is offered when the setup is read and gone when the files are worked out is named, and its file is not written
+$flaky = 0;
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, static function( array &$appData, array &$args ) use ( &$flaky ): void {
+	if( ++$flaky % 2 === 1 )
+		$args['options']['flaky'] = [ 'shortcode' => '[menu]', 'title' => 'Flaky' ];
+} );
+\Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => Setup::FORMAT, 'navs' => [ 'header' => 'flaky' ] ] );
+$flakyNotes = [];
+$beforeFlaky = file_get_contents( $navPaths['header'] );
+check( 'an option gone between reading the setup and writing is named with the code of a navigation that is not offered, and the apply writes no file for it',
+	\Nino\Modules\Design::apply( $appData, $flakyNotes, true ) === true && array_column( array_filter( $flakyNotes, 'is_array' ), 'code' ) === [ 'design_navigation_missing' ]
+	&& file_get_contents( $navPaths['header'] ) === $beforeFlaky );
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+
+// --- a file the disk refuses: the apply goes back as far as it got
+unlink( $navPaths['footer'] );
+mkdir( $navPaths['footer'] );
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'nav-main', 'footer' => 'nav-main' ] ] );
+$beforeFail = $onDisk() + [ 'header-nav' => (string) file_get_contents( $navPaths['header'] ) ];
+ninoWarnings();
+[ $status, $failed ] = callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+ninoWarnings();
+rmdir( $navPaths['footer'] );
+check( 'a navigation the disk refuses is an apply that fails as a whole: 500, and the stylesheet, the frames and the file written before it are as they were',
+	$status === 500 && str_contains( (string) ( $failed['error'] ?? '' ), 'html-footer-nav.tpl' ) === true && $onDisk() + [ 'header-nav' => (string) file_get_contents( $navPaths['header'] ) ] === $beforeFail );
+
+// --- the project as the kernel delivers it: its two files are the ones the Navigation module installs
+foreach( [ 'header' => 'html-header-nav.tpl', 'footer' => 'html-footer-nav.tpl' ] as $navPart => $navFile )
+	file_put_contents( $navPaths[$navPart], (string) file_get_contents( $root. '/_nino/Nino/Modules/Navigation/install/templates/'. $navFile ) );
+
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'nav-main', 'footer' => 'nav-footer' ] ] );
+$planKernel = $planOf();
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [ 'header' => 'nav-legal', 'footer' => 'nav-main' ] ] );
+$planOther = $planOf();
+check( 'the kernel\'s option for the menu the delivered file names loses no shortcode of that file: the plan says none lost for the header and for the footer - and another menu loses the call that named the first',
+	$planKernel['/templates/html-header-nav.tpl']['lost'] === [] && $planKernel['/templates/html-footer-nav.tpl']['lost'] === []
+	&& $planOther['/templates/html-header-nav.tpl']['lost'] === [ '[navigation nav="main" burger]' ] && $planOther['/templates/html-footer-nav.tpl']['lost'] === [ '[navigation nav="footer" id="footer__nav"]' ] );
+
+// --- the preview
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 0, 'navs' => [] ] );
+// The project's own file for the header: no call of the navigation in it, a mark of its own
+\Nino\Filesystem::putFileContent( $appData, '/templates/html-header-nav.tpl', "<p class=\"project-own-nav\">mine</p>\n" );
+$navNotesPreview = [];
+$chosenHeader = $norm( [ 'navs' => [ 'header' => 'menu-main', 'footer' => 'nav-footer' ] ] );
+$frameHead = Preview::frame( $appData, $library, $chosenHeader, 'header', $navNotesPreview );
+$frameFoot = Preview::frame( $appData, $library, $chosenHeader, 'footer', $navNotesPreview );
+$frameAsIs = Preview::frame( $appData, $library, $navPlain, 'header', $navNotesPreview );
+
+check( 'the preview holds the call of the chosen option in place of the include of the project\'s file, in each frame, and the include nowhere else',
+	str_contains( $frameHead, '[menu /main burger]' ) === true && str_contains( $frameHead, '[template /templates/html-header-nav]' ) === false
+	&& str_contains( $frameFoot, 'nav="footer" id="footer__nav"' ) === true && str_contains( $frameFoot, '[template /templates/html-footer-nav]' ) === false
+	&& str_contains( $frameFoot, '[template /templates/html-footer-localepicker]' ) === true && $navNotesPreview === []
+	&& substr_count( $frameHead, '[menu /main burger]' ) === substr_count( (string) file_get_contents( Setup::file( $library, 'header', $chosenHeader['parts']['header'], 'template' ) ), '[template /templates/html-header-nav]' ) );
+check( '...and with none chosen it is the template as it is, the include and all',
+	$frameAsIs === (string) file_get_contents( Setup::file( $library, 'header', $navPlain['parts']['header'], 'template' ) ) && str_contains( $frameAsIs, '[template /templates/html-header-nav]' ) === true );
+check( '...in every header and every footer of the library: the include is there for the call to stand in the place of',
+	array_filter( [ 'header', 'footer' ], static function( string $part ) use ( $library, $appData, $norm ): bool {
+		foreach( Setup::available( $library, $part ) as $set )
+			if( substr_count( (string) file_get_contents( Setup::file( $library, $part, $set, 'template' ) ), '[template /templates/html-'. $part. '-nav]' ) !== 1 )
+				return true;
+		return false;
+	} ) === [] );
+
+[ $status, $previewed ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [], 'size' => 0, 'navs' => [ 'header' => 'nav-main', 'footer' => '' ], 'full' => true ] );
+preg_match( '~<header.*?</header>~s', (string) ( $previewed['document'] ?? '' ), $headerChosen );
+check( 'design/preview takes navs as it takes parts, and the header of the document holds the call of the kernel\'s option - the file of the project is not asked',
+	$status === 200 && str_contains( $headerChosen[0] ?? '', '[navigation nav="main" burger]' ) === true && str_contains( $headerChosen[0] ?? '', 'nino-headernav-logo' ) === true && str_contains( $headerChosen[0] ?? '', 'project-own-nav' ) === false );
+[ , $previewedAsIs ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [], 'size' => 0, 'navs' => [], 'full' => true ] );
+preg_match( '~<header.*?</header>~s', (string) ( $previewedAsIs['document'] ?? '' ), $headerAsIs );
+check( '...and the same posted without a choice is the document the project\'s file makes: its own mark is in the header and the burger of the call is not, and with the choice it is the other way round',
+	str_contains( $headerAsIs[0] ?? '', 'project-own-nav' ) === true && str_contains( $headerAsIs[0] ?? '', 'nino-headernav-logo' ) === false && str_contains( $headerAsIs[0] ?? '', 'nav="main"' ) === false );
+
+/*	The preview renders a chosen option as the page does with the file it would write: for every header and every footer of the library the frame
+	of the preview is the frame with the include served from the file - the menus side by side where the footer carries the navigation of the legal
+	pages behind the include, not nested in one another	*/
+$unstamped = static fn( string $html ): string => trim( (string) preg_replace( '/\s+/', ' ', (string) preg_replace( '/<!--.*?-->/s', '', $html ) ) );
+$differing = [];
+$navOptions = [ 'header' => [ 'nav-main', 'open-nav' ], 'footer' => [ 'nav-footer', 'open-nav' ] ];
+
+// The shortcode of the kernel's Navigation module draws a pair: a stand-in that does the same shows how the calls pair and what each holds
+\Nino\Html::addShortcode( $appData, 'navigation', static function( array &$appData, array $args ): string {
+	return '<nav-test nav="'. ( $args['nav'] ?? '' ). '">'. ( $args['content'] ?? '' ). '</nav-test>';
+} );
+// ...and a feature's option that is the one open call, which pairs with the first closing tag of its name behind it where it is written inline
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, static function( array &$appData, array &$args ): void {
+	$args['options']['open-nav'] = [ 'shortcode' => '[navigation nav="main"]', 'title' => 'Open' ];
+} );
+
+foreach( $navOptions as $navPart => $keys )
+	foreach( Setup::available( $library, $navPart ) as $navSet )
+		foreach( $keys as $key ) {
+
+			$chosenSet = $norm( [ 'parts' => [ $navPart => $navSet ], 'navs' => [ $navPart => $key ] ] );
+			$call = Setup::navigations( $appData, $navPart )[$key]['shortcode'];
+			\Nino\Filesystem::putFileContent( $appData, '/templates/html-'. $navPart. '-nav.tpl', Compiler::nav( $navPart, $call, $key ) );
+
+			$served = \Nino\Html::renderHtml( $appData, (string) file_get_contents( Setup::file( $library, $navPart, $navSet, 'template' ) ) );
+			$notes = [];
+
+			if( $unstamped( Preview::renderFrame( $appData, $library, $chosenSet, $navPart, $notes ) ) !== $unstamped( $served ) || $served === '' )
+				$differing[] = $navPart. '/'. $navSet. '/'. $key;
+		}
+
+unset( $appData['./nino/html/shortcodes']['navigation'] );
+\Nino\Callbacks::removeCallbacks( $appData, '/nino/html/shortcode/navigation' );
+$appData['./nino/html/cache'] = false;
+\Nino\Callbacks::removeCallbacks( $appData, Setup::NAV_HOOK );
+\Nino\Callbacks::registerCallback( $appData, Setup::NAV_HOOK, $answering );
+check( 'for every header and every footer of the library and for a kernel option and a feature\'s one open call, the frame of the preview is the frame the page renders with the call served from the file: the same navigations, the same order of the links'. ( $differing === [] ? '' : ' - differs: '. implode( ', ', array_slice( $differing, 0, 4 ) ) ),
+	$differing === [] && count( Setup::available( $library, 'footer' ) ) >= 3 );
+
+// --- the sandbox as the sections after this one found it
+foreach( $navPaths as $navName => $navPath )
+	if( $navKept[$navName] === null )
+		@unlink( $navPath );
+	else
+		file_put_contents( $navPath, $navKept[$navName] );
+
+if( $navSlot === null )
+	@unlink( $slotPath );
+else
+	file_put_contents( $slotPath, $navSlot );
+
+\Nino\Filesystem::putFileContent( $appData, Setup::PATH, $navSetup );
+unset( $appData['./nino/callbacks'][Setup::NAV_HOOK], $appData['./nino/filesystem/cache'][Setup::PATH], $appData['./nino/filesystem/cache']['/templates/html-header-nav.tpl'], $appData['./nino/filesystem/cache']['/templates/html-footer-nav.tpl'] );
+
+if( $navHooks !== null )
+	$appData['./nino/callbacks'][Setup::NAV_HOOK] = $navHooks;
+
+if( $navMenus === null )
+	unset( $appData['/nino/html/navs'] );
+else
+	$appData['/nino/html/navs'] = $navMenus;
+
+$appData['./nino/locales/current'] = $navLocale;
 \Nino\Auth::logoutUser( $appData );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 

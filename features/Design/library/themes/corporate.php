@@ -17,6 +17,7 @@ return [
 		'radii'		=> [ 'cover' => 'standard', 'row' => 'standard', 'column' => 'standard', 'tile' => 'standard', 'card' => 'standard', 'image' => 'standard' ],
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
 		'parts'		=> [ 'header' => 'regular', 'footer' => 'brand-and-contact', 'section' => 'regular', 'tiles' => 'regular', 'card' => 'regular', 'buttons' => 'key', 'lists' => 'regular', 'tables' => 'ruled', 'forms' => 'regular', 'tabs' => 'regular', 'accordion' => 'regular' ],
+		'navs'		=> [ 'header' => '', 'footer' => '' ],
 		'knobs'		=> [
 			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'shadow' => 1, 'position' => 1, 'cta' => 0, 'behaviour' => 0, 'nav-case' => 1 ],
 			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 1, 'border-size' => 0, 'border-color' => 0, 'divider' => 1, 'position' => 0, 'nav-case' => 0 ],

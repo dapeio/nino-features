@@ -129,6 +129,18 @@ namespace Nino\Modules {
 					$files['style '. $part. ' '. $style] = [ $option, $file === '' ? '' : (string) hash_file( 'sha256', $file ) ];
 				}
 
+			/*	The navigation chosen for a frame is what the option writes now: its key and the bytes of its call. A setup that chose none
+				hashes as it did	*/
+			foreach( Design\Setup::NAV_PARTS as $part ) {
+
+				$key = (string) ( $setup['navs'][$part] ?? '' );
+
+				if( $key !== '' )
+					$files['navigation '. $part] = [ $key, hash( 'sha256', (string) ( Design\Setup::navigations( $appData, $part )[$key]['shortcode'] ?? '' ) ) ];
+			}
+
+			unset( $setup['navs'] );
+
 			foreach( (array) ( $setup['features'] ?? [] ) as $key => $entry ) {
 				$set 		= is_array( $entry ) === true ? (string) ( $entry['set'] ?? '' ) : '';
 				$file 	= Design\Setup::featureFile( $appData, (string) $key, $set );
@@ -404,6 +416,11 @@ namespace Nino\Modules {
 				leaves the slot alone and a failed snapshot leaves the files	*/
 			$before = Design\Previous::capture( $appData, Design\Previous::targets() );
 			$before['setup'] = self::_applied( $before['setup'], $before['files'][Design\Compiler::TARGET] );
+
+			/*	A navigation file this apply does not write, and that is not Design's own, is the project's to edit: the slot keeps none of
+				it, so that a restore never puts back what the apply did not touch. One that is Design's - from an apply that chose a
+				navigation - is part of the version it was written in	*/
+			$before['files'] = Design\Previous::untouched( $before['files'], array_keys( $outputs ) );
 			$same 	= true;
 
 			foreach( $outputs as $target => $output )
@@ -429,9 +446,11 @@ namespace Nino\Modules {
 
 			foreach( $outputs as $target => $output ) {
 
-				$result = $output['part'] === ''
-					? Design\Compiler::write( $appData, $output['bytes'], $force )
-					: Design\Compiler::writeFrame( $appData, $output['part'], $output['markup'], $output['set'], $force );
+				$result = match( $output['kind'] ) {
+					'look' 	=> Design\Compiler::write( $appData, $output['bytes'], $force ),
+					'nav' 	=> Design\Compiler::writeNav( $appData, $output['part'], $output['markup'], $output['set'], $force ),
+					default => Design\Compiler::writeFrame( $appData, $output['part'], $output['markup'], $output['set'], $force ),
+				};
 
 				if( $result !== true ) {
 
@@ -485,7 +504,7 @@ namespace Nino\Modules {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										Per file: target, part ('' for the stylesheet, else the part of the frame - the screen names a file by it, in words), exists, state (missing, ours, edited, foreign), changes, lost
+		 *	@return 	array										Per file: target, part ('' for the stylesheet, else the part of the frame - the screen names a file by it, in words), kind (look, frame or nav: the file a frame includes its navigation from), exists, state (missing, ours, edited, foreign), changes, lost
 		 */
 		public static function plan( array &$appData ): array {
 
@@ -501,14 +520,15 @@ namespace Nino\Modules {
 				$content 	= $exists === true ? (string) @file_get_contents( $path ) : '';
 				$lost 		= [];
 
-				if( $exists === true && $output['part'] !== '' )
+				if( $exists === true && $output['kind'] !== 'look' )
 					$lost = array_values( array_diff( self::_shortcodes( $content ), self::_shortcodes( $output['markup'] ) ) );
 
 				$plan[] = [
 					'target' 	=> $target,
 					'part' 		=> $output['part'],
+					'kind' 		=> $output['kind'],
 					'exists' 	=> $exists,
-					'state' 	=> $exists === true ? Design\Compiler::ownership( $content, $output['part'] !== '' ) : 'missing',
+					'state' 	=> $exists === true ? Design\Compiler::ownership( $content, $output['kind'] !== 'look' ) : 'missing',
 					'changes' => $exists === false || $content !== $output['bytes'],
 					'lost' 		=> $lost,
 				];
@@ -550,9 +570,17 @@ namespace Nino\Modules {
 			$present 	= Design\Previous::capture( $appData, Design\Previous::targets() );
 			$replaced = [];
 
+			// A navigation file the slot holds none of is not this restore's: what is on disk is the project's own and goes into the slot as none
+			foreach( Design\Previous::navTargets() as $target )
+				if( $slot['files'][$target] === null )
+					$present['files'][$target] = null;
+
 			foreach( Design\Previous::targets() as $target ) {
 
 				$bytes = $slot['files'][$target];
+
+				if( $bytes === null && in_array( $target, Design\Previous::navTargets(), true ) === true )
+					continue;
 
 				if( $bytes === null ) {
 					$notes[] = $target. ' was not there when the previous version was kept - the project keeps the one it has';
@@ -635,7 +663,8 @@ namespace Nino\Modules {
 
 		/**
 		 *	Every file apply() writes, with the exact bytes - the stylesheet,
-		 *	and each frame that has a template - so that apply() compares and
+		 *	each frame that has a template, and after it the navigation the
+		 *	setup chose for the frame - so that apply() compares and
 		 *	writes the same thing plan() reports on
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -643,14 +672,14 @@ namespace Nino\Modules {
 		 *	@param		string		$library			The library directory
 		 *	@param		array 		&$notes				(reference) What was missing on the way
 		 *
-		 *	@return 	array										target => [ bytes, part ('' for the stylesheet), set, markup (the template.tpl) ]
+		 *	@return 	array										target => [ bytes, kind (look, frame or nav), part ('' for the stylesheet), set (for a nav the key of the option), markup (the template.tpl, for a nav the call of the option) ]
 		 */
 		private static function _outputs( array &$appData, array $setup, string $library, array &$notes ): array {
 
 			$css = Design\Compiler::compile( $appData, $setup, $library, $notes );
 
 			$outputs = [
-				Design\Compiler::TARGET => [ 'bytes' => $css, 'part' => '', 'set' => '', 'markup' => '' ],
+				Design\Compiler::TARGET => [ 'bytes' => $css, 'kind' => 'look', 'part' => '', 'set' => '', 'markup' => '' ],
 			];
 
 			/*	The other half of a frame. A header set is a stylesheet AND the
@@ -673,9 +702,32 @@ namespace Nino\Modules {
 
 				$outputs[ sprintf( Design\Compiler::FRAME_TARGET, $part ) ] = [
 					'bytes' 	=> Design\Compiler::frame( $part, $markup, $set ),
+					'kind' 		=> 'frame',
 					'part' 		=> $part,
 					'set' 		=> $set,
 					'markup' 	=> $markup,
+				];
+
+				/*	The navigation the frame includes, where the setup chose one: written after the frame, so that a frame is never
+					left over a menu that is not its own. None chosen writes nothing and the file stays as the project has it	*/
+				$key = (string) ( $setup['navs'][$part] ?? '' );
+
+				if( $key === '' )
+					continue;
+
+				$shortcode = (string) ( Design\Setup::navigations( $appData, $part )[$key]['shortcode'] ?? '' );
+
+				if( $shortcode === '' ) {
+					$notes[] = Design\Setup::note( 'design_navigation_missing', $part, Design\Setup::shown( $key ) );
+					continue;
+				}
+
+				$outputs[ sprintf( Design\Compiler::NAV_TARGET, $part ) ] = [
+					'bytes' 	=> Design\Compiler::nav( $part, $shortcode, $key ),
+					'kind' 		=> 'nav',
+					'part' 		=> $part,
+					'set' 		=> $key,
+					'markup' 	=> $shortcode,
 				];
 			}
 

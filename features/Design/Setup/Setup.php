@@ -40,6 +40,13 @@ namespace Nino\Modules\Design {
 	 *										of the setup, kept per part and per style, and is held to the
 	 *										template that is chosen for the part.
 	 *
+	 *										The header and the footer include the project's own file for their
+	 *										menu (`[template /templates/html-header-nav]`). `navs` chooses what that
+	 *										file holds - one of the options navigations() answers for the frame: the
+	 *										menus the kernel registers and what the features offer through the hook
+	 *										/feature/design/navigations - or leaves it as the project has it, which
+	 *										is '' and writes nothing.
+	 *
 	 *										A feature that is active and carries variants of its own
 	 *										(features/<Name>/design/<variant>.css) adds to it: the variant
 	 *										chosen for it, and a position or a value for each knob the head
@@ -84,8 +91,9 @@ namespace Nino\Modules\Design {
 			the two strengths Nino.css has and every kind of surface on the standard one.
 			And `features`: a file without it has chosen nothing for any feature, which
 			is each feature as it is. And `styles`: a file without it has chosen no style
-			of any template, which is each template as it is	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ];
+			of any template, which is each template as it is. And `navs`: a file without it has
+			chosen no navigation for the header and the footer, which is the file the project has	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
 			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
@@ -93,6 +101,7 @@ namespace Nino\Modules\Design {
 		public const array NOTES = [
 			'design_theme_missing' 		=> 'the theme "%s" is not there - none is active',
 			'design_set_missing' 			=> '"%s" names the set "%s", which is not in the library - using "%s"',
+			'design_navigation_missing' => '"%s": the navigation "%s" is not offered - the file stays as the project has it',
 			'design_feature_inactive' => 'the feature "%s" is not active, or brings no variants - its choice is kept, and nothing is compiled for it',
 		];
 
@@ -139,6 +148,33 @@ namespace Nino\Modules\Design {
 			'tabs' 				=> 'set',
 			'accordion' 		=> 'set',
 		];
+
+		/*	The two frames that include a navigation of the project's, [template /templates/html-<part>-nav], and the
+			form of a key of one of the options that stand in for it (see navigations()): a slug	*/
+		public const array NAV_PARTS = [ 'header', 'footer' ];
+
+		public const string NAV_SLUG = '/^[a-z0-9]+(-[a-z0-9]+)*$/D';
+
+		// The shape of the one call an option writes into the file: [name ...] on one line, with no bracket inside
+		public const string NAV_SHORTCODE = '/^\[[a-z][a-z0-9-]*(?: [^\[\]\x{00}-\x{1f}\x{7f}-\x{9f}\x{2028}\x{2029}]*)?\]$/Du';
+
+		// A title: text with no control character, no line separator and valid utf-8
+		public const string NAV_TEXT = '/^[^\x{00}-\x{1f}\x{7f}-\x{9f}\x{2028}\x{2029}]*$/Du';
+
+		/*	What the kernel's own options write, as the project starts with it: the content of the two files the Navigation module
+			installs, read from the kernel at request time through \Nino\Filesystem (the kernel's own Maintenance module names its
+			files below /_nino the same way). Here is where each is and the part of it that names the menu	*/
+		public const array NAV_KERNEL = [
+			'header' => [ '/_nino/Nino/Modules/Navigation/install/templates/html-header-nav.tpl', 'nav="main"' ],
+			'footer' => [ '/_nino/Nino/Modules/Navigation/install/templates/html-footer-nav.tpl', 'nav="footer"' ],
+		];
+
+		// The longest title an option has, in characters, and the longest shortcode, in bytes
+		public const int NAV_TITLE = 120;
+		public const int NAV_CALL = 500;
+
+		// The hook the Design fires to ask what features offer as a navigation (see navigations())
+		public const string NAV_HOOK = '/feature/design/navigations';
 
 		/*	What a knob can be set to, as the words a stylesheet declares its values
 			under. The model keeps -2 to +2 and the library keeps these five words;
@@ -305,7 +341,7 @@ namespace Nino\Modules\Design {
 		/*	Where every control of the panel stands, and the only place that says: one entry for
 			each thing the setup lets a person choose, keyed by where the choice is kept in it -
 			`size`, `radii/card`, `motion/speed`, `fonts/title`, `parts/header`,
-			`knobs/<part>/<knob>`, `colours/primary` - and valued [ tab, object, order ]. The
+			`navs/header`, `knobs/<part>/<knob>`, `colours/primary` - and valued [ tab, object, order ]. The
 			screen draws a tab from the entries that name it and from nothing else: a row for
 			each object that has a control on the tab, in the order of OBJECTS, and in the row
 			its controls in the order of their numbers, which count from 1 in a row. Keys that
@@ -330,11 +366,13 @@ namespace Nino\Modules\Design {
 		public const array LAYOUT = [
 			// The templates: the choice of a set for each of the eleven parts, under the object it is the template of, and what a frame does in its place - where the navigation stands, the button and what the bar does when the page is scrolled -, and how a section and a card stand on the page: where their words are and how wide the column of a section is
 			'parts/header' 							=> [ 'templates', 'header', 1 ],
-			'knobs/header/position' 				=> [ 'templates', 'header', 2 ],
-			'knobs/header/cta' 						=> [ 'templates', 'header', 3 ],
-			'knobs/header/behaviour' 				=> [ 'templates', 'header', 4 ],
+			'navs/header' 							=> [ 'templates', 'header', 2 ],
+			'knobs/header/position' 				=> [ 'templates', 'header', 3 ],
+			'knobs/header/cta' 						=> [ 'templates', 'header', 4 ],
+			'knobs/header/behaviour' 				=> [ 'templates', 'header', 5 ],
 			'parts/footer' 							=> [ 'templates', 'footer', 1 ],
-			'knobs/footer/position' 				=> [ 'templates', 'footer', 2 ],
+			'navs/footer' 							=> [ 'templates', 'footer', 2 ],
+			'knobs/footer/position' 				=> [ 'templates', 'footer', 3 ],
 			'parts/section' 						=> [ 'templates', 'section', 1 ],
 			'knobs/section/align' 					=> [ 'templates', 'section', 2 ],
 			'knobs/section/measure' 				=> [ 'templates', 'section', 3 ],
@@ -781,6 +819,8 @@ namespace Nino\Modules\Design {
 				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is, and a gentle zoom of the pictures that say nino-hover
 				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
 				'parts' 	=> $parts,
+				// The navigation of the header and of the footer: the key of an option (see navigations()), '' for the file the project has
+				'navs' 		=> array_fill_keys( self::NAV_PARTS, '' ),
 				'knobs' 	=> $knobs,
 				// The styles of the templates that are chosen: for each part the style => option pairs, none is the template as it is
 				'styles' 	=> array_fill_keys( array_keys( self::PARTS ), [] ),
@@ -1918,6 +1958,8 @@ namespace Nino\Modules\Design {
 					$notes[] = self::note( 'design_set_missing', $part, self::shown( $wanted ), $setup['parts'][$part] );
 			}
 
+			$setup['navs'] = self::navigationsHeld( $appData, is_array( $raw['navs'] ?? null ) === true ? $raw['navs'] : [], $notes );
+
 			/*	Where every knob stands. A knob is a position of its own part, held to
 				the range of its kind - an ink is a tone of the page or none -, and a name that is none of the part's - or a part that
 				is none of the eight - is dropped with a note rather than carried: a
@@ -1991,6 +2033,164 @@ namespace Nino\Modules\Design {
 			$setup['compiled'] = is_array( $raw['compiled'] ?? null ) ? $raw['compiled'] : [];
 
 			return $setup;
+		}
+
+		/**
+		 *	The navigation of each frame, held to the options there are: a key stays where an option of that key is offered for the part
+		 *	(see navigations()) and is '' otherwise, and says so - an option that is gone, a feature switched off, is the file as the
+		 *	project has it again. The options are asked only for a part that chose one, so a setup that chose none fires no hook
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$given				What the file held, or the screen posted, under `navs`
+		 *	@param		array 		&$notes				(reference) What had to be dropped
+		 *
+		 *	@return 	array										part => the key of an option, '' for none
+		 */
+		private static function navigationsHeld( array &$appData, array $given, array &$notes ): array {
+
+			foreach( array_keys( $given ) as $part )
+				if( in_array( $part, self::NAV_PARTS, true ) === false )
+					$notes[] = 'there is no part "'. self::shown( $part ). '" with a navigation - dropped';
+
+			$held = array_fill_keys( self::NAV_PARTS, '' );
+
+			foreach( self::NAV_PARTS as $part ) {
+
+				$wanted = $given[$part] ?? '';
+
+				if( $wanted === '' )
+					continue;
+
+				if( is_string( $wanted ) === false || preg_match( self::NAV_SLUG, $wanted ) !== 1 ) {
+					$notes[] = 'the navigation of "'. $part. '" is no key of an option - dropped';
+					continue;
+				}
+
+				$unheard = [];
+
+				if( isset( self::navigations( $appData, $part, $unheard )[$wanted] ) === true )
+					$held[$part] = $wanted;
+				else
+					$notes[] = self::note( 'design_navigation_missing', $part, self::shown( $wanted ) );
+			}
+
+			return $held;
+		}
+
+		/**
+		 *	The menus the kernel registers (`/nino/html/navs`) as options for the navigation of a frame, in the order they are registered:
+		 *	`nav-<key>`, what the kernel's own template of the frame holds with the key of the menu in it - the burger with the logo in the
+		 *	header, the heading and the call in the footer (see NAV_KERNEL) - and a
+		 *	title that names the menu and says it is the kernel's, in the language of the workbench. A menu whose key is no slug is left out
+		 *	and named
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$part					'header' or 'footer'
+		 *	@param		array 		&$notes				(reference) A menu that has no option
+		 *
+		 *	@return 	array										key => [ shortcode, title ]; none for a part that is no frame with a navigation
+		 */
+		public static function kernelNavigations( array &$appData, string $part, array &$notes = [] ): array {
+
+			if( in_array( $part, self::NAV_PARTS, true ) === false )
+				return [];
+
+			$options 	= [];
+			$menus 		= is_array( $appData['/nino/html/navs'] ?? null ) === true ? $appData['/nino/html/navs'] : [];
+			$title 		= \Nino\Html::renderTextfill( $appData, '/_admin/design/navigation/title' );
+			$shape 		= \Nino\Filesystem::getFileContent( $appData, self::NAV_KERNEL[$part][0], '' );
+			$shape 		= is_string( $shape ) === true ? trim( $shape ) : '';
+
+			if( $shape === '' || str_contains( $shape, self::NAV_KERNEL[$part][1] ) === false ) {
+				$notes[] = 'the kernel\'s own template of the '. $part. ' navigation cannot be read - the kernel\'s menus are not offered for it';
+				$menus = [];
+			}
+
+			foreach( $menus as $menu ) {
+
+				if( is_string( $menu ) === false || preg_match( self::NAV_SLUG, 'nav-'. $menu ) !== 1 ) {
+					$notes[] = 'the menu "'. self::shown( is_string( $menu ) === true ? $menu : '' ). '" of the kernel has no option: its key is no slug';
+					continue;
+				}
+
+				$options['nav-'. $menu] = [
+					'shortcode' => str_replace( self::NAV_KERNEL[$part][1], 'nav="'. $menu. '"', $shape ),
+					'title' 		=> (string) preg_replace_callback( '/%s/', static fn(): string => $menu, $title, 1 ),
+				];
+			}
+
+			return $options;
+		}
+
+		/**
+		 *	What a frame can take as its navigation: the kernel's menus (see kernelNavigations()) and then what the features answer to the
+		 *	hook `/feature/design/navigations`, which is fired each time this is asked, with
+		 *	`[ 'part' => 'header'|'footer', 'options' => [] ]`. A callback adds to `options` an entry `key => [ 'shortcode' => '[menu /main burger]',
+		 *	'title' => string, or locale => string ]`. Every entry is checked and one that is not right is dropped and named: a key that is
+		 *	no slug or that is a kernel option's, a shortcode that is not one call on one line with no bracket inside, a title that is not
+		 *	a string or a map of strings of NAV_TITLE characters at most, or has a control character in it. A title that is a map is the
+		 *	workbench's language, else English, else the first
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$part					'header' or 'footer'
+		 *	@param		array 		&$notes				(reference) What was dropped
+		 *
+		 *	@return 	array										key => [ shortcode, title (a string) ], the kernel's first
+		 */
+		public static function navigations( array &$appData, string $part, array &$notes = [] ): array {
+
+			if( in_array( $part, self::NAV_PARTS, true ) === false )
+				return [];
+
+			$options = self::kernelNavigations( $appData, $part, $notes );
+
+			$args 			= [ 'part' => $part, 'options' => [] ];
+			$answered 	= \Nino\Callbacks::doCallbacks( $appData, self::NAV_HOOK, $args );
+			$offered 		= is_array( $answered ) === true && is_array( $answered['options'] ?? null ) === true ? $answered['options'] : [];
+			$locale 		= \Nino\Locales::getCurrentLocale( $appData );
+
+			foreach( $offered as $key => $option ) {
+
+				$key 		= (string) $key;
+				$name 	= '"'. self::shown( $key ). '"';
+
+				if( preg_match( self::NAV_SLUG, $key ) !== 1 )
+					$notes[] = 'the navigation '. $name. ' offered for the '. $part. ' is dropped: its key is no slug';
+				else if( isset( $options[$key] ) === true )
+					$notes[] = 'the navigation '. $name. ' offered for the '. $part. ' is dropped: the key is taken';
+				else if( is_array( $option ) === false || is_string( $option['shortcode'] ?? null ) === false
+					|| strlen( $option['shortcode'] ) > self::NAV_CALL || preg_match( self::NAV_SHORTCODE, $option['shortcode'] ) !== 1 )
+					$notes[] = 'the navigation '. $name. ' offered for the '. $part. ' is dropped: its shortcode is not one call on one line';
+				else if( self::titled( $option['title'] ?? null ) === false )
+					$notes[] = 'the navigation '. $name. ' offered for the '. $part. ' is dropped: its title is no text of '. self::NAV_TITLE. ' characters at most';
+				else
+					$options[$key] = [ 'shortcode' => $option['shortcode'], 'title' => \Nino\Features::localized( $option['title'], $locale ) ];
+			}
+
+			return $options;
+		}
+
+		/**
+		 *	Whether a title of an option is one: a text, or a map of locale => text, each at most NAV_TITLE characters, not empty, with no
+		 *	control character in it and valid utf-8
+		 *
+		 *	@param		mixed			$title
+		 *
+		 *	@return 	bool
+		 */
+		private static function titled( mixed $title ): bool {
+
+			$texts = is_array( $title ) === true ? $title : [ $title ];
+
+			if( $texts === [] )
+				return false;
+
+			foreach( $texts as $locale => $text )
+				if( ( is_array( $title ) === true && is_string( $locale ) === false ) || is_string( $text ) === false || trim( $text ) === ''
+					|| preg_match( self::NAV_TEXT, $text ) !== 1 || mb_strlen( $text ) > self::NAV_TITLE )
+					return false;
+
+			return true;
 		}
 
 		/**

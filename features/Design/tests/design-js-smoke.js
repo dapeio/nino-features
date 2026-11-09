@@ -424,11 +424,13 @@ Object.keys( KINDS ).forEach( function( part ) { KNOBS[part] = Object.keys( KIND
  */
 const LAYOUT = {
 	'parts/header'                    : [ 'templates', 'header', 1 ],
-	'knobs/header/position'           : [ 'templates', 'header', 2 ],
-	'knobs/header/cta'                : [ 'templates', 'header', 3 ],
-	'knobs/header/behaviour'          : [ 'templates', 'header', 4 ],
+	'navs/header'                     : [ 'templates', 'header', 2 ],
+	'knobs/header/position'           : [ 'templates', 'header', 3 ],
+	'knobs/header/cta'                : [ 'templates', 'header', 4 ],
+	'knobs/header/behaviour'          : [ 'templates', 'header', 5 ],
 	'parts/footer'                    : [ 'templates', 'footer', 1 ],
-	'knobs/footer/position'           : [ 'templates', 'footer', 2 ],
+	'navs/footer'                     : [ 'templates', 'footer', 2 ],
+	'knobs/footer/position'           : [ 'templates', 'footer', 3 ],
 	'parts/section'                   : [ 'templates', 'section', 1 ],
 	'knobs/section/align'             : [ 'templates', 'section', 2 ],
 	'knobs/section/measure'           : [ 'templates', 'section', 3 ],
@@ -734,6 +736,7 @@ function listing( over ) {
 		motion 			: { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' },
 		parts 			: { header : 'first', footer : 'first', section : 'first', tiles : 'first', card : 'first', buttons : 'first', lists : 'first', tables : 'first', forms : 'first', tabs : 'first', accordion : 'first' },
 		features 	: [],
+		navs 				: { header : '', footer : '' },
 		knobs 			: JSON.parse( JSON.stringify( knobs ) ),
 		// No style is chosen for any template: an empty list for each part, as the server hands it over
 		styles 			: { header : [], footer : [], section : [], tiles : [], card : [], buttons : [], lists : [], tables : [], forms : [], tabs : [], accordion : [] },
@@ -807,6 +810,12 @@ function listing( over ) {
 		contrasts : [],
 		layout 		: layoutTable(),
 		defaults 	: fresh,
+		// The navigation chosen for the header and the footer, and what each can be: the kernel's two menus under the group kernel, what a feature offers under features
+		navs 			: { header : '', footer : '' },
+		navigations : {
+			header : [ { key : 'nav-main', title : 'Navigation "main" (kernel)', group : 'kernel' }, { key : 'nav-footer', title : 'Navigation "footer" (kernel)', group : 'kernel' }, { key : 'menu-main', title : 'Main menu', group : 'features' } ],
+			footer : [ { key : 'nav-main', title : 'Navigation "main" (kernel)', group : 'kernel' }, { key : 'nav-footer', title : 'Navigation "footer" (kernel)', group : 'kernel' }, { key : 'menu-main', title : 'Main menu', group : 'features' } ],
+		},
 		knobs 		: knobs,
 		styles 		: JSON.parse( JSON.stringify( fresh.styles ) ),
 		steps 		: [ 'least', 'less', 'default', 'more', 'most' ],
@@ -2733,7 +2742,7 @@ check( 'Base is a block under each object a part is the template of - eleven in 
 	&& tplDrawn.every( function( card ) { return card.tab === 'templates' && card.open === true && card.head && card.classes } ) );
 check( '...every block drawn from the table: the rows it has are the rows the table gives, each with its one control, and the first of them is open - the object of each is the one the table puts the part under',
 	JSON.stringify( drawnRows( tpl ) ) === JSON.stringify( tplRows ) && tplRows.every( function( row, at ) { return row.controls[0] === 'parts/'+ tplParts[at] } )
-	&& byTag( tpl.body(), 'select' ).length === 1 && byClass( tpl.body(), 'design-section-label' ).length === 0
+	&& byTag( tpl.body(), 'select' ).length === 2 && byClass( tpl.body(), 'design-section-label' ).length === 0
 	&& byClass( tpl.body(), 'design-knob-row' ).map( function( row ) { return row.dataset.control } ).join() === 'knobs/header/position,knobs/header/cta,knobs/header/behaviour' );
 check( '...each over its catalogue, on the one that is chosen, with the one word of label/template over it and the description of the chosen one under it - the two frames and the three templates of the knobs alike - one select in a block, and no sentence under it',
 	listing().parts.every( function( row ) {
@@ -2741,11 +2750,11 @@ check( '...each over its catalogue, on the one that is chosen, with the one word
 		return select !== null && JSON.stringify( offered( select ) ) === JSON.stringify( Object.keys( row.catalogue ).map( function( set ) { return [ set, row.catalogue[set].name ] } ) )
 			&& shown( select ) === row.set && select.id === 'design-set-'+ row.part && byTag( select.parent, 'label' )[0].textContent === TEXT['/_admin/design/label/template']
 			&& ( byTag( select.parent, 'small' )[0] || {} ).textContent === row.catalogue[row.set].description && select.parent.dataset.control === 'parts/'+ row.part
-			&& cardOf( select ).dataset.object === tplRows[ tplParts.indexOf( row.part ) ].object && byTag( cardOf( select ), 'select' ).length === 1
+			&& cardOf( select ).dataset.object === tplRows[ tplParts.indexOf( row.part ) ].object && byTag( cardOf( select ), 'select' ).length === ( row.part === 'header' || row.part === 'footer' ? 2 : 1 )
 			&& byTag( cardOf( select ), 'p' ).length === 0 && byClass( cardOf( select ), 'design-note' ).length === 0;
 	} ) );
 check( '...and what stands in a Base block beside the select is what the table puts on Templates under that object: the position, the button and the behaviour after the select of the header, the position after the select of the footer, and the select alone in the other nine - each strip a knob row in the block of its object, with its three words',
-	JSON.stringify( tplRows.map( function( row ) { return row.controls } ) ) === JSON.stringify( [ [ 'parts/header', 'knobs/header/position', 'knobs/header/cta', 'knobs/header/behaviour' ], [ 'parts/footer', 'knobs/footer/position' ], [ 'parts/section', 'knobs/section/align', 'knobs/section/measure' ], [ 'parts/tiles' ], [ 'parts/card', 'knobs/card/align' ], [ 'parts/buttons' ], [ 'parts/lists' ], [ 'parts/tables' ], [ 'parts/forms' ], [ 'parts/tabs' ], [ 'parts/accordion' ] ] )
+	JSON.stringify( tplRows.map( function( row ) { return row.controls } ) ) === JSON.stringify( [ [ 'parts/header', 'navs/header', 'knobs/header/position', 'knobs/header/cta', 'knobs/header/behaviour' ], [ 'parts/footer', 'navs/footer', 'knobs/footer/position' ], [ 'parts/section', 'knobs/section/align', 'knobs/section/measure' ], [ 'parts/tiles' ], [ 'parts/card', 'knobs/card/align' ], [ 'parts/buttons' ], [ 'parts/lists' ], [ 'parts/tables' ], [ 'parts/forms' ], [ 'parts/tabs' ], [ 'parts/accordion' ] ] )
 	&& [ 'header', 'footer' ].every( function( object ) {
 		return [ 'position' ].concat( object === 'header' ? [ 'cta', 'behaviour' ] : [] ).every( function( knob ) {
 			const row = controlOf( tpl, 'knobs/'+ object+ '/'+ knob );
@@ -2755,6 +2764,80 @@ check( '...and what stands in a Base block beside the select is what the table p
 check( '...a select says what it is for with one word, the same over every one of them, and not with the part it is the select of: the head of its block says the object, and the object a second time would be too much',
 	listing().parts.every( function( row ) { return byTag( tplSelect( row.part ).parent, 'label' )[0].textContent === TEXT['/_admin/design/label/template'] && byTag( tplSelect( row.part ).parent, 'label' )[0].textContent !== TEXT['/_admin/design/part/'+ row.part] } )
 	&& TEXT['/_admin/design/label/template'] !== undefined && TEXT['/_admin/design/label/template'] !== '' );
+
+/*	The navigation of a frame: a select of its own after the one of the template, in the block of the header and of the footer. As the project has it first, then the options
+	in a group each - the kernel's menus, then what the features offer; a choice is the selection on screen, asks for the whole document of the preview and is said by the
+	head of the closed block	*/
+const navSelect = function( screen, part ) {
+	const field = controlOf( screen, 'navs/'+ part );
+	return field === null ? null : byTag( field, 'select' )[0] || null;
+};
+const navGroups = function( select ) {
+	return select.children.map( function( child ) { return child.tagName === 'OPTGROUP' ? [ child.label, child.children.map( function( option ) { return option.value } ) ] : [ '', [ child.value ] ] } );
+};
+
+check( 'the header and the footer have a select Navigation after the one of the template: the control of the table, in the block of its object, labelled with the word of its own and not the template\'s',
+	[ 'header', 'footer' ].every( function( part ) {
+		const select = navSelect( tpl, part );
+		return select !== null && select.id === 'design-nav-'+ part && select.parent.dataset.control === 'navs/'+ part
+			&& byTag( select.parent, 'label' )[0].textContent === TEXT['/_admin/design/navigation/label'] && TEXT['/_admin/design/navigation/label'] !== TEXT['/_admin/design/label/template']
+			&& cardOf( select ) === cardOf( tplSelect( part ) ) && byTag( cardOf( select ), 'select' ).slice( 0, 2 ).map( function( one ) { return one.id } ).join() === 'design-set-'+ part+ ',design-nav-'+ part;
+	} ) );
+check( '...its first entry is As the project has it, the key empty and chosen, and then the options of the answer for that part in two groups: the menus of the kernel under Kernel, what features offer under Features',
+	[ 'header', 'footer' ].every( function( part ) {
+		const select = navSelect( tpl, part );
+		return shown( select ) === '' && select.children[0].tagName === 'OPTION' && select.children[0].value === '' && select.children[0].textContent === TEXT['/_admin/design/navigation/project']
+			&& JSON.stringify( navGroups( select ).slice( 1 ) ) === JSON.stringify( [ [ TEXT['/_admin/design/navigation/kernel'], [ 'nav-main', 'nav-footer' ] ], [ TEXT['/_admin/design/navigation/features'], [ 'menu-main' ] ] ] )
+			&& offered( select ).map( function( pair ) { return pair[1] } ).join() === [ TEXT['/_admin/design/navigation/project'] ].concat( tpl.design._data.navigations[part].map( function( option ) { return option.title } ) ).join();
+	} ) );
+
+navSelect( tpl, 'header' ).focus();
+choose( navSelect( tpl, 'header' ), 'menu-main' );
+tpl.design._previewNow();
+const navAsked = tpl.requests[tpl.requests.length - 1];
+
+check( '...choosing one is the selection on screen: the model holds the key for that part alone, the preview asked for rebuilds the document with the key posted beside the parts, and the bar can save it',
+	tpl.design._edit.navs.header === 'menu-main' && tpl.design._edit.navs.footer === '' && navSelect( tpl, 'header' ).value === 'menu-main' && tpl.design._isDirty() === true && tpl.byId('design-reset').hidden === false
+	&& navAsked.endpoint === 'preview' && navAsked.payload.full === true && JSON.stringify( navAsked.payload.navs ) === JSON.stringify( { header : 'menu-main', footer : '' } ) && tpl.design._target === 'global' );
+check( '...and the footer\'s choice looks at the foot of the page',
+	( choose( navSelect( tpl, 'footer' ), 'nav-footer' ), tpl.design._edit.navs.footer === 'nav-footer' && tpl.design._target === 'footer' ) );
+
+// A setup that stored a choice is drawn with it: the select of each frame shows the stored key, and the model holds it
+const navStored = panel( { navs : { header : 'nav-footer', footer : 'menu-main' } } );
+
+check( 'a stored choice is what the selects show after the screen is read: the key of each frame is the selected option and the model has both',
+	shown( navSelect( navStored, 'header' ) ) === 'nav-footer' && shown( navSelect( navStored, 'footer' ) ) === 'menu-main'
+	&& JSON.stringify( navStored.design._edit.navs ) === JSON.stringify( { header : 'nav-footer', footer : 'menu-main' } ) && navStored.design._isDirty() === false );
+check( 'the note of an option that is gone says the frame by the word of its object and the key, in the words of the code',
+	navStored.design._noteText( { error : 'x', code : 'design_navigation_missing', params : [ 'footer', 'menu-gone' ] } )
+		=== TEXT['/_admin/error/design_navigation_missing'].replace( '%s', TEXT['/_admin/design/object/footer/label'] ).replace( '%s', 'menu-gone' ) );
+
+// The document of the preview is rebuilt when a frame changes, and the navigation of a frame is part of it: a choice asks for the whole document, the same choice again for none
+tpl.design._frames = [ tpl.design._edit.parts.header, tpl.design._edit.parts.footer, 'menu-main', 'nav-footer' ].join('|');
+tpl.design._previewNow();
+const navSame = tpl.requests[tpl.requests.length - 1];
+choose( navSelect( tpl, 'header' ), 'nav-legal' );
+tpl.design._previewNow();
+const navChanged = tpl.requests[tpl.requests.length - 1];
+choose( navSelect( tpl, 'header' ), 'menu-main' );
+
+check( '...and the preview asks for the whole document only when the navigation differs from the one the document in the frame was built with',
+	navSame.payload.full === false && navChanged.payload.full === true && navChanged.payload.navs.header === 'nav-legal' );
+
+const navHead = cardOf( navSelect( tpl, 'header' ) );
+toggle( navHead );
+
+check( '...the head of the closed block names it after the template, by the title of the option, and a part left as the project has it says nothing of it',
+	tplSaid( navHead ) === tplWord( 'header', tpl.design._edit.parts.header ) + ' · ' + TEXT['/_admin/design/navigation/label'] + ' Main menu'
+	&& ( toggle( navHead ), choose( navSelect( tpl, 'header' ), '' ), toggle( navHead ), tplSaid( navHead ) === tplWord( 'header', tpl.design._edit.parts.header ) ) );
+
+const navSaved = panel( {}, { lens : false, object : 'header' } );
+navSaved.answer = navSaved.answer || null;
+choose( navSelect( navSaved, 'header' ), 'nav-main' );
+const navSnapshot = navSaved.design._snapshotOf( navSaved.design._edit );
+
+check( '...a theme keeps it among the choices it compares the screen with: the snapshot carries navs, and a navigation that differs from the theme is a change',
+	JSON.stringify( navSnapshot.navs ) === JSON.stringify( { header : 'nav-main', footer : '' } ) && Object.keys( navSnapshot ).indexOf( 'navs' ) === Object.keys( navSnapshot ).indexOf( 'parts' ) + 1 );
 
 // The Base block is the open one at the start and its head says nothing; closed, it names the set that is chosen - the fresh install's among them
 const tplFresh = panel();
@@ -4314,7 +4397,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -7141,7 +7224,7 @@ check( '...and a change that is no animation plays nothing again', hero.log.leng
 
 anchors.setup._setMotion( 'speed', 'fast' );
 anchors.stage.reachable = false;
-anchors.design._frames = 'first|first';
+anchors.design._frames = 'first|first||';
 anchors.design._previewNow();
 anchors.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
@@ -7149,7 +7232,7 @@ check( '...nor does a frame that cannot be reached, which is built anew and play
 
 anchors.stage.reachable = true;
 anchors.stage.animated = [];
-anchors.design._frames = 'first|first';
+anchors.design._frames = 'first|first||';
 anchors.design._edit.size = 'm';
 anchors.design._edit.motion = { effect : '', strength : '', speed : '', hover : '', 'hover-strength' : '' };
 anchors.design._replays = false;
@@ -7172,7 +7255,7 @@ anchors.requests.length = 0;
 
 // A frame that cannot be reached: the panel asks for the whole page instead of showing a stale one
 anchors.stage.reachable = false;
-anchors.design._frames = 'first|first';
+anchors.design._frames = 'first|first||';
 anchors.design._previewNow();
 const unreachable = anchors.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
@@ -7767,7 +7850,7 @@ asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
 check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the styles of the templates, the choices for the features, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
 	&& first.payload.parts.header === 'first' && first.payload.parts.tables === 'first' && first.payload.knobs.section.title === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
@@ -7895,6 +7978,28 @@ check( 'what the screen says afterwards is that it applied, that files were repl
 check( '...in the line of the bar, the whole of it its title, and the chip is drawn again from what the server then answered: the files are Design\'s now and the state is up to date',
 	asking.line().parent === asking.bar() && asking.line().title === asking.line().textContent && asking.line().className === ''
 	&& asking.chip().parent === asking.bar() && asking.chip().textContent === shortWord('current') && asking.chip().dataset.state === 'current' );
+
+/*	A navigation that is chosen is a file of the apply like the frames: named in the question by the part it is for and what it is - the navigation of the header, of the footer -,
+	and its path stands in the details with what happens to it	*/
+const withNavs = delivered.concat( [
+	{ target : '/templates/html-header-nav.tpl', part : 'header', kind : 'nav', exists : true, state : 'foreign', changes : true, lost : [ '[navigation nav="main"]' ] },
+	{ target : '/templates/html-footer-nav.tpl', part : 'footer', kind : 'nav', exists : false, state : 'missing', changes : true, lost : [] },
+] );
+const navAsking = panel( {} );
+navAsking.byId('design-apply').fire('click');
+navAsking.answer( 200, {} );
+navAsking.answer( 200, { files : withNavs } );
+const navLines = navAsking.asks[0].options.message.split('\n');
+const navWord = function( part ) { return TEXT['/_admin/design/confirm/file/'+ part+ '-nav'] };
+
+check( 'the files of the two navigations are named by what they are for, in the question and not by their path, and a file that is not Design\'s is said so with the shortcode it would lose',
+	navWord('header') !== undefined && navWord('footer') !== undefined && navWord('header') !== navWord('footer')
+	&& navLines.indexOf( say( '/_admin/design/confirm/apply', [ fileWord( '' ), fileWord( 'header' ), fileWord( 'footer' ), navWord('header'), navWord('footer') ].join(', ') ) ) !== -1
+	&& navLines.indexOf( say( '/_admin/design/confirm/foreign', [ fileWord( '' ), fileWord( 'header' ), fileWord( 'footer' ), navWord('header') ].join(', ') ) ) !== -1
+	&& navLines.indexOf( say( '/_admin/design/confirm/lost', '[navigation nav="main"]' ) ) !== -1 && /assets\/|templates\/|\.css|\.tpl/.test( navAsking.asks[0].options.message ) === false );
+check( '...and their paths stand in the details, the one that is not there created',
+	byTag( detailsOf( navAsking.asks[0] ), 'li' ).slice( 3 ).map( function( item ) { return [ byTag( item, 'code' )[0].textContent, byClass( item, 'design-confirm-state' )[0].textContent.trim() ].join(' ') } ).join() === [
+		'templates/html-header-nav.tpl '+ TEXT['/_admin/design/confirm/state/foreign'], 'templates/html-footer-nav.tpl '+ TEXT['/_admin/design/confirm/state/missing'] ].join() );
 
 // Saying no leaves the draft saved and the website alone
 const declined = panel( {} );
@@ -8382,7 +8487,7 @@ function snapshotOf( data ) {
 	const copy = JSON.parse( JSON.stringify( data ) );
 	const parts = {};
 	copy.parts.forEach( function( row ) { parts[row.part] = row.set } );
-	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, radius : copy.radius, 'radius-alt' : copy['radius-alt'], radii : copy.radii, motion : copy.motion, parts : parts, knobs : copy.knobs, styles : copy.styles, features : chosenOf( copy.features ), fonts : copy.fonts, colours : copy.colours };
+	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, radius : copy.radius, 'radius-alt' : copy['radius-alt'], radii : copy.radii, motion : copy.motion, parts : parts, navs : copy.navs, knobs : copy.knobs, styles : copy.styles, features : chosenOf( copy.features ), fonts : copy.fonts, colours : copy.colours };
 }
 
 /** What the setup chose for the features, out of the features of an answer of design/list: key => { set, knobs } for each that has a variant chosen - and none, an empty list on the wire, where nothing is chosen */
@@ -9306,7 +9411,7 @@ focused = null;
 check( 'Save theme posts design/theme/save with the slug and the working copy and no name and no description - the theme keeps its own - and switches the buttons off, its own among them, until it is answered',
 	saving.requests.length === 1 && saving.requests[0].endpoint === 'theme/save' && saving.requests[0].payload.slug === 'mein-theme' && saving.requests[0].payload.theme === 'mein-theme'
 	&& saving.requests[0].payload.knobs.section !== undefined && saving.requests[0].payload.size === 1
-	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,parts,radii,radius,radius-alt,size,slug,styles,theme,whitespace,width'
+	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,navs,parts,radii,radius,radius-alt,size,slug,styles,theme,whitespace,width'
 	&& saving.byId('design-theme-save').disabled === true && saving.design._themeBusy === true );
 
 saving.byId('design-theme-save').fire('click');
@@ -10081,7 +10186,7 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width && sent.payload.whitespace === real.whitespace
@@ -10155,8 +10260,8 @@ else {
 		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length > 0 && none.themes[0].shipped === true
 		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
 		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
-		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,styles,features,fonts,colours'
-		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,knobs,styles,features,fonts'
+		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,navs,knobs,styles,features,fonts,colours'
+		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,navs,knobs,styles,features,fonts'
 		&& answered.load.notes.every( function( note ) { return typeof note === 'string' || ( typeof note.error === 'string' && typeof note.code === 'string' && Array.isArray( note.params ) ) } )
 		&& typeof none.running === 'string' && typeof activeList.running === 'string'
 		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'

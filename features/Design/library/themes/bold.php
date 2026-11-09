@@ -17,6 +17,7 @@ return [
 		'radii'		=> [ 'cover' => 'standard', 'row' => 'standard', 'column' => 'standard', 'tile' => 'standard', 'card' => 'standard', 'image' => 'standard' ],
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '', 'hover' => '', 'hover-strength' => '' ],
 		'parts'		=> [ 'header' => 'pill-menu', 'footer' => 'two-panels', 'section' => 'panel', 'tiles' => 'regular', 'card' => 'box', 'buttons' => 'hard', 'lists' => 'regular', 'tables' => 'contrast', 'forms' => 'contrast', 'tabs' => 'pills', 'accordion' => 'boxed' ],
+		'navs'		=> [ 'header' => '', 'footer' => '' ],
 		'knobs'		=> [
 			'header' 		=> [ 'nav' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'shadow' => 0, 'position' => 0, 'cta' => 1, 'behaviour' => 0, 'nav-case' => 0 ],
 			'footer' 		=> [ 'scale' => 0, 'height' => 0, 'space' => 0, 'logo' => 0, 'ground' => 0, 'border-size' => 0, 'border-color' => 0, 'divider' => 0, 'position' => 0, 'nav-case' => 0 ],

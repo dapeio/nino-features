@@ -109,15 +109,42 @@ namespace Nino\Modules\Design {
 				leaves a pair shortcode open would take the closing tag of the next one - so the part of the specimen before them,
 				each block and the part after them are rendered one by one, and put together the way specimen() puts them */
 			return implode( "\n", [
-				$render( self::frame( $libraryDir, $setup, 'header', $notes ) ),
+				self::renderFrame( $appData, $libraryDir, $setup, 'header', $notes ),
 				$render( $before ). implode( "\n\n", array_map( $render, $inside ) ). $render( $after ),
-				$render( self::frame( $libraryDir, $setup, 'footer', $notes ) ),
+				self::renderFrame( $appData, $libraryDir, $setup, 'footer', $notes ),
 			] );
 		}
 
 		/**
-		 *	The markup half of a frame, straight out of the library
+		 *	A frame rendered the way a page renders it: the markup in front of the navigation, the navigation and the markup behind it
+		 *	each on its own, as the include of the project's file renders on its own. A call of the navigation that is written inline
+		 *	would pair with the first closing tag of its name behind it - the footers carry the navigation of the legal pages after the
+		 *	include - and the menus would nest; rendered apart it is what the file would give
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		string		$part					'header' or 'footer'
+		 *	@param		array 		&$notes				(reference) What was missing on the way
+		 *
+		 *	@return 	string								Rendered html
+		 */
+		public static function renderFrame( array &$appData, string $libraryDir, array $setup, string $part, array &$notes = [] ): string {
+
+			$html = '';
+
+			foreach( self::pieces( $appData, $libraryDir, $setup, $part, $notes ) as $piece )
+				$html .= \Nino\Html::renderHtml( $appData, $piece );
+
+			return $html;
+		}
+
+		/**
+		 *	The markup half of a frame, straight out of the library. Where the setup chose a navigation for the frame, the call of
+		 *	the option stands in the place of the include of the project's file (`[template /templates/html-<part>-nav]`), so that the
+		 *	preview shows the menu an apply would write; with none chosen the include stays, and renders what the project has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		array 		$setup				A normalised setup
 		 *	@param		string		$part					'header' or 'footer'
@@ -125,17 +152,42 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@return 	string								Html+, or nothing at all
 		 */
-		public static function frame( string $libraryDir, array $setup, string $part, array &$notes = [] ): string {
+		public static function frame( array &$appData, string $libraryDir, array $setup, string $part, array &$notes = [] ): string {
+			return implode( '', self::pieces( $appData, $libraryDir, $setup, $part, $notes ) );
+		}
+
+		/**
+		 *	A frame in the pieces it is rendered in: the markup as it is, or - where a navigation is chosen - the markup in front of the
+		 *	include, the call of the option and the markup behind it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		string		$part					'header' or 'footer'
+		 *	@param		array 		&$notes				(reference) What was missing on the way
+		 *
+		 *	@return 	array									One piece, three, or none for a frame with no template
+		 */
+		private static function pieces( array &$appData, string $libraryDir, array $setup, string $part, array &$notes ): array {
 
 			$set 			= (string) ( $setup['parts'][$part] ?? '' );
 			$template = Setup::file( $libraryDir, $part, $set, 'template' );
 
 			if( $template === '' ) {
 				$notes[] = 'no template for "'. $part. '" set "'. $set. '" - the preview shows the page without it';
-				return '';
+				return [];
 			}
 
-			return (string) file_get_contents( $template );
+			$markup = (string) file_get_contents( $template );
+			$key 		= (string) ( $setup['navs'][$part] ?? '' );
+
+			if( $key === '' )
+				return [ $markup ];
+
+			$shortcode = (string) ( Setup::navigations( $appData, $part )[$key]['shortcode'] ?? '' );
+			$halves 	 = explode( '[template /templates/html-'. $part. '-nav]', $markup, 2 );
+
+			return $shortcode === '' || count( $halves ) !== 2 ? [ $markup ] : [ $halves[0], $shortcode, $halves[1] ];
 		}
 
 		/**

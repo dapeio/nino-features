@@ -75,6 +75,12 @@ return [
 	'[[/_admin/design/label/template]]'							=> 'Vorlage',
 	// Die Stile, die eine Vorlage mitbringt: die Auswahl eines Stils hat dies als Erstes, und gewählt ist es die Vorlage, wie sie ist
 	'[[/_admin/design/style/none]]'								=> 'Keiner',
+	// Die Navigation eines Rahmens: die Auswahl nach der Vorlage von Header und Footer. Der erste Eintrag lässt die Datei, wie das Projekt sie hat; die Optionen sind die Menüs des Kernels, betitelt vom ersten Satz (%s ist der Schlüssel des Menüs), und was die Features anbieten, je Gruppe unter einer eigenen Überschrift
+	'[[/_admin/design/navigation/label]]'						=> 'Navigation',
+	'[[/_admin/design/navigation/project]]'						=> 'Wie im Projekt',
+	'[[/_admin/design/navigation/kernel]]'						=> 'Kernel',
+	'[[/_admin/design/navigation/features]]'					=> 'Features',
+	'[[/_admin/design/navigation/title]]'						=> 'Navigation „%s“ (Kernel)',
 	'[[/_admin/design/part/header]]'							=> 'Vorlage Header',
 	'[[/_admin/design/part/footer]]'							=> 'Vorlage Footer',
 	'[[/_admin/design/part/section]]'							=> 'Vorlage Inhalt',
@@ -492,6 +498,8 @@ return [
 	'[[/_admin/design/confirm/file/look]]'						=> 'der Look',
 	'[[/_admin/design/confirm/file/header]]'						=> 'der Kopfbereich',
 	'[[/_admin/design/confirm/file/footer]]'						=> 'der Fußbereich',
+	'[[/_admin/design/confirm/file/header-nav]]'				=> 'die Navigation des Kopfbereichs',
+	'[[/_admin/design/confirm/file/footer-nav]]'				=> 'die Navigation des Fußbereichs',
 	'[[/_admin/design/confirm/state/missing]]'					=> 'wird angelegt',
 	'[[/_admin/design/confirm/state/ours]]'						=> 'wird ersetzt',
 	'[[/_admin/design/confirm/state/edited]]'					=> 'wurde von Hand geändert, wird ersetzt',
@@ -605,5 +613,6 @@ return [
 	// Was beim Lesen eines Setups ersetzt wurde, nach dem Code der Notiz und mit ihren Parametern (siehe Setup::NOTES): das Panel sagt eine Notiz so, wie es eine Ablehnung sagt
 	'[[/_admin/error/design_theme_missing]]'	=> 'Das Theme „%s“ gibt es nicht – es ist keines aktiv.',
 	'[[/_admin/error/design_set_missing]]'		=> '%s: „%s“ gibt es nicht – verwendet wird „%s“.',
+	'[[/_admin/error/design_navigation_missing]]'	=> '%s: die Navigation „%s“ wird nicht angeboten – die Datei bleibt, wie das Projekt sie hat.',
 	'[[/_admin/error/design_feature_inactive]]'	=> 'Das Feature „%s“ ist nicht aktiv oder bringt keine Varianten mit – Deine Wahl dafür bleibt erhalten, kompiliert wird dafür nichts.',
 ];

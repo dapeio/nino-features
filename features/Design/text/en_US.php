@@ -75,6 +75,12 @@ return [
 	'[[/_admin/design/label/template]]'							=> 'Template',
 	// The styles a template brings: the select of a style has this first, and chosen it is the template as it is
 	'[[/_admin/design/style/none]]'								=> 'None',
+	// The navigation of a frame: the select after the template of the header and of the footer. The first entry leaves the file as the project has it; the options are the kernel's menus, titled by the first sentence (%s is the key of the menu), and what the features offer, each group under its own heading
+	'[[/_admin/design/navigation/label]]'						=> 'Navigation',
+	'[[/_admin/design/navigation/project]]'						=> 'As the project has it',
+	'[[/_admin/design/navigation/kernel]]'						=> 'Kernel',
+	'[[/_admin/design/navigation/features]]'					=> 'Features',
+	'[[/_admin/design/navigation/title]]'						=> 'Navigation "%s" (kernel)',
 	'[[/_admin/design/part/header]]'							=> 'Header template',
 	'[[/_admin/design/part/footer]]'							=> 'Footer template',
 	'[[/_admin/design/part/section]]'							=> 'Content template',
@@ -492,6 +498,8 @@ return [
 	'[[/_admin/design/confirm/file/look]]'						=> 'the look',
 	'[[/_admin/design/confirm/file/header]]'						=> 'the header',
 	'[[/_admin/design/confirm/file/footer]]'						=> 'the footer',
+	'[[/_admin/design/confirm/file/header-nav]]'				=> 'the navigation of the header',
+	'[[/_admin/design/confirm/file/footer-nav]]'				=> 'the navigation of the footer',
 	'[[/_admin/design/confirm/state/missing]]'					=> 'is created',
 	'[[/_admin/design/confirm/state/ours]]'						=> 'is replaced',
 	'[[/_admin/design/confirm/state/edited]]'					=> 'was edited by hand, is replaced',
@@ -605,5 +613,6 @@ return [
 	// What reading a setup replaced, by the code of the note and with its params (see Setup::NOTES): the screen says a note the way it says a refusal
 	'[[/_admin/error/design_theme_missing]]'	=> 'The theme "%s" is not there - none is active.',
 	'[[/_admin/error/design_set_missing]]'		=> '%s: "%s" is not there - "%s" is used instead.',
+	'[[/_admin/error/design_navigation_missing]]'	=> '%s: the navigation "%s" is not offered - the file stays as the project has it.',
 	'[[/_admin/error/design_feature_inactive]]'	=> 'The feature "%s" is not active, or brings no variants - what was chosen for it is kept, and nothing is compiled for it.',
 ];
