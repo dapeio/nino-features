@@ -5567,6 +5567,21 @@ $baseTokens			= designDeclarations( designBlock( designPlain( designSection( $ba
 $baseRoles			= designDeclarations( designPlain( designSection( $baseRaw, 2, DESIGN_BASE_MARKER ) ) );
 $defaultSheet		= Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library );
 
+$spaceRoots = designRules( designPlain( $defaultSheet ) );
+$spaceShort = array_values( array_filter( $spaceRoots, static fn( array $rule ): bool => $rule['selector'] === ':root' && $rule['within'] === '' && str_contains( $rule['body'], '--nino-space-4:' ) === true ) );
+$spaceFull	= array_values( array_filter( $spaceRoots, static fn( array $rule ): bool => $rule['selector'] === ':root' && preg_match( '/^@media\s*\(min-width:\s*768px\)$/', $rule['within'] ) === 1 && str_contains( $rule['body'], '--nino-space-4:' ) === true ) );
+$spaceValues = static fn( array $rules ): array => count( $rules ) === 1 ? array_map( static fn( string $step ): string => preg_match( '/(?<![\w-])--nino-space-'. $step. '\s*:\s*([^;]+);/', $rules[0]['body'], $found ) === 1 ? trim( $found[1] ) : '', [ '4', '5', '6' ] ) : [];
+check( 'the compile at the defaults carries the three upper steps of the space scale as the kernel does: 2.5, 3.5 and 5rem in the first root rule and 3, 5 and 8rem in the root rule of the media query from 768px, each step twice in all',
+	$spaceValues( $spaceShort ) === [ '2.5rem', '3.5rem', '5rem' ] && $spaceValues( $spaceFull ) === [ '3rem', '5rem', '8rem' ]
+	&& array_sum( array_map( static fn( string $step ): int => substr_count( $defaultSheet, '--nino-space-'. $step. ':' ), [ '4', '5', '6' ] ) ) === 6 );
+// The text of an item of a numbered list stands off its number by the badge and the second step in every set of the lists, as in the kernel
+$numberedProblems = [];
+foreach( Setup::available( $library, 'lists' ) as $set )
+	foreach( array_filter( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'lists', $set ) ) ) ), static fn( array $rule ): bool => $rule['selector'] === '.nino-list--numbered li' && str_contains( $rule['body'], 'padding-left' ) === true ) as $numberedRule )
+		if( preg_match( '/padding-left\s*:\s*calc\(\s*\(\s*var\(--space-3\)\s*\+\s*var\(--space-2\)\s*\)\s*\*\s*var\(--lists-scale\)\s*\)\s*;/', $numberedRule['body'] ) !== 1 )
+			$numberedProblems[] = $set;
+check( 'the indent of an item of a numbered list is the badge plus the second step in every set that states it, not the fourth step'. ( $numberedProblems === [] ? '' : ' - '. implode( ', ', $numberedProblems ) ), $numberedProblems === [] && count( Setup::available( $library, 'lists' ) ) >= 2 );
+
 check( 'the compile at the defaults draws the hero as the style of the section title and subtitle: it holds .nino-section-title--hero and .nino-section-subtitle--hero, and no .nino-hero-title and no .nino-hero-subtitle',
 	str_contains( $defaultSheet, '.nino-section-title--hero' ) === true && str_contains( $defaultSheet, '.nino-section-subtitle--hero' ) === true && preg_match( '/\.nino-hero-(?:title|subtitle)\b/', $defaultSheet ) !== 1 );
 

@@ -109,9 +109,11 @@
 	color: var(--lists-marker-check-ink);
 	font-weight: var(--lists-marker);
 }
+/*	The text of an item stands off its number by the badge and the second step, as in Nino.css: the indent does not move with the fourth step,
+	which is shorter on a phone	*/
 .nino-list--numbered li {
 	min-height: calc( var(--space-3) * var(--lists-scale) );
-	padding-left: calc( var(--space-4) * var(--lists-scale) );
+	padding-left: calc( ( var(--space-3) + var(--space-2) ) * var(--lists-scale) );
 }
 .nino-list--numbered li::before {
 	width: calc( var(--space-3) * var(--lists-scale) );
