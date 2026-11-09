@@ -121,22 +121,18 @@ $manualLines = static function( array $manual ): array {
 $oneSentence = static fn( string $text ): bool => $text !== '' && mb_strlen( $text ) <= 200 && preg_match( '/[.!?]\s+\S|\n/u', $text ) !== 1;
 $sentences = static fn( array $description, string $locale ): int => count( array_filter( (array) preg_split( '/(?<=[.!?])\s+/', trim( (string) ( $description[$locale] ?? '' ) ) ) ) );
 $counts = array_map( 'count', $manifest['manual'] );
-check( 'its description is two or three sentences in each language, and differs between them',
-	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => $sentences( $manifest['description'], $locale ) < 2 || $sentences( $manifest['description'], $locale ) > 3 ) === []
+check( 'its description is two to four sentences in each language, and differs between them',
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => $sentences( $manifest['description'], $locale ) < 2 || $sentences( $manifest['description'], $locale ) > 4 ) === []
 	&& $manifest['description']['en_US'] !== $manifest['description']['de_DE'] );
-check( '...its manual has the six sections of the kernel in their order, five entries of markup at most and eight of the panel, and no shortcode, route, callback or install entry',
-	array_keys( $manifest['manual'] ) === \Nino\Features::MANUAL_SECTIONS && $counts['markup'] >= 1 && $counts['markup'] <= 5 && $counts['panel'] >= 1 && $counts['panel'] <= 8
+check( '...its manual has the six sections of the kernel in their order, no entry of markup, eight of the panel at most, and no shortcode, route, callback or install entry',
+	array_keys( $manifest['manual'] ) === \Nino\Features::MANUAL_SECTIONS && $counts['markup'] === 0 && $counts['panel'] >= 1 && $counts['panel'] <= 8
 	&& $counts['shortcodes'] === 0 && $counts['routes'] === 0 && $counts['callbacks'] === 0 && $counts['install'] === 0 );
 check( '...every line of it is one sentence of at most 200 characters, in both languages',
 	array_filter( $manualLines( $manifest['manual'] ), static fn( array $line ): bool => $oneSentence( $line[3] ) === false ) === [] );
 check( '...every entry has the same handle in both languages, a line in each, and the two lines differ',
 	array_filter( $manifest['manual'], static fn( array $entries ): bool => array_filter( $entries, static fn( mixed $line ): bool => is_array( $line ) === false || array_keys( $line ) !== [ 'en_US', 'de_DE' ] || $line['en_US'] === $line['de_DE'] ) !== [] ) === [] );
-check( '...the handles a developer types are the handles of the entries: the wrap, a section with its row, the loop call, the call of a component with children and the marker of an HTML+ block in the markup, the list and the editor in the panel',
-	array_diff( [ '<div class="nino-wrap nino-wrap--vpa">', '[card padding="3"]…[/card]' ], array_keys( $manifest['manual']['markup'] ) ) === []
-	&& count( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_starts_with( $handle, '<section ' ) === true ) ) === 1
-	&& count( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_starts_with( $handle, '[sections ' ) === true ) ) === 1
-	&& count( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_contains( $handle, '<!-- nino:html -->' ) === true && str_contains( $handle, '<!-- /nino:html -->' ) === true ) ) === 1
-	&& isset( $manifest['manual']['panel']['Builder'] ) === true );
+check( '...the entry of the list and the editor is the first of the panel, under the handle Builder',
+	isset( $manifest['manual']['panel']['Builder'] ) === true && array_key_first( $manifest['manual']['panel'] ) === 'Builder' );
 check( '...and the cards of a loop are gone from the texts of the panel, as the kernel has no such thing, and so is the count of the blocks from the english header of the order', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 	$texts = (array) include $dir. '/text/'. $locale. '.php';
 	return array_filter( array_keys( $texts ), static fn( string $key ): bool => str_contains( $key, '/stack/card' ) === true || str_contains( $key, '/option/card-' ) === true ) !== [];

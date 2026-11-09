@@ -5,68 +5,63 @@ return [
 	'key'					=> 'design',
 	'name'				=> [ 'en_US' => 'Design', 'de_DE' => 'Design' ],
 	'description'	=> [
-		'en_US' => 'Sets the look of the whole site from one model: templates for header, footer, content, cards, buttons, forms and more, type, surfaces, colours and motion, compiled to one stylesheet with a preview of the page. Themes keep a setup under a name, and the Typefaces tab installs self-hosted fonts.',
-		'de_DE' => 'Legt das Aussehen der ganzen Website über ein Modell fest: Vorlagen für Header, Footer, Inhalt, Karten, Buttons, Formulare und mehr, Schrift, Flächen, Farben und Bewegung, kompiliert zu einem Stylesheet mit Vorschau der Seite. Themes halten ein Setup unter einem Namen fest, und der Tab Schriftarten installiert selbst gehostete Schriften.',
+		'en_US' => 'The Design lets you shape the look of the whole site in one place. You choose templates for header, footer, content, cards, buttons, forms and more, and set type, surfaces, colours and motion, with a preview of the page. Themes keep a look under a name, and typefaces can be installed and served by the site itself. Features that bring variants appear here too.',
+		'de_DE' => 'Das Design ermöglicht die Gestaltung des gesamten Aussehens der Website an einer Stelle. Du wählst Vorlagen für Header, Footer, Inhalt, Karten, Buttons, Formulare und mehr und stellst Schrift, Flächen, Farben und Bewegung ein, mit Vorschau der Seite. Themes halten ein Aussehen unter einem Namen fest, und Schriftarten lassen sich installieren und von der Website selbst ausliefern. Auch Features mit Varianten erscheinen hier.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
-		'markup' => [
-			'[logo]' => [
-				'en_US' => 'The frames write [logo] where the logo stands: the image slot /logo for a light ground and /logo/dark for a dark one.',
-				'de_DE' => 'Die Frames schreiben [logo] dorthin, wo das Logo steht: der Bildplatz /logo für einen hellen Grund und /logo/dark für einen dunklen.',
-			],
-		],
+		'markup' => [],
 		'routes' => [],
 		'panel' => [
 			'Design' => [
-				'en_US' => 'Three tabs - Themes, the library and the setup; Typefaces, the loader; Settings - and the setup has the aspects Base, Text, Surface, Colour and Motion for each object, and CSS for the page.',
-				'de_DE' => 'Drei Tabs - Themes, die Bibliothek und das Setup; Schriftarten, der Loader; Einstellungen - und das Setup hat je Objekt die Aspekte Grundlage, Text, Fläche, Farbe und Bewegung, für die Seite CSS.',
+				'en_US' => 'Lets you set the look in three tabs - Themes, Typefaces and Settings - and, for each object, in the aspects Base, Text, Surface, Colour and Motion, plus CSS for the page.',
+				'de_DE' => 'Ermöglicht, das Aussehen in drei Tabs - Themes, Schriftarten und Einstellungen - und je Objekt in den Aspekten Grundlage, Text, Fläche, Farbe und Bewegung einzustellen, dazu CSS für die Seite.',
 			],
 			'Tabs and objects' => [
-				'en_US' => 'The setup is sorted by object: Page, Header, Footer, Content, Tiles, Card, Buttons, Lists, Tables, Form, Tabs and Accordion, then one for each feature that brings variants.',
-				'de_DE' => 'Das Setup ist nach Objekten sortiert: Seite, Kopf, Fuß, Inhalt, Kacheln, Karte, Buttons, Listen, Tabellen, Formular, Tabs und Accordion, dann eins je Feature mit Varianten.',
+				'en_US' => 'Lets you set each object on its own: Page, Header, Footer, Content, Tiles, Card, Buttons, Lists, Tables, Form, Tabs and Accordion, and one for each feature with variants.',
+				'de_DE' => 'Ermöglicht, jedes Objekt für sich einzustellen: Seite, Kopf, Fuß, Inhalt, Kacheln, Karte, Buttons, Listen, Tabellen, Formular, Tabs und Accordion, dazu eins je Feature mit Varianten.',
 			],
-			'Knobs and ladders' => [
-				'en_US' => 'A template declares a knob as a ladder of custom properties: --least to --most for a scale, --less, --default, --more for a choice, --default and --more for a toggle, --default for an ink.',
-				'de_DE' => 'Eine Vorlage deklariert einen Regler als Leiter von Properties: --least bis --most für eine Skala, --less/--default/--more für eine Wahl, --default/--more für einen Schalter, --default für eine Tinte.',
+			'Knobs' => [
+				'en_US' => 'Every template offers its own knobs, as strips from less to more or as switches, so a look is tuned in steps and not written as css.',
+				'de_DE' => 'Jede Vorlage bietet eigene Regler, als Leisten von weniger bis mehr oder als Schalter, sodass sich ein Aussehen in Stufen einstellen lässt und nicht als CSS geschrieben wird.',
 			],
 			'Preview' => [
-				'en_US' => 'One specimen page of this project under the stylesheet the selection compiles to, at phone, tablet or desktop width; a feature that brings variants adds a block with design/preview.tpl.',
-				'de_DE' => 'Eine Musterseite dieses Projekts unter dem Stylesheet, zu dem die Auswahl kompiliert, in Handy-, Tablet- oder Desktopbreite; ein Feature mit Varianten bringt mit design/preview.tpl einen Block mit.',
+				'en_US' => 'Lets you see every change at once on a specimen page of your project, at phone, tablet or desktop width.',
+				'de_DE' => 'Ermöglicht, jede Änderung sofort auf einer Musterseite Deines Projekts zu sehen, in Handy-, Tablet- oder Desktopbreite.',
 			],
 			'Themes' => [
-				'en_US' => 'The library of themes, library/themes/<slug>.php and data/themes/<slug>.php: Load, Duplicate, Export to nino-theme-<slug>.json, Delete, Edit and Import; six ship, and a theme can carry css of its own.',
-				'de_DE' => 'Themes, library/themes/<slug>.php und data/themes/<slug>.php: Laden, Duplizieren, Exportieren (nino-theme-<slug>.json), Löschen, Bearbeiten, Import; sechs liegen bei, jedes kann eigenes CSS tragen.',
+				'en_US' => 'Lets you keep a look as a named theme and Load, Duplicate, Export, Delete, Edit and Import themes; six ship with the Design, and a theme can carry css of its own.',
+				'de_DE' => 'Ermöglicht, ein Aussehen als Theme festzuhalten und Themes zu Laden, Duplizieren, Exportieren, Löschen, Bearbeiten und zu importieren; sechs liegen bei, und ein Theme kann eigenes CSS tragen.',
 			],
 			'Typefaces' => [
-				'en_US' => 'The loader installs typefaces from a signed list into assets/fonts/<slug>/, served by the project itself, and the font roles of the setup offer them from then on.',
-				'de_DE' => 'Der Loader installiert Schriftarten aus einer signierten Liste nach assets/fonts/<slug>/, vom Projekt selbst ausgeliefert, und die Schriftrollen des Setups bieten sie danach an.',
+				'en_US' => 'Lets you install typefaces from a list and use them for the font roles of the setup; they are served by the site itself.',
+				'de_DE' => 'Ermöglicht, Schriftarten aus einer Liste zu installieren und für die Schriftrollen des Setups zu nutzen; sie werden von der Website selbst ausgeliefert.',
 			],
 			'Apply to website' => [
-				'en_US' => 'Save draft writes data/design.php; Apply to website writes assets/theme.css and templates/frame-header.tpl and -footer.tpl; Reset drops changes, Restore previous version undoes the last apply.',
-				'de_DE' => 'Entwurf speichern schreibt data/design.php; Auf Website anwenden assets/theme.css, templates/frame-header.tpl und -footer.tpl; Zurücksetzen verwirft Änderungen, Vorherige Version das letzte Anwenden.',
+				'en_US' => 'Save draft keeps your work, Apply to website puts the look live, Reset drops changes, and Restore previous version undoes the last apply.',
+				'de_DE' => 'Entwurf speichern sichert Deine Arbeit, Auf Website anwenden schaltet das Aussehen live, Zurücksetzen verwirft Änderungen, Vorherige Version wiederherstellen macht das letzte Anwenden rückgängig.',
 			],
 			'Variants from features' => [
-				'en_US' => 'A feature with a design/ folder of stylesheets brings variants: a tab after the objects with a select of them; @name and @description of a file name the look, @knob declares a knob.',
-				'de_DE' => 'Ein Feature mit einem Ordner design/ voller Stylesheets bringt Varianten: einen Tab nach den Objekten mit Auswahl; @name und @description einer Datei nennen den Look, @knob deklariert einen Regler.',
+				'en_US' => 'A feature that brings variants of its own gets a tab after the objects, where you choose a variant and set its knobs.',
+				'de_DE' => 'Ein Feature mit eigenen Varianten bekommt einen Tab nach den Objekten, in dem Du eine Variante wählst und ihre Regler einstellst.',
 			],
 			'Navigation of a frame' => [
-				'en_US' => 'In Base, header and footer choose their navigation: As the project has it, a menu of the kernel or what a feature offers; Apply writes html-header-nav.tpl or html-footer-nav.tpl.',
-				'de_DE' => 'In Grundlage wählen Kopf und Fuß ihre Navigation: Wie das Projekt sie hat, ein Menü des Kerns oder was ein Feature anbietet; Anwenden schreibt html-header-nav.tpl oder html-footer-nav.tpl.',
+				'en_US' => 'In Base, header and footer let you choose their navigation: As the project has it, a menu of the kernel or one that a feature offers.',
+				'de_DE' => 'In Grundlage lassen Kopf und Fuß die Wahl ihrer Navigation: Wie das Projekt sie hat, ein Menü des Kerns oder eines, das ein Feature anbietet.',
 			],
 			'CSS' => [
-				'en_US' => 'CSS, the last aspect of the Page, is the css of the theme, written as the last section of theme.css so that it wins against the templates; the save refuses among others @import and more than 64 KB.',
-				'de_DE' => 'CSS, der letzte Aspekt der Seite, ist das CSS des Themes, als letzter Abschnitt von theme.css geschrieben, damit es gegen die Vorlagen gewinnt; Speichern lehnt unter anderem @import und über 64 KB ab.',
+				'en_US' => 'CSS, the last aspect of the Page, lets you add css of your own to a theme; it applies after the templates, so it wins over them.',
+				'de_DE' => 'CSS, der letzte Aspekt der Seite, ermöglicht eigenes CSS in einem Theme; es gilt nach den Vorlagen und setzt sich so gegen sie durch.',
 			],
 		],
 		'callbacks' => [
 			'/feature/design/navigations' => [
-				'en_US' => 'Fired by the Design, with $args = [ part, options ], to collect the navigations of a frame: a feature adds key => [ shortcode => one call such as [menu /main burger], title ] to options.',
-				'de_DE' => 'Vom Design gefeuert, mit $args = [ part, options ], um die Navigationen eines Frames zu sammeln: ein Feature fügt options key => [ shortcode => ein Aufruf wie [menu /main burger], title ] hinzu.',
+				'en_US' => 'Lets a feature offer its own navigation to the header and the footer: it adds options, each a call such as [menu /main burger] with a title.',
+				'de_DE' => 'Ermöglicht einem Feature, Header und Footer eine eigene Navigation anzubieten: Es fügt Optionen hinzu, je ein Aufruf wie [menu /main burger] mit einem Titel.',
 			],
 			'/nino/http/output' => [
-				'en_US' => 'Adds the origin of the typeface repository to the font-src of the workbench policy for /_admin, only while the setting Typeface repository names an https address.',
-				'de_DE' => 'Ergänzt die font-src der Policy der Workbench für /_admin um die Herkunft des Schriftarten-Repositorys, nur solange die Einstellung Schrift-Repository eine https-Adresse nennt.',
+				'en_US' => 'Lets the workbench load the previews of the typefaces from the repository that the setting Typeface repository names.',
+				'de_DE' => 'Ermöglicht der Workbench, die Vorschauen der Schriftarten aus dem Repository zu laden, das die Einstellung Schrift-Repository nennt.',
 			],
 		],
 		'install' => [],

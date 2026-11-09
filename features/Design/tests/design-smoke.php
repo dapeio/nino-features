@@ -1195,11 +1195,11 @@ check( '...the panel\'s own screen is the one place of the setup: Admin::tabs() 
 check( '...the twelve objects are named in the entry of the manual on them, in both languages, by the words the panel draws them with',
 	count( Setup::OBJECTS ) === 12 && array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( Setup::OBJECTS, static fn( string $object ): bool => str_contains( $says( 'Tabs and objects', $locale ), $panelWord( 'object/'. $object. '/label', $locale ) ) === false ) !== [] ) === [] );
 
-// The description is the line the feature is listed by: two or three sentences in each language
+// The description is the line the feature is listed by: two to four sentences in each language
 $describedCounts = array_map( static fn( string $locale ): int => count( array_filter( (array) preg_split( '/(?<=[.!?])\s+/', trim( \Nino\Features::localized( (array) ( $feature['description'] ?? [] ), $locale ) ) ) ) ), [ 'en_US', 'de_DE' ] );
 
-check( '...and the description of the feature is two or three sentences in each language',
-	array_filter( $describedCounts, static fn( int $count ): bool => $count < 2 || $count > 3 ) === [] );
+check( '...and the description of the feature is two to four sentences in each language',
+	array_filter( $describedCounts, static fn( int $count ): bool => $count < 2 || $count > 4 ) === [] );
 
 // The themes: the entry on them names what a row does and the import, by the words the panel draws them with, and the css of a theme has an entry of its own
 check( '...and the entry on the themes names what the buttons of a row do - load, edit, duplicate, delete, export - in both languages, by the words the panel draws them with, and the css of a theme has an entry of its own',
@@ -1221,12 +1221,12 @@ foreach( (array) ( $feature['manual'] ?? [] ) as $manualSection => $manualEntrie
 			if( is_array( $manualLine ) === false || array_keys( $manualLine ) !== [ 'en_US', 'de_DE' ] || $oneSentence( (string) ( $manualLine[$manualLocale] ?? '' ) ) === false )
 				$longLines[] = $manualSection. ' '. $manualHandle. ' '. $manualLocale;
 
-check( '...the manual has the six sections of the kernel in their order, one entry of markup, ten of the panel at most, the two callbacks, and every line of it is one sentence of at most 200 characters in both languages, under the same handles'. ( $longLines === [] ? '' : ' - not: '. implode( ', ', $longLines ) ),
+check( '...the manual has the six sections of the kernel in their order, no entry of markup, ten of the panel at most, the two callbacks, and every line of it is one sentence of at most 200 characters in both languages, under the same handles'. ( $longLines === [] ? '' : ' - not: '. implode( ', ', $longLines ) ),
 	array_keys( (array) ( $feature['manual'] ?? [] ) ) === \Nino\Features::MANUAL_SECTIONS && $longLines === []
-	&& $manualCounts['markup'] === 1 && $manualCounts['panel'] >= 1 && $manualCounts['panel'] <= 10 && $manualCounts['callbacks'] === 2 && $manualCounts['shortcodes'] === 0 && $manualCounts['routes'] === 0 && $manualCounts['install'] === 0 );
-/*	The features that bring variants have one entry, which names the folder a feature brings them in and the three tags of the head of a variant file; in both languages	*/
-check( 'the manual tells the features that bring variants in one entry, in both languages: the folder design/ and the tags @name, @description and @knob',
-	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( [ 'design/', '@name', '@description', '@knob' ], static fn( string $needle ): bool => str_contains( $says( 'Variants from features', $locale ), $needle ) === false ) !== [] ) === [] );
+	&& $manualCounts['markup'] === 0 && $manualCounts['panel'] >= 1 && $manualCounts['panel'] <= 10 && $manualCounts['callbacks'] === 2 && $manualCounts['shortcodes'] === 0 && $manualCounts['routes'] === 0 && $manualCounts['install'] === 0 );
+/*	The features that bring variants have one entry of their own and the preview has one: both are told in both languages	*/
+check( 'the manual has an entry for the variants of features and one for the preview, in both languages',
+	array_filter( [ 'Variants from features', 'Preview' ], static fn( string $entry ): bool => $said( $entry, 'en_US' ) === '' || $said( $entry, 'de_DE' ) === '' ) === [] );
 $calls = array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) );
 sort( $calls );
 check( 'the manual names the one callback the feature registers, on /nino/http/output, and the one it fires, /feature/design/navigations, in both languages, and the setting that callback reads',
@@ -7961,12 +7961,11 @@ check( 'the specimen has one place for the blocks of the features, the token [[f
 	substr_count( $specimenSource, '[[features]]' ) === 1 && (int) strpos( $specimenSource, '[[features]]' ) > (int) strrpos( $specimenSource, '<section ' ) && (int) strpos( $specimenSource, '[[features]]' ) < (int) strpos( $specimenSource, ' id="footer"' )
 	&& $specimen === rtrim( str_replace( [ '[[lorem]]', '[[short]]', '[[placeholder]]', '[[features]]' ], array_merge( $tokenValues, [ '' ] ), $specimenSource ), "\n" ) );
 
-// The places of the specimen are the elements with an id that a block of it starts at; the entry of the manual on the preview names the file a feature brings its block in, design/preview.tpl, in both languages
+// The places of the specimen are the elements with an id that a block of it starts at
 preg_match_all( '/<(?:div|section) id="([a-z]+)"/', $specimen, $placeIds );
 
-check( 'the manual names the file a feature shows itself on the specimen with, design/preview.tpl, in the entry on the preview, in both languages, and the page gives the block the anchor it starts at',
-	Setup::PREVIEW === 'design/preview.tpl' && Setup::ANCHOR_PREFIX === 'feature-' && count( $placeIds[1] ) >= 8
-	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => str_contains( $said( 'Preview', $locale ), Setup::PREVIEW ) === false ) === [] );
+check( 'a feature shows itself on the specimen with design/preview.tpl, and the page gives the block the anchor it starts at',
+	Setup::PREVIEW === 'design/preview.tpl' && Setup::ANCHOR_PREFIX === 'feature-' && count( $placeIds[1] ) >= 8 );
 
 $oldWords = [];
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ), FilesystemIterator::SKIP_DOTS ) ) as $file ) {
