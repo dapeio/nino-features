@@ -1802,6 +1802,14 @@ check( 'the title that says hero has no rule under it in any section set: the tw
 	And a title that says its ink - the brand, or the muted one, which Nino.css gives a colour of its own - takes the share of the ground in its words as well, one rule for each, in every set: the rule of
 	the ground leaves those two classes alone, and a full ground under a title in the colour of that ground is a title nobody reads. The classes that align from a breakpoint are held to the breakpoints
 	of the Nino.css the suite runs against: every set has the rule of the place of the rule under a title, and of the margins, at each of them	*/
+// A title or a subtitle with an alignment class of its own is left out of the reach of a container by the fifteen classes in a :where( :not() ); the pins of the margins read the rules without that list, which is held below
+$ownClasses = [];
+foreach( [ '', 's-', 'm-', 'l-', 'xl-' ] as $ownTier )
+	foreach( [ 'left', 'center', 'right' ] as $ownName )
+		$ownClasses[] = '.nino-text-'. $ownTier. $ownName;
+// ...graded by width: the reach of a width lists the own classes of that width and of the narrower ones, three for the class without a tier up to fifteen for xl
+$ownOutOf = static fn( string $tier ): string => ':where(:not('. implode( ', ', array_slice( $ownClasses, 0, 3 * ( 1 + array_search( $tier, [ '', 's', 'm', 'l', 'xl' ], true ) ) ) ). '))';
+$withoutOwn = static fn( array $rules ): array => array_map( static fn( array $rule ): array => [ 'selector' => (string) preg_replace( '/:where\(:not\(\.nino-text-left, \.nino-text-center, \.nino-text-right(?:, \.nino-text-(?:s|m|l|xl)-(?:left|center|right))*\)\)/', '', $rule['selector'] ) ] + $rule, $rules );
 $splitSelectors	= static function( string $list ): array {
 
 	$parts = [];
@@ -1837,7 +1845,7 @@ foreach( designRules( designPlain( $ninoCss ) ) as $ninoBreakRule )
 foreach( [ 'section' => '.nino-section-title', 'card' => '.nino-card-title' ] as $guardedPart => $guardedTitle )
 	foreach( Setup::available( $library, $guardedPart ) as $set ) {
 
-		$guardedRules	= designRules( designPlain( (string) file_get_contents( Setup::file( $library, $guardedPart, $set ) ) ) );
+		$guardedRules	= $withoutOwn( designRules( designPlain( (string) file_get_contents( Setup::file( $library, $guardedPart, $set ) ) ) ) );
 		$accent			= 0;
 		$muted			= 0;
 		$seenBreaks		= [];
@@ -1892,7 +1900,7 @@ foreach( [ 'section', 'card' ] as $mirrorPart ) {
 
 		$found		= [];
 		$baseList	= '';
-		$mirrorRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, $mirrorPart, $set ) ) ) );
+		$mirrorRules = $withoutOwn( designRules( designPlain( (string) file_get_contents( Setup::file( $library, $mirrorPart, $set ) ) ) ) );
 
 		foreach( $mirrorRules as $baseRule )
 			if( preg_match( '/^\.nino-text-center (:is\([^()]*\)):where\(/', $baseRule['selector'], $baseFound ) === 1 && $baseRule['within'] === '' && preg_match( '/margin-inline\s*:\s*auto\s*;/', $baseRule['body'] ) === 1 )
@@ -1929,6 +1937,31 @@ foreach( [ 'section', 'card' ] as $mirrorPart ) {
 
 check( 'the mirrors of a class that aligns from a breakpoint have both forms in every section set and every card set, for each step and each alignment: the class on the element and the class on what it stands in, for its margins - the elements of the rule at every width, the value of the alignment, the guard of the margin classes - and, in a section, for the place of the rule under the title'
 	. ( $mirrorForms === [] ? '' : ' - '. implode( ' | ', array_slice( $mirrorForms, 0, 3 ) ) ), $mirrorForms === [] && $mirrorCount === 3 * 4 * 3 * 2 * 2 + 5 * 4 * 3 * 2 );
+
+// Every reach of a container into a title or a subtitle - the class without a tier and each tier, the margins and the place of the rule - leaves out one that carries an alignment class of its own, in every section set
+$reachProblems = [];
+
+foreach( Setup::available( $library, 'section' ) as $set ) {
+
+	$reachCount = 0;
+
+	foreach( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) ) ) as $reachRule )
+		foreach( $splitSelectors( $reachRule['selector'] ) as $reachSelector )
+			if( preg_match( '/^\.nino-text-((?:s|m|l|xl)-)?(?:left|center|right) (?::is\([^()]*\)|\.nino-section-(?:title|subtitle)(?:--[a-z]+)?)/', $reachSelector, $reachFound ) === 1
+				&& preg_match( '/\.nino-section-(?:title|subtitle)(?:--[a-z]+)?/', $reachSelector ) === 1 ) {
+
+				$reachCount++;
+
+				if( str_contains( $reachSelector, $ownOutOf( rtrim( $reachFound[1] ?? '', '-' ) ) ) === false )
+					$reachProblems[] = $set. ' '. substr( $reachSelector, 0, 44 ). ' keeps no title of its own alignment, graded to its width';
+			}
+
+	// 29 reaches in the lists of the content section, of the margins and of the place of the rule, 31 with the two of the rail of Panel
+	if( $reachCount !== ( $set === 'panel' ? 31 : 29 ) )
+		$reachProblems[] = $set. ' has '. $reachCount. ' reaches';
+}
+
+check( 'every reach of a container into a title or a subtitle in the section sets - the margins and the place of the rule, at every width and at each tier - leaves out one that carries an alignment class of its own: the own classes of its width and of the narrower ones in a :where( :not() ), three for the class without a tier up to fifteen for xl'. ( $reachProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $reachProblems, 0, 3 ) ) ), $reachProblems === [] );
 
 /*	A card that draws a line on every side - the box - is not left with the words against the line on a phone: below 768px Nino.css pads the content of a card with nothing, since the card
 	insets it from there, and a card with no padding at its sides would write against its own border. The content takes the card-space where Nino.css leaves it none. And a card turned on
