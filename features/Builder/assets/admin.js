@@ -115,6 +115,8 @@
 		// and how many groups of radio buttons the forms have made: each has a name of its own
 		_selectView	: null,
 		_segments		: 0,
+		// The place between two blocks of the preview whose choices are open (see _openInsert()): { el, index }, null while none is
+		_inserting	: null,
 
 		// The values of Nino.css the forms offer, by the setting they are for (see
 		// Reader). A '' is the setting off
@@ -2129,6 +2131,18 @@
 		},
 
 		/**
+		 *	Where among the blocks of a page something goes: the index asked for, kept between the first place and the end; the end where none is asked for
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{number}		[index]
+		 *
+		 *	@return		{number}
+		 */
+		_slot : function( model, index ) {
+			return Number.isInteger( index ) === true ? Math.max( 0, Math.min( index, model.blocks.length ) ) : model.blocks.length;
+		},
+
+		/**
 		 *	Where a clip goes for a path: the list it is put into and the place in it, and the path of the node that list belongs to. A section or a
 		 *	block of html goes after a section or a block (a path of one part) or - for the template, the path [] - at the end of the page; a column
 		 *	after a column or at the end of the columns of a section; a component or a loop after a component, a loop or a child, at the end of a column and at the
@@ -2138,10 +2152,11 @@
 		 *	@param		{Object}		registry
 		 *	@param		{Array}			path
 		 *	@param		{Object}		clip
+		 *	@param		{number}		[index]						For the page ([]): where among the blocks a section or a block of html goes; the end without one
 		 *
 		 *	@return		{Object|null}							{ list, index, parent }; null where the kind of the clip does not fit the node
 		 */
-		_pastePlace : function( model, registry, path, clip ) {
+		_pastePlace : function( model, registry, path, clip, index ) {
 
 			const builder = Nino.admin.builder;
 			const node = builder._get( model, path );
@@ -2154,7 +2169,7 @@
 				if( path.length > 1 )
 					return null;
 
-				return { list : model.blocks, index : path.length === 0 ? model.blocks.length : path[0] + 1, parent : [] };
+				return { list : model.blocks, index : path.length === 0 ? builder._slot( model, index ) : path[0] + 1, parent : [] };
 			}
 
 			if( clip.kind === 'column' ) {
@@ -2258,13 +2273,14 @@
 		 *	@param		{string}		file							The page the model is of
 		 *	@param		{Array}			path
 		 *	@param		{Object}		clip
+		 *	@param		{number}		[index]						For the page ([]): the place among the blocks; the end without one
 		 *
 		 *	@return		{Array|null}							The path of the copy; null where the clip does not fit the path (see _pasteable() for why)
 		 */
-		_paste : function( model, registry, file, path, clip ) {
+		_paste : function( model, registry, file, path, clip, index ) {
 
 			const builder = Nino.admin.builder;
-			const place = builder._pastePlace( model, registry, path, clip );
+			const place = builder._pastePlace( model, registry, path, clip, index );
 
 			if( place === null )
 				return null;
@@ -2947,7 +2963,9 @@
 		 *	entry of its own: the stack, the type it runs over by the title the Elements
 		 *	panel gives it, the state it is in, and its children - the cell of each
 		 *	element. A viewport changes nothing but
-		 *	widths and visibility; all of them at once (g) is drawn at the widths of
+		 *	widths and visibility; Mobile (s) is drawn as the page is below 640 px, where
+		 *	every column is the whole width - the width the model holds for s starts at
+		 *	640 px and is drawn in no view -; all of them at once (g) is drawn at the widths of
 		 *	the widest, with no column greyed - which viewports hide a column is
 		 *	what it says in its head. Where it is told the language and the keys, the
 		 *	placeholder of a component that has a text says its first line - in that language, or
@@ -3133,7 +3151,8 @@
 
 						return {
 							path			: [ b, c ],
-							width			: parseInt( col.width[shown], 10 ) || 100,
+							// The width of Mobile starts at 640 px (nino-grid-s-<w>, see Nino.css) and below it every column is the whole width: the view of the phone draws the base
+							width			: viewport === 's' ? 100 : parseInt( col.width[shown], 10 ) || 100,
 							hidden		: viewport !== 'g' && col.hidden[viewport] === true,
 							hiddenIn	: builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
 							// The ground the frame is painted in: none where the column paints none, plain where its ground is the page's - and dark where its picture is
@@ -4084,6 +4103,8 @@
 			dc.getElementById('builder-add-tiles').addEventListener( 'click', function() { builder._addSection( 'tiles' ) } );
 			dc.getElementById('builder-add-loop').addEventListener( 'click', function() { builder._addSection( 'loop' ) } );
 			dc.getElementById('builder-add-html').addEventListener( 'click', function() { builder._editBlock( null ) } );
+			// The choices between two blocks close when the person goes on elsewhere: a click anywhere in the page (see _openInsert()) or the focus moving out of them
+			dc.getElementById('builder-editor').addEventListener( 'focusin', function( ev ) { builder._leaveInsert( ev.target, false ) } );
 			dc.getElementById('builder-template-settings').addEventListener( 'click', function() { builder._select( [] ); builder._openSettings( [] ) } );
 
 			// Where the pointer is over a frame its tools are seen - the innermost frame's
@@ -4509,8 +4530,13 @@
 			mount.innerHTML = '';
 			mount.dataset.viewport = builder._viewport;
 			builder._hovered = null;
+			// A redraw takes an open row with it: the listener of the page goes with the row, so that it is not left until the next place opens
+			builder._inserting = null;
+			dc.removeEventListener( 'click', builder._insertAway, true );
 
-			plan.forEach( function( block ) {
+			plan.forEach( function( block, b ) {
+
+				mount.appendChild( builder._insertPlace( b ) );
 
 				const frame = builder._fragment( 'frame' );
 				const body = builder._one( frame, '.builder-frame-body' );
@@ -4585,6 +4611,7 @@
 				mount.appendChild( block.loop === null ? frame : builder._previewSections( block, frame ) );
 			} );
 
+			mount.appendChild( builder._insertPlace( plan.length ) );
 			builder._paintAddBar();
 			builder._markRed( mount, builder._red( model, builder._registry ) );
 			builder._paintSelection( false );
@@ -4605,12 +4632,177 @@
 				return;
 
 			bar.querySelectorAll('.builder-add-paste').forEach( function( old ) { old.remove() } );
+			bar.appendChild( builder._pasteButton( function() { builder._pasteAt( [] ) }, 'builder-add-paste' ) );
+		},
 
-			const button = builder._addButton( 'paste', function() { builder._pasteAt( [] ) }, 'builder-add-paste' );
+		/**
+		 *	The button that pastes the clip at the page: off, with the reason as its title, where that cannot be done (see _pasteable())
+		 *
+		 *	@param		{Function}	onClick
+		 *	@param		{string}		className
+		 *
+		 *	@return		{Element}
+		 */
+		_pasteButton : function( onClick, className ) {
+
+			const builder = Nino.admin.builder;
+			const button = builder._addButton( 'paste', onClick, className );
 
 			builder._pasteTitle( button, [] );
 			button.disabled = builder._mutable() === false || builder._pasteable( builder._doc.model, builder._registry, [], builder._clip ) !== '';
-			bar.appendChild( button );
+
+			return button;
+		},
+
+		/**
+		 *	The place between two blocks of the preview - before the first, between two, after the last: a line across the preview with a "+" in its middle,
+		 *	which opens the choices the add bar of the page has, for a new block at this place. It keeps its room whether it is seen or not, so that nothing
+		 *	moves when the pointer comes
+		 *
+		 *	@param		{number}		index							The index the new block gets
+		 *
+		 *	@return		{Element}
+		 */
+		_insertPlace : function( index ) {
+
+			const builder = Nino.admin.builder;
+			const place = builder._fragment( 'insert' );
+			const plus = builder._one( place, '.builder-insert-btn' );
+
+			plus.disabled = builder._mutable() === false;
+			plus.addEventListener( 'click', function( ev ) {
+				ev.stopPropagation();
+				builder._openInsert( place, index );
+			} );
+			place.addEventListener( 'keydown', function( ev ) {
+
+				if( ev.key !== 'Escape' || builder._inserting === null || builder._inserting.el !== place )
+					return;
+
+				ev.preventDefault();
+				ev.stopPropagation();
+				builder._closeInsert( true );
+			} );
+			// A double click on the place is nobody's frame
+			place.addEventListener( 'dblclick', function( ev ) { ev.stopPropagation() } );
+
+			return place;
+		},
+
+		/**
+		 *	Show the choices at a place between two blocks, in the place of its line: those of the add bar - a section of content, of tiles or a loop, a block of HTML+ - and the paste of what was copied - each puts
+		 *	its block at the index of the place and selects it. Only one place is open at a time. The focus goes to the first choice
+		 *
+		 *	@param		{Element}		place
+		 *	@param		{number}		index
+		 *
+		 *	@return		void
+		 */
+		_openInsert : function( place, index ) {
+
+			const builder = Nino.admin.builder;
+			const row = builder._one( place, '.builder-insert-row' );
+			const plus = builder._one( place, '.builder-insert-btn' );
+
+			if( builder._mutable() === false )
+				return;
+
+			// The "+" of the place that is open closes it
+			if( builder._inserting !== null && builder._inserting.el === place )
+				return builder._closeInsert( true );
+
+			if( builder._inserting !== null )
+				builder._closeInsert( false );
+
+			row.innerHTML = '';
+			[ 'content', 'tiles', 'loop' ].forEach( function( kind ) {
+				row.appendChild( builder._addButton( kind, function() {
+
+					// The row goes with the preview that is drawn again: the focus is given to the settings tool of the new section, as a paste gives it to its own
+					const to = builder._addSection( kind, index );
+					const tool = to === null ? null : builder._toolAt( to, 'settings' );
+
+					if( tool !== null )
+						tool.focus();
+				} ) );
+			} );
+			row.appendChild( builder._addButton( 'html-block', function() { builder._closeInsert( true ); builder._editBlock( null, index ) } ) );
+			row.appendChild( builder._pasteButton( function() { builder._pasteAt( [], index ) }, 'builder-insert-paste' ) );
+			row.hidden = false;
+			place.classList.add('is-open');
+			plus.setAttribute( 'aria-expanded', 'true' );
+			builder._inserting = { el : place, index : index };
+			// A click anywhere in the page closes the row; the capture phase hears the ones that stop at their own button
+			dc.addEventListener( 'click', builder._insertAway, true );
+			row.firstElementChild.focus();
+		},
+
+		/**
+		 *	Close the choices at the place that is open
+		 *
+		 *	@param		{boolean}		focus							Give the focus back to the "+" of the place
+		 *
+		 *	@return		void
+		 */
+		_closeInsert : function( focus ) {
+
+			const builder = Nino.admin.builder;
+			const open = builder._inserting;
+
+			if( open === null )
+				return;
+
+			const plus = builder._one( open.el, '.builder-insert-btn' );
+			const row = builder._one( open.el, '.builder-insert-row' );
+
+			builder._inserting = null;
+			dc.removeEventListener( 'click', builder._insertAway, true );
+			row.innerHTML = '';
+			row.hidden = true;
+			open.el.classList.remove('is-open');
+			plus.setAttribute( 'aria-expanded', 'false' );
+
+			if( focus === true )
+				plus.focus();
+		},
+
+		/**
+		 *	The click listener of the page while a place is open
+		 *
+		 *	@param		{MouseEvent}	ev
+		 *
+		 *	@return		void
+		 */
+		_insertAway : function( ev ) {
+			Nino.admin.builder._leaveInsert( ev.target, true );
+		},
+
+		/**
+		 *	Something happened in the editor: if it is outside the choices that are open, they close. A click gives the focus back to the "+" unless the focus
+		 *	went to a control of its own by it
+		 *
+		 *	@param		{Element}		target
+		 *	@param		{boolean}		clicked
+		 *
+		 *	@return		void
+		 */
+		_leaveInsert : function( target, clicked ) {
+
+			const builder = Nino.admin.builder;
+			const open = builder._inserting;
+
+			if( open === null || open.el.contains( target ) === true )
+				return;
+
+			// The mouse button goes down before the click, and on a frame or the padding of the preview that gives the focus to the editor itself: that is no
+			// leaving yet, the click that follows closes the row and gives the focus back
+			if( clicked !== true && target.id === 'builder-editor' )
+				return;
+
+			const active = dc.activeElement;
+			const lost = active === null || active === undefined || active === dc.body || active.id === 'builder-editor' || open.el.contains( active ) === true;
+
+			builder._closeInsert( clicked === true && lost === true );
 		},
 
 		/**
@@ -5568,11 +5760,12 @@
 		 *	Paste the clip beside or into the node at the path (see _paste()) and select the copy, with the focus on the tool that pastes - the one
 		 *	that was pressed went with the preview, and the person may want the same again. A section is a new one: its keys and slots are made
 		 *
-		 *	@param		{Array}			path							[] for the end of the page
+		 *	@param		{Array}			path							[] for the page
+		 *	@param		{number}		[index]						With [] the place among the blocks; the end of the page without one
 		 *
 		 *	@return		void
 		 */
-		_pasteAt : function( path ) {
+		_pasteAt : function( path, index ) {
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
@@ -5580,7 +5773,7 @@
 			if( builder._mutable() === false || builder._pasteable( doc.model, builder._registry, path, builder._clip ) !== '' )
 				return;
 
-			const to = builder._paste( doc.model, builder._registry, doc.file, path, builder._clip );
+			const to = builder._paste( doc.model, builder._registry, doc.file, path, builder._clip, index );
 
 			if( to === null )
 				return;
@@ -5719,21 +5912,23 @@
 		},
 
 		/**
-		 *	A new section below the last one, with the animation of the template
+		 *	A new section, with the animation of the template: below the last one, or - where an index is given - at that place among the blocks
 		 *
 		 *	@param		{string}		[kind]						content, the default, tiles, or loop - a section that is made once for each element of a type
+		 *	@param		{number}		[index]						The place of the new section; the end of the page without one
 		 *
-		 *	@return		void
+		 *	@return		{Array|null}							The path of the new section; null where none was made
 		 */
-		_addSection : function( kind ) {
+		_addSection : function( kind, index ) {
 
 			const builder = Nino.admin.builder;
 			const model = builder._doc.model;
 
 			if( builder._mutable() === false )
-				return;
+				return null;
 
 			const section = builder._newSection( model, kind === 'tiles' ? 'tiles' : 'content' );
+			const at = builder._slot( model, index );
 
 			// A loop of sections: a section that is made of every element of a type - the first the project has - with the first stack that makes sections
 			if( kind === 'loop' ) {
@@ -5741,16 +5936,18 @@
 				const names = Object.keys( builder._registry.stacks || {} ).filter( function( name ) { return builder._cellKind( builder._registry, { name : name } ) === 'section' } );
 
 				if( names.length === 0 )
-					return;
+					return null;
 
 				section.stack = builder._stackFor( builder._registry, names[0], null );
 			}
 
-			model.blocks.push( section );
+			model.blocks.splice( at, 0, section );
 			builder._fresh[section.id] = true;
-			builder._sel = [ model.blocks.length - 1 ];
+			builder._sel = [ at ];
 			builder._changed();
 			builder._paintSelection( true );
+
+			return [ at ];
 		},
 
 		/**
@@ -6689,13 +6886,17 @@
 		 *	@param		{Element}		pane
 		 *	@param		{Array}			heads							The words over the columns after the device
 		 *	@param		{Function}	controls					Called with the viewport: the controls of its row
+		 *	@param		{string}		[hint]						The sentence the first of the heads has to say, as a "?" behind its word
 		 *
 		 *	@return		void
 		 */
-		_viewportTable : function( pane, heads, controls ) {
+		_viewportTable : function( pane, heads, controls, hint ) {
 
 			const builder = Nino.admin.builder;
 			const table = builder._table( [ Nino.content.getText('/_admin/builder/col/head-device') ].concat( heads ) );
+
+			if( hint !== undefined )
+				builder._one( table.table, 'thead tr' ).children[1].appendChild( builder._help( hint, heads[0] ) );
 
 			builder._views().forEach( function( viewport ) {
 				builder._tableRow( table.body, builder._rowHead( Nino.content.getText( '/_admin/builder/viewport/'+ viewport ), builder.DEVICES[viewport] ), controls( viewport ) );
@@ -9155,18 +9356,39 @@
 
 				texts.push( { viewport : viewport, select : text } );
 
+				const select = builder._keyed( builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), builder._widths(), col.width[viewport], function( value ) {
+					builder._setWidth( col, viewport, value );
+					builder._changed();
+				} ), 'width' );
+
 				return [
-					builder._keyed( builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), builder._widths(), col.width[viewport], function( value ) {
-						builder._setWidth( col, viewport, value );
-						builder._changed();
-					} ), 'width' ),
+					viewport === 's' ? builder._fromNote( select ) : select,
 					builder._keyed( builder._hiddenBox( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/hidden'), device ), col.hidden[viewport] === true, function( checked ) {
 						builder._setHidden( col, viewport, checked );
 						builder._changed();
 					} ), 'hidden' ),
 					builder._keyed( text, 'text' ),
 				];
-			} );
+			}, Nino.content.getText('/_admin/builder/hint/col-width') );
+		},
+
+		/**
+		 *	The cell of the width of Mobile: the select, and beside it - small and muted - that the width holds from 640 px. Below 640 px a column is the whole
+		 *	width (the grid classes of Nino.css start at 640 px), and the table says so where the number is
+		 *
+		 *	@param		{Element}		select
+		 *
+		 *	@return		{Element}
+		 */
+		_fromNote : function( select ) {
+
+			const builder = Nino.admin.builder;
+			const cell = builder._el( 'div', 'builder-from-cell' );
+
+			cell.appendChild( select );
+			cell.appendChild( builder._el( 'small', 'builder-from-note', Nino.content.getText('/_admin/builder/col/from-640') ) );
+
+			return cell;
 		},
 
 		/**
@@ -10483,12 +10705,14 @@
 
 				const at = builder.VIEWPORTS.indexOf( viewport );
 
-				return [ builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/stack/cells'), Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) ), builder._widths(), cells[at], function( value ) {
+				const select = builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/stack/cells'), Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) ), builder._widths(), cells[at], function( value ) {
 					cells[at] = value;
 					stack.attributes.cols = cells.join(' ');
 					builder._changed();
-				} ) ];
-			} );
+				} );
+
+				return [ viewport === 's' ? builder._fromNote( select ) : select ];
+			}, Nino.content.getText('/_admin/builder/hint/stack-cells') );
 		},
 
 		/**
@@ -12949,10 +13173,11 @@
 		 *	does not stays a block of html, with the reason where it had none yet
 		 *
 		 *	@param		{Array|null}	path					The block, null for a new one
+		 *	@param		{number}		[index]					For a new one: its place among the blocks, the end of the page without one
 		 *
 		 *	@return		void
 		 */
-		_editBlock : function( path ) {
+		_editBlock : function( path, index ) {
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
@@ -13000,7 +13225,7 @@
 						area.focus();
 					},
 					actions		: [ { label : Nino.content.getText('/_admin/builder/html/apply'), kind : 'primary', onClick : function( problem ) {
-						builder._applyBlock( path, area.value, kind, problem );
+						builder._applyBlock( path, area.value, kind, problem, index );
 						return false;
 					} } ],
 				} );
@@ -13033,10 +13258,11 @@
 		 *	@param		{string}		source
 		 *	@param		{string}		kind					What the block was: html, section
 		 *	@param		{Function}	problem				Says what is wrong in the dialog
+		 *	@param		{number}		[index]					For a new block: its place among the blocks, the end of the page without one
 		 *
 		 *	@return		void
 		 */
-		_applyBlock : function( path, source, kind, problem ) {
+		_applyBlock : function( path, source, kind, problem, index ) {
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
@@ -13047,10 +13273,12 @@
 			const reason = old !== null && kind === 'html' ? old.reason ?? null : ( kind === 'section' ? { line : 0, code : '', detail : '', text : '' } : null );
 			const block = { kind : 'html', source : source, reason : reason, edited : true };
 
+			const at = path === null ? builder._slot( model, index ) : path[0];
+
 			if( path === null )
-				model.blocks.push( block );
+				model.blocks.splice( at, 0, block );
 			else
-				model.blocks[path[0]] = block;
+				model.blocks[at] = block;
 
 			builder._apiCall( 'source', { model : model }, function( status, response ) {
 
@@ -13073,9 +13301,18 @@
 				} );
 
 				// The preview is drawn again first: the dialog hands the focus back to the tool that opened it, which the old preview took with it
-				builder._sel = [ path === null ? doc.model.blocks.length - 1 : path[0] ];
+				builder._sel = [ at ];
 				builder._changed();
 				builder._closeDialog();
+
+				// A new block at a place of the page: the "+" that opened the editor went with the preview, the focus is given to the settings tool of the block
+				if( path === null && Number.isInteger( index ) === true ) {
+
+					const tool = builder._toolAt( [ at ], 'settings' );
+
+					if( tool !== null )
+						tool.focus();
+				}
 			} );
 		},
 

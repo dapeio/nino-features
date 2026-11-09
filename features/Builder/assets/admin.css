@@ -240,6 +240,7 @@
 .builder-add-bar {
 	display: flex;
 	flex-wrap: wrap;
+	justify-content: center;
 	gap: .4rem;
 	max-width: 100%;
 	margin-inline: auto;
@@ -261,8 +262,8 @@
 /* The lightbox that offers the components: a heading for each group, under it the buttons of the group - the icon of the component and
    its label, about 100 by 30 px - and a component that cannot go where the list is stands there greyed, with the reason as its title.
    The class of the buttons is the one the list of a source has, laid out as a button here. What follows is the dialog of a phone, the
-   groups under each other with their buttons in rows that wrap; from 36rem on the groups stand in rows, as the media query after the
-   buttons says it */
+   groups under each other with their buttons in a grid of cells of one width that wraps, the same grid at every width of the dialog, so that
+   every button is as large as every other; from 36rem on the groups stand in rows, as the media query after the buttons says it */
 .builder-lightbox {
 	display: grid;
 	gap: 1rem;
@@ -286,14 +287,14 @@
 	font-weight: 600;
 }
 .builder-lightbox-row {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 11.5rem, 1fr ) );
 	gap: .4rem;
 }
 .builder-lightbox .builder-pick-item {
 	justify-content: flex-start;
-	width: auto;
-	min-width: 6.25rem;
+	width: 100%;
+	min-width: 0;
 	min-height: 1.9rem;
 	padding: .3rem .7rem;
 	border: 1px solid var(--editor-border);
@@ -316,14 +317,20 @@
 	width: 1rem;
 	height: 1rem;
 }
+/* The icons of a group and of a loop are the placeholder shapes of the preview, which wear .builder-ph-icon (3rem by 2rem, set further down): in the lightbox the
+   square of a rem is what counts, or the buttons of those components are 41 px high where the others are 28.5 */
+.builder-lightbox .builder-pick-icon {
+	width: 1rem;
+	height: 1rem;
+}
 .builder-pick-label {
 	min-width: 0;
 }
 /* In rows from 36rem on: the groups stand under each other, and each is a row - its heading at the left, in a column the groups share, as wide
    as the longest heading (the group of the features has its sub-headings, one for each feature, in that column under its own), and the buttons of
-   the group to the right in a grid of cells of one width that wraps, a cell wide enough for the longest label of the kernel and of the features on
-   one line in either language (10.5rem: the longest, a German one, is 153 px of the 157 px of the cell at the 15 px of the admin; a longer label of a
-   project wraps in its button). A group is a grid of its own over the columns of the lightbox (a subgrid), so that its heading and its buttons are one
+   the group to the right in the grid of cells of one width, a cell wide enough for the longest label of the kernel and of the features on
+   one line in either language (11.5rem: the longest, "Einfache Wiederholung" in German, takes about 137 px with its icon and its gaps, and the real workbench wrapped it in a cell of 159 px, so
+   the cell is 172 px at the 15 px of the admin; a longer label of a project wraps in its button). A group is a grid of its own over the columns of the lightbox (a subgrid), so that its heading and its buttons are one
    row, and as the groups stand in the document in the order they are listed in, the Tab key goes along the row and on to the next. Below 36rem the
    one column above */
 @media (min-width: 36rem) {
@@ -344,13 +351,9 @@
 		line-height: 1.9rem;
 	}
 	.builder-lightbox-row {
-		display: grid;
 		grid-column: 2;
-		grid-template-columns: repeat( auto-fill, minmax( 10.5rem, 1fr ) );
 	}
 	.builder-lightbox .builder-pick-item {
-		width: 100%;
-		min-width: 0;
 		padding-inline: .6rem;
 		gap: .5rem;
 	}
@@ -395,10 +398,11 @@
 	background: var(--editor-blue-soft);
 	color: var(--editor-text);
 }
+/* The frames stand a gap apart, and the gap is the place where a section is inserted (.builder-insert): it keeps the room it is seen in or not */
 .builder-preview {
 	display: grid;
 	align-content: start;
-	gap: .75rem;
+	gap: 0;
 	max-width: 100%;
 	margin-inline: auto;
 	padding: 1rem;
@@ -408,6 +412,133 @@
 }
 .builder-preview[data-viewport="m"] {
 	max-width: 46rem;
+}
+/* The place between two frames: as high as the gap between them, a slim line across the preview with a round "+" in its middle, both seen where the pointer is
+   over the place or the "+" has the focus (it is in the tab order all the time). The first place and the last are no higher than nothing - the padding of the
+   preview is their room, and the strip that takes the pointer is in it - so the preview is as high as without them. The choices that a press opens are drawn
+   over the line and out of the flow: nothing moves, ever */
+.builder-insert {
+	position: relative;
+	height: .75rem;
+}
+.builder-insert:first-child,
+.builder-insert:last-child {
+	height: 0;
+}
+.builder-insert:first-child::after,
+.builder-insert:last-child::after {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	height: 1rem;
+}
+.builder-insert:first-child::after {
+	bottom: 0;
+}
+.builder-insert:last-child::after {
+	top: 0;
+}
+.builder-insert::before {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	top: 50%;
+	border-top: 2px solid var(--editor-blue);
+	opacity: 0;
+	pointer-events: none;
+}
+.builder-insert-btn {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	width: 1.65rem;
+	min-width: 0;
+	height: 1.65rem;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--editor-blue);
+	border-radius: 50%;
+	background: var(--editor-bg-elevated);
+	box-shadow: none;
+	color: var(--editor-blue);
+	opacity: 0;
+	translate: -50% -50%;
+	cursor: pointer;
+	/* Seen or not, the circle reaches into the frames beside the place: it takes a click only where it is seen */
+	pointer-events: none;
+}
+.builder-insert:hover .builder-insert-btn,
+.builder-insert:focus-within .builder-insert-btn,
+.builder-insert.is-open .builder-insert-btn {
+	pointer-events: auto;
+}
+.builder-insert:hover::before,
+.builder-insert:focus-within::before,
+.builder-insert:hover .builder-insert-btn,
+.builder-insert:focus-within .builder-insert-btn,
+.builder-insert.is-open .builder-insert-btn {
+	opacity: 1;
+}
+.builder-insert-btn:hover:not(:disabled) {
+	background: var(--editor-blue-soft);
+}
+.builder-insert-btn:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: 2px;
+}
+.builder-insert-btn:disabled {
+	display: none;
+}
+/* The line turns into the row of choices */
+.builder-insert.is-open::before {
+	opacity: 0;
+}
+/* The "+" is under the row while it is open, and leaves the tab order with it: Shift+Tab from the first choice goes to what is before the place */
+.builder-insert.is-open .builder-insert-btn {
+	visibility: hidden;
+}
+.builder-insert-row {
+	position: absolute;
+	inset-inline: 0;
+	top: 50%;
+	z-index: 3;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: .3rem;
+	padding: .3rem;
+	border: 1px solid var(--editor-blue);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+	box-shadow: var(--editor-shadow);
+	translate: 0 -50%;
+}
+.builder-insert-row[hidden] {
+	display: none;
+}
+.builder-insert-row .builder-add-button {
+	min-height: 1.65rem;
+	opacity: 1;
+}
+/* A touch has no pointer to come over the place: the "+" is seen, and larger */
+@media (hover: none) {
+	.builder-insert-btn {
+		opacity: 1;
+		pointer-events: auto;
+	}
+}
+@media (pointer: coarse) {
+	.builder-insert-btn {
+		width: 3rem;
+		height: 3rem;
+	}
+	.builder-insert-row .builder-add-button {
+		min-height: 3rem;
+	}
 }
 .builder-pick {
 	cursor: pointer;
@@ -1644,6 +1775,26 @@ button.builder-status-item:hover {
 	margin-right: .4rem;
 	vertical-align: -.2em;
 }
+.builder-table th .builder-help {
+	margin-left: .35rem;
+	vertical-align: middle;
+}
+/* The select of the width of Mobile and, beside it, from where the width holds */
+.builder-from-cell {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .15rem .5rem;
+}
+/* The select is as wide as the others of the table, the note goes below it where there is no room beside it */
+.builder-from-cell select {
+	flex: 1 1 9rem;
+}
+.builder-from-note {
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+	white-space: nowrap;
+}
 .builder-link-btn {
 	justify-self: start;
 	min-height: 0;
@@ -1867,6 +2018,10 @@ button.builder-status-item:hover {
 	.builder-narrow-note {
 		display: block;
 	}
+	.builder-preview {
+		gap: .75rem;
+	}
+	.builder-insert,
 	.builder-tools,
 	.builder-rename,
 	.builder-add-bar,

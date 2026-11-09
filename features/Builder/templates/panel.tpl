@@ -92,6 +92,7 @@
 
 	<svg class="builder-sprite" aria-hidden="true" focusable="false">
 		<symbol id="builder-icon-gear" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+		<symbol id="builder-icon-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
 		<symbol id="builder-icon-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
 		<symbol id="builder-icon-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
 		<symbol id="builder-icon-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
@@ -163,6 +164,15 @@
 	<!-- A button that adds to the end of a level: its words are the script's -->
 	<template id="builder-tpl-add">
 		<button type="button" class="builder-add-button"></button>
+	</template>
+
+	<!-- The place between two frames of the preview, where a section is inserted: a line with a "+" in its middle, seen where the pointer is over it or the
+	     "+" has the focus, and - once the "+" is pressed - in its place the choices of the add bar, which the script puts in the row -->
+	<template id="builder-tpl-insert">
+		<div class="builder-insert">
+			<button type="button" class="builder-insert-btn" aria-expanded="false" title="[[/_admin/builder/menu/insert]]" aria-label="[[/_admin/builder/menu/insert]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-plus"></use></svg></button>
+			<div class="builder-insert-row" role="group" aria-label="[[/_admin/builder/menu/insert]]" hidden></div>
+		</div>
 	</template>
 
 	<!-- The frame of a section, and the column in it: a head of three parts - the title, what is said of the frame, and the tools,

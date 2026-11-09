@@ -349,6 +349,9 @@ class Tag {
 			( at.listeners ? at.listeners[type] || [] : [] ).slice().forEach( function( fn ) { fn.call( at, event ) } );
 			if( STAYS.indexOf( type ) !== -1 ) break;
 		}
+		// What is not stopped reaches the document: its listeners of a page that is told so by Document.dispatch() are called after the elements'
+		if( event.stopped === false && STAYS.indexOf( type ) === -1 && this.document !== undefined && this.document.root.contains( this ) )
+			this.document.hear( event );
 		return event;
 	}
 	click() { return this.dispatch('click') }
@@ -526,6 +529,9 @@ class Document {
 	querySelectorAll( selector ) { return this.root.querySelectorAll( selector ) }
 	addEventListener( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) }
 	removeEventListener( type, fn ) { const held = this.listeners[type] || []; if( held.indexOf( fn ) !== -1 ) held.splice( held.indexOf( fn ), 1 ) }
+	hear( event ) { ( this.listeners[event.type] || [] ).slice().forEach( function( fn ) { fn.call( this, event ) }, this ) }
+	// An event on the page outside the panel - the shell round it: the listeners of the document hear it, with the target it is given
+	dispatch( type, target ) { const event = { type : type, target : target, defaultPrevented : false, stopped : false, preventDefault() {}, stopPropagation() {} }; this.hear( event ); return event }
 
 	/**
 	 *	The template of the panel, parsed: a copy of what the page gets of it, with the words of its fills
@@ -997,6 +1003,8 @@ const pickerStrip = function() { return screen.getElementById('builder-picker-ta
 const fixedField = function() { return pickerPane('fixed').querySelector('input') };
 const dialogContent = function() { return screen.getElementById('builder-dialog-content') };
 const preview = function() { return screen.getElementById('builder-preview') };
+// The blocks of the preview - a frame, or the box of a loop around one -, the places between them left out (see _insertPlace())
+const frames = function() { return preview().children.filter( function( child ) { return child.classList.contains('builder-insert') === false } ) };
 // The frame of a path in the preview, and one of its tools
 const frameOf = function( at ) { return preview().querySelector('[data-path="'+ at+ '"]') };
 const toolOf = function( at, tool ) { return frameOf( at ).querySelectorAll('button').find( function( button ) { return button.dataset.tool === tool } ) };
@@ -1026,6 +1034,8 @@ const shownTab = function( strip, prefix ) {
 };
 
 const texts = function( els ) { return els.map( function( el ) { return el.textContent } ).join() };
+// The words of the heads of a table: the first text of each, a head may carry the question mark of a sentence after it
+const headWords = function( els ) { return els.map( function( el ) { return el.childNodes[0].textContent } ).join() };
 const classes = function( els ) { return els.map( function( el ) { return el.className } ).join() };
 const titlesIn = function( root ) { return texts( root.querySelectorAll('.builder-group-title') ) };
 
@@ -1559,7 +1569,7 @@ const afterwards = builder._changed;
 builder._changed = function() { changes++; afterwards.call( builder ) };
 doc = open();
 builder._renderEditor();
-check( 'the editor draws itself from the model: the preview, the bar, without a page to complain', builder._doc.model.blocks.length === 4 && builder._status.state === 'idle' && builder._unsaved( builder._doc ) === false && preview().children.length === 4 );
+check( 'the editor draws itself from the model: the preview, the bar, without a page to complain', builder._doc.model.blocks.length === 4 && builder._status.state === 'idle' && builder._unsaved( builder._doc ) === false && frames().length === 4 );
 
 const headsOf = function() { return preview().querySelectorAll('.builder-frame-head, .builder-pcol-head') };
 check( 'every frame has a head of three parts, in this order: its title, what is said of it, its tools - the sections, the block of html and the columns', headsOf().length === 8
@@ -1569,14 +1579,14 @@ check( '...the title of a section is its name, that of a block of html is HTML+,
 check( '...a section has a pencil right of its name, which is a button with the word for its title and its label - the block of html and the columns have none', preview().querySelectorAll('.builder-rename').length === 3
 	&& preview().querySelectorAll('.builder-rename').every( function( pencil ) {
 		return pencil.localName === 'button' && pencil.title === 'Rename' && pencil.getAttribute('aria-label') === 'Rename' && iconOf( pencil ) === 'pencil' && pencil.previousSibling.className === 'builder-frame-name';
-	} ) && preview().children[2].querySelector('.builder-rename') === null && preview().querySelector('.builder-pcol-head .builder-rename') === null );
+	} ) && frames()[2].querySelector('.builder-rename') === null && preview().querySelector('.builder-pcol-head .builder-rename') === null );
 check( '...the tools of a frame are the last part of its head', headsOf().every( function( head ) { return head.children[2].querySelectorAll('button').length > 0 } )
 	&& headsOf()[0].children[2].querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,copy,paste,delete' );
 check( '...what is said of a section is a picture behind it, as an icon with its word for the title and the label: the section with one says it, the others do not', ( function() {
-	const status = preview().children[0].querySelector('.builder-frame-head .builder-head-status');
+	const status = frames()[0].querySelector('.builder-frame-head .builder-head-status');
 	const item = status.querySelector('.is-background');
 	return status.children.length === 1 && item.localName === 'span' && item.title === 'A picture behind the section' && item.getAttribute('role') === 'img' && item.getAttribute('aria-label') === item.title && iconOf( item ) === 'image'
-		&& preview().children[1].querySelector('.builder-frame-head .builder-head-status').children.length === 0;
+		&& frames()[1].querySelector('.builder-frame-head .builder-head-status').children.length === 0;
 } )() );
 
 const loopRow = function( at ) { return preview().querySelector('.builder-loop[data-path="'+ ( at ?? '1.1.0' )+ '"]') };
@@ -1802,7 +1812,7 @@ check( 'a column that is hidden in the viewport shown says so in its head as an 
 	&& ( builder._setView('s'), hiddenItem() !== null && hiddenItem().getAttribute('aria-label') === 'Hidden in this viewport' && hiddenItem().title === 'Hidden in this viewport' && iconOf( hiddenItem() ) === 'hidden'
 		&& preview().querySelector('[data-path="1.0"]').classList.contains('is-hidden') && preview().querySelector('[data-path="1.0"] .builder-ph') !== null ) );
 check( '...in the view of all the viewports it is not hidden, and the head says in which of them it is', ( builder._setView('g'), preview().querySelector('[data-path="1.0"]').classList.contains('is-hidden') === false && hiddenItem().getAttribute('aria-label') === 'Hidden in: Mobile, Tablet' ) );
-check( '...a block of html that cannot be read says why in its head', ( builder._setView('l'), preview().children[2].querySelector('.builder-head-status .is-warning').getAttribute('aria-label') === 'Line 3: The section has more than one row' ) );
+check( '...a block of html that cannot be read says why in its head', ( builder._setView('l'), frames()[2].querySelector('.builder-head-status .is-warning').getAttribute('aria-label') === 'Line 3: The section has more than one row' ) );
 
 doc = open();
 doc.model.blocks[1].cols[0].text = { s : 'center', m : 'center', l : 'center' };
@@ -1852,7 +1862,7 @@ builder._renderEditor();
 check( 'a column with a picture behind it says so in its head with the item the section has for it - the icon of an image and the word for a column, not the section\'s -, a column without one says nothing, and the section, which has none, says nothing either', ( function() {
 	const item = preview().querySelector('[data-path="1.1"] .builder-pcol-head .is-background');
 	return item !== null && item.localName === 'span' && item.title === 'A picture behind the column' && item.title !== words['/_admin/builder/preview/background'] && item.getAttribute('role') === 'img' && item.getAttribute('aria-label') === item.title && iconOf( item ) === 'image'
-		&& preview().querySelector('[data-path="1.0"] .builder-pcol-head .is-background') === null && preview().children[1].querySelector('.builder-frame-head .is-background') === null;
+		&& preview().querySelector('[data-path="1.0"] .builder-pcol-head .is-background') === null && frames()[1].querySelector('.builder-frame-head .is-background') === null;
 } )() );
 check( '...and the German file has the word for a column as well, one of its own', ( function() {
 	const german = fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' );
@@ -1869,10 +1879,10 @@ const tintOf = function( around, color ) {
 	return preview().querySelector('[data-path="1.0"]').className.split(' ').filter( function( name ) { return name.indexOf('builder-color-') === 0 } ).join();
 };
 check( 'a column that paints a ground has its frame tinted as the frame of a section is - builder-color-<ground> - and one with none of its own has no tint of its own', tintOf( '', '' ) === '' && tintOf( '', 'alt' ) === 'builder-color-alt' && tintOf( '', 'tint' ) === 'builder-color-tint' && tintOf( '', 'dark' ) === 'builder-color-dark'
-	&& tintOf( 'dark', 'black' ) === 'builder-color-black' && tintOf( 'alt', 'primary' ) === 'builder-color-primary' && tintOf( '', 'brand-alt' ) === 'builder-color-brand-alt' && preview().children[1].classList.contains('builder-color-plain') );
+	&& tintOf( 'dark', 'black' ) === 'builder-color-black' && tintOf( 'alt', 'primary' ) === 'builder-color-primary' && tintOf( '', 'brand-alt' ) === 'builder-color-brand-alt' && frames()[1].classList.contains('builder-color-plain') );
 check( '...counter is the counter of the ground of the section, by the pairs of Nino.css: default and alt, tint to default, dark and black, primary and brand-alt - and the default is the plain frame', tintOf( '', 'counter' ) === 'builder-color-alt' && tintOf( 'alt', 'counter' ) === 'builder-color-plain' && tintOf( 'tint', 'counter' ) === 'builder-color-plain'
 	&& tintOf( 'dark', 'counter' ) === 'builder-color-black' && tintOf( 'black', 'counter' ) === 'builder-color-dark' && tintOf( 'primary', 'counter' ) === 'builder-color-brand-alt' && tintOf( 'brand-alt', 'counter' ) === 'builder-color-primary' );
-check( '...the section keeps its own ground, whatever its columns paint', ( tintOf( 'dark', 'counter' ), preview().children[1].classList.contains('builder-color-dark') && preview().children[1].classList.contains('builder-color-black') === false ) );
+check( '...the section keeps its own ground, whatever its columns paint', ( tintOf( 'dark', 'counter' ), frames()[1].classList.contains('builder-color-dark') && frames()[1].classList.contains('builder-color-black') === false ) );
 
 const dimTintOf = function( around, color, dim, picture ) {
 	doc = open();
@@ -1921,9 +1931,9 @@ console.log( '\nRenaming a section where its name stands' );
 
 doc = open();
 builder._renderEditor();
-const pencilOf = function( at ) { return preview().children[at].querySelector('.builder-rename') };
-const frameName = function( at ) { return preview().children[at].querySelector('.builder-frame-name') };
-const fieldOf = function( at ) { return preview().children[at].querySelector('.builder-name-input') };
+const pencilOf = function( at ) { return frames()[at].querySelector('.builder-rename') };
+const frameName = function( at ) { return frames()[at].querySelector('.builder-frame-name') };
+const fieldOf = function( at ) { return frames()[at].querySelector('.builder-name-input') };
 
 pencilOf( 0 ).click();
 check( 'the pencil turns the name into a field in the place it stands: the field holds the name and has the focus, the name and the pencil are out of sight', fieldOf( 0 ) !== null && fieldOf( 0 ).value === 'hero' && screen.activeElement === fieldOf( 0 ) && frameName( 0 ).hidden === true && pencilOf( 0 ).hidden === true
@@ -2632,7 +2642,7 @@ check( '...and a focus again starts in the middle', builder._doc.model.blocks[0]
 change( dialogContent(), 'Parallax effect', true );
 buttonOf( dialogContent(), 'Remove the picture' ).click();
 check( 'the picture is taken away with its button: no background, the row says none, the focus and the button are off', builder._doc.model.blocks[0].background === null && dialogContent().querySelector('.builder-source-current').textContent === 'none' && focusGrid().classList.contains('is-disabled')
-	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === true && buttonOf( dialogContent(), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
+	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === true && buttonOf( dialogContent(), 'Remove the picture' ).disabled === true && frames()[0].querySelector('.is-background') === null );
 check( '...a section that loses its picture loses the parallax and the dimming with it, and both are off and out of reach again', settingsOf().parallax === false && settingsOf().dim === false && valueAt( dialogContent(), 'Parallax effect' ) === false && valueAt( dialogContent(), 'Dim the picture' ) === false
 	&& controlOf( dialogContent(), 'Parallax effect' ).el.disabled === true && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === true && settingsOf().cover === 100 );
 builder._openSettings( [ 1 ] );
@@ -2863,7 +2873,7 @@ check( '...a section that runs a loop of sections is drawn as a block around the
 	builder._closeDialog();
 	builder._renderEditor();
 
-	const block = preview().children[3];
+	const block = frames()[3];
 	const chips = block.querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } );
 	const gear = block.querySelector('.builder-tools-around button');
 	const opened = block.classList.contains('builder-loop') && block.classList.contains('is-sections') && block.querySelector('.builder-loop-name').textContent === word('loop/sections') && block.querySelector('.builder-loop-kind').textContent === word('loop/each')
@@ -2872,7 +2882,7 @@ check( '...a section that runs a loop of sections is drawn as a block around the
 	gear.click();
 
 	return opened && dialogText('builder-dialog-kind') === 'Content' && openBlock() === 'loop' && builder._same( builder._sel, [ 3 ] )
-		&& preview().children[0].classList.contains('builder-loop') === false && preview().children[0].querySelector('.builder-frame-head') !== null;
+		&& frames()[0].classList.contains('builder-loop') === false && frames()[0].querySelector('.builder-frame-head') !== null;
 } )() );
 check( '...what the loop of a section takes of the other blocks is its own: the cover is as high as the page makes it - the height is asleep and is 90, the one height a call has - and the animation is the section\'s as it was, delay and duration among it: the document takes them of a loop, so the fields stay and what they hold is kept', ( function() {
 
@@ -2936,13 +2946,13 @@ planned.blocks[3].settings.inner = true;
 planned.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
 planned.blocks[1].settings.inner = true;
 builder._renderEditor();
-const statusClasses = function( b ) { return preview().children[b].querySelector('.builder-frame-head .builder-head-status').children.map( function( item ) { return item.className.replace( 'builder-status-item ', '' ) } ).join() };
-const statusTitles = function( b ) { return preview().children[b].querySelector('.builder-frame-head .builder-head-status').children.map( function( item ) { return item.title } ).join(' | ') };
+const statusClasses = function( b ) { return frames()[b].querySelector('.builder-frame-head .builder-head-status').children.map( function( item ) { return item.className.replace( 'builder-status-item ', '' ) } ).join() };
+const statusTitles = function( b ) { return frames()[b].querySelector('.builder-frame-head .builder-head-status').children.map( function( item ) { return item.title } ).join(' | ') };
 check( 'a section says what it is besides its picture, in the middle of its head, an icon each with its words for the title: that the cover is padded, that its whitespace is not the page\'s, that its background is inside, on the row, and - where the picture is on the row - that the picture is there', statusClasses( 0 ) === 'is-background,is-padded,is-whitespace'
 	&& statusTitles( 0 ) === 'A picture behind the section | Padded: the cover keeps the room of the page around it | Whitespace: Wider' && statusClasses( 3 ) === 'is-inner,is-whitespace' && statusTitles( 3 ) === 'The background is inside, on the row | Whitespace: Much narrower'
-	&& statusClasses( 1 ) === 'is-background,is-inner' && preview().children[1].querySelector('.is-background').title === 'A picture behind the row' && statusClasses( 2 ) === '' );
+	&& statusClasses( 1 ) === 'is-background,is-inner' && frames()[1].querySelector('.is-background').title === 'A picture behind the row' && statusClasses( 2 ) === '' );
 check( '...each is an icon of the sprite and a picture for a screen reader, with its title for its name - the words have a place for the whitespace in both languages', [ 0, 3, 1 ].every( function( b ) {
-	return preview().children[b].querySelector('.builder-frame-head .builder-head-status').children.every( function( item ) {
+	return frames()[b].querySelector('.builder-frame-head .builder-head-status').children.every( function( item ) {
 		return item.localName === 'span' && item.getAttribute('role') === 'img' && item.getAttribute('aria-label') === item.title && iconOf( item ) !== null && iconsKnown( item ) === true;
 	} );
 } ) && [ 'padded', 'whitespace', 'inner', 'row-background', 'linked' ].every( function( word ) { return words['/_admin/builder/preview/'+ word] !== undefined } )
@@ -2963,14 +2973,14 @@ check( '...a padded section that is not a cover says nothing of it - the room is
 } )() );
 check( 'the background that is inside is the row\'s: the area of the row of a section is tinted - the frame is not, and the head keeps the colour of the page - and a section whose background is not inside is tinted as a whole, as it was', ( function() {
 
-	const frame = preview().children[3];
+	const frame = frames()[3];
 	const body = frame.querySelector('.builder-frame-body');
 	const inside = frame.classList.contains('builder-color-plain') && body.classList.contains('builder-color-primary');
 
 	planned.blocks[3].settings.inner = false;
 	builder._renderEditor();
 
-	const outside = preview().children[3].classList.contains('builder-color-primary') && preview().children[3].querySelector('.builder-frame-body').classList.contains('builder-color-primary') === false;
+	const outside = frames()[3].classList.contains('builder-color-primary') && frames()[3].querySelector('.builder-frame-body').classList.contains('builder-color-primary') === false;
 
 	planned.blocks[3].settings.inner = true;
 	builder._renderEditor();
@@ -3071,7 +3081,7 @@ headOf('width').click();
 const widths = function() { return blockOf('width').querySelector('table') };
 check( 'in a viewport the table of the widths has the row of that viewport only - the device with its icon and its word, the width, whether the column is hidden there - and under it a link to all of them', ( function() {
 	const rows = widths().querySelectorAll('tbody tr');
-	return texts( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden,Text' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
+	return headWords( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden,Text' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
 		&& valueAt( dialogContent(), 'Width, Desktop' ) === '66' && valueAt( dialogContent(), 'Hidden, Desktop' ) === false && controlOf( dialogContent(), 'Hidden, Desktop' ).kind === 'box'
 		&& controlOf( dialogContent(), 'Text alignment, Desktop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like Tablet,left=Left,center=Centre,right=Right' && valueAt( dialogContent(), 'Text alignment, Desktop' ) === ''
 		&& controlOf( dialogContent(), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && blockOf('width').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
@@ -3340,7 +3350,7 @@ check( '...and the words of the cards are gone from both languages: the field of
 } ) && words['/_admin/builder/stack/card'] === undefined );
 check( '...the type is one of the Elements panel\'s, with the title it has there', controlOf( loopPane(), 'Type' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '/services=Services (/services),/team=Team (/team)' );
 check( '...the cells are a table with a row for each viewport - the device with its icon -, in the view of all of them', loopPane().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor'
-	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && texts( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
+	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && headWords( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
 check( '...a loop that names fewer widths than there are viewports takes the last for the others: two widths are three cells, one is three of one - and a width that is chosen writes all three', ( function() {
 	const stack = builder._doc.model.blocks[1].cols[1].components[0];
 	const shown = function( cols ) {
@@ -4230,7 +4240,7 @@ check( 'what is said of a frame in the preview opens its dialog on the block the
 	builder.BLOCKS = tableMoved( tableMoved( tableWith(), 'section', 'stack', 'surface' ), 'column', 'stackAlign', 'surface' );
 
 	try {
-		preview().children[3].querySelector('.builder-tools-around button').click();
+		frames()[3].querySelector('.builder-tools-around button').click();
 
 		const loop = openBlock() === 'surface' && dialogText('builder-dialog-kind') === 'Content';
 
@@ -5205,14 +5215,14 @@ check( '...the buttons of the preview do the same: a section, a column - and a c
 	doc = open();
 	builder._renderEditor();
 	screen.getElementById('builder-add-content').click();
-	preview().children[0].querySelector('.builder-add-col').click();
-	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
+	frames()[0].querySelector('.builder-add-col').click();
+	frames()[0].querySelector('.builder-adds .builder-add-button').click();
 	const box = lightboxOf();
 	const opened = dialogBox().open === true && box !== null && itemsOf( box ).length === pickable.length && takenIn( box ) === belonging('hero');
 	itemNamed( box, 'button' ).click();
 	return opened && dialogBox().open === true && lightboxOf() === null && dialogText('builder-dialog-kind') === titleOf('button') && builder._same( builder._sel, [ 0, 0, 3 ] )
 		&& builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
-		&& preview().children.length === 5 && changes === 3;
+		&& frames().length === 5 && changes === 3;
 } )() );
 builder._closeDialog();
 
@@ -6149,7 +6159,7 @@ check( '...the section has the picture behind it, with no focus until it is chos
 requests[1].callback( 200, { filename : 'f', url : '/uploads/services.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 check( '...and the surface is drawn again with it: the thumbnail, the focus and the button that takes the picture away are on, the alt text can be written - and the preview says that a picture is behind the section', thumbOf( dialogContent() ).hidden === false && thumbOf( dialogContent() ).src.indexOf( '/uploads/services.jpg' ) === 0
 	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === false && buttonOf( dialogContent(), 'Remove the picture' ).disabled === false && controlOf( dialogContent(), altLabel ).el.disabled === false && noteOf( dialogContent() ).textContent === 'The picture is stored.'
-	&& preview().children[1].querySelector('.is-background') !== null && openBlock() === 'surface' );
+	&& frames()[1].querySelector('.is-background') !== null && openBlock() === 'surface' );
 builder._closeDialog();
 builder._doc.model.blocks[1].id = '2col';
 builder._openSettings( [ 1 ] );
@@ -6198,7 +6208,7 @@ check( '...the background of the column is that slot, with no focus until it is 
 requests[1].callback( 200, { filename : 'f', url : '/uploads/column.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 check( '...and the surface is drawn again with it: the thumbnail, the focus, the button that takes the picture away, the alt text and the dimming are on - and the preview says that a picture is behind the column, not behind the section', thumbOf( dialogContent() ).hidden === false && thumbOf( dialogContent() ).src.indexOf( '/uploads/column.jpg' ) === 0
 	&& controlOf( dialogContent(), 'Automatic focus' ).el.disabled === false && buttonOf( dialogContent(), 'Remove the picture' ).disabled === false && controlOf( dialogContent(), altLabel ).el.disabled === false && controlOf( dialogContent(), 'Dim the picture' ).el.disabled === false
-	&& noteOf( dialogContent() ).textContent === 'The picture is stored.' && preview().querySelector('[data-path="1.0"] .is-background') !== null && preview().children[1].querySelector('.builder-frame-head .is-background') === null && openBlock() === 'surface' );
+	&& noteOf( dialogContent() ).textContent === 'The picture is stored.' && preview().querySelector('[data-path="1.0"] .is-background') !== null && frames()[1].querySelector('.builder-frame-head .is-background') === null && openBlock() === 'surface' );
 builder._closeDialog();
 builder._openSettings( [ 1, 1 ] );
 builder._openBlock('surface');
@@ -6972,7 +6982,7 @@ check( '...none of it is written as markup: the script assigns an empty string t
 	return assigned.length > 0 && assigned.every( function( found ) { return /^\.innerHTML\s*=\s*'';$/.test( found ) } ) && /insertAdjacentHTML|\.outerHTML\s*=|document\.write|createContextualFragment|DOMParser/.test( source ) === false
 		&& ( function() { try { made('div').innerHTML = '<svg></svg>'; return false } catch( error ) { return true } } )();
 } )() );
-check( '...the stylesheet lays the lightbox out as rows that wrap in the dialog of a phone - a heading for each group, under it the items, each the icon and the label in the middle of the line - and, from the width of the dialog on, each group as a row of its own: its heading in a column the groups share, its items beside it in a grid of cells of one width that wraps; the groups stand in the document in the order they are listed in, so that the keys go along a row and on to the next; the icon is a square of a rem that does not shrink, and an item that cannot be added is dimmed and has no pointer', ( function() {
+check( '...the stylesheet lays the lightbox out with a heading for each group and under it the items, each the icon and the label in the middle of the line, in a grid of cells of one width that wraps - the same grid at every width of the dialog, an item the whole width of its cell - and, from the width of the dialog on, each group as a row of its own: its heading in a column the groups share, its items beside it; the groups stand in the document in the order they are listed in, so that the keys go along a row and on to the next; the icon is a square of a rem that does not shrink, and an item that cannot be added is dimmed and has no pointer', ( function() {
 
 	const lines = function( selector ) { return ruleOf( selector ).split('\n') };
 	const has = function( selector, list ) { return list.every( function( line ) { return lines( selector ).indexOf( line ) !== -1 } ) };
@@ -6980,10 +6990,10 @@ check( '...the stylesheet lays the lightbox out as rows that wrap in the dialog 
 	const blocks = Array.from( stylesheet.matchAll( /\n@media \(min-width: ([0-9.]+)rem\) \{\n([\s\S]*?)\n\}(?=\n)/g ) ).filter( function( found ) { return found[2].indexOf('.builder-lightbox') !== -1 } ).map( function( found ) { return { width : Number( found[1] ), body : found[2] } } );
 	const holds = function( block, list ) { return block !== undefined && list.every( function( line ) { return block.body.indexOf( line ) !== -1 } ) };
 
-	return has( '.builder-lightbox-row', [ '\tdisplay: flex;', '\tflex-wrap: wrap;' ] ) && has( '.builder-pick-item', [ '\tdisplay: flex;', '\talign-items: center;' ] ) && has( '.builder-pick-icon', [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ] )
+	return has( '.builder-lightbox-row', [ '\tdisplay: grid;', '\tgrid-template-columns: repeat( auto-fill, minmax( 11.5rem, 1fr ) );' ] ) && has( '.builder-lightbox .builder-pick-item', [ '\twidth: 100%;', '\tmin-width: 0;' ] ) && has( '.builder-lightbox .builder-pick-icon', [ '\twidth: 1rem;', '\theight: 1rem;' ] ) && has( '.builder-pick-item', [ '\tdisplay: flex;', '\talign-items: center;' ] ) && has( '.builder-pick-icon', [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ] )
 		&& has( '.builder-lightbox .builder-pick-item:disabled', [ '\topacity: .45;', '\tcursor: default;' ] ) && has( '.builder-lightbox', [ '\tdisplay: grid;' ] )
 		&& blocks.length === 1 && blocks[0].width === 36
-		&& holds( blocks[0], [ '\t\tgrid-template-columns: fit-content( 12rem ) minmax( 0, 1fr );', '\t\tgrid-template-columns: subgrid;', '\t\tgrid-template-columns: repeat( auto-fill, minmax( 10.5rem, 1fr ) );', '\t.builder-lightbox-row {\n\t\tdisplay: grid;' ] );
+		&& holds( blocks[0], [ '\t\tgrid-template-columns: fit-content( 12rem ) minmax( 0, 1fr );', '\t\tgrid-template-columns: subgrid;', '\t.builder-lightbox-row {\n\t\tgrid-column: 2;' ] ) && blocks[0].body.indexOf('minmax( 10.5rem') === -1 && blocks[0].body.indexOf('width: 100%') === -1;
 } )() );
 
 console.log( '\nThe form of a card' );
@@ -7631,7 +7641,7 @@ requests[1].callback( 200, { filename : 'f', url : '/uploads/card.jpg', source :
 check( '...and the form is drawn again with it: the thumbnail, the focus and the dimming are on, the picture can be taken away, and the preview says that a picture is behind the card, not behind the column or the section', thumbOf( holderPane() ).hidden === false && thumbOf( holderPane() ).src.indexOf('/uploads/card.jpg') === 0
 	&& controlOf( holderPane(), 'Automatic focus' ).el.disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false && noteOf( holderPane() ).textContent === 'The picture is stored.'
 	&& preview().querySelector('[data-path="0.1.0"] .is-background') !== null && preview().querySelector('[data-path="0.1.0"] .is-background').title === 'Picture behind the card' && preview().querySelector('[data-path="0.1"] .builder-pcol-head .is-background') === null
-	&& preview().children[0].querySelector('.builder-frame-head .is-background') === null && openBlock() === 'surface' );
+	&& frames()[0].querySelector('.builder-frame-head .is-background') === null && openBlock() === 'surface' );
 builder._closeDialog();
 
 openCard();
@@ -7737,7 +7747,7 @@ check( '...counter is the counter of the ground of the column - or of the sectio
 	&& cardTintOf( 'primary', 'alt', 'counter', false, false ) === 'builder-color-plain' && cardTintOf( 'alt', 'dark', 'counter', false, false ) === 'builder-color-black' && cardTintOf( 'dark', 'counter', 'counter', false, false ) === 'builder-color-dark' );
 check( '...a card whose picture is dimmed is tinted dark, whatever ground it names, and whatever its column is; a dimming without a picture is no ground, and a picture that is not dimmed paints nothing', cardTintOf( '', '', '', true, true ) === 'builder-color-dark' && cardTintOf( 'tint', 'alt', 'counter', true, true ) === 'builder-color-dark'
 	&& cardTintOf( '', '', 'alt', true, true ) === 'builder-color-dark' && cardTintOf( '', '', '', false, true ) === '' && cardTintOf( '', '', 'alt', false, true ) === 'builder-color-alt' && cardTintOf( '', '', '', true, false ) === '' && cardTintOf( '', '', 'alt', true, false ) === 'builder-color-alt' );
-check( '...the section and the column keep their own ground, whatever the card paints', ( cardTintOf( 'dark', '', 'counter', false, false ), frameOf('0.1').classList.contains('builder-color-black') === false && frameOf('0.1').classList.contains('builder-color-dark') === false && preview().children[0].classList.contains('builder-color-dark') ) );
+check( '...the section and the column keep their own ground, whatever the card paints', ( cardTintOf( 'dark', '', 'counter', false, false ), frameOf('0.1').classList.contains('builder-color-black') === false && frameOf('0.1').classList.contains('builder-color-dark') === false && frames()[0].classList.contains('builder-color-dark') ) );
 check( '...a picture behind the card is said in its head with the item the section and the column have for it - an icon of an image and the word for a card - and nowhere else: a card with one, in a column that has its own', ( function() {
 
 	cardTintOf( '', '', '', true, false );
@@ -9251,6 +9261,438 @@ check( 'where the editor is for reading only, both tools are off - on every fram
 
 	return offered && off && same && toolOf( '1', 'paste' ).disabled === false && addBar().querySelector('.builder-add-paste').disabled === false;
 } ) );
+console.log( '\nThe places between the sections' );
+
+const places = function() { return preview().children.filter( function( child ) { return child.classList.contains('builder-insert') } ) };
+const plusOf = function( place ) { return place.querySelector('.builder-insert-btn') };
+const gapRow = function( place ) { return place.querySelector('.builder-insert-row') };
+const idsOf = function() { return builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join() };
+
+check( 'a section is put at an index of the page and nothing else is renumbered: at 1 it stands between the blocks 0 and 1, at 0 before the first, and without an index - or with one past the end - after the last, as it did', attempt( function() {
+
+	const run = function( index ) {
+		doc = open();
+		builder._renderEditor();
+		const before = builder._doc.model.blocks.map( function( block ) { return JSON.stringify( block ) } );
+		changes = 0;
+		builder._addSection( 'content', index );
+		const after = builder._doc.model.blocks.map( function( block ) { return JSON.stringify( block ) } );
+		return { ids : idsOf(), before : before, after : after, changes : changes };
+	};
+	const one = run( 1 );
+	const selected = builder._same( builder._sel, [ 1 ] ) && builder._fresh.section === true;
+	const start = run( 0 );
+	const startSelected = builder._same( builder._sel, [ 0 ] );
+	const end = run();
+	const past = run( 99 );
+	const others = function( found, at ) { return found.after.filter( function( json, i ) { return i !== at } ).join() === found.before.join() };
+
+	return one.ids === 'hero,section,services,html,contact' && selected && others( one, 1 ) && one.changes === 1 && start.ids === 'section,hero,services,html,contact' && startSelected && others( start, 0 )
+		&& end.ids === 'hero,services,html,contact,section' && others( end, 4 ) && past.ids === end.ids && builder._same( builder._sel, [ 4 ] );
+} ) );
+check( '...the paste of a section or a block of html takes an index of the page as well: at 1 between the blocks 0 and 1, at 0 before the first - the copy is selected - and a clip of a column is no clip for the page, at any index', attempt( function() {
+
+	copied( [ 0 ] );
+	changes = 0;
+	builder._pasteAt( [], 1 );
+
+	const between = idsOf() === 'hero,hero-2,services,html,contact' && builder._same( builder._sel, [ 1 ] ) && builder._fresh['hero-2'] === true && changes === 1;
+
+	copied( [ 2 ] );
+	builder._pasteAt( [], 0 );
+
+	const first = idsOf() === 'html,hero,services,html,contact' && builder._same( builder._sel, [ 0 ] );
+
+	copied( [ 0, 0 ] );
+
+	const before = JSON.stringify( builder._doc.model );
+
+	builder._pasteAt( [], 1 );
+
+	return between && first && JSON.stringify( builder._doc.model ) === before && builder._paste( builder._doc.model, builder._registry, 'page-home', [], builder._clip, 1 ) === null;
+} ) );
+check( 'the preview has a place for a new section before the first block, between two and after the last - n blocks, n + 1 places, in that order - each with a "+" that is named, in the tab order and a button of its own, and the template holds the markup', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+
+	const order = preview().children.map( function( child ) { return child.classList.contains('builder-insert') ? 'i' : 'f' } ).join('');
+	const template_ = /<template id="builder-tpl-insert">([\s\S]*?)<\/template>/.exec( template );
+
+	return places().length === builder._doc.model.blocks.length + 1 && order === 'ifififif'+ 'i' && places().every( function( place ) {
+		const plus = plusOf( place );
+		return plus !== null && plus.localName === 'button' && plus.getAttribute('type') === 'button' && plus.getAttribute('aria-label') === word('menu/insert') && plus.getAttribute('aria-label') !== '' && plus.disabled === false
+			&& plus.getAttribute('tabindex') === null && plus.getAttribute('aria-expanded') === 'false' && gapRow( place ).hidden === true && gapRow( place ).children.length === 0 && place.dataset.path === undefined;
+	} ) && template_ !== null && /<svg [^>]*aria-hidden="true"/.test( template_[1] ) && template.indexOf( '<symbol id="builder-icon-plus"' ) !== -1;
+} ) );
+check( '...no places with no blocks but one: an empty page can be started; and a page is drawn again with the places it had no matter how often', attempt( function() {
+
+	doc = open();
+	builder._doc.model.blocks = [];
+	builder._renderEditor();
+
+	const empty = places().length === 1 && frames().length === 0;
+
+	builder._doc.model = page();
+	builder._renderEditor();
+	builder._renderEditor();
+
+	return empty && places().length === 5 && frames().length === 4;
+} ) );
+check( 'a press on the "+" shows the choices of the add bar in the place of the line - a section, a block of HTML+ and the paste - the focus on the first, the others closed, and a press on the same "+" again closes them', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+
+	const place = places()[2];
+
+	plusOf( place ).click();
+
+	const row = gapRow( place );
+	const opened = row.hidden === false && place.classList.contains('is-open') && plusOf( place ).getAttribute('aria-expanded') === 'true' && screen.activeElement === row.children[0];
+	const buttons = row.querySelectorAll('button').map( function( button ) { return button.textContent } ).join();
+	const same = buttons === addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join();
+
+	plusOf( places()[3] ).click();
+
+	const one = places().filter( function( other ) { return other.classList.contains('is-open') } ).length === 1 && places()[3].classList.contains('is-open') && gapRow( place ).hidden === true && gapRow( place ).children.length === 0;
+
+	plusOf( places()[3] ).click();
+
+	return opened && same && one && places().every( function( other ) { return other.classList.contains('is-open') === false && gapRow( other ).hidden === true } ) && screen.activeElement === plusOf( places()[3] ) && builder._inserting === null && plusOf( places()[3] ).getAttribute('aria-expanded') === 'false';
+} ) );
+check( '...a section from the choices stands where the place is and is selected, the places are drawn new and none is open; the add bar at the end of the page still adds at the end', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	changes = 0;
+	plusOf( places()[2] ).click();
+	gapRow( places()[2] ).children[0].click();
+
+	const between = idsOf() === 'hero,services,section,html,contact' && builder._same( builder._sel, [ 2 ] ) && changes === 1 && frameOf('2').classList.contains('is-selected') && places().length === 6
+		&& places().every( function( place ) { return place.classList.contains('is-open') === false } ) && builder._inserting === null;
+
+	plusOf( places()[0] ).click();
+	gapRow( places()[0] ).children[0].click();
+
+	const first = idsOf() === 'section-2,hero,services,section,html,contact' && builder._same( builder._sel, [ 0 ] );
+
+	screen.getElementById('builder-add-content').click();
+
+	return between && first && idsOf() === 'section-2,hero,services,section,html,contact,section-3' && builder._same( builder._sel, [ 6 ] );
+} ) );
+check( '...the choices are those of the add bar, in its order - Content, Tiles, Loop, HTML+ block, Paste - and Tiles and Loop put a section of tiles and a loop of sections at the place of the "+"', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+	plusOf( places()[1] ).click();
+
+	const texts_ = gapRow( places()[1] ).querySelectorAll('button').map( function( button ) { return button.textContent } ).join();
+	const same = texts_ === addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() && gapRow( places()[1] ).querySelectorAll('button').length === 5;
+
+	gapRow( places()[1] ).children[1].click();
+
+	const tiles = builder._doc.model.blocks[1].settings.tiles === true && builder._doc.model.blocks[1].stack === null && builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[2].id === 'services' && builder._same( builder._sel, [ 1 ] );
+
+	plusOf( places()[0] ).click();
+	gapRow( places()[0] ).children[2].click();
+
+	const loop = builder._doc.model.blocks[0].stack !== null && builder._doc.model.blocks[0].settings.tiles === false && builder._doc.model.blocks.length === 6 && builder._doc.model.blocks[1].id === 'hero' && builder._same( builder._sel, [ 0 ] );
+
+	return same && tiles && loop;
+} ) );
+check( '...after a choice the focus is on a control of what it made - the settings tool of the new section, of a section of any kind - and the HTML+ editor is opened from the "+": closed with Escape it gives the focus back to it, applied it leaves the focus on the settings tool of the new block', attempt( function() {
+
+	const kinds = [ 'content', 'tiles', 'loop' ].map( function( kind, at ) {
+		doc = open();
+		builder._renderEditor();
+		plusOf( places()[2] ).click();
+		gapRow( places()[2] ).children[at].click();
+		return screen.activeElement === toolOf( '2', 'settings' ) && screen.activeElement.closest('[data-path]').dataset.path === '2' && builder._same( builder._sel, [ 2 ] );
+	} );
+
+	doc = open();
+	builder._renderEditor();
+	plusOf( places()[1] ).click();
+	gapRow( places()[1] ).children[3].click();
+
+	const opener = screen.getElementById('builder-dialog').open === true && screen.getElementById('builder-dialog').previouslyFocused === plusOf( places()[1] ) && plusOf( places()[1] ).getAttribute('aria-expanded') === 'false';
+
+	builder._closeDialog();
+
+	const escaped = screen.activeElement === plusOf( places()[1] ) && builder._doc.model.blocks.length === 4;
+
+	requests = [];
+	plusOf( places()[1] ).click();
+	gapRow( places()[1] ).children[3].click();
+	screen.getElementById('builder-dialog-actions').querySelectorAll('button').find( function( button ) { return button.textContent === word('html/apply') } ).click();
+	requests[0].callback( 200, { model : JSON.parse( JSON.stringify( requests[0].payload.model ) ), parts : [], source : '' } );
+
+	const applied = screen.activeElement === toolOf( '1', 'settings' ) && screen.activeElement.closest('[data-path]').dataset.path === '1' && builder._same( builder._sel, [ 1 ] );
+
+	// From the add bar a block is appended, and no tool is the one to take the focus
+	return kinds.every( function( one ) { return one === true } ) && opener && escaped && applied;
+} ) );
+check( '...the paste of the choices is the paste of the add bar: off with the same reason for a title where nothing or a column was copied, ready with the same title for a section, and a press puts the copy where the place is', attempt( function() {
+
+	const pasteOf = function( place ) { return gapRow( place ).querySelector('.builder-insert-paste') };
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+	plusOf( places()[1] ).click();
+
+	const none = pasteOf( places()[1] ).disabled === true && pasteOf( places()[1] ).title === addBar().querySelector('.builder-add-paste').title && pasteOf( places()[1] ).title !== '';
+
+	copied( [ 0, 0 ] );
+	plusOf( places()[1] ).click();
+
+	const column = pasteOf( places()[1] ).disabled === true && pasteOf( places()[1] ).title === addBar().querySelector('.builder-add-paste').title;
+
+	copied( [ 0 ] );
+	plusOf( places()[2] ).click();
+
+	const paste = pasteOf( places()[2] );
+	const ready = paste.disabled === false && paste.title === addBar().querySelector('.builder-add-paste').title && paste.textContent === word('menu/paste');
+
+	changes = 0;
+	paste.click();
+
+	return none && column && ready && idsOf() === 'hero,services,hero-2,html,contact' && builder._same( builder._sel, [ 2 ] ) && changes === 1 && builder._fresh['hero-2'] === true;
+} ) );
+check( '...the choice of HTML+ opens the editor of a new block, and what it makes is put at the place of the "+" and selected', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	requests = [];
+	plusOf( places()[1] ).click();
+	gapRow( places()[1] ).children[3].click();
+
+	const dialog = screen.getElementById('builder-dialog');
+	const shown = dialog.open === true && builder._inserting === null && places().every( function( place ) { return place.classList.contains('is-open') === false } );
+	const apply = screen.getElementById('builder-dialog-actions').querySelectorAll('button').find( function( button ) { return button.textContent === word('html/apply') } );
+
+	apply.click();
+
+	const sent = requests.length === 1 && requests[0].action === 'builder/source' && requests[0].payload.model.blocks.length === 5 && requests[0].payload.model.blocks[1].kind === 'html' && requests[0].payload.model.blocks[0].kind === 'section' && requests[0].payload.model.blocks[2].id === 'services';
+	const answer = JSON.parse( JSON.stringify( requests[0].payload.model ) );
+
+	requests[0].callback( 200, { model : answer, parts : [], source : '' } );
+
+	const result = builder._same( builder._sel, [ 1 ] ) && builder._doc.model.blocks[1].kind === 'html' && builder._doc.model.blocks.length === 5;
+
+	builder._closeDialog();
+
+	return shown && sent && result;
+} ) );
+check( 'Escape in the choices closes them and gives the focus back to the "+" of the place; so does a click elsewhere in the editor - on a frame, where the focus is not on a control of its own', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	plusOf( places()[2] ).click();
+	gapRow( places()[2] ).children[2].focus();
+
+	const key = gapRow( places()[2] ).children[2].dispatch( 'keydown', { key : 'Escape' } );
+	const closed = places()[2].classList.contains('is-open') === false && gapRow( places()[2] ).hidden === true && screen.activeElement === plusOf( places()[2] ) && builder._inserting === null && key.defaultPrevented === true && plusOf( places()[2] ).getAttribute('aria-expanded') === 'false';
+
+	// As a browser goes about it: the button goes down on a frame, which gives the focus to the editor itself - the focus leaving is no closing - and the click follows
+	const editor = screen.getElementById('builder-editor');
+
+	plusOf( places()[2] ).click();
+	gapRow( places()[2] ).children[1].focus();
+	editor.focus();
+	editor.dispatch('focusin');
+
+	const waiting = places()[2].classList.contains('is-open') === true && builder._inserting !== null;
+
+	frames()[0].click();
+
+	const away = waiting && places()[2].classList.contains('is-open') === false && screen.activeElement === plusOf( places()[2] ) && builder._inserting === null && plusOf( places()[2] ).getAttribute('aria-expanded') === 'false';
+
+	// A click in the shell round the editor closes the row as well, and the listener of the page goes with the row
+	const shell = made( 'div' );
+	const heard = function() { return ( screen.listeners.click || [] ).length };
+	const quiet = heard();
+
+	plusOf( places()[1] ).click();
+	gapRow( places()[1] ).children[0].focus();
+
+	const listening = heard() === quiet + 1;
+
+	screen.dispatch( 'click', shell );
+
+	const outside = listening && places()[1].classList.contains('is-open') === false && screen.activeElement === plusOf( places()[1] ) && builder._inserting === null && heard() === quiet;
+
+	// The focus moving to another control of the editor closes the row and leaves the focus where it went
+	plusOf( places()[3] ).click();
+	toolOf( '0', 'settings' ).focus();
+	editor.dispatch( 'focusin', { target : toolOf( '0', 'settings' ) } );
+
+	const moved = places()[3].classList.contains('is-open') === false && screen.activeElement === toolOf( '0', 'settings' );
+
+	plusOf( places()[0] ).click();
+	gapRow( places()[0] ).children[0].focus();
+	builder._leaveInsert( plusOf( places()[0] ), true );
+
+	const inside = places()[0].classList.contains('is-open') === true;
+
+	return closed && away && outside && moved && inside;
+} ) );
+check( '...any other key leaves the choices open, and the Escape of a place that is not the open one is nobody\'s', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	plusOf( places()[2] ).click();
+	gapRow( places()[2] ).children[0].dispatch( 'keydown', { key : 'Tab' } );
+
+	const kept = places()[2].classList.contains('is-open') === true;
+
+	plusOf( places()[1] ).dispatch( 'keydown', { key : 'Escape' } );
+
+	return kept && places()[2].classList.contains('is-open') === true && builder._inserting.index === 2;
+} ) );
+check( 'where the editor is for reading only, the "+" of a place is off, opens nothing and the places are hidden by the stylesheet with the other tools', attempt( function() {
+
+	doc = open();
+	sandbox.matchMedia = function() { return { matches : true } };
+	builder._renderEditor();
+
+	const off = places().every( function( place ) { return plusOf( place ).disabled === true } );
+
+	builder._openInsert( places()[1], 1 );
+
+	const nothing = builder._inserting === null && gapRow( places()[1] ).hidden === true;
+
+	delete sandbox.matchMedia;
+	builder._renderEditor();
+
+	const narrow = /@media \(max-width: 38rem\) \{[\s\S]*?\.builder-insert,\n[\s\S]*?display: none;/.exec( stylesheet );
+
+	return off && nothing && narrow !== null && places().every( function( place ) { return plusOf( place ).disabled === false } );
+} ) );
+check( 'the stylesheet keeps the room of the places and shows them where the pointer is: a place is as high as the gap it stands in - none at the two ends - and its line and "+" are seen over it and with the focus inside, the choices are drawn out of the flow, and the "+" is 44 px to hit on a touch screen', attempt( function() {
+
+	return ruleHas( '.builder-preview', [ 'gap: 0' ] ) && ruleHas( '.builder-insert', [ 'position: relative', 'height: .75rem' ] ) && ruleHas( '.builder-insert:first-child,\n.builder-insert:last-child', [ 'height: 0' ] )
+		&& ruleHas( '.builder-insert-btn', [ 'opacity: 0', 'width: 1.65rem', 'height: 1.65rem', 'border-radius: 50%' ] ) && ruleHas( '.builder-insert-row', [ 'position: absolute' ] )
+		&& stylesheet.indexOf( '.builder-insert:focus-within .builder-insert-btn' ) !== -1 && stylesheet.indexOf( '.builder-insert:hover .builder-insert-btn' ) !== -1 && stylesheet.indexOf( '.builder-insert:hover::before' ) !== -1
+		&& /@media \(pointer: coarse\) \{\s*\.builder-insert-btn \{\s*width: 3rem;\s*height: 3rem;/.test( stylesheet );
+} ) );
+
+check( '...the "+" takes a click only where it is seen - none while it is hidden, one over the place, with the focus inside and with the row open, and always on a touch screen - and it leaves the tab order while the row is open, so that Shift+Tab from the first choice goes to what is before the place', attempt( function() {
+
+	return ruleHas( '.builder-insert-btn', [ 'pointer-events: none' ] ) && ruleHas( '.builder-insert:hover .builder-insert-btn,\n.builder-insert:focus-within .builder-insert-btn,\n.builder-insert.is-open .builder-insert-btn', [ 'pointer-events: auto' ] )
+		&& ruleHas( '.builder-insert.is-open .builder-insert-btn', [ 'visibility: hidden' ] ) && /@media \(hover: none\) \{\s*\.builder-insert-btn \{\s*opacity: 1;\s*pointer-events: auto;/.test( stylesheet );
+} ) );
+check( '...the select of the width of Mobile is as wide as the others of its table, and the note goes below it where there is no room beside it', ruleHas( '.builder-from-cell', [ 'flex-wrap: wrap' ] ) && ruleHas( '.builder-from-cell select', [ 'flex: 1 1 9rem' ] ) );
+
+console.log( '\nThe preview of Mobile and the width tables' );
+
+check( 'the preview of Mobile draws every column the whole width, whatever width the column has for Mobile: the model with a width of 50 for s gives 100 in s, the width of m in m, the width of l in l and in g, for the columns of a section and of a loop', attempt( function() {
+
+	const wide = page();
+
+	wide.blocks.forEach( function( block ) {
+		( block.cols || [] ).forEach( function( col ) { col.width = { s : 50, m : 66, l : 33 } } );
+	} );
+
+	const all = function( viewport ) {
+		return builder._preview( wide, builder._registry, viewport ).filter( function( block ) { return block.kind === 'section' } ).reduce( function( found, block ) { return found.concat( block.cols.map( function( col ) { return col.width } ) ) }, [] );
+	};
+	const every = function( list, width ) { return list.length > 3 && list.every( function( found ) { return found === width } ) };
+
+	return every( all('s'), 100 ) && every( all('m'), 66 ) && every( all('l'), 33 ) && every( all('g'), 33 ) && wide.blocks[0].cols[0].width.s === 50
+		&& builder._preview( wide, builder._registry, 's' ).find( function( block ) { return block.id === 'services' } ).cols.some( function( col ) { return col.stack !== null } );
+} ) );
+check( '...and the preview on screen: the custom property of the width of each column is 100 in Mobile - the head says 100 % - and the width of the viewport in the others', attempt( function() {
+
+	doc = open();
+	doc.model.blocks[1].cols[0].width = { s : 50, m : 25, l : 66 };
+	builder._renderEditor();
+
+	const widthIn = function( viewport ) {
+		builder._setView( viewport );
+		return [ frameOf('1.0').style.getPropertyValue('--builder-w'), preview().querySelector('[data-path="1.0"] .builder-col-name').textContent ].join(' ');
+	};
+	const s = widthIn('s');
+	const m = widthIn('m');
+	const l = widthIn('l');
+	const g = widthIn('g');
+
+	builder._setView('l');
+
+	return s === '100 100%' && m === '25 25%' && l === '66 66%' && g === l;
+} ) );
+check( 'the table of the widths says in the row of Mobile - and in that row only - from where the width holds: a note beside the select, from the text of the panel, the select in it where it was; the rows of Tablet and Desktop have none', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	builder._setView('g');
+	builder._lastBlock = {};
+	builder._openSettings( [ 0, 0 ] );
+	headOf('width').click();
+
+	const rows = widths().querySelectorAll('tbody tr');
+	const note = function( row ) { return row.querySelectorAll('.builder-from-note') };
+	const said = sandbox.Nino.content.getText('/_admin/builder/col/from-640');
+	const select = function( row ) { return row.querySelector('select') };
+
+	const ok = rows.length === 3 && rows[0].querySelector('th').textContent === word('viewport/s') && note( rows[0] ).length === 1 && said !== '' && note( rows[0] )[0].textContent === said && note( rows[1] ).length === 0 && note( rows[2] ).length === 0
+		&& select( rows[0] ).dataset.key === 'width' && select( rows[0] ).parentNode.classList.contains('builder-from-cell') && select( rows[0] ).parentNode === note( rows[0] )[0].parentNode && select( rows[1] ).parentNode.localName === 'td'
+		&& widths().querySelectorAll('.builder-from-note').length === 1;
+
+	builder._closeDialog();
+	builder._setView('s');
+	builder._openSettings( [ 0, 0 ] );
+	headOf('width').click();
+
+	const alone = widths().querySelectorAll('tbody tr').length === 1 && widths().querySelectorAll('.builder-from-note').length === 1;
+
+	builder._closeDialog();
+	builder._setView('m');
+	builder._openSettings( [ 0, 0 ] );
+	headOf('width').click();
+
+	const none = widths().querySelectorAll('.builder-from-note').length === 0;
+
+	builder._closeDialog();
+	builder._setView('l');
+
+	return ok && alone && none;
+} ) );
+check( '...the cells of a loop say it in the row of Mobile as well - the cells of the kernel\'s stack start their widths at 640 px too - and the head of the width of either table carries a sentence behind a question mark, read from the text of the panel', attempt( function() {
+
+	doc = open();
+	builder._renderEditor();
+	builder._setView('g');
+	builder._openSettings( [ 1, 1, 0 ] );
+
+	const table = loopPane().querySelector('table');
+	const rows = table.querySelectorAll('tbody tr');
+	const cells = rows.map( function( row ) { return row.querySelectorAll('.builder-from-note').length } ).join();
+	const tip = table.querySelector('thead th .builder-help-tip');
+	const loopTip = tip === null ? '' : tip.textContent;
+
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	headOf('width').click();
+
+	const columnTip = widths().querySelector('thead th .builder-help-tip');
+
+	builder._closeDialog();
+	builder._setView('l');
+
+	return cells === '1,0,0' && loopTip === sandbox.Nino.content.getText('/_admin/builder/hint/stack-cells') && loopTip !== '' && columnTip !== null && columnTip.textContent === sandbox.Nino.content.getText('/_admin/builder/hint/col-width') && columnTip.textContent !== ''
+		&& widths().querySelectorAll('thead th')[1].querySelector('.builder-help-btn') !== null && widths().querySelectorAll('thead th')[0].querySelector('.builder-help-btn') === null;
+} ) );
+check( 'the words of the new places are in both languages: the name of the "+", the note from 640 px and the two sentences of the tables', [ 'menu/insert', 'col/from-640', 'hint/col-width', 'hint/stack-cells' ].every( function( key ) {
+	return [ 'en_US.php', 'de_DE.php' ].every( function( file ) {
+		return new RegExp( "'\\[\\[/_admin/builder/"+ key+ "\\]\\]'\\s*=> '[^']+'," ).test( fs.readFileSync( path.join( __dirname, '../text/'+ file ), 'utf8' ) );
+	} );
+} ) );
+check( 'the add bar is centred, the stylesheet says so', ruleHas( '.builder-add-bar', [ 'display: flex', 'flex-wrap: wrap', 'justify-content: center' ] ) );
+
 check( 'the tools stand in the template as the panel says: copy then paste, between duplicate and delete, each with its title and its label; Duplicate wears copy-plus, Copy wears copy and Paste wears clipboard-paste - all three in the sprite', attempt( function() {
 
 	const fragment = /<template id="builder-tpl-tools">([\s\S]*?)<\/template>/.exec( template )[1];
@@ -10338,9 +10780,9 @@ check( 'the add bar has a button for each kind - + Content and + Tiles - and no 
 		doc = open();
 		builder._renderEditor();
 		screen.getElementById('builder-add-tiles').click();
-		const afterTiles = builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[4].settings.tiles === true && builder._doc.model.blocks[4].cols.length === 2 && builder._same( builder._sel, [ 4 ] ) && preview().children[4].classList.contains('is-tiles') === true;
+		const afterTiles = builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[4].settings.tiles === true && builder._doc.model.blocks[4].cols.length === 2 && builder._same( builder._sel, [ 4 ] ) && frames()[4].classList.contains('is-tiles') === true;
 		screen.getElementById('builder-add-content').click();
-		return afterTiles && builder._doc.model.blocks.length === 6 && builder._doc.model.blocks[5].settings.tiles === false && builder._doc.model.blocks[5].cols.length === 1 && preview().children[5].classList.contains('is-tiles') === false && changes === 2;
+		return afterTiles && builder._doc.model.blocks.length === 6 && builder._doc.model.blocks[5].settings.tiles === false && builder._doc.model.blocks[5].cols.length === 1 && frames()[5].classList.contains('is-tiles') === false && changes === 2;
 	} )() );
 
 // The dialog of a section of tiles
@@ -10653,9 +11095,9 @@ check( 'the kind of a section is switched in its dialog, which is drawn again fo
 	const none = changes === was && dialogText('builder-dialog-kind') === 'Content';
 	change( blockOf('properties'), word('section/kind'), 'tiles' );
 	const tiles = builder._doc.model.blocks[0].settings.tiles === true && builder._doc.model.blocks[0].settings.ratio === '4-3' && dialogText('builder-dialog-kind') === 'Tiles' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && openBlock() === 'properties'
-		&& builder._doc.model.blocks[0].settings.cover === null && changes === was + 1 && preview().children[0].classList.contains('is-tiles') === true;
+		&& builder._doc.model.blocks[0].settings.cover === null && changes === was + 1 && frames()[0].classList.contains('is-tiles') === true;
 	change( blockOf('properties'), word('section/kind'), 'content' );
-	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && preview().children[0].classList.contains('is-tiles') === false;
+	return none && tiles && dialogText('builder-dialog-kind') === 'Content' && blockIds().join() === 'surface,spacing,width,order,loop,properties' && builder._doc.model.blocks[0].settings.tiles === false && frames()[0].classList.contains('is-tiles') === false;
 } )() );
 
 // The preview
@@ -10670,11 +11112,11 @@ check( '...it is drawn as it is on the page: edge to edge - the frame says so, a
 	( function() {
 		doc = open( tilesPage() );
 		builder._renderEditor();
-		const frame = preview().children[0];
+		const frame = frames()[0];
 		const mark = frameOf('0.0').querySelector('.builder-head-status .is-linked');
 		const plain = frameOf('0.1').querySelector('.builder-head-status .is-linked');
-		return frame.classList.contains('is-tiles') === true && preview().children[1].classList.contains('is-tiles') === true && frame.querySelector('.builder-frame-kind').textContent === 'Tiles' && frame.querySelector('.builder-frame-name').textContent === 'work'
-			&& mark !== null && iconOf( mark ) === 'link' && plain === null && frame.querySelector('.builder-add-col').textContent === '+ Tile' && ( function() { doc = open(); builder._renderEditor(); return preview().children[0].querySelector('.builder-add-col').textContent === '+ Column' && preview().children[0].querySelector('.builder-frame-kind') === null } )()
+		return frame.classList.contains('is-tiles') === true && frames()[1].classList.contains('is-tiles') === true && frame.querySelector('.builder-frame-kind').textContent === 'Tiles' && frame.querySelector('.builder-frame-name').textContent === 'work'
+			&& mark !== null && iconOf( mark ) === 'link' && plain === null && frame.querySelector('.builder-add-col').textContent === '+ Tile' && ( function() { doc = open(); builder._renderEditor(); return frames()[0].querySelector('.builder-add-col').textContent === '+ Column' && frames()[0].querySelector('.builder-frame-kind') === null } )()
 			&& /\.builder-frame\.is-tiles\s*\{[^}]*--builder-gap:\s*0px/.test( stylesheet ) && /\.builder-frame\.is-tiles > \.builder-frame-body\s*\{[^}]*padding:\s*0/.test( stylesheet ) && /\.builder-frame\.is-tiles \.builder-pcol\s*\{[^}]*aspect-ratio:\s*var\(--builder-ratio/.test( stylesheet );
 	} )() );
 
@@ -10942,11 +11384,11 @@ check( '...the loop of sections and the loop around the row are one choice: the 
 builder._closeDialog();
 builder._doc.model.blocks[0].rowLoop = builder._stackFor( registry(), 'repeat', null );
 builder._renderEditor();
-const aroundBox = function() { return preview().children[0].querySelector('.builder-loop.is-around') };
-check( 'the loop around a row is a box in the colour of the loops around the columns of the section, inside its frame and under its head: the word of the stack, "Loop around the row", the type, the number of columns and a button for the settings - the row for its cell', aroundBox() !== null && aroundBox().parentNode === preview().children[0].querySelector('.builder-frame-body') && aroundBox().querySelector('.builder-loop-body').hidden === false
+const aroundBox = function() { return frames()[0].querySelector('.builder-loop.is-around') };
+check( 'the loop around a row is a box in the colour of the loops around the columns of the section, inside its frame and under its head: the word of the stack, "Loop around the row", the type, the number of columns and a button for the settings - the row for its cell', aroundBox() !== null && aroundBox().parentNode === frames()[0].querySelector('.builder-frame-body') && aroundBox().querySelector('.builder-loop-body').hidden === false
 	&& aroundBox().querySelector('.builder-loop-name').textContent === registry().stacks.repeat.label && aroundBox().querySelector('.builder-loop-kind').textContent === word('loop/around') && aroundBox().querySelector('.builder-loop-cell-label').textContent === word('loop/row')
 	&& aroundBox().querySelector('.builder-loop-bar').querySelectorAll('.builder-chip').map( function( chip ) { return chip.textContent } ).join() === 'Services,1' && aroundBox().querySelector('.builder-loop-cell').querySelectorAll('.builder-pcol').length === 1
-	&& aroundBox().querySelector('.builder-loop-cell').querySelector('.builder-add-col') !== null && preview().children[0].querySelector('.builder-frame-head') !== null && preview().children[1].querySelector('.builder-loop.is-around') === null );
+	&& aroundBox().querySelector('.builder-loop-cell').querySelector('.builder-add-col') !== null && frames()[0].querySelector('.builder-frame-head') !== null && frames()[1].querySelector('.builder-loop.is-around') === null );
 aroundBox().querySelector('.builder-loop-bar').dispatch('click');
 check( '...a click on its bar selects the section and folds nothing, the columns staying where they are', aroundBox().querySelector('.builder-loop-body').hidden === false && builder._same( builder._sel, [ 0 ] ) && aroundBox().querySelector('.builder-loop-cell').querySelectorAll('.builder-pcol').length === 1 );
 // The dialog opens the block that was open last: another one is open before the settings are asked for, so that it is the settings that choose the block Loop
@@ -11025,7 +11467,7 @@ check( 'the page has the button "+ Loop" after the one for the tiles: it adds a 
 
 	return addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() === '+ Content,+ Tiles,+ Loop,+ HTML+ block,'+ word('menu/paste') && section.kind === 'section' && section.stack !== null && section.stack.name === 'sections' && section.stack.source === registry().types[0].uri
 		&& section.rowLoop === null && builder._same( builder._sel, [ builder._doc.model.blocks.length - 1 ] ) && builder._fresh[section.id] === true && builder._doc.model.blocks.filter( function( block ) { return block.id === section.id } ).length === 1
-		&& preview().children.slice( -1 )[0].classList.contains('is-sections') && builder._loopNames( builder._doc.model ).indexOf( section.id ) !== -1;
+		&& frames().slice( -1 )[0].classList.contains('is-sections') && builder._loopNames( builder._doc.model ).indexOf( section.id ) !== -1;
 } )() );
 check( '...a block of sections shows its bar and the section with its head under it as the page is loaded, and a click on the bar selects the section and shows nothing else; a double click on it opens the block Loop of the section', ( function() {
 
@@ -11033,14 +11475,14 @@ check( '...a block of sections shows its bar and the section with its head under
 	builder._renderEditor();
 
 	const last = builder._doc.model.blocks.length - 1;
-	const block = preview().children.slice( -1 )[0];
+	const block = frames().slice( -1 )[0];
 	const shown = block.querySelector('.builder-loop-body').hidden === false && block.querySelector('.builder-frame-head') !== null;
 
 	block.querySelector('.builder-loop-bar').dispatch('click');
 
-	const open = builder._same( builder._sel, [ last ] ) && preview().children.slice( -1 )[0].querySelector('.builder-loop-body').hidden === false && preview().children.slice( -1 )[0].querySelector('.builder-frame-head') !== null;
+	const open = builder._same( builder._sel, [ last ] ) && frames().slice( -1 )[0].querySelector('.builder-loop-body').hidden === false && frames().slice( -1 )[0].querySelector('.builder-frame-head') !== null;
 
-	preview().children.slice( -1 )[0].querySelector('.builder-loop-bar').dispatch('dblclick', {});
+	frames().slice( -1 )[0].querySelector('.builder-loop-bar').dispatch('dblclick', {});
 
 	const dialog = dialogBox().open === true && openBlock() === 'loop';
 
@@ -11220,8 +11662,8 @@ check( 'nothing in the preview folds: a page with a loop, a group with panels th
 	const bodies = preview().querySelectorAll('.builder-loop-body, .builder-panel-body, .builder-loop-cell');
 	const holders = preview().querySelectorAll('.builder-loop, .builder-panel');
 	const leaves = preview().querySelectorAll('.builder-ph');
-	const around = preview().children[0].querySelector('.builder-loop.is-around');
-	const sections = preview().children[3];
+	const around = frames()[0].querySelector('.builder-loop.is-around');
+	const sections = frames()[3];
 
 	return rows.length >= 7 && bodies.length >= 9 && leaves.length >= 5 && rows.every( function( row ) { return row.querySelectorAll('button').every( function( button ) { return button.closest('.builder-tools') !== null } ) && row.querySelector('[aria-expanded]') === null } )
 		&& bodies.every( function( body ) { return hiddenIn( body ) === false } ) && leaves.every( function( leaf ) { return hiddenIn( leaf ) === false } ) && holders.every( function( holder ) { return holder.classList.contains('is-open') === false && holder.querySelector('.builder-loop-caret') === null } )
