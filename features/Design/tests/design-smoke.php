@@ -1925,27 +1925,15 @@ foreach( Setup::available( $library, 'section' ) as $set ) {
 
 check( 'every reach of a container into a title or a subtitle in the section sets - the margins and the place of the rule, at every width and at each tier - leaves out one that carries an alignment class of its own: the own classes of its width and of the narrower ones in a :where( :not() ), three for the class without a tier up to fifteen for xl'. ( $reachProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $reachProblems, 0, 3 ) ) ), $reachProblems === [] );
 
-/*	A card that draws a line on every side - the box - is not left with the words against the line on a phone: below 768px Nino.css pads the content of a card with nothing, since the card
-	insets it from there, and a card with no padding at its sides would write against its own border. The content takes the card-space where Nino.css leaves it none. And a card turned on
+/*	A card turned on
 	its side by a picture - the row - wraps the words under it where its cell has no room for the picture and a measure beside it: the words ask for a length of their own, and the row wraps - a card that is a column of its own, whose flex basis is its height, is left alone by both	*/
-$phonePadding	= [];
-$withLine			= 0;
 $unwrapped		= [];
 $turnedOver		= 0;
 
 foreach( Setup::available( $library, 'card' ) as $set ) {
 
 	$cardRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'card', $set ) ) ) );
-	$outlined	 = array_filter( $cardRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-card:where(:not(.nino-card--borderless))' && preg_match( '/(?<![\w-])border\s*:/', $rule['body'] ) === 1 );
 	$turning	 = array_filter( $cardRules, static fn( array $rule ): bool => str_starts_with( $rule['selector'], '.nino-card:has(> .nino-card-img)' ) && preg_match( '/(?<![\w-])display\s*:\s*flex\s*;/', $rule['body'] ) === 1 && str_contains( $rule['within'], 'min-width: 768px' ) );
-
-	if( $outlined !== [] ) {
-
-		$withLine++;
-
-		if( array_filter( $cardRules, static fn( array $rule ): bool => str_contains( $rule['within'], 'max-width: 767px' ) && str_contains( $rule['selector'], '> .nino-card-content' ) && preg_match( '/(?<![\w-])padding\s*:[^;]*var\(--card-space\)/', $rule['body'] ) === 1 ) === [] )
-			$phonePadding[] = $set;
-	}
 
 	if( $turning !== [] ) {
 
@@ -1958,9 +1946,7 @@ foreach( Setup::available( $library, 'card' ) as $set ) {
 	}
 }
 
-check( 'a card set that draws a line on every side pads the content of the card on a phone, where Nino.css leaves it nothing: a rule below 768px reads the card-space for it'
-	. ( $phonePadding === [] ? '' : ' - not so for '. implode( ', ', $phonePadding ) ), $phonePadding === [] && $withLine >= 1 );
-check( '...and a card set that turns a card with a picture on its side wraps the words under the picture when the cell is too narrow for both: the card wraps and the words ask for a length of their own - neither is asked of a card that is a column'
+check( 'a card set that turns a card with a picture on its side wraps the words under the picture when the cell is too narrow for both: the card wraps and the words ask for a length of their own - neither is asked of a card that is a column'
 	. ( $unwrapped === [] ? '' : ' - not so for '. implode( ', ', $unwrapped ) ), $unwrapped === [] && $turnedOver >= 1 );
 
 /*	The two bands of a footer that has both stand on one edge: where a footer insets the cells of its main band at the sides, the rule that does so insets those of its legal band too, so that
@@ -5581,6 +5567,28 @@ foreach( Setup::available( $library, 'lists' ) as $set )
 		if( preg_match( '/padding-left\s*:\s*calc\(\s*\(\s*var\(--space-3\)\s*\+\s*var\(--space-2\)\s*\)\s*\*\s*var\(--lists-scale\)\s*\)\s*;/', $numberedRule['body'] ) !== 1 )
 			$numberedProblems[] = $set;
 check( 'the indent of an item of a numbered list is the badge plus the second step in every set that states it, not the fourth step'. ( $numberedProblems === [] ? '' : ' - '. implode( ', ', $numberedProblems ) ), $numberedProblems === [] && count( Setup::available( $library, 'lists' ) ) >= 2 );
+
+// ...and so does every set of the card that declares the ladder of the space: a set that does not declare it binds nothing
+$insetProblems = [];
+
+foreach( Setup::available( $library, 'card' ) as $set ) {
+
+	$insetCss = designPlain( (string) file_get_contents( Setup::file( $library, 'card', $set ) ) );
+	$insetLadder = preg_match( '/--card-space--default\s*:/', $insetCss ) === 1;
+	$insetBound = preg_match_all( '/(?<![\w-])--surface-inset\s*:\s*var\(--card-space\)\s*;/', $insetCss );
+
+	// ...in the top-level :root rule that declares the ladder, and nowhere else: not in a media query, not on a selector
+	$insetRoot = array_filter( designRules( $insetCss ), static fn( array $rule ): bool => $rule['selector'] === ':root' && $rule['within'] === '' && preg_match( '/--card-space--default\s*:/', $rule['body'] ) === 1 );
+	$insetIn = array_filter( $insetRoot, static fn( array $rule ): bool => preg_match_all( '/(?<![\w-])--surface-inset\s*:\s*var\(--card-space\)\s*;/', $rule['body'] ) === 1 );
+
+	if( $insetBound !== ( $insetLadder === true ? 1 : 0 ) || ( $insetLadder === true && ( count( $insetRoot ) !== 1 || count( $insetIn ) !== 1 ) ) )
+		$insetProblems[] = $set. ' binds it '. $insetBound. ' times, '. count( $insetIn ). ' in the root rule of the ladder';
+}
+
+check( 'every set of the card that declares the ladder of the card-space binds --surface-inset to it once, so that a painted column and a card follow the space of the card in every design, in the root rule that declares the ladder'. ( $insetProblems === [] ? '' : ' - '. implode( ', ', $insetProblems ) ), $insetProblems === [] && count( Setup::available( $library, 'card' ) ) >= 5 );
+check( 'the compile at the defaults binds the inset of the surfaces to the space of the card: --surface-inset is declared once, as var(--card-space), in the root rule that holds the ladder',
+	preg_match_all( '/(?<![\w-])--surface-inset\s*:\s*var\(--card-space\)\s*;/', $defaultSheet ) === 1 && preg_match_all( '/(?<![\w-])--surface-inset\s*:/', $defaultSheet ) === 1
+	&& count( array_filter( designRules( designPlain( $defaultSheet ) ), static fn( array $rule ): bool => $rule['selector'] === ':root' && $rule['within'] === '' && preg_match( '/--card-space--default\s*:/', $rule['body'] ) === 1 && preg_match( '/(?<![\w-])--surface-inset\s*:\s*var\(--card-space\)\s*;/', $rule['body'] ) === 1 ) ) === 1 );
 
 check( 'the compile at the defaults draws the hero as the style of the section title and subtitle: it holds .nino-section-title--hero and .nino-section-subtitle--hero, and no .nino-hero-title and no .nino-hero-subtitle',
 	str_contains( $defaultSheet, '.nino-section-title--hero' ) === true && str_contains( $defaultSheet, '.nino-section-subtitle--hero' ) === true && preg_match( '/\.nino-hero-(?:title|subtitle)\b/', $defaultSheet ) !== 1 );

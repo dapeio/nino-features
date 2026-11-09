@@ -18,8 +18,8 @@ return [
 				'de_DE' => 'Ermöglicht, das Aussehen in drei Tabs - Themes, Schriftarten und Einstellungen - und je Objekt in den Aspekten Grundlage, Text, Fläche, Farbe und Bewegung einzustellen, dazu CSS für die Seite.',
 			],
 			'Tabs and objects' => [
-				'en_US' => 'Lets you set each object on its own: Page, Header, Footer, Content, Tiles, Card, Buttons, Lists, Tables, Form, Tabs and Accordion, and one for each feature with variants.',
-				'de_DE' => 'Ermöglicht, jedes Objekt für sich einzustellen: Seite, Kopf, Fuß, Inhalt, Kacheln, Karte, Buttons, Listen, Tabellen, Formular, Tabs und Accordion, dazu eins je Feature mit Varianten.',
+				'en_US' => 'Lets you set each object on its own: Page, Header, Footer, Content, Tiles, Card (its space insets a painted column too), Buttons, Lists, Tables, Form, Tabs, Accordion, one per feature with variants.',
+				'de_DE' => 'Ermöglicht, jedes Objekt einzustellen: Seite, Kopf, Fuß, Inhalt, Kacheln, Karte (Abstand auch der Spalten mit Grund), Buttons, Listen, Tabellen, Formular, Tabs, Accordion, dazu Features mit Varianten.',
 			],
 			'Knobs' => [
 				'en_US' => 'Every template offers its own knobs, as strips from less to more or as switches, so a look is tuned in steps and not written as css.',

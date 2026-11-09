@@ -52,6 +52,10 @@
 	--card-space--more: 		var(--space-3);
 	--card-space--most: 		var(--space-4);
 
+	/*	A column that paints a ground and a card have one inset: Nino.css reads --surface-inset for it and for the card, and the set binds it to the card-space the
+		knob selects, so that the two stand side by side with one inset	*/
+	--surface-inset: var(--card-space);
+
 	--card-border--least:	0px;
 	--card-border--less:	.5px;
 	--card-border--default:	1px;
@@ -143,8 +147,7 @@
 	overflow: hidden;
 }
 
-/*	The picture runs to the edge of the box: a margin around it would be a
-	second frame inside the first	*/
+/*	The picture has no margin of its own and is as wide as the card inside its padding: a margin around it would be a second frame inside the first	*/
 .nino-card-img {
 	display: block;
 	width: 100%;
@@ -153,15 +156,6 @@
 }
 .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: calc( var(--card-space) * var(--whitespace-scale, 1) );
-}
-/*	Below 768px Nino.css gives a card no padding at its sides and pads the content of a card that [card] draws with nothing, since the
-	card is what insets it from 768px on - and a box has a line round it, so that the words would stand against it. The content
-	takes the card-space there, in the place where Nino.css leaves it nothing: the same cards as its rule (a card with no padding of
-	its own, a fullwidth card and a counter card are padded by the rule above), after it, so that it wins at the same weight	*/
-@media (max-width: 767px) {
-	.nino-card:where(:not(.nino-p-0, .nino-card--fullwidth, .nino-card--counter)) > .nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-		padding: calc( var(--card-space) * var(--whitespace-scale, 1) );
-	}
 }
 .nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
 .nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
