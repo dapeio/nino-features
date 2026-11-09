@@ -1157,18 +1157,13 @@ $panelTabs = array_values( array_map(
 	which is where the panel has it: a test that typed it again would hold the script to nothing (the chips of the loader are read the same way, further down)	*/
 $panelScript = (string) file_get_contents( __DIR__. '/../assets/admin.js' );
 
-/*	The manual is the feature's only documentation, and what is held of it is its shape and not
-	its words: that every tab of the pane, every view of the setup and every part of the themes has an entry, in both
-	languages, and that an entry is a line - what a sentence of it says is for whoever writes it.
-	An entry is found by its handle, which names the tab, the view or the button by the word the panel
-	draws it with	*/
+/*	The manual is the feature's overview and no documentation, and what is held of it is its shape: the six sections of the kernel, a few entries in the ones it fills, every line one sentence
+	of at most 200 characters, the same handles in both languages, and that the tabs of the pane, the aspects of the setup and the objects are named in it by the words the panel draws them
+	with. An entry is found by its handle, which names the tab or the part by the word the panel draws it with	*/
 $handles = array_map( 'mb_strtolower', array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) );
-$handled = static fn( string $word ): bool => $word !== '' && array_filter( $handles, static fn( string $handle ): bool => str_contains( $handle, mb_strtolower( $word ) ) ) !== [];
-$themeParts = array_map( static fn( string $key ): string => strtok( $panelWord( $key, 'en_US' ), ' ' ), [ 'theme/load', 'theme/edit', 'theme/duplicate', 'theme/save', 'theme/delete', 'theme/export', 'theme/css/title' ] );
-$themeParts[] = 'import';
 
 /*	The words the panel borrows from the workbench for the rename and the way back (Rename, Save, Cancel, Back to list) are the kernel's: a checkout that carries its text files is asked for them,
-	in both languages, and the manual names the rename by the kernel's word	*/
+	in both languages	*/
 $kernelWords = static fn( string $locale ): array => is_file( $root. '/_admin/text/'. $locale. '.php' ) === true ? (array) include $root. '/_admin/text/'. $locale. '.php' : [];
 $borrowed = [ 'rename', 'save', 'cancel', 'back' ];
 
@@ -1176,9 +1171,9 @@ check( 'the pane has three tabs on top - the strip of the kernel reads the panel
 	count( $stripFills ) === 2 && array_filter( $stripFills, static fn( string $fill ): bool => preg_match( '~^/_admin/nav/[a-z-]+$~', $fill ) !== 1 ) === []
 	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => in_array( '', $stripWords( $locale ), true ) === true ) === []
 	&& array_filter( $stripWords( 'en_US' ), static fn( string $word ): bool => in_array( mb_strtolower( $word ), $handles, true ) === false ) === [] );
-check( 'the setup has six aspects - the ones the model names, in its order, are the ones its text files name - and the manual has an entry for each, found in the handles of the manual by the word the panel draws them with',
+check( 'the setup has six aspects - the ones the model names, in its order, are the ones its text files name - and the entry of the manual on the panel names each, by the word the panel draws it with, in both languages',
 	count( Setup::TABS ) === 6 && $panelTabs === Setup::TABS
-	&& array_filter( Setup::TABS, static fn( string $tab ): bool => $handled( $panelWord( 'tab/'. $tab. '/label', 'en_US' ) ) === false ) === [] );
+	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( Setup::TABS, static fn( string $tab ): bool => str_contains( $says( 'Design', $locale ), $panelWord( 'tab/'. $tab. '/label', $locale ) ) === false ) !== [] ) === [] );
 // The strip of the objects and the select that stands for it are named by a word of their own; the six aspects and the nine objects each have a word, in both languages, and no two of them are the same word - a tab, the head of a block and an option of the select read alike wherever they stand
 $objectWords = [];
 
@@ -1193,78 +1188,45 @@ check( '...the strip of the objects is named for what it is by a word of its own
 	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => $panelWord( 'label/object', $locale ) === '' || in_array( $panelWord( 'label/object', $locale ), $objectWords[$locale], true ) === true ) === []
 	&& array_filter( $objectWords, static fn( array $words ): bool => in_array( '', $words, true ) === true || count( array_unique( array_map( 'mb_strtolower', $words ) ) ) !== count( $words ) ) === []
 	&& $panelWord( 'label/object', 'en_US' ) !== $panelWord( 'label/object', 'de_DE' ) );
-check( '...the panel\'s own screen is the one place of the setup: Admin::tabs() brings the loader of the typefaces and nothing else, and the manual\'s entry for the panel names the three tabs and the way back to the list by the words the panel draws them with',
-	Admin::tabs() === [ Webfonts\Tab::class ]
-	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => str_contains( $says( 'Design', $locale ), (string) ( $kernelWords( $locale )['[[/_admin/common/label/back]]'] ?? "\0" ) ) === false ) === [] );
+check( '...the panel\'s own screen is the one place of the setup: Admin::tabs() brings the loader of the typefaces and nothing else',
+	Admin::tabs() === [ Webfonts\Tab::class ] );
 
-// The two axes of the setup are told in one entry: the overview names the six aspects and the entries of the aspects name the nine objects, so only the entry on the axes names both - each by the word the panel draws it with, and in both languages by the same entry
-$namedIn = static function( array $words, string $locale ) use ( $feature, $says ): array {
-	return array_values( array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => array_filter( $words, static fn( string $word ): bool => $word === '' || str_contains( $says( $entry, $locale ), $word ) === false ) === [] ) );
-};
-$axisNamed = [];
+// The objects are told in the entry on them, by the words the panel draws them with, in both languages
+check( '...the twelve objects are named in the entry of the manual on them, in both languages, by the words the panel draws them with',
+	count( Setup::OBJECTS ) === 12 && array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( Setup::OBJECTS, static fn( string $object ): bool => str_contains( $says( 'Tabs and objects', $locale ), $panelWord( 'object/'. $object. '/label', $locale ) ) === false ) !== [] ) === [] );
 
-foreach( [ 'en_US', 'de_DE' ] as $axisLocale )
-	$axisNamed[$axisLocale] = $namedIn( array_merge(
-		array_map( static fn( string $tab ): string => $panelWord( 'tab/'. $tab. '/label', $axisLocale ), Setup::TABS ),
-		array_map( static fn( string $object ): string => $panelWord( 'object/'. $object. '/label', $axisLocale ), Setup::OBJECTS )
-	), $axisLocale );
+// The description is the line the feature is listed by: two or three sentences in each language
+$describedCounts = array_map( static fn( string $locale ): int => count( array_filter( (array) preg_split( '/(?<=[.!?])\s+/', trim( \Nino\Features::localized( (array) ( $feature['description'] ?? [] ), $locale ) ) ) ) ), [ 'en_US', 'de_DE' ] );
 
-$axisEntries = array_values( array_intersect( $axisNamed['en_US'], $axisNamed['de_DE'] ) );
+check( '...and the description of the feature is two or three sentences in each language',
+	array_filter( $describedCounts, static fn( int $count ): bool => $count < 2 || $count > 3 ) === [] );
 
-check( '...the two axes are told in one entry of the manual: the same entry names all six aspects and all twelve objects in both languages, by the words the panel draws them with'. ( $axisEntries === [] ? ' - no entry does in both: '. count( $axisNamed['en_US'] ). ' in English, '. count( $axisNamed['de_DE'] ). ' in German' : '' ),
-	$axisEntries !== [] && count( Setup::TABS ) === 6 && count( Setup::OBJECTS ) === 12 );
-
-// The hover of the pictures is told in an entry of its own, which names the class that makes a picture take part and the two controls by the words the panel draws them with - the same entry in both languages
-$hoverNamed = [];
-
-foreach( [ 'en_US', 'de_DE' ] as $hoverLocale )
-	$hoverNamed[$hoverLocale] = $namedIn( [ 'nino-hover', $panelWord( 'motion/hover/label', $hoverLocale ), $panelWord( 'motion/hover-strength/label', $hoverLocale ) ], $hoverLocale );
-
-$hoverEntries = array_values( array_intersect( $hoverNamed['en_US'], $hoverNamed['de_DE'] ) );
-
-check( '...and so is the hover of the pictures: one entry names the class a picture says to take part and the two controls of the page\'s block, by the words the panel draws them with, in both languages'. ( $hoverEntries === [] ? ' - no entry does in both: '. count( $hoverNamed['en_US'] ). ' in English, '. count( $hoverNamed['de_DE'] ). ' in German' : '' ),
-	count( $hoverEntries ) === 1 && $panelWord( 'motion/hover/label', 'en_US' ) !== '' && $panelWord( 'motion/hover-strength/label', 'de_DE' ) !== '' );
-
-// The description is the line the feature is listed by: it names the six views of the setup and the two tabs of its own the strip on top of the pane draws, each by the word the panel draws it with and as a word of its own - Type is no part of Typefaces
-$describedGaps = [];
-
-foreach( [ 'en_US', 'de_DE' ] as $describedLocale )
-	foreach( array_merge( array_map( static fn( string $tab ): string => $panelWord( 'tab/'. $tab. '/label', $describedLocale ), Setup::TABS ), $stripWords( $describedLocale ) ) as $describedWord )
-		if( preg_match( '/(?<!\p{L})'. preg_quote( $describedWord, '/' ). '(?!\p{L})/u', \Nino\Features::localized( (array) ( $feature['description'] ?? [] ), $describedLocale ) ) !== 1 )
-			$describedGaps[] = $describedLocale. ' '. $describedWord;
-
-check( '...and the description of the feature names the six views and the two tabs in both languages, each by the word the panel draws it with'. ( $describedGaps === [] ? '' : ' - missing: '. implode( ', ', $describedGaps ) ),
-	$describedGaps === [] && count( Setup::TABS ) === 6 && count( $stripFills ) === 2 );
-
-check( '...and one for each part of the themes - what its buttons do (load, edit, duplicate, save, delete, export), the import, the rename by the kernel\'s word for it - and the css of a theme, which is the view CSS',
-	count( $themeParts ) === 8 && array_filter( $themeParts, static fn( string $part ): bool => $handled( $part ) === false ) === []
-	&& $handled( (string) ( $kernelWords('en_US')['[[/_admin/common/label/rename]]'] ?? '' ) ) === true );
+// The themes: the entry on them names what a row does and the import, by the words the panel draws them with, and the css of a theme has an entry of its own
+check( '...and the entry on the themes names what the buttons of a row do - load, edit, duplicate, delete, export - in both languages, by the words the panel draws them with, and the css of a theme has an entry of its own',
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( array_map( static fn( string $key ): string => $panelWord( $key, $locale ), [ 'theme/load', 'theme/edit', 'theme/duplicate', 'theme/delete', 'theme/export' ] ), static fn( string $word ): bool => $word === '' || str_contains( $says( 'Themes', $locale ), $word ) === false ) !== [] ) === []
+	&& isset( $feature['manual']['panel']['CSS'] ) === true );
 check( '...and the four words the panel borrows from the workbench - Rename, Save, Cancel and Back to list - are in the workbench\'s text files, in both languages',
 	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( $borrowed, static fn( string $word ): bool => ( $kernelWords( $locale )['[[/_admin/common/label/'. $word. ']]'] ?? '' ) === '' ) !== [] ) === [] );
 check( '...every entry in both languages',
 	array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => $said( $entry, 'en_US' ) === '' || $said( $entry, 'de_DE' ) === '' ) === [] );
-// Features::manifest() holds a line of the manual to 1000 characters; it would refuse the whole file, and the first check of this suite says so
-check( '...every line of it a line and not a paragraph: at most 1000 bytes in either language, as the kernel reads a manifest',
-	array_filter( (array) ( $feature['manual']['panel'] ?? [] ), static fn( array $lines ): bool => array_filter( $lines, static fn( string $line ): bool => strlen( $line ) > 1000 ) !== [] ) === [] );
-/*	The features that bring variants have two entries, found by what they name and not by their handles: the author's names the five kinds, the tags of a head - the German line of a knob among them -, the folder and the two
-	places a default may stand; the editor's names the folder, the view the variant is chosen on - by the word the panel draws it with - and the ratio under which the panel says a colour
-	falls short. Each in both languages, one of each	*/
-$variantEntries = [];
+// The overview: six sections in the kernel's order, the counts the owner set, every line one sentence of 200 characters at most, the same handles with the same keys in both languages
+// One sentence: no full stop, exclamation or question mark followed by a space and anything else, and no line feed
+$oneSentence = static fn( string $text ): bool => $text !== '' && mb_strlen( $text ) <= 200 && preg_match( '/[.!?]\s+\S|\n/u', $text ) !== 1;
+$manualCounts = array_map( 'count', (array) ( $feature['manual'] ?? [] ) );
+$longLines = [];
 
-foreach( [ 'en_US', 'de_DE' ] as $variantLocale ) {
+foreach( (array) ( $feature['manual'] ?? [] ) as $manualSection => $manualEntries )
+	foreach( $manualEntries as $manualHandle => $manualLine )
+		foreach( [ 'en_US', 'de_DE' ] as $manualLocale )
+			if( is_array( $manualLine ) === false || array_keys( $manualLine ) !== [ 'en_US', 'de_DE' ] || $oneSentence( (string) ( $manualLine[$manualLocale] ?? '' ) ) === false )
+				$longLines[] = $manualSection. ' '. $manualHandle. ' '. $manualLocale;
 
-	$texts = array_map( static fn( string $entry ): string => $says( $entry, $variantLocale ), array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) );
-	$author = array_merge( Setup::FEATURE_KINDS, [ '@name', '@description', '@knob', '@knob-de', '@option', 'design/', ':where(:root)', ':where(*)' ] );
-	$editor = [ 'design/', $panelWord( 'tab/templates/label', $variantLocale ), (int) Colours::TARGET_UI. ':1' ];
-
-	$variantEntries[$variantLocale] = [
-		count( array_filter( $texts, static fn( string $text ): bool => array_filter( $author, static fn( string $needle ): bool => str_contains( $text, $needle ) === false ) === [] ) ),
-		count( array_filter( $texts, static fn( string $text ): bool => array_filter( $editor, static fn( string $needle ): bool => str_contains( $text, $needle ) === false ) === [] ) ),
-	];
-}
-
-check( 'the manual tells the features that bring variants twice, in both languages: once for the person who chooses - the folder, the view the variant is chosen on, the ratio below which a colour is said to fall short - and once for the person who writes a variant - the five kinds, the tags of a head with the German line of a knob among them, the two places a default may stand',
-	$variantEntries === [ 'en_US' => [ 1, 1 ], 'de_DE' => [ 1, 1 ] ] );
+check( '...the manual has the six sections of the kernel in their order, one entry of markup, ten of the panel at most, the two callbacks, and every line of it is one sentence of at most 200 characters in both languages, under the same handles'. ( $longLines === [] ? '' : ' - not: '. implode( ', ', $longLines ) ),
+	array_keys( (array) ( $feature['manual'] ?? [] ) ) === \Nino\Features::MANUAL_SECTIONS && $longLines === []
+	&& $manualCounts['markup'] === 1 && $manualCounts['panel'] >= 1 && $manualCounts['panel'] <= 10 && $manualCounts['callbacks'] === 2 && $manualCounts['shortcodes'] === 0 && $manualCounts['routes'] === 0 && $manualCounts['install'] === 0 );
+/*	The features that bring variants have one entry, which names the folder a feature brings them in and the three tags of the head of a variant file; in both languages	*/
+check( 'the manual tells the features that bring variants in one entry, in both languages: the folder design/ and the tags @name, @description and @knob',
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( [ 'design/', '@name', '@description', '@knob' ], static fn( string $needle ): bool => str_contains( $says( 'Variants from features', $locale ), $needle ) === false ) !== [] ) === [] );
 $calls = array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) );
 sort( $calls );
 check( 'the manual names the one callback the feature registers, on /nino/http/output, and the one it fires, /feature/design/navigations, in both languages, and the setting that callback reads',
@@ -3621,30 +3583,6 @@ check( '...kind() says which - the quiet and the loud variant of a section are a
 	&& Setup::positions( 'scale' ) === [ -2, -1, 0, 1, 2 ] && Setup::positions( 'choice' ) === [ -1, 0, 1 ] && Setup::positions( 'toggle' ) === [ 0, 1 ] && Setup::positions( 'ink' ) === [ 0 ] && Setup::positions( 'nothing' ) === [ 0 ]
 	&& Setup::words( 'scale' ) === [ 'least', 'less', 'default', 'more', 'most' ] && Setup::words( 'choice' ) === [ 'less', 'default', 'more' ] && Setup::words( 'toggle' ) === [ 'default', 'more' ] && Setup::words( 'ink' ) === [ 'default' ]
 	&& Setup::LADDERS === [ 'scale', 'choice', 'toggle', 'grade' ] && Setup::FEATURE_KINDS === [ 'scale', 'choice', 'ground', 'ink', 'colour' ] );
-
-/*	Every aspect that the table draws is drawn as a block of an accordion under each object that has a control on it - design-js-smoke.js holds the screen to that - and the manual says so
-	where it is drawn: in the entry of each such aspect, found by the word the panel draws the aspect with (the entry's handle is that word, or that word in the plural), a sentence that the
-	entries of all of them have in common, in both languages. What is held of it is its shape and not its words, as of every entry: a sentence is what stands between two full stops	*/
-$entryOf = static function( string $word ) use ( $feature ): string {
-
-	foreach( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) as $handle )
-		if( in_array( mb_strtolower( (string) $handle ), [ mb_strtolower( $word ), mb_strtolower( $word ). 's' ], true ) === true )
-			return (string) $handle;
-
-	return '';
-};
-$accordionTabs = array_values( array_filter( Setup::TABS, static fn( string $tab ): bool => count( array_filter( array_keys( $laidOut ), static fn( string $row ): bool => str_starts_with( $row, $tab. '/' ) ) ) > 0 ) );
-$sentencesOf = static fn( string $entry, string $locale ): array => array_values( array_filter( array_map( 'trim', (array) preg_split( '/(?<=\.)\s+(?=\p{Lu})/u', $says( $entry, $locale ) ) ) ) );
-$accordionSaid = [];
-
-foreach( [ 'en_US', 'de_DE' ] as $accordionLocale ) {
-
-	$accordionLists = array_map( static fn( string $tab ): array => $sentencesOf( $entryOf( $panelWord( 'tab/'. $tab. '/label', 'en_US' ) ), $accordionLocale ), $accordionTabs );
-	$accordionSaid[$accordionLocale] = $accordionLists === [] ? [] : array_values( array_intersect( ...$accordionLists ) );
-}
-
-check( 'every aspect the table draws controls for - Base, Text, Surface, Colour and Motion, and no other: CSS is the one field - is told as a block of an accordion in the manual: the entries of all five have a sentence in common, in English and in German',
-	$accordionTabs === [ 'templates', 'type', 'surfaces', 'colours', 'motion' ] && array_values( array_diff( Setup::TABS, $accordionTabs ) ) === [ 'css' ] && $accordionSaid['en_US'] !== [] && $accordionSaid['de_DE'] !== [] );
 
 /*	A knob is a position of its own part, held to the range of its kind: -2 to +2 for a scale, -1 to +1 for a choice.
 	Whatever else arrives - a word, an array, a number beyond the ends - is the middle, which is the template as it is	*/
@@ -7293,22 +7231,6 @@ check( '...and the default footer\'s line and position stand at their middle in 
 	&& array_filter( $footerAt, static fn( string $knob ): bool => Setup::kind( 'footer', $knob ) === 'scale' ) === [ 'border-size' ] && $themeKnobs['footer']['border-size'] === 0 && $themeKnobs['footer']['border-color'] === 0 && $themeKnobs['footer']['position'] === 0 );
 echo "\nThe case of a thing: eight toggles, a switch each\n";
 
-/*	The manual tells the switches once, in both languages: one entry names the five labels the eight switches are drawn with - the navigation of the header and of the footer share one - by the words
-	the panel draws them with, says what a toggle is by its two rungs, and is the one entry that does. Found by those words and not by its handle	*/
-$caseTold		= [];
-
-foreach( [ 'en_US', 'de_DE' ] as $manualLocale )
-	$caseTold[$manualLocale] = array_keys( array_filter( $feature['manual']['panel'], static function( mixed $entry ) use ( $caseToggles, $panelWord, $manualLocale ): bool {
-
-		$text = \Nino\Features::localized( $entry, $manualLocale );
-
-		return array_filter( $caseToggles, static fn( string $at ): bool => str_contains( $text, $panelWord( 'knob/'. $at. '/label', $manualLocale ) ) === false ) === []
-			&& str_contains( $text, '--default' ) === true && str_contains( $text, '--more' ) === true;
-	} ) );
-
-check( 'the manual tells the eight switches in one entry of its own, in both languages: it names all eight by the label the panel draws them with, and the two rungs a template declares to answer one - the same entry in English and in German',
-	count( $caseTold['en_US'] ) === 1 && $caseTold['en_US'] === $caseTold['de_DE'] && count( $caseToggles ) === 8 );
-
 /*	A toggle is a ladder of two rungs, none and uppercase, under the words default and more, and the set that answers it reads the rung the knob selects where it styles the thing: the default set of the
 	header, the section, the card and the buttons does, any other does not (a set of the library that sets capitals of its own is none of this), and the case of the links of the footer is answered by every
 	set of the footer, which is held below. The selectors are what the case is of: the links of the navigation of the bar, the title and the subtitle of a section and of the hero, the title and the subtitle
@@ -8039,17 +7961,12 @@ check( 'the specimen has one place for the blocks of the features, the token [[f
 	substr_count( $specimenSource, '[[features]]' ) === 1 && (int) strpos( $specimenSource, '[[features]]' ) > (int) strrpos( $specimenSource, '<section ' ) && (int) strpos( $specimenSource, '[[features]]' ) < (int) strpos( $specimenSource, ' id="footer"' )
 	&& $specimen === rtrim( str_replace( [ '[[lorem]]', '[[short]]', '[[placeholder]]', '[[features]]' ], array_merge( $tokenValues, [ '' ] ), $specimenSource ), "\n" ) );
 
-// The places of the specimen are the elements with an id that a block of it starts at; the manual tells where the block of a feature is looked at in one entry of each language, found by the file it names, which names the anchor the page gives it
+// The places of the specimen are the elements with an id that a block of it starts at; the entry of the manual on the preview names the file a feature brings its block in, design/preview.tpl, in both languages
 preg_match_all( '/<(?:div|section) id="([a-z]+)"/', $specimen, $placeIds );
 
-$placeEntries = [];
-
-foreach( [ 'en_US', 'de_DE' ] as $placeLocale )
-	$placeEntries[$placeLocale] = array_values( array_filter( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), static fn( string $entry ): bool => str_contains( $says( $entry, $placeLocale ), Setup::PREVIEW ) === true ) );
-
-check( 'the manual tells how a feature shows itself on the specimen in one entry, the same one in both languages, found by the file it names, design/preview.tpl - and the entry names the three tokens of the file, the grid row it is made of and the anchor the page gives the block',
-	Setup::PREVIEW === 'design/preview.tpl' && Setup::ANCHOR_PREFIX === 'feature-' && count( $placeIds[1] ) >= 8 && count( $placeEntries['en_US'] ) === 1 && $placeEntries['en_US'] === $placeEntries['de_DE']
-	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( [ '[[lorem]]', '[[short]]', '[[placeholder]]', Setup::ANCHOR_PREFIX. '<key>', 'nino-grid-row' ], static fn( string $word ): bool => str_contains( $said( $placeEntries[$locale][0], $locale ), $word ) === false ) !== [] ) === [] );
+check( 'the manual names the file a feature shows itself on the specimen with, design/preview.tpl, in the entry on the preview, in both languages, and the page gives the block the anchor it starts at',
+	Setup::PREVIEW === 'design/preview.tpl' && Setup::ANCHOR_PREFIX === 'feature-' && count( $placeIds[1] ) >= 8
+	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => str_contains( $said( 'Preview', $locale ), Setup::PREVIEW ) === false ) === [] );
 
 $oldWords = [];
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ), FilesystemIterator::SKIP_DOTS ) ) as $file ) {
@@ -10373,13 +10290,6 @@ check( 'the compiled defaults carry the six inks on every element, each at the r
 	$inkBlockAt( $inkSheet ) === [ '--section-title-ink' => 'var(--section-title-ink--default)', '--section-subtitle-ink' => 'var(--section-subtitle-ink--default)', '--tiles-title-ink' => 'var(--tiles-title-ink--default)', '--tiles-subtitle-ink' => 'var(--tiles-subtitle-ink--default)', '--card-title-ink' => 'var(--card-title-ink--default)', '--card-subtitle-ink' => 'var(--card-subtitle-ink--default)' ]
 	&& $inkBlockAt( $inkChosen ) === [ '--section-title-ink' => 'var(--color-accent)', '--section-subtitle-ink' => 'var(--color-primary)', '--tiles-title-ink' => 'var(--color-border)', '--tiles-subtitle-ink' => 'var(--tiles-subtitle-ink--default)', '--card-title-ink' => 'var(--card-title-ink--default)', '--card-subtitle-ink' => 'var(--color-focus)' ]
 	&& array_filter( [ 'section', 'tiles', 'card' ], static fn( string $part ): bool => Setup::normalize( $appData, [], $library )['knobs'][$part]['title-ink'] !== '' || Setup::normalize( $appData, [], $library )['knobs'][$part]['subtitle-ink'] !== '' ) === [] );
-
-/*	The manual tells the inks in the entry of the colours and the grade in the entry of the strips, and each is told in both languages by as many sentences and as many names of an object in brackets: a clause that one language lost is a clause missing	*/
-$manualShape = static fn( string $entry, string $locale ): array => [ preg_match_all( '/[.;] /', (string) ( $feature['manual']['panel'][$entry][$locale] ?? '' ) ), substr_count( (string) ( $feature['manual']['panel'][$entry][$locale] ?? '' ), '(' ) ];
-
-check( 'the entry of the colours and the entry of the strips are told alike in both languages: the same number of sentences and clauses, the same number of objects named in brackets, and in the colours the three objects that have an ink are named',
-	$manualShape( 'Colours', 'en_US' ) === $manualShape( 'Colours', 'de_DE' ) && $manualShape( 'Strips of the knobs', 'en_US' ) === $manualShape( 'Strips of the knobs', 'de_DE' ) && $manualShape( 'Colours', 'en_US' )[1] >= 6
-	&& array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => array_filter( [ 'section', 'tiles', 'card' ], static fn( string $object ): bool => str_contains( (string) $feature['manual']['panel']['Colours'][$locale], '('. $panelWord( 'object/'. $object. '/label', $locale ). ')' ) === false ) !== [] ) === [] );
 
 $inkThemes = [];
 

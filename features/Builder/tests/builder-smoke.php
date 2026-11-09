@@ -105,166 +105,46 @@ check( 'it validates, key "builder"', is_array( $manifest ) === true && $manifes
 check( 'it is written for the kernel that has the Components module, with the card called one, the stretched link, the slug and the options methods', is_array( $manifest ) === true && $manifest['nino'] === '^1.10' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it is a feature for content, with nothing required, no settings and no data of its own', $manifest['category'] === 'content' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [] );
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
-check( 'its manual says what it adds: the panel, and no shortcode, route or callback', $manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] && $manifest['manual']['callbacks'] === [] && isset( $manifest['manual']['panel']['Builder'] ) === true );
-check( '...and tells, in both languages and in a line each, of the language picker, the texts of the keys and the pictures of the slots', array_diff( [ 'Language of the texts', 'Texts of the keys', 'Pictures of the slots' ], array_keys( $manifest['manual']['panel'] ) ) === [] && array_reduce( [ 'Language of the texts', 'Texts of the keys', 'Pictures of the slots' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['panel'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel'][$name], 'en_US' ), true ) );
-check( '...and tells of the loop, of the lightbox, of the components by place and of the card and its form, in both languages and in a line each - the cards of a loop are gone from it, as the kernel has no such thing, and so are their words', array_diff( [ 'Loop', 'The lightbox', 'Components by place', 'The card', 'Properties of a card' ], array_keys( $manifest['manual']['panel'] ) ) === []
-	&& isset( $manifest['manual']['panel']['Cards of a loop'] ) === false && array_reduce( [ 'Loop', 'The lightbox', 'Components by place', 'The card', 'Properties of a card' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['panel'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel'][$name], 'en_US' ), true )
-	&& array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
-		$texts = (array) include $dir. '/text/'. $locale. '.php';
-		return array_filter( array_keys( $texts ), static fn( string $key ): bool => str_contains( $key, '/stack/card' ) === true || str_contains( $key, '/option/card-' ) === true ) !== [];
-	} ) === [] );
-$groupLines = isset( $manifest['manual']['panel']['Group'] ) === true ? [ \Nino\Features::localized( $manifest['manual']['panel']['Group'], 'en_US' ), \Nino\Features::localized( $manifest['manual']['panel']['Group'], 'de_DE' ) ] : [];
-$groupMarkup = array_values( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_contains( $handle, '[panel' ) === true ) );
-check( '...and tells of the group of panels a column can hold, in both languages and in a line each under a thousand bytes - the component in the panel, and the call with its panels in the markup, and the loop around the row beside it - with no more than forty lines in either section',
-	count( $groupLines ) === 2 && $groupLines[0] !== $groupLines[1] && strlen( $groupLines[0] ) < 1000 && strlen( $groupLines[1] ) < 1000 && count( $groupMarkup ) === 1
-	&& array_reduce( [ \Nino\Features::localized( $manifest['manual']['markup'][$groupMarkup[0] ?? ''] ?? '', 'en_US' ), \Nino\Features::localized( $manifest['manual']['markup'][$groupMarkup[0] ?? ''] ?? '', 'de_DE' ) ], static fn( bool $carry, string $line ): bool => $carry === true && $line !== '' && strlen( $line ) < 1000, true )
-	&& count( $manifest['manual']['panel'] ) <= 40 && count( $manifest['manual']['markup'] ) <= 40 );
-$groupNamed = [ 'Settings dialogs' => [ 'en_US' => 'Spacing, Width', 'de_DE' => 'Abstände, Breite' ], 'The blocks of the dialogs' => [ 'en_US' => 'Loop: what a section repeats', 'de_DE' => 'Loop: was eine Section wiederholt' ], 'The dialog of a section' => [ 'en_US' => 'Loop chooses what repeats', 'de_DE' => 'Loop wählt, was sich wiederholt' ] ];
-$groupNamedMissing = [];
-$longLines = [];
+/*	The manual is the feature's overview and no documentation: what is held of it is its shape - the six sections of the kernel, a few entries in the ones it fills, each a line that is one
+	sentence of at most 200 characters, the same handles in both languages - and never its words; the code and the tests are the detail	*/
+$manualLines = static function( array $manual ): array {
+	$lines = [];
 
-foreach( $groupNamed as $entry => $words )
-	foreach( $words as $locale => $word )
-		if( str_contains( \Nino\Features::localized( $manifest['manual']['panel'][$entry] ?? '', $locale ), $word ) === false )
-			$groupNamedMissing[] = $entry. ' '. $locale;
+	foreach( $manual as $section => $entries )
+		foreach( $entries as $handle => $line )
+			foreach( [ 'en_US', 'de_DE' ] as $locale )
+				$lines[] = [ $section, (string) $handle, $locale, (string) ( is_array( $line ) === true ? ( $line[$locale] ?? '' ) : '' ) ];
 
-foreach( $manifest['manual'] as $section => $entries )
-	foreach( $entries as $handle => $line )
-		foreach( [ 'en_US', 'de_DE' ] as $locale )
-			if( strlen( \Nino\Features::localized( $line, $locale ) ) >= 1000 )
-				$longLines[] = $section. ' '. $handle. ' '. $locale;
-
-check( '...the lists of the blocks of a dialog and the entry of the spacing of a section name what a section repeats and no longer a group, in both languages, and no line of the manual is a thousand bytes or more',
-	$groupNamedMissing === [] && $longLines === [] );
-$loopLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Loop'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Loop'], 'de_DE' ) ];
-$columnLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'de_DE' ) ];
-check( '...the entry of the loop describes it as a component with children, by the cell of the stack, added in the lightbox group Loops and set in Data, Presentation and Properties - in both languages, the German with its own words - and the entry of a column has four blocks and no Loop among them',
-	str_contains( $loopLines['en_US'], 'component with children' ) === true && str_contains( $loopLines['en_US'], 'Loops' ) === true && str_contains( $loopLines['en_US'], 'Data' ) === true && str_contains( $loopLines['en_US'], 'Presentation' ) === true && str_contains( $loopLines['en_US'], 'Properties' ) === true
-	&& str_contains( $loopLines['de_DE'], 'Komponente mit Kindern' ) === true && str_contains( $loopLines['de_DE'], 'Daten' ) === true && str_contains( $loopLines['de_DE'], 'Darstellung' ) === true && str_contains( $loopLines['de_DE'], 'Eigenschaften' ) === true
-	&& str_contains( $columnLines['en_US'], 'four blocks' ) === true && str_contains( $columnLines['en_US'], ' Loop: ' ) === false && str_contains( $columnLines['de_DE'], 'vier Blöcke' ) === true && str_contains( $columnLines['de_DE'], ' Loop: ' ) === false
-	&& str_contains( $columnLines['en_US'], 'Presentation' ) === false && str_contains( $columnLines['de_DE'], 'Darstellung' ) === false );
-$lightbox = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['The lightbox'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['The lightbox'], 'de_DE' ) ];
-$byPlace = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'de_DE' ) ];
-check( '...and the entries keep what they say of the dialogs: the blocks - which kind of element a dialog remembers its block for -, the form of a component - how the attributes are drawn, that what has no value is not written, and that the alignment of a title stands over the one of its column and section - in both languages, under a thousand bytes', ( static function() use ( $manifest ): bool {
-	$needles = [
-		'en_US' => [ 'The blocks of a dialog' => [ 'a component by its name', 'Desktop for Global', 'Escape closes it and leaves the dialog open' ], 'The form of a component' => [ 'a select, a flag as a switch or a checkbox', 'is not written', 'stands over the alignment of its column and section' ] ],
-		'de_DE' => [ 'The blocks of a dialog' => [ 'einer Komponente nach ihrem Namen', 'bei Global Desktop', 'Escape schließt es und lässt den Dialog offen' ], 'The form of a component' => [ 'ein Schalter als Schalter oder Checkbox', 'wird nicht geschrieben', 'steht über der Ausrichtung ihrer Spalte und Section' ] ],
-	];
-	foreach( $needles as $locale => $entries )
-		foreach( $entries as $name => $list ) {
-			$line = (string) ( $manifest['manual']['panel'][$name][$locale] ?? '' );
-			if( strlen( $line ) >= 1000 )
-				return false;
-			foreach( $list as $needle )
-				if( str_contains( $line, $needle ) === false )
-					return false;
-		}
-	return true;
-} )() );
-check( '...and names the classes of the alignment of a text in a markup entry of its own, in both languages and under a thousand bytes: the three stages, the place after the eight sides, the classes that stay the call\'s, and the texts of a card that align with their card, which are no part of it', ( static function() use ( $manifest ): bool {
-	$handle = 'nino-text-center nino-text-m-left nino-text-l-right';
-	foreach( [ 'en_US' => [ 'nino-text-m-<x>', 'nino-text-l-<x>', 'nino-text-xl-<x>', 'eight sides', 'card-title' ], 'de_DE' => [ 'nino-text-m-<x>', 'nino-text-l-<x>', 'nino-text-xl-<x>', 'acht Seiten', 'card-title' ] ] as $locale => $needles ) {
-		$line = \Nino\Features::localized( $manifest['manual']['markup'][$handle] ?? '', $locale );
-		if( $line === '' || strlen( $line ) >= 1000 || str_contains( $line, "\n" ) === true )
+	return $lines;
+};
+// One sentence: no full stop, exclamation or question mark followed by a space and anything else (a handle such as page-*.tpl has none, a full stop is followed by a letter there), and no line feed
+$oneSentence = static fn( string $text ): bool => $text !== '' && mb_strlen( $text ) <= 200 && preg_match( '/[.!?]\s+\S|\n/u', $text ) !== 1;
+$sentences = static fn( array $description, string $locale ): int => count( array_filter( (array) preg_split( '/(?<=[.!?])\s+/', trim( (string) ( $description[$locale] ?? '' ) ) ) ) );
+$counts = array_map( 'count', $manifest['manual'] );
+check( 'its description is two or three sentences in each language, and differs between them',
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => $sentences( $manifest['description'], $locale ) < 2 || $sentences( $manifest['description'], $locale ) > 3 ) === []
+	&& $manifest['description']['en_US'] !== $manifest['description']['de_DE'] );
+check( '...its manual has the six sections of the kernel in their order, five entries of markup at most and eight of the panel, and no shortcode, route, callback or install entry',
+	array_keys( $manifest['manual'] ) === \Nino\Features::MANUAL_SECTIONS && $counts['markup'] >= 1 && $counts['markup'] <= 5 && $counts['panel'] >= 1 && $counts['panel'] <= 8
+	&& $counts['shortcodes'] === 0 && $counts['routes'] === 0 && $counts['callbacks'] === 0 && $counts['install'] === 0 );
+check( '...every line of it is one sentence of at most 200 characters, in both languages',
+	array_filter( $manualLines( $manifest['manual'] ), static fn( array $line ): bool => $oneSentence( $line[3] ) === false ) === [] );
+check( '...every entry has the same handle in both languages, a line in each, and the two lines differ',
+	array_filter( $manifest['manual'], static fn( array $entries ): bool => array_filter( $entries, static fn( mixed $line ): bool => is_array( $line ) === false || array_keys( $line ) !== [ 'en_US', 'de_DE' ] || $line['en_US'] === $line['de_DE'] ) !== [] ) === [] );
+check( '...the handles a developer types are the handles of the entries: the wrap, a section with its row, the loop call, the call of a component with children and the marker of an HTML+ block in the markup, the list and the editor in the panel',
+	array_diff( [ '<div class="nino-wrap nino-wrap--vpa">', '[card padding="3"]…[/card]' ], array_keys( $manifest['manual']['markup'] ) ) === []
+	&& count( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_starts_with( $handle, '<section ' ) === true ) ) === 1
+	&& count( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_starts_with( $handle, '[sections ' ) === true ) ) === 1
+	&& count( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $handle ): bool => str_contains( $handle, '<!-- nino:html -->' ) === true && str_contains( $handle, '<!-- /nino:html -->' ) === true ) ) === 1
+	&& isset( $manifest['manual']['panel']['Builder'] ) === true );
+check( '...and the cards of a loop are gone from the texts of the panel, as the kernel has no such thing, and so is the count of the blocks from the english header of the order', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
+	$texts = (array) include $dir. '/text/'. $locale. '.php';
+	return array_filter( array_keys( $texts ), static fn( string $key ): bool => str_contains( $key, '/stack/card' ) === true || str_contains( $key, '/option/card-' ) === true ) !== [];
+} ) === [] && str_contains( file_get_contents( $dir. '/text/en_US.php' ), 'names of the seven blocks' ) === false );
+check( '...and the hint of the order of a row names the class the canvas turns it by, in both languages', ( static function() use ( $dir ): bool {
+	foreach( [ 'en_US', 'de_DE' ] as $locale )
+		if( str_contains( (string) ( ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/hint/reverse]]'] ?? '' ), 'nino-section--mirrored' ) === false )
 			return false;
-		foreach( $needles as $needle )
-			if( str_contains( $line, $needle ) === false )
-				return false;
-	}
-	return \Nino\Features::localized( $manifest['manual']['markup'][$handle], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$handle], 'en_US' );
-} )() );
-check( '...and the lines of the lightbox and of the components by place are, in both languages, under a thousand bytes, which the kernel takes for a line and not a paragraph',
-	strlen( $lightbox['en_US'] ) < 1000 && strlen( $lightbox['de_DE'] ) < 1000 && strlen( $byPlace['en_US'] ) < 1000 && strlen( $byPlace['de_DE'] ) < 1000 );
-check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the classes of the eight sides of the spacing, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-ml-1 nino-mr-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], array_keys( $manifest['manual']['markup'] ) ) === []
-	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-ml-1 nino-mr-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
-
-$slugKey = array_values( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $name ): bool => str_starts_with( $name, 'href="[[/nino/dir]]' ) === true ) );
-check( '...and its example of a link to a page of the site goes on with the slug of the element, and names the slug and the uri in both languages',
-	$slugKey === [ 'href="[[/nino/dir]][[/_nino/webpage/<uri>/uri]]/[[.slug]]"' ]
-	&& array_reduce( [ 'en_US', 'de_DE' ], static fn( bool $carry, string $locale ): bool => $carry === true && str_contains( \Nino\Features::localized( $manifest['manual']['markup'][$slugKey[0]], $locale ), '[[.slug]]' ) === true
-		&& str_contains( \Nino\Features::localized( $manifest['manual']['markup'][$slugKey[0]], $locale ), '[[.uri]]' ) === true, true ) );
-
-$settingsLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'de_DE' ) ];
-check( '...and has a line of its own for the settings dialogs of columns and components, in both languages and under a thousand bytes each',
-	$settingsLines['en_US'] !== '' && $settingsLines['de_DE'] !== '' && $settingsLines['en_US'] !== $settingsLines['de_DE'] && strlen( $settingsLines['en_US'] ) < 1000 && strlen( $settingsLines['de_DE'] ) < 1000 );
-$hoverLines = array_filter( $manifest['manual']['panel'], static fn( mixed $line ): bool => str_contains( \Nino\Features::localized( $line, 'en_US' ), \Nino\Modules\Builder\Reader::HOVER_CLASS ) === true );
-check( '...and names the class a picture takes for the hover of the page in a line that is told in both languages',
-	$hoverLines !== [] && array_filter( $hoverLines, static fn( mixed $line ): bool => str_contains( \Nino\Features::localized( $line, 'de_DE' ), \Nino\Modules\Builder\Reader::HOVER_CLASS ) === false || \Nino\Features::localized( $line, 'de_DE' ) === \Nino\Features::localized( $line, 'en_US' ) ) === [] );
-check( '...and has a line of its own for the tools of a frame - how the toolbar is named and how large a tool is to hit - in both languages',
-	isset( $manifest['manual']['panel']['The tools of a frame'] ) === true && array_diff( [ 'en_US', 'de_DE' ], array_keys( $manifest['manual']['panel']['The tools of a frame'] ) ) === []
-	&& \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'en_US' ) );
-check( '...and names the blocks of a dialog - the loop is one of them - and the entries this patch rewrites, each in both languages and a line under a thousand bytes, in a manual of at most forty entries of the panel - the loop names its presentation and its data apart, and the kinds it brings have a line each', ( static function() use ( $manifest ): bool {
-	$names = [ 'The blocks of the dialogs', 'The dialog of a section', 'The spacing and width of a section', 'Properties of a card', 'Loop', 'Placeholders', 'The card', 'Heads of the frames', 'Pictures of the slots', 'Copy and Paste', 'Table and List', 'Plain repeat, Tabs and Accordion' ];
-	foreach( $names as $name )
-		foreach( [ 'en_US', 'de_DE' ] as $locale )
-			if( isset( $manifest['manual']['panel'][$name][$locale] ) === false || strlen( $manifest['manual']['panel'][$name][$locale] ) >= 1000 )
-				return false;
-	return count( $manifest['manual']['panel'] ) <= 40 && str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'Presentation' ) === true && str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'Darstellung' ) === true
-		&& str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'none, where the stack draws from fields' ) === true && str_contains( $manifest['manual']['panel']['Loop']['en_US'], 'columns of a table' ) === true
-		&& str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'oder keine, wo der Stack aus Feldern zeichnet' ) === true && str_contains( $manifest['manual']['panel']['Loop']['de_DE'], 'Spalten einer Tabelle' ) === true
-		&& str_contains( $manifest['manual']['panel']['Plain repeat, Tabs and Accordion']['en_US'], 'a picture or an empty one numbers them' ) === true && str_contains( $manifest['manual']['panel']['Plain repeat, Tabs and Accordion']['de_DE'], 'ein Bild oder ein leeres nummeriert sie' ) === true
-		&& str_contains( $manifest['manual']['panel']['Table and List']['en_US'], 'Content' ) === true && str_contains( $manifest['manual']['panel']['Plain repeat, Tabs and Accordion']['de_DE'], 'Titelfeld' ) === true && str_contains( $manifest['manual']['panel']['The blocks of the dialogs']['en_US'], 'Loop:' ) === true && str_contains( $manifest['manual']['panel']['The blocks of the dialogs']['de_DE'], 'Loop:' ) === true
-		&& str_contains( $manifest['manual']['panel']['Properties of a card']['en_US'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Properties of a card']['de_DE'], 'Link:' ) === true && str_contains( $manifest['manual']['panel']['Pictures of the slots']['en_US'], 'side by side' ) === true
-		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], ' Du ' ) === true
-		&& str_contains( $manifest['manual']['panel']['Copy and Paste']['en_US'], 'Ctrl+C and Ctrl+V' ) === true && str_contains( $manifest['manual']['panel']['Copy and Paste']['de_DE'], 'Strg+C und Strg+V' ) === true
-		&& trim( $manifest['manual']['panel']['Copy and Paste']['en_US'] ) !== '' && trim( $manifest['manual']['panel']['Copy and Paste']['de_DE'] ) !== '' && $manifest['manual']['panel']['Copy and Paste']['en_US'] !== $manifest['manual']['panel']['Copy and Paste']['de_DE'];
-} )() );
-check( '...and has an entry of its own for the order of a row, in both languages and under a thousand bytes, which names the classes it writes', ( static function() use ( $manifest ): bool {
-	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
-		$line = (string) ( $manifest['manual']['panel']['The order of a section'][$locale] ?? '' );
-		if( $line === '' || strlen( $line ) >= 1000 || str_contains( $line, 'nino-grid-row--reverse' ) === false || str_contains( $line, '--l-forward' ) === false )
-			return false;
-	}
-	return $manifest['manual']['panel']['The order of a section']['en_US'] !== $manifest['manual']['panel']['The order of a section']['de_DE'] && count( $manifest['manual']['panel'] ) <= 40;
-} )() );
-check( '...and has an entry of its own for the loop kinds Table and List, in both languages and under a thousand bytes, which names the kinds, the columns with their title and value, the free text and the content of a column - the entry of the loop sends to it - and a markup entry for the table, the column and the line, told in both',
-	( static function() use ( $manifest ): bool {
-		$entry = $manifest['manual']['panel']['Table and List'] ?? [];
-		$words = [ 'en_US' => [ 'Table', 'List', 'Title', 'Value', 'Free text', '[table]' ], 'de_DE' => [ 'Tabelle', 'Liste', 'Titel', 'Wert', 'Freitext', '[table]' ] ];
-		foreach( $words as $locale => $needles ) {
-			$line = (string) ( $entry[$locale] ?? '' );
-			if( $line === '' || strlen( $line ) >= 1000 )
-				return false;
-			foreach( $needles as $needle )
-				if( str_contains( $line, $needle ) === false )
-					return false;
-			if( str_contains( (string) ( $manifest['manual']['panel']['Loop'][$locale] ?? '' ), 'Table and List' ) === false || strlen( (string) $manifest['manual']['panel']['Loop'][$locale] ) >= 1000 )
-				return false;
-		}
-		$markup = array_filter( $manifest['manual']['markup'], static fn( mixed $line, string $call ): bool => str_starts_with( $call, '[table ' ) === true && str_contains( $call, '[col ' ) === true, ARRAY_FILTER_USE_BOTH );
-		$text = (array) ( array_values( $markup )[0] ?? [] );
-		return $entry['en_US'] !== $entry['de_DE'] && count( $markup ) === 1 && str_contains( (string) ( $text['en_US'] ?? '' ), '[line' ) === true && str_contains( (string) ( $text['de_DE'] ?? '' ), '[line' ) === true && ( $text['en_US'] ?? '' ) !== ( $text['de_DE'] ?? '' )
-			&& str_contains( (string) $text['en_US'], '[col /key]' ) === true && str_contains( (string) $text['de_DE'], 'Spalte mit Inhalt' ) === true && count( $manifest['manual']['panel'] ) <= 40;
-	} )() );
-check( '...and the lists of the blocks name Order - the settings dialogs, the blocks of the dialogs, the dialog of a section of tiles - in both languages, the entry of its own says where it stands for a section and for tiles, that the canvas turns the row, and what a hand-written s or xl tier is; the header of the english text names no number of blocks', ( static function() use ( $manifest, $dir ): bool {
-	$where = [
-		'en_US' => [ 'Settings dialogs' => 'Width and alignment, Order, Loop', 'The blocks of the dialogs' => 'Order: the switch', 'The dialog of a section of tiles' => 'Spacing, Order, Loop', 'The order of a section' => 'Order, in the dialog' ],
-		'de_DE' => [ 'Settings dialogs' => 'Breite und Ausrichtung, Reihenfolge, Loop', 'The blocks of the dialogs' => 'Reihenfolge: der Schalter', 'The dialog of a section of tiles' => 'Abstände, Reihenfolge, Loop', 'The order of a section' => 'Reihenfolge, im Dialog' ],
-	];
-	foreach( $where as $locale => $names ) {
-		foreach( $names as $name => $phrase )
-			if( str_contains( (string) ( $manifest['manual']['panel'][$name][$locale] ?? '' ), $phrase ) === false )
-				return false;
-		$entry = (string) $manifest['manual']['panel']['The order of a section'][$locale];
-		if( str_contains( $entry, '--s-reverse' ) === false || str_contains( $entry, '--xl-forward' ) === false )
-			return false;
-	}
-	// The canvas is the Vorschau of the German Builder - the Fläche is the Surface block - and the block is named in the entry
-	$german = (string) $manifest['manual']['panel']['The order of a section']['de_DE'];
-	if( str_contains( $german, 'Vorschau dreht die Zeile' ) === false || str_contains( $german, 'Fläche' ) === true || str_contains( $german, 'nach dem Block Abstände' ) === false )
-		return false;
-	$hints = [ 'en_US' => 'nino-section--mirrored', 'de_DE' => 'nino-section--mirrored' ];
-	foreach( $hints as $locale => $word )
-		if( str_contains( (string) ( ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/hint/reverse]]'] ?? '' ), $word ) === false )
-			return false;
-	return str_contains( file_get_contents( $dir. '/text/en_US.php' ), 'names of the seven blocks' ) === false;
-} )() );
-check( '...and the entry on the spacing of a section names the gap between the columns of its row, by the word the panel gives the select, in both languages', ( static function() use ( $manifest, $dir ): bool {
-	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
-		$word = (string) ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/section/row-gap]]'];
-		if( $word === '' || str_contains( \Nino\Features::localized( $manifest['manual']['panel']['The spacing and width of a section'], $locale ), $word ) === false )
-			return false;
-	}
 	return true;
 } )() );
 check( 'the words of the patch are in both languages: the block Loop, the group Background image, the three hints of the width, the three lines of the Link block of a linked card - whose link it takes, that only one should be, and what to add where it has none -, the row of a picture in its group, the tools Copy and Paste with what each says and why a paste is refused - and the place of the content of a cover is called Content in the cover, and the gap between the columns of a row has a word and a hint', ( static function() use ( $dir ): bool {
@@ -3699,11 +3579,11 @@ $textBack = $textSource['status'] === 200 ? $read( $textSource['parts'][1]['sour
 check( 'the alignment of the text of a column for each viewport is written by the source view as nino-text-center nino-text-m-left, and the source reads back as the model it was written from',
 	$textSource['status'] === 200 && preg_match( '/<div class="[^"]*\bnino-text-center nino-text-m-left\b[^"]*">/', $textSource['parts'][1]['source'] ) === 1 && ( $textBack['blocks'][0]['cols'][0]['text'] ?? null ) === [ 's' => 'center', 'm' => 'left', 'l' => 'left' ] );
 
-check( '...and the entry on the loop names the choice among the orders of its dialog, in both languages: the word of the panel for it and the uri of the element', ( static function() use ( $manifest, $dir ): bool {
-	foreach( [ 'en_US' => 'Random', 'de_DE' => 'Zufällig' ] as $locale => $word )
-		if( str_contains( (string) $manifest['manual']['panel']['Loop'][$locale], $word ) === false || ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/stack/sort-random]]'] !== $word || strlen( (string) $manifest['manual']['panel']['Loop'][$locale] ) >= 1000 )
-			return false;
-	return true;
+check( '...and the dialog of a loop has the choice of a random order in both languages: the key is there in both text files, with a word of its own in each', ( static function() use ( $dir ): bool {
+	$words = [];
+	foreach( [ 'en_US', 'de_DE' ] as $locale )
+		$words[$locale] = trim( (string) ( ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/stack/sort-random]]'] ?? '' ) );
+	return $words['en_US'] !== '' && $words['de_DE'] !== '' && $words['en_US'] !== $words['de_DE'];
 } )() );
 $randomSaved = $loaded['model'];
 $randomSaved['blocks'][1]['cols'][1]['components'][0]['attributes']['sort'] = 'random';
