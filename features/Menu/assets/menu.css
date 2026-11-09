@@ -1,0 +1,340 @@
+/**
+ *	Nino - Menu
+ *	menu.css		The list [menu /<key>] draws and the dropdown panels of its entries.
+ *							Bundled into the project's own /.cache/style.css by the manifest's
+ *							assets (docs/features.md, "Assets") - never rendered through the
+ *							fill/shortcode engine, so nothing in here is a textfill.
+ *
+ *							The panel's look is custom properties, --menu-ground (with the parts
+ *							of a ground), --menu-space, --menu-gap, --menu-radius, --menu-shadow
+ *							and --menu-title, whose defaults are the page's own roles: a menu is
+ *							as it is without the Design feature. They stand in :where(), which
+ *							has no specificity, so the compile of the Design (design/regular.css)
+ *							wins whatever the order of the sheets.
+ *
+ *							From 768px the panel is a bar as wide as the nearest positioned
+ *							ancestor of the list - the hull, which this file makes relative -
+ *							under the entry. menu.js opens it (aria-expanded of the button);
+ *							without the script it shows on :hover and :focus-within. Below
+ *							768px, in the burger overlay of the kernel, the panel stands in the
+ *							flow under its entry: folded behind the button where the script runs,
+ *							open where it does not.
+ */
+
+:where(:root) {
+	--menu-ground: var(--color-background);
+	--menu-ground-on: var(--color-text);
+	--menu-ground-on-muted: color-mix( in srgb, var(--color-text) 78%, var(--color-background) );
+	--menu-ground-link: var(--color-text);
+	--menu-ground-border: var(--color-border);
+	--menu-ground-focus: var(--color-focus-default);
+	--menu-ground-shadow: color-mix( in srgb, var(--color-text) 16%, transparent );
+	--menu-space: var(--space-3);
+	--menu-gap: var(--space-3);
+	--menu-radius: var(--radius-large);
+	--menu-shadow: 0 .5rem 1.5rem var(--menu-ground-shadow);
+	--menu-title: 1.1rem;
+}
+
+/*	The hull is what the panels are as wide as, and what they are placed against	*/
+.nino-menu-wrap {
+	position: relative;
+}
+
+.nino-menu {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.nino-menu-item {
+	min-width: 0;
+}
+
+/*	An entry with a panel is its link and the button beside it in one row, the panel after them	*/
+.nino-menu-item--panel {
+	display: flex;
+	align-items: center;
+}
+
+.nino-menu-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 1.75rem;
+}
+
+/*	The button beside the link: a chevron, drawn by the border of the button's own after-box so that it takes the colour of the text.
+	Without the script there is nothing to press: from 768px the entry opens on :hover and :focus-within, and below it every panel is open	*/
+.nino-menu-toggle {
+	position: relative;
+	flex: 0 0 auto;
+	width: 1.75rem;
+	height: 1.75rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	cursor: pointer;
+}
+.nino-menu-toggle::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: .5rem;
+	height: .5rem;
+	border-style: solid;
+	border-width: 0 2px 2px 0;
+	transform: translate( -50%, -70% ) rotate( 45deg );
+	transition: transform .2s;
+}
+.nino-menu-toggle[aria-expanded="true"]::after {
+	transform: translate( -50%, -30% ) rotate( 225deg );
+}
+.nino-menu:not(.nino-menu-js) .nino-menu-toggle {
+	display: none;
+}
+
+/*	What stands in a panel is written with the roles of the place it stands in: the ground the panel paints from 768px (below), the overlay of the burger under it	*/
+.nino-menu-panel {
+	text-align: left;
+}
+
+.nino-menu-cols {
+	display: grid;
+	gap: var(--menu-gap);
+	grid-template-columns: minmax( 0, 1fr );
+}
+
+.nino-menu-col {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--space-1);
+	min-width: 0;
+}
+
+.nino-menu-title,
+.nino-menu-subtitle {
+	margin: 0;
+}
+
+.nino-menu-title {
+	color: inherit;
+	font-size: var(--menu-title);
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.nino-menu-subtitle {
+	color: var(--color-subtitle);
+	font-size: var(--fontsize-small);
+}
+
+.nino-menu-image {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	border-radius: var(--radius-small);
+}
+
+/*	A link in a panel is none of the links of the bar. The header sets of the Design - and the kernel's own rules for the burger - style every
+	a of li of the navigation, with a padding, a size, a spacing, a case, a line that grows under it and a rule below it: the panel takes
+	its links back, at a specificity that beats theirs (the filled pill of the active entry in two of the sets among them), so that its
+	text, its links and the links of its HTML+ are set as the panel's	*/
+.nino-menu-wrap .nino-menu .nino-menu-panel .nino-menu-cols a {
+	position: static;
+	display: inline;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--color-accent);
+	font-size: inherit;
+	letter-spacing: normal;
+	text-transform: none;
+	text-decoration: underline;
+	text-underline-offset: .2em;
+}
+.nino-menu-wrap .nino-menu .nino-menu-panel .nino-menu-cols a::after {
+	content: none;
+}
+.nino-menu-wrap .nino-menu .nino-menu-panel .nino-menu-cols a:hover,
+.nino-menu-wrap .nino-menu .nino-menu-panel .nino-menu-cols a.nino-is-active {
+	text-decoration-thickness: 2px;
+}
+
+/*	The links of the columns are lines of their own, with a target of a size that can be hit	*/
+.nino-menu-wrap .nino-menu .nino-menu-panel .nino-menu-cols a.nino-menu-link--sub {
+	display: inline-flex;
+	align-items: center;
+	min-height: 1.75rem;
+	font-size: 1rem;
+}
+
+@media (pointer: coarse) {
+	.nino-menu-toggle {
+		width: 2.75rem;
+		height: 2.75rem;
+	}
+	.nino-menu-link,
+	.nino-menu-wrap .nino-menu .nino-menu-panel .nino-menu-cols a.nino-menu-link--sub {
+		min-height: 2.75rem;
+	}
+}
+
+/*	From 768px: the bar of the navigation, the panel a dropdown under it	*/
+@media (min-width: 768px) {
+
+	/*	In a header the panel is as wide as the header and hangs from its lower edge: the hull is a part of the row - 468px of 1280px
+		in the header of the Design's regular set - so the panel is left to its nearest positioned ancestor, which is the header
+		itself. Anywhere else (a footer) the hull is what it is placed against	*/
+	header .nino-menu-wrap {
+		position: static;
+	}
+
+	/*	The bar of the header clips what is taller than it is, which is how it folds away on a scroll down; a panel that hangs from
+		it is not clipped while the header is shown, and is when the header is gone. The rail is no bar: it scrolls, and its panels
+		are in the flow	*/
+	.nino-scroll-header:not(.nino-frame-header-rail):has(.nino-menu-panel) {
+		overflow: visible;
+	}
+	body.nino-scroll-down .nino-scroll-header:not(.nino-frame-header-rail):has(.nino-menu-panel):where(:not(:has(:focus-visible))) {
+		overflow: hidden;
+	}
+
+	.nino-menu-item--panel {
+		gap: .25rem;
+	}
+
+	/*	The panel paints a ground as a section does: the roles of the kernel that follow a ground are pointed at it, so that the text, the ring of the focus and the border are right on whichever ground is chosen	*/
+	.nino-menu-panel {
+		--color-ground: var(--menu-ground);
+		--color-ink: var(--menu-ground-on);
+		--color-title: var(--menu-ground-on);
+		--color-subtitle: var(--menu-ground-on-muted);
+		--color-accent: var(--menu-ground-link);
+		--color-border: var(--menu-ground-border);
+		--color-focus: var(--menu-ground-focus);
+		color: var(--menu-ground-on);
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		z-index: 60;
+		visibility: hidden;
+		padding: var(--menu-space);
+		border-radius: var(--menu-radius);
+		background-color: var(--menu-ground);
+		box-shadow: var(--menu-shadow);
+		opacity: 0;
+		transform: translateY( -.25rem );
+		transition: opacity .15s, transform .15s, visibility 0s .15s;
+	}
+
+	/*	Open: by the script (the button says it), and without the script by the pointer and the focus	*/
+	.nino-menu-toggle[aria-expanded="true"] ~ .nino-menu-panel,
+	.nino-menu:not(.nino-menu-js) .nino-menu-item--panel:hover > .nino-menu-panel,
+	.nino-menu:not(.nino-menu-js) .nino-menu-item--panel:focus-within > .nino-menu-panel {
+		visibility: visible;
+		opacity: 1;
+		transform: none;
+		transition-delay: 0s;
+	}
+
+	.nino-menu-cols-2 { grid-template-columns: repeat( 2, minmax( 0, 1fr ) ); }
+	.nino-menu-cols-3 { grid-template-columns: repeat( 3, minmax( 0, 1fr ) ); }
+	.nino-menu-cols-4 { grid-template-columns: repeat( 4, minmax( 0, 1fr ) ); }
+
+	/*	A menu in a footer opens upwards: there is no page below it	*/
+	footer .nino-menu-panel {
+		top: auto;
+		bottom: 100%;
+	}
+
+	/*	Where the list stands in a place that has no room for a dropdown the panel is drawn in the flow, under its entry, as in the
+		burger overlay of a phone: a header that is a rail down the side of the page (its panel hung below the screen) and the
+		overlay a burger opens at any width (its panel hung inside a clipped box). The script reads the shape from the style - a
+		panel that is not positioned is an accordion - so the rules here are all that decides it. In the rail the panel stays in
+		the flow rather than beside the rail: the rail scrolls, and a panel hung at its side would be clipped by it	*/
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-item--panel {
+		flex-wrap: wrap;
+	}
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-item--panel > .nino-menu-link {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-panel {
+		--color-ground: unset;
+		--color-ink: unset;
+		--color-title: unset;
+		--color-subtitle: unset;
+		--color-accent: unset;
+		--color-border: unset;
+		--color-focus: unset;
+		position: static;
+		flex: 1 0 100%;
+		visibility: visible;
+		padding: var(--space-1) 0 var(--space-2) var(--space-2);
+		border-radius: 0;
+		background: none;
+		box-shadow: none;
+		color: inherit;
+		font-size: 1rem;
+		opacity: 1;
+		transform: none;
+		transition: none;
+	}
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-cols {
+		grid-template-columns: minmax( 0, 1fr );
+	}
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-subtitle {
+		color: color-mix( in srgb, currentColor 80%, transparent );
+	}
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-js .nino-menu-panel {
+		display: none;
+	}
+	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-js .nino-menu-toggle[aria-expanded="true"] ~ .nino-menu-panel {
+		display: block;
+	}
+}
+
+/*	Below 768px: in the burger overlay the panel is part of the list, under its entry, as wide as the list	*/
+@media (max-width: 767.98px) {
+
+	.nino-menu-item--panel {
+		flex-wrap: wrap;
+	}
+
+	.nino-menu-item--panel > .nino-menu-link {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+
+	.nino-menu-panel {
+		flex: 1 0 100%;
+		padding: var(--space-1) 0 var(--space-2) var(--space-2);
+		font-size: 1rem;
+	}
+
+	.nino-menu-js .nino-menu-panel {
+		display: none;
+	}
+	.nino-menu-js .nino-menu-toggle[aria-expanded="true"] ~ .nino-menu-panel {
+		display: block;
+	}
+}
+
+/*	The room the block of the Design preview (design/preview.tpl) leaves under the bar for the panel it shows open, which hangs from the bar as it does on a page	*/
+.nino-menu-stage {
+	min-height: 24rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-menu-panel,
+	.nino-menu-toggle::after {
+		transition: none;
+	}
+}

@@ -1,0 +1,1 @@
+<button type="button" class="nino-menu-toggle" aria-expanded="false" aria-controls="[[id]]" aria-describedby="[[linkid]]"><span class="nino-sr-only">[[/feature/menu/panel/open]]</span></button><div class="nino-menu-panel" id="[[id]]"><div class="nino-menu-cols nino-menu-cols-[[columns]]">[[cols]]</div></div>

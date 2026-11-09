@@ -1,0 +1,63 @@
+/*	@name			Regular
+ *	@name-de		Regulär
+ *	@description	The panel as menu.css draws it: a bar under the entry as wide as the header's row, on the ground of the page, with the soft shadow of a dropdown and its columns the width of the panel in equal parts.
+ *	@description-de	Das Panel, wie menu.css es zeichnet: eine Leiste unter dem Eintrag, so breit wie die Zeile der Kopfzeile, auf dem Grund der Seite, mit dem weichen Schatten eines Dropdowns und Spalten, die das Panel in gleiche Teile teilen.
+ *
+ *	@knob	ground		ground	colours		Ground of the panel	= default
+ *	@knob-de	ground		Grund des Panels
+ *	@knob	space		scale	surfaces	Space inside the panel
+ *	@knob-de	space		Innenabstand des Panels
+ *	@knob	gap			scale	surfaces	Space between the columns
+ *	@knob-de	gap			Abstand der Spalten
+ *	@knob	radius		scale	surfaces	Corners of the panel
+ *	@knob-de	radius		Ecken des Panels
+ *	@knob	shadow		scale	surfaces	Shadow the panel casts
+ *	@knob-de	shadow		Schatten des Panels
+ *	@knob	title		scale	type		Size of the title in a column
+ *	@knob-de	title		Größe des Titels in einer Spalte
+ *
+ *	Regular is the starting point of this feature: the layout is menu.css's own, so this file sets
+ *	the ladders and nothing else, and the middle of each is the value menu.css has as its default -
+ *	a menu under it looks as it does without the Design feature. The ground is a surface of the
+ *	palette with the text, the quiet text, the link, the border and the ring of the focus solved
+ *	for it, so a panel on the dark ground is read as well as one on the page's; it applies from
+ *	768px, where the panel is a dropdown. Below it the panel is a part of the burger overlay and
+ *	has no ground of its own.
+ */
+
+:root {
+	/*	The padding of the panel	*/
+	--menu-space--least:	var(--space-1);
+	--menu-space--less:		var(--space-2);
+	--menu-space--default:	var(--space-3);
+	--menu-space--more:		var(--space-4);
+	--menu-space--most:		var(--space-5);
+
+	/*	The gap between the columns, and between the items of a column	*/
+	--menu-gap--least:		var(--space-1);
+	--menu-gap--less:		var(--space-2);
+	--menu-gap--default:	var(--space-3);
+	--menu-gap--more:		var(--space-4);
+	--menu-gap--most:		var(--space-5);
+
+	/*	The corners of the bar; the first position is square	*/
+	--menu-radius--least:	0rem;
+	--menu-radius--less:	var(--radius-small);
+	--menu-radius--default:	var(--radius-large);
+	--menu-radius--more:	.75rem;
+	--menu-radius--most:	1.25rem;
+
+	/*	The shadow under the bar, in the colour the palette gives the ground: the first position casts none, the middle is the one menu.css has	*/
+	--menu-shadow--least:	0 0 0 0 var(--menu-ground-shadow);
+	--menu-shadow--less:	0 .125rem .5rem var(--menu-ground-shadow);
+	--menu-shadow--default:	0 .5rem 1.5rem var(--menu-ground-shadow);
+	--menu-shadow--more:	0 .75rem 2.5rem var(--menu-ground-shadow);
+	--menu-shadow--most:	0 1rem 3.5rem var(--menu-ground-shadow), 0 .125rem .5rem var(--menu-ground-shadow);
+
+	/*	The size of the title of a column	*/
+	--menu-title--least:	1rem;
+	--menu-title--less:		1.05rem;
+	--menu-title--default:	1.1rem;
+	--menu-title--more:		1.3rem;
+	--menu-title--most:		1.6rem;
+}

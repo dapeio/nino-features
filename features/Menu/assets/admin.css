@@ -1,0 +1,167 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino - Menu
+ *	admin.css		The panel's own stylesheet, loaded exactly while the panel is (see
+ *							Admin::assets()). The workbench styles headings, hints, fields,
+ *							buttons and the status line; this file keeps to what the editor
+ *							adds - the entries as cards, the columns of a panel side by side,
+ *							the picture of an item - and reads the workbench's custom
+ *							properties, so the light and the dark scheme are the workbench's.
+ */
+
+@layer nino.tool {
+
+#menu-root {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-height: 0;
+}
+#menu-root .menu-screen {
+	min-width: 0;
+	padding: 1rem var(--nino-admin-content-inline, 1rem);
+}
+#menu-root .menu-screen.admin-hidden {
+	display: none;
+}
+
+/* ------------------------------------------------------------ The list */
+
+#menu-root .menu-list {
+	margin: 0 0 1.5rem;
+	padding: 0;
+	list-style: none;
+}
+#menu-root .menu-list-row {
+	display: flex;
+	gap: .5rem;
+	align-items: center;
+}
+#menu-root .menu-list-row > .nino-admin-list-link {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+#menu-root .menu-list-row .nino-admin-badge {
+	margin-left: .5rem;
+}
+#menu-root .menu-new {
+	display: grid;
+	gap: .75rem;
+	max-width: 32rem;
+	padding: 1rem;
+}
+#menu-root .menu-new h3 {
+	margin: 0;
+}
+
+/* ------------------------------------------------------------ The editor */
+
+#menu-root .menu-editor-title {
+	margin: 1rem 0;
+	font-family: var(--nino-admin-mono);
+}
+#menu-root .menu-entries,
+#menu-root .menu-items {
+	display: grid;
+	gap: .75rem;
+	margin: 0 0 1rem;
+	padding: 0;
+	list-style: none;
+}
+#menu-root .menu-entry {
+	display: grid;
+	gap: .75rem;
+	padding: 1rem;
+}
+#menu-root .menu-entry-head,
+#menu-root .menu-item-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem 1rem;
+	align-items: end;
+}
+#menu-root .menu-entry-head .menu-entry-name {
+	align-self: center;
+	margin-right: auto;
+}
+#menu-root .menu-item-head > label {
+	flex: 1 1 10rem;
+}
+#menu-root .menu-entry-fields {
+	display: grid;
+	gap: .75rem;
+	grid-template-columns: repeat( auto-fit, minmax( 14rem, 1fr ) );
+}
+#menu-root .menu-entry-panel {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .75rem 1.5rem;
+	align-items: end;
+}
+#menu-root .menu-entry-panel > .menu-columns {
+	flex: 1 0 100%;
+}
+
+/* The columns of a panel stand side by side as they do on the page; on a narrow screen they stack */
+#menu-root .menu-columns {
+	display: grid;
+	gap: 1rem;
+	grid-template-columns: minmax( 0, 1fr );
+}
+@media (min-width: 60rem) {
+	#menu-root .menu-columns[data-columns="2"] { grid-template-columns: repeat( 2, minmax( 0, 1fr ) ); }
+	#menu-root .menu-columns[data-columns="3"] { grid-template-columns: repeat( 3, minmax( 0, 1fr ) ); }
+	#menu-root .menu-columns[data-columns="4"] { grid-template-columns: repeat( 4, minmax( 0, 1fr ) ); }
+}
+#menu-root .menu-column {
+	display: grid;
+	align-content: start;
+	gap: .75rem;
+	min-width: 0;
+	padding: .75rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+}
+#menu-root .menu-column-title {
+	margin: 0;
+}
+#menu-root .menu-item {
+	display: grid;
+	gap: .5rem;
+	padding-bottom: .75rem;
+	border-bottom: 1px solid var(--editor-border);
+}
+#menu-root .menu-html {
+	width: 100%;
+	font-family: var(--nino-admin-mono);
+	font-size: .85rem;
+}
+
+/* ------------------------------------------------------------ The picture of an item */
+
+#menu-root .menu-picture {
+	display: grid;
+	gap: .5rem;
+}
+#menu-root .menu-picture-thumb {
+	display: block;
+	max-width: 100%;
+	max-height: 9rem;
+	object-fit: contain;
+	justify-self: start;
+}
+#menu-root .menu-picture-thumb[hidden] {
+	display: none;
+}
+#menu-root .menu-picture-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+	align-items: center;
+}
+#menu-root .menu-picture-message.is-error {
+	color: var(--editor-red-ink);
+}
+
+}
