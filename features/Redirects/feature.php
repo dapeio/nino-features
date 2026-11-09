@@ -7,8 +7,8 @@ return [
 	'key'					=> 'redirects',
 	'name'				=> [ 'en_US' => 'Redirects', 'de_DE' => 'Weiterleitungen' ],
 	'description'	=> [
-		'en_US' => 'Old addresses that still work: one rule per page or per subtree, 301 or 302, applied only where nothing else answers - and a list of the addresses nothing answered, so the rules worth writing can be read rather than guessed.',
-		'de_DE' => 'Alte Adressen, die weiter funktionieren: eine Regel je Seite oder je Teilbaum, 301 oder 302, angewendet nur dort, wo sonst nichts antwortet - und eine Liste der Adressen, die nichts beantwortet hat, damit die lohnenden Regeln ablesbar sind statt geraten.',
+		'en_US' => 'Redirects lets old addresses keep working: one rule per page or per subtree, 301 or 302. They apply only where nothing else answers. A list of the unanswered addresses shows which rules are worth writing.',
+		'de_DE' => 'Weiterleitungen ermöglichen, dass alte Adressen weiter funktionieren: eine Regel je Seite oder je Teilbaum, 301 oder 302. Sie gelten nur dort, wo sonst nichts antwortet. Eine Liste der unbeantworteten Adressen zeigt, welche Regeln sich lohnen.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
@@ -16,20 +16,12 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Redirects' => [
-				'en_US' => 'The rules, and the addresses nothing answered - each with the one button that turns it into a rule. A target can be picked from the pages of the site, and one nothing answers is flagged and warned about, never refused.',
-				'de_DE' => 'Die Regeln und die Adressen, die nichts beantwortet hat - jede mit dem einen Knopf, der eine Regel daraus macht. Ein Ziel lässt sich aus den Seiten der Site wählen, und eines, das nichts beantwortet, wird markiert und beim Speichern gemeldet, aber nie abgelehnt.',
-			],
-			'Redirects: a rule' => [
-				'en_US' => 'Old address, sends to (a path of this site or an https address), kind (301 or 302) and whether everything below it moves too. A rule is consulted only where no route answers; GET and HEAD only.',
-				'de_DE' => 'Alte Adresse, Ziel (ein Pfad dieser Seite oder eine https-Adresse), Art (301 oder 302) und ob alles darunter mitzieht. Eine Regel gilt nur, wo keine Route antwortet; nur GET und HEAD.',
+				'en_US' => 'Keeps the rules (old address, target, 301 or 302, with or without everything below) and shows the addresses nothing answered, with a button that turns one into a rule.',
+				'de_DE' => 'Pflegt die Regeln (alte Adresse, Ziel, 301 oder 302, mit oder ohne alles darunter) und zeigt die Adressen, die nichts beantwortet hat, mit einem Knopf, der eine Regel daraus macht.',
 			],
 			'Probe' => [
-				'en_US' => 'Asks what a visitor would meet at an address: a page answers it, a rule sends it on, or nothing does and the 404 page is shown.',
-				'de_DE' => 'Fragt, was ein Besucher unter einer Adresse träfe: Eine Seite antwortet, eine Regel leitet weiter, oder nichts antwortet und die 404-Seite erscheint.',
-			],
-			'Addresses with no answer' => [
-				'en_US' => 'The second screen: the paths nothing answered, most asked for first, at most 50, with one button that opens the editor with the address filled in. The path only - no visitor is recorded.',
-				'de_DE' => 'Der zweite Bildschirm: die Pfade, auf die nichts antwortete, die häufigsten zuerst, höchstens 50, mit einer Schaltfläche, die den Editor mit der Adresse öffnet. Nur der Pfad – kein Besucher wird erfasst.',
+				'en_US' => 'Asks what a visitor would meet at an address: a page, a rule, or the 404 page.',
+				'de_DE' => 'Fragt, was ein Besucher unter einer Adresse träfe: eine Seite, eine Regel oder die 404-Seite.',
 			],
 		],
 		'callbacks' => [

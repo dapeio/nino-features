@@ -6,67 +6,55 @@ return [
 	'key'					=> 'gallery',
 	'name'				=> [ 'en_US' => 'Gallery', 'de_DE' => 'Galerie' ],
 	'description'	=> [
-		'en_US' => 'Any number of image galleries, each a grid of thumbnails that open full screen - two sizes made on upload, nothing kept that a visitor never sees.',
-		'de_DE' => 'Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen - zwei Größen beim Hochladen, nichts gespeichert, was ein Besucher nie zu sehen bekommt.',
+		'en_US' => 'Gallery lets you keep any number of image galleries, each a grid of thumbnails that open full screen. Two sizes are made on upload, and nothing is kept that no visitor sees.',
+		'de_DE' => 'Die Galerie ermöglicht beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen. Beim Hochladen entstehen zwei Größen, und es wird nichts gespeichert, was kein Besucher sieht.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[gallery album="trip"]' => [
-				'en_US' => 'The album\'s grid of thumbnails, in the columns set for that album. The Builder offers the albums there are as a list to choose from. The same album twice on one page is two galleries and two sets in the Lightbox: each opens on its own pictures, not on both together.',
-				'de_DE' => 'Das Raster der Vorschaubilder dieses Albums, in den Spalten, die für das Album eingestellt sind. Der Builder bietet die vorhandenen Alben als Liste zur Auswahl an. Steht dasselbe Album zweimal auf einer Seite, sind das zwei Galerien und zwei Sätze in der Lightbox: Jede blättert nur durch ihre eigenen Bilder.',
+				'en_US' => 'Draws an album\'s grid in the columns set for that album; without album, or with a key no album has, the first album.',
+				'de_DE' => 'Zeichnet das Raster eines Albums in den Spalten, die für das Album eingestellt sind; ohne album oder mit einem Schlüssel, den kein Album hat, das erste Album.',
 			],
 			'[gallery album="trip" columns="3"]' => [
-				'en_US' => 'The same, with the column count for this one place: a number from 1 to 8. Anything else - 9, 0, a word - is no count, and the grid takes the album\'s own.',
-				'de_DE' => 'Dasselbe, mit der Spaltenzahl für diese eine Stelle: eine Zahl von 1 bis 8. Alles andere – 9, 0, ein Wort – ist keine Spaltenzahl, und das Raster nimmt die des Albums.',
-			],
-			'[gallery]' => [
-				'en_US' => 'The first album there is.',
-				'de_DE' => 'Das erste Album, das es gibt.',
-			],
-			'[gallery album="gone"]' => [
-				'en_US' => 'A key that no album has - the album was deleted, or the key is misspelt - draws the first album, the way a call with no key does, because the album is a list in the Builder and the Components module reads a key outside the list as none. The Builder does not keep such a call: a section that holds one is shown as an HTML+ block. With the Components module switched off the key is read as it stands, and nothing is drawn.',
-				'de_DE' => 'Ein Schlüssel, den kein Album hat - das Album wurde gelöscht oder der Schlüssel ist falsch geschrieben - zeichnet das erste Album, so wie ein Aufruf ohne Schlüssel, weil das Album im Builder eine Liste ist und das Modul Components einen Schlüssel außerhalb der Liste als keinen liest. Der Builder behält so einen Aufruf nicht: eine Section, die ihn enthält, zeigt er als HTML+-Block. Bei abgeschaltetem Modul Components gilt der Schlüssel, wie er dasteht, und es wird nichts gezeichnet.',
+				'en_US' => 'Sets the column count for this one place, a number from 1 to 8; anything else is no count, and the grid takes the album\'s own.',
+				'de_DE' => 'Setzt die Spaltenzahl für diese eine Stelle, eine Zahl von 1 bis 8; alles andere ist keine Spaltenzahl, und das Raster nimmt die des Albums.',
 			],
 			'[gallery ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the grid. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Rasters. Das schreibt der Builder für seine eigenen Klassen.',
+				'en_US' => 'Adds a class of your own to the grid; the Builder offers the albums there are as a list.',
+				'de_DE' => 'Hängt eine eigene Klasse an das Raster; der Builder bietet die vorhandenen Alben als Liste an.',
 			],
 		],
 		'markup' => [
 			'data-lightbox="gallery-<album>"' => [
-				'en_US' => 'What each thumbnail\'s link carries, so the Lightbox feature opens it and two galleries on one page stay two sets. The first gallery of an album on a page carries gallery-<album>, the same album again on that page gallery-<album>-2, then gallery-<album>-3, counted for each page request; a name already taken on the page is skipped. The caption is data-caption, the alt text the thumbnail\'s alt.',
-				'de_DE' => 'Was der Link jeder Vorschau trägt, damit das Feature Lightbox ihn öffnet und zwei Galerien auf einer Seite zwei Sätze bleiben. Die erste Galerie eines Albums auf einer Seite trägt gallery-<album>, dasselbe Album noch einmal auf dieser Seite gallery-<album>-2, dann gallery-<album>-3, gezählt je Seitenaufruf; ein auf der Seite schon vergebener Name wird übersprungen. Die Bildunterschrift steht in data-caption, der Alternativtext im alt der Vorschau.',
+				'en_US' => 'Carried by the link of each thumbnail so the Lightbox opens it; the same album a second time on the page is gallery-<album>-2, and the caption is data-caption.',
+				'de_DE' => 'Trägt der Link jeder Vorschau, damit die Lightbox ihn öffnet; dasselbe Album ein zweites Mal auf der Seite heißt gallery-<album>-2, und die Bildunterschrift steht in data-caption.',
 			],
 			'--gallery-gap, --gallery-corners, --gallery-ground' => [
-				'en_US' => 'The three properties of the grid\'s look: the space between the cells, --gallery-gap (.75rem), the corners of a cell, --gallery-corners (3px), and its ground, --gallery-ground (a surface of the palette, with --gallery-ground-on for the text on it and --gallery-ground-border for its line). Without the Design feature a project sets them in its own css, on :root; with it, a look and its knobs write them.',
-				'de_DE' => 'Die drei Eigenschaften für den Look des Rasters: der Abstand der Zellen, --gallery-gap (.75rem), die Ecken einer Zelle, --gallery-corners (3px), und ihr Grund, --gallery-ground (eine Fläche der Palette, mit --gallery-ground-on für den Text darauf und --gallery-ground-border für seine Linie). Ohne das Feature Design setzt ein Projekt sie in seinem eigenen CSS, auf :root; mit ihm schreiben ein Look und seine Regler sie.',
+				'en_US' => 'The three properties of the grid\'s look, which a project sets in its own css on :root, or which a look of the Design feature writes.',
+				'de_DE' => 'Die drei Eigenschaften für den Look des Rasters, die ein Projekt in seinem CSS auf :root setzt, oder die ein Look des Designs schreibt.',
 			],
 			'<span class="nino-gallery-frame nino-image nino-hover">' => [
-				'en_US' => 'The frame round each thumbnail, inside its link. The two classes of the kernel are what give the picture the hover of the kernel\'s pictures, under the pointer and under the keyboard focus of the link; the frame has no corners of its own, the cell\'s cut it.',
-				'de_DE' => 'Der Rahmen um jede Vorschau, innerhalb ihres Links. Die zwei Klassen des Kernels geben dem Bild den Hover der Bilder des Kernels, unter dem Zeiger und unter dem Tastaturfokus des Links; der Rahmen hat keine eigenen Ecken, die der Zelle schneiden ihn zu.',
+				'en_US' => 'The frame round each thumbnail, inside its link; the kernel\'s two classes give the picture the hover of the kernel\'s pictures.',
+				'de_DE' => 'Der Rahmen um jede Vorschau, innerhalb ihres Links; die zwei Klassen des Kernels geben dem Bild den Hover der Bilder des Kernels.',
 			],
 			'<img width="500" height="500" alt="Trip, picture 3">' => [
-				'en_US' => 'The thumbnail carries the size its album crops its thumbnails to, so the browser knows the room of a cell before the picture has loaded, and the list carries it as --nino-gallery-thumb-w and --nino-gallery-thumb-h for the stylesheet. The alt text is the one written for the picture, else its caption, else - for a picture with neither - the album\'s name and the picture\'s place in it, so that no link is left without a name; that picture says it has no caption, so the Lightbox does not show the name under it.',
-				'de_DE' => 'Die Vorschau trägt das Maß, auf das ihr Album die Vorschaubilder zuschneidet, damit der Browser den Platz einer Zelle kennt, bevor das Bild geladen ist; die Liste trägt es als --nino-gallery-thumb-w und --nino-gallery-thumb-h für das Stylesheet. Der Alternativtext ist der für das Bild geschriebene, sonst seine Bildunterschrift, sonst – bei einem Bild mit keinem von beiden – der Name des Albums und die Stelle des Bildes darin, damit kein Link ohne Namen bleibt; dieses Bild sagt, dass es keine Bildunterschrift hat; die Lightbox zeigt den Namen deshalb nicht darunter.',
+				'en_US' => 'The thumbnail carries its album\'s size and an alt text taken from the picture, its caption, or the album\'s name with the picture\'s place.',
+				'de_DE' => 'Die Vorschau trägt das Maß ihres Albums und einen Alternativtext, der aus dem Bild, der Bildunterschrift oder dem Albumnamen mit der Stelle des Bildes kommt.',
 			],
 		],
 		'routes' => [],
 		'panel' => [
-			'Design: the looks of the gallery' => [
-				'en_US' => 'With the Design feature on, the tab Gallery of the Design panel offers under Base three looks of the grid - Grid, as it has always been drawn, Seamless and Mat - and three knobs: the space between the pictures and the corners of a picture under Surface, the ground behind a picture, the frame of the mat, under Colour. Seamless has neither space nor corners, so the panel greys those two out. The columns are no knob; they stay a setting of the album and the attribute columns. The hover of the pictures is the kernel\'s: Design sets it for all of them under Page, Motion. The block design/preview.tpl shows six pictures in the preview.',
-				'de_DE' => 'Ist das Feature Design an, bietet der Tab Galerie des Design-Panels unter Grundlage drei Looks des Rasters an - Raster, wie es immer gezeichnet wurde, Fugenlos und Passepartout - und drei Regler: den Abstand der Bilder und die Ecken eines Bildes unter Fläche, den Grund hinter einem Bild, den Rahmen des Passepartouts, unter Farbe. Fugenlos hat weder Abstand noch Ecken, das Panel stellt diese beiden ausgegraut dar. Die Spalten sind kein Regler; sie bleiben eine Einstellung des Albums und das Attribut columns. Der Hover der Bilder ist der des Kernels: Design regelt ihn für alle unter Seite, Bewegung. Der Block design/preview.tpl zeigt sechs Bilder in der Vorschau.',
-			],
 			'Gallery' => [
-				'en_US' => 'Create an album on a page of its own - key, name and the sizes of its pictures - and upload its pictures: two sizes per upload, the original never kept. Alt text and caption are written per language.',
-				'de_DE' => 'Ein Album auf einer eigenen Seite anlegen – Schlüssel, Name und die Maße seiner Bilder – und Bilder hochladen: zwei Größen je Upload, das Original wird nie behalten. Alternativtext und Bildunterschrift schreibst Du je Sprache.',
-			],
-			'Gallery: image sizes' => [
-				'en_US' => 'The sizes of the pictures and the count of columns are set per album, in the folded group Image sizes on its page. The sizes apply to pictures uploaded from then on, the columns to the grid at once. The settings of the feature are what a new album starts with.',
-				'de_DE' => 'Die Maße der Bilder und die Spaltenzahl stellst Du je Album ein, in der eingeklappten Gruppe Bildmaße auf seiner Seite. Die Maße gelten ab dem nächsten Hochladen, die Spalten sofort für das Raster. Die Einstellungen des Features sind das, womit ein neues Album beginnt.',
+				'en_US' => 'Creates albums on a page of their own (key, name, image sizes, columns) and uploads pictures: two sizes per upload, the original never kept.',
+				'de_DE' => 'Legt Alben auf einer eigenen Seite an (Schlüssel, Name, Bildmaße, Spalten) und lädt Bilder hoch: zwei Größen je Upload, das Original wird nie behalten.',
 			],
 			'Gallery: pictures' => [
-				'en_US' => 'Several files at once, uploaded one after the other; per picture an alt text and a caption in each language, two buttons to move it and one to delete it, which takes both of its files with it.',
-				'de_DE' => 'Mehrere Dateien auf einmal, nacheinander hochgeladen; je Bild ein Alternativtext und eine Bildunterschrift in jeder Sprache, zwei Schaltflächen zum Verschieben und eine zum Löschen, die beide Dateien mitnimmt.',
+				'en_US' => 'Each picture has an alt text and a caption in each language, two buttons to move it and one to delete it, which takes both files with it.',
+				'de_DE' => 'Je Bild gibt es einen Alternativtext und eine Bildunterschrift in jeder Sprache, zwei Knöpfe zum Verschieben und einen zum Löschen, der beide Dateien mitnimmt.',
+			],
+			'Design: the looks of the gallery' => [
+				'en_US' => 'With the Design feature the gallery offers the looks Grid, Seamless and Mat, knobs for space, corners and ground, and the hover of the pictures is the kernel\'s.',
+				'de_DE' => 'Mit dem Design bietet die Galerie die Looks Raster, Fugenlos und Passepartout, Regler für Abstand, Ecken und Grund, und der Hover der Bilder kommt vom Kernel.',
 			],
 		],
 		'callbacks' => [
@@ -77,8 +65,8 @@ return [
 		],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The sentence that names a picture with neither an alt text nor a caption - "%s, picture %s", the album and the place - into the Text panel. It is a word of the project like its others, changed there; where a project has no word for it, the alt text shows the key.',
-				'de_DE' => 'Der Satz, der ein Bild ohne Alternativtext und ohne Bildunterschrift benennt – „%s, Bild %s“, das Album und die Stelle –, ins Panel Texte. Er ist ein Wort des Projekts wie seine anderen, dort änderst Du ihn; hat ein Projekt kein Wort dafür, zeigt der Alternativtext den Schlüssel.',
+				'en_US' => 'Puts the sentence "%s, picture %s" for a picture with neither alt text nor caption into the Text panel.',
+				'de_DE' => 'Bringt den Satz „%s, Bild %s“ für ein Bild ohne Alternativtext und Bildunterschrift ins Panel Texte.',
 			],
 		],
 	],

@@ -6,22 +6,18 @@ return [
 	'key'					=> 'protected',
 	'name'				=> [ 'en_US' => 'Protected area', 'de_DE' => 'Geschützter Bereich' ],
 	'description'	=> [
-		'en_US' => 'Puts one or more pages behind one shared password - a members\' area, a client preview, an internal page - without accounts.',
-		'de_DE' => 'Stellt eine oder mehrere Seiten hinter ein gemeinsames Passwort - einen Mitgliederbereich, eine Kundenvorschau, eine interne Seite - ganz ohne Benutzerkonten.',
+		'en_US' => 'Protected area lets you put one or more pages behind one shared password. It suits a members\' area, a client preview or an internal page, without accounts.',
+		'de_DE' => 'Der geschützte Bereich ermöglicht es, eine oder mehrere Seiten hinter ein gemeinsames Passwort zu stellen. Das passt für einen Mitgliederbereich, eine Kundenvorschau oder eine interne Seite, ganz ohne Benutzerkonten.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[protected-logout]' => [
-				'en_US' => 'A lock-again link, for a protected page.',
-				'de_DE' => 'Ein Wieder-sperren-Link, für eine geschützte Seite.',
+				'en_US' => 'A link that locks the session again, for a protected page; class="my-class" adds a class of your own.',
+				'de_DE' => 'Ein Link, der die Sitzung wieder sperrt, für eine geschützte Seite; class="my-class" hängt eine eigene Klasse an.',
 			],
 			'[protected-error]' => [
 				'en_US' => 'What the password form says when the password was wrong.',
-				'de_DE' => 'Was das Passwortformular sagt, wenn das Passwort falsch war.',
-			],
-			'[protected-logout ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the link. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Links. Das schreibt der Builder für seine eigenen Klassen.',
+				'de_DE' => 'Das, was das Passwortformular sagt, wenn das Passwort falsch war.',
 			],
 		],
 		'markup' => [],
@@ -31,24 +27,24 @@ return [
 				'de_DE' => 'Wohin das Passwortformular sendet.',
 			],
 			'/.protected/logout' => [
-				'en_US' => 'Locks the session again and goes to the front page. A plain GET link, which is what [protected-logout] writes.',
-				'de_DE' => 'Sperrt die Sitzung wieder und geht zur Startseite. Ein einfacher GET-Link, wie ihn [protected-logout] schreibt.',
+				'en_US' => 'Locks the session again and goes to the front page, a plain GET link, which is what [protected-logout] writes.',
+				'de_DE' => 'Sperrt die Sitzung wieder und geht zur Startseite, ein einfacher GET-Link, wie [protected-logout] ihn schreibt.',
 			],
 		],
 		'panel' => [
 			'Protected area' => [
-				'en_US' => 'The password, the protected pages as a list to tick off, and a button that signs everybody out. A new password signs everybody out too.',
-				'de_DE' => 'Das Passwort, die geschützten Seiten als Liste zum Ankreuzen und ein Knopf, der alle abmeldet. Ein neues Passwort meldet ebenfalls alle ab.',
+				'en_US' => 'Lets you set the password, the protected pages as a list to tick off, and a button that signs everybody out; a new password signs everybody out too.',
+				'de_DE' => 'Ermöglicht es, das Passwort einzustellen, die geschützten Seiten als Liste zum Ankreuzen und einen Knopf, der alle abmeldet; ein neues Passwort meldet ebenfalls alle ab.',
 			],
 		],
 		'callbacks' => [
 			'/nino/http/response' => [
-				'en_US' => 'Puts the password form in front of every protected page, at every address the page has: the gate looks at the uri of the route that answers as well as at the path that was asked for, so a page with a route for each language is shut in all of them.',
-				'de_DE' => 'Stellt das Passwortformular vor jede geschützte Seite, an jeder Adresse, die die Seite hat: Das Tor sieht auf die Uri der Route, die antwortet, und auf den Pfad, der aufgerufen wurde. So ist eine Seite mit einer Route je Sprache in allen zu.',
+				'en_US' => 'Puts the password form in front of every protected page, at every address the page has, so in every language.',
+				'de_DE' => 'Stellt das Passwortformular vor jede geschützte Seite, an jeder Adresse, die die Seite hat, also auch in allen Sprachen.',
 			],
 			'/seo/exclude' => [
-				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected pages out of sitemap.xml and llms.txt, at every address such a page has: the address of every route whose uri lies under a protected path is named as well.',
-				'de_DE' => 'Sagt dem Feature SEO, wo es installiert ist, die geschützten Seiten aus sitemap.xml und llms.txt herauszuhalten, an jeder Adresse, die eine solche Seite hat: Auch die Adresse jeder Route, deren Uri unter einem geschützten Pfad liegt, wird genannt.',
+				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected pages out of sitemap.xml and llms.txt.',
+				'de_DE' => 'Sagt dem Feature SEO, wo es installiert ist, die geschützten Seiten aus sitemap.xml und llms.txt herauszuhalten.',
 			],
 			'/nino/admin/action' => [
 				'en_US' => 'Signs everybody out when the password was changed through the feature settings instead of the panel.',
@@ -61,12 +57,12 @@ return [
 				'de_DE' => 'Das Passwortformular.',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'Its words, into the Text panel.',
-				'de_DE' => 'Seine Worte, ins Panel Texte.',
+				'en_US' => 'Puts the words of the form into the Text panel.',
+				'de_DE' => 'Bringt die Worte des Formulars ins Panel Texte.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung.',
+				'en_US' => 'Brings its section of the privacy policy for the Legal module; a starting point, no legal advice.',
+				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung für das Modul Legal mit; ein Ausgangspunkt, keine Rechtsberatung.',
 			],
 		],
 	],

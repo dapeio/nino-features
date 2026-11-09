@@ -7,36 +7,32 @@ return [
 	'key'					=> 'search',
 	'name'				=> [ 'en_US' => 'Elements search', 'de_DE' => 'Elemente-Suche' ],
 	'description'	=> [
-		'en_US' => 'A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with two shortcodes that draw the hits and their number on any page, under a form the project writes itself.',
-		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit zwei Shortcodes, die Treffer und Trefferzahl auf jeder Seite zeichnen, unter einem Formular, das das Projekt selbst schreibt.',
+		'en_US' => 'Elements search lets you search the fields of your elements, locale-aware and fuzzy. The index rebuilds on every save. Two shortcodes draw the hits and their number on any page, under a form the project writes itself.',
+		'de_DE' => 'Die Elemente-Suche ermöglicht eine sprachbewusste, unscharfe Suche über Felder der Elemente. Der Index baut sich bei jedem Speichern neu. Zwei Shortcodes zeichnen Treffer und Trefferzahl auf jeder Seite, unter einem Formular, das das Projekt selbst schreibt.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[search-results type="/products"]…[/search-results]' => [
-				'en_US' => 'The hits, under a GET form the project writes itself. The body is the markup of one hit, with [[field]] for anything the type has.',
-				'de_DE' => 'Die Treffer, unter einem GET-Formular, das das Projekt selbst schreibt. Der Inhalt ist das Markup eines Treffers, mit [[feld]] für alles, was der Typ hat.',
+				'en_US' => 'Draws the hits under a GET form; the body is the markup of one hit, with [[field]] for anything the type has.',
+				'de_DE' => 'Zeichnet die Treffer unter einem GET-Formular; der Inhalt ist das Markup eines Treffers, mit [[field]] für alles, was der Typ hat.',
 			],
-			'[search-results ... key="q"]' => [
-				'en_US' => 'The query variable it reads: the name of the input in the form. Default q.',
-				'de_DE' => 'Die Query-Variable, die gelesen wird: der Name des Eingabefelds im Formular. Standard q.',
+			'[search-results ... key="q" empty="search-empty" limit="20"]' => [
+				'en_US' => 'Sets the query variable read, the template for nothing found and the number of hits (200 at most); type takes several types, separated by commas.',
+				'de_DE' => 'Setzt die gelesene Query-Variable, das Template für „nichts gefunden“ und die Zahl der Treffer (höchstens 200); type nimmt mehrere Typen, durch Komma getrennt.',
 			],
-			'[search-results ... empty="search-empty"]' => [
-				'en_US' => 'What is drawn when nothing was found: a template of the project, here /templates/search-empty.tpl. Without it, nothing.',
-				'de_DE' => 'Was gezeigt wird, wenn nichts gefunden wurde: ein Template des Projekts, hier /templates/search-empty.tpl. Ohne die Angabe nichts.',
+			'[search-results ... tag="none" class="my-class"]' => [
+				'en_US' => 'The wrapper is a div.nino-search-results; tag picks another element, tag="none" leaves the rows unwrapped, class adds a class of your own.',
+				'de_DE' => 'Die Hülle ist ein div.nino-search-results; tag wählt ein anderes Element, tag="none" lässt die Zeilen ungehüllt, class hängt eine eigene Klasse an.',
 			],
 			'[search-count type="/products" key="q"]' => [
-				'en_US' => 'How many hits the search has, as a plain number - all of them, not the page limit draws. Nothing while nothing was searched for, 0 when nothing was found.',
-				'de_DE' => 'Wie viele Treffer die Suche hat, als reine Zahl - alle, nicht die Seite, die limit zeichnet. Nichts, solange nichts gesucht wurde, 0, wenn nichts gefunden wurde.',
-			],
-			'[search-results ... limit="20" tag="none"]' => [
-				'en_US' => 'How many hits to draw (default 20, at most 200), and the wrapper: a div with class nino-search-results by default, tag picks another element, class adds classes to the one it has, tag="none" leaves the rows unwrapped. type takes several types, separated by commas.',
-				'de_DE' => 'Wie viele Treffer gezeichnet werden (Standard 20, höchstens 200), und die Hülle: standardmäßig ein div mit der Klasse nino-search-results, tag wählt ein anderes Element, class hängt Klassen an die vorhandene an, tag="none" lässt die Zeilen ungehüllt. type nimmt mehrere Typen, durch Komma getrennt.',
+				'en_US' => 'The number of all hits as a plain number: nothing while nothing was searched for, and 0 when nothing was found.',
+				'de_DE' => 'Die Zahl aller Treffer als reine Zahl: nichts, solange nichts gesucht wurde, und 0, wenn nichts gefunden wurde.',
 			],
 		],
 		'markup' => [
 			'[[.uri]] [[.slug]] [[.type]] [[.locale]] [[.score]] [[.n]]' => [
-				'en_US' => 'Inside [search-results], beside the type\'s own [[field]]s: the element uri, its last segment, the type, the locale, the score and the place in the list from 1.',
-				'de_DE' => 'Innerhalb von [search-results], neben den [[Feldern]] des Typs: die Element-Uri, ihr letztes Segment, der Typ, die Sprache, der Score und die Stelle in der Liste ab 1.',
+				'en_US' => 'Fills inside [search-results], beside the type\'s own fields: the uri, its last segment, the type, the locale, the score and the place in the list from 1.',
+				'de_DE' => 'Fills innerhalb von [search-results], neben den Feldern des Typs: Uri, ihr letztes Segment, Typ, Sprache, Score und die Stelle in der Liste ab 1.',
 			],
 		],
 		'routes' => [
@@ -47,12 +43,12 @@ return [
 		],
 		'panel' => [
 			'Search' => [
-				'en_US' => 'Create the index once. After that it rebuilds itself with every save. The index of a language holds what the page of that language shows: an element that has a text in another language alone is in it with that text, so the search finds it there. Words are folded with the kernel\'s table of letters, so a word without its accent finds the one with it and the other way round. An index made by an earlier version is marked stale: after an update press "Rebuild" on its row, or "Rebuild all", once - until then it answers with the words as they were made, finds a word with an accent less well and misses an element that the language has no text of its own for.',
-				'de_DE' => 'Den Index einmal anlegen. Danach baut er sich bei jedem Speichern selbst neu. Der Index einer Sprache enthält, was die Seite dieser Sprache zeigt: Ein Element, das nur in einer anderen Sprache einen Text hat, steht mit diesem Text in ihm, die Suche findet es dort. Die Wörter werden mit der Buchstabentabelle des Kernels gefaltet, ein Wort ohne Akzent findet also das mit ihm und umgekehrt. Ein Index aus einer früheren Version ist als veraltet markiert: nach einem Update einmal „Neu aufbauen“ in seiner Zeile oder „Alle neu aufbauen“ drücken - bis dahin antwortet er mit den Wörtern, wie sie damals gebildet wurden, findet ein Wort mit Akzent schlechter und kennt ein Element nicht, für das die Sprache keinen eigenen Text hat.',
+				'en_US' => 'Creates the index once, after that it rebuilds itself on every save; an index from an earlier version is marked stale and renewed with "Rebuild".',
+				'de_DE' => 'Legt den Index einmal an, danach baut er sich bei jedem Speichern selbst neu; ein Index aus einer früheren Version ist als veraltet markiert und wird mit „Neu aufbauen“ erneuert.',
 			],
 			'Index, Type, Try it' => [
-				'en_US' => 'Index: one row per Element type the project has, with its state. Type: four slots of weight over the type\'s own text fields, written to /nino/elements/index in config.php. Try it: the real ranking against the index on disk.',
-				'de_DE' => 'Index: eine Zeile je Element-Typ des Projekts, mit seinem Stand. Typ: vier Gewichtsplätze über die Textfelder des Typs, geschrieben nach /nino/elements/index in der config.php. Ausprobieren: das echte Ranking gegen den Index auf der Platte.',
+				'en_US' => 'Shows the state of the index per element type, sets four slots of weight over its text fields (/nino/elements/index in config.php) and tries the real ranking.',
+				'de_DE' => 'Zeigt je Elementtyp den Stand des Index, stellt vier Gewichtsplätze über seine Textfelder ein (/nino/elements/index in der config.php) und probiert das echte Ranking aus.',
 			],
 		],
 		'callbacks' => [
@@ -61,8 +57,8 @@ return [
 				'de_DE' => 'Frischt den Index auf, wenn ein Element gespeichert wird.',
 			],
 			'/search/hit' => [
-				'en_US' => 'Fired for every endpoint hit, then as /search/hit/<type> for one type: shape the fields a hit carries, with the whole Element in hand, or answer false to drop it.',
-				'de_DE' => 'Für jeden Endpoint-Treffer, danach als /search/hit/<typ> für einen Typ: die Felder eines Treffers formen, mit dem ganzen Element in der Hand, oder false antworten und ihn weglassen.',
+				'en_US' => 'Fired for every endpoint hit, then as /search/hit/<type> for one type; a feature shapes the fields of a hit or answers false to drop it.',
+				'de_DE' => 'Wird für jeden Endpoint-Treffer gefeuert, danach als /search/hit/<type> für einen Typ; ein Feature formt die Felder des Treffers oder antwortet false und lässt ihn weg.',
 			],
 		],
 		'install' => [],

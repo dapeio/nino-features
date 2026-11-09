@@ -5,8 +5,8 @@ return [
 	'key'					=> 'stats',
 	'name'				=> [ 'en_US' => 'Stats', 'de_DE' => 'Statistik' ],
 	'description'	=> [
-		'en_US' => 'Page-view counts for the workbench - no cookies, no ip addresses, no fingerprints, nothing stored per visitor.',
-		'de_DE' => 'Seitenaufruf-Zählung für die Workbench - keine Cookies, keine IP-Adressen, keine Fingerprints, nichts wird pro Besucher gespeichert.',
+		'en_US' => 'Stats lets you count page views for the workbench. There are no cookies, no ip addresses and no fingerprints, and nothing is stored per visitor.',
+		'de_DE' => 'Die Statistik ermöglicht eine Zählung der Seitenaufrufe für die Workbench. Es gibt keine Cookies, keine IP-Adressen und keine Fingerprints, und nichts wird pro Besucher gespeichert.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
@@ -14,24 +14,20 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Stats' => [
-				'en_US' => 'The page-view counts, and a tile on the Dashboard. Counting begins when the feature is switched on.',
-				'de_DE' => 'Die Seitenaufrufe, dazu eine Kachel auf dem Dashboard. Gezählt wird ab dem Einschalten.',
-			],
-			'Stats: month, pages, referrers' => [
-				'en_US' => 'A month selector, one bar per day, and the top 50 pages (with their titles) and referrer hosts of the month. Pages only: files such as robots.txt and sitemap.xml are not shown. Read-only, behind /_admin/stats/view.',
-				'de_DE' => 'Eine Monatsauswahl, ein Balken je Tag und die Top 50 der Seiten (mit ihren Titeln) und Referrer-Hosts des Monats. Nur Seiten: Dateien wie robots.txt und sitemap.xml werden nicht gezeigt. Nur lesend, hinter /_admin/stats/view.',
+				'en_US' => 'Shows the page views with a month selector, one bar per day and the top 50 pages and referrer hosts, read-only, behind the permission /_admin/stats/view, with a tile on the Dashboard.',
+				'de_DE' => 'Zeigt die Seitenaufrufe mit Monatsauswahl, einem Balken je Tag und den Top 50 der Seiten und Referrer-Hosts, nur lesend, hinter dem Recht /_admin/stats/view, dazu eine Kachel auf dem Dashboard.',
 			],
 		],
 		'callbacks' => [
 			'/nino/http/response' => [
-				'en_US' => 'Counts the page view. No cookie, no ip address, nothing stored per visitor. A day keeps at most 500 different referrer hosts, each up to 253 bytes; the views from further hosts are counted together and shown as one row, Other referrers. A page address longer than 253 bytes is counted among Other pages.',
-				'de_DE' => 'Zählt den Seitenaufruf. Kein Cookie, keine IP-Adresse, nichts pro Besucher gespeichert. Ein Tag hält höchstens 500 verschiedene Referrer-Hosts fest, jeden bis zu 253 Bytes lang; die Aufrufe von weiteren Hosts werden gemeinsam gezählt und als eine Zeile gezeigt, Weitere Herkünfte. Eine Seitenadresse, die länger als 253 Bytes ist, zählt zu Weitere Seiten.',
+				'en_US' => 'Counts the page view with no cookie, no ip address and nothing stored per visitor; counting begins when the feature is switched on.',
+				'de_DE' => 'Zählt den Seitenaufruf, ohne Cookie, ohne IP-Adresse und ohne etwas pro Besucher zu speichern; gezählt wird ab dem Einschalten.',
 			],
 		],
 		'install' => [
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung.',
+				'en_US' => 'Brings its section of the privacy policy for the Legal module; a starting point, no legal advice.',
+				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung für das Modul Legal mit; ein Ausgangspunkt, keine Rechtsberatung.',
 			],
 		],
 	],

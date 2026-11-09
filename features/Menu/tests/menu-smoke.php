@@ -37,7 +37,7 @@ check( 'the manifest says what the feature is: a content feature of version 1.0.
 	&& $manifest['name'] === [ 'en_US' => 'Menu', 'de_DE' => 'Menü' ] );
 check( '...its manual answers the six questions in both languages, every line under 1000 bytes, the German one without a du of lower case: the two shortcodes, the classes, the panel, the callback of the Design',
 	$lineProblems === [] && array_keys( $manifest['manual']['shortcodes'] ) === [ '[menu /main]', '[menu /main burger]' ] && array_keys( $manifest['manual']['callbacks'] ) === [ '/feature/design/navigations' ] && count( $manifest['manual']['panel'] ) === 1
-	&& count( $manifest['manual']['markup'] ) === 1 && $manifest['manual']['routes'] === [] && preg_match( '/\bdu\b|\bdein/', json_encode( array_column( array_merge( ...array_values( $manifest['manual'] ) ), 'de_DE' ) ) ) !== 1 );
+	&& count( $manifest['manual']['markup'] ) === 2 && $manifest['manual']['routes'] === [] && preg_match( '/\bdu\b|\bdein/', json_encode( array_column( array_merge( ...array_values( $manifest['manual'] ) ), 'de_DE' ) ) ) !== 1 );
 
 \Nino\Html::init( $appData );
 \Nino\Modules::callModules( $appData, 'init' );

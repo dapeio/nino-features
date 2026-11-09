@@ -6,23 +6,23 @@ return [
 	'key'					=> 'lightbox',
 	'name'				=> [ 'en_US' => 'Lightbox', 'de_DE' => 'Lightbox' ],
 	'description'	=> [
-		'en_US' => 'Opens any link to an image full screen, with the group it belongs to as a set - arrows, swipe, captions and a focus trap, and no library.',
-		'de_DE' => 'Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie - Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek.',
+		'en_US' => 'Lightbox lets you open any link to an image full screen, with its group as a set. Arrows, swipe, captions and a focus trap come with it, and no library.',
+		'de_DE' => 'Die Lightbox ermöglicht es, jeden Link auf ein Bild bildschirmfüllend zu öffnen, mit seiner Gruppe als Serie. Dazu gehören Pfeile, Wischen, Bildunterschriften und eine Fokusfalle, ganz ohne Bibliothek.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
 		'markup' => [
 			'data-lightbox="trip"' => [
-				'en_US' => 'On a link to an image: opens it full screen. Links sharing a value are one set - arrows, swipe and keyboard move between them.',
-				'de_DE' => 'An einem Link auf ein Bild: öffnet es bildschirmfüllend. Links mit gleichem Wert sind ein Satz – Pfeile, Wischen und Tastatur bewegen sich darin.',
+				'en_US' => 'On a link to an image it opens the image full screen; links sharing a value are one set, which arrows, swipe and keyboard move through.',
+				'de_DE' => 'An einem Link auf ein Bild öffnet es bildschirmfüllend; Links mit gleichem Wert sind ein Satz, in dem Pfeile, Wischen und Tastatur blättern.',
 			],
 			'data-caption="Above the pass"' => [
-				'en_US' => 'The caption. Without the attribute the image\'s alt, else the link\'s title; present but empty it means no caption.',
-				'de_DE' => 'Die Bildunterschrift. Ohne das Attribut das alt des Bildes, sonst das title des Links; vorhanden, aber leer heißt: keine Bildunterschrift.',
+				'en_US' => 'The caption; without the attribute the image\'s alt applies, else the link\'s title, and empty means no caption.',
+				'de_DE' => 'Die Bildunterschrift; ohne das Attribut gilt das alt des Bildes, sonst das title des Links, und leer heißt: keine Unterschrift.',
 			],
 			'data-label-close, data-label-prev, data-label-next' => [
-				'en_US' => 'The labels the three controls carry for a screen reader. Without them the script\'s own English or German words are used, by the page\'s language.',
-				'de_DE' => 'Die Beschriftungen, die die drei Bedienelemente für einen Screenreader tragen. Ohne sie gelten die englischen oder deutschen Worte des Skripts, nach der Sprache der Seite.',
+				'en_US' => 'The labels of the three controls for screen readers; without them the script\'s own English or German words are used.',
+				'de_DE' => 'Die Beschriftungen der drei Bedienelemente für Screenreader; ohne sie gelten die englischen oder deutschen Worte des Skripts.',
 			],
 		],
 		'routes' => [],

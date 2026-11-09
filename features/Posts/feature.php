@@ -5,65 +5,49 @@ return [
 	'key'					=> 'posts',
 	'name'				=> [ 'en_US' => 'Posts', 'de_DE' => 'Beiträge' ],
 	'description'	=> [
-		'en_US' => 'A page per element and a list with paging: what turns an element type into a blog, a news section or a journal - the posts stay ordinary elements.',
-		'de_DE' => 'Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente.',
+		'en_US' => 'Posts lets you turn an element type into a blog, a news section or a journal, with a page per element and a list with paging. The posts stay ordinary elements.',
+		'de_DE' => 'Beiträge ermöglichen eine Seite je Element und eine Liste mit Seitenzahlen. So wird aus einem Elementtyp ein Blog, eine News-Rubrik oder ein Journal, und die Beiträge bleiben gewöhnliche Elemente.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[posts]' => [
-				'en_US' => 'The page of the list that is on.',
-				'de_DE' => 'Die Seite der Liste, die gerade dran ist.',
+				'en_US' => 'Draws the page of the list that is on; [posts-pager] leads to the next page and [post-nav] to the next and the previous post.',
+				'de_DE' => 'Zeichnet die Seite der Liste, die gerade dran ist; [posts-pager] führt zur nächsten Seite und [post-nav] zum nächsten und vorherigen Beitrag.',
 			],
 			'[post]' => [
-				'en_US' => 'The record the current url is for.',
-				'de_DE' => 'Der Datensatz, für den die aktuelle Adresse steht.',
-			],
-			'[posts-pager]' => [
-				'en_US' => 'The way to the next page of the list.',
-				'de_DE' => 'Der Weg zur nächsten Seite der Liste.',
-			],
-			'[post-nav]' => [
-				'en_US' => 'The way to the next and the previous post.',
-				'de_DE' => 'Der Weg zum nächsten und vorherigen Beitrag.',
+				'en_US' => 'Draws the record the current url is for.',
+				'de_DE' => 'Zeichnet den Datensatz, für den die aktuelle Adresse steht.',
 			],
 			'[posts section="news" limit="3"]' => [
-				'en_US' => 'A second section by its key, and the newest three without paging - a teaser rather than page one of something. A page past the end is an empty list.',
-				'de_DE' => 'Ein zweiter Bereich über seinen Schlüssel, und die neuesten drei ohne Blättern – ein Teaser statt Seite eins von etwas. Eine Seite hinter dem Ende ist eine leere Liste.',
-			],
-			'[posts-pager ... class="my-class"]' => [
-				'en_US' => 'A class of your own, set on the pager\'s navigation. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, an der Navigation des Blätterns. Das schreibt der Builder für seine eigenen Klassen.',
+				'en_US' => 'Takes a second section by its key and the newest three without paging, as a teaser; class="my-class" on [posts-pager] adds a class of your own.',
+				'de_DE' => 'Nimmt einen zweiten Bereich über seinen Schlüssel und die neuesten drei ohne Blättern, als Teaser; class="my-class" an [posts-pager] hängt eine eigene Klasse an.',
 			],
 		],
 		'markup' => [
-			'[[.url]]' => [
-				'en_US' => 'Inside those four, beside [[.image]], [[.body]] and [[.id]]: what an element cannot know by itself. Every other field is Elements\' own [[title]].',
-				'de_DE' => 'In diesen vieren, neben [[.image]], [[.body]] und [[.id]]: was ein Element nicht selbst wissen kann. Jedes andere Feld ist das [[title]] der Elemente.',
-			],
-			'[[.image]], [[.body]], [[.id]], [[.rel]]' => [
-				'en_US' => '[[.image]] is the whole <img> or nothing, [[.body]] the body field as paragraphs (a blank line starts one), [[.id]] the number in the list from 0, [[.rel]] prev or next inside [post-nav].',
-				'de_DE' => '[[.image]] ist das ganze <img> oder nichts, [[.body]] das Body-Feld als Absätze (eine Leerzeile beginnt einen), [[.id]] die Nummer in der Liste ab 0, [[.rel]] prev oder next innerhalb von [post-nav].',
+			'[[.url]], [[.image]], [[.body]], [[.id]], [[.rel]]' => [
+				'en_US' => 'The fills inside [posts], [post], [posts-pager] and [post-nav] that an element cannot know itself; every other field is Elements\' own [[title]].',
+				'de_DE' => 'Die Fills in [posts], [post], [posts-pager] und [post-nav], die ein Element nicht selbst kennt; jedes andere Feld ist das [[title]] der Elemente.',
 			],
 			'[[.lang]]' => [
-				'en_US' => 'A post is the one the language has, with every text it has none of - none, empty or only spaces - taken from the native language, then from the others. [[.lang]] is the lang attribute of the language the words came from, with the space in front - lang="de-DE" - or nothing; put it on the element that shows the text, as the templates do. A field of the type that no language has is nothing, never a leftover.',
-				'de_DE' => 'Ein Beitrag ist der Beitrag, den die Sprache hat; jeden Text, den sie nicht hat - keinen, einen leeren oder nur Leerzeichen -, nimmt er aus der Muttersprache und dann aus den anderen. [[.lang]] ist das lang-Attribut der Sprache, aus der die Worte kamen, mit dem Leerzeichen davor - lang="de-DE" - oder nichts; es kommt an das Element, das den Text zeigt, wie in den Templates. Ein Feld des Typs, das keine Sprache hat, ist nichts, nie ein Rest.',
+				'en_US' => 'The lang attribute of the language the words came from, with the space in front; put it on the element that shows the text.',
+				'de_DE' => 'Das lang-Attribut der Sprache, aus der die Worte kamen, mit dem Leerzeichen davor; es kommt an das Element, das den Text zeigt.',
 			],
 		],
 		'routes' => [
 			'/blog' => [
-				'en_US' => 'The list, a page at a time. The path is the section\'s.',
-				'de_DE' => 'Die Liste, seitenweise. Der Pfad gehört der Section.',
+				'en_US' => 'The list, a page at a time; the path is the section\'s.',
+				'de_DE' => 'Die Liste, seitenweise; der Pfad gehört dem Bereich.',
 			],
 			'/blog/my-first-post' => [
-				'en_US' => 'One record, at a readable url. Its title and summary are the title and the description of the page - as text, so a tag in them is shown and not run. A post no language has a title or a summary for takes the name and the description of its section\'s page for them, and the company\'s where there are none: never the key of a text nobody wrote.',
-				'de_DE' => 'Ein Datensatz, unter einer lesbaren Adresse. Titel und Zusammenfassung sind Titel und Beschreibung der Seite - als Text, ein Tag darin wird angezeigt und nicht ausgeführt. Hat keine Sprache einen Titel oder eine Zusammenfassung für den Beitrag, nimmt die Seite dafür Namen und Beschreibung der Seite seines Bereichs und, wo es die nicht gibt, die der Firma: nie den Schlüssel eines Textes, den niemand geschrieben hat.',
+				'en_US' => 'One record at a readable url; its title and summary are the title and the description of the page, as text.',
+				'de_DE' => 'Ein Datensatz unter einer lesbaren Adresse; Titel und Zusammenfassung sind Titel und Beschreibung der Seite, als Text.',
 			],
 		],
 		'panel' => [],
 		'callbacks' => [
 			'/seo/pages' => [
-				'en_US' => 'Answered, so the SEO feature\'s sitemap.xml and llms.txt carry the section and every post in it - no route names them.',
-				'de_DE' => 'Wird beantwortet, damit sitemap.xml und llms.txt des SEO-Features die Section und jeden Beitrag darin führen - keine Route nennt sie.',
+				'en_US' => 'Answered, so the SEO feature\'s sitemap.xml and llms.txt carry the section and every post in it.',
+				'de_DE' => 'Wird beantwortet, damit sitemap.xml und llms.txt des Features SEO den Bereich und jeden Beitrag darin führen.',
 			],
 		],
 		'install' => [
@@ -72,20 +56,16 @@ return [
 				'de_DE' => 'Ein Elementtyp zum Anfangen, falls das Projekt keinen hat.',
 			],
 			'templates/page-posts.tpl' => [
-				'en_US' => 'The list page; each post is a card in the classes of Nino 1.7 (nino-card), with [[.lang]] on the card and on its title. A project that installed the page earlier renames the classes of its cards and adds [[.lang]] by hand - an installed template is not written again.',
-				'de_DE' => 'Die Listenseite; jeder Beitrag ist eine Karte in den Klassen von Nino 1.7 (nino-card), mit [[.lang]] an der Karte und an ihrem Titel. Ein Projekt, das die Seite früher installiert hat, benennt die Klassen seiner Karten um und setzt [[.lang]] von Hand - ein installiertes Template wird nicht noch einmal geschrieben.',
-			],
-			'templates/page-post.tpl' => [
-				'en_US' => 'The page of one post, with [[.lang]] on the article, on its heading and on the link to the post beside it. A project that installed it earlier adds [[.lang]] by hand.',
-				'de_DE' => 'Die Seite eines Beitrags, mit [[.lang]] am Artikel, an seiner Überschrift und am Link zum Beitrag daneben. Ein Projekt, das sie früher installiert hat, setzt [[.lang]] von Hand.',
+				'en_US' => 'The list page and, as templates/page-post.tpl, the page of one post; an installed template is not written again.',
+				'de_DE' => 'Die Listenseite und, als templates/page-post.tpl, die Seite eines Beitrags; ein installiertes Template wird nicht noch einmal geschrieben.',
 			],
 			'data/posts.php' => [
-				'en_US' => 'Not installed: the sections (type, path, index, post, sort, perPage) are written by hand here as `[\'sections\' => [\'<key>\' => [...]]]` - Posts has no panel. Without the file there is one section, /posts at /blog. A post is an element of the section\'s type - the installed /posts carries title, summary, date, author, image, imageAlt, body and tags - and a future or empty date keeps it unpublished.',
-				'de_DE' => 'Wird nicht installiert: Die Bereiche (Typ, Pfad, index, post, Sortierung, perPage) werden hier von Hand als `[\'sections\' => [\'<key>\' => [...]]]` geschrieben – Posts hat kein Panel. Ohne die Datei gibt es einen Bereich, /posts unter /blog. Ein Beitrag ist ein Element des Typs des Bereichs – der installierte /posts trägt title, summary, date, author, image, imageAlt, body und tags – und ein zukünftiges oder leeres Datum lässt ihn unveröffentlicht.',
+				'en_US' => 'Not installed: you write the sections (type, path, index, post, sort, perPage) here by hand, as Posts has no panel; without the file there is /posts at /blog.',
+				'de_DE' => 'Wird nicht installiert: Die Bereiche (Typ, Pfad, index, post, Sortierung, perPage) schreibst Du hier von Hand, denn Posts hat kein Panel; ohne die Datei gibt es /posts unter /blog.',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'The eight words the two templates say, into the Text panel - and the name, the title and the description of the page of the default section, /_nino/webpage/blog/..., so that its title is a text and not a key until the Routes panel has been used. A key the project has written already stays as it is; a project that has the feature already writes the three in the Routes panel.',
-				'de_DE' => 'Die acht Worte, die die beiden Templates sagen, ins Panel Texte - und Name, Titel und Beschreibung der Seite des Standard-Bereichs, /_nino/webpage/blog/..., damit ihr Titel ein Text ist und kein Schlüssel, bis das Panel Routen benutzt wurde. Ein Schlüssel, den das Projekt schon geschrieben hat, bleibt, wie er ist; ein Projekt, das das Feature schon hat, schreibt die drei im Panel Routen.',
+				'en_US' => 'Puts the words of the two templates and the name, title and description of the default section\'s page into the Text panel.',
+				'de_DE' => 'Bringt die Worte der beiden Templates und Name, Titel und Beschreibung der Seite des Standard-Bereichs ins Panel Texte.',
 			],
 		],
 	],

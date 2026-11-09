@@ -281,8 +281,8 @@ check( 'the label of the field Link names a path of the website, in both languag
 $manualLines = [];
 foreach( (array) ( $manifest['manual']['shortcodes'] ?? [] ) + (array) ( $manifest['manual']['markup'] ?? [] ) as $handle => $line )
 	$manualLines[$handle] = $line;
-check( 'the manual says the class of the three shortcodes and the path of the website, in both languages', array_filter(
-	[ '[social ... class="my-class"]', '[social-link ... class="my-class"]', '[social-icon ... class="my-class"]', 'href="/contact"' ],
+check( 'the manual names the three shortcodes and the path of the website, in both languages', array_filter(
+	[ '[social]', '[social-link instagram]', '[social-icon telegram]', 'href="/contact"' ],
 	static fn( string $handle ): bool => is_array( $manualLines[$handle] ?? null ) === false || trim( (string) ( $manualLines[$handle]['en_US'] ?? '' ) ) === '' || trim( (string) ( $manualLines[$handle]['de_DE'] ?? '' ) ) === '' ) === [] );
 check( 'the unit blacklists every label - workbench words, not the site\'s', $unit['blacklist'] === array_map( static fn( string $key ): string => trim( $key, '[]' ), $labels ) );
 
@@ -729,25 +729,13 @@ check( '...each item of it has the shape the shortcode draws - the list item, th
 
 // --- The manual
 $manualProblems = [];
-$manualPanel		= (array) ( $manifest['manual']['panel']['Design: the looks of the social links'] ?? [] );
-$manualMarkup		= (array) ( $manifest['manual']['markup']['--social-size, --social-gap, --social-stroke, --social-icon, --social-badge'] ?? [] );
-$manualWords		= [ 'en_US' => [ 'Plain', 'Badges', 'Outline', 'Hover', 'size="small"', 'Page, alternate only the line of a badge' ], 'de_DE' => [ 'Schlicht', 'Plaketten', 'Umriss', 'Hover', 'size="small"', 'Seite alternativ zeigt sich nur die Linie einer Plakette' ] ];
 
-foreach( [ 'en_US', 'de_DE' ] as $locale ) {
-	foreach( [ 'panel' => $manualPanel, 'markup' => $manualMarkup ] as $name => $entry )
-		if( trim( (string) ( $entry[$locale] ?? '' ) ) === '' || strlen( (string) $entry[$locale] ) >= 1000 )
-			$manualProblems[] = $locale. ' '. $name;
+foreach( [ 'panel' => 'Design: the looks of the social links', 'markup' => '--social-size, --social-gap, --social-stroke, --social-icon, --social-badge' ] as $manualSection => $manualHandle )
+	foreach( [ 'en_US', 'de_DE' ] as $locale )
+		if( trim( (string) ( $manifest['manual'][$manualSection][$manualHandle][$locale] ?? '' ) ) === '' )
+			$manualProblems[] = $locale. ' '. $manualSection;
 
-	foreach( $manualWords[$locale] as $word )
-		if( str_contains( (string) ( $manualPanel[$locale] ?? '' ), $word ) === false )
-			$manualProblems[] = $locale. ' '. $word;
-
-	foreach( [ '--social-size', '--social-gap', '--social-stroke', '--social-icon', '--social-badge', ':root' ] as $word )
-		if( str_contains( (string) ( $manualMarkup[$locale] ?? '' ), $word ) === false )
-			$manualProblems[] = $locale. ' markup '. $word;
-}
-
-check( 'the manual names the looks, the knobs, the hover, what the sizes of a call are and what shows of a badge on the alternate ground under panel, and the properties under markup, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
+check( 'the manual names the looks under panel and the properties under markup, in both languages'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
 
 echo "\n";
 

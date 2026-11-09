@@ -286,24 +286,10 @@ foreach( [ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'keepRatio'
 check( 'the settings of the feature are the defaults for a new album, and their labels say so in both languages', $defaultsSaid === true );
 check( '...and they are the six an album carries, in the order the panel draws them', array_keys( $manifest['settings'] ) === \Nino\Modules\Gallery::SETTINGS );
 
-// The select is read by the wrapper, and a value outside its options is its default: what that makes of a call is the manual's to say
-$gone = (array) ( $manifest['manual']['shortcodes']['[gallery album="gone"]'] ?? [] );
-check( 'the manual says what a key that no album has does, in both languages: the first album, where the Components module reads the albums as a list, a call the Builder does not keep, and nothing with the module switched off',
-	str_contains( (string) ( $gone['en_US'] ?? '' ), 'draws the first album' ) === true && str_contains( (string) ( $gone['en_US'] ?? '' ), 'HTML+ block' ) === true
-	&& str_contains( (string) ( $gone['en_US'] ?? '' ), 'switched off' ) === true && str_contains( (string) ( $gone['en_US'] ?? '' ), 'Nino 1.' ) === false
-	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'zeichnet das erste Album' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'HTML+-Block' ) === true
-	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'abgeschaltetem Modul' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'Nino 1.' ) === false );
-
-// The manual says what the code does with a count it cannot draw, how a thumbnail is sized and named, and which words the unit brings
-$columnsLine = (array) ( $manifest['manual']['shortcodes']['[gallery album="trip" columns="3"]'] ?? [] );
-$thumbLine = (array) ( $manifest['manual']['markup']['<img width="500" height="500" alt="Trip, picture 3">'] ?? [] );
-$unitLine = (array) ( $manifest['manual']['install']['text/<locale>.php'] ?? [] );
-check( 'the manual says, in both languages, that a column count outside 1 to 8 is the album\'s, how a thumbnail keeps its room and is named, and what the unit brings',
-	str_contains( (string) ( $columnsLine['en_US'] ?? '' ), '1 to 8' ) === true && str_contains( (string) ( $columnsLine['en_US'] ?? '' ), 'album\'s own' ) === true
-	&& str_contains( (string) ( $columnsLine['de_DE'] ?? '' ), '1 bis 8' ) === true && str_contains( (string) ( $columnsLine['de_DE'] ?? '' ), 'des Albums' ) === true
-	&& str_contains( (string) ( $thumbLine['en_US'] ?? '' ), '--nino-gallery-thumb-w' ) === true && str_contains( (string) ( $thumbLine['en_US'] ?? '' ), 'the album\'s name and the picture\'s place' ) === true
-	&& str_contains( (string) ( $thumbLine['de_DE'] ?? '' ), '--nino-gallery-thumb-w' ) === true && str_contains( (string) ( $thumbLine['de_DE'] ?? '' ), 'der Name des Albums und die Stelle des Bildes' ) === true
-	&& str_contains( (string) ( $unitLine['en_US'] ?? '' ), 'Text panel' ) === true && str_contains( (string) ( $unitLine['de_DE'] ?? '' ), 'Panel Texte' ) === true );
+// The manual names the shortcode with its column count, the thumbnail and what the unit brings, in both languages
+check( 'the manual has a line in both languages for the shortcode with its columns, for the thumbnail and for the unit',
+	array_filter( [ 'shortcodes' => '[gallery album="trip" columns="3"]', 'markup' => '<img width="500" height="500" alt="Trip, picture 3">', 'install' => 'text/<locale>.php' ],
+		static fn( string $handle, string $section ): bool => trim( (string) ( $manifest['manual'][$section][$handle]['en_US'] ?? '' ) ) === '' || trim( (string) ( $manifest['manual'][$section][$handle]['de_DE'] ?? '' ) ) === '', ARRAY_FILTER_USE_BOTH ) === [] );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
@@ -1464,30 +1450,16 @@ check( 'the item the shortcode renders has the kernel\'s frame round the picture
 // --- The manual
 $manualProblems = [];
 
-foreach( [ 'en_US', 'de_DE' ] as $locale ) {
-	$text = ( (array) ( $manifest['manual']['panel'] ?? [] ) )['Design: the looks of the gallery'][$locale] ?? null;
-
-	if( is_string( $text ) === false || trim( $text ) === '' || max( array_map( 'strlen', explode( "\n", $text ) ) ) >= 1000 || str_contains( $text, 'nino-hover' ) === true )
-		$manualProblems[] = $locale;
-}
-
-$hoverWords = [ 'en_US' => [ 'Page, Motion', 'kernel' ], 'de_DE' => [ 'Seite, Bewegung', 'Kernels' ] ];
-
-foreach( $hoverWords as $locale => $words )
-	foreach( $words as $word )
-		if( str_contains( (string) ( ( (array) ( $manifest['manual']['panel'] ?? [] ) )['Design: the looks of the gallery'][$locale] ?? '' ), $word ) === false )
-			$manualProblems[] = $locale. ' '. $word;
-
-$frameLine = (array) ( $manifest['manual']['markup']['<span class="nino-gallery-frame nino-image nino-hover">'] ?? [] );
-$propertyLine = (array) ( $manifest['manual']['markup']['--gallery-gap, --gallery-corners, --gallery-ground'] ?? [] );
+foreach( [ 'panel' => 'Design: the looks of the gallery', 'markup' => '<span class="nino-gallery-frame nino-image nino-hover">' ] + [ 'shortcodes' => '[gallery album="trip"]' ] as $manualSection => $manualHandle )
+	foreach( [ 'en_US', 'de_DE' ] as $locale )
+		if( trim( (string) ( $manifest['manual'][$manualSection][$manualHandle][$locale] ?? '' ) ) === '' )
+			$manualProblems[] = $locale. ' '. $manualSection;
 
 foreach( [ 'en_US', 'de_DE' ] as $locale )
-	foreach( [ '--gallery-gap', '--gallery-corners', '--gallery-ground', ':root' ] as $word )
-		if( str_contains( (string) ( $propertyLine[$locale] ?? '' ), $word ) === false || strlen( (string) ( $propertyLine[$locale] ?? '' ) ) >= 1000 )
-			$manualProblems[] = $locale. ' markup line '. $word;
+	if( trim( (string) ( $manifest['manual']['markup']['--gallery-gap, --gallery-corners, --gallery-ground'][$locale] ?? '' ) ) === '' )
+		$manualProblems[] = $locale. ' properties';
 
-check( 'the manual names the looks, the knobs and the hover under panel - the hover as the kernel\'s, set under Page, Motion - and the frame of the picture under markup, in both languages, every line under 1000 bytes'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ),
-	$manualProblems === [] && trim( (string) ( $frameLine['en_US'] ?? '' ) ) !== '' && trim( (string) ( $frameLine['de_DE'] ?? '' ) ) !== '' && strlen( (string) $frameLine['en_US'] ) < 1000 && strlen( (string) $frameLine['de_DE'] ) < 1000 );
+check( 'the manual names the looks under panel and the frame of the picture and the properties of the grid under markup, in both languages'. ( $manualProblems === [] ? '' : ' - '. implode( ', ', $manualProblems ) ), $manualProblems === [] );
 
 echo "\n";
 

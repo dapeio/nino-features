@@ -6,36 +6,28 @@ return [
 	'key'					=> 'modeswitch',
 	'name'				=> [ 'en_US' => 'Light/Dark Switch', 'de_DE' => 'Hell/Dunkel-Schalter' ],
 	'description'	=> [
-		'en_US' => 'Lets a visitor read the site light, dark, or the way their system asks for it - a three-state switch put anywhere with [mode-switch]. The dark palette is the one the project already ships.',
-		'de_DE' => 'Lässt Besucher die Seite hell, dunkel oder so lesen, wie ihr System es vorgibt - ein Schalter mit drei Zuständen, den [mode-switch] an eine beliebige Stelle setzt. Die dunkle Palette ist die, die das Projekt ohnehin mitbringt.',
+		'en_US' => 'Light/Dark Switch lets visitors read the site light, dark, or the way their system asks for it. A three-state switch can be put anywhere with a shortcode. The dark palette is the one the project already ships.',
+		'de_DE' => 'Der Hell/Dunkel-Schalter ermöglicht es Besuchern, die Seite hell, dunkel oder so zu lesen, wie ihr System es vorgibt. Ein Schalter mit drei Zuständen lässt sich mit einem Shortcode an jede Stelle setzen. Die dunkle Palette ist die, die das Projekt ohnehin mitbringt.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[mode-switch]' => [
 				'en_US' => 'Three buttons: light, follow the system, dark.',
-				'de_DE' => 'Drei Schaltflächen: hell, dem System folgen, dunkel.',
+				'de_DE' => 'Drei Knöpfe: hell, dem System folgen, dunkel.',
 			],
 			'[mode-switch icons]' => [
-				'en_US' => 'The same without the words - for a crowded header bar.',
-				'de_DE' => 'Dasselbe ohne die Wörter – für eine volle Kopfzeile.',
-			],
-			'[mode-switch icons="1"]' => [
-				'en_US' => 'The same as [mode-switch icons], the form the Builder writes. true, yes and on are read the same way, in any case.',
-				'de_DE' => 'Dasselbe wie [mode-switch icons], die Form, die der Builder schreibt. Auch true, yes und on gelten, in beliebiger Schreibung.',
-			],
-			'[mode-switch ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the switch. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Schalters. Das schreibt der Builder für seine eigenen Klassen.',
+				'en_US' => 'The same without the words, for a crowded header bar; icons="1", true, yes and on work too, and class="my-class" adds a class of your own.',
+				'de_DE' => 'Dasselbe ohne die Wörter, für eine volle Kopfzeile; icons="1" und true, yes und on gelten ebenso, und class="my-class" hängt eine eigene Klasse an.',
 			],
 		],
 		'markup' => [
 			'data-nino-mode="dark"' => [
-				'en_US' => 'What the switch writes on <html>. assets/theme.css already answers to it; no attribute means "follow the system".',
-				'de_DE' => 'Was der Schalter auf <html> schreibt. assets/theme.css hört längst darauf; kein Attribut heißt „dem System folgen".',
+				'en_US' => 'This is what the switch writes on <html>; assets/theme.css answers to it, and no attribute means follow the system.',
+				'de_DE' => 'Das schreibt der Schalter auf <html>; assets/theme.css hört darauf, und kein Attribut heißt: dem System folgen.',
 			],
 			'localStorage[\'nino-mode\']' => [
-				'en_US' => 'Where the choice is kept: in the reader\'s browser only. No cookie, nothing sent to the server.',
-				'de_DE' => 'Wo die Wahl liegt: nur im Browser des Lesers. Kein Cookie, nichts geht an den Server.',
+				'en_US' => 'This is where the choice is kept, in the reader\'s browser only: no cookie, nothing sent to the server.',
+				'de_DE' => 'Hier liegt die Wahl, nur im Browser des Lesers: kein Cookie, nichts geht an den Server.',
 			],
 		],
 		'routes' => [],
@@ -43,8 +35,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The switch\'s four words, into the Text panel.',
-				'de_DE' => 'Die vier Worte des Schalters, ins Panel Texte.',
+				'en_US' => 'Puts the four words of the switch into the Text panel.',
+				'de_DE' => 'Bringt die vier Worte des Schalters ins Panel Texte.',
 			],
 		],
 	],

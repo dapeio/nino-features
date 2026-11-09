@@ -5,44 +5,32 @@ return [
 	'key'					=> 'seo',
 	'name'				=> [ 'en_US' => 'SEO', 'de_DE' => 'SEO' ],
 	'description'	=> [
-		'en_US' => 'Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has - nothing to maintain by hand.',
-		'de_DE' => 'Sitemap, robots.txt und llms.txt, erzeugt aus den Routen, Sprachen und Texten, die Nino bereits kennt - nichts, das von Hand gepflegt werden muss.',
+		'en_US' => 'SEO lets a site have a sitemap, robots.txt and llms.txt, generated from the routes, locales and texts Nino already has. There is nothing to maintain by hand.',
+		'de_DE' => 'SEO ermöglicht Sitemap, robots.txt und llms.txt, erzeugt aus den Routen, Sprachen und Texten, die Nino bereits kennt. Es gibt nichts, das von Hand gepflegt werden muss.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[seo-alternates]' => [
-				'en_US' => 'The hreflang links, into a page\'s head.',
-				'de_DE' => 'Die hreflang-Links, in den head einer Seite.',
-			],
-			'[seo-jsonld]' => [
-				'en_US' => 'Its structured data.',
-				'de_DE' => 'Die strukturierten Daten der Seite.',
+				'en_US' => 'Writes the hreflang links into a page\'s head; [seo-jsonld] writes its structured data.',
+				'de_DE' => 'Schreibt die hreflang-Links in den head einer Seite; [seo-jsonld] schreibt ihre strukturierten Daten.',
 			],
 		],
 		'markup' => [],
 		'routes' => [
 			'/sitemap.xml' => [
-				'en_US' => 'Built fresh on every request from the routes and locales Nino already has.',
-				'de_DE' => 'Wird bei jeder Anfrage frisch aus den Routen und Locales gebaut, die Nino schon hat.',
-			],
-			'/robots.txt' => [
-				'en_US' => 'The same, with the sitemap in it.',
-				'de_DE' => 'Dasselbe, mit der Sitemap darin.',
-			],
-			'/llms.txt' => [
-				'en_US' => 'The same, for the readers that ask for it.',
-				'de_DE' => 'Dasselbe, für die Leser, die danach fragen.',
+				'en_US' => 'Built fresh on every request from the routes and locales Nino already has; /robots.txt is the same with the sitemap in it, /llms.txt the same for the readers that ask for it.',
+				'de_DE' => 'Wird bei jeder Anfrage frisch aus den Routen und Sprachen gebaut, die Nino schon hat; /robots.txt ist dasselbe mit der Sitemap darin, /llms.txt dasselbe für die Leser, die danach fragen.',
 			],
 		],
 		'panel' => [],
 		'callbacks' => [
 			'/seo/pages' => [
-				'en_US' => 'Add a page sitemap.xml and llms.txt cannot find from a route - what a feature that answers /blog/* knows and config.php does not.',
-				'de_DE' => 'Eine Seite ergänzen, die sitemap.xml und llms.txt über keine Route finden - was ein Feature weiß, das /blog/* beantwortet, und die config.php nicht.',
+				'en_US' => 'A feature adds a page here that sitemap.xml and llms.txt cannot find from a route, such as the posts under /blog/*.',
+				'de_DE' => 'Ein Feature ergänzt hier eine Seite, die sitemap.xml und llms.txt über keine Route finden, etwa die Beiträge unter /blog/*.',
 			],
 			'/seo/exclude' => [
-				'en_US' => 'Keep a page out of sitemap.xml and llms.txt - what a feature knows is not for everybody, eg. the paths behind a password.',
-				'de_DE' => 'Eine Seite aus sitemap.xml und llms.txt heraushalten - was ein Feature als nicht für alle bestimmt kennt, zB die Pfade hinter einem Passwort.',
+				'en_US' => 'A feature keeps a page out of sitemap.xml and llms.txt here, such as the paths behind a password.',
+				'de_DE' => 'Ein Feature hält hier eine Seite aus sitemap.xml und llms.txt heraus, etwa die Pfade hinter einem Passwort.',
 			],
 		],
 		'install' => [],

@@ -3,12 +3,42 @@
 return [
 	'key'					=> 'hello',
 	'name'				=> [ 'en_US' => 'Hello World', 'de_DE' => 'Hallo Welt' ],
-	'description'	=> [ 'en_US' => 'Greets the name its panel stores.', 'de_DE' => 'Grüßt den Namen, den sein Panel speichert.' ],
+	'description'	=> [
+		'en_US' => 'Hello World lets you greet a name that its panel stores. It is the example a new feature takes its shape from.',
+		'de_DE' => 'Hallo Welt ermöglicht es, einen Namen zu grüßen, den sein Panel speichert. Es ist das Beispiel, an dem sich ein neues Feature in der Form orientiert.',
+	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
-		'shortcodes' => [ '[hello name="Ada" shout="yes"]' => 'Greets Ada, in capitals.' ], 'markup' => [],
-		'routes' => [ '/hello' => 'The page of the greeting.' ], 'panel' => [ 'Hello World' => 'Who the shortcode greets.' ],
-		'callbacks' => [], 'install' => [ 'templates/page-hello.tpl' => 'The page /hello renders.', 'elements/privacy.php' => 'Its section of the privacy policy.' ],
+		'shortcodes' => [
+			'[hello name="Ada" shout="yes"]' => [
+				'en_US' => 'Greets Ada, in capitals.',
+				'de_DE' => 'Grüßt Ada, in Großbuchstaben.',
+			],
+		],
+		'markup' => [],
+		'routes' => [
+			'/hello' => [
+				'en_US' => 'The page of the greeting.',
+				'de_DE' => 'Die Seite des Grußes.',
+			],
+		],
+		'panel' => [
+			'Hello World' => [
+				'en_US' => 'Sets who the shortcode greets.',
+				'de_DE' => 'Legt fest, wen der Shortcode grüßt.',
+			],
+		],
+		'callbacks' => [],
+		'install' => [
+			'templates/page-hello.tpl' => [
+				'en_US' => 'The template the page /hello renders.',
+				'de_DE' => 'Das Template der Seite /hello.',
+			],
+			'elements/privacy.php' => [
+				'en_US' => 'Brings its section of the privacy policy.',
+				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung mit.',
+			],
+		],
 	],
 	'category'		=> 'system',				// one of \Nino\Features::CATEGORIES
 	'maturity'		=> 'Example',				// the badge beside the name, 24 characters at most

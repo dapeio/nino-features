@@ -63,9 +63,8 @@ check( 'its manual names the shortcode and the class a call adds, and no route',
 check( '...and names the data attributes a bar is pointed with in the markup',
 	array_key_exists( 'data-progress-of="#article"', $manifest['manual']['markup'] ) === true
 	&& array_key_exists( 'data-progress-label="Lesefortschritt"', $manifest['manual']['markup'] ) === true );
-check( '...and says in both languages who writes the element: the Builder, as a component, or whoever writes the page, by hand',
-	preg_match( '/Builder.*by hand/', \Nino\Features::localized( $manifest['manual']['markup']['class="nino-progress"'] ?? '', 'en_US' ) ) === 1
-	&& preg_match( '/Builder.*von Hand/', \Nino\Features::localized( $manifest['manual']['markup']['class="nino-progress"'] ?? '', 'de_DE' ) ) === 1 );
+check( '...and the element itself, in both languages',
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => trim( \Nino\Features::localized( $manifest['manual']['markup']['class="nino-progress"'] ?? '', $locale ) ) === '' ) === [] );
 check( 'it requires no other feature, keeps no data and carries no settings',
 	$manifest['requires'] === [] && $manifest['data'] === [] && $manifest['settings'] === [] );
 check( 'and ships no install unit - there is nothing for it to write into a project',

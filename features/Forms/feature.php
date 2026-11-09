@@ -5,63 +5,47 @@ return [
 	'key'					=> 'forms',
 	'name'				=> [ 'en_US' => 'Forms', 'de_DE' => 'Formulare' ],
 	'description'	=> [
-		'en_US' => 'A builder for Nino\'s own form endpoint: any number of forms with fields of their own, a [form] shortcode that draws them, and spam protection without a captcha. How the fields look is the kernel\'s, and the Design feature sets it.',
-		'de_DE' => 'Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare mit eigenen Feldern, ein Shortcode [form], der sie zeichnet, und Spam-Schutz ohne Captcha. Wie die Felder aussehen, bestimmt der Kernel, und das Feature Design stellt es ein.',
+		'en_US' => 'Forms lets you build any number of forms with fields of their own, without touching code. A shortcode draws them, and spam protection without a captcha comes with it. The Design feature sets how the fields look.',
+		'de_DE' => 'Formulare ermöglicht beliebig viele Formulare auf der Website, mit eigenen Feldern, ganz ohne Eingriff am Code. Ein Shortcode zeichnet sie, und ein Spam-Schutz ohne Captcha ist dabei. Das Aussehen der Felder stellt das Design ein.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[form key="quote"]' => [
-				'en_US' => 'Draws that form. A key no form has draws the first form.',
-				'de_DE' => 'Zeichnet dieses Formular. Ein Schlüssel, den kein Formular hat, zeichnet das erste Formular.',
-			],
-			'[form]' => [
-				'en_US' => 'Draws the first form there is.',
-				'de_DE' => 'Zeichnet das erste Formular, das es gibt.',
-			],
-			'[form] in the Builder' => [
-				'en_US' => 'Under Properties, Form is a select of the forms there are, by their names, with the first form at the top; choosing one writes its key into the call, the first form writes none. The Builder reads the list when it opens a page, so a form made in the Forms panel is offered once the page is opened again. A key whose form is gone is read as empty wherever the Components module renders the call, and the first form is drawn.',
-				'de_DE' => 'Unter Eigenschaften ist Formular ein Select der vorhandenen Formulare mit ihren Namen, das erste Formular steht oben; die Auswahl schreibt den Schlüssel in den Aufruf, das erste Formular schreibt keinen. Der Builder liest die Liste, wenn er eine Seite öffnet, ein im Panel Formulare angelegtes Formular wird also angeboten, sobald die Seite erneut geöffnet wird. Ein Schlüssel, dessen Formular es nicht mehr gibt, gilt überall als leer, wo das Komponenten-Modul den Aufruf rendert, und das erste Formular wird gezeichnet.',
-			],
-			'[form] and the kernel it needs' => [
-				'en_US' => 'The key is a select whose options a method of the feature answers (the Components module keeps options of that kind for a select or a variant only) - a bound the shortcode itself never declared: written by hand without that module it still draws nothing for a key no form has. Needs the Nino of the kernel patch after 1.8.0, whose Components module takes the options of an attribute from a method of the feature. On a kernel before it the whole manifest of this feature is refused - no panel, no guards, no [form] - and Forms cannot be installed, until the floor of the feature rises with that release.',
-				'de_DE' => 'Der Schlüssel ist ein Select, dessen Optionen eine Methode des Features beantwortet (das Komponenten-Modul behält Optionen dieser Art nur für ein Select oder eine Variante) - eine Schranke, die der Shortcode selbst nie hatte: Von Hand ohne dieses Modul geschrieben zeichnet er für einen Schlüssel, den kein Formular hat, weiterhin nichts. Braucht das Nino des Kernel-Patches nach 1.8.0, dessen Komponenten-Modul die Optionen eines Attributs von einer Methode des Features nimmt. Auf einem Kernel davor wird das ganze Manifest dieses Features abgewiesen - kein Panel, keine Schutzmaßnahmen, kein [form] - und Formulare lässt sich nicht installieren, bis die Untergrenze des Features mit diesem Release steigt.',
+				'en_US' => 'Draws that form; without a key, or with a key no form has, it draws the first form.',
+				'de_DE' => 'Zeichnet dieses Formular; ohne key oder mit einem Schlüssel, den kein Formular hat, zeichnet es das erste.',
 			],
 			'[form ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the form. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Formulars. Das schreibt der Builder für seine eigenen Klassen.',
+				'en_US' => 'Adds a class of your own; in the Builder you choose the form under Properties from the list of the existing ones.',
+				'de_DE' => 'Hängt eine eigene Klasse an; im Builder wählst Du das Formular unter Eigenschaften aus der Liste der vorhandenen.',
 			],
 		],
 		'markup' => [
-			'The look of the fields' => [
-				'en_US' => 'The fields, their labels, the status line, the checkbox (.nino-forms-check) and the group of radio buttons (.nino-forms-group) are drawn by Nino.css from the properties --forms-*, which the Design feature sets under the object Form, so this feature brings no stylesheet - and on a Nino before the one that draws the form there, a form looks as the contact form of the starter site does and the checkbox and the radio group are as the browser draws them.',
-				'de_DE' => 'Die Felder, ihre Beschriftungen, die Statuszeile, die Checkbox (.nino-forms-check) und die Gruppe von Radio-Buttons (.nino-forms-group) zeichnet Nino.css aus den Properties --forms-*, die das Feature Design unter dem Objekt Formular einstellt, darum bringt dieses Feature kein Stylesheet mit – und auf einem Nino vor dem, das das Formular dort zeichnet, sieht ein Formular aus wie das Kontaktformular der Start-Site, und die Checkbox und die Radiogruppe sind, wie der Browser sie zeichnet.',
+			'.nino-forms-check, .nino-forms-group' => [
+				'en_US' => 'Fields, labels, status line, checkbox and radio group are drawn by Nino.css from the --forms-* properties, which the Design feature sets.',
+				'de_DE' => 'Felder, Beschriftungen, Statuszeile, Checkbox und Radiogruppe zeichnet Nino.css aus den Properties --forms-*, die das Design einstellt.',
 			],
 		],
 		'routes' => [],
 		'panel' => [
 			'Forms' => [
-				'en_US' => 'Build a form: its fields, where it is sent, the words around it. What visitors send is in the Submissions panel.',
-				'de_DE' => 'Ein Formular bauen: seine Felder, wohin es geht, die Worte drumherum. Was Besucher senden, steht im Panel Anfragen.',
-			],
-			'Forms: fields' => [
-				'en_US' => 'One row per field: text, email, tel, url, number, textarea, select, radio, checkbox or date, required or not; the name follows the label until it is typed into. Saved to /nino/form/forms in config.php.',
-				'de_DE' => 'Eine Zeile je Feld: text, email, tel, url, number, textarea, select, radio, checkbox oder date, Pflicht oder nicht; der Name folgt der Beschriftung, bis er selbst getippt wird. Gespeichert unter /nino/form/forms in der config.php.',
+				'en_US' => 'Builds a form with fields (text, email, tel, url, number, textarea, select, radio, checkbox, date), target and words; what visitors send is in the Submissions panel.',
+				'de_DE' => 'Baut ein Formular mit Feldern (text, email, tel, url, number, textarea, select, radio, checkbox, date), Ziel und Worten; was Besucher senden, steht im Panel Anfragen.',
 			],
 			'Submissions: keep and record' => [
-				'en_US' => 'How long the kernel keeps submissions (1 to 60 months) and whether it records them at all - /nino/form/retention and /nino/form/store.',
-				'de_DE' => 'Wie lange der Kernel Einsendungen aufhebt (1 bis 60 Monate) und ob er sie überhaupt speichert – /nino/form/retention und /nino/form/store.',
+				'en_US' => 'Sets how long the kernel keeps submissions (/nino/form/retention, 1 to 60 months) and whether it records them (/nino/form/store).',
+				'de_DE' => 'Stellt ein, wie lange der Kernel Einsendungen aufhebt (/nino/form/retention, 1 bis 60 Monate) und ob er sie speichert (/nino/form/store).',
 			],
 		],
 		'callbacks' => [
 			'/nino/http/response/POST://.form' => [
-				'en_US' => 'Three spam guards on the kernel\'s own form route: a too fast submission and a blocked word answer 418 like a filled honeypot, a rate limit answers 429. Nothing is mailed or recorded then.',
-				'de_DE' => 'Drei Spam-Wächter auf der Route des Kernels: Eine zu schnelle Absendung und ein gesperrtes Wort antworten 418 wie ein gefüllter Honigtopf, ein Limit antwortet 429. Es wird dann nichts gesendet oder gespeichert.',
+				'en_US' => 'Guards the kernel\'s form route with three checks: too fast and blocked words answer 418 like a filled honeypot, a rate limit answers 429.',
+				'de_DE' => 'Schützt die Formular-Route des Kernels mit drei Wächtern: Zu schnell und gesperrte Wörter antworten 418 wie ein gefüllter Honigtopf, ein Limit antwortet 429.',
 			],
 		],
 		'install' => [
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice. It names three months, the default of /nino/form/retention, and assumes /nino/form/store is on: whoever changes either changes the section in the Elements panel too.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung. Er nennt drei Monate, den Standard von /nino/form/retention, und setzt voraus, dass /nino/form/store an ist: Wer eines davon ändert, passt den Abschnitt im Panel Elemente mit an.',
+				'en_US' => 'Brings its section of the privacy policy for the Legal module; it names three months and assumes /nino/form/store is on.',
+				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung für das Modul Legal mit; er nennt drei Monate und setzt voraus, dass /nino/form/store an ist.',
 			],
 		],
 	],

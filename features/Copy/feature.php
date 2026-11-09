@@ -5,49 +5,42 @@ return [
 	'key'					=> 'copy',
 	'name'				=> [ 'en_US' => 'Copy to Clipboard', 'de_DE' => 'In die Zwischenablage' ],
 	'description'	=> [
-		'en_US' => 'A copy button on anything worth copying by hand - a code block, an IBAN, a voucher code - that says it worked, and stays a piece of selectable text where it cannot.',
-		'de_DE' => 'Ein Kopierknopf an allem, was sonst abgetippt wird - ein Codeblock, eine IBAN, ein Gutscheincode -, der sagt, dass es geklappt hat, und dort, wo er nicht kann, ein markierbarer Text bleibt.',
+		'en_US' => 'Copy to Clipboard lets you put a copy button on anything that would otherwise be typed out: a code block, an IBAN, a voucher code. The button says it worked. Where it cannot, the text stays selectable.',
+		'de_DE' => 'In die Zwischenablage ermöglicht einen Kopierknopf an allem, was sonst abgetippt wird: ein Codeblock, eine IBAN, ein Gutscheincode. Der Knopf sagt, dass es geklappt hat. Wo er nicht kann, bleibt ein markierbarer Text.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[copy]IBAN DE02 1203 0000 0000 2020 51[/copy]' => [
-				'en_US' => 'The text, with a button that copies exactly it.',
-				'de_DE' => 'Der Text, mit einem Knopf, der genau ihn kopiert.',
+				'en_US' => 'Shows the text with a button that copies exactly it; label="IBAN" tells readers what the button is for.',
+				'de_DE' => 'Zeigt den Text mit einem Knopf, der genau ihn kopiert; label="IBAN" sagt Lesern, wofür der Knopf da ist.',
 			],
-			'[copy label="IBAN"]DE02 ...[/copy]' => [
-				'en_US' => 'What the button is for, for a reader who cannot see what it stands beside.',
-				'de_DE' => 'Wofür der Knopf da ist, für Leser, die nicht sehen, woneben er steht.',
-			],
-			'[copy block]...[/copy]' => [
-				'en_US' => 'A block rather than a line, with the whitespace kept - painted as one by copy.css, because everything this writes has to be able to stand inside a paragraph. block="1" is the same, and so are true, yes and on, in any case and with a space around them.',
-				'de_DE' => 'Ein Block statt einer Zeile, mit erhaltenen Leerräumen - von copy.css als solcher gezeichnet, denn alles, was hier geschrieben wird, muss in einem Absatz stehen können. block="1" ist dasselbe, ebenso true, yes und on, in beliebiger Schreibung und mit Leerzeichen darum.',
-			],
-			'[copy value="DE02120300000000202051"]DE02 1203 ...[/copy]' => [
-				'en_US' => 'Copy this instead of what is shown - a number grouped for reading, copied without the spaces.',
-				'de_DE' => 'Kopiert dies statt des Gezeigten - eine zum Lesen gruppierte Nummer, ohne die Leerzeichen kopiert.',
+			'[copy block value="DE02120300000000202051"]DE02 1203 ...[/copy]' => [
+				'en_US' => 'A block instead of a line, with the whitespace kept (block="1" works too), and value copies something other than what is shown.',
+				'de_DE' => 'Block statt Zeile, mit erhaltenen Leerräumen (block="1" gilt ebenso), und value kopiert etwas anderes als das Gezeigte.',
 			],
 			'[copy /project/company/bank/iban]' => [
-				'en_US' => 'The line of a text key, or of text="DE02 ..." written out - what the Builder writes, as plain text, with block="1" for a block.',
-				'de_DE' => 'Die Zeile eines Textschlüssels, oder von text="DE02 ..." ausgeschrieben - das schreibt der Builder, als reiner Text, mit block="1" für einen Block.',
-			],
-			'[copy ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the line. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Zeile. Das schreibt der Builder für seine eigenen Klassen.',
+				'en_US' => 'Takes the text from a text key or from text="DE02 ...", which is what the Builder writes; class="my-class" adds a class of your own.',
+				'de_DE' => 'Nimmt den Text aus einem Textschlüssel oder aus text="DE02 ...", der Form, die der Builder schreibt; class="my-class" hängt eine eigene Klasse an.',
 			],
 		],
-		'markup' => [],
+		'markup' => [
+			'class="nino-copy"' => [
+				'en_US' => 'This is what the shortcode writes: a span.nino-copy with the text in nino-copy-text and the button nino-copy-btn, which the script shows.',
+				'de_DE' => 'Das schreibt der Shortcode: einen span.nino-copy mit dem Text in nino-copy-text und dem Knopf nino-copy-btn, den das Skript einblendet.',
+			],
+		],
 		'routes' => [],
 		'panel' => [],
 		'callbacks' => [
 			'/nino/html/shortcode/copy' => [
-				'en_US' => 'Runs ahead of the component: value= of a call is handed on as the attribute copied, the word block - or a named on-word, true, yes or on, trimmed - as block="1", and the text between the tags as text=, which the Builder writes.',
-				'de_DE' => 'Läuft vor der Komponente: value= eines Aufrufs wird als das Attribut copied weitergegeben, das Wort block – oder ein benanntes Ja-Wort, true, yes oder on, ohne Leerzeichen – als block="1", und der Text zwischen den Marken als text=, wie der Builder es schreibt.',
+				'en_US' => 'Runs ahead of the component and hands value on as copied, block as block="1" and the text between the tags as text, as the Builder writes them.',
+				'de_DE' => 'Läuft vor der Komponente und gibt value als copied, block als block="1" und den Text zwischen den Tags als text weiter, wie der Builder sie schreibt.',
 			],
 		],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The three words the button says, into the Text panel.',
-				'de_DE' => 'Die drei Wörter des Knopfs, ins Panel Texte.',
+				'en_US' => 'Puts the three words of the button into the Text panel.',
+				'de_DE' => 'Bringt die drei Wörter des Knopfs ins Panel Texte.',
 			],
 		],
 	],

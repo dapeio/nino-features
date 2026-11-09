@@ -5,48 +5,32 @@ return [
 	'key'					=> 'embed',
 	'name'				=> [ 'en_US' => 'External Embeds', 'de_DE' => 'Externe Einbindungen' ],
 	'description'	=> [
-		'en_US' => 'A video or a map as a surface the visitor presses, not as an iframe that loads itself: nothing is requested from the provider until they ask for it, or until they have allowed external media.',
-		'de_DE' => 'Ein Video oder eine Karte als Fläche, die der Besucher drückt, nicht als iframe, das sich selbst lädt: Beim Anbieter wird nichts angefragt, bevor er es verlangt oder externe Medien erlaubt hat.',
+		'en_US' => 'External Embeds lets you show a video or a map as a surface visitors press, instead of an iframe that loads itself. Nothing is requested from the provider until someone asks or has allowed external media.',
+		'de_DE' => 'Externe Einbindungen ermöglichen ein Video oder eine Karte als Fläche, die Besucher drücken, statt als iframe, das sich selbst lädt. Beim Anbieter wird nichts angefragt, bevor jemand es verlangt oder externe Medien erlaubt hat.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[embed youtube="ID"]' => [
-				'en_US' => 'A YouTube video, through youtube-nocookie.com. The video ID, or the address copied from the browser.',
-				'de_DE' => 'Ein YouTube-Video, über youtube-nocookie.com. Die Video-ID oder die aus dem Browser kopierte Adresse.',
-			],
-			'[embed vimeo="ID"]' => [
-				'en_US' => 'A Vimeo video, with its own do-not-track flag set. The video ID, or the address copied from the browser.',
-				'de_DE' => 'Ein Vimeo-Video, mit dessen eigenem Do-not-track-Schalter. Die Video-ID oder die aus dem Browser kopierte Adresse.',
+				'en_US' => 'Embeds a YouTube video through youtube-nocookie.com, by video ID or the address from the browser; vimeo="ID" does the same for Vimeo.',
+				'de_DE' => 'Bindet ein YouTube-Video über youtube-nocookie.com ein, mit der Video-ID oder der Adresse aus dem Browser; vimeo="ID" tut dasselbe für Vimeo.',
 			],
 			'[embed url="https://..."]' => [
-				'en_US' => 'Anything else with an embed address - a map, a booking widget, a calendar. https only. A YouTube or Vimeo page address becomes the player address.',
-				'de_DE' => 'Alles andere mit einer Einbettungsadresse - eine Karte, ein Buchungswidget, ein Kalender. Nur https. Eine YouTube- oder Vimeo-Seitenadresse wird zur Player-Adresse.',
+				'en_US' => 'Embeds anything with an embed address, such as a map, a booking widget or a calendar; https only.',
+				'de_DE' => 'Bindet alles mit einer Einbettungsadresse ein, etwa eine Karte, ein Buchungswidget oder einen Kalender; nur https.',
 			],
-			'[embed ... title="Anfahrt"]' => [
-				'en_US' => 'What the surface says and what the loaded frame is called. Say it for every embed: it is the only name a screen reader gets.',
-				'de_DE' => 'Was auf der Fläche steht und wie der geladene Rahmen heißt. Bei jeder Einbindung angeben: Es ist der einzige Name, den ein Screenreader bekommt.',
-			],
-			'[embed ... poster="video/still.jpg"]' => [
-				'en_US' => 'A picture from the project\'s own images as the surface. Never a thumbnail from the provider - fetching one would be the request this feature exists to prevent.',
-				'de_DE' => 'Ein Bild aus den eigenen Bildern des Projekts als Fläche. Nie ein Vorschaubild des Anbieters - es zu holen wäre genau die Anfrage, die dieses Feature verhindert.',
-			],
-			'[embed ... ratio="4-3"]' => [
-				'en_US' => 'The shape of the box: 16-9 (default), 4-3, 1-1 or 21-9.',
-				'de_DE' => 'Die Form des Kastens: 16-9 (Vorgabe), 4-3, 1-1 oder 21-9.',
-			],
-			'[embed ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the surface. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Fläche. Das schreibt der Builder für seine eigenen Klassen.',
+			'[embed ... title="Anfahrt" poster="video/still.jpg" ratio="4-3" class="my-class"]' => [
+				'en_US' => 'Sets the title (the only name for screen readers), a picture of your own as the surface, the shape (16-9, 4-3, 1-1, 21-9) and a class of your own.',
+				'de_DE' => 'Setzt Titel (der einzige Name für Screenreader), ein eigenes Bild als Fläche, die Form (16-9, 4-3, 1-1, 21-9) und eine eigene Klasse.',
 			],
 		],
 		'markup' => [
 			'class="nino-embed"' => [
-				'en_US' => 'What the shortcode writes. The address is a data attribute, not a src - there is no iframe on the page until one is asked for.',
-				'de_DE' => 'Was der Shortcode schreibt. Die Adresse steht in einem data-Attribut, nicht in einem src - vor der Anforderung gibt es kein iframe auf der Seite.',
+				'en_US' => 'This is what the shortcode writes; the address is a data attribute, and until it is asked for there is no iframe on the page.',
+				'de_DE' => 'Das schreibt der Shortcode; die Adresse steht in einem data-Attribut, und vor der Anforderung gibt es kein iframe auf der Seite.',
 			],
 			'nino:embed event' => [
-				'en_US' => 'Fired on the document with the host once an embed is released, by a press or by consent, for anything on the page that wants to know.',
-				'de_DE' => 'Wird am Dokument mit dem Host ausgelöst, sobald ein Embed freigegeben ist, durch einen Klick oder durch eine Einwilligung – für alles auf der Seite, das es wissen will.',
+				'en_US' => 'Fired on the document with the host once an embed is released by a press or by consent.',
+				'de_DE' => 'Wird am Dokument mit dem Host ausgelöst, sobald ein Embed durch Klick oder Einwilligung freigegeben ist.',
 			],
 		],
 		'routes' => [],
@@ -59,12 +43,12 @@ return [
 		],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The four words an unreleased embed carries - the two on the surface, the way out without JavaScript and the frame\'s own name - into the Text panel.',
-				'de_DE' => 'Die vier Wörter einer nicht freigegebenen Einbindung - die zwei auf der Fläche, der Ausweg ohne JavaScript und der Name des Rahmens - ins Panel Texte.',
+				'en_US' => 'Puts the four words of an unreleased embed into the Text panel.',
+				'de_DE' => 'Bringt die vier Wörter einer nicht freigegebenen Einbindung ins Panel Texte.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Its three sections of the privacy policy (embedded content, YouTube, Vimeo), added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice: a project that uses only one of YouTube and Vimeo hides the other section, a url= embed is the operator\'s to name, and whoever publishes checks the provider names, offices and links, which change.',
-				'de_DE' => 'Seine drei Abschnitte der Datenschutzerklärung (eingebettete Inhalte, YouTube, Vimeo), dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung: Ein Projekt, das nur YouTube oder nur Vimeo nutzt, blendet den anderen Abschnitt aus, eine url=-Einbindung benennt der Betreiber selbst, und wer veröffentlicht, prüft Anbieternamen, Stellen und Links, die sich ändern.',
+				'en_US' => 'Brings three sections of the privacy policy for the Legal module (embedded content, YouTube, Vimeo); a starting point, no legal advice.',
+				'de_DE' => 'Bringt drei Abschnitte der Datenschutzerklärung für das Modul Legal mit (eingebettete Inhalte, YouTube, Vimeo); ein Ausgangspunkt, keine Rechtsberatung.',
 			],
 		],
 	],

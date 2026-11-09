@@ -5,54 +5,42 @@ return [
 	'key'					=> 'toc',
 	'name'				=> [ 'en_US' => 'Table of Contents', 'de_DE' => 'Inhaltsverzeichnis' ],
 	'description'	=> [
-		'en_US' => 'A list of a long page\'s own headings, built from the page as it stands, that says which section is being read - and an anchor on every heading, so a passage can be linked to.',
-		'de_DE' => 'Eine Liste der eigenen Überschriften einer langen Seite, aus der Seite selbst gebaut, die zeigt, welcher Abschnitt gerade gelesen wird - und ein Anker an jeder Überschrift, damit sich eine Stelle verlinken lässt.',
+		'en_US' => 'Table of Contents lets you list the headings of a long page, built from the page itself. It shows which section is being read. Every heading gets an anchor, so a passage can be linked to.',
+		'de_DE' => 'Das Inhaltsverzeichnis ermöglicht eine Liste der Überschriften einer langen Seite, aus der Seite selbst gebaut. Sie zeigt, welcher Abschnitt gerade gelesen wird. Jede Überschrift bekommt einen Anker, damit sich eine Stelle verlinken lässt.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[toc]' => [
-				'en_US' => 'The list, built from the headings that follow it on the page.',
-				'de_DE' => 'Die Liste, gebaut aus den Überschriften, die ihr auf der Seite folgen.',
+				'en_US' => 'Builds the list from the headings that follow it on the page; the default is h2 and h3.',
+				'de_DE' => 'Baut die Liste aus den Überschriften, die ihr auf der Seite folgen; Standard sind h2 und h3.',
 			],
-			'[toc levels="2"]' => [
-				'en_US' => 'Only h2. Default is h2 and h3.',
-				'de_DE' => 'Nur h2. Vorgabe sind h2 und h3.',
-			],
-			'[toc within="#content"]' => [
-				'en_US' => 'Take the headings from inside one element rather than from the whole page.',
-				'de_DE' => 'Nimmt die Überschriften aus einem Element statt von der ganzen Seite.',
-			],
-			'[toc title="Auf dieser Seite"]' => [
-				'en_US' => 'What stands over the list. Without it the Text panel\'s own words are used.',
-				'de_DE' => 'Was über der Liste steht. Ohne die Angabe werden die Wörter aus dem Panel Texte verwendet.',
-			],
-			'[toc ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the list. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Liste. Das schreibt der Builder für seine eigenen Klassen.',
+			'[toc levels="2" within="#content" title="Auf dieser Seite" class="my-class"]' => [
+				'en_US' => 'Takes h2 only, the headings from one element, sets the title over the list and adds a class of your own.',
+				'de_DE' => 'Nimmt nur h2, die Überschriften aus einem Element, setzt den Titel über der Liste und hängt eine eigene Klasse an.',
 			],
 		],
 		'markup' => [
 			'class="nino-toc-skip"' => [
-				'en_US' => 'On a heading: left out of the list, and given no anchor.',
-				'de_DE' => 'An einer Überschrift: bleibt aus der Liste und bekommt keinen Anker.',
+				'en_US' => 'On a heading it is left out of the list and gets no anchor.',
+				'de_DE' => 'An einer Überschrift bleibt sie aus der Liste und bekommt keinen Anker.',
 			],
 			'id="…" on a listed heading' => [
-				'en_US' => 'Every heading in the list gets an id made from its own words; an id the page already had is kept exactly as it was. Two headings with the same words get kontakt and kontakt-2.',
-				'de_DE' => 'Jede Überschrift der Liste bekommt eine id aus ihren eigenen Worten; eine id, die die Seite schon hatte, bleibt, wie sie war. Zwei Überschriften mit denselben Worten bekommen kontakt und kontakt-2.',
+				'en_US' => 'Every listed heading gets an id made from its words, an id already there is kept, and two equal headings become kontakt and kontakt-2.',
+				'de_DE' => 'Jede Überschrift der Liste bekommt eine id aus ihren Worten, eine vorhandene id bleibt, und zwei gleiche Überschriften werden kontakt und kontakt-2.',
 			],
 		],
 		'routes' => [],
 		'panel' => [
 			'Design: the looks of the list' => [
-				'en_US' => 'With the Design feature on, the tab Table of Contents of the Design panel offers under Base three looks of the list - Line, as it has always been drawn, Box and Numbered - and a select for the place: None, or Sticky, which keeps the list at the top of the window from 1024 px up, for as long as the column it stands in reaches - a header that slides back in while the page scrolls up covers it. The knobs stand under Surface (the thickness of the line, the space inside, the indent of the sub-levels) and Colour (the colour of the line, the ground of the box); a knob the look does not answer to is greyed out - Numbered has no line. Line draws the list as it is without Design. A box on a section of its own ground is told apart by its line. The markup stays that of [toc]. The block design/preview.tpl shows a title and three entries in the preview; Apply to website puts the look on the site.',
-				'de_DE' => 'Ist das Feature Design an, bietet der Tab Inhaltsverzeichnis des Design-Panels unter Grundlage drei Looks der Liste an - Linie, wie sie immer gezeichnet wurde, Kasten und Nummeriert - und eine Auswahl für den Platz: Keiner oder Klebt am Rand, das die Liste ab 1024 px oben im Fenster hält, solange die Spalte reicht, in der sie steht - ein Header, der beim Hochscrollen zurückkommt, verdeckt sie. Die Regler stehen unter Fläche (die Stärke der Linie, der Innenabstand, der Einzug der Unterebenen) und Farbe (die Farbe der Linie, der Grund des Kastens); ein Regler, auf den der Look nicht antwortet, steht ausgegraut da - Nummeriert hat keine Linie. Linie zeichnet die Liste wie ohne Design. Ein Kasten auf einer Sektion mit seinem eigenen Grund hebt sich durch seine Linie ab. Das Markup bleibt das von [toc]. Der Block design/preview.tpl zeigt einen Titel und drei Einträge in der Vorschau; Auf Website anwenden bringt den Look auf die Site.',
+				'en_US' => 'With the Design feature the list offers the looks Line, Box and Numbered, a select for the place (also sticky) and knobs for surface and colour.',
+				'de_DE' => 'Mit dem Design bietet die Liste die Looks Linie, Kasten und Nummeriert, eine Auswahl für den Platz (auch klebend am Rand) und Regler für Fläche und Farbe.',
 			],
 		],
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The two words the list and its anchors carry, into the Text panel.',
-				'de_DE' => 'Die zwei Wörter der Liste und ihrer Anker, ins Panel Texte.',
+				'en_US' => 'Puts the two words of the list and its anchors into the Text panel.',
+				'de_DE' => 'Bringt die zwei Wörter der Liste und ihrer Anker ins Panel Texte.',
 			],
 		],
 	],

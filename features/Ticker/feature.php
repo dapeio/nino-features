@@ -6,68 +6,44 @@ return [
 	'key'					=> 'ticker',
 	'name'				=> [ 'en_US' => 'Ticker', 'de_DE' => 'Laufband' ],
 	'description'	=> [
-		'en_US' => 'A row that runs - logos, references, a line of announcements - once, or looping without a seam, pausing when it is pointed at, with a pause button on request, and standing still for a visitor who asked for less motion.',
-		'de_DE' => 'Eine Reihe, die läuft - Logos, Referenzen, eine Zeile Ankündigungen -, einmal oder nahtlos in der Schleife, angehalten, wenn man darauf zeigt, auf Wunsch mit Pause-Knopf, und still für Besucher, die weniger Bewegung wollen.',
+		'en_US' => 'Ticker lets you run a row: logos, references or a line of announcements. It runs once or loops without a seam, pauses when it is pointed at, and stands still for visitors who asked for less motion. A pause button is available on request.',
+		'de_DE' => 'Das Laufband ermöglicht eine Reihe, die läuft: Logos, Referenzen oder eine Zeile Ankündigungen. Sie läuft einmal oder nahtlos in der Schleife, hält an, wenn man darauf zeigt, und steht still für Besucher, die weniger Bewegung wollen. Auf Wunsch gibt es einen Pause-Knopf.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[ticker]...[/ticker]' => [
-				'en_US' => 'A row that runs, as a component that holds components: what stands between the tags is the calls of the components of a section - a title, a text, a picture - and each of them is one item of the row. It draws the box and the track of the markup below around them, and writes a data-ticker-* attribute only where the call differs from what the script does without it. The Builder offers it among the components of a section, and its children are edited where they stand. A row inside a row is not possible, since the shortcode reads its content up to the first closing tag, and the Builder puts no component that holds components into another.',
-				'de_DE' => 'Eine Reihe, die läuft, als Komponente, die Komponenten enthält: Was zwischen den Tags steht, sind die Aufrufe der Komponenten einer Sektion - ein Titel, ein Text, ein Bild -, und jeder davon ist ein Eintrag der Reihe. Sie zeichnet den Kasten und die Spur des Markups unten darum und schreibt ein data-ticker-*-Attribut nur dort, wo der Aufruf von dem abweicht, was das Skript ohne es tut. Der Builder bietet sie unter den Komponenten einer Sektion an, und ihre Kinder bearbeitest Du dort, wo sie stehen. Eine Reihe in einer Reihe geht nicht, denn der Shortcode liest seinen Inhalt bis zum ersten schließenden Tag, und der Builder setzt keine Komponente, die Komponenten enthält, in eine andere.',
+				'en_US' => 'A row as a component that holds components: what stands between the tags are the items of the row; the Builder offers it among the components of a section.',
+				'de_DE' => 'Eine Reihe als Komponente, die Komponenten enthält: Was zwischen den Tags steht, sind die Einträge der Reihe; der Builder bietet sie unter den Komponenten einer Section an.',
 			],
-			'[ticker speed="60"]' => [
-				'en_US' => 'Pixels per second. Default 40. Written as data-ticker-speed only where it is another number.',
-				'de_DE' => 'Pixel je Sekunde. Vorgabe 40. Als data-ticker-speed nur geschrieben, wo es eine andere Zahl ist.',
-			],
-			'[ticker direction="right"]' => [
-				'en_US' => 'Runs the other way. Default is left.',
-				'de_DE' => 'Läuft andersherum. Vorgabe ist links.',
-			],
-			'[ticker loop="1"]' => [
-				'en_US' => 'Starts again without a seam instead of standing still after one cycle. Default no.',
-				'de_DE' => 'Beginnt nahtlos von vorn, statt nach einem Durchlauf still zu stehen. Vorgabe nein.',
-			],
-			'[ticker toggle="1"]' => [
-				'en_US' => 'A pause button after the row, labelled with the text fill of the install unit. Default no.',
-				'de_DE' => 'Ein Pause-Knopf hinter der Reihe, beschriftet mit dem Textfill der Install-Einheit. Vorgabe nein.',
-			],
-			'[ticker pause="0"]' => [
-				'en_US' => 'Keeps running under the pointer. Default yes: the row stops while it is pointed at.',
-				'de_DE' => 'Läuft unter dem Zeiger weiter. Vorgabe ja: Die Reihe hält an, solange man darauf zeigt.',
+			'[ticker speed="60" direction="right" loop="1" toggle="1" pause="0"]' => [
+				'en_US' => 'Sets pixels per second (default 40), the direction, the loop, the pause button, and whether the row keeps running under the pointer.',
+				'de_DE' => 'Setzt Pixel je Sekunde (Vorgabe 40), die Richtung, die Schleife, den Pause-Knopf und, ob die Reihe unter dem Zeiger weiterläuft.',
 			],
 		],
 		'markup' => [
 			'class="nino-ticker"' => [
-				'en_US' => 'On the row: the box the track runs across, and the element the `data-ticker-*` attributes below go on. A row without a `nino-ticker-track` inside it does not run.',
-				'de_DE' => 'An der Reihe: der Kasten, durch den die Spur läuft, und das Element, an das die `data-ticker-*`-Attribute unten gehören. Eine Reihe ohne `nino-ticker-track` darin läuft nicht.',
+				'en_US' => 'The row, the box the track runs across and the element the data-ticker-* attributes go on; without a nino-ticker-track inside it does not run.',
+				'de_DE' => 'Die Reihe, der Kasten, durch den die Spur läuft, und das Element, an das die data-ticker-*-Attribute gehören; ohne nino-ticker-track darin läuft sie nicht.',
 			],
 			'class="nino-ticker-track"' => [
-				'en_US' => 'On the one element inside the row that holds what runs: its children run past, one after the other - one cycle, once the row has been scrolled into view, and then it stands still.',
-				'de_DE' => 'An dem einen Element in der Reihe, das hält, was läuft: Seine Kinder laufen nacheinander vorbei - ein Durchlauf, sobald die Reihe im Bild war, danach steht sie still.',
-			],
-			'--ticker-picture-height' => [
-				'en_US' => 'The height of a picture in the track, a bare image or the frame of [image] and [card-image], 3rem by default: the picture is that high, as wide as that makes it, and a ratio on its frame only decides the width. A project sets it on the row or on :root, in its own css, to size its logos.',
-				'de_DE' => 'Die Höhe eines Bildes in der Spur - eines Bildes ohne Rahmen oder des Rahmens von [image] und [card-image] -, vorgegeben 3rem: Das Bild hat diese Höhe und die Breite, die sich daraus ergibt; ein Seitenverhältnis am Rahmen bestimmt nur die Breite. Ein Projekt setzt sie in seinem eigenen CSS an der Reihe oder auf :root, um seine Logos zu bemessen.',
+				'en_US' => 'The one element inside the row that holds what runs; its children run past one after the other, one cycle, once the row has been in view.',
+				'de_DE' => 'Das eine Element in der Reihe, das hält, was läuft; seine Kinder laufen nacheinander vorbei, ein Durchlauf, sobald die Reihe im Bild war.',
 			],
 			'data-ticker-speed="40"' => [
-				'en_US' => 'Pixels per second. Default 40 - slow enough to read a word on the way past.',
-				'de_DE' => 'Pixel je Sekunde. Vorgabe 40 - langsam genug, um ein Wort im Vorbeilaufen zu lesen.',
-			],
-			'data-ticker-direction="right"' => [
-				'en_US' => 'Runs the other way. Default is to the left.',
-				'de_DE' => 'Läuft andersherum. Vorgabe ist nach links.',
+				'en_US' => 'The speed in pixels per second, 40 by default; data-ticker-direction="right" runs the other way.',
+				'de_DE' => 'Das Tempo in Pixeln je Sekunde, vorgegeben 40; data-ticker-direction="right" läuft andersherum.',
 			],
 			'data-ticker-loop="1"' => [
-				'en_US' => 'Starts again without a seam instead of standing still after one cycle. The words 1, true, yes and on ask for it; any other value leaves the default: one cycle.',
-				'de_DE' => 'Beginnt nahtlos von vorn, statt nach einem Durchlauf still zu stehen. Die Wörter 1, true, yes und on verlangen es; jeder andere Wert lässt die Vorgabe stehen: ein Durchlauf.',
+				'en_US' => 'Starts again without a seam (1, true, yes and on ask for it); data-ticker-pause="off" keeps the row running under the pointer.',
+				'de_DE' => 'Beginnt nahtlos von vorn (1, true, yes und on verlangen es); data-ticker-pause="off" lässt die Reihe unter dem Zeiger weiterlaufen.',
 			],
 			'data-ticker-toggle="[[/feature/ticker/pause/label]]"' => [
-				'en_US' => 'A button after the row that pauses it and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
-				'de_DE' => 'Ein Knopf hinter der Reihe, der sie anhält und wieder aufnimmt (WCAG 2.2.2). Der Wert ist die Beschriftung; der Textfill ist der, den die Install-Einheit mitbringt.',
+				'en_US' => 'A button after the row that pauses it and takes it up again; the value is its label.',
+				'de_DE' => 'Ein Knopf hinter der Reihe, der sie anhält und wieder aufnimmt; der Wert ist seine Beschriftung.',
 			],
-			'data-ticker-pause="off"' => [
-				'en_US' => 'Keeps running under the pointer. Default is to stop, so a logo can be looked at.',
-				'de_DE' => 'Läuft unter dem Zeiger weiter. Vorgabe ist anzuhalten, damit ein Logo betrachtet werden kann.',
+			'--ticker-picture-height' => [
+				'en_US' => 'The height of a picture in the track, 3rem by default, which a project sets on the row or on :root to size its logos.',
+				'de_DE' => 'Die Höhe eines Bildes in der Spur, vorgegeben 3rem, die ein Projekt an der Reihe oder auf :root setzt, um seine Logos zu bemessen.',
 			],
 		],
 		'routes' => [],
@@ -75,8 +51,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The label of the pause button, [[/feature/ticker/pause/label]], into the Text panel.',
-				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/feature/ticker/pause/label]], ins Panel Texte.',
+				'en_US' => 'Puts the label of the pause button, [[/feature/ticker/pause/label]], into the Text panel.',
+				'de_DE' => 'Bringt die Beschriftung des Pause-Knopfs, [[/feature/ticker/pause/label]], ins Panel Texte.',
 			],
 		],
 	],

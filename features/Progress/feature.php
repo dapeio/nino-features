@@ -6,32 +6,32 @@ return [
 	'key'					=> 'progress',
 	'name'				=> [ 'en_US' => 'Reading Progress', 'de_DE' => 'Lesefortschritt' ],
 	'description'	=> [
-		'en_US' => 'A thin bar that says how far through a long text the reader is - over the whole page, or over the one element that holds the article.',
-		'de_DE' => 'Ein schmaler Balken, der zeigt, wie weit der Leser in einem langen Text ist - über die ganze Seite oder über das eine Element, das den Artikel enthält.',
+		'en_US' => 'Reading Progress lets you show a thin bar that tells readers how far through a long text they are. It measures the whole page, or the one element that holds the article.',
+		'de_DE' => 'Der Lesefortschritt ermöglicht einen schmalen Balken, der zeigt, wie weit Leser in einem langen Text sind. Er misst die ganze Seite oder das eine Element, das den Artikel enthält.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[progress of="#article" label="Lesefortschritt"]' => [
-				'en_US' => 'The bar\'s element as a shortcode - what the Builder\'s component writes. of= is the CSS selector of the element whose reading the bar measures: without it #article is taken, and an empty one measures the whole page. label= is what the bar is called for a screen reader; without it the bar is hidden from them.',
-				'de_DE' => 'Das Element des Balkens als Shortcode - das schreibt die Komponente des Builders. of= ist der CSS-Selektor des Elements, dessen Lesen der Balken misst: Ohne die Angabe gilt #article, leer misst die ganze Seite. label= ist, wie der Balken für Screenreader heißt; ohne die Angabe wird er ihnen verborgen.',
+				'en_US' => 'Writes the bar as the Builder\'s component does; of is the CSS selector of the measured element (default #article, empty measures the page), label its name for screen readers.',
+				'de_DE' => 'Schreibt den Balken, wie es die Komponente des Builders tut; of ist der CSS-Selektor des gemessenen Elements (Standard #article, leer misst die Seite), label sein Name für Screenreader.',
 			],
 			'[progress ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to that of the bar. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu der des Balkens. Das schreibt der Builder für seine eigenen Klassen.',
+				'en_US' => 'Adds a class of your own to the bar.',
+				'de_DE' => 'Hängt eine eigene Klasse an den Balken.',
 			],
 		],
 		'markup' => [
 			'class="nino-progress"' => [
-				'en_US' => 'An empty element: it becomes the bar. The script moves it to the body, so it may stand anywhere in the page. The Builder places it as the component Reading progress, in a section, or the div is written by hand.',
-				'de_DE' => 'Ein leeres Element: Es wird zum Balken. Das Skript verschiebt es in den Body, es darf also an beliebiger Stelle der Seite stehen. Der Builder setzt es als Komponente Lesefortschritt in eine Section, oder das div wird von Hand geschrieben.',
+				'en_US' => 'An empty element that becomes the bar; the script moves it to the body, so it may stand anywhere in the page.',
+				'de_DE' => 'Ein leeres Element, das zum Balken wird; das Skript verschiebt es in den Body, es darf also überall auf der Seite stehen.',
 			],
 			'data-progress-of="#article"' => [
-				'en_US' => 'Measure that element rather than the whole page - so the footer is not part of the article.',
-				'de_DE' => 'Misst dieses Element statt der ganzen Seite - damit der Fußbereich nicht zum Artikel zählt.',
+				'en_US' => 'Measures that element rather than the whole page.',
+				'de_DE' => 'Misst dieses Element statt der ganzen Seite.',
 			],
 			'data-progress-label="Lesefortschritt"' => [
-				'en_US' => 'What the bar is, for a reader who cannot see it. Without it the bar is hidden from them instead of announced as an unnamed number.',
-				'de_DE' => 'Was der Balken ist, für Leser, die ihn nicht sehen. Ohne die Angabe wird er ihnen verborgen statt als unbenannte Zahl angesagt.',
+				'en_US' => 'Gives the bar its name for screen readers, else it is hidden from them.',
+				'de_DE' => 'Gibt dem Balken seinen Namen für Screenreader, sonst bleibt er ihnen verborgen.',
 			],
 		],
 		'routes' => [],

@@ -5,43 +5,47 @@ return [
 	'key'					=> 'menu',
 	'name'				=> [ 'en_US' => 'Menu', 'de_DE' => 'Menü' ],
 	'description'	=> [
-		'en_US' => 'Gives the site a menu whose entries open a dropdown panel of content of their own - titles, pictures, links and HTML+ in one to four columns - and a phone gets the same panels as an accordion in the burger overlay. It holds the menus in a file of its own and a small editor in the workbench; the Design chooses it for a navigation.',
-		'de_DE' => 'Gibt der Website ein Menü, dessen Einträge ein Dropdown-Panel mit eigenem Inhalt öffnen - Titel, Bilder, Links und HTML+ in einer bis vier Spalten - und auf dem Telefon werden daraus Ziehharmonika-Panels im Burger-Overlay. Es hält die Menüs in einer eigenen Datei und bringt einen kleinen Editor in der Workbench mit; das Design wählt es für eine Navigation.',
+		'en_US' => 'Menu lets you build a navigation whose entries open dropdown panels of content of their own: titles, pictures, links and HTML+ in one to four columns. On a phone they become accordion panels in the burger overlay. The Design feature chooses it for a navigation.',
+		'de_DE' => 'Das Menü ermöglicht eine Navigation, deren Einträge Dropdown-Panels mit eigenem Inhalt öffnen: Titel, Bilder, Links und HTML+ in einer bis vier Spalten. Auf dem Telefon werden daraus Ziehharmonika-Panels im Burger-Overlay. Das Design wählt es für eine Navigation.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[menu /main]' => [
-				'en_US' => 'The menu "main" as a list of its entries, each with its panel where it has one. The first word is the key of a menu of the Menu panel; it may be a key of the kernel\'s navigations.',
-				'de_DE' => 'Das Menü „main“ als Liste seiner Einträge, jeder mit seinem Dropdown-Panel, wo er eines hat. Das erste Wort ist der Schlüssel eines Menüs aus dem Panel Menü; es darf ein Schlüssel der Navigationen des Kerns sein.',
+				'en_US' => 'Draws the menu main as a list of its entries, each with its dropdown panel where it has one; the first word is the key of a menu.',
+				'de_DE' => 'Zeichnet das Menü main als Liste seiner Einträge, jeder mit seinem Dropdown-Panel, wo er eines hat; das erste Wort ist der Schlüssel eines Menüs.',
 			],
 			'[menu /main burger]' => [
-				'en_US' => 'The same inside the hull of the kernel\'s burger menu: below 768 px the list folds away behind the button and the panels open as an accordion under their entry.',
-				'de_DE' => 'Dasselbe in der Hülle des Burger-Menüs des Kerns: unter 768 px klappt die Liste hinter dem Knopf weg, und die Panels öffnen sich als Ziehharmonika unter ihrem Eintrag.',
+				'en_US' => 'The same inside the kernel\'s burger menu; below 768 px the list folds away behind the button.',
+				'de_DE' => 'Dasselbe in der Hülle des Burger-Menüs des Kernels; unter 768 px klappt die Liste hinter dem Knopf weg.',
 			],
 		],
 		'markup' => [
 			'class="nino-menu"' => [
-				'en_US' => 'ul.nino-menu with li.nino-menu-item (--panel, --current), a.nino-menu-link, button.nino-menu-toggle, div.nino-menu-panel with .nino-menu-cols-<n> and .nino-menu-col, and in a column p.nino-menu-title, p.nino-menu-subtitle, a.nino-menu-link--sub and img.nino-menu-image.',
-				'de_DE' => 'ul.nino-menu mit li.nino-menu-item (--panel, --current), a.nino-menu-link, button.nino-menu-toggle, div.nino-menu-panel mit .nino-menu-cols-<n> und .nino-menu-col, darin p.nino-menu-title, p.nino-menu-subtitle, a.nino-menu-link--sub und img.nino-menu-image.',
+				'en_US' => 'This is what the shortcode writes: ul.nino-menu with li.nino-menu-item, a.nino-menu-link, button.nino-menu-toggle and div.nino-menu-panel with .nino-menu-cols-<n> and .nino-menu-col.',
+				'de_DE' => 'Das schreibt der Shortcode: ul.nino-menu mit li.nino-menu-item, a.nino-menu-link, button.nino-menu-toggle und div.nino-menu-panel mit .nino-menu-cols-<n> und .nino-menu-col.',
+			],
+			'class="nino-menu-title"' => [
+				'en_US' => 'In a column p.nino-menu-title, p.nino-menu-subtitle, a.nino-menu-link--sub and img.nino-menu-image; the item carries nino-menu-item--panel and nino-menu-item--current.',
+				'de_DE' => 'In einer Spalte p.nino-menu-title, p.nino-menu-subtitle, a.nino-menu-link--sub und img.nino-menu-image; der Eintrag trägt nino-menu-item--panel und nino-menu-item--current.',
 			],
 		],
 		'routes' => [],
 		'panel' => [
 			'Menu' => [
-				'en_US' => 'The menus and their editor: entries as links to a page or an address, each with an optional panel of one to four columns of titles, subtitles, pictures, links and HTML+. A developer\'s panel, because HTML+ and addresses are written as typed. Words are text keys /feature/menu/<menu>/<name>, pictures image slots of the same name.',
-				'de_DE' => 'Die Menüs und ihr Editor: Einträge als Links auf eine Seite oder eine Adresse, jeder mit einem Dropdown-Panel aus einer bis vier Spalten mit Titeln, Untertiteln, Bildern, Links und HTML+. Ein Panel für Entwickler, denn HTML+ und Adressen stehen so da, wie sie getippt sind. Wörter sind Textschlüssel /feature/menu/<Menü>/<Name>, Bilder Bild-Slots desselben Namens.',
+				'en_US' => 'Edits the menus: entries as links to a page or an address, each with a panel of titles, subtitles, pictures, links and HTML+, as text keys /feature/menu/<menu>/<name>.',
+				'de_DE' => 'Bearbeitet die Menüs: Einträge als Links auf eine Seite oder Adresse, jeder mit einem Panel aus Titeln, Untertiteln, Bildern, Links und HTML+, als Textschlüssel /feature/menu/<menu>/<name>.',
 			],
 		],
 		'callbacks' => [
 			'/feature/design/navigations' => [
-				'en_US' => 'Answers the Design with one navigation for each menu: [menu /<key> burger] for the header and [menu /<key>] for the footer.',
-				'de_DE' => 'Antwortet dem Design mit einer Navigation je Menü: [menu /<Schlüssel> burger] für die Kopfzeile und [menu /<Schlüssel>] für die Fußzeile.',
+				'en_US' => 'Answers the Design with one navigation for each menu: [menu /<key> burger] for the header, [menu /<key>] for the footer.',
+				'de_DE' => 'Antwortet dem Design mit einer Navigation je Menü: [menu /<key> burger] für die Kopfzeile, [menu /<key>] für die Fußzeile.',
 			],
 		],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The word of the button that opens a panel, into the Text panel.',
-				'de_DE' => 'Das Wort des Knopfs, der ein Panel öffnet, ins Panel Texte.',
+				'en_US' => 'Puts the word of the button that opens a panel into the Text panel.',
+				'de_DE' => 'Bringt das Wort des Knopfs, der ein Panel öffnet, ins Panel Texte.',
 			],
 		],
 	],

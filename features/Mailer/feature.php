@@ -5,8 +5,8 @@ return [
 	'key'					=> 'mailer',
 	'name'				=> [ 'en_US' => 'Mailer', 'de_DE' => 'Mailer' ],
 	'description'	=> [
-		'en_US' => 'Delivers every mail Nino sends over SMTP instead of the server\'s mail() - reliable on hosts where mail() is missing or unreliable.',
-		'de_DE' => 'Versendet jede von Nino verschickte Mail über SMTP statt über das mail() des Servers - zuverlässig auch dort, wo mail() fehlt oder unzuverlässig ist.',
+		'en_US' => 'Mailer lets you send every mail Nino sends over SMTP instead of the server\'s mail(). It also works where mail() is missing or unreliable.',
+		'de_DE' => 'Der Mailer ermöglicht es, jede Mail von Nino über SMTP zu verschicken statt über das mail() des Servers. Das funktioniert auch dort, wo mail() fehlt oder unzuverlässig ist.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
@@ -14,20 +14,20 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Mailer' => [
-				'en_US' => 'The test mail and the last errors. Send yourself one before relying on it - from then on every mail Nino sends goes over SMTP.',
-				'de_DE' => 'Die Testmail und die letzten Fehler. Schick Dir eine, bevor Du Dich darauf verlässt – ab dann geht jede Mail von Nino über SMTP.',
+				'en_US' => 'Sends a test mail and shows the last errors; send yourself one first, because from then on every mail Nino sends goes over SMTP.',
+				'de_DE' => 'Schickt eine Testmail und zeigt die letzten Fehler; schick Dir erst eine, denn ab dann geht jede Mail von Nino über SMTP.',
 			],
 		],
 		'callbacks' => [
 			'/nino/mail/send' => [
-				'en_US' => 'Takes over delivery from mail(): every mail goes over SMTP once a host is set. Without a host it does nothing and mail() stays in charge. The sender of every mail is the From address of the settings where it is set, the site\'s own sender where it is not - with replies, where a mail names none, going to the site\'s sender. A failure is logged, never thrown.',
-				'de_DE' => 'Übernimmt die Zustellung von mail(): Jede Mail geht über SMTP, sobald ein Host eingetragen ist. Ohne Host tut er nichts und mail() bleibt zuständig. Absender jeder Mail ist die Absenderadresse der Einstellungen, wo sie gesetzt ist, sonst der Absender der Website - Antworten, wo eine Mail keine nennt, gehen an diesen. Ein Fehler wird protokolliert, nie geworfen.',
+				'en_US' => 'Takes over delivery from mail() once a host is set, sending with the From address of the settings, else the site\'s own; without a host mail() stays in charge.',
+				'de_DE' => 'Übernimmt mit einem Host die Zustellung von mail() und sendet mit der Absenderadresse der Einstellungen, sonst der der Website; ohne Host bleibt mail() zuständig.',
 			],
 		],
 		'install' => [
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice: the operator completes the section with the provider and the data processing agreement, in the Elements panel.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung: Der Betreiber ergänzt den Abschnitt um den Anbieter und den Auftragsverarbeitungsvertrag, im Panel Elemente.',
+				'en_US' => 'Brings its section of the privacy policy for the Legal module; the operator adds the provider and the data processing agreement.',
+				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung für das Modul Legal mit; den Anbieter und den Auftragsverarbeitungsvertrag ergänzt der Betreiber.',
 			],
 		],
 	],

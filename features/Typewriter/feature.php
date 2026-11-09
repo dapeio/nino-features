@@ -6,63 +6,35 @@ return [
 	'key'					=> 'typewriter',
 	'name'				=> [ 'en_US' => 'Typewriter', 'de_DE' => 'Schreibmaschine' ],
 	'description'	=> [
-		'en_US' => 'Types the lines of a container one after the other, with a cursor at the writing head - a headline that writes itself, once or in a loop, timed per element with data attributes.',
-		'de_DE' => 'Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf - eine Überschrift, die sich selbst schreibt, einmal oder in der Schleife, je Element über data-Attribute getaktet.',
+		'en_US' => 'Typewriter lets you type the lines of a container one after the other, with a cursor at the writing head. A headline writes itself that way, once or in a loop, timed per element with data attributes.',
+		'de_DE' => 'Die Schreibmaschine ermöglicht es, die Zeilen eines Containers nacheinander zu tippen, mit Cursor am Schreibkopf. Eine Überschrift schreibt sich so selbst, einmal oder in der Schleife, und lässt sich je Element über data-Attribute takten.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
 		'markup' => [
 			'class="nino-typewriter"' => [
-				'en_US' => 'On a container: its <p> lines are typed one after the other, once. The last line stays.',
-				'de_DE' => 'An einem Container: seine <p>-Zeilen werden nacheinander getippt, einmal. Die letzte Zeile bleibt stehen.',
+				'en_US' => 'On a container its <p> lines are typed one after the other, once; the last line stays.',
+				'de_DE' => 'An einem Container werden seine <p>-Zeilen nacheinander getippt, einmal; die letzte Zeile bleibt stehen.',
 			],
-			'data-typewriter-speed="60"' => [
-				'en_US' => 'Milliseconds per character.',
-				'de_DE' => 'Millisekunden je Zeichen.',
+			'data-typewriter-speed="60" data-typewriter-hold="2000" data-typewriter-pause="300" data-typewriter-start-delay="0"' => [
+				'en_US' => 'The timings in milliseconds: per character, how long a finished line stands, between two lines and before the first line.',
+				'de_DE' => 'Die Takte in Millisekunden: je Zeichen, wie lange eine fertige Zeile steht, zwischen zwei Zeilen und vor der ersten Zeile.',
 			],
-			'data-typewriter-hold="2000"' => [
-				'en_US' => 'How long a finished line stands.',
-				'de_DE' => 'Wie lange eine fertige Zeile stehen bleibt.',
-			],
-			'data-typewriter-exit="backspace"' => [
-				'en_US' => 'Erases instead of fading.',
-				'de_DE' => 'Löscht rückwärts, statt auszublenden.',
+			'data-typewriter-exit="backspace" data-typewriter-backspace-speed="25" data-typewriter-fade="400"' => [
+				'en_US' => 'Erases instead of fading, at the speed per erased character; fade is the fade in and out in milliseconds, 0 switches it off.',
+				'de_DE' => 'Löscht rückwärts statt auszublenden, mit dem Tempo je gelöschtem Zeichen; fade ist das Ein- und Ausblenden in Millisekunden, 0 schaltet es ab.',
 			],
 			'data-typewriter-loop="1"' => [
-				'en_US' => 'Starts over after the last line instead of stopping. The words 1, true, yes and on ask for it; any other value leaves the default: types once.',
-				'de_DE' => 'Beginnt nach der letzten Zeile von vorn, statt anzuhalten. Die Wörter 1, true, yes und on verlangen es; jeder andere Wert lässt die Vorgabe stehen: tippt einmal.',
+				'en_US' => 'Starts over after the last line; the words 1, true, yes and on ask for it, any other value types the lines once.',
+				'de_DE' => 'Beginnt nach der letzten Zeile von vorn; die Wörter 1, true, yes und on verlangen es, jeder andere Wert lässt es bei einmal.',
+			],
+			'data-typewriter-start="load" data-typewriter-lines="p" data-typewriter-cursor="|"' => [
+				'en_US' => 'Starts at once instead of on scrolling into view, picks the lines by CSS selector (default p) and sets the cursor character, empty leaves it out.',
+				'de_DE' => 'Startet sofort statt beim Hereinscrollen, wählt die Zeilen per CSS-Selektor (Standard p) und setzt das Cursor-Zeichen, leer lässt es weg.',
 			],
 			'data-typewriter-toggle="[[/feature/typewriter/pause/label]]"' => [
-				'en_US' => 'A button after the container that pauses the typing and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
-				'de_DE' => 'Ein Knopf hinter dem Container, der das Tippen anhält und wieder aufnimmt (WCAG 2.2.2). Der Wert ist die Beschriftung; der Textfill ist der, den die Install-Einheit mitbringt.',
-			],
-			'data-typewriter-start="load"' => [
-				'en_US' => 'Starts at once instead of when it scrolls into view.',
-				'de_DE' => 'Startet sofort statt beim Hereinscrollen.',
-			],
-			'data-typewriter-lines="p"' => [
-				'en_US' => 'CSS selector of the lines inside the container. Default p.',
-				'de_DE' => 'CSS-Selektor der Zeilen im Container. Standard p.',
-			],
-			'data-typewriter-start-delay="0"' => [
-				'en_US' => 'Milliseconds before the first line - once, not per pass.',
-				'de_DE' => 'Millisekunden vor der ersten Zeile – einmal, nicht je Durchlauf.',
-			],
-			'data-typewriter-fade="400"' => [
-				'en_US' => 'Milliseconds of the fade in and out; 0 switches it off. Not used by backspace.',
-				'de_DE' => 'Millisekunden für das Ein- und Ausblenden; 0 schaltet es ab. Gilt nicht für backspace.',
-			],
-			'data-typewriter-backspace-speed="25"' => [
-				'en_US' => 'Milliseconds per erased character, with exit="backspace".',
-				'de_DE' => 'Millisekunden je gelöschtem Zeichen, bei exit="backspace".',
-			],
-			'data-typewriter-pause="300"' => [
-				'en_US' => 'Milliseconds between one line leaving and the next arriving.',
-				'de_DE' => 'Millisekunden zwischen dem Abgang einer Zeile und dem Auftritt der nächsten.',
-			],
-			'data-typewriter-cursor="|"' => [
-				'en_US' => 'The cursor character; empty leaves it out.',
-				'de_DE' => 'Das Cursor-Zeichen; leer lässt es weg.',
+				'en_US' => 'A button after the container that pauses the typing and takes it up again; the value is its label.',
+				'de_DE' => 'Ein Knopf hinter dem Container, der das Tippen anhält und wieder aufnimmt; der Wert ist seine Beschriftung.',
 			],
 		],
 		'routes' => [],
@@ -70,8 +42,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The label of the pause button, [[/feature/typewriter/pause/label]], into the Text panel.',
-				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/feature/typewriter/pause/label]], ins Panel Texte.',
+				'en_US' => 'Puts the label of the pause button, [[/feature/typewriter/pause/label]], into the Text panel.',
+				'de_DE' => 'Bringt die Beschriftung des Pause-Knopfs, [[/feature/typewriter/pause/label]], ins Panel Texte.',
 			],
 		],
 	],

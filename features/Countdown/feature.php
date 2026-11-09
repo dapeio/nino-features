@@ -6,54 +6,38 @@ return [
 	'key'					=> 'countdown',
 	'name'				=> [ 'en_US' => 'Countdown', 'de_DE' => 'Countdown' ],
 	'description'	=> [
-		'en_US' => 'The time left until a date, counted down on the page - and, where the script never runs, the date itself, written out and machine-readable.',
-		'de_DE' => 'Die Zeit bis zu einem Datum, auf der Seite heruntergezählt - und dort, wo das Skript nie läuft, das Datum selbst, ausgeschrieben und maschinenlesbar.',
+		'en_US' => 'Countdown lets you count the time left until a date down on the page. Where the script does not run, the date itself stands there, written out and machine-readable.',
+		'de_DE' => 'Der Countdown ermöglicht es, die Zeit bis zu einem Datum auf der Seite herunterzuzählen. Wo das Skript nicht läuft, steht das Datum ausgeschrieben und maschinenlesbar da.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
 			'[countdown to="2026-12-24 18:00"]' => [
-				'en_US' => 'Counts down to that moment. Without tz= it is read in the timezone the Countdown setting names - the one the server runs in, by default. A moment is a real, absolute date, and nothing in it is relative to the day it is read: 2026-12-24 18:00, 24 December 2026, a month alone (2026-12 or Dec 2026, which is its first day), 2026-12-24T18:00:00+01:00 or a Unix timestamp such as @1798132800. Nothing is drawn, and the log says so, for a date that does not exist (2027-02-30) and for what is not read: anything relative (tomorrow, next friday, +3 days, 18:00 alone, 24 December without a year) and an ISO week (2026-W52) - it would end at another instant at every rendering.',
-				'de_DE' => 'Zählt bis zu diesem Moment herunter. Ohne tz= wird er in der Zeitzone gelesen, die die Einstellung von Countdown nennt - standardmäßig die, in der der Server läuft. Ein Moment ist ein echtes, absolutes Datum, und nichts darin hängt vom Tag des Lesens ab: 2026-12-24 18:00, 24 December 2026, ein Monat allein (2026-12 oder Dec 2026, das ist sein erster Tag), 2026-12-24T18:00:00+01:00 oder ein Unix-Zeitstempel wie @1798132800. Nichts wird gezeichnet, und das Log sagt es, bei einem Datum, das es nicht gibt (2027-02-30), und bei allem, was nicht gelesen wird: allem Relativen (tomorrow, next friday, +3 days, 18:00 allein, 24 December ohne Jahr) und einer ISO-Woche (2026-W52) - es würde bei jedem Rendern an einem anderen Zeitpunkt enden.',
+				'en_US' => 'Counts down to that moment; real, absolute dates are allowed, nothing relative such as tomorrow, and what is not read draws nothing and says so in the log.',
+				'de_DE' => 'Zählt bis zu diesem Moment herunter; erlaubt sind echte, absolute Daten, nichts Relatives wie tomorrow, und was nicht gelesen wird, zeichnet nichts und steht im Log.',
 			],
-			'[countdown ... tz="Europe/Berlin"]' => [
-				'en_US' => 'The timezone a wall-clock moment is read in, for this one countdown instead of the setting. A name PHP does not know renders nothing and says so in the log.',
-				'de_DE' => 'Die Zeitzone, in der ein Moment ohne eigenen Offset gelesen wird, für diesen einen Countdown statt der Einstellung. Ein Name, den PHP nicht kennt, zeigt nichts und sagt es im Log.',
-			],
-			'[countdown ... units="days,hours,minutes"]' => [
-				'en_US' => 'Which parts are shown. Always largest first, whatever order they are written in. Default: days, hours, minutes, seconds.',
-				'de_DE' => 'Welche Teile gezeigt werden. Immer die größten zuerst, in welcher Reihenfolge sie auch geschrieben sind. Vorgabe: Tage, Stunden, Minuten, Sekunden.',
-			],
-			'[countdown ... done="Es ist so weit"]' => [
-				'en_US' => 'What stands there once the moment has passed. Without it the Text panel\'s own sentence is used.',
-				'de_DE' => 'Was dort steht, wenn der Moment vorbei ist. Ohne die Angabe wird der Satz aus dem Panel Texte verwendet.',
-			],
-			'[countdown ... format="d.m.Y H:i"]' => [
-				'en_US' => 'How the date under the counter is written, in PHP\'s date() letters. Default Y-m-d H:i. The names of months and days (F, M, l, D) are written in the language of the page, from the Text panel\'s keys /feature/countdown/month/<name>, month-short, day and day-short; a name that no language has a word for stands there as its key. \\F is a plain F.',
-				'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Standard: Y-m-d H:i. Die Namen der Monate und Tage (F, M, l, D) stehen in der Sprache der Seite, aus den Schlüsseln /feature/countdown/month/<name>, month-short, day und day-short des Panels Texte; ein Name, für den keine Sprache ein Wort hat, steht als sein Schlüssel da. \\F ist ein einfaches F.',
-			],
-			'[countdown ... class="my-class"]' => [
-				'en_US' => 'A class of your own, added to those of the counter. What the Builder writes for its custom classes.',
-				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Zählers. Das schreibt der Builder für seine eigenen Klassen.',
+			'[countdown ... tz="Europe/Berlin" units="days,hours,minutes" done="Es ist so weit" format="d.m.Y H:i" class="my-class"]' => [
+				'en_US' => 'Sets the timezone, the visible units, the sentence for afterwards, the date format in the letters of date() and a class of your own.',
+				'de_DE' => 'Setzt Zeitzone, sichtbare Einheiten, den Satz für danach, das Datumsformat in den Buchstaben von date() und eine eigene Klasse.',
 			],
 		],
 		'markup' => [
 			'class="nino-countdown"' => [
-				'en_US' => 'What the shortcode writes, around a <time datetime="..."> that carries the moment.',
-				'de_DE' => 'Was der Shortcode schreibt, um ein <time datetime="..."> herum, das den Moment trägt.',
+				'en_US' => 'This is what the shortcode writes, around a <time datetime="..."> that carries the moment.',
+				'de_DE' => 'Das schreibt der Shortcode, um ein <time datetime="..."> herum, das den Moment trägt.',
 			],
 		],
 		'routes' => [],
 		'panel' => [
 			'Design: the looks of the counter' => [
-				'en_US' => 'With the Design feature on, the tab Countdown of the Design panel offers under Base three looks of the counter - Plain, Tiles and Big - and a select for the separator between the parts: None, Colon or Dot. The knobs stand under Text (the size of the digits), Surface (the space between the parts, where a name stands - under, beside or above its number - and, in Tiles only, the corners) and Colour (in Tiles and Big the colour of the digits, in Tiles only the ground of a tile); a knob the look does not answer to is greyed out. Plain draws the counter as it is without Design. On a section of the ground Page, alternate the default ground of a tile disappears into it - choose another there. The markup stays that of [countdown]. The block design/preview.tpl shows two counters in the preview; Apply to website puts the look on the site.',
-				'de_DE' => 'Ist das Feature Design an, bietet der Tab Countdown des Design-Panels unter Grundlage drei Looks des Zählers an - Schlicht, Kacheln und Groß - und eine Auswahl für den Trenner zwischen den Teilen: Keiner, Doppelpunkt oder Punkt. Die Regler stehen unter Text (die Größe der Ziffern), Fläche (der Abstand der Teile, wo ein Name steht - unter, neben oder über seiner Zahl - und, nur bei Kacheln, die Ecken) und Farbe (bei Kacheln und Groß die Farbe der Ziffern, nur bei Kacheln der Grund einer Kachel); ein Regler, auf den der Look nicht antwortet, steht ausgegraut da. Schlicht zeichnet den Zähler wie ohne Design. Auf einer Sektion mit dem Grund Seite alternativ geht der Standard-Grund einer Kachel darin unter - dort wählst Du einen anderen. Das Markup bleibt das von [countdown]. Der Block design/preview.tpl zeigt zwei Zähler in der Vorschau; Auf Website anwenden bringt den Look auf die Site.',
+				'en_US' => 'With the Design feature the counter offers the looks Plain, Tiles and Big, a select for the separator and knobs for text, surface and colour, with a preview.',
+				'de_DE' => 'Mit dem Design bietet der Zähler die Looks Schlicht, Kacheln und Groß, eine Auswahl für den Trenner und Regler für Text, Fläche und Farbe, samt Vorschau.',
 			],
 		],
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The unit names in both their forms, the names of the months and days (whole and short) and the sentence for afterwards, into the Text panel.',
-				'de_DE' => 'Die Einheitennamen in beiden Formen, die Namen der Monate und Tage (ausgeschrieben und kurz) und der Satz für danach, ins Panel Texte.',
+				'en_US' => 'Puts the units, the names of months and days and the sentence for afterwards into the Text panel.',
+				'de_DE' => 'Bringt Einheiten, Monats- und Tagesnamen und den Satz für danach ins Panel Texte.',
 			],
 		],
 	],

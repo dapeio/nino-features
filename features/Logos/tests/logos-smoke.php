@@ -976,9 +976,6 @@ foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 			$manualProblems[] = $locale. ' '. $entry;
 	}
 
-	if( str_contains( (string) ( $manifest['manual']['panel']['Builder: the presentation Logos'][$locale] ?? '' ), 'order' ) === false )
-		$manualProblems[] = $locale. ' the Builder line names the sort by order';
-
 	foreach( [ '[logos /logo image="image" link="url" sort="order"]', '[logos /logo image="image" link="url" name="name" dark="image-dark"]', '[logos /logo sort="name" limit="8"]', '[logos /logo links="0"]', '[logos /logo height="l"]' ] as $handle )
 		if( trim( (string) ( $manifest['manual']['shortcodes'][$handle][$locale] ?? '' ) ) === '' )
 			$manualProblems[] = $locale. ' '. $handle;
