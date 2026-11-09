@@ -288,6 +288,11 @@ namespace Nino\Modules\Builder {
 	 *											                    the radius is - the first of a side is the setting, a second is a class of the editor's - and put back by the Writer after the radius and the
 	 *											                    offsets of the ground, in the order of SPACING. The kernel's nino-m-<n> and nino-p-<n> are no setting of a call: a card's padding attribute says the same
 	 *											                    for its four sides, and the Builder keeps the two apart
+	 *											  textAlign map     s, m, l: ''|left|center|right, only for a component whose text is a section's own (see aligned()): the alignment of its text for each viewport,
+	 *											                    read from the class attribute of its call as the column reads it from its own - the first class of a stage is the setting, a second is a
+	 *											                    class of the editor's, nino-text-s-<x> and nino-text-xl-<x> are none of the three viewports and stay classes of the call - and put back
+	 *											                    by the Writer after the eight sides of the spacing, before the classes the editor wrote. The key is textAlign and not text, which a
+	 *											                    call has for its fixed value
 	 *											  content   string  only for a component whose source is 'content' and whose
 	 *											                    schema does not say 'holds', and for a column of a loop (a component
 	 *											                    that stands in a place a loop holds), whose content is the markup
@@ -491,6 +496,23 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function colDefaults(): array {
 			return [ 'color' => '', 'dim' => false, 'linked' => false, 'radius' => '', 'background' => null, 'text' => [ 's' => '', 'm' => '', 'l' => '' ], 'stackAlign' => '', 'stackGap' => '', ...array_fill_keys( self::SPACING, '' ), 'bgPl' => '', 'bgPr' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+		}
+
+		/**
+		 *	Whether the text of a component is a section's own and aligns for each viewport (textAlign): the schema says its source is a text, which is no line of fields, and that it
+		 *	is drawn as a title or as a text - a heading, a subtitle, a paragraph - and is not offered in a card alone, whose texts align with their card. The kernel's title, subtitle
+		 *	and text are the three; the registry says it and no name does. The 'draws' of the schema is no rule: the text of a section draws no class in the registry
+		 *
+		 *	@param		array			$schema				One entry of the registry's components
+		 *
+		 *	@return 	bool
+		 */
+		public static function aligned( array $schema ): bool {
+
+			$in = $schema['in'] ?? null;
+
+			return ( $schema['source'] ?? '' ) === 'text' && self::fielded( $schema ) === false && in_array( $schema['preview'] ?? '', [ 'title', 'text' ], true ) === true
+				&& ( is_array( $in ) === false || in_array( 'section', $in, true ) === true );
 		}
 
 		/**
@@ -1064,6 +1086,28 @@ namespace Nino\Modules\Builder {
 			[ $sides, $rest ] = self::_sides( preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [], false );
 
 			return $sides === [] ? [ [], $class ] : [ $sides, implode( ' ', $rest ) ];
+		}
+
+		/**
+		 *	The alignment of the text out of the class attribute of a call, as the column's is taken out of its own: the first class of each stage is the setting, and the rest of
+		 *	the classes as they were. A call with none keeps its class attribute byte for byte
+		 *
+		 *	@param		string		$class				The class attribute of the call
+		 *
+		 *	@return 	array											[ s, m, l => ''|left|center|right, the classes that are left ]
+		 */
+		private static function _callAlign( string $class ): array {
+
+			$said		= [];
+			$rest		= [];
+
+			foreach( preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token )
+				if( preg_match( '/^nino-text-(?:(m|l)-)?('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 && isset( $said[$m[1] === '' ? 's' : $m[1]] ) === false )
+					$said[$m[1] === '' ? 's' : $m[1]] = $m[2];
+				else
+					$rest[] = $token;
+
+			return [ self::textStages( $said ), $said === [] ? $class : implode( ' ', $rest ) ];
 		}
 
 		/**
@@ -2695,6 +2739,10 @@ namespace Nino\Modules\Builder {
 
 				foreach( self::SPACING as $side )
 					$node[$side] = $sides[$side] ?? '';
+
+				// The text of a section's own - a title, a subtitle, a text - has its alignment for each viewport, taken out of the class attribute after the sides
+				if( self::aligned( $schema ) === true )
+					[ $node['textAlign'], $node['attributes']['class'] ] = self::_callAlign( (string) ( $node['attributes']['class'] ?? '' ) );
 			}
 
 			// The text of a loop - a title line, say - carries the fields of the element as entities, and is the characters in the model

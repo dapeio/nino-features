@@ -2825,7 +2825,7 @@ namespace Nino\Modules\Builder {
 						}
 
 						// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
-						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeHover( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ) );
+						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ), self::_shapeRadius( $component, $schemas, $at ), self::_shapeHover( $component, $schemas, $at ), self::_shapeGround( $component, $schemas, $at ), self::_shapeSpacing( $component, $at ), self::_shapeAlign( $component, $schemas, $at ) );
 					}
 				}
 			}
@@ -2936,7 +2936,7 @@ namespace Nino\Modules\Builder {
 							$problems = array_merge( $problems, self::_shapeLoop( $call, $schemas, $at ) );
 					}
 					else
-						$problems = array_merge( $problems, self::_shapeHeld( $call, $schemas, $at, false ), self::_shapeRadius( $call, $schemas, $at ), self::_shapeHover( $call, $schemas, $at ), self::_shapeGround( $call, $schemas, $at ), self::_shapeSpacing( $call, $at ) );
+						$problems = array_merge( $problems, self::_shapeHeld( $call, $schemas, $at, false ), self::_shapeRadius( $call, $schemas, $at ), self::_shapeHover( $call, $schemas, $at ), self::_shapeGround( $call, $schemas, $at ), self::_shapeSpacing( $call, $at ), self::_shapeAlign( $call, $schemas, $at ) );
 				}
 			}
 
@@ -2989,7 +2989,7 @@ namespace Nino\Modules\Builder {
 				elseif( self::_isGroup( $child, $schemas ) === true )
 					$problems[] = $at. ' has the group "'. (string) $child['name']. '" inside the loop "'. $name. '", and a loop does not hold one';
 				else
-					$problems = array_merge( $problems, self::_shapeHeld( $child, $schemas, $at, false ), self::_shapeRadius( $child, $schemas, $at ), self::_shapeHover( $child, $schemas, $at ), self::_shapeGround( $child, $schemas, $at ), self::_shapeSpacing( $child, $at ) );
+					$problems = array_merge( $problems, self::_shapeHeld( $child, $schemas, $at, false ), self::_shapeRadius( $child, $schemas, $at ), self::_shapeHover( $child, $schemas, $at ), self::_shapeGround( $child, $schemas, $at ), self::_shapeSpacing( $child, $at ), self::_shapeAlign( $child, $schemas, $at ) );
 			}
 
 			return $problems;
@@ -3137,6 +3137,40 @@ namespace Nino\Modules\Builder {
 
 			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
 				$problems = array_merge( $problems, self::_shapeSpacing( $child, $at ) );
+
+			return $problems;
+		}
+
+		/**
+		 *	What is wrong with the alignment of the text of a component and of the children it holds: a map that is none of s, m and l with a word of Nino.css or none for each - and
+		 *	none only where the viewport before it has none, as a column's is - or an alignment on a component whose text is no section's own (see Reader::aligned()), which the
+		 *	Writer would write as classes of nothing and the Reader read back as custom ones. A component with no map has none
+		 *
+		 *	@param		mixed			$call					A component of a column, or a child of one
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeAlign( mixed $call, array $schemas, string $at ): array {
+
+			// A call that is none has been told already
+			if( is_array( $call ) === false || self::_callWrong( $call ) !== '' )
+				return [];
+
+			$name				= (string) ( $call['name'] ?? '' );
+			$problems		= [];
+
+			if( array_key_exists( 'textAlign', $call ) === true ) {
+
+				if( Reader::textSayable( $call['textAlign'] ) === false )
+					$problems[] = $at. ' has the component "'. $name. '" with an alignment of the text that none of s, m and l can say with the words left, center and right';
+				elseif( implode( '', (array) $call['textAlign'] ) !== '' && Reader::aligned( (array) ( $schemas['components'][$name] ?? [] ) ) === false )
+					$problems[] = $at. ' has the component "'. $name. '" with an alignment of the text, and its text is no section\'s own';
+			}
+
+			foreach( is_array( $call['components'] ?? null ) === true ? $call['components'] : [] as $child )
+				$problems = array_merge( $problems, self::_shapeAlign( $child, $schemas, $at ) );
 
 			return $problems;
 		}

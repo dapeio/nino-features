@@ -55,7 +55,7 @@ namespace Nino\Modules\Builder {
 	 *											stands on the call of a component whose source is an image, the picture
 	 *											of a card among them. The classes of a call come in this order: the
 	 *											radius, the hover, the two offsets of the ground of a card, the eight
-	 *											sides of the spacing, then the classes the editor wrote.
+	 *											sides of the spacing, the alignment of the text of a title, a subtitle or a text (textAlign), then the classes the editor wrote.
 	 *
 	 *											How far in from its sides the picture behind an element starts is a
 	 *											class of the page as well, nino-bg-pl-<n> and nino-bg-pr-<n>: it stands
@@ -495,6 +495,33 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The classes of the alignment of a text: one for the viewport it starts in and one for each viewport that differs from the one before it, mobile first
+		 *
+		 *	@param		mixed			$text					The map s, m, l
+		 *	@param		string		$of						What it belongs to, for the failure: a column, the component "title"
+		 *
+		 *	@return 	array
+		 */
+		private static function _textClasses( mixed $text, string $of ): array {
+
+			if( Reader::textSayable( $text ) === false )
+				throw new \UnexpectedValueException( 'The alignment of the text of '. $of. ' is none that a class can say.' );
+
+			$class	= [];
+			$before	= '';
+
+			foreach( Reader::VIEWPORTS as $viewport ) {
+
+				if( $text[$viewport] !== $before )
+					$class[] = 'nino-text-'. ( $viewport === 's' ? '' : $viewport. '-' ). $text[$viewport];
+
+				$before = $text[$viewport];
+			}
+
+			return $class;
+		}
+
+		/**
 		 *	The classes of a column
 		 *
 		 *	@param		array			$col
@@ -541,18 +568,7 @@ namespace Nino\Modules\Builder {
 				$class[] = 'nino-stack-gap-'. $col['stackGap'];
 
 			// The alignment of the text, one class for the viewport it starts in and one for each viewport that differs from the one before it
-			if( Reader::textSayable( $col['text'] ) === false )
-				throw new \UnexpectedValueException( 'The alignment of the text of a column is none that a class can say.' );
-
-			$before = '';
-
-			foreach( Reader::VIEWPORTS as $viewport ) {
-
-				if( $col['text'][$viewport] !== $before )
-					$class[] = 'nino-text-'. ( $viewport === 's' ? '' : $viewport. '-' ). $col['text'][$viewport];
-
-				$before = $col['text'][$viewport];
-			}
+			array_push( $class, ...self::_textClasses( $col['text'], 'a column' ) );
 
 			// The eight sides of the spacing, as a section has them
 			$class = array_merge( $class, self::_spacing( $col, true ) );
@@ -886,6 +902,10 @@ namespace Nino\Modules\Builder {
 					$first[] = 'nino-bg-'. $side. '-'. $node[$key];
 
 			array_push( $first, ...self::_spacing( $node, false ) );
+
+			// The alignment of the text of a section's own text follows the spacing, before the classes the editor wrote
+			if( array_key_exists( 'textAlign', $node ) === true )
+				array_push( $first, ...self::_textClasses( $node['textAlign'], 'the component "'. $name. '"' ) );
 
 			if( $first !== [] )
 				$attributes['class'] = trim( implode( ' ', $first ). ' '. self::_string( $attributes['class'] ?? '' ) );

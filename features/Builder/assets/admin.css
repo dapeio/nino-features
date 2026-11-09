@@ -398,6 +398,18 @@
 	background: var(--editor-blue-soft);
 	color: var(--editor-text);
 }
+/* The viewports of a dialog: its own switch, in the head at the right of the title, drawn as the buttons over the preview. It is there while the dialog has a field that
+   holds for one viewport. A button keeps a target of 24 px at least */
+.builder-dialog-viewports {
+	margin-left: auto;
+}
+.builder-dialog-viewports[hidden] {
+	display: none;
+}
+.builder-dialog-viewports .builder-viewport {
+	min-width: 1.5rem;
+	min-height: 1.5rem;
+}
 /* The frames stand a gap apart, and the gap is the place where a section is inserted (.builder-insert): it keeps the room it is seen in or not */
 .builder-preview {
 	display: grid;
@@ -974,6 +986,17 @@ button.builder-status-item:hover {
 .builder-card .builder-ph[data-tag="h6"] .builder-ph-label {
 	font-size: 1.15em;
 }
+/* A title, a subtitle or a text of a section whose text is aligned in the viewport the preview shows (data-align, set by the script) has its label - and the line under it -
+   at the left, in the middle or at the right of the room it has beside the image */
+.builder-ph[data-align="left"] .builder-ph-text {
+	text-align: left;
+}
+.builder-ph[data-align="center"] .builder-ph-text {
+	text-align: center;
+}
+.builder-ph[data-align="right"] .builder-ph-text {
+	text-align: right;
+}
 /* The tag and the class it draws: the code of the page, in the code font of the workbench, smaller than any label */
 .builder-ph-draws {
 	font-family: var(--nino-admin-mono);
@@ -1039,6 +1062,7 @@ button.builder-status-item:hover {
 }
 .builder-dialog-head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: .75rem;
@@ -1759,54 +1783,23 @@ button.builder-status-item:hover {
 	box-shadow: 0 0 0 1px var(--editor-red);
 }
 
-/* The tables of a form: the viewports of a column and of a loop */
-.builder-table {
-	width: 100%;
-}
-.builder-table :is(th, td) {
-	padding: .4rem .6rem;
-	text-align: left;
-}
-.builder-table select {
-	width: 100%;
-	max-width: 9rem;
-}
-.builder-row-head .builder-icon {
-	margin-right: .4rem;
-	vertical-align: -.2em;
-}
-.builder-table th .builder-help {
-	margin-left: .35rem;
-	vertical-align: middle;
-}
-/* The select of the width of Mobile and, beside it, from where the width holds */
-.builder-from-cell {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: .15rem .5rem;
-}
-/* The select is as wide as the others of the table, the note goes below it where there is no room beside it */
-.builder-from-cell select {
-	flex: 1 1 9rem;
-}
+/* The note beside the name of the width of Mobile: from where the width holds */
 .builder-from-note {
+	margin-left: .4rem;
 	color: var(--editor-text-secondary);
 	font-size: .72rem;
+	font-weight: 400;
 	white-space: nowrap;
 }
-.builder-link-btn {
-	justify-self: start;
-	min-height: 0;
-	margin: 0;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	box-shadow: none;
-	color: var(--editor-blue);
-	font-size: .78rem;
-	text-decoration: underline;
-	cursor: pointer;
+/* The mark of a field whose value is the viewport's own: a small dot in the accent colour beside the name, the title says whose */
+.builder-own {
+	display: inline-block;
+	width: .5rem;
+	height: .5rem;
+	margin-left: .4rem;
+	border-radius: 50%;
+	background: var(--editor-blue);
+	vertical-align: middle;
 }
 /* ------------------------------------------------------------ Groups */
 

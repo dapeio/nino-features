@@ -887,7 +887,11 @@ const nameOf = function( el ) {
 	if( el.type === 'checkbox' && label.classList.contains('builder-check') )
 		return label.children[1].textContent;
 
-	return label.children[0].textContent;
+	// The name of a field may be followed by the mark of a value of the viewport's own and by a note (the width of Mobile holds from 640 px), which are no part of it
+	const name = label.children[0];
+	const note = name.querySelector('.builder-from-note');
+
+	return note === null ? name.textContent : name.textContent.slice( 0, name.textContent.length - note.textContent.length );
 };
 
 const kindOf = function( el ) {
@@ -1002,6 +1006,18 @@ const pickerPane = function( id ) { return screen.getElementById( 'builder-picke
 const pickerStrip = function() { return screen.getElementById('builder-picker-tabs') };
 const fixedField = function() { return pickerPane('fixed').querySelector('input') };
 const dialogContent = function() { return screen.getElementById('builder-dialog-content') };
+// The switch in the head of the dialog: the viewport its fields show (the pressed button), whether it is there, a click on the button of a viewport
+const dialogViews = function() { return screen.getElementById('builder-dialog-viewports') };
+const viewShown = function() { return builder.VIEWPORTS.filter( function( viewport ) { return screen.getElementById( 'builder-dialog-viewport-'+ viewport ).getAttribute('aria-pressed') === 'true' } ).join() };
+const pickView = function( viewport ) { screen.getElementById( 'builder-dialog-viewport-'+ viewport ).click() };
+// The mark beside the name of a field that has a value of its own in the viewport shown: its title, null where the field has none
+const ownOf = function( control ) {
+
+	const host = control.el.closest('label') ?? control.el.closest('.builder-segment-field');
+	const marks = host.querySelectorAll('.builder-own');
+
+	return marks.length === 0 ? null : marks[0].title;
+};
 const preview = function() { return screen.getElementById('builder-preview') };
 // The blocks of the preview - a frame, or the box of a loop around one -, the places between them left out (see _insertPlace())
 const frames = function() { return preview().children.filter( function( child ) { return child.classList.contains('builder-insert') === false } ) };
@@ -1034,8 +1050,6 @@ const shownTab = function( strip, prefix ) {
 };
 
 const texts = function( els ) { return els.map( function( el ) { return el.textContent } ).join() };
-// The words of the heads of a table: the first text of each, a head may carry the question mark of a sentence after it
-const headWords = function( els ) { return els.map( function( el ) { return el.childNodes[0].textContent } ).join() };
 const classes = function( els ) { return els.map( function( el ) { return el.className } ).join() };
 const titlesIn = function( root ) { return texts( root.querySelectorAll('.builder-group-title') ) };
 
@@ -1452,10 +1466,10 @@ check( 'a key stands anywhere, and no source is none', builder._red( model, reg 
 model.blocks[0].cols[0].components[0].source = 'title';
 check( 'a field name in a column that has no loop is red, and nothing else on the page is', builder._red( model, reg ).length === 1 && builder._red( model, reg )[0].why === 'static' && builder._same( builder._red( model, reg )[0].path, [ 0, 0, 0 ] ) );
 model = page();
-model.blocks[1].cols[1].components.unshift( { name : 'title', source : 'title', text : null, attributes : {} } );
+model.blocks[1].cols[1].components.unshift( { name : 'title', source : 'title', text : null, textAlign : { s : '', m : '', l : '' }, attributes : {} } );
 check( 'a field outside a loop that stands beside one in the same column is red, and the same field inside the loop is none: the cell of a loop is the loop\'s alone', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ '1.1.0:title:static' ] ) );
 model = page();
-servicesLoop().components.push( { name : 'text', source : 'nothing', text : null, attributes : {} } );
+servicesLoop().components.push( { name : 'text', source : 'nothing', text : null, textAlign : { s : '', m : '', l : '' }, attributes : {} } );
 check( '...a field the loop\'s type has not is red at the path of the child, a level below the loop', JSON.stringify( builder._red( model, reg ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.source+ ':'+ entry.why } ) ) === JSON.stringify( [ '1.1.0.4:nothing:field' ] ) );
 
 console.log( '\nThe preview' );
@@ -2378,23 +2392,27 @@ check( 'the block Order follows Width and alignment in the table, for a section 
 		&& word('block/order/label') !== '' && headOf('order').querySelector('.builder-block-name').textContent === word('block/order/label');
 } )() );
 builder._setView('m');
+builder._dialogViewport = null;
 builder._openSettings( [ 0 ] );
 headOf('order').click();
-check( '...in the view of one viewport it is a table as the hidden box of a column is - one row, with the icon and the word of the viewport, and the box of that viewport alone, labelled with it, off - with the hint behind a question mark and the link to all of them under the table; the model is a switch for each viewport', JSON.stringify( labelList( orderBody() ) ) === JSON.stringify( [ word('section/reverse-in').replace( '%s', 'Tablet' ) ] )
-	&& controlsIn( orderBody() ).every( function( control ) { return control.kind === 'box' } ) && valueAt( orderBody(), 'Reversed (Tablet)' ) === false
-	&& orderBody().querySelectorAll('tbody tr').length === 1 && orderBody().querySelector('th[scope="row"]').textContent === 'Tablet' && iconOf( orderBody().querySelector('table') ) === 'tablet' && orderBody().querySelector('table').nextSibling === orderBody().querySelector('.builder-link-btn') && reverseOf() === '{"s":false,"m":false,"l":false}'
-	&& orderBody().querySelectorAll('.builder-link-btn').length === 1 && orderBody().querySelector('.builder-help') !== null && openBlock() === 'order' );
-change( orderBody(), 'Reversed (Tablet)', true );
-check( '...a switch writes its viewport in the model, and no other, and is a change; the head of the block says which viewports are turned', reverseOf() === '{"s":false,"m":true,"l":false}' && saysOf('order').textContent === word('section/reverse-said').replace( '%s', 'Tablet' ) && saysOf('order').hidden === false );
-buttonOf( orderBody(), 'All viewports' ).click();
-check( '...in the view of all of them the table has a row for each, in the order of the viewports, with the icon and the word of each, each labelled with its own and marked with it, the link is gone and the block stays open; what was turned is on', JSON.stringify( labelList( orderBody() ) ) === JSON.stringify( [ 'Reversed (Mobile)', 'Reversed (Tablet)', 'Reversed (Desktop)' ] )
-	&& controlsIn( orderBody() ).map( function( control ) { return control.el.dataset.viewport } ).join() === 's,m,l' && controlsIn( orderBody() ).map( function( control ) { return control.el.dataset.key } ).join() === 'reverse,reverse,reverse'
-	&& controlsIn( orderBody() ).map( function( control ) { return control.el.checked } ).join() === 'false,true,false' && orderBody().querySelectorAll('.builder-link-btn').length === 0
-	&& orderBody().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && openBlock() === 'order' && builder._viewport === 'g' );
-change( orderBody(), 'Reversed (Mobile)', true );
-change( orderBody(), 'Reversed (Desktop)', true );
-change( orderBody(), 'Reversed (Tablet)', false );
-check( '...and each of them writes its own: three changes, the model as the Writer turns into the base class, the m forward and the l reverse, and the head says the two viewports', reverseOf() === '{"s":true,"m":false,"l":true}' && saysOf('order').textContent === word('section/reverse-said').replace( '%s', 'Mobile, Desktop' ) );
+check( '...the switch Reversed is one field of the column of fields, for the viewport the dialog shows: the dialog starts on the viewport of the preview (Tablet), the switch in its head is there and has that button pressed - one switch, the hint behind a question mark, no table and no link; the model is a switch for each viewport', JSON.stringify( labelList( orderBody() ) ) === JSON.stringify( [ 'Reversed' ] )
+	&& controlOf( orderBody(), 'Reversed' ).kind === 'switch' && controlOf( orderBody(), 'Reversed' ).el.dataset.viewport === 'm' && controlOf( orderBody(), 'Reversed' ).el.dataset.key === 'reverse' && valueAt( orderBody(), 'Reversed' ) === false && reverseOf() === '{"s":false,"m":false,"l":false}'
+	&& orderBody().querySelector('table') === null && orderBody().querySelector('.builder-link-btn') === null && orderBody().querySelector('.builder-help') !== null && openBlock() === 'order' && dialogViews().hidden === false && viewShown() === 'm' && ownOf( controlOf( orderBody(), 'Reversed' ) ) === null );
+change( orderBody(), 'Reversed', true );
+check( '...a switch writes the viewport it shows in the model, and no other, and is a change; the head of the block says which viewports are turned; the field has the mark, since Tablet turns the row where Mobile does not, and its title names the viewport', reverseOf() === '{"s":false,"m":true,"l":false}' && saysOf('order').textContent === word('section/reverse-said').replace( '%s', 'Tablet' ) && saysOf('order').hidden === false
+	&& ownOf( controlOf( orderBody(), 'Reversed' ) ) === 'Own value for Tablet' );
+pickView('s');
+check( '...a click on Mobile in the head redraws the field with the value of Mobile, in the dialog that stays open on its block: off, with no mark (Mobile, the base, is the default), and the preview keeps its view', viewShown() === 's' && builder._viewport === 'm' && dialogBox().open === true && openBlock() === 'order' && valueAt( orderBody(), 'Reversed' ) === false
+	&& controlOf( orderBody(), 'Reversed' ).el.dataset.viewport === 's' && ownOf( controlOf( orderBody(), 'Reversed' ) ) === null && reverseOf() === '{"s":false,"m":true,"l":false}' );
+change( orderBody(), 'Reversed', true );
+check( '...on Mobile the mark means a value other than the default: turned round it has the mark, and the title names Mobile', reverseOf() === '{"s":true,"m":true,"l":false}' && ownOf( controlOf( orderBody(), 'Reversed' ) ) === 'Own value for Mobile' );
+pickView('l');
+check( '...Desktop that is not turned round as Tablet is, has the mark of its own: the row turns back there, off', valueAt( orderBody(), 'Reversed' ) === false && ownOf( controlOf( orderBody(), 'Reversed' ) ) === 'Own value for Desktop' );
+change( orderBody(), 'Reversed', true );
+check( '...and Desktop that is turned round as Tablet is inherits it, with no mark', reverseOf() === '{"s":true,"m":true,"l":true}' && ownOf( controlOf( orderBody(), 'Reversed' ) ) === null );
+pickView('m');
+change( orderBody(), 'Reversed', false );
+check( '...each switch writes its own: the model as the Writer turns into the base class, the m forward and the l reverse, and the head says the two viewports', reverseOf() === '{"s":true,"m":false,"l":true}' && saysOf('order').textContent === word('section/reverse-said').replace( '%s', 'Mobile, Desktop' ) && ownOf( controlOf( orderBody(), 'Reversed' ) ) === 'Own value for Tablet' );
 // The canvas shows the order: a status item on the frame of the section, and in the view of one viewport the row of the frame turned round where that viewport is reversed
 const reversedFrame = function() { return preview().querySelector('.builder-frame[data-path="0"]') };
 const reverseItem = function() { return reversedFrame().querySelector('.builder-head-status .builder-status-item.is-reverse') };
@@ -3049,11 +3067,13 @@ check( '...every other way to select brings the frame into view, as nearest as i
 	return added === '1.0.2:nearest' && stepped === '1.0.1:nearest' && copied === '1.0.1:nearest' && chosen === '3:nearest';
 } )() );
 
-console.log( '\nThe dialog of a column, and the viewports in its tables' );
+console.log( '\nThe dialog of a column, and the viewport of its dialog' );
 
 doc = open();
 builder._renderEditor();
 builder._lastBlock = {};
+builder._setView('l');
+builder._dialogViewport = null;
 builder._openSettings( [ 0, 0 ] );
 const colOf = function() { return builder._doc.model.blocks[0].cols[0] };
 check( 'the dialog of a column has the blocks the table has for it, in the order of the table - surface, spacing, width and properties, but for the block of the group, whose title only the column of a group has - and has no block of the loop, which is a component with a dialog of its own - and opens on the first: the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
@@ -3076,24 +3096,52 @@ check( '...the section\'s dialog and the column\'s are of their own: the block t
 } )() );
 headOf('width').click();
 
-const widths = function() { return blockOf('width').querySelector('table') };
-check( 'in a viewport the table of the widths has the row of that viewport only - the device with its icon and its word, the width, whether the column is hidden there - and under it a link to all of them', ( function() {
-	const rows = widths().querySelectorAll('tbody tr');
-	return headWords( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden,Text' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
-		&& valueAt( dialogContent(), 'Width, Desktop' ) === '66' && valueAt( dialogContent(), 'Hidden, Desktop' ) === false && controlOf( dialogContent(), 'Hidden, Desktop' ).kind === 'box'
-		&& controlOf( dialogContent(), 'Text alignment, Desktop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like Tablet,left=Left,center=Centre,right=Right' && valueAt( dialogContent(), 'Text alignment, Desktop' ) === ''
-		&& controlOf( dialogContent(), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && blockOf('width').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
-		&& widths().nextSibling === blockOf('width').querySelector('.builder-link-btn');
+const widthPane = function() { return blockOf('width') };
+const optionWords = function( control ) { return control.el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join() };
+check( 'in a viewport the width block of a column has the width, whether the column is hidden there and how its text is aligned there as three fields of the column of fields - each with its label, as the other fields have - and no table and no link: the viewport is the dialog\'s own, a switch in its head at the right of the title, a group with a label whose button of the viewport the preview shows is pressed', ( function() {
+	const switchBox = dialogViews();
+	return JSON.stringify( labelList( widthPane() ).slice( 0, 3 ) ) === JSON.stringify( [ 'Width', 'Hidden', 'Text alignment' ] ) && dialogContent().querySelector('table') === null && dialogContent().querySelector('.builder-link-btn') === null
+		&& switchBox.hidden === false && switchBox.getAttribute('role') === 'group' && switchBox.getAttribute('aria-label') === word('label/dialog-viewports') && switchBox.classList.contains('builder-viewports') && switchBox.parentNode.classList.contains('builder-dialog-head')
+		&& switchBox.parentNode.children.indexOf( switchBox ) === 1 && switchBox.querySelectorAll('button').map( function( button ) { return button.id.replace( 'builder-dialog-viewport-', '' )+ ':'+ button.textContent+ ':'+ iconOf( button ) } ).join() === 's:Mobile:smartphone,m:Tablet:tablet,l:Desktop:monitor'
+		&& viewShown() === 'l' && switchBox.querySelectorAll('button').every( function( button ) { return button.type === 'button' } ) && switchBox.querySelectorAll('button').length === 3
+		&& valueAt( dialogContent(), 'Width' ) === '66' && valueAt( dialogContent(), 'Hidden' ) === false && controlOf( dialogContent(), 'Hidden' ).kind === 'switch'
+		&& controlOf( dialogContent(), 'Width' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100'
+		&& controlsIn( widthPane() ).slice( 0, 3 ).map( function( control ) { return control.el.dataset.key+ ':'+ control.el.dataset.viewport } ).join() === 'width:l,hidden:l,text:l'
+		&& optionWords( controlOf( dialogContent(), 'Text alignment' ) ) === ':Like Tablet,left:align-left,center:align-center,right:align-right' && valueAt( dialogContent(), 'Text alignment' ) === '';
 } )() );
-check( '...and the rest of the block: the alignment of the text is the last cell of that row - a select, as the width is, which says "like" the viewport before it where it has what that one has - and under the table the vertical alignment of the components as icons, with Off as a word, and without a sentence', JSON.stringify( labelList( blockOf('width') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Text alignment, Desktop', 'Vertical alignment' ] )
+check( '...the marks: the width of Desktop is its own, a width other than the one of Tablet before it - the dot beside the name has a title that names the viewport - and the text, which is like Tablet, and the visibility have none', ownOf( controlOf( dialogContent(), 'Width' ) ) === 'Own value for Desktop' && ownOf( controlOf( dialogContent(), 'Hidden' ) ) === null
+	&& ownOf( controlOf( dialogContent(), 'Text alignment' ) ) === null && dialogContent().querySelectorAll('.builder-own').length === 1 && dialogContent().querySelectorAll('.builder-own')[0].getAttribute('aria-hidden') === 'true' && dialogContent().querySelectorAll('.builder-own')[0].title === 'Own value for Desktop' );
+check( '...the mark and the note are no part of the name of a field: its label is the word alone, and they describe the control instead (aria-describedby names their ids) - the note of Mobile and the dot of a value of its own, the dot only where it is there', ( function() {
+	const label = function( viewport ) { pickView( viewport ); return controlOf( dialogContent(), 'Width' ).el.closest('label').children[0] };
+	const control = function() { return controlOf( dialogContent(), 'Width' ).el };
+	const described = function() { return ( control().getAttribute('aria-describedby') ?? '' ).split(' ').filter( function( id ) { return id !== '' } ).map( function( id ) { return screen.getElementById( id ) } ) };
+	const desktop = label('l').firstChild.textContent === 'Width' && described().length === 1 && described()[0].classList.contains('builder-own') && described()[0].title === 'Own value for Desktop';
+	const mobile = label('s').firstChild.textContent === 'Width' && described().length === 1 && described()[0].classList.contains('builder-from-note') && described()[0].getAttribute('aria-hidden') === 'true';
+	change( dialogContent(), 'Width', '50' );
+	const both = described().map( function( el ) { return el.classList.contains('builder-from-note') ? 'note' : 'dot' } ).join() === 'note,dot';
+	change( dialogContent(), 'Width', '100' );
+	const none = described().length === 1;
+	// A segment field - the alignment of a text - is described on its group, not on one of its radio buttons
+	const group = function( viewport ) { pickView( viewport ); return controlOf( dialogContent(), 'Text alignment' ).el };
+	const onGroup = group('l').getAttribute('role') === 'radiogroup' && group('l').getAttribute('aria-describedby') === null && radiosOf( group('l') ).every( function( radio ) { return radio.getAttribute('aria-describedby') === null } );
+	change( dialogContent(), 'Text alignment', 'right' );
+	const segment = group('l').getAttribute('aria-describedby') !== null && screen.getElementById( group('l').getAttribute('aria-describedby') ).title === 'Own value for Desktop' && radiosOf( group('l') ).every( function( radio ) { return radio.getAttribute('aria-describedby') === null } );
+	change( dialogContent(), 'Text alignment', '' );
+	label('m');
+	const quiet = onGroup && segment &&  control().getAttribute('aria-describedby') === null;
+	pickView('l');
+	return desktop && mobile && both && none && quiet;
+} )() );
+check( '...and the rest of the block: the vertical alignment of the components as icons, with Off as a word, and without a sentence - the text alignment, the width and the switch are fields like it', JSON.stringify( labelList( widthPane() ) ) === JSON.stringify( [ 'Width', 'Hidden', 'Text alignment', 'Vertical alignment' ] )
 	&& colOf().text.l === 'left' && valueAt( dialogContent(), 'Vertical alignment' ) === '' && controlOf( dialogContent(), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
-		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && tipOf( controlOf( dialogContent(), 'Vertical alignment' ) ) === null && blockOf('width').querySelector('.builder-line') === null );
-change( dialogContent(), 'Width, Desktop', '33' );
-change( dialogContent(), 'Text alignment, Desktop', 'right' );
+		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && tipOf( controlOf( dialogContent(), 'Vertical alignment' ) ) === null && widthPane().querySelector('.builder-line') === null
+	&& tipOf( controlOf( dialogContent(), 'Width' ) ) === word('hint/col-width') );
+change( dialogContent(), 'Width', '33' );
+change( dialogContent(), 'Text alignment', 'right' );
 change( dialogContent(), 'Vertical alignment', 'center' );
 check( '...what the block writes is the width of the viewport and the alignments: the text of the viewport, and no other', colOf().width.l === 33 && JSON.stringify( colOf().text ) === '{"s":"left","m":"left","l":"right"}' && colOf().stackAlign === 'center' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}'
-	&& valueAt( dialogContent(), 'Text alignment, Desktop' ) === 'right' );
-check( '...the head of the block says the widths of the three viewports, and that the column is hidden where it is, and the alignments - the widths where one is not the whole width, the text for each viewport', saysOf('width').textContent === [ '100/100/33 % \u00b7 '+ [ 'left', 'left', 'right' ].map( function( value ) { return builder._optionLabel( 'text', value ) } ).join(' / '), builder._optionLabel( 'stack-align', 'center' ) ].join(' \u00b7 ') );
+	&& valueAt( dialogContent(), 'Text alignment' ) === 'right' && ownOf( controlOf( dialogContent(), 'Text alignment' ) ) === 'Own value for Desktop' );
+check( '...the head of the block names all three viewports, whichever one the dialog shows: the widths where one is not the whole width, the text for each viewport', saysOf('width').textContent === [ '100/100/33 % \u00b7 '+ [ 'left', 'left', 'right' ].map( function( value ) { return builder._optionLabel( 'text', value ) } ).join(' / '), builder._optionLabel( 'stack-align', 'center' ) ].join(' \u00b7 ') );
 
 headOf('spacing').click();
 const colBoxes = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
@@ -3118,65 +3166,110 @@ change( colBoxes()[0], sideLabel( 'right', 'outside' ), '' );
 check( '...a block with nothing set says nothing in its head', saysOf('spacing').textContent === '' && saysOf('spacing').hidden === true );
 headOf('width').click();
 
-buttonOf( dialogContent(), 'All viewports' ).click();
-check( 'the link shows all the viewports: the preview is in the view of all of them (and its button the pressed one), and the tables of the dialog have a row for each - the link is gone, the block is where it was', builder._viewport === 'g' && preview().dataset.viewport === 'g' && screen.getElementById('builder-viewport-g').getAttribute('aria-pressed') === 'true'
-	&& widths().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && blockOf('width').querySelector('.builder-link-btn') === null
-	&& JSON.stringify( labelList( blockOf('width') ).slice( 0, 9 ) ) === JSON.stringify( [ 'Width, Mobile', 'Hidden, Mobile', 'Text alignment, Mobile', 'Width, Tablet', 'Hidden, Tablet', 'Text alignment, Tablet', 'Width, Desktop', 'Hidden, Desktop', 'Text alignment, Desktop' ] ) && openBlock() === 'width' && dialogBox().open === true );
-builder._openSettings( [ 0, 0 ] );
-check( 'in the view of all the viewports a dialog opened has the three rows from the start - and no link', widths().querySelectorAll('tbody tr').length === 3 && blockOf('width').querySelector('.builder-link-btn') === null );
-change( dialogContent(), 'Width, Mobile', '50' );
-change( dialogContent(), 'Width, Desktop', '25' );
-change( dialogContent(), 'Hidden, Tablet', true );
-change( dialogContent(), 'Hidden, Mobile', true );
-change( dialogContent(), 'Hidden, Mobile', false );
-check( '...what the table writes is the width of each viewport, and the viewports that hide the column: none that shows it', colOf().width.s === 50 && colOf().width.l === 25 && colOf().width.m === 100 && JSON.stringify( colOf().hidden ) === '{"m":true}' );
-const textSelects = function() { return [ 'Mobile', 'Tablet', 'Desktop' ].map( function( device ) { return controlOf( dialogContent(), 'Text alignment, '+ device ).el } ) };
-const textValues = function() { return textSelects().map( function( select ) { return select.value } ).join() };
-check( '...the alignment of the text has a select in each row: Mobile offers Inherited for none, Tablet and Desktop offer "like" the row above in its place', ( function() {
-	const first = textSelects().map( function( select ) { return select.children.map( function( option ) { return option.textContent } ).join('/') } );
-	return first.join('|') === 'Inherited/Left/Centre/Right|Like Mobile/Left/Centre/Right|Like Tablet/Left/Centre/Right';
+pickView('s');
+check( 'a click on Mobile in the head of the dialog redraws the fields with the values of Mobile, in the dialog that stays open on its block - and the preview keeps its view', viewShown() === 's' && builder._viewport === 'l' && preview().dataset.viewport === 'l' && openBlock() === 'width' && dialogBox().open === true
+	&& valueAt( dialogContent(), 'Width' ) === '100' && controlOf( dialogContent(), 'Width' ).el.dataset.viewport === 's' && valueAt( dialogContent(), 'Text alignment' ) === 'left' && optionWords( controlOf( dialogContent(), 'Text alignment' ) ) === ':Inherited,left:align-left,center:align-center,right:align-right' );
+check( '...Mobile is the base: its width of 100 and its hidden switch off are the default and have no mark, the text that is left has one, and the width of Mobile has the note that it holds from 640 px beside its name - the other viewports have none', ownOf( controlOf( dialogContent(), 'Width' ) ) === null && ownOf( controlOf( dialogContent(), 'Hidden' ) ) === null
+	&& ownOf( controlOf( dialogContent(), 'Text alignment' ) ) === 'Own value for Mobile' && widthPane().querySelectorAll('.builder-from-note').length === 1 && widthPane().querySelector('.builder-from-note').textContent === sandbox.Nino.content.getText('/_admin/builder/col/from-640')
+	&& controlOf( dialogContent(), 'Width' ).el.closest('label').querySelector('.builder-from-note') !== null );
+change( dialogContent(), 'Width', '50' );
+change( dialogContent(), 'Hidden', true );
+check( '...a value other than the default has the mark on Mobile', ownOf( controlOf( dialogContent(), 'Width' ) ) === 'Own value for Mobile' && ownOf( controlOf( dialogContent(), 'Hidden' ) ) === 'Own value for Mobile' );
+change( dialogContent(), 'Hidden', false );
+pickView('l');
+check( '...Desktop, whose width the dialog drew before, is drawn with the value it has, and no note', viewShown() === 'l' && valueAt( dialogContent(), 'Width' ) === '33' && widthPane().querySelectorAll('.builder-from-note').length === 0 && ownOf( controlOf( dialogContent(), 'Width' ) ) === 'Own value for Desktop' );
+change( dialogContent(), 'Width', '25' );
+pickView('m');
+check( '...Tablet inherits nothing it does not have: its width is the one the model holds, and it has the mark where it is not the width of Mobile before it', valueAt( dialogContent(), 'Width' ) === '100' && ownOf( controlOf( dialogContent(), 'Width' ) ) === 'Own value for Tablet' );
+change( dialogContent(), 'Hidden', true );
+check( '...what the fields write is the width of each viewport and the viewports that hide the column: none that shows it', colOf().width.s === 50 && colOf().width.l === 25 && colOf().width.m === 100 && JSON.stringify( colOf().hidden ) === '{"m":true}' && ownOf( controlOf( dialogContent(), 'Hidden' ) ) === 'Own value for Tablet' );
+const textAt = function( viewport ) { pickView( viewport ); return valueAt( dialogContent(), 'Text alignment' ) };
+const textValues = function() { return [ 's', 'm', 'l' ].map( textAt ).join() };
+const setText = function( viewport, value ) { pickView( viewport ); change( dialogContent(), 'Text alignment', value ) };
+check( '...the alignment of the text is a row of buttons for the viewport: Mobile offers Inherited for none, Tablet and Desktop offer "like" the viewport before in its place, and the three alignments are icons', ( function() {
+	const words = [ 's', 'm', 'l' ].map( function( viewport ) { pickView( viewport ); return optionWords( controlOf( dialogContent(), 'Text alignment' ) ) } );
+	return words.join('|') === ':Inherited,left:align-left,center:align-center,right:align-right|:Like Mobile,left:align-left,center:align-center,right:align-right|:Like Tablet,left:align-left,center:align-center,right:align-right';
 } )() );
-change( dialogContent(), 'Text alignment, Desktop', '' );
-change( dialogContent(), 'Text alignment, Mobile', '' );
-check( '...centred on Mobile it is centred on Tablet and Desktop as well, as they were like it; Left on Tablet then takes Desktop with it, and the selects say which is set apart: Mobile and Tablet, Desktop being like Tablet - and the model holds the three words that a file says as nino-text-center nino-text-m-left', ( function() {
-	change( dialogContent(), 'Text alignment, Mobile', 'center' );
+setText( 'l', '' );
+setText( 's', '' );
+check( '...centred on Mobile it is centred on Tablet and Desktop as well, as they were like it; Left on Tablet then takes Desktop with it, and the fields say which is set apart: Mobile and Tablet, Desktop being like Tablet - and the model holds the three words that a file says as nino-text-center nino-text-m-left', ( function() {
+	setText( 's', 'center' );
 	const centred = JSON.stringify( colOf().text ) === '{"s":"center","m":"center","l":"center"}' && textValues() === 'center,,';
-	change( dialogContent(), 'Text alignment, Tablet', 'left' );
+	setText( 'm', 'left' );
 	return centred && JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"left"}' && textValues() === 'center,left,';
 } )() );
-check( '...Desktop set apart is its own: Right there leaves Tablet as it is, and Like Tablet puts it back; Inherited on Mobile takes back what the rows below were like it and keeps the ones set apart', ( function() {
-	change( dialogContent(), 'Text alignment, Desktop', 'right' );
-	const apart = JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"right"}' && textValues() === 'center,left,right';
-	change( dialogContent(), 'Text alignment, Desktop', '' );
-	const back = JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"left"}' && textValues() === 'center,left,';
-	change( dialogContent(), 'Text alignment, Mobile', '' );
+check( '...Desktop set apart is its own: Right there leaves Tablet as it is, and Like Tablet puts it back; Inherited on Mobile takes back what the viewports below were like it and keeps the ones set apart - the mark is on where the viewport has a value of its own', ( function() {
+	setText( 'l', 'right' );
+	const apart = JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"right"}' && textValues() === 'center,left,right' && ownOf( controlOf( dialogContent(), 'Text alignment' ) ) === 'Own value for Desktop';
+	setText( 'l', '' );
+	const back = JSON.stringify( colOf().text ) === '{"s":"center","m":"left","l":"left"}' && textValues() === 'center,left,' && ownOf( controlOf( dialogContent(), 'Text alignment' ) ) === null;
+	setText( 's', '' );
 	return apart && back && JSON.stringify( colOf().text ) === '{"s":"","m":"left","l":"left"}' && textValues() === ',left,';
 } )() );
 check( '...no choice makes a map that a class cannot say: after any of them a viewport is none only where the one before it is none', ( function() {
 	const words = [ '', 'left', 'center', 'right' ];
 	let sayable = true;
-	[ 'Mobile', 'Tablet', 'Desktop' ].forEach( function( device ) {
+	[ 's', 'm', 'l' ].forEach( function( viewport ) {
 		words.forEach( function( value ) {
 			words.forEach( function( other ) {
-				change( dialogContent(), 'Text alignment, Mobile', other );
-				change( dialogContent(), 'Text alignment, '+ device, value );
+				setText( 's', other );
+				setText( viewport, value );
 				const text = colOf().text;
 				if( ( text.m === '' && text.s !== '' ) || ( text.l === '' && text.m !== '' ) )
 					sayable = false;
 			} );
 		} );
 	} );
-	change( dialogContent(), 'Text alignment, Mobile', '' );
-	change( dialogContent(), 'Text alignment, Tablet', '' );
+	setText( 's', '' );
+	setText( 'm', '' );
 	return sayable === true && JSON.stringify( colOf().text ) === '{"s":"","m":"","l":""}';
 } )() );
 
-[ [ 's', 'Mobile', 'smartphone' ], [ 'm', 'Tablet', 'tablet' ] ].forEach( function( view ) {
+[ [ 's', 'Mobile', 'smartphone' ], [ 'm', 'Tablet', 'tablet' ], [ 'g', 'Desktop', 'monitor' ] ].forEach( function( view ) {
 	builder._setView( view[0] );
+	builder._dialogViewport = null;
 	builder._openSettings( [ 0, 0 ] );
-	check( 'in the view of '+ view[1]+ ' the table has its row alone, with the link under it', widths().querySelectorAll('tbody tr').length === 1 && widths().querySelector('th[scope="row"]').textContent === view[1] && iconOf( widths() ) === view[2]
-		&& JSON.stringify( labelList( blockOf('width') ).slice( 0, 2 ) ) === JSON.stringify( [ 'Width, '+ view[1], 'Hidden, '+ view[1] ] ) && blockOf('width').querySelectorAll('.builder-link-btn').length === 1 );
+	check( 'a dialog opened with the preview in the view of '+ ( view[0] === 'g' ? 'Global' : view[1] )+ ' starts on '+ view[1]+ ' ('+ ( view[0] === 'g' ? 'Global has no viewport of its own, and Desktop is the widest' : 'the viewport the preview shows' )+ '): the switch has that button pressed and the fields are of that viewport', viewShown() === view[0].replace( 'g', 'l' ) && JSON.stringify( labelList( widthPane() ).slice( 0, 2 ) ) === JSON.stringify( [ 'Width', 'Hidden' ] )
+		&& controlOf( dialogContent(), 'Width' ).el.dataset.viewport === view[0].replace( 'g', 'l' ) && dialogContent().querySelector('table') === null && dialogContent().querySelector('.builder-link-btn') === null );
 } );
+check( '...the viewport chosen in the dialog is kept for the next dialog of the session, whatever the preview shows then, and the preview does not follow it: Tablet in a column\'s dialog is Tablet in the dialog of the section after it', ( function() {
+	builder._setView('l');
+	pickView('m');
+	builder._closeDialog();
+	builder._openSettings( [ 0 ] );
+	headOf('order').click();
+	const kept = viewShown() === 'm' && controlOf( orderBody(), 'Reversed' ).el.dataset.viewport === 'm' && builder._viewport === 'l';
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	return kept && viewShown() === 'm' && builder._viewport === 'l' && builder._dialogViewport === 'm';
+} )() );
+check( '...a change of the view of the preview does not draw the dialog again: it is the dialog\'s own switch that chooses', ( function() {
+	builder._setView('s');
+	const same = viewShown() === 'm' && builder._dialogViewport === 'm' && valueAt( dialogContent(), 'Width' ) === '100' && controlOf( dialogContent(), 'Width' ).el.dataset.viewport === 'm';
+	builder._setView('l');
+	return same;
+} )() );
+check( '...a dialog that has no field of a viewport has no switch in its head', ( function() {
+	builder._closeDialog();
+	builder._openSettings( [] );
+	const none = dialogViews().hidden === true;
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	return none && dialogViews().hidden === false;
+} )() );
+check( '...the first focus of a dialog is its close button, with the switch in its head as without it: Space right after opening presses nothing, and a screen reader starts on the close button', ( function() {
+	const first = function( at ) {
+		builder._closeDialog();
+		builder._openSettings( at );
+		return screen.activeElement !== null && screen.activeElement.id === 'builder-dialog-close' && dialogViews().hidden === ( at.length === 0 );
+	};
+	const column = first( [ 0, 0 ] );
+	const template = first( [] );
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	return column && template && viewShown() === 'm';
+} )() );
+builder._dialogViewport = null;
 builder._setView('l');
 
 console.log( '\nThe background of a column' );
@@ -3269,10 +3362,11 @@ const asLoop = function( name ) {
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1, 1, 0 ] );
-check( 'in the view of one viewport the cells of a loop are a row, with the link to all of them under the table - in the block of the presentation, the loop having no block of the width', loopPane().querySelectorAll('tbody tr').length === 1 && loopPane().querySelectorAll('.builder-link-btn').length === 1 && loopPane().querySelector('tbody th').textContent === 'Desktop'
-	&& blockOf('presentation').querySelectorAll('tbody tr').length === 1 && blockOf('width') === null );
-buttonOf( loopPane(), 'All viewports' ).click();
-check( '...the link pressed has the loop show all of them, and the dialog stays on the block it was open on', loopPane().querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('.builder-link-btn').length === 0 && builder._viewport === 'g' && blockOf('presentation').querySelectorAll('tbody tr').length === 3 );
+check( 'the cells of a loop are one field, Cell width, in the block of the presentation - the loop having no block of the width - for the viewport the dialog shows, Desktop where the preview shows it: a select of the widths with the hint behind its question mark, the switch in the head of the dialog, no table and no link', JSON.stringify( labelList( blockOf('presentation') ).slice( 0, 1 ) ) === JSON.stringify( [ 'Cell width' ] ) && controlOf( loopPane(), 'Cell width' ).el.dataset.viewport === 'l'
+	&& controlOf( loopPane(), 'Cell width' ).el.dataset.key === 'cols' && tipOf( controlOf( loopPane(), 'Cell width' ) ) === word('hint/stack-cells') && loopPane().querySelector('table') === null && loopPane().querySelector('.builder-link-btn') === null && blockOf('width') === null && viewShown() === 'l' && dialogViews().hidden === false );
+pickView('s');
+check( '...a click on Mobile in the head draws the cell of Mobile in the block, with the note that it holds from 640 px, and the preview keeps its view; the dialog stays open', controlOf( loopPane(), 'Cell width' ).el.dataset.viewport === 's' && valueAt( loopPane(), 'Cell width' ) === '100' && blockOf('presentation').querySelectorAll('.builder-from-note').length === 1 && builder._viewport === 'l' && dialogBox().open === true );
+pickView('l');
 
 // A loop is added in the lightbox of a column, and its dialog opens on the first block, in three
 doc = open();
@@ -3323,16 +3417,17 @@ builder._renderEditor();
 doc = open();
 builder._renderEditor();
 builder._setView('g');
+builder._dialogViewport = null;
 builder._openSettings( [ 1, 1, 0 ] );
 check( 'the loop of a column opens its own dialog, titled with the word of its stack, in three blocks - the data it runs over, the presentation, the properties - and none of the column\'s', dialogText('builder-dialog-kind') === 'Loop: '+ registry().stacks.stack.label && JSON.stringify( blockIds() ) === '["data","presentation","properties"]' && openBlock() === 'data'
 	&& builder.BLOCKS.loop.map( function( block ) { return block.id } ).join() === 'data,presentation,properties' && builder.BLOCKS.column.every( function( block ) { return block.id !== 'loop' } ) );
-check( 'the form of the loop: the data first - the type, the query, the order, the limit and the offset: the same for every stack - then the presentation, which for a grid is the cells of each viewport, the gap and the equal height, and the properties, the id of the loop and its class of its own - and no field for the cards of the cells: the loop is the grid alone',
+check( 'the form of the loop: the data first - the type, the query, the order, the limit and the offset: the same for every stack - then the presentation, which for a grid is the cell width of the viewport the dialog shows, the gap and the equal height, and the properties, the id of the loop and its class of its own - and no field for the cards of the cells: the loop is the grid alone',
 	JSON.stringify( labelList( blockOf('data') ) ) === JSON.stringify( [ 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset' ] ) && titlesIn( blockOf('presentation') ) === 'Grid'
-	&& JSON.stringify( labelList( blockOf('presentation') ) ) === JSON.stringify( [ 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height' ] )
+	&& JSON.stringify( labelList( blockOf('presentation') ) ) === JSON.stringify( [ 'Cell width', 'Gap between the cells', 'Cells of equal height' ] )
 	&& JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [ 'Id of the loop', 'Class of the loop' ] ) );
 check( '...the groups hold what they are called after: the cells in Grid with the gap and the equal height - one field under the other', ( function() {
 	const groups = blockOf('presentation').querySelectorAll('.builder-group');
-	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height' && loopPane().querySelector('.builder-line') === null;
+	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Cell width|Gap between the cells|Cells of equal height' && loopPane().querySelector('.builder-line') === null;
 } )() );
 const stackNow = function() { return builder._doc.model.blocks[1].cols[1].components[0] };
 check( '...the stacks of the kernel carry no attribute for the cards of the cells any more - the cell is a div, and what stands in it is the cell\'s components -, so the loop has none to set and writes none: the grid is all it brings', ( function() {
@@ -3347,22 +3442,25 @@ check( '...and the words of the cards are gone from both languages: the field of
 	return texts.indexOf('/_admin/builder/stack/card') === -1 && texts.indexOf('/_admin/builder/option/card-') === -1;
 } ) && words['/_admin/builder/stack/card'] === undefined );
 check( '...the type is one of the Elements panel\'s, with the title it has there', controlOf( loopPane(), 'Type' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '/services=Services (/services),/team=Team (/team)' );
-check( '...the cells are a table with a row for each viewport - the device with its icon -, in the view of all of them', loopPane().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor'
-	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && headWords( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
-check( '...a loop that names fewer widths than there are viewports takes the last for the others: two widths are three cells, one is three of one - and a width that is chosen writes all three', ( function() {
+check( '...the cell width is a select of the widths for the viewport of the dialog, which starts on Desktop from the view of all of them - the dialog\'s own switch is not the preview\'s Global', viewShown() === 'l' && controlOf( loopPane(), 'Cell width' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && valueAt( loopPane(), 'Cell width' ) === '50'
+	&& loopPane().querySelectorAll('thead').length === 0 );
+check( '...a loop that names fewer widths than there are viewports takes the last for the others: two widths are three cells, one is three of one - and a width that is chosen writes all three; the mark is on where a cell is another width than the one before it, and for Mobile where it is not 100', ( function() {
 	const stack = builder._doc.model.blocks[1].cols[1].components[0];
 	const shown = function( cols ) {
 		stack.attributes.cols = cols;
 		builder._openSettings( [ 1, 1, 0 ] );
-		return [ 'Mobile', 'Tablet', 'Desktop' ].map( function( device ) { return valueAt( loopPane(), 'Cell width, '+ device ) } ).join();
+		return [ 's', 'm', 'l' ].map( function( viewport ) { pickView( viewport ); return valueAt( loopPane(), 'Cell width' ) } ).join();
 	};
+	const marks = function() { return [ 's', 'm', 'l' ].map( function( viewport ) { pickView( viewport ); return ownOf( controlOf( loopPane(), 'Cell width' ) ) === null ? '-' : viewport } ).join('') };
 	const two = shown( '100 50' );
 	const one = shown( '33' );
-	change( loopPane(), 'Cell width, Mobile', '25' );
+	const ones = marks();
+	pickView('s');
+	change( loopPane(), 'Cell width', '25' );
 	const written = stack.attributes.cols;
 	stack.attributes.cols = '100 50 50';
 	builder._openSettings( [ 1, 1, 0 ] );
-	return two === '100,50,50' && one === '33,33,33' && written === '25 33 33';
+	return two === '100,50,50' && one === '33,33,33' && ones === 's--' && written === '25 33 33' && marks() === '-m-';
 } )() );
 check( '...the order is a field and two toggles: arrows up and down, a group of two radio buttons with the word for each as the title and the label - of which the one for ascending is on where the loop says title', ( function() {
 	const direction = controlOf( loopPane(), 'Direction' ).el;
@@ -3373,7 +3471,8 @@ change( loopPane(), 'Sort by', 'summary' );
 change( loopPane(), 'Direction', 'desc' );
 change( loopPane(), 'Limit', 12 );
 change( loopPane(), 'Offset', 3 );
-change( loopPane(), 'Cell width, Tablet', '33' );
+pickView('m');
+change( loopPane(), 'Cell width', '33' );
 change( loopPane(), 'Cells of equal height', false );
 change( loopPane(), 'Gap between the cells', '4' );
 change( loopPane(), 'Id of the loop', 'services-loop' );
@@ -3409,6 +3508,86 @@ check( '...the choices of the order are none, the uri of the element once, and t
 	change( loopPane(), sortWord, '' );
 	return values[0] === '' && values[1] === '.uri' && options.indexOf( '.uri='+ word('stack/sort-uri') ) !== -1 && asc && desc && said === sortWord+ ' '+ word('stack/sort-uri')+ ' \u2193' && stack.attributes.sort === '';
 } )() );
+
+console.log( '\nA loop sorts at random' );
+
+doc = open();
+builder._renderEditor();
+builder._lastBlock = {};
+builder._dialogViewport = null;
+builder._openSettings( [ 1, 1, 0 ] );
+const mixed = function() { return builder._doc.model.blocks[1].cols[1].components[0] };
+const sortLabel = word('stack/sort');
+const directionLabel = word('stack/direction');
+const arrowsOf = function() { return radiosOf( controlOf( loopPane(), directionLabel ).el ) };
+check( 'the select of the order offers Random: after the uri of the element and before the fields of the type - none, the uri, random, then the fields, each once - with the word of the panel for its label, and a field of the type that is called random is no second choice', ( function() {
+	const fields = Object.keys( builder._registry.types.find( function( type ) { return type.uri === '/services' } ).fields );
+	const values = controlOf( loopPane(), sortLabel ).el.children.map( function( option ) { return option.value } );
+	return values.slice( 0, 3 ).join() === ',.uri,random' && values.slice( 3 ).join() === fields.join() && new Set( values ).size === values.length && controlOf( loopPane(), sortLabel ).el.children[2].textContent === 'Random'
+		&& word('stack/sort-random') === 'Random' && builder._sortLabel('random') === 'Random' && builder.SORT_RANDOM === 'random';
+} )() );
+check( '...and a field of the type that is called random is no second choice: the type that has one offers the word once, as the choice of the mixed order', ( function() {
+	const fields = builder._registry.types.find( function( type ) { return type.uri === '/services' } ).fields;
+	fields.random = { type : 'string' };
+	redrawBlocks();
+	const values = controlOf( loopPane(), sortLabel ).el.children.map( function( option ) { return option.value } );
+	delete fields.random;
+	redrawBlocks();
+	return values.filter( function( value ) { return value === 'random' } ).length === 1 && values[2] === 'random' && values.length === new Set( values ).size;
+} )() );
+change( loopPane(), directionLabel, 'desc' );
+check( '...a loop that sorts by a field and descending, turned to Random, is sorted by the word alone - never -random -, and the arrows are off: both buttons are disabled, and stand on ascending', ( function() {
+	const was = mixed().attributes.sort === '-title';
+	change( loopPane(), sortLabel, 'random' );
+	return was && mixed().attributes.sort === 'random' && arrowsOf().length === 2 && arrowsOf().every( function( radio ) { return radio.disabled === true } ) && valueAt( loopPane(), directionLabel ) === 'asc'
+		&& controlOf( loopPane(), directionLabel ).el.classList.contains('is-disabled') === true && valueAt( loopPane(), sortLabel ) === 'random';
+} )() );
+check( '...a press on an arrow does nothing while it is chosen, and whatever the model is asked to write for it is the word without a minus', ( function() {
+	const pressed = change( loopPane(), directionLabel, 'desc' );
+	builder._sortSet( mixed(), 'random', true );
+	// Only the whole value random is the mixed order: -random is a field of that name, descending, and is read as written - as the text of the order is
+	const minus = builder._sortState( { attributes : { sort : '-random' } } );
+	return pressed === false && mixed().attributes.sort === 'random' && builder._sortState( mixed() ).descending === false && minus.several === true && minus.field === '-random' && builder._sortSaid( { attributes : { sort : '-random' } } ) === sortLabel+ ' -random';
+} )() );
+check( '...the labels say it in the three places a loop is told in: the head of its block "Sort by Random" with no arrow, the chip of its row in the column and, for a loop around a section or a row, the chip in the bar of the box around the section and in the bar of the box around the row', ( function() {
+	const said = builder._sortSaid( mixed() ) === sortLabel+ ' Random' && saysOf('data').textContent.indexOf( sortLabel+ ' Random' ) !== -1 && saysOf('data').textContent.indexOf('↓') === -1;
+	builder._renderEditor();
+	const column = texts( barOf( loopRow() ).querySelectorAll('.builder-chip') ).split(',')[0] === 'Services · by Random';
+	builder._doc.model.blocks[3].stack = builder._stackFor( builder._registry, 'sections', null );
+	builder._doc.model.blocks[3].stack.attributes.sort = 'random';
+	builder._doc.model.blocks[0].rowLoop = builder._stackFor( registry(), 'repeat', null );
+	builder._doc.model.blocks[0].rowLoop.attributes.sort = 'random';
+	builder._renderEditor();
+	const sections = frames()[3].classList.contains('is-sections') && texts( frames()[3].querySelectorAll('.builder-chip.is-loop') ).indexOf('by Random') !== -1;
+	const around = texts( frames()[0].querySelector('.builder-loop.is-around .builder-loop-bar').querySelectorAll('.builder-chip') ).split(',')[0].indexOf('by Random') !== -1;
+	builder._doc.model.blocks[3].stack = null;
+	builder._doc.model.blocks[0].rowLoop = null;
+	return said && column && sections && around;
+} )() );
+check( '...a dialog opened on a loop that sorts at random has Random chosen and the arrows off from the start', ( function() {
+	builder._renderEditor();
+	builder._openSettings( [ 1, 1, 0 ] );
+	return mixed().attributes.sort === 'random' && valueAt( loopPane(), sortLabel ) === 'random' && arrowsOf().every( function( radio ) { return radio.disabled === true } ) && valueAt( loopPane(), directionLabel ) === 'asc';
+} )() );
+check( '...and a field chosen after it has the arrows on again, ascending, writing the field and then - with the arrow down - the field with a minus', ( function() {
+	change( loopPane(), sortLabel, 'summary' );
+	const field = mixed().attributes.sort === 'summary' && arrowsOf().every( function( radio ) { return radio.disabled === false } ) && valueAt( loopPane(), directionLabel ) === 'asc';
+	change( loopPane(), directionLabel, 'desc' );
+	const down = mixed().attributes.sort === '-summary';
+	change( loopPane(), sortLabel, 'random' );
+	const again = mixed().attributes.sort === 'random';
+	change( loopPane(), sortLabel, '' );
+	return field && down && again && mixed().attributes.sort === '' && arrowsOf().every( function( radio ) { return radio.disabled === false } ) && builder._sortSaid( mixed() ) === '';
+} )() );
+check( '...the sentence of the order says that a page the cache keeps holds its order, and the two languages have the word', ( function() {
+	const hint = tipOf( controlOf( loopPane(), sortLabel ) );
+	return hint === word('hint/sort') && /cache keeps holds its order/.test( hint ) && [ 'en_US.php', 'de_DE.php' ].every( function( file ) {
+		const texts = fs.readFileSync( path.join( __dirname, '../text/'+ file ), 'utf8' );
+		const sentence = /\/hint\/sort\]\]'\s*=> '((?:[^'\\]|\\.)*)',/.exec( texts )[1];
+		return /\/stack\/sort-random\]\]'\s*=> '[^']+',/.test( texts ) && sentence.indexOf( file === 'de_DE.php' ? 'Cache' : 'cache' ) !== -1;
+	} );
+} )() );
+
 builder._doc.model.blocks[1].cols[1].components[0].attributes.sort = 'a,-b';
 change( loopPane(), 'Type', '/team' );
 check( 'a list of fields is a line of text that is left as it is, with no arrows beside it', labelList( loopPane() ).indexOf( 'Direction' ) === -1 && valueAt( loopPane(), 'Sort by' ) === 'a,-b' );
@@ -4001,8 +4180,8 @@ const inTableOrder = function( kind, ids ) {
 	const order = builder.BLOCKS[kind].map( function( block ) { return block.id } );
 	return ids.every( function( id, at ) { return order.indexOf( id ) !== -1 && ( at === 0 || order.indexOf( id ) > order.indexOf( ids[at - 1] ) ) } );
 };
-check( 'the dialog of a component has the blocks it has something for, in the order of the table - for a text that is a link: content, link, spacing and properties; the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"'
-	&& blockIds().join() === 'content,link,spacing,properties' && inTableOrder( 'component', blockIds() ) && screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
+check( 'the dialog of a component has the blocks it has something for, in the order of the table - for a title that is a link: content, link, spacing, width and properties; the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"'
+	&& blockIds().join() === 'content,link,spacing,width,properties' && inTableOrder( 'component', blockIds() ) && screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
 check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources - and under it, for a key the project knows, the text it holds in the language the editor works in', ( function() {
 	const row = blockOf('content').querySelector('.builder-source');
 	const button = row.querySelector('button');
@@ -4076,6 +4255,135 @@ builder._openSettings( [ 0, 0, 4 ] );
 check( '...a component the registry does not know is called by its name, and has a source of the text kind', dialogText('builder-dialog-kind') === 'Component "unknown-one"' && blockOf('content').querySelector('.builder-source') !== null );
 builder._openSettings( [ 0, 0, 5 ] );
 check( '...the content that is HTML has the editor of the workbench in its block, and a dialog of the width of the others', blockOf('content').querySelector('.builder-content') !== null && dialogBox().classList.contains('is-wide') === false );
+console.log( '\nThe alignment of the text of a title, a subtitle and a text' );
+
+doc = open();
+builder._renderEditor();
+builder._lastBlock = {};
+builder._dialogViewport = null;
+const aligned = function( at ) { return builder._get( builder._doc.model, at ) };
+const alignWord = function( stages ) { return JSON.stringify( stages ) };
+check( 'the registry says which components align their text for each viewport: the title, the subtitle and the text of a section - a text drawn as a title or as a text, no line of fields, in a section or everywhere and in a card alone not - and no name decides it: a component of a feature that says the same has it, one of a card has not', ( function() {
+	const names = Object.keys( builder._registry.components ).filter( function( name ) { return builder._aligned( builder._registry.components[name] ) === true } );
+	return names.join() === 'title,subtitle,text' && builder._aligned( { source : 'text', preview : 'title', 'in' : [ 'section' ] } ) === true && builder._aligned( { source : 'text', preview : 'text' } ) === true
+		&& builder._aligned( { source : 'text', preview : 'text', 'in' : [ 'card' ] } ) === false && builder._aligned( { source : 'text', preview : 'text', fields : true } ) === false && builder._aligned( { source : 'text', preview : 'button' } ) === false
+		&& builder._aligned( { source : 'image', preview : 'title' } ) === false && builder._aligned( {} ) === false;
+} )() );
+check( 'a component the editor makes has the map where it aligns its text - a title, a subtitle and a text, none until the editor sets it - and none where it does not: a button, the title of a card, a line of fields', [ 'title', 'subtitle', 'text' ].every( function( name ) { return alignWord( builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 0, 0 ], name, builder._keys ).textAlign ) === '{"s":"","m":"","l":""}' } )
+	&& [ 'button', 'card-title', 'card-text', 'line', 'image' ].every( function( name ) { return builder._newComponent( builder._doc.model, builder._registry, builder._doc.file, [ 0, 0 ], name, builder._keys ).textAlign === undefined } ) );
+check( 'the model the server sends has the map for the title, the subtitle and the text, and none for a button - and a map that php sent as an empty list is a map here', alignWord( aligned( [ 0, 0, 0 ] ).textAlign ) === '{"s":"","m":"","l":""}' && aligned( [ 0, 0, 2 ] ).textAlign === undefined
+	&& alignWord( builder._normalise( { blocks : [ { kind : 'section', settings : [], cols : [ { components : [ { name : 'title', textAlign : [] } ] } ] } ] } ).blocks[0].cols[0].components[0].textAlign ) === '{"s":"","m":"","l":""}' );
+
+builder._setView('l');
+builder._openSettings( [ 0, 0, 0 ] );
+check( 'the dialog of a title has the block Width and alignment after Spacing, and in it the one field, Text alignment: the switch of the viewports is in its head, on Desktop, with the choice of the viewport before it as a word and the three alignments as icons - a group of radio buttons, none chosen yet', blockIds().join() === 'content,link,spacing,width,properties' && inTableOrder( 'component', blockIds() )
+	&& headOf('width').querySelector('.builder-block-name').textContent === 'Width and alignment' && ( headOf('width').click(), openBlock() === 'width' ) && JSON.stringify( labelList( blockOf('width') ) ) === JSON.stringify( [ 'Text alignment' ] )
+	&& controlOf( blockOf('width'), 'Text alignment' ).kind === 'group' && optionWords( controlOf( blockOf('width'), 'Text alignment' ) ) === ':Like Tablet,left:align-left,center:align-center,right:align-right' && valueAt( blockOf('width'), 'Text alignment' ) === ''
+	&& controlOf( blockOf('width'), 'Text alignment' ).el.dataset.key === 'textAlign' && controlOf( blockOf('width'), 'Text alignment' ).el.dataset.viewport === 'l' && dialogViews().hidden === false && viewShown() === 'l' && saysOf('width').hidden === true );
+pickView('s');
+check( '...on Mobile it is Inherited for none, and a choice writes the viewport and the viewports that were like it, as the alignment of a column does: centred on Mobile it is centred on all three, and the mark says Mobile has a value of its own', optionWords( controlOf( blockOf('width'), 'Text alignment' ) ) === ':Inherited,left:align-left,center:align-center,right:align-right'
+	&& ( change( blockOf('width'), 'Text alignment', 'center' ), alignWord( aligned( [ 0, 0, 0 ] ).textAlign ) === '{"s":"center","m":"center","l":"center"}' ) && ownOf( controlOf( blockOf('width'), 'Text alignment' ) ) === 'Own value for Mobile' && builder._doc.model.blocks[0].cols[0].components[0].text === null );
+pickView('m');
+check( '...Tablet shows "like Mobile" - no mark - until it is set apart: Left there leaves Mobile as it is and takes Desktop with it, and has the mark of Tablet', valueAt( blockOf('width'), 'Text alignment' ) === '' && ownOf( controlOf( blockOf('width'), 'Text alignment' ) ) === null
+	&& ( change( blockOf('width'), 'Text alignment', 'left' ), alignWord( aligned( [ 0, 0, 0 ] ).textAlign ) === '{"s":"center","m":"left","l":"left"}' ) && ownOf( controlOf( blockOf('width'), 'Text alignment' ) ) === 'Own value for Tablet' );
+pickView('l');
+check( '...Desktop is like Tablet where it was taken along, and its own where it is set apart: Right writes the third viewport and no other, Like Tablet puts it back', valueAt( blockOf('width'), 'Text alignment' ) === '' && ownOf( controlOf( blockOf('width'), 'Text alignment' ) ) === null
+	&& ( change( blockOf('width'), 'Text alignment', 'right' ), alignWord( aligned( [ 0, 0, 0 ] ).textAlign ) === '{"s":"center","m":"left","l":"right"}' ) && ownOf( controlOf( blockOf('width'), 'Text alignment' ) ) === 'Own value for Desktop'
+	&& saysOf('width').textContent === 'Centre / Left / Right' && saysOf('width').hidden === false );
+check( '...every choice makes a map a class can say, after any other: a viewport is none only where the one before it is none', ( function() {
+	let sayable = true;
+	[ 's', 'm', 'l' ].forEach( function( viewport ) {
+		[ '', 'left', 'center', 'right' ].forEach( function( value ) {
+			[ '', 'left', 'center', 'right' ].forEach( function( other ) {
+				pickView('s');
+				change( blockOf('width'), 'Text alignment', other );
+				pickView( viewport );
+				change( blockOf('width'), 'Text alignment', value );
+				const text = aligned( [ 0, 0, 0 ] ).textAlign;
+				if( ( text.m === '' && text.s !== '' ) || ( text.l === '' && text.m !== '' ) )
+					sayable = false;
+			} );
+		} );
+	} );
+	pickView('s');
+	change( blockOf('width'), 'Text alignment', 'center' );
+	pickView('m');
+	change( blockOf('width'), 'Text alignment', 'left' );
+	pickView('l');
+	change( blockOf('width'), 'Text alignment', 'right' );
+	return sayable === true && alignWord( aligned( [ 0, 0, 0 ] ).textAlign ) === '{"s":"center","m":"left","l":"right"}';
+} )() );
+check( 'the viewport of the dialog is the one of every dialog: the choice made in the form of a title is kept for the dialog of a column and the other way round - and the switch is not there for a component that has no such field, a button', ( function() {
+	pickView('m');
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+	const column = viewShown() === 'm' && builder._dialogViewport === 'm';
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0, 2 ] );
+	const button = dialogViews().hidden === true && blockIds().join() === 'content,link,spacing,properties' && controlsIn( dialogContent() ).every( function( control ) { return control.el.dataset.viewport === undefined } );
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0, 0 ] );
+	return column && button && viewShown() === 'm';
+} )() );
+check( 'the subtitle and the text of a section have the same field, and a button, a picture or a line has none', ( function() {
+	const seen = {};
+	[ [ [ 0, 0, 1 ], 'subtitle' ], [ [ 1, 0, 1 ], 'text' ], [ [ 0, 0, 2 ], 'button' ] ].forEach( function( entry ) {
+		builder._closeDialog();
+		builder._openSettings( entry[0] );
+		seen[entry[1]] = blockIds().indexOf('width') !== -1 && labelList( dialogContent() ).indexOf('Text alignment') !== -1;
+	} );
+	return seen.subtitle === true && seen.text === true && seen.button === false;
+} )() );
+check( 'the title of a card has no field for it, and its model no map, whatever its classes say - it aligns with its card; a text among the children of a card is the section\'s text, which the registry says aligns, and has it', ( function() {
+	doc = open( builder._normalise( fixture('page-home-card.json') ) );
+	builder._renderEditor();
+	const card = builder._doc.model.blocks[0].cols[1].components[0];
+	const seen = {};
+	card.components.forEach( function( child, at ) {
+		builder._closeDialog();
+		builder._openSettings( [ 0, 1, 0, at ] );
+		seen[child.name] = [ blockIds().indexOf('width') !== -1, child.textAlign !== undefined ].join();
+	} );
+	builder._closeDialog();
+	return JSON.stringify( seen ) === '{"card-title":"false,false","text":"true,true","button":"false,false"}';
+} )() );
+
+doc = open();
+builder._renderEditor();
+check( 'the preview shows the alignment of the viewport it shows: the placeholder of a title has its label at the left, in the middle or at the right in the view of Mobile, Tablet and Desktop - and of Desktop in the view of all of them - and none where the title says none', ( function() {
+	builder._closeDialog();
+	doc = open();
+	aligned( [ 0, 0, 0 ] ).textAlign = { s : 'center', m : 'left', l : 'right' };
+	builder._renderEditor();
+	const seen = {};
+	[ 's', 'm', 'l', 'g' ].forEach( function( viewport ) {
+		builder._setView( viewport );
+		seen[viewport] = frameOf('0.0.0').dataset.align ?? '-';
+	} );
+	aligned( [ 0, 0, 0 ] ).textAlign = { s : '', m : '', l : '' };
+	builder._setView('l');
+	const none = frameOf('0.0.0').dataset.align === undefined;
+	aligned( [ 0, 0, 1 ] ).textAlign = { s : 'right', m : 'right', l : 'right' };
+	builder._setView('s');
+	const subtitle = frameOf('0.0.1').dataset.align === 'right' && frameOf('0.0.2').dataset.align === undefined;
+	builder._setView('l');
+	return JSON.stringify( seen ) === '{"s":"center","m":"left","l":"right","g":"right"}' && none === true && subtitle === true
+		&& builder._preview( builder._doc.model, builder._registry, 'm' )[0].cols[0].components.map( function( component ) { return component.align } ).join() === ',right,';
+} )() );
+check( 'a title that is duplicated takes its alignment along, in a map of its own: a change of the copy leaves the original as it is', ( function() {
+	doc = open();
+	builder._renderEditor();
+	aligned( [ 0, 0, 0 ] ).textAlign = { s : 'center', m : 'center', l : 'center' };
+	builder._duplicateAt( [ 0, 0, 0 ] );
+	const list = builder._doc.model.blocks[0].cols[0].components;
+	const same = alignWord( list[1].textAlign ) === '{"s":"center","m":"center","l":"center"}' && list[0].textAlign !== list[1].textAlign;
+	list[1].textAlign.l = 'right';
+	return same && list[0].name === 'title' && list[1].name === 'title' && list[0].textAlign.l === 'center';
+} )() );
+check( 'the words of the field are in both languages, and the placeholders align on the label and the line under it, in the three words', [ 'en_US.php', 'de_DE.php' ].every( function( file ) {
+	return new RegExp( "'\\[\\[/_admin/builder/component/text-align\\]\\]'\\s*=> '[^']+'," ).test( fs.readFileSync( path.join( __dirname, '../text/'+ file ), 'utf8' ) );
+} ) && [ 'left', 'center', 'right' ].every( function( word ) { return stylesheet.indexOf( '.builder-ph[data-align="'+ word+ '"] .builder-ph-text {\n\ttext-align: '+ word+ ';\n}' ) !== -1 } ) );
+
 console.log( '\nThe table of the blocks is the one place that says what a dialog shows' );
 
 doc = open();
@@ -4206,12 +4514,12 @@ check( 'the same holds for a column: the gap between its components, moved from 
 openWith( [ 0, 0 ], tableMoved( tableWith(), 'column', 'dim' ) );
 check( '...a control struck out is not drawn: the dimming of the picture behind a column', drawnAnywhere( 'dim' ) === 0 && drawnAnywhere( 'color' ) === 1 );
 openWith( [ 0, 0 ], tableMoved( tableWith(), 'column', 'width', 'properties' ) );
-const viewports = builder._views().length;
+const viewports = 1;
 const stays = drawnIn( 'width', 'width' ) === viewports && drawnIn( 'width', 'hidden' ) === viewports && drawnAnywhere( 'width' ) === viewports;
 openWith( [ 0, 0 ], tableMoved( tableMoved( tableWith(), 'column', 'width', 'properties' ), 'column', 'hidden', 'properties' ) );
 const staysText = drawnIn( 'width', 'text' ) === viewports && drawnIn( 'width', 'width' ) === viewports;
 openWith( [ 0, 0 ], tableMoved( tableMoved( tableMoved( tableWith(), 'column', 'width', 'properties' ), 'column', 'hidden', 'properties' ), 'column', 'text', 'properties' ) );
-check( '...a control that writes several settings goes with all of its names: the table of the viewports - the width of the column, where it is hidden and how its text is aligned - stays where the other names stand when one or two of them are moved, and is in the properties, one row to a viewport and none left behind, when all three are', stays === true && staysText === true
+check( '...a control that writes several settings goes with all of its names: the three fields of the viewport - the width of the column, where it is hidden and how its text is aligned - stay where the other names stand when one or two of them are moved, and are in the properties, one each and none left behind, when all three are', stays === true && staysText === true
 	&& drawnIn( 'properties', 'width' ) === viewports && drawnIn( 'properties', 'hidden' ) === viewports && drawnIn( 'properties', 'text' ) === viewports && drawnIn( 'width', 'width' ) === 0 && drawnIn( 'width', 'hidden' ) === 0 && drawnIn( 'width', 'text' ) === 0 );
 check( '...and the status of a frame that opens the dialog on a block opens the one the table has put the control in: the loop of a section, the columns of a loop, the alignments of a column - wherever the table has them', ( function() {
 	const original = builder.BLOCKS;
@@ -4223,9 +4531,9 @@ check( '...and the status of a frame that opens the dialog on a block opens the 
 openWith( [ 0, 0, 0 ], tableMoved( tableMoved( tableWith(), 'component', 'class', 'spacing' ), 'component', 'attributes' ) );
 check( 'a component has its controls by the table too: its class, moved to Spacing, is a field of the spacing and none of the properties, and its other attributes, struck out, are not drawn - the HTML tag of a title', drawnIn( 'spacing', 'class' ) === 1 && drawnIn( 'properties', 'class' ) === 0 && drawnAnywhere( 'tag' ) === 0 );
 openWith( [ 0, 0, 0 ], tableMoved( tableWith(), 'component', 'variants', 'surface' ) );
-check( '...its variants, moved to Surface, are the surface - a block the title had none of - and the attributes that are none of them stay among the properties', blockIds().join() === 'content,link,surface,spacing,properties' && drawnIn( 'surface', 'style' ) === 1 && drawnIn( 'properties', 'style' ) === 0 && drawnIn( 'properties', 'tag' ) === 1 );
+check( '...its variants, moved to Surface, are the surface - a block the title had none of - and the attributes that are none of them stay among the properties', blockIds().join() === 'content,link,surface,spacing,width,properties' && drawnIn( 'surface', 'style' ) === 1 && drawnIn( 'properties', 'style' ) === 0 && drawnIn( 'properties', 'tag' ) === 1 );
 openWith( [ 0, 0, 0 ], tableMoved( tableWith(), 'component', 'source' ) );
-check( '...and the content of a component, struck out, leaves the dialog without the block', blockIds().join() === 'link,spacing,properties' );
+check( '...and the content of a component, struck out, leaves the dialog without the block', blockIds().join() === 'link,spacing,width,properties' );
 builder._closeDialog();
 doc = open();
 doc.model.blocks[1].cols[0].stackAlign = 'end';
@@ -5519,11 +5827,10 @@ check( 'every icon the script names is a symbol of the sprite, and every symbol 
 	template.replace( /<symbol id="builder-icon-([a-z-]+)"/g, function( all, name ) { symbols.push( name ) } );
 	const named = [];
 	template.replace( /href="#builder-icon-([a-z-]+)"/g, function( all, name ) { named.push( name ) } );
-	// The script names them as an icon (_icon, _iconButton, _statusItem), as the icon of an option, in DEVICES and in ALIGN_ICONS, and for each of the WIDTHS (the start of a name that is put together is no name)
+	// The script names them as an icon (_icon, _iconButton, _statusItem), as the icon of an option and in ALIGN_ICONS, and for each of the WIDTHS (the start of a name that is put together is no name)
 	source.replace( /_(?:icon|iconButton)\( '([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
 	source.replace( /_statusItem\( '[a-z]+', '([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
 	source.replace( /icon\s*:\s*'([a-z-]+)'(?!\s*\+)/g, function( all, name ) { named.push( name ) } );
-	Object.keys( builder.DEVICES ).forEach( function( key ) { named.push( builder.DEVICES[key] ) } );
 	builder.WIDTHS.forEach( function( value ) { named.push( 'width-'+ value ) } );
 	Object.keys( builder.ALIGN_ICONS ).forEach( function( setting ) { Object.keys( builder.ALIGN_ICONS[setting] ).forEach( function( value ) { named.push( builder.ALIGN_ICONS[setting][value] ) } ) } );
 	return named.every( function( name ) { return symbols.indexOf( name ) !== -1 } ) && symbols.every( function( name ) { return named.indexOf( name ) !== -1 } );
@@ -5809,7 +6116,7 @@ heroTitle().values = { en_US : 'Typed, not saved' };
 builder._renderPreview();
 check( '...the text that was typed and not saved is the one it says, before the one the key holds', lines()[0] === 'Typed, not saved' );
 delete heroTitle().values;
-builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, attributes : { tag : 'h3', style : '', 'class' : '' }, create : {} } );
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, textAlign : { s : '', m : '', l : '' }, attributes : { tag : 'h3', style : '', 'class' : '' }, create : {} } );
 builder._renderPreview();
 const madeAt = function() { return preview().querySelector('[data-path="0.0.3"]') };
 check( '...a key the save is going to make has none until one is typed for it: the placeholder says the label of the component and is no text - no title, no mark - and the text typed for it is the line, as for a key that is there', lines()[3] === titleLabel && madeAt().title === '' && madeAt().classList.contains('has-line') === false
@@ -5826,7 +6133,7 @@ const sayIn = function( locale, values, typed, global ) {
 	const model = JSON.parse( JSON.stringify( builder._doc.model ) );
 	const key = '/template/page-home/hero/chain';
 
-	model.blocks[0].cols[0].components = [ Object.assign( { name : 'title', source : key, text : null, attributes : { tag : 'h3', style : '', 'class' : '' } }, typed === undefined ? {} : { values : typed } ) ];
+	model.blocks[0].cols[0].components = [ Object.assign( { name : 'title', source : key, text : null, textAlign : { s : '', m : '', l : '' }, attributes : { tag : 'h3', style : '', 'class' : '' } }, typed === undefined ? {} : { values : typed } ) ];
 
 	return builder._preview( model, three, 'l', { locale : locale, keys : [ { key : key, global : global === true, format : 'plain', maxlength : 160, values : values } ] } )[0].cols[0].components[0].line;
 };
@@ -5851,7 +6158,7 @@ builder._keys = keysBefore.concat( [
 	{ key : '/template/page-home/hero/only-german', global : false, format : 'plain', maxlength : 160, values : { de_DE : 'Nur Deutsch' } },
 	{ key : '/template/page-home/hero/only-english', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Only English' } },
 ] );
-[ 'only-german', 'only-english' ].forEach( function( name ) { heroPlaces.push( { name : 'title', source : '/template/page-home/hero/'+ name, text : null, attributes : { tag : 'h3', style : '', 'class' : '' } } ) } );
+[ 'only-german', 'only-english' ].forEach( function( name ) { heroPlaces.push( { name : 'title', source : '/template/page-home/hero/'+ name, text : null, textAlign : { s : '', m : '', l : '' }, attributes : { tag : 'h3', style : '', 'class' : '' } } ) } );
 builder._renderPreview();
 check( 'a key with a text in German alone is previewed in English with that text and not with the label, and one with a text in English alone is previewed in German with the English one - the texts the page shows there', lines()[placed] === 'Nur Deutsch' && lines()[placed + 1] === 'Only English'
 	&& preview().querySelector('[data-path="0.0.'+ placed +'"]').classList.contains('has-line') === true && ( builder._setLocale('de_DE'), lines()[placed] === 'Nur Deutsch' && lines()[placed + 1] === 'Only English' ) && ( builder._setLocale('en_US'), true ) );
@@ -6742,7 +7049,7 @@ offered.click();
 const addedAt = [ 3, 0, 2 ];
 check( 'a click on a component of the lightbox adds it at the end of the column and the dialog goes on to its settings, in the same dialog: the lightbox is gone, the form of the component stands there with its blocks, the component is the selection, and the first control of the form has the focus', dialogBox().open === true && lightboxOf() === null
 	&& builder._doc.model.blocks[3].cols[0].components.length === 3 && builder._doc.model.blocks[3].cols[0].components[2].name === offeredName && dialogText('builder-dialog-kind') === titleOf( offeredName )
-	&& blockIds().join() === 'content,link,spacing,properties' && builder._same( builder._sel, addedAt )
+	&& blockIds().join() === ( builder._aligned( builder._registry.components[offeredName] ) === true ? 'content,link,spacing,width,properties' : 'content,link,spacing,properties' ) && builder._same( builder._sel, addedAt )
 	&& screen.activeElement !== null && dialogContent().contains( screen.activeElement ) && screen.activeElement.disabled === false );
 check( '...it is a component as any is added: its key is made in the section, the document has changed - once - and the preview shows it as the selection', builder._doc.model.blocks[3].cols[0].components[2].source.indexOf( '/template/page-home/contact/'+ offeredName ) === 0 && builder._doc.model.blocks[3].cols[0].components[2].create !== undefined
 	&& changes === 1 && builder._unsaved( builder._doc ) === true && preview().querySelector('[data-path="3.0.2"]').classList.contains('is-selected') );
@@ -6807,7 +7114,7 @@ dialogBox().close();
 check( 'a lightbox that is closed with no choice leaves the preview as it was - no component was added, so the button that opened it is where it was - and the focus is on that button: the browser gives it back',
 	dialogBox().open === false && left.isConnected === true && screen.activeElement === left && builder._doc.model.blocks[3].cols[0].components.length === 2 && changes === 0 );
 
-[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'width', 'Width, Desktop', '33' ], [ 'a section', '3', 'surface', 'Cover', true ] ].forEach( function( kind ) {
+[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'width', 'Width', '33' ], [ 'a section', '3', 'surface', 'Cover', true ] ].forEach( function( kind ) {
 
 	doc = open();
 	builder._renderEditor();
@@ -7809,7 +8116,7 @@ check( '...and the head of the column the column', builder._same( builder._sel, 
 frameOf('0.1.0').dispatch('dblclick');
 check( 'a double click on the card opens the form of the card, one on a child the form of that component', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Card' && blockIds().join() === 'link,surface,spacing,properties' );
 frameOf('0.1.0.1').dispatch('dblclick');
-check( '...the form of a component at depth four is the form every component has: for a text that is a link its content, its link, its spacing and its properties', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && blockIds().join() === 'content,link,spacing,properties' );
+check( '...the form of a component at depth four is the form every component has: for a text that is a link its content, its link, its spacing, its width and alignment and its properties', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && blockIds().join() === 'content,link,spacing,width,properties' );
 builder._closeDialog();
 toolOf( '0.1.0', 'settings' ).click();
 check( 'the tool for the settings selects the frame and opens its form: the card\'s', dialogText('builder-dialog-kind') === 'Card' && builder._same( builder._sel, cardAt ) );
@@ -9582,9 +9889,11 @@ check( '...the "+" takes a click only where it is seen - none while it is hidden
 	return ruleHas( '.builder-insert-btn', [ 'pointer-events: none' ] ) && ruleHas( '.builder-insert:hover .builder-insert-btn,\n.builder-insert:focus-within .builder-insert-btn,\n.builder-insert.is-open .builder-insert-btn', [ 'pointer-events: auto' ] )
 		&& ruleHas( '.builder-insert.is-open .builder-insert-btn', [ 'visibility: hidden' ] ) && /@media \(hover: none\) \{\s*\.builder-insert-btn \{\s*opacity: 1;\s*pointer-events: auto;/.test( stylesheet );
 } ) );
-check( '...the select of the width of Mobile is as wide as the others of its table, and the note goes below it where there is no room beside it', ruleHas( '.builder-from-cell', [ 'flex-wrap: wrap' ] ) && ruleHas( '.builder-from-cell select', [ 'flex: 1 1 9rem' ] ) );
+check( '...the note beside the name of the width of Mobile does not break, and the mark of a value of the viewport\'s own is a round dot in the accent colour beside the name, as high and as wide as half a rem - not text, so that it is no part of the name', ruleHas( '.builder-from-note', [ 'white-space: nowrap' ] ) && ruleHas( '.builder-own', [ 'border-radius: 50%', 'width: .5rem', 'height: .5rem', 'background: var(--editor-blue)' ] ) );
+check( '...and the switch of the viewports in the head of a dialog is drawn like the buttons over the preview, at the right of the title, hidden while the dialog has no such field, with a button no smaller than 24 px', ruleHas( '.builder-dialog-viewports', [ 'margin-left: auto' ] ) && ruleHas( '.builder-dialog-viewports[hidden]', [ 'display: none' ] ) && ruleHas( '.builder-dialog-viewports .builder-viewport', [ 'min-width: 1.5rem', 'min-height: 1.5rem' ] )
+	&& template.indexOf( 'id="builder-dialog-viewports" class="builder-viewports builder-dialog-viewports"' ) !== -1 && template.indexOf( 'id="builder-dialog-viewport-g"' ) === -1 );
 
-console.log( '\nThe preview of Mobile and the width tables' );
+console.log( '\nThe preview of Mobile and the width fields' );
 
 check( 'the preview of Mobile draws every column the whole width, whatever width the column has for Mobile: the model with a width of 50 for s gives 100 in s, the width of m in m, the width of l in l and in g, for the columns of a section and of a loop', attempt( function() {
 
@@ -9621,69 +9930,56 @@ check( '...and the preview on screen: the custom property of the width of each c
 
 	return s === '100 100%' && m === '25 25%' && l === '66 66%' && g === l;
 } ) );
-check( 'the table of the widths says in the row of Mobile - and in that row only - from where the width holds: a note beside the select, from the text of the panel, the select in it where it was; the rows of Tablet and Desktop have none', attempt( function() {
+check( 'the width of a column says in the dialog of Mobile - and there only - from where it holds: a note beside the name of the field, from the text of the panel, and the same for the cell width of a loop; Tablet and Desktop have none, and the sentence of the width stands behind a question mark in its row', attempt( function() {
 
 	doc = open();
 	builder._renderEditor();
-	builder._setView('g');
 	builder._lastBlock = {};
-	builder._openSettings( [ 0, 0 ] );
-	headOf('width').click();
 
-	const rows = widths().querySelectorAll('tbody tr');
-	const note = function( row ) { return row.querySelectorAll('.builder-from-note') };
 	const said = sandbox.Nino.content.getText('/_admin/builder/col/from-640');
-	const select = function( row ) { return row.querySelector('select') };
+	const notes = function( pane ) { return pane.querySelectorAll('.builder-from-note').map( function( note ) { return note.textContent } ).join() };
+	const seen = {};
 
-	const ok = rows.length === 3 && rows[0].querySelector('th').textContent === word('viewport/s') && note( rows[0] ).length === 1 && said !== '' && note( rows[0] )[0].textContent === said && note( rows[1] ).length === 0 && note( rows[2] ).length === 0
-		&& select( rows[0] ).dataset.key === 'width' && select( rows[0] ).parentNode.classList.contains('builder-from-cell') && select( rows[0] ).parentNode === note( rows[0] )[0].parentNode && select( rows[1] ).parentNode.localName === 'td'
-		&& widths().querySelectorAll('.builder-from-note').length === 1;
+	[ 's', 'm', 'l' ].forEach( function( viewport ) {
+		builder._setView( viewport );
+		builder._dialogViewport = null;
+		builder._openSettings( [ 0, 0 ] );
+		headOf('width').click();
+		seen[viewport] = notes( blockOf('width') )+ '/'+ controlOf( blockOf('width'), 'Width' ).el.closest('label').querySelectorAll('.builder-from-note').length;
+		builder._closeDialog();
+	} );
 
-	builder._closeDialog();
-	builder._setView('s');
-	builder._openSettings( [ 0, 0 ] );
-	headOf('width').click();
-
-	const alone = widths().querySelectorAll('tbody tr').length === 1 && widths().querySelectorAll('.builder-from-note').length === 1;
-
-	builder._closeDialog();
-	builder._setView('m');
-	builder._openSettings( [ 0, 0 ] );
-	headOf('width').click();
-
-	const none = widths().querySelectorAll('.builder-from-note').length === 0;
-
-	builder._closeDialog();
-	builder._setView('l');
-
-	return ok && alone && none;
-} ) );
-check( '...the cells of a loop say it in the row of Mobile as well - the cells of the kernel\'s stack start their widths at 640 px too - and the head of the width of either table carries a sentence behind a question mark, read from the text of the panel', attempt( function() {
-
-	doc = open();
-	builder._renderEditor();
 	builder._setView('g');
-	builder._openSettings( [ 1, 1, 0 ] );
-
-	const table = loopPane().querySelector('table');
-	const rows = table.querySelectorAll('tbody tr');
-	const cells = rows.map( function( row ) { return row.querySelectorAll('.builder-from-note').length } ).join();
-	const tip = table.querySelector('thead th .builder-help-tip');
-	const loopTip = tip === null ? '' : tip.textContent;
-
-	builder._closeDialog();
+	builder._dialogViewport = null;
 	builder._openSettings( [ 0, 0 ] );
 	headOf('width').click();
 
-	const columnTip = widths().querySelector('thead th .builder-help-tip');
+	const tip = tipOf( controlOf( blockOf('width'), 'Width' ) );
+	const global = notes( blockOf('width') );
+
+	pickView('s');
+
+	const switched = notes( blockOf('width') );
+
+	builder._closeDialog();
+	builder._openSettings( [ 1, 1, 0 ] );
+	pickView('s');
+
+	const cells = notes( loopPane() );
+	const cellsTip = tipOf( controlOf( loopPane(), 'Cell width' ) );
+
+	pickView('m');
+
+	const cellsTablet = notes( loopPane() );
 
 	builder._closeDialog();
 	builder._setView('l');
+	builder._dialogViewport = null;
 
-	return cells === '1,0,0' && loopTip === sandbox.Nino.content.getText('/_admin/builder/hint/stack-cells') && loopTip !== '' && columnTip !== null && columnTip.textContent === sandbox.Nino.content.getText('/_admin/builder/hint/col-width') && columnTip.textContent !== ''
-		&& widths().querySelectorAll('thead th')[1].querySelector('.builder-help-btn') !== null && widths().querySelectorAll('thead th')[0].querySelector('.builder-help-btn') === null;
+	return said !== '' && seen.s === said+ '/1' && seen.m === '/0' && seen.l === '/0' && global === '' && switched === said && cells === said && cellsTablet === '' && tip === sandbox.Nino.content.getText('/_admin/builder/hint/col-width') && tip !== ''
+		&& cellsTip === sandbox.Nino.content.getText('/_admin/builder/hint/stack-cells') && cellsTip !== '';
 } ) );
-check( 'the words of the new places are in both languages: the name of the "+", the note from 640 px and the two sentences of the tables', [ 'menu/insert', 'col/from-640', 'hint/col-width', 'hint/stack-cells' ].every( function( key ) {
+check( 'the words of the new places are in both languages: the name of the "+", the note from 640 px, the two sentences of the width and the cells, and the words of the switch of the dialog and of the mark', [ 'menu/insert', 'col/from-640', 'hint/col-width', 'hint/stack-cells', 'label/dialog-viewports' ].every( function( key ) {
 	return [ 'en_US.php', 'de_DE.php' ].every( function( file ) {
 		return new RegExp( "'\\[\\[/_admin/builder/"+ key+ "\\]\\]'\\s*=> '[^']+'," ).test( fs.readFileSync( path.join( __dirname, '../text/'+ file ), 'utf8' ) );
 	} );
@@ -10283,7 +10579,7 @@ check( 'the table names the blocks of every kind of element - content, link, sur
 	Object.keys( builder.BLOCKS ).forEach( function( kind ) { builder.BLOCKS[kind].forEach( function( block ) { ids[block.id] = true } ) } );
 
 	return Object.keys( ids ).sort().join() === 'content,data,fill,link,loop,order,presentation,properties,spacing,surface,tiles,width' && ofKind('section') === 'surface,tiles,spacing,width,order,loop,properties' && ofKind('column') === 'surface,spacing,width,properties'
-		&& ofKind('component') === 'content,link,surface,spacing,properties' && ofKind('loop') === 'data,presentation,properties' && ofKind('group') === 'fill,presentation,properties' && ofKind('panel') === 'content,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && loop('column') === undefined
+		&& ofKind('component') === 'content,link,surface,spacing,width,properties' && ofKind('loop') === 'data,presentation,properties' && ofKind('group') === 'fill,presentation,properties' && ofKind('panel') === 'content,properties' && JSON.stringify( loop('section').controls ) === '["stack"]' && loop('column') === undefined
 		&& [ 'section' ].every( function( kind ) { return builder.BLOCKS[kind].filter( function( block ) { return block.controls.indexOf('stack') !== -1 } ).length === 1 } )
 		&& builder.BLOCKS.component.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && builder.BLOCKS.column.every( function( block ) { return block.controls.indexOf('stack') === -1 } ) && word('block/loop/label') === 'Loop' && word('block/data/label') === 'Data' && word('block/presentation/label') === 'Presentation' && word('block/fill/label') === 'Filling';
 } )() );
@@ -10423,7 +10719,7 @@ check( 'the loop of a section is the block Loop, with its own name: a head that 
 	&& saysOf('loop').hidden === true && labelList( blockOf('properties') ).indexOf( word('stack/mode') ) === -1 && ( change( blockOf('loop'), word('stack/mode'), 'sections' ), saysOf('loop').textContent === registry().stacks.sections.label && saysOf('loop').hidden === false ) );
 builder._closeDialog();
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...the loop of a column has no block of that name: its blocks say what is in them in their heads - the type and the order for the data, nothing for a presentation that is the default, the id for the properties - and the table of the cells is drawn in the presentation', blockIds().join() === 'data,presentation,properties' && saysOf('data').textContent === 'Services · Sort by title · Limit 6' && saysOf('properties').hidden === true && blockOf('presentation').querySelector('table') !== null );
+check( '...the loop of a column has no block of that name: its blocks say what is in them in their heads - the type and the order for the data, nothing for a presentation that is the default, the id for the properties - and the cell width is a field of the presentation', blockIds().join() === 'data,presentation,properties' && saysOf('data').textContent === 'Services · Sort by title · Limit 6' && saysOf('properties').hidden === true && controlOf( blockOf('presentation'), 'Cell width' ).el.localName === 'select' );
 builder._closeDialog();
 
 // The words and the hints of the width
@@ -10460,7 +10756,7 @@ const childAttributes = { tag : 'h3', style : '', color : '', href : '', target 
 const childBox = { mt : '', mb : '', ml : '', mr : '', pt : '', pb : '', pl : '', pr : '' };
 const titleChild = function() { return Object.assign( { name : 'card-title', source : '/template/page-home-card/story/title-2', text : null, attributes : Object.assign( {}, childAttributes ) }, childBox ) };
 const probeChild = function() { return Object.assign( { name : 'probe-link', source : '/template/page-home-card/story/title', text : null, attributes : { tag : 'p', style : '', color : '', class : '' } }, childBox ) };
-const textChild = function() { return Object.assign( { name : 'text', source : '/template/page-home-card/story/text', text : null, attributes : { tag : 'p', format : 'blocks', style : '', color : '', href : '', target : '', class : '' } }, childBox ) };
+const textChild = function() { return Object.assign( { name : 'text', source : '/template/page-home-card/story/text', text : null, textAlign : { s : '', m : '', l : '' }, attributes : { tag : 'p', format : 'blocks', style : '', color : '', href : '', target : '', class : '' } }, childBox ) };
 // The window of the card's link, chosen where the block has the field for it - a block that has none is the pin's to find out, not a thrown error
 const chooseWindow = function() {
 	if( labelList( blockOf('link') ).indexOf( word('link/target') ) !== -1 )
@@ -10791,7 +11087,7 @@ const tilesLabels = labelList( dialogContent() );
 const contentOnly = [ 'section/width', 'section/row', 'section/row-place', 'section/row-align', 'section/content-pos', 'section/cover', 'section/cover-height', 'section/parallax', 'section/inner-background', 'section/padded', 'section/arrow', 'section/offset', 'common/radius-alt' ];
 check( 'the dialog of a section of tiles is titled Tiles, with the name and the pencil, and has the blocks Surface, Tiles, Spacing, Order, Loop and Properties - no block of the width',
 	dialogText('builder-dialog-kind') === 'Tiles' && titleName.textContent === 'work' && blockIds().join() === 'surface,tiles,spacing,order,loop,properties' && blockIds().indexOf('width') === -1 && headOf('tiles').querySelector('.builder-block-name').textContent === word('block/tiles/label') );
-check( '...and Order, after Spacing, with the switch of each viewport that is shown - a section of tiles is a row like any other, and its tiles turn round the way columns do: one switch in the view of one viewport, the model a switch for each', labelList( blockOf('order') ).join() === word('section/reverse-in').replace( '%s', builder._viewport === 'g' ? 'Mobile' : word( 'viewport/'+ builder._viewport ) )+ ( builder._viewport === 'g' ? ',Reversed (Tablet),Reversed (Desktop)' : '' )
+check( '...and Order, after Spacing, with the switch Reversed for the viewport the dialog shows - a section of tiles is a row like any other, and its tiles turn round the way columns do: one field, the model a switch for each', labelList( blockOf('order') ).join() === 'Reversed' && controlOf( blockOf('order'), 'Reversed' ).el.dataset.viewport === builder._dialogView()
 	&& JSON.stringify( Object.keys( builder._doc.model.blocks[0].settings.reverse ) ) === '["s","m","l"]' && builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('order') === builder.BLOCKS.section.map( function( block ) { return block.id } ).indexOf('spacing') + 2 );
 check( '...Surface has the colour - between the tiles - and the border, and the group Background image: the picture behind the whole section with its focus and its dimming, which a section of tiles has as a content section does; Tiles has the height of the tiles, the gap between them and the text alignment; none of the controls only a content section has is drawn anywhere in it: no width, row, place, cover, parallax, background inside, offset, arrow or radius',
 	[ word('section/color-tiles'), word('section/border'), word('section/border-primary') ].every( function( label ) { return blockOf('surface').all().some( function( el ) { return controlsIn( blockOf('surface') ).some( function( control ) { return control.label === label } ) } ) } )

@@ -145,6 +145,34 @@ check( '...the entry of the loop describes it as a component with children, by t
 	&& str_contains( $columnLines['en_US'], 'Presentation' ) === false && str_contains( $columnLines['de_DE'], 'Darstellung' ) === false );
 $lightbox = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['The lightbox'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['The lightbox'], 'de_DE' ) ];
 $byPlace = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'de_DE' ) ];
+check( '...and the entries keep what they say of the dialogs: the blocks - which kind of element a dialog remembers its block for -, the form of a component - how the attributes are drawn, that what has no value is not written, and that the alignment of a title stands over the one of its column and section - in both languages, under a thousand bytes', ( static function() use ( $manifest ): bool {
+	$needles = [
+		'en_US' => [ 'The blocks of a dialog' => [ 'a component by its name', 'Desktop for Global', 'Escape closes it and leaves the dialog open' ], 'The form of a component' => [ 'a select, a flag as a switch or a checkbox', 'is not written', 'stands over the alignment of its column and section' ] ],
+		'de_DE' => [ 'The blocks of a dialog' => [ 'einer Komponente nach ihrem Namen', 'bei Global Desktop', 'Escape schließt es und lässt den Dialog offen' ], 'The form of a component' => [ 'ein Schalter als Schalter oder Checkbox', 'wird nicht geschrieben', 'steht über der Ausrichtung ihrer Spalte und Section' ] ],
+	];
+	foreach( $needles as $locale => $entries )
+		foreach( $entries as $name => $list ) {
+			$line = (string) ( $manifest['manual']['panel'][$name][$locale] ?? '' );
+			if( strlen( $line ) >= 1000 )
+				return false;
+			foreach( $list as $needle )
+				if( str_contains( $line, $needle ) === false )
+					return false;
+		}
+	return true;
+} )() );
+check( '...and names the classes of the alignment of a text in a markup entry of its own, in both languages and under a thousand bytes: the three stages, the place after the eight sides, the classes that stay the call\'s, and the texts of a card that align with their card, which are no part of it', ( static function() use ( $manifest ): bool {
+	$handle = 'nino-text-center nino-text-m-left nino-text-l-right';
+	foreach( [ 'en_US' => [ 'nino-text-m-<x>', 'nino-text-l-<x>', 'nino-text-xl-<x>', 'eight sides', 'card-title' ], 'de_DE' => [ 'nino-text-m-<x>', 'nino-text-l-<x>', 'nino-text-xl-<x>', 'acht Seiten', 'card-title' ] ] as $locale => $needles ) {
+		$line = \Nino\Features::localized( $manifest['manual']['markup'][$handle] ?? '', $locale );
+		if( $line === '' || strlen( $line ) >= 1000 || str_contains( $line, "\n" ) === true )
+			return false;
+		foreach( $needles as $needle )
+			if( str_contains( $line, $needle ) === false )
+				return false;
+	}
+	return \Nino\Features::localized( $manifest['manual']['markup'][$handle], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$handle], 'en_US' );
+} )() );
 check( '...and the lines of the lightbox and of the components by place are, in both languages, under a thousand bytes, which the kernel takes for a line and not a paragraph',
 	strlen( $lightbox['en_US'] ) < 1000 && strlen( $lightbox['de_DE'] ) < 1000 && strlen( $byPlace['en_US'] ) < 1000 && strlen( $byPlace['de_DE'] ) < 1000 );
 check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the classes of the eight sides of the spacing, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-ml-1 nino-mr-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], array_keys( $manifest['manual']['markup'] ) ) === []
@@ -276,15 +304,15 @@ check( '...and the switch of a picture has its label and its hint in both of the
 	$german = (array) include $dir. '/text/de_DE.php';
 	return trim( (string) ( $english[$key] ?? '' ) ) === '' || trim( (string) ( $german[$key] ?? '' ) ) === '' || $english[$key] === $german[$key];
 } ) === [] );
-check( '...and the order of a row has its block name, its switch, its label for a viewport, its summary and its hint in both of them, differing, the label and the summary with one place for the viewport', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
+check( '...and the order of a row has its block name, its switch, its summary and its hint in both of them, differing, the summary and the title of the mark of a value a viewport has for itself with one place for the viewport', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 	$texts = (array) include $dir. '/text/'. $locale. '.php';
 	$other = (array) include $dir. '/text/'. ( $locale === 'en_US' ? 'de_DE' : 'en_US' ). '.php';
-	foreach( [ 'block/order/label', 'section/reverse', 'section/reverse-in', 'section/reverse-said', 'hint/reverse' ] as $name ) {
+	foreach( [ 'block/order/label', 'section/reverse', 'section/reverse-said', 'hint/reverse', 'viewport/own', 'label/dialog-viewports' ] as $name ) {
 		$key = '[[/_admin/builder/'. $name. ']]';
 		if( trim( (string) ( $texts[$key] ?? '' ) ) === '' || ( $texts[$key] ?? '' ) === ( $other[$key] ?? '' ) )
 			return true;
 	}
-	return substr_count( (string) $texts['[[/_admin/builder/section/reverse-in]]'], '%s' ) !== 1 || substr_count( (string) $texts['[[/_admin/builder/section/reverse-said]]'], '%s' ) !== 1;
+	return substr_count( (string) $texts['[[/_admin/builder/viewport/own]]'], '%s' ) !== 1 || substr_count( (string) $texts['[[/_admin/builder/section/reverse-said]]'], '%s' ) !== 1;
 } ) === [] );
 check( '...and the sentences that name the keys and the slots of a copy in the way have a place for the list, one each, in both', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 	$texts = (array) include $dir. '/text/'. $locale. '.php';
@@ -454,7 +482,7 @@ check( '...its background is a slot with a focus', $hero['background'] === [ 'sl
 check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === [ 's' => 'left', 'm' => 'left', 'l' => 'left' ]
 	&& array_key_exists( 'stack', $hero['cols'][0] ) === false && array_column( $hero['cols'][0]['components'], 'name' ) === [ 'title', 'subtitle', 'button' ] );
 check( '...a call carries its source and its attributes, every one of the schema, the default where the call is silent - and after them the eight sides of its spacing, none where its class says none',
-	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'color' => '', 'href' => '', 'target' => '', 'class' => '' ] ] + array_fill_keys( \Nino\Modules\Builder\Reader::SPACING, '' ) );
+	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'color' => '', 'href' => '', 'target' => '', 'class' => '' ] ] + array_fill_keys( \Nino\Modules\Builder\Reader::SPACING, '' ) + [ 'textAlign' => [ 's' => '', 'm' => '', 'l' => '' ] ] );
 
 $services = $model['blocks'][1];
 $servicesLoop = $services['cols'][1]['components'][0];
@@ -1850,7 +1878,7 @@ check( '...the eight stand in one order, that of Reader::SPACING: in the default
 	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'reverse', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'tiles', 'ratio', 'whitespace',
 		'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
-	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
+	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING, [ 'textAlign' ] ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
 
 $spacedSection	= $spaceOf( 'section', 'nino-pr-4 nino-text-right nino-pl-2 nino-pb-6 nino-mr-5 nino-mb-0 nino-whitespace--less nino-pt-3 nino-ml-2 nino-mt-1' );
 $spacedColumn		= $spaceOf( 'column', 'nino-pr-4 nino-vpa nino-pl-2 nino-grid--alt nino-pb-6 nino-text-center nino-mr-5 nino-mb-0 nino-pt-3 nino-ml-2 nino-mt-1' );
@@ -1951,6 +1979,117 @@ check( '...on the call of a component the shorthand is a class of the editor\'s 
 	$callShort['sides'] === $noSides && $callShort['left'] === 'nino-p-2' && $callShort['same'] === true && $callMixed['sides'] === $sidesOf( [ 'pt' => '1' ] ) && $callMixed['left'] === 'nino-p-2 my-class'
 	&& str_contains( $callMixed['written'], '[title /template/page-x/a/title class="nino-pt-1 nino-p-2 my-class"]' ) === true && $callFour['sides'] === $sidesOf( array_fill_keys( $reader::INSIDE, '2' ) ) && $callFour['left'] === '' && $callFour['same'] === true && $cardPadded['attributes']['padding'] === '3' && $cardPadded['pl'] === '0' && $cardPadded['attributes']['class'] === '' );
 
+// The alignment of the text of a title, a subtitle and a text: nino-text-<x> for Mobile, nino-text-m-<x> and nino-text-l-<x> from the viewport up, in the class attribute of the call, read and written as a column's. Which components have it is the
+// registry's word - a text that is a section's own, drawn as a title or as a text, no line of fields and no text of a card - and no name
+$alignOf = static function( string $call, string $classes ) use ( $read, $write, $page, $section, $inWrap ): array {
+
+	$source	= $page( $section( '['. $call. ' /template/page-x/a/title'. ( $classes === '' ? '' : ' class="'. $classes. '"' ). ']' ) );
+	$model	= $read( $source );
+	$of			= $model['blocks'][0]['cols'][0]['components'][0];
+
+	return [
+		'align'		=> $of['textAlign'] ?? null,
+		'left'		=> $of['attributes']['class'],
+		'written'	=> $write( $model ),
+		'same'		=> $write( $model ) === $inWrap( $source ) && $read( $write( $model ) ) === $model,
+	];
+};
+$stages = static fn( string $s, string $m, string $l ): array => [ 's' => $s, 'm' => $m, 'l' => $l ];
+$centred	= $alignOf( 'title', 'nino-text-center nino-text-m-left' );
+check( 'a title with nino-text-center nino-text-m-left says center for Mobile and left from Tablet up: the model of the component has textAlign { center, left, left } - and the class attribute is empty, the file is written byte for byte as it was read', $centred['align'] === $stages( 'center', 'left', 'left' ) && $centred['left'] === '' && $centred['same'] === true
+	&& str_contains( $centred['written'], '[title /template/page-x/a/title class="nino-text-center nino-text-m-left"]' ) === true && array_key_exists( 'text', $read( $centred['written'] )['blocks'][0]['cols'][0]['components'][0] ) === true && $read( $centred['written'] )['blocks'][0]['cols'][0]['components'][0]['text'] === null );
+$alignWrong = [];
+
+foreach( [ 'title', 'subtitle', 'text' ] as $name ) {
+
+	$none = $alignOf( $name, '' );
+	$all = $alignOf( $name, 'nino-text-right' );
+
+	if( $none['align'] !== $stages( '', '', '' ) || $none['same'] !== true || $all['align'] !== $stages( 'right', 'right', 'right' ) || $all['same'] !== true )
+		$alignWrong[] = $name;
+
+	// Every map a class can say - none only where the viewport before it says none - is read back from the classes the Writer makes of it, in the order of the viewports, and written back as the file had it
+	foreach( [ '', 'left', 'center', 'right' ] as $one )
+		foreach( [ '', 'left', 'center', 'right' ] as $two )
+			foreach( [ '', 'left', 'center', 'right' ] as $three ) {
+
+				if( ( $two === '' && $one !== '' ) || ( $three === '' && $two !== '' ) )
+					continue;
+
+				$classes = trim( ( $one === '' ? '' : 'nino-text-'. $one. ' ' ). ( $two === '' || $two === $one ? '' : 'nino-text-m-'. $two. ' ' ). ( $three === '' || $three === ( $two === '' ? $one : $two ) ? '' : 'nino-text-l-'. $three ) );
+				$got = $alignOf( $name, $classes );
+
+				if( $got['align'] !== $stages( $one, $two === '' ? $one : $two, $three === '' ? ( $two === '' ? $one : $two ) : $three ) || $got['left'] !== '' || $got['same'] !== true )
+					$alignWrong[] = $name. ' '. $classes;
+			}
+}
+
+check( 'the title, the subtitle and the text of a section have it - all 20 maps of the three viewports a class can say, each read as the map and written back byte for byte, none where the call has no class'. ( $alignWrong === [] ? '' : ' - '. implode( ', ', array_slice( $alignWrong, 0, 4 ) ) ), $alignWrong === [] );
+
+$alignCustom = [
+	'a tier of the xl viewport'			=> [ 'title', 'nino-text-xl-right', $stages( '', '', '' ), 'nino-text-xl-right', true ],
+	'a tier of the s viewport'				=> [ 'subtitle', 'nino-text-s-left nino-text-center', $stages( 'center', 'center', 'center' ), 'nino-text-s-left', false ],
+	'a second class of a stage'			=> [ 'title', 'nino-text-left my-class nino-text-m-center nino-text-center', $stages( 'left', 'center', 'center' ), 'my-class nino-text-center', false ],
+	'a word the scale has not'				=> [ 'text', 'nino-text-justify nino-text-m-start', $stages( '', '', '' ), 'nino-text-justify nino-text-m-start', true ],
+];
+$alignCustomWrong = [];
+
+foreach( $alignCustom as $what => [ $name, $classes, $map, $left, $same ] ) {
+
+	$got = $alignOf( $name, $classes );
+
+	if( $got['align'] !== $map || $got['left'] !== $left || $got['same'] !== $same )
+		$alignCustomWrong[] = $what;
+}
+
+check( '...nino-text-xl-right and nino-text-s-left are none of the three viewports and stay classes of the call, as a second class of a stage and a word of no alignment do, kept as they were written among the others', $alignCustomWrong === [] && $alignOf( 'title', 'nino-text-xl-right' )['same'] === true && $alignOf( 'title', 'nino-text-xl-right' )['written'] === $inWrap( $page( $section( '[title /template/page-x/a/title class="nino-text-xl-right"]' ) ) ) );
+
+$alignCard = $read( $page( $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title class=\"nino-text-center\"]\n\t\t\t\t[card-text /template/page-x/a/title class=\"nino-text-right\"]\n\t\t\t[/card]" ) ) )['blocks'][0]['cols'][0]['components'][0]['components'];
+$alignNot = [
+	'button'	=> $alignOf( 'button', 'nino-text-center' ),
+	'line'		=> $alignOf( 'line', 'nino-text-center' ),
+];
+check( '...a text that is no section\'s own has no textAlign and keeps nino-text-center as a class of its call: the title and the text of a card, which align with their card, a button, a line of fields - the registry says it and no name does',
+	array_key_exists( 'textAlign', $alignCard[0] ) === false && $alignCard[0]['attributes']['class'] === 'nino-text-center' && array_key_exists( 'textAlign', $alignCard[1] ) === false && $alignCard[1]['attributes']['class'] === 'nino-text-right'
+	&& $alignNot['button']['align'] === null && $alignNot['button']['left'] === 'nino-text-center' && $alignNot['button']['same'] === true && $alignNot['line']['align'] === null && $alignNot['line']['left'] === 'nino-text-center'
+	&& array_values( array_filter( array_keys( $registry['components'] ), static fn( string $name ): bool => $reader::aligned( $registry['components'][$name] ) === true ) ) === [ 'title', 'subtitle', 'text' ] );
+check( '...the rule is the schema\'s: a text drawn as a title or a text, no line of fields, in a section or everywhere, but not in a card alone - a component of a feature that says so has it, whatever its name',
+	$reader::aligned( [ 'source' => 'text', 'preview' => 'title', 'in' => [ 'section' ] ] ) === true && $reader::aligned( [ 'source' => 'text', 'preview' => 'text' ] ) === true && $reader::aligned( [ 'source' => 'text', 'preview' => 'text', 'in' => [ 'card' ] ] ) === false
+	&& $reader::aligned( [ 'source' => 'text', 'preview' => 'text', 'fields' => true ] ) === false && $reader::aligned( [ 'source' => 'text', 'preview' => 'button' ] ) === false && $reader::aligned( [ 'source' => 'image', 'preview' => 'title' ] ) === false && $reader::aligned( [] ) === false );
+
+// The classes stand after the eight sides of the spacing and before the ones the editor wrote, whatever order the file has them in
+$alignOrdered	= 'nino-mt-1 nino-pb-2 nino-text-center nino-text-l-right my-class';
+$alignShuffled	= 'my-class nino-text-l-right nino-pb-2 nino-text-center nino-mt-1';
+$alignA		= $alignOf( 'title', $alignOrdered );
+$alignB		= $alignOf( 'title', $alignShuffled );
+check( '...they stand after the eight sides and before the classes of the editor\'s, whatever order the file has them in: the file in that order is written byte for byte, the shuffled one reads as the same model and is written in that order',
+	$alignA['same'] === true && $alignA['align'] === $stages( 'center', 'center', 'right' ) && $alignA['left'] === 'my-class' && $alignB['align'] === $alignA['align'] && $alignB['left'] === 'my-class' && $alignB['same'] === false
+	&& str_contains( $alignB['written'], '[title /template/page-x/a/title class="'. $alignOrdered. '"]' ) === true );
+$alignLoop = $read( $page( $section( "[stack /services]\n\t\t\t\t[title title class=\"nino-text-m-center\"]\n\t\t\t[/stack]" ) ) )['blocks'][0]['cols'][0]['components'][0]['components'][0];
+check( '...and so is it in a loop and in a card, the place of a call does not matter: a title among the components of a loop has it', $alignLoop['textAlign'] === $stages( '', 'center', 'center' ) && $alignLoop['attributes']['class'] === '' );
+$alignWritten = static fn( array $node ): string => $write( [ 'blocks' => [ array_replace( $blank, [ 'cols' => [ array_replace( $blank['cols'][0], [ 'components' => [ $node + [ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [] ] ] ] ) ] ] ) ] ] );
+$alignRefused = static function( array $node ) use ( $alignWritten ): bool {
+
+	try {
+		$alignWritten( $node );
+	} catch( \UnexpectedValueException ) {
+		return true;
+	}
+
+	return false;
+};
+check( '...a model whose component has no textAlign is written with no class of the kind, and a map that no class can say - none after a word, a word that is none of the three - is refused by the Writer as it is for a column',
+	str_contains( $alignWritten( [] ), 'nino-text' ) === false && str_contains( $alignWritten( [ 'textAlign' => $stages( '', '', '' ) ] ), 'nino-text' ) === false && str_contains( $alignWritten( [ 'textAlign' => $stages( '', '', 'left' ) ] ) , 'nino-text-l-left' ) === true
+	&& $alignRefused( [ 'textAlign' => $stages( 'center', '', '' ) ] ) === true && $alignRefused( [ 'textAlign' => $stages( 'justify', 'justify', 'justify' ) ] ) === true && $alignRefused( [ 'textAlign' => [ 's' => 'left' ] ] ) === true );
+
+// A loop sorts at random with the whole value of sort, random: it is an attribute like the others and the model keeps it as the call says it
+$randomCall		= "[stack /services sort=\"random\" limit=\"3\"]\n\t\t\t\t[title title]\n\t\t\t[/stack]";
+$randomFile		= $page( $section( $randomCall ) );
+$randomLoop		= $read( $randomFile )['blocks'][0]['cols'][0]['components'][0];
+$randomModel	= $read( $randomFile );
+$randomModel['blocks'][0]['cols'][0]['components'][0]['attributes']['sort'] = 'random';
+check( 'a loop that sorts at random keeps the word as it is: [stack /services sort="random"] reads as the attribute sort with the value random - no field, no minus - and is written back byte for byte, and a model that says random writes the same call',
+	$randomLoop['attributes']['sort'] === 'random' && $write( $read( $randomFile ) ) === $inWrap( $randomFile ) && str_contains( $write( $randomModel ), '[stack /services sort="random" limit="3"]' ) === true && $read( $write( $randomModel ) ) === $randomModel );
 // A loop is no component and has no spacing of its own: its class stays as it is, and the components of its content have the eight sides like any other. The loop of sections takes the classes of its section
 $loopCalls	= $page( $section( "[stack /services class=\"nino-mt-2 nino-p-1\"]\n\t\t\t\t[title title class=\"nino-pb-1\"]\n\t\t\t[/stack]" ) );
 $loopCol		= $read( $loopCalls )['blocks'][0]['cols'][0]['components'][0];
@@ -2064,7 +2203,7 @@ check( '...and what is not such an address is none: a sub-path with a quote, a s
 $linked = $blank;
 $linked['cols'][0]['components'] = [ $loopNode( 'stack', '/services', [
 	[ 'name' => 'button', 'source' => '', 'text' => 'More', 'attributes' => array_replace( $registry['components']['button']['defaults'], [ 'href' => $aimed ] ) ] + array_fill_keys( $reader::SPACING, '' ),
-	[ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => array_replace( $registry['components']['title']['defaults'], [ 'href' => $front. '[['. $pageKey. ']]/[[.id]]' ] ) ] + array_fill_keys( $reader::SPACING, '' ),
+	[ 'name' => 'title', 'source' => 'title', 'text' => null, 'attributes' => array_replace( $registry['components']['title']['defaults'], [ 'href' => $front. '[['. $pageKey. ']]/[[.id]]' ] ) ] + array_fill_keys( $reader::SPACING, '' ) + [ 'textAlign' => $stages( '', '', '' ) ],
 ] ) ];
 $linkedText = (string) $tried( static fn(): string => $write( [ 'blocks' => [ $linked ] ] ) );
 check( 'a link to a page with a sub-path is written as the call has it: the fill of the key that holds the address of the page and the sub-path after it, in the attribute of a button and in the implicit href of a component that is a link - and nothing of the brackets is escaped or dropped',
@@ -3560,6 +3699,72 @@ $textBack = $textSource['status'] === 200 ? $read( $textSource['parts'][1]['sour
 check( 'the alignment of the text of a column for each viewport is written by the source view as nino-text-center nino-text-m-left, and the source reads back as the model it was written from',
 	$textSource['status'] === 200 && preg_match( '/<div class="[^"]*\bnino-text-center nino-text-m-left\b[^"]*">/', $textSource['parts'][1]['source'] ) === 1 && ( $textBack['blocks'][0]['cols'][0]['text'] ?? null ) === [ 's' => 'center', 'm' => 'left', 'l' => 'left' ] );
 
+check( '...and the entry on the loop names the choice among the orders of its dialog, in both languages: the word of the panel for it and the uri of the element', ( static function() use ( $manifest, $dir ): bool {
+	foreach( [ 'en_US' => 'Random', 'de_DE' => 'Zufällig' ] as $locale => $word )
+		if( str_contains( (string) $manifest['manual']['panel']['Loop'][$locale], $word ) === false || ( (array) include $dir. '/text/'. $locale. '.php' )['[[/_admin/builder/stack/sort-random]]'] !== $word || strlen( (string) $manifest['manual']['panel']['Loop'][$locale] ) >= 1000 )
+			return false;
+	return true;
+} )() );
+$randomSaved = $loaded['model'];
+$randomSaved['blocks'][1]['cols'][1]['components'][0]['attributes']['sort'] = 'random';
+$randomSource = \Nino\Modules\Builder\Document::source( $appData, $randomSaved );
+check( '...the Document takes it as any other value of the order: the source view writes sort="random" for the loop and reads back as the model it was written from',
+	$randomSource['status'] === 200 && preg_match( '/\[stack \/services sort="random"[ \]]/', implode( "\n", array_column( $randomSource['parts'], 'source' ) ) ) === 1
+	&& $read( $randomSource['parts'][2]['source'] )['blocks'][0]['cols'][1]['components'][0]['attributes']['sort'] === 'random' );
+
+// The alignment of the text of a title, a subtitle and a text: said in the model, it is the classes of the source view and of a save; a map no class can say, and one on a text that is none of a section's, is refused
+// A save or a source that throws is a failed check and no abort of the suite: what the Writer refuses it says, and the Document is to have refused first
+$docTry = static function( callable $run ): array {
+
+	try {
+		return $run();
+	} catch( \Throwable $thrown ) {
+		return [ 'status' => 500, 'code' => 'thrown', 'problems' => [ $thrown->getMessage() ], 'parts' => [] ];
+	}
+};
+$alignDoc = $loaded['model'];
+$alignDoc['blocks'][0]['cols'][0]['components'][0]['textAlign'] = [ 's' => 'center', 'm' => 'left', 'l' => 'left' ];
+$alignDoc['blocks'][1]['cols'][0]['components'][1]['textAlign'] = [ 's' => '', 'm' => '', 'l' => 'right' ];
+$alignSource = $docTry( static fn(): array => \Nino\Modules\Builder\Document::source( $appData, $alignDoc ) );
+$alignBack = $alignSource['status'] === 200 ? [ $read( $alignSource['parts'][1]['source'] ), $read( $alignSource['parts'][2]['source'] ) ] : [ [ 'blocks' => [] ], [ 'blocks' => [] ] ];
+check( 'the alignment of the text of a title and of a text for each viewport is written by the source view as the classes nino-text-center nino-text-m-left and nino-text-l-right in the class of the call, and the source reads back as the model it was written from',
+	$alignSource['status'] === 200 && preg_match( '/\[title [^\]]*class="[^"]*\bnino-text-center nino-text-m-left\b[^"]*"\]/', $alignSource['parts'][1]['source'] ) === 1 && preg_match( '/\[text [^\]]*class="[^"]*\bnino-text-l-right\b[^"]*"\]/', $alignSource['parts'][2]['source'] ) === 1
+	&& ( $alignBack[0]['blocks'][0]['cols'][0]['components'][0]['textAlign'] ?? null ) === [ 's' => 'center', 'm' => 'left', 'l' => 'left' ] && ( $alignBack[1]['blocks'][0]['cols'][0]['components'][1]['textAlign'] ?? null ) === [ 's' => '', 'm' => '', 'l' => 'right' ] );
+
+$alignBad = [
+	'a word of no alignment'		=> [ [ 0, 0, 0 ], [ 's' => 'justify', 'm' => 'justify', 'l' => 'justify' ], 'title', 'an alignment of the text that none of s, m and l can say with the words left, center and right' ],
+	'none after a word'					=> [ [ 0, 0, 0 ], [ 's' => 'center', 'm' => '', 'l' => '' ], 'title', 'an alignment of the text that none of s, m and l can say with the words left, center and right' ],
+	'a stage left out'					=> [ [ 0, 0, 1 ], [ 's' => 'left', 'm' => 'left' ], 'subtitle', 'an alignment of the text that none of s, m and l can say with the words left, center and right' ],
+	'a stage of a fourth viewport'	=> [ [ 0, 0, 0 ], [ 's' => 'left', 'm' => 'left', 'l' => 'left', 'xl' => 'left' ], 'title', 'an alignment of the text that none of s, m and l can say with the words left, center and right' ],
+	'a word in a list'					=> [ [ 0, 0, 0 ], [ 's' => [ 'left' ], 'm' => 'left', 'l' => 'left' ], 'title', 'an alignment of the text that none of s, m and l can say with the words left, center and right' ],
+	'a word that is none'				=> [ [ 0, 0, 0 ], 'center', 'title', 'an alignment of the text that none of s, m and l can say with the words left, center and right' ],
+	'a component that is a button'	=> [ [ 0, 0, 2 ], [ 's' => 'center', 'm' => 'center', 'l' => 'center' ], 'button', 'an alignment of the text, and its text is no section\'s own' ],
+];
+$alignRefusedBy = [];
+
+foreach( $alignBad as $what => [ $at, $value, $name, $sentence ] ) {
+
+	$model = $loaded['model'];
+	$model['blocks'][$at[0]]['cols'][$at[1]]['components'][$at[2]]['textAlign'] = $value;
+	$answer = $docTry( static fn(): array => \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] ) );
+
+	if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ 'block '. ( $at[0] + 1 ). ' has the component "'. $name. '" with '. $sentence ]
+		|| $docTry( static fn(): array => \Nino\Modules\Builder\Document::source( $appData, $model ) )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+		$alignRefusedBy[] = $what;
+}
+
+check( 'an alignment of the text that none of the classes can say - a word of no alignment, none after a word, a stage left out or a fourth one, a list, a word alone - and one on a text that is no section\'s own (a button) is refused with 400 (code invalid), the component named, by a save and by the source view alike, and nothing is written: '
+	. count( $alignBad ). ' cases'. ( $alignRefusedBy === [] ? '' : ' - '. implode( ', ', $alignRefusedBy ) ), $alignRefusedBy === [] );
+$alignLoopChild = $loaded['model'];
+$alignLoopChild['blocks'][1]['cols'][1]['components'][0]['components'][1]['textAlign'] = [ 's' => 'justify', 'm' => 'justify', 'l' => 'justify' ];
+$alignLoopAnswer = $docTry( static fn(): array => \Nino\Modules\Builder\Document::save( $appData, 'page-home', $alignLoopChild, $loaded['hash'] ) );
+check( '...a child of a loop is no other: the same map is refused there, with 400 (code invalid) and the component named, and nothing is written', $alignLoopAnswer['status'] === 400 && $alignLoopAnswer['code'] === 'invalid'
+	&& $alignLoopAnswer['problems'] === [ 'block 2 has the component "title" with an alignment of the text that none of s, m and l can say with the words left, center and right' ] && file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $before );
+$alignNone = $loaded['model'];
+$alignNone['blocks'][0]['cols'][0]['components'][2]['textAlign'] = [ 's' => '', 'm' => '', 'l' => '' ];
+unset( $alignNone['blocks'][0]['cols'][0]['components'][1]['textAlign'] );
+check( '...and a component with no map, or with none of the words in it - on a title, a subtitle or a button alike - is no problem: the file is as it is written', \Nino\Modules\Builder\Document::source( $appData, $alignNone )['status'] === 200 );
+
 // The padding of a row on each side is a step of the space scale or none, as the padding and the margins of a column are: a step too far, a word, a number where the model has the step as text, a switch, a list
 $stepBad		= [ 'a step too far' => '7', 'two digits' => '10', 'a word' => 'big', 'a step with a space' => '1 ', 'a number' => 3, 'a switch' => true, 'a list' => [ '1' ], 'an empty list' => [] ];
 $stepRefused	= [];
@@ -4275,6 +4480,22 @@ check( 'the kernel renders the page with a card: the column with its spacing, th
 	&& substr_count( $cardPage, '<article class="nino-card nino-card--dim nino-card--fill">' ) === 2 && strpos( $cardPage, '<h3 class="nino-card-title">App</h3>' ) < strpos( $cardPage, '<h3 class="nino-card-title">Web</h3>' )
 	&& strpos( $cardPage, 'Our story' ) < strpos( $cardPage, 'It began in a garage.' ) && strpos( $cardPage, 'It began in a garage.' ) < strpos( $cardPage, 'Read on' ) && strpos( $cardPage, 'Read on' ) < strpos( $cardPage, 'A note.' ) );
 
+$randomLoop = str_replace( 'sort="title"', 'sort="random"', $cardFixture );
+$randomTitles = [];
+$randomOrders = [];
+
+for( $i = 0; $i < 24; $i++ ) {
+
+	\Nino\Locales::useLocale( $appData, 'en_US' );
+	$randomPage = \Nino\Html::renderHtml( $appData, $randomLoop );
+	\Nino\Locales::useLocale( $appData, $localeWas );
+	$randomTitles[] = [ substr_count( $randomPage, '<article class="nino-card nino-card--dim nino-card--fill">' ), str_contains( $randomPage, '<h3 class="nino-card-title">App</h3>' ) && str_contains( $randomPage, '<h3 class="nino-card-title">Web</h3>' ) ];
+	$randomOrders[( strpos( $randomPage, '>App</h3>' ) ?: 0 ) < ( strpos( $randomPage, '>Web</h3>' ) ?: 0 ) ? 'app first' : 'web first'] = true;
+}
+
+check( 'the kernel renders a loop that sorts at random with every cell and in both orders: the page of the card with sort="random" has the two cells of the elements each time it is drawn - 24 times -, App before Web in some and Web before App in others, so that the word is shuffled and no order by title or by the file, and no call is left in it',
+	str_contains( $randomLoop, 'sort="random"' ) === true && array_filter( $randomTitles, static fn( array $drawn ): bool => $drawn !== [ 2, true ] ) === [] && count( $randomOrders ) === 2 && preg_match( '/\[\/?stack[ \]]/', $randomPage ) === 0 );
+
 // The texts typed for the key of a child are written to it, and the file is left alone
 $cardNow	= \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
 $typed		= $cardNow['model'];
@@ -4291,6 +4512,11 @@ $typedOther = $cardNow['model'];
 $typedOther['blocks'][0]['cols'][1]['components'][0]['components'][0]['values'] = [ 'xx_XX' => 'Nope' ];
 $typedPlain = $cardNow['model'];
 $typedPlain['blocks'][0]['cols'][1]['components'][0]['values'] = [ 'en_US' => 'A text for a card' ];
+$cardAlign = $cardNow['model'];
+$cardAlign['blocks'][0]['cols'][1]['components'][0]['components'][1]['textAlign'] = [ 's' => 'center', 'm' => '', 'l' => '' ];
+$cardAlignAnswer = $docTry( static fn(): array => \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $cardAlign, $cardNow['hash'] ) );
+check( '...and the text among the children of a card has the alignment like any other: a map no class can say is refused with 400 (code invalid), the child named', $cardAlignAnswer['status'] === 400 && $cardAlignAnswer['code'] === 'invalid'
+	&& $cardAlignAnswer['problems'] === [ 'block 1 has the component "text" with an alignment of the text that none of s, m and l can say with the words left, center and right' ] );
 check( '...a text for a language the site does not have is refused with 400 (value), the child named - and a text for a card, which has no key, is refused with 400 (invalid) as it is for any component that has none',
 	\Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['code'] === 'value' && \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedPlain, $cardNow['hash'] )['code'] === 'invalid'
 	&& str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['problems'] ), 'the text of the component "card-title" is for "xx_XX"' ) === true );
@@ -4774,6 +5000,11 @@ check( 'a save of a page with a group writes what the Writer makes of the model,
 	$groupSaved['status'] === 200 && $groupWritten === $write( $groupEdit ) && str_contains( $groupWritten, "\t\t\t\t[panel title=\"Prices &amp; &quot;terms&quot; &#91;1&#93;\" class=\"nino-grid--alt nino-text-center nino-pt-1 mine\"]\n\t\t\t\t\t[text /template/page-x/faq/prices]\n\t\t\t\t\t[text /template/page-groups/faq/note]\n" ) === true
 	&& ( \Nino\Text::entry( $appData, '/template/page-groups/faq/note' )['values']['en_US'] ?? null ) === '<p>In a panel.</p>' && isset( $groupSaved['model']['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][1]['values'] ) === false
 	&& $groupSaved['model']['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][1]['source'] === '/template/page-groups/faq/note' );
+$groupAlign = $groupSaved['model'];
+$groupAlign['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['textAlign'] = [ 's' => 'center', 'm' => '', 'l' => '' ];
+$groupAlignAnswer = $docTry( static fn(): array => \Nino\Modules\Builder\Document::save( $appData, 'page-groups', $groupAlign, $groupSaved['hash'] ) );
+check( '...and so is a component in a panel of a group: a map no class can say is refused with 400 (code invalid), the component named - and the saved group is as it was', $groupAlignAnswer['status'] === 400 && $groupAlignAnswer['code'] === 'invalid'
+	&& $groupAlignAnswer['problems'] === [ 'block 1 has the component "text" with an alignment of the text that none of s, m and l can say with the words left, center and right' ] && (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-groups.tpl' ) ) === $groupWritten );
 $groupSource = \Nino\Modules\Builder\Document::source( $appData, $groupEdit );
 $groupWrong = $groupSaved['model'];
 $groupWrong['blocks'][0]['cols'][0]['components'][0]['panels'][0]['components'][0]['source'] = 'nope';
@@ -5757,6 +5988,11 @@ check( '...the tag the builder writes is the tag the kernel draws: a title is an
 	&& str_contains( $tagged, "[subtitle /template/page-home/contact/title]\n" ) === true && str_contains( $tagged, '[subtitle /template/page-home/contact/title tag="h5"]' ) === true && str_contains( $tagged, "[card-title /template/page-home/contact/title]\n" ) === true
 	&& str_contains( $drawn, '<h4 class="nino-section-title nino-section-title--loud">Contact</h4>' ) === true && str_contains( $drawn, '<div class="nino-section-subtitle">Contact</div>' ) === true
 	&& str_contains( $drawn, '<h5 class="nino-section-subtitle">Contact</h5>' ) === true && str_contains( $drawn, '<h4 class="nino-card-title">Contact</h4>' ) === true );
+
+$aligned = $write( $read( $section( "[title /template/page-home/contact/title class=\"nino-mt-1 nino-text-center nino-text-m-left my-class\"]\n\t\t\t[text /template/page-home/contact/title class=\"nino-text-l-right\"]" ) ) );
+$alignedDrawn = \Nino\Html::renderHtml( $appData, $aligned );
+check( '...and the classes of the alignment are the ones the kernel draws on the text: the heading has them after its own class and the spacing, the text its tier, in the order the Builder writes them',
+	str_contains( $alignedDrawn, '<h3 class="nino-section-title nino-mt-1 nino-text-center nino-text-m-left my-class">Contact</h3>' ) === true && str_contains( $alignedDrawn, '<div class="nino-section-text nino-richtext nino-text-l-right">' ) === true );
 
 // A link to a page with a sub-path leads to the page where the site is served from: the directory is in front of it, as the kernel puts it in front of the key of a page alone
 $subLink = $write( $read( $section( '[button text="Go" href="[[/nino/dir]][[/_nino/webpage/contact/uri]]/sub?q=1"]' ) ) );

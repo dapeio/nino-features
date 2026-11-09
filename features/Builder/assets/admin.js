@@ -11,7 +11,12 @@
  *													and the settings of a frame open in a dialog of blocks, an
  *													accordion of the ones the element has - content, link,
  *													surface, spacing, width, loop and properties - drawn from one
- *													table. A component that holds
+ *													table. The fields that hold for one viewport - the width,
+ *													the visibility and the text alignment of a column, the
+ *													reversed row of a section, the cell width of a loop - show
+ *													the viewport that the switch in the head of the dialog
+ *													chooses, and carry a mark where the viewport has a value
+ *													of its own. A component that holds
  *													components is a frame of its own among the components of
  *													its column, with its children in it and a form of its own.
  *													A section, a column or a component is copied once and pasted
@@ -83,6 +88,10 @@
 		// the frame the pointer is over: the innermost one, whose tools are seen
 		_viewport	: 'l',
 		_hovered	: null,
+		// The viewport the fields of a dialog show - s, m or l - which the dialog's own switch in its head chooses: null until a dialog with such fields is opened, then the viewport
+		// the preview shows (Desktop for Global), and the last choice after that, kept for the dialogs of the session. What paints the buttons of the switch (see _bind())
+		_dialogViewport	: null,
+		_selectDialogView	: null,
 		// The language the editor works in: the texts its dialogs show and write and the
 		// preview shows are those of this one of the site's languages. The native one when
 		// the editor is opened, and kept nowhere
@@ -115,6 +124,8 @@
 		// and how many groups of radio buttons the forms have made: each has a name of its own
 		_selectView	: null,
 		_segments		: 0,
+		// How many marks of a value a viewport has for itself were drawn: each has ids of its own, which the field is described by
+		_marks			: 0,
 		// The place between two blocks of the preview whose choices are open (see _openInsert()): { el, index }, null while none is
 		_inserting	: null,
 
@@ -155,6 +166,8 @@
 		SPACES		: [ '', '0', '1', '2', '3', '4', '5', '6' ],
 		// The key of every element the kernel sorts by besides its fields: its uri, /<type>/<name>
 		SORT_URI	: '.uri',
+		// The whole value of sort that mixes the elements: it has no field and no direction, and is never written with a minus
+		SORT_RANDOM	: 'random',
 		// The eight sides of the spacing of an element, in the order the Reader keeps them (Reader::SPACING): outside above, below, left and right, inside above, below, left and right
 		SIDES			: [ 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ],
 		// The padding of the row of a section on its four sides, above, below, left and right: the row is the frame its columns stand in and has no outside
@@ -175,9 +188,8 @@
 		// Nino.css numbers them: 1 is the top left, 5 the middle, 9 the bottom right
 		FOCUS			: [ 'top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right' ],
 		VIEWPORTS	: [ 's', 'm', 'l' ],
-		// ...and what the preview shows: one of them, or all at once (g), each with its icon
+		// ...and what the preview shows: one of them, or all at once (g)
 		VIEWS			: [ 's', 'm', 'l', 'g' ],
-		DEVICES		: { s : 'smartphone', m : 'tablet', l : 'monitor', g : 'monitor-smartphone' },
 		// The icon of a value of an alignment, where it has one: the others are shown as their word
 		ALIGN_ICONS	: {
 			text			: { left : 'align-left', center : 'align-center', right : 'align-right' },
@@ -300,6 +312,8 @@
 				{ id : 'link', controls : [ 'link' ] },
 				{ id : 'surface', controls : [ 'background', 'bgPl', 'bgPr', 'radius', 'hover' ] },
 				{ id : 'spacing', controls : [ 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ] },
+				// The alignment of the text of a title, a subtitle or a text, for each viewport: the one control the block has, for the components the registry says it for (see _aligned())
+				{ id : 'width', controls : [ 'textAlign' ] },
 				{ id : 'properties', controls : [ 'variants', 'attributes', 'class' ] },
 			],
 		},
@@ -350,6 +364,10 @@
 				const call = function( node ) {
 
 					node.attributes = map( node.attributes );
+
+					if( node.textAlign !== undefined )
+						node.textAlign = Object.assign( { s : '', m : '', l : '' }, map( node.textAlign ) );
+
 					( node.components || [] ).forEach( call );
 					( node.panels || [] ).forEach( function( panel ) {
 
@@ -1553,7 +1571,8 @@
 		/**
 		 *	The order of a loop as the loop reads it: a field, and a minus in front
 		 *	of it for the other way round - or, for a list of several fields, the
-		 *	text itself
+		 *	text itself. Only the whole value random is the mixed order, which has no
+		 *	direction; -random is a field of that name, descending, and is read as written
 		 *
 		 *	@param		{Object}		stack
 		 *
@@ -1561,23 +1580,30 @@
 		 */
 		_sortState : function( stack ) {
 
+			const builder = Nino.admin.builder;
 			const sort = String( stack.attributes.sort || '' );
 
-			if( sort.indexOf(',') !== -1 )
+			if( sort.indexOf(',') !== -1 || sort === '-'+ builder.SORT_RANDOM )
 				return { field : sort, descending : false, several : true };
 
 			return { field : sort.charAt(0) === '-' ? sort.slice( 1 ) : sort, descending : sort.charAt(0) === '-', several : false };
 		},
 
 		/**
-		 *	The word an order is called by: the label of the element's uri for the key every element carries, else the field as it is
+		 *	The word an order is called by: the label of the element's uri for the key every element carries, the label of the random order, else the field as it is
 		 *
 		 *	@param		{string}		field
 		 *
 		 *	@return		{string}
 		 */
 		_sortLabel : function( field ) {
-			return field === Nino.admin.builder.SORT_URI ? Nino.content.getText('/_admin/builder/stack/sort-uri') : field;
+
+			const builder = Nino.admin.builder;
+
+			if( field === builder.SORT_RANDOM )
+				return Nino.content.getText('/_admin/builder/stack/sort-random');
+
+			return field === builder.SORT_URI ? Nino.content.getText('/_admin/builder/stack/sort-uri') : field;
 		},
 
 		/**
@@ -1596,7 +1622,7 @@
 		},
 
 		/**
-		 *	The order of a loop, written: a field and a direction; none for no field
+		 *	The order of a loop, written: a field and a direction; none for no field. The random order is written as the word alone, whatever direction is asked for
 		 *
 		 *	@param		{Object}		stack
 		 *	@param		{string}		field
@@ -1605,7 +1631,7 @@
 		 *	@return		void
 		 */
 		_sortSet : function( stack, field, descending ) {
-			stack.attributes.sort = field === '' ? '' : ( descending === true ? '-' : '' )+ field;
+			stack.attributes.sort = field === '' ? '' : ( descending === true && field !== Nino.admin.builder.SORT_RANDOM ? '-' : '' )+ field;
 		},
 
 		/**
@@ -1640,43 +1666,73 @@
 		},
 
 		/**
-		 *	The alignment of the text of a column in one viewport, mobile first like the width: a viewport that says nothing (value '', for tablet and desktop) has what the one before
+		 *	The alignment of a text in one viewport, mobile first like the width: a viewport that says nothing (value '', for tablet and desktop) has what the one before
 		 *	it has, and a viewport that had what the one before it had follows when that one is changed, so that a change of mobile reaches the viewports that were not set apart.
-		 *	No class takes an alignment back, so a viewport is none only where the one before it is none: what is set here is always a map the Writer can say
+		 *	No class takes an alignment back, so a viewport is none only where the one before it is none: what is set here is always a map the Writer can say. The map is the
+		 *	text of a column or the textAlign of a component
 		 *
-		 *	@param		{Object}		col
+		 *	@param		{Object}		stages						{ s, m, l }
 		 *	@param		{string}		viewport					s, m or l
 		 *	@param		{string}		value							''|left|center|right
 		 *
 		 *	@return		void
 		 */
-		_setText : function( col, viewport, value ) {
+		_setText : function( stages, viewport, value ) {
 
 			const builder = Nino.admin.builder;
 			const at = builder.VIEWPORTS.indexOf( viewport );
-			const was = col.text[viewport];
-			const now = value === '' && at > 0 ? col.text[builder.VIEWPORTS[at - 1]] : value;
+			const was = stages[viewport];
+			const now = value === '' && at > 0 ? stages[builder.VIEWPORTS[at - 1]] : value;
 
-			col.text[viewport] = now;
+			stages[viewport] = now;
 
-			for( let next = at + 1; next < builder.VIEWPORTS.length && col.text[builder.VIEWPORTS[next]] === was; next++ )
-				col.text[builder.VIEWPORTS[next]] = now;
+			for( let next = at + 1; next < builder.VIEWPORTS.length && stages[builder.VIEWPORTS[next]] === was; next++ )
+				stages[builder.VIEWPORTS[next]] = now;
 		},
 
 		/**
-		 *	What a select of the alignment of a column's text shows for a viewport: the word, or - where the viewport has what the one before it has - the choice "like" that one
+		 *	What the field of the alignment of a text shows for a viewport: the word, or - where the viewport has what the one before it has - the choice "like" that one
 		 *
-		 *	@param		{Object}		col
+		 *	@param		{Object}		stages						{ s, m, l }
 		 *	@param		{string}		viewport
 		 *
 		 *	@return		{string}
 		 */
-		_textShown : function( col, viewport ) {
+		_textShown : function( stages, viewport ) {
 
 			const builder = Nino.admin.builder;
 			const at = builder.VIEWPORTS.indexOf( viewport );
 
-			return at > 0 && col.text[viewport] === col.text[builder.VIEWPORTS[at - 1]] ? '' : col.text[viewport];
+			return at > 0 && stages[viewport] === stages[builder.VIEWPORTS[at - 1]] ? '' : stages[viewport];
+		},
+
+		/**
+		 *	What a head says of the alignment of a text: the word for each viewport, a dash where it has none - nothing where none has one
+		 *
+		 *	@param		{Object}		stages						{ s, m, l }
+		 *
+		 *	@return		{string}
+		 */
+		_alignSaid : function( stages ) {
+
+			const builder = Nino.admin.builder;
+
+			return builder.VIEWPORTS.some( function( viewport ) { return stages[viewport] !== '' } ) === false ? '' : builder.VIEWPORTS.map( function( viewport ) { return stages[viewport] === '' ? '\u2013' : builder._optionLabel( 'text', stages[viewport] ) } ).join(' / ');
+		},
+
+		/**
+		 *	Whether the text of a component is a section's own and aligns for each viewport (its model has textAlign): the registry says its source is a text, which is no line of
+		 *	fields, drawn as a title or as a text, and not offered in a card alone - the rule of Reader::aligned(), and no name decides it
+		 *
+		 *	@param		{Object}		schema						One entry of the registry's components
+		 *
+		 *	@return		{boolean}
+		 */
+		_aligned : function( schema ) {
+
+			const places = schema['in'];
+
+			return schema.source === 'text' && schema.fields !== true && [ 'title', 'text' ].indexOf( schema.preview ) !== -1 && ( Array.isArray( places ) === false || places.indexOf('section') !== -1 );
 		},
 
 		/**
@@ -1707,6 +1763,10 @@
 
 			// Every component has the eight sides of the spacing, none until the editor sets them
 			builder.SIDES.forEach( function( side ) { component[side] = '' } );
+
+			// The text of a section's own - a title, a subtitle, a text - has the alignment of its text for each viewport, none until the editor sets it
+			if( builder._aligned( schema ) === true )
+				component.textAlign = { s : '', m : '', l : '' };
 
 			// A component that is a surface has a radius of its own, which is none until the editor sets it: it follows the default of its kind. The card, which paints a ground,
 			// has the two offsets of it as well
@@ -3005,6 +3065,8 @@
 					line		: text === null ? '' : builder._firstLine( builder._shownText( component, text, texts.keys, registry ), builder.LINE_MAX ),
 					picture	: slot !== undefined && typeof slot.url === 'string' ? slot.url : '',
 					draws		: builder._draws( schema, component ),
+					// Where the text of a title, a subtitle or a text is aligned in the viewport the preview shows (the widest for all of them): left, center, right or '' for none
+					align		: builder._aligned( schema ) === true ? String( component.textAlign[shown] ) : '',
 					// A component that is a link and has an address to go to
 					linked	: schema.link === true && String( ( component.attributes || {} ).href ?? '' ) !== '',
 				};
@@ -4092,6 +4154,10 @@
 			builder.VIEWS.forEach( function( viewport ) { buttons[viewport] = dc.getElementById( 'builder-viewport-'+ viewport ) } );
 			builder._selectView = Nino.adminUi.buttonRow( buttons, builder._viewport, function( viewport ) { builder._setView( viewport ) } );
 
+			const fields = {};
+			builder.VIEWPORTS.forEach( function( viewport ) { fields[viewport] = dc.getElementById( 'builder-dialog-viewport-'+ viewport ) } );
+			builder._selectDialogView = Nino.adminUi.buttonRow( fields, 'l', function( viewport ) { builder._setDialogView( viewport ) } );
+
 			dc.getElementById('builder-locale').addEventListener( 'change', function( ev ) { builder._setLocale( ev.target.value ) } );
 
 			builder._status = Nino.adminUi.status( dc.getElementById('builder-status') );
@@ -4118,9 +4184,8 @@
 
 		/**
 		 *	Show the preview in another view, which is a viewport or all of them at
-		 *	once: the buttons follow, and so does the preview. The tables of a dialog
-		 *	that is open show the rows of the viewport, and are drawn again by whoever
-		 *	changes it from there
+		 *	once: the buttons follow, and so does the preview. The dialogs have a switch
+		 *	of their own (see _setDialogView()) and are not driven by the view
 		 *
 		 *	@param		{string}		viewport					s, m, l or g
 		 *
@@ -5535,7 +5600,7 @@
 		 *	the image of the registry is data-image, and the tag the component draws - the
 		 *	first word of its draws, in lower case, where that is a tag name - data-tag
 		 *
-		 *	@param		{Object}		component			{ path, label, image, line, picture, draws }
+		 *	@param		{Object}		component			{ path, label, image, line, picture, draws, align }
 		 *	@param		{string}		how						tools: a frame of its own, with its tools; none: a frame that has
 		 *															its tools elsewhere
 		 *
@@ -5560,6 +5625,10 @@
 
 			if( /^[a-z][a-z0-9]*$/.test( tag ) === true )
 				ph.dataset.tag = tag;
+
+			// The label stands where the text is aligned in the viewport the preview shows
+			if( builder.TEXTS.indexOf( component.align ?? '' ) > 0 )
+				ph.dataset.align = component.align;
 
 			second.textContent = draws;
 			second.hidden = draws === '';
@@ -6246,11 +6315,15 @@
 			actions.appendChild( close );
 
 			builder._dialogProblem = problem;
+			builder._syncDialogView();
 
 			if( typeof dialog.showModal === 'function' )
 				dialog.showModal();
 			else
 				dialog.setAttribute( 'open', '' );
+
+			// The first focus is the close button, whatever stands in the head before the fields: a switch there is no place to start on
+			dc.getElementById('builder-dialog-close').focus();
 		},
 
 		/**
@@ -6384,6 +6457,7 @@
 			} );
 
 			builder._saySummaries();
+			builder._syncDialogView();
 		},
 
 		/**
@@ -6757,175 +6831,194 @@
 			return inner;
 		},
 
+		// ------------------------------------------------- The viewport of a dialog
+
 		/**
-		 *	A table of a form, with its heads
+		 *	The viewport the fields of the dialog show: the one its switch has, which starts as the viewport the preview shows - Desktop for Global - and is
+		 *	kept after that, for the dialog that is open and the next ones of the session
 		 *
-		 *	@param		{Array}			heads							The words over its columns
-		 *
-		 *	@return		{Object}									{ table, body }
+		 *	@return		{string}									s, m or l
 		 */
-		_table : function( heads ) {
+		_dialogView : function() {
 
 			const builder = Nino.admin.builder;
-			const table = builder._fragment('table');
-			const row = builder._one( table, 'thead tr' );
 
-			heads.forEach( function( head ) {
+			if( builder._dialogViewport === null )
+				builder._dialogViewport = builder._viewport === 'g' ? 'l' : builder._viewport;
 
-				const cell = builder._el( 'th', '', head );
-
-				cell.setAttribute( 'scope', 'col' );
-				row.appendChild( cell );
-			} );
-
-			return { table : table, body : builder._one( table, 'tbody' ) };
+			return builder._dialogViewport;
 		},
 
 		/**
-		 *	The head of a row: a word, and an icon before it where the row has one
+		 *	Choose the viewport the fields of the dialog show: the buttons follow, and the blocks that hold such fields are drawn again, with the dialog open
 		 *
-		 *	@param		{string}		word
-		 *	@param		{string}		[icon]
-		 *
-		 *	@return		{Element}
-		 */
-		_rowHead : function( word, icon ) {
-
-			const builder = Nino.admin.builder;
-			const head = builder._el( 'th', 'builder-row-head' );
-
-			head.setAttribute( 'scope', 'row' );
-
-			if( icon !== undefined )
-				head.appendChild( builder._icon( icon ) );
-
-			head.appendChild( builder._el( 'span', '', word ) );
-
-			return head;
-		},
-
-		/**
-		 *	A row of a table: its head, then a cell for each control
-		 *
-		 *	@param		{Element}		body
-		 *	@param		{Element}		head
-		 *	@param		{Array}			controls
+		 *	@param		{string}		viewport					s, m or l
 		 *
 		 *	@return		void
 		 */
-		_tableRow : function( body, head, controls ) {
+		_setDialogView : function( viewport ) {
 
 			const builder = Nino.admin.builder;
-			const row = builder._el('tr');
+			const state = builder._dialogBlocks;
 
-			row.appendChild( head );
+			builder._dialogViewport = viewport;
+			builder._selectDialogView( viewport );
 
-			controls.forEach( function( control ) {
-
-				const cell = builder._el('td');
-
-				cell.appendChild( control );
-				row.appendChild( cell );
-			} );
-
-			body.appendChild( row );
+			if( state !== null )
+				builder._refreshBlock( ...state.ids.filter( function( id ) { return state.parts[id].body.querySelector('[data-viewport]') !== null } ) );
 		},
 
 		/**
-		 *	The select in a cell of a table. It has no label beside it, so its
-		 *	label says whose it is
+		 *	The switch in the head of the dialog is there while the dialog has a field that holds for one viewport (see _keyed()), and shows the viewport
+		 *	the fields show
 		 *
-		 *	@param		{string}		label							What a screen reader calls it
-		 *	@param		{Array}			options						[ { value, label } ]
-		 *	@param		{string}		value
-		 *	@param		{Function}	onChange					Called with the value, as text
-		 *
-		 *	@return		{Element}
+		 *	@return		void
 		 */
-		_tableSelect : function( label, options, value, onChange ) {
+		_syncDialogView : function() {
 
 			const builder = Nino.admin.builder;
-			const select = builder._el( 'select', 'nino-admin-input' );
+			const wrap = dc.getElementById('builder-dialog-viewports');
+			const fields = dc.getElementById('builder-dialog-content').querySelector('[data-viewport]') !== null;
 
-			select.setAttribute( 'aria-label', label );
+			wrap.hidden = fields === false;
 
-			options.forEach( function( option ) {
-
-				const el = builder._el( 'option', '', option.label );
-
-				el.value = option.value;
-				select.appendChild( el );
-			} );
-
-			select.value = String( value );
-			select.addEventListener( 'change', function() { onChange( select.value ) } );
-
-			return select;
+			if( fields === true && typeof builder._selectDialogView === 'function' )
+				builder._selectDialogView( builder._dialogView() );
 		},
 
 		/**
-		 *	The viewports a table of a form has a row for: the one the preview shows, or
-		 *	all three where it shows all of them at once
+		 *	The mark beside the name of a field whose value is the viewport's own - a class written for that viewport, not the value of the one before it; for Mobile, the base,
+		 *	a value other than the default: a small dot in the accent colour with a title that names the viewport. A field that inherits has none. Where the viewport is
+		 *	Mobile the width holds from 640 px, which the note beside the name says
 		 *
-		 *	@return		{Array}
+		 *	@param		{Element}		field
+		 *	@param		{string}		viewport
+		 *	@param		{Function}	own								Called: whether the model holds a value of its own for the viewport
+		 *	@param		{string}		[note]
+		 *
+		 *	@return		{Function}								Called after a change: the mark follows the model
 		 */
-		_views : function() {
+		_ownMark : function( field, viewport, own, note ) {
 
 			const builder = Nino.admin.builder;
+			const host = field.querySelector('.nino-admin-switch-copy') ?? field.querySelector('.builder-segment-label') ?? field.querySelector('span');
+			const slot = builder._el( 'span', 'builder-own-slot' );
+			const control = field.querySelector('select') ?? field.querySelector('[role="radiogroup"]') ?? field.querySelector('input');
+			const ids = [];
+			const title = Nino.adminUi.format( Nino.content.getText('/_admin/builder/viewport/own'), Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) );
+			const paint = function() {
 
-			return builder._viewport === 'g' ? builder.VIEWPORTS : [ builder._viewport ];
+				slot.innerHTML = '';
+				describe( note === undefined ? [] : [ ids[0] ] );
+
+				if( own() !== true )
+					return;
+
+				const dot = builder._el( 'span', 'builder-own' );
+
+				dot.id = ids[1];
+				dot.setAttribute( 'aria-hidden', 'true' );
+				dot.title = title;
+				slot.appendChild( dot );
+				describe( ids.slice( note === undefined ? 1 : 0 ) );
+			};
+			// The note and the mark are no part of the name of the field: they are read as its description, whose text is the title of the mark
+			const describe = function( list ) {
+
+				if( control === null )
+					return;
+
+				if( list.length === 0 )
+					control.removeAttribute('aria-describedby');
+				else
+					control.setAttribute( 'aria-describedby', list.join(' ') );
+			};
+
+			builder._marks++;
+			ids.push( 'builder-note-'+ builder._marks, 'builder-own-'+ builder._marks );
+			host.appendChild( slot );
+
+			if( note !== undefined ) {
+
+				const small = builder._el( 'small', 'builder-from-note', note );
+
+				small.id = ids[0];
+				small.setAttribute( 'aria-hidden', 'true' );
+				host.appendChild( small );
+			}
+
+			paint();
+
+			return paint;
 		},
 
 		/**
-		 *	A table with a row for each viewport that is shown (see _views()): the device,
-		 *	with its icon and its word, and the controls the caller makes for it. Where it
-		 *	has one row, a link under it has the preview show all of them, and the table
-		 *	all three rows
+		 *	The width, the visibility and the text alignment of a column in the viewport the dialog shows: three fields of the column of fields, each with the value of that
+		 *	viewport and the mark where it is the viewport's own. The width of Mobile holds from 640 px, and says so. The alignment is a row of buttons - the choice of the
+		 *	viewport before it is the first, a word -, as the alignment of a section is
 		 *
 		 *	@param		{Element}		pane
-		 *	@param		{Array}			heads							The words over the columns after the device
-		 *	@param		{Function}	controls					Called with the viewport: the controls of its row
-		 *	@param		{string}		[hint]						The sentence the first of the heads has to say, as a "?" behind its word
+		 *	@param		{Object}		col
 		 *
 		 *	@return		void
 		 */
-		_viewportTable : function( pane, heads, controls, hint ) {
+		_widthFields : function( pane, col ) {
 
 			const builder = Nino.admin.builder;
-			const table = builder._table( [ Nino.content.getText('/_admin/builder/col/head-device') ].concat( heads ) );
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/'+ key ) };
+			const viewport = builder._dialogView();
+			const before = builder.VIEWPORTS[builder.VIEWPORTS.indexOf( viewport ) - 1];
 
-			if( hint !== undefined )
-				builder._one( table.table, 'thead tr' ).children[1].appendChild( builder._help( hint, heads[0] ) );
-
-			builder._views().forEach( function( viewport ) {
-				builder._tableRow( table.body, builder._rowHead( Nino.content.getText( '/_admin/builder/viewport/'+ viewport ), builder.DEVICES[viewport] ), controls( viewport ) );
+			const width = builder._selectField( word('col/width'), word('hint/col-width'), builder._widths(), String( col.width[viewport] ), function( value ) {
+				builder._setWidth( col, viewport, value );
+				widthMark();
+				builder._changed();
 			} );
+			const widthMark = builder._ownMark( width, viewport, function() { return before === undefined ? Number( col.width[viewport] ) !== 100 : Number( col.width[viewport] ) !== Number( col.width[before] ) }, viewport === 's' ? word('col/from-640') : undefined );
 
-			pane.appendChild( table.table );
+			const hidden = builder._switchField( word('col/hidden'), '', col.hidden[viewport] === true, function( checked ) {
+				builder._setHidden( col, viewport, checked );
+				hiddenMark();
+				builder._changed();
+			} );
+			const hiddenMark = builder._ownMark( hidden, viewport, function() { return col.hidden[viewport] === true } );
 
-			if( builder._viewport !== 'g' )
-				pane.appendChild( builder._allViewports() );
+			const text = builder._alignField( word('col/text'), col, 'text', viewport, function() { builder._changed() } );
+
+			pane.appendChild( builder._keyed( width, 'width', viewport ) );
+			pane.appendChild( builder._keyed( hidden, 'hidden', viewport ) );
+			pane.appendChild( text );
 		},
 
 		/**
-		 *	The link under a table of one row: the preview shows all the viewports, and
-		 *	the blocks of the dialog it is in that have a table of viewports are drawn
-		 *	again with all of them - the block that is open is not the only one
+		 *	The alignment of a text in the viewport the dialog shows, for a holder with a map of the three ({ s, m, l }, see _setText()): the text of a column or the textAlign of a
+		 *	component. The choice of the viewport before it is the first
+		 *	button, a word, the three alignments are icons. The mark is on while the viewport has an alignment of its own
+		 *
+		 *	@param		{string}		label
+		 *	@param		{Object}		holder						The column or the component
+		 *	@param		{string}		key								The setting the map is: text or textAlign
+		 *	@param		{string}		viewport
+		 *	@param		{Function}	onChange					Called after the model was written
 		 *
 		 *	@return		{Element}
 		 */
-		_allViewports : function() {
+		_alignField : function( label, holder, key, viewport, onChange ) {
 
 			const builder = Nino.admin.builder;
-			const link = builder._el( 'button', 'builder-link-btn', Nino.content.getText('/_admin/builder/viewport/all') );
+			const before = builder.VIEWPORTS[builder.VIEWPORTS.indexOf( viewport ) - 1];
+			const first = before === undefined ? Nino.content.getText('/_admin/builder/option/text-default') : Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/text-like'), Nino.content.getText( '/_admin/builder/viewport/'+ before ) );
+			const items = [ { value : '', label : first } ].concat( builder._alignOptions( 'text', 'text', builder.TEXTS.filter( function( value ) { return value !== '' } ) ) );
+			const stages = function() { return holder[key] };
+			const field = builder._segmentField( label, items, builder._textShown( stages(), viewport ), function( value ) {
 
-			link.type = 'button';
-			link.addEventListener( 'click', function() {
-				builder._setView('g');
-				builder._refreshControls( 'width', 'stack', 'reverse', 'grid' );
+				builder._setText( stages(), viewport, value );
+				mark();
+				onChange();
 			} );
+			const mark = builder._ownMark( field, viewport, function() { return builder._textShown( stages(), viewport ) !== '' } );
 
-			return link;
+			return builder._keyed( field, key, viewport );
 		},
 
 		// ---------------------------------------------------------------- Fields
@@ -7196,16 +7289,20 @@
 		 *
 		 *	@param		{Element}		field
 		 *	@param		{string}		key
+		 *	@param		{string}		[viewport]				The control holds for that one viewport (s, m or l): the dialog has its switch while it has such a field
 		 *
 		 *	@return		{Element}									The field
 		 */
-		_keyed : function( field, key ) {
+		_keyed : function( field, key, viewport ) {
 
 			const selector = 'select, textarea, input[type="text"], input[type="number"], input[type="checkbox"], .builder-segment';
 			const control = field.matches( selector ) === true ? field : field.querySelector( selector );
 
 			if( control !== null )
 				control.dataset.key = key;
+
+			if( control !== null && viewport !== undefined )
+				control.dataset.viewport = viewport;
 
 			return field;
 		},
@@ -7568,6 +7665,11 @@
 			row.setDisabled = function( disabled ) {
 				group.classList.toggle( 'is-disabled', disabled === true );
 				inputs.forEach( function( input ) { input.disabled = disabled === true } );
+			};
+
+			// The button that is chosen, set from outside: the one of that value
+			row.setValue = function( chosen ) {
+				inputs.forEach( function( input ) { input.checked = input.value === String( chosen ) } );
 			};
 
 			return row;
@@ -9221,14 +9323,13 @@
 					words.push( Nino.adminUi.format( word('preview/hidden-in'), hidden.map( function( viewport ) { return word( 'viewport/'+ viewport ) } ).join(', ') ) );
 
 				// The alignment of the text, for each viewport, where there is one
-				if( builder.VIEWPORTS.some( function( viewport ) { return col.text[viewport] !== '' } ) === true )
-					words.push( builder.VIEWPORTS.map( function( viewport ) { return col.text[viewport] === '' ? '\u2013' : builder._optionLabel( 'text', col.text[viewport] ) } ).join(' / ') );
+				words.push( builder._alignSaid( col.text ) );
 
 				return builder._said( words );
 			};
 			const width = {
 				keys	: [ 'width', 'hidden', 'text' ],
-				build	: function( body ) { builder._widthTable( body, col ) },
+				build	: function( body ) { builder._widthFields( body, col ) },
 				says	: widthSaid,
 			};
 
@@ -9292,7 +9393,7 @@
 					build	: function( body ) { body.appendChild( setting( { key : 'stackAlign', type : 'segment', label : tile === true ? '/_admin/builder/tile/stack-align' : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ) ) },
 					says	: function() { return col.stackAlign === '' ? '' : builder._optionLabel( 'stack-align', col.stackAlign ) },
 				},
-				// The alignment of the text is a column of the table of the viewports, as the width is: one control, drawn once
+				// The alignment of the text is a field of the viewport the dialog shows, as the width is: one control, drawn once
 				text : width,
 				vpa : {
 					keys	: [ 'vpa' ],
@@ -9325,75 +9426,8 @@
 
 
 		/**
-		 *	The viewports of a column as a table, a row for each that is shown (see
-		 *	_viewportTable()): the width the column has there, whether it is hidden there and how its text is aligned there. The alignment is a select as the width is: a table of
-		 *	three rows and four columns has no room for three icons in a cell, and a choice "like the viewport before" is a word. Tablet and desktop offer that choice in the place of "none"
-		 *
-		 *	@param		{Element}		pane
-		 *	@param		{Object}		col
-		 *
-		 *	@return		void
-		 */
-		_widthTable : function( pane, col ) {
-
-			const builder = Nino.admin.builder;
-
-			const texts = [];
-			const shown = function() { texts.forEach( function( entry ) { entry.select.value = builder._textShown( col, entry.viewport ) } ) };
-
-			builder._viewportTable( pane, [ Nino.content.getText('/_admin/builder/col/head-width'), Nino.content.getText('/_admin/builder/col/head-hidden'), Nino.content.getText('/_admin/builder/col/head-text') ], function( viewport ) {
-
-				const device = Nino.content.getText( '/_admin/builder/viewport/'+ viewport );
-				const before = builder.VIEWPORTS[builder.VIEWPORTS.indexOf( viewport ) - 1];
-				const words = [ { value : '', label : before === undefined ? Nino.content.getText('/_admin/builder/option/text-default') : Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/text-like'), Nino.content.getText( '/_admin/builder/viewport/'+ before ) ) } ]
-					.concat( builder.TEXTS.filter( function( value ) { return value !== '' } ).map( function( value ) { return { value : value, label : builder._optionLabel( 'text', value ) } } ) );
-				const text = builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/text'), device ), words, builder._textShown( col, viewport ), function( value ) {
-					builder._setText( col, viewport, value );
-					shown();
-					builder._changed();
-				} );
-
-				texts.push( { viewport : viewport, select : text } );
-
-				const select = builder._keyed( builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), builder._widths(), col.width[viewport], function( value ) {
-					builder._setWidth( col, viewport, value );
-					builder._changed();
-				} ), 'width' );
-
-				return [
-					viewport === 's' ? builder._fromNote( select ) : select,
-					builder._keyed( builder._hiddenBox( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/hidden'), device ), col.hidden[viewport] === true, function( checked ) {
-						builder._setHidden( col, viewport, checked );
-						builder._changed();
-					} ), 'hidden' ),
-					builder._keyed( text, 'text' ),
-				];
-			}, Nino.content.getText('/_admin/builder/hint/col-width') );
-		},
-
-		/**
-		 *	The cell of the width of Mobile: the select, and beside it - small and muted - that the width holds from 640 px. Below 640 px a column is the whole
-		 *	width (the grid classes of Nino.css start at 640 px), and the table says so where the number is
-		 *
-		 *	@param		{Element}		select
-		 *
-		 *	@return		{Element}
-		 */
-		_fromNote : function( select ) {
-
-			const builder = Nino.admin.builder;
-			const cell = builder._el( 'div', 'builder-from-cell' );
-
-			cell.appendChild( select );
-			cell.appendChild( builder._el( 'small', 'builder-from-note', Nino.content.getText('/_admin/builder/col/from-640') ) );
-
-			return cell;
-		},
-
-		/**
-		 *	The switches that turn the columns of a row round, as the hidden box of a column is drawn: a table with a row for each viewport that is shown (see
-		 *	_viewportTable()) - the one of the view, or all three in Global, each row with its icon and its word, and the link to all of them under the table of one row.
-		 *	A switch writes its viewport in the map of the section (settings.reverse); it is marked with the setting and with the viewport, and the hint stands over the table
+		 *	The switch that turns the columns of a row round in the viewport the dialog shows (see _dialogView()). The switch writes its viewport in the map of the section
+		 *	(settings.reverse); it has the mark where the viewport turns the row differently from the one before it, and the hint stands beside it
 		 *
 		 *	@param		{Element}		pane
 		 *	@param		{Object}		settings					Of the section
@@ -9404,22 +9438,19 @@
 		_reverseSwitches : function( pane, settings, hint ) {
 
 			const builder = Nino.admin.builder;
-			const label = Nino.content.getText('/_admin/builder/section/reverse');
+			const viewport = builder._dialogView();
+			const before = builder.VIEWPORTS[builder.VIEWPORTS.indexOf( viewport ) - 1];
 
 			settings.reverse = Object.assign( { s : false, m : false, l : false }, settings.reverse );
-			pane.appendChild( builder._hinted( builder._el( 'span', 'builder-note', label ), hint, label ) );
 
-			builder._viewportTable( pane, [ label ], function( viewport ) {
-
-				const box = builder._hiddenBox( Nino.adminUi.format( Nino.content.getText('/_admin/builder/section/reverse-in'), Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) ), settings.reverse[viewport] === true, function( checked ) {
-					settings.reverse[viewport] = checked;
-					builder._changed();
-				} );
-
-				box.dataset.viewport = viewport;
-
-				return [ builder._keyed( box, 'reverse' ) ];
+			const field = builder._switchField( Nino.content.getText('/_admin/builder/section/reverse'), hint, settings.reverse[viewport] === true, function( checked ) {
+				settings.reverse[viewport] = checked;
+				mark();
+				builder._changed();
 			} );
+			const mark = builder._ownMark( field, viewport, function() { return before === undefined ? settings.reverse[viewport] === true : settings.reverse[viewport] !== settings.reverse[before] } );
+
+			pane.appendChild( builder._keyed( field, 'reverse', viewport ) );
 		},
 
 		/**
@@ -9429,27 +9460,6 @@
 		 */
 		_widths : function() {
 			return Nino.admin.builder.COL_WIDTHS.map( function( width ) { return { value : width, label : width } } );
-		},
-
-		/**
-		 *	The box that hides a column in a viewport, in a cell of the viewport table
-		 *
-		 *	@param		{string}		label							What a screen reader calls it
-		 *	@param		{boolean}		checked
-		 *	@param		{Function}	onChange					Called with whether it is checked
-		 *
-		 *	@return		{Element}
-		 */
-		_hiddenBox : function( label, checked, onChange ) {
-
-			const box = Nino.admin.builder._el( 'input' );
-
-			box.type = 'checkbox';
-			box.checked = checked === true;
-			box.setAttribute( 'aria-label', label );
-			box.addEventListener( 'change', function() { onChange( box.checked ) } );
-
-			return box;
 		},
 
 		/**
@@ -10096,7 +10106,7 @@
 
 						const cells = builder._group( body, word('group/grid') );
 
-						builder._cellsTable( cells, loop );
+						builder._cellsField( cells, loop );
 						cells.appendChild( builder._selectField( word('stack/gap'), '', builder._options( 'space', builder.SPACES.slice( 1 ) ), String( loop.attributes.gap ), function( value ) {
 							loop.attributes.gap = value;
 							builder._changed();
@@ -10685,33 +10695,30 @@
 		},
 
 		/**
-		 *	The cells of a loop as a table, a row for each viewport that is shown (see
-		 *	_viewportTable()): how wide a cell is there. A loop that names fewer widths
-		 *	than there are viewports takes the last for the others
+		 *	How wide a cell of a loop is in the viewport the dialog shows. A loop that names fewer widths than there are viewports takes the last for the others; a width
+		 *	that is chosen writes all three. The mark is on where the cell is another width than the viewport before it has - for Mobile, than 100
 		 *
 		 *	@param		{Element}		pane
 		 *	@param		{Object}		stack
 		 *
 		 *	@return		void
 		 */
-		_cellsTable : function( pane, stack ) {
+		_cellsField : function( pane, stack ) {
 
 			const builder = Nino.admin.builder;
 			const given = String( stack.attributes.cols || '100 50 33' ).split( /\s+/ );
 			const cells = builder.VIEWPORTS.map( function( viewport, at ) { return given[at] ?? given[given.length - 1] } );
+			const viewport = builder._dialogView();
+			const at = builder.VIEWPORTS.indexOf( viewport );
+			const field = builder._selectField( Nino.content.getText('/_admin/builder/stack/cells'), Nino.content.getText('/_admin/builder/hint/stack-cells'), builder._widths(), cells[at], function( value ) {
+				cells[at] = value;
+				stack.attributes.cols = cells.join(' ');
+				mark();
+				builder._changed();
+			} );
+			const mark = builder._ownMark( field, viewport, function() { return at === 0 ? cells[at] !== '100' : cells[at] !== cells[at - 1] }, viewport === 's' ? Nino.content.getText('/_admin/builder/col/from-640') : undefined );
 
-			builder._viewportTable( pane, [ Nino.content.getText('/_admin/builder/stack/head-cells') ], function( viewport ) {
-
-				const at = builder.VIEWPORTS.indexOf( viewport );
-
-				const select = builder._tableSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/stack/cells'), Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) ), builder._widths(), cells[at], function( value ) {
-					cells[at] = value;
-					stack.attributes.cols = cells.join(' ');
-					builder._changed();
-				} );
-
-				return [ viewport === 's' ? builder._fromNote( select ) : select ];
-			}, Nino.content.getText('/_admin/builder/hint/stack-cells') );
+			pane.appendChild( builder._keyed( field, 'cols', viewport ) );
 		},
 
 		/**
@@ -10737,23 +10744,37 @@
 				return;
 			}
 
-			const names = Object.keys( fields );
-			const choices = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') }, { value : builder.SORT_URI, label : builder._sortLabel( builder.SORT_URI ) } ].concat( names.map( function( name ) { return { value : name, label : name } } ) );
+			// The word random is the choice of the mixed order, which a field of that name cannot be: the choices are none, the uri, random and then the fields
+			const names = Object.keys( fields ).filter( function( name ) { return name !== builder.SORT_RANDOM } );
+			const choices = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') }, { value : builder.SORT_URI, label : builder._sortLabel( builder.SORT_URI ) }, { value : builder.SORT_RANDOM, label : builder._sortLabel( builder.SORT_RANDOM ) } ].concat( names.map( function( name ) { return { value : name, label : name } } ) );
 
-			if( state.field !== '' && state.field !== builder.SORT_URI && names.indexOf( state.field ) === -1 )
+			if( state.field !== '' && state.field !== builder.SORT_URI && state.field !== builder.SORT_RANDOM && names.indexOf( state.field ) === -1 )
 				choices.push( { value : state.field, label : state.field } );
 
-			pane.appendChild( builder._selectField( label, hint, choices, state.field, function( value ) {
-				state.field = value;
-				builder._sortSet( stack, state.field, state.descending );
-				builder._changed();
-			} ) );
-
-			pane.appendChild( builder._sortToggles( state.descending, function( descending ) {
+			// A random order has no direction: the arrows are off while it is chosen, and stand on ascending
+			const toggles = builder._sortToggles( state.descending, function( descending ) {
 				state.descending = descending;
 				builder._sortSet( stack, state.field, state.descending );
 				builder._changed();
+			} );
+			const directed = function() {
+
+				if( state.field === builder.SORT_RANDOM )
+					state.descending = false;
+
+				toggles.setValue( state.descending === true ? 'desc' : 'asc' );
+				toggles.setDisabled( state.field === builder.SORT_RANDOM );
+			};
+
+			pane.appendChild( builder._selectField( label, hint, choices, state.field, function( value ) {
+				state.field = value;
+				directed();
+				builder._sortSet( stack, state.field, state.descending );
+				builder._changed();
 			} ) );
+
+			pane.appendChild( toggles );
+			directed();
 		},
 
 		/**
@@ -10954,6 +10975,16 @@
 				if( Object.keys( groups[group] ).length > 0 )
 					controls[group] = attributes( group );
 			} );
+
+			// The alignment of the text of a title, a subtitle or a text, in the viewport the dialog shows: one field in the block Width and alignment
+			if( builder._aligned( schema ) === true ) {
+
+				controls.textAlign = {
+					keys	: [ 'textAlign' ],
+					build	: function( body ) { body.appendChild( builder._alignField( word('component/text-align'), component, 'textAlign', builder._dialogView(), function() { builder._changed() } ) ) },
+					says	: function() { return builder._alignSaid( component.textAlign ) },
+				};
+			}
 
 			// A card paints a ground, and has how far in from its sides it starts
 			if( component.bgPl !== undefined )

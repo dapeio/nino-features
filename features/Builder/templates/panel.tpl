@@ -70,6 +70,11 @@
 				<div id="builder-dialog-heading" class="builder-dialog-heading">
 					<h2 id="builder-dialog-title" class="nino-admin-dialog-title"><span id="builder-dialog-kind"></span> <span id="builder-dialog-name" class="builder-title-name" hidden></span></h2>
 				</div>
+				<div id="builder-dialog-viewports" class="builder-viewports builder-dialog-viewports" role="group" aria-label="[[/_admin/builder/label/dialog-viewports]]" hidden>
+					<button type="button" id="builder-dialog-viewport-s" class="builder-viewport" title="[[/_admin/builder/viewport/s]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-smartphone"></use></svg><span>[[/_admin/builder/viewport/s]]</span></button>
+					<button type="button" id="builder-dialog-viewport-m" class="builder-viewport" title="[[/_admin/builder/viewport/m]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-tablet"></use></svg><span>[[/_admin/builder/viewport/m]]</span></button>
+					<button type="button" id="builder-dialog-viewport-l" class="builder-viewport" title="[[/_admin/builder/viewport/l]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-monitor"></use></svg><span>[[/_admin/builder/viewport/l]]</span></button>
+				</div>
 				<button type="button" id="builder-dialog-close" class="builder-icon-btn" title="[[/_admin/builder/label/close]]" aria-label="[[/_admin/builder/label/close]]">&times;</button>
 			</div>
 			<div id="builder-dialog-content" class="builder-dialog-content"></div>
@@ -269,14 +274,6 @@
 			<summary class="builder-group-title"></summary>
 			<div class="builder-group-body"></div>
 		</details>
-	</template>
-
-	<!-- A table of a form: the script fills its heads and its rows -->
-	<template id="builder-tpl-table">
-		<table class="nino-admin-table builder-table">
-			<thead><tr></tr></thead>
-			<tbody></tbody>
-		</table>
 	</template>
 
 	<!-- The source of a text or a picture in a form: what it is now, and beside it the button of the dialog where it is changed -->
