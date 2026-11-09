@@ -147,8 +147,8 @@ $lightbox = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']
 $byPlace = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'de_DE' ) ];
 check( '...and the lines of the lightbox and of the components by place are, in both languages, under a thousand bytes, which the kernel takes for a line and not a paragraph',
 	strlen( $lightbox['en_US'] ) < 1000 && strlen( $lightbox['de_DE'] ) < 1000 && strlen( $byPlace['en_US'] ) < 1000 && strlen( $byPlace['de_DE'] ) < 1000 );
-check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the classes of the six sides of the spacing, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], array_keys( $manifest['manual']['markup'] ) ) === []
-	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
+check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the classes of the eight sides of the spacing, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-ml-1 nino-mr-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], array_keys( $manifest['manual']['markup'] ) ) === []
+	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-mt-1 nino-mb-1 nino-ml-1 nino-mr-1 nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
 
 $slugKey = array_values( array_filter( array_keys( $manifest['manual']['markup'] ), static fn( string $name ): bool => str_starts_with( $name, 'href="[[/nino/dir]]' ) === true ) );
 check( '...and its example of a link to a page of the site goes on with the slug of the element, and names the slug and the uri in both languages',
@@ -453,7 +453,7 @@ check( 'the hero: its classes are settings', $hero['settings']['color'] === 'bla
 check( '...its background is a slot with a focus', $hero['background'] === [ 'slot' => '/template/page-home/hero/background', 'focus' => 5 ] );
 check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === [ 's' => 'left', 'm' => 'left', 'l' => 'left' ]
 	&& array_key_exists( 'stack', $hero['cols'][0] ) === false && array_column( $hero['cols'][0]['components'], 'name' ) === [ 'title', 'subtitle', 'button' ] );
-check( '...a call carries its source and its attributes, every one of the schema, the default where the call is silent - and after them the six sides of its spacing, none where its class says none',
+check( '...a call carries its source and its attributes, every one of the schema, the default where the call is silent - and after them the eight sides of its spacing, none where its class says none',
 	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'color' => '', 'href' => '', 'target' => '', 'class' => '' ] ] + array_fill_keys( \Nino\Modules\Builder\Reader::SPACING, '' ) );
 
 $services = $model['blocks'][1];
@@ -602,7 +602,7 @@ $cellLoop			= $cell['components'][0];
 
 check( 'the page with a card is read as it is written: a picture beside a card in one section, a loop in the next', array_column( $cardModel['blocks'], 'kind' ) === [ 'section', 'section' ] && [ $cardModel['blocks'][0]['id'], $cardModel['blocks'][1]['id'] ] === [ 'story', 'services' ]
 	&& array_column( $story['cols'][0]['components'], 'name' ) === [ 'image' ] && array_column( $story['cols'][1]['components'], 'name' ) === [ 'card' ] && $cellLoop['name'] === 'stack' && array_column( $cellLoop['components'], 'name' ) === [ 'card' ] );
-check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column - and its radius and the offset of its ground at either side, as a surface that paints has them, and the six sides of its spacing',
+check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column - and its radius and the offset of its ground at either side, as a surface that paints has them, and the eight sides of its spacing',
 	array_keys( $cardNode ) === array_merge( [ 'name', 'source', 'text', 'attributes', 'radius' ], array_values( $reader::BG_SPACING ), $reader::SPACING, [ 'components' ] ) && $cardNode['radius'] === '' && array_intersect_key( $cardNode, array_flip( $reader::BG_SPACING ) ) === array_fill_keys( $reader::BG_SPACING, '' )
 	&& $cardNode['source'] === '' && $cardNode['text'] === null && array_column( $cardNode['components'], 'name' ) === [ 'card-title', 'text', 'button' ]
 	&& array_column( $cardNode['components'], 'source' ) === [ '/template/page-home-card/story/title', '/template/page-home-card/story/text', '/template/page-home-card/story/button' ] && array_key_exists( 'content', $cardNode ) === false );
@@ -615,8 +615,8 @@ check( '...it has every attribute of its schema, in the order of the schema, the
 check( '...a plain component carries no list of children, whatever it is: only a component that holds components does', array_filter( array_merge( $story['cols'][0]['components'], $cardNode['components'], $cellLoop['components'][0]['components'] ), static fn( array $node ): bool => array_key_exists( 'components', $node ) === true ) === [] );
 check( '...in a loop the card stands among the children of the loop, once for each element: its picture is a field of the element, so is its title, and the loop holds the card and nothing else', $cellLoop['components'][0]['attributes']['background'] === 'image' && $cellLoop['components'][0]['attributes']['focus'] === '5' && $cellLoop['components'][0]['attributes']['dim'] === '1' && $cellLoop['components'][0]['attributes']['fill'] === '1'
 	&& $cellLoop['components'][0]['components'][0]['source'] === 'title' && $cellLoop['source'] === '/services' && count( $cell['components'] ) === 1 );
-check( '...the column beside the picture has a padding and a margin above and below it, the picture\'s column has none: the six sides - the classes nino-mt-1, nino-mb-1 and nino-p-2, which says the four paddings at once - are settings, and are not among the custom ones',
-	array_values( array_intersect_key( $story['cols'][1], array_flip( $reader::SPACING ) ) ) === [ '1', '1', '2', '2', '2', '2' ] && array_keys( array_intersect_key( $story['cols'][1], array_flip( $reader::SPACING ) ) ) === $reader::SPACING && $story['cols'][1]['custom'] === ''
+check( '...the column beside the picture has a padding and a margin above and below it, the picture\'s column has none: the eight sides - the classes nino-mt-1, nino-mb-1 and nino-p-2, which says the four paddings at once - are settings, and are not among the custom ones',
+	array_values( array_intersect_key( $story['cols'][1], array_flip( $reader::SPACING ) ) ) === [ '1', '1', '', '', '2', '2', '2', '2' ] && array_keys( array_intersect_key( $story['cols'][1], array_flip( $reader::SPACING ) ) ) === $reader::SPACING && $story['cols'][1]['custom'] === ''
 	&& array_intersect_key( $story['cols'][0], array_flip( $reader::SPACING ) ) === array_fill_keys( $reader::SPACING, '' ) );
 check( 'the model the panel\'s script test reads (fixtures/page-home-card.json) is written from what the Reader makes of the page with a card: the file is there, is json, and holds the blocks of the page under the name of its file',
 	$fixtureWritten( 'page-home-card.json', array_replace( $cardModel, [ 'file' => 'page-home-card' ] ) ) === true && is_array( $fixtureRead( 'page-home-card.json' )['blocks'] ?? null ) === true
@@ -688,7 +688,7 @@ $bandNode			= $bandModel['blocks'][0]['cols'][0]['components'][0] ?? [];
 check( 'a second component that holds components is a container to the Reader by its schema alone: it holds the place of a section, and the card is no more the only one - it paints neither a ground nor a picture, so the registry says no surface of it, as it still does of the card',
 	$reader::holds( $bandRegistry['components']['band'] ) === true && $bandRegistry['components']['band']['holds'] === 'section' && array_key_exists( 'surface', $bandRegistry['components']['band'] ) === false
 	&& ( $bandRegistry['components']['card']['surface'] ?? '' ) === 'card' && array_keys( array_filter( $bandRegistry['components'], static fn( array $schema ): bool => $reader::holds( $schema ) === true ) ) === [ 'card', 'band' ] );
-check( '...its call is read with its children, in the order written, each a node as it is in a column, and the attributes of its schema - the call\'s where it sets them: and the six sides of the spacing - but no radius and no offset of a ground, which a component that is no surface has none of',
+check( '...its call is read with its children, in the order written, each a node as it is in a column, and the attributes of its schema - the call\'s where it sets them: and the eight sides of the spacing - but no radius and no offset of a ground, which a component that is no surface has none of',
 	array_keys( $bandNode ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING, [ 'components' ] ) && $bandNode['attributes'] === [ 'speed' => '60', 'wrap' => '0', 'class' => '' ]
 	&& array_column( $bandNode['components'], 'name' ) === [ 'title', 'text', 'image' ] && array_column( $bandNode['components'], 'source' ) === [ '/template/page-x/a/title', '/template/page-x/a/text', '/template/page-x/a/photo' ]
 	&& array_key_exists( 'content', $bandNode ) === false && array_key_exists( 'radius', $bandNode ) === false && array_key_exists( 'bgPl', $bandNode ) === false && array_key_exists( 'bgPr', $bandNode ) === false );
@@ -1068,7 +1068,7 @@ check( '...and what is written reads back as what was meant', ( static function(
 $styled = $blank;
 $styled['settings'] = [
 	'row' => 'narrow', 'rowPlace' => 'right', 'rowAlign' => 'bottom', 'rowPl' => '1', 'rowPr' => '2', 'rowPt' => '4', 'rowPb' => '5', 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'cover' => 60, 'parallax' => true, 'dim' => true, 'padded' => true, 'contentPos' => 'bottom', 'whitespace' => 'less',
-	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'pl' => '2', 'pr' => '4', 'text' => 'right', 'arrow' => true, 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
+	'mt' => '1', 'mb' => '0', 'ml' => '2', 'mr' => '5', 'pt' => '3', 'pb' => '6', 'pl' => '2', 'pr' => '4', 'text' => 'right', 'arrow' => true, 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
 $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden' => [ 's' => true ], 'color' => 'dark', 'dim' => true, 'background' => [ 'slot' => '/template/page-x/a/photo', 'focus' => 8 ],
@@ -1077,7 +1077,7 @@ $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => 
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
 check( 'a section\'s settings are its classes, in one order: the colour, the border and its brand colour, the cover and its scrim, the parallax, the room around a cover, the place of the content, the whitespace, the spacing, the text, the custom ones - and its attribute the height of the cover; its animation is none of them',
-	str_contains( $once, '<section id="a" class="nino-section nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-text-right my-section other" data-cover-height="60">' ) === true );
+	str_contains( $once, '<section id="a" class="nino-section nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover--padded nino-cover-bottom nino-whitespace--less nino-mt-1 nino-mb-0 nino-ml-2 nino-mr-5 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-text-right my-section other" data-cover-height="60">' ) === true );
 check( '...and the row\'s and the column\'s: the width and the place of the row, the alignment of its columns, its padding on each side, the animation of the section and the custom classes - the delay and the duration of the animation the attributes of the row\'s tag; of a column the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
 	str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-row--right nino-grid-bottom nino-pl-1 nino-pr-2 nino-pt-4 nino-pb-5 nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-row" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true
 	&& str_contains( $once, '<div class="nino-grid-100 nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
@@ -1795,7 +1795,17 @@ check( 'a loop that holds a card is read and written like any other: the card is
 	$cards['components'][0]['name'] === 'stack' && array_keys( $cards['components'][0]['attributes'] ) === [ 'sort', 'offset', 'limit', 'query', 'callback', 'locale', 'id', 'cols', 'gap', 'autoheight', 'class' ] && array_column( $cards['components'][0]['components'], 'name' ) === [ 'card' ]
 	&& array_column( $cards['components'][0]['components'][0]['components'], 'source' ) === [ 'title' ] && $write( $read( $carded ) ) === $inWrap( $carded ) && $read( $write( $read( $carded ) ) ) === $read( $carded ) );
 
-// The spacing of an element: six sides - the margin above and below it, the padding at its top, at its bottom, on its left and on its right -, each a step of the space scale, the same on a section, on a column and on
+// A loop sorted by the uri of its elements: the sort is a string of the stack and no field of a component, and a dot in front of it is no reason to refuse it
+$uriPage = $page( $section( "[stack /services sort=\".uri\" cols=\"100 50 50\"]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ) );
+$uriLoop = $read( $uriPage );
+$uriLoopCol = $uriLoop['blocks'][0]['cols'][0]['components'][0];
+$uriDescending = $uriLoop;
+$uriDescending['blocks'][0]['cols'][0]['components'][0]['attributes']['sort'] = '-.uri';
+check( '...the Builder holds a loop with sort=".uri" or "-.uri" as it is: read as the attribute, written back byte for byte, and read again as the same model - the grammar of a field of a component does not apply to the sort',
+	$uriLoopCol['attributes']['sort'] === '.uri' && $write( $uriLoop ) === $inWrap( $uriPage ) && $read( $write( $uriLoop ) ) === $uriLoop
+	&& str_contains( $write( $uriDescending ), 'sort="-.uri"' ) === true && $read( $write( $uriDescending ) ) === $uriDescending );
+
+// The spacing of an element: eight sides - the margin above, below, on its left and on its right, the padding at its top, at its bottom, on its left and on its right -, each a step of the space scale, the same on a section, on a column and on
 // any component. A section and a column carry them as classes of the tag, a component in the class attribute of its call
 $spaceOf = static function( string $kind, string $classes ) use ( $read, $write, $page, $section, $groundOf, $inWrap ): array {
 
@@ -1811,7 +1821,7 @@ $spaceOf = static function( string $kind, string $classes ) use ( $read, $write,
 		default		=> $model['blocks'][0]['cols'][0]['components'][0],
 	};
 
-	// The six settings, the classes the element keeps besides them, the file as the Writer writes it - and whether that is the file it was read from, and reads back as the same model
+	// The eight settings, the classes the element keeps besides them, the file as the Writer writes it - and whether that is the file it was read from, and reads back as the same model
 	return [
 		'sides'		=> array_intersect_key( $of, array_flip( \Nino\Modules\Builder\Reader::SPACING ) ),
 		'left'		=> $kind === 'component' ? $of['attributes']['class'] : $of['custom'],
@@ -1833,25 +1843,25 @@ foreach( [ 'section', 'column', 'component' ] as $kind )
 				$spaceWrong[] = $kind. ' '. $side. '-'. $step;
 		}
 
-check( 'an element has six sides of spacing - mt, mb, pt, pb, pl and pr, each of the steps 0 to 6 of the space scale - on a section, on a column and on a component alike, read from the class of the side and written back byte for byte: all '
+check( 'an element has eight sides of spacing - mt, mb, ml, mr, pt, pb, pl and pr, each of the steps 0 to 6 of the space scale - on a section, on a column and on a component alike, read from the class of the side and written back byte for byte: all '
 	. 3 * count( $reader::SPACING ) * count( $reader::STEPS ). ' of them'. ( $spaceWrong === [] ? '' : ' - '. implode( ', ', array_slice( $spaceWrong, 0, 5 ) ) ),
-	$spaceWrong === [] && $reader::SPACING === [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] && $reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
-check( '...the six stand in one order, that of Reader::SPACING: in the defaults of a section and of a column, and in the node of a component - which has no spacing of its own but them - and each is none until a class says so',
+	$spaceWrong === [] && $reader::SPACING === [ 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ] && $reader::OUTSIDE === [ 'mt', 'mb', 'ml', 'mr' ] && $reader::STEPS === [ '0', '1', '2', '3', '4', '5', '6' ] );
+check( '...the eight stand in one order, that of Reader::SPACING: in the defaults of a section and of a column, and in the node of a component - which has no spacing of its own but them - and each is none until a class says so',
 	array_keys( $reader::sectionDefaults() ) === [ 'row', 'rowPlace', 'rowAlign', 'reverse', 'rowGap', 'rowPl', 'rowPr', 'rowPt', 'rowPb', 'rowRadius', 'rowCustom', 'rowBgPl', 'rowBgPr', 'color', 'border', 'borderPrimary', 'cover', 'parallax', 'dim', 'padded', 'radius', 'contentPos', 'inner', 'tiles', 'ratio', 'whitespace',
-		'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
-	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
+		'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr', 'text', 'arrow', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
+	&& array_keys( $reader::colDefaults() ) === [ 'color', 'dim', 'linked', 'radius', 'background', 'text', 'stackAlign', 'stackGap', 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr', 'bgPl', 'bgPr', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom' ]
 	&& array_keys( $blank['cols'][0]['components'][0] ) === array_merge( [ 'name', 'source', 'text', 'attributes' ], $reader::SPACING ) && array_intersect_key( $reader::sectionDefaults(), $noSides ) === $noSides && array_intersect_key( $reader::colDefaults(), $noSides ) === $noSides );
 
-$spacedSection	= $spaceOf( 'section', 'nino-pr-4 nino-text-right nino-pl-2 nino-pb-6 nino-mb-0 nino-whitespace--less nino-pt-3 nino-mt-1' );
-$spacedColumn		= $spaceOf( 'column', 'nino-pr-4 nino-vpa nino-pl-2 nino-grid--alt nino-pb-6 nino-text-center nino-mb-0 nino-pt-3 nino-mt-1' );
-$spacedCardFile	= $bgCardOf( 'my-card nino-pr-4 nino-radius nino-pl-2 nino-bg-pr-1 nino-pb-6 nino-mb-0 nino-pt-3 nino-bg-pl-0 nino-mt-1' );
+$spacedSection	= $spaceOf( 'section', 'nino-pr-4 nino-text-right nino-pl-2 nino-pb-6 nino-mr-5 nino-mb-0 nino-whitespace--less nino-pt-3 nino-ml-2 nino-mt-1' );
+$spacedColumn		= $spaceOf( 'column', 'nino-pr-4 nino-vpa nino-pl-2 nino-grid--alt nino-pb-6 nino-text-center nino-mr-5 nino-mb-0 nino-pt-3 nino-ml-2 nino-mt-1' );
+$spacedCardFile	= $bgCardOf( 'my-card nino-pr-4 nino-radius nino-pl-2 nino-bg-pr-1 nino-pb-6 nino-mr-5 nino-mb-0 nino-pt-3 nino-bg-pl-0 nino-ml-2 nino-mt-1' );
 $spacedCard			= $read( $spacedCardFile )['blocks'][0]['cols'][0]['components'][0];
-check( '...the classes are read in any order and written in one: on a section after the whitespace and before the text, on a column after the text and before the animation, on a component after the radius and the offsets of its ground and before the classes of its own - the margin above and below, then the padding at the top, at the bottom, on the left and on the right',
-	$spacedSection['sides'] === [ 'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'pl' => '2', 'pr' => '4' ] && $spacedColumn['sides'] === $spacedSection['sides'] && array_intersect_key( $spacedCard, $spacedSection['sides'] ) === $spacedSection['sides']
+check( '...the classes are read in any order and written in one: on a section after the whitespace and before the text, on a column after the text and before the animation, on a component after the radius and the offsets of its ground and before the classes of its own - the margin above, below, on the left and on the right, then the padding at the top, at the bottom, on the left and on the right',
+	$spacedSection['sides'] === [ 'mt' => '1', 'mb' => '0', 'ml' => '2', 'mr' => '5', 'pt' => '3', 'pb' => '6', 'pl' => '2', 'pr' => '4' ] && $spacedColumn['sides'] === $spacedSection['sides'] && array_intersect_key( $spacedCard, $spacedSection['sides'] ) === $spacedSection['sides']
 	&& $spacedSection['left'] === '' && $spacedColumn['left'] === '' && $spacedCard['attributes']['class'] === 'my-card' && $spacedCard['radius'] === 'standard' && [ $spacedCard['bgPl'], $spacedCard['bgPr'] ] === [ '0', '1' ]
-	&& str_contains( $spacedSection['written'], '<section id="a" class="nino-section nino-whitespace--less nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-text-right">' ) === true
-	&& str_contains( $spacedColumn['written'], '<div class="nino-grid-100 nino-grid--alt nino-text-center nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-vpa">' ) === true
-	&& str_contains( $write( $read( $spacedCardFile ) ), '[card class="nino-radius nino-bg-pl-0 nino-bg-pr-1 nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 my-card"]' ) === true );
+	&& str_contains( $spacedSection['written'], '<section id="a" class="nino-section nino-whitespace--less nino-mt-1 nino-mb-0 nino-ml-2 nino-mr-5 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-text-right">' ) === true
+	&& str_contains( $spacedColumn['written'], '<div class="nino-grid-100 nino-grid--alt nino-text-center nino-mt-1 nino-mb-0 nino-ml-2 nino-mr-5 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 nino-vpa">' ) === true
+	&& str_contains( $write( $read( $spacedCardFile ) ), '[card class="nino-radius nino-bg-pl-0 nino-bg-pr-1 nino-mt-1 nino-mb-0 nino-ml-2 nino-mr-5 nino-pt-3 nino-pb-6 nino-pl-2 nino-pr-4 my-card"]' ) === true );
 
 // The kernel's nino-p-<n> is the four paddings at once, on a tag: the base that a class of one side stands over, whatever the order of the two
 $shortWrong = [];
@@ -1880,38 +1890,73 @@ check( '...four sides that are the same are written as the shorthand, whichever 
 	$shortFour['sides'] === $sidesOf( array_fill_keys( $reader::INSIDE, '2' ) ) && str_contains( $shortFour['written'], '<div class="nino-grid-100 nino-p-2">' ) === true
 	&& $shortThree['sides'] === $sidesOf( [ 'pt' => '2', 'pb' => '2', 'pl' => '2' ] ) && $shortThree['same'] === true && str_contains( $shortThree['written'], 'nino-p-2' ) === false );
 
+// The kernel's nino-m-<n> is the four margins at once, as nino-p-<n> is the four paddings: on a tag the base that a class of one side stands over, written where the four are the same, a class of the editor's on a call
+$marginWrong = [];
+
+foreach( [ 'section', 'column' ] as $kind )
+	foreach( $reader::STEPS as $step ) {
+
+		$got = $spaceOf( $kind, 'nino-m-'. $step );
+
+		if( $got['sides'] !== $sidesOf( array_fill_keys( $reader::OUTSIDE, $step ) ) || $got['left'] !== '' || $got['same'] !== true || str_contains( $got['written'], 'nino-m-'. $step ) === false )
+			$marginWrong[] = $kind. ' m-'. $step;
+	}
+
+check( 'the shorthand of the kernel, nino-m-<n>, says the four margins at once: on a section and on a column it is read as the four, none of the paddings, and written back as nino-m-<n> byte for byte - all '. 2 * count( $reader::STEPS ). ' of them'. ( $marginWrong === [] ? '' : ' - '. implode( ', ', $marginWrong ) ),
+	$marginWrong === [] );
+
+$marginOver		= [ $spaceOf( 'column', 'nino-ml-3 nino-m-1' ), $spaceOf( 'section', 'nino-m-1 nino-pt-2 nino-mr-0' ), $spaceOf( 'section', 'nino-m-2 nino-p-3' ) ];
+$marginFour		= $spaceOf( 'column', 'nino-mr-2 nino-mt-2 nino-ml-2 nino-mb-2' );
+$marginThree	= $spaceOf( 'column', 'nino-mt-2 nino-mb-2 nino-ml-2' );
+$marginTwice	= $spaceOf( 'section', 'nino-m-1 my-section nino-m-4' );
+$marginCall		= $spaceOf( 'component', 'nino-m-2 nino-ml-1 my-class' );
+$marginSides	= $spaceOf( 'section', 'nino-ml-2 nino-mr-3' );
+$marginColumn	= $spaceOf( 'column', 'nino-ml-2 nino-mr-3' );
+$marginPart		= $spaceOf( 'component', 'nino-ml-1' );
+check( '...a class of one side stands over it, whichever comes first, and the four are written one by one then; a second nino-m-<n> is a class of its own; the margin and the padding shorthand stand side by side; three margins are not four',
+	$marginOver[0]['sides'] === $sidesOf( [ 'mt' => '1', 'mb' => '1', 'ml' => '3', 'mr' => '1' ] ) && $marginOver[1]['sides'] === $sidesOf( [ 'mt' => '1', 'mb' => '1', 'ml' => '1', 'mr' => '0', 'pt' => '2' ] ) && $marginOver[2]['sides'] === $sidesOf( array_fill_keys( $reader::OUTSIDE, '2' ) + array_fill_keys( $reader::INSIDE, '3' ) )
+	&& str_contains( $marginOver[0]['written'], '<div class="nino-grid-100 nino-mt-1 nino-mb-1 nino-ml-3 nino-mr-1">' ) === true && str_contains( $marginOver[2]['written'], '<section id="a" class="nino-section nino-m-2 nino-p-3">' ) === true
+	&& $marginTwice['sides'] === $sidesOf( array_fill_keys( $reader::OUTSIDE, '1' ) ) && $marginTwice['left'] === 'my-section nino-m-4' && $marginTwice['same'] === true
+	&& $marginFour['sides'] === $sidesOf( array_fill_keys( $reader::OUTSIDE, '2' ) ) && str_contains( $marginFour['written'], '<div class="nino-grid-100 nino-m-2">' ) === true
+	&& $marginThree['sides'] === $sidesOf( [ 'mt' => '2', 'mb' => '2', 'ml' => '2' ] ) && $marginThree['same'] === true && str_contains( $marginThree['written'], 'nino-m-2' ) === false );
+check( '...the left and the right margin are settings at the position of the spacing: on a section and on a column, and on a call, where nino-m-<n> stays a class of its own',
+	$marginSides['sides'] === $sidesOf( [ 'ml' => '2', 'mr' => '3' ] ) && $marginSides['left'] === '' && $marginSides['same'] === true && str_contains( $marginSides['written'], '<section id="a" class="nino-section nino-ml-2 nino-mr-3">' ) === true
+	&& $marginColumn['sides'] === $marginSides['sides'] && $marginColumn['same'] === true && str_contains( $marginColumn['written'], '<div class="nino-grid-100 nino-ml-2 nino-mr-3">' ) === true
+	&& $marginPart['sides'] === $sidesOf( [ 'ml' => '1' ] ) && $marginPart['left'] === '' && $marginPart['same'] === true && str_contains( $marginPart['written'], 'class="nino-ml-1"' ) === true
+	&& $marginCall['sides'] === $sidesOf( [ 'ml' => '1' ] ) && $marginCall['left'] === 'nino-m-2 my-class' && $marginCall['same'] === false && str_contains( $marginCall['written'], 'class="nino-ml-1 nino-m-2 my-class"' ) === true );
+
 // A second class of a side is a class of its own, and so is one that says no step of the scale: on a section, on a column and in the class of a call
 $secondWrong = [];
 
 foreach( [ 'section', 'column', 'component' ] as $kind ) {
 
 	$second	= $spaceOf( $kind, 'nino-mt-1 my-class nino-mt-2' );
-	$idle		= $spaceOf( $kind, 'nino-mt-7 nino-pt-x nino-pb- nino-m-2 nino-pl-10 nino-mx-auto' );
+	$idle		= $spaceOf( $kind, 'nino-mt-7 nino-pt-x nino-pb- nino-ml-9 nino-pl-10 nino-mx-auto' );
 
 	if( $second['sides'] !== $sidesOf( [ 'mt' => '1' ] ) || $second['left'] !== 'my-class nino-mt-2' || $second['same'] !== true )
 		$secondWrong[] = $kind. ' second class';
 
-	if( $idle['sides'] !== $noSides || $idle['left'] !== 'nino-mt-7 nino-pt-x nino-pb- nino-m-2 nino-pl-10 nino-mx-auto' || $idle['same'] !== true )
+	if( $idle['sides'] !== $noSides || $idle['left'] !== 'nino-mt-7 nino-pt-x nino-pb- nino-ml-9 nino-pl-10 nino-mx-auto' || $idle['same'] !== true )
 		$secondWrong[] = $kind. ' idle classes';
 }
 
-check( '...the first class of a side is the setting and a second is a class of its own, kept and written back where it stood among the others - and so are a step that is none of the scale, a word, a margin on all sides and the centring: on a section, on a column and on a component'. ( $secondWrong === [] ? '' : ' - '. implode( ', ', $secondWrong ) ), $secondWrong === [] );
+check( '...the first class of a side is the setting and a second is a class of its own, kept and written back where it stood among the others - and so are a step that is none of the scale, a word and the centring: on a section, on a column and on a component'. ( $secondWrong === [] ? '' : ' - '. implode( ', ', $secondWrong ) ), $secondWrong === [] );
 
 // On a call nino-p-<n> says nothing of the four: it is a class of the editor's. A card's padding attribute says the same for its four sides, and the card keeps the two apart
 $callShort	= $spaceOf( 'component', 'nino-p-2' );
 $callMixed	= $spaceOf( 'component', 'nino-p-2 nino-pt-1 my-class' );
 $callFour		= $spaceOf( 'component', 'nino-pt-2 nino-pb-2 nino-pl-2 nino-pr-2' );
 $cardPadded	= $read( $page( $section( "[card padding=\"3\" class=\"nino-pl-0\"]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t[/card]" ) ) )['blocks'][0]['cols'][0]['components'][0];
-check( '...on the call of a component the shorthand is a class of the editor\'s and stays among the classes of its own, the sides are taken out in front of them, and the four paddings that are the same are four classes there, never the shorthand - and the padding attribute of a card is the attribute, its sides the six settings',
+check( '...on the call of a component the shorthand is a class of the editor\'s and stays among the classes of its own, the sides are taken out in front of them, and the four paddings that are the same are four classes there, never the shorthand - and the padding attribute of a card is the attribute, its sides the eight settings',
 	$callShort['sides'] === $noSides && $callShort['left'] === 'nino-p-2' && $callShort['same'] === true && $callMixed['sides'] === $sidesOf( [ 'pt' => '1' ] ) && $callMixed['left'] === 'nino-p-2 my-class'
 	&& str_contains( $callMixed['written'], '[title /template/page-x/a/title class="nino-pt-1 nino-p-2 my-class"]' ) === true && $callFour['sides'] === $sidesOf( array_fill_keys( $reader::INSIDE, '2' ) ) && $callFour['left'] === '' && $callFour['same'] === true && $cardPadded['attributes']['padding'] === '3' && $cardPadded['pl'] === '0' && $cardPadded['attributes']['class'] === '' );
 
-// A loop is no component and has no spacing of its own: its class stays as it is, and the components of its content have the six sides like any other. The loop of sections takes the classes of its section
+// A loop is no component and has no spacing of its own: its class stays as it is, and the components of its content have the eight sides like any other. The loop of sections takes the classes of its section
 $loopCalls	= $page( $section( "[stack /services class=\"nino-mt-2 nino-p-1\"]\n\t\t\t\t[title title class=\"nino-pb-1\"]\n\t\t\t[/stack]" ) );
 $loopCol		= $read( $loopCalls )['blocks'][0]['cols'][0]['components'][0];
 $loopFileSpaced	= str_replace( 'class="nino-section--alt nino-pt-2"', 'class="nino-section--alt nino-mt-1 nino-p-3"', $loopFile );
 $loopSettings		= $read( $page( $loopFileSpaced ) )['blocks'][0]['settings'];
-check( '...a loop is none of them: its class attribute stays as it is, and the components of its content have the six sides like any other; the loop of sections is a section, and its call carries the six sides of its classes, written back with the four paddings as nino-p-<n> where they are the same',
+check( '...a loop is none of them: its class attribute stays as it is, and the components of its content have the eight sides like any other; the loop of sections is a section, and its call carries the eight sides of its classes, written back with the four paddings as nino-p-<n> where they are the same',
 	$loopCol['attributes']['class'] === 'nino-mt-2 nino-p-1' && array_intersect_key( $loopCol, array_flip( $reader::SPACING ) ) === [] && $loopCol['components'][0]['pb'] === '1' && $loopCol['components'][0]['attributes']['class'] === '' && $write( $read( $loopCalls ) ) === $inWrap( $loopCalls )
 	&& array_intersect_key( $loopSettings, array_flip( $reader::SPACING ) ) === $sidesOf( [ 'mt' => '1', 'pt' => '3', 'pb' => '3', 'pl' => '3', 'pr' => '3' ] ) && $loopSettings['color'] === 'alt' && $loopSettings['custom'] === '' && $write( $read( $page( $loopFileSpaced ) ) ) === $inWrap( $page( $loopFileSpaced ) ) );
 
@@ -1951,7 +1996,7 @@ foreach( $unspaced as $b => $block )
 	foreach( $block['cols'] ?? [] as $c => $col )
 		foreach( array_merge( $reader::SPACING, $reader::BG_SPACING ) as $key )
 			unset( $unspaced[$b]['cols'][$c][$key] );
-check( 'a column with none of the six sides is written as it always was: a model without them - and without the offsets of its picture - is the example page, byte for byte, and every existing fixture is read and written as it was',
+check( 'a column with none of the eight sides is written as it always was: a model without them - and without the offsets of its picture - is the example page, byte for byte, and every existing fixture is read and written as it was',
 	$write( [ 'name' => 'Home', 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => $unspaced ] ) === $wrapped( $fixture ) && array_intersect_key( $model['blocks'][0]['cols'][0], array_flip( $reader::SPACING ) ) === array_fill_keys( $reader::SPACING, '' )
 	&& $write( $wrapModel ) === $wrapFixture && $write( $read( $concept ) ) === $wrapped( $fixture ) );
 
@@ -2326,6 +2371,20 @@ $tilesRow			= $read( $tilesOf( 'nino-tiles nino-section--alt', 'nino-grid-row ni
 $tilesSecond	= $read( $tilesOf( 'nino-tiles nino-tiles--4-3 nino-tiles--16-9' ) )['blocks'][0]['settings'];
 check( 'nino-tiles--16-9 on a section that is not tiles is a custom class: the ratio is read while the section is one, and a second ratio is a class of its own',
 	$tilesLonely['tiles'] === false && $tilesLonely['ratio'] === '' && $tilesLonely['custom'] === 'nino-tiles--16-9' && $tilesSecond['ratio'] === '4-3' && $tilesSecond['custom'] === 'nino-tiles--16-9' );
+// The sides of the margin on a tile - a column of a section of tiles: the left and the right one are settings, nino-m-<n> says the four and is written back as it was said
+$tileMargin	= static function( string $classes ) use ( $read, $write, $page, $tilesOf, $inWrap ): array {
+
+	$source = $page( $tilesOf( 'nino-tiles', 'nino-grid-row', 'nino-grid-100 '. $classes ) );
+	$tile = $read( $source )['blocks'][0];
+
+	return [ 'tiles' => $tile['settings']['tiles'], 'col' => array_intersect_key( $tile['cols'][0], array_flip( \Nino\Modules\Builder\Reader::OUTSIDE ) ), 'custom' => $tile['cols'][0]['custom'], 'same' => $write( $read( $source ) ) === $inWrap( $source ) && $read( $write( $read( $source ) ) ) === $read( $source ) ];
+};
+$tileSides	= $tileMargin( 'nino-ml-2 nino-mr-3' );
+$tileFour		= $tileMargin( 'nino-m-2' );
+check( 'on a tile the left and the right margin are settings, read at their place and written back byte for byte, and nino-m-<n> is the four margins, written back as nino-m-<n>',
+	$tileSides['tiles'] === true && $tileSides['col'] === [ 'mt' => '', 'mb' => '', 'ml' => '2', 'mr' => '3' ] && $tileSides['custom'] === '' && $tileSides['same'] === true
+	&& $tileFour['col'] === [ 'mt' => '2', 'mb' => '2', 'ml' => '2', 'mr' => '2' ] && $tileFour['custom'] === '' && $tileFour['same'] === true
+	&& str_contains( $write( $read( $page( $tilesOf( 'nino-tiles', 'nino-grid-row', 'nino-grid-100 nino-m-2' ) ) ) ), '<div class="nino-grid-100 nino-m-2">' ) === true );
 check( '...a cover, a parallax, their scrims, the room of a padded cover, the place of its content and the radius of it are custom classes on a section of tiles, which is none of them, and data-cover-height on it fails as an attribute the builder does not keep',
 	$tilesCover['tiles'] === true && $tilesCover['cover'] === null && $tilesCover['parallax'] === false && $tilesCover['dim'] === false && $tilesCover['padded'] === false && $tilesCover['contentPos'] === '' && $tilesCover['radius'] === ''
 	&& $tilesCover['custom'] === 'nino-cover nino-cover--dim nino-cover--padded nino-cover-top nino-parallex nino-parallex--dim nino-section--dim nino-radius-alt'
@@ -4236,6 +4295,26 @@ check( '...a text for a language the site does not have is refused with 400 (val
 	\Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['code'] === 'value' && \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedPlain, $cardNow['hash'] )['code'] === 'invalid'
 	&& str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['problems'] ), 'the text of the component "card-title" is for "xx_XX"' ) === true );
 
+// A loop sorted by the uri of its elements is saved and read back as it is, in both directions
+$uriNow = \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
+$uriSaved = [];
+
+foreach( [ '.uri', '-.uri' ] as $uriSort ) {
+
+	$uriModel = $uriNow['model'];
+	$uriModel['blocks'][1]['cols'][0]['components'][0]['attributes']['sort'] = $uriSort;
+	$uriAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $uriModel, $uriNow['hash'] );
+	$uriBack = \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
+	$uriSaved[] = $uriAnswer['status'] === 200 && $uriAnswer['model']['blocks'][1]['cols'][0]['components'][0]['attributes']['sort'] === $uriSort && $uriBack['model'] === $uriAnswer['model'] && str_contains( (string) file_get_contents( $cardPath ), ' sort="'. $uriSort. '"' ) === true;
+	$uriNow = $uriBack;
+}
+
+$uriModel = $uriNow['model'];
+$uriModel['blocks'][1]['cols'][0]['components'][0]['attributes']['sort'] = $cardNow['model']['blocks'][1]['cols'][0]['components'][0]['attributes']['sort'];
+\Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $uriModel, $uriNow['hash'] );
+check( 'a model whose loop sorts by ".uri" or "-.uri" is saved with 200 and read back unchanged: the attribute is in the file as it is, and the sort of a field of the type is as it was after',
+	$uriSaved === [ true, true ] && file_get_contents( $cardPath ) === $cardNow['source'] );
+
 // The picture behind a card is a slot an attribute names: made at the save from the mark of the attribute, like the one behind a column
 $pictured = $cardNow['model'];
 $pictured['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = '/template/page-home-card/story/card-picture';
@@ -4293,7 +4372,7 @@ $refusedCard = static function( callable $change ) use ( &$bounds, &$appData, $c
 	return [ $answer['status'], $answer['code'] ?? '', implode( ' | ', $answer['problems'] ?? [] ), (string) file_get_contents( $cardPath ) === $before ];
 };
 
-// The six sides of the spacing are steps of the space scale on every element that has them: a section, a column, a component and a child of one that holds components
+// The eight sides of the spacing are steps of the space scale on every element that has them: a section, a column, a component and a child of one that holds components
 $spacedWhere = [
 	'section'		=> [ [ 'blocks', 0, 'settings' ], static fn( string $key ): string => 'the '. $key. ' of block 1 is none of the steps 0 to 6' ],
 	'column'		=> [ [ 'blocks', 0, 'cols', 1 ], static fn( string $key ): string => 'the '. $key. ' of column 2 of block 1 is none of the steps 0 to 6' ],
@@ -4301,7 +4380,7 @@ $spacedWhere = [
 	'child'			=> [ [ 'blocks', 0, 'cols', 1, 'components', 0, 'components', 0 ], static fn( string $key ): string => 'block 1 has the component "card-title" with a '. $key. ' that is none of the steps 0 to 6' ],
 	'picture'		=> [ [ 'blocks', 0, 'cols', 0, 'components', 0 ], static fn( string $key ): string => 'block 1 has the component "image" with a '. $key. ' that is none of the steps 0 to 6' ],
 ];
-$spacedBad		= [ '7', '10', 'big', 3, true, [ '1' ] ];
+$spacedBad		= [ '7', '10', 'big', 3, true, [ '1' ], '-1', 7.5 ];
 $spacedWrong	= [];
 
 foreach( $spacedWhere as $where => [ $path, $sentence ] )
@@ -5708,6 +5787,17 @@ check( '...the hover the builder writes is the class the kernel frames a picture
 	substr_count( $hovered, 'class="nino-hover"' ) === 2 && preg_match_all( '~<div class="nino-image[^"]*\bnino-hover\b[^"]*"><img ~', $hoveredDrawn ) === 2 && substr_count( $hoveredDrawn, 'nino-card-img nino-hover' ) === 1 );
 check( '...the stack is a loop of the elements, one cell each, in the order it names', preg_match_all( '/nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 nino-autoheight/', $page ) === 2
 	&& strpos( $page, 'App' ) < strpos( $page, 'Web' ) && str_contains( $page, 'Mehr</a>' ) === true );
+// Every element carries its uri, /<type>/<name>, and the kernel sorts a loop by any key of the element: sort=".uri" orders the elements by their names within a type, sort="-.uri" the other way round
+\Nino\Elements::insertElementType( $appData, '/urisorted', [ 'title' => [ 'type' => 'string', 'locale' => true ] ] );
+\Nino\Elements::insertElement( $appData, '/urisorted/mid', [ 'title' => 'Zulu' ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/urisorted/zed', [ 'title' => 'Alpha' ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/urisorted/abe', [ 'title' => 'Mike' ], 'en_US' );
+$uriOrder = static function( string $sort ) use ( $appData ): array {
+	preg_match_all( '/<h3 class="nino-section-title">(\w+)<\/h3>/', \Nino\Html::renderHtml( $appData, "[stack /urisorted". ( $sort === '' ? '' : ' sort="'. $sort. '"' ). "]\n[title title]\n[/stack]" ), $titles );
+	return $titles[1];
+};
+check( '...the kernel sorts a loop by the uri of its elements: sort=".uri" orders them by their names within the type - not by their titles, not by the order they were made in -, sort="-.uri" the other way round',
+	$uriOrder( '.uri' ) === [ 'Mike', 'Zulu', 'Alpha' ] && $uriOrder( '-.uri' ) === [ 'Alpha', 'Zulu', 'Mike' ] && $uriOrder( 'title' ) === [ 'Alpha', 'Mike', 'Zulu' ] );
 check( '...and the sections are what Nino.css knows: the cover with its height, the background block, the row and its columns',
 	str_contains( $page, '<section id="start" class="nino-section nino-section--black nino-cover nino-cover--dim" data-cover-height="100">' ) === true
 	&& str_contains( $page, '<div class="nino-section-bg nino-img-focus--5">' ) === true && str_contains( $page, '<div class="nino-grid-row nino-grid-row--wide nino-grid-middle nino-vpa">' ) === true );

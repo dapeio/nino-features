@@ -2584,7 +2584,7 @@ namespace Nino\Modules\Builder {
 		 *	call cannot carry - or a loop in one of its columns, a background that is no
 		 *	slot or whose focus is none of the nine places, a call that is no
 		 *	call, texts that are no text for each language, the padding of a
-		 *	row, the gap between its columns, the gap between the components of a column and the six sides of the spacing of a section, a column or a
+		 *	row, the gap between its columns, the gap between the components of a column and the eight sides of the spacing of a section, a column or a
 		 *	component that are none of the steps 0 to 6, how far in from its sides the picture behind a row, a
 		 *	column or a card starts where that is none of the steps 0 to 3 - or
 		 *	is asked of a component that is no card -, the hover of a component that
@@ -2671,7 +2671,7 @@ namespace Nino\Modules\Builder {
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
 
-				// The spacing of the section on its six sides and the padding of the row on each of its four are steps of the space scale: what is none of them would be a class of nothing
+				// The spacing of the section on its eight sides and the padding of the row on each of its four are steps of the space scale: what is none of them would be a class of nothing
 				foreach( Reader::SPACING as $key )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none of the steps 0 to 6';
@@ -2760,7 +2760,7 @@ namespace Nino\Modules\Builder {
 						if( is_bool( $col[$key] ?? false ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is neither on nor off';
 
-					// The six sides of the spacing are steps of the space scale: what is none of them would be a class of nothing
+					// The eight sides of the spacing are steps of the space scale: what is none of them would be a class of nothing
 					foreach( Reader::SPACING as $key )
 						if( in_array( $col[$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
 							$problems[] = 'the '. $key. ' of '. $of. ' is none of the steps 0 to 6';
@@ -3115,8 +3115,8 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What is wrong with the six sides of the spacing of a component and of the children it holds: a value that is none of the steps 0 to 6, which the Writer would
-		 *	write as a class of nothing and the Reader read back as a custom one. Every component has the six, a surface or not
+		 *	What is wrong with the eight sides of the spacing of a component and of the children it holds: a value that is none of the steps 0 to 6, which the Writer would
+		 *	write as a class of nothing and the Reader read back as a custom one. Every component has the eight, a surface or not
 		 *
 		 *	@param		mixed			$call					A component of a column, or a child of one
 		 *	@param		string		$at						The block, as the sentences name it: block 2

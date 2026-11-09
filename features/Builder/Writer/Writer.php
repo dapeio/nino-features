@@ -54,7 +54,7 @@ namespace Nino\Modules\Builder {
 	 *											The hover of a picture is a class of the page as well, nino-hover: it
 	 *											stands on the call of a component whose source is an image, the picture
 	 *											of a card among them. The classes of a call come in this order: the
-	 *											radius, the hover, the two offsets of the ground of a card, the six
+	 *											radius, the hover, the two offsets of the ground of a card, the eight
 	 *											sides of the spacing, then the classes the editor wrote.
 	 *
 	 *											How far in from its sides the picture behind an element starts is a
@@ -411,7 +411,7 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['whitespace'] !== '' )
 				$class[] = 'nino-whitespace--'. $s['whitespace'];
 
-			// The six sides of the spacing: the margins, then the paddings - the four inside ones as nino-p-<n> where they are the same
+			// The eight sides of the spacing: the margins, then the paddings - the four of a box as nino-m-<n> or nino-p-<n> where they are the same
 			$class = array_merge( $class, self::_spacing( $s, true ) );
 
 			// The radius of the picture of a padded cover - after the spacing, and written for a section that is one and for no other
@@ -554,7 +554,7 @@ namespace Nino\Modules\Builder {
 				$before = $col['text'][$viewport];
 			}
 
-			// The six sides of the spacing, as a section has them
+			// The eight sides of the spacing, as a section has them
 			$class = array_merge( $class, self::_spacing( $col, true ) );
 
 			// How far in from either side the picture behind the column starts, left then right, after the spacing
@@ -571,32 +571,44 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The classes of the six sides of the spacing of a section, a column or a component, in the order of Reader::SPACING: one for each side that is set, and -
-		 *	where $shorthand is set and the four inside sides are set and the same - the kernel's nino-p-<n> for them, standing where the first of the four would
-		 *	stand, which the Reader reads back as the four
+		 *	The classes of the eight sides of the spacing of a section, a column or a component, in the order of Reader::SPACING: one for each side that is set, and -
+		 *	where $shorthand is set and the four outside sides, or the four inside sides, are set and the same - the kernel's nino-m-<n> or nino-p-<n> for them,
+		 *	standing where the first of the four would stand, which the Reader reads back as the four
 		 *
 		 *	@param		array			$of						The settings of the section, the column or the component
-		 *	@param		bool			$shorthand		Whether the four inside sides may be said at once: on a tag they may, on a call nino-p-<n> is a class of the editor's
+		 *	@param		bool			$shorthand		Whether the four sides of a box may be said at once: on a tag they may, on a call nino-m-<n> and nino-p-<n> are classes of the editor's
 		 *
 		 *	@return 	array											Class names
 		 */
 		private static function _spacing( array $of, bool $shorthand ): array {
 
-			$inside	= array_map( static fn( string $side ): string => (string) ( $of[$side] ?? '' ), Reader::INSIDE );
-			$whole	= $shorthand === true && $inside[0] !== '' && count( array_unique( $inside ) ) === 1;
+			$whole	= [];
+
+			if( $shorthand === true )
+				foreach( [ 'm' => Reader::OUTSIDE, 'p' => Reader::INSIDE ] as $word => $four ) {
+
+					$steps = array_map( static fn( string $side ): string => (string) ( $of[$side] ?? '' ), $four );
+
+					if( $steps[0] !== '' && count( array_unique( $steps ) ) === 1 )
+						$whole[$four[0]] = [ $four, 'nino-'. $word. '-'. $steps[0] ];
+				}
+
 			$class	= [];
+			$said		= [];
 
 			foreach( Reader::SPACING as $side ) {
 
 				$step = (string) ( $of[$side] ?? '' );
 
-				if( $step === '' )
+				if( $step === '' || isset( $said[$side] ) === true )
 					continue;
 
-				if( $whole === true && in_array( $side, Reader::INSIDE, true ) === true ) {
+				if( isset( $whole[$side] ) === true ) {
 
-					if( $side === Reader::INSIDE[0] )
-						$class[] = 'nino-p-'. $step;
+					$class[] = $whole[$side][1];
+
+					foreach( $whole[$side][0] as $one )
+						$said[$one] = true;
 
 					continue;
 				}
@@ -862,7 +874,7 @@ namespace Nino\Modules\Builder {
 			$call				= '['. $name;
 
 			// The radius of a surface is the first class of its call, then the hover of a picture, then - on a card - how far in from either side its picture starts, left
-			// then right, then the six sides of the spacing of any component, then the classes the editor wrote (the model refuses the radius, the hover and the offsets on a
+			// then right, then the eight sides of the spacing of any component, then the classes the editor wrote (the model refuses the radius, the hover and the offsets on a
 			// component that is none of the kinds they are for: see Document)
 			$first = isset( Reader::RADIUS_CLASS[(string) ( $node['radius'] ?? '' )] ) === true ? [ Reader::RADIUS_CLASS[$node['radius']] ] : [];
 

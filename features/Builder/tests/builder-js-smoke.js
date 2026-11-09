@@ -129,7 +129,7 @@
  *												element has -, the accordion with one block open, the head of a
  *												closed one saying only what deviates from the default of the
  *												element, the block that was open last remembered by the kind of
- *												element, the box of the six sides, the offsets of a picture,
+ *												element, the box of the eight sides, the offsets of a picture,
  *												the question mark that carries what a field has to say - wired
  *												to its tip by aria, closed by Escape - and no sentence under a
  *												field; and the stylesheet that gives the dialog its width and
@@ -1350,6 +1350,17 @@ check( 'the order of a loop is a field and a direction, written as the loop read
 		&& JSON.stringify( builder._sortState( { attributes : { sort : '-date' } } ) ) === '{"field":"date","descending":true,"several":false}' && builder._sortState( { attributes : { sort : 'a,-b' } } ).several === true
 		&& builder._sortState( { attributes : {} } ).field === '';
 } )() );
+check( 'the order of a loop by the uri of its elements: the key is .uri, which every element carries - a minus in front of it reverses it, it is no list, and the head says its label and the direction, not the raw key; a field of the type and a list say themselves', ( function() {
+	const stack = { attributes : { sort : '.uri' } };
+	const plain = JSON.stringify( builder._sortState( stack ) );
+	builder._sortSet( stack, '.uri', true );
+	const down = stack.attributes.sort;
+	const back = JSON.stringify( builder._sortState( stack ) );
+	const sortWord = word('stack/sort');
+	const said = [ '.uri', '-.uri', 'title', '-date', 'a,-b', '' ].map( function( sort ) { return builder._sortSaid( { attributes : { sort : sort } } ) } );
+	return builder.SORT_URI === '.uri' && plain === '{"field":".uri","descending":false,"several":false}' && down === '-.uri' && back === '{"field":".uri","descending":true,"several":false}'
+		&& JSON.stringify( said ) === JSON.stringify( [ sortWord+ ' '+ word('stack/sort-uri'), sortWord+ ' '+ word('stack/sort-uri')+ ' \u2193', sortWord+ ' title', sortWord+ ' date \u2193', sortWord+ ' a,-b', '' ] ) && said[0].indexOf('.uri') === -1 && said[1].indexOf('.uri') === -1;
+} )() );
 
 check( 'the width of a column in a viewport is a number, and hidden is an entry for the viewports that hide it only', ( function() {
 	const col = builder._newCol();
@@ -1581,6 +1592,19 @@ check( 'a loop is a row among the components of its column, with the class that 
 } )() );
 check( '...the cell of an open loop stands one level in from a dashed line, and its rail has a colour of its own: not the blue of the selection', /\.builder-loop-cell \{[^}]*padding-left: [^;]+;\n\tborder-left: 1px dashed /.test( stylesheet ) === true && /\.builder-loop \{\n\t--builder-loop-rail: #[0-9a-f]{6};/.test( stylesheet ) === true );
 check( '...the red chip is red on every ground: a light red ink and line in a section of a dark, a black or the brand ground - where the ink of the workbench would not read - and the red of the workbench on the others', /:is\(\.builder-color-dark, \.builder-color-black, \.builder-color-primary\) \{[^}]*--builder-red-ink: #[0-9a-f]{6};[^}]*--builder-red-line: #[0-9a-f]{6};/.test( stylesheet ) === true && /\.builder-chip\.is-red \{\n\tborder-color: var\(--builder-red-line, var\(--editor-red\)\);\n\tcolor: var\(--builder-red-ink, var\(--editor-red\)\);/.test( stylesheet ) === true && /--builder-red-ink: initial;/.test( stylesheet ) === true );
+check( '...a loop sorted by the uri of its elements has the label of it in its chip, as the head of its block has, never the raw key - and a field of the type or a list say themselves', ( function() {
+	const stack = builder._doc.model.blocks[1].cols[1].components[0];
+	const was = stack.attributes.sort;
+	const chip = function( sort ) {
+		stack.attributes.sort = sort;
+		builder._renderEditor();
+		return barOf( loopRow() ).querySelectorAll('.builder-chip')[0].textContent;
+	};
+	const found = [ chip( '.uri' ), chip( '-.uri' ), chip( 'title' ), chip( 'a,-b' ) ];
+	chip( was );
+	return found[0] === 'Services · '+ word('loop/sorted').replace( '%s', word('stack/sort-uri') ) && found[1] === found[0] && found[0].indexOf('.uri') === -1
+		&& found[2] === 'Services · '+ word('loop/sorted').replace( '%s', 'title' ) && found[3] === 'Services · '+ word('loop/sorted').replace( '%s', 'a,-b' ) && stack.attributes.sort === was;
+} )() );
 check( '...the colour of a loop is a class of the stylesheet and nothing the script paints: the rail is one custom property, which the row, its chip and its item in the lightbox share, and the row carries no style of its own', /\.builder-loop \{[^}]*--builder-loop-rail:[^}]*border-left: 3px solid var\(--builder-loop-rail\);/.test( stylesheet ) === true && /\.builder-chip\.is-loop \{\n\tborder-color: var\(--builder-loop-rail\);/.test( stylesheet ) === true
 	&& /\.builder-pick-item\.is-loop \{[^}]*--builder-loop-rail:/.test( stylesheet ) === true && loopRow().getAttribute('style') === null );
 // What a row of the preview is under the pointer: it is selected by a click and its settings are opened by a double click - nothing in it folds
@@ -2221,6 +2245,7 @@ const settingsOf = function() { return builder._doc.model.blocks[0].settings };
 // The name a select of the box of the spacing has: its side and whether it is outside or inside
 const sideLabel = function( side, place ) { return word('section/spacing-cell').replace( '%s', word('section/'+ side) ).replace( '%s', word('spacing/'+ place) ) };
 const boxesIn = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
+const pairsIn = function() { return blockOf('spacing').querySelectorAll('.builder-boxes') };
 const stepsOf = function( box ) { return box.querySelectorAll('select').map( function( select ) { return select.dataset.key } ).join() };
 
 check( 'the dialog of a content section has the blocks the table has for it, in the order of the table - the ids and how many, but for the block of the tiles, which a content section has no control for - and no strip of tabs: surface, spacing, width, order, loop and properties', JSON.stringify( blockIds() ) === JSON.stringify( builder.BLOCKS.section.map( function( block ) { return block.id } ).filter( function( id ) { return id !== 'tiles' } ) )
@@ -2400,54 +2425,66 @@ if( openBlock() !== openBefore )
 	headOf( openBefore ).click();
 
 const spacingBody = function() { return blockOf('spacing') };
-check( 'Spacing: the gap between the columns of the row and the whitespace of the page, then the box of the section - outside above, inside above, left, right and below, outside below - and under it, with its name, the box of its row, which has the inside alone: a box is a group of selects around a small rectangle',
-	JSON.stringify( labelList( spacingBody() ) ) === JSON.stringify( [ word('section/row-gap'), word('section/whitespace'), sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ),
+check( 'Spacing: the gap between the columns of the row and the whitespace of the page, then the two boxes of the section side by side - Outside with its four sides above, left, right and below, Inside with its four - and under them, with its name, the box of its row, which has the inside alone: a box is a group of selects around a small rectangle',
+	JSON.stringify( labelList( spacingBody() ) ) === JSON.stringify( [ word('section/row-gap'), word('section/whitespace'), sideLabel( 'above', 'outside' ), sideLabel( 'left', 'outside' ), sideLabel( 'right', 'outside' ), sideLabel( 'below', 'outside' ),
+		sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ),
 		sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ) ] )
-	&& boxesIn().length === 2 && boxesIn().every( function( box ) { return box.getAttribute('role') === 'group' && box.querySelector('.builder-box-frame') !== null && box.querySelector('.builder-box-core') !== null } )
-	&& boxesIn().map( function( box ) { return box.getAttribute('aria-label') } ).join() === word('tree/section')+ ','+ word('spacing/row') && boxesIn()[1].querySelector('.builder-box-name').textContent === word('spacing/row')
-	&& spacingBody().querySelector('table') === null );
-check( '...the section\'s box is the six sides of the section, in the order the Reader keeps them, and the row\'s the four inside sides of the row - each select marked with the setting it writes - and a step is none, shown as a dash, or 0 to 6', stepsOf( boxesIn()[0] ) === 'mt,pt,pl,pr,pb,mb' && stepsOf( boxesIn()[1] ) === 'rowPt,rowPl,rowPr,rowPb' && builder.SIDES.join() === 'mt,mb,pt,pb,pl,pr'
+	&& pairsIn().length === 1 && pairsIn()[0].getAttribute('role') === 'group' && pairsIn()[0].getAttribute('aria-label') === word('tree/section') && pairsIn()[0].querySelectorAll('.builder-box').length === 2 && pairsIn()[0].querySelectorAll('select').length === 8
+	&& boxesIn().length === 3 && boxesIn().every( function( box ) { return box.getAttribute('role') === 'group' && box.querySelector('.builder-box-frame') !== null && box.querySelector('.builder-box-core') !== null && box.querySelectorAll('select').length === 4 } )
+	&& boxesIn().map( function( box ) { return box.getAttribute('aria-label') } ).join() === [ word('spacing/outside'), word('spacing/inside'), word('spacing/row') ].join() && boxesIn().map( function( box ) { return box.querySelector('.builder-box-name').textContent } ).join() === [ word('spacing/outside'), word('spacing/inside'), word('spacing/row') ].join()
+	&& boxesIn().slice( 0, 2 ).every( function( box ) { return box.parentNode === pairsIn()[0] } ) && boxesIn()[2].parentNode !== pairsIn()[0] && spacingBody().querySelector('table') === null );
+check( '...the section\'s boxes are the eight sides of the section, in the order the Reader keeps them - the margin in the first, the padding in the second - and the row\'s the four inside sides of the row - each select marked with the setting it writes - and a step is none, shown as a dash, or 0 to 6', stepsOf( boxesIn()[0] ) === 'mt,ml,mr,mb' && stepsOf( boxesIn()[1] ) === 'pt,pl,pr,pb' && stepsOf( boxesIn()[2] ) === 'rowPt,rowPl,rowPr,rowPb' && builder.SIDES.join() === 'mt,mb,ml,mr,pt,pb,pl,pr'
 	&& boxesIn().every( function( box ) { return box.querySelectorAll('select').every( function( select ) { return select.children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6' && select.children[0].textContent === '–' && select.children[3].textContent === '2' } ) } ) );
-check( '...each select writes its own setting, the section\'s box the section\'s and the row\'s box the row\'s - above and below outside, the four sides inside - and none of the others', ( function() {
+check( '...each select writes its own setting, the margin box the margin of the section, the padding box its padding and the row\'s box the row\'s - and none of the others', ( function() {
 	const own = function() { return builder.SIDES.map( function( side ) { return settingsOf()[side] } ).join() };
 	const row = function() { return [ 'rowPt', 'rowPb', 'rowPl', 'rowPr' ].map( function( key ) { return settingsOf()[key] } ).join() };
 	const before = changes;
 	change( boxesIn()[0], sideLabel( 'above', 'outside' ), '3' );
 	change( boxesIn()[0], sideLabel( 'below', 'outside' ), '5' );
-	change( boxesIn()[0], sideLabel( 'above', 'inside' ), '1' );
-	change( boxesIn()[0], sideLabel( 'below', 'inside' ), '2' );
-	change( boxesIn()[0], sideLabel( 'left', 'inside' ), '4' );
-	change( boxesIn()[0], sideLabel( 'right', 'inside' ), '6' );
-	const section = own() === '3,5,1,2,4,6' && row() === ',,,';
-	change( boxesIn()[1], sideLabel( 'above', 'inside' ), '0' );
-	change( boxesIn()[1], sideLabel( 'below', 'inside' ), '6' );
-	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '2' );
-	change( boxesIn()[1], sideLabel( 'right', 'inside' ), '3' );
-	const sides = row() === '0,6,2,3' && own() === '3,5,1,2,4,6' && changes === before + 10 && valueAt( boxesIn()[1], sideLabel( 'left', 'inside' ) ) === '2';
+	const half = own() === '3,5,,,,,,' && row() === ',,,';
+	change( boxesIn()[0], sideLabel( 'left', 'outside' ), '2' );
+	change( boxesIn()[0], sideLabel( 'right', 'outside' ), '4' );
+	change( boxesIn()[1], sideLabel( 'above', 'inside' ), '1' );
+	change( boxesIn()[1], sideLabel( 'below', 'inside' ), '2' );
+	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '4' );
+	change( boxesIn()[1], sideLabel( 'right', 'inside' ), '6' );
+	const section = half && own() === '3,5,2,4,1,2,4,6' && row() === ',,,';
+	change( boxesIn()[2], sideLabel( 'above', 'inside' ), '0' );
+	change( boxesIn()[2], sideLabel( 'below', 'inside' ), '6' );
+	change( boxesIn()[2], sideLabel( 'left', 'inside' ), '2' );
+	change( boxesIn()[2], sideLabel( 'right', 'inside' ), '3' );
+	const sides = row() === '0,6,2,3' && own() === '3,5,2,4,1,2,4,6' && changes === before + 12 && valueAt( boxesIn()[2], sideLabel( 'left', 'inside' ) ) === '2';
 	return section && sides;
 } )() );
-check( '...the head of the block says each box that has a side set - outside above and below, then inside above, below, left and right, a dash for a side that is not set - and the row\'s with its name in front and the inside alone, and the whitespace of the page', ( function() {
-	const first = word('spacing/outside')+ ' 3/5 · '+ word('spacing/inside')+ ' 1/2/4/6';
+check( '...a change of the left margin writes the model and the head says it: the left and the right margin are a setting each, not a class of the editor\'s', ( function() {
+	change( boxesIn()[0], sideLabel( 'left', 'outside' ), '6' );
+	const written = settingsOf().ml === '6' && settingsOf().mr === '4' && settingsOf().mt === '3' && valueAt( boxesIn()[0], sideLabel( 'left', 'outside' ) ) === '6';
+	const said = saysOf('spacing').textContent.indexOf( word('spacing/outside')+ ' 3/5/6/4' ) === 0;
+	change( boxesIn()[0], sideLabel( 'left', 'outside' ), '2' );
+	return written && said && settingsOf().ml === '2';
+} )() );
+check( '...the head of the block says each box that has a side set - outside above, below, left and right, then inside above, below, left and right, a dash for a side that is not set - and the row\'s with its name in front and the inside alone, and the whitespace of the page', ( function() {
+	const first = word('spacing/outside')+ ' 3/5/2/4 · '+ word('spacing/inside')+ ' 1/2/4/6';
 	const second = word('spacing/row')+ ' '+ word('spacing/inside')+ ' 0/6/2/3';
 	const both = saysOf('spacing').textContent === first+ ' · '+ second;
-	change( boxesIn()[0], sideLabel( 'left', 'inside' ), '' );
-	change( boxesIn()[0], sideLabel( 'right', 'inside' ), '' );
-	change( boxesIn()[0], sideLabel( 'above', 'inside' ), '' );
-	change( boxesIn()[0], sideLabel( 'below', 'inside' ), '' );
-	const dashes = saysOf('spacing').textContent === word('spacing/outside')+ ' 3/5 · '+ word('spacing/inside')+ ' –/–/–/– · '+ second;
-	[ 'above', 'below' ].forEach( function( side ) { change( boxesIn()[0], sideLabel( side, 'outside' ), '' ) } );
-	[ 'above', 'below', 'left', 'right' ].forEach( function( side ) { change( boxesIn()[1], sideLabel( side, 'inside' ), '' ) } );
+	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '' );
+	change( boxesIn()[1], sideLabel( 'right', 'inside' ), '' );
+	change( boxesIn()[1], sideLabel( 'above', 'inside' ), '' );
+	change( boxesIn()[1], sideLabel( 'below', 'inside' ), '' );
+	const dashes = saysOf('spacing').textContent === word('spacing/outside')+ ' 3/5/2/4 · '+ word('spacing/inside')+ ' –/–/–/– · '+ second;
+	[ 'above', 'below', 'left', 'right' ].forEach( function( side ) { change( boxesIn()[0], sideLabel( side, 'outside' ), '' ) } );
+	[ 'above', 'below', 'left', 'right' ].forEach( function( side ) { change( boxesIn()[2], sideLabel( side, 'inside' ), '' ) } );
 	return both && dashes && saysOf('spacing').textContent === '' && saysOf('spacing').hidden === true && builder.SIDES.every( function( side ) { return settingsOf()[side] === '' } );
 } )() );
 check( '...the box of the row and the width are the same two settings: the width to the edge shows the row\'s left and right at 0, and a side the box sets changes what the width says - to the edge only where both are 0 with the full width', ( function() {
 	change( widthBody(), word('section/width'), 'edge' );
-	const shown = valueAt( boxesIn()[1], sideLabel( 'left', 'inside' ) )+ valueAt( boxesIn()[1], sideLabel( 'right', 'inside' ) );
-	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '1' );
+	const shown = valueAt( boxesIn()[2], sideLabel( 'left', 'inside' ) )+ valueAt( boxesIn()[2], sideLabel( 'right', 'inside' ) );
+	change( boxesIn()[2], sideLabel( 'left', 'inside' ), '1' );
 	const moved = valueAt( widthBody(), word('section/width') );
-	change( boxesIn()[1], sideLabel( 'left', 'inside' ), '0' );
+	change( boxesIn()[2], sideLabel( 'left', 'inside' ), '0' );
 	const back = valueAt( widthBody(), word('section/width') );
 	change( widthBody(), word('section/width'), 'content' );
-	const cleared = valueAt( boxesIn()[1], sideLabel( 'left', 'inside' ) )+ valueAt( boxesIn()[1], sideLabel( 'right', 'inside' ) )+ settingsOf().rowPl+ settingsOf().rowPr;
+	const cleared = valueAt( boxesIn()[2], sideLabel( 'left', 'inside' ) )+ valueAt( boxesIn()[2], sideLabel( 'right', 'inside' ) )+ settingsOf().rowPl+ settingsOf().rowPr;
 	settingsOf().row = 'wide';
 	redrawBlocks();
 	return shown === '00' && moved === 'full' && back === 'edge' && cleared === '' && settingsOf().row === 'wide';
@@ -3052,22 +3089,24 @@ check( '...the head of the block says the widths of the three viewports, and tha
 
 headOf('spacing').click();
 const colBoxes = function() { return blockOf('spacing').querySelectorAll('.builder-box') };
-check( 'Spacing of a column: the gap between its components, then the box of its sides - outside above, inside above, left, right and below, outside below - the six sides of the column, none set to begin with', JSON.stringify( labelList( blockOf('spacing') ) ) === JSON.stringify( [ word('col/stack-gap'), sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ) ] )
-	&& colBoxes().length === 1 && stepsOf( colBoxes()[0] ) === 'mt,pt,pl,pr,pb,mb' && colBoxes()[0].getAttribute('aria-label') === word('block/spacing/label') && builder.SIDES.every( function( side ) { return colOf()[side] === '' } ) && colOf().p === undefined
+check( 'Spacing of a column: the gap between its components, then its two boxes, Outside and Inside, each with its four sides above, left, right and below - the eight sides of the column, none set to begin with', JSON.stringify( labelList( blockOf('spacing') ) ) === JSON.stringify( [ word('col/stack-gap'), sideLabel( 'above', 'outside' ), sideLabel( 'left', 'outside' ), sideLabel( 'right', 'outside' ), sideLabel( 'below', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ) ] )
+	&& colBoxes().length === 2 && stepsOf( colBoxes()[0] ) === 'mt,ml,mr,mb' && stepsOf( colBoxes()[1] ) === 'pt,pl,pr,pb' && blockOf('spacing').querySelectorAll('.builder-boxes')[0].getAttribute('aria-label') === word('block/spacing/label') && builder.SIDES.every( function( side ) { return colOf()[side] === '' } ) && colOf().p === undefined
 	&& optionsOf( blockOf('spacing'), word('col/stack-gap') ) === '='+ word('option/space-default')+ ',0=0,1=1,2=2,3=3,4=4,5=5,6=6' && tipOf( controlOf( blockOf('spacing'), word('col/stack-gap') ) ) === null
 	&& colBoxes()[0].querySelector('.builder-help-tip').textContent === word('hint/spacing') );
 change( dialogContent(), word('col/stack-gap'), '3' );
-change( colBoxes()[0], sideLabel( 'above', 'inside' ), '1' );
-change( colBoxes()[0], sideLabel( 'left', 'inside' ), '0' );
+change( colBoxes()[1], sideLabel( 'above', 'inside' ), '1' );
+change( colBoxes()[1], sideLabel( 'left', 'inside' ), '0' );
+change( colBoxes()[0], sideLabel( 'right', 'outside' ), '2' );
 change( colBoxes()[0], sideLabel( 'below', 'outside' ), '4' );
 check( '...what the block writes is the gap and the sides of the column, each a step as text - 0 is a step of its own and is not none - and into nothing else: the settings of the section have none of them', colOf().stackGap === '3' && colOf().pt === '1' && colOf().pl === '0' && colOf().mb === '4' && colOf().mt === '' && colOf().pb === '' && colOf().pr === ''
-	&& valueAt( colBoxes()[0], sideLabel( 'left', 'inside' ) ) === '0' && builder._doc.model.blocks[0].settings.mt === '' && builder._doc.model.blocks[0].settings.pt === '' && builder._doc.model.blocks[0].settings.pl === ''
-	&& saysOf('spacing').textContent === [ word('spacing/gap')+ ' 3', word('spacing/outside')+ ' –/4 · '+ word('spacing/inside')+ ' 1/–/0/–' ].join(' · ') );
-change( colBoxes()[0], sideLabel( 'above', 'inside' ), '' );
+	&& colOf().mr === '2' && colOf().ml === '' && valueAt( colBoxes()[1], sideLabel( 'left', 'inside' ) ) === '0' && builder._doc.model.blocks[0].settings.mt === '' && builder._doc.model.blocks[0].settings.pt === '' && builder._doc.model.blocks[0].settings.pl === ''
+	&& saysOf('spacing').textContent === [ word('spacing/gap')+ ' 3', word('spacing/outside')+ ' –/4/–/2 · '+ word('spacing/inside')+ ' 1/–/0/–' ].join(' · ') );
+change( colBoxes()[1], sideLabel( 'above', 'inside' ), '' );
 check( '...none puts the step away again', colOf().pt === '' && colOf().pl === '0' );
 change( dialogContent(), word('col/stack-gap'), '' );
-change( colBoxes()[0], sideLabel( 'left', 'inside' ), '' );
+change( colBoxes()[1], sideLabel( 'left', 'inside' ), '' );
 change( colBoxes()[0], sideLabel( 'below', 'outside' ), '' );
+change( colBoxes()[0], sideLabel( 'right', 'outside' ), '' );
 check( '...a block with nothing set says nothing in its head', saysOf('spacing').textContent === '' && saysOf('spacing').hidden === true );
 headOf('width').click();
 
@@ -3341,6 +3380,27 @@ change( loopPane(), 'Sort by', 'price' );
 check( '...and the direction stays where a field is chosen after it', builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === 'price' && ( change( loopPane(), 'Direction', 'desc' ), builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === '-price' ) );
 change( loopPane(), 'Sort by', '' );
 check( '...no field is no order', builder._doc.model.blocks[1].cols[1].components[0].attributes.sort === '' );
+check( '...the choices of the order are none, the uri of the element once, and then the fields of the type: choosing the uri writes .uri, the arrows turn it to -.uri and back, and the head of the loop says the label', ( function() {
+	const sortWord = word('stack/sort');
+	const direction = word('stack/direction');
+	const stack = builder._doc.model.blocks[1].cols[1].components[0];
+	const valuesOf = function() { return controlOf( loopPane(), sortWord ).el.children.map( function( option ) { return option.value } ) };
+	change( loopPane(), direction, 'asc' );
+	change( loopPane(), sortWord, '.uri' );
+	// The blocks are drawn again with the uri chosen, as when the dialog is opened on a loop that has it: what is read here is what a person is offered then
+	redrawBlocks();
+	const values = valuesOf();
+	const options = optionsOf( loopPane(), sortWord );
+	const asc = stack.attributes.sort === '.uri' && valueAt( loopPane(), sortWord ) === '.uri';
+	change( loopPane(), direction, 'desc' );
+	redrawBlocks();
+	const again = valuesOf();
+	const desc = stack.attributes.sort === '-.uri' && valueAt( loopPane(), sortWord ) === '.uri' && valueAt( loopPane(), direction ) === 'desc' && again.length === new Set( again ).size && values.length === new Set( values ).size;
+	const said = builder._sortSaid( stack );
+	change( loopPane(), direction, 'asc' );
+	change( loopPane(), sortWord, '' );
+	return values[0] === '' && values[1] === '.uri' && options.indexOf( '.uri='+ word('stack/sort-uri') ) !== -1 && asc && desc && said === sortWord+ ' '+ word('stack/sort-uri')+ ' \u2193' && stack.attributes.sort === '';
+} )() );
 builder._doc.model.blocks[1].cols[1].components[0].attributes.sort = 'a,-b';
 change( loopPane(), 'Type', '/team' );
 check( 'a list of fields is a line of text that is left as it is, with no arrows beside it', labelList( loopPane() ).indexOf( 'Direction' ) === -1 && valueAt( loopPane(), 'Sort by' ) === 'a,-b' );
@@ -4400,7 +4460,7 @@ check( 'an attribute of a schema stands in the block its schema names or its kin
 	delete builder._registry.components['stub-only'];
 	builder._closeDialog();
 
-	return found[0] === 'spacing:'+ [ sideLabel( 'above', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ), sideLabel( 'below', 'outside' ) ].join('|')+ ' / properties:Tone|Class of the component'
+	return found[0] === 'spacing:'+ [ sideLabel( 'above', 'outside' ), sideLabel( 'left', 'outside' ), sideLabel( 'right', 'outside' ), sideLabel( 'below', 'outside' ), sideLabel( 'above', 'inside' ), sideLabel( 'left', 'inside' ), sideLabel( 'right', 'inside' ), sideLabel( 'below', 'inside' ) ].join('|')+ ' / properties:Tone|Class of the component'
 		&& found[1].indexOf('link:') === 0 && found[1].indexOf('link:Opens|Linked') !== -1 && found[1].indexOf('properties:How|Class of the component') !== -1
 		&& found[2].indexOf('surface:Tint') === 0 && found[2].indexOf('properties:Mode|Class of the component') !== -1;
 } )() );
@@ -8338,7 +8398,7 @@ check( 'a column added to a row is the last of it and has the whole width in eve
 
 	return row.cols[2] === added && sharedBy( row, 'l' ) === '50,25,100' && sharedBy( row, 'm' ) === '50,25,100' && sharedBy( row, 's' ) === '100,100,100' && builder._share === undefined && builder.BESIDE === undefined;
 } )() );
-check( '...the new column is a column of its own in every way: it is not hidden anywhere, holds no loop and no components, and none of the six sides of its spacing is set', ( function() {
+check( '...the new column is a column of its own in every way: it is not hidden anywhere, holds no loop and no components, and none of the eight sides of its spacing is set', ( function() {
 
 	const row = { cols : [ builder._newCol() ] };
 	const added = builder._addedCol( row );
@@ -8358,7 +8418,7 @@ check( '...in a row of two that stand side by side in the large screen and below
 	const services = builder._doc.model.blocks[1];
 	return sharedBy( services, 'l' ) === '50,50,100' && sharedBy( services, 'm' ) === '100,100,100' && sharedBy( services, 's' ) === '100,100,100';
 } )() );
-check( 'what the editor makes new has the six sides of the spacing, none of them set: a section in its settings, a column, a component in its node - and the card, the one component that paints a ground, the two offsets of it as well; the column has no padding of its own as one setting', ( function() {
+check( 'what the editor makes new has the eight sides of the spacing, none of them set: a section in its settings, a column, a component in its node - and the card, the one component that paints a ground, the two offsets of it as well; the column has no padding of its own as one setting', ( function() {
 	const section = builder._newSection( page() );
 	const col = builder._newCol();
 	const text = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'text', [] );
@@ -9958,7 +10018,7 @@ const linkedLabel = cardDeclared.linked.label;
 const cardTitleOf = function() { return holderNow().components[0] };
 const hintsOf = function() { return Array.from( blockOf('link').querySelectorAll('.nino-admin-hint') ).map( function( hint ) { return hint.textContent } ) };
 const childAttributes = { tag : 'h3', style : '', color : '', href : '', target : '', class : '' };
-const childBox = { mt : '', mb : '', pt : '', pb : '', pl : '', pr : '' };
+const childBox = { mt : '', mb : '', ml : '', mr : '', pt : '', pb : '', pl : '', pr : '' };
 const titleChild = function() { return Object.assign( { name : 'card-title', source : '/template/page-home-card/story/title-2', text : null, attributes : Object.assign( {}, childAttributes ) }, childBox ) };
 const probeChild = function() { return Object.assign( { name : 'probe-link', source : '/template/page-home-card/story/title', text : null, attributes : { tag : 'p', style : '', color : '', class : '' } }, childBox ) };
 const textChild = function() { return Object.assign( { name : 'text', source : '/template/page-home-card/story/text', text : null, attributes : { tag : 'p', format : 'blocks', style : '', color : '', href : '', target : '', class : '' } }, childBox ) };

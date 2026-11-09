@@ -1255,13 +1255,20 @@ button.builder-status-item:hover {
 	letter-spacing: normal;
 }
 
-/* The box of the spacing: the four sides inside as selects around a small rectangle in a dashed frame, the two outside above and below it */
+/* The boxes of the spacing: the four sides of the margin and the four of the padding as selects around a small rectangle in a dashed frame each, side by side while
+   the block is wide enough for both and one above the other where it is not */
+.builder-boxes {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: .6rem 1rem;
+}
 .builder-box {
 	display: grid;
 	justify-items: center;
 	gap: .3rem;
 }
-.builder-box + .builder-box {
+.builder-boxes + .builder-box {
 	padding-top: .6rem;
 	border-top: 1px solid var(--editor-separator);
 }
@@ -1279,6 +1286,10 @@ button.builder-status-item:hover {
 }
 .builder-box-name:empty {
 	display: none;
+}
+/* The names of the two boxes are the words of the summary, which are written small */
+.builder-box-name::first-letter {
+	text-transform: uppercase;
 }
 .builder-box-frame {
 	display: grid;

@@ -151,8 +151,10 @@
 		LINK_TARGETS	: [ '', '_blank' ],
 		TEXTS			: [ '', 'left', 'center', 'right' ],
 		SPACES		: [ '', '0', '1', '2', '3', '4', '5', '6' ],
-		// The six sides of the spacing of an element, in the order the Reader keeps them (Reader::SPACING): outside above and below, inside above, below, left and right
-		SIDES			: [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ],
+		// The key of every element the kernel sorts by besides its fields: its uri, /<type>/<name>
+		SORT_URI	: '.uri',
+		// The eight sides of the spacing of an element, in the order the Reader keeps them (Reader::SPACING): outside above, below, left and right, inside above, below, left and right
+		SIDES			: [ 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ],
 		// The padding of the row of a section on its four sides, above, below, left and right: the row is the frame its columns stand in and has no outside
 		ROW_SIDES	: [ 'rowPt', 'rowPb', 'rowPl', 'rowPr' ],
 		// How far in from the left and the right the ground or the picture of a row, a column or a card starts: the steps of the space scale up to the third, none being the page's own
@@ -247,7 +249,7 @@
 
 		// What the dialog of an element shows, and the one place that says it: for each kind of element the blocks it has, in the order they are drawn in - the same seven for every kind, in
 		// this order: content, link, surface, spacing, width, loop and properties; a loop of a column has three of its own, data, presentation and properties - and in each block its controls, in the order they stand in, by the key of the setting a control writes. A
-		// control that writes several settings stands under each of them and is drawn once, at the first (the box of the six sides, the two offsets of a ground, the width of a column and where
+		// control that writes several settings stands under each of them and is drawn once, at the first (the box of the eight sides, the two offsets of a ground, the width of a column and where
 		// it is hidden); one that is no setting of its own stands under its own name (the width of the row of a section, which is the maximum width, the padding at its sides and the full
 		// width in one choice). _blocksOf() draws what stands here and nothing else: a control that is moved is drawn in its new block, one that is struck out is not drawn at all, and a
 		// block none of whose controls the element has is not drawn (a card has no content: its title, its text and its picture are components with a form of their own). The controls of
@@ -261,7 +263,7 @@
 				{ id : 'surface', controls : [ 'border', 'borderPrimary', 'color', 'inner', 'radius', 'rowRadius', 'background', 'cover', 'parallax', 'dim', 'padded', 'rowBgPl', 'rowBgPr', 'arrow' ] },
 				// The block of a section of tiles: the controls that are the tiles' own - the ratio, and the gap and the text of the row under the words of tiles - have names of their own, so that a content section has none of them
 				{ id : 'tiles', controls : [ 'ratio', 'tileGap', 'tileText' ] },
-				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
+				{ id : 'spacing', controls : [ 'rowGap', 'whitespace', 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr', 'rowPt', 'rowPb', 'rowPl', 'rowPr' ] },
 				{ id : 'width', controls : [ 'width', 'row', 'rowPlace', 'text', 'rowAlign', 'contentPos' ] },
 				// The order of the columns of the row, turned round for each viewport by itself - for a content section and for tiles alike
 				{ id : 'order', controls : [ 'reverse' ] },
@@ -270,7 +272,7 @@
 			],
 			column : [
 				{ id : 'surface', controls : [ 'color', 'radius', 'background', 'dim', 'linked', 'bgPl', 'bgPr' ] },
-				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
+				{ id : 'spacing', controls : [ 'stackGap', 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'width', controls : [ 'width', 'hidden', 'stackAlign', 'text' ] },
 				{ id : 'properties', controls : [ 'vpa', 'vpaSpeed', 'vpaMode', 'custom' ] },
 			],
@@ -295,7 +297,7 @@
 				{ id : 'content', controls : [ 'source' ] },
 				{ id : 'link', controls : [ 'link' ] },
 				{ id : 'surface', controls : [ 'background', 'bgPl', 'bgPr', 'radius', 'hover' ] },
-				{ id : 'spacing', controls : [ 'mt', 'mb', 'pt', 'pb', 'pl', 'pr' ] },
+				{ id : 'spacing', controls : [ 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ] },
 				{ id : 'properties', controls : [ 'variants', 'attributes', 'class' ] },
 			],
 		},
@@ -1096,7 +1098,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowPlace : '', rowAlign : '', reverse : { s : false, m : false, l : false }, rowGap : '', rowPl : '', rowPr : '', rowPt : '', rowPb : '', rowRadius : '', rowCustom : '', rowBgPl : '', rowBgPr : '', color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, padded : false, radius : '', contentPos : '', inner : false, tiles : kind === 'tiles', ratio : kind === 'tiles' ? builder.TILES_RATIO : '', whitespace : '', mt : '', mb : '', ml : '', mr : '', pt : '', pb : '', pl : '', pr : '', text : '', arrow : false, vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				stack			: null,
 				rowLoop		: null,
@@ -1112,7 +1114,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function( width ) {
-			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : { s : '', m : '', l : '' }, stackAlign : '', stackGap : '', mt : '', mb : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
+			return { width : width === undefined ? { s : 100, m : 100, l : 100 } : Object.assign( {}, width ), hidden : {}, color : '', dim : false, linked : false, radius : '', background : null, text : { s : '', m : '', l : '' }, stackAlign : '', stackGap : '', mt : '', mb : '', ml : '', mr : '', pt : '', pb : '', pl : '', pr : '', bgPl : '', bgPr : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', components : [] };
 		},
 
 		/**
@@ -1566,6 +1568,17 @@
 		},
 
 		/**
+		 *	The word an order is called by: the label of the element's uri for the key every element carries, else the field as it is
+		 *
+		 *	@param		{string}		field
+		 *
+		 *	@return		{string}
+		 */
+		_sortLabel : function( field ) {
+			return field === Nino.admin.builder.SORT_URI ? Nino.content.getText('/_admin/builder/stack/sort-uri') : field;
+		},
+
+		/**
 		 *	What the head of a block says of the order of a loop: the field it sorts by, with an arrow down where it is descending - nothing where there is none
 		 *
 		 *	@param		{Object}		stack
@@ -1574,9 +1587,10 @@
 		 */
 		_sortSaid : function( stack ) {
 
-			const state = Nino.admin.builder._sortState( stack );
+			const builder = Nino.admin.builder;
+			const state = builder._sortState( stack );
 
-			return state.field === '' ? '' : Nino.content.getText('/_admin/builder/stack/sort')+ ' '+ state.field+ ( state.descending === true ? ' \u2193' : '' );
+			return state.field === '' ? '' : Nino.content.getText('/_admin/builder/stack/sort')+ ' '+ builder._sortLabel( state.field )+ ( state.descending === true ? ' \u2193' : '' );
 		},
 
 		/**
@@ -1665,7 +1679,7 @@
 
 		/**
 		 *	A component as the editor makes a new one: the attributes the schema
-		 *	has, the six sides of the spacing, and in a static column a key of its own where it reads a text -
+		 *	has, the eight sides of the spacing, and in a static column a key of its own where it reads a text -
 		 *	made when the document is saved, with the text that is typed for it in
 		 *	each language and none in the others: the component's label is no text
 		 *	of its key, the field and the preview show it where nothing is typed.
@@ -1689,7 +1703,7 @@
 			const section = model.blocks[at[0]];
 			const component = { name : name, source : '', text : null, attributes : builder._clone( schema.defaults || {} ) };
 
-			// Every component has the six sides of the spacing, none until the editor sets them
+			// Every component has the eight sides of the spacing, none until the editor sets them
 			builder.SIDES.forEach( function( side ) { component[side] = '' } );
 
 			// A component that is a surface has a radius of its own, which is none until the editor sets it: it follows the default of its kind. The card, which paints a ground,
@@ -3036,7 +3050,7 @@
 				const type = ( registry.types || [] ).find( function( candidate ) { return candidate.uri === node.source } );
 				const cell = builder._cellKind( registry, node );
 				const row = cell === 'row' ? builder._rowOf( registry, node ) : null;
-				const sorted = builder._sortState( node ).field;
+				const sorted = builder._sortLabel( builder._sortState( node ).field );
 				// The loop's own entry first, else the first one inside its cell: a red child is seen on the row of the loop as well
 				const problem = reds.find( function( entry ) { return builder._same( entry.path, path ) } ) || reds.find( function( entry ) { return entry.path.length > path.length && path.every( function( part, at ) { return entry.path[at] === part } ) } );
 				const shows = cell === 'columns' ? 'columns' : ( cell === 'none' || row !== null ? 'hint' : 'children' );
@@ -3102,9 +3116,9 @@
 					padded			: block.settings.padded === true && ( covered === true || block.settings.parallax === true ),
 					whitespace	: block.settings.whitespace || '',
 					// A loop of sections is a block around the section: the stack by its word, what it runs over, the order, and the state it is in
-					loop				: loop === null ? null : { path : [ b ], label : builder._stackLabel( registry, loop.name ), type : loops === undefined || loops.title === '' ? loop.source : loops.title, sorted : builder._sortState( loop ).field, problem : problem( [ b ] ) === undefined ? null : problem( [ b ] ).why },
+					loop				: loop === null ? null : { path : [ b ], label : builder._stackLabel( registry, loop.name ), type : loops === undefined || loops.title === '' ? loop.source : loops.title, sorted : builder._sortLabel( builder._sortState( loop ).field ), problem : problem( [ b ] ) === undefined ? null : problem( [ b ] ).why },
 					// A loop around the row is a block around the row
-					rowLoop			: around === null ? null : { path : [ b ], label : builder._stackLabel( registry, around.name ), type : arounds === undefined || arounds.title === '' ? around.source : arounds.title, sorted : builder._sortState( around ).field, problem : problem( [ b ] ) === undefined ? null : problem( [ b ] ).why, columns : block.cols.length },
+					rowLoop			: around === null ? null : { path : [ b ], label : builder._stackLabel( registry, around.name ), type : arounds === undefined || arounds.title === '' ? around.source : arounds.title, sorted : builder._sortLabel( builder._sortState( around ).field ), problem : problem( [ b ] ) === undefined ? null : problem( [ b ] ).why, columns : block.cols.length },
 					background	: block.background !== null && block.background !== undefined,
 					// A section of tiles is drawn edge to edge, its tiles in its ratio
 					// The order of the columns: the viewports the row is turned round in, and whether it is in the one the preview shows
@@ -6787,22 +6801,20 @@
 		},
 
 		/**
-		 *	The spacing of an element as the box it is: the four sides inside as a select each around a small rectangle, the two outside above and below it, where the
-		 *	element has an outside. A select holds the steps 0 to 6 and none, which is the page's own and drawn as a dash. The box reads and writes the settings it is given -
-		 *	the keys of the sides, the Writer makes the classes of them - and nothing else
+		 *	The spacing of an element as the boxes it is: the four sides of a box as a select each around a small rectangle - a box Outside for the margin and a box Inside for the
+		 *	padding, side by side and one above the other where the room is short -, or the inside box alone where the element has no outside (the row of a section). A select holds
+		 *	the steps 0 to 6 and none, which is the page's own and drawn as a dash. The boxes read and write the settings they are given - the keys of the sides, the Writer makes the
+		 *	classes of them - and nothing else
 		 *
 		 *	@param		{Object}		holder						Where the settings are kept: the settings of a section, a column, a component
-		 *	@param		{Object}		options						{ name, hint, outside, inside, after }: the words the box is called by - '' for none -, the sentence a "?" says of it, the keys of the sides
-		 *																	outside - above, below, or null where it has no outside - and inside - above, below, left, right -, and what is called with the key of a side after it was written
+		 *	@param		{Object}		options						{ name, hint, outside, inside, after }: the words the group is called by - '' for none -, the sentence a "?" says of it, the keys of the sides
+		 *																	outside - above, below, left, right, or null where it has no outside - and inside - above, below, left, right -, and what is called with the key of a side after it was written
 		 *
-		 *	@return		{Element}
+		 *	@return		{Element}									The box of an element with no outside; else the group of the two boxes
 		 */
 		_boxField : function( holder, options ) {
 
 			const builder = Nino.admin.builder;
-			const box = builder._el( 'div', 'builder-box' );
-			const head = builder._el( 'div', 'builder-box-head' );
-			const frame = builder._el( 'div', 'builder-box-frame' );
 			const label = options.name === '' ? Nino.content.getText('/_admin/builder/block/spacing/label') : options.name;
 			const side = function( key, place, words ) {
 
@@ -6832,38 +6844,59 @@
 
 				return select;
 			};
+			// One box: the name above, the four sides around the core of the element, in the order above, left, core, right, below which the style sheet puts on the grid
+			const box = function( keys, place, name ) {
 
-			box.setAttribute( 'role', 'group' );
-			box.setAttribute( 'aria-label', label );
-			head.appendChild( builder._el( 'span', 'builder-box-name', options.name ) );
+				const one = builder._el( 'div', 'builder-box' );
+				const frame = builder._el( 'div', 'builder-box-frame' );
+				const head = builder._el( 'div', 'builder-box-head' );
+
+				one.setAttribute( 'role', 'group' );
+				one.setAttribute( 'aria-label', name === '' ? label : name );
+				head.appendChild( builder._el( 'span', 'builder-box-name', name ) );
+				one.appendChild( head );
+
+				frame.appendChild( side( keys[0], place, 'above' ) );
+				frame.appendChild( side( keys[2], place, 'left' ) );
+				frame.appendChild( builder._el( 'span', 'builder-box-core' ) );
+				frame.appendChild( side( keys[3], place, 'right' ) );
+				frame.appendChild( side( keys[1], place, 'below' ) );
+				one.appendChild( frame );
+
+				return one;
+			};
+
+			if( options.outside === null ) {
+
+				const alone = box( options.inside, 'inner', options.name );
+
+				if( options.hint !== '' )
+					alone.firstChild.appendChild( builder._help( options.hint, label ) );
+
+				return alone;
+			}
+
+			const group = builder._el( 'div', 'builder-boxes' );
+			const outside = box( options.outside, 'outer', Nino.content.getText('/_admin/builder/spacing/outside') );
+
+			group.setAttribute( 'role', 'group' );
+			group.setAttribute( 'aria-label', label );
 
 			if( options.hint !== '' )
-				head.appendChild( builder._help( options.hint, label ) );
+				outside.firstChild.appendChild( builder._help( options.hint, label ) );
 
-			box.appendChild( head );
+			group.appendChild( outside );
+			group.appendChild( box( options.inside, 'inner', Nino.content.getText('/_admin/builder/spacing/inside') ) );
 
-			if( options.outside !== null )
-				box.appendChild( side( options.outside[0], 'outer', 'above' ) );
-
-			frame.appendChild( side( options.inside[0], 'inner', 'above' ) );
-			frame.appendChild( side( options.inside[2], 'inner', 'left' ) );
-			frame.appendChild( builder._el( 'span', 'builder-box-core' ) );
-			frame.appendChild( side( options.inside[3], 'inner', 'right' ) );
-			frame.appendChild( side( options.inside[1], 'inner', 'below' ) );
-			box.appendChild( frame );
-
-			if( options.outside !== null )
-				box.appendChild( side( options.outside[1], 'outer', 'below' ) );
-
-			return box;
+			return group;
 		},
 
 		/**
-		 *	What a box says of itself in the head of its block: where a side is set, outside above and below, then inside above, below, left and right, a dash for the sides that are
+		 *	What the boxes say of themselves in the head of their block: where a side is set, outside above, below, left and right, then inside above, below, left and right, a dash for the sides that are
 		 *	not set - a box with no outside says the inside alone, and a box with nothing set says nothing. A box that has a name of its own has it in front
 		 *
 		 *	@param		{Object}		holder
-		 *	@param		{Array|null}	outside						The keys above and below, null for a box that has no outside
+		 *	@param		{Array|null}	outside						The keys above, below, left and right, null for a box that has no outside
 		 *	@param		{Array}			inside						The keys above, below, left and right
 		 *	@param		{string}		[name]
 		 *
@@ -7966,8 +7999,8 @@
 			};
 			const sides = {
 				keys	: builder.SIDES,
-				build	: function( body ) { body.appendChild( builder._boxField( settings, { name : word('tree/section'), hint : word('hint/spacing'), outside : [ 'mt', 'mb' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
-				says	: function() { return builder._boxSaid( settings, [ 'mt', 'mb' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
+				build	: function( body ) { body.appendChild( builder._boxField( settings, { name : word('tree/section'), hint : word('hint/spacing'), outside : [ 'mt', 'mb', 'ml', 'mr' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
+				says	: function() { return builder._boxSaid( settings, [ 'mt', 'mb', 'ml', 'mr' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
 			};
 			const rowSides = {
 				keys	: builder.ROW_SIDES,
@@ -8203,6 +8236,8 @@
 				},
 				mt : sides,
 				mb : sides,
+				ml : sides,
+				mr : sides,
 				pt : sides,
 				pb : sides,
 				pl : sides,
@@ -8390,7 +8425,7 @@
 			// A section of tiles has the controls it has of the content kind - the ground between its tiles, its lines, the picture behind the whole section with its dimming, its air, its loop, its animation and its own classes, and the order of its tiles, turned round for each viewport as for any row - and three of its
 			// own: the height of its tiles, the gap between them and how the text of the section runs, under the names the table lists in the block Tiles. It has no width, no row, no cover,
 			// no parallax and no picture of its row: its row is the whole width of the section, the picture of the section shows in the gaps between the tiles and its tiles hold their own
-			const kept = [ 'border', 'borderPrimary', 'background', 'dim', 'whitespace', 'mt', 'mb', 'pt', 'pb', 'pl', 'pr', 'stack', 'reverse', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
+			const kept = [ 'border', 'borderPrimary', 'background', 'dim', 'whitespace', 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr', 'stack', 'reverse', 'kind', 'vpa', 'vpaSpeed', 'vpaMode', 'vpaDelay', 'vpaDuration', 'custom', 'rowCustom', 'id' ];
 			const tiles = {};
 
 			kept.forEach( function( name ) { tiles[name] = controls[name] } );
@@ -8957,8 +8992,8 @@
 			};
 			const sides = {
 				keys	: builder.SIDES,
-				build	: function( body ) { body.appendChild( builder._boxField( col, { name : '', hint : word('hint/spacing'), outside : [ 'mt', 'mb' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
-				says	: function() { return builder._boxSaid( col, [ 'mt', 'mb' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
+				build	: function( body ) { body.appendChild( builder._boxField( col, { name : '', hint : word('hint/spacing'), outside : [ 'mt', 'mb', 'ml', 'mr' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
+				says	: function() { return builder._boxSaid( col, [ 'mt', 'mb', 'ml', 'mr' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
 			};
 			const offset = {
 				keys	: [ 'bgPl', 'bgPr' ],
@@ -9044,6 +9079,8 @@
 				},
 				mt : sides,
 				mb : sides,
+				ml : sides,
+				mr : sides,
 				pt : sides,
 				pb : sides,
 				pl : sides,
@@ -10478,9 +10515,9 @@
 			}
 
 			const names = Object.keys( fields );
-			const choices = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') } ].concat( names.map( function( name ) { return { value : name, label : name } } ) );
+			const choices = [ { value : '', label : Nino.content.getText('/_admin/builder/label/none') }, { value : builder.SORT_URI, label : builder._sortLabel( builder.SORT_URI ) } ].concat( names.map( function( name ) { return { value : name, label : name } } ) );
 
-			if( state.field !== '' && names.indexOf( state.field ) === -1 )
+			if( state.field !== '' && state.field !== builder.SORT_URI && names.indexOf( state.field ) === -1 )
 				choices.push( { value : state.field, label : state.field } );
 
 			pane.appendChild( builder._selectField( label, hint, choices, state.field, function( value ) {
@@ -10614,7 +10651,7 @@
 		/**
 		 *	The controls of the form of a component, by the name the table lists them under (see BLOCKS and _sectionControls()): the source, one control for each group of the
 		 *	attributes of its schema - the link, the background, the variants and the other attributes, each a field to the attribute in the order of the schema -, the offsets of the
-		 *	picture behind a card, the radius of a surface and the hover of a picture, the box of the six sides and the classes of the component. A control the component has nothing for is not one of them
+		 *	picture behind a card, the radius of a surface and the hover of a picture, the box of the eight sides and the classes of the component. A control the component has nothing for is not one of them
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{Object}		state							{ editors, editor, typed }, kept by the dialog for what is made in the content and is let go of when it closes
@@ -10679,8 +10716,8 @@
 			const controls = {};
 			const sides = {
 				keys	: builder.SIDES,
-				build	: function( body ) { body.appendChild( builder._boxField( component, { name : '', hint : word('hint/spacing'), outside : [ 'mt', 'mb' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
-				says	: function() { return builder._boxSaid( component, [ 'mt', 'mb' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
+				build	: function( body ) { body.appendChild( builder._boxField( component, { name : '', hint : word('hint/spacing'), outside : [ 'mt', 'mb', 'ml', 'mr' ], inside : [ 'pt', 'pb', 'pl', 'pr' ] } ) ) },
+				says	: function() { return builder._boxSaid( component, [ 'mt', 'mb', 'ml', 'mr' ], [ 'pt', 'pb', 'pl', 'pr' ] ) },
 			};
 
 			if( kind !== 'none' && builder._holds( builder._registry, component.name ) === '' )
