@@ -16,7 +16,7 @@ namespace Nino\Modules\Design {
 	 *	Preview						What a setup looks like, before it is the site's.
 	 *
 	 *										One page that has something to show for every tab and
-	 *										every object of the panel - the hero and the sections in
+	 *										every object of the panel - the hero style and the sections in
 	 *										every ground, the cards, the type, the buttons, the form and
 	 *										the table, the lists and the blocks - in the markup a real
 	 *										page produces, with the chosen header and footer around it

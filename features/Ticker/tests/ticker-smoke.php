@@ -125,8 +125,8 @@ $declared = $manifest['components']['ticker'] ?? [];
 
 check( 'the manifest declares one component, a row that holds components: the content is its source, the place of a section is what it holds, and a loop does not take it',
 	array_keys( $manifest['components'] ?? [] ) === [ 'ticker' ] && ( $declared['source'] ?? '' ) === 'content' && ( $declared['holds'] ?? '' ) === 'section' && ( $declared['loop'] ?? true ) === false );
-check( '...it says what the Builder draws it as, what it draws and where it stands: a block, a div of the class a theme addresses the row by, in a section and in the hero - not in a card, which holds components itself',
-	( $declared['preview'] ?? '' ) === 'block' && ( $declared['draws'] ?? '' ) === 'div .nino-ticker' && ( $declared['in'] ?? [] ) === [ 'section', 'hero' ] );
+check( '...it says what the Builder draws it as, what it draws and where it stands: a block, a div of the class a theme addresses the row by, in a section - not in a card, which holds components itself',
+	( $declared['preview'] ?? '' ) === 'block' && ( $declared['draws'] ?? '' ) === 'div .nino-ticker' && ( $declared['in'] ?? [] ) === [ 'section' ] );
 check( '...its picture is two chevrons: paths of a 24 by 24 stroke icon, each a tag and a map of strings',
 	count( $declared['icon'] ?? [] ) === 2 && array_filter( $declared['icon'], static fn( mixed $part ): bool => is_array( $part ) === true && $part[0] === 'path' && array_keys( $part[1] ) === [ 'd' ] && is_string( $part[1]['d'] ) === true ) === $declared['icon'] );
 check( '...and its label is told in both languages, the words of the two differing',

@@ -1565,12 +1565,12 @@ check( '...and points the numbers Nino.css reads by name at its knobs - the same
 	count( $pointedAt ) === count( $sectionSets ) && count( array_unique( array_map( 'serialize', $pointedAt ) ) ) === 1 && $ninoReads === []
 	&& ( reset( $pointedAt )['--scale-loud'] ?? '' ) === 'loud' && ( reset( $pointedAt )['--scale-quiet'] ?? '' ) === 'quiet' );
 
-/*	The hero is the loud variant: the kernel sizes the title and the subtitle of a hero by their role times --scale-loud and by no number of its own - below 768px and from it, where the
-	hero states its size again - so the loud knob of a section, which every section set points that number at, sizes the hero as it sizes the loud variants. The first check below is the
+/*	The hero is the loud size: the kernel sizes the hero style of the title and of the subtitle of a section by their role times --scale-loud and by no number of its own, so the loud
+	knob of a section, which every section set points that number at, sizes the hero as it sizes the loud variants. The first check below is the
 	coupling pin: the kernel's own suite holds that formula, this one holds the library to the Nino.css it runs against - it is red against a kernel that still sizes the hero by numbers
 	of its own, on which the loud knob would not move the hero. And the middle of the loud ladder and of the quiet one is the number Nino.css declares for it - the middle rung of a
 	ladder is Nino's value - held against the Nino.css this suite runs against, so that it holds on any kernel whose numbers move together with the library's	*/
-$heroSizes		= array_values( array_filter( designRules( $ninoCss ), static fn( array $rule ): bool => in_array( $rule['selector'], [ '.nino-hero-title', '.nino-hero-subtitle' ], true ) === true && preg_match( '/(?<![\w-])font-size\s*:/', $rule['body'] ) === 1 ) );
+$heroSizes		= array_values( array_filter( designRules( $ninoCss ), static fn( array $rule ): bool => in_array( $rule['selector'], [ '.nino-section-title--hero', '.nino-section-subtitle--hero' ], true ) === true && preg_match( '/(?<![\w-])font-size\s*:/', $rule['body'] ) === 1 ) );
 $heroReads		= [];
 
 foreach( $heroSizes as $heroSize ) {
@@ -1594,8 +1594,8 @@ foreach( $sectionSets as $set ) {
 			$middles[] = $set. ' '. $knob;
 }
 
-check( 'the hero is the loud variant: wherever Nino.css states the size of a hero title and of a hero subtitle - below 768px and from it - it is the size of the role times --scale-loud, and nothing else'
-	. ( $heroReads === [] ? '' : ' - not so for '. implode( ', ', $heroReads ) ), count( $heroSizes ) >= 4 && $heroReads === [] );
+check( 'the hero is the loud size: wherever Nino.css states the size of the hero style of the section title and of the section subtitle it is the size of the role times --scale-loud, and nothing else'
+	. ( $heroReads === [] ? '' : ' - not so for '. implode( ', ', $heroReads ) ), count( $heroSizes ) === 2 && $heroReads === [] );
 check( '...and the middle of the loud ladder and of the quiet ladder is the number the kernel declares for --scale-loud and --scale-quiet, in every section template'
 	. ( $middles === [] ? '' : ' - not so for '. implode( ', ', $middles ) ), $middles === [] && isset( $ninoRoot['--scale-loud'], $ninoRoot['--scale-quiet'] ) === true );
 
@@ -1705,7 +1705,7 @@ foreach( [ 'section' => '--section-align', 'card' => '--card-align' ] as $alignP
 				if( str_contains( $alignRule['selector'], ':where(:not(' ) === false || $leaves === false )
 					$notAligned[] = $alignPart. '/'. $set. ' '. substr( $alignRule['selector'], 0, 40 );
 
-				if( $alignPart === 'section' && $set === 'panel' && str_contains( $alignRule['selector'], 'nino-hero' ) === true )
+				if( $alignPart === 'section' && $set === 'panel' && str_contains( $alignRule['selector'], '--hero' ) === true )
 					$notAligned[] = 'section/panel answers the alignment of its opening: '. substr( $alignRule['selector'], 0, 40 );
 			}
 
@@ -1736,6 +1736,64 @@ foreach( Setup::available( $library, 'section' ) as $set ) {
 
 check( 'the rule under the title is a background in every section set: as high as the rule, as long as the length, with no border and room of six times its height, to 1.25rem, and itself'
 	. ( $ruleProblems === [] ? '' : ' - not so for '. implode( ', ', $ruleProblems ) ), $ruleProblems === [] );
+
+// The hero style of the title stands on the class of the section title as well, and the kernel draws no rule under it: no set draws the one it draws for the others - the background that is the line, the room under it and the width it narrows the title to - on the title that says hero
+$heroRuleProblems = [];
+
+foreach( Setup::available( $library, 'section' ) as $set ) {
+
+	$heroRuleCss		= designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) );
+	$heroRuleRules	= array_filter( designRules( $heroRuleCss ), static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-section-title' ) === true && ( str_contains( $rule['body'], 'background-size' ) === true || preg_match( '/padding-bottom\s*:[^;]*var\(--section-rule\)/', $rule['body'] ) === 1 ) );
+
+	if( count( $heroRuleRules ) !== 2 || array_filter( $heroRuleRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-section-title--hero)' ) === false ) !== [] )
+		$heroRuleProblems[] = $set. ' draws the rule on '. count( $heroRuleRules ). ' rules, not all of which leave the hero style alone';
+}
+
+// The opening of a set is a rule of the hero style alone, and it says what it says over the rules of the bands, which reach the hero through the base class at the same weight: every other rule of the set that names the
+// title or the subtitle without the hero and sets the same property stands before it, and the hero says a leading of its own
+$heroCascade = [];
+
+foreach( Setup::available( $library, 'section' ) as $set ) {
+
+	$heroCascadeRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) ) );
+
+	foreach( $heroCascadeRules as $heroAt => $heroRule ) {
+
+		if( preg_match( '/^\.nino-section-(title|subtitle)--hero(?::where\(.*\))?$/', $heroRule['selector'], $heroKind ) !== 1 )
+			continue;
+
+		preg_match_all( '/(?<![\w-])([a-z-]+)\s*:/', $heroRule['body'], $heroProperties );
+
+		foreach( array_unique( $heroProperties[1] ) as $heroProperty )
+			foreach( $heroCascadeRules as $otherAt => $otherRule )
+				if( $otherAt > $heroAt && str_contains( $otherRule['selector'], '.nino-section-'. $heroKind[1] ) === true && str_contains( $otherRule['selector'], '--hero' ) === false && $otherRule['within'] === $heroRule['within']
+					&& preg_match( '/(?<![\w-])'. preg_quote( $heroProperty, '/' ). '\s*:/', $otherRule['body'] ) === 1 )
+					$heroCascade[] = $set. ' '. $heroRule['selector']. ' is beaten at '. $heroProperty. ' by '. substr( $otherRule['selector'], 0, 40 );
+	}
+}
+
+$openLeading = [];
+
+foreach( [ 'title', 'subtitle' ] as $openKind ) {
+
+	$openRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', 'open' ) ) ) );
+	$openHero = array_values( array_filter( $openRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-section-'. $openKind. '--hero' && preg_match( '/(?<![\w-])line-height\s*:/', $rule['body'] ) === 1 ) );
+	$openBand = array_values( array_filter( $openRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-section-'. $openKind && preg_match( '/(?<![\w-])line-height\s*:/', $rule['body'] ) === 1 ) );
+
+	$openLine = static fn( array $rule ): string => preg_match( '/(?<![\w-])line-height\s*:\s*([^;]+);/', $rule['body'], $found ) === 1 ? trim( $found[1] ) : '';
+
+	if( count( $openHero ) !== 1 || count( $openBand ) !== 1 || $openLine( $openHero[0] ) === '' || ( $openKind === 'title' && $openLine( $openHero[0] ) === $openLine( $openBand[0] ) ) )
+		$openLeading[] = $openKind;
+}
+
+check( 'a rule of the opening of a set - the hero style on its own - is not beaten by a rule of the bands that sets the same property: none of them comes after it'
+	. ( $heroCascade === [] ? '' : ' - '. implode( ' | ', array_slice( $heroCascade, 0, 3 ) ) ), $heroCascade === [] );
+check( '...and the opening of Open says its leading itself, for the title and for the subtitle, and for the title another than the one of the bands'. ( $openLeading === [] ? '' : ' - not so for '. implode( ', ', $openLeading ) ), $openLeading === [] );
+check( '...and says the space under its title itself, the page\'s space-3 times the whitespace of the text, unless the page names a margin - the bands\' third of a space is not the opening\'s',
+	count( array_filter( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', 'open' ) ) ) ), static fn( array $rule ): bool => str_starts_with( $rule['selector'], '.nino-section-title--hero:where(:not([class*="nino-mb-"], [class*="nino-m-"]))' ) === true
+		&& preg_match( '/margin-bottom\s*:\s*calc\(\s*var\(--space-3\)\s*\*\s*var\(--whitespace-text, 1\)\s*\)\s*;/', $rule['body'] ) === 1 ) ) === 1 );
+check( 'the title that says hero has no rule under it in any section set: the two rules that draw it, its background and the room under it, leave the hero style out'
+	. ( $heroRuleProblems === [] ? '' : ' - '. implode( ' | ', $heroRuleProblems ) ), $heroRuleProblems === [] );
 
 /*	A margin class of a page is the page's too: a rule of the section sets and of the card sets that takes a box to the margins a nino-text-* class means - the class on the element or on what it
 	stands in, at every width or from a breakpoint - leaves the element that says nino-m-<n>, nino-mx-<n>, nino-ml-<n> or nino-mr-<n>, or it would take the margin of a title away that the page gave it.
@@ -1967,16 +2025,17 @@ foreach( [ 'section', 'card' ] as $alignedPart )
 
 		foreach( designRules( $alignedCss ) as $alignedRule )
 			if( preg_match( '/text-align\s*:\s*var\(\s*--section-align(?:-flow)?\s*\)/', $alignedRule['body'] ) === 1 )
-				foreach( [ 'nino-section-title', 'nino-section-subtitle', 'nino-section-text', 'nino-hero-title', 'nino-hero-subtitle' ] as $alignedClass )
+				foreach( [ 'nino-section-title', 'nino-section-subtitle', 'nino-section-text', 'nino-section-title--hero', 'nino-section-subtitle--hero' ] as $alignedClass )
 					if( str_contains( $alignedRule['selector'], '.'. $alignedClass. ',' ) === true || str_contains( $alignedRule['selector'], '.'. $alignedClass. ')' ) === true )
 						$classes[$alignedClass] = true;
 
-		$expected = $set === 'panel' ? [ 'nino-section-title', 'nino-section-subtitle', 'nino-section-text' ] : [ 'nino-section-title', 'nino-section-subtitle', 'nino-section-text', 'nino-hero-title', 'nino-hero-subtitle' ];
+		// The hero is the style of the title and of the subtitle, which stand on the base class as well: no set says a class of its own for it
+		$expected = [ 'nino-section-title', 'nino-section-subtitle', 'nino-section-text' ];
 
-		if( array_keys( $classes ) !== $expected && array_diff( $expected, array_keys( $classes ) ) !== [] )
+		if( array_diff( $expected, array_keys( $classes ) ) !== [] )
 			$readsAlign[] = $set. ' reads the alignment at '. implode( ', ', array_keys( $classes ) );
 
-		if( $set === 'panel' && isset( $classes['nino-hero-title'] ) === true )
+		if( $set === 'panel' && ( isset( $classes['nino-section-title--hero'] ) === true || isset( $classes['nino-section-subtitle--hero'] ) === true ) )
 			$readsAlign[] = 'panel reads it at its opening';
 
 		foreach( [ 'measure', 'measure-loud' ] as $measureName ) {
@@ -1990,7 +2049,7 @@ foreach( [ 'section', 'card' ] as $alignedPart )
 		}
 	}
 
-check( 'every section set reads the alignment at the title, the subtitle and the text of a section - and at the hero, but for Panel, whose opening is built on its rail and reads none of it'
+check( 'every section set reads the alignment at the title, the subtitle and the text of a section, the hero style among them since it stands on the same classes - and for Panel, whose opening is built on its rail, the hero style reads none of it'
 	. ( $readsAlign === [] ? '' : ' - '. implode( ' | ', array_slice( $readsAlign, 0, 3 ) ) ), $readsAlign === [] );
 check( '...the aspects of the knobs of the words are the default set\'s, rung for rung, in every set but for the measure, whose middle is the template\'s own'
 	. ( $aspectDrift === [] ? '' : ' - not so for '. implode( ', ', array_slice( $aspectDrift, 0, 4 ) ) ), $aspectDrift === [] );
@@ -5535,6 +5594,9 @@ $baseTokens			= designDeclarations( designBlock( designPlain( designSection( $ba
 $baseRoles			= designDeclarations( designPlain( designSection( $baseRaw, 2, DESIGN_BASE_MARKER ) ) );
 $defaultSheet		= Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library );
 
+check( 'the compile at the defaults draws the hero as the style of the section title and subtitle: it holds .nino-section-title--hero and .nino-section-subtitle--hero, and no .nino-hero-title and no .nino-hero-subtitle',
+	str_contains( $defaultSheet, '.nino-section-title--hero' ) === true && str_contains( $defaultSheet, '.nino-section-subtitle--hero' ) === true && preg_match( '/\.nino-hero-(?:title|subtitle)\b/', $defaultSheet ) !== 1 );
+
 check( 'base.css has its two sections, the tokens and the roles, and nothing of the type: no font-face, no family, no size, no raster',
 	$baseTokens !== [] && $baseRoles !== []
 	&& str_contains( $baseCss, '@font-face' ) === false
@@ -7006,7 +7068,7 @@ foreach( $groupKnobs as $groupPart => $groupNames )
 			one a set takes away to draw the rule as a background	*/
 		if( $groupPart === 'section' )
 			foreach( designRules( $css ) as $titleRule )
-				if( preg_match( '/\.nino-section-title\b/', $titleRule['selector'] ) === 1 && preg_match_all( '/(?<![\w-])(border(?!-radius)[a-z-]*)\s*:\s*([^;]+);/', $titleRule['body'], $titleBorders, PREG_SET_ORDER ) > 0 )
+				if( preg_match( '/\.nino-section-title(?!--hero)\b/', $titleRule['selector'] ) === 1 && preg_match_all( '/(?<![\w-])(border(?!-radius)[a-z-]*)\s*:\s*([^;]+);/', $titleRule['body'], $titleBorders, PREG_SET_ORDER ) > 0 )
 					foreach( $titleBorders as $titleBorder )
 						if( in_array( trim( $titleBorder[2] ), [ '0', '0px' ], true ) === false )
 							$newLadderProblems[] = $groupPart. '/'. $set. ': draws a border on the section title itself';
@@ -7209,8 +7271,8 @@ check( 'the manual tells the eight switches in one entry of its own, in both lan
 	of a card, the label of a button. Read from the files the way the panel and the compiler read them - the ladders with Setup::ladders() - and not from a list of the sets	*/
 $toggleSelectors = [
 	'header/nav-case' => [ '.nino-frame-header .nino-nav-content li a' ],
-	'section/title-case' => [ '.nino-section-title', '.nino-hero-title' ],
-	'section/subtitle-case' => [ '.nino-section-subtitle', '.nino-hero-subtitle' ],
+	'section/title-case' => [ '.nino-section-title' ],
+	'section/subtitle-case' => [ '.nino-section-subtitle' ],
 	'card/title-case' => [ '.nino-card-title' ],
 	'card/subtitle-case' => [ '.nino-card-subtitle' ],
 	'buttons/case' => [ '.nino-btn' ],
@@ -10238,8 +10300,8 @@ foreach( $inkObjects as $inkPart => $inkKnobs )
 				if( $inkPart === 'section' && str_contains( $reader, '.nino-tiles *' ) === false )
 					$inkProblems[] = $inkPart. '/'. $inkSet. ': the rule of '. $inkKnob. ' does not leave a section of tiles alone';
 
-				// The hero is the loud variant of a section: its title and its subtitle follow the knob
-				if( $inkPart === 'section' && str_contains( $reader, $inkKnob === 'title-ink' ? '.nino-hero-title' : '.nino-hero-subtitle' ) === false )
+				// The hero style of the title and of the subtitle of a section follows the knob
+				if( $inkPart === 'section' && str_contains( $reader, $inkKnob === 'title-ink' ? '.nino-section-title--hero' : '.nino-section-subtitle--hero' ) === false )
 					$inkProblems[] = $inkPart. '/'. $inkSet. ': the rule of '. $inkKnob. ' leaves the hero out';
 
 				if( $inkPart === 'tiles' && str_starts_with( $reader, '.nino-tiles ' ) === false )

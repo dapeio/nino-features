@@ -118,7 +118,7 @@ return [
 				],
 			],
 			'preview'		=> 'text',
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'line', [ 'x1' => '4', 'x2' => '20', 'y1' => '9', 'y2' => '9' ] ],
 				[ 'line', [ 'x1' => '4', 'x2' => '20', 'y1' => '15', 'y2' => '15' ] ],

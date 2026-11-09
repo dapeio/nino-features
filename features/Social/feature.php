@@ -160,7 +160,7 @@ return [
 			],
 			'preview'		=> 'block',
 			'draws'			=> 'ul .nino-social',
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'circle', [ 'cx' => '18', 'cy' => '5', 'r' => '3' ] ],
 				[ 'circle', [ 'cx' => '6', 'cy' => '12', 'r' => '3' ] ],
@@ -196,7 +196,7 @@ return [
 			'preview'		=> 'button',
 			'draws'			=> 'a .nino-social-link',
 			'stretched'	=> true,
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'path', [ 'd' => 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' ] ],
 				[ 'path', [ 'd' => 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' ] ],
@@ -218,7 +218,7 @@ return [
 			],
 			'preview'		=> 'block',
 			'draws'			=> 'span .nino-social-icon',
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '4' ] ],
 				[ 'path', [ 'd' => 'M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8' ] ],

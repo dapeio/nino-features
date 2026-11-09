@@ -362,8 +362,8 @@ check( '...a picture standing in a place that a card holds is none and one in an
 	&& $reader::surface( [ 'source' => 'image', 'in' => [ 'section' ] ], [ $holder( [ 'behind' => [ 'type' => 'image' ] ] ) ] ) === 'image' && $reader::surface( [ 'source' => 'image' ], [] ) === 'image'
 	&& $reader::surface( [ 'source' => 'text' ], [] ) === '' && $reader::surface( [ 'source' => 'none' ], [] ) === '' && $reader::surface( [ 'grid' => true ], [] ) === '' );
 check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'card', $schema['defaults'] ) === true ) === [] );
-check( '...the six titles name their tag and no level: one select of the tags their place takes, the default among them, then the style and the colour, which are variants - a hero is an h2, a section an h3, a card an h4, and the subtitles a p, a div and a p', array_filter(
-	[ 'hero-title' => 'h2', 'hero-subtitle' => 'p', 'title' => 'h3', 'subtitle' => 'div', 'card-title' => 'h4', 'card-subtitle' => 'p' ],
+check( '...the four titles name their tag and no level: one select of the tags their place takes, the default among them, then the style and the colour, which are variants - a section is an h3, a card an h4, and the subtitles a div and a p, the hero style among the styles of the two of a section', array_filter(
+	[ 'title' => 'h3', 'subtitle' => 'div', 'card-title' => 'h4', 'card-subtitle' => 'p' ],
 	static fn( string $default, string $name ): bool => array_keys( $registry['components'][$name]['attributes'] ) !== [ 'tag', 'style', 'color' ] || $registry['components'][$name]['attributes']['tag']['type'] !== 'select'
 		|| $registry['components'][$name]['attributes']['style']['type'] !== 'variant' || $registry['components'][$name]['attributes']['color']['type'] !== 'variant'
 		|| in_array( $default, $registry['components'][$name]['attributes']['tag']['options'], true ) === false || $registry['components'][$name]['defaults']['tag'] !== $default || array_key_exists( 'level', $registry['components'][$name]['defaults'] ) === true,
@@ -669,7 +669,7 @@ check( '...a call without its closing tag is a card with no children as well - t
 // has no ground has none of
 $bandRender		= static fn( array &$appData, array $args ): string => '<div class="band">'. $args['value']. '</div>';
 $bandSchema		= [
-	'label' => [ 'en_US' => 'Band', 'de_DE' => 'Band' ], 'source' => 'content', 'loop' => false, 'holds' => 'section', 'group' => 'section', 'preview' => 'block', 'draws' => 'div .band', 'in' => [ 'section', 'hero' ],
+	'label' => [ 'en_US' => 'Band', 'de_DE' => 'Band' ], 'source' => 'content', 'loop' => false, 'holds' => 'section', 'group' => 'section', 'preview' => 'block', 'draws' => 'div .band', 'in' => [ 'section' ],
 	'attributes' => [
 		'speed' => [ 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 40, 'label' => 'Speed' ],
 		'wrap' => [ 'type' => 'bool', 'default' => true, 'label' => 'Wrap' ],

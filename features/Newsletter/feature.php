@@ -13,8 +13,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[newsletter-signup]' => [
-				'en_US' => 'The signup form, ready for POST /.newsletter: a label, the email field, the honeypot, [csrf], the button and the line for the answer - the form the markup line below describes. It is also the component Newsletter signup of the Builder, in a section, a card and a hero; the Builder and the shortcode are one renderer. The words are the project\'s, in the Text panel: /feature/newsletter/signup/label, /feature/newsletter/signup/placeholder and /feature/newsletter/label/submit. The look is the kernel\'s form classes and whatever styles them, a theme or the looks of the Forms feature: nothing of it is set here.',
-				'de_DE' => 'Das Anmeldeformular, bereit für POST /.newsletter: eine Beschriftung, das E-Mail-Feld, der Honigtopf, [csrf], der Knopf und die Zeile für die Antwort – das Formular, das die Markup-Zeile unten beschreibt. Es ist auch die Komponente Newsletter-Anmeldung des Builders, in einer Sektion, einer Karte und einem Hero; Builder und Shortcode sind ein Renderer. Die Worte gehören dem Projekt, im Panel Texte: /feature/newsletter/signup/label, /feature/newsletter/signup/placeholder und /feature/newsletter/label/submit. Das Aussehen sind die Formularklassen des Kernels und was sie gestaltet, ein Theme oder die Looks des Features Forms: Hier wird nichts davon gesetzt.',
+				'en_US' => 'The signup form, ready for POST /.newsletter: a label, the email field, the honeypot, [csrf], the button and the line for the answer - the form the markup line below describes. It is also the component Newsletter signup of the Builder, in a section and a card; the Builder and the shortcode are one renderer. The words are the project\'s, in the Text panel: /feature/newsletter/signup/label, /feature/newsletter/signup/placeholder and /feature/newsletter/label/submit. The look is the kernel\'s form classes and whatever styles them, a theme or the looks of the Forms feature: nothing of it is set here.',
+				'de_DE' => 'Das Anmeldeformular, bereit für POST /.newsletter: eine Beschriftung, das E-Mail-Feld, der Honigtopf, [csrf], der Knopf und die Zeile für die Antwort – das Formular, das die Markup-Zeile unten beschreibt. Es ist auch die Komponente Newsletter-Anmeldung des Builders, in einer Sektion und einer Karte; Builder und Shortcode sind ein Renderer. Die Worte gehören dem Projekt, im Panel Texte: /feature/newsletter/signup/label, /feature/newsletter/signup/placeholder und /feature/newsletter/label/submit. Das Aussehen sind die Formularklassen des Kernels und was sie gestaltet, ein Theme oder die Looks des Features Forms: Hier wird nichts davon gesetzt.',
 			],
 			'[newsletter-signup inline="1"]' => [
 				'en_US' => 'The field and the button on one line (the kernel\'s nino-form--inline); the label is then read by screen readers only (nino-sr-only), the placeholder tells everyone else.',
@@ -65,8 +65,8 @@ return [
 		],
 		'install' => [
 			'templates/page-newsletter.tpl' => [
-				'en_US' => 'What /.newsletter and the answer of /.newsletter/action render: the title and the text of the outcome at hand, the form where a link has just been opened, and a home button that leads to the home page under the website\'s directory.',
-				'de_DE' => 'Was /.newsletter und die Antwort von /.newsletter/action rendern: Titel und Text des jeweiligen Ergebnisses, das Formular, wo gerade ein Link geöffnet wurde, und einen Home-Knopf, der zur Startseite unterhalb des Verzeichnisses der Website führt.',
+				'en_US' => 'What /.newsletter and the answer of /.newsletter/action render: the title and the text of the outcome at hand, the form where a link has just been opened, and a home button that leads to the home page under the website\'s directory. A project that copied the template writes the classes nino-section-title--hero and nino-section-subtitle--hero on its title and its text by hand.',
+				'de_DE' => 'Was /.newsletter und die Antwort von /.newsletter/action rendern: Titel und Text des jeweiligen Ergebnisses, das Formular, wo gerade ein Link geöffnet wurde, und einen Home-Knopf, der zur Startseite unterhalb des Verzeichnisses der Website führt. Ein Projekt, das die Vorlage kopiert hat, schreibt die Klassen nino-section-title--hero und nino-section-subtitle--hero an Titel und Text von Hand.',
 			],
 			'templates/newsletter-action.tpl' => [
 				'en_US' => 'The form with the button that an opened link shows: a post to /.newsletter/action with [csrf] and the token in a hidden field named confirm or unsubscribe.',
@@ -105,8 +105,7 @@ return [
 	'category'		=> 'communication',
 	'version'			=> '1.2.0',
 	// 1.9, for the toolset the code and the panel are written on, and for the
-	// [[url]] of [image] that the header of its mail writes. The hero of
-	// page-newsletter.tpl has the classes of nino-hero
+	// [[url]] of [image] that the header of its mail writes
 	'nino'				=> '^1.9',
 	'requires'		=> [],
 	'settings'		=> [],
@@ -138,7 +137,7 @@ return [
 			],
 			'preview'		=> 'block',
 			'draws'			=> 'form .nino-form',
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'path', [ 'd' => 'm22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7' ] ],
 				[ 'rect', [ 'x' => '2', 'y' => '4', 'width' => '20', 'height' => '16', 'rx' => '2' ] ],

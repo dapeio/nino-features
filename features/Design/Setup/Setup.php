@@ -99,7 +99,7 @@ namespace Nino\Modules\Design {
 		/*	The parts, in the order they are compiled - which is also the order they are
 			shown in, and the order of the cascade: what a later part says, it says over an
 			earlier one. Each styles one object of a page (see OBJECTS): the header and the
-			footer the two frames; the section the hero, a section with its title, subtitle and
+			footer the two frames; the section the hero style, a section with its title, subtitle and
 			text, the cover and the column on a ground - the content kind of a section, which the Builder
 			calls Content; the tiles the other kind, a section of tiles, its tiles and what is on them; the card a card and the parts of it; the
 			buttons .nino-btn and its variants; the lists .nino-list and its two markers; the
@@ -197,22 +197,22 @@ namespace Nino\Modules\Design {
 							divider				the weight of the line between its main band and its legal row
 							position			where the content stands: left, the place the template gives it, or centre (a choice)
 							nav-case			the links of the navigation in capitals (a toggle)
-				section		quiet, loud			the size of the --quiet and --loud variants - the title and the subtitle of a hero are the loud variant
+				section		quiet, loud			the size of the --quiet and --loud variants - the hero style of the title and of the subtitle is the loud size
 							title, subtitle	the size of the title and of the subtitle of a section
-							title-tracking	the letter-spacing of the title of a section, the hero's among them
+							title-tracking	the letter-spacing of the title of a section, the hero style's among them
 							space				the vertical space of a section
 							rule				the rule under the title of a section
 							rule-length		how long that rule is: short, the width of the title or of the column, or the width of its words (a choice)
-							title-shadow		the shadow of the title of a section, the hero's among them
+							title-shadow		the shadow of the title of a section, the hero style's among them
 							dim					how dark the scrim of a dimmed cover is
-							title-ground		the ground of the title of a section, the hero's among them: none, soft or full (a choice)
+							title-ground		the ground of the title of a section, the hero style's among them: none, soft or full (a choice)
 							rule-color			the colour of that rule: the ink, the border of the ground or the brand (a choice)
 							align				where the title, the subtitle and the text of a section stand: left, as the template has them or right (a choice)
 							measure				how wide the column of the subtitle and of the text is (a choice)
-							title-case			the title of a section, the hero's among them, in capitals (a toggle)
-							subtitle-case		the subtitle of a section, the hero's among them, in capitals (a toggle)
-							title-ink			the colour of the title of a section, the hero's among them (an ink)
-							subtitle-ink		the colour of the subtitle of a section, the hero's among them (an ink)
+							title-case			the title of a section, the hero style's among them, in capitals (a toggle)
+							subtitle-case		the subtitle of a section, the hero style's among them, in capitals (a toggle)
+							title-ink			the colour of the title of a section, the hero style's among them (an ink)
+							subtitle-ink		the colour of the subtitle of a section, the hero style's among them (an ink)
 				tiles		title, subtitle, text	the size of the title, the subtitle and the words of a tile
 							title-tracking	the letter-spacing of the title of a tile
 							space				the room inside a tile

@@ -12,8 +12,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[ticker]...[/ticker]' => [
-				'en_US' => 'A row that runs, as a component that holds components: what stands between the tags is the calls of the components of a section - a title, a text, a picture - and each of them is one item of the row. It draws the box and the track of the markup below around them, and writes a data-ticker-* attribute only where the call differs from what the script does without it. The Builder offers it among the components of a section and of the hero, and its children are edited where they stand. A row inside a row is not possible, since the shortcode reads its content up to the first closing tag, and the Builder puts no component that holds components into another.',
-				'de_DE' => 'Eine Reihe, die läuft, als Komponente, die Komponenten enthält: Was zwischen den Tags steht, sind die Aufrufe der Komponenten einer Sektion - ein Titel, ein Text, ein Bild -, und jeder davon ist ein Eintrag der Reihe. Sie zeichnet den Kasten und die Spur des Markups unten darum und schreibt ein data-ticker-*-Attribut nur dort, wo der Aufruf von dem abweicht, was das Skript ohne es tut. Der Builder bietet sie unter den Komponenten einer Sektion und des Heros an, und ihre Kinder bearbeitest Du dort, wo sie stehen. Eine Reihe in einer Reihe geht nicht, denn der Shortcode liest seinen Inhalt bis zum ersten schließenden Tag, und der Builder setzt keine Komponente, die Komponenten enthält, in eine andere.',
+				'en_US' => 'A row that runs, as a component that holds components: what stands between the tags is the calls of the components of a section - a title, a text, a picture - and each of them is one item of the row. It draws the box and the track of the markup below around them, and writes a data-ticker-* attribute only where the call differs from what the script does without it. The Builder offers it among the components of a section, and its children are edited where they stand. A row inside a row is not possible, since the shortcode reads its content up to the first closing tag, and the Builder puts no component that holds components into another.',
+				'de_DE' => 'Eine Reihe, die läuft, als Komponente, die Komponenten enthält: Was zwischen den Tags steht, sind die Aufrufe der Komponenten einer Sektion - ein Titel, ein Text, ein Bild -, und jeder davon ist ein Eintrag der Reihe. Sie zeichnet den Kasten und die Spur des Markups unten darum und schreibt ein data-ticker-*-Attribut nur dort, wo der Aufruf von dem abweicht, was das Skript ohne es tut. Der Builder bietet sie unter den Komponenten einer Sektion an, und ihre Kinder bearbeitest Du dort, wo sie stehen. Eine Reihe in einer Reihe geht nicht, denn der Shortcode liest seinen Inhalt bis zum ersten schließenden Tag, und der Builder setzt keine Komponente, die Komponenten enthält, in eine andere.',
 			],
 			'[ticker speed="60"]' => [
 				'en_US' => 'Pixels per second. Default 40. Written as data-ticker-speed only where it is another number.',
@@ -103,8 +103,8 @@ return [
 		Every default is what ticker.js and ticker.css do for a row that says
 		nothing, and the renderer writes an attribute only where a call differs
 		from it: 40 pixels per second (the script's SPEED_DEFAULT), to the left,
-		one cycle, no pause button, stopping under the pointer. Offered in a
-		section and in the hero, since the script runs a row wherever it finds
+		one cycle, no pause button, stopping under the pointer. Offered in
+		a section, since the script runs a row wherever it finds
 		one; not in a card, which holds components itself and takes none that
 		hold. Not in the cell of a loop: a row of the elements of a type is not
 		something this is for	*/
@@ -162,7 +162,7 @@ return [
 			],
 			'preview'		=> 'block',
 			'draws'			=> 'div .nino-ticker',
-			'in'			=> [ 'section', 'hero' ],
+			'in'			=> [ 'section' ],
 			'icon'			=> [
 				[ 'path', [ 'd' => 'm6 17 5-5-5-5' ] ],
 				[ 'path', [ 'd' => 'm13 17 5-5-5-5' ] ],

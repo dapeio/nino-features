@@ -185,6 +185,20 @@ foreach( $elsewhere as $class )
 
 check( 'the "rendered elsewhere" list carries no class Nino.css dropped'. ( $stale === [] ? '' : ' - '. implode( ', ', $stale ) ), $stale === [] );
 
+// A template a feature copies into a project draws the classes of the kernel's stylesheet and none that is gone from it: a class the stylesheet does not define styles nothing
+$undefined = [];
+foreach( glob( dirname( __DIR__ ). '/features/*/install/templates/*.tpl' ) ?: [] as $installTemplate ) {
+
+	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( $installTemplate ), $installClasses );
+
+	foreach( $installClasses[1] as $installAttribute )
+		foreach( preg_split( '/\s+/', trim( $installAttribute ) ) ?: [] as $installClass )
+			if( str_starts_with( $installClass, 'nino-' ) === true && str_contains( $installClass, '[[' ) === false && in_array( $installClass, $defined, true ) === false )
+				$undefined[] = basename( dirname( $installTemplate, 3 ) ). ': '. $installClass;
+}
+
+check( 'the install templates of the features draw only classes Nino.css defines'. ( $undefined === [] ? '' : ' - '. implode( ', ', array_unique( $undefined ) ) ), $undefined === [] );
+
 echo "\n";
 
 

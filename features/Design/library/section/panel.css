@@ -84,7 +84,7 @@
 	--section-dim--more: 		color-mix( in srgb, var(--color-background-dim) 75%, var(--color-section-black-bg) );
 	--section-dim--most: 		color-mix( in srgb, var(--color-background-dim) 50%, var(--color-section-black-bg) );
 
-	/*	The letter-spacing of the title of a section and of the hero, as a step from what the template gives it: nothing at the middle, so that the middle is
+	/*	The letter-spacing of the title of a section, the hero style's among them, as a step from what the template gives it: nothing at the middle, so that the middle is
 		the template, whichever it is. Tighter on the two steps below it, looser on the two above	*/
 	--section-title-tracking--least:	-.04em;
 	--section-title-tracking--less:	-.02em;
@@ -103,7 +103,7 @@
 	--section-rule-length-fit--default: none;
 	--section-rule-length-fit--more: 		fit-content;
 
-	/*	The shadow of the words of the title of a section and of the hero, a grade: none, the kernel's, then four that grow - the soft one, the strong one the sets had before, and
+	/*	The shadow of the words of the title of a section, the hero style's among them, a grade: none, the kernel's, then four that grow - the soft one, the strong one the sets had before, and
 		two stronger still - in the black of the palette, thinned	*/
 	--section-title-shadow--default:	none;
 	--section-title-shadow--light:	0 .04em .12em color-mix( in srgb, var(--color-section-black-bg) 30%, transparent );
@@ -111,7 +111,7 @@
 	--section-title-shadow--strong:	0 .09em .35em color-mix( in srgb, var(--color-section-black-bg) 70%, transparent );
 	--section-title-shadow--full:	0 .12em .5em color-mix( in srgb, var(--color-section-black-bg) 85%, transparent );
 
-	/*	The ground behind the words of the title of a section and of the hero: none, as Nino.css has it, soft or full. The ladder is the share of the colour of the title
+	/*	The ground behind the words of the title of a section, the hero style's among them: none, as Nino.css has it, soft or full. The ladder is the share of the colour of the title
 		in the ground, 12% and 100%, over what the title stands on; its aspects are the share of the ground in the words (the words of a
 		full ground are the ground's own), the factor of the room round them and of the radius, and the width: a title with a ground is as wide
 		as its words. The roles are read where the title stands, so that each ground is its own	*/
@@ -143,8 +143,8 @@
 	--section-rule-color-border--more: 			0%;
 
 	/*	Where the title and the subtitle stand: left, centred - as Nino.css has them - or right. The aspects say where the boxes that are
-		narrower than their column stand (a title as wide as its words, a column of text) and where the text of a section and the hero stand,
-		which have no alignment of their own: they take the one they stand in, and match-parent says so	*/
+		narrower than their column stand (a title as wide as its words, a column of text) and where the text of a section stands,
+		which has no alignment of its own: it takes the one it stands in, and match-parent says so	*/
 	--section-align--less: 		left;
 	--section-align--default: center;
 	--section-align--more: 		right;
@@ -192,8 +192,8 @@
 
 /* ---- the title, the rule and the words ---- */
 
-/*	The letter-spacing and the shadow of the title of a section and of the hero	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud) {
+/*	The letter-spacing and the shadow of the title of a section, the hero style's among them	*/
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero) {
 	letter-spacing: var(--section-title-tracking);
 	text-shadow: var(--section-title-shadow);
 }
@@ -201,48 +201,48 @@
 /*	The ground behind the words of a title, a share of its colour and of the ground in its words (the roles are read where the title stands)
 	and the room round it - none at the middle - and the width: a title with a ground is as wide as its words. Before the opening, whose
 	rail is padded and drawn after it	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not(.nino-tiles *)) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero):where(:not(.nino-tiles *)) {
 	background-color: color-mix( in srgb, var(--color-title) var(--section-title-ground), transparent );
 	border-radius: calc( var(--radius) * var(--section-title-ground-fit) );
 	width: var(--section-title-ground-width);
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-ink--"], .nino-tiles *)) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero):where(:not([class*="nino-ink--"], .nino-tiles *)) {
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), var(--color-title) );
 }
 
-/*	The ink of a title and of a subtitle, the hero's with them, is the tone the knob selects: the colour of the words of the title (and the colour the
+/*	The ink of a title and of a subtitle, the hero style's with them, is the tone the knob selects: the colour of the words of the title (and the colour the
 	ground behind it is a share of), the colour of the subtitle. At the middle the tone is the one Nino.css gives the ground the title stands on, so that
 	nothing changes where no tone is chosen. A title or a subtitle that says an ink of its own (nino-ink--accent, nino-ink--muted) keeps it, and a section
 	of tiles is the tiles set's: its titles and subtitles are read there	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-ink--"], .nino-tiles *)) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero):where(:not([class*="nino-ink--"], .nino-tiles *)) {
 	background-color: color-mix( in srgb, var(--section-title-ink) var(--section-title-ground), transparent );
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), var(--section-title-ink) );
 }
-:is(.nino-section-subtitle, .nino-section-subtitle--quiet, .nino-section-subtitle--loud, .nino-hero-subtitle, .nino-hero-subtitle--quiet, .nino-hero-subtitle--loud):where(:not([class*="nino-ink--"], .nino-tiles *)) {
+:is(.nino-section-subtitle, .nino-section-subtitle--quiet, .nino-section-subtitle--loud, .nino-section-subtitle--hero):where(:not([class*="nino-ink--"], .nino-tiles *)) {
 	color: var(--section-subtitle-ink);
 }
 /*	The two inks a title may say - the brand and the muted one - take the share of the ground in the words as well, so that a full ground does not leave
 	them in the colour of the ground	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud).nino-ink--accent:where(:not(.nino-tiles *)) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero).nino-ink--accent:where(:not(.nino-tiles *)) {
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), var(--color-accent) );
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud).nino-ink--muted:where(:not(.nino-tiles *)) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero).nino-ink--muted:where(:not(.nino-tiles *)) {
 	color: color-mix( in srgb, var(--color-ground) var(--section-title-ground-ink), color-mix(in srgb, currentColor 80%, transparent) );
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pl-"], [class*="nino-pr-"], .nino-tiles *)) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-title--hero):where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pl-"], [class*="nino-pr-"], .nino-tiles *)) {
 	padding-top: calc( .15em * var(--section-title-ground-fit) );
 	padding-inline: calc( .5em * var(--section-title-ground-fit) );
 }
-:is(.nino-hero-title, .nino-hero-title--quiet, .nino-hero-title--loud):where(:not([class*="nino-p-"], [class*="nino-pb-"])) {
+.nino-section-title--hero:where(:not([class*="nino-p-"], [class*="nino-pb-"], .nino-tiles *)) {
 	padding-bottom: calc( .15em * var(--section-title-ground-fit) );
 }
 
 /*	The rule under the title is a background of it, as long as the length says, in the colour of the rule: the line Nino.css draws as the border is
 	drawn here, so that it can be short, and the air under the title is the line plus the smaller of the six times the line Nino.css leaves and 1.25rem, so that a thick rule stays with its title	*/
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud):where(:not([class*="nino-p-"], [class*="nino-pb-"])) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud):where(:not([class*="nino-p-"], [class*="nino-pb-"], .nino-section-title--hero)) {
 	padding-bottom: calc( .15em * var(--section-title-ground-fit) + var(--section-rule) + min( var(--section-rule) * 6, 1.25rem ) );
 }
-:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud) {
+:is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud):where(:not(.nino-section-title--hero)) {
 	border-bottom-width: 0;
 	background-image: linear-gradient( color-mix( in srgb, var(--color-ink) var(--section-rule-color), color-mix( in srgb, var(--color-border) var(--section-rule-color-border), var(--color-accent) ) ) 0 100% );
 	background-repeat: no-repeat;
@@ -292,7 +292,7 @@
 	background-position: right bottom;
 }
 /*	A class that aligns from a breakpoint moves the boxes the way the class alone does: Nino.css has the ancestor form for every step, so the mirrors follow it - the boxes of the titles, the
-	subtitles, the texts and the hero stand where the words stand, and the rule under a title with them, whether the class is on the element or on what it stands in. Each step names the elements of
+	subtitles and the texts, the hero style's among them, stand where the words stand, and the rule under a title with them, whether the class is on the element or on what it stands in. Each step names the elements of
 	the rule above and what they stand in; a step that says left takes the boxes back to the margin of the left edge, and its rules come in the order of Nino.css, left, centre, right	*/
 @media (min-width: 640px) {
 	.nino-text-s-left :is(.nino-section-title, .nino-section-title--quiet, .nino-section-title--loud, .nino-section-subtitle, .nino-section-subtitle--quiet, .nino-section-subtitle--loud, .nino-section-text, .nino-section-text--quiet, .nino-section-text--loud):where(:not([class*="nino-m-"], [class*="nino-mx-"], [class*="nino-ml-"], [class*="nino-mr-"])),
@@ -411,25 +411,28 @@
 
 /*	The rail is the alignment, so an opening told to centre itself keeps the
 	text left and centres the block instead - two alignments in one hero is
-	neither	*/
-.nino-hero-title,
-.nino-hero-subtitle,
-.nino-text-center .nino-hero-title,
-.nino-text-center .nino-hero-subtitle {
+	neither. The opening is the hero style of the title and of the subtitle of a
+	section, which stand on the base class as well and so meet the rules of the
+	bands above; these come after them, at the same weight or a class heavier	*/
+.nino-section-title--hero,
+.nino-section-subtitle--hero,
+.nino-text-center .nino-section-title--hero,
+.nino-text-center .nino-section-subtitle--hero,
+.nino-section-title--hero.nino-text-center,
+.nino-section-subtitle--hero.nino-text-center {
 	max-width: 32rem;
 	margin-right: 0;
 	margin-left: 0;
 	text-align: left;
 }
-.nino-hero-title {
+.nino-section-title--hero {
 	line-height: 1.1;
 	padding-left: var(--space-2);
 	border-left: 3px solid var(--color-primary);
 }
-.nino-hero-subtitle {
+.nino-section-subtitle--hero {
 	line-height: 1.5;
 	padding-left: calc( var(--space-2) + 3px );
-	opacity: 1;
 }
 .nino-hero-arrowdown {
 	margin-left: 0;

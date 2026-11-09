@@ -2722,16 +2722,15 @@
 
 		/**
 		 *	Where a component would stand, as a component says where it belongs (its 'in'): inside a component that holds
-		 *	components the place its 'holds' names; in a column the hero where the column is in the first section of the page
-		 *	(the hero, with a picture behind it or without), else a section. That is so in the cell of a loop as well: it holds
-		 *	no place of its own, a cell that has no card is a column of the page. Whether a loop takes the component is another
+		 *	components the place its 'holds' names; in a column a section, whichever section of the page it is in. That is so in the cell of a loop
+		 *	as well: it holds no place of its own, a cell that has no card is a column of the page. Whether a loop takes the component is another
 		 *	matter (its 'loop'), and is not asked here
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path							The column, the component that holds components or the loop
 		 *	@param		{Object}		[registry]					Where the 'holds' is read, the panel's own by default
 		 *
-		 *	@return		{string}									hero or section - or the place the container holds
+		 *	@return		{string}									section - or the place the container holds
 		 */
 		_where : function( model, path, registry ) {
 
@@ -2743,7 +2742,7 @@
 			if( node !== null && typeof node.name === 'string' && builder._isLoop( node, registry ) === false )
 				return builder._holds( registry ?? builder._registry, node.name );
 
-			return path[0] === 0 ? 'hero' : 'section';
+			return 'section';
 		},
 
 		/**
@@ -2795,7 +2794,7 @@
 				if( places.indexOf('card') !== -1 && places.indexOf('section') === -1 )
 					return text('pick-only-card');
 
-				return text( places.indexOf('hero') !== -1 && places.indexOf('section') === -1 ? 'pick-only-hero' : 'pick-elsewhere' );
+				return text('pick-elsewhere');
 			}
 
 			// A component that holds components is not put in another
@@ -10162,7 +10161,7 @@
 		},
 
 		/**
-		 *	Whether a component is a column of a loop by its schema and not by its name: it belongs in no place of a page (section, card, hero) but only in a place a loop holds, which the
+		 *	Whether a component is a column of a loop by its schema and not by its name: it belongs in no place of a page (section, card) but only in a place a loop holds, which the
 		 *	server marks in the registry ('columnar')
 		 *
 		 *	@param		{Object}		schema						The component's entry of the registry

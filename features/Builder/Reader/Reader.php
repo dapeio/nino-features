@@ -667,7 +667,7 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Whether a component is a column of a loop, by what its schema says and not by its name: it stands in none of the places a column of a page offers
-		 *	(section, card, hero) but only in a place a loop holds, which the Document marks ('columnar')
+		 *	(section, card) but only in a place a loop holds, which the Document marks ('columnar')
 		 *
 		 *	@param		array			$schema				One entry of the registry's components
 		 *

@@ -354,11 +354,12 @@ namespace Nino\Modules\Design {
 			depth	*/
 		private const array SHADOW = [ 'light' => 0.12, 'dark' => 0.55 ];
 
-		/*	The weakest the framework ever paints the ink it puts on a scrim.
-			.nino-section-subtitle - the second line of every hero - carries
-			opacity .8, so a scrim solved for the ink at full strength would
-			hold the headline above the target and let the line under it fall
-			below. The scrim is solved for the quieter of the two instead.	*/
+		/*	The weakest the framework paints the ink it puts on the scrim of a
+			section. .nino-section-title--quiet carries opacity .8 and the muted ink,
+			nino-ink--muted, is the ink at four fifths of its strength, so a
+			scrim solved for the ink at full strength would hold the headline
+			above the target and let the quieter line fall below. The scrim is
+			solved for the quieter of the two instead.	*/
 		private const float SCRIM_INK = 0.8;
 
 		// How far a surface sits from the page ground. dark and black are

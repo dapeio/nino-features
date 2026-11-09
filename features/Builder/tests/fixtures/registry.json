@@ -45,6 +45,7 @@
                     "options": [
                         "",
                         "loud",
+                        "hero",
                         "quiet"
                     ],
                     "default": ""
@@ -63,7 +64,6 @@
                 }
             },
             "in": [
-                "hero",
                 "section"
             ],
             "draws": "{tag} .nino-section-title",
@@ -129,6 +129,7 @@
                     "options": [
                         "",
                         "loud",
+                        "hero",
                         "quiet"
                     ],
                     "default": ""
@@ -147,7 +148,6 @@
                 }
             },
             "in": [
-                "hero",
                 "section"
             ],
             "draws": "{tag} .nino-section-subtitle",
@@ -666,173 +666,6 @@
                 "en_US": "Image (Card)"
             }
         },
-        "hero-title": {
-            "label": "Title (Hero)",
-            "source": "text",
-            "loop": true,
-            "preview": "title",
-            "icon": [
-                [
-                    "path",
-                    {
-                        "d": "M6 12h12"
-                    }
-                ],
-                [
-                    "path",
-                    {
-                        "d": "M6 20V4"
-                    }
-                ],
-                [
-                    "path",
-                    {
-                        "d": "M18 20V4"
-                    }
-                ]
-            ],
-            "attributes": {
-                "tag": {
-                    "type": "select",
-                    "label": "HTML tag",
-                    "hint": "",
-                    "options": [
-                        "div",
-                        "h2",
-                        "h3"
-                    ],
-                    "default": "h2"
-                },
-                "style": {
-                    "type": "variant",
-                    "label": "Style",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "loud",
-                        "quiet"
-                    ],
-                    "default": ""
-                },
-                "color": {
-                    "type": "variant",
-                    "label": "Text colour",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "muted",
-                        "accent"
-                    ],
-                    "prefix": "nino-ink--",
-                    "default": ""
-                }
-            },
-            "in": [
-                "hero",
-                "section"
-            ],
-            "draws": "{tag} .nino-hero-title",
-            "stretched": false,
-            "link": true,
-            "by": "nino",
-            "group": "hero",
-            "defaults": {
-                "tag": "h2",
-                "style": "",
-                "color": "",
-                "href": "",
-                "target": "",
-                "class": ""
-            },
-            "labels": {
-                "de_DE": "Titel (Hero)",
-                "en_US": "Title (Hero)"
-            }
-        },
-        "hero-subtitle": {
-            "label": "Subtitle (Hero)",
-            "source": "text",
-            "loop": true,
-            "preview": "title",
-            "icon": [
-                [
-                    "path",
-                    {
-                        "d": "M12 4v16"
-                    }
-                ],
-                [
-                    "path",
-                    {
-                        "d": "M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"
-                    }
-                ],
-                [
-                    "path",
-                    {
-                        "d": "M9 20h6"
-                    }
-                ]
-            ],
-            "attributes": {
-                "tag": {
-                    "type": "select",
-                    "label": "HTML tag",
-                    "hint": "",
-                    "options": [
-                        "div",
-                        "p",
-                        "h3",
-                        "h4"
-                    ],
-                    "default": "p"
-                },
-                "style": {
-                    "type": "variant",
-                    "label": "Style",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "loud",
-                        "quiet"
-                    ],
-                    "default": ""
-                },
-                "color": {
-                    "type": "variant",
-                    "label": "Text colour",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "muted",
-                        "accent"
-                    ],
-                    "prefix": "nino-ink--",
-                    "default": ""
-                }
-            },
-            "in": [
-                "hero",
-                "section"
-            ],
-            "draws": "{tag} .nino-hero-subtitle",
-            "stretched": false,
-            "link": true,
-            "by": "nino",
-            "group": "hero",
-            "defaults": {
-                "tag": "p",
-                "style": "",
-                "color": "",
-                "href": "",
-                "target": "",
-                "class": ""
-            },
-            "labels": {
-                "de_DE": "Untertitel (Hero)",
-                "en_US": "Subtitle (Hero)"
-            }
-        },
         "card": {
             "label": "Card",
             "source": "content",
@@ -969,8 +802,7 @@
                 }
             },
             "in": [
-                "section",
-                "hero"
+                "section"
             ],
             "draws": "article .nino-card",
             "holds": "card",
@@ -1241,7 +1073,6 @@
                 }
             },
             "in": [
-                "hero",
                 "section"
             ],
             "draws": "span .nino-logo-set",
@@ -1368,14 +1199,13 @@
                 }
             },
             "in": [
-                "hero",
                 "section"
             ],
             "draws": "a .nino-hero-arrowdown",
             "stretched": false,
             "link": false,
             "by": "nino",
-            "group": "hero",
+            "group": "global",
             "defaults": {
                 "to": "",
                 "class": ""
@@ -1899,7 +1729,6 @@
     ],
     "groups": [
         "section",
-        "hero",
         "card",
         "global"
     ],

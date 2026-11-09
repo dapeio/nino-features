@@ -133,7 +133,7 @@
 			page's own anchor is the top of the page; and the two controls of the hover of the pictures, which are the
 			page's as well and are looked at in the cards (#cards), whose first row of pictures says nino-hover. The
 			templates have none: a template is looked at where its object is (OBJECT_ANCHORS). Nor have the quiet and
-			the loud variant of a section: the loud one sizes the hero, and the two are looked at in the first section
+			the loud variant of a section: the loud one sizes the hero style, and the two are looked at in the first section
 			(#content) with the other knobs of the section. The knobs of a section that act on a band - the alignment, the measure,
 			the letter-spacing, the rule with its length and colour, the shadow and the ground of the title - are looked at in the
 			first section that has a title and a subtitle of its own, which is the cards (#cards): the hero is centred by a class

@@ -148,7 +148,7 @@ return [
 			],
 			'preview'		=> 'block',
 			'draws'			=> 'div .nino-countdown',
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'line', [ 'x1' => '10', 'x2' => '14', 'y1' => '2', 'y2' => '2' ] ],
 				[ 'line', [ 'x1' => '12', 'x2' => '15', 'y1' => '14', 'y2' => '11' ] ],

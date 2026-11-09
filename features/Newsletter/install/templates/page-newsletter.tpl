@@ -3,8 +3,8 @@
 	<div class="nino-cover-content">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100">
-			<h2 class="nino-hero-title">[[/feature/newsletter/page/title]]</h2>
-			<p class="nino-hero-subtitle">[[/feature/newsletter/page/text]]</p>
+			<h2 class="nino-section-title nino-section-title--hero">[[/feature/newsletter/page/title]]</h2>
+			<p class="nino-section-subtitle nino-section-subtitle--hero">[[/feature/newsletter/page/text]]</p>
 			[[/feature/newsletter/page/form]]
 			<a href="[[/nino/dir]][[/_nino/webpage/home/uri]]" class="nino-btn nino-btn--primary">[[/_nino/webpage/home/name]]</a>
 		</div>

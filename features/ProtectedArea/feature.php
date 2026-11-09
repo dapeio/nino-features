@@ -117,7 +117,7 @@ return [
 			'loop'			=> false,
 			'preview'		=> 'button',
 			'draws'			=> 'a .nino-protected-logout',
-			'in'			=> [ 'section', 'card', 'hero' ],
+			'in'			=> [ 'section', 'card' ],
 			'icon'			=> [
 				[ 'path', [ 'd' => 'm16 17 5-5-5-5' ] ],
 				[ 'path', [ 'd' => 'M21 12H9' ] ],

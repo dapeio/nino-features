@@ -4,8 +4,8 @@
 	<div class="nino-cover-content">
 		<div class="nino-grid-row nino-grid-middle">
 			<div class="nino-grid-100 nino-text-center nino-vpa nino-vpa--repeat">
-				<h2 class="nino-hero-title">A hero</h2>
-				<p class="nino-hero-subtitle">[[short]]</p>
+				<h2 class="nino-section-title nino-section-title--hero">A hero</h2>
+				<p class="nino-section-subtitle nino-section-subtitle--hero">[[short]]</p>
 				<p><a class="nino-btn nino-btn--primary" href="#type">Primary</a> <a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
 			</div>
 		</div>
@@ -270,36 +270,28 @@
 	<div class="nino-grid-row nino-grid-row--wide">
 		<div class="nino-grid-100 nino-mb-3">
 			<h2 class="nino-section-title nino-text-left">Typography</h2>
-			<p class="nino-section-subtitle nino-text-left">Six titles and subtitles, each quiet, as it is and loud; the text under them; inline code and a block of it.</p>
+			<p class="nino-section-subtitle nino-text-left">Titles and subtitles, each quiet, as it is and loud, and the hero's; the text under them; inline code and a block of it.</p>
 		</div>
 
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-hero-title nino-hero-title--quiet">Hero, quiet</h3>
-			<p class="nino-hero-subtitle nino-hero-subtitle--quiet">[[short]]</p>
-		</div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-hero-title">Hero</h3>
-			<p class="nino-hero-subtitle">[[short]]</p>
-		</div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-hero-title nino-hero-title--loud">Hero, loud</h3>
-			<p class="nino-hero-subtitle nino-hero-subtitle--loud">[[short]]</p>
-		</div>
-
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<div class="nino-grid-100 nino-grid-m-25 nino-mb-3">
 			<h3 class="nino-section-title nino-section-title--quiet">Section, quiet</h3>
 			<p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p>
 			<p class="nino-section-text nino-section-text--quiet">[[short]]</p>
 		</div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<div class="nino-grid-100 nino-grid-m-25 nino-mb-3">
 			<h3 class="nino-section-title">Section</h3>
 			<p class="nino-section-subtitle">[[short]]</p>
 			<p class="nino-section-text">[[short]]</p>
 		</div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<div class="nino-grid-100 nino-grid-m-25 nino-mb-3">
 			<h3 class="nino-section-title nino-section-title--loud">Section, loud</h3>
 			<p class="nino-section-subtitle nino-section-subtitle--loud">[[short]]</p>
 			<p class="nino-section-text nino-section-text--loud">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-25 nino-mb-3">
+			<h3 class="nino-section-title nino-section-title--hero">Hero</h3>
+			<p class="nino-section-subtitle nino-section-subtitle--hero">[[short]]</p>
+			<p class="nino-section-text">[[short]]</p>
 		</div>
 
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">

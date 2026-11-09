@@ -1657,11 +1657,11 @@ check( '...the end of a column is a button for a component and nothing else - wh
 	const looped = builder._addsRow( [ 1, 1 ] );
 	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
 } )() );
-check( '...and a component is chosen in a lightbox, which opens in the dialog and lists every component of the registry: what belongs where the column is can be added, the rest stands there greyed - the first section is the hero, anywhere else is a section, the cell of a loop among it, which holds no place of its own, and what names no place belongs in all of them; the registry\'s "in" says, and the list is the registry\'s, as it has it', ( function() {
+check( '...and a component is chosen in a lightbox, which opens in the dialog and lists every component of the registry: what belongs where the column is can be added, the rest stands there greyed - every column is a section\'s, the first section\'s included, the cell of a loop among it, which holds no place of its own, and what names no place belongs in all of them; the registry\'s "in" says, and the list is the registry\'s, as it has it', ( function() {
 
 	const count = itemsOf( pickAt( [ 1, 0 ] ) ).length;
 
-	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offeredAt( [ 0, 0 ] ) === belonging( 'hero' ) && offeredAt( [ 1, 0 ] ) === belonging( 'section' )
+	return belonging( 'section' ) !== '' && offeredAt( [ 0, 0 ] ) === belonging( 'section' ) && offeredAt( [ 1, 0 ] ) === belonging( 'section' )
 		&& offeredAt( [ 1, 1, 0 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === pickable.length
 		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && dialogContent().querySelector('.builder-blocks') === null;
 } )() );
@@ -1749,45 +1749,43 @@ check( '...they stand in the order of the registry and in none of the script\'s 
 
 	return kernel === belonging( 'section' ) && featured === kernel+ ',Zulu,Alpha' && other === belonging( 'section', flipped );
 } )() );
-check( '...a component that says where it belongs (its "in") can be added there and nowhere else - the hero is the first section, whether or not it is a cover, a section is any other column, the cell of a loop included -, one that says nothing can be added everywhere, and one a loop does not take can be added in no column that runs one: the script names no component', ( function() {
+check( '...a component that says where it belongs (its "in") can be added there and nowhere else - a section is every column, the first section\'s included whether or not it is a cover, the cell of a loop included -, one that says nothing can be added everywhere, and one a loop does not take can be added in no column that runs one: the script names no component', ( function() {
 
 	const components = builder._registry.components;
 	const blocks = builder._doc.model.blocks;
 	const offered = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
 
 	components['stub-card'] = { label : 'Stub card', preview : 'block', in : [ 'card' ], group : 'card' };
-	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ], group : 'hero' };
 	components['stub-two'] = { label : 'Stub two', preview : 'block', in : [ 'section', 'card' ], group : 'section' };
 	components['stub-any'] = { label : 'Stub any', preview : 'block', group : 'global' };
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
 
 	const found = [ offered( [ 0, 0 ] ), offered( [ 1, 0 ] ), offered( [ 1, 1, 0 ] ), offered( [ 3, 0 ] ) ].join(' | ');
 
-	// The first section is no cover: it is the hero all the same; the second is one, and is no hero for that
+	// The first section is no cover and the second is one: both are a section's all the same
 	blocks[0].settings.cover = null;
 	blocks[1].settings.cover = 90;
 
-	return found === 'Stub hero,Stub any,Stub alone | Stub two,Stub any,Stub alone | Stub two,Stub any | Stub two,Stub any,Stub alone'
-		&& offered( [ 0, 0 ] ) === 'Stub hero,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1, 0 ] ) === 'Stub two,Stub any';
+	return found === 'Stub two,Stub any,Stub alone | Stub two,Stub any,Stub alone | Stub two,Stub any | Stub two,Stub any,Stub alone'
+		&& offered( [ 0, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1, 0 ] ) === 'Stub two,Stub any';
 } )() );
-check( '...what cannot go where the lightbox was opened is there all the same, greyed, and says why: a disabled button with the reason for its title and - for whoever does not see the grey - in a span of its own that only a screen reader reads; the reason is that it belongs in a card only, in the first section only or in other places, or that an element loop does not take it - and what can go is a button with nothing of the kind', ( function() {
+check( '...what cannot go where the lightbox was opened is there all the same, greyed, and says why: a disabled button with the reason for its title and - for whoever does not see the grey - in a span of its own that only a screen reader reads; the reason is that it belongs in a card only or in other places, or that an element loop does not take it - and what can go is a button with nothing of the kind', ( function() {
 
 	const components = builder._registry.components;
 	const blocks = builder._doc.model.blocks;
 
-	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ], group : 'hero' };
 	components['stub-else'] = { label : 'Stub else', preview : 'block', in : [ 'footer' ], group : 'global' };
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
 	blocks[0].settings.cover = null;
 	blocks[1].settings.cover = null;
 
 	const item = function( path, label ) { return itemsOf( pickAt( path ) ).find( function( candidate ) { return pickLabel( candidate ) === label } ) };
-	const grey = item( [ 1, 0 ], 'Stub hero' );
-	const plain = item( [ 0, 0 ], 'Stub hero' );
-	const found = [ reasonOf( [ 1, 0 ], 'Title (Card)' ), reasonOf( [ 1, 0 ], 'Stub hero' ), reasonOf( [ 0, 0 ], 'Stub hero' ), reasonOf( [ 1, 0 ], 'Stub else' ), reasonOf( [ 1, 1, 0 ], 'Stub alone' ), reasonOf( [ 1, 0 ], 'Stub alone' ) ].join(' | ');
+	const grey = item( [ 1, 0 ], 'Stub else' );
+	const plain = item( [ 0, 0 ], 'Title (Section)' );
+	const found = [ reasonOf( [ 1, 0 ], 'Title (Card)' ), reasonOf( [ 0, 0 ], 'Stub else' ), reasonOf( [ 1, 0 ], 'Stub else' ), reasonOf( [ 1, 1, 0 ], 'Stub alone' ), reasonOf( [ 1, 0 ], 'Stub alone' ) ].join(' | ');
 
-	return found === 'Only in a card | Only in the first section |  | Not offered here | '+ word('reason/pick-no-loop')+ ' | ' && reasonOf( [ 1, 0 ], 'Nothing' ) === null
-		&& grey.disabled === true && grey.title === 'Only in the first section' && grey.children.length === 3 && grey.children[2].localName === 'span' && grey.children[2].className === 'nino-admin-sr-only' && grey.children[2].textContent === grey.title
+	return found === 'Only in a card | Not offered here | Not offered here | '+ word('reason/pick-no-loop')+ ' | ' && reasonOf( [ 1, 0 ], 'Nothing' ) === null
+		&& grey.disabled === true && grey.title === 'Not offered here' && grey.children.length === 3 && grey.children[2].localName === 'span' && grey.children[2].className === 'nino-admin-sr-only' && grey.children[2].textContent === grey.title
 		&& plain.disabled === false && plain.title === '' && plain.children.length === 2 && plain.querySelector('.nino-admin-sr-only') === null;
 } )() );
 check( '...a greyed component takes no click: it is not added, the lightbox stays, and the document does not change', ( function() {
@@ -4015,7 +4013,7 @@ check( '...Content: the source as text, with an icon button beside it that opens
 check( '...the head of the content says the first words of the text, in the language of the editor - and nothing of what is not there', saysOf('content').textContent === 'Welcome' && saysOf('content').hidden === false );
 check( '...Properties: the variants first, a row of buttons for each, one to a line, in the order of the schema - the words of the panel for the values, Default for none - and the one the component has is the one that is chosen; then the other attributes in the order of the schema, here the HTML tag alone, a select that offers the tags the registry offers, as many and in its order, whichever tags the kernel has; and the class of the component last',
 	JSON.stringify( labelList( blockOf('properties') ) ) === JSON.stringify( [ 'Style', 'Text colour', 'HTML tag', 'Class of the component' ] ) && controlsIn( blockOf('properties') ).map( function( control ) { return control.kind } ).join() === 'group,group,select,text'
-	&& segmentOf( blockOf('properties'), 'Style' ) === ':Default,loud:Loud,quiet:Quiet' && segmentOf( blockOf('properties'), 'Text colour' ) === ':Default,muted:Muted,accent:Accent' && valueAt( blockOf('properties'), 'Style' ) === 'loud' && valueAt( blockOf('properties'), 'Text colour' ) === ''
+	&& segmentOf( blockOf('properties'), 'Style' ) === ':Default,loud:Loud,hero:Hero,quiet:Quiet' && segmentOf( blockOf('properties'), 'Text colour' ) === ':Default,muted:Muted,accent:Accent' && valueAt( blockOf('properties'), 'Style' ) === 'loud' && valueAt( blockOf('properties'), 'Text colour' ) === ''
 	&& controlOf( blockOf('properties'), 'HTML tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === registryFixture.components[componentAt( [ 0, 0, 0 ] ).name].attributes.tag.options.map( function( option ) { return option+ '='+ option } ).join()
 	&& registryFixture.components[componentAt( [ 0, 0, 0 ] ).name].attributes.tag.options.length >= 3 && valueAt( blockOf('properties'), 'HTML tag' ) === 'h3' );
 check( '...the head of the properties says what the component has that is not the default: the style it has, and nothing of the colour it has none of', saysOf('properties').textContent === words['/_admin/builder/option/variant-loud'] && saysOf('properties').hidden === false );
@@ -5218,7 +5216,7 @@ check( '...the buttons of the preview do the same: a section, a column - and a c
 	frames()[0].querySelector('.builder-add-col').click();
 	frames()[0].querySelector('.builder-adds .builder-add-button').click();
 	const box = lightboxOf();
-	const opened = dialogBox().open === true && box !== null && itemsOf( box ).length === pickable.length && takenIn( box ) === belonging('hero');
+	const opened = dialogBox().open === true && box !== null && itemsOf( box ).length === pickable.length && takenIn( box ) === belonging('section');
 	itemNamed( box, 'button' ).click();
 	return opened && dialogBox().open === true && lightboxOf() === null && dialogText('builder-dialog-kind') === titleOf('button') && builder._same( builder._sel, [ 0, 0, 3 ] )
 		&& builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
@@ -6579,7 +6577,7 @@ check( '...and so does the picture an attribute names: in a loop an image field 
 } )() );
 
 doc = openCard();
-check( 'where a component would stand: inside a container the place it holds, in a column the hero where the column is in the first section - a cover or none - and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
+check( 'where a component would stand: inside a container the place it holds, in a column a section, the first section\'s included whether it is a cover or none - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
 
 	const model = builder._doc.model;
 	const before = [ builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ), builder._where( model, [ 1, 0, 0, 0 ] ), builder._where( model, [ 1, 0, 0 ] ) ].join();
@@ -6590,7 +6588,7 @@ check( 'where a component would stand: inside a container the place it holds, in
 
 	own.components.card.holds = 'tile';
 
-	return before === 'hero,card,section,card,section' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
+	return before === 'section,card,section,card,section' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'section,section,card,section'
 		&& builder._where( model, cardAt, own ) === 'tile';
 } )() );
 
@@ -6664,17 +6662,16 @@ builder._renderEditor();
 // What belongs in each place, as the registry says it
 const inCard = belonging( 'card' );
 const inSection = belonging( 'section' );
-const inHero = belonging( 'hero' );
 
 check( 'the lightbox offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', offeredAt( [ 1, 0 ] ) === inSection );
-check( '...in the first section it is offered as well, whether it is a cover or none: the hero is a place the card belongs in, and a cover does not make it one', ( function() {
+check( '...in the first section it is offered as well, whether it is a cover or none: the first section is a section like any, and a cover does not make it another place', ( function() {
 	const without = [ offeredAt( [ 0, 0 ] ), offeredAt( [ 0, 1 ] ) ];
 	builder._doc.model.blocks[0].settings.cover = 90;
 	const offered = offeredAt( [ 0, 0 ] );
 	builder._doc.model.blocks[0].settings.cover = null;
-	return without.join() === [ inHero, inHero ].join() && offered === inHero;
+	return without.join() === [ inSection, inSection ].join() && offered === inSection;
 } )() );
-check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others; what it does not offer stands there greyed, and says it is not for a card', offeredAt( cardAt ) === inCard && offeredAt( [ 1, 0, 0, 0 ] ) === inCard
+check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section, whose place is another; what it does not offer stands there greyed, and says it is not for a card', offeredAt( cardAt ) === inCard && offeredAt( [ 1, 0, 0, 0 ] ) === inCard
 	&& offeredAt( cardAt ).split(',').indexOf('Card') === -1 && offeredAt( [ 0, 1 ] ).split(',').indexOf('Title (Card)') === -1 && offeredAt( [ 1, 0 ] ).split(',').indexOf('Title (Card)') === -1
 	&& reasonOf( cardAt, 'Card' ) === 'Not in a card' && reasonOf( cardAt, 'Title (Section)' ) === 'Not in a card' && reasonOf( cardAt, 'Title (Card)' ) === '' && reasonOf( [ 1, 0 ], 'Card' ) === '' );
 check( '...the button of the card in the preview opens the same lightbox, and the button of its column the column\'s', ( function() {
@@ -6687,7 +6684,7 @@ check( '...the button of the card in the preview opens the same lightbox, and th
 
 	adds[adds.length - 1].querySelector('.builder-add-button').click();
 
-	return adds.length === 2 && own === inCard && takenIn( lightboxOf() ) === inHero;
+	return adds.length === 2 && own === inCard && takenIn( lightboxOf() ) === inSection;
 } )() );
 
 check( '...a component a loop does not take is offered in no cell of a loop, and in no card inside it - at depth four and at depth five alike - and everywhere else, the column that holds the loop among them; a container that says it belongs in a card is offered in none', ( function() {
@@ -6695,7 +6692,7 @@ check( '...a component a loop does not take is offered in no cell of a loop, and
 	const components = builder._registry.components;
 
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
-	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'hero', 'section', 'card' ], holds : 'card', group : 'global' };
+	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'section', 'card' ], holds : 'card', group : 'global' };
 
 	const stub = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
 	const found = [ stub( [ 0, 1 ] ), stub( cardAt ), stub( [ 1, 0 ] ), stub( [ 1, 0, 0 ] ), stub( [ 1, 0, 0, 0 ] ) ].join(' | ');
@@ -8969,15 +8966,15 @@ check( '...a component stands where the lightbox would let it stand and nowhere 
 		return Object.keys( reg.components ).filter( function( name ) { return builder._columnar( reg.components[name] ) === false } ).every( function( name ) { return builder._pasteable( model, reg, path, clipOf( name ) ) === reasons[name] } );
 	};
 
-	// A component that belongs in the hero only and one that does not take a loop, so that every reason there is has an example
-	reg.components['scroll-hint']['in'] = [ 'hero' ];
+	// A component that belongs in a place the page has none of and one that does not take a loop, so that every reason there is has an example
+	reg.components['scroll-hint']['in'] = [ 'footer' ];
 	reg.components.spacer.loop = false;
 
 	const same = places.every( function( place ) { return sameAs( place, place ) } ) && sameAs( [ 0, 1, 0, 0 ], cardAt ) && sameAs( [ 1, 0, 0, 0 ], [ 1, 0, 0 ] );
 
 	delete found[''];
 
-	return same && Object.keys( found ).sort().join() === [ word('reason/pick-no-loop'), word('reason/pick-not-card'), word('reason/pick-only-card'), word('reason/pick-only-hero') ].sort().join();
+	return same && Object.keys( found ).sort().join() === [ word('reason/pick-no-loop'), word('reason/pick-not-card'), word('reason/pick-only-card'), word('reason/pick-elsewhere') ].sort().join();
 } ) );
 check( '...a component that does not take a loop is refused in the cell of one - behind a child of it, and into the cell, where the paste goes behind the loop in its column instead - and so is a column that carries such a component into a section that is a loop', attempt( function() {
 
@@ -9050,16 +9047,16 @@ check( '...the paste tool of a loop puts the copy of a loop behind it in its col
 	return builder._isLoop( clip.node ) === true && loopPlace.list === col.components && loopPlace.index === 1 && loopPlace.parent.join() === '1,1' && loopPlace.list !== col.components[0].components
 		&& componentPlace.list === col.components[0].components && componentPlace.index === col.components[0].components.length;
 } ) );
-check( '...where the first section is the place, a component that belongs in the hero only is refused behind it', attempt( function() {
+check( '...the first section is a place like the others, and a component that names a place the page has none of is refused in it and behind it as everywhere', attempt( function() {
 
 	const reg = registry();
 	const model = page();
 
-	reg.components.title.in = [ 'hero' ];
+	reg.components.title.in = [ 'footer' ];
 
 	const clip = copied( [ 0, 0, 0 ] );
 
-	return builder._pasteable( model, reg, [ 0, 0 ], clip ) === '' && builder._pasteable( model, reg, [ 1, 0 ], clip ) === word('reason/pick-only-hero') && builder._pasteable( model, reg, [ 1, 0, 0 ], clip ) === word('reason/pick-only-hero');
+	return builder._pasteable( model, reg, [ 0, 0 ], clip ) === word('reason/pick-elsewhere') && builder._pasteable( model, reg, [ 1, 0 ], clip ) === word('reason/pick-elsewhere') && builder._pasteable( model, reg, [ 1, 0, 0 ], clip ) === word('reason/pick-elsewhere') && builder._pasteable( model, reg, [ 0, 0, 0 ], copied( [ 0, 0, 0 ] ) ) === word('reason/pick-elsewhere');
 } ) );
 check( '...an unusable path is refused: a paste does not change the model it cannot paste into', attempt( function() {
 	const clip = copied( [ 0, 0, 0 ] );
@@ -10532,7 +10529,7 @@ linkedWith( [ probeChild(), textChild(), probeChild() ] );
 check( '...two of the one component are two', JSON.stringify( hintsOf() ) === JSON.stringify( [ word('link/stretched').replace( '%s', 'Probe link' ), word('link/two-stretched') ] ) );
 
 // None in the card: the line names the components that say stretched and may stand in a card - those that name the card among their places, or no place - by their labels, in the order of the registry
-builder._registry.components['elsewhere-link'] = Object.assign( {}, builder._registry.components['title'], { label : 'Elsewhere', link : false, stretched : true, in : [ 'section', 'hero' ] } );
+builder._registry.components['elsewhere-link'] = Object.assign( {}, builder._registry.components['title'], { label : 'Elsewhere', link : false, stretched : true, in : [ 'section' ] } );
 builder._registry.components['anywhere-link'] = Object.assign( {}, builder._registry.components['title'], { label : 'Anywhere', link : false, stretched : true } );
 delete builder._registry.components['anywhere-link'].in;
 const offeredLabels = Object.keys( builder._registry.components ).filter( function( name ) {
@@ -10644,7 +10641,7 @@ console.log( '\nA second container, which the panel holds by what its schema say
 	feature, a band that holds the components of a section and paints neither a ground nor a picture, is all the panel needs to show it - the card of the kernel is
 	not the only one, and what is the card's alone, its ground, its radius and the offset of its picture, is not assumed of a container that has none of them	*/
 const bandSchema = {
-	label : 'Band', source : 'content', loop : false, preview : 'block', 'in' : [ 'section', 'hero' ], draws : 'div .band', holds : 'section', by : 'fixture', group : 'section',
+	label : 'Band', source : 'content', loop : false, preview : 'block', 'in' : [ 'section' ], draws : 'div .band', holds : 'section', by : 'fixture', group : 'section',
 	icon : [ [ 'path', { d : 'm6 17 5-5-5-5' } ] ],
 	attributes : { speed : { type : 'int', min : 1, max : 100, 'default' : 40, label : 'Speed', hint : '' }, wrap : { type : 'bool', 'default' : true, label : 'Wrap', hint : '' } },
 	defaults : { speed : '40', wrap : '1', 'class' : '' },

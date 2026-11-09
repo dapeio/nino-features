@@ -19,7 +19,7 @@ namespace Nino\Modules {
 	 *
 	 *										Nino 1.2 delivers that file fixed, out of the setup
 	 *										wizard's base unit. This feature writes its own over it,
-	 *										from a template per part - Section (the hero, the
+	 *										from a template per part - Section (the hero style, the
 	 *										sections and the covers), Card, Buttons, Lists and
 	 *										Tables - plus a header and a footer, which are the two
 	 *										parts that bring markup with them; from

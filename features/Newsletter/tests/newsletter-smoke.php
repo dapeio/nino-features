@@ -1296,8 +1296,8 @@ check( 'the manifest declares one component, newsletter-signup, and the Componen
 	&& array_intersect_key( $registered, $declared['newsletter-signup'] ) === $declared['newsletter-signup'] );
 check( '...it needs no source and no loop: the form is its own, and says nothing of the element around it',
 	( $registered['source'] ?? null ) === 'none' && ( $registered['loop'] ?? null ) === false );
-check( '...it is drawn as a block and says what it draws on the outside - a form with the kernel\'s class - and where it may stand: a section, a card and a hero',
-	( $registered['preview'] ?? null ) === 'block' && ( $registered['draws'] ?? null ) === 'form .nino-form' && ( $registered['in'] ?? null ) === [ 'section', 'card', 'hero' ] );
+check( '...it is drawn as a block and says what it draws on the outside - a form with the kernel\'s class - and where it may stand: a section and a card',
+	( $registered['preview'] ?? null ) === 'block' && ( $registered['draws'] ?? null ) === 'form .nino-form' && ( $registered['in'] ?? null ) === [ 'section', 'card' ] );
 check( '...it carries a picture of its own and a label in both languages, and no group: a tool offers it under the feature',
 	is_array( $registered['icon'] ?? null ) && $registered['icon'] !== [] && isset( $registered['group'] ) === false
 	&& ( $registered['label']['en_US'] ?? '' ) !== '' && ( $registered['label']['de_DE'] ?? '' ) !== '' && $registered['label']['en_US'] !== $registered['label']['de_DE'] );
