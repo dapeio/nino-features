@@ -1685,7 +1685,7 @@ check( 'what a page aligns by a nino-text-* class is the page\'s: every rule of 
 	. ( $notAligned === [] ? '' : ' - '. implode( ' | ', array_slice( $notAligned, 0, 3 ) ) ), $notAligned === [] && $mirrors === 8 );
 
 /*	The rule under the title of a section is the line Nino.css draws as the border, drawn as a background so that it can be short: as high as the rule says, of the length the knob says, with
-	no border of its own, and the air under the title the six times the line Nino.css leaves - up to 1.25rem - and the line itself. In every set	*/
+	no border of its own, and the air under the title the line itself and twice that, up to .375rem, so that the rule stands nearer to the words than to the subtitle. In every set	*/
 $ruleProblems = [];
 
 foreach( Setup::available( $library, 'section' ) as $set ) {
@@ -1694,14 +1694,14 @@ foreach( Setup::available( $library, 'section' ) as $set ) {
 	$ruleBody	= $ruleRules[0]['body'] ?? '';
 
 	if( count( $ruleRules ) !== 1 || preg_match( '/background-size\s*:\s*var\(--section-rule-length\)\s+var\(--section-rule\)\s*;/', $ruleBody ) !== 1 || preg_match( '/border-bottom-width\s*:\s*0\s*;/', $ruleBody ) !== 1
-		|| preg_match( '/padding-bottom\s*:[^;]*var\(--section-rule\)\s*\+\s*min\( var\(--section-rule\) \* 6, 1\.25rem \)/', designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) ) ) !== 1 )
+		|| preg_match( '/padding-bottom\s*:[^;]*var\(--section-rule\)\s*\+\s*min\( var\(--section-rule\) \* 2, \.375rem \)/', designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) ) ) !== 1 )
 		$ruleProblems[] = $set;
 }
 
-check( 'the rule under the title is a background in every section set: as high as the rule, as long as the length, with no border and room of six times its height, to 1.25rem, and itself'
+check( 'the rule under the title is a background in every section set: as high as the rule, as long as the length, with no border and room of twice its height, to .375rem, and itself'
 	. ( $ruleProblems === [] ? '' : ' - not so for '. implode( ', ', $ruleProblems ) ), $ruleProblems === [] );
 
-// The hero style of the title stands on the class of the section title as well, and the kernel draws no rule under it: no set draws the one it draws for the others - the background that is the line, the room under it and the width it narrows the title to - on the title that says hero
+// The hero style of the title stands on the class of the section title as well, and the kernel draws the rule of a title under it: every set draws the one it draws for the others - the background that is the line, the room under it and the width it narrows the title to - on the title that says hero too, and keeps no padding-bottom rule of the hero alone
 $heroRuleProblems = [];
 
 foreach( Setup::available( $library, 'section' ) as $set ) {
@@ -1709,8 +1709,51 @@ foreach( Setup::available( $library, 'section' ) as $set ) {
 	$heroRuleCss		= designPlain( (string) file_get_contents( Setup::file( $library, 'section', $set ) ) );
 	$heroRuleRules	= array_filter( designRules( $heroRuleCss ), static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-section-title' ) === true && ( str_contains( $rule['body'], 'background-size' ) === true || preg_match( '/padding-bottom\s*:[^;]*var\(--section-rule\)/', $rule['body'] ) === 1 ) );
 
-	if( count( $heroRuleRules ) !== 2 || array_filter( $heroRuleRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-section-title--hero)' ) === false ) !== [] )
-		$heroRuleProblems[] = $set. ' draws the rule on '. count( $heroRuleRules ). ' rules, not all of which leave the hero style alone';
+	// Every selector of the two drawing rules has the hero style in its leading :is() and in no :not(): the title that says hero is named among the titles, not left out by an exclusion
+	$heroNamed = static function( array $rule ): bool {
+		$parts = [];
+		$depth = 0;
+		$start = 0;
+		$selector = (string) $rule['selector'];
+		for( $at = 0; $at < strlen( $selector ); $at++ ) {
+			if( $selector[$at] === '(' || $selector[$at] === '[' )
+				$depth++;
+			elseif( $selector[$at] === ')' || $selector[$at] === ']' )
+				$depth--;
+			elseif( $selector[$at] === ',' && $depth === 0 ) {
+				$parts[] = trim( substr( $selector, $start, $at - $start ) );
+				$start = $at + 1;
+			}
+		}
+		$parts[] = trim( substr( $selector, $start ) );
+		foreach( $parts as $part )
+			if( preg_match( '/:is\([^()]*\.nino-section-title--hero\)/', $part ) !== 1 || preg_match( '/:not\([^()]*\.nino-section-title--hero/', $part ) !== 0 )
+				return false;
+		return $parts !== [];
+	};
+	if( count( $heroRuleRules ) !== 2 || array_filter( $heroRuleRules, static fn( array $rule ): bool => $heroNamed( $rule ) === false ) !== [] )
+		$heroRuleProblems[] = $set. ' draws the rule on '. count( $heroRuleRules ). ' rules, not all of which name the hero style among the titles';
+
+	$heroOwnPadding = array_filter( designRules( $heroRuleCss ), static fn( array $rule ): bool => str_starts_with( $rule['selector'], '.nino-section-title--hero' ) === true && preg_match( '/(?<![\w-])padding-bottom\s*:/', $rule['body'] ) === 1 );
+	if( $heroOwnPadding !== [] )
+		$heroRuleProblems[] = $set. ' keeps a padding-bottom rule of the hero style alone';
+
+	// A short rule stands where the words stand: every rule that places the background names the hero style as it names the others
+	$heroPlaced = array_filter( designRules( $heroRuleCss ), static fn( array $rule ): bool => preg_match( '/background-position\s*:\s*(?:left|center|right) bottom\s*;/', $rule['body'] ) === 1 && str_contains( $rule['selector'], ':is(' ) === true );
+	if( count( $heroPlaced ) !== 15 || array_filter( $heroPlaced, static fn( array $rule ): bool => $heroNamed( $rule ) === false ) !== [] )
+		$heroRuleProblems[] = $set. ' places the rule of '. count( $heroPlaced ). ' alignment rules, not 15 that all name the hero style on both forms';
+
+	// The opening of Panel turns the hero left and caps it at the rail: its rule stands at the left of the words on the forms it turns left, after the alignment rules of the sets so that the forms of the page that say right, and the tiers, win by their weight, and is as wide as the words when the length fits them
+	if( $set === 'panel' ) {
+
+		$heroRules	= designRules( $heroRuleCss );
+		$heroOpened	= array_keys( array_filter( $heroRules, static fn( array $rule ): bool => preg_match( '/background-position\s*:\s*var\(--space-2\) bottom\s*;/', $rule['body'] ) === 1 && preg_match( '/width\s*:\s*var\(--section-rule-length-fit\)\s*;/', $rule['body'] ) === 1
+			&& preg_match( '/^\.nino-section-title--hero,\s*\.nino-text-center \.nino-section-title--hero:where\(:not\(\.nino-text-left, \.nino-text-center, \.nino-text-right\)\),\s*\.nino-text-left \.nino-section-title--hero:where\(:not\(\.nino-text-left, \.nino-text-center, \.nino-text-right\)\),\s*\.nino-section-title--hero\.nino-text-center,\s*\.nino-section-title--hero\.nino-text-left$/', trim( $rule['selector'] ) ) === 1 ) );
+		$heroLastPlaced = array_key_last( array_filter( $heroRules, static fn( array $rule ): bool => preg_match( '/background-position\s*:\s*(?:left|center|right) bottom\s*;/', $rule['body'] ) === 1 && str_contains( $rule['selector'], ':is(' ) === true ) );
+
+		if( count( $heroOpened ) !== 1 || $heroOpened[0] < (int) $heroLastPlaced )
+			$heroRuleProblems[] = $set. ' has no rule after its alignment rules that puts the rule of the opening at the left of its words (after the bar and the space-2 of its padding), as wide as they are when the length fits';
+	}
 }
 
 // The opening of a set is a rule of the hero style alone, and it says what it says over the rules of the bands, which reach the hero through the base class at the same weight: every other rule of the set that names the
@@ -1756,7 +1799,7 @@ check( '...and the opening of Open says its leading itself, for the title and fo
 check( '...and says the space under its title itself, the page\'s space-3 times the whitespace of the text, unless the page names a margin - the bands\' third of a space is not the opening\'s',
 	count( array_filter( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', 'open' ) ) ) ), static fn( array $rule ): bool => str_starts_with( $rule['selector'], '.nino-section-title--hero:where(:not([class*="nino-mb-"], [class*="nino-m-"]))' ) === true
 		&& preg_match( '/margin-bottom\s*:\s*calc\(\s*var\(--space-3\)\s*\*\s*var\(--whitespace-text, 1\)\s*\)\s*;/', $rule['body'] ) === 1 ) ) === 1 );
-check( 'the title that says hero has no rule under it in any section set: the two rules that draw it, its background and the room under it, leave the hero style out'
+check( 'the title that says hero has the rule of a title in any section set: the two rules that draw it, its background and the room under it, and the alignment rules of the rule, name the hero style in the :is() of the titles and in no :not(), no padding-bottom rule is the hero style\'s alone, and the opening of Panel puts its rule at the left of its words, as wide as they are when the length fits'
 	. ( $heroRuleProblems === [] ? '' : ' - '. implode( ' | ', $heroRuleProblems ) ), $heroRuleProblems === [] );
 
 /*	A margin class of a page is the page's too: a rule of the section sets and of the card sets that takes a box to the margins a nino-text-* class means - the class on the element or on what it
@@ -1918,8 +1961,8 @@ foreach( Setup::available( $library, 'section' ) as $set ) {
 					$reachProblems[] = $set. ' '. substr( $reachSelector, 0, 44 ). ' keeps no title of its own alignment, graded to its width';
 			}
 
-	// 29 reaches in the lists of the content section, of the margins and of the place of the rule, 31 with the two of the rail of Panel
-	if( $reachCount !== ( $set === 'panel' ? 31 : 29 ) )
+	// 29 reaches in the lists of the content section, of the margins and of the place of the rule, 33 with the four of the rail of Panel and the title's rule's
+	if( $reachCount !== ( $set === 'panel' ? 33 : 29 ) )
 		$reachProblems[] = $set. ' has '. $reachCount. ' reaches';
 }
 
@@ -10418,7 +10461,7 @@ foreach( (array) glob( $library. '/themes/*.php' ) as $gradeTheme ) {
 check( 'the shipped themes write the four grades at the position their look had: the rule 1 for 1px, the shadows of a title and a card at the rung of the shadow they had - Corporate\'s card at 1, the lighter shadow of before -, the gap none',
 	$themeGrades === [ 'bold' => [ 0, 0, 0, 0 ], 'corporate' => [ 1, 0, 0, 1 ], 'docs' => [ 1, 0, 0, 0 ], 'editorial' => [ 0, 0, 0, 0 ], 'nino' => [ 0, 0, 0, 0 ], 'studio' => [ 0, 0, 0, 0 ] ] );
 
-/*	The air under a thick rule: the section sets zero the kernel's border and write the padding under the title themselves - the line and six times it, which stops at 1.25rem so that the rule of the
+/*	The air under a thick rule: the section sets zero the kernel's border and write the padding under the title themselves - the line and twice it, which stops at .375rem so that the rule of the
 	last rungs stays with its title and not with the subtitle. The title ground of the sets reaches no title of a section of tiles: the tiles have knobs of their own, and a ground painted on a tile title
 	from the content section would paint it over the colour the tiles chose	*/
 $capProblems = [];
@@ -10428,15 +10471,15 @@ foreach( Setup::available( $library, 'section' ) as $capSet ) {
 	$capRules = designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'section', $capSet ) ) ) );
 	$capPads = array_filter( $capRules, static fn( array $rule ): bool => preg_match( '/(?<![\w-])padding-bottom\s*:[^;]*--section-rule\b/', $rule['body'] ) === 1 );
 
-	if( count( $capPads ) !== 1 || preg_match( '/padding-bottom\s*:\s*calc\(\s*\.15em \* var\(--section-title-ground-fit\) \+ var\(--section-rule\) \+ min\( var\(--section-rule\) \* 6, 1\.25rem \)\s*\)\s*;/', array_values( $capPads )[0]['body'] ?? '' ) !== 1 )
-		$capProblems[] = $capSet. ': the air under the rule is not the line and min( six times it, 1.25rem )';
+	if( count( $capPads ) !== 1 || preg_match( '/padding-bottom\s*:\s*calc\(\s*\.15em \* var\(--section-title-ground-fit\) \+ var\(--section-rule\) \+ min\( var\(--section-rule\) \* 2, \.375rem \)\s*\)\s*;/', array_values( $capPads )[0]['body'] ?? '' ) !== 1 )
+		$capProblems[] = $capSet. ': the air under the rule is not the line and min( twice it, .375rem )';
 
 	foreach( $capRules as $capRule )
 		if( str_contains( $capRule['selector'], '.nino-section-title' ) === true && preg_match( '/var\(\s*--section-title-ground[a-z-]*\s*\)/', $capRule['body'] ) === 1 && preg_match( '/--section-rule\b/', $capRule['body'] ) !== 1 && str_contains( $capRule['selector'], '.nino-tiles *' ) === false )
 			$capProblems[] = $capSet. ': a rule of the title ground reaches a title of a tile: '. substr( $capRule['selector'], -60 );
 }
 
-check( 'the air under the rule of a section title is the line and six times it up to 1.25rem, in the three sets - rungs 0 to 2 come to the 7 times the line they always did, the last two stop at the cap - and every rule that paints the ground of a title leaves a title in a section of tiles alone'
+check( 'the air under the rule of a section title is the line and twice it up to .375rem, in the three sets - the last two rungs stop at the cap - and every rule that paints the ground of a title leaves a title in a section of tiles alone'
 	. ( $capProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $capProblems, 0, 3 ) ) ), $capProblems === [] && count( Setup::available( $library, 'section' ) ) === 3 );
 
 $ruleSteps = [];
