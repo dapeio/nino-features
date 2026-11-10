@@ -73,8 +73,10 @@
 	--card-tone--default: 	var(--nino-default-shadow);
 	--card-tone--more: 			color-mix( in srgb, var(--color-secondary) 30%, transparent );
 
+	/*	What a card does under the pointer: nothing at the first position, a rise of an eighth of a rem at the middle - the hint that the card
+		is a link -, and a quarter of a rem with the strongest step of the shadow at the third, as regular says	*/
 	--card-hover--less: 			none;
-	--card-hover--default: 		none;
+	--card-hover--default: 		0 -.125rem;
 	--card-hover--more: 			0 -.25rem;
 
 	--card-hover-shadow--less: 			var(--shadow-card);
@@ -217,6 +219,15 @@
 	}
 	.nino-card--linked:where(:not(.nino-card--borderless)):hover {
 		box-shadow: var(--card-hover-shadow);
+	}
+}
+
+/*	Under reduced motion nothing rises (the hover above is for visitors who have not asked for less), so the card that is a link says so by an underline under its
+	title: it moves nothing, keeps every contrast - on a title ground and on a card whose title is the accent already - and needs no colour of its own	*/
+@media (prefers-reduced-motion: reduce) {
+	.nino-card--linked:hover .nino-card-title {
+		text-decoration: underline;
+		text-underline-offset: .15em;
 	}
 }
 

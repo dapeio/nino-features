@@ -2764,6 +2764,78 @@ foreach( Setup::available( $library, 'footer' ) as $set ) {
 
 check( 'every footer declares --color-ink beside the colour of each ground it paints and of the footer as a whole, in the same value, and the compile of each carries it'. ( $inkProblems === [] ? '' : ' - '. implode( ', ', $inkProblems ) ), $inkRules > 0 && $inkProblems === [] );
 
+/*	Everything on the page that can be clicked hints at the interaction (see the opening of each set): a link of the footer is underlined under the pointer and under the keyboard, a tab that is not open answers the pointer and the keyboard with a colour or a ground, and a card that is a link lifts under the pointer at the middle of its ladder. A link of the footer is underlined at :focus-visible and not at :focus, which would leave the line behind after a click with the pointer. Read from the library's own lists, so that a set that is added without it fails here rather than on a site	*/
+$hintProblems	= [];
+$hintFooters	= 0;
+$hintTabs			= 0;
+$hintCards		= 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	$hintFooters++;
+	$hintRules	= designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) ) );
+	// A footer is addressed by the class of its frame, or by the element where its template (the kernel's own, for one-legal-row) carries no class
+	$hintOwn		= array_filter( $hintRules, static fn( array $rule ): bool => $rule['within'] === '' && preg_match( '/(?:^|[\s,])(?:\.nino-frame-footer|footer) a:hover/', $rule['selector'] ) === 1 );
+
+	if( count( $hintOwn ) !== 1 ) {
+		$hintProblems[] = 'footer '. $set. ': '. count( $hintOwn ). ' rules for a:hover under the footer, one expected';
+		continue;
+	}
+
+	$hintOwn = reset( $hintOwn );
+
+	if( str_contains( $hintOwn['selector'], 'a:focus-visible' ) === false )
+		$hintProblems[] = 'footer '. $set. ': the rule has no :focus-visible';
+
+	if( preg_match( '/text-decoration\s*:\s*underline\b/', $hintOwn['body'] ) !== 1 )
+		$hintProblems[] = 'footer '. $set. ': the rule does not underline';
+
+	foreach( $hintRules as $hintRule )
+		if( preg_match( '/\ba:focus(?![\w-])/', $hintRule['selector'] ) === 1 )
+			$hintProblems[] = 'footer '. $set. ': '. $hintRule['selector']. ' answers :focus, which a click leaves behind';
+}
+
+foreach( Setup::available( $library, 'tabs' ) as $set ) {
+
+	$hintTabs++;
+	$hintOwn = array_filter( designRules( designPlain( (string) file_get_contents( Setup::file( $library, 'tabs', $set ) ) ) ), static fn( array $rule ): bool =>
+		$rule['within'] === '' && str_contains( $rule['selector'], '.nino-tabs-tab' ) && str_contains( $rule['selector'], ':hover' ) && str_contains( $rule['selector'], ':focus-visible' ) && str_contains( $rule['selector'], ':not(.nino-is-active)' ) );
+
+	if( count( $hintOwn ) !== 1 )
+		$hintProblems[] = 'tabs '. $set. ': '. count( $hintOwn ). ' rules for a tab that is not open under the pointer and the keyboard, one expected';
+	else if( preg_match( '/(?<![\w-])(?:color|background-color)\s*:/', reset( $hintOwn )['body'] ) !== 1 )
+		$hintProblems[] = 'tabs '. $set. ': the rule changes neither the colour nor the ground';
+	// The kernel colours a tab that is not open with the accent under the pointer; a rule that gives the ground says what the text is on it
+	else if( preg_match( '/(?<![\w-])background-color\s*:/', reset( $hintOwn )['body'] ) === 1 && preg_match( '/(?<![\w-])color\s*:/', reset( $hintOwn )['body'] ) !== 1 )
+		$hintProblems[] = 'tabs '. $set. ': the rule sets a ground and leaves the colour of the text to the kernel';
+}
+
+foreach( Setup::available( $library, 'card' ) as $set ) {
+
+	$hintCards++;
+	$hintSheet	= designPlain( (string) file_get_contents( Setup::file( $library, 'card', $set ) ) );
+	$hintLadder = designDeclarations( $hintSheet );
+
+	// The ladder is read by the hover rule, and under reduced motion, where nothing rises, the linked card answers the pointer with an underline under its title
+	$hintReaders = array_filter( designRules( $hintSheet ), static fn( array $rule ): bool => trim( $rule['selector'] ) === '.nino-card--linked:hover' && preg_match( '/(?<![\w-])translate\s*:\s*var\(\s*--card-hover\s*\)/', $rule['body'] ) === 1 && str_contains( $rule['within'], 'no-preference' ) );
+	$hintReduced = array_filter( designRules( $hintSheet ), static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-card--linked:hover' ) && preg_match( '/text-decoration\s*:\s*underline\b/', $rule['body'] ) === 1 && preg_match( '/prefers-reduced-motion\s*:\s*reduce/', $rule['within'] ) === 1 );
+
+	if( count( $hintReaders ) !== 1 )
+		$hintProblems[] = 'card '. $set. ': no .nino-card--linked:hover rule that reads translate: var(--card-hover) where motion is allowed';
+
+	if( count( $hintReduced ) !== 1 )
+		$hintProblems[] = 'card '. $set. ': no .nino-card--linked:hover rule that underlines the title under reduced motion';
+
+	if( ( $hintLadder['--card-hover--default'] ?? 'none' ) === 'none' )
+		$hintProblems[] = 'card '. $set. ': --card-hover--default is none or missing';
+
+	if( ( $hintLadder['--card-hover--less'] ?? '' ) !== 'none' )
+		$hintProblems[] = 'card '. $set. ': --card-hover--less is not none';
+}
+
+check( 'every footer underlines its links under the pointer and at :focus-visible only, every tabs set answers a tab that is not open under the pointer and the keyboard with a colour, or with a ground and the colour of the text on it, and every card set lifts at the middle of its hover ladder and not at the first, where motion is allowed, and underlines its title under reduced motion'. ( $hintProblems === [] ? '' : ' - '. implode( ', ', $hintProblems ) ),
+	$hintFooters > 1 && $hintTabs > 1 && $hintCards > 1 && $hintProblems === [] );
+
 /*	The burger of the kernel is a button: .nino-nav-burger > button with aria-expanded and aria-controls, the icon in it, the list beside it, the open
 	state on the button (and nino-is-open on the wrapper). A header that styles what the burger was - a label under it, the checkbox in it, input:checked
 	and input:focus-visible with the icon beside them - styles nothing, and its menu opens as the kernel's own and looks as no header meant it. The old

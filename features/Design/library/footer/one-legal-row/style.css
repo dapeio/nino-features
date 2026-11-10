@@ -179,6 +179,14 @@ footer {
 	align-items: center;
 }
 
+/*	A link of the footer says it can be followed: an underline under the pointer and under the keyboard (not after a click, which :focus would leave behind), the colour as it is. This footer is the kernel's own, <footer> without the class the other sets carry, so the rule is named after the element	*/
+footer a:hover,
+footer a:focus-visible {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: .25em;
+}
+
 @media (max-width: 767.98px) {
 	.nino-footer-nav {
 		flex-direction: column;

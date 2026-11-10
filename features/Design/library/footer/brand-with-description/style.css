@@ -283,7 +283,7 @@ footer {
 }
 
 .nino-frame-footer a:hover,
-.nino-frame-footer a:focus {
+.nino-frame-footer a:focus-visible {
 	color: var(--color-accent);
 	text-decoration: underline;
 	text-underline-offset: .25em;

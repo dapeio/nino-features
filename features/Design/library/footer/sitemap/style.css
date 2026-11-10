@@ -276,6 +276,14 @@ footer {
 	color: inherit;
 }
 
+/*	A link of the footer says it can be followed: an underline under the pointer and under the keyboard (not after a click, which :focus would leave behind), the colour as it is	*/
+.nino-frame-footer a:hover,
+.nino-frame-footer a:focus-visible {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: .25em;
+}
+
 @media (min-width: 768px) {
 	.nino-frame-footer .nino-frame-footer-nav ul {
 		column-count: 3;

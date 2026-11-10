@@ -52,3 +52,9 @@
 	background-color: color-mix( in srgb, var(--color-ink) 12%, var(--color-ground) );
 	color: var(--tabs-active);
 }
+
+/*	A tab that is not open says it can be opened: under the pointer and under the keyboard its ground is half that of the open one (6 % of the ink against 12 %), the text stays the ink of the ground (the kernel gives a tab that is not open the accent under the pointer, which this ground does not promise) - the hover is half the answer of the open tab	*/
+.nino-tabs-tab:where(:not(.nino-is-active)):is(:hover, :focus-visible) {
+	background-color: color-mix( in srgb, var(--color-ink) 6%, var(--color-ground) );
+	color: inherit;
+}

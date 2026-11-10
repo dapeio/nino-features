@@ -86,3 +86,8 @@
 	color: var(--tabs-active);
 	border-bottom-color: var(--tabs-active);
 }
+
+/*	A tab that is not open says it can be opened: under the pointer and under the keyboard it takes the colour of the open one, without its line - the hover is half the answer of the open tab	*/
+.nino-tabs-tab:where(:not(.nino-is-active)):is(:hover, :focus-visible) {
+	color: var(--tabs-active);
+}
