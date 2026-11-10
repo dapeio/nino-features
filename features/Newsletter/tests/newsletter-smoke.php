@@ -473,7 +473,67 @@ $freshMailWindow( $appData );
 $resubscribeRequest = submitNewsletter( $appData, [ 'email' => 'jo@example.com' ] );
 check( 'resubscribing after an unsubscribe succeeds', $resubscribeRequest['/nino/http/response']['statusCode'] === 200 );
 check( 'and creates a fresh pending entry', count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1 );
-check( 'and clears the earlier removal record - a fresh signup is a fresh consent', in_array( $joRemovalHash, \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === false );
+check( 'but keeps the earlier removal record: a signup nobody confirmed is no consent yet', in_array( $joRemovalHash, \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === true );
+
+/*	Anyone can type an address into the form, and a signup that fails is no
+	consent either: neither takes the removal away, so an older backup that is
+	restored afterwards still cannot put the address back on the list. Only the
+	confirmation, from the mail, is the consent - it clears the record in the
+	write that confirms, and the entry then carries the ip and the time of the
+	request that confirmed, not those of the one that submitted the form	*/
+$joList = \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] );
+$joEntryPending = $joList[0];
+$freshMailWindow( $appData );
+$transportResult = false;
+$failedResignup = submitNewsletter( $appData, [ 'email' => 'jo@example.com' ] );
+$transportResult = true;
+check( 'a signup whose mail cannot be sent (500) leaves the removal record as it is', $failedResignup['/nino/http/response']['statusCode'] === 500
+	&& in_array( $joRemovalHash, \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === true );
+
+$joRestoreRoot = ninoSandboxDir( $appData ). '/jo-restore';
+mkdir( $joRestoreRoot. '/live/data', 0755, true );
+mkdir( $joRestoreRoot. '/staging/data', 0755, true );
+file_put_contents( $joRestoreRoot. '/live/data/newsletter-removed.php', '<?php return '. var_export( \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ). ';' );
+file_put_contents( $joRestoreRoot. '/staging/data/newsletter.php', '<?php return [ [ "email" => "jo@example.com", "status" => "subscribed" ] ];' );
+$joRestoreArgs = [ 'dataDir' => $joRestoreRoot. '/live/data', 'staging' => $joRestoreRoot. '/staging' ];
+\Nino\Modules\Newsletter::callbackRestore( $appData, $joRestoreArgs );
+check( 'a restore after the unconfirmed signups still leaves the unsubscribed address out', ( include $joRestoreRoot. '/staging/data/newsletter.php' ) === [] );
+
+// The date and the ip of the signup are replaced by those of the confirmation,
+// so the entry is made to carry values the confirming request cannot share -
+// a date three days back, inside the days an unconfirmed signup lives
+$joSignedUpAt = date( 'Y-m-d H:i:s', time() - 3 * 86400 );
+$joList[0]['date'] = $joSignedUpAt;
+$joList[0]['ip'] = '203.0.113.7';
+\Nino\Filesystem::putFileContent( $appData, $subscribersPath, $joList );
+
+// A removal that cannot be cleared (a directory where the lock file goes, the
+// answer of a read-only disk) keeps the entry pending: the confirmation is
+// not half done, and the button can be pressed again
+$joRemovalLock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/data/newsletter-removed.php' ). '.lock';
+unset( $appData['./nino/filesystem/locks'] );
+@unlink( $joRemovalLock );
+@mkdir( $joRemovalLock );
+$joBlocked = performNewsletterLink( $appData, [ 'confirm' => $joEntryPending['token'] ] );
+@rmdir( $joRemovalLock );
+unset( $appData['./nino/filesystem/locks'] );
+check( 'a confirmation whose removal record cannot be cleared is not given: the entry is as the signup left it, the removal is kept',
+	$joBlocked['/nino/http/response']['statusCode'] !== 200 && \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0] === $joList[0]
+	&& in_array( $joRemovalHash, \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === true );
+
+$_SERVER['REMOTE_ADDR'] = '198.51.100.9';
+$joConfirm = performNewsletterLink( $appData, [ 'confirm' => $joEntryPending['token'] ] );
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+$joConfirmed = \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0];
+check( 'confirming clears the removal record: only now is it a consent', $joConfirm['/nino/http/response']['statusCode'] === 200
+	&& $joConfirmed['status'] === 'subscribed' && in_array( $joRemovalHash, \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === false );
+check( '...and the confirmed entry carries the ip of the confirming request, not that of the signup', ( $joConfirmed['ip'] ?? '' ) === '198.51.100.9' );
+check( '...and the time of the confirming request, not that of the signup', $joConfirmed['date'] !== $joSignedUpAt && abs( (int) strtotime( (string) ( $joConfirmed['date'] ?? '' ) ) - time() ) < 300 );
+check( '...with the address and the token as they were', $joConfirmed['email'] === 'jo@example.com' && $joConfirmed['token'] === $joEntryPending['token'] );
+
+// The state the rest of the suite starts from: Jo pending, the removal recorded
+\Nino\Filesystem::putFileContent( $appData, $subscribersPath, [ $joEntryPending ] );
+\Nino\Filesystem::putFileContent( $appData, '/data/newsletter-removed.php', [ $joRemovalHash ] );
 
 $bareVisitRequest = visitNewsletterLink( $appData, [] );
 check( 'a bare GET /.newsletter without confirm/unsubscribe answers 404', $bareVisitRequest['/nino/http/response']['statusCode'] === 404 );
@@ -587,7 +647,8 @@ check( '...its status and date left as they were - it is still subscribed', arra
 $legacyConfirm = performNewsletterLink( $appData, [ 'confirm' => (string) $legacyNow[0]['token'] ] );
 $legacyConfirmed = $readList( $appData );
 check( 'confirming a legacy entry\'s token records it as subscribed', $legacyConfirm['/nino/http/response']['statusCode'] === 200 && ( $legacyConfirmed[0]['status'] ?? '' ) === 'subscribed' );
-check( '...and keeps the date it signed up on', ( $legacyConfirmed[0]['date'] ?? '' ) === $legacyDate && $legacyConfirmed[0]['token'] === $legacyNow[0]['token'] );
+check( '...and keeps the date it signed up on, and takes no ip of the click as a record of a consent given before', ( $legacyConfirmed[0]['date'] ?? '' ) === $legacyDate && $legacyConfirmed[0]['token'] === $legacyNow[0]['token']
+	&& array_key_exists( 'ip', $legacyConfirmed[0] ) === false );
 $pendingDate = date( 'Y-m-d H:i:s', time() - 3 * 86400 );
 $writeList( $appData, [ [ 'email' => 'waiting@example.com', 'token' => 'f00dfeed', 'status' => 'pending', 'date' => $pendingDate, 'ip' => '127.0.0.1' ] ] );
 performNewsletterLink( $appData, [ 'confirm' => 'f00dfeed' ] );
@@ -859,6 +920,8 @@ check( 'newsletter/list finds both signups, most recent first', count( $body['en
 	around and handed to a sending provider	*/
 check( 'the list the panel gets carries no token, so neither does the csv it exports', count( array_filter( $body['entries'], static fn( array $e ): bool => isset( $e['token'] ) ) ) === 0 );
 check( '...while the record of the consent stays, which is what the panel is for', count( array_filter( $body['entries'], static fn( array $e ): bool => isset( $e['email'], $e['date'], $e['ip'] ) ) ) === 2 );
+check( '...and what it shows of the consent is what is stored, the ip and the date of the entry as they are', array_map( static fn( array $e ): array => [ $e['ip'], $e['date'] ], array_reverse( $body['entries'] ) )
+	=== array_map( static fn( array $e ): array => [ $e['ip'], $e['date'] ], \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ) ) );
 check( '...and the token is still stored, or no link in a sent mail would work again', count( array_filter(
 	\Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ),
 	static fn( array $e ): bool => ( $e['token'] ?? '' ) !== ''
@@ -872,7 +935,13 @@ check( 'with both signups unconfirmed the count and the Dashboard tile say 0', \
 check( '...and every row of the list says it is pending', array_column( $body['entries'], 'status' ) === [ 'pending', 'pending' ] && $body['counts'] === [ 'subscribed' => 0, 'pending' => 2 ] );
 
 $annaToken = array_column( \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ), 'token', 'email' )['anna@example.com'];
+$_SERVER['REMOTE_ADDR'] = '198.51.100.7';
 performNewsletterLink( $appData, [ 'confirm' => $annaToken ] );
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+[ , $confirmedBody ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
+$annaRow = array_values( array_filter( $confirmedBody['entries'], static fn( array $e ): bool => $e['email'] === 'anna@example.com' ) )[0] ?? [];
+check( 'the list shows a confirmed entry with the ip and the time of its confirmation', ( $annaRow['status'] ?? '' ) === 'subscribed' && ( $annaRow['ip'] ?? '' ) === '198.51.100.7'
+	&& abs( (int) strtotime( (string) ( $annaRow['date'] ?? '' ) ) - time() ) < 300 );
 check( 'a confirmed signup is counted, and the tile with it', \Nino\Modules\Newsletter\Admin::count( $appData ) === 1
 	&& \Nino\Modules\Newsletter\Admin::summary( $appData )['value'] === 1 );
 

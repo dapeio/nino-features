@@ -695,7 +695,6 @@ namespace Nino\Modules {
 			try {
 
 				$ran 				= false;
-				$subscribed	= false;
 				$token 			= null;
 				// Resolved out here: the closure has no $appData, and the
 				// address a visitor counts as depends on the proxy list in it
@@ -703,7 +702,7 @@ namespace Nino\Modules {
 				$ip 				= \Nino\Http::getClientIp( $appData );
 				$keepSeconds = self::_keepSeconds( $appData );
 
-				$written = \Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $email, $ip, $keepSeconds, &$ran, &$subscribed, &$token ): array {
+				$written = \Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $email, $ip, $keepSeconds, &$ran, &$token ): array {
 
 					$ran = true;
 
@@ -714,7 +713,6 @@ namespace Nino\Modules {
 
 						if( ( $entry['status'] ?? 'subscribed' ) === 'subscribed' ) {
 
-							$subscribed = true;
 							$token 			= empty( $entry['token'] ) === false ? (string) $entry['token'] : null;
 
 							// Nothing about the entry changes - only a legacy one gets
@@ -759,14 +757,9 @@ namespace Nino\Modules {
 				if( $ran === false || $token === null || $written === false )
 					return 'failed';
 
-				// A signup this loop actually recorded (pending or resent) is
-				// a current, freely given consent - clear any earlier removal
-				// so a later restore doesn't mistake this resubscription for
-				// the resurrection it's specifically meant to prevent. Not for
-				// an address that was subscribed already: nothing was recorded
-				if( $subscribed === false )
-					self::_clearRemoval( $appData, $email );
-
+				// An earlier removal of the address is left alone: anyone can type
+				// an address into the form, so a signup is no consent. Only the
+				// confirmation is, and _confirm() clears the record with it
 				return self::_sendConfirmMail( $appData, $email, $token );
 
 			} catch( \Throwable $e ) {
@@ -877,9 +870,13 @@ namespace Nino\Modules {
 		 *	Flip a pending entry to subscribed for a posted confirm token.
 		 *	Idempotent - confirming an already-subscribed token stays true,
 		 *	so a twice-clicked mail link doesn't scare the visitor with an
-		 *	error. A pending entry gets the date of the confirmation; a legacy
-		 *	one - a token but no status, from before the double opt-in flow -
-		 *	keeps the date it signed up on, and only its status is set. A
+		 *	error. A pending entry gets the date and the ip of the confirming
+		 *	request - the record of the consent is the confirmation, not the
+		 *	form that anybody could have submitted - and the removal record of
+		 *	its address is cleared in the same write: a removal that cannot be
+		 *	cleared leaves the entry pending. A legacy one - a token but no
+		 *	status, from before the double opt-in flow - keeps the date and the
+		 *	ip it signed up with, and only its status is set. A
 		 *	pending entry that has waited longer than the pending days is not
 		 *	confirmed either: its token is as unknown as one never issued (the
 		 *	entry stays until the next signup sweeps it, _prunePending()), and
@@ -900,8 +897,11 @@ namespace Nino\Modules {
 				$found = false;
 				$now = time();
 				$keepSeconds = self::_keepSeconds( $appData );
+				// Resolved out here, as in _requestSignup(): this is the request
+				// of whoever pressed the button
+				$ip = \Nino\Http::getClientIp( $appData );
 
-				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $token, $now, $keepSeconds, &$found ): ?array {
+				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries, array &$appData ) use ( $token, $now, $keepSeconds, $ip, &$found ): ?array {
 
 					foreach( $entries as $entryKey => $entry ) {
 
@@ -924,8 +924,21 @@ namespace Nino\Modules {
 						$legacy = isset( $entry['status'] ) === false && empty( $entry['date'] ) === false;
 						$entries[$entryKey]['status']	= 'subscribed';
 
-						if( $legacy === false )
-							$entries[$entryKey]['date']	= date( 'Y-m-d H:i:s' );
+						if( $legacy === false ) {
+
+							// A consent given now is the one a restore must not undo:
+							// an earlier removal of the address ends here, in the write
+							// that confirms. When it cannot be cleared the entry stays
+							// pending - an address stays removed rather than turn up
+							// subscribed on a list a restore will filter
+							if( self::_clearRemoval( $appData, (string) ( $entry['email'] ?? '' ) ) === false ) {
+								$found = false;
+								return null;
+							}
+
+							$entries[$entryKey]['date']	= date( 'Y-m-d H:i:s', $now );
+							$entries[$entryKey]['ip']		= $ip;
+						}
 
 						return $entries;
 					}
@@ -1013,9 +1026,10 @@ namespace Nino\Modules {
 		 *	The removal list itself is unioned rather than replaced (a removal
 		 *	recorded on either side stays a removal) since the live copy
 		 *	could itself be the very thing being recovered from and is not to
-		 *	be trusted as complete. A resubscribe clears its own address from
-		 *	that list already (see _clearRemoval()'s call site) - this merge
-		 *	only ever excludes, never decides who should be excluded. The list
+		 *	be trusted as complete. A confirmed resubscribe clears its own
+		 *	address from that list (see _clearRemoval()'s call site in
+		 *	_confirm()) - this merge only ever excludes, never decides who
+		 *	should be excluded. The list
 		 *	holds a sha256 per address, not the address itself, so an entry is
 		 *	matched by hashing it the same way, not by comparing emails.
 		 *
@@ -1099,13 +1113,20 @@ namespace Nino\Modules {
 			} );
 		}
 
-		// Undoes recordRemoval() for a fresh signup - see its call site in
-		// _requestSignup()
-		private static function _clearRemoval( array &$appData, string $email ): void {
+		// Undoes recordRemoval() for a confirmed signup - see its call site in
+		// _confirm(). False when the record could not be written
+		private static function _clearRemoval( array &$appData, string $email ): bool {
 
 			$hash = self::_removalHash( $email );
 
-			\Nino\Filesystem::mutate( $appData, self::REMOVED_PATH, function( array $removed ) use ( $hash ): array {
+			// An address that was never removed has nothing to undo, and its
+			// confirmation does not depend on this file being writable
+			$stored = \Nino\Filesystem::getFileContent( $appData, self::REMOVED_PATH, [] );
+
+			if( is_array( $stored ) === false || in_array( $hash, $stored, true ) === false )
+				return true;
+
+			return \Nino\Filesystem::mutate( $appData, self::REMOVED_PATH, function( array $removed ) use ( $hash ): array {
 				return array_values( array_filter( $removed, function( $entry ) use ( $hash ): bool { return $entry !== $hash; } ) );
 			} );
 		}

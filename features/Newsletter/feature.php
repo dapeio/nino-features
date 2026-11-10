@@ -47,14 +47,14 @@ return [
 		],
 		'panel' => [
 			'Newsletter' => [
-				'en_US' => 'Shows the addresses with their status, a BCC line of the confirmed ones to copy, and a CSV export.',
-				'de_DE' => 'Zeigt die Adressen mit ihrem Status, eine BCC-Zeile der bestätigten zum Kopieren und einen CSV-Export.',
+				'en_US' => 'Shows the addresses with their status, a BCC line of the confirmed ones to copy, and a CSV export; a confirmed entry carries the time and IP address of its confirmation.',
+				'de_DE' => 'Zeigt die Adressen mit ihrem Status, eine BCC-Zeile der bestätigten zum Kopieren und einen CSV-Export; ein bestätigter Eintrag trägt Zeit und IP-Adresse seiner Bestätigung.',
 			],
 		],
 		'callbacks' => [
 			'/nino/admin/restore' => [
-				'en_US' => 'Brings the subscriber list back with a restored backup.',
-				'de_DE' => 'Holt die Abonnentenliste mit einer wiederhergestellten Sicherung zurück.',
+				'en_US' => 'Brings the subscriber list back with a restored backup; an address removed since stays off it until its owner confirms again.',
+				'de_DE' => 'Holt die Abonnentenliste mit einer wiederhergestellten Sicherung zurück; eine seither entfernte Adresse bleibt draußen, bis ihr Inhaber erneut bestätigt.',
 			],
 		],
 		'install' => [
