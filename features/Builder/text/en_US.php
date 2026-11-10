@@ -531,6 +531,8 @@ return [
 	'[[/_admin/builder/state/line]]'						=> 'Line %s: %s',
 	'[[/_admin/builder/state/narrow]]'						=> 'A template is built at a desk: on a screen this narrow the editor is for reading only.',
 	'[[/_admin/builder/error/id-taken]]'					=> 'Another section has that id.',
+	'[[/_admin/builder/error/rename-saving]]'				=> 'A section can be renamed once the save is finished.',
+	'[[/_admin/builder/error/apply-saving]]'				=> 'A block can be applied once the save is finished.',
 	'[[/_admin/builder/error/id-slug]]'						=> 'An id is lower case words of letters and digits, joined by hyphens.',
 	'[[/_admin/builder/error/section-id-taken]]'			=> 'An id of the page is there twice, or a loop or a group makes it for its own elements: %s. Give it another id.',
 	'[[/_admin/builder/error/red]]'							=> 'A source means nothing where it stands (marked red in the preview). Change it first.',

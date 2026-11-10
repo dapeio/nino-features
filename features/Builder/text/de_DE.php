@@ -493,6 +493,8 @@ return [
 	'[[/_admin/builder/state/line]]'						=> 'Zeile %s: %s',
 	'[[/_admin/builder/state/narrow]]'						=> 'Ein Template wird am Schreibtisch gebaut: Auf einem so schmalen Bildschirm ist der Editor nur zum Lesen.',
 	'[[/_admin/builder/error/id-taken]]'					=> 'Eine andere Sektion hat diese Id.',
+	'[[/_admin/builder/error/rename-saving]]'				=> 'Eine Sektion kann umbenannt werden, sobald das Speichern fertig ist.',
+	'[[/_admin/builder/error/apply-saving]]'				=> 'Ein Block kann übernommen werden, sobald das Speichern fertig ist.',
 	'[[/_admin/builder/error/id-slug]]'						=> 'Eine Id besteht aus Wörtern in Kleinbuchstaben und Ziffern, mit Bindestrichen verbunden.',
 	'[[/_admin/builder/error/section-id-taken]]'			=> 'Eine Id der Seite ist doppelt, oder ein Loop oder eine Gruppe bildet sie für ihre eigenen Elemente: %s. Gib ihr eine andere Id.',
 	'[[/_admin/builder/error/red]]'							=> 'Eine Quelle bedeutet dort, wo sie steht, nichts (in der Vorschau rot markiert). Ändere sie zuerst.',

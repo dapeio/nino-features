@@ -5576,6 +5576,172 @@ saved.blocks[0].id = 'hero';
 requests[0].callback( 200, { model : saved, hash : 'h2' } );
 check( 'the answer replaces the model and the hash, and the document holds nothing unsaved', builder._doc.hash === 'h2' && builder._doc.model.name === 'Start' && builder._unsaved( builder._doc ) === false && builder._saving === false && builder._status.state === 'saved' && answers[answers.length - 1] === true && builder._fresh.x === undefined );
 
+// An edit made while a save is on its way is the document's: the answer brings the hash and the file's version, and takes nothing away
+doc = open();
+builder._doc.model.name = 'Start';
+builder._addSection();
+const madeBefore = builder._doc.model.blocks[builder._doc.model.blocks.length - 1].id;
+builder._save( function( ok ) { answers.push( ok ) } );
+const sentByMe = JSON.parse( JSON.stringify( requests[0].payload.model ) );
+builder._addSection();
+const madeMeanwhile = builder._doc.model.blocks[builder._doc.model.blocks.length - 1].id;
+const heldBlocks = builder._doc.model.blocks.length;
+const saveRequest = requests[0];
+builder._problems = [ 'the section "x": a sentence nobody owns' ];
+builder._renderProblems();
+const problemList = screen.getElementById('builder-problems');
+const askedBefore = requests.length;
+saveRequest.callback( 200, { model : JSON.parse( JSON.stringify( sentByMe ) ), hash : 'h2' } );
+check( '...the problems the refused save before it said are let go of in the kept case too: the list over the preview is empty', builder._problems.length === 0 && problemList.hidden === true );
+check( '...and the registry and the keys are asked for again, as the save may have written texts or slots', requests.slice( askedBefore ).some( function( request ) { return request.action === 'builder/registry' } ) && requests.slice( askedBefore ).some( function( request ) { return request.action === 'text/keys' } ) );
+check( 'a section made while the save is on its way is still there when the answer comes, and the document is unsaved: the answer brings the new hash and the file as it was saved, and the model is the editor\'s',
+	builder._doc.model.blocks.length === heldBlocks && builder._doc.model.blocks[heldBlocks - 1].id === madeMeanwhile && builder._doc.hash === 'h2' && builder._unsaved( builder._doc ) === true && builder._saving === false
+	&& JSON.parse( builder._doc.saved ).blocks.length === sentByMe.blocks.length && builder._status.state === 'dirty' && screen.getElementById('builder-save').disabled === false && answers[answers.length - 1] === false );
+check( '...what the file holds is not new to the page any more, and what was made since is', builder._fresh[madeBefore] === undefined && builder._fresh[madeMeanwhile] === true );
+check( '...and the preview shows the section made meanwhile', frames().length === heldBlocks );
+requests = [];
+builder._save( function( ok ) { answers.push( ok ) } );
+check( '...the next save sends what the document holds, against the hash the answer brought', requests.length === 1 && requests[0].payload.hash === 'h2' && requests[0].payload.model.blocks.length === heldBlocks && requests[0].payload.model.blocks[heldBlocks - 1].id === madeMeanwhile );
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( requests[0].payload.model ) ), hash : 'h3' } );
+check( '...and that save, nothing having changed meanwhile, is the answer as it is today: the model is the answer, nothing is unsaved', builder._doc.hash === 'h3' && builder._unsaved( builder._doc ) === false && builder._status.state === 'saved' && answers[answers.length - 1] === true && builder._fresh[madeMeanwhile] === undefined );
+
+// The id of a section waits for the answer of a save: the server moves the keys by the id it was sent with
+const answerKinds = [ [ 'a 200', function( request ) { request.callback( 200, { model : JSON.parse( JSON.stringify( request.payload.model ) ), hash : 'h2' } ) } ],
+	[ 'a 409', function( request ) { request.callback( 409, { code : 'builder_conflict', error : 'x' } ) } ],
+	[ 'a 500', function( request ) { request.callback( 500, { code : 'builder_write', error : 'x' } ) } ],
+	[ 'a network error', function( request ) { request.callback( 0, null ) } ] ];
+answerKinds.forEach( function( kind ) {
+
+	doc = open();
+	builder._save();
+	const askedBefore = requests.length;
+	let said = '';
+	let blockSaid = '';
+	builder._renameTo( [ 0 ], 'start', function( text ) { said = text }, null );
+	builder._applyBlock( [ 2 ], '<section id="other"></section>', 'html', function( text ) { blockSaid = text } );
+	check( 'while a save is on its way a section is not renamed, by the field of the head or of the dialog, and a block is not read by the server: each says why and no request goes ('+ kind[0] +')',
+		builder._doc.model.blocks[0].id === 'hero' && builder._doc.model.blocks[0].renamedFrom === undefined && said !== '' && blockSaid !== '' && requests.length === askedBefore );
+	const saveRequest = requests[0];
+	kind[1]( saveRequest );
+	said = 'unsaid';
+	questions = [];
+	builder._renameTo( [ 0 ], 'start', function( text ) { said = text }, null );
+	questions.forEach( function( question ) { question.onChoose( 'yes' ) } );
+	check( '...and once '+ kind[0] +' is in the section is renamed', builder._doc.model.blocks[0].id === 'start' && said === '' );
+} );
+
+// A confirmation that is answered once a save has gone does not rename either
+doc = open();
+questions = [];
+builder._renameTo( [ 0 ], 'start', function() {}, null );
+builder._save();
+let confirmed = questions.length === 1;
+questions[0].onChoose( 'yes' );
+check( 'a rename that asked first and is confirmed once a save is on its way is not made', confirmed === true && builder._doc.model.blocks[0].id === 'hero' );
+requests[0].callback( 0, null );
+
+// A section made while the save is on its way is not one the file knows when the answer comes
+doc = open();
+builder._addSection();
+const sentFresh = builder._doc.model.blocks[builder._doc.model.blocks.length - 1].id;
+builder._save();
+builder._addSection();
+const laterFresh = builder._doc.model.blocks[builder._doc.model.blocks.length - 1].id;
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( requests[0].payload.model ) ), hash : 'h2' } );
+check( 'a section made while the save is on its way keeps its mark after the answer, the one that was sent loses it', builder._fresh[laterFresh] === true && builder._fresh[sentFresh] === undefined );
+
+// ...also one that has the id of a section the file knows, that was taken away meanwhile
+doc = open();
+builder._save();
+builder._doc.model.blocks.splice( 0, 1 );
+builder._addSection();
+const sameId = builder._doc.model.blocks[builder._doc.model.blocks.length - 1];
+sameId.id = 'hero';
+builder._fresh.hero = true;
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( requests[0].payload.model ) ), hash : 'h2' } );
+check( '...even when it has the id of one the file knows and that was taken away meanwhile', builder._fresh.hero === true );
+
+// An answer that lacks a section that was sent: what the file holds is the answer, the section is the editor's
+doc = open();
+builder._addSection();
+const lacking = builder._doc.model.blocks[builder._doc.model.blocks.length - 1].id;
+builder._save();
+builder._doc.model.name = 'Meanwhile';
+const lackAnswer = JSON.parse( JSON.stringify( requests[0].payload.model ) );
+lackAnswer.blocks = lackAnswer.blocks.filter( function( block ) { return block.id !== lacking } );
+requests[0].callback( 200, { model : lackAnswer, hash : 'h2' } );
+check( '...an answer without a section that was sent leaves the section its mark and the document unsaved', builder._fresh[lacking] === true && builder._unsaved( builder._doc ) === true );
+
+// A text and a picture changed while the save is on its way are kept, the answer being the file as the server read it, and the next save sends them
+doc = open();
+builder._save();
+const bg = builder._doc.model.blocks[0].background;
+builder._doc.model.blocks[0].cols[0].components[0].values = { en_US : 'Meanwhile' };
+if( bg )
+	bg.focus = 4;
+const answerWithRewrite = JSON.parse( JSON.stringify( requests[0].payload.model ) );
+answerWithRewrite.name = 'As the server read it';
+requests[0].callback( 200, { model : answerWithRewrite, hash : 'h2' } );
+requests = [];
+builder._save();
+check( 'a text and a background picture changed while the save is on its way are kept, and the next save sends them against the new hash; the saved state is the answer, not what was sent',
+	requests.length === 1 && requests[0].payload.hash === 'h2' && requests[0].payload.model.blocks[0].cols[0].components[0].values.en_US === 'Meanwhile' && ( bg ? requests[0].payload.model.blocks[0].background.focus === 4 : true )
+	&& JSON.parse( builder._doc.saved ).name === 'As the server read it' && builder._doc.model.name !== 'As the server read it' );
+requests[0].callback( 0, null );
+
+// A section the save renamed, with something else changed while the save was on its way: the rename after the answer is sent from the name the server holds it under, with its keys and its picture there
+doc = open();
+questions = [];
+builder._renameTo( [ 0 ], 'start', function() {}, null );
+questions.forEach( function( question ) { question.onChoose( 'yes' ) } );
+builder._doc.model.blocks[0].background = { slot : '/template/page-home/hero/background', focus : 2 };
+builder._save();
+builder._doc.model.name = 'Meanwhile';
+const firstAnswer = JSON.parse( JSON.stringify( requests[0].payload.model ) );
+delete firstAnswer.blocks[0].renamedFrom;
+firstAnswer.blocks[0].cols[0].components[0].source = '/template/page-home/start/title';
+firstAnswer.blocks[0].background.slot = '/template/page-home/start/background';
+requests[0].callback( 200, { model : firstAnswer, hash : 'h2' } );
+check( 'a section that the save renamed is where the server put it when the answer is kept: it comes from no name any more, and its keys and its picture are under the new one', builder._doc.model.name === 'Meanwhile' && builder._doc.model.blocks[0].renamedFrom === undefined
+	&& builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home/start/title' && builder._doc.model.blocks[0].background.slot === '/template/page-home/start/background' );
+questions = [];
+builder._renameTo( [ 0 ], 'intro', function() {}, null );
+questions.forEach( function( question ) { question.onChoose( 'yes' ) } );
+requests = [];
+builder._save();
+check( '...and the rename after it is sent from the name the server holds it under, the title and the picture being there', requests.length === 1 && requests[0].payload.hash === 'h2' && requests[0].payload.model.blocks[0].id === 'intro' && requests[0].payload.model.blocks[0].renamedFrom === 'start'
+	&& requests[0].payload.model.blocks[0].cols[0].components[0].source === '/template/page-home/start/title' && requests[0].payload.model.blocks[0].background.slot === '/template/page-home/start/background' );
+requests[0].callback( 0, null );
+
+// The apply of a block that waits for the save says so in words of its own
+doc = open();
+builder._save();
+let applySaid = '';
+builder._applyBlock( [ 2 ], '<section id="other"></section>', 'html', function( text ) { applySaid = text } );
+let renameSaid = '';
+builder._renameTo( [ 0 ], 'start', function( text ) { renameSaid = text }, null );
+check( 'the apply of a block that waits for the save says it in words of its own, not the ones of the rename', applySaid === words['/_admin/builder/error/apply-saving'] && renameSaid === words['/_admin/builder/error/rename-saving'] && applySaid !== renameSaid );
+requests[0].callback( 0, null );
+
+doc = open();
+builder._renderEditor();
+builder._doc.model.name = 'Start';
+builder._save();
+builder._openSettings( [ 0 ] );
+const heldNode = builder._doc.model.blocks[0];
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( requests[0].payload.model ) ), hash : 'h2' } );
+check( 'a dialog that was opened while the save is on its way keeps the nodes it edits: the answer does not replace the model under it', builder._doc.model.blocks[0] === heldNode && dialogBox().open === true && builder._doc.hash === 'h2' && builder._saving === false );
+check( '...and nothing being changed, the document is saved and says so: the status is not left at the saving the click set, and a save the shell asked for is done', builder._unsaved( builder._doc ) === false && builder._status.state === 'saved' );
+builder._closeDialog();
+
+doc = open();
+builder._doc.model.name = 'Start';
+let told = null;
+registered.save( function( ok ) { told = ok } );
+builder._doc.model.name = 'Start again';
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( requests[0].payload.model ) ), hash : 'h2' } );
+check( 'a save the shell asked for is not reported as done while the document holds what it did not carry: the shell asks again before it leaves', told === false && builder._unsaved( builder._doc ) === true && builder._doc.model.name === 'Start again' );
+
 doc = open();
 builder._doc.model.blocks[1].cols[1].components[0] = builder._newLoop( builder._registry, 'marks' );
 builder._doc.model.blocks[1].cols[1].components[0].source = '/services';

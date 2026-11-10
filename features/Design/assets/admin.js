@@ -445,6 +445,8 @@
 		// Which of them is on screen, and the debounce behind every select
 		_width	: 1280,
 		_timer	: null,
+		// The number of the last preview asked for: an answer that is not to that one is the answer to a selection nobody has on screen any more
+		_previewSeq	: 0,
 		// Whether the frame jumps by itself: to the anchor of a tab that is opened and to
 		// where a change is looked at. On at the start of every visit and kept nowhere -
 		// a convenience of the visit, nothing a project should have to store
@@ -470,10 +472,13 @@
 		 *	@param		{Function}	[then]			Run once the state is there (and the screen drawn, where one was asked for)
 		 *	@param		{Element}		[wrap]			Where a failure is said - the mount of the screen that asked, the loader's where it did;
 		 *																	else the one of the screen that is drawn
+		 *	@param		{string}		[sent]			The selection a request stored, as _canonical() spells it: the one on screen when the answer
+		 *																	is here replaces the stored one only if it is that - else somebody went on while the
+		 *																	request was on its way, and what was changed since is theirs to keep or to revert
 		 *
 		 *	@return		void
 		 */
-		init : function( then, wrap ) {
+		init : function( then, wrap, sent ) {
 
 			wrap = wrap || Nino.admin.design._mount();
 			if( wrap === null )
@@ -485,7 +490,9 @@
 					return Nino.admin.design._showError( wrap, status, response );
 
 				Nino.admin.design._data		= response;
-				Nino.admin.design._takeStored( response );
+
+				Nino.admin.design._takeStored( response, sent !== undefined && Nino.admin.design._edit !== null && Nino.admin.design._canonical( Nino.admin.design._edit ) !== sent );
+
 				Nino.admin.design._ready	= true;
 
 				// A preview and a bar drawn behind the loader would be a request for nothing, in a mount nobody sees
@@ -636,14 +643,17 @@
 		 *	a state it does not know any more, so what it brings is let go of (see _themeStamp)
 		 *
 		 *	@param		{Object}	data			The answer of design/list
+		 *	@param		{boolean}	[keepEdit]	The working copy is somebody's still: the notes, the active theme and the stamp are taken, the copy is not
 		 *
 		 *	@return		void
 		 */
-		_takeStored : function( data ) {
+		_takeStored : function( data, keepEdit ) {
 
 			const design = Nino.admin.design;
 
-			design._edit = design._selection( data );
+			if( keepEdit !== true )
+				design._edit = design._selection( data );
+
 			design._notes = Array.isArray( data.notes ) === true ? data.notes : [];
 			design._active = data.active || null;
 
@@ -2921,7 +2931,13 @@
 				msg.title = msg.textContent;
 			}
 
+			const seq = ++Nino.admin.design._previewSeq;
+
 			Nino.admin.design._apiCall( 'preview', Object.assign( {}, edit, { full : full } ), function( status, response ) {
+
+				// The newest request wins, whatever the order the answers come in
+				if( seq !== Nino.admin.design._previewSeq )
+					return;
 
 				if( status !== 200 || response === null ) {
 					if( msg !== null ) {
@@ -3420,6 +3436,9 @@
 			btn.disabled = true;
 			Nino.admin.design._say( msg, '' );
 
+			// What is stored when the answer is in; the screen is drawn again from the stored selection only if it is still this one
+			const sent = Nino.admin.design._canonical( edit );
+
 			Nino.admin.design._apiCall( 'save', edit, function( status, response ) {
 
 				if( status !== 200 || response === null ) {
@@ -3436,7 +3455,7 @@
 					btn.disabled = false;
 					return Nino.admin.design.init( function() {
 						Nino.admin.design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/msg/saved') );
-					} );
+					}, undefined, sent );
 				}
 
 				Nino.admin.design._apiCall( 'plan', {}, function( planStatus, planned ) {
@@ -3450,7 +3469,7 @@
 					const files = planned.files || [];
 
 					Nino.admin.design._askApply( files, function( yes ) {
-						Nino.admin.design._applyAnswered( yes, files, btn, msg );
+						Nino.admin.design._applyAnswered( yes, files, btn, msg, sent );
 					} );
 				} );
 			} );
@@ -3486,10 +3505,11 @@
 		 *	@param		{Array}			files					design/plan's answer
 		 *	@param		{Element}		btn						The button that asked, disabled until this is over
 		 *	@param		{Element}		msg
+		 *	@param		{string}		[sent]				The selection the draft was stored from (see init())
 		 *
 		 *	@return		void
 		 */
-		_applyAnswered : function( yes, files, btn, msg ) {
+		_applyAnswered : function( yes, files, btn, msg, sent ) {
 
 			/*	The screen is drawn again from the answer, and the button that asked is gone with it - the dialog gave
 				the focus back to it while it was still switched off, which a button does not take. The new one has it	*/
@@ -3506,7 +3526,7 @@
 			// The draft is saved either way; only the website waits
 			if( yes === false ) {
 				btn.disabled = false;
-				return Nino.admin.design.init( function() { back( Nino.content.getText('/_admin/design/msg/cancelled') ) } );
+				return Nino.admin.design.init( function() { back( Nino.content.getText('/_admin/design/msg/cancelled') ) }, undefined, sent );
 			}
 
 			const force = files.some( function( file ) { return file.exists === true && file.state !== 'ours' } );
@@ -3538,7 +3558,7 @@
 				if( lost.length > 0 )
 					said.push( Nino.admin.design._text( '/_admin/design/msg/lost', lost.join(', ') ) );
 
-				Nino.admin.design.init( function() { back( said.join(' ') ) } );
+				Nino.admin.design.init( function() { back( said.join(' ') ) }, undefined, sent );
 			} );
 		},
 

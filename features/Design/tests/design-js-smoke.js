@@ -5372,6 +5372,101 @@ check( 'the loader is left for the view Type of the setup as it is for any other
 	threw( function() { leavingBy.answer( 200, shelfOf( { installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) }, uses : { inter : [] } } ) ) } ) === false
 	&& leavingBy.faces._faces !== null && leavingBy.byId('design-faces-installed') === null && screenOf( leavingBy ) === 'type' && blocksOf( leavingBy.form ).length > 0 );
 
+// ---- An edit made while a request is on its way is the screen's
+
+const raced = panel();
+raced.design._edit.size = 1;
+raced.byId('design-save').fire('click');
+raced.design._edit.size = 2;
+raced.answer( 200, {} );
+
+check( 'a save is answered by reading the stored setup again', JSON.stringify( endpoints( raced ) ) === JSON.stringify( [ 'list' ] ) && raced.requests[0].payload.size === undefined );
+
+raced.answer( 200, listing( { size : 1, notes : [ { note : 'kept' } ], active : 'fresh' } ) );
+
+check( '...the notes and the active theme of the answer are taken all the same, as the copy is the only thing that is not', JSON.stringify( raced.design._notes ) === JSON.stringify( [ { note : 'kept' } ] ) && raced.design._active === 'fresh' );
+check( 'a knob moved while the save was on its way is still where it was moved when the stored setup is read: the screen holds it and the way back is offered, as the selection is not the stored one',
+	raced.design._edit.size === 2 && raced.design._data.size === 1 && raced.design._isDirty() === true && raced.byId('design-reset').hidden === false && raced.byId('design-save').disabled === false
+	&& raced.byId('design-msg').textContent === TEXT['/_admin/design/msg/saved'] );
+
+raced.byId('design-save').fire('click');
+
+check( '...and the next save sends it', raced.requests.length === 1 && raced.requests[0].endpoint === 'save' && raced.requests[0].payload.size === 2 );
+
+raced.answer( 200, {} );
+raced.answer( 200, listing( { size : 2 } ) );
+
+check( '...after which the selection is the stored one', raced.design._edit.size === 2 && raced.design._isDirty() === false && raced.byId('design-reset').hidden === true );
+
+const raceQuiet = panel();
+raceQuiet.design._edit.size = 1;
+raceQuiet.byId('design-save').fire('click');
+raceQuiet.answer( 200, {} );
+const quietBefore = raceQuiet.design._edit.whitespace;
+raceQuiet.answer( 200, listing( { size : 1, whitespace : quietBefore + 1 } ) );
+
+check( 'a save that nothing was changed during is read as it was: the screen is drawn from the stored setup, which holds what the edit does not', raceQuiet.design._edit.whitespace === quietBefore + 1 && raceQuiet.design._edit.size === 1 && raceQuiet.design._isDirty() === false && raceQuiet.byId('design-reset').hidden === true );
+
+const racedApply = panel();
+racedApply.design._edit.size = 1;
+racedApply.byId('design-apply').fire('click');
+racedApply.answer( 200, {} );
+racedApply.answer( 200, { files : [] } );
+racedApply.design._edit.size = 2;
+racedApply.asks[0].choose('yes');
+racedApply.answer( 200, {} );
+racedApply.answer( 200, listing( { size : 1, exists : true } ) );
+
+check( 'an apply that was answered while a knob was being moved leaves the knob where it is, and the selection unsaved', racedApply.requests.length === 0
+	&& racedApply.design._edit.size === 2 && racedApply.design._isDirty() === true && racedApply.byId('design-msg').textContent === TEXT['/_admin/design/msg/applied'] );
+
+const raceDeclined = panel();
+raceDeclined.design._edit.size = 1;
+raceDeclined.byId('design-apply').fire('click');
+raceDeclined.answer( 200, {} );
+raceDeclined.answer( 200, { files : [] } );
+raceDeclined.design._edit.size = 2;
+raceDeclined.asks[0].choose('no');
+raceDeclined.answer( 200, listing( { size : 1 } ) );
+
+check( '...and so does a question that is answered with a no', raceDeclined.design._edit.size === 2 && raceDeclined.design._isDirty() === true && raceDeclined.byId('design-msg').textContent === TEXT['/_admin/design/msg/cancelled'] );
+
+// The previews of a selection that moves are answered in any order: the frame shows the newest
+const ordered = panel();
+const orderedFrame = ordered.byId('design-frame');
+const racePreviewed = function( size, document ) {
+	ordered.design._edit.size = size;
+	ordered.design._previewNow();
+	const request = ordered.requests[ordered.requests.length - 1];
+	return { request : request, answer : function( status ) { request.answer( status, status === 200 ? { css : ':root{}', document : document, style : 'design-preview-css', notes : [] } : null ) } };
+};
+const raceOlder = racePreviewed( 1, '<html>older</html>' );
+const raceNewer = racePreviewed( 2, '<html>newer</html>' );
+
+raceNewer.answer( 200 );
+raceOlder.answer( 200 );
+
+check( 'the answer of an older preview that comes after the answer of a newer one is dropped: the frame shows the selection that is on screen', orderedFrame.srcdoc === '<html>newer</html>' && ordered.design._edit.size === 2 );
+
+const raceFirst = racePreviewed( 3, '<html>first</html>' );
+const raceLast = racePreviewed( 4, '<html>last</html>' );
+
+raceFirst.answer( 200 );
+
+check( '...and one that comes before it is not shown either: the frame keeps what it has until the answer to the last request is here', orderedFrame.srcdoc === '<html>newer</html>' );
+
+raceLast.answer( 200 );
+
+check( '...and then shows it', orderedFrame.srcdoc === '<html>last</html>' );
+
+const raceFailing = racePreviewed( 5, '' );
+const raceSucceeding = racePreviewed( 6, '<html>sixth</html>' );
+
+raceSucceeding.answer( 200 );
+raceFailing.answer( 500 );
+
+check( 'a preview that failed after a newer one succeeded says nothing: the line is the newest\'s', orderedFrame.srcdoc === '<html>sixth</html>' && ordered.byId('design-preview-msg').className === 'nino-admin-hint' );
+
 // ---- The names are set in their own faces
 
 const painted = panel();

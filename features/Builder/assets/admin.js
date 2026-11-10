@@ -9108,6 +9108,12 @@
 			if( id === section.id )
 				return;
 
+			// The server moves the keys of a section by the id it was sent with: the id waits for the answer
+			if( builder._saving === true ) {
+				say( Nino.content.getText('/_admin/builder/error/rename-saving') );
+				return;
+			}
+
 			if( builder.SEGMENT.test( id ) === false || taken === true ) {
 				say( Nino.content.getText( taken === true ? '/_admin/builder/error/id-taken' : '/_admin/builder/error/id-slug' ) );
 				return;
@@ -9116,6 +9122,9 @@
 			say( '' );
 
 			const rename = function() {
+
+				if( builder._saving === true )
+					return say( Nino.content.getText('/_admin/builder/error/rename-saving') );
 
 				builder._rename( path, id );
 
@@ -9167,6 +9176,45 @@
 		},
 
 		/**
+		 *	The sources of a section that start with one address start with another: the source of a component, the pictures its attributes name, the same in its children, and
+		 *	the backgrounds of the section and its columns
+		 *
+		 *	@param		{Object}		section
+		 *	@param		{string}		from						Address of the keys of the section, up to and with the last slash
+		 *	@param		{string}		to
+		 *	@param		{boolean}		slots						Whether a slot that is there already is moved too (the server has moved it), or stays what its source names
+		 *
+		 *	@return		void
+		 */
+		_followSources : function( section, from, to, slots ) {
+
+			const builder = Nino.admin.builder;
+			const follow = function( holder, key ) {
+				if( typeof holder[key] === 'string' && holder[key].indexOf( from ) === 0 && ( slots === true || builder._slotOf( holder[key] ) === null ) )
+					holder[key] = to+ holder[key].slice( from.length );
+			};
+			// The source of a component, the pictures its attributes name, and the same in its children
+			const move = function( node ) {
+
+				follow( node, 'source' );
+				builder._pictures( builder._declared( ( builder._registry.components || {} )[node.name] || {} ) ).forEach( function( attribute ) { follow( node.attributes, attribute ) } );
+				( node.components || [] ).forEach( move );
+				( node.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( move ) } );
+			};
+
+			if( section.background )
+				follow( section.background, 'slot' );
+
+			section.cols.forEach( function( col ) {
+
+				if( col.background )
+					follow( col.background, 'slot' );
+
+				col.components.forEach( move );
+			} );
+		},
+
+		/**
 		 *	A section gets another id. Where it has been saved the server moves its
 		 *	keys and slots (renamedFrom says from where); where it was made here
 		 *	its sources are written new, since nothing is moved that was never made -
@@ -9187,31 +9235,7 @@
 
 			if( builder._fresh[old] === true ) {
 
-				const from = builder._keyUri( doc.file, old, '' );
-				const to = builder._keyUri( doc.file, id, '' );
-				const follow = function( holder, key ) {
-					if( typeof holder[key] === 'string' && holder[key].indexOf( from ) === 0 && builder._slotOf( holder[key] ) === null )
-						holder[key] = to+ holder[key].slice( from.length );
-				};
-				// The source of a component, the pictures its attributes name, and the same in its children
-				const move = function( node ) {
-
-					follow( node, 'source' );
-					builder._pictures( builder._declared( ( builder._registry.components || {} )[node.name] || {} ) ).forEach( function( attribute ) { follow( node.attributes, attribute ) } );
-					( node.components || [] ).forEach( move );
-					( node.panels || [] ).forEach( function( panel ) { ( panel.components || [] ).forEach( move ) } );
-				};
-
-				if( section.background )
-					follow( section.background, 'slot' );
-
-				section.cols.forEach( function( col ) {
-
-					if( col.background )
-						follow( col.background, 'slot' );
-
-					col.components.forEach( move );
-				} );
+				builder._followSources( section, builder._keyUri( doc.file, old, '' ), builder._keyUri( doc.file, id, '' ), false );
 
 				delete builder._fresh[old];
 				builder._fresh[id] = true;
@@ -13302,6 +13326,11 @@
 
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
+
+			// What the server reads may carry other ids than the ones it was sent with: that waits for the answer, too
+			if( builder._saving === true )
+				return problem( Nino.content.getText('/_admin/builder/error/apply-saving') );
+
 			const model = builder._clone( doc.model );
 			const old = path === null ? null : model.blocks[path[0]];
 
@@ -13483,7 +13512,9 @@
 		/**
 		 *	Save the document: the model with the hash of the file it was loaded
 		 *	from. What comes back is the model as the server read it again, and it
-		 *	replaces this one. A file that changed since is a 409 and the question
+		 *	replaces this one - unless the document was changed while the save was
+		 *	on its way, or a dialog is open on its nodes: the model stays, with the
+		 *	new hash, and is unsaved. A file that changed since is a 409 and the question
 		 *	whether to take its version or to write this one anyway; what the server
 		 *	refuses as not valid it says at the blocks it names
 		 *
@@ -13516,6 +13547,11 @@
 			}
 
 
+			// What the document held when it was sent: the answer is compared with it
+			const sent = JSON.stringify( doc.model );
+			// The sections the file does not know yet when the request goes: a section made while it is on its way is not one the answer brings
+			const freshSent = Object.keys( builder._fresh );
+
 			builder._saving = true;
 			builder._status.saving();
 			dc.getElementById('builder-save').disabled = true;
@@ -13539,24 +13575,70 @@
 					if( wrote.slots === true )
 						builder._touch('slots');
 
-					doc.model = builder._normalise( response.model );
+					const answer = builder._normalise( response.model );
+
 					doc.hash = response.hash;
-					doc.saved = JSON.stringify( doc.model );
-					builder._fresh = {};
+					doc.saved = JSON.stringify( answer );
 					builder._problems = [];
 
-					if( builder._get( doc.model, builder._sel ) === null )
-						builder._sel = [];
+					// Something was changed while the save was on its way, or a dialog is open on the nodes of the model: the answer must not take the model away from
+					// whoever holds it. The file is what the answer says, so the document is unsaved still, and the next save sends what it holds against the new hash
+					const kept = JSON.stringify( doc.model ) !== sent || builder._dialogOptions !== null;
 
-					builder._repaint();
-					builder._status.saved();
-					builder._refreshStores();
+					if( kept === true ) {
+
+						// What the file holds is no longer new to the page; a section made since is
+						freshSent.forEach( function( id ) {
+							if( answer.blocks.some( function( block ) { return block.kind === 'section' && block.id === id } ) === true )
+								delete builder._fresh[id];
+						} );
+
+						// A section the save renamed is where the server put it: the held one no longer comes from the old id, and its keys and slots are under the new one
+						JSON.parse( sent ).blocks.forEach( function( was ) {
+
+							if( was.kind !== 'section' || was.renamedFrom === undefined || answer.blocks.some( function( block ) { return block.kind === 'section' && block.id === was.id } ) === false )
+								return;
+
+							doc.model.blocks.forEach( function( held ) {
+
+								if( held.kind !== 'section' || held.id !== was.id )
+									return;
+
+								builder._followSources( held, builder._keyUri( doc.file, was.renamedFrom, '' ), builder._keyUri( doc.file, was.id, '' ), true );
+								delete held.renamedFrom;
+							} );
+						} );
+
+						builder._renderProblems();
+
+						// The status follows what the document holds
+						if( builder._unsaved( doc ) === true )
+							builder._status.dirty();
+						else
+							builder._status.saved();
+
+						builder._refreshStores();
+					}
+					else {
+
+						doc.model = answer;
+						builder._fresh = {};
+
+						if( builder._get( doc.model, builder._sel ) === null )
+							builder._sel = [];
+
+						builder._repaint();
+						builder._status.saved();
+						builder._refreshStores();
+					}
+
 					dc.getElementById('builder-save').disabled = false;
 
 					if( typeof Nino.admin.dirty === 'object' )
 						Nino.admin.dirty.refresh();
 
-					return report( true );
+					// A save the shell asked for before it leaves is not done while the document holds what the answer does not: the shell asks again
+					return report( builder._unsaved( doc ) === false );
 				}
 
 				dc.getElementById('builder-save').disabled = false;

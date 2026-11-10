@@ -2474,7 +2474,7 @@ echo "Document - the page templates of a project\n";
 // What the example page reads: the texts, the slots, the type of the stack, the frames
 $texts = [
 	'/template/page-home/hero/title' => 'Hello', '/template/page-home/hero/subtitle' => 'Sub', '/template/page-home/services/title' => 'Services',
-	'/template/page-home/services/text' => '<p>One</p>', '/template/page-home/contact/title' => 'Contact', '/_nino/webpage/contact/name' => 'Contact us', '/_nino/webpage/contact/uri' => '/contact',
+	'/template/page-home/services/text' => '<p>One</p>', '/template/page-home/contact/title' => 'Contact', '/template/page-twice/one/title' => 'Hello', '/_nino/webpage/contact/name' => 'Contact us', '/_nino/webpage/contact/uri' => '/contact',
 ];
 foreach( [ 'en_US', 'de_DE' ] as $locale )
 	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', array_combine( array_map( static fn( string $key ): string => '[['. $key. ']]', array_keys( $texts ) ), array_values( $texts ) ) );
@@ -2759,6 +2759,40 @@ check( '...and the text keys follow: the value is under the new name, and the ol
 check( '...the slot of the background is made again under the new name with the file of the old one, and the old one is kept - without a file', ( \Nino\Images::getSlot( $appData, '/template/page-home/start/background' ) ?: [] )['filename'] === 'hero.1600x900.jpg'
 	&& ( \Nino\Images::getSlot( $appData, '/template/page-home/start/background' ) ?: [] )['label'] === 'Hero' && ( \Nino\Images::getSlot( $appData, '/template/page-home/hero/background' ) ?: [ 'filename' => 'none' ] )['filename'] === null );
 check( '...and the answer is the file as it reads now, without what only the panel sends', $renamed['model']['blocks'][0]['id'] === 'start' && isset( $renamed['model']['blocks'][0]['renamedFrom'] ) === false );
+
+// A section renamed, saved, answered and renamed again: the panel holds the answer of the first save, and the second one sends the section from the name the first gave, with its sources under it - the shape of the page's payloads
+$appData['/nino/html/images']['/template/page-twice/one/background'] = [ 'label' => 'Photo', 'width' => 800, 'height' => 600, 'filename' => 'twice.800x600.jpg' ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-twice.tpl', $page( "<section id=\"one\" class=\"nino-section\">\n\t<div class=\"nino-section-bg nino-img-focus--5\">[image /template/page-twice/one/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-twice/one/title]\n\t\t</div>\n\t</div>\n</section>" ) );
+$twice1 = \Nino\Modules\Builder\Document::load( $appData, 'page-twice' );
+check( 'the section of the probe has its picture as the background of the section', ( $twice1['model']['blocks'][0]['background']['slot'] ?? null ) === '/template/page-twice/one/background' );
+$firstRename = $twice1['model'];
+$firstRename['blocks'][0]['id'] = 'two';
+$firstRename['blocks'][0]['renamedFrom'] = 'one';
+$firstSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-twice', $firstRename, $twice1['hash'] );
+$finalRename = $firstSaved['model'];
+$finalRename['blocks'][0]['id'] = 'three';
+$finalRename['blocks'][0]['renamedFrom'] = 'two';
+$finalSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-twice', $finalRename, $firstSaved['hash'] );
+$finalSource = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-twice.tpl' ) );
+check( 'two renames in a row, saved one after the other, end with the text and the picture of the section under the last name', $firstSaved['status'] === 200 && $finalSaved['status'] === 200
+	&& str_contains( $finalSource, '[title /template/page-twice/three/title]' ) === true && str_contains( $finalSource, '[image /template/page-twice/three/background alt=""]' ) === true
+	&& ( \Nino\Text::entry( $appData, '/template/page-twice/three/title' )['values']['en_US'] ?? null ) === 'Hello' && ( \Nino\Images::getSlot( $appData, '/template/page-twice/three/background' ) ?: [] )['filename'] === 'twice.800x600.jpg' );
+check( '...and nothing is left under the name between: no text, no source in the file', \Nino\Text::entry( $appData, '/template/page-twice/two/title' ) === null && \Nino\Text::entry( $appData, '/template/page-twice/one/title' ) === null
+	&& str_contains( $finalSource, '/template/page-twice/two/' ) === false && str_contains( $finalSource, '/template/page-twice/one/' ) === false );
+// A section made under the name the first one left is a new section: it has its own texts, and the save answers 200
+$again = $finalSaved['model'];
+$made = $again['blocks'][0];
+$made['id'] = 'one';
+$made['cols'][0]['components'][0]['source'] = '/template/page-twice/one/title';
+$made['cols'][0]['components'][0]['values'] = [ 'en_US' => 'New' ];
+$made['cols'][0]['components'][0]['create'] = [];
+$made['background'] = [ 'slot' => '/template/page-twice/one/background', 'focus' => 5, 'create' => [ 'label' => 'Photo', 'width' => 800, 'height' => 600 ] ];
+$again['blocks'][] = $made;
+$madeSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-twice', $again, $finalSaved['hash'] );
+check( '...and a section made after it under the name it had starts new: the save answers 200, with its own text and its own picture slot, and the section that was renamed keeps its own', $madeSaved['status'] === 200
+	&& ( \Nino\Text::entry( $appData, '/template/page-twice/one/title' )['values']['en_US'] ?? null ) === 'New' && ( \Nino\Text::entry( $appData, '/template/page-twice/three/title' )['values']['en_US'] ?? null ) === 'Hello' );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-twice' );
 
 // The picture behind a column is a slot under the id of the section, and moves with it as the picture behind the section does
 $appData['/nino/html/images']['/template/page-grid/one/photo'] = [ 'label' => 'Photo', 'width' => 800, 'height' => 600, 'filename' => 'grid.800x600.jpg' ];
