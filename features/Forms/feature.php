@@ -21,8 +21,8 @@ return [
 		],
 		'markup' => [
 			'.nino-forms-check, .nino-forms-group' => [
-				'en_US' => 'Fields, labels, status line, checkbox and radio group are drawn by Nino.css from the --forms-* properties, which the Design feature sets.',
-				'de_DE' => 'Felder, Beschriftungen, Statuszeile, Checkbox und Radiogruppe zeichnet Nino.css aus den Properties --forms-*, die das Design einstellt.',
+				'en_US' => 'Fields, labels, status line, the note under the fields (.nino-form-note), checkbox and radio group are drawn by Nino.css from the --forms-* properties, which the Design feature sets.',
+				'de_DE' => 'Felder, Beschriftungen, Statuszeile, der Hinweis unter den Feldern (.nino-form-note), Checkbox und Radiogruppe zeichnet Nino.css aus den Properties --forms-*, die das Design einstellt.',
 			],
 		],
 		'routes' => [],

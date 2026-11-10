@@ -209,6 +209,9 @@ check( '...the same way a select option already was', str_contains( $markupLabel
 check( 'the classes the shared .nino-form script drives are all there', str_contains( $html, 'class="nino-form"' ) === true
 	&& str_contains( $html, 'class="nino-form-message"' ) === true && str_contains( $html, 'class="nino-form-trap"' ) === true
 	&& str_contains( $html, 'nino-form-submit' ) === true );
+check( 'the note under the fields is a paragraph of the class nino-form-note, with no <small> in it - the size is the rule\'s - and the submit button is the big primary one',
+	preg_match( '/<p class="nino-form-note">\* [^<]*<\/p>/', $html ) === 1 && str_contains( $html, '<small' ) === false
+	&& preg_match( '/<button type="submit" class="nino-btn nino-btn--primary nino-btn--big nino-form-submit">/', $html ) === 1 );
 
 check( 'a key no form has draws nothing at all - an empty page beats a form that posts nowhere', \Nino\Html::renderHtml( $appData, '[form key="nowhere"]' ) === '' );
 
