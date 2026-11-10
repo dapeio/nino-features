@@ -185,9 +185,20 @@ foreach( $elsewhere as $class )
 
 check( 'the "rendered elsewhere" list carries no class Nino.css dropped'. ( $stale === [] ? '' : ' - '. implode( ', ', $stale ) ), $stale === [] );
 
-// A template a feature copies into a project draws the classes of the kernel's stylesheet and none that is gone from it: a class the stylesheet does not define styles nothing
+// A template a feature copies into a project draws the classes of the kernel's stylesheet and none that is gone from it: a class the stylesheet does not define styles nothing.
+// A feature written for a newer Nino than this checkout - its "nino" constraint, read by the checkout's own satisfies() as bin/applicable.php reads it - claims nothing
+// about this stylesheet: its templates are left out, and named
 $undefined = [];
+$ahead = [];
 foreach( glob( dirname( __DIR__ ). '/features/*/install/templates/*.tpl' ) ?: [] as $installTemplate ) {
+
+	$installFeature = basename( dirname( $installTemplate, 3 ) );
+	$installManifest = \Nino\Features::manifest( dirname( $installTemplate, 3 ) );
+
+	if( is_array( $installManifest ) === true && \Nino\Features::satisfies( (string) $installManifest['nino'] ) === false ) {
+		$ahead[$installFeature] = (string) $installManifest['nino'];
+		continue;
+	}
 
 	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( $installTemplate ), $installClasses );
 
@@ -197,7 +208,8 @@ foreach( glob( dirname( __DIR__ ). '/features/*/install/templates/*.tpl' ) ?: []
 				$undefined[] = basename( dirname( $installTemplate, 3 ) ). ': '. $installClass;
 }
 
-check( 'the install templates of the features draw only classes Nino.css defines'. ( $undefined === [] ? '' : ' - '. implode( ', ', array_unique( $undefined ) ) ), $undefined === [] );
+check( 'the install templates of the features draw only classes Nino.css defines'. ( $ahead === [] ? '' : ' (left out, written for a newer Nino than '. \Nino\VERSION. ': '. implode( ', ', array_map( static fn( string $feature, string $needs ): string => $feature. ' '. $needs, array_keys( $ahead ), $ahead ) ). ')' )
+	. ( $undefined === [] ? '' : ' - '. implode( ', ', array_unique( $undefined ) ) ), $undefined === [] );
 
 echo "\n";
 

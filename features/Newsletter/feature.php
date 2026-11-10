@@ -82,9 +82,12 @@ return [
 	],
 	'category'		=> 'communication',
 	'version'			=> '1.2.1',
-	// 1.9, for the toolset the code and the panel are written on, and for the
-	// [[url]] of [image] that the header of its mail writes
-	'nino'				=> '^1.9',
+	// 1.11, for the hero style of a section's title and subtitle
+	// (nino-section-title--hero, nino-section-subtitle--hero), which the page
+	// template of the install unit draws, on top of 1.9 - the toolset the code
+	// and the panel are written on, and the [[url]] of [image] that the header
+	// of its mail writes
+	'nino'				=> '^1.11',
 	'requires'		=> [],
 	'settings'		=> [],
 	// The files under data/ this feature owns - what a backup carries and
