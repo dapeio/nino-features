@@ -67,7 +67,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'ui',
-	'version' => '2.4.0',
+	'version' => '2.5.0',
 	/*	Two floors, and the higher one wins. 1.2 is where the wizard stopped
 		asking about the look and the base unit started delivering
 		assets/theme.css as one file; everything here writes over that file, so
@@ -78,7 +78,14 @@ return [
 		Features::manifest() refuses this file outright - so a constraint
 		admitting 1.2 offered a feature that could not be installed. ^1.3 is
 		the first that names only a kernel which does both. And the highest is
-		1.10: it brings the section of tiles - nino-tiles, the tokens a tile
+		1.11: its delivered theme.css is the compile of this library at the
+		defaults - the hero as the style "hero" of a section's title and
+		subtitle with the rule of a title under it, --surface-inset for a card
+		and a painted column, the shorter upper steps of the space scale below
+		768 px, the note of a form as nino-form-note, and the header whose
+		frame slides out of the window as a whole - and the delivered file and
+		this compile are held to each other byte for byte. 1.10 brought the
+		section of tiles - nino-tiles, the tokens a tile
 		reads, the sixth kind of surface, --radius-tile, and the link over a
 		whole column - which the tiles sets, the specimen and the sixth radius
 		kind are written for, on top of 1.9, which brought [logo], which draws
@@ -90,7 +97,7 @@ return [
 		header, the font roles the compiler writes, the logo templates and the
 		specimen are written for them, so on an older kernel they style nothing
 		and the compile is not the delivered file. */
-	'nino'				=> '^1.10',
+	'nino'				=> '^1.11',
 	'requires'		=> [],
 	// The whole setup: which template per part, the knob positions of the three
 	// template tabs, the size, width and animation, the font roles, the palette's

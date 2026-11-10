@@ -43,7 +43,7 @@ return [
 	// an empty element to write - the Features panel files that with the
 	// sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.1.1',
+	'version'			=> '1.1.2',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'data'				=> [],

@@ -47,7 +47,7 @@ return [
 	// It is a way through what is already written on a page, which is the
 	// thing the Features panel files under content
 	'category'		=> 'content',
-	'version'			=> '1.2.0',
+	'version'			=> '1.2.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the list is the page, read as it stands

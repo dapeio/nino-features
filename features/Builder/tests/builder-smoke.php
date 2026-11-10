@@ -102,7 +102,7 @@ echo "The manifest\n";
 $manifest = \Nino\Features::manifest( $dir );
 
 check( 'it validates, key "builder"', is_array( $manifest ) === true && $manifest['key'] === 'builder' && ninoWarnings() === [] );
-check( 'it is written for the kernel that has the Components module, with the card called one, the stretched link, the slug and the options methods', is_array( $manifest ) === true && $manifest['nino'] === '^1.10' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for the kernel whose loop sorts at random, whose registry aligns a title, a subtitle and a text for each viewport and whose section title has the style hero', is_array( $manifest ) === true && $manifest['nino'] === '^1.11' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it is a feature for content, with nothing required, no settings and no data of its own', $manifest['category'] === 'content' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [] );
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 /*	The manual is the feature's overview and no documentation: what is held of it is its shape - the six sections of the kernel, a few entries in the ones it fills, each a line that is one

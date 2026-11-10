@@ -36,7 +36,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'marketing',
-	'version'			=> '1.2.0',
+	'version'			=> '1.2.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: everything this feature answers is derived from

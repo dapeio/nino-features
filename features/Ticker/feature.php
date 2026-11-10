@@ -60,7 +60,7 @@ return [
 	// fill of its own, the label of the pause button - the Features panel
 	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.2.0',
+	'version'			=> '1.2.1',
 	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// Nothing under data/: what runs past is the markup a project's own

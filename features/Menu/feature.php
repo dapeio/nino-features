@@ -50,7 +50,7 @@ return [
 		],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
+	'version'			=> '1.0.1',
 	'nino'				=> '^1.10',
 	'requires'		=> [],
 	// The menus. No '/nino/admin/restore' callback: the texts and the image slots a menu points

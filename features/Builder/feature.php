@@ -52,14 +52,18 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version' => '1.3.0',
-	// 1.10, for what the builder draws and writes: the section of tiles
+	'version' => '1.4.0',
+	// 1.11, for what the builder draws and writes: the loop that sorts at
+	// random (sort="random" of [stack] and [elements]), the alignment of a
+	// title, a subtitle and a text for each viewport, which the registry of
+	// the components names, and the hero as the style "hero" of a section's
+	// title and subtitle, on top of what 1.10 brought - the section of tiles
 	// (nino-tiles, its ratio classes, the tile as a kind of surface and
-	// nino-grid--linked on a tile), on top of what 1.9 brought - the card that
-	// stretches its link over itself (stretched), the slug of an element
-	// ([[.slug]]), the options a method of the component answers, and
-	// nino-grid-gap for the space between the cells of a grid
-	'nino'				=> '^1.10',
+	// nino-grid--linked on a tile) - and 1.9 - the card that stretches its
+	// link over itself (stretched), the slug of an element ([[.slug]]), the
+	// options a method of the component answers, and nino-grid-gap for the
+	// space between the cells of a grid
+	'nino'				=> '^1.11',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

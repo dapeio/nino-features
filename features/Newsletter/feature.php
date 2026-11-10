@@ -81,7 +81,7 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.2.0',
+	'version'			=> '1.2.1',
 	// 1.9, for the toolset the code and the panel are written on, and for the
 	// [[url]] of [image] that the header of its mail writes
 	'nino'				=> '^1.9',

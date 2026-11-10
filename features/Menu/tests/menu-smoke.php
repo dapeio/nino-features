@@ -17,7 +17,7 @@ echo "\nThe manifest and the activation\n\n";
 
 check( 'the manifest validates without a warning', is_array( \Nino\Features::manifest( dirname( __DIR__ ) ) ) && ninoWarnings() === [] );
 check( 'activation lists the class, records the version and delivers the word of the toggle in both languages', \Nino\Features::activate( $appData, 'menu' ) === true
-	&& in_array( '\\Nino\\Modules\\Menu', $appData['/nino/modules'], true ) === true && \Nino\Features::get( $appData, 'menu' )['installed'] === '1.0.0'
+	&& in_array( '\\Nino\\Modules\\Menu', $appData['/nino/modules'], true ) === true && \Nino\Features::get( $appData, 'menu' )['installed'] === '1.0.1'
 	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/menu/panel/open]]'] ?? '' ) === 'Open the submenu'
 	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/feature/menu/panel/open]]'] ?? '' ) === 'Untermenü öffnen' );
 
@@ -31,8 +31,8 @@ foreach( $manifest['manual'] as $section => $entries )
 			if( strlen( (string) $handle ) > 120 || is_string( $line[$locale] ?? null ) === false || trim( $line[$locale] ) === '' || strlen( $line[$locale] ) >= 1000 )
 				$lineProblems[] = $section. ' / '. $handle. ' / '. $locale;
 
-check( 'the manifest says what the feature is: a content feature of version 1.0.0 for Nino 1.10, with no requirement and no setting, owning /data/menus.php and bundling its two assets, which are there',
-	$manifest['key'] === 'menu' && $manifest['category'] === 'content' && $manifest['version'] === '1.0.0' && $manifest['nino'] === '^1.10' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [ '/data/menus.php' ]
+check( 'the manifest says what the feature is: a content feature of version 1.0.1 for Nino 1.10, with no requirement and no setting, owning /data/menus.php and bundling its two assets, which are there',
+	$manifest['key'] === 'menu' && $manifest['category'] === 'content' && $manifest['version'] === '1.0.1' && $manifest['nino'] === '^1.10' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [ '/data/menus.php' ]
 	&& $manifest['assets'] === [ '/features/Menu/assets/menu.css', '/features/Menu/assets/menu.js' ] && is_file( dirname( __DIR__ ). '/assets/menu.css' ) === true && is_file( dirname( __DIR__ ). '/assets/menu.js' ) === true
 	&& $manifest['name'] === [ 'en_US' => 'Menu', 'de_DE' => 'Menü' ] );
 check( '...its manual answers the six questions in both languages, every line under 1000 bytes, the German one without a du of lower case: the two shortcodes, the classes, the panel, the callback of the Design',

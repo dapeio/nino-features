@@ -75,7 +75,7 @@ return [
 	// It is for being found and being trusted, which is what a list of customers
 	// is on a site, rather than content the site is about
 	'category'		=> 'marketing',
-	'version'			=> '1.0.0',
+	'version'			=> '1.1.0',
 	'nino'				=> '^1.10',
 	'requires'		=> [],
 	// The logos are elements of a type, which is where a project keeps them

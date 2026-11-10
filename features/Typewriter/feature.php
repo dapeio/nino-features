@@ -52,7 +52,7 @@ return [
 	// Features panel files it with the sliders and the lightboxes rather than
 	// with the content
 	'category'		=> 'ui',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the feature keeps no state at all - what it

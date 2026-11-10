@@ -50,7 +50,7 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.2.0',
+	'version'			=> '1.2.1',
 	// 1.9, for the toolset the code and the panel are written on, and for the
 	// options of a field, which a method of the feature answers
 	'nino'				=> '^1.9',

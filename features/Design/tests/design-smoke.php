@@ -1115,12 +1115,12 @@ check( 'the manifest reads, with the key and the class the directory implies', i
 // from 1.4 on, and 1.6 has them all. The floor now is 1.9: [logo] with the pair
 // of the light and the dark logo, and the theme.css the kernel delivers as the
 // body this compiler writes of the library. A pre-release of 1.9 counts as 1.9
-check( 'it names ^1.10 - the kernel whose card, hero, roles, grounds, [logo], tiles and compiled theme its templates, its compiler and its specimen are written for', ( $feature['nino'] ?? '' ) === '^1.10' );
-check( '...and no 1.9 can run it, a 1.10 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
+check( 'it names ^1.11 - the kernel whose delivered theme.css is the compile of this library at its defaults, with the hero as a style, --surface-inset, the space scale, the note of a form and the frame of a header that slides as a whole', ( $feature['nino'] ?? '' ) === '^1.11' );
+check( '...and no 1.10 can run it, a 1.11 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.9.1' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.10.0-dev' ) === true );
-check( 'it is Design 2.4: the tabs and the accordion as objects, the mirrors of the section and the card sets at every step of the grid, the footer that wraps, the floor of a small button, the height of the logo link and the overlay menu over a dark cover - on the model of 2.3, and the version says so', ( $feature['version'] ?? '' ) === '2.4.0' );
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.10.1' ) === false
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.11.0-dev' ) === true );
+check( 'it is Design 2.5: the navigation the header and the footer choose, the frame of a header that slides out of the window as a whole, the cover at the lower edge of a bar that is a ground, the hint every clickable element of the sets gives, the rule under a hero title and the inset a card and a painted column share - on the model of 2.4, and the version says so', ( $feature['version'] ?? '' ) === '2.5.0' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
 // The line as the file has it, with no fallback to another language: what a check of both languages reads

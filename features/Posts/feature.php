@@ -70,7 +70,7 @@ return [
 		],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.3.0',
+	'version'			=> '1.3.1',
 	/*	1.9, because the class reads an element with its fallback
 		(getElementWithFallback()) and calls the toolset (\Nino\Feature::template()
 		and shortcode()) - and with it everything the floors before it named: the

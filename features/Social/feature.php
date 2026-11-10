@@ -72,7 +72,7 @@ return [
 	// It brings content an editor maintains, the reasoning Gallery files
 	// itself under
 	'category'		=> 'content',
-	'version'			=> '1.2.0',
+	'version'			=> '1.2.1',
 	'nino'				=> '^1.9',
 	'requires'		=> [],
 	// The links are elements, in /elements/social.php - the project's own type

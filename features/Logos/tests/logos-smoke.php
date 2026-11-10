@@ -240,7 +240,7 @@ $typeFile = \Nino\Filesystem::path( $appData, '/elements/logo.php' );
 
 check( 'there is no type before the activation', is_file( $typeFile ) === false );
 check( 'activation lists the class, records the version and brings the type', \Nino\Features::activate( $appData, 'logos' ) === true
-	&& \Nino\Features::get( $appData, 'logos' )['installed'] === '1.0.0' && in_array( '\\Nino\\Modules\\Logos', (array) $appData['/nino/modules'], true ) === true && is_file( $typeFile ) === true );
+	&& \Nino\Features::get( $appData, 'logos' )['installed'] === '1.1.0' && in_array( '\\Nino\\Modules\\Logos', (array) $appData['/nino/modules'], true ) === true && is_file( $typeFile ) === true );
 
 $type = \Nino\Filesystem::getFileContent( $appData, '/elements/logo.php', [] );
 

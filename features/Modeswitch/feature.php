@@ -43,7 +43,7 @@ return [
 	// It adds a control to a page that changes how what is already there is
 	// read - the Features panel files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.1.1',
+	'version'			=> '1.1.2',
 	// The kernel whose toolset it calls: the template, class and flag helpers,
 	// the shortcode registration, the manifest's assets and Nino.events. Every
 	// such kernel has the dark half of the palette this switches to

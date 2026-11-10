@@ -64,7 +64,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.3.0',
+	'version'			=> '1.3.1',
 	'nino'				=> '^1.9',
 	'requires'		=> [],
 	'settings'		=> [

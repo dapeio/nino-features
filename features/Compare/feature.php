@@ -45,7 +45,7 @@ return [
 	// looked at - the Features panel files that with the sliders and the
 	// lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.1.1',
+	'version'			=> '1.1.2',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the two pictures are the project's own images, and

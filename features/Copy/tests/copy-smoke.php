@@ -48,7 +48,7 @@ ninoWarnings();
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'copy' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Copy', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'copy' )['installed'] === '1.1.1' );
+	&& \Nino\Features::get( $appData, 'copy' )['installed'] === '1.1.2' );
 
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );

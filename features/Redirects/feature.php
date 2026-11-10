@@ -33,7 +33,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.1.0',
+	'version'			=> '1.1.1',
 	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'settings'		=> [
