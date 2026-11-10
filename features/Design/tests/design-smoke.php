@@ -2151,21 +2151,22 @@ check( '...and catalogue() hands the language through: every set of a part under
 	&& Setup::catalogue( $bilingual, 'section', 'en_US' )['first']['name'] === 'Both' && Setup::catalogue( $bilingual, 'section' )['first']['name'] === 'Both'
 	&& array_column( Setup::catalogue( $bilingual, 'header', 'de_DE' ), 'name' ) === [ 'Frame' ] );
 
-/*	A page that opens with a hero loses main's top padding - a rule of the
-	header's, since the header is what sets that padding. The Builder writes a
+/*	A page that opens with a hero loses main's top padding under a bar that is see-through - a rule of the
+	header's, since the header is what sets that padding; the bars that are a ground of their own have none (see the check of the cover rules). The Builder writes a
 	div.nino-wrap around a page's sections, and its hero carries no nino-hero:
 	every hero a rule names directly below main it has to name inside the
 	wrap as well, in the same rule. Read from the library's own list of
 	headers, so a header that is added without the wrapped form fails here
 	rather than on a site	*/
 $heroProblems = [];
+$heroRules = 0;
 
 foreach( Setup::available( $library, 'header' ) as $set ) {
 
 	$css		= designPlain( (string) file_get_contents( Setup::file( $library, 'header', $set ) ) );
 	$rules	= 0;
 
-	preg_match_all( '/([^{}]+)\{\s*padding-top:\s*0;\s*\}/', $css, $found );
+	preg_match_all( '/([^{}]+)\{[^{}]*(?:padding-top|--main-clear)\s*:[^{}]*\}/', $css, $found );
 
 	foreach( $found[1] as $selectors ) {
 
@@ -2180,11 +2181,10 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 				$heroProblems[] = $set. ': '. $hero;
 	}
 
-	if( $rules === 0 )
-		$heroProblems[] = $set. ': no rule takes main\'s top padding away for a hero';
+	$heroRules += $rules;
 }
 
-check( 'every header takes main\'s top padding away for a hero that opens the page, directly below main and inside the Builder\'s wrap alike'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] );
+check( 'every header that takes main\'s top padding away for a hero that opens the page does so directly below main and inside the Builder\'s wrap alike - the three that have such a rule do'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] && $heroRules === 3 );
 
 /*	Below a page that opens with no hero main's top padding is the bar's height, and the bar grows a row with the links that wrap: the kernel writes how far it has grown as
 	--nino-header-grow (Nino.ui.js, 0px where it does not), and every formula of a header that reads --header-height for that padding adds it - the one of the top bar from 768px
@@ -2486,12 +2486,16 @@ check( 'a footer reads every ladder it publishes for the line and the position, 
 /*	The knobs a frame brought later - the logo, the shadow and the behaviour of a bar, the logo and the divider of a footer - are read where they act: every ladder of one a set publishes, the
 	aspects included, is the name of a var() in a declaration outside the ladders, so that a handle the panel offers moves something. And each moves the thing it names: the logo scales a
 	width - a width that is a calc() or a clamp() with the knob in it, from a rule of a logo -, the shadow is a box-shadow, the divider a border-top of the legal band, and the behaviour is the
-	position of the header, with the room main leaves under the bar multiplied by the factor the behaviour gives it. A bar that folds away is folded by the kernel in a rule of its own
-	(Nino.css, body.nino-scroll-down .nino-scroll-header), and a header that lets the bar stay says so in a rule that outranks that one - more classes, the same exception for the focus - or the
-	kernel's rule keeps folding it whatever the knob says. Read from the library's own lists, so that a set that is added with a handle that moves nothing fails here rather than on a site	*/
+	position of the header, with the room main leaves under the bar multiplied by the factor the behaviour gives it. The bar that goes is the whole frame of the header, which slides up
+	out of the window on the way down (translate, with the exception for the focus that Nino.css has, and a transition that reduced motion takes away) - the rung of the fold is the translate it takes,
+	none where the bar goes with the page or stays. The kernel folds the bar itself in a rule of its own (Nino.css, body.nino-scroll-down .nino-scroll-header), and a header that moves its frame instead
+	takes that back in a rule that outranks it - more classes, the same exception for the focus - or the kernel's rule keeps folding the bar whatever the knob says. Read from the library's own lists, so that a set that is added with a handle that moves nothing fails here rather than on a site	*/
 $frameKnobs = [ 'header' => [ 'logo', 'shadow', 'behaviour' ], 'footer' => [ 'logo', 'divider' ] ];
 $frameProblems = [];
 $frameReads = 0;
+
+// The rule of a frame that moves it: the frame slides away on the way down, with the exception for the focus that Nino.css has
+$frameFold = 'body.nino-scroll-down .nino-frame-header:where(:not(:has(:focus-visible)))';
 
 // How many classes a selector counts, the ones inside the brackets of :where() - which count for nothing - left out
 $classesOf = static function( string $selector ): int {
@@ -2512,6 +2516,8 @@ foreach( $frameKnobs as $frame => $handles )
 		$frameCss			= designPlain( (string) file_get_contents( Setup::file( $library, $frame, $set ) ) );
 		$frameOutside	= (string) preg_replace( '/--'. $frame. '-[a-z0-9-]+--(?:least|less|default|more|most)\s*:[^;]*;/', '', $frameCss );
 		$frameRules		= designRules( $frameCss );
+		$frameStops		= array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['within'], 'prefers-reduced-motion: reduce' ) === true
+			&& in_array( '.nino-frame-header', array_map( 'trim', explode( ',', $rule['selector'] ) ), true ) === true && preg_match( '/(?<![a-z-])transition\s*:\s*none\s*;/', $rule['body'] ) === 1 );
 		$frameLadders	= Setup::ladders( $library, $frame, $set );
 
 		foreach( array_intersect_key( $frameLadders, array_flip( $handles ) ) as $knob => $names ) {
@@ -2536,65 +2542,161 @@ foreach( $frameKnobs as $frame => $handles )
 
 			if( $frame. '/'. $knob === 'header/behaviour' ) {
 
-				$folds = array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-scroll-down' ) === true
-					&& preg_match( '/(?<![a-z-])max-height\s*:\s*var\(\s*--header-behaviour-collapse\s*\)/', $rule['body'] ) === 1 );
+				// The one rule of the frame that slides it away on the way down, its body, its transition and its stop for reduced motion
+				$frameFolds = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === $frameFold );
+				$frameBody = static fn( array $rule ): string => (string) preg_replace( '/\s+/', ' ', trim( $rule['body'] ) );
+				$frameMoves = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-frame-header' && preg_match( '/(?<![a-z-])transition\s*:\s*translate\s+\.4s\s*;/', $rule['body'] ) === 1 );
+
+				if( count( $frameFolds ) !== 1 || $frameBody( reset( $frameFolds ) ?: [ 'body' => '' ] ) !== 'translate: var(--header-behaviour-fold);' )
+					$frameProblems[] = $frame. '/'. $set. ': the frame has not exactly one rule that moves it on the way down, with the body translate: var(--header-behaviour-fold)';
+
+				if( count( $frameMoves ) !== 1 )
+					$frameProblems[] = $frame. '/'. $set. ': the frame does not have the transition translate .4s';
+
+				if( $frameStops === [] )
+					$frameProblems[] = $frame. '/'. $set. ': the transition of the frame is not taken away under reduced motion';
+
+				// The rules of the bar that sets the properties the kernel's fold takes to nothing, with the value it gives each
+				$bars = array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-scroll-down' ) === true && str_contains( $rule['selector'], '.nino-scroll-header' ) === true
+					&& preg_match( '/(?<![a-z-])max-height\s*:\s*none\s*;/', $rule['body'] ) === 1 );
 				$clears = array_filter( $frameRules, static fn( array $rule ): bool => preg_match( '/(?<![a-z-])padding-top\s*:[^;]*var\(\s*--header-behaviour-clear\s*\)/', $rule['body'] ) === 1 && preg_match( '/(?:^|[\s,])main(?![\w-])/', $rule['selector'] ) === 1 );
 
-				if( $folds === [] || $kernelFold === [] || array_filter( $folds, static fn( array $rule ): bool => $classesOf( $rule['selector'] ) <= $classesOf( $kernelFold[0]['selector'] ) || str_contains( $rule['selector'], ':focus-visible' ) === false ) !== [] )
-					$frameProblems[] = $frame. '/'. $set. ': no rule that outranks the kernel\'s fold of the bar, with its exception for the focus';
+				if( count( $bars ) !== 1 || $kernelFold === [] || array_filter( $bars, static fn( array $rule ): bool => $classesOf( $rule['selector'] ) <= $classesOf( $kernelFold[0]['selector'] ) || str_contains( $rule['selector'], ':focus-visible' ) === false ) !== [] )
+					$frameProblems[] = $frame. '/'. $set. ': no rule that outranks the kernel\'s fold of the bar, with its exception for the focus, and gives the bar its height back';
 
 				if( $clears === [] )
 					$frameProblems[] = $frame. '/'. $set. ': the room main leaves under the bar does not follow the behaviour';
 
-				/*	What the rule that folds the bar has to take back where the bar stays: every one of the properties the kernel's fold takes to nothing - the height, the room above and below and the line
-					of the bar - that the template's own rule for its bar sets, each as a multiple of the part of it the bar keeps. Read from the rules of the template, so that a property it sets later is
-					one it has to give back as well	*/
+				/*	What the rule of the bar has to give back: every one of the properties the kernel's fold takes to nothing - the height, the room above and below and the line of the bar - that the template's own rule for its bar sets,
+						each with the value the bar has, and none of them as a multiple of anything: the frame moves, the bar is whole. Read from the rules of the template, so that a property it sets later is one it has to give back as well	*/
 				$taken = [];
+				$has = [];
 
 				foreach( $frameRules as $rule ) {
 
 					if( preg_match( '/\.nino-scroll-header\s*$/', trim( $rule['selector'] ) ) !== 1 || preg_match( '/\.nino-scroll-(?:atf|btf|up|down)/', $rule['selector'] ) === 1 )
 						continue;
 
-					if( preg_match( '/(?<![a-z-])min-height\s*:/', $rule['body'] ) === 1 )
-						$taken['min-height'] = true;
+					foreach( [ 'min-height', 'padding-top', 'padding-bottom' ] as $property )
+						if( preg_match( '/(?<![a-z-])'. $property. '\s*:\s*([^;]+);/', $rule['body'], $value ) === 1 ) {
+							$taken[$property] = true;
+							$has[$property] = trim( $value[1] );
+						}
 
-					if( preg_match( '/(?<![a-z-])padding(?:-top|-bottom)?\s*:/', $rule['body'] ) === 1 )
+					if( preg_match( '/(?<![a-z-])padding\s*:/', $rule['body'] ) === 1 )
 						$taken += [ 'padding-top' => true, 'padding-bottom' => true ];
 
 					if( preg_match( '/(?<![a-z-])border(?:-width|-top-width|-bottom-width|-top|-bottom)?\s*:/', $rule['body'] ) === 1 )
 						$taken += [ 'border-top-width' => true, 'border-bottom-width' => true ];
 				}
 
-				foreach( array_keys( $taken ) as $property )
-					if( array_filter( $folds, static fn( array $rule ): bool => preg_match( '/(?<![a-z-])'. $property. '\s*:[^;]*var\(\s*--header-behaviour-keep\s*\)/', $rule['body'] ) === 1 ) === [] )
-						$frameProblems[] = $frame. '/'. $set. ': the fold does not give back '. $property. ', which the bar sets';
+				foreach( array_keys( $taken ) as $property ) {
 
-				// ...and at each of the three positions the rungs say what the position means: in the flow and kept below the middle, folded to the kernel's nothing at it, fixed and kept above it
-				foreach( [ -1 => [ 'less', 'none', '1', '0' ], 0 => [ 'default', '0', '0', '1' ], 1 => [ 'more', 'none', '1', '1' ] ] as $position => $means ) {
+					$given = array_filter( array_map( static fn( array $rule ): string => preg_match( '/(?<![a-z-])'. $property. '\s*:\s*([^;]+);/', $rule['body'], $value ) === 1 ? trim( $value[1] ) : '', $bars ) );
+
+					if( $given === [] || str_contains( (string) reset( $given ), '--header-behaviour' ) === true || ( isset( $has[$property] ) === true && reset( $given ) !== $has[$property] ) )
+						$frameProblems[] = $frame. '/'. $set. ': the fold does not give back '. $property. ', which the bar sets, as it has it';
+				}
+
+				// ...and at each of the three positions the rungs say what the position means: in the flow with nothing to slide at the first, sliding up out of the window at the middle, fixed and staying at the last
+				foreach( [ -1 => [ 'less', 'relative', 'none', '0' ], 0 => [ 'default', 'fixed', '0 -100%', '1' ], 1 => [ 'more', 'fixed', 'none', '1' ] ] as $position => $means ) {
 
 					$sheet	= designPlain( Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'header' => $set ], 'knobs' => [ 'header' => [ 'behaviour' => $position ] ] ], $library ), $library ) );
 					$given	= designDeclarations( $sheet );
 					$rung		= static function( string $suffix ) use ( $given, $means ): string { return (string) preg_replace( '/\s+/', ' ', $given[ '--header-behaviour'. $suffix. '--'. $means[0] ] ?? '?' ); };
 					$at			= $frame. '/'. $set. ' at '. $position;
 
-					foreach( [ '', '-collapse', '-keep', '-clear' ] as $suffix )
+					foreach( [ '', '-fold', '-clear', '-shadow' ] as $suffix )
 						if( ( $given[ '--header-behaviour'. $suffix ] ?? '' ) !== 'var(--header-behaviour'. $suffix. '--'. $means[0]. ')' )
 							$frameProblems[] = $at. ': --header-behaviour'. $suffix. ' does not select the rung '. $means[0];
 
-					if( $rung( '-collapse' ) !== $means[1] || $rung( '-keep' ) !== $means[2] || $rung( '-clear' ) !== $means[3] )
-						$frameProblems[] = $at. ': the fold takes '. $rung( '-collapse' ). ', '. $rung( '-keep' ). ' of the height, '. $rung( '-clear' ). ' of the room of main - not '. implode( ', ', array_slice( $means, 1 ) );
+					// the shadow the bar keeps while the frame is away: the bar's own where the frame stays, none where it leaves
+					$kept = [ 'less' => $set === 'overlay-menu' ? 'var(--header-ground-rest-shadow)' : 'var(--header-shadow)', 'default' => 'none', 'more' => 'var(--header-shadow)' ][ $means[0] ];
 
-					if( ( $rung( '' ) === 'fixed' ) !== ( $position !== -1 ) )
-						$frameProblems[] = $at. ': the position of the header is '. $rung( '' );
+					if( $rung( '-shadow' ) !== $kept )
+						$frameProblems[] = $at. ': the bar keeps the shadow '. $rung( '-shadow' ). ' - not '. $kept;
+
+					if( $rung( '' ) !== $means[1] || $rung( '-fold' ) !== $means[2] || $rung( '-clear' ) !== $means[3] )
+						$frameProblems[] = $at. ': the position is '. $rung( '' ). ', the frame takes '. $rung( '-fold' ). ' on the way down, '. $rung( '-clear' ). ' of the room of main - not '. implode( ', ', $means );
 				}
 			}
 		}
+
+		// A set with no knob for the behaviour that is a bar below a width - the rail - slides its frame away there as the others do
+		if( $frame === 'header' && array_key_exists( 'behaviour', $frameLadders ) === false ) {
+
+			$railFolds = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === $frameFold && preg_match( '/(?<![a-z-])translate\s*:\s*0 -100%\s*;/', $rule['body'] ) === 1 && str_starts_with( $rule['within'], '@media (max-width:' ) === true );
+			$railMoves = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-frame-header' && preg_match( '/(?<![a-z-])transition\s*:\s*translate\s+\.4s\b/', $rule['body'] ) === 1 && str_starts_with( $rule['within'], '@media (max-width:' ) === true );
+			$railBars = array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-scroll-down' ) === true && str_contains( $rule['selector'], ':focus-visible' ) === true
+				&& preg_match( '/(?<![a-z-])max-height\s*:\s*none\s*;/', $rule['body'] ) === 1 && preg_match( '/(?<![a-z-])min-height\s*:\s*var\(\s*--header-height\s*\)\s*;/', $rule['body'] ) === 1 && str_starts_with( $rule['within'], '@media (max-width:' ) === true );
+
+			if( count( $railFolds ) !== 1 || count( $railMoves ) !== 1 || count( $railBars ) !== 1 )
+				$frameProblems[] = $frame. '/'. $set. ': the bar below its breakpoint does not slide its frame away on the way down';
+
+			if( $frameStops === [] )
+				$frameProblems[] = $frame. '/'. $set. ': the transition of the frame is not taken away under reduced motion';
+
+			// From the breakpoint the rail stands at the side and keeps the room it has when the page is scrolled down, which the kernel's fold takes to nothing
+			$railBase = array_values( array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-frame-header .nino-frame-header-rail' && $rule['within'] === '@media (min-width: 1024px)' && preg_match( '/(?<![a-z-])padding\s*:\s*([^;]+);/', $rule['body'] ) === 1 ) );
+			$railRoom = $railBase === [] ? '' : ( preg_match( '/(?<![a-z-])padding\s*:\s*([^;]+);/', $railBase[0]['body'], $room ) === 1 ? trim( $room[1] ) : '' );
+			$railKept = array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-scroll-down' ) === true && str_contains( $rule['selector'], '.nino-frame-header-rail' ) === true && $rule['within'] === '@media (min-width: 1024px)'
+				&& preg_match( '/(?<![a-z-])padding-top\s*:\s*([^;]+);/', $rule['body'], $top ) === 1 && preg_match( '/(?<![a-z-])padding-bottom\s*:\s*([^;]+);/', $rule['body'], $bottom ) === 1 && trim( $top[1] ) === $railRoom && trim( $bottom[1] ) === $railRoom );
+
+			if( $railRoom === '' || count( $railKept ) !== 1 )
+				$frameProblems[] = $frame. '/'. $set. ': the rail does not keep its padding from its breakpoint on when the page is scrolled down';
+		}
 	}
 
-check( 'a frame reads what it declares of the logo, the shadow, the behaviour and the divider, and each does what it names: the logo scales a width, the shadow is a box-shadow, the divider the top border of a band, the behaviour the position of the header - the rungs of its fold mean at each of its three positions what the position means, the fold gives back every height, room and line the bar sets, the room main leaves under the bar is multiplied by its factor, and a rule outranks the kernel\'s fold of the bar, with the exception for the focus it has ('. $frameReads. ' knobs read)'
+check( 'a frame reads what it declares of the logo, the shadow, the behaviour and the divider, and each does what it names: the logo scales a width, the shadow is a box-shadow, the divider the top border of a band, the behaviour the position of the header - the rungs of its fold mean at each of its three positions what the position means, the frame slides away with a translate and a transition that reduced motion takes away, the bar gives back every height, room and line the kernel folds, the room main leaves under the bar is multiplied by its factor, and a rule outranks the kernel\'s fold of the bar, with the exception for the focus it has ('. $frameReads. ' knobs read)'
 	. ( $frameProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $frameProblems, 0, 4 ) ) ), $frameProblems === [] && $frameReads > 0 && count( $kernelFold ) === 1
 	&& array_filter( [ 'max-height', 'min-height', 'padding-top', 'padding-bottom', 'border-top-width', 'border-bottom-width' ], static fn( string $property ): bool => preg_match( '/(?<![a-z-])'. $property. '\s*:\s*0\s*;/', $kernelFold[0]['body'] ?? '' ) !== 1 ) === [] );
+
+/*	A cover that begins a page lies under a bar that is see-through, and starts at the lower edge of one that is not: where the bar is see-through, the rule that takes the room of main away for a cover (the four
+	selectors, a cover or a parallax first in main or in the wrap of the page, written with :is() or not) gives it padding-top 0 - the floating bar, translucent at every rung, and the overlay menu, which does so
+	only where the ground at rest is none (the aspect --header-ground-rest-cover, in a custom property that falls back when it is invalid, since initial in a var() would throw the padding itself to 0). Under a bar that
+	is a ground of its own the cover starts at its lower edge, with the height of the bar and nothing of the air of the page: either because the room main leaves is the height of the bar already (regular, stacked,
+	top bar, side rail: no rule for a cover), or because the rule for the cover names it (pill menu, and the overlay menu as the fallback of the custom property)	*/
+$coverProblems = [];
+$coverSelectors = [ 'body main:has(> .nino-cover:first-child)', 'body main:has(> .nino-wrap > .nino-cover:first-child)', 'body main:has(> .nino-parallex:first-child)', 'body main:has(> .nino-wrap > .nino-parallex:first-child)' ];
+$coverHeight = '(?:calc\(\s*\(\s*var\(\s*--header-height\s*\)\s*\+\s*var\(\s*--nino-header-grow\s*,\s*0px\s*\)\s*\)\s*\*\s*var\(\s*--header-behaviour-clear\s*\)\s*\))';
+
+foreach( Setup::available( $library, 'header' ) as $set ) {
+
+	$coverCss = designPlain( (string) file_get_contents( Setup::file( $library, 'header', $set ) ) );
+
+	// Every rule that sets the room of main from the cover it begins with - in any writing of the selector, a cover or a parallax with :first-child
+	$coverRules = array_values( array_filter( designRules( $coverCss ), static fn( array $rule ): bool => preg_match( '/\bmain\b[^{]*(?:nino-cover|nino-parallex)[^{]*:first-child/', $rule['selector'] ) === 1
+		&& preg_match( '/(?<![a-z-])padding-top\s*:|--main-clear\s*:/', $rule['body'] ) === 1 ) );
+	$coverSet = array_values( array_filter( $coverRules, static fn( array $rule ): bool => array_map( 'trim', explode( ',', $rule['selector'] ) ) === $coverSelectors ) );
+	$coverMain = array_values( array_filter( designRules( $coverCss ), static fn( array $rule ): bool => $rule['selector'] === 'body main' && str_contains( $rule['body'], 'padding-top' ) === true ) );
+
+	if( in_array( $set, [ 'floating', 'pill-menu', 'overlay-menu' ], true ) === false ) {
+
+		if( $coverRules !== [] )
+			$coverProblems[] = $set. ': the room main leaves under a bar that is a ground of its own is the height of the bar, and a cover needs no rule';
+
+		continue;
+	}
+
+	$body = $coverSet === [] ? '' : $coverSet[0]['body'];
+
+	if( count( $coverSet ) !== 1 || count( $coverRules ) !== 1 )
+		$coverProblems[] = $set. ': not exactly one rule for the cover, with the four selectors';
+
+	elseif( $set === 'floating' && preg_match( '/^\s*padding-top\s*:\s*0\s*;\s*$/', $body ) !== 1 )
+		$coverProblems[] = $set. ': the cover rule does not take the room of main away';
+
+	elseif( $set === 'pill-menu' && preg_match( '/^\s*padding-top\s*:\s*'. $coverHeight. '\s*;\s*$/', $body ) !== 1 )
+		$coverProblems[] = $set. ': the cover rule does not give the cover the height of the bar and nothing of the air of the page';
+
+	elseif( $set === 'overlay-menu' && ( preg_match( '/(?<![a-z-])--main-clear\s*:\s*var\(\s*--header-ground-rest-cover\s*\)\s+0px\s*;/', $body ) !== 1
+		|| preg_match( '/(?<![a-z-])padding-top\s*:\s*var\(\s*--main-clear\s*,\s*'. $coverHeight. '\s*\)\s*;/', $body ) !== 1
+		|| count( $coverMain ) !== 1 || preg_match( '/padding-top\s*:\s*calc\(.*var\(\s*--header-behaviour-clear\s*\)/s', $coverMain[0]['body'] ) !== 1 ) )
+		$coverProblems[] = $set. ': the cover is not under the bar at 0 where the ground at rest is none (--header-ground-rest-cover) and at the height of the bar where it is one';
+}
+
+check( 'a cover starts under a bar that is see-through and at the lower edge of one that is a ground of its own: the floating bar and the overlay menu - behind the aspect of its ground at rest - take the room of main away, the pill menu gives the cover the height of the bar, and the other four have no rule for a cover'
+	. ( $coverProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $coverProblems, 0, 4 ) ) ), $coverProblems === [] && count( Setup::available( $library, 'header' ) ) === 7 );
 
 /*	A footer passes its ink and its ground on. --color-ink is the role the digits of a counter, the labels of a form and the other things a feature paints in the ink of the surface
 	it lies on are drawn in, --color-ground the one a field is filled with, and they stand on :root as the text and the ground of the page, so that on a ground of the footer's own

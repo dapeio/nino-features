@@ -42,11 +42,11 @@
  *	logo is a factor on the width of the logo, and shadow the shadow the bar casts on the
  *	page: none at the middle, a soft one and a strong one beyond it, in the palette's colour
  *	for a shadow. behaviour is a choice of three for what the bar does when the page is
- *	scrolled: it goes with the page, it is fixed and folds away on the way down - as
- *	Nino.css has it - or it is fixed and stays. Its rungs are the position of the header
- *	(--header-behaviour), and beside them stand the greatest height the bar has once the
- *	page is scrolled down (-collapse), a factor on what it keeps there (-keep) and a factor
- *	on the room main leaves under it (-clear): a bar that goes with the page needs none.
+ *	scrolled: it goes with the page, it is fixed and its frame slides up out of the window
+ *	on the way down, or it is fixed and stays. Its rungs are the position of the header
+ *	(--header-behaviour), and beside it the translate of the frame on the way down (-fold),
+ *	the shadow the bar keeps there (-shadow) and a factor on the room main leaves under it
+ *	(-clear): a bar that goes with the page needs none.
  *
  *	The style, nav-hover, is the hover of the links of the navigation from 768 px.
  *	None leaves what this set draws: the line that grows under a link. Fade and Pill,
@@ -163,16 +163,16 @@
 	--header-cta-scale--default: .7;
 	--header-cta-scale--more: 1;
 
-	/*	What the bar does when the page is scrolled: it goes with the page, it is fixed and folds away on the way down - as Nino.css has it - or it is fixed and stays. The rung is the position of the header; beside it stand what follows from it: the greatest height of the bar once the page is scrolled down, how much of its height it keeps there (a factor, 0 being folded) and a factor on the room main leaves under it, which a bar in the flow of the page needs none of	*/
+	/*	What the bar does when the page is scrolled: it goes with the page, it is fixed and slides up out of the window on the way down - the frame of the header moves as a whole - or it is fixed and stays. The rung is the position of the header; beside it stand what follows from it: the translate the frame takes on the way down (none where there is nothing to fold, and never 0 0: any value but none makes the frame the containing block of the fixed elements in it, the ground of the menu that opens over the page among them), the shadow the bar keeps there (none where the frame leaves, since a shadow lies outside the box and would stay at the top of the window) and a factor on the room main leaves under it, which a bar in the flow of the page needs none of	*/
 	--header-behaviour--less:	relative;
 	--header-behaviour--default:	fixed;
 	--header-behaviour--more:	fixed;
-	--header-behaviour-collapse--less:	none;
-	--header-behaviour-collapse--default:	0;
-	--header-behaviour-collapse--more:	none;
-	--header-behaviour-keep--less:	1;
-	--header-behaviour-keep--default:	0;
-	--header-behaviour-keep--more:	1;
+	--header-behaviour-fold--less:	none;
+	--header-behaviour-fold--default:	0 -100%;
+	--header-behaviour-fold--more:	none;
+	--header-behaviour-shadow--less:	var(--header-shadow);
+	--header-behaviour-shadow--default:	none;
+	--header-behaviour-shadow--more:	var(--header-shadow);
 	--header-behaviour-clear--less:	0;
 	--header-behaviour-clear--default:	1;
 	--header-behaviour-clear--more:	1;
@@ -180,6 +180,7 @@
 
 .nino-frame-header {
 	position: var(--header-behaviour);
+	transition: translate .4s;
 	border-bottom: solid var(--header-border-color) var(--header-border-size);
 	--color-title: var(--header-ground-title);
 	--color-accent: var(--header-ground-accent);
@@ -214,6 +215,7 @@
 	color: var(--header-ground-ink);
 	background-color: var(--header-ground);
 	box-shadow: var(--header-shadow);
+	transition: box-shadow .4s;
 	display: flex;
 }
 
@@ -221,10 +223,16 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	background-color: var(--header-ground);
 }
 
-/*	What Nino.css folds away on the way down - the bar's height, its room and its line - this set takes back, or says again, as the behaviour has it. One rule more specific than the kernel's, with the same exception: not while the focus is in the bar	*/
+/*	The frame of the header slides up out of the window as a whole on the way down, and comes back on the way up (--header-behaviour-fold: none where the bar goes with the page or stays). With the exception Nino.css has: not while the focus is in the bar	*/
+body.nino-scroll-down .nino-frame-header:where(:not(:has(:focus-visible))) {
+	translate: var(--header-behaviour-fold);
+}
+
+/*	Nino.css folds the bar itself on the way down - its height, its room and its line - and this set leaves the bar whole: it is the frame that moves. One rule more specific than the kernel's, with the same exception: not while the focus is in the bar. The shadow goes with the frame (--header-behaviour-shadow)	*/
 body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:focus-visible))) {
-	max-height: var(--header-behaviour-collapse);
-	min-height: calc( var(--header-height) * var(--header-behaviour-keep) );
+	max-height: none;
+	min-height: var(--header-height);
+	box-shadow: var(--header-behaviour-shadow);
 }
 
 .nino-frame-header .nino-logo {
@@ -272,12 +280,6 @@ body main {
 	}
 }
 
-body main:has(> .nino-cover:first-child),
-body main:has(> .nino-wrap > .nino-cover:first-child),
-body main:has(> .nino-parallex:first-child),
-body main:has(> .nino-wrap > .nino-parallex:first-child) {
-	padding-top: 0;
-}
 @media (max-width: 767px) {
 	.nino-frame-header .nino-frame-header-utility {
 		display: none;
@@ -317,6 +319,10 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+	.nino-frame-header,
+	.nino-frame-header .nino-scroll-header {
+		transition: none;
+	}
 	.nino-frame-header .nino-nav-content li a::after {
 		transition: none;
 	}
