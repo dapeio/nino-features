@@ -432,15 +432,19 @@
 			if( allowed.indexOf( placeholders[i].getAttribute( 'data-consent' ) ) !== -1 )
 				activateScript( placeholders[i] );
 
-		for( var c = 0; c < allowed.length; c++ ) {
+		// Both ways, for every category: a block follows the choice that is
+		// current, not the one that was made first
+		for( var c = 0; c < CATEGORIES.length; c++ ) {
 
-			var toShow = document.querySelectorAll( '[data-consent-show="' + allowed[c] + '"]' );
+			var granted = allowed.indexOf( CATEGORIES[c] ) !== -1;
+
+			var toShow = document.querySelectorAll( '[data-consent-show="' + CATEGORIES[c] + '"]' );
 			for( var s = 0; s < toShow.length; s++ )
-				toShow[s].hidden = false;
+				toShow[s].hidden = granted === false;
 
-			var toHide = document.querySelectorAll( '[data-consent-hide="' + allowed[c] + '"]' );
+			var toHide = document.querySelectorAll( '[data-consent-hide="' + CATEGORIES[c] + '"]' );
 			for( var h = 0; h < toHide.length; h++ )
-				toHide[h].hidden = true;
+				toHide[h].hidden = granted === true;
 		}
 
 		document.dispatchEvent( new CustomEvent( 'nino:consent', { detail: { allowed: allowed.slice() } } ) );
@@ -468,8 +472,36 @@
 	}
 
 	/**
+	 *	Whether a category that a choice takes away has put something to work on
+	 *	this page: a placeholder script that was activated, or an embed of the
+	 *	Embed feature that was released (it names its category in
+	 *	data-embed-consent and says so in data-embed-loaded - markup, as it reads
+	 *	<html data-consent>). Neither can be taken back by a script
+	 *
+	 *	@param		{Array}			withdrawn
+	 *
+	 *	@return		{boolean}
+	 */
+	function inUse( withdrawn ) {
+
+		var used = function( selector, flag ) {
+			var nodes = document.querySelectorAll( selector );
+			for( var i = 0; i < nodes.length; i++ )
+				if( withdrawn.indexOf( nodes[i].getAttribute( 'data-consent' ) || nodes[i].getAttribute( 'data-embed-consent' ) ) !== -1 && nodes[i].dataset[flag] === 'true' )
+					return true;
+			return false;
+		};
+
+		return used( 'script[type="text/plain"][data-consent]', 'consentActivated' ) || used( '[data-embed-consent]', 'embedLoaded' );
+	}
+
+	/**
 	 *	Store a choice, apply it and hide the banner - the only place that
-	 *	writes the cookie; PHP never does (see \Nino\Modules\Consent::allowed())
+	 *	writes the cookie; PHP never does (see \Nino\Modules\Consent::allowed()).
+	 *	A script that ran or a frame that was released cannot be called back, so
+	 *	where a category that had something of the kind on this page is withdrawn,
+	 *	the page loads again once the choice is stored: it then comes up without
+	 *	them, and a page that loads reads the choice and never reloads
 	 *
 	 *	@param		{Array}			allowed
 	 *
@@ -477,21 +509,32 @@
 	 */
 	function setConsent( allowed ) {
 
+		var before = ( document.documentElement.dataset.consent || '' ).split( ',' );
+		var withdrawn = before.filter( function( category ) {
+			return category !== 'necessary' && allowed.indexOf( category ) === -1;
+		} );
+
 		writeCookie( cookieName(), allowed.join( ',' ), cookieDays() );
 		applyConsent( allowed );
 
 		// The page is live again before the focus goes back to it: an inert
 		// element takes none
-		var before = release();
+		var previous = release();
 		var el = banner();
 
 		if( el !== null )
 			el.hidden = true;
 
+		// The focus is not taken to a page that is going away
+		if( inUse( withdrawn ) === true ) {
+			location.reload();
+			return;
+		}
+
 		// Back to the button that opened it, or - where a modal look held the
 		// page - to where the focus was. A banner that is no modal keeps the
 		// focus nowhere meanwhile: it is a notice
-		var back = opener !== null ? opener : before;
+		var back = opener !== null ? opener : previous;
 
 		if( back !== null && back.parentNode !== null && typeof back.focus === 'function' )
 			back.focus();

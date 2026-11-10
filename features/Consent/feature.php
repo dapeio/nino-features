@@ -23,12 +23,12 @@ return [
 		],
 		'markup' => [
 			'<script type="text/plain" data-consent="statistics" data-src="…">' => [
-				'en_US' => 'Starts only once the category is allowed, and the host of data-src joins the policy\'s script-src.',
-				'de_DE' => 'Startet erst, wenn die Kategorie erlaubt ist, und der Host von data-src kommt in die script-src der Richtlinie.',
+				'en_US' => 'Starts only once the category is allowed and joins the policy\'s script-src with its host; withdrawing the category reloads the page once.',
+				'de_DE' => 'Startet erst, wenn die Kategorie erlaubt ist, und kommt mit seinem Host in die script-src der Richtlinie; wird die Kategorie widerrufen, lädt die Seite einmal neu.',
 			],
 			'data-consent-show="statistics" / data-consent-hide="statistics"' => [
-				'en_US' => 'Shows or hides a box once the category is allowed; not for an iframe, because a hidden iframe is still fetched.',
-				'de_DE' => 'Zeigt oder verbirgt einen Kasten, sobald die Kategorie erlaubt ist; für ein iframe taugt das nicht, denn auch ein verstecktes wird geladen.',
+				'en_US' => 'Shows or hides a box as long as the category is allowed and takes it back once it is withdrawn; not for an iframe, because a hidden iframe is still fetched.',
+				'de_DE' => 'Zeigt oder verbirgt einen Kasten, solange die Kategorie erlaubt ist, und nimmt ihn zurück, sobald sie widerrufen wird; für ein iframe taugt das nicht, denn auch ein verstecktes wird geladen.',
 			],
 			'<html data-consent="necessary,statistics">' => [
 				'en_US' => 'Names the allowed categories on load and on every change; your own code listens for the nino:consent event and reads event.detail.allowed.',

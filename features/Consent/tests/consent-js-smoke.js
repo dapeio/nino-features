@@ -14,7 +14,9 @@
  *												and the Tab key kept inside, all of it given back
  *												after a choice), that the script starts when Nino.js says the
  *												page is ready, and that the cookie it reads and writes is
- *												the one the banner names, kept for the days it names.
+ *												the one the banner names, kept for the days it names,
+ *												and that withdrawing a category takes its blocks back
+ *												and reloads the page once where something of it ran.
  *
  *												No jsdom, no dependency: the element stand-in the other
  *												feature tests build, with the little selector matching
@@ -196,6 +198,7 @@ function page( elements, options ) {
 	const fired = [];
 	const lines = [];
 	const timeouts = [];
+	let reloads = 0;
 	let cookies = options.cookie !== undefined ? options.cookie : {};
 
 	const dc = {
@@ -235,7 +238,7 @@ function page( elements, options ) {
 	// navigator, the events of the window, a location and a timer Nino.js asks
 	// for a page that is ready already
 	const sandbox = {
-		console : console, document : dc, CustomEvent : CustomEvent, location : { protocol : 'https:', hash : '' },
+		console : console, document : dc, CustomEvent : CustomEvent, location : { protocol : 'https:', hash : '', reload : function() { reloads++ } },
 		navigator : { userAgent : 'node' },
 		Event : function( type ) { this.type = type },
 		addEventListener : function() {},
@@ -265,7 +268,7 @@ function page( elements, options ) {
 		start();
 
 	return {
-		document : dc, root : root, body : body, fired : fired, start : start, listeners : listeners, lines : lines,
+		document : dc, root : root, body : body, fired : fired, reloads : function() { return reloads }, start : start, listeners : listeners, lines : lines,
 		stored : function( name ) { return cookies[ name || 'nino_consent' ] },
 		boxes : function( el ) {
 			const found = {};
@@ -533,6 +536,76 @@ const kept = [ '30', '0', 'many', '-5', null ].map( function( days ) {
 } );
 check( 'a lifetime given as a whole number of days is kept, anything else is the 180 days of the default',
 	kept.join( ',' ) === '30,180,180,180,180' );
+
+
+// --- Withdrawing a choice ------------------------------------------------------
+
+function withdrawal( cookie ) {
+
+	const dlg = banner( [ 'statistics', 'marketing' ] );
+	const shown = element( 'div', { 'data-consent-show' : 'statistics' } );
+	const hiddenBy = element( 'div', { 'data-consent-hide' : 'statistics' } );
+	const other = element( 'div', { 'data-consent-show' : 'marketing' } );
+	shown.hidden = true;
+	const holder = element( 'button', { 'class' : 'nino-consent-open' } );
+	const run = page( [ dlg, shown, hiddenBy, other, holder, placeholder( 'statistics', 'https://stats.example/s.js' ) ], { cookie : cookie } );
+
+	return { run : run, dialog : dlg, shown : shown, hiddenBy : hiddenBy, other : other, holder : holder };
+}
+
+const give = withdrawal( undefined );
+give.run.action( give.dialog, 'accept-all' );
+check( 'a choice that gives a category shows its block, hides the block that is hidden by it and releases its script',
+	give.shown.hidden === false && give.hiddenBy.hidden === true && give.run.scripts().length === 1 && give.run.reloads() === 0 );
+
+const take = withdrawal( { nino_consent : 'necessary,statistics' } );
+take.holder.click();
+take.run.action( take.dialog, 'necessary-only' );
+check( 'withdrawing it hides the block again and shows the hide-block again',
+	take.shown.hidden === true && take.hiddenBy.hidden === false && take.other.hidden === true );
+check( '...stores the withdrawn choice and says it on the page', take.run.stored() === 'necessary' && take.run.root.dataset.consent === 'necessary' );
+check( '...and reloads the page once, because the script of that category ran', take.run.reloads() === 1 );
+check( '...with no focus sent to a page that is going away, and the page given back', take.holder.focused === 0 && take.dialog.hidden === true );
+
+const again = withdrawal( { nino_consent : 'necessary' } );
+again.run.action( again.dialog, 'necessary-only' );
+check( 'a page that comes up with the withdrawn choice runs nothing of the category and reloads nothing',
+	again.run.scripts().length === 0 && again.run.reloads() === 0 && again.shown.hidden === true && again.hiddenBy.hidden === false );
+
+const idle = withdrawal( { nino_consent : 'necessary,marketing' } );
+idle.holder.click();
+idle.run.action( idle.dialog, 'necessary-only' );
+check( 'withdrawing a category that started nothing on this page reloads nothing, and the focus goes back to the button',
+	idle.run.reloads() === 0 && idle.run.stored() === 'necessary' && idle.holder.focused === 1 );
+
+const stays = withdrawal( { nino_consent : 'necessary,statistics' } );
+stays.holder.click();
+stays.dialog.querySelector( '[data-consent-category="marketing"]' ).checked = true;
+stays.run.action( stays.dialog, 'save' );
+check( 'a choice that keeps the running category reloads nothing',
+	stays.run.reloads() === 0 && stays.run.stored() === 'necessary,statistics,marketing' && stays.other.hidden === false );
+
+const frame = element( 'div', { 'class' : 'nino-embed', 'data-embed-consent' : 'external', 'data-embed-src' : 'https://video.example/v' } );
+frame.dataset.embedLoaded = 'true';
+const framed = page( [ banner( [ 'external' ] ), frame ], { cookie : { nino_consent : 'necessary,external' } } );
+framed.action( framed.body.querySelector( '.nino-consent' ), 'necessary-only' );
+check( 'an embed that was released by the category goes back to its placeholder by the reload', framed.reloads() === 1 );
+
+const pressed = element( 'div', { 'class' : 'nino-embed', 'data-embed-consent' : 'external', 'data-embed-src' : 'https://video.example/v' } );
+pressed.dataset.embedLoaded = 'true';
+const pressedPage = page( [ banner( [ 'external' ] ), pressed ], {} );
+pressedPage.action( pressedPage.body.querySelector( '.nino-consent' ), 'necessary-only' );
+check( '...and one the visitor pressed before any category was given is left alone', pressedPage.reloads() === 0 );
+
+const unloaded = element( 'div', { 'class' : 'nino-embed', 'data-embed-consent' : 'external', 'data-embed-src' : 'http://video.example/v' } );
+const unloadedPage = page( [ banner( [ 'external' ] ), unloaded ], { cookie : { nino_consent : 'necessary,external' } } );
+unloadedPage.action( unloadedPage.body.querySelector( '.nino-consent' ), 'necessary-only' );
+check( 'an embed that never loaded, its source being no https address, causes no reload when its category is withdrawn', unloadedPage.reloads() === 0 );
+
+const basics = element( 'div', { 'data-consent-show' : 'necessary' } );
+basics.hidden = true;
+page( [ banner( [ 'statistics' ] ), basics ], { cookie : { nino_consent : 'necessary' } } );
+check( 'a block that waits for the necessary category is shown on a page that has it', basics.hidden === false );
 
 
 // --- The file ------------------------------------------------------------------
