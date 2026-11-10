@@ -441,32 +441,39 @@ foreach( [ false, true ] as $animate )
 
 check( 'the switch, the effect with its strength and the speed are classes of the wrap, in that order: all '. $combined. ' combinations of them are written as they are, and read back as they were set'. ( $wrong === [] ? '' : ' - '. implode( ', ', array_slice( $wrong, 0, 5 ) ) ), $wrong === [] && $combined === 2 * ( count( \Nino\Modules\Builder\Reader::EFFECTS ) + 1 ) * ( count( \Nino\Modules\Builder\Reader::SPEEDS ) + 1 ) );
 
-$foreign = $read( str_replace( 'class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium"', 'class="my-wrap nino-vpa--speed-slow nino-wrap nino-vpa--blur-hard u-x nino-wrap--vpa nino-vpa--flip-soft nino-vpa--repeat nino-vpa"', $wrapFixture ) );
+$foreignFile	= str_replace( 'class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium"', 'class="my-wrap nino-vpa--speed-slow nino-wrap nino-vpa--blur-hard u-x nino-wrap--vpa nino-vpa--flip-soft nino-vpa--repeat nino-vpa"', $wrapFixture );
+$foreign			= $read( $foreignFile );
 check( 'a class of the wrap that the builder does not know is carried in wrapClass - a second effect, the mode and a bare nino-vpa among them - and written behind the known ones', $foreign['animate'] === true && $foreign['vpa'] === 'blur-hard' && $foreign['vpaSpeed'] === 'slow'
 	&& $foreign['wrapClass'] === 'my-wrap u-x nino-vpa--flip-soft nino-vpa--repeat nino-vpa' && $foreign['blocks'] === $model['blocks'] );
-check( '...they survive a round trip: written in the order of the known ones and then theirs, read as they were', str_contains( $write( $foreign ), '<div class="nino-wrap nino-wrap--vpa nino-vpa--blur-hard nino-vpa--speed-slow my-wrap u-x nino-vpa--flip-soft nino-vpa--repeat nino-vpa">' ) === true
-	&& $read( $write( $foreign ) ) === $foreign && $write( $read( $write( $foreign ) ) ) === $write( $foreign ) );
+$changed = array_diff_key( $foreign, [ 'frame' => true ] );
+check( '...they survive a round trip: the file is written as it is while its wrap is not changed, and in the order of the known ones and then theirs where it is - read as they were',
+	$write( $foreign ) === $foreignFile && $read( $write( $foreign ) ) === $foreign && isset( $foreign['frame'] ) === true && $foreign['frame']['known'] === true
+	&& str_contains( $write( $changed ), '<div class="nino-wrap nino-wrap--vpa nino-vpa--blur-hard nino-vpa--speed-slow my-wrap u-x nino-vpa--flip-soft nino-vpa--repeat nino-vpa">' ) === true
+	&& $read( $write( $changed ) ) === $changed && $write( $read( $write( $changed ) ) ) === $write( $changed ) );
 
 // A wrap is known by its place alone: a line that opens it and one that closes it, each of nothing else
 $open		= '<div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium">';
-$noClose	= $read( str_replace( "\n</div>\n[template /templates/html-footer]\n", "\n[template /templates/html-footer]\n", $wrapFixture ) );
+$noCloseFile	= str_replace( "\n</div>\n[template /templates/html-footer]\n", "\n[template /templates/html-footer]\n", $wrapFixture );
+$noClose	= $read( $noCloseFile );
 $noOpen		= $read( str_replace( $open. "\n\n", '', $wrapFixture ) );
 
-check( 'a line that opens a wrap and none that closes it is no wrap: the file is read as one that has none, the line is a block of html of its own with the reason it is no section, and the sections after it are read',
-	$noClose['animate'] === false && $noClose['vpa'] === '' && $noClose['wrapClass'] === '' && $noClose['blocks'][0]['kind'] === 'html' && $noClose['blocks'][0]['source'] === $open && is_array( $noClose['blocks'][0]['reason'] ) === true && $noClose['blocks'][0]['reason']['line'] === 3
-	&& array_column( array_slice( $noClose['blocks'], 1 ), 'kind' ) === [ 'section', 'section', 'html', 'section' ] );
+check( 'a line that opens a wrap and none that closes it is no wrap the builder knows: its line is the page\'s own and belongs to the frame the builder keeps, the animation is none, and the sections after it are read',
+	$noClose['animate'] === false && $noClose['vpa'] === '' && $noClose['wrapClass'] === '' && array_column( $noClose['blocks'], 'kind' ) === [ 'section', 'section', 'html', 'section' ]
+	&& $noClose['frame']['known'] === false && str_contains( $noClose['frame']['lead'], $open ) === true );
 check( '...so is a line that closes it and none that opens it: a block of html at the end', $noOpen['animate'] === false && array_column( $noOpen['blocks'], 'kind' ) === [ 'section', 'section', 'html', 'section', 'html' ] && $noOpen['blocks'][4]['source'] === '</div>' && $noOpen['footer'] === 'html-footer' );
-check( '...and each is written where it stands, among the blocks of html, byte for byte - what the file has it keeps until the wrap is meant to', str_contains( $write( $noClose ), "[template /templates/html-header]\n<div class=\"nino-wrap\">\n\n". $open. "\n\n<section id=\"hero\"" ) === true
+check( '...each is written where it stands, byte for byte - the line of a wrap that closes nowhere is kept, with no wrap of the builder\'s around it, and a line that closes one that was never opened is a block of html in the wrap the file is given', $write( $noClose ) === $noCloseFile
 	&& str_ends_with( $write( $noOpen ), "\n\n</div>\n\n</div>\n[template /templates/html-footer]\n" ) === true );
 
 $apart = static fn( string $head, string $first ): array => $read( "[template /templates/html-header]\n". $head. $first. "\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n[template /templates/html-footer]\n" );
-check( 'a line between the head and the opening line that is none of the wrap\'s - a section, a comment - or an opening tag that has an attribute besides its class is no wrap either, whatever closes the file',
-	$apart( "<!-- hello -->\n", '<div class="nino-wrap">' )['wrapClass'] === '' && $apart( '', '<div class="nino-wrap" id="page">' )['blocks'][0]['source'] === '<div class="nino-wrap" id="page">' && $apart( '', '<div class="nino-wrap" id="page">' )['animate'] === false
+check( 'a line between the head and the opening line that is no comment, or an opening tag with a class that is none of the wrap\'s, is no wrap; one with an attribute besides its class, or with a comment above it, is a wrap of the page\'s own, which the builder keeps as it stands',
+	$apart( "<!-- hello -->\n", '<div class="nino-wrap">' )['wrapClass'] === '' && array_column( $apart( "<!-- hello -->\n", '<div class="nino-wrap">' )['blocks'], 'kind' ) === [ 'section' ]
+	&& $apart( '', '<div class="nino-wrap" id="page">' )['frame']['known'] === false && str_contains( $apart( '', '<div class="nino-wrap" id="page">' )['frame']['lead'], '<div class="nino-wrap" id="page">' ) === true
+	&& array_column( $apart( '', '<div id="page" class="nino-wrap">' )['blocks'], 'kind' ) === [ 'section' ] && $apart( '', '<div class="nino-wrap" id="page">' )['animate'] === false
 	&& $apart( '', '<div class="nino-wrap nino-wrap--vpa">' )['animate'] === true && $apart( '', '<div class="my-wrap">' )['blocks'][0]['source'] === '<div class="my-wrap">' && $apart( '', '<div class="nino-wrap nino-wrap--vpa">x' )['animate'] === false );
 
 $handWrapped = $read( "[template /templates/html-header]\n\n\n\t<div class=\"nino-wrap  nino-wrap--vpa \">  \n". $section( '[title /template/page-x/a/title]' ). "\n\n\t</div>\n\n[template /templates/html-footer]\n" );
-check( 'the lines of a wrap written by hand may be indented, have blank lines around them and spaces behind them - and a class the builder cannot keep, a quote or an ampersand, makes it no wrap', $handWrapped['animate'] === true && array_column( $handWrapped['blocks'], 'kind' ) === [ 'section' ]
-	&& $read( "<div class=\"nino-wrap a&b\">\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n" )['blocks'][0]['kind'] === 'html' && $read( "<div class=\"nino-wrap\">\r\n". $section( '[title /template/page-x/a/title]' ). "\r\n</div>\r\n" )['blocks'][0]['kind'] === 'section' );
+check( 'the lines of a wrap written by hand may be indented, have blank lines around them and spaces behind them - and a class the builder cannot keep, a quote or an ampersand, makes it a wrap of the page\'s own', $handWrapped['animate'] === true && array_column( $handWrapped['blocks'], 'kind' ) === [ 'section' ]
+	&& $read( "<div class=\"nino-wrap a&b\">\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n" )['blocks'][0]['kind'] === 'section' && isset( $read( "<div class=\"nino-wrap a&b\">\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n" )['frame'] ) === true && $read( "<div class=\"nino-wrap\">\r\n". $section( '[title /template/page-x/a/title]' ). "\r\n</div>\r\n" )['blocks'][0]['kind'] === 'section' );
 
 $thrownVpa = 0;
 foreach( [ 'zoom', 'nino-vpa--zoom-soft', 'zoom-soft nino-vpa', "zoom-soft\n", 'ZOOM-SOFT', 'x" onclick="y', 'repeat' ] as $bad ) {
@@ -5846,6 +5853,235 @@ foreach( [ 'page-dup', 'page-dup-copy', 'page-dup-unlabelled', 'page-plain', 'pa
 echo "\n";
 
 
+// --- 9b. The frame of a page the builder does not write ----------------------
+
+echo "Document - the lines around the sections, kept as the file has them\n";
+
+$frameCover	= "<section id=\"a\" class=\"nino-section nino-cover\" data-cover-height=\"100\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-frame/a/title]\n\t\t</div>\n\t</div>\n</section>";
+$frameBody	= $frameCover. "\n\n". $section( '[text /template/page-frame/b/text]', 'b' );
+
+// A page: what stands above the wrap, the tag that opens it, the line that closes it, what stands below, and the line end
+$framePage	= static fn( string $above, string $open, string $closing, string $below, string $eol = "\n" ): string => str_replace( "\n", $eol, $above. $open. "\n\n". $frameBody. "\n\n". $closing. $below );
+$header			= "[template /templates/html-header]\n";
+$footer			= "[template /templates/html-footer]\n";
+
+// What the Reader makes of each: none - the frame the Writer writes -, known - a frame it reads and the file spells in its own way - or own - a frame it does not read
+$frameFiles = [
+	'the wrap the builder writes'								=> [ $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer ), 'none' ],
+	'an id on the wrap'													=> [ $framePage( $header, '<div id="page" class="nino-wrap">', "</div>\n", $footer ), 'own' ],
+	'the class first, the id after it'					=> [ $framePage( $header, '<div class="nino-wrap" id="page">', "</div>\n", $footer ), 'own' ],
+	'classes of its own, behind the wrap\'s'		=> [ $framePage( $header, '<div class="nino-wrap site">', "</div>\n", $footer ), 'none' ],
+	'classes of its own, before the wrap\'s'		=> [ $framePage( $header, '<div class="site nino-wrap nino-wrap--vpa">', "</div>\n", $footer ), 'known' ],
+	'the wrap with blanks in its tags'					=> [ $framePage( $header, "\t<div  class=\"nino-wrap\"  >", "\t</div>\n", $footer ), 'known' ],
+	'a header call with an argument'						=> [ $framePage( "[template /templates/html-header title=\"x\"]\n", '<div class="nino-wrap">', "</div>\n", $footer ), 'own' ],
+	'a line after the footer'										=> [ $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer. "[consent-settings]\n" ), 'own' ],
+	'an id, a header call with an argument and a line after the footer' => [ $framePage( "[template /templates/html-header-slim title=\"x\"]\n", '<div id="page" class="nino-wrap">', "</div>\n", $footer. "[consent-settings]\n" ), 'own' ],
+	'lines that end in CR LF'										=> [ $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer, "\r\n" ), 'known' ],
+	'lines that end in CR LF, an id on the wrap' => [ $framePage( "<!-- nino:template-name Page -->\n". $header, '<div id="page" class="nino-wrap">', "</div>\n", $footer, "\r\n" ), 'own' ],
+	'no line end at the end'										=> [ rtrim( $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer ), "\n" ), 'known' ],
+	'a comment above the wrap'									=> [ $framePage( $header. "<!-- the page -->\n", '<div class="nino-wrap">', "</div>\n", $footer ), 'own' ],
+	'a comment above the header'								=> [ $framePage( "<!-- the page -->\n". $header, '<div class="nino-wrap">', "</div>\n", $footer ), 'own' ],
+	'a wrap that nothing closes'								=> [ $framePage( $header, '<div class="nino-wrap">', '', $footer ), 'own' ],
+	'no wrap, a line after the footer'					=> [ "[template /templates/html-header]\n\n". $frameBody. "\n\n". $footer. "[consent-settings]\n", 'own' ],
+];
+
+// Whether the page opens with its cover as the kernel asks: the first element is the cover, or the wrap whose first element is the cover - and a second wrap would be neither
+$classesOf	= static fn( ?\DOMElement $element ): array => $element === null ? [] : ( preg_split( '/\s+/', $element->getAttribute( 'class' ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] );
+$coverOpens	= static function( string $source ) use ( $classesOf ): bool {
+
+	// The calls of the includes stand on lines of their own and are no element
+	$document = new \DOMDocument();
+	$document->loadHTML( '<?xml encoding="utf-8"?><body>'. (string) preg_replace( '~^\[(?:template|consent-settings)[^\r\n]*$~m', '', str_replace( "\r", '', $source ) ). '</body>', LIBXML_NOERROR | LIBXML_NOWARNING );
+
+	$first	= $document->getElementsByTagName( 'body' )->item( 0 )?->firstElementChild;
+	$wraps	= 0;
+
+	foreach( $document->getElementsByTagName( 'div' ) as $div )
+		$wraps += in_array( 'nino-wrap', $classesOf( $div ), true ) === true ? 1 : 0;
+
+	return $first !== null && $wraps <= 1 && ( in_array( 'nino-cover', $classesOf( $first ), true ) === true
+		|| ( in_array( 'nino-wrap', $classesOf( $first ), true ) === true && in_array( 'nino-cover', $classesOf( $first->firstElementChild ), true ) === true ) );
+};
+
+$frameWrong = [ 'kind' => [], 'trip' => [], 'rename' => [], 'cover' => [], 'blocks' => [] ];
+
+foreach( $frameFiles as $label => [ $source, $kind ] ) {
+
+	$framed		= $read( $source );
+	$renamed	= $framed;
+	$renamed['blocks'][1]['id'] = 'c';
+
+	if( ( isset( $framed['frame'] ) === false ? 'none' : ( $framed['frame']['known'] === true ? 'known' : 'own' ) ) !== $kind )
+		$frameWrong['kind'][] = $label;
+
+	if( array_column( $framed['blocks'], 'kind' ) !== [ 'section', 'section' ] )
+		$frameWrong['blocks'][] = $label;
+
+	if( $write( $framed ) !== $source )
+		$frameWrong['trip'][] = $label;
+
+	if( $write( $renamed ) !== str_replace( 'id="b"', 'id="c"', $source ) )
+		$frameWrong['rename'][] = $label;
+
+	if( $coverOpens( $write( $renamed ) ) === false )
+		$frameWrong['cover'][] = $label;
+}
+
+check( 'a page is read as the frame it has: the builder\'s own, one it reads and spells in another way, or one it does not read - '. count( $frameFiles ). ' pages, a header call with an argument, a wrap with an id, a line after the footer and a comment above the wrap among them', $frameWrong['kind'] === [] && $frameWrong['blocks'] === []
+	&& $read( $frameFiles['the wrap the builder writes'][0] ) === $read( $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer ) ) && array_key_exists( 'frame', $read( $frameFiles['the wrap the builder writes'][0] ) ) === false
+	&& implode( ', ', $frameWrong['kind'] ). implode( ', ', $frameWrong['blocks'] ) === '' );
+check( '...and written back exactly as it is read: no byte of the frame changes, whatever it is - nothing is wrapped twice and nothing is pulled into the wrap'. ( $frameWrong['trip'] === [] ? '' : ' - '. implode( ', ', $frameWrong['trip'] ) ), $frameWrong['trip'] === [] );
+check( '...a section renamed changes that section and no other line of the file'. ( $frameWrong['rename'] === [] ? '' : ' - '. implode( ', ', $frameWrong['rename'] ) ), $frameWrong['rename'] === [] );
+check( '...and the page written opens with its cover as the kernel asks, with no second wrap round it'. ( $frameWrong['cover'] === [] ? '' : ' - '. implode( ', ', $frameWrong['cover'] ) ), $frameWrong['cover'] === [] && $coverOpens( $write( $read( $frameFiles['a line after the footer'][0] ) ) ) === true
+	&& $coverOpens( "<div class=\"nino-wrap\">\n\n<div class=\"nino-wrap\">\n\n". $frameCover. "\n\n</div>\n\n</div>\n" ) === false );
+
+// A frame the Reader finds by no place at all - a call above the header, the wrap in a block of html - is kept as well: nothing is wrapped round a line of it
+$frameStray	= [ "[consent-before]\n". $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer ), $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer ). "<p>x</p>\n", "<p>y</p>\n". $framePage( $header, '<div class="nino-wrap">', "</div>\n", $footer ) ];
+$frameLost	= [];
+
+foreach( $frameStray as $at => $source )
+	if( $write( $read( $source ) ) !== $source || isset( $read( $source )['frame'] ) === false || substr_count( $write( $read( $source ) ), 'nino-wrap' ) !== 1 || $coverOpens( preg_replace( '~^<p>[xy]</p>\n|<p>[xy]</p>\n\z~', '', $source ) ) === false )
+		$frameLost[] = $at;
+
+check( '...so is a frame that stands where the builder looks for none: a call above the header, a line below the footer that is none of a frame, a block of html above - and nothing is wrapped round it'. ( $frameLost === [] ? '' : ' - '. implode( ', ', $frameLost ) ), $frameLost === [] );
+
+// A page without a wrap and with a frame the builder reads is given its wrap, as it always was; one with a frame of its own is not
+$frameNoWrap = "[template /templates/html-header]\n\n". $frameBody. "\n\n". $footer;
+check( '...a page with no wrap and a frame the builder reads is given the wrap, which is all that is added to it', $write( $read( $frameNoWrap ) ) === str_replace( [ $header. "\n", "\n". $footer ], [ $header. "<div class=\"nino-wrap\">\n\n", "\n</div>\n". $footer ], $frameNoWrap ) && array_key_exists( 'frame', $read( $frameNoWrap ) ) === false );
+
+// A page whose wrap holds nothing: the blocks that are added stand between the lines the file had
+$frameEmpty	= "[template /templates/html-header-slim title=\"x\"]\n<div id=\"page\" class=\"nino-wrap\">\n\n</div>\n". $footer;
+$framePlus	= $read( $frameEmpty );
+$framePlus['blocks'][] = [ 'kind' => 'html', 'source' => '<p>x</p>', 'reason' => null ];
+check( 'a page with a frame of its own and no section is written back as it is, and the block that is added stands between the line that opens the wrap and the line that closes it', $read( $frameEmpty )['blocks'] === [] && $write( $read( $frameEmpty ) ) === $frameEmpty
+	&& $write( $framePlus ) === str_replace( "\n\n</div>", "\n<!-- nino:html -->\n<p>x</p>\n<!-- /nino:html -->\n</div>", $frameEmpty ) && $read( $write( $framePlus ) )['blocks'] === $framePlus['blocks'] );
+$frameTight = str_replace( "\n\n</div>", "\n</div>", $frameEmpty );
+$frameMore	= $read( $frameTight );
+$frameMore['blocks'][] = $framePlus['blocks'][0];
+check( '...and so is one whose wrap closes on the line after the one that opens it: the line that closes it stands a blank line below the block', $read( $frameTight )['blocks'] === [] && $write( $read( $frameTight ) ) === $frameTight
+	&& $write( $frameMore ) === str_replace( "\n</div>", "\n<!-- nino:html -->\n<p>x</p>\n<!-- /nino:html -->\n\n</div>", $frameTight ) && $read( $write( $frameMore ) )['blocks'] === $frameMore['blocks'] );
+check( '...a line end of its own is the line end of what is added: sections and the markers of a block of html', $write( array_replace( $read( str_replace( "\n", "\r\n", $frameEmpty ) ), [ 'blocks' => array_merge( $read( $frameFiles['the wrap the builder writes'][0] )['blocks'], [ $framePlus['blocks'][0] ] ) ] ) )
+	=== str_replace( "\n", "\r\n", str_replace( "\n\n</div>", "\n". $frameBody. "\n\n<!-- nino:html -->\n<p>x</p>\n<!-- /nino:html -->\n</div>", $frameEmpty ) ) );
+
+// The Document: a page of each kind, read from the project, renamed and saved, and saved without a change
+\Nino\Filesystem::mutate( $appData, '/text/en_US.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-frame/a/title]]' => 'Hello', '[[/template/page-frame/b/text]]' => 'World' ] );
+\Nino\Filesystem::mutate( $appData, '/text/de_DE.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-frame/a/title]]' => 'Hallo', '[[/template/page-frame/b/text]]' => 'Welt' ] );
+$framePath = \Nino\Filesystem::path( $appData, '/templates/page-frame.tpl' );
+$frameSaves = [ 'same' => [], 'renamed' => [], 'hash' => [] ];
+
+foreach( $frameFiles as $label => [ $source, $kind ] ) {
+
+	\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', $source );
+
+	$frameLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-frame' );
+	$frameSame	= \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $frameLoad['model'], $frameLoad['hash'] );
+
+	if( $frameSame['status'] !== 200 || (string) file_get_contents( $framePath ) !== $source || $frameSame['hash'] !== $frameLoad['hash'] )
+		$frameSaves['same'][] = $label;
+
+	$frameNamed				= $frameLoad['model'];
+	$frameNamed['name']	= 'Renamed';
+	$frameAnswer			= \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $frameNamed, $frameLoad['hash'] );
+	$frameEol					= str_contains( $source, "\r\n" ) === true ? "\r\n" : "\n";
+	$frameWanted			= str_contains( $source, 'nino:template-name' ) === true ? str_replace( 'template-name Page', 'template-name Renamed', $source ) : '<!-- nino:template-name Renamed -->'. $frameEol. $source;
+
+	if( $frameAnswer['status'] !== 200 || (string) file_get_contents( $framePath ) !== $frameWanted || $frameAnswer['model']['name'] !== 'Renamed' || $frameAnswer['hash'] !== hash( 'sha256', $frameWanted ) )
+		$frameSaves['renamed'][] = $label;
+
+	if( $frameAnswer['model']['blocks'] !== $frameLoad['model']['blocks'] || ( $frameAnswer['model']['frame'] ?? null ) !== ( $frameLoad['model']['frame'] ?? null ) )
+		$frameSaves['hash'][] = $label;
+}
+
+check( 'a page loaded and saved without a change is the same file, byte for byte, in all '. count( $frameFiles ). ' shapes'. ( $frameSaves['same'] === [] ? '' : ' - '. implode( ', ', $frameSaves['same'] ) ), $frameSaves['same'] === [] );
+check( '...a page renamed gets its name line first, in the line end of the file, and nothing else changes - the answer is the file read again, with the frame it had'. ( $frameSaves['renamed'] === [] ? '' : ' - '. implode( ', ', $frameSaves['renamed'] ) ). ( $frameSaves['hash'] === [] ? '' : ' - '. implode( ', ', $frameSaves['hash'] ) ), $frameSaves['renamed'] === [] && $frameSaves['hash'] === [] );
+
+// The lines of the file are the file's: the request cannot bring its own, nor leave out those the file has
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', $frameFiles['an id on the wrap'][0] );
+$ownLoad		= \Nino\Modules\Builder\Document::load( $appData, 'page-frame' );
+$ownCrafted	= $ownLoad['model'];
+$ownCrafted['name']	= 'Crafted';
+$ownCrafted['frame']	= [ 'lead' => "<script>alert(1)</script>\n", 'tail' => "\n<script>alert(2)</script>\n", 'eol' => "\n", 'known' => true ];
+$ownAnswer	= \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $ownCrafted, $ownLoad['hash'] );
+check( 'a frame in the request is not the frame of the file: it is not written, the one the file has is', $ownAnswer['status'] === 200 && (string) file_get_contents( $framePath ) === "<!-- nino:template-name Crafted -->\n". $frameFiles['an id on the wrap'][0]
+	&& str_contains( (string) file_get_contents( $framePath ), '<script>' ) === false && $ownAnswer['model']['frame']['known'] === false );
+
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', $frameFiles['an id on the wrap'][0] );
+$ownDropped	= $ownLoad['model'];
+$ownDropped['name'] = 'Dropped';
+unset( $ownDropped['frame'] );
+$ownAnswer	= \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $ownDropped, $ownLoad['hash'] );
+check( '...nor is a request without it a request for the builder\'s own: the frame the file has is kept', $ownAnswer['status'] === 200 && (string) file_get_contents( $framePath ) === "<!-- nino:template-name Dropped -->\n". $frameFiles['an id on the wrap'][0] );
+
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-canon.tpl', $frameFiles['the wrap the builder writes'][0] );
+$canonLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-canon' );
+$canonCrafted	= $canonLoad['model'];
+$canonCrafted['name'] = 'Crafted';
+$canonCrafted['frame'] = [ 'lead' => "<script>alert(1)</script>\n", 'tail' => '', 'eol' => "\n", 'known' => true ];
+\Nino\Modules\Builder\Document::save( $appData, 'page-canon', $canonCrafted, $canonLoad['hash'] );
+check( '...and a frame brought to a page that has the builder\'s own is not written either', (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-canon.tpl' ) ) === "<!-- nino:template-name Crafted -->\n". $frameFiles['the wrap the builder writes'][0] );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-canon' );
+
+// A frame the builder does not read has nowhere to take a change of the header, the footer or the animation to: the save is refused, and says why
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', $frameFiles['a header call with an argument'][0] );
+$ownLoad		= \Nino\Modules\Builder\Document::load( $appData, 'page-frame' );
+$refusals		= [];
+
+foreach( [ 'animate' => true, 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'wrapClass' => 'site', 'header' => 'html-header-slim', 'footer' => '' ] as $key => $value ) {
+	$changed			= $ownLoad['model'];
+	$changed[$key]	= $value;
+	$refused			= \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $changed, $ownLoad['hash'] );
+
+	if( $refused['status'] !== 400 || $refused['code'] !== 'frame' || (string) file_get_contents( $framePath ) !== $frameFiles['a header call with an argument'][0] )
+		$refusals[] = $key;
+}
+
+check( 'a change of the animation, the custom classes of the wrap, the header or the footer of a page with a frame of its own is refused: 400, frame, and the file is as it was'. ( $refusals === [] ? '' : ' - '. implode( ', ', $refusals ) ), $refusals === [] );
+
+$forcedFrame = $ownLoad['model'];
+$forcedFrame['animate'] = true;
+$forcedFrame['header'] = 'html-header';
+$forcedAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $forcedFrame, $ownLoad['hash'], true );
+check( '...unless the file is written over on purpose: the frame is then the model\'s own', $forcedAnswer['status'] === 200 && str_starts_with( (string) file_get_contents( $framePath ), "[template /templates/html-header]\n<div class=\"nino-wrap nino-wrap--vpa\">\n\n" ) === true && isset( $forcedAnswer['model']['frame'] ) === false );
+
+// A frame the builder reads is written anew in the builder's way where the animation or a frame is changed: that is what was asked for
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', $frameFiles['classes of its own, before the wrap\'s'][0] );
+$knownLoad	= \Nino\Modules\Builder\Document::load( $appData, 'page-frame' );
+$knownEdit	= $knownLoad['model'];
+$knownEdit['vpa'] = 'zoom-soft';
+$knownAnswer	= \Nino\Modules\Builder\Document::save( $appData, 'page-frame', $knownEdit, $knownLoad['hash'] );
+check( 'a frame the builder reads and the file spells in its own way is written in the builder\'s way where the wrap is changed: the classes in their order, and the rest of the file as it was',
+	$knownLoad['model']['frame']['known'] === true && $knownAnswer['status'] === 200 && (string) file_get_contents( $framePath ) === str_replace( 'class="site nino-wrap nino-wrap--vpa"', 'class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft site"', $frameFiles['classes of its own, before the wrap\'s'][0] )
+	&& isset( $knownAnswer['model']['frame'] ) === false );
+
+// The list says which pages the builder does not read completely
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', $frameFiles['a line after the footer'][0] );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame-crlf.tpl', $frameFiles['lines that end in CR LF'][0] );
+$framesListed = array_column( \Nino\Modules\Builder\Document::list( $appData )['templates'], null, 'file' );
+check( 'the list marks a page with a frame the builder does not read as not read completely, with a reason that names no line; one with a frame it reads, however it is spelled, is read completely',
+	$framesListed['page-frame']['readable'] === false && $framesListed['page-frame']['reason']['code'] === 'frame' && $framesListed['page-frame']['reason']['line'] === 0 && $framesListed['page-frame']['reason']['text'] === \Nino\Modules\Builder\Reader::REASONS['frame']
+	&& $framesListed['page-frame-crlf']['readable'] === true && $framesListed['page-frame-crlf']['reason'] === null && $framesListed['page-home']['readable'] === true );
+
+// The source view takes the model as the panel has it
+$frameSource = \Nino\Modules\Builder\Document::source( $appData, $read( $frameFiles['a line after the footer'][0] ) );
+check( 'the source of a page with a frame of its own is the file, and the head and the foot are the lines the file has', $frameSource['status'] === 200 && $frameSource['source'] === $frameFiles['a line after the footer'][0]
+	&& array_column( $frameSource['parts'], 'kind' ) === [ 'head', 'section', 'section', 'foot' ] && $frameSource['parts'][0]['source'] === "[template /templates/html-header]\n<div class=\"nino-wrap\">" && $frameSource['parts'][3]['source'] === "</div>\n". $footer. "[consent-settings]\n" );
+check( '...a frame that is no frame is refused: 400, invalid', \Nino\Modules\Builder\Document::source( $appData, [ 'frame' => [ 'lead' => 1, 'tail' => '', 'eol' => "\n", 'known' => true ], 'blocks' => [] ] )['status'] === 400
+	&& \Nino\Modules\Builder\Document::source( $appData, [ 'frame' => [ 'lead' => '', 'tail' => '', 'eol' => "\r", 'known' => true ], 'blocks' => [] ] )['status'] === 400
+	&& \Nino\Modules\Builder\Document::source( $appData, [ 'frame' => [ 'lead' => '', 'tail' => '', 'eol' => "\n", 'known' => 'x' ], 'blocks' => [] ] )['status'] === 400 );
+
+foreach( [ 'page-frame', 'page-frame-crlf' ] as $probe )
+	\Nino\Modules\Builder\Document::delete( $appData, $probe );
+
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	\Nino\Filesystem::mutate( $appData, '/text/'. $locale. '.php', static function( mixed $texts ): array {
+		$texts = (array) $texts;
+		unset( $texts['[[/template/page-frame/a/title]]'], $texts['[[/template/page-frame/b/text]]'] );
+		return $texts;
+	} );
+
+echo "\n";
+
+
 // --- 10. The page the builder wrote, rendered --------------------------------
 
 echo "The kernel renders what the builder wrote\n";
@@ -6045,6 +6281,20 @@ check( 'save answers the model as it reads back and the new hash', $status === 2
 check( '...a hash that is not the file\'s any more: 409, with the code the panel looks at', $status === 409 && $conflictBody['code'] === 'builder_conflict' );
 check( '...and with force it is written', callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $next, 'hash' => $loadedBody['hash'], 'force' => true ] )[0] === 200 );
 check( '...a model that is no model: 400', callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'hash' => 'x' ] )[0] === 400 );
+
+// A frame the builder keeps as it is cannot be given another header, footer or animation: the panel is told with a code of its own, which has its words in both languages
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-frame.tpl', "[template /templates/html-header title=\"x\"]\n<div class=\"nino-wrap\">\n\n</div>\n" );
+$keptLoad = \Nino\Modules\Builder\Document::load( $appData, 'page-frame' );
+$keptEdit = $keptLoad['model'];
+$keptEdit['animate'] = true;
+[ $status, $keptBody ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-frame', 'model' => $keptEdit, 'hash' => $keptLoad['hash'] ] );
+$keptWords = [ 'en_US' => (array) include $dir. '/text/en_US.php', 'de_DE' => (array) include $dir. '/text/de_DE.php' ];
+check( 'save refuses a change of the animation of a page whose frame the builder keeps: 400, builder_frame, and the file is as it was', $status === 400 && $keptBody['code'] === 'builder_frame'
+	&& (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-frame.tpl' ) ) === "[template /templates/html-header title=\"x\"]\n<div class=\"nino-wrap\">\n\n</div>\n"
+	&& is_string( $keptWords['en_US']['[[/_admin/builder/error/frame]]'] ?? null ) === true && is_string( $keptWords['de_DE']['[[/_admin/builder/error/frame]]'] ?? null ) === true
+	&& $keptWords['en_US']['[[/_admin/builder/error/frame]]'] !== $keptWords['de_DE']['[[/_admin/builder/error/frame]]']
+	&& is_string( $keptWords['en_US']['[[/_admin/builder/hint/frame-own]]'] ?? null ) === true && is_string( $keptWords['de_DE']['[[/_admin/builder/hint/frame-own]]'] ?? null ) === true );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-frame' );
 
 $invalid = $next;
 $invalid['blocks'][0]['cols'][0]['components'][0]['name'] = 'nothing';

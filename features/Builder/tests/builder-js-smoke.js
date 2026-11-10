@@ -2203,6 +2203,22 @@ builder._openSettings( [] );
 check( 'a template with an effect shows it: the effect and its strength, the speed, the switch - and the strength enabled', valueAt( dialogContent(), 'Animate the sections' ) === true && valueAt( dialogContent(), 'Effect' ) === 'flip' && valueAt( dialogContent(), 'Strength' ) === 'hard' && valueAt( dialogContent(), 'Speed' ) === 'medium'
 	&& radiosOf( controlOf( dialogContent(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === false } ) );
 
+// A page whose frame the builder does not read keeps it: the dialog says so where the frames and the animation would be, and offers the name alone
+doc = open();
+builder._doc.model.frame = { lead : '<div id="page" class="nino-wrap">\n\n', tail : '\n\n</div>\n', eol : '\n', known : false };
+builder._openSettings( [] );
+check( 'the dialog of a template whose frame the builder keeps as it is offers the name and the file, and says in the place of the frames that they stay as they are - with no header, no footer and no animation to set',
+	titlesIn( dialogContent() ) === 'General,Frames' && labelsIn( dialogContent() ) === 'Name,File' && texts( dialogContent().querySelectorAll('.nino-admin-hint') ).indexOf( words['/_admin/builder/hint/frame-own'] ) !== -1 );
+change( dialogContent(), 'Name', 'Start' );
+check( '...the name is still the template\'s to change, and nothing else of the template moves', builder._doc.model.name === 'Start' && templateKeep( builder._doc.model ) === '[false,"","",""]' && builder._doc.model.header === 'html-header' && builder._doc.model.footer === 'html-footer' );
+builder._closeDialog();
+
+doc = open();
+builder._doc.model.frame = { lead : '<div class="site nino-wrap">\n\n', tail : '\n\n</div>\n', eol : '\n', known : true };
+builder._openSettings( [] );
+check( '...a frame the builder reads and the file spells in its own way has the dialog of every template', titlesIn( dialogContent() ) === 'General,Frames,Viewport animation,Kind for this template' && labelsIn( dialogContent() ) === 'Name,File,Header,Footer,Animate the sections,Effect,Strength,Speed' );
+builder._closeDialog();
+
 // The sections of the page with the animation given: the first, the second and the last
 const animation = function( animate, kinds ) {
 	doc = open();

@@ -66,6 +66,15 @@ namespace Nino\Modules\Builder {
 	 *											as it is. The kernel reads none of it but the classes of the
 	 *											elements that are animated: the rows of the sections, and the columns.
 	 *
+	 *											The lines above the first block and below the last are the frame. Where
+	 *											the Writer would write them otherwise than the file has them, the model
+	 *											holds them as they stand (frame, below): a header call with an argument,
+	 *											a wrap with an attribute beside its class, a comment above the wrap, a
+	 *											line after the footer, lines that end in CR LF, no line end at the end.
+	 *											Such a page is written back with its frame untouched, and a wrap is not
+	 *											put round one the file has. A file that has no wrap, and no frame of its own,
+	 *											is the one the Writer gives its wrap.
+	 *
 	 *											The shortcode calls are read the way \Nino\Html reads them:
 	 *											the same expression for the call and its content, the same
 	 *											one for the arguments - a first positional argument, named
@@ -90,6 +99,11 @@ namespace Nino\Modules\Builder {
 	 *											  wrapClass string  every other class of the wrap, as they are written
 	 *											  header    string  html-header, or any html-header* template; '' for none
 	 *											  footer    string  html-footer, ditto
+	 *											  frame     map     only where the file has a frame the Writer would not write as it stands: lead (the lines from the
+	 *											                    name to the first block), tail (from the end of the last block to the end of the file), eol
+	 *											                    ("\n" or "\r\n", the line end of the file) and known - true where the Reader reads the frame (the
+	 *											                    animation, the header and the footer above are what it says), false where it does not and
+	 *											                    those are left as they stand. The Document takes it from the file, never from a request
 	 *											  blocks    list    section and html, in the order of the file
 	 *
 	 *											html (a foreign block)
@@ -415,10 +429,14 @@ namespace Nino\Modules\Builder {
 		// of a space, a quote, a backslash or a bracket, and the fills of the element of a loop, [[.uri]] or [[title]]
 		private const string ADDRESS = '~^\[\[/nino/dir\]\]\[\[(/_nino/webpage/[^\[\]\s"\'\\\\]+/uri)\]\]((?:[^\s"\'\\\\\[\]]|\[\[\.?[A-Za-z0-9_-]+\]\])*)$~D';
 
+		// A line of a page's frame: a call of the header or the footer at the start of a line, or a tag that has the class of the wrap
+		private const string FRAME_LINE = '~(?<![^\n])[\t ]*(?:\[template /templates/html-(?:header|footer)\b|<[a-z][a-z0-9-]*(?=\s)[^>\r\n]*?\sclass\s*=\s*["\'][^"\'>\r\n]*(?<![\w-])nino-wrap(?![\w-]))~';
+
 		// Why a section is not read: the code of a failure, and the sentence
 		// that says it. %s is the detail, where the failure has one
 		public const array REASONS = [
 			'not-a-section'				=> 'a block that is no section',
+			'frame'								=> 'the lines around the sections - the header, the wrap and the footer - are the page\'s own, and the builder keeps them as they are',
 			'marker-unclosed'			=> 'a <!-- nino:html --> marker that is never closed',
 			'attribute-syntax'		=> 'a tag whose attributes are not written as name="value"',
 			'section-attribute'		=> 'the section has the attribute %s, which the builder does not keep',
@@ -1167,9 +1185,22 @@ namespace Nino\Modules\Builder {
 				$pos += strlen( $match[0] );
 			}
 
-			if( preg_match( '~\G\s*\[template /templates/(html-header(?:-[a-z0-9]+)*)\][\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
+			// Where the frame starts, and whether every line of it is one the Reader knows: a call of the header with an argument, a footer with a line after it and a
+			// wrap with an attribute beside its class are the file's own, and the Writer leaves them where they stand
+			$from		= $pos;
+			$known	= true;
+
+			// A comment of the page's own may stand above the header call; it belongs to the frame, which the Writer then leaves as it is
+			$above	= self::_afterComments( $source, $pos );
+
+			if( preg_match( '~\G\s*\[template /templates/(html-header(?:-[a-z0-9]+)*)\][\t ]*(?:\r?\n|$)~', $source, $match, 0, $above ) === 1 ) {
 				$model['header'] = $match[1];
-				$pos += strlen( $match[0] );
+				$known = $above === self::_lineStart( $source, $pos );
+				$pos = $above + strlen( $match[0] );
+			}
+			elseif( preg_match( '~\G\s*\[template /templates/html-header\b[^\r\n]*\][\t ]*(?:\r?\n|$)~', $source, $match, 0, $above ) === 1 ) {
+				$known = false;
+				$pos = $above + strlen( $match[0] );
 			}
 
 			$end = strlen( $source );
@@ -1177,6 +1208,10 @@ namespace Nino\Modules\Builder {
 			if( preg_match( '~(?<![^\n])[\t ]*\[template /templates/(html-footer(?:-[a-z0-9]+)*)\]\s*\z~', $source, $match, PREG_OFFSET_CAPTURE, $pos ) === 1 ) {
 				$model['footer'] = $match[1][0];
 				$end = $match[0][1];
+			}
+			elseif( preg_match_all( '~(?<![^\n])[\t ]*\[template /templates/html-footer\b[^\r\n]*\]~', $source, $calls, PREG_OFFSET_CAPTURE, $pos ) > 0 ) {
+				$known = false;
+				$end = (int) end( $calls[0] )[1];
 			}
 
 			// The wrap, where the file has one: its classes are the animation of the template, and the blocks are what stands inside it
@@ -1187,10 +1222,19 @@ namespace Nino\Modules\Builder {
 				$pos		= $wrap['from'];
 				$end		= $wrap['to'];
 			}
+			elseif( ( $open = self::_wrapOpen( $source, $pos, $end ) ) !== null ) {
+
+				// A line that opens a wrap in a way the Reader does not keep, and the line that closes it where the last one before the foot does
+				$known	= false;
+				$pos		= $open[0];
+				$end		= $open[1];
+			}
 
 			$body		= substr( $source, 0, $end );
 			$ids		= [];
 			$pending = null;
+			$first	= null;
+			$blocks	= $pos;
 
 			while( true ) {
 
@@ -1199,6 +1243,7 @@ namespace Nino\Modules\Builder {
 				if( $start >= strlen( $body ) )
 					break;
 
+				$first ??= $start;
 				$pos = $start;
 
 				try {
@@ -1249,7 +1294,88 @@ namespace Nino\Modules\Builder {
 
 			self::_flush( $model, $pending, $body, strlen( $body ) );
 
+			// A line of the frame in a block the Reader could not read - the header or the footer call, a tag with the class of the wrap - is a frame that it did not find
+			// by its place: the Writer does not wrap a page that has one
+			if( $known === true && $wrap === null )
+				foreach( $model['blocks'] as $block )
+					if( ( $block['kind'] ?? '' ) === 'html' && is_array( $block['reason'] ?? null ) === true && preg_match( self::FRAME_LINE, (string) $block['source'] ) === 1 )
+						$known = false;
+
+			// What stands around the blocks, as the file has it, where the Writer would write the frame otherwise or cannot say it at all
+			$last		= max( $blocks, strlen( rtrim( $body, " \t\r\n" ) ) );
+			$lead		= (string) substr( $source, $from, ( $first ?? $last ) - $from );
+			$tail		= (string) substr( $source, $last );
+			$eol		= str_contains( $source, "\r\n" ) === true && preg_match( '~(?<!\r)\n~', $source ) !== 1 ? "\r\n" : "\n";
+
+			if( $known === false || ( $wrap !== null && self::_framed( $model, $lead, $tail ) === false ) )
+				$model['frame'] = [ 'lead' => $lead, 'tail' => $tail, 'eol' => $eol, 'known' => $known ];
+
 			return $model;
+		}
+
+		/**
+		 *	Whether the frame a file has is the frame the Writer would write for the model that was read: the lines above
+		 *	the blocks and the lines below them, down to the line ends
+		 *
+		 *	@param		array			$model				As read, the frame not yet in it
+		 *	@param		string		$lead					What the file has from the line after the name to the first block
+		 *	@param		string		$tail					What it has from the end of the last block
+		 *
+		 *	@return 	bool
+		 */
+		private static function _framed( array $model, string $lead, string $tail ): bool {
+
+			$above	= Writer::head( [ 'name' => '' ] + $model );
+			$below	= Writer::foot( $model );
+
+			// Without a block the two meet in one blank line
+			return $model['blocks'] === [] ? $lead. $tail === $above. "\n\n". $below. "\n" : $lead === $above. "\n\n" && $tail === "\n\n". $below. "\n";
+		}
+
+		/**
+		 *	Where the first line is that is no comment of the page's own and no blank line: the markers of a block of html are no
+		 *	comments
+		 *
+		 *	@param		string		$text
+		 *	@param		int				$pos					Where to start
+		 *
+		 *	@return 	int												The start of that line, the length of the text where there is none
+		 */
+		private static function _afterComments( string $text, int $pos ): int {
+
+			$at = self::_lineStart( $text, $pos );
+
+			while( preg_match( '~\G[\t ]*<!--(?![\t ]*/?nino:html)(?:(?!-->).)*-->[\t ]*(?:\r?\n|\z)~s', $text, $comment, 0, $at ) === 1 )
+				$at = self::_lineStart( $text, $at + strlen( $comment[0] ) );
+
+			return $at;
+		}
+
+		/**
+		 *	The line that opens a wrap the Reader does not keep - a div with the class nino-wrap and an attribute beside it, or
+		 *	a class that is not kept - with a comment above it, where there is one, and the line that closes it, where the last
+		 *	one before the foot is a line of nothing but </div>. The file keeps all of them as they are
+		 *
+		 *	@param		string		$source				The file
+		 *	@param		int				$pos					Where the head ends
+		 *	@param		int				$end					Where the foot starts, the end of the file where it has none
+		 *
+		 *	@return 	array|null								[ where the blocks start, where they end - the end of the foot's range where nothing closes the wrap ], null where the first line is no such tag
+		 */
+		private static function _wrapOpen( string $source, int $pos, int $end ): ?array {
+
+			$body	= substr( $source, 0, $end );
+
+			// A comment of the page's own may stand above it
+			$at		= self::_afterComments( $body, $pos );
+
+			if( preg_match( '~\G[\t ]*<div(?=\s)[^>\r\n]*?\sclass\s*=\s*["\'][^"\'>\r\n]*(?<![\w-])nino-wrap(?![\w-])[^>\r\n]*>[\t ]*(?:\r?\n|\z)~', $body, $open, 0, $at ) !== 1 )
+				return null;
+
+			$from	= $at + strlen( $open[0] );
+			$kept	= rtrim( $body, " \t\r\n" );
+
+			return [ $from, $from <= strlen( $kept ) && preg_match( '~(?<![^\n])[\t ]*</div[\t ]*>\z~', $kept, $close, PREG_OFFSET_CAPTURE, $from ) === 1 ? (int) $close[0][1] : $end ];
 		}
 
 		/**

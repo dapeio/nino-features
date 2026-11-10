@@ -8158,6 +8158,12 @@
 
 					const frames = builder._group( body, Nino.content.getText('/_admin/builder/group/frames') );
 
+					// A page whose frame the Builder does not know keeps it as it is: the header, the footer and the animation are not the Builder's to set
+					if( doc.model.frame !== undefined && doc.model.frame.known === false ) {
+						frames.appendChild( builder._el( 'p', 'nino-admin-hint', Nino.content.getText('/_admin/builder/hint/frame-own') ) );
+						return;
+					}
+
 					frames.appendChild( builder._frameField( Nino.content.getText('/_admin/builder/label/header'), registry.headers, doc.model.header, function( value ) { doc.model.header = value; builder._changed() } ) );
 					frames.appendChild( builder._frameField( Nino.content.getText('/_admin/builder/label/footer'), registry.footers, doc.model.footer, function( value ) { doc.model.footer = value; builder._changed() } ) );
 

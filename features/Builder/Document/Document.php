@@ -322,7 +322,8 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array										[ 'status' => 200, 'templates' => [ file, name, animate, vpa, vpaSpeed, wrapClass,
 		 *																	header, footer, sections, foreign, readable, reason, editable, usedBy ] ], by file;
 		 *																	the animation of the template as the Reader has it from its wrap, reason the
-		 *																	first block the Reader failed at, null where there is none
+		 *																	first block the Reader failed at - or, with no line, the lines around the blocks that it
+		 *																	does not know and the Writer keeps as they are - null where there is none
 		 */
 		public static function list( array &$appData ): array {
 
@@ -335,6 +336,10 @@ namespace Nino\Modules\Builder {
 				$model	= Reader::read( (string) \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $file. '.tpl', '' ), $schemas );
 				$kinds	= array_count_values( array_column( $model['blocks'], 'kind' ) );
 				$failed	= array_filter( $model['blocks'], static fn( array $block ): bool => ( $block['kind'] ?? '' ) === 'html' && is_array( $block['reason'] ?? null ) === true );
+				$reason	= $failed === [] ? null : reset( $failed )['reason'];
+
+				if( $reason === null && ( $model['frame']['known'] ?? true ) === false )
+					$reason = [ 'line' => 0, 'code' => 'frame', 'detail' => '', 'text' => Reader::REASONS['frame'] ];
 
 				$templates[] = [
 					'file'			=> $file,
@@ -347,8 +352,8 @@ namespace Nino\Modules\Builder {
 					'footer'		=> $model['footer'],
 					'sections'	=> (int) ( $kinds['section'] ?? 0 ),
 					'foreign'		=> (int) ( $kinds['html'] ?? 0 ),
-					'readable'	=> $failed === [],
-					'reason'		=> $failed === [] ? null : reset( $failed )['reason'],
+					'readable'	=> $reason === null,
+					'reason'		=> $reason,
 					'editable'	=> self::validFile( $file ),
 					'usedBy'		=> self::usedBy( $appData, $file ),
 				];
@@ -459,7 +464,9 @@ namespace Nino\Modules\Builder {
 		 *																	move would overwrite ('key-exists') or an id the page has twice, or that a
 		 *																	loop of sections or a group of panels makes for one of its own
 		 *																	('section-id-taken', with the ids), or what a panel that makes a key or a slot or writes
-		 *																	a text answered
+		 *																	a text answered; 400 ('frame') for a change of the header, the footer or the animation of a page
+		 *																	whose frame the Reader does not read: that frame is the file's, taken from it and never from the
+		 *																	request, and written as it stands (with force, the model's own is written)
 		 */
 		public static function save( array &$appData, string $file, array $model, string $hash, bool $force = false ): array {
 
@@ -478,10 +485,25 @@ namespace Nino\Modules\Builder {
 				return self::_error( 409, 'the page template changed since it was loaded', 'conflict' );
 
 			$schemas	= self::schemas( $appData );
+			$disk			= Reader::read( $current, $schemas );
+			$disk['file'] = $file;
+
+			// The lines around the blocks are the file's: they are never taken from the request
+			unset( $model['frame'] );
 			$problems	= self::_shape( $model, $schemas );
 
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
+
+			// The frame the file has stays as it stands while the model says what the file says of it. A frame the Reader does not know has nowhere to take a change of
+			// the header, the footer or the animation to, and refuses it; one it knows, or any where the file is written over on purpose, is written as the model says
+			if( isset( $disk['frame'] ) === true ) {
+
+				if( self::_wrapOf( $model ) === self::_wrapOf( $disk ) )
+					$model['frame'] = $disk['frame'];
+				elseif( $disk['frame']['known'] === false && $force === false )
+					return self::_error( 400, 'the header, the footer and the animation of this page template are its own and stay as they are', 'frame' );
+			}
 
 			// A loop of sections makes the ids of its sections of its own id and a number, and so does a group of panels or a loop that numbers its panels: an element that stands
 			// in the file by such an id is the id of two elements of the page, as are two that have one id. What was saved so, the Reader reads as it always did
@@ -506,9 +528,6 @@ namespace Nino\Modules\Builder {
 
 			// Nothing to write: the model is the file, and has no text to go to a key - and the file does not say the hover of a picture behind a class that the Writer puts after it,
 			// which reads as the model of the call the Writer writes and which a save writes anew, even where nothing else changed
-			$disk = Reader::read( $current, $schemas );
-			$disk['file'] = $file;
-
 			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk ) === true && Reader::hoverBehind( $current, $schemas ) === false;
 
 			if( $same === true && $texts === [] )
@@ -674,7 +693,8 @@ namespace Nino\Modules\Builder {
 		 *	What a model would be written as, in the parts the editor shows: the
 		 *	whole file as it would be saved, and the head, each block and the
 		 *	foot as the Writer writes them - joined by a blank line they are the
-		 *	file. A block that came back from an edit is read as a section again
+		 *	file, but for a page with a frame of its own, whose head and foot are
+		 *	the lines the file has. A block that came back from an edit is read as a section again
 		 *	first, as a save does, and the model that comes of it is answered,
 		 *	so the panel learns at once whether an edited block is a section now.
 		 *	Nothing is written and nothing is made
@@ -1243,6 +1263,21 @@ namespace Nino\Modules\Builder {
 					$problems[] = 'block '. ( $index + 1 ). ' contains the end marker of a block of html';
 
 			return $problems;
+		}
+
+		/**
+		 *	What a model says of the frame around its blocks: the animation of the wrap with its custom classes, the header and the footer
+		 *
+		 *	@param		array			$model				Its texts checked by _shape()
+		 *
+		 *	@return 	array
+		 */
+		private static function _wrapOf( array $model ): array {
+			return [
+				(bool) ( $model['animate'] ?? false ), (string) ( $model['vpa'] ?? '' ), (string) ( $model['vpaSpeed'] ?? '' ),
+				array_values( array_unique( preg_split( '/\s+/', trim( (string) ( $model['wrapClass'] ?? '' ) ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] ) ),
+				(string) ( $model['header'] ?? '' ), (string) ( $model['footer'] ?? '' ),
+			];
 		}
 
 		/**
@@ -2615,6 +2650,13 @@ namespace Nino\Modules\Builder {
 
 			if( is_bool( $model['animate'] ?? false ) === false )
 				$problems[] = 'the animate is neither on nor off';
+
+			// The lines around the blocks that the Writer writes as they are
+			$frame = $model['frame'] ?? null;
+
+			if( $frame !== null && ( is_array( $frame ) === false || is_string( $frame['lead'] ?? null ) === false || is_string( $frame['tail'] ?? null ) === false
+				|| in_array( $frame['eol'] ?? null, [ "\n", "\r\n" ], true ) === false || is_bool( $frame['known'] ?? null ) === false ) )
+				$problems[] = 'the frame is neither none nor the lines around the blocks';
 
 			if( is_array( $model['blocks'] ?? [] ) === false )
 				return array_merge( $problems, [ 'the blocks are no list' ] );

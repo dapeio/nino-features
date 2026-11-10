@@ -47,6 +47,7 @@ return [
 	'[[/_admin/builder/error/in-use]]'					=> 'Eine Route rendert dieses Template, deshalb wird es nicht gelöscht. Ändere zuerst die Route.',
 	'[[/_admin/builder/error/conflict]]'				=> 'Die Datei hat sich seit dem Laden geändert - in einem anderen Fenster oder in einem anderen Editor.',
 	'[[/_admin/builder/error/invalid]]'				=> 'Das Template ist nicht gültig, und es wurde nichts geschrieben.',
+	'[[/_admin/builder/error/frame]]'						=> 'Header, Wrap und Footer dieser Seite sind so geschrieben, dass der Builder sie nicht übernimmt. Er lässt sie, wie sie sind, deshalb lassen sie sich hier nicht ändern. Es wurde nichts geschrieben.',
 	'[[/_admin/builder/error/model]]'					=> 'Es gab nichts zu speichern.',
 	'[[/_admin/builder/error/key]]'						=> 'Ein Textschlüssel konnte nicht angelegt, kopiert, verschoben oder beschrieben werden.',
 	'[[/_admin/builder/error/slot]]'						=> 'Ein Bildplatz konnte nicht angelegt oder kopiert werden.',
@@ -62,6 +63,7 @@ return [
 	'[[/_admin/builder/error/load]]'						=> 'Die Seitentemplates konnten nicht geladen werden.',
 
 	'[[/_admin/builder/reason/not-a-section]]'			=> 'Ein Block, der keine Sektion ist',
+	'[[/_admin/builder/reason/frame]]'					=> 'Die Zeilen um die Sektionen - Header, Wrap und Footer - sind Sache der Seite, und der Builder lässt sie, wie sie sind',
 	'[[/_admin/builder/reason/marker-unclosed]]'		=> 'Eine HTML+-Markierung, die nie geschlossen wird',
 	'[[/_admin/builder/reason/attribute-syntax]]'		=> 'Ein Tag, dessen Attribute nicht als name="wert" geschrieben sind',
 	'[[/_admin/builder/reason/section-attribute]]'	=> 'Die Sektion hat das Attribut %s, das der Builder nicht behält',
@@ -438,6 +440,7 @@ return [
 	'[[/_admin/builder/hint/name]]'							=> 'Der Name des Templates, wie ihn die Liste zeigt: eine Zeile mit bis zu 160 Zeichen, ohne spitze und eckige Klammern. Der Dateiname wird beim Anlegen daraus gebildet und bleibt bei einer späteren Umbenennung, wie er ist.',
 	'[[/_admin/builder/hint/file]]'							=> 'Die Datei, in der das Template gespeichert ist; ihr Slug ist „%s“. Die Textschlüssel der Seite liegen unter /template/%s/…, darum kann sich der Name der Datei nicht mehr ändern, sobald das Template existiert.',
 	'[[/_admin/builder/hint/animate]]'						=> 'Schaltet die Viewport-Animation der Sektionen dieses Templates ein: Beim Hineinscrollen blenden sie sich ein oder rutschen an ihren Platz. Neue Sektionen und solche mit „Wie Template“ machen mit, die Art wählst Du unten. Legst Du den Schalter um, fragt der Builder beim Schließen des Dialogs, ob die Sektionen, die dem Template folgen, ihm folgen sollen.',
+	'[[/_admin/builder/hint/frame-own]]'						=> 'Header, Wrap und Footer dieser Seite sind so geschrieben, dass der Builder sie nicht übernimmt. Er lässt sie, wie sie sind, deshalb lassen sie sich hier nicht ändern; die Sektionen dazwischen schon.',
 	'[[/_admin/builder/hint/duplicate]]'				=> 'Eine Kopie ist eine eigene Datei mit eigenen Textschlüsseln und Bildplätzen, die aus denen von %s mit denselben Texten und Bildern angelegt werden; das Original bleibt, wie es ist. Eine Sprache ohne Text bleibt in der Kopie ohne einen, die Website zeigt dort den Text der nativen Sprache wie beim Original.',
 	'[[/_admin/builder/hint/cover]]'						=> 'Macht die Sektion so hoch wie ein Teil des Fensters - das Feld Höhe sagt, wie viel, Vorgabe ist 90 - und lässt ihr Hintergrund-Bild sie ausfüllen. Braucht der Inhalt mehr Platz, wächst die Sektion mit.',
 	'[[/_admin/builder/hint/width]]'	=> 'Wie breit die Zeile dieser Sektion ist. Inhaltsbreite hält sie auf der Breite des Inhalts, volle Breite hat keine Grenze, und bis zum Rand nimmt zusätzlich das Padding links und rechts weg, sodass ein Bild oder eine Fläche in der Zeile bis an den Fensterrand reicht.',

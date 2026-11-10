@@ -85,6 +85,7 @@ return [
 	'[[/_admin/builder/error/in-use]]'					=> 'A route renders this template, so it is not deleted. Change the route first.',
 	'[[/_admin/builder/error/conflict]]'				=> 'The file changed since it was loaded - in another window, or in another editor.',
 	'[[/_admin/builder/error/invalid]]'				=> 'The template is not valid, and nothing was written.',
+	'[[/_admin/builder/error/frame]]'						=> 'The header, the wrap and the footer of this page are written in a way the Builder does not keep, so it leaves them as they are and they cannot be changed here. Nothing was written.',
 	'[[/_admin/builder/error/model]]'					=> 'There was nothing to save.',
 	'[[/_admin/builder/error/key]]'						=> 'A text key could not be made, copied, moved or written.',
 	'[[/_admin/builder/error/slot]]'						=> 'An image slot could not be made or copied.',
@@ -100,6 +101,7 @@ return [
 	'[[/_admin/builder/error/load]]'						=> 'The page templates could not be loaded.',
 
 	'[[/_admin/builder/reason/not-a-section]]'			=> 'A block that is no section',
+	'[[/_admin/builder/reason/frame]]'					=> 'The lines around the sections - the header, the wrap and the footer - are the page\'s own, and the Builder keeps them as they are',
 	'[[/_admin/builder/reason/marker-unclosed]]'		=> 'An HTML+ marker that is never closed',
 	'[[/_admin/builder/reason/attribute-syntax]]'		=> 'A tag whose attributes are not written as name="value"',
 	'[[/_admin/builder/reason/section-attribute]]'	=> 'The section has the attribute %s, which the Builder does not keep',
@@ -476,6 +478,7 @@ return [
 	'[[/_admin/builder/hint/name]]'							=> 'The name of the template as the list shows it: one line of up to 160 characters, without angle or square brackets. The file is named after it when the template is made and keeps that name when the template is renamed later.',
 	'[[/_admin/builder/hint/file]]'							=> 'The file the template is saved in; its slug is "%s". The text keys of the page are filed under /template/%s/..., so the name of the file cannot change once the template exists.',
 	'[[/_admin/builder/hint/animate]]'						=> 'Turns the viewport animation on for the sections of this template: they fade in or move into place as they scroll into view. New sections and those set to Like the template take part, and the kind is chosen below. If you turn the switch, the Builder asks as the dialog closes whether the sections that follow the template should follow it.',
+	'[[/_admin/builder/hint/frame-own]]'						=> 'The header, the wrap and the footer of this page are written in a way the Builder does not keep. It leaves them as they are, so they cannot be changed here; the sections between them can.',
 	'[[/_admin/builder/hint/duplicate]]'				=> 'A copy is a file of its own with text keys and image slots of its own, made from those of %s with the same texts and pictures; the original stays as it is. A language that has no text yet stays without one in the copy, and the site shows the text of the native language there, as for the original.',
 	'[[/_admin/builder/hint/cover]]'						=> 'Makes the section as high as a share of the window - the Height field says how much, 90 by default - and lets its background picture fill it. The section grows if its content needs more room.',
 	'[[/_admin/builder/hint/width]]'	=> 'How wide the row of this section is. Content width keeps it at the width of the content, full width has no limit, and to the edge also takes the padding at the left and the right away, so that a picture or ground in the row reaches the edge of the window.',

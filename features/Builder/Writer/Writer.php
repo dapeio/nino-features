@@ -78,6 +78,11 @@ namespace Nino\Modules\Builder {
 	 *											classes (see wrapClasses()) are the kind of animation of the
 	 *											template.
 	 *
+	 *											A page whose frame the Reader did not write (frame in the model) is written
+	 *											with the lines it had above its first block and below its last, as they
+	 *											were, in the line end of the file, and with the name line first: the blocks
+	 *											stand between them a blank line apart, and nothing is wrapped twice.
+	 *
 	 *											A foreign block is the one thing written as it came: one
 	 *											the builder made, or that came in its markers, gets the
 	 *											markers (the Reader finds it again without analysing it);
@@ -115,6 +120,11 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function write( array $model, array $registry ): string {
 
+			$frame = self::_frame( $model );
+
+			if( $frame !== null )
+				return self::_framed( $model, $registry, $frame );
+
 			$parts = [ self::head( $model ) ];
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $block )
@@ -126,6 +136,65 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The frame the file had, where the model holds one: the lines it has above the
+		 *	first block and below the last, and the line end it is written in
+		 *
+		 *	@param		array			$model
+		 *
+		 *	@return 	array|null								lead, tail, eol; null for the frame the Writer writes
+		 */
+		private static function _frame( array $model ): ?array {
+
+			$frame = $model['frame'] ?? null;
+
+			if( is_array( $frame ) === false || is_string( $frame['lead'] ?? null ) === false || is_string( $frame['tail'] ?? null ) === false )
+				return null;
+
+			return [ 'lead' => $frame['lead'], 'tail' => $frame['tail'], 'eol' => ( $frame['eol'] ?? '' ) === "\r\n" ? "\r\n" : "\n" ];
+		}
+
+		/**
+		 *	A page whose frame is the file's own: the lines it had around the blocks are written as they were, and the
+		 *	blocks between them in the line end of the file, a blank line apart
+		 *
+		 *	@param		array			$model
+		 *	@param		array			$registry
+		 *	@param		array			$frame				See _frame()
+		 *
+		 *	@return 	string
+		 */
+		private static function _framed( array $model, array $registry, array $frame ): string {
+
+			$eol		= $frame['eol'];
+			$parts	= [];
+
+			// A file in lines that end in CR LF holds no other line end, so every block is put into it whole
+			foreach( (array) ( $model['blocks'] ?? [] ) as $block )
+				$parts[] = $eol === "\n" ? self::block( (array) $block, $registry ) : (string) preg_replace( '~\r?\n~', $eol, self::block( (array) $block, $registry ) );
+
+			$body = implode( $eol. $eol, $parts );
+			$tail = $frame['tail'];
+
+			// The wrap of a page that had no block ends on the line after the one that opens it
+			if( $body !== '' && $tail !== '' && preg_match( '~\A[\r\n]~', $tail ) !== 1 )
+				$tail = $eol. $eol. $tail;
+
+			return self::_name( $model, $eol ). $frame['lead']. $body. $tail;
+		}
+
+		/**
+		 *	The line that names the template, with its line end; nothing for a template with no name
+		 *
+		 *	@param		array			$model
+		 *	@param		string		$eol
+		 *
+		 *	@return 	string
+		 */
+		private static function _name( array $model, string $eol ): string {
+			return trim( (string) ( $model['name'] ?? '' ) ) !== '' ? '<!-- nino:template-name '. trim( (string) $model['name'] ). ' -->'. $eol : '';
+		}
+
+		/**
 		 *	What stands above the blocks: the name, the frame above them and the
 		 *	line that opens the wrap
 		 *
@@ -134,6 +203,11 @@ namespace Nino\Modules\Builder {
 		 *	@return 	string
 		 */
 		public static function head( array $model ): string {
+
+			$frame = self::_frame( $model );
+
+			if( $frame !== null )
+				return rtrim( self::_name( $model, $frame['eol'] ). $frame['lead'], "\r\n" );
 
 			$lines = [];
 
@@ -157,6 +231,12 @@ namespace Nino\Modules\Builder {
 		 *	@return 	string
 		 */
 		public static function foot( array $model ): string {
+
+			$frame = self::_frame( $model );
+
+			if( $frame !== null )
+				return ltrim( $frame['tail'], "\r\n" );
+
 			return '</div>'. ( (string) ( $model['footer'] ?? '' ) !== '' ? "\n[template /templates/". $model['footer']. ']' : '' );
 		}
 
