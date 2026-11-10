@@ -344,7 +344,9 @@ namespace Nino\Modules {
 		 *	when it is not plain ASCII), MIME-Version, then the kernel's own
 		 *	header block - with its From: line replaced by the configured one
 		 *	where the setting is set (and a Reply-To of the kernel's sender added
-		 *	where the block has none), verbatim otherwise - a blank line, the dot-stuffed body and the DATA terminator
+		 *	where the block has none), verbatim otherwise, and the one
+		 *	Content-Transfer-Encoding of the body - a blank line, the body
+		 *	quoted-printable and dot-stuffed, and the DATA terminator
 		 *
 		 *	@param		array 		$mail					{ to, subject, body, headers, ... }, see \Nino\Mail::TRANSPORT
 		 *	@param		bool			$ownFrom				Whether the From: of the kernel's block is replaced by $fromAddress (the setting is set)
@@ -375,7 +377,9 @@ namespace Nino\Modules {
 
 			foreach( preg_split( '/\r\n|\r|\n/', trim( (string) $mail['headers'] ) ) ?: [] as $headerLine ) {
 
-				if( trim( $headerLine ) === '' || preg_match( '/^MIME-Version:/i', trim( $headerLine ) ) === 1 )
+				// The body is encoded below and says so once: a line of the
+				// block that names an encoding of its own would make two
+				if( trim( $headerLine ) === '' || preg_match( '/^(MIME-Version|Content-Transfer-Encoding):/i', trim( $headerLine ) ) === 1 )
 					continue;
 
 				if( $ownFrom === true && preg_match( '/^From:/i', $headerLine ) === 1 ) {
@@ -403,7 +407,29 @@ namespace Nino\Modules {
 			if( $ownFrom === true && $fromWritten === false )
 				$lines[] = 'From: '. self::_fromHeaderValue( $fromAddress, $fromName );
 
-			return implode( "\r\n", $lines ). "\r\n\r\n". self::_dotStuff( (string) $mail['body'] ). "\r\n.\r\n";
+			// An html body is one long line per paragraph, and SMTP takes 998
+			// octets a line (RFC 5321 section 4.5.3.1.6), 78 are meant
+			// (RFC 5322 section 2.1.1): quoted-printable keeps every line to 76
+			// and a raw view readable. The kernel makes no other kind of body
+			$lines[] = 'Content-Transfer-Encoding: quoted-printable';
+
+			return implode( "\r\n", $lines ). "\r\n\r\n". self::_dotStuff( self::_encodeBody( (string) $mail['body'] ) ). "\r\n.\r\n";
+		}
+
+		/**
+		 *	A body as quoted-printable with CRLF line ends. The line ends are
+		 *	made CRLF first: quoted_printable_encode() takes a bare LF or CR
+		 *	for a byte to encode (=0A), not for the end of a line
+		 *
+		 *	@param		string		$body
+		 *
+		 *	@return 	string
+		 */
+		private static function _encodeBody( string $body ): string {
+
+			$normalized = preg_replace( '/\r\n|\r|\n/', "\r\n", $body );
+
+			return quoted_printable_encode( is_string( $normalized ) ? $normalized : $body );
 		}
 
 		/**
@@ -441,7 +467,9 @@ namespace Nino\Modules {
 		 *	section 2.1.1) - a subject somebody wrote in a language with umlauts
 		 *	passes both without being long. mb_encode_mimeheader() splits the
 		 *	value into words that fit and folds between them, and leaves plain
-		 *	ASCII alone as it always was
+		 *	ASCII alone, with one exception
+		 *	- a value with a line too long for a server is cut into words of
+		 *	  its own (below)
 		 *
 		 *	@param		string		$value
 		 *
@@ -449,7 +477,23 @@ namespace Nino\Modules {
 		 */
 		private static function _encodeHeaderValue( string $value ): string {
 
-			return mb_encode_mimeheader( $value, 'UTF-8', 'B' );
+			$encoded = mb_encode_mimeheader( $value, 'UTF-8', 'B' );
+
+			// Plain ASCII is left alone and folded only at a space, so a long
+			// value without one stays a single line, past the 998 octets a
+			// server takes. Such a value is cut into words of its own
+			foreach( explode( "\r\n", $encoded ) as $line )
+				if( strlen( $line ) > 900 ) {
+
+					$words = [];
+
+					foreach( mb_str_split( $value, 11, 'UTF-8' ) as $chunk )
+						$words[] = '=?UTF-8?B?'. base64_encode( $chunk ). '?=';
+
+					return implode( "\r\n ", $words );
+				}
+
+			return $encoded;
 		}
 
 		/**

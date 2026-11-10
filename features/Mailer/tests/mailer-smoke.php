@@ -388,6 +388,75 @@ check( '...and the whole of it decodes back to what was sent',
 echo "\n";
 
 
+// --- A body no server has to take apart -------------------------------------
+
+echo "The body - quoted-printable, 76 characters a line, one Content-Transfer-Encoding\n";
+
+/*	One paragraph of 1,800 characters with umlauts and an emoji is what a
+	contact form's message becomes in the owner's mail; SMTP takes 998 octets a
+	line, so the paragraph cannot go out as the one line it is. The other
+	lines: a full stop alone and one that starts with one, bare LF and bare CR
+	ends, a space at the end of a line	*/
+$paragraph = mb_substr( str_repeat( 'Größe, Übung und Grüße aus München 😀 ', 60 ), 0, 1800 );
+$hardBody	 = '<p>'. $paragraph. "</p>\n.\n.Signature\r\ntrailing \rbare cr\nend";
+
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+check( 'a mail with a 1,800 character paragraph sends', \Nino\Mail::send( $appData, 'to@example.org', 'x', $hardBody, '' ) === true );
+
+$bodyData		= (string) ( waitForMailerLog( $server )['data'] ?? '' );
+$bodyParts	= explode( "\r\n\r\n", $bodyData, 2 );
+$bodyHeader = $bodyParts[0];
+$bodyWire		= $bodyParts[1] ?? '';
+
+// What the receiving server undoes: the terminator and the stuffed dots
+$bodyLines	= explode( "\r\n", substr( $bodyWire, 0, -strlen( "\r\n.\r\n" ) ) );
+$bodyUnstuffed = array_map( static fn( string $line ): string => str_starts_with( $line, '..' ) ? substr( $line, 1 ) : $line, $bodyLines );
+
+check( 'no line of the message is over 76 characters, the headers apart', max( array_map( 'strlen', $bodyLines ) ) <= 76 );
+check( 'no line of the message, header or body, is over 998 octets', max( array_map( 'strlen', explode( "\r\n", $bodyData ) ) ) <= 998 );
+check( 'the body says what it is encoded in, once', preg_match_all( '/^Content-Transfer-Encoding:/mi', $bodyHeader ) === 1
+	&& str_contains( $bodyHeader, "\r\nContent-Transfer-Encoding: quoted-printable" ) === true );
+check( '...and decodes to the text sent, byte for byte, with CRLF line ends', quoted_printable_decode( implode( "\r\n", $bodyUnstuffed ) )
+	=== preg_replace( '/\r\n|\r|\n/', "\r\n", $hardBody ) );
+check( 'a line of a full stop alone and one starting with a full stop are dot-stuffed after the encoding',
+	in_array( '..', $bodyLines, true ) === true && in_array( '..Signature', $bodyLines, true ) === true );
+check( 'the dialogue is still CRLF throughout and ends with the terminator', preg_match( '/(?<!\r)\n/', $bodyData ) !== 1 && str_ends_with( $bodyData, "\r\n.\r\n" ) === true );
+
+// An encoded line that starts with a full stop is stuffed as well: this paragraph breaks where the soft line break leaves one at the head of the next line
+$dotBody = str_repeat( 'a', 74 ). str_repeat( '.', 40 );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+\Nino\Mail::send( $appData, 'to@example.org', 'x', $dotBody, '' );
+$dotWire		= explode( "\r\n\r\n", (string) ( waitForMailerLog( $server )['data'] ?? '' ), 2 )[1] ?? '';
+$dotLines		= explode( "\r\n", substr( $dotWire, 0, -strlen( "\r\n.\r\n" ) ) );
+check( 'a full stop that the line break of the encoding puts first on a line is stuffed', count( array_filter( $dotLines, static fn( string $line ): bool => str_starts_with( $line, '..' ) ) ) === 1
+	&& quoted_printable_decode( implode( "\r\n", array_map( static fn( string $line ): string => str_starts_with( $line, '..' ) ? substr( $line, 1 ) : $line, $dotLines ) ) ) === $dotBody );
+
+// A header block with an encoding of its own does not make two
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+$ownEncoding = [ 'to' => 'to@example.org', 'subject' => 'x', 'body' => 'y', 'replyTo' => '', 'sender' => '', 'headers' => "MIME-Version: 1.0\r\ncontent-transfer-encoding: 8bit\r\nContent-Type: text/plain", 'sent' => null ];
+\Nino\Modules\Mailer::callbackSend( $appData, $ownEncoding );
+$ownEncodingData = (string) ( waitForMailerLog( $server )['data'] ?? '' );
+check( 'a block that names an encoding of its own is replaced by the one the body is in', $ownEncoding['sent'] === true
+	&& preg_match_all( '/^Content-Transfer-Encoding:/mi', $ownEncodingData ) === 1 && stripos( $ownEncodingData, '8bit' ) === false );
+
+// A subject without a space to fold at, longer than a line may be
+$longWord = str_repeat( 'x', 1500 );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+\Nino\Mail::send( $appData, 'to@example.org', $longWord, 'y', '' );
+$longWordData = (string) ( waitForMailerLog( $server )['data'] ?? '' );
+check( 'a subject of 1,500 characters without a space stands on lines of 998 octets at most', max( array_map( 'strlen', explode( "\r\n", $longWordData ) ) ) <= 998 );
+check( '...the subject decodes back to what was sent', preg_match( '/^Subject: [^\r\n]*(?:\r\n[ \t][^\r\n]*)*/m', $longWordData, $wordMatch ) === 1
+	&& mb_decode_mimeheader( substr( $wordMatch[0], strlen( 'Subject: ' ) ) ) === $longWord );
+check( '...and every encoded word of it is 75 characters at most', preg_match_all( '/=\?UTF-8\?B\?[^?]*\?=/', $wordMatch[0], $words ) > 1
+	&& max( array_map( 'strlen', $words[0] ) ) <= 75 );
+
+echo "\n";
+
+
 // --- From resolution: the setting wins where it is set ---------------------
 
 echo "From resolution\n";
