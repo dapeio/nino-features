@@ -202,7 +202,10 @@ namespace Nino\Modules\Mailer {
 
 		/**
 		 *	AUTH PLAIN when the server advertised it (one round trip), else
-		 *	AUTH LOGIN, else a failure naming that neither is offered
+		 *	AUTH LOGIN, else a failure naming that neither is offered. Every
+		 *	reason leaves through here: a server that echoes what it was sent
+		 *	puts the credentials in its reply, so each form of them is replaced
+		 *	before the reason goes anywhere (the plain forms from 4 bytes on, since only base64 is sent)
 		 *
 		 *	@param		mixed			$stream
 		 *	@param		array			$capabilities	From _capabilities()
@@ -213,11 +216,40 @@ namespace Nino\Modules\Mailer {
 		 */
 		private static function _authenticate( mixed $stream, array $capabilities, string $username, string $password ): ?string {
 
+			$reason = self::_authSteps( $stream, $capabilities, $username, $password );
+
+			if( $reason === null )
+				return null;
+
+			// Only base64 goes on the wire, so the plain forms are scrubbed from 4 bytes on, lest a one-letter name shred the reason; longest first, so a form that contains another is replaced whole
+			$secrets = array_filter( [
+				base64_encode( "\0". $username. "\0". $password ),
+				base64_encode( $password ),
+				base64_encode( $username ),
+				strlen( $password ) >= 4 ? $password : '',
+				strlen( $username ) >= 4 ? $username : '',
+			], static fn( string $secret ): bool => $secret !== '' );
+
+			usort( $secrets, static fn( string $a, string $b ): int => strlen( $b ) <=> strlen( $a ) );
+
+			return str_replace( $secrets, '***', $reason );
+		}
+
+		/**
+		 *	@param		mixed			$stream
+		 *	@param		array			$capabilities	From _capabilities()
+		 *	@param		string		$username
+		 *	@param		string		$password
+		 *
+		 *	@return 	string|null							Null on success, else the failure reason, not yet scrubbed
+		 */
+		private static function _authSteps( mixed $stream, array $capabilities, string $username, string $password ): ?string {
+
 			$methods = $capabilities['auth'] ?? [];
 
 			if( in_array( 'PLAIN', $methods, true ) === true ) {
 
-				$reply = self::_command( $stream, 'AUTH PLAIN '. base64_encode( "\0". $username. "\0". $password ) );
+				$reply = self::_command( $stream, 'AUTH PLAIN '. base64_encode( "\0". $username. "\0". $password ), 'AUTH PLAIN' );
 
 				return self::_ok( $reply ) === true ? null : self::_reason( $reply, 'AUTH PLAIN refused' );
 			}
@@ -228,11 +260,11 @@ namespace Nino\Modules\Mailer {
 				if( self::_ok( $reply ) === false )
 					return self::_reason( $reply, 'AUTH LOGIN refused' );
 
-				$userReply = self::_command( $stream, base64_encode( $username ) );
+				$userReply = self::_command( $stream, base64_encode( $username ), 'the username' );
 				if( self::_ok( $userReply ) === false )
 					return self::_reason( $userReply, 'AUTH LOGIN refused the username' );
 
-				$passReply = self::_command( $stream, base64_encode( $password ) );
+				$passReply = self::_command( $stream, base64_encode( $password ), 'the password' );
 				return self::_ok( $passReply ) === true ? null : self::_reason( $passReply, 'AUTH LOGIN refused the password' );
 			}
 
@@ -266,13 +298,14 @@ namespace Nino\Modules\Mailer {
 		 *
 		 *	@param		mixed			$stream
 		 *	@param		string		$line					Without the trailing CRLF
+		 *	@param		string		$label				What a failed write calls the command, for a line that carries a secret - the line itself is named where this is empty
 		 *
 		 *	@return 	array|string						See _readReply()
 		 */
-		private static function _command( mixed $stream, string $line ): array|string {
+		private static function _command( mixed $stream, string $line, string $label = '' ): array|string {
 
 			if( @fwrite( $stream, $line. "\r\n" ) === false )
-				return 'the connection closed while sending "'. $line. '"';
+				return 'the connection closed while sending '. ( $label !== '' ? $label : '"'. $line. '"' );
 
 			return self::_readReply( $stream );
 		}

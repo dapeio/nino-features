@@ -641,6 +641,114 @@ if( $probe !== false || $probe465 !== false ) {
 echo "\n";
 
 
+// --- A write that fails while authenticating --------------------------------
+
+echo "A failed write never carries the credentials into its reason\n";
+
+/*	A stream whose writes stop after a few and whose reads are scripted: a
+	socket cannot be made to fail a write at a chosen line, and one that is
+	reset races the client. Smtp::_authenticate() and _command() are private,
+	so they are reached by reflection - the reason they answer is the whole of
+	what travels on to the log, the stored errors and the panel	*/
+final class MailerBrokenStream {
+
+	public static int $writes = 0;
+	public static array $replies = [];
+	public $context;
+	private string $pending = '';
+
+	public function stream_open( string $path, string $mode, int $options, ?string &$opened ): bool {
+		return true;
+	}
+
+	public function stream_write( string $data ): int|false {
+		return self::$writes-- > 0 ? strlen( $data ) : false;
+	}
+
+	public function stream_read( int $count ): string|false {
+		if( $this->pending === '' )
+			$this->pending = array_shift( self::$replies ). "\r\n";
+		$chunk = substr( $this->pending, 0, $count );
+		$this->pending = (string) substr( $this->pending, $count );
+		return $chunk;
+	}
+
+	public function stream_eof(): bool {
+		return self::$replies === [] && $this->pending === '';
+	}
+}
+
+stream_wrapper_register( 'mailerbroken', MailerBrokenStream::class );
+
+$brokenCall = static function( string $method, array $arguments, int $writes, array $replies ): string {
+	MailerBrokenStream::$writes = $writes;
+	MailerBrokenStream::$replies = $replies;
+	$stream = fopen( 'mailerbroken://session', 'r+' );
+	$result = ( new \ReflectionMethod( \Nino\Modules\Mailer\Smtp::class, $method ) )->invoke( null, $stream, ...$arguments );
+	fclose( $stream );
+	return is_string( $result ) === true ? $result : '';
+};
+
+$brokenUser		= 'bait-user@example.org';
+$brokenPass		= 'S3cret!pw<script>[[x]]';
+$brokenSecrets	= [ $brokenUser, $brokenPass, base64_encode( $brokenUser ), base64_encode( $brokenPass ), base64_encode( "\0". $brokenUser. "\0". $brokenPass ) ];
+$leaksSecret		= static function( string $reason ) use ( $brokenSecrets ): bool {
+	foreach( $brokenSecrets as $secret )
+		if( str_contains( $reason, $secret ) === true )
+			return true;
+	return false;
+};
+
+$plainReason = $brokenCall( '_authenticate', [ [ 'auth' => [ 'PLAIN' ] ], $brokenUser, $brokenPass ], 0, [] );
+$loginFirst = $brokenCall( '_authenticate', [ [ 'auth' => [ 'LOGIN' ] ], $brokenUser, $brokenPass ], 0, [] );
+$loginUser = $brokenCall( '_authenticate', [ [ 'auth' => [ 'LOGIN' ] ], $brokenUser, $brokenPass ], 1, [ '334 VXNlcm5hbWU6' ] );
+$loginPass = $brokenCall( '_authenticate', [ [ 'auth' => [ 'LOGIN' ] ], $brokenUser, $brokenPass ], 2, [ '334 VXNlcm5hbWU6', '334 UGFzc3dvcmQ6' ] );
+check( 'a write that fails during AUTH PLAIN or either step of AUTH LOGIN leaks neither the user, the password nor their base64', $plainReason !== '' && $loginFirst !== '' && $loginUser !== '' && $loginPass !== ''
+	&& $leaksSecret( $plainReason ) === false && $leaksSecret( $loginFirst ) === false && $leaksSecret( $loginUser ) === false && $leaksSecret( $loginPass ) === false );
+check( '...and the four reasons differ from one another, so each says which step failed', count( array_unique( [ $plainReason, $loginFirst, $loginUser, $loginPass ] ) ) === 4 );
+
+// A server that echoes what it was sent puts the credentials into its own reply
+$plainLine = base64_encode( "\0". $brokenUser. "\0". $brokenPass );
+$echoes = [
+	'AUTH PLAIN string as a 535'		=> [ [ 'auth' => [ 'PLAIN' ] ], [ '535 bad '. $plainLine ] ],
+	'AUTH PLAIN string, unparseable'	=> [ [ 'auth' => [ 'PLAIN' ] ], [ $plainLine ] ],
+	'base64 user as a 535'				=> [ [ 'auth' => [ 'LOGIN' ] ], [ '334 VXNlcm5hbWU6', '535 no '. base64_encode( $brokenUser ) ] ],
+	'base64 user, unparseable'			=> [ [ 'auth' => [ 'LOGIN' ] ], [ '334 VXNlcm5hbWU6', base64_encode( $brokenUser ) ] ],
+	'base64 password as a 535'			=> [ [ 'auth' => [ 'LOGIN' ] ], [ '334 VXNlcm5hbWU6', '334 UGFzc3dvcmQ6', '535 no '. base64_encode( $brokenPass ) ] ],
+	'base64 password, unparseable'		=> [ [ 'auth' => [ 'LOGIN' ] ], [ '334 VXNlcm5hbWU6', '334 UGFzc3dvcmQ6', base64_encode( $brokenPass ) ] ],
+	'plain password as a 535'			=> [ [ 'auth' => [ 'PLAIN' ] ], [ '535 '. $brokenPass. ' for '. $brokenUser ] ],
+];
+foreach( $echoes as $label => [ $capabilities, $replies ] ) {
+	$echoed = $brokenCall( '_authenticate', [ $capabilities, $brokenUser, $brokenPass ], 9, $replies );
+	check( "a server echoing the $label leaves no secret in the reason", $echoed !== '' && $leaksSecret( $echoed ) === false );
+}
+
+$mailFromReason = $brokenCall( '_command', [ 'MAIL FROM:<no-reply@example.org>' ], 0, [] );
+check( 'a write that fails outside authentication still names its command', str_contains( $mailFromReason, 'MAIL FROM:<no-reply@example.org>' ) === true );
+
+// A plain form that contains another is replaced whole, and a short plain credential does not shred the reason
+$overlap = $brokenCall( '_authenticate', [ [ 'auth' => [ 'PLAIN' ] ], 'john2024', '2024' ], 9, [ '535 echo john2024 and 2024' ] );
+check( 'a user name that contains the password leaves no part of itself in the reason', $overlap !== '' && str_contains( $overlap, 'john' ) === false && str_contains( $overlap, '2024' ) === false );
+$short = $brokenCall( '_authenticate', [ [ 'auth' => [ 'PLAIN' ] ], 'r', 'c' ], 9, [ '535 refused '. base64_encode( 'c' ) ] );
+check( 'a one-letter user name and password leave the reason readable, and the base64 of the password is gone', str_contains( $short, 'refused' ) === true && str_contains( $short, base64_encode( 'c' ) ) === false );
+
+// A reply is not ours: whatever it holds, the reason is one line of printable text within the bound the list keeps
+$hostile = "535 a\rFAKE LOG LINE\x1B[31m\x00 ". str_repeat( 'x', 4000 );
+$appDataFail = $appData;
+( new \ReflectionMethod( \Nino\Modules\Mailer::class, '_fail' ) )->invokeArgs( null, [ &$appDataFail, $hostile ] );
+$failEntry = \Nino\Modules\Mailer::errors( $appDataFail )[0]['reason'] ?? '';
+$failLast = (string) ( $appDataFail['./mailer/last'] ?? '' );
+check( 'a reply with CR, ESC, NUL and 4000 bytes leaves no control byte in the last reason nor in the stored entry', $failLast !== '' && $failEntry !== ''
+	&& preg_match( '/[\x00-\x1F\x7F]/', $failLast. $failEntry ) !== 1 );
+check( '...and both are cut to one bound, the log line with them', strlen( $failLast ) <= 300 && strlen( $failEntry ) <= 300
+	&& str_starts_with( $failLast, '535 a FAKE LOG LINE' ) === true && ( static function(): bool {
+		$logged = array_values( array_filter( ninoWarnings(), static fn( string $w ): bool => str_starts_with( $w, 'Mailer: ' ) ) );
+		return count( $logged ) === 1 && strlen( $logged[0] ) <= 310 && preg_match( '/[\x00-\x1F\x7F]/', $logged[0] ) !== 1;
+	} )() );
+
+echo "\n";
+
+
 // --- The panel ---------------------------------------------------------------
 
 echo "Modules\\Mailer\\Admin - status, the test mail action and its permission\n";

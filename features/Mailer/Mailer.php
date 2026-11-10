@@ -247,8 +247,10 @@ namespace Nino\Modules {
 		 */
 		private static function _fail( array &$appData, string $reason, string $hint = '' ): void {
 
-			$listed = mb_strcut( $reason, 0, self::MAX_REASON, 'UTF-8' ). $hint;
-			$reason .= $hint;
+			// A server's reply or a connect error is not ours: one line, no control byte, and the bound the list keeps
+			$reason = mb_strcut( (string) preg_replace( '/[\x00-\x1F\x7F]/', ' ', $reason ), 0, self::MAX_REASON, 'UTF-8' );
+			$listed = $reason. $hint;
+			$reason = $listed;
 
 			$appData['./mailer/last'] = $reason;
 
