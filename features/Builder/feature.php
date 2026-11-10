@@ -52,7 +52,7 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version' => '1.4.0',
+	'version' => '1.4.1',
 	// 1.11, for what the builder draws and writes: the loop that sorts at
 	// random (sort="random" of [stack] and [elements]), the alignment of a
 	// title, a subtitle and a text for each viewport, which the registry of

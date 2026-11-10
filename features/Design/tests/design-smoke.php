@@ -1120,7 +1120,7 @@ check( '...and no 1.10 can run it, a 1.11 pre-release can', \Nino\Features::sati
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.10.1' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.11.0-dev' ) === true );
-check( 'it is Design 2.5: the navigation the header and the footer choose, the frame of a header that slides out of the window as a whole, the cover at the lower edge of a bar that is a ground, the hint every clickable element of the sets gives, the rule under a hero title and the inset a card and a painted column share - on the model of 2.4, and the version says so', ( $feature['version'] ?? '' ) === '2.5.0' );
+check( 'it is Design 2.5: the navigation the header and the footer choose, the frame of a header that slides out of the window as a whole, the cover at the lower edge of a bar that is a ground, the hint every clickable element of the sets gives, the rule under a hero title and the inset a card and a painted column share - on the model of 2.4, and the version says so', ( $feature['version'] ?? '' ) === '2.5.1' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
 // The line as the file has it, with no fallback to another language: what a check of both languages reads

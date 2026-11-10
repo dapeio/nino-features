@@ -81,7 +81,7 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.2.1',
+	'version'			=> '1.2.2',
 	// 1.11, for the hero style of a section's title and subtitle
 	// (nino-section-title--hero, nino-section-subtitle--hero), which the page
 	// template of the install unit draws, on top of 1.9 - the toolset the code
