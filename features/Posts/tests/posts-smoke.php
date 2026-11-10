@@ -913,4 +913,132 @@ $appData['/nino/dir'] = '';
 check( 'the project directory is left off, the way every other page in those two documents leaves it off',
 	in_array( '/blog/first-light', array_column( $inSubdir, 'externalPath' ), true ) === true );
 
+echo "\nThe search does not find a post that is not published yet\n";
+
+/*	Search asks, when a search is read, what a feature holds back from the ranked
+	list (the hook '/search/hits'). Posts answers it with its own rule, so a post
+	is findable exactly when its page is not a 404 - and the clock decides, not a
+	write. The hook is called here the way \Nino\Callbacks::doCallbacks() calls it,
+	with a list of hits	*/
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
+	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
+] ] );
+unset( $appData['./posts/sections'] );
+
+// The date is required, so an editor cannot save a post without one - a file written by hand can hold it
+$undate = static function( string $slug ) use ( &$appData ): void {
+	\Nino\Filesystem::mutate( $appData, '/elements/posts.php', static function( mixed $state ) use ( $slug ): array {
+		$state = is_array( $state ) === true ? $state : [];
+		$state['*'][$slug]['date'] = '';
+		return $state;
+	}, [] );
+	unset( $appData['./nino/elements/cache'] );
+};
+\Nino\Elements::insertElement( $appData, '/posts/undated', [ 'title' => 'Without a date', 'date' => '2026-01-05' ], 'de_DE' );
+$undate( 'undated' );
+
+$hit = static fn( string $uri, string $type = '/posts' ): array => [ 'uri' => $uri, 'type' => $type, 'score' => 1.0, 'coverage' => 1.0, 'fields' => [] ];
+$ranked = [
+	$hit( '/posts/from-monday' ), $hit( '/posts/first-light' ), $hit( '/posts/undated' ),
+	$hit( '/posts/missing' ), $hit( '/pages/from-monday', '/pages' ), $hit( '/posts/second-wind' ),
+];
+$ofSearch = static function( array $list ) use ( &$appData ): array {
+	return array_column( \Nino\Callbacks::doCallbacks( $appData, '/search/hits', $list ), 'uri' );
+};
+
+check( 'the feature answers the hook of the hits, and the manifest says so',
+	count( \Nino\Callbacks::registered( $appData, '/search/hits' ) ) === 1 && isset( $feature['manual']['callbacks']['/search/hits'] ) === true );
+check( 'a post dated in the future, one without a date and one that is not there are taken from the list; a published one and a hit of a type no section is made of stay, in their order',
+	$ofSearch( $ranked ) === [ '/posts/first-light', '/pages/from-monday', '/posts/second-wind' ] );
+$odd = [ 'text', [ 'type' => '/posts' ], [ 'uri' => 3 ] ];
+check( '...an entry that is none of its own is left to Search to refuse, and one of its type with no uri of text goes',
+	\Nino\Callbacks::doCallbacks( $appData, '/search/hits', $odd ) === [ 'text', [ 'uri' => 3 ] ] );
+$nonList = false;
+check( '...and an answer that is no list is left as it is, for Search to refuse', \Nino\Callbacks::doCallbacks( $appData, '/search/hits', $nonList ) === false );
+
+// A type two sections share is findable where one of them publishes the post: a section with no date field publishes all of it
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
+	'blog' 	=> [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
+	'all'		=> [ 'type' => '/posts', 'path' => 'all', 'date' => '' ],
+] ] );
+unset( $appData['./posts/sections'] );
+check( 'a type two sections share is findable where at least one of them publishes the post',
+	$ofSearch( $ranked ) === [ '/posts/from-monday', '/posts/first-light', '/posts/undated', '/pages/from-monday', '/posts/second-wind' ] );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
+	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
+] ] );
+unset( $appData['./posts/sections'] );
+
+// The day comes with no write to anything: the date of a post is behind us, and the hook finds it published
+\Nino\Elements::insertElement( $appData, '/posts/later', [ 'title' => 'Later', 'date' => '2099-01-01' ], 'de_DE' );
+check( 'a post with a date to come is taken from the list', $ofSearch( [ $hit( '/posts/later' ) ] ) === [] );
+\Nino\Elements::updateElement( $appData, '/posts/later', [ 'date' => '2000-01-01' ], 'de_DE' );
+unset( $appData['./nino/elements/cache'] );
+check( '...and stays in it when its date has passed', $ofSearch( [ $hit( '/posts/later' ) ] ) === [ '/posts/later' ] );
+\Nino\Elements::deleteElement( $appData, '/posts/later', '*' );
+
+// A date per language: the hit is judged in the language the search is read in, as the page of that language is
+\Nino\Elements::insertElementType( $appData, '/dated', [
+	'title' => [ 'type' => 'string', 'locale' => true, 'required' => true ],
+	'date' 	=> [ 'type' => 'date', 'locale' => true ],
+] );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
+	'dated' => [ 'type' => '/dated', 'path' => 'dated', 'summary' => '' ],
+] ] );
+unset( $appData['./posts/sections'] );
+\Nino\Elements::insertElement( $appData, '/dated/split', [ 'title' => 'Split', 'date' => '2000-01-01' ], 'de_DE' );
+\Nino\Elements::updateElement( $appData, '/dated/split', [ 'title' => 'Split', 'date' => '2099-01-01' ], 'en_US' );
+unset( $appData['./nino/elements/cache'] );
+$languages = [];
+foreach( [ 'de_DE', 'en_US' ] as $locale ) {
+	$appData['./nino/locales/current'] = $locale;
+	$languages[$locale] = $ofSearch( [ $hit( '/dated/split', '/dated' ) ] );
+}
+$appData['./nino/locales/current'] = 'de_DE';
+check( 'a post whose date is past in one language and to come in the other is found in the first and not in the second',
+	$languages === [ 'de_DE' => [ '/dated/split' ], 'en_US' => [] ] );
+\Nino\Elements::deleteElement( $appData, '/dated/split', '*' );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
+	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
+] ] );
+unset( $appData['./posts/sections'] );
+
+// The whole way, with the search that is in the catalogue beside it: a type indexed, a query, the list that comes out
+if( class_exists( '\Nino\Modules\Search' ) === true ) {
+
+	$appData['/nino/elements/index'] = [ 'posts' => [ 0 => 'title', 1 => 'summary' ] ];
+	\Nino\Elements::insertElement( $appData, '/posts/soon', [ 'title' => 'Lantern soon', 'date' => '2099-01-01' ], 'de_DE' );
+	\Nino\Elements::insertElement( $appData, '/posts/lantern-now', [ 'title' => 'Lantern now', 'date' => '2026-01-05' ], 'de_DE' );
+	\Nino\Elements::insertElement( $appData, '/posts/lantern-undated', [ 'title' => 'Lantern undated', 'date' => '2026-01-05' ], 'de_DE' );
+	$undate( 'lantern-undated' );
+	\Nino\Modules\Search::createIndexes( $appData, 'posts' );
+	$indexPath = \Nino\Filesystem::path( $appData, '/data/index-posts.php' );
+	$indexed = (string) file_get_contents( $indexPath );
+
+	$found = static function() use ( &$appData ): array {
+		return array_column( \Nino\Modules\Search::getHits( $appData, 'posts', 'lantern' ), 'uri' );
+	};
+
+	check( 'the index holds a post that is not published yet, and a search does not find it',
+		str_contains( $indexed, '/posts/soon' ) === true && str_contains( $indexed, '/posts/lantern-undated' ) === true
+		&& $found() === [ '/posts/lantern-now' ] );
+	check( '...so the number of hits and the pages are those of the posts that are published',
+		count( \Nino\Modules\Search::getHits( $appData, 'posts', 'lantern' ) ) === 1
+		&& \Nino\Modules\Search::getHits( $appData, 'posts', 'lantern', 1, 1 ) === [] );
+
+	// The day comes: the date is behind us and nothing is written to the index
+	\Nino\Elements::updateElement( $appData, '/posts/soon', [ 'date' => '2000-01-01' ], 'de_DE' );
+	// The request that follows reads the Elements afresh
+	unset( $appData['./nino/elements/cache'] );
+	check( 'a post is found when its date has passed, with no write to the index',
+		(string) file_get_contents( $indexPath ) === $indexed && in_array( '/posts/soon', $found(), true ) === true );
+}
+else
+	echo "  note - the Search feature is not beside this one: the hook was tested on its own\n";
+
+foreach( [ 'undated', 'soon', 'lantern-now', 'lantern-undated' ] as $slug )
+	\Nino\Elements::deleteElement( $appData, '/posts/'. $slug, '*' );
+unset( $appData['/nino/elements/index'] );
+
+
 ninoDone( $appData );

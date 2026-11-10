@@ -40,6 +40,14 @@ namespace Nino\Modules {
 		// for every hit, then under this name plus the type uri for one type -
 		// see callbackApi()
 		public const string HIT = '/search/hit';
+
+		/*	The hook that takes from the whole ranked list what a visitor may not
+			find: handed the list (see getHits()) before a limit or an offset is
+			applied, answered with the list without those hits. A feature whose
+			elements are not public yet answers it - the index holds every element of
+			a type, and whether one is shown can depend on the clock, which no write
+			of the index could follow */
+		public const string HITS = '/search/hits';
 		private const int MAX_QUERY_TOKENS = 12;
 
 		/*	How many of the query's words have to be found for a document to
@@ -328,6 +336,10 @@ namespace Nino\Modules {
 		 *	A missing or invalid index is simply an empty result; reads never
 		 *	create or repair derived files.
 		 *
+		 *	The ranked list passes through HITS before it is cut, so every reader of
+		 *	this method sees what a visitor may find and nothing more. A callback
+		 *	can only take hits from it, not add or change one.
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string|array	$elementType	One type, or several
 		 *	@param		string		$searchString	What was typed
@@ -376,6 +388,22 @@ namespace Nino\Modules {
 				$score = $b['score'] <=> $a['score'];
 				return $score !== 0 ? $score : strcmp( $a['uri'], $b['uri'] );
 			} );
+
+			/*	Before the page is cut, so that the count, the paging, the endpoint, both
+				shortcodes and the panel's probe all see the one list. A callback can only
+				take hits away: of what it answers, the entries that match one handed out
+				(by uri and type) stay, as they were ranked and in that order - what it
+				adds or alters is not read, and a list that is none is no result, so a
+				hook that fails does not hand out what it was meant to hold back */
+			$answer = $hits;
+			$answer = \Nino\Callbacks::doCallbacks( $appData, self::HITS, $answer );
+			$kept = [];
+
+			foreach( is_array( $answer ) === true ? $answer : [] as $hit )
+				if( is_array( $hit ) === true && is_string( $hit['uri'] ?? null ) === true && is_string( $hit['type'] ?? null ) === true )
+					$kept[ $hit['type']. "\0". $hit['uri'] ] = true;
+
+			$hits = array_values( array_filter( $hits, static fn( array $hit ): bool => isset( $kept[ $hit['type']. "\0". $hit['uri'] ] ) ) );
 
 			$offset = max( 0, $offset );
 

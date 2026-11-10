@@ -49,6 +49,10 @@ return [
 				'en_US' => 'Answered, so the SEO feature\'s sitemap.xml and llms.txt carry the section and every post in it.',
 				'de_DE' => 'Wird beantwortet, damit sitemap.xml und llms.txt des Features SEO den Bereich und jeden Beitrag darin führen.',
 			],
+			'/search/hits' => [
+				'en_US' => 'Answered, so the search of the Elements search feature does not find a post that is not published yet.',
+				'de_DE' => 'Wird beantwortet, damit die Suche des Features Elemente-Suche keinen Beitrag findet, der noch nicht veröffentlicht ist.',
+			],
 		],
 		'install' => [
 			'elements/posts.php' => [

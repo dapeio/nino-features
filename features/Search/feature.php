@@ -60,6 +60,10 @@ return [
 				'en_US' => 'Fired for every endpoint hit, then as /search/hit/<type> for one type; a feature shapes the fields of a hit or answers false to drop it.',
 				'de_DE' => 'Wird für jeden Endpoint-Treffer gefeuert, danach als /search/hit/<type> für einen Typ; ein Feature formt die Felder des Treffers oder antwortet false und lässt ihn weg.',
 			],
+			'/search/hits' => [
+				'en_US' => 'Fired with the whole ranked list before it is counted or paged; a feature answers it without the hits a visitor may not find, and cannot add or change one.',
+				'de_DE' => 'Wird mit der ganzen Rangliste gefeuert, bevor sie gezählt oder geblättert wird; ein Feature antwortet ohne die Treffer, die ein Besucher nicht finden darf, und kann keinen hinzufügen oder ändern.',
+			],
 		],
 		'install' => [],
 	],

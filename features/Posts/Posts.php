@@ -82,6 +82,9 @@ namespace Nino\Modules {
 			// changes a section: callbacks accumulate, and a second registration
 			// would put every post in the sitemap twice
 			\Nino\Callbacks::registerCallback( $appData, '/seo/pages', [ self::class, 'callbackSeoPages' ] );
+
+			// Under the name as a string, like the one above: Search is not required
+			\Nino\Callbacks::registerCallback( $appData, '/search/hits', [ self::class, 'callbackSearchHits' ] );
 		}
 
 		/**
@@ -420,6 +423,54 @@ namespace Nino\Modules {
 
 				array_push( $pages, ...$posts );
 			}
+		}
+
+		/**
+		 *	The Search feature's ranked list, without the posts nobody may see yet.
+		 *
+		 *	The index holds every element of a type, and a post dated for Monday is
+		 *	one until Monday: whether it is published is a question for the clock at
+		 *	the time of the search, so it is asked here, when the list is read, and
+		 *	not when the index is written. A hit of a type no section is made of
+		 *	passes as it is. A type two sections share is findable where at least one
+		 *	of them publishes the post - each has its own date field - and a hit whose
+		 *	element cannot be read is not a post anybody can open, so it goes.
+		 *
+		 *	Registered whether or not that feature is installed and under the name as
+		 *	a string, as callbackSeoPages() is. The element is read as posts() reads
+		 *	it, for the language of the request.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		mixed			&$hits				(reference) The ranked list: [ uri, type, score, coverage, fields ], …
+		 *
+		 *	@return 	mixed										The list without those hits - anything but a list as it came, for Search to refuse
+		 */
+		public static function callbackSearchHits( array &$appData, mixed &$hits ): mixed {
+
+			if( is_array( $hits ) === false )
+				return $hits;
+
+			$ofType = [];
+
+			foreach( self::sections( $appData ) as $section )
+				$ofType[ $section['type'] ][] = $section;
+
+			return array_values( array_filter( $hits, static function( mixed $hit ) use ( &$appData, $ofType ): bool {
+
+				if( is_array( $hit ) === false || is_string( $hit['type'] ?? null ) === false || isset( $ofType[ $hit['type'] ] ) === false )
+					return true;
+
+				$element = is_string( $hit['uri'] ?? null ) === true ? \Nino\Elements::getElementWithFallback( $appData, $hit['uri'], '' ) : false;
+
+				if( $element === false )
+					return false;
+
+				foreach( $ofType[ $hit['type'] ] as $section )
+					if( self::published( $section, $element ) === true )
+						return true;
+
+				return false;
+			} ) );
 		}
 
 		/**

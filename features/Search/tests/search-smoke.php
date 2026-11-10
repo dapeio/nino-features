@@ -450,6 +450,51 @@ searchVisit( $appData, [] );
 \Nino\Elements::deleteElement( $appData, '/articles/markup', '*' );
 searchVisit( $appData, [] );
 
+echo "\nThe hook that holds hits back from the whole ranked list\n";
+
+/*	What a feature takes from the ranked list - before it is counted or cut into
+	pages, so that the endpoint, both shortcodes and the panel's probe all read
+	the one list. Two Elements of this section's own; the better one is held back	*/
+\Nino\Elements::insertElement( $appData, '/articles/hold-one', [ 'title' => 'Haltewort eins', 'summary' => 'Haltewort', 'keywords' => [], 'author' => '' ], 'de_DE' );
+\Nino\Elements::insertElement( $appData, '/articles/hold-two', [ 'title' => 'Der zweite', 'summary' => 'Haltewort zwei', 'keywords' => [], 'author' => '' ], 'de_DE' );
+
+$ranked	= \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort' );
+$held		= $ranked[0]['uri'] ?? '';
+$kept		= $ranked[1]['uri'] ?? '';
+check( 'there are two hits, one of which is to be held back', count( $ranked ) === 2 && $held !== '' && $kept !== '' );
+check( 'the hook is named', \Nino\Modules\Search::HITS === '/search/hits' );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HITS, static fn( array &$appData, array &$hits ): array => array_values( array_filter( $hits, static fn( array $hit ): bool => $hit['uri'] !== $held ) ) );
+
+check( 'a callback takes a hit from the ranked list', array_column( \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort' ), 'uri' ) === [ $kept ] );
+check( '...before the page is cut: the first page of one is the hit that is left, and the second page is empty',
+	array_column( \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort', 1, 0 ), 'uri' ) === [ $kept ]
+	&& \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort', 1, 1 ) === [] );
+check( '...and the Elements are the ones that are left', searchUris( $appData, 'articles', 'haltewort' ) === [ $kept ] );
+searchVisit( $appData, [ 'q' => 'haltewort' ] );
+check( '[search-count] counts the list that is left', \Nino\Html::renderHtml( $appData, '[search-count type="articles"]' ) === '1' );
+$drawn = \Nino\Html::renderHtml( $appData, '[search-results type="articles"]<p>[[.uri]]</p>[/search-results]' );
+check( '...and [search-results] draws it', substr_count( $drawn, '<p>' ) === 1 && str_contains( $drawn, '<p>'. $kept. '</p>' ) === true );
+searchVisit( $appData, [] );
+
+// A list that is none is no result: a hook that failed does not hand out what it was meant to hold back
+unset( $appData['./nino/callbacks'][ \Nino\Modules\Search::HITS ] );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HITS, static fn( array &$appData, array &$hits ): bool => false );
+check( 'a callback that answers anything but a list leaves an empty result', \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort' ) === [] );
+unset( $appData['./nino/callbacks'][ \Nino\Modules\Search::HITS ] );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HITS, static fn( array &$appData, array &$hits ): array => [
+	5 => 'text', 7 => [ 'type' => '/articles' ], 9 => [ 'uri' => 3 ], 11 => [ 'uri' => '/articles/invented', 'type' => '/articles' ],
+	12 => [ 'uri' => $kept ], 13 => [ 'uri' => $kept, 'type' => '/articles', 'score' => 99.0, 'fields' => 'x' ],
+] );
+$normalised = \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort' );
+check( 'an entry that is no array or has no uri and type of text is not read, and one that was not handed out is not in the result',
+	array_column( $normalised, 'uri' ) === [ $kept ] && array_keys( $normalised ) === [ 0 ] );
+check( '...and one that was altered comes out as it was ranked', $normalised === [ $ranked[1] ] );
+unset( $appData['./nino/callbacks'][ \Nino\Modules\Search::HITS ] );
+check( 'with no one answering the hook the list is the whole ranking', array_column( \Nino\Modules\Search::getHits( $appData, 'articles', 'haltewort' ), 'uri' ) === array_column( $ranked, 'uri' ) );
+
+\Nino\Elements::deleteElement( $appData, '/articles/hold-one', '*' );
+\Nino\Elements::deleteElement( $appData, '/articles/hold-two', '*' );
+
 echo "\nWhere the query comes from\n";
 
 /*	A shortcode is handed $appData and its own arguments, never the request:
@@ -627,6 +672,14 @@ $second			= searchJson( $appData, '/.search?q=endpoint&limit=1&offset=1' );
 check( 'without a type every configured type is searched, the limit is capped, and offset pages through the same order', ( $everything['types'] ?? null ) === $configuredTypes
 	&& ( $everything['limit'] ?? null ) === \Nino\Modules\Search::API_LIMIT_MAX && ( $second['limit'] ?? null ) === 1 && ( $second['offset'] ?? null ) === 1 && count( $second['hits'] ?? [] ) === 1
 	&& ( $second['hits'][0]['uri'] ?? '' ) === ( $everything['hits'][1]['uri'] ?? '-' ) );
+
+// What a feature holds back from the ranked list is neither counted nor paged by the endpoint
+$heldUri = $everything['hits'][0]['uri'] ?? '';
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HITS, static fn( array &$appData, array &$hits ): array => array_values( array_filter( $hits, static fn( array $hit ): bool => $hit['uri'] !== $heldUri ) ) );
+$filtered = searchJson( $appData, '/.search?q=endpoint&type=/articles&limit=1' );
+check( 'the endpoint counts and pages the list the hook leaves', $heldUri !== '' && ( $filtered['total'] ?? null ) === 1 && count( $filtered['hits'] ?? [] ) === 1
+	&& ( $filtered['hits'][0]['uri'] ?? $heldUri ) !== $heldUri && ( searchJson( $appData, '/.search?q=endpoint&type=/articles&limit=1&offset=1' )['hits'] ?? null ) === [] );
+unset( $appData['./nino/callbacks'][ \Nino\Modules\Search::HITS ] );
 
 /*	A project shapes a hit in a callback: one for every hit, then one for
 	the type, each handed the hit with its whole Element under 'element' -
@@ -856,6 +909,9 @@ ninoCall( $appData, [ $panel, 'apiSave' ], [ 'type' => '/notes', 'fields' => [] 
 [ $status, $probe ] = ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'types' => [ 'articles' ], 'query' => 'orbit' ] );
 check( 'the probe answers the hits a page would get, in the same order', $status === 200
 	&& array_column( (array) ( $probe['hits'] ?? [] ), 'uri' ) === [ '/articles/orbit-summary' ] );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HITS, static fn( array &$appData, array &$hits ): array => [] );
+check( '...and what a callback of the hits hook holds back is not in it either', ( ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'types' => [ 'articles' ], 'query' => 'orbit' ] )[1]['hits'] ?? null ) === [] );
+unset( $appData['./nino/callbacks'][ \Nino\Modules\Search::HITS ] );
 check( 'a hit is labelled by its strongest configured field rather than by its uri',
 	( $probe['hits'][0]['label'] ?? null ) === 'Remote station' );
 check( 'and says what it scored, how much of the query it covered and where it matched',
