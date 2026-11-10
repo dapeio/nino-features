@@ -2184,7 +2184,7 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 	$heroRules += $rules;
 }
 
-check( 'every header that takes main\'s top padding away for a hero that opens the page does so directly below main and inside the Builder\'s wrap alike - the three that have such a rule do'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] && $heroRules === 3 );
+check( 'every header that takes main\'s top padding away for a hero that opens the page does so directly below main and inside the Builder\'s wrap alike - the four that have such a rule do'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] && $heroRules === 4 );
 
 /*	Below a page that opens with no hero main's top padding is the bar's height, and the bar grows a row with the links that wrap: the kernel writes how far it has grown as
 	--nino-header-grow (Nino.ui.js, 0px where it does not), and every formula of a header that reads --header-height for that padding adds it - the one of the top bar from 768px
@@ -2655,7 +2655,8 @@ check( 'a frame reads what it declares of the logo, the shadow, the behaviour an
 	selectors, a cover or a parallax first in main or in the wrap of the page, written with :is() or not) gives it padding-top 0 - the floating bar, translucent at every rung, and the overlay menu, which does so
 	only where the ground at rest is none (the aspect --header-ground-rest-cover, in a custom property that falls back when it is invalid, since initial in a var() would throw the padding itself to 0). Under a bar that
 	is a ground of its own the cover starts at its lower edge, with the height of the bar and nothing of the air of the page: either because the room main leaves is the height of the bar already (regular, stacked,
-	top bar, side rail: no rule for a cover), or because the rule for the cover names it (pill menu, and the overlay menu as the fallback of the custom property)	*/
+	top bar: no rule for a cover), or because the rule for the cover names it (pill menu; the side rail below 1024 px, where it is a bar, without the factor of a behaviour it has no knob of; and the overlay menu as
+	the fallback of the custom property)	*/
 $coverProblems = [];
 $coverSelectors = [ 'body main:has(> .nino-cover:first-child)', 'body main:has(> .nino-wrap > .nino-cover:first-child)', 'body main:has(> .nino-parallex:first-child)', 'body main:has(> .nino-wrap > .nino-parallex:first-child)' ];
 $coverHeight = '(?:calc\(\s*\(\s*var\(\s*--header-height\s*\)\s*\+\s*var\(\s*--nino-header-grow\s*,\s*0px\s*\)\s*\)\s*\*\s*var\(\s*--header-behaviour-clear\s*\)\s*\))';
@@ -2670,7 +2671,7 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 	$coverSet = array_values( array_filter( $coverRules, static fn( array $rule ): bool => array_map( 'trim', explode( ',', $rule['selector'] ) ) === $coverSelectors ) );
 	$coverMain = array_values( array_filter( designRules( $coverCss ), static fn( array $rule ): bool => $rule['selector'] === 'body main' && str_contains( $rule['body'], 'padding-top' ) === true ) );
 
-	if( in_array( $set, [ 'floating', 'pill-menu', 'overlay-menu' ], true ) === false ) {
+	if( in_array( $set, [ 'floating', 'pill-menu', 'overlay-menu', 'side-rail' ], true ) === false ) {
 
 		if( $coverRules !== [] )
 			$coverProblems[] = $set. ': the room main leaves under a bar that is a ground of its own is the height of the bar, and a cover needs no rule';
@@ -2689,13 +2690,16 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 	elseif( $set === 'pill-menu' && preg_match( '/^\s*padding-top\s*:\s*'. $coverHeight. '\s*;\s*$/', $body ) !== 1 )
 		$coverProblems[] = $set. ': the cover rule does not give the cover the height of the bar and nothing of the air of the page';
 
+	elseif( $set === 'side-rail' && ( preg_match( '/^\s*padding-top\s*:\s*calc\(\s*var\(\s*--header-height\s*\)\s*\+\s*var\(\s*--nino-header-grow\s*,\s*0px\s*\)\s*\)\s*;\s*$/', $body ) !== 1 || preg_match( '/max-width\s*:\s*1023px/', $coverSet[0]['within'] ) !== 1 ) )
+		$coverProblems[] = $set. ': the cover rule does not give the cover the height of the bar below 1024 px alone';
+
 	elseif( $set === 'overlay-menu' && ( preg_match( '/(?<![a-z-])--main-clear\s*:\s*var\(\s*--header-ground-rest-cover\s*\)\s+0px\s*;/', $body ) !== 1
 		|| preg_match( '/(?<![a-z-])padding-top\s*:\s*var\(\s*--main-clear\s*,\s*'. $coverHeight. '\s*\)\s*;/', $body ) !== 1
 		|| count( $coverMain ) !== 1 || preg_match( '/padding-top\s*:\s*calc\(.*var\(\s*--header-behaviour-clear\s*\)/s', $coverMain[0]['body'] ) !== 1 ) )
 		$coverProblems[] = $set. ': the cover is not under the bar at 0 where the ground at rest is none (--header-ground-rest-cover) and at the height of the bar where it is one';
 }
 
-check( 'a cover starts under a bar that is see-through and at the lower edge of one that is a ground of its own: the floating bar and the overlay menu - behind the aspect of its ground at rest - take the room of main away, the pill menu gives the cover the height of the bar, and the other four have no rule for a cover'
+check( 'a cover starts under a bar that is see-through and at the lower edge of one that is a ground of its own: the floating bar and the overlay menu - behind the aspect of its ground at rest - take the room of main away, the pill menu and the side rail below 1024 px give the cover the height of the bar, and the other three have no rule for a cover'
 	. ( $coverProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $coverProblems, 0, 4 ) ) ), $coverProblems === [] && count( Setup::available( $library, 'header' ) ) === 7 );
 
 /*	A footer passes its ink and its ground on. --color-ink is the role the digits of a counter, the labels of a form and the other things a feature paints in the ink of the surface

@@ -208,6 +208,14 @@ body main {
 		transition: translate .4s, box-shadow .4s;
 	}
 
+	/*	A cover that begins the page starts at the lower edge of the bar, with the height of the bar and nothing of the air of the page that main leaves round the other content: the bar is a ground of its own at every rung. From 1024 px the rail stands at the side and main leaves no room at the top	*/
+	body main:has(> .nino-cover:first-child),
+	body main:has(> .nino-wrap > .nino-cover:first-child),
+	body main:has(> .nino-parallex:first-child),
+	body main:has(> .nino-wrap > .nino-parallex:first-child) {
+		padding-top: calc( var(--header-height) + var(--nino-header-grow, 0px) );
+	}
+
 	body.nino-scroll-down .nino-frame-header:where(:not(:has(:focus-visible))) {
 		translate: 0 -100%;
 		box-shadow: none;
