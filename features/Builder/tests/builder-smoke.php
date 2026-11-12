@@ -102,7 +102,7 @@ echo "The manifest\n";
 $manifest = \Nino\Features::manifest( $dir );
 
 check( 'it validates, key "builder"', is_array( $manifest ) === true && $manifest['key'] === 'builder' && ninoWarnings() === [] );
-check( 'it is written for the kernel whose loop sorts at random, whose registry aligns a title, a subtitle and a text for each viewport and whose section title has the style hero', is_array( $manifest ) === true && $manifest['nino'] === '^1.11' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for the kernel whose loop sorts at random, whose registry aligns a title, a subtitle and a text for each viewport, whose section title has the style hero and whose text components say how their value is written', is_array( $manifest ) === true && $manifest['nino'] === '^1.12' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it is a feature for content, with nothing required, no settings and no data of its own', $manifest['category'] === 'content' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [] );
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 /*	The manual is the feature's overview and no documentation: what is held of it is its shape - the six sections of the kernel, a few entries in the ones it fills, each a line that is one
@@ -243,7 +243,7 @@ check( 'the components and the stacks of the kernel are in it, each with the def
 	$kernelComponents !== [] && $kernelStacks !== [] && array_keys( $registry['components'] ) === array_keys( $kernelComponents ) && array_keys( $registry['stacks'] ) === array_keys( $kernelStacks )
 	&& array_filter( $registry['components'], static fn( array $schema, string $name ): bool => $schema['defaults'] !== \Nino\Modules\Components::defaults( $appData, $name ), ARRAY_FILTER_USE_BOTH ) === []
 	&& array_filter( $registry['stacks'], static fn( array $schema, string $name ): bool => $schema['defaults'] !== \Nino\Modules\Components::defaults( $appData, $name, true ), ARRAY_FILTER_USE_BOTH ) === []
-	&& $registry['components']['title']['defaults'] === [ 'tag' => 'h3', 'style' => '', 'color' => '', 'href' => '', 'target' => '', 'class' => '' ]
+	&& $registry['components']['title']['defaults'] === [ 'tag' => 'h3', 'style' => '', 'color' => '', 'as' => '', 'prefix' => '', 'suffix' => '', 'href' => '', 'target' => '', 'class' => '' ]
 	&& $registry['stacks']['stack']['defaults']['gap'] === '2' );
 check( '...the card says what it holds, and is the one that does: a component whose schema has holds is a container, and nothing else is - the Builder asks the schema and names none', \Nino\Modules\Builder\Reader::holds( $registry['components']['card'] ) === true && $registry['components']['card']['holds'] === 'card'
 	&& array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::holds( $schema ) === true ) === [ 'card' => $registry['components']['card'] ] && \Nino\Modules\Builder\Reader::holds( [ 'holds' => '' ] ) === false && \Nino\Modules\Builder\Reader::holds( [] ) === false );
@@ -268,7 +268,7 @@ check( '...a picture standing in a place that a card holds is none and one in an
 check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'card', $schema['defaults'] ) === true ) === [] );
 check( '...the four titles name their tag and no level: one select of the tags their place takes, the default among them, then the style and the colour, which are variants - a section is an h3, a card an h4, and the subtitles a div and a p, the hero style among the styles of the two of a section', array_filter(
 	[ 'title' => 'h3', 'subtitle' => 'div', 'card-title' => 'h4', 'card-subtitle' => 'p' ],
-	static fn( string $default, string $name ): bool => array_keys( $registry['components'][$name]['attributes'] ) !== [ 'tag', 'style', 'color' ] || $registry['components'][$name]['attributes']['tag']['type'] !== 'select'
+	static fn( string $default, string $name ): bool => array_keys( $registry['components'][$name]['attributes'] ) !== [ 'tag', 'style', 'color', 'as', 'prefix', 'suffix' ] || $registry['components'][$name]['attributes']['tag']['type'] !== 'select'
 		|| $registry['components'][$name]['attributes']['style']['type'] !== 'variant' || $registry['components'][$name]['attributes']['color']['type'] !== 'variant'
 		|| in_array( $default, $registry['components'][$name]['attributes']['tag']['options'], true ) === false || $registry['components'][$name]['defaults']['tag'] !== $default || array_key_exists( 'level', $registry['components'][$name]['defaults'] ) === true,
 	ARRAY_FILTER_USE_BOTH
@@ -358,7 +358,7 @@ check( '...its background is a slot with a focus', $hero['background'] === [ 'sl
 check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === [ 's' => 'left', 'm' => 'left', 'l' => 'left' ]
 	&& array_key_exists( 'stack', $hero['cols'][0] ) === false && array_column( $hero['cols'][0]['components'], 'name' ) === [ 'title', 'subtitle', 'button' ] );
 check( '...a call carries its source and its attributes, every one of the schema, the default where the call is silent - and after them the eight sides of its spacing, none where its class says none',
-	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'color' => '', 'href' => '', 'target' => '', 'class' => '' ] ] + array_fill_keys( \Nino\Modules\Builder\Reader::SPACING, '' ) + [ 'textAlign' => [ 's' => '', 'm' => '', 'l' => '' ] ] );
+	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'color' => '', 'as' => '', 'prefix' => '', 'suffix' => '', 'href' => '', 'target' => '', 'class' => '' ] ] + array_fill_keys( \Nino\Modules\Builder\Reader::SPACING, '' ) + [ 'textAlign' => [ 's' => '', 'm' => '', 'l' => '' ] ] );
 
 $services = $model['blocks'][1];
 $servicesLoop = $services['cols'][1]['components'][0];
@@ -5241,6 +5241,182 @@ $drawnTable = \Nino\Html::renderHtml( $appData, $write( $drawnModel ) );
 check( 'the page the Builder wrote draws as a table by the kernel: the wrap, the table in the style, a row for each element in the order of the loop, the cells of the columns - a field, a field right-aligned, a line with its field filled in - and no head, since no column has a title',
 	str_contains( $drawnTable, '<div class="nino-table-wrap"><table class="nino-table nino-table--striped"><tbody><tr><td>App</td><td class="nino-table__cell--right"><p>Apps</p></td><td>App,- EUR</td></tr>' ) === true
 	&& str_contains( $drawnTable, '</tr><tr><td>Web</td>' ) === true && str_contains( $drawnTable, '<thead>' ) === false );
+
+echo "\n";
+
+
+// --- 7d. The formatting of a text and the text around its value ------------------
+
+echo "The formatting of a text component and the text before and behind its value\n";
+
+/*	The kernel gives a text component three attributes, as, prefix and suffix, on the tab of the content; the Builder reads and writes them as it reads and writes any attribute, and
+	the text before and behind the value as the text of a line: its quotes, ampersands and brackets as entities, a fill as it is	*/
+$formatted = array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::affixes( $schema ) !== [] );
+check( 'the registry says the three attributes of a formatted component the same way for every one: as, prefix and suffix, in that order, on the tab of the content - the kernel\'s title, subtitle, text, line, button and column among them, a card, a picture and the html none',
+	array_diff( [ 'title', 'subtitle', 'text', 'line', 'button', 'col' ], array_keys( $formatted ) ) === []
+	&& array_intersect( [ 'card', 'image', 'html', 'spacer' ], array_keys( $formatted ) ) === []
+	&& array_filter( $formatted, static fn( array $schema ): bool => array_slice( array_keys( $schema['attributes'] ), -3 ) !== [ 'as', 'prefix', 'suffix' ]
+		|| array_filter( [ 'as', 'prefix', 'suffix' ], static fn( string $name ): bool => ( $schema['attributes'][$name]['tab'] ?? '' ) !== 'content' ) !== [] ) === []
+	&& \Nino\Modules\Builder\Reader::affixes( $registry['components']['card'] ) === [] && \Nino\Modules\Builder\Reader::affixes( [ 'attributes' => [ 'prefix' => [ 'type' => 'string', 'default' => '' ] ] ] ) === []
+	&& \Nino\Modules\Builder\Reader::affixes( [ 'attributes' => [ 'prefix' => [ 'type' => 'string', 'tab' => 'content' ], 'suffix' => [ 'type' => 'select', 'tab' => 'content' ] ] ] ) === [ 'prefix' ] );
+
+$affixCall	= '[title /template/page-home/hero/title as="currency" prefix="ab " suffix=" &quot;pro&quot; &#39;Nacht&#39; &#91;1&#93; &amp; [[/template/page-home/offer/per-night]]"]';
+$affixModel	= $read( $page( $section( $affixCall ) ) );
+$affixNode	= $affixModel['blocks'][0]['cols'][0]['components'][0] ?? [];
+check( 'a title with a formatting, a text before and a text behind is read: the text is the characters the entities stand for, the fill as it is, and the leading and the trailing space are kept',
+	$affixModel['blocks'][0]['kind'] === 'section' && ( $affixNode['attributes']['as'] ?? null ) === 'currency' && ( $affixNode['attributes']['prefix'] ?? null ) === 'ab '
+	&& ( $affixNode['attributes']['suffix'] ?? null ) === ' "pro" \'Nacht\' [1] & [[/template/page-home/offer/per-night]]' );
+check( '...and written back as it was, byte for byte, the fill still a fill - read again, the same model - and the two defaults of a title that has none are not written',
+	str_contains( $write( $affixModel ), "\t\t\t". $affixCall. "\n" ) === true && $read( $write( $affixModel ) ) === $affixModel && implode( ' ', \Nino\Modules\Builder\Document::problems( $appData, $affixModel, $registry ) ) === ''
+	&& str_contains( $write( $read( $page( $section( '[title /template/page-home/hero/title]' ) ) ) ), ' as=' ) === false && str_contains( $write( $read( $page( $section( '[title /template/page-home/hero/title]' ) ) ) ), 'prefix=' ) === false );
+
+// Every text component of the registry takes the three, with the characters a call has to carry as entities, and gives them back
+$bits = ' "a" \'b\' & [1] ä'. "\u{00A0}". '<script> [[/template/page-home/offer/price]] [[/template/page-home/offer/per-night]] ';
+$roundTrip = [];
+$tried = 0;
+
+foreach( $formatted as $name => $schema ) {
+
+	$tried++;
+	$kind = $schema['source'];
+	$option = array_values( array_filter( (array) $schema['attributes']['as']['options'], static fn( string $word ): bool => $word !== '' ) )[0] ?? '';
+	$model = $read( $page( $section( $name === 'col' ? "[table /services]\n\t\t\t\t[col /template/page-x/a/head field=\"title\"]\n\t\t\t[/table]" : '['. $name. ( $kind === 'none' ? '' : ' /template/page-x/a/'. $name ). ']' ) ) );
+	$node = &$model['blocks'][0]['cols'][0]['components'][0];
+
+	if( $name === 'col' )
+		$node = &$node['components'][0];
+
+	$node['attributes']['as'] = $option;
+	$node['attributes']['prefix'] = $bits;
+	$node['attributes']['suffix'] = $bits. 'x';
+	unset( $node );
+
+	$written = $write( $model );
+	$again = $read( $written );
+
+	if( $option === '' || $again !== $model || $again['blocks'][0]['kind'] !== 'section' || implode( ' ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) ) !== '' || str_contains( $written, 'prefix="'. \Nino\Modules\Builder\Reader::lineEncode( $bits ). '"' ) === false
+		|| substr_count( $written, '"' ) % 2 !== 0 || preg_match( '/prefix="[^"\[\]]*(?:\[\[[^\[\]]*\]\][^"\[\]]*)*"/', $written ) !== 1 )
+		$roundTrip[] = $name;
+}
+
+check( '...every formatted component of the registry takes all three with a quote, an apostrophe, an ampersand, brackets, an umlaut, a no-break space, a tag, a field, a fill and a space at either end, and gives them back',
+	$tried >= 6 && $roundTrip === [] );
+
+$bad = [
+	'a text with an entity that is none of the five'			=> [ '[title /template/page-x/a/title prefix="&euro; "]', 'prefix' ],
+	'a text with a bare ampersand'												=> [ '[title /template/page-x/a/title suffix="a &amp b"]', 'suffix' ],
+	'a text with a double bracket that is no fill'				=> [ '[title /template/page-x/a/title suffix="a [[x y]]"]', 'suffix' ],
+	'a text with a bracket that is no fill'									=> [ '[title /template/page-x/a/title prefix="a [b] c"]', null ],
+	'a text with an entity that stands for a tag'				=> [ '[title /template/page-x/a/title prefix="&lt;b&gt;"]', 'prefix' ],
+	'a text with a line break'														=> [ "[title /template/page-x/a/title prefix=\"a\nb\"]", 'prefix' ],
+];
+
+foreach( $bad as $label => [ $call, $detail ] ) {
+
+	$blocks = $read( $page( $section( $call ) ) )['blocks'];
+
+	check( $label. ' of a title is no text the builder reads: the whole section is one foreign block with the reason call-arguments',
+		count( $blocks ) === 1 && $blocks[0]['kind'] === 'html' && ( $blocks[0]['reason']['code'] ?? '' ) === 'call-arguments' && $blocks[0]['source'] === $section( $call ) && ( $detail === null || str_contains( $blocks[0]['reason']['detail'], $detail ) === true ) );
+}
+
+$other = $read( $page( $section( '[title /template/page-x/a/title as="nothing-registered" prefix="x"]' ) ) );
+check( '...a formatting the registry does not offer (a hand-written one, a formatter the project took away) is kept as it is: the section is read, the value stands in the model and is written back as it was - the dialog says it is not offered, and the kernel shows the value unformatted',
+	$other['blocks'][0]['kind'] === 'section' && $other['blocks'][0]['cols'][0]['components'][0]['attributes']['as'] === 'nothing-registered' && str_contains( $write( $other ), 'as="nothing-registered" prefix="x"' ) === true && $read( $write( $other ) ) === $other );
+check( '...a component that declares a prefix of its own is read as it always was: the text of its call is no line of free text there, a quote or an entity it holds is a block',
+	( static function() use ( &$appData, $read, $page, $section ): bool {
+		\Nino\Modules\Components::addComponent( $appData, 'prefixed', static fn( array &$appData, array $args ): string => '', [ 'label' => 'Prefixed', 'group' => 'global', 'source' => 'text', 'attributes' => [ 'prefix' => [ 'type' => 'string', 'default' => '' ] ] ] );
+		$own = \Nino\Modules\Builder\Document::schemas( $appData );
+		$model = \Nino\Modules\Builder\Reader::read( $page( $section( '[prefixed /template/page-x/a/p prefix="a b"]' ) ), $own );
+		$bare = \Nino\Modules\Builder\Reader::read( $page( $section( '[prefixed /template/page-x/a/p prefix="&amp;"]' ) ), $own );
+		return $model['blocks'][0]['kind'] === 'section' && $model['blocks'][0]['cols'][0]['components'][0]['attributes']['prefix'] === 'a b' && $bare['blocks'][0]['cols'][0]['components'][0]['attributes']['prefix'] === '&amp;'
+			&& \Nino\Modules\Builder\Reader::affixes( $own['components']['prefixed'] ) === [];
+	} )() );
+
+// The Writer holds the same line: a text that a call cannot carry is refused where it is written, not only where the save asks the problems
+check( '...and the Writer refuses a text before or behind a value that holds a line break',
+	( static function() use ( $write, $affixModel ): bool {
+		$thrown = 0;
+
+		foreach( [ 'prefix' => "a\nb", 'suffix' => "a\rb" ] as $attribute => $value ) {
+			$model = $affixModel;
+			$model['blocks'][0]['cols'][0]['components'][0]['attributes'][$attribute] = $value;
+
+			try {
+				$write( $model );
+			}
+			catch( \UnexpectedValueException ) {
+				$thrown++;
+			}
+		}
+
+		return $thrown === 2;
+	} )() );
+
+$affixProblems = static function( string $prefix, string $suffix ) use ( &$appData, $registry, $affixModel ): string {
+	$model = $affixModel;
+	$model['blocks'][0]['cols'][0]['components'][0]['attributes']['prefix'] = $prefix;
+	$model['blocks'][0]['cols'][0]['components'][0]['attributes']['suffix'] = $suffix;
+	return implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+};
+check( 'the save names a text before or behind a value that a call cannot carry - a line break, or a double bracket that opens no fill - and takes a quote, an ampersand, a single bracket and a fill',
+	str_contains( $affixProblems( "a\nb", '' ), 'attribute "prefix" of the component "title" holds a line break or a [[ that opens no field' ) === true && str_contains( $affixProblems( '', 'a [[b c]]' ), 'attribute "suffix" of the component "title" holds a line break or a [[ that opens no field' ) === true
+	&& $affixProblems( 'a "b" \'c\' & [d] [[/f/g/h/i]]', ' [[/f/g/h/j]]' ) === '' && $affixProblems( '<script>', '[template /templates/mail-owner]' ) === '' );
+
+$saved = \Nino\Modules\Builder\Document::create( $appData, 'Affix' );
+$savedModel = $affixModel;
+$savedModel['blocks'][0]['cols'][0]['components'][0]['source'] = '/template/page-affix/hero/title';
+$savedModel['blocks'][0]['cols'][0]['components'][0]['attributes']['prefix'] = "a\nb";
+check( '...and a fill of the element in it means nothing in a column without a loop, whatever its name - while the cell of a loop takes the fields of its type and .id, and not a field it has not or a picture',
+	str_contains( $affixProblems( 'a [[x]]', '' ), 'the fill [[x]] in the prefix of title means nothing in a column without a loop' ) === true && str_contains( $affixProblems( '', ' [[.id]]' ), 'the fill [[.id]] in the suffix of title means nothing in a column without a loop' ) === true
+	&& ( static function() use ( &$appData, $registry, $read, $page, $section ): bool {
+		$model = $read( $page( $section( "[stack /slugkinds]\n\t\t\t\t[title title as=\"currency\" prefix=\"[[title]] [[.id]] [[/f/g/h/i]]\" suffix=\"[[nope]]\"]\n\t\t\t[/stack]" ) ) );
+		$problems = implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+		$model['blocks'][0]['cols'][0]['components'][0]['components'][0]['attributes']['suffix'] = '[[photo]]';
+		$image = implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
+		return $model['blocks'][0]['kind'] === 'section' && str_contains( $problems, 'the fill [[nope]] in the suffix of title is no field of the loop\'s type' ) === true && substr_count( $problems, 'the fill' ) === 1 && str_contains( $image, 'the fill [[photo]] in the suffix of title is an image field, which a text cannot print' ) === true;
+	} )() );
+check( '...and a save that holds one is refused with the answer 400 and writes nothing',
+	\Nino\Modules\Builder\Document::save( $appData, 'page-affix', $savedModel + [ 'file' => 'page-affix' ], $saved['hash'] )['status'] === 400 );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-affix' );
+
+// A page the Builder wrote draws through the kernel with the value formatted: the price of a room as an amount of money, in the language of the visitor
+\Nino\Elements::insertElementType( $appData, '/suites', [ 'title' => [ 'type' => 'string', 'locale' => true ], 'price' => [ 'type' => 'double' ], 'beds' => [ 'type' => 'integer' ], 'since' => [ 'type' => 'date' ] ] );
+\Nino\Elements::insertElement( $appData, '/suites/double', [ 'title' => 'Double', 'price' => 89.0, 'beds' => 2, 'since' => '2026-11-11' ], 'en_US' );
+$roomsModel = $read( $page( $section( "[stack /suites sort=\"title\"]\n\t\t\t\t[title price]\n\t\t\t\t[text since]\n\t\t\t\t[title beds]\n\t\t\t[/stack]" ) ) );
+$roomsLoop = &$roomsModel['blocks'][0]['cols'][0]['components'][0];
+$roomsLoop['components'][0]['attributes'] = array_replace( $roomsLoop['components'][0]['attributes'], [ 'as' => 'currency', 'prefix' => 'ab ', 'suffix' => ' pro Nacht <b>"x"</b> [1]' ] );
+$roomsLoop['components'][1]['attributes'] = array_replace( $roomsLoop['components'][1]['attributes'], [ 'as' => 'date-long', 'format' => 'inline', 'prefix' => '[template /templates/mail-owner] ' ] );
+$roomsLoop['components'][2]['attributes'] = array_replace( $roomsLoop['components'][2]['attributes'], [ 'as' => 'number', 'suffix' => ' Betten' ] );
+unset( $roomsLoop );
+$roomsWritten = $write( $roomsModel );
+$localeWas = \Nino\Locales::getCurrentLocale( $appData );
+\Nino\Locales::useLocale( $appData, 'de_DE' );
+$roomsGerman = \Nino\Html::renderHtml( $appData, $roomsWritten );
+\Nino\Locales::useLocale( $appData, 'en_US' );
+$roomsEnglish = \Nino\Html::renderHtml( $appData, $roomsWritten );
+\Nino\Locales::useLocale( $appData, $localeWas );
+check( 'a page the Builder wrote draws through the kernel with the price as an amount of money between the two texts, in the language of the visitor: ab 89,00 € pro Nacht with the no-break space in German, ab €89.00 in English - markup, a bracket and a shortcode typed into the texts are text on the page',
+	str_contains( $roomsGerman, "ab 89,00\u{00A0}€ pro Nacht &lt;b&gt;&quot;x&quot;&lt;/b&gt; &#91;1]</h3>" ) === true
+	&& str_contains( $roomsEnglish, 'ab €89.00 pro Nacht' ) === true && str_contains( $roomsGerman, '<b>' ) === false && str_contains( $roomsEnglish, '<b>' ) === false );
+check( '...the date as a long date and the whole number with its group, each in the language of the visitor, the shortcode in front of the date shown as the text it is and not run',
+	str_contains( $roomsGerman, '&#91;template /templates/mail-owner] 11. November 2026' ) === true && str_contains( $roomsEnglish, '&#91;template /templates/mail-owner] November 11, 2026' ) === true
+	&& str_contains( $roomsGerman, '>2 Betten<' ) === true && str_contains( $roomsEnglish, '>2 Betten<' ) === true );
+
+// A formatter the project adds is offered with its label in the language of the workbench
+\Nino\Format::add( $appData, 'nights', static fn( array &$appData, mixed $value ): ?string => is_int( $value ) === true ? $value. ' N' : null, [ 'en_US' => 'Nights', 'de_DE' => 'Nächte' ] );
+// A project adds its formatters in an init(), before the registry is first asked for its options; this suite has asked already
+unset( $appData['./nino/components/options'] );
+$offeredAs = \Nino\Modules\Builder\Document::registry( $appData )['components']['title']['attributes']['as'];
+check( 'a formatter the project added stands among the options of the formatting, with its label in the language of the workbench, the empty choice first and the built-in ones before it - the registry hands the panel what the kernel says, the Builder names none',
+	$offeredAs['options'][0] === '' && in_array( 'nights', $offeredAs['options'], true ) === true && $offeredAs['optionLabels']['nights'] === \Nino\Features::localized( [ 'en_US' => 'Nights', 'de_DE' => 'Nächte' ], \Nino\Admin\Admin::sessionLocale( $appData ) ) && $offeredAs['optionLabels']['currency'] !== '' && array_key_last( $offeredAs['optionLabels'] ) === 'nights'
+	&& array_keys( $offeredAs['optionLabels'] ) === $offeredAs['options'] && $offeredAs['tab'] === 'content' && $offeredAs['label'] !== 'as' && $offeredAs['hint'] !== ''
+	&& \Nino\Modules\Builder\Document::registry( $appData )['components']['title']['defaults']['as'] === '' );
+check( '...and the Builder writes it by its name, reads it back and the kernel formats with it',
+	( static function() use ( &$appData, $read, $write, $page, $section ): bool {
+		$model = $read( $page( $section( '[title /template/page-x/a/title as="nights"]' ) ) );
+		return $model['blocks'][0]['kind'] === 'section' && $model['blocks'][0]['cols'][0]['components'][0]['attributes']['as'] === 'nights' && str_contains( $write( $model ), ' as="nights"]' ) === true;
+	} )() && \Nino\Format::apply( $appData, 'nights', 2 ) === '2 N' );
+check( '...the warnings of the formatting block, and the formatters, are none', ninoWarnings() === [] );
 
 echo "\n";
 

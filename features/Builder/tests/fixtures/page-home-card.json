@@ -197,6 +197,9 @@
                                         "tag": "h3",
                                         "style": "",
                                         "color": "",
+                                        "as": "",
+                                        "prefix": "",
+                                        "suffix": "",
                                         "href": "",
                                         "target": "",
                                         "class": ""
@@ -219,6 +222,9 @@
                                         "tag": "p",
                                         "style": "",
                                         "color": "",
+                                        "as": "",
+                                        "prefix": "",
+                                        "suffix": "",
                                         "href": "",
                                         "target": "",
                                         "class": ""
@@ -247,6 +253,9 @@
                                         "size": "",
                                         "width": "",
                                         "target": "",
+                                        "as": "",
+                                        "prefix": "",
+                                        "suffix": "",
                                         "class": ""
                                     },
                                     "mt": "",
@@ -409,6 +418,9 @@
                                                 "tag": "h3",
                                                 "style": "",
                                                 "color": "",
+                                                "as": "",
+                                                "prefix": "",
+                                                "suffix": "",
                                                 "href": "",
                                                 "target": "",
                                                 "class": ""

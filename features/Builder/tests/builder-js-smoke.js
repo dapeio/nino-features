@@ -920,6 +920,8 @@ const controlsIn = function( root ) {
 
 const labelList = function( root ) { return controlsIn( root ).map( function( control ) { return control.label } ) };
 const labelsIn = function( root ) { return labelList( root ).join() };
+// The three fields a formatted component has in its Content block, under the text of its key (labels of the registry fixture)
+const notFormat = function( label ) { return [ 'Formatting', 'Text before', 'Text after' ].indexOf( label ) === -1 };
 
 const controlOf = function( root, label, nth ) {
 
@@ -3701,6 +3703,20 @@ check( '...a column is added at the end, of the first field, and is a component 
 	tableCol().components.length === 2 && columnRows().length === 2 && tableCol().components[1].name === 'col' && tableCol().components[1].attributes.field === 'title' && tableCol().components[1].text === null );
 change( columnRows()[1], 'Value', 'price' );
 check( '...what a column shows is chosen from the fields, and writes the field', tableCol().components[1].attributes.field === 'price' && valueAt( columnRows()[1], 'Value' ) === 'price' );
+const columnFormat = [ 'Formatting', 'Text before', 'Text after' ];
+check( '...a column that shows a field has the formatting and the two texts under its value, the fields the registry gives a column, and writes them as attributes of the column: the options are the formatters of the registry',
+	labelList( columnRows()[1] ).filter( function( label ) { return columnFormat.indexOf( label ) !== -1 } ).join() === columnFormat.join() && columnRows()[1].querySelectorAll('.builder-column-format').length === 1
+	&& optionsOf( columnRows()[1], 'Formatting' ) === registryFixture.components.col.attributes.as.options.map( function( option ) { return option+ '='+ registryFixture.components.col.attributes.as.optionLabels[option] } ).join()
+	&& ( change( columnRows()[1], 'Formatting', 'currency' ), change( columnRows()[1], 'Text before', 'ab ' ), change( columnRows()[1], 'Text after', ' pro "Nacht"' ),
+		tableCol().components[1].attributes.as === 'currency' && tableCol().components[1].attributes.prefix === 'ab ' && tableCol().components[1].attributes.suffix === ' pro "Nacht"' ) );
+change( columnRows()[1], 'Value', '*' );
+check( '...a line of free text is its own template: it has the two texts and no formatting, and the formatting it had is gone with the field',
+	labelList( columnRows()[1] ).filter( function( label ) { return columnFormat.indexOf( label ) !== -1 } ).join() === 'Text before,Text after' && tableCol().components[1].attributes.as === '' && tableCol().components[1].attributes.prefix === 'ab ' );
+change( columnRows()[1], 'Value', '+' );
+check( '...a content of its own has none of the three, and they are cleared with the switch - the markup between the tags is its own',
+	labelList( columnRows()[1] ).filter( function( label ) { return columnFormat.indexOf( label ) !== -1 } ).length === 0 && columnRows()[1].querySelectorAll('.builder-column-format').length === 0
+	&& tableCol().components[1].attributes.as === '' && tableCol().components[1].attributes.prefix === '' && tableCol().components[1].attributes.suffix === '' );
+change( columnRows()[1], 'Value', 'price' );
 tableCol().components[1].attributes.field = 'gone';
 builder._refreshControls();
 check( '...a field the type has not is no entry of the select of a column either: the empty choice asks for one, the column stays red, and a field chosen is the end of it',
@@ -4201,9 +4217,9 @@ check( 'the dialog of a component has the blocks it has something for, in the or
 check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources - and under it, for a key the project knows, the text it holds in the language the editor works in', ( function() {
 	const row = blockOf('content').querySelector('.builder-source');
 	const button = row.querySelector('button');
-	return blockOf('content').children.length === 2 && blockOf('content').children[0] === row && blockOf('content').children[1].className === 'builder-content-extra' && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false
+	return blockOf('content').children.length === 5 && blockOf('content').children[0] === row && blockOf('content').children[1].className === 'builder-content-extra' && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false
 		&& row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
-		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( blockOf('content') ) ) === '["Text (English (US))"]';
+		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( blockOf('content') ) ) === '["Text (English (US))","Formatting","Text before","Text after"]';
 } )() );
 check( '...the head of the content says the first words of the text, in the language of the editor - and nothing of what is not there', saysOf('content').textContent === 'Welcome' && saysOf('content').hidden === false );
 check( '...Properties: the variants first, a row of buttons for each, one to a line, in the order of the schema - the words of the panel for the values, Default for none - and the one the component has is the one that is chosen; then the other attributes in the order of the schema, here the HTML tag alone, a select that offers the tags the registry offers, as many and in its order, whichever tags the kernel has; and the class of the component last',
@@ -4548,8 +4564,8 @@ openWith( [ 0, 0, 0 ], tableMoved( tableMoved( tableWith(), 'component', 'class'
 check( 'a component has its controls by the table too: its class, moved to Spacing, is a field of the spacing and none of the properties, and its other attributes, struck out, are not drawn - the HTML tag of a title', drawnIn( 'spacing', 'class' ) === 1 && drawnIn( 'properties', 'class' ) === 0 && drawnAnywhere( 'tag' ) === 0 );
 openWith( [ 0, 0, 0 ], tableMoved( tableWith(), 'component', 'variants', 'surface' ) );
 check( '...its variants, moved to Surface, are the surface - a block the title had none of - and the attributes that are none of them stay among the properties', blockIds().join() === 'content,link,surface,spacing,width,properties' && drawnIn( 'surface', 'style' ) === 1 && drawnIn( 'properties', 'style' ) === 0 && drawnIn( 'properties', 'tag' ) === 1 );
-openWith( [ 0, 0, 0 ], tableMoved( tableWith(), 'component', 'source' ) );
-check( '...and the content of a component, struck out, leaves the dialog without the block', blockIds().join() === 'link,spacing,width,properties' );
+openWith( [ 0, 0, 0 ], tableMoved( tableMoved( tableWith(), 'component', 'source' ), 'component', 'format' ) );
+check( '...and the content of a component, its source and its formatting struck out, leaves the dialog without the block', blockIds().join() === 'link,spacing,width,properties' );
 builder._closeDialog();
 doc = open();
 doc.model.blocks[1].cols[0].stackAlign = 'end';
@@ -6137,12 +6153,12 @@ check( '...the dialog opened again shows the text that was typed and not saved, 
 builder._closeDialog();
 builder._setLocale('de_DE');
 builder._openSettings( [ 0, 0, 0 ] );
-check( 'in another language it is the text of that language: the label says it by its name, the key holds a German text, and what is typed there is kept beside the other', controlsIn( contentPane() ).map( function( control ) { return control.label } ).join() === 'Text (Deutsch)'
+check( 'in another language it is the text of that language: the label says it by its name, the key holds a German text, and what is typed there is kept beside the other', labelList( contentPane() ).filter( notFormat ).join() === 'Text (Deutsch)'
 	&& valueAt( contentPane(), 'Text (Deutsch)' ) === 'Willkommen' && ( change( contentPane(), 'Text (Deutsch)', 'Hallo' ), JSON.stringify( heroTitle().values ) === '{"en_US":"Hello","de_DE":"Hallo"}' ) && lines()[0] === 'Hallo' );
 builder._closeDialog();
 builder._setLocale('en_US');
 builder._openSettings( [ 0, 0, 1 ] );
-check( 'a key every language shares has one text, the same in each: it is called so, the shared text is shown, and a text typed for it is kept once - in the language it was typed in last', controlsIn( contentPane() ).map( function( control ) { return control.label } ).join() === 'Text (all languages)'
+check( 'a key every language shares has one text, the same in each: it is called so, the shared text is shown, and a text typed for it is kept once - in the language it was typed in last', labelList( contentPane() ).filter( notFormat ).join() === 'Text (all languages)'
 	&& valueAt( contentPane(), 'Text (all languages)' ) === 'We build' && ( change( contentPane(), 'Text (all languages)', 'We make' ), JSON.stringify( builder._doc.model.blocks[0].cols[0].components[1].values ) === '{"en_US":"We make"}' ) );
 builder._closeDialog();
 builder._setLocale('de_DE');
@@ -6195,7 +6211,7 @@ builder._setLocale('en_US');
 builder._openSettings( [ 0, 0, 4 ] );
 const madeEditor = textEditors[textEditors.length - 1];
 check( 'a component with a format of its own - [text] - makes its key in that format, and the field is the editor of the workbench in the profile of it: blocks by default, with a limit and not none - and empty, as the key holds no text', madeEditor.format === 'blocks' && madeEditor.value === '' && madeEditor.maxlength === builder.CONTENT_MAX
-	&& madeEditor.mount.parentNode.className === 'builder-value' && madeEditor.mount.className.indexOf('builder-content') !== -1 && contentPane().querySelector('.builder-value .builder-label').textContent === lineLabel && contentPane().querySelectorAll('input').length === 0 );
+	&& madeEditor.mount.parentNode.className === 'builder-value' && madeEditor.mount.className.indexOf('builder-content') !== -1 && contentPane().querySelector('.builder-value .builder-label').textContent === lineLabel && contentPane().querySelectorAll('.builder-value input').length === 0 );
 const valueGroup = contentPane().querySelector('.builder-value');
 check( '...an editor is no input that a label wraps, so the field is a group that its label names and its sentence - behind the question mark beside the name - describes, as the Text panel names its editors', valueGroup.getAttribute('role') === 'group' && valueGroup.getAttribute('aria-labelledby') === valueGroup.querySelector('.builder-label').id
 	&& valueGroup.getAttribute('aria-describedby') === valueGroup.querySelector('.builder-help-tip').id && valueGroup.querySelector('.builder-label').id !== '' && valueGroup.querySelector('.builder-help-tip').id !== '' && valueGroup.querySelector('.builder-label').id !== valueGroup.querySelector('.builder-help-tip').id
@@ -6270,7 +6286,7 @@ sourceButton( contentPane() ).click();
 buttonOf( pickerStrip(), 'Static' ).click();
 pickerPane('fixed').querySelector('input').value = 'Mehr';
 buttonOf( pickerPane('fixed'), 'Use it' ).click();
-check( '...a fixed value as the source has no field, and no text of a key is left behind', heroTitle().text === 'Mehr' && heroTitle().values === undefined && contentPane().children.length === 1 );
+check( '...a fixed value as the source has no field, and no text of a key is left behind', heroTitle().text === 'Mehr' && heroTitle().values === undefined && contentPane().children.length === 4 );
 builder._closeDialog();
 builder._openSettings( [ 0, 0, 1 ] );
 sourceButton( contentPane() ).click();
@@ -6772,7 +6788,7 @@ const refusedKeys = requests[requests.length - 1];
 refusedKeys.callback( 403, { error : 'not allowed' } );
 builder._openSettings( [ 0, 0, 0 ] );
 check( '...asked for again, the keys are refused to an account that may not read them any more (403): the ones it has stay, a refusal takes none of them away - so the preview still says the texts it read, and the field under the source is drawn from them',
-	refusedKeys.action === 'text/keys' && JSON.stringify( builder._keys ) === JSON.stringify( newKeys ) && lines()[0] === 'Welcome' && labelsIn( contentPane() ) === lineLabel && controlsIn( contentPane() )[0].el.value === 'Welcome' );
+	refusedKeys.action === 'text/keys' && JSON.stringify( builder._keys ) === JSON.stringify( newKeys ) && lines()[0] === 'Welcome' && labelList( contentPane() ).filter( notFormat ).join() === lineLabel && controlsIn( contentPane() )[0].el.value === 'Welcome' );
 builder._closeDialog();
 
 builder._keys = null;
@@ -6817,6 +6833,122 @@ check( '...and the picture behind a column that is still to be made, where the s
 
 	return JSON.stringify( again.cols[0].background.create ) === JSON.stringify( old.cols[0].background.create ) && again.cols[0].background.create !== old.cols[0].background.create && again.cols[1].background.create === undefined;
 } )() );
+
+console.log( '\nThe formatting of a text and the text around its value' );
+
+doc = open();
+builder._renderEditor();
+builder._lastBlock = {};
+builder._openSettings( [ 0, 0, 0 ] );
+const asDeclared = registryFixture.components.title.attributes.as;
+const formatLabels = [ 'Formatting', 'Text before', 'Text after' ];
+check( 'the dialog of a title has the formatting and the two texts in its Content block, directly under the text of its key, in the order of the registry - a select of the formatters it offers, with the words of the workbench for them, and two lines of text - and none of them among the properties',
+	blockIds().join() === 'content,link,spacing,width,properties' && labelList( blockOf('content') ).join() === [ lineLabel ].concat( formatLabels ).join() && controlsIn( blockOf('content') ).map( function( control ) { return control.kind } ).join() === 'text,select,text,text'
+	&& optionsOf( blockOf('content'), 'Formatting' ) === asDeclared.options.map( function( option ) { return option+ '='+ asDeclared.optionLabels[option] } ).join() && asDeclared.options[0] === '' && asDeclared.options.length > 3
+	&& labelList( blockOf('properties') ).filter( function( label ) { return formatLabels.indexOf( label ) !== -1 } ).length === 0
+	&& valueAt( blockOf('content'), 'Formatting' ) === '' && valueAt( blockOf('content'), 'Text before' ) === '' && valueAt( blockOf('content'), 'Text after' ) === '' );
+check( '...the sentence of the formatting is the registry\'s, and says that the preview shows the value as it is stored; the two texts say what the registry says of them',
+	tipOf( controlOf( blockOf('content'), 'Formatting' ) ) === asDeclared.hint+ ' '+ word('hint/format-preview') && word('hint/format-preview') !== undefined && tipOf( controlOf( blockOf('content'), 'Text before' ) ) === registryFixture.components.title.attributes.prefix.hint );
+changes = 0;
+change( blockOf('content'), 'Formatting', 'currency' );
+change( blockOf('content'), 'Text before', 'ab ' );
+change( blockOf('content'), 'Text after', ' pro Nacht' );
+check( '...what is chosen and typed is kept in the attributes of the component under the names of the schema - three changes - and the head of the block says the formatter by its word and the texts as they are written, behind the text of the key',
+	heroTitle().attributes.as === 'currency' && heroTitle().attributes.prefix === 'ab ' && heroTitle().attributes.suffix === ' pro Nacht' && changes === 3
+	&& saysOf('content').textContent === [ 'Welcome', asDeclared.optionLabels.currency, 'ab', 'pro Nacht' ].join(' \u00b7 ') );
+check( '...and the preview shows the text between the two, with the value as it is stored - a formatter is code of the project, and the Builder draws no page', lines()[0] === 'ab Welcome pro Nacht' );
+check( '...a component with no text to show has no text before and behind it: they are written where there is a value',
+	builder._affixed( heroTitle(), registryFixture.components.title, '' ) === '' && builder._affixed( heroTitle(), registryFixture.components.title, '  ' ) === '  ' && builder._affixed( heroTitle(), registryFixture.components.title, 'x' ) === 'ab x pro Nacht'
+	&& builder._affixed( { attributes : { prefix : 'a' } }, { attributes : { prefix : { type : 'string', default : '' } } }, 'x' ) === 'x' );
+change( blockOf('content'), 'Text before', '<script>alert(1)</script> [template /templates/mail-owner] "q" \'a\' &amp; [x]' );
+check( '...a tag, a shortcode, a quote and an entity typed into the texts are text, in the field and in the preview - and a single bracket is no problem',
+	lines()[0] === Array.from( '<script>alert(1)</script> [template /templates/mail-owner] "q" \'a\' &amp; [x]Welcome pro Nacht' ).slice( 0, builder.LINE_MAX ).join('').trimEnd()+ '\u2026' && preview().querySelectorAll('script').length === 0 && blockOf('content').querySelector('.builder-line-warning') === null
+	&& heroTitle().attributes.prefix === '<script>alert(1)</script> [template /templates/mail-owner] "q" \'a\' &amp; [x]' );
+change( blockOf('content'), 'Text before', 'a\u2028b\u202e [[x y]] \u0000' );
+check( '...a double bracket that opens no fill is said in the sentence of the line of text, under the field and only then, and the text is kept: the save refuses it',
+	blockOf('content').querySelectorAll('.builder-line-warning').length === 1 && blockOf('content').querySelector('.builder-line-warning').textContent === word('hint/line-invalid') && heroTitle().attributes.prefix === 'a\u2028b\u202e [[x y]] \u0000'
+	&& ( change( blockOf('content'), 'Text before', 'a [[/template/page-home/hero/title]] [[title]]' ), blockOf('content').querySelector('.builder-line-warning') === null ) );
+change( blockOf('content'), 'Text before', '' );
+change( blockOf('content'), 'Formatting', '' );
+change( blockOf('content'), 'Text after', '' );
+check( '...and put back to the defaults, the attributes are the defaults again and the head says nothing of them', heroTitle().attributes.as === '' && heroTitle().attributes.prefix === '' && heroTitle().attributes.suffix === '' && saysOf('content').textContent === 'Welcome' );
+heroTitle().attributes.as = 'gone';
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 0 ] );
+check( '...a formatting the registry does not offer (a hand-written one, a formatter the project took away) stays what the component has, as an entry marked as not offered, until another is chosen',
+	valueAt( blockOf('content'), 'Formatting' ) === 'gone' && optionsOf( blockOf('content'), 'Formatting' ).split(',').pop() === 'gone='+ sandbox.Nino.adminUi.format( word('label/not-offered'), 'gone' ) && heroTitle().attributes.as === 'gone'
+	&& ( change( blockOf('content'), 'Formatting', 'number' ), heroTitle().attributes.as === 'number' ) );
+heroTitle().attributes.as = '';
+builder._closeDialog();
+
+builder._openSettings( [ 1, 1, 0, 0 ] );
+check( 'the dialog of a component that does not say it is formatted has none of the three, and its Content block is as it was - the picture and a title of a card among them',
+	labelList( dialogContent() ).filter( function( label ) { return formatLabels.indexOf( label ) !== -1 } ).length === 0 && registryFixture.components.image.attributes.as === undefined
+	&& ( builder._closeDialog(), builder._openSettings( [ 0, 0, 2 ] ), labelList( dialogContent() ).filter( function( label ) { return formatLabels.indexOf( label ) !== -1 } ).join() === formatLabels.join() ) );
+builder._closeDialog();
+
+check( 'a registry of a kernel that has no formatting - the title without the three attributes - gives the dialog no such block: the Content block is the source alone and the title is not drawn with an empty group',
+	( function() {
+		builder._registry = registry();
+		[ 'as', 'prefix', 'suffix' ].forEach( function( name ) { delete builder._registry.components.title.attributes[name] } );
+		builder._openSettings( [ 0, 0, 0 ] );
+		const labels = labelList( dialogContent() );
+		const ok = labels.filter( function( label ) { return formatLabels.indexOf( label ) !== -1 } ).length === 0 && blockOf('content').children.length === 2 && saysOf('content').textContent === 'Welcome';
+		builder._closeDialog();
+		builder._registry = registry();
+		return ok;
+	} )() );
+
+// A text already stored that a call cannot carry is said when the dialog opens, before anything is typed
+doc = open();
+builder._renderEditor();
+heroTitle().attributes.prefix = 'a [[x y]]';
+builder._openSettings( [ 0, 0, 0 ] );
+check( 'a text before the value that is stored and cannot be carried is said under its field as soon as the dialog is open, once, and the other text has no sentence',
+	blockOf('content').querySelectorAll('.builder-line-warning').length === 1 && blockOf('content').querySelector('.builder-line-warning').textContent === word('hint/line-invalid') );
+builder._closeDialog();
+heroTitle().attributes.prefix = '';
+
+// A line of free text is its own template: the dialog offers it no formatting, and the texts around it stay
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'line', source : '', text : '[[title]] ok', attributes : { tag : '', as : '', prefix : '', suffix : '' } } );
+builder._openSettings( [ 0, 0, 3 ] );
+check( 'the dialog of a line that holds its own text has no formatting in its Content block - the kernel ignores it there - and the two texts around it',
+	labelList( blockOf('content') ).indexOf('Formatting') === -1 && labelList( blockOf('content') ).indexOf('Text before') !== -1 && labelList( blockOf('content') ).indexOf('Text after') !== -1 );
+builder._closeDialog();
+builder._doc.model.blocks[0].cols[0].components.pop();
+
+// The sentence about the preview belongs to the formatter, not to every select of the tab
+builder._registry = registry();
+builder._registry.components.title.attributes.other = { type : 'select', label : 'Other choice', hint : 'Its own sentence.', tab : 'content', options : [ '', 'a' ], default : '' };
+builder._openSettings( [ 0, 0, 0 ] );
+check( 'a select of the content tab that is no formatting keeps its own sentence, and the formatting has the sentence of the preview',
+	tipOf( controlOf( blockOf('content'), 'Other choice' ) ) === 'Its own sentence.' && tipOf( controlOf( blockOf('content'), 'Formatting' ) ) === asDeclared.hint+ ' '+ word('hint/format-preview') );
+builder._closeDialog();
+builder._registry = registry();
+
+// A long text before or behind the value does not make the line of the preview longer than a line is
+check( 'the line of the preview is cut at the length of a line with the two texts counted',
+	Array.from( builder._affixed( { attributes : { prefix : 'p'.repeat( 50 ), suffix : 's'.repeat( 50 ) } }, registryFixture.components.title, 'value' ) ).length === builder.LINE_MAX + 1
+	&& builder._affixed( { attributes : { prefix : 'p'.repeat( 50 ), suffix : 's'.repeat( 50 ) } }, registryFixture.components.title, 'value' ).slice( -1 ) === '\u2026' );
+
+// An edit of the formatting made while a save is under way is kept like any other
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0, 0 ] );
+builder._doc.model.name = 'Start';
+requests = [];
+const affixAnswers = [];
+builder._save( function( ok ) { affixAnswers.push( ok ) } );
+const affixSent = JSON.parse( JSON.stringify( requests[0].payload.model ) );
+change( blockOf('content'), 'Text before', 'ab ' );
+change( blockOf('content'), 'Formatting', 'currency' );
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( affixSent ) ), hash : 'h2' } );
+check( 'a formatting and a text typed while the save is on its way are still there when the answer comes, and the document is unsaved: the answer brings the hash and the file as it was saved, and the attributes are the editor\'s',
+	heroTitle().attributes.prefix === 'ab ' && heroTitle().attributes.as === 'currency' && builder._doc.hash === 'h2' && builder._unsaved( builder._doc ) === true && builder._saving === false
+	&& JSON.parse( builder._doc.saved ).blocks[0].cols[0].components[0].attributes.prefix === '' && affixAnswers[affixAnswers.length - 1] === false
+	&& valueAt( blockOf('content'), 'Text before' ) === 'ab ' && valueAt( blockOf('content'), 'Formatting' ) === 'currency' );
+builder._closeDialog();
+requests = [];
 
 console.log( '\nA save that stopped' );
 

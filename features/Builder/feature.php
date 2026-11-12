@@ -24,8 +24,8 @@ return [
 				'de_DE' => 'Ermöglicht, die Seite als Mobile, Tablet, Desktop oder Global zu sehen und die Sprache ihrer Texte umzuschalten.',
 			],
 			'Settings dialogs' => [
-				'en_US' => 'Lets you set every section, column and component in a dialog of blocks, such as Content, Link, Surface, Spacing, Width and alignment, Order and Loop.',
-				'de_DE' => 'Ermöglicht, Section, Spalte und Komponente in einem Dialog aus Blöcken einzustellen, etwa Inhalt, Link, Fläche, Abstände, Breite und Ausrichtung, Reihenfolge und Loop.',
+				'en_US' => 'Lets you set every section, column and component in a dialog of blocks, such as Content and its formatting, Link, Surface, Spacing, Width and alignment, Order and Loop.',
+				'de_DE' => 'Ermöglicht, Section, Spalte und Komponente in einem Dialog aus Blöcken einzustellen, etwa Inhalt samt Formatierung, Link, Fläche, Abstände, Breite und Ausrichtung, Reihenfolge und Loop.',
 			],
 			'Copy and Paste' => [
 				'en_US' => 'Lets you copy a section, a column or a component with its texts and pictures and paste it on this page or another, also with Ctrl+C and Ctrl+V.',
@@ -52,8 +52,10 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version' => '1.4.1',
-	// 1.11, for what the builder draws and writes: the loop that sorts at
+	'version' => '1.5.0',
+	// 1.12, for the formatting of a text component (as, prefix and suffix, on the
+	// tab of the content) that the registry hands out; on top of 1.11, for what
+	// the builder draws and writes: the loop that sorts at
 	// random (sort="random" of [stack] and [elements]), the alignment of a
 	// title, a subtitle and a text for each viewport, which the registry of
 	// the components names, and the hero as the style "hero" of a section's
@@ -63,7 +65,7 @@ return [
 	// link over itself (stretched), the slug of an element ([[.slug]]), the
 	// options a method of the component answers, and nino-grid-gap for the
 	// space between the cells of a grid
-	'nino'				=> '^1.11',
+	'nino'				=> '^1.12',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

@@ -386,6 +386,7 @@ return [
 	'[[/_admin/builder/hint/column-value]]'			=> 'A field of the type that the cell shows, or a free text in which fields of the element may stand.',
 	'[[/_admin/builder/hint/column-text]]'				=> 'A text with fields of the element between double brackets, for example %s. Quotes, apostrophes, ampersands and single brackets may be written; a line knows no picture field.',
 	'[[/_admin/builder/hint/line-invalid]]'			=> 'This text holds a line break or a double bracket that is no field. It cannot be saved like that.',
+	'[[/_admin/builder/hint/format-preview]]'		=> 'The preview shows the value as it is stored; the page writes it as the formatting says.',
 	'[[/_admin/builder/hint/column-content]]'	=> 'The html+ of the cell. A field of the element between double brackets fills the cell, and the components of a cell may stand in it; a loop may not. It is kept as you type it.',
 	'[[/_admin/builder/hint/content-invalid]]'	=> 'This content is empty or holds a loop, which a cell cannot hold. It cannot be saved like that.',
 	'[[/_admin/builder/hint/line-unknown]]'			=> 'No field of the type that a line can show: %s. The text cannot be saved like that.',

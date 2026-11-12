@@ -211,6 +211,8 @@
 		// The attributes of a component that are its link and stand in that block, besides the address (the type href) and the two a component that is a link has: the window
 		// it opens in and - of a surface - whether all of it is the link
 		LINK_KEYS	: [ 'target', 'linked' ],
+		// The attributes of a formatted component that are a text set before and behind its value: a line of free text, which a call carries as the text of a line (see _affixField())
+		AFFIX_KEYS	: [ 'prefix', 'suffix' ],
 		// The words the Builder has for the values of an attribute a component declares, by the name of the attribute: the group of their
 		// words (see _optionLabel()). The select of an attribute with another name keeps its values as they are
 		ATTRIBUTE_WORDS	: { padding : 'space', align : 'text', vertical : 'vertical', target : 'target' },
@@ -308,7 +310,8 @@
 				{ id : 'properties', controls : [ 'class' ] },
 			],
 			component : [
-				{ id : 'content', controls : [ 'source' ] },
+				// The formatting and the texts before and behind the value stand under the source: the registry puts them on the tab of the content (see _groupOf())
+				{ id : 'content', controls : [ 'source', 'format' ] },
 				{ id : 'link', controls : [ 'link' ] },
 				{ id : 'surface', controls : [ 'background', 'bgPl', 'bgPr', 'radius', 'hover' ] },
 				{ id : 'spacing', controls : [ 'mt', 'mb', 'ml', 'mr', 'pt', 'pb', 'pl', 'pr' ] },
@@ -3062,7 +3065,7 @@
 					name		: component.name,
 					label		: schema.label || component.name,
 					image		: builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview,
-					line		: text === null ? '' : builder._firstLine( builder._shownText( component, text, texts.keys, registry ), builder.LINE_MAX ),
+					line		: text === null ? '' : builder._affixed( component, schema, builder._firstLine( builder._shownText( component, text, texts.keys, registry ), builder.LINE_MAX ) ),
 					picture	: slot !== undefined && typeof slot.url === 'string' ? slot.url : '',
 					draws		: builder._draws( schema, component ),
 					// Where the text of a title, a subtitle or a text is aligned in the viewport the preview shows (the widest for all of them): left, center, right or '' for none
@@ -10585,6 +10588,10 @@
 			const free = typeof node.text === 'string';
 			const content = typeof node.content === 'string';
 
+			// The formatting and the texts around the value, as the registry has them for the column: the formatting for a field, the texts for a field and a line, none for a content
+			const formatting = builder._formatFields( builder._declared( ( registry.components || {} )[node.name] || {} ) );
+			const formats = Object.keys( formatting );
+
 			row.appendChild( builder._valueSelect( fields, content === true ? builder.CONTENT : ( free === true ? builder.FREE : String( node.attributes.field ?? '' ) ), true, Nino.content.getText('/_admin/builder/column/value'), function( value ) {
 
 				if( value === builder.CONTENT ) {
@@ -10596,11 +10603,16 @@
 					node.content = shown !== '' ? shown : ( first.length > 0 ? '[['+ first[0].value+ ']]' : '[[.id]]' );
 					node.text = null;
 					node.attributes.field = '';
+					// The texts around the value and its formatting are those of a field or a line, not of a content
+					formats.forEach( function( key ) { if( node.attributes[key] !== undefined ) node.attributes[key] = '' } );
 				}
 				else if( value === builder.FREE ) {
 					node.text = node.text ?? '';
 					node.attributes.field = '';
 					delete node.content;
+					// A line of text is its own template: nothing to format
+					if( node.attributes.as !== undefined )
+						node.attributes.as = '';
 				} else {
 					node.text = null;
 					node.attributes.field = value;
@@ -10622,6 +10634,21 @@
 					node.content = value;
 					builder._changed();
 				} ) );
+
+			if( content === false && formats.length > 0 ) {
+
+				const shown = {};
+
+				formats.forEach( function( key ) { if( key !== 'as' || free === false ) shown[key] = formatting[key] } );
+
+				if( Object.keys( shown ).length > 0 ) {
+
+					const around = builder._el( 'div', 'builder-column-format' );
+
+					builder._attributeFields( around, shown, node.attributes, { fields : fields, section : section, node : node, path : path } );
+					row.appendChild( around );
+				}
+			}
 
 			return row;
 		},
@@ -10904,17 +10931,20 @@
 
 		/**
 		 *	The group of controls an attribute of a schema belongs to, which the table places in a block (see BLOCKS): the background for what the schema puts on the tab of the
-		 *	background, the link for an address and for the attributes that are a link (LINK_KEYS), the variants, and the attributes for every other
+		 *	background, the format for what it puts on the tab of the content, the link for an address and for the attributes that are a link (LINK_KEYS), the variants, and the attributes for every other
 		 *
 		 *	@param		{string}		name
 		 *	@param		{Object}		declared					The schema's entry
 		 *
-		 *	@return		{string}									background, link, variants or attributes
+		 *	@return		{string}									background, format, link, variants or attributes
 		 */
 		_groupOf : function( name, declared ) {
 
 			if( declared.tab === 'background' )
 				return 'background';
+
+			if( declared.tab === 'content' )
+				return 'format';
 
 			if( declared.type === 'href' || Nino.admin.builder.LINK_KEYS.indexOf( name ) !== -1 )
 				return 'link';
@@ -10948,9 +10978,13 @@
 			// What the attributes of the schema are to each other, told by the whole schema: the focus and the dimming of a picture follow it wherever they stand
 			const roles = builder._roles( declared );
 			// The attributes by the group they stand in, in the order of the schema
-			const groups = { link : {}, background : {}, variants : {}, attributes : {} };
+			const groups = { link : {}, background : {}, format : {}, variants : {}, attributes : {} };
 
 			Object.keys( declared ).forEach( function( name ) { groups[builder._groupOf( name, declared[name] )][name] = declared[name] } );
+
+			// A line of free text is its own template and the kernel formats none: the formatting is not offered, as a column of such a line has none (see _columnRow())
+			if( schema.fields === true && typeof component.text === 'string' )
+				delete groups.format.as;
 
 			// An address and the window it opens in are what a component that is a link has besides the attributes it declares, which the schema does not declare for it
 			groups.link = builder._linkFields( schema );
@@ -10982,7 +11016,7 @@
 							return;
 						}
 
-						builder._attributeFields( body, groups[group], component.attributes, here );
+						builder._attributeFields( body, group === 'format' ? builder._formatFields( groups[group] ) : groups[group], component.attributes, here );
 					},
 					says	: function() { return said( groups[group] ) },
 				};
@@ -11054,6 +11088,67 @@
 			};
 
 			return controls;
+		},
+
+		/**
+		 *	The attributes a schema puts on the tab of the content - the formatting of the value and the texts before and behind it -, with the sentence that the preview shows the value as it is
+		 *	stored added to the hint of the formatting: a formatter is code of the project, and the Builder draws no page. The Builder knows none of the three by name
+		 *
+		 *	@param		{Object}		declared					The schema's attributes, name => entry
+		 *
+		 *	@return		{Object}									name => the entry, in the order of the schema
+		 */
+		_formatFields : function( declared ) {
+
+			const builder = Nino.admin.builder;
+			const found = {};
+			const names = Object.keys( declared ).filter( function( name ) { return declared[name].tab === 'content' } );
+			// The sentence belongs to the formatting of a value, the select the kernel puts in front of the texts around it: a select of another feature on this tab says what it says
+			const first = names.findIndex( function( name ) { return builder.AFFIX_KEYS.indexOf( name ) !== -1 } );
+			const formatter = first > 0 && declared[names[first - 1]].type === 'select' ? names[first - 1] : '';
+
+			names.forEach( function( name ) {
+
+				found[name] = name === formatter ? Object.assign( {}, declared[name], { hint : [ declared[name].hint || '', Nino.content.getText('/_admin/builder/hint/format-preview') ].filter( function( part ) { return part !== '' } ).join(' ') } ) : declared[name];
+			} );
+
+			return found;
+		},
+
+		/**
+		 *	A text set before or behind the value of a component: the input of a line of free text and the sentence that says it cannot be carried while it holds a line break or a double
+		 *	bracket that is no fill. Quotes, ampersands and single brackets are fine, a call carries them as entities
+		 *
+		 *	@param		{string}		label
+		 *	@param		{string}		hint
+		 *	@param		{string}		value
+		 *	@param		{Function}	onChange					( text )
+		 *
+		 *	@return		{Element}
+		 */
+		_affixField : function( label, hint, value, onChange ) {
+
+			const builder = Nino.admin.builder;
+			const wrap = builder._el( 'div', 'builder-line-field' );
+			const warn = builder._el( 'p', 'nino-admin-hint builder-line-warning', Nino.content.getText('/_admin/builder/hint/line-invalid') );
+
+			// The sentence stands under the field only while the text cannot be carried
+			const check = function( text ) {
+
+				if( builder._lineValid( text ) === true )
+					warn.remove();
+				else
+					wrap.appendChild( warn );
+			};
+
+			wrap.appendChild( builder._textField( label, hint, value, function( text ) {
+
+				check( text );
+				onChange( text );
+			} ) );
+			check( value );
+
+			return wrap;
 		},
 
 		/**
@@ -11576,6 +11671,10 @@
 					onFixed	: write,
 				} );
 			}
+
+			// The text before or behind the value is a line of free text, as the text of a line is
+			if( declared.type === 'string' && declared.tab === 'content' && builder.AFFIX_KEYS.indexOf( name ) !== -1 )
+				return builder._affixField( label, hint, value, write );
 
 			return builder._textField( label, hint, value, write );
 		},
@@ -12744,6 +12843,31 @@
 			info.value = info.staged === true ? given : info.stored;
 
 			return info;
+		},
+
+		/**
+		 *	A text with the texts a formatted component sets before and behind its value: the value as it is stored - a formatter is code of the project, and the Builder draws no page -
+		 *	and only where there is a value, as the kernel writes them. The texts are plain text, as typed: markup in them is not stripped as the text of a key is
+		 *
+		 *	@param		{Object}		component
+		 *	@param		{Object}		schema						The component's entry of the registry: a prefix or a suffix it declares for itself is none of these
+		 *	@param		{string}		text							The text the page shows for the component
+		 *
+		 *	@return		{string}
+		 */
+		_affixed : function( component, schema, text ) {
+
+			const builder = Nino.admin.builder;
+			const attributes = component.attributes || {};
+			const declared = builder._formatFields( builder._declared( schema ) );
+
+			if( text.trim() === '' )
+				return text;
+
+			// A long text in front of or behind the value makes the line longer than a placeholder says: it is cut as the line of the text is
+			const characters = Array.from( ( declared.prefix === undefined ? '' : String( attributes.prefix ?? '' ) )+ text+ ( declared.suffix === undefined ? '' : String( attributes.suffix ?? '' ) ) );
+
+			return characters.length > builder.LINE_MAX ? characters.slice( 0, builder.LINE_MAX ).join('').trimEnd()+ '…' : characters.join('');
 		},
 
 		/**

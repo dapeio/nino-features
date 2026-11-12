@@ -61,6 +61,47 @@
                     ],
                     "prefix": "nino-ink--",
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "in": [
@@ -69,12 +110,16 @@
             "draws": "{tag} .nino-section-title",
             "stretched": true,
             "link": true,
+            "formatted": true,
             "by": "nino",
             "group": "section",
             "defaults": {
                 "tag": "h3",
                 "style": "",
                 "color": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "href": "",
                 "target": "",
                 "class": ""
@@ -145,6 +190,47 @@
                     ],
                     "prefix": "nino-ink--",
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "in": [
@@ -153,12 +239,16 @@
             "draws": "{tag} .nino-section-subtitle",
             "stretched": false,
             "link": true,
+            "formatted": true,
             "by": "nino",
             "group": "section",
             "defaults": {
                 "tag": "div",
                 "style": "",
                 "color": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "href": "",
                 "target": "",
                 "class": ""
@@ -239,10 +329,52 @@
                     ],
                     "prefix": "nino-ink--",
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "stretched": false,
             "link": true,
+            "formatted": true,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -250,6 +382,9 @@
                 "tag": "p",
                 "style": "",
                 "color": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "href": "",
                 "target": "",
                 "class": ""
@@ -295,14 +430,59 @@
                         "div"
                     ],
                     "default": "p"
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "stretched": false,
             "link": false,
+            "formatted": true,
             "by": "nino",
             "group": "global",
             "defaults": {
                 "tag": "p",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "class": ""
             },
             "fields": true,
@@ -370,6 +550,47 @@
                     ],
                     "prefix": "nino-ink--",
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "in": [
@@ -378,12 +599,16 @@
             "draws": "{tag} .nino-card-title",
             "stretched": true,
             "link": true,
+            "formatted": true,
             "by": "nino",
             "group": "card",
             "defaults": {
                 "tag": "h4",
                 "style": "",
                 "color": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "href": "",
                 "target": "",
                 "class": ""
@@ -453,6 +678,47 @@
                     ],
                     "prefix": "nino-ink--",
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "in": [
@@ -461,12 +727,16 @@
             "draws": "{tag} .nino-card-subtitle",
             "stretched": false,
             "link": true,
+            "formatted": true,
             "by": "nino",
             "group": "card",
             "defaults": {
                 "tag": "p",
                 "style": "",
                 "color": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "href": "",
                 "target": "",
                 "class": ""
@@ -536,6 +806,47 @@
                     ],
                     "prefix": "nino-ink--",
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "in": [
@@ -544,12 +855,16 @@
             "draws": "div .nino-card-descr",
             "stretched": false,
             "link": true,
+            "formatted": true,
             "by": "nino",
             "group": "card",
             "defaults": {
                 "format": "blocks",
                 "style": "",
                 "color": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "href": "",
                 "target": "",
                 "class": ""
@@ -650,6 +965,7 @@
             "draws": "img .nino-card-img",
             "stretched": false,
             "link": true,
+            "formatted": false,
             "by": "nino",
             "group": "card",
             "defaults": {
@@ -808,6 +1124,7 @@
             "holds": "card",
             "stretched": false,
             "link": false,
+            "formatted": false,
             "by": "nino",
             "group": "card",
             "defaults": {
@@ -919,11 +1236,53 @@
                         "_blank"
                     ],
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "draws": "a .nino-btn",
             "stretched": false,
             "link": false,
+            "formatted": true,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -932,6 +1291,9 @@
                 "size": "",
                 "width": "",
                 "target": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "class": ""
             },
             "labels": {
@@ -1015,6 +1377,7 @@
             },
             "stretched": false,
             "link": true,
+            "formatted": false,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -1078,6 +1441,7 @@
             "draws": "span .nino-logo-set",
             "stretched": false,
             "link": false,
+            "formatted": false,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -1113,6 +1477,7 @@
             "attributes": [],
             "stretched": false,
             "link": false,
+            "formatted": false,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -1166,6 +1531,7 @@
             },
             "stretched": false,
             "link": false,
+            "formatted": false,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -1204,6 +1570,7 @@
             "draws": "a .nino-hero-arrowdown",
             "stretched": false,
             "link": false,
+            "formatted": false,
             "by": "nino",
             "group": "global",
             "defaults": {
@@ -1256,6 +1623,47 @@
                         "center"
                     ],
                     "default": ""
+                },
+                "as": {
+                    "type": "select",
+                    "options": [
+                        "",
+                        "number",
+                        "currency",
+                        "percent",
+                        "date",
+                        "date-long",
+                        "datetime",
+                        "time"
+                    ],
+                    "default": "",
+                    "tab": "content",
+                    "label": "Formatting",
+                    "hint": "How a number or a date of the value is written. A value that is none is shown as it is.",
+                    "optionLabels": {
+                        "": "As stored",
+                        "number": "Number",
+                        "currency": "Currency",
+                        "percent": "Percent",
+                        "date": "Date (short)",
+                        "date-long": "Date (long)",
+                        "datetime": "Date and time",
+                        "time": "Time"
+                    }
+                },
+                "prefix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text before",
+                    "hint": "Plain text in front of the value, only where there is a value."
+                },
+                "suffix": {
+                    "type": "string",
+                    "default": "",
+                    "tab": "content",
+                    "label": "Text after",
+                    "hint": "Plain text after the value, only where there is a value."
                 }
             },
             "in": [
@@ -1263,11 +1671,15 @@
             ],
             "stretched": false,
             "link": false,
+            "formatted": true,
             "by": "nino",
             "group": "global",
             "defaults": {
                 "field": "",
                 "align": "",
+                "as": "",
+                "prefix": "",
+                "suffix": "",
                 "class": ""
             },
             "columnar": true,
@@ -1313,6 +1725,7 @@
             ],
             "stretched": false,
             "link": false,
+            "formatted": false,
             "by": "nino",
             "group": "global",
             "defaults": {

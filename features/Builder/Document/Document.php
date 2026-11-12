@@ -1404,12 +1404,17 @@ namespace Nino\Modules\Builder {
 						if( Reader::fielded( $schema ) === true && is_string( $values['text'] ) === true && Reader::lineText( $values['text'] ) === true )
 							$values['text'] = null;
 
+						// The text before and behind the value is a line as well: it holds the fills of the element or of the site, and a call carries its quotes and brackets as entities
+						foreach( Reader::affixes( $schema ) as $affix )
+							if( is_string( $values[$affix] ?? null ) === true && Reader::lineText( $values[$affix] ) === true )
+								$values[$affix] = null;
+
 						if( isset( $schemas['stacks'][$call['name'] ?? ''] ) === true )
 							array_push( $problems, ...self::_fieldNames( $call, $schemas, $at ) );
 
 						foreach( $values as $attribute => $value )
 							if( $unsafe( $value, $attribute === 'source' ? ( $schema['source'] ?? '' ) === 'href' : in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ) === true )
-								$problems[] = $at. ': the '. ( $attribute === 'text' && Reader::fielded( $schema ) === true ? 'text' : 'attribute "'. $attribute. '"' ). ' of the component "'. (string) ( $call['name'] ?? '' ). '" holds '. ( $attribute === 'text' && Reader::fielded( $schema ) === true ? 'a line break or a [[ that opens no field' : 'a quote, a bracket or a line break' ). ', which a call cannot carry';
+								$problems[] = $at. ': the '. ( $attribute === 'text' && Reader::fielded( $schema ) === true ? 'text' : 'attribute "'. $attribute. '"' ). ' of the component "'. (string) ( $call['name'] ?? '' ). '" holds '. ( ( $attribute === 'text' && Reader::fielded( $schema ) === true ) || in_array( (string) $attribute, Reader::affixes( $schema ), true ) === true ? 'a line break or a [[ that opens no field' : 'a quote, a bracket or a line break' ). ', which a call cannot carry';
 					}
 				}
 			}
@@ -1539,6 +1544,19 @@ namespace Nino\Modules\Builder {
 									$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is an image field, which a line cannot print';
 								elseif( in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$fill] ) === false )
 									$problems[] = 'the fill [['. $fill. ']] of '. ( $component['name'] ?? '' ). ' is no field of the loop\'s type';
+
+						// The text before and behind a value is a line of free text as well: its fills are the fields of the element, and only there
+						foreach( Reader::affixes( $called ) as $affix )
+							if( is_string( $component['attributes'][$affix] ?? null ) === true )
+								foreach( Reader::lineFills( $component['attributes'][$affix] ) as $fill )
+									if( $fill[0] === '/' )
+										continue;
+									elseif( $fields === null )
+										$problems[] = 'the fill [['. $fill. ']] in the '. $affix. ' of '. ( $component['name'] ?? '' ). ' means nothing in a column without a loop';
+									elseif( ( $fields[$fill]['type'] ?? '' ) === 'image' )
+										$problems[] = 'the fill [['. $fill. ']] in the '. $affix. ' of '. ( $component['name'] ?? '' ). ' is an image field, which a text cannot print';
+									elseif( in_array( $fill, [ '.id', '.uri', '.slug' ], true ) === false && isset( $fields[$fill] ) === false )
+										$problems[] = 'the fill [['. $fill. ']] in the '. $affix. ' of '. ( $component['name'] ?? '' ). ' is no field of the loop\'s type';
 					}
 
 					foreach( $cells as $component ) {

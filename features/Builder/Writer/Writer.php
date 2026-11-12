@@ -1012,7 +1012,10 @@ namespace Nino\Modules\Builder {
 				// The text of a loop - the schema of a loop says its cell - carries the brackets of its fields as entities, as the call is read up to its first closing bracket
 				$text = $attribute === Reader::STACK_TEXT && array_key_exists( 'cell', $schema ) === true && is_array( $schema['attributes'][Reader::STACK_TEXT] ?? null ) === true;
 
-				$call .= ' '. self::_safe( (string) $attribute, $name, 'attribute name' ). '="'. ( $text === true ? ( Reader::lineText( $value ) === true ? Reader::entityEncode( $value ) : self::_safe( $value, $name, (string) $attribute ) ) : ( in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ? self::_address( $value, $name, (string) $attribute ) : self::_safe( $value, $name, (string) $attribute ) ) ). '"';
+				// The text before and behind the value is a line of free text, as the text of a line is: its fills stay
+				$affix = in_array( (string) $attribute, Reader::affixes( $schema ), true ) === true && Reader::lineText( $value ) === true;
+
+				$call .= ' '. self::_safe( (string) $attribute, $name, 'attribute name' ). '="'. ( $affix === true ? Reader::lineEncode( $value ) : ( $text === true ? ( Reader::lineText( $value ) === true ? Reader::entityEncode( $value ) : self::_safe( $value, $name, (string) $attribute ) ) : ( in_array( (string) $attribute, Reader::addresses( $schema ), true ) === true ? self::_address( $value, $name, (string) $attribute ) : self::_safe( $value, $name, (string) $attribute ) ) ) ). '"';
 			}
 
 			$call .= ']';

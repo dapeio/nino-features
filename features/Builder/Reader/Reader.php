@@ -416,6 +416,10 @@ namespace Nino\Modules\Builder {
 		// the brackets of a fill that is there are not the end of the call - and any other character is itself. See address() for the only fills a call may hold
 		private const string RAW = '(?:\[\[[^\[\]]*+\]\]|[^\]])*+';
 
+		// The attributes of a component that are the text before and the text behind its value, a line of free text as the fixed text of a line is: the kernel's names for them,
+		// which the registry puts on the tab of the content (see affixes())
+		public const array AFFIXES = [ 'prefix', 'suffix' ];
+
 		// The attribute of a loop that is a line of free text with the fields of the element in it, as the fixed text of a component is: the kernel's name for it, the one place
 		// the Builder says it; and the name of a field of the element, which the kernel holds the attributes of the type field to
 		public const string STACK_TEXT = 'text';
@@ -656,6 +660,29 @@ namespace Nino\Modules\Builder {
 				return null;
 
 			return [ 'key' => $match[1], 'postfix' => $match[2] ];
+		}
+
+		/**
+		 *	The attributes of a component that are the text before and the text behind its value: the ones of AFFIXES that its schema declares as a string on the tab of the
+		 *	content, which is how the kernel hands out the three of a formatted component. A component that declares a prefix of its own for another use has none of them
+		 *
+		 *	@param		array			$schema				One entry of the registry
+		 *
+		 *	@return 	array										The names
+		 */
+		public static function affixes( array $schema ): array {
+
+			$names = [];
+
+			foreach( self::AFFIXES as $attribute ) {
+
+				$declared = $schema['attributes'][$attribute] ?? null;
+
+				if( is_array( $declared ) === true && ( $declared['type'] ?? '' ) === 'string' && ( $declared['tab'] ?? '' ) === 'content' )
+					$names[] = $attribute;
+			}
+
+			return $names;
 		}
 
 		/**
@@ -2805,7 +2832,8 @@ namespace Nino\Modules\Builder {
 
 			foreach( $named as $key => $value )
 				if( str_contains( $value, ']' ) === true && ( in_array( (string) $key, self::addresses( $schema ), true ) === false || self::address( $value ) === null )
-					&& ( $key !== 'text' || self::fielded( $schema ) === false || self::lineText( $value ) === false ) )
+					&& ( $key !== 'text' || self::fielded( $schema ) === false || self::lineText( $value ) === false )
+					&& ( in_array( (string) $key, self::affixes( $schema ), true ) === false || self::lineText( $value ) === false ) )
 					throw self::_fail( 'call-arguments', $name. ' '. $raw, $base + $pos );
 
 			$fixed = null;
@@ -2882,6 +2910,24 @@ namespace Nino\Modules\Builder {
 
 				$node['attributes'][self::STACK_TEXT] = $decoded;
 			}
+
+			// The text before and behind the value of a component is a line of free text as well: it carries its quotes, ampersands and brackets as entities, and reads back as the
+			// characters - only as it is written is it read
+			if( $isStack === false )
+				foreach( self::affixes( $schema ) as $key ) {
+
+					$raw = (string) ( $node['attributes'][$key] ?? '' );
+
+					if( $raw === '' )
+						continue;
+
+					$decoded = self::lineDecode( $raw );
+
+					if( self::lineText( $decoded ) === false || self::lineEncode( $decoded ) !== $raw )
+						throw self::_fail( 'call-arguments', $name. ' '. $key. '="'. $raw. '"', $base + $pos );
+
+					$node['attributes'][$key] = $decoded;
+				}
 
 			// A column shows a field, a line of text or a content, one of the three; it has no class, which a cell does not draw
 			if( $column === true && ( $content !== null && trim( $content ) === '' || count( array_filter( [ ( $node['attributes']['field'] ?? '' ) !== '', is_string( $fixed ), $content !== null ] ) ) !== 1 ) )

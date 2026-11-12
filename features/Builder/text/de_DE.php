@@ -348,6 +348,7 @@ return [
 	'[[/_admin/builder/hint/column-value]]'			=> 'Ein Feld des Typs, das die Zelle zeigt, oder ein Freitext, in dem Felder des Elements stehen können.',
 	'[[/_admin/builder/hint/column-text]]'				=> 'Ein Text mit Feldern des Elements in doppelten eckigen Klammern, zum Beispiel %s. Anführungszeichen, Apostroph, & und einzelne eckige Klammern darfst Du schreiben; ein Bildfeld kennt eine Zeile nicht.',
 	'[[/_admin/builder/hint/line-invalid]]'			=> 'Dieser Text enthält einen Zeilenumbruch oder eine doppelte eckige Klammer, die kein Feld ist. So lässt er sich nicht speichern.',
+	'[[/_admin/builder/hint/format-preview]]'		=> 'Die Vorschau zeigt den Wert, wie er gespeichert ist; die Seite schreibt ihn, wie die Formatierung es sagt.',
 	'[[/_admin/builder/hint/column-content]]'	=> 'Das HTML+ der Zelle. Ein Feld des Elements in doppelten eckigen Klammern füllt die Zelle, und Komponenten einer Zelle dürfen darin stehen; ein Loop nicht. Es bleibt, wie Du es tippst.',
 	'[[/_admin/builder/hint/content-invalid]]'	=> 'Dieser Inhalt ist leer oder enthält einen Loop, den eine Zelle nicht halten kann. So lässt er sich nicht speichern.',
 	'[[/_admin/builder/hint/line-unknown]]'			=> 'Kein Feld des Typs, das eine Zeile zeigen kann: %s. So lässt sich der Text nicht speichern.',
