@@ -23,9 +23,9 @@
  *					manual asks: lengths and the ground in :where(:root), and the
  *					colour of the line in :where(*), which declares it on every
  *					element so that a look which gives the list a ground of its own
- *					gets the line of that ground. The bundle lists this file after
- *					the sheet the Design feature writes and :where() has no
- *					specificity, so a look moves a default by saying it on :root. No
+ *					gets the line of that ground. :where() has no
+ *					specificity, so a look moves a default by saying it on :root,
+ *					whichever of the two sheets comes first. No
  *					colour literal, no !important.
  *
  *					The line is a border of the list itself, and the look that has

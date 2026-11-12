@@ -11136,7 +11136,7 @@ check( '...a variant with no colour knob writes no dark block, and an ink is wri
 
 /*	The stylesheet the feature brings along, read one rule at a time: where each custom property its knobs move has its default. A default stands where the
 	line of the knob positions beats it wherever the two are, and :where() has no specificity - so each property stands in the one place of its kind, and in no
-	other: a bare :root would win over that line by order, since the bundle lists the stylesheets of the features after theme.css, and a declaration on the
+	other: a bare :root would win over that line by order wherever the sheet of a feature stands behind theme.css, and a declaration on the
 	feature's own class, or on any element, beats what the root hands down by inheritance. The kinds and the names are the scan's, read off the heads of the
 	two variants, and the dark selectors of a colour are the ones the palette's own dark half stands under, read off Colours::dark()	*/
 $probeRules 	= designRules( designPlain( (string) file_get_contents( $probeDir. '/assets/probe.css' ) ) );
@@ -11188,14 +11188,14 @@ check( 'the stylesheet of the fixture declares each custom property its knobs mo
 check( '...and it is not run over nothing: the fixture has a knob of each of the five kinds, a default for each knob, the text colour of its ground, and the two halves of its colour - the light one and the dark one in each of the two places the palette\'s own dark half has',
 	array_diff( Setup::FEATURE_KINDS, $knobKinds ) === [] && $missingDefaults === [] && $declaredAt( '--probe-submit-on' ) !== [] && count( $darkPlaces ) === 2 && count( $declaredAt( '--probe-flip' ) ) === 3 );
 
-/*	The bundle of a project the wizard has set up, as the installer leaves it - the kernel's own entry, then the theme this sheet is written to and the
-	project's style.css (the installer's own list is a private constant of a class that a project may delete after the setup, so no test can read it) - and then what the boot adds	*/
-$appData['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ Compiler::TARGET, '/assets/style.css' ] ) ];
+/*	The bundle of the website, as the kernel's own entry leaves it - and then what the boot adds	*/
+$kernelSheets = (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] );
+$appData['/nino/html/assets'] = [ '/.cache/style.css' => $kernelSheets ];
 \Nino\Features::registerAssets( $appData );
 $bundle = $appData['/nino/html/assets']['/.cache/style.css'];
 
-check( 'in a booted project the bundle lists the stylesheet of a feature after the theme.css this sheet is written to - the order the :where() of its defaults is for',
-	in_array( '/features/Probe/assets/probe.css', $bundle, true ) === true && array_search( '/features/Probe/assets/probe.css', $bundle, true ) > array_search( Compiler::TARGET, $bundle, true )
+check( 'in a booted project the bundle of the website lists the stylesheet of a feature once, behind the kernel\'s own sheets',
+	$kernelSheets !== [] && array_keys( $bundle, '/features/Probe/assets/probe.css', true ) === [ count( $kernelSheets ) ] && array_slice( $bundle, 0, count( $kernelSheets ) ) === $kernelSheets
 	&& \Nino\Features::get( $appData, 'probe' )['assets'] === [ '/features/Probe/assets/probe.css' ] );
 unset( $appData['/nino/html/assets'], $appData['./nino/features/listed'] );
 
@@ -11431,8 +11431,8 @@ check( 'design/preview names a block in the language of the workbench, though th
 unlink( $blockFile( 'Pair' ) );
 $featuresOn( [ 'Design', 'Probe' ] );
 
-// The preview links the stylesheets of the active features after the compiled sheet, as a bundle of its own (Admin::document()): the paths below /features/ of the list of stylesheets
-// the site is built from, in its order, each once - the order of the site, so that what such a sheet sets by default gives way to what the compiled sheet moves
+// The preview links the stylesheets of the active features before the compiled sheet, as a bundle of its own (Admin::document()): the paths below /features/ of the list of stylesheets
+// the site is built from, in its order, each once - the order of the bundle of the site, the framework, the features, then the theme the compiled sheet stands for
 $siteWith = static function( array $sheets ) use ( &$appData ): void {
 	$appData['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ Compiler::TARGET, '/assets/style.css' ], $sheets ) ];
 };
@@ -11456,11 +11456,11 @@ $bundleOn 	= $bundleOf();
 
 preg_match( '#<link[^>]*href="[^"]*design-preview-features\.css(?:\?v=([a-f0-9]+))?"[^>]*>#', $pageOn, $linkOn, PREG_OFFSET_CAPTURE );
 
-$orderOn = [ strpos( $pageOn, 'design-preview.css' ), strpos( $pageOn, 'id="'. Admin::PREVIEW_STYLE. '"' ), $linkOn[0][1] ?? false, strpos( $pageOn, '</head>' ) ];
+$orderOn = [ strpos( $pageOn, 'design-preview.css' ), $linkOn[0][1] ?? false, strpos( $pageOn, 'id="'. Admin::PREVIEW_STYLE. '"' ), strpos( $pageOn, '</head>' ) ];
 $sortedOn = $orderOn;
 sort( $sortedOn );
 
-check( 'with a feature active that brings a stylesheet the preview links it after the compiled sheet, as a bundle of its own: the framework, the sheet inline and then the stylesheets of the features, in that order and all in the head - the order of the site, which lets what a feature sets by default give way to what the compiled sheet moves',
+check( 'with a feature active that brings a stylesheet the preview links it before the compiled sheet, as a bundle of its own: the framework, the stylesheets of the features and then the sheet inline, in that order and all in the head - the order of the bundle of the site',
 	in_array( false, $orderOn, true ) === false && $orderOn === $sortedOn && count( array_unique( $orderOn ) ) === 4
 	&& substr_count( $pageOn, 'design-preview-features' ) === 1 && Admin::FEATURES_CSS === '/_admin/.cache/design-preview-features.css' );
 check( '...the bundle is written and carries the stylesheet of the feature as its file has it, and its sources are the paths the manifests of the active features name and nothing else of the list the site is built from: not the kernel\'s entry, not the theme the compiled sheet stands for, not the project\'s own style.css',

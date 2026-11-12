@@ -796,14 +796,15 @@ else {
 
 	check( 'the place chosen puts the file of the option under its own line behind the css of the look, whichever it is, and writes no shared rules'. ( $styleProblems === [] ? '' : ' - '. implode( ', ', $styleProblems ) ), $styleProblems === [] && count( $catalogue ) === 3 && $option !== '' );
 
-	// The bundle of a project the wizard has set up lists the sheet of the feature after the theme the Design feature writes
+	// The bundle of the website lists the sheet of the feature once, behind the kernel's own
 	$bundled = $appData;
-	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ $designCompiler::TARGET, '/assets/style.css' ] ) ];
+	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ) ];
 	\Nino\Features::registerAssets( $bundled );
 	$bundle = $bundled['/nino/html/assets']['/.cache/style.css'];
+	$kernelSheets = (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] );
 
-	check( 'in a booted project the bundle lists toc.css after the theme.css the Design feature writes its sheet to - the order the :where() of its defaults is for',
-		in_array( '/features/Toc/assets/toc.css', $bundle, true ) === true && array_search( '/features/Toc/assets/toc.css', $bundle, true ) > array_search( $designCompiler::TARGET, $bundle, true ) );
+	check( 'in a booted project the bundle of the website lists toc.css once, behind the kernel\'s own sheets',
+		$kernelSheets !== [] && array_keys( $bundle, '/features/Toc/assets/toc.css', true ) === [ count( $kernelSheets ) ] && array_slice( $bundle, 0, count( $kernelSheets ) ) === $kernelSheets );
 
 	$appData['/nino/modules']					= $modulesKept;
 	$appData['./nino/locales/current']	= $localeKept;

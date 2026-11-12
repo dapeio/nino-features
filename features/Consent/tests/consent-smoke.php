@@ -732,8 +732,8 @@ check( 'Box and Dialog replace the layout on the banner\'s class - where it stan
 	&& ( consentDeclarations( array_values( array_filter( $looks['dialog']['rules'], static fn( array $rule ): bool => $rule['selector'] === '.nino-consent' ) )[0]['body'] ?? '' )['box-shadow'] ?? '' ) !== ''
 	&& str_contains( (string) ( consentDeclarations( array_values( array_filter( $looks['dialog']['rules'], static fn( array $rule ): bool => $rule['selector'] === '.nino-consent' ) )[0]['body'] ?? '' )['box-shadow'] ?? '' ), 'var(--color-background-dim)' ) === true );
 
-/*	A look beats consent.css by being in :where() there, not by coming after it: the bundle lists consent.css behind the sheet of the Design
-	feature, so a property that a look and a plain rule of consent.css both declare on the same selector is the plain rule's	*/
+/*	A look beats consent.css by being in :where() there, not by the place of its sheet: a property that a look and a plain rule of consent.css both
+	declare on the same selector would be decided by the order of the two sheets, so there is none	*/
 $overlaps = [];
 $baseDeclared = [];
 
@@ -748,7 +748,7 @@ foreach( $looks as $variant => $look )
 			if( isset( $baseDeclared[ $rule['selector'] ][$property] ) === true )
 				$overlaps[] = $variant. ' '. $rule['selector']. ' '. $property;
 
-check( 'no look declares a property on a selector that consent.css declares it on in a plain rule, which would win over the look whatever the look says'. ( $overlaps === [] ? '' : ' - '. implode( ', ', $overlaps ) ),
+check( 'no look declares a property on a selector that consent.css declares it on in a plain rule, which the order of the two sheets would decide'. ( $overlaps === [] ? '' : ' - '. implode( ', ', $overlaps ) ),
 	$overlaps === [] && isset( $baseDeclared['.nino-consent']['position'] ) === true && count( $looks ) === 3 );
 
 // The look that holds the page: --consent-modal is the one property consent.js reads, 0 in consent.css and 1 in Dialog alone
@@ -949,14 +949,15 @@ else {
 		$selects( $moved, 'space', 'least' ) && $selects( $moved, 'corners', 'most' ) && $selects( $moved, 'shadow', 'more' )
 		&& str_contains( $moved, "\n\t--consent-ground: var(". \Nino\Modules\Design\Colours::token( 'dark', 'bg' ). ");\n" ) === true && str_contains( $moved, "\n\t--consent-ground-on: var(". \Nino\Modules\Design\Colours::token( 'dark', 'on' ). ");\n" ) === true );
 
-	// The bundle of a project the wizard has set up lists the sheet of the feature after the theme the Design feature writes
+	// The bundle of the website lists the sheet of the feature once, behind the kernel's own
 	$bundled = $appData;
-	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ $designCompiler::TARGET, '/assets/style.css' ] ) ];
+	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ) ];
 	\Nino\Features::registerAssets( $bundled );
 	$bundle = $bundled['/nino/html/assets']['/.cache/style.css'];
+	$kernelSheets = (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] );
 
-	check( 'in a booted project the bundle lists consent.css after the theme.css the Design feature writes its sheet to - the order the :where() of its defaults and of its layout is for',
-		in_array( '/features/Consent/assets/consent.css', $bundle, true ) === true && array_search( '/features/Consent/assets/consent.css', $bundle, true ) > array_search( $designCompiler::TARGET, $bundle, true ) );
+	check( 'in a booted project the bundle of the website lists consent.css once, behind the kernel\'s own sheets',
+		$kernelSheets !== [] && array_keys( $bundle, '/features/Consent/assets/consent.css', true ) === [ count( $kernelSheets ) ] && array_slice( $bundle, 0, count( $kernelSheets ) ) === $kernelSheets );
 
 	$appData['/nino/modules']					= $modulesKept;
 	$appData['./nino/locales/current']	= $localeKept;

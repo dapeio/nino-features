@@ -1132,14 +1132,15 @@ else {
 	check( 'a style chosen puts the file of the option into the section of the look, whichever it is, under its own line and behind the look - the same for Row, Grid, Band and Cards - and writes nothing of what the options share, for they share nothing'. ( $styleProblems === [] ? '' : ' - '. implode( ', ', $styleProblems ) ),
 		$styleProblems === [] && count( $catalogue ) === 4 );
 
-	// The bundle of a project the wizard has set up lists the sheet of the feature after the theme the Design feature writes
+	// The bundle of the website lists the sheet of the feature once, behind the kernel's own
 	$bundled = $appData;
-	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ $designCompiler::TARGET, '/assets/style.css' ] ) ];
+	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ) ];
 	\Nino\Features::registerAssets( $bundled );
 	$bundle = $bundled['/nino/html/assets']['/.cache/style.css'];
+	$kernelSheets = (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] );
 
-	check( 'in a booted project the bundle lists logos.css after the theme.css the Design feature writes its sheet to - the order the :where() of its defaults is for',
-		in_array( '/features/Logos/assets/logos.css', $bundle, true ) === true && array_search( '/features/Logos/assets/logos.css', $bundle, true ) > array_search( $designCompiler::TARGET, $bundle, true ) );
+	check( 'in a booted project the bundle of the website lists logos.css once, behind the kernel\'s own sheets',
+		$kernelSheets !== [] && array_keys( $bundle, '/features/Logos/assets/logos.css', true ) === [ count( $kernelSheets ) ] && array_slice( $bundle, 0, count( $kernelSheets ) ) === $kernelSheets );
 
 	$appData['/nino/modules']					= $modulesKept;
 	$appData['./nino/locales/current']	= $localeKept;

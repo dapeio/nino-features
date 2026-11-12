@@ -1212,8 +1212,8 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The whole page the frame shows: the framework, the compiled sheet, the
-		 *	stylesheets of the active features, the specimen with its frames, and
+		 *	The whole page the frame shows: the framework, the stylesheets of the
+		 *	active features, the compiled sheet, the specimen with its frames, and
 		 *	the behaviour a header set is half made of - the site as a visitor sees
 		 *	it, in the language a visitor of this browser is served
 		 *	(\Nino\Locales::getVisitorLocale()), which is not the language the
@@ -1223,11 +1223,10 @@ namespace Nino\Modules\Design {
 		 *	is written or reachable; the framework, the same for every design, is
 		 *	linked from its two bundles (see _bundle() for why it is not inlined).
 		 *
-		 *	The stylesheets of the features follow the compiled sheet, linked from
-		 *	a third bundle, FEATURES_CSS: the order of the site, Nino.css, then
-		 *	theme.css - which the compiled sheet stands for - and then the features'
-		 *	sheets, so that the :where() defaults of a feature's stylesheet lose to
-		 *	the :root the compiled sheet writes, as they do on the site. Which sheets
+		 *	The stylesheets of the features stand between the framework and the
+		 *	compiled sheet, linked from a third bundle, FEATURES_CSS: the order of
+		 *	the bundle of the site, Nino.css, then what the features add, then
+		 *	theme.css - which the compiled sheet stands for. Which sheets
 		 *	they are is the site's own bundle list, '/.cache/style.css', that the
 		 *	manifests fill at every boot (\Nino\Features::registerAssets()): its
 		 *	paths below /features/, in its order - the theme and the project's own
@@ -1247,7 +1246,7 @@ namespace Nino\Modules\Design {
 
 			$style = str_replace( [ '[[id]]', '[[css]]' ], [ self::PREVIEW_STYLE, $css ], self::$_html['style'] );
 			$main	= str_replace( '[[body]]', self::_specimen( $appData, $library, $setup, $notes ), self::$_html['main'] );
-			$head	= self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] ). "\n". $style;
+			$head	= self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] );
 			$sheets = array_values( array_filter(
 				array_map( 'strval', \Nino\Html::getAssets( $appData, '/.cache/style.css' ) ),
 				static fn( string $path ): bool => str_starts_with( $path, '/features/' ) === true
@@ -1255,6 +1254,8 @@ namespace Nino\Modules\Design {
 
 			if( $sheets !== [] )
 				$head .= "\n". self::_bundle( $appData, self::FEATURES_CSS, $sheets );
+
+			$head .= "\n". $style;
 
 			return Preview::document(
 				$appData,

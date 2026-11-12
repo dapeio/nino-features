@@ -24,9 +24,8 @@
  *					the ground stand in :where(:root), the tone of the icon in
  *					:where(*) so that it is the tone of the ground an element stands
  *					on, as the Design feature's manual asks. :where() has no
- *					specificity and the bundle lists this file after the sheet the
- *					Design feature writes, so a look moves a default by saying it on
- *					:root. No colour literal, and no !important.
+ *					specificity, so a look moves a default by saying it on :root,
+ *					whichever of the two sheets comes first. No colour literal, and no !important.
  *
  *					The size of a call - [social size="small"] - is the class
  *					nino-social--small and a factor of the size of the site, not a

@@ -28,9 +28,9 @@
  *								draws none.
  */
 
-/*	The defaults of the properties the looks move, in :where(): the bundle lists this
-	file after theme.css, and a default in a bare :root would win over the line that
-	moves a knob by order. The ground and its parts are the page's own roles, so that
+/*	The defaults of the properties the looks move, in :where(): a default in a bare
+	:root would win over the line that moves a knob by order wherever this file
+	stands behind theme.css. The ground and its parts are the page's own roles, so that
 	the banner is as it was without Design; the shadow is the page's text colour,
 	thinned. --consent-modal is no style: a look that sets it to 1 is read by consent.js,
 	which then holds the page while the banner is shown (inert, the focus, the Tab key)	*/

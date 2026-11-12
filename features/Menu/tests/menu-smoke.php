@@ -563,12 +563,13 @@ else {
 		&& str_contains( $moved, "\n\t--menu-ground: var(". \Nino\Modules\Design\Colours::token( 'dark', 'bg' ). ");\n" ) === true && str_contains( $moved, "\n\t--menu-ground-on: var(". \Nino\Modules\Design\Colours::token( 'dark', 'on' ). ");\n" ) === true );
 
 	$bundled = $appData;
-	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => array_merge( (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ), [ $designCompiler::TARGET, '/assets/style.css' ] ) ];
+	$bundled['/nino/html/assets'] = [ '/.cache/style.css' => (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] ) ];
 	\Nino\Features::registerAssets( $bundled );
 	$bundle = $bundled['/nino/html/assets']['/.cache/style.css'];
+	$kernelSheets = (array) ( \Nino\AppData::DEFAULTS['/nino/html/assets']['/.cache/style.css'] ?? [] );
 
-	check( 'in a booted project the bundle lists menu.css after the theme.css the Design feature writes its sheet to - the order the :where() of its defaults is for',
-		in_array( '/features/Menu/assets/menu.css', $bundle, true ) === true && array_search( '/features/Menu/assets/menu.css', $bundle, true ) > array_search( $designCompiler::TARGET, $bundle, true ) );
+	check( 'in a booted project the bundle of the website lists menu.css once, behind the kernel\'s own sheets',
+		$kernelSheets !== [] && array_keys( $bundle, '/features/Menu/assets/menu.css', true ) === [ count( $kernelSheets ) ] && array_slice( $bundle, 0, count( $kernelSheets ) ) === $kernelSheets );
 
 	$appData['/nino/modules'] = $modulesKept;
 	$appData['./nino/locales/current'] = $localeKept;

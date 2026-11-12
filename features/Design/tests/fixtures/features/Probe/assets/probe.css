@@ -3,14 +3,13 @@
  *	probe.css			What [probe] needs on the site itself: the element and the
  *						defaults of the properties its variants move (design/). Bundled
  *						into the project's own /.cache/style.css by the manifest key
- *						`assets` of feature.php, after theme.css - never rendered
+ *						`assets` of feature.php - never rendered
  *						through the fill/shortcode engine, so nothing in here is a
  *						textfill.
  */
 
-/*	The defaults of the knob properties stand in :where(), which has no specificity: the
-	bundle lists this file after theme.css, and a default in a bare :root would win over the
-	line that moves the knob by order. The head of each variant names the same choice, so
+/*	The defaults of the knob properties stand in :where(), which has no specificity: a
+	default in a bare :root would win over the line that moves the knob by order. The head of each variant names the same choice, so
 	that the panel shows it chosen and the compile at the defaults changes nothing. A ground
 	and a colour in :where(:root), the dark half of the colour in the media query of its own
 	and under the attribute of the mode switch, as the palette's dark half has them	*/

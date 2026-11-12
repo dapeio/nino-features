@@ -27,11 +27,10 @@
  *					declares them with the row as it was drawn until now as their
  *					default, so that a row looks as it always did until one of them is
  *					moved. They stand in :where(:root), as the Design feature's manual
- *					asks of lengths and of a ground. The bundle lists this file after
- *					the sheet the Design feature writes and :where() has no
- *					specificity, so a look moves a default by saying it on :root. A
- *					rule of a look names the row too, for a specificity of its own
- *					that wins whichever file comes first. No colour literal, no
+ *					asks of lengths and of a ground. :where() has no
+ *					specificity, so a look moves a default by saying it on :root, and
+ *					a rule of a look names the row too, for a specificity of its own.
+ *					Either wins whichever file comes first. No colour literal, no
  *					!important.
  *
  *					The class names are this feature's own. Nino.css, which sits in the

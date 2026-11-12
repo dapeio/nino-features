@@ -25,10 +25,9 @@
  *						with the grid as it was drawn until now as their default, so
  *						that a gallery looks as it always did until one of them is
  *						moved. They stand in :where(:root), as the Design feature's
- *						manual asks of lengths and of a ground. The
- *						bundle lists this file after the sheet the Design feature
- *						writes and :where() has no specificity, so a look moves a
- *						default by saying it on :root. No colour literal, no
+ *						manual asks of lengths and of a ground. :where()
+ *						has no specificity, so a look moves a default by saying it
+ *						on :root, whichever of the two sheets comes first. No colour literal, no
  *						!important.
  *
  *						The hover of a picture is the kernel's: the frame round each

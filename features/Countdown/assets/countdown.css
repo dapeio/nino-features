@@ -22,10 +22,9 @@
  *						declares it on every element so that a look which gives it
  *						a tone of the page gets the one of the ground it is read on.
  *						Until a look does, the digits are the colour of the text
- *						around the counter, whatever that is. :where() has no specificity
- *						and the bundle lists this file after the theme the Design
- *						feature writes, so a look moves a default by saying it on
- *						:root. No colour literal, and no !important.
+ *						around the counter, whatever that is. :where() has no specificity,
+ *						so a look moves a default by saying it on :root, whichever
+ *						of the two sheets comes first. No colour literal, and no !important.
  */
 
 :where(:root) {
