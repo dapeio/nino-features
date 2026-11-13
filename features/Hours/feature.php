@@ -14,7 +14,7 @@ return [
 				'en_US' => 'Draws the week of the one location there is, or of every location one below the other with its name, then the closures of the next 60 days and the note.',
 				'de_DE' => 'Zeichnet die Woche des einen Standorts oder aller Standorte untereinander mit Namen, danach die Abweichungen der nächsten 60 Tage und den Hinweis.',
 			],
-			'[hours /locations/main ahead="30" name="0" address="0" closures="0"]' => [
+			'[hours /locations/main ahead="30" name="0" address="1" closures="0"]' => [
 				'en_US' => 'Names the location, the days ahead for the closures, and whether the name, the address and the closures are drawn; the Builder offers it as a block.',
 				'de_DE' => 'Benennt den Standort, die Tage voraus für die Abweichungen und ob Name, Adresse und Abweichungen gezeichnet werden; der Builder bietet es als Block an.',
 			],
@@ -150,7 +150,7 @@ return [
 				],
 				'address' => [
 					'type'		=> 'bool',
-					'default'	=> true,
+					'default'	=> false,
 					'label'		=> [ 'en_US' => 'Address', 'de_DE' => 'Adresse' ],
 					'hint'		=> [
 						'en_US' => 'Whether the address of the location is drawn under its name.',

@@ -652,9 +652,9 @@ check( 'the row of today and the line for today say the same on a day of a closu
 	return $line === [ 'true', 'ALL', 0 ];
 } )() );
 
-$block = $tree( \Nino\Html::renderHtml( $appData, '[hours /locations/a]' ) );
-$without = $tree( \Nino\Html::renderHtml( $appData, '[hours /locations/a address="0"]' ) );
-check( 'the address stands under the name in the caption as an address element, its lines broken and its text escaped, and address="0" takes it away', $block->query( '//caption/address' )->length === 1
+$block = $tree( \Nino\Html::renderHtml( $appData, '[hours /locations/a address="1"]' ) );
+$without = $tree( \Nino\Html::renderHtml( $appData, '[hours /locations/a]' ) );
+check( 'the address stands under the name in the caption as an address element, its lines broken and its text escaped, where the call asks for it with address="1", and a call that does not ask draws none', $block->query( '//caption/address' )->length === 1
 	&& $block->query( '//caption/address/br' )->length === 1 && str_contains( $block->query( '//caption/address' )->item( 0 )->textContent, '<b>12345</b> Town' ) && $block->query( '//caption/address//b' )->length === 0
 	&& $without->query( '//address' )->length === 0 && $text( $without->query( '//caption/span[1]' )->item( 0 ) ) === 'A' );
 check( 'the line for today has no address', $tree( \Nino\Html::renderHtml( $appData, '[hours-today /locations/a name="1"]' ) )->query( '//address' )->length === 0 );
@@ -662,7 +662,7 @@ check( 'the name of the line for today is set off from the word Today by a space
 	&& preg_match( '/ $/m', (string) file_get_contents( $dir. '/templates/hours-line-name.tpl' ) ) === 0 );
 check( 'a location that has no hours but an address draws the address with its name', ( static function() use ( &$appData, $tree ): bool {
 	\Nino\Elements::insertElement( $appData, '/locations/appointment', [ 'name' => 'By appointment', 'address' => 'Somewhere 1' ], 'de_DE' );
-	$page = $tree( \Nino\Html::renderHtml( $appData, '[hours /locations/appointment]' ) );
+	$page = $tree( \Nino\Html::renderHtml( $appData, '[hours /locations/appointment address="1"]' ) );
 	\Nino\Elements::deleteElement( $appData, '/locations/appointment' );
 	return $page->query( '//table' )->length === 0 && $page->query( '//address' )->length === 1 && $page->query( '//strong' )->length === 1;
 } )() );
@@ -834,7 +834,7 @@ $evil = '<img src=x onerror=alert(1)> & "quoted" \'single\' [[/project/company/g
 $store( [ 'evil' => [ 'name' => $evil, 'address' => "<b>Street</b>\n\"1\" [[x]]", 'note' => "<i>note</i> [hours-today]\nline two", 'mon' => '9-12' ] ], [ 'bad' => [ 'from' => '2026-12-24', 'reason' => $evil ] ] );
 unset( $appData['./hours/data'] );
 $hold( '2026-12-20T10:00:00+01:00' );
-$html = \Nino\Html::renderHtml( $appData, '[hours /locations/evil]' );
+$html = \Nino\Html::renderHtml( $appData, '[hours /locations/evil address="1"]' );
 $page = $tree( $html );
 check( 'the name of a location is text in the caption: its tags, quotes and brackets are what it says', $page->query( '//caption/span[1]' )->item( 0 )->textContent === $evil && $page->query( '//img' )->length === 0 );
 check( 'the reason, the note and the address are text as well', $page->query( '//*[contains(@class,"nino-hours-reason")]' )->item( 0 )->textContent === $evil
