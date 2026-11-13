@@ -1,0 +1,1 @@
+<p class="nino-hours-line[[classes]]" data-closed="[[closed]]">[[name]] <span class="nino-hours-label">[[/feature/hours/word/today]]</span> <span class="nino-hours-times">[[times]]</span>[[reason]]</p>

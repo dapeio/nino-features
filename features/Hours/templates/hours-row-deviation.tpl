@@ -1,0 +1,1 @@
+<tr class="nino-hours-row nino-hours-row--today nino-hours-row--deviation" aria-current="date" data-today="true" data-deviation="true"><th scope="row">[[days]] <span class="nino-hours-mark">[[/feature/hours/word/today]]</span></th><td><span class="nino-hours-times">[[times]]</span>[[reason]] <span class="nino-hours-flag">[[/feature/hours/word/deviation]]</span></td></tr>

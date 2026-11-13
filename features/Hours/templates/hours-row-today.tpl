@@ -1,0 +1,1 @@
+<tr class="nino-hours-row nino-hours-row--today" aria-current="date" data-today="true"><th scope="row">[[days]] <span class="nino-hours-mark">[[/feature/hours/word/today]]</span></th><td>[[times]]</td></tr>

@@ -1,0 +1,136 @@
+/**
+ *	Nino - Opening hours
+ *	hours.css		The layout of the week, the closures and the line for today, and
+ *						nothing that paints a ground: the text takes the colour of what
+ *						it stands in, so that the hours read on a light, a dark and a
+ *						brand ground alike. Bundled into the site's style sheet by the
+ *						manifest's assets (docs/features.md, "Assets"), never rendered
+ *						through the fill engine, so nothing in here is a textfill.
+ *
+ *						The defaults stand in :where(:root), which has no specificity: a
+ *						project or a look moves one by saying it on :root, whichever of
+ *						the sheets comes first. No colour literal, and no !important.
+ */
+
+:where(:root) {
+	/*	The widest a block of hours grows - a table that fills a wide column leaves the hours far from their days -
+		and the width of the column of days	*/
+	--hours-width: 36rem;
+	--hours-days: 8rem;
+
+	/*	The space between the week, the closures and the note, and between two rows	*/
+	--hours-gap: var(--space-3);
+	--hours-row-gap: var(--space-1);
+
+	/*	The rule between two rows, and the mark of the row that holds today	*/
+	--hours-line: var(--color-border);
+	--hours-mark: var(--color-accent);
+}
+
+.nino-hours {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--hours-gap);
+	overflow-wrap: anywhere;
+	max-width: var(--hours-width);
+	margin-block: var(--space-3);
+}
+
+.nino-hours > * {
+	margin: 0;
+}
+
+.nino-hours-table {
+	width: 100%;
+	table-layout: fixed;
+	border-collapse: collapse;
+}
+
+.nino-hours-name {
+	font-weight: 700;
+}
+
+.nino-hours-address {
+	font-style: normal;
+	font-weight: 400;
+}
+
+caption.nino-hours-name {
+	caption-side: top;
+	padding-block-end: var(--space-2);
+	text-align: start;
+}
+
+.nino-hours-table :is(th, td) {
+	padding: var(--hours-row-gap) var(--space-2) var(--hours-row-gap) 0;
+	border-block-end: 1px solid var(--hours-line);
+	text-align: start;
+	vertical-align: top;
+}
+
+.nino-hours-table th {
+	width: var(--hours-days);
+	font-weight: 400;
+}
+
+/*	Today is marked by a bar, by weight and by the word, the bar being the least of the three	*/
+.nino-hours-row--today :is(th, td) {
+	font-weight: 700;
+}
+
+.nino-hours-row--today th {
+	box-shadow: inset 3px 0 0 var(--hours-mark);
+	padding-inline-start: var(--space-2);
+}
+
+.nino-hours-flag {
+	font-size: 0.85em;
+	font-style: italic;
+}
+
+.nino-hours-mark {
+	margin-inline-start: var(--space-1);
+	font-size: 0.85em;
+}
+
+.nino-hours-range {
+	white-space: nowrap;
+}
+
+.nino-hours-closures {
+	display: grid;
+	gap: var(--space-2);
+	margin: 0;
+}
+
+.nino-hours-closure > dt {
+	font-weight: 700;
+}
+
+.nino-hours-closure > dd {
+	margin: 0;
+}
+
+.nino-hours-reason::before {
+	content: ' · ';
+}
+
+.nino-hours-note {
+	font-style: italic;
+}
+
+.nino-hours-line {
+	overflow-wrap: anywhere;
+}
+
+.nino-hours-line .nino-hours-name {
+	margin-inline-end: var(--space-2);
+}
+
+.nino-hours-line .nino-hours-label {
+	font-weight: 700;
+}
+
+.nino-hours-line .nino-hours-label::after {
+	content: ':';
+}
