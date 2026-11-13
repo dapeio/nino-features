@@ -322,6 +322,19 @@ namespace Nino\Modules\Design {
 					and the value of every knob of it, none where it chose nothing. A choice kept for a feature that is
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
+				/*	What the tablet (m) and mobile (s) do differently - control => position, an empty list where a tier sets nothing, which is
+					Automatic - and what the screen needs to say what Automatic is: the controls of a tier with the knobs they move, the
+					positions each can stand at, and the tables of the root size, of the gutter of a row, of the gap and of the width of the page	*/
+				'tiers' 	=> $setup['tiers'],
+				'tierSpec' => [
+					'tiers' 		=> Setup::TIERS,
+					'controls' 	=> Setup::TIER_CONTROLS,
+					'positions' => array_combine( array_keys( Setup::TIER_CONTROLS ), array_map( [ Setup::class, 'tierPositions' ], array_keys( Setup::TIER_CONTROLS ) ) ),
+					'sizes' 		=> Setup::SIZES,
+					'margins' 	=> Setup::TIER_MARGINS,
+					'gaps' 			=> Setup::TIER_GAPS,
+					'widths' 		=> Setup::WIDTHS,
+				],
 				// Where the panel puts what it sets: the six aspects, the twelve objects - and one more for each feature that
 				// brings variants - and the table that says, for every control of the setup, its aspect, its object and its place
 				// in the row, the rows of the features among them - the screen draws an object from it and from nothing else
@@ -1300,7 +1313,7 @@ namespace Nino\Modules\Design {
 				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 
-			foreach( [ 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'fonts', 'colours' ] as $key )
+			foreach( [ 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours' ] as $key )
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );

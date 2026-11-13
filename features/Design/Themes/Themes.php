@@ -389,6 +389,10 @@ namespace Nino\Modules\Design {
 				if( in_array( $key, [ 'format', 'theme', 'css', 'compiled' ], true ) === false && array_key_exists( $key, $setup ) === true )
 					$cut[$key] = $setup[$key];
 
+			// What the tablet and Mobile do differently is in a theme where it is set: a theme that sets none is the file it was, and an export of it is too
+			if( array_filter( (array) ( $cut['tiers'] ?? [] ) ) === [] )
+				unset( $cut['tiers'] );
+
 			return $cut;
 		}
 

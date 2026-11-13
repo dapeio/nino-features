@@ -103,6 +103,9 @@ namespace Nino\Modules {
 		 *	it by the bytes it has now, and the rules the styles share (see Setup::featureShared()) join the files of the parts, so that a
 		 *	project that chose no style for its features hashes as it did.
 		 *
+		 *	What the tablet and the phone do differently is part of the setup like any other, and a setup where both stand at Automatic
+		 *	leaves it out of the input: a project that set nothing for them hashes as it did.
+		 *
 		 *	The styles chosen for the templates are part of the setup like any other, and an empty choice is left out of the
 		 *	input as that of the features is: a project that chose no style hashes as it did. The file of each option chosen
 		 *	joins the files of the parts, by the bytes it has now, or by none where it is gone.
@@ -169,6 +172,9 @@ namespace Nino\Modules {
 
 			if( array_filter( (array) ( $setup['styles'] ?? [] ) ) === [] )
 				unset( $setup['styles'] );
+
+			if( array_filter( (array) ( $setup['tiers'] ?? [] ) ) === [] )
+				unset( $setup['tiers'] );
 
 			$input = [ $setup, $files ];
 

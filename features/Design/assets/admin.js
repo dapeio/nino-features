@@ -49,6 +49,13 @@
  *													a part are, a ground and an ink as a select of the surfaces and of the tones of the
  *													palette, a colour as two inputs, a light half and a dark half. The choices are part of
  *													the setup, and of a theme of the project.
+ *													After the objects, apart from them, stand two tabs that are no object: Tablet and Mobile, what the two widths
+ *													do differently from the desktop, whose settings the objects have (Setup::TIER_CONTROLS). Each opens one card of
+ *													strips, one for each control - the root size, the size of the titles and of the subtitles, the air of the
+ *													sections, the side margin, the room in cards and tiles, the gap between columns, the header and the size of
+ *													a button - with Automatic first, which is the value the desktop's settings give that width and is said under the
+ *													name of the control, then the positions; a position is part of the working copy, the preview and the theme, and
+ *													opening a tab switches the preview to the width of its tier.
  *													Typefaces, the loader, has no preview and no bar and keeps nothing in the setup - the
  *													families the project has installed, and the signed list of those it can install, which
  *													is read when its button is pressed: an install or a removal happens when it is pressed,
@@ -423,6 +430,17 @@
 			'accordion/line' : 'minus',
 			'accordion/marker' : 'list',
 			'accordion/marker-ink' : 'palette',
+			'tier/size' : 'a-large-small',
+			'tier/title' : 'a-large-small',
+			'tier/subtitle' : 'a-large-small',
+			'tier/areas' : 'move-vertical',
+			'tier/margin' : 'move-horizontal',
+			'tier/inset' : 'align-vertical-space-around',
+			'tier/gap' : 'unfold-horizontal',
+			'tier/header' : 'scaling',
+			'tier/button' : 'a-large-small',
+			'tier/m' : 'tablet',
+			'tier/s' : 'smartphone',
 			'colours/primary' : 'palette',
 			'colours/harmony' : 'palette',
 			'colours/temperature' : 'thermometer',
@@ -442,8 +460,9 @@
 			{ key : 'desktop', px : 1280, icon : 'monitor' },
 		],
 
-		// Which of them is on screen, and the debounce behind every select
+		// Which of them is on screen, the function that lights its button (_renderViewports()), and the debounce behind every select
 		_width	: 1280,
+		_paintWidth	: null,
 		_timer	: null,
 		// The number of the last preview asked for: an answer that is not to that one is the answer to a selection nobody has on screen any more
 		_previewSeq	: 0,
@@ -576,7 +595,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, navs, knobs, styles, features, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, navs, knobs, styles, features, tiers, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -599,6 +618,7 @@
 				knobs 	: knobs,
 				styles 	: Nino.admin.design._stylesOf( data.styles, Object.keys( parts ) ),
 				features : Nino.admin.design._entriesOf( data.features, 'picked' ),
+				tiers 	: Nino.admin.design._tiersOf( data.tiers ),
 				size 		: data.size,
 				width 	: data.width,
 				whitespace : data.whitespace,
@@ -914,7 +934,7 @@
 		 *	@param		{string}		key					'<part>/<knob>', for the icon (see KNOB_ICONS)
 		 *	@param		{string}		name
 		 *	@param		{string}		note				The line under the name
-		 *	@param		{Array}			options			{ value, label, title }, from the least to the most
+		 *	@param		{Array}			options			{ value, label, title, className }, from the least to the most
 		 *	@param		{*}					active			The value of the option that is lit; a value no option
 		 *																	has lights none
 		 *	@param		{Function}	onChange		Called with the value of the option that was pressed
@@ -947,7 +967,7 @@
 			options.forEach( function( option, index ) {
 				const button = dc.createElement('button');
 				button.type = 'button';
-				button.className = 'nino-admin-tab';
+				button.className = 'nino-admin-tab'+ ( typeof option.className === 'string' ? ' '+ option.className : '' );
 				button.dataset.value = String( option.value );
 				button.textContent = option.label;
 				button.title = option.title || option.label;
@@ -1238,7 +1258,7 @@
 		 *	@param		{string}		name				What the strip is called by assistive technology
 		 *	@param		{string}		className		The class the strip has beside the workbench's own
 		 *	@param		{string}		attribute		The data attribute a tab carries its key in: 'tab' for data-tab
-		 *	@param		{Array}			tabs				{ key, label }, in the order they stand in
+		 *	@param		{Array}			tabs				{ key, label, className }, in the order they stand in; the class is for a tab that stands apart
 		 *	@param		{string}		active			The key of the tab that is selected
 		 *	@param		{Function}	onSwitch		Called with the key of the tab that was pressed
 		 *
@@ -1259,7 +1279,7 @@
 			tabs.forEach( function( tab ) {
 				const button = dc.createElement('button');
 				button.type = 'button';
-				button.className = 'nino-admin-tab';
+				button.className = 'nino-admin-tab'+ ( typeof tab.className === 'string' ? ' '+ tab.className : '' );
 				button.setAttribute( 'role', 'tab' );
 				button.dataset[attribute] = tab.key;
 				button.id = 'design-tab-'+ tab.key;
@@ -1609,6 +1629,9 @@
 				snapshot.colours = edit.colours;
 
 			snapshot.features = edit.features;
+			// What the tablet and mobile do differently is in the snapshot of a theme where something is set (see Themes::snapshot())
+			if( Object.keys( edit.tiers || {} ).some( function( tier ) { return Object.keys( edit.tiers[tier] ).length > 0 } ) )
+				snapshot.tiers = edit.tiers;
 
 			return snapshot;
 		},
@@ -1904,7 +1927,7 @@
 			design._edit = { parts : setup.parts, navs : Object.assign( { header : '', footer : '' }, setup.navs || {} ), knobs : setup.knobs, styles : design._stylesOf( setup.styles, Object.keys( setup.parts ) ), size : setup.size, width : setup.width, whitespace : setup.whitespace,
 				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
 				colours : setup.colours === undefined ? design._edit.colours : setup.colours,
-				features : design._entriesOf( setup.features ), theme : response.slug, css : response.css };
+				features : design._entriesOf( setup.features ), tiers : design._tiersOf( setup.tiers ), theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
 			design._notes = Array.isArray( response.notes ) === true ? response.notes : [];
@@ -2426,6 +2449,38 @@
 		},
 
 		/**
+		 *	What the tablet and mobile do differently, out of an answer - design/list's, or the setup of a theme: for each tier
+		 *	(Setup::TIERS) the control => position pairs it sets, as a copy of its own, and an entry for every tier, an empty one where it
+		 *	sets nothing - Automatic: the server answers a tier with none as an empty list
+		 *
+		 *	@param		{(Object|Array)}	given		tier => { control : position }, or an empty list
+		 *
+		 *	@return		{Object}									tier => { control : position }
+		 */
+		_tiersOf : function( given ) {
+
+			const tiers = {};
+
+			Nino.admin.design._tierKeys().forEach( function( tier ) {
+
+				const chosen = given === undefined || given === null || Array.isArray( given ) === true ? undefined : given[tier];
+
+				tiers[tier] = chosen === undefined || chosen === null || Array.isArray( chosen ) === true ? {} : Object.assign( {}, chosen );
+			} );
+
+			return tiers;
+		},
+
+		/**
+		 *	The tiers the setup has controls for - the tablet and mobile, as design/list names them
+		 *
+		 *	@return		{Array}					Keys of the tiers, 'm' and 's'
+		 */
+		_tierKeys : function() {
+			return ( ( Nino.admin.design._data || {} ).tierSpec || {} ).tiers || [];
+		},
+
+		/**
 		 *	Take over what design/list says now of the families - after an install or a removal
 		 *	of the loader, or of the typefaces a theme that is loaded asked for, the selects of the
 		 *	roles have one more or one less, and the state of the files may be another one, since a
@@ -2838,7 +2893,8 @@
 				group.appendChild( button );
 			} );
 
-			Nino.adminUi.buttonRow( buttons, current, function( key ) {
+			// Kept, so that a tab that is opened at a width of its own can light the button of it (see views._viewport())
+			Nino.admin.design._paintWidth = Nino.adminUi.buttonRow( buttons, current, function( key ) {
 				Nino.admin.design._width = Nino.admin.design.WIDTHS.filter( function( width ) { return width.key === key } )[0].px;
 				Nino.admin.design._fit();
 			} );
@@ -3217,7 +3273,7 @@
 		 *
 		 *	The frame is the last thing on the page, and the page clears its foot for
 		 *	the action bar at the height the workbench declares for it. A bar that
-		 *	wraps, as it does on a phone, is taller, and would cover the foot of the
+		 *	wraps, as it does on a mobile, is taller, and would cover the foot of the
 		 *	frame at the end of the page: the layout takes the difference
 		 *
 		 *	@return		void
@@ -3833,6 +3889,14 @@
 			(admin.css, .design-tabs)	*/
 		NARROW		: '(max-width: 63.999rem)',
 
+		/*	What the key of the tab of a tier starts with. The tablet and mobile stand after the objects in the strip, apart from them: they
+			are no object of the page but what two widths of it do differently (Setup::TIERS), and open a screen of their own, the controls of
+			Setup::TIER_CONTROLS - and the preview at the width of the tier. Anchors of the specimen a change of each of them is looked at in	*/
+		TIER_PREFIX	: 'tier:',
+		TIER_ANCHORS	: { size : 'global', title : 'content', subtitle : 'content', areas : 'content', margin : 'global', inset : 'cards', gap : 'cards', header : 'global', button : 'buttons' },
+		// The width of the preview each tier opens at: the key of the button of the viewport switch (see WIDTHS)
+		TIER_VIEWPORTS	: { m : 'tablet', s : 'phone' },
+
 		// The object that is open - the page at the start of a visit, the first of the tabs. Read through _current(), which falls back to the first where this is none of them any more
 		_tab		: 'page',
 		/*	The block that is open under an object (see _renderRows()), by the object: the key of its aspect, or null once the person has
@@ -3852,8 +3916,36 @@
 		_current : function() {
 
 			const objects = Nino.admin.design._objectKeys();
+			const views = Nino.admin.design.views;
 
-			return objects.indexOf( Nino.admin.design.views._tab ) !== -1 || objects.length === 0 ? Nino.admin.design.views._tab : objects[0];
+			return objects.indexOf( views._tab ) !== -1 || views._tierOf( views._tab ) !== '' || objects.length === 0 ? views._tab : objects[0];
+		},
+
+		/**
+		 *	The key a tier is a tab under, which no object can have: the tiers are no objects, they are what the tablet and mobile do
+		 *	differently, and the feature keys are slugs
+		 *
+		 *	@param		{string}	tier			'm' or 's'
+		 *
+		 *	@return		{string}
+		 */
+		_tierTab : function( tier ) {
+			return Nino.admin.design.views.TIER_PREFIX+ tier;
+		},
+
+		/**
+		 *	The tier a tab is the tab of
+		 *
+		 *	@param		{string}	key				A key of a tab: an object, or a tier's
+		 *
+		 *	@return		{string}					'm' or 's', and '' for the key of an object
+		 */
+		_tierOf : function( key ) {
+
+			const views = Nino.admin.design.views;
+			const tier = typeof key === 'string' && key.indexOf( views.TIER_PREFIX ) === 0 ? key.substring( views.TIER_PREFIX.length ) : '';
+
+			return Nino.admin.design._tierKeys().indexOf( tier ) !== -1 ? tier : '';
 		},
 
 		/**
@@ -3976,6 +4068,20 @@
 		},
 
 		/**
+		 *	The tabs of the tablet and of Mobile: no objects, a strip of their own at the right of the objects' (see _renderTabs())
+		 *
+		 *	@return		{Array}					{ key, label } for each tier
+		 */
+		_tierTabs : function() {
+
+			const views = Nino.admin.design.views;
+
+			return Nino.admin.design._tierKeys().map( function( tier ) {
+				return { key : views._tierTab( tier ), label : Nino.content.getText( '/_admin/design/tier/'+ tier+ '/label' ) };
+			} );
+		},
+
+		/**
 		 *	The bar of the objects: a row of Back to list, the tablist of the objects and a select of the same. Back to list is a button
 		 *	of its own, no tab - it opens no object, it leaves them - and stands outside the tablist, so that the arrow keys walk the
 		 *	objects and nothing else. The tablist is a tablist rather than a button group, because these really are panels: aria-selected,
@@ -3992,6 +4098,7 @@
 			const design = Nino.admin.design;
 			const views = design.views;
 			const objects = views._objectTabs();
+			const tiers = views._tierTabs();
 			const name = Nino.content.getText('/_admin/design/label/object');
 
 			const bar = Nino.adminUi.el( 'div', 'nino-admin-tabs nino-admin-tabs--bar design-tabs' );
@@ -4006,15 +4113,25 @@
 				views._switchTab( key );
 			} );
 
+			list.id = 'design-object-strip';
+
 			const wrap = Nino.adminUi.el( 'div', 'design-views-wrap' );
 			wrap.appendChild( list );
 			views._edges( wrap, list );
+
+			/*	Tablet and Mobile: a strip of their own beside the objects', which does not scroll with them - they are in sight whatever the
+				width of the pane. The select has them after the objects, and the tab that is open is lit in the one strip and in the select	*/
+			const apart = design._tabs( name, 'design-tiers', 'tab', tiers, views._current(), function( key ) {
+				views._switchTab( key );
+			} );
+
+			apart.id = 'design-tier-strip';
 
 			const select = Nino.adminUi.el( 'select', 'design-object-select' );
 			select.id = 'design-object-select';
 			select.setAttribute( 'aria-label', name );
 
-			objects.forEach( function( object ) {
+			objects.concat( tiers ).forEach( function( object ) {
 				const option = dc.createElement('option');
 				option.value = object.key;
 				option.textContent = object.label;
@@ -4026,7 +4143,9 @@
 
 			bar.appendChild( back );
 			bar.appendChild( wrap );
+			bar.appendChild( apart );
 			bar.appendChild( select );
+			views._stops( [ list, apart ] );
 
 			return bar;
 		},
@@ -4084,6 +4203,28 @@
 		},
 
 		/**
+		 *	A strip is one stop of the Tab key, the tab that is open: the strip that does not hold the open tab - the objects while Tablet or
+		 *	Mobile is open, and the other way round - has none, so that its first tab is its stop
+		 *
+		 *	@param		{Array}		strips		The two strips, an entry null where it is not in the document
+		 *
+		 *	@return		void
+		 */
+		_stops : function( strips ) {
+
+			strips.forEach( function( strip ) {
+
+				if( strip === null )
+					return;
+
+				const tabs = strip.children;
+
+				if( tabs.length > 0 && Array.prototype.every.call( tabs, function( tab ) { return tab.tabIndex !== 0 } ) )
+					tabs[0].tabIndex = 0;
+			} );
+		},
+
+		/**
 		 *	Mark the object that is open on both the strip and the select, as a press on the one has to show on the other. The
 		 *	buttons are the strip's own business when one of them was pressed (Nino.adminUi.buttonRow()); this is for the select
 		 *	being used, and the object being set from anywhere else
@@ -4094,8 +4235,11 @@
 		 */
 		_markTab : function( key ) {
 
-			Nino.admin.design._objectKeys().forEach( function( object ) {
+			const views = Nino.admin.design.views;
 
+			views._objectTabs().concat( views._tierTabs() ).forEach( function( entry ) {
+
+				const object = entry.key;
 				const tab = dc.getElementById( 'design-tab-'+ object );
 
 				if( tab === null )
@@ -4105,6 +4249,8 @@
 				tab.setAttribute( 'aria-selected', object === key ? 'true' : 'false' );
 				tab.tabIndex = object === key ? 0 : -1;
 			} );
+
+			views._stops( [ dc.getElementById('design-object-strip'), dc.getElementById('design-tier-strip') ] );
 
 			const select = dc.getElementById('design-object-select');
 
@@ -4148,6 +4294,9 @@
 
 			Nino.admin.design.views._tab = key;
 			Nino.admin.design.views._markTab( key );
+
+			// The tablet and mobile are looked at at their own width: opening one switches the preview to it
+			Nino.admin.design.views._viewport( Nino.admin.design.views._tierOf( key ) );
 
 			// Where a change was looked at belonged to the object that was left: the
 			// frame goes to the anchor of this one
@@ -4223,12 +4372,333 @@
 		_renderRows : function( object, box ) {
 
 			const views = Nino.admin.design.views;
+
+			// The tablet and mobile have no aspects: one card of controls, each a strip with Automatic first
+			if( views._tierOf( object ) !== '' )
+				return views._renderTier( views._tierOf( object ), box );
+
 			const rows = views._rows( object );
 			const open = views._blockOf( object, rows );
 
 			rows.forEach( function( row ) {
 				box.appendChild( views._renderRow( row, row.tab === open ) );
 			} );
+		},
+
+		/**
+		 *	Switch the preview to the width of a tier: the button of the viewport switch for it is pressed, which is what lights it and
+		 *	sets the width of the frame. A tier that is none - an object is opened - leaves the width as it is
+		 *
+		 *	@param		{string}	tier			'm', 's' or ''
+		 *
+		 *	@return		void
+		 */
+		_viewport : function( tier ) {
+
+			const design = Nino.admin.design;
+			const key = design.views.TIER_VIEWPORTS[tier];
+
+			if( key === undefined )
+				return;
+
+			design._width = design.WIDTHS.filter( function( width ) { return width.key === key } )[0].px;
+
+			if( typeof design._paintWidth === 'function' )
+				design._paintWidth( key );
+		},
+
+		/**
+		 *	The screen of a tier - what the tablet or mobile do differently from the desktop, whose settings are the ones of the objects:
+		 *	one card with the line that says which widths it is for and what Automatic is, and a strip for each control of the table
+		 *	(design/list's tierSpec) - Automatic first, then the positions - under the name of the control and the line that says what
+		 *	Automatic means at this moment (see _tierRow())
+		 *
+		 *	@param		{string}	tier			'm' or 's'
+		 *	@param		{Element}	box
+		 *
+		 *	@return		void
+		 */
+		_renderTier : function( tier, box ) {
+
+			const design = Nino.admin.design;
+			const views = design.views;
+			const spec = design._data.tierSpec || {};
+
+			const card = Nino.adminUi.el( 'div', 'nino-admin-card design-form-section design-tier' );
+			card.id = 'design-tier-'+ tier;
+			card.dataset.tier = tier;
+
+			card.appendChild( design._sectionLabel( Nino.content.getText( '/_admin/design/tier/'+ tier+ '/label' ), design._icon( 'tier/'+ tier ) ) );
+			card.appendChild( Nino.adminUi.hint( Nino.content.getText( '/_admin/design/tier/'+ tier+ '/hint' ) ) );
+
+			Object.keys( spec.controls || {} ).forEach( function( control ) {
+				card.appendChild( views._tierRow( tier, control ) );
+			} );
+
+			box.appendChild( card );
+		},
+
+		/**
+		 *	One control of a tier, as a strip: the workbench's segmented control with Automatic first and the positions after it, the
+		 *	one the tier stands at lit - Automatic where it sets nothing. The note under the name is what Automatic is now (see
+		 *	_tierAuto()), and where no template that is chosen answers to the control the strip is greyed out, with the line that says
+		 *	so in its place, as a knob's is
+		 *
+		 *	@param		{string}	tier
+		 *	@param		{string}	control		A key of design/list's tierSpec.controls
+		 *
+		 *	@return		{Element}
+		 */
+		_tierRow : function( tier, control ) {
+
+			const design = Nino.admin.design;
+			const views = design.views;
+			const spec = design._data.tierSpec || {};
+			const name = Nino.content.getText( '/_admin/design/tier/control/'+ control+ '/label' );
+			const answered = views._tierAnswered( control );
+			const chosen = ( design._edit.tiers[tier] || {} )[control];
+			const auto = Nino.content.getText('/_admin/design/tier/auto');
+
+			const numbers = views._numbered( ( spec.positions || {} )[control] || [], 0 ).map( function( option ) {
+
+				const title = views._tierValue( tier, control, option.value, option.label );
+
+				// The two that state a value say it on the button - a touch screen has no title to read - and the offsets say the number of rungs
+				const shown = views._tierShown( tier, control, option.value );
+
+				return Object.assign( option, { title : title, label : shown || option.label }, shown !== '' ? { className : 'design-tier-value' } : {} );
+			} );
+			const automatic = { value : '', label : auto, title : auto, className : 'design-tier-auto' };
+
+			// An offset - the controls that move knobs - has Automatic in the middle, between the steps below and above the desktop's; the two that state a value have it first
+			const options = views._tierOffset( control ) === true ? numbers.slice( 0, 2 ).concat( [ automatic ], numbers.slice( 2 ) ) : [ automatic ].concat( numbers );
+
+			const row = design._stripRow( 'tier/'+ control, name,
+				answered === true ? views._tierAuto( tier, control ) : design._text( '/_admin/design/hint/unanswered', name ),
+				options, chosen === undefined ? '' : chosen, function( position ) { views._setTier( tier, control, position ) }, answered === false );
+
+			row.dataset.tier = tier;
+			row.dataset.control = control;
+
+			return row;
+		},
+
+		/**
+		 *	Whether a control of a tier is an offset: the ones that move knobs, whose position is the number of rungs above or below the
+		 *	desktop's own (see Setup::TIER_CONTROLS) - the root size and the side margin state a value
+		 *
+		 *	@param		{string}	control
+		 *
+		 *	@return		{boolean}
+		 */
+		_tierOffset : function( control ) {
+			return ( ( ( Nino.admin.design._data.tierSpec || {} ).controls || {} )[control] || [] ).length > 0;
+		},
+
+		/**
+		 *	The rungs the knobs of an offset stand at for a position - the desktop's own rung moved by it and held to the ends of the ladder of
+		 *	the knob - for each knob the chosen templates declare, as the strips of the knobs say them: "step +1", or "Title +1 \u00b7 Hero 0" for two
+		 *
+		 *	@param		{string}	control
+		 *	@param		{number}	[offset]	0 for what the desktop has, which is what Automatic is
+		 *
+		 *	@return		{string}
+		 */
+		_tierRungs : function( control, offset ) {
+
+			const design = Nino.admin.design;
+			const views = design.views;
+
+			const answered = ( ( design._data.tierSpec.controls || {} )[control] || [] ).filter( function( knob ) {
+				return views._answered( knob[0] ).indexOf( knob[1] ) !== -1;
+			} );
+
+			const rungs = answered.map( function( knob ) {
+
+				const ends = views._positions( design._data.kinds[ knob[0] ][ knob[1] ] );
+				const stands = ( design._edit.knobs[ knob[0] ] || {} )[ knob[1] ] || 0;
+				const at = Math.max( ends[0], Math.min( ends[ends.length - 1], stands + ( offset || 0 ) ) );
+				const label = views._numbered( [ at ], 0 )[0].label;
+
+				// Where a control moves more than one knob each rung says whose it is, in the words of the knob
+				return answered.length > 1 ? Nino.content.getText( '/_admin/design/tier/knob/'+ knob[0]+ '-'+ knob[1] )+ ' '+ label : design._text( '/_admin/design/tier/rung', label );
+			} );
+
+			return rungs.join(' \u00b7 ');
+		},
+
+		/**
+		 *	Whether a control of a tier has something to move: the three with no knob always have, and one that moves knobs has where the
+		 *	template chosen for the part of one of them declares it - the compiler writes nothing for one that does not
+		 *
+		 *	@param		{string}	control
+		 *
+		 *	@return		{boolean}
+		 */
+		_tierAnswered : function( control ) {
+
+			const views = Nino.admin.design.views;
+			const knobs = ( ( Nino.admin.design._data.tierSpec || {} ).controls || {} )[control] || [];
+
+			return knobs.length === 0 || control === 'gap' || knobs.some( function( knob ) { return views._answered( knob[0] ).indexOf( knob[1] ) !== -1 } );
+		},
+
+		/**
+		 *	A number in the language of the workbench: the decimal mark of it, at most two digits after it
+		 *
+		 *	@param		{number}	value
+		 *	@param		{number}	[digits]	How many places after the decimal mark at most, 2 where none is said
+		 *
+		 *	@return		{string}
+		 */
+		_figure : function( value, digits ) {
+
+			const places = digits === undefined ? 2 : digits;
+			const rounded = Math.round( value * Math.pow( 10, places ) ) / Math.pow( 10, places );
+
+			try {
+				return rounded.toLocaleString( dc.documentElement.lang || 'en', { maximumFractionDigits : places } );
+			}
+			catch( error ) {
+				return String( rounded );
+			}
+		},
+
+		/**
+		 *	The gutter of a row the page has at its width, in rem, as the kernel and the width of the page make it: below 768px
+		 *	(the phone) and from it (the tablet)
+		 *
+		 *	@param		{string}	tier			'm' or 's'
+		 *
+		 *	@return		{number}
+		 */
+		_gutter : function( tier ) {
+
+			const design = Nino.admin.design;
+			const spec = design._data.tierSpec || {};
+			const width = ( spec.widths || {} )[ String( design._edit.width ) ];
+			// Nino.css has --space-2 below 768px and --space-3 from it, and the width of the page names a step of the scale or none
+			const own = width === undefined ? [ 'var(--space-2)', 'var(--space-3)' ] : [ width[1], width[2] ];
+			const steps = { 'var(--space-1)' : .5, 'var(--space-2)' : 1, 'var(--space-3)' : 2, '0' : 0 };
+			const value = own[ tier === 'm' ? 1 : 0 ];
+
+			return steps[value] === undefined ? parseFloat( value ) : steps[value];
+		},
+
+		/**
+		 *	What Automatic means for a control of a tier at this moment: the value the desktop's settings give that width - the root size
+		 *	below 768px or from it, the gutter of a row, the page's own room between pieces, the position the knob of the desktop stands at
+		 *	for the controls that move knobs. Said in a line of the panel's words
+		 *
+		 *	@param		{string}	tier			'm' or 's'
+		 *	@param		{string}	control
+		 *
+		 *	@return		{string}
+		 */
+		_tierAuto : function( tier, control ) {
+
+			const design = Nino.admin.design;
+			const views = design.views;
+			const spec = design._data.tierSpec || {};
+			const base = '/_admin/design/tier/auto/';
+
+			if( control === 'size' ) {
+				const percent = parseFloat( ( ( spec.sizes || {} )[ String( design._edit.size ) ] || [ '100%', '112.5%' ] )[ tier === 'm' ? 1 : 0 ] );
+				return design._text( base+ 'size', views._figure( percent ), views._figure( percent * .16 ) );
+			}
+
+			if( control === 'margin' )
+				return design._text( base+ 'margin', views._figure( views._gutter( tier ) ) );
+
+			if( control === 'gap' )
+				return Nino.content.getText( base+ 'gap' );
+
+			return design._text( base+ 'ladder', views._tierRungs( control, 0 ) );
+		},
+
+		/**
+		 *	What a button of a control that states a value says on it: the root size as a percentage, the side margin in rem
+		 *
+		 *	@param		{string}	tier
+		 *	@param		{string}	control
+		 *	@param		{number}	position
+		 *
+		 *	@return		{string}					'' for a control that is an offset
+		 */
+		_tierShown : function( tier, control, position ) {
+
+			const views = Nino.admin.design.views;
+			const spec = Nino.admin.design._data.tierSpec || {};
+			const at = tier === 'm' ? 1 : 0;
+
+			if( control === 'size' && ( spec.sizes || {} )[position] !== undefined )
+				return views._figure( parseFloat( spec.sizes[position][at] ), 1 )+ ' %';
+
+			if( control === 'margin' && ( spec.margins || {} )[position] !== undefined )
+				return views._figure( parseFloat( spec.margins[position][at] ) )+ ' rem';
+
+			return '';
+		},
+
+		/**
+		 *	What a position of a control is, for the title of its button: the percentage of the root size and what it comes to in pixels, the
+		 *	gutter in rem or the factor of the gap - and for a control that moves a ladder the position itself, which is what the strips of
+		 *	the knobs say
+		 *
+		 *	@param		{string}	tier
+		 *	@param		{string}	control
+		 *	@param		{number}	position
+		 *	@param		{string}	label			The position as a strip says it
+		 *
+		 *	@return		{string}
+		 */
+		_tierValue : function( tier, control, position, label ) {
+
+			const design = Nino.admin.design;
+			const views = design.views;
+			const spec = design._data.tierSpec || {};
+			const base = '/_admin/design/tier/value/';
+			const at = tier === 'm' ? 1 : 0;
+
+			if( control === 'size' && ( spec.sizes || {} )[position] !== undefined ) {
+				const percent = parseFloat( spec.sizes[position][at] );
+				return label+ ': '+ design._text( base+ 'size', views._figure( percent ), views._figure( percent * .16 ) );
+			}
+
+			if( control === 'margin' && ( spec.margins || {} )[position] !== undefined )
+				return label+ ': '+ design._text( base+ 'margin', views._figure( parseFloat( spec.margins[position][at] ) ) );
+
+			if( control === 'gap' && ( spec.gaps || {} )[position] !== undefined )
+				return label+ ': '+ design._text( base+ 'gap', views._figure( parseFloat( spec.gaps[position] ) ), views._tierRungs( control, position ) );
+
+			// An offset names the rungs it comes to: the desktop's own moved by it, held to the ends of the ladder
+			return label+ ': '+ views._tierRungs( control, position );
+		},
+
+		/**
+		 *	Move a control of a tier. Automatic is the absence of a position: a tier that is put back to it keeps no key for the control
+		 *
+		 *	@param		{string}				tier
+		 *	@param		{string}				control
+		 *	@param		{number|string}	position	A position, or '' for Automatic
+		 *
+		 *	@return		void
+		 */
+		_setTier : function( tier, control, position ) {
+
+			const design = Nino.admin.design;
+
+			design._edit.tiers = design._edit.tiers || {};
+			design._edit.tiers[tier] = design._edit.tiers[tier] || {};
+
+			if( position === '' )
+				delete design._edit.tiers[tier][control];
+			else
+				design._edit.tiers[tier][control] = position;
+
+			// A change is looked at where it shows
+			design._target = design.views.TIER_ANCHORS[control] || null;
+			design._preview();
 		},
 
 		/**

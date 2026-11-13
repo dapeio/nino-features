@@ -70,12 +70,12 @@ const EXCEPTIONS = [
 
 /*	The places where php or a script puts a condition together from parts, each with where its widths come from: relative path => list of [ 'line' => a piece of the line as it is written,
 	'values' => [ the file the widths are written in, a pattern whose first group holds them ] ]. The test reads the widths there and holds them to the four thresholds.
-	An entry looks like this:
-		'features/Design/Compiler/Compiler.php' => [
-			[ 'line' => '"@media (min-width: ". $width. "px) {"', 'values' => [ 'features/Design/Compiler/Compiler.php', '/const WIDTHS\s*=\s*\[([^\]]*)\]/' ] ],
-		],
-	and the code has `private const array WIDTHS = [ 768, 1024 ];` - the one table the line draws from	*/
-const COMPOSED = [];
+	The 0 of the Design's loop is the part without a query and stands outside the group	*/
+const COMPOSED = [
+	'features/Design/Compiler/Compiler.php' => [
+		[ 'line' => '"@media (min-width: ". $width. "px) {\n"', 'values' => [ 'features/Design/Compiler/Compiler.php', '/foreach\(\s*\[\s*0\s*,([^\]]*)\]\s*as\s*\$width\s*\)/' ] ],
+	],
+];
 
 $failures	= 0;
 $checks		= 0;

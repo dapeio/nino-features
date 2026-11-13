@@ -22,12 +22,12 @@ return [
 				'de_DE' => 'Ermöglicht, jedes Objekt einzustellen: Seite, Kopf, Fuß, Inhalt, Kacheln, Karte (Abstand auch der Spalten mit Grund), Buttons, Listen, Tabellen, Formular, Tabs, Accordion, dazu Features mit Varianten.',
 			],
 			'Knobs' => [
-				'en_US' => 'Every template offers its own knobs, as strips from less to more or as switches, so a look is tuned in steps and not written as css.',
-				'de_DE' => 'Jede Vorlage bietet eigene Regler, als Leisten von weniger bis mehr oder als Schalter, sodass sich ein Aussehen in Stufen einstellen lässt und nicht als CSS geschrieben wird.',
+				'en_US' => 'Every template offers its own knobs, as strips from less to more or as switches; the tabs Tablet and Mobile set in steps what those widths do differently.',
+				'de_DE' => 'Jede Vorlage bietet eigene Regler, als Leisten von weniger bis mehr oder als Schalter; die Tabs Tablet und Mobile stellen in Stufen ein, was diese Breiten anders machen.',
 			],
 			'Preview' => [
-				'en_US' => 'Lets you see every change at once on a specimen page of your project, at phone, tablet or desktop width.',
-				'de_DE' => 'Ermöglicht, jede Änderung sofort auf einer Musterseite Deines Projekts zu sehen, in Handy-, Tablet- oder Desktopbreite.',
+				'en_US' => 'Lets you see every change at once on a specimen page of your project, at Mobile, Tablet or desktop width.',
+				'de_DE' => 'Ermöglicht, jede Änderung sofort auf einer Musterseite Deines Projekts zu sehen, in Mobile-, Tablet- oder Desktopbreite.',
 			],
 			'Themes' => [
 				'en_US' => 'Lets you keep a look as a named theme and Load, Duplicate, Export, Delete, Edit and Import themes; six ship with the Design, and a theme can carry css of its own.',

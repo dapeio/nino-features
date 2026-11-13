@@ -78,6 +78,16 @@
 .nino-admin .design-tabs .design-views .nino-admin-tab {
 	white-space: nowrap;
 }
+/*	Tablet and Mobile are no objects but what two widths of the page do differently, and stand apart from the strip of the objects: a strip of their
+	own at the right of it, which does not scroll away with the objects - it keeps its width and a hairline before it, so that it is in sight
+	whatever the width of the pane and the objects scroll in the room that is left */
+.nino-admin .design-tabs > .design-tiers {
+	flex: none;
+	margin: 0;
+	padding-left: .75rem;
+	border-left: 1px solid var(--editor-separator);
+	border-bottom: 0;
+}
 .nino-admin .design-tabs > .design-views-wrap::before,
 .nino-admin .design-tabs > .design-views-wrap::after {
 	content: "";
@@ -131,7 +141,8 @@
 		gap: .5rem;
 		border-bottom: 0;
 	}
-	.nino-admin .design-tabs > .design-views-wrap {
+	.nino-admin .design-tabs > .design-views-wrap,
+	.nino-admin .design-tabs > .design-tiers {
 		display: none;
 	}
 	.nino-admin .design-tabs > .design-object-select {
@@ -232,7 +243,8 @@
 	font-size: .82rem;
 	font-weight: 650;
 }
-.nino-admin .design-accordion-body > .design-section-label:first-child {
+.nino-admin .design-accordion-body > .design-section-label:first-child,
+.nino-admin .design-tier > .design-section-label:first-child {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: 0;
@@ -387,6 +399,22 @@
 .nino-admin .design-knob-steps .nino-admin-tab.is-active {
 	background-color: var(--editor-blue);
 	color: var(--nino-admin-active-text);
+}
+
+/*	The tablet and the phone: the first strip of a row is Automatic, a word and not a number, and takes the room of two of them */
+.nino-admin .design-knob-steps .nino-admin-tab.design-tier-auto {
+	flex-grow: 2.4;
+}
+/*	The buttons of the two controls that state a value carry the value, which is longer than a number of rungs: less room at the sides, and
+	Automatic takes the room of fewer of them */
+.nino-admin .design-knob-steps .nino-admin-tab.design-tier-value {
+	padding-left: .1rem;
+	padding-right: .1rem;
+	font-size: .6rem;
+	text-overflow: clip;
+}
+.nino-admin .design-knob-steps .nino-admin-tab.design-tier-auto:first-child {
+	flex-grow: 1.7;
 }
 
 /*	A knob the chosen template does not answer to stays where it is, greyed

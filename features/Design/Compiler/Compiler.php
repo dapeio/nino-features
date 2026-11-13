@@ -58,6 +58,9 @@ namespace Nino\Modules\Design {
 			marker that cannot be told from its content is not a marker */
 		public const string SECTION = '/* ==== %d. %s ==== */';
 
+		// The title of the section that holds what the tablet and mobile do differently, which stands after the knob positions
+		public const string TIERS = 'the tablet and mobile';
+
 		// The file a project's look is. Named by the css bundle the wizard
 		// seeds (see \Nino\Install\Setup::BASE_STYLESHEETS), so compiling over
 		// it needs no bundle change: the entry is already there
@@ -96,7 +99,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The stylesheet a setup produces, in nineteen numbered sections - and one more for each feature
-		 *	that has a variant chosen, after the sets (see below):
+		 *	that has a variant chosen, after the sets, and one more for the tablet and mobile where either does something the desktop
+		 *	does not, after the knob positions (see below):
 		 *
 		 *	  1 the tokens          base.css, the --nino-* defaults
 		 *	  2 the palette         solved over them, in the shape the mode asks for
@@ -115,7 +119,9 @@ namespace Nino\Modules\Design {
 		 *	order of the catalogue (see Setup::features()), holding the stylesheet of the variant
 		 *	chosen for it, titled "feature forms: loud (size more)" for the variant loud of the
 		 *	feature forms - after the sets and before the knob positions, which then number from
-		 *	the next. The lines of the knobs a variant declares go into the one block of the knob
+		 *	the next. What the tablet and mobile do differently (see tiers()) is the section after the knob positions
+		 *	whose selection it moves, and before the theme's css, which is still the last word: it stands there only where a tier
+		 *	deviates, and its absence leaves every number as it was. The lines of the knobs a variant declares go into the one block of the knob
 		 *	positions, after those of the parts: a ladder is selected as the ladders of a set are,
 		 *	a ground is written as the surface and every part the palette publishes of it, each
 		 *	the var() of the token of the palette, a colour as its light half, and its dark half
@@ -158,6 +164,7 @@ namespace Nino\Modules\Design {
 			$answered 	= [];
 			$styled 		= [];
 			$inks 			= [];
+			$laddered 	= [];
 
 			// 1. and 4. the tokens and the roles they are assigned to, which
 			// base.css holds as its two halves. The feature's own copy:
@@ -242,6 +249,7 @@ namespace Nino\Modules\Design {
 				$where 	= [];
 
 				$answered[$part] = $knobs;
+				$laddered[$part] = $ladders;
 
 				foreach( $knobs as $knob )
 					$where[] = $knob. ' '. Setup::said( $setup, $part, $knob );
@@ -432,6 +440,13 @@ namespace Nino\Modules\Design {
 			if( $blocks !== [] )
 				$parts[] = sprintf( self::SECTION, $number++, 'the knob positions' ). "\n". implode( "\n\n", $blocks );
 
+			/*	What the tablet and mobile do differently, after the knob positions whose selection lines it moves and before the css of the
+				theme, which still has the last word. Nothing is written where nothing deviates, and then there is no section at all	*/
+			$tiers = self::tiers( $setup, $laddered );
+
+			if( $tiers !== '' )
+				$parts[] = sprintf( self::SECTION, $number++, self::TIERS ). "\n". $tiers;
+
 			// 19. the theme's own css, the last word of the sheet. The body adds the one line break the file ends in
 			$custom = is_string( $setup['css'] ?? null ) === true ? $setup['css'] : '';
 
@@ -440,7 +455,205 @@ namespace Nino\Modules\Design {
 
 			$body = implode( "\n\n", $parts ). "\n";
 
-			return self::_header( $appData, $setup, $body, $answered, $featured, $styled ). $body;
+			return self::_header( $appData, $setup, $body, $answered, $featured, $styled, self::tierNames( $setup, $laddered ) ). $body;
+		}
+
+		/**
+		 *	What the tablet and mobile do differently, as the rules that make it so, mobile first: what holds below 768px stands
+		 *	outside a query, what holds from 768px in one for that width and what the desktop has from 1024px in one for that width -
+		 *	never a query that ends at a width. A tier that sets nothing is Automatic, and Automatic is the value the setting of the
+		 *	desktop gives that width, so only what deviates is written; and where a rule is written for a narrower width, it is written
+		 *	for the wider ones as well, since the rule that was written last wins at every width above its own: mobile's rule
+		 *	carries the value of the tablet at 768px, and the tablet's the value of the desktop at 1024px, which are those of the
+		 *	sections before this one - the root size and the gutter of the page, the rung the knob of the desktop stands at. A control
+		 *	that moves the ladder of a knob selects the rung the position names with the property the compiler selected the knob by
+		 *	(see compile()), for every ladder the knob has, and only where the template chosen declares the knob
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		array 		$ladders			The ladders of the template chosen for each part, part => knob => the names of its ladders (see Setup::ladders())
+		 *
+		 *	@return 	string								The rules, or '' where no tier deviates
+		 */
+		public static function tiers( array $setup, array $ladders ): string {
+
+			// selector => property => [ width => value ] for the three widths: 0 for below 768px, 768 and 1024
+			$rules = [];
+
+			foreach( self::tierRules( $setup, $ladders ) as [ $selector, $property, $own, $given ] ) {
+
+				// The value in force at each width without this section, and with it: the section writes what changes, and what restores
+				$phone = $given['s'] ?? $own[0];
+				$tablet = $given['m'] ?? $own[1];
+
+				$written = $phone !== $own[0];
+				$middle = $written === true || $tablet !== $own[1];
+
+				if( $written === true )
+					$rules[$selector][$property][0] = $phone;
+
+				if( $middle === true )
+					$rules[$selector][$property][768] = $tablet;
+
+				if( $middle === true && $tablet !== $own[2] )
+					$rules[$selector][$property][1024] = $own[2];
+			}
+
+			$blocks = [];
+
+			foreach( [ 0, 768, 1024 ] as $width ) {
+
+				$lines = [];
+
+				foreach( $rules as $selector => $properties ) {
+
+					$declarations = [];
+
+					foreach( $properties as $property => $widths )
+						if( isset( $widths[$width] ) === true )
+							$declarations[] = $property. ': '. $widths[$width]. ';';
+
+					if( $declarations !== [] )
+						$lines[] = [ $selector, $declarations ];
+				}
+
+				if( $lines === [] )
+					continue;
+
+				$indent = $width === 0 ? '' : "\t";
+				$body 	= [];
+
+				foreach( $lines as [ $selector, $declarations ] )
+					$body[] = $indent. $selector. " {\n". $indent. "\t". implode( "\n". $indent. "\t", $declarations ). "\n". $indent. "}";
+
+				$blocks[] = $width === 0 ? implode( "\n", $body ) : "@media (min-width: ". $width. "px) {\n". implode( "\n", $body ). "\n}";
+			}
+
+			return implode( "\n", $blocks );
+		}
+
+		/**
+		 *	What each tier really does differently, for the header of the sheet: the controls whose rules give a width a value other than the
+		 *	desktop's setting gives it, with the position they were given. A position that lands where the desktop stands - the end of a
+		 *	ladder the desktop is at already - is no deviation and has no place here, and a tier with none has no line
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		array 		$ladders			The ladders of the template chosen for each part, part => knob => names
+		 *
+		 *	@return 	array										tier => control => position
+		 */
+		public static function tierNames( array $setup, array $ladders ): array {
+
+			$names = [];
+
+			foreach( self::tierRules( $setup, $ladders ) as [ , , $own, $given, $control, $chosen ] )
+				foreach( $given as $tier => $value )
+					if( $value !== $own[ $tier === 'm' ? 1 : 0 ] )
+						$names[$tier][$control] = $chosen[$tier];
+
+			return $names;
+		}
+
+		/**
+		 *	The properties a setup's tiers move, one entry for each, in the order of the controls: the selector, the property, the value
+		 *	each width has without the tiers - mobile, tablet, desktop - and the value a tier that deviates gives it, by tier. A tier
+		 *	that does not deviate has no entry in the last, and a deviation that gives the value the page has there anyway is written as
+		 *	no deviation
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *	@param		array 		$ladders			The ladders of the template chosen for each part, part => knob => names
+		 *
+		 *	@return 	array										[ selector, property, [ mobile, tablet, desktop ], [ tier => value ], control, [ tier => position ] ] for each
+		 */
+		private static function tierRules( array $setup, array $ladders ): array {
+
+			$entries = [];
+			$tiers 	 = is_array( $setup['tiers'] ?? null ) === true ? $setup['tiers'] : [];
+
+			foreach( Setup::TIER_CONTROLS as $control => $knobs ) {
+
+				$chosen = [];
+
+				foreach( Setup::TIERS as $tier )
+					if( isset( $tiers[$tier][$control] ) === true )
+						$chosen[$tier] = (int) $tiers[$tier][$control];
+
+				if( $chosen === [] )
+					continue;
+
+				// The root size: the pair the setup has, and the one the position of the tier names
+				if( $control === 'size' ) {
+
+					$own = Setup::SIZES[ (int) ( $setup['size'] ?? 0 ) ] ?? Setup::SIZES[0];
+					$for = array_map( static fn( int $position ): array => Setup::SIZES[$position] ?? $own, $chosen );
+
+					$entries[] = [ ':root', '--nino-base-size', [ $own[0], $own[1], $own[1] ], self::tierGiven( $for, [ 's' => 0, 'm' => 1 ] ), $control, $chosen ];
+					continue;
+				}
+
+				// The gutter of a row: what the width of the page makes it, which is the kernel's pair where the page stands at 0 (see page())
+				if( $control === 'margin' ) {
+
+					$width = Setup::WIDTHS[ (int) ( $setup['width'] ?? 0 ) ] ?? null;
+					$own 	 = $width !== null ? [ $width[1], $width[2] ] : [ 'var(--space-2)', 'var(--space-3)' ];
+					$for 	 = array_map( static fn( int $position ): array => Setup::TIER_MARGINS[$position] ?? [ $own[0], $own[1] ], $chosen );
+
+					$entries[] = [ ':root', '--grid-gutter', [ $own[0], $own[1], $own[1] ], self::tierGiven( $for, [ 's' => 0, 'm' => 1 ] ), $control, $chosen ];
+					continue;
+				}
+
+				// The room between the pieces, the way Nino.css works it out wherever it sets a number of whitespace - and then the gap of the tiles, which is a ladder like the others
+				if( $control === 'gap' ) {
+
+					$own = 'calc( 1 + ( var(--whitespace-scale) - 1 ) * .8 )';
+					$for = [];
+
+					foreach( $chosen as $tier => $position )
+						if( isset( Setup::TIER_GAPS[$position] ) === true )
+							$for[$tier] = 'calc( ( 1 + ( var(--whitespace-scale) - 1 ) * .8 ) * '. Setup::TIER_GAPS[$position]. ' )';
+
+					if( $for !== [] )
+						$entries[] = [ Setup::TIER_GAP_SELECTOR, '--whitespace-gap', [ $own, $own, $own ], $for, $control, $chosen ];
+				}
+
+				/*	The rung of a ladder: the rung the desktop's setting of the knob stands at, moved by the offset of the tier and held to the ends of the
+					ladder of that knob - the property the knob is selected by is the one that is written again, for every ladder it has	*/
+				foreach( $knobs as [ $part, $knob ] ) {
+
+					$names = $ladders[$part][$knob] ?? [];
+					$kind  = Setup::kind( $part, $knob );
+					$ends  = Setup::positions( $kind );
+					$stand = Setup::position( $setup['knobs'][$part][$knob] ?? 0, $kind );
+
+					foreach( $names as $name ) {
+
+						$token = '--'. $part. '-'. $name;
+						$own 	 = 'var('. sprintf( Setup::KNOB_TOKEN, $part, $name, Setup::word( $stand, $kind ) ). ')';
+						$for 	 = array_map( static fn( int $offset ): string => 'var('. sprintf( Setup::KNOB_TOKEN, $part, $name, Setup::word( max( min( $ends ), min( max( $ends ), $stand + $offset ) ), $kind ) ). ')', $chosen );
+
+						$entries[] = [ ':root', $token, [ $own, $own, $own ], $for, $control, $chosen ];
+					}
+				}
+			}
+
+			return $entries;
+		}
+
+		/**
+		 *	The value each tier that deviates has, out of the pair a position gives: mobile's is the first half and the tablet's the second
+		 *
+		 *	@param		array 		$pairs				tier => [ mobile value, tablet value ]
+		 *	@param		array 		$half					tier => which of the two it takes
+		 *
+		 *	@return 	array										tier => value
+		 */
+		private static function tierGiven( array $pairs, array $half ): array {
+
+			$given = [];
+
+			foreach( $pairs as $tier => $pair )
+				$given[$tier] = $pair[ $half[$tier] ];
+
+			return $given;
 		}
 
 		/**
@@ -759,10 +972,11 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		$answered			The knobs each chosen set answers to, by part
 		 *	@param		array 		$featured			The variants the features were given, by key: set, and the knobs that stand off the head's default
 		 *	@param		array 		$styled				The styles written behind each chosen part, by part: "<style> <option>" each
+		 *	@param		array 		$tiered				What the tablet and Mobile do differently, tier => control => position (see tierNames())
 		 *
 		 *	@return 	string
 		 */
-		private static function _header( array &$appData, array $setup, string $body, array $answered, array $featured, array $styled = [] ): string {
+		private static function _header( array &$appData, array $setup, string $body, array $answered, array $featured, array $styled = [], array $tiered = [] ): string {
 
 			$lines = [];
 
@@ -787,6 +1001,11 @@ namespace Nino\Modules\Design {
 			// A line for each feature that was given a variant, and none where no feature was
 			foreach( $featured as $key => $given )
 				$lines[] = ' *   feature '. $key. '  '. $given['set']. ( $given['moved'] === [] ? '' : '  ('. implode( ', ', $given['moved'] ). ')' );
+
+			// A line for each tier that does something the desktop does not, and none where none does: the position of each control as a signed number
+			foreach( [ 'm' => 'tablet', 's' => 'mobile' ] as $tier => $name )
+				if( ( $tiered[$tier] ?? [] ) !== [] )
+					$lines[] = ' *   '. str_pad( $name, 11 ). implode( ', ', array_map( static fn( string $control, int $position ): string => $control. ' '. sprintf( '%+d', $position ), array_keys( $tiered[$tier] ), array_values( $tiered[$tier] ) ) );
 
 			$lines[] = ' *';
 

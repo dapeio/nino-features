@@ -362,6 +362,11 @@ function rowName( row ) {
 	return ( byClass( row, 'design-knob-text' )[0] || byClass( row, 'nino-admin-switch-copy' )[0] || {} ).textContent;
 }
 
+/** The terse line under the name of a row of a strip: the note, or what Automatic is on the strip of a tier */
+function rowNote( row ) {
+	return ( byTag( byClass( row, 'design-knob-text' )[0] || element('span'), 'small' )[0] || {} ).textContent;
+}
+
 /** Whether a knob row is a switch: the row of a toggle, which has no strip of buttons */
 function isSwitch( row ) {
 	return hasClass( row, 'design-knob-row--switch' );
@@ -582,6 +587,18 @@ const stripLabelsOf = function( screen, label ) { return screen.steps( label ).m
 /** The kinds of surface the radius is chosen for, and the two words a kind is set to, as design/list gives them: a strip of two for each kind */
 const SURFACES = [ 'cover', 'row', 'column', 'tile', 'card', 'image' ];
 const RADIUS_WORDS = [ 'standard', 'alternative' ];
+
+/*	What design/list says of the tablet and the phone besides what they have set (see Setup::TIER_CONTROLS and the tables beside it): the tiers, the controls with the knobs each moves, the
+	positions of each and the tables of the root size, the gutter of a row, the gap and the width of the page. The last half of this file holds it against the answer the server really gave	*/
+const TIER_SPEC = {
+	tiers : [ 'm', 's' ],
+	controls : { size : [], title : [ [ 'section', 'title' ], [ 'section', 'loud' ] ], subtitle : [ [ 'section', 'subtitle' ] ], areas : [ [ 'section', 'space' ] ], margin : [], inset : [ [ 'card', 'space' ], [ 'tiles', 'space' ] ], gap : [ [ 'tiles', 'gap' ] ], header : [ [ 'header', 'height' ], [ 'header', 'logo' ] ], button : [ [ 'buttons', 'size' ] ] },
+	positions : { size : [ -2, -1, 0, 1, 2 ], title : [ -2, -1, 1, 2 ], subtitle : [ -2, -1, 1, 2 ], areas : [ -2, -1, 1, 2 ], margin : [ -2, -1, 0, 1, 2 ], inset : [ -2, -1, 1, 2 ], gap : [ -2, -1, 1, 2 ], header : [ -2, -1, 1, 2 ], button : [ -2, -1, 1, 2 ] },
+	sizes : { '-2' : [ '85%', '95.625%' ], '-1' : [ '92.5%', '104.0625%' ], '0' : [ '100%', '112.5%' ], '1' : [ '115%', '129.375%' ], '2' : [ '145%', '163.125%' ] },
+	margins : { '-2' : [ '.5rem', '1rem' ], '-1' : [ '.75rem', '1.5rem' ], '0' : [ '1rem', '2rem' ], '1' : [ '1.5rem', '2.5rem' ], '2' : [ '2rem', '3rem' ] },
+	gaps : { '-2' : '.5', '-1' : '.75', '1' : '1.5', '2' : '2' },
+	widths : { '-2' : [ '48rem', 'var(--space-2)', 'var(--space-3)' ], '-1' : [ '64rem', 'var(--space-2)', 'var(--space-3)' ], '1' : [ 'none', 'var(--space-2)', 'var(--space-2)' ], '2' : [ 'none', 'var(--space-2)', '0' ] },
+};
 
 /** A list without some of its items */
 function without( list, drop ) {
@@ -805,6 +822,9 @@ function listing( over ) {
 		kinds 		: JSON.parse( JSON.stringify( KINDS ) ),
 		// The features that bring variants: none here, a list on the wire; the words a ground and an ink are chosen among; what the colours of the features measure - a list on the wire, where none does
 		features 	: [],
+		// What the tablet and the phone have set, and what the screen needs to say what Automatic is: the tables of Setup, which the answer of design/list carries
+		tiers 		: { m : [], s : [] },
+		tierSpec 	: JSON.parse( JSON.stringify( TIER_SPEC ) ),
 		grounds 	: GROUNDS.slice(),
 		inks 			: INKS.slice(),
 		contrasts : [],
@@ -2214,9 +2234,13 @@ const strip = byClass( headed.pane, 'design-tabs' )[0] || null;
 const wrap = strip === null ? null : strip.children[1];
 const tablist = wrap === null ? null : wrap.children[0];
 const tabs = tablist === null ? [] : byTag( tablist, 'button' );
-const objectSelect = strip === null ? null : strip.children[2];
+const objectSelect = strip === null ? null : strip.children[3];
+const tierStrip = strip === null ? null : strip.children[2];
+const tierTabs = tierStrip === null ? [] : byTag( tierStrip, 'button' );
 const kernelTabs = byTag( headed.registry, 'button' );
 const tableObjectKeys = headed.design._data.layout.objects;
+// ...and Tablet and Mobile, which are no objects, stand in a strip of their own beside the objects' (see the screens of the tiers below)
+const tierTabKeys = headed.design._tierKeys().map( function( tier ) { return 'tier:'+ tier } );
 
 check( 'the shell asks two namespaces for the screens of the pane, by the uris of the tabs: Nino.admin.design for the panel\'s own screen and Nino.admin[\'design-typefaces\'] for the loader - each a screen of its own that answers showCurrent() - and the setup is a namespace of the panel\'s, Nino.admin.design.views',
 	Object.keys( headed.admin ).filter( function( key ) { return key !== 'dirty' && key !== 'mode' && key !== 'touch' } ).sort().join() === 'design,design-typefaces'
@@ -2236,15 +2260,17 @@ check( '...a tablist of tabs, named for the object, the open one selected and th
 	&& tabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' && hasClass( tab, 'nino-admin-tab' ) } )
 	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === tableObjectKeys.map( function( key ) { return String( key === tableObjectKeys[0] ) } ).join()
 	&& headed.setup._tab === tableObjectKeys[0] && headed.setup._current() === tableObjectKeys[0] && headed.design.THEMES_ANCHOR === 'global' );
-check( '...the same choice as a select, drawn from the same model: an option for each tab in the same order, with the same words, the open object chosen, named for the object - the stylesheet shows the select where the strip gives way (see the stylesheet below)',
+check( '...the same choice as a select, drawn from the same model: an option for each tab in the same order - the objects first, then those of Tablet and Mobile - with the same words, the open object chosen, named for the object - the stylesheet shows the select where the strip gives way (see the stylesheet below)',
 	objectSelect !== null && objectSelect.tagName === 'SELECT' && objectSelect.id === 'design-object-select' && objectSelect.getAttribute('aria-label') === TEXT['/_admin/design/label/object']
-	&& offered( objectSelect ).map( function( option ) { return option[0] } ).join() === tabs.map( function( tab ) { return tab.dataset.tab } ).join()
-	&& offered( objectSelect ).map( function( option ) { return option[1] } ).join() === tabs.map( function( tab ) { return tab.textContent } ).join() && shown( objectSelect ) === tableObjectKeys[0] );
-check( 'the bar begins with Back to list: a button of the bar, in the words of the workbench, that is no tab - no role, no data-tab, not in the tablist - and the strip and the select follow it, nothing else',
-	strip !== null && strip.id === 'design-tabs' && hasClass( strip, 'nino-admin-tabs' ) && hasClass( strip, 'nino-admin-tabs--bar' ) && strip.children.length === 3 && strip.children[0] === headed.byId('design-back')
+	&& offered( objectSelect ).map( function( option ) { return option[0] } ).join() === tabs.concat( tierTabs ).map( function( tab ) { return tab.dataset.tab } ).join()
+	&& offered( objectSelect ).map( function( option ) { return option[1] } ).join() === tabs.concat( tierTabs ).map( function( tab ) { return tab.textContent } ).join() && shown( objectSelect ) === tableObjectKeys[0] );
+check( 'the bar begins with Back to list: a button of the bar, in the words of the workbench, that is no tab - no role, no data-tab, not in the tablist - and the strip of the objects, the strip of Tablet and Mobile and the select follow it, nothing else',
+	strip !== null && strip.id === 'design-tabs' && hasClass( strip, 'nino-admin-tabs' ) && hasClass( strip, 'nino-admin-tabs--bar' ) && strip.children.length === 4 && strip.children[0] === headed.byId('design-back')
 	&& strip.children[0].tagName === 'BUTTON' && strip.children[0].type === 'button' && strip.children[0].textContent === TEXT['/_admin/common/label/back'] && hasClass( strip.children[0], 'nino-admin-tab' )
-	&& strip.children[0].getAttribute('role') === null && strip.children[0].dataset.tab === undefined && tabs.indexOf( strip.children[0] ) === -1 && byTag( strip, 'button' ).length === tableObjectKeys.length + 1
-	&& hasClass( wrap, 'design-views-wrap' ) && wrap.children.length === 1 );
+	&& strip.children[0].getAttribute('role') === null && strip.children[0].dataset.tab === undefined && tabs.indexOf( strip.children[0] ) === -1 && byTag( strip, 'button' ).length === tableObjectKeys.length + tierTabKeys.length + 1
+	&& hasClass( wrap, 'design-views-wrap' ) && wrap.children.length === 1
+	&& tierTabs.map( function( tab ) { return tab.dataset.tab } ).join() === tierTabKeys.join() && hasClass( tierStrip, 'design-tiers' ) && tierStrip.getAttribute('role') === 'tablist' && tierStrip.parent === strip
+	&& tierTabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' && tab.parent === tierStrip && wrap.children[0].children.indexOf( tab ) === -1 } ) );
 
 /*	Left to itself the panel opens on its own screen, in its list: the first thing a person does is pick a theme. The setup is what the sections of this test are drawn on,
 	the Base of the header the first of them (see panel())	*/
@@ -2375,7 +2401,7 @@ check( '...so the next one has a tab to start from, and walks back',
 if( keyTabs.length === tableObjectKeys.length )
 	press( keyTabs[0], 'ArrowLeft' );
 
-check( '...and from the first object the arrow key wraps round to the last - the last feature -, with its blocks in the column - and not onto Back to list',
+check( '...and from the first object the arrow key wraps round to the last - the last feature -, with its blocks in the column - and not onto Back to list, nor onto Tablet',
 	keyTabs.length === tableObjectKeys.length && focused === keyTabs[tableObjectKeys.length - 1] && keyed.setup._current() === tableObjectKeys[tableObjectKeys.length - 1] && focused !== keyed.byId('design-back')
 	&& blocksOf( keyed.form ).every( function( block ) { return block.dataset.object === tableObjectKeys[tableObjectKeys.length - 1] } ) );
 
@@ -2466,7 +2492,7 @@ check( '...a feature is a tab and an option after the eight, named by the featur
 			return found;
 		}, [ 'templates' ] );
 		return aspectsOf( obLayout, key ).join() === obLayout.tabs.filter( function( aspect ) { return tabs.indexOf( aspect ) !== -1 } ).join();
-	} ) && byTag( byClass( ob.pane, 'design-views' )[0], 'button' ).slice( OBJECTS.length ).length === obFeatures.length );
+	} ) && byTag( byClass( ob.pane, 'design-views' )[0], 'button' ).slice( OBJECTS.length, OBJECTS.length + obFeatures.length ).length === obFeatures.length );
 
 // The strip scrolls where it is wider than the bar, and the edge that has more behind it says so
 const obList = byClass( ob.pane, 'design-views' )[0];
@@ -2496,7 +2522,7 @@ obSelect.children.forEach( function( option ) { option.selected = option.value =
 obSelect.fire('change');
 
 check( 'the select is the same choice as the strip: an option for each tab in the same order, and what is chosen in it is shown on the strip - the tab lit, the others not, one tab stop - and drawn in the column',
-	offered( obSelect ).map( function( option ) { return option[0] } ).join() === obLayout.objects.join() && ob.setup._current() === obLast
+	offered( obSelect ).map( function( option ) { return option[0] } ).join() === obLayout.objects.concat( tierTabKeys ).join() && ob.setup._current() === obLast
 	&& ob.byId( 'design-tab-'+ obLast ).getAttribute('aria-selected') === 'true' && ob.byId( 'design-tab-'+ obLast ).tabIndex === 0
 	&& obLayout.objects.filter( function( object ) { return object !== obLast } ).every( function( object ) { return ob.byId( 'design-tab-'+ object ).getAttribute('aria-selected') === 'false' && ob.byId( 'design-tab-'+ object ).tabIndex === -1 } )
 	&& blocksOf( ob.form ).every( function( card ) { return card.dataset.object === obLast } ) );
@@ -2548,7 +2574,7 @@ const narrowRule = styleSheet.split('@media '+ NARROW_QUERY)[1] || '';
 const kernelSheet = path.join( process.env.NINO_ROOT || path.join( __dirname, '../../..' ), '_admin/assets/style.css' );
 
 check( 'the stylesheet shows the select and hides the strip and its shadows below the width the script asks the window for, and the select is hidden above it - the same query the rail of the workbench uses for its own select',
-	narrowRule.indexOf('.design-object-select') !== -1 && /\.design-views-wrap\s*\{\s*display:\s*none/.test( narrowRule ) && /\.design-object-select\s*\{\s*display:\s*(block|flex)/.test( narrowRule )
+	narrowRule.indexOf('.design-object-select') !== -1 && /\.design-views-wrap\s*,\s*[^{}]*\.design-tiers\s*\{\s*display:\s*none/.test( narrowRule ) && /\.design-object-select\s*\{\s*display:\s*(block|flex)/.test( narrowRule )
 	&& /\.design-object-select\s*\{\s*display:\s*none/.test( styleSheet.split('@media '+ NARROW_QUERY)[0] )
 	&& ( fs.existsSync( kernelSheet ) === false || fs.readFileSync( kernelSheet, 'utf8' ).indexOf( '@media '+ NARROW_QUERY ) !== -1 ) );
 
@@ -4397,7 +4423,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -5998,8 +6024,8 @@ check( 'a feature that brings variants has a block of its own on the Templates v
 	&& fxObjects( fx ).join() === tplRows.map( function( row ) { return row.object } ).concat( fxOrder ).join() );
 check( '...each feature is a tab after the eight objects, in the order of the answer, and an option of the select in the same place, both named by the feature: the name its manifest gives it, which is no text of the panel - and the block of its variant is the Base of the object, like every other',
 	fxOrder.every( function( key ) { return fx.byId('design-tab-'+ key).textContent === fxData[key].name && TEXT['/_admin/design/object/'+ key+ '/label'] === undefined && byClass( fxBlock( fx, key ), 'design-accordion-name' )[0].textContent === tabWord('templates') } )
-	&& byTag( byClass( fx.pane, 'design-views' )[0], 'button' ).slice( OBJECTS.length ).map( function( tab ) { return tab.textContent } ).join() === fxOrder.map( function( key ) { return fxData[key].name } ).join()
-	&& offered( fx.byId('design-object-select') ).slice( OBJECTS.length ).map( function( option ) { return option[1] } ).join() === fxOrder.map( function( key ) { return fxData[key].name } ).join()
+	&& byTag( byClass( fx.pane, 'design-views' )[0], 'button' ).slice( OBJECTS.length, OBJECTS.length + fxOrder.length ).map( function( tab ) { return tab.textContent } ).join() === fxOrder.map( function( key ) { return fxData[key].name } ).join()
+	&& offered( fx.byId('design-object-select') ).slice( OBJECTS.length, OBJECTS.length + fxOrder.length ).map( function( option ) { return option[1] } ).join() === fxOrder.map( function( key ) { return fxData[key].name } ).join()
 	&& blocksOf( fx.form ).every( function( card ) { return hasClass( card, 'design-accordion' ) } ) );
 
 const fxSet = fxSelect( fx, 'awning' );
@@ -6399,6 +6425,8 @@ const ICON_OF = {
 	'accordion/scale' : 'a-large-small', 'accordion/space' : 'align-vertical-space-around', 'accordion/line' : 'minus', 'accordion/marker' : 'list', 'accordion/marker-ink' : 'palette',
 	'colours/primary' : 'palette', 'colours/harmony' : 'palette', 'colours/temperature' : 'thermometer', 'colours/saturation' : 'droplet',
 	'colours/contrast' : 'contrast', 'colours/depth' : 'square-stack', 'colours/mode' : 'sun-moon',
+	'tier/size' : 'a-large-small', 'tier/title' : 'a-large-small', 'tier/subtitle' : 'a-large-small', 'tier/areas' : 'move-vertical', 'tier/margin' : 'move-horizontal',
+	'tier/inset' : 'align-vertical-space-around', 'tier/gap' : 'unfold-horizontal', 'tier/header' : 'scaling', 'tier/button' : 'a-large-small', 'tier/m' : 'tablet', 'tier/s' : 'smartphone',
 };
 
 /** The parts of an svg as markup, in the order they were made in and with their attributes in the order they were given in */
@@ -7936,6 +7964,150 @@ check( '...and the blocks of the features have a place of their own, which no ma
 console.log('');
 
 
+// --- The tablet and the phone ------------------------------------------------------------------
+//
+// Two tabs after the objects, apart from them: what the two widths do differently from the desktop, whose settings the objects have. Each draws one card of strips - a control each,
+// Automatic first, then the positions - and opens the preview at the width of its own; a position is part of the working copy, the preview and the theme
+
+console.log( 'The tablet and the phone' );
+
+const tr = panel( {}, { lens : false } );
+const trSpec = tr.design._data.tierSpec;
+const trPressed = function( screen, tier, control ) {
+	return byTag( byClass( screen.form, 'design-knob-row' ).filter( function( row ) { return row.dataset.tier === tier && row.dataset.control === control } )[0], 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join();
+};
+const trRow = function( screen, tier, control ) {
+	return byClass( screen.form, 'design-knob-row' ).filter( function( row ) { return row.dataset.tier === tier && row.dataset.control === control } )[0];
+};
+const trPress = function( screen, tier, control, value ) {
+	byTag( trRow( screen, tier, control ), 'button' ).filter( function( button ) { return button.dataset.value === String( value ) } ).forEach( function( button ) { button.fire('click') } );
+};
+const trViewports = function( screen ) { return byTag( byClass( screen.pane, 'design-viewports' )[0], 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() };
+
+check( 'the tabs of Tablet and Mobile are a strip of their own beside the strip of the objects, which scrolls without it - no object, a key no feature can have - named by the panel\'s words, each tab controlling the column, and the select has them after the objects',
+	byTag( tr.byId('design-tier-strip'), 'button' ).map( function( button ) { return button.dataset.tab } ).join() === 'tier:m,tier:s'
+	&& byTag( tr.byId('design-tier-strip'), 'button' ).map( function( button ) { return button.textContent } ).join() === TEXT['/_admin/design/tier/m/label']+ ','+ TEXT['/_admin/design/tier/s/label']
+	&& byTag( tr.byId('design-object-strip'), 'button' ).every( function( button ) { return button.dataset.tab.indexOf( 'tier:' ) !== 0 } )
+	&& hasClass( tr.byId('design-tier-strip').parent, 'design-tabs' ) && tr.byId('design-object-strip').parent.parent === tr.byId('design-tabs')
+	&& tr.byId('design-tab-tier:m').getAttribute('aria-controls') === 'design-controls' && tr.byId('design-tab-tier:m').getAttribute('aria-selected') === 'false'
+	&& offered( tr.byId('design-object-select') ).slice( -2 ).map( function( option ) { return option[0]+ ' '+ option[1] } ).join() === 'tier:m '+ TEXT['/_admin/design/tier/m/label']+ ',tier:s '+ TEXT['/_admin/design/tier/s/label']
+	&& tr.design._objectKeys().every( function( key ) { return key.indexOf( 'tier:' ) !== 0 } ) );
+
+check( 'each strip of the bar is one stop of the Tab key: the tab that is open, and - for the strip that holds none, the objects while Tablet is open and Tablet and Mobile while an object is - its first tab',
+	byTag( tr.byId('design-tier-strip'), 'button' ).filter( function( button ) { return button.tabIndex === 0 } ).map( function( button ) { return button.dataset.tab } ).join() === 'tier:m'
+	&& ( tr.go( 'tier:m' ), byTag( tr.byId('design-object-strip'), 'button' ).filter( function( button ) { return button.tabIndex === 0 } ).map( function( button ) { return button.dataset.tab } ).join() === tableObjectKeys[0]
+		&& byTag( tr.byId('design-tier-strip'), 'button' ).filter( function( button ) { return button.tabIndex === 0 } ).map( function( button ) { return button.dataset.tab } ).join() === 'tier:m' )
+	&& ( tr.go( 'card' ), byTag( tr.byId('design-tier-strip'), 'button' ).filter( function( button ) { return button.tabIndex === 0 } ).map( function( button ) { return button.dataset.tab } ).join() === 'tier:m'
+		&& byTag( tr.byId('design-object-strip'), 'button' ).filter( function( button ) { return button.tabIndex === 0 } ).map( function( button ) { return button.dataset.tab } ).join() === 'card' ) );
+
+// What a position of an offset says: the rungs the knobs come to - each from its own desktop rung, held to the ends of its ladder
+tr.design._edit.knobs.section.title = 1;
+tr.design._edit.knobs.section.loud = -2;
+tr.go( 'tier:m' );
+
+check( 'an offset says what it comes to: Automatic the desktop\'s own rungs of the knobs, a step above or below each knob\'s rung held to the end of its ladder - the title of a button; two knobs at different rungs are two numbers',
+	rowNote( trRow( tr, 'm', 'title' ) ) === say( '/_admin/design/tier/auto/ladder', TEXT['/_admin/design/tier/knob/section-title']+ ' +1 \u00b7 '+ TEXT['/_admin/design/tier/knob/section-loud']+ ' \u22122' )
+	&& byTag( trRow( tr, 'm', 'title' ), 'button' ).map( function( button ) { return button.title } ).join() === [ [ '\u22122', '\u22121', '\u22122' ], [ '\u22121', '0', '\u22122' ], null, [ '+1', '+2', '\u22121' ], [ '+2', '+2', '0' ] ].map( function( step ) { return step === null ? TEXT['/_admin/design/tier/auto'] : step[0]+ ': '+ TEXT['/_admin/design/tier/knob/section-title']+ ' '+ step[1]+ ' \u00b7 '+ TEXT['/_admin/design/tier/knob/section-loud']+ ' '+ step[2] } ).join() );
+tr.design._edit.knobs.section.title = 0;
+tr.design._edit.knobs.section.loud = 0;
+
+tr.go( 'tier:m' );
+
+check( 'opening the tablet draws one card of its own and no block of an aspect: the name of the tier and the line that says which widths it holds for, then a strip for each control of the table in its order - each named by its own word, with the icon of its row',
+	tr.setup._current() === 'tier:m' && tr.byId('design-controls').getAttribute('aria-labelledby') === 'design-tab-tier:m' && blocksOf( tr.form ).length === 0
+	&& byClass( tr.form, 'design-tier' ).length === 1 && byClass( tr.form, 'design-tier' )[0].dataset.tier === 'm' && hasClass( byClass( tr.form, 'design-tier' )[0], 'nino-admin-card' )
+	&& byTag( byClass( tr.form, 'design-section-label' )[0], 'strong' )[0].textContent === TEXT['/_admin/design/tier/m/label'] && byTag( byClass( tr.form, 'design-section-label' )[0], 'svg' )[0].dataset.icon === 'tablet'
+	&& byClass( byClass( tr.form, 'design-tier' )[0], 'nino-admin-hint' )[0].textContent === TEXT['/_admin/design/tier/m/hint']
+	&& byClass( tr.form, 'design-knob-row' ).map( function( row ) { return row.dataset.control } ).join() === Object.keys( trSpec.controls ).join()
+	&& Object.keys( trSpec.controls ).every( function( control ) { return rowName( trRow( tr, 'm', control ) ) === TEXT['/_admin/design/tier/control/'+ control+ '/label'] } )
+	&& Object.keys( trSpec.controls ).every( function( control ) { return byTag( trRow( tr, 'm', control ), 'svg' )[0].dataset.icon === ICON_OF['tier/'+ control] } ) );
+
+check( '...every strip has Automatic, lit - nothing is set: first on the root size and the margin, which state a value and go on with five positions, and in the middle on every offset - between the two steps below and the two above the desktop\'s own - the gap among them, which has no middle value of its own',
+	Object.keys( trSpec.controls ).every( function( control ) {
+		const buttons = byTag( trRow( tr, 'm', control ), 'button' );
+		const at = buttons.map( function( button ) { return button.dataset.value } ).indexOf( '' );
+		const offset = trSpec.controls[control].length > 0;
+		return at === ( offset === true ? 2 : 0 ) && buttons[at].textContent === TEXT['/_admin/design/tier/auto'] && hasClass( buttons[at], 'design-tier-auto' ) && buttons[at].getAttribute('aria-pressed') === 'true'
+			&& buttons.filter( function( button, index ) { return index !== at } ).map( function( button ) { return button.dataset.value } ).join() === trSpec.positions[control].join()
+			&& buttons.filter( function( button, index ) { return index !== at } ).every( function( button ) { return button.getAttribute('aria-pressed') === 'false' } );
+	} ) && byTag( trRow( tr, 'm', 'gap' ), 'button' ).map( function( button ) { return button.textContent } ).join() === '\u22122,\u22121,'+ TEXT['/_admin/design/tier/auto']+ ',+1,+2'
+	&& byTag( trRow( tr, 'm', 'inset' ), 'button' ).map( function( button ) { return button.textContent } ).join() === '\u22122,\u22121,'+ TEXT['/_admin/design/tier/auto']+ ',+1,+2' );
+
+tr.go( 'tier:s' );
+
+check( 'the two that state a value say it on the buttons - a touch screen has no title to read: the root size as a percentage and the margin in rem, the values of the phone\'s half of the tables - and an offset says the number of rungs; the title of each is the whole sentence',
+	byTag( trRow( tr, 's', 'size' ), 'button' ).slice( 1 ).map( function( button ) { return button.textContent } ).join() === '85 %,92.5 %,100 %,115 %,145 %'
+	&& byTag( trRow( tr, 's', 'margin' ), 'button' ).slice( 1 ).map( function( button ) { return button.textContent } ).join() === '0.5 rem,0.75 rem,1 rem,1.5 rem,2 rem'
+	&& byTag( trRow( tr, 's', 'size' ), 'button' )[3].title === '0: '+ say( '/_admin/design/tier/value/size', '100', '16' ) && byTag( trRow( tr, 's', 'subtitle' ), 'button' ).map( function( button ) { return button.textContent } ).join() === '\u22122,\u22121,'+ TEXT['/_admin/design/tier/auto']+ ',+1,+2'
+	&& byTag( trRow( tr, 's', 'gap' ), 'button' )[0].title === '\u22122: '+ say( '/_admin/design/tier/value/gap', '0.5', say( '/_admin/design/tier/rung', '0' ) )
+	&& byTag( trRow( tr, 's', 'gap' ), 'button' )[4].title === '+2: '+ say( '/_admin/design/tier/value/gap', '2', say( '/_admin/design/tier/rung', '+2' ) ) );
+
+tr.go( 'tier:m' );
+
+check( 'what Automatic is stands under the name of each control, in the words of its kind and at this moment: the root size of the tablet - the second half of the pair of the page\'s own position - and the gutter, then the position the knob of the desktop stands at, and the gap as the page has it',
+	rowNote( trRow( tr, 'm', 'size' ) ) === say( '/_admin/design/tier/auto/size', '112.5', '18' ) && rowNote( trRow( tr, 'm', 'margin' ) ) === say( '/_admin/design/tier/auto/margin', '2' )
+	&& rowNote( trRow( tr, 'm', 'gap' ) ) === TEXT['/_admin/design/tier/auto/gap'] && rowNote( trRow( tr, 'm', 'areas' ) ) === say( '/_admin/design/tier/auto/ladder', say( '/_admin/design/tier/rung', '0' ) )
+	&& ( tr.go( 'tier:s' ), rowNote( trRow( tr, 's', 'size' ) ) === say( '/_admin/design/tier/auto/size', '100', '16' ) && rowNote( trRow( tr, 's', 'margin' ) ) === say( '/_admin/design/tier/auto/margin', '1' ) ) );
+
+tr.go( 'tier:m' );
+
+check( 'the preview is at the width of the tier when its tab is opened: the tablet\'s button is lit and the frame is as wide as the tablet\'s button says - and the phone\'s after the phone - an object that is opened after it leaves the width as it is',
+	tr.design._width === tr.design.WIDTHS.filter( function( width ) { return width.key === 'tablet' } )[0].px && trViewports( tr ) === 'false,true,false'
+	&& ( tr.go( 'tier:s' ), tr.design._width === tr.design.WIDTHS.filter( function( width ) { return width.key === 'phone' } )[0].px && trViewports( tr ) === 'true,false,false' )
+	&& ( tr.go( 'card' ), tr.design._width === tr.design.WIDTHS.filter( function( width ) { return width.key === 'phone' } )[0].px && trViewports( tr ) === 'true,false,false' ) );
+
+tr.go( 'tier:m' );
+tr.requests.length = 0;
+trPress( tr, 'm', 'size', 1 );
+tr.design._previewNow();
+
+check( 'a position pressed is a position of the working copy, lit with Automatic dark, and the preview asked for carries the tiers with it - nothing else of the model moved - and is looked at where the control shows',
+	JSON.stringify( tr.design._edit.tiers ) === JSON.stringify( { m : { size : 1 }, s : {} } ) && trPressed( tr, 'm', 'size' ) === 'false,false,false,false,true,false'
+	&& JSON.stringify( tr.requests[tr.requests.length - 1].payload.tiers ) === JSON.stringify( { m : { size : 1 }, s : {} } ) && tr.design._target === 'global'
+	&& tr.byId('design-reset').hidden === false && tr.design._isDirty() === true );
+
+trPress( tr, 'm', 'title', -2 );
+trPress( tr, 'm', 'gap', 2 );
+tr.go( 'tier:s' );
+trPress( tr, 's', 'button', -1 );
+
+check( '...each tier has its own, and a control of another tier is not moved: the phone and the tablet keep what each was given',
+	JSON.stringify( tr.design._edit.tiers ) === JSON.stringify( { m : { size : 1, title : -2, gap : 2 }, s : { button : -1 } } ) && trPressed( tr, 's', 'size' ) === 'true,false,false,false,false,false'
+	&& trPressed( tr, 's', 'button' ) === 'false,true,false,false,false' && tr.design._target === 'buttons' );
+
+trPress( tr, 's', 'button', '' );
+tr.go( 'tier:m' );
+trPress( tr, 'm', 'size', '' );
+
+check( '...and Automatic takes a control back to nothing: the key is gone, not set to a value - and the selection that is left is the one that was, the way back drawn only for what differs',
+	JSON.stringify( tr.design._edit.tiers ) === JSON.stringify( { m : { title : -2, gap : 2 }, s : {} } ) && trPressed( tr, 'm', 'size' ) === 'true,false,false,false,false,false' && tr.design._isDirty() === true
+	&& ( trPress( tr, 'm', 'title', '' ), trPress( tr, 'm', 'gap', '' ), tr.design._isDirty() === false && JSON.stringify( tr.design._edit.tiers ) === JSON.stringify( { m : {}, s : {} } ) ) );
+
+// What Automatic means follows the settings of the objects, which are the desktop's: the root size of the page, the width of it and the position of a knob
+tr.design._edit.size = -2;
+tr.design._edit.width = 2;
+tr.design._edit.knobs.section.space = 1;
+tr.go( 'tier:s' );
+tr.go( 'tier:m' );
+
+check( 'Automatic follows the page: the root size the setup has - for the width of the tier - the gutter its width makes, and the position of the knob of the desktop',
+	rowNote( trRow( tr, 'm', 'size' ) ) === say( '/_admin/design/tier/auto/size', '95.63', '15.3' ) && rowNote( trRow( tr, 'm', 'margin' ) ) === say( '/_admin/design/tier/auto/margin', '0' )
+	&& rowNote( trRow( tr, 'm', 'areas' ) ) === say( '/_admin/design/tier/auto/ladder', say( '/_admin/design/tier/rung', '+1' ) ) && ( tr.go( 'tier:s' ), rowNote( trRow( tr, 's', 'size' ) ) === say( '/_admin/design/tier/auto/size', '85', '13.6' ) && rowNote( trRow( tr, 's', 'margin' ) ) === say( '/_admin/design/tier/auto/margin', '1' ) ) );
+
+// A control that moves the knobs of a part is greyed out where no template that is chosen declares one: switched off, lit none, with the line that says so in place of the note
+const trAnswers = panel( { parts : listing().parts.map( function( row ) { return row.part === 'buttons' ? Object.assign( {}, row, { catalogue : { first : Object.assign( {}, row.catalogue.first, { knobs : [] } ), second : Object.assign( {}, row.catalogue.second, { knobs : [] } ) } } ) : row } ) }, { lens : false } );
+trAnswers.go( 'tier:s' );
+
+check( 'a control whose knobs no template that is chosen declares is greyed out and switched off - the strip lit none - with the line that says so where the note would be; the others are not, and the three that move no knob never are',
+	hasClass( trRow( trAnswers, 's', 'button' ), 'design-knob-row--off' ) && byTag( trRow( trAnswers, 's', 'button' ), 'button' ).every( function( button ) { return button.disabled === true } )
+	&& trPressed( trAnswers, 's', 'button' ) === 'false,false,false,false,false' && rowNote( trRow( trAnswers, 's', 'button' ) ) === say( '/_admin/design/hint/unanswered', TEXT['/_admin/design/tier/control/button/label'] )
+	&& [ 'size', 'title', 'margin', 'gap', 'inset', 'header' ].every( function( control ) { return hasClass( trRow( trAnswers, 's', control ), 'design-knob-row--off' ) === false } ) );
+
+// What a setup carries is read as a copy of its own, an empty list on the wire is a tier that sets nothing, and a tier the answer does not know is not made
+check( 'the tiers of an answer are a copy of their own, one list for each tier the answer names - an empty list on the wire is no choice - and what is not a tier is not kept',
+	JSON.stringify( tr.design._tiersOf( { m : [], s : { size : 1 }, xl : { size : 1 } } ) ) === JSON.stringify( { m : {}, s : { size : 1 } } ) && JSON.stringify( tr.design._tiersOf( [] ) ) === JSON.stringify( { m : {}, s : {} } )
+	&& JSON.stringify( tr.design._tiersOf( undefined ) ) === JSON.stringify( { m : {}, s : {} } ) && ( function() { const given = { m : { size : 1 } }; const copy = tr.design._tiersOf( given ); copy.m.size = 2; return given.m.size === 1 } )() );
+
 // --- What the preview carries ----------------------------------------------------------------
 
 console.log( 'The preview' );
@@ -7945,7 +8117,7 @@ asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
 check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the styles of the templates, the choices for the features, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width'
 	&& first.payload.parts.header === 'first' && first.payload.parts.tables === 'first' && first.payload.knobs.section.title === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
@@ -8687,6 +8859,14 @@ function themed( over, mode, shell ) {
 
 /** The marks of a theme in the tab button of the strip: the chip "changed" the script appends to the button of the panel's own screen */
 function tabChips( screen ) { return byClass( screen.kernelButton('design'), 'design-tab-changed' ) }
+
+// The tiers are part of what a theme is: the working copy is compared with the theme's own, and a position makes the chip
+const trTheme = themed( {}, 'setup' );
+trTheme.design._edit.tiers = trTheme.design._tiersOf( {} );
+
+check( 'the tiers are in the snapshot a theme is compared by where something is set - and in none where nothing is: the chip says changed after a position and not before, and a position put back is no change',
+	trTheme.design._themeChanged() === false && ( trTheme.design._edit.tiers.s.size = -1, trTheme.design._themeChanged() === true ) && ( delete trTheme.design._edit.tiers.s.size, trTheme.design._themeChanged() === false )
+	&& Object.keys( trTheme.design._snapshotOf( trTheme.design._edit ) ).indexOf( 'tiers' ) === -1 && ( trTheme.design._edit.tiers.m.gap = 1, Object.keys( trTheme.design._snapshotOf( trTheme.design._edit ) ).indexOf( 'tiers' ) !== -1 ) );
 
 // The list of the themes ------------------------------------------------------------------------
 
@@ -9506,7 +9686,7 @@ focused = null;
 check( 'Save theme posts design/theme/save with the slug and the working copy and no name and no description - the theme keeps its own - and switches the buttons off, its own among them, until it is answered',
 	saving.requests.length === 1 && saving.requests[0].endpoint === 'theme/save' && saving.requests[0].payload.slug === 'mein-theme' && saving.requests[0].payload.theme === 'mein-theme'
 	&& saving.requests[0].payload.knobs.section !== undefined && saving.requests[0].payload.size === 1
-	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,navs,parts,radii,radius,radius-alt,size,slug,styles,theme,whitespace,width'
+	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,navs,parts,radii,radius,radius-alt,size,slug,styles,theme,tiers,whitespace,width'
 	&& saving.byId('design-theme-save').disabled === true && saving.design._themeBusy === true );
 
 saving.byId('design-theme-save').fire('click');
@@ -10281,7 +10461,7 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,whitespace,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width && sent.payload.whitespace === real.whitespace
@@ -10362,6 +10542,10 @@ else {
 		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'
 		&& Object.keys( answered.renamed ).join() === 'themes,active' && Object.keys( answered.saved ).join() === 'themes,active' && Object.keys( answered.duplicated ).join() === 'slug,themes'
 		&& Object.keys( answered.deleted ).join() === 'themes,theme' && Object.keys( answered.exported ).join() === 'json,file' && Object.keys( answered.imported ).join() === 'slug,themes' );
+
+	check( 'the tables the script draws the tablet and the phone from are the server\'s: the stand-in of this file says what design/list says of them, and what it says is set - an empty list for each tier, whichever the selection',
+		JSON.stringify( none.tierSpec ) === JSON.stringify( TIER_SPEC ) && JSON.stringify( none.tiers ) === JSON.stringify( { m : [], s : [] } ) && none.defaults.tiers === undefined
+		&& Object.keys( none.tierSpec ).join() === 'tiers,controls,positions,sizes,margins,gaps,widths' );
 
 	// The list with no theme
 	const noneTab = wholeTab( none );

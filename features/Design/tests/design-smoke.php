@@ -3671,8 +3671,8 @@ $chosen = [];
 // The keys of a fresh setup that are a choice of the panel: a key by itself, the entries of a list under the key of the list, the knobs under their part as well. The version of the model, the theme it was taken from, the custom css (the view CSS) and the record of the compile are none
 foreach( Setup::defaults( $library ) as $key => $value ) {
 
-	// ...and the styles of the templates: a template declares its own, so they stand by the select of the template and have no place in the table
-	if( in_array( $key, [ 'format', 'theme', 'css', 'compiled', 'styles' ], true ) === true )
+	// ...and the styles of the templates: a template declares its own, so they stand by the select of the template and have no place in the table - nor have the tablet and the phone, whose controls are the two tabs of their own (Setup::TIER_CONTROLS)
+	if( in_array( $key, [ 'format', 'theme', 'css', 'compiled', 'styles', 'tiers' ], true ) === true )
 		continue;
 
 	if( is_array( $value ) === false )
@@ -5092,7 +5092,7 @@ $beforeFamilies = static function( array $setup ) use ( $library ): string {
 	}
 
 	// ...and before the features and the styles of the templates had a key of their own in it
-	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'] );
+	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'], $setup['tiers'] );
 
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
@@ -5762,7 +5762,7 @@ $beforeRevision = static function( array $setup, string $lib ): string {
 		$files[$printPart] 	= [ $printSet, ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
 	// ...as it was written before the features, the styles of the templates and the navigations had a key of their own in it
-	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'] );
+	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'], $setup['tiers'] );
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
 $moved = $sandboxSetup;
@@ -6419,8 +6419,11 @@ check( '...recording what was compiled, so the panel can tell the file from the 
 	set has to be told by is 'compiled'['input'], which hashes those same files
 	itself	*/
 check( '...and it holds what was chosen and nothing derived from it: the keys of the model, a template by its name, a knob by its position',
-	array_keys( $stored ) === Setup::KEYS && $stored['parts'] === $defaultSets
+	array_keys( $stored ) === array_values( array_diff( Setup::KEYS, [ 'tiers' ] ) ) && $stored['parts'] === $defaultSets
 	&& $stored['knobs'] === Setup::defaults( $library )['knobs'] );
+check( '...and so does the copy of it the record keeps, and the file on disk: a project that set nothing for the tablet and Mobile has no key of theirs anywhere in data/design.php, the one it had',
+	array_keys( (array) ( $stored['compiled']['setup'] ?? [] ) ) === array_values( array_diff( Setup::KEYS, [ 'tiers', 'compiled' ] ) )
+	&& str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, Setup::PATH ) ), 'tiers' ) === false );
 
 /*	upgrade() reads the setup through normalize() and writes it back, and that
 	is the whole of what an upgrade does here - a new version may ship changed
@@ -6433,7 +6436,7 @@ $legacy['knobs']['spacing'] = 'more';
 
 check( 'upgrading drops what an older version stored and leaves the choices alone', \Nino\Modules\Design::upgrade( $appData, '0.1.0' ) === true );
 $upgraded = \Nino\Filesystem::getFileContent( $appData, Setup::PATH, [] );
-check( '...so the file holds the same choices, without it', array_keys( $upgraded ) === Setup::KEYS && isset( $upgraded['knobs']['spacing'] ) === false
+check( '...so the file holds the same choices, without it', array_keys( $upgraded ) === array_values( array_diff( Setup::KEYS, [ 'tiers' ] ) ) && isset( $upgraded['knobs']['spacing'] ) === false
 	&& $upgraded['parts'] === $stored['parts'] && $upgraded['knobs'] === $stored['knobs']
 	&& ( $upgraded['compiled']['input'] ?? '' ) === ( $stored['compiled']['input'] ?? '' ) );
 
@@ -6944,6 +6947,11 @@ check( '...and the edited footer is in the previous version',
 	version before is the choices the files were written under, not those	*/
 $sans = static function( array $setup ): array {
 	unset( $setup['compiled'] );
+
+	// What the tablet and Mobile do differently is in a file where something is set (see Setup::write())
+	if( array_filter( (array) ( $setup['tiers'] ?? [] ) ) === [] )
+		unset( $setup['tiers'] );
+
 	return $setup;
 };
 
@@ -8991,7 +8999,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$shippedWords[$locale][$slug] = $wordsOf( $file, $locale );
 
 	// The keys of a setup that choose something, as a theme file keeps them: the keys of a setup but the four that are the project's
-	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) );
+	// ...and what the tablet and Mobile do differently is in a file where something is set, and in no other (see Themes::snapshot())
+	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) );
 	// ...and the ones a theme the feature ships chooses: all of them but the palette. A brand colour is the project's - the choices for the features are the theme's, an empty list where it names none
 	$choosesShipped = array_values( array_diff( $chooses, [ 'colours' ] ) );
 	/*	The theme the feature ships was written before the hover of the pictures was a part of the motion, and it stays as it was until the themes are looked at as a whole: it names the
@@ -9029,7 +9038,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	};
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
-		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ]
+		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ]
 		&& array_keys( Setup::defaults( $library ) ) === Setup::KEYS && Setup::defaults( $library )['theme'] === '' && Setup::defaults( $library )['css'] === '' );
 	check( '...and the format of the file stays 2: a file without the two keys reads as none and no css, which is what every project had, with no note and nothing migrated',
 		Setup::FORMAT === 2 && \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'size' => 1, 'width' => -1 ] ) === true
@@ -9062,7 +9071,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	Setup::write( $appData, $themed );
 	$written = (array) include $themeSetupFile;
 
-	check( 'write() writes the two keys in the order of KEYS, and read() reads them back', array_keys( $written ) === Setup::KEYS && $written['theme'] === $shippedFirst && $written['css'] === "a {}\nb {}\nc {}"
+	check( 'write() writes the two keys in the order of KEYS - the tiers only where something is set - and read() reads them back', array_keys( $written ) === array_values( array_diff( Setup::KEYS, [ 'tiers' ] ) ) && $written['theme'] === $shippedFirst && $written['css'] === "a {}\nb {}\nc {}"
 		&& Setup::read( $appData, $library )['theme'] === $shippedFirst && Setup::read( $appData, $library )['css'] === "a {}\nb {}\nc {}" );
 
 	// Name, slug, refusal - the pure functions of the class
@@ -9198,7 +9207,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	check( 'a snapshot is the eleven keys of a setup that choose something and nothing else - no format, no theme, no css, no record of what was compiled - in the order of KEYS',
 		array_keys( Themes::snapshot( $normalised ) ) === $chooses
-		&& Themes::snapshot( $normalised ) === array_diff_key( $normalised, array_flip( [ 'format', 'theme', 'css', 'compiled' ] ) ) && Themes::snapshot( [] ) === [] );
+		&& Themes::snapshot( $normalised ) === array_diff_key( $normalised, array_flip( [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) ) && Themes::snapshot( [] ) === [] );
 
 	check( 'an export is the file as json - in the order of the shape, the characters of any language and the slashes as they are, a line break at the end - and an import reads it back as the array it was, byte for byte',
 		( $exportText = Themes::json( $bilingual ) ) !== '' && str_ends_with( $exportText, "}\n" ) && str_contains( $exportText, '"name-de": "Zeitschrift"' ) === true && str_contains( $exportText, '\\/' ) === false && str_contains( $exportText, '\\u' ) === false
@@ -10111,6 +10120,21 @@ foreach( array_keys( Setup::INKS ) as $tone )
 
 // ...and the first option of the select of an ink a part has, which is none of the tones: the tone the template gives
 $wanted[] = 'label/own';
+
+// ...the tablet and the phone: the name and the line of each tier, the name of each control, Automatic and what it is - for the root size, the gutter, the gap and the knobs of the others - and what a position of the first three is
+foreach( Setup::TIERS as $tier )
+	array_push( $wanted, 'tier/'. $tier. '/label', 'tier/'. $tier. '/hint' );
+
+foreach( array_keys( Setup::TIER_CONTROLS ) as $control )
+	$wanted[] = 'tier/control/'. $control. '/label';
+
+array_push( $wanted, 'tier/auto', 'tier/auto/size', 'tier/auto/margin', 'tier/auto/gap', 'tier/auto/ladder', 'tier/rung', 'tier/value/size', 'tier/value/margin', 'tier/value/gap' );
+
+// ...and the word of each knob of a control that moves more than one, which says whose a rung is
+foreach( Setup::TIER_CONTROLS as $tierControl => $tierKnobs )
+	if( count( $tierKnobs ) > 1 )
+		foreach( $tierKnobs as [ $tierPart, $tierKnob ] )
+			$wanted[] = 'tier/knob/'. $tierPart. '-'. $tierKnob;
 
 array_push( $wanted, 'label/light', 'label/dark' );
 
@@ -11564,7 +11588,7 @@ $madeFile = Themes::read( $appData, $library, 'mit-features' ) ?? [];
 [ , $reloaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'mit-features' ] );
 
 check( 'a snapshot of a setup keeps the choices for the features as a key that chooses something, between the styles and the fonts, where Setup::KEYS puts it - and a theme of the project the screen was saved into holds them in its file and gives them back on a load',
-	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'styles', array_keys( $snapshot ), true ) + 1
+	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'styles', array_keys( $snapshot ), true ) + 1
 	&& $snapshot['features'] === $withEntry['features'] && $status === 200 && ( $madeFile['setup']['features'] ?? null ) === $withEntry['features'] && ( $reloaded['setup']['features'] ?? null ) === $withEntry['features'] );
 
 Themes::remove( $appData, (string) ( $made['slug'] ?? '' ) );
@@ -12351,7 +12375,7 @@ $printB = $print( $navOther );
 check( '...and it follows what the option writes: the same key with another call is another fingerprint',
 	$printA !== $printB );
 check( 'a theme keeps the choice with the others: the snapshot of a setup has navs after the parts, and a theme file with none reads as none',
-	array_keys( Themes::snapshot( $navChosen ) ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) ) && Themes::snapshot( $navChosen )['navs']['header'] === 'nav-main'
+	array_keys( Themes::snapshot( $navChosen ) ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) ) && Themes::snapshot( $navChosen )['navs']['header'] === 'nav-main'
 	&& Themes::snapshot( Setup::defaults( $library ) )['navs'] === [ 'header' => '', 'footer' => '' ] );
 
 // --- the files
@@ -12599,6 +12623,429 @@ else
 	$appData['/nino/html/navs'] = $navMenus;
 
 $appData['./nino/locales/current'] = $navLocale;
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+
+echo "\nThe tablet and the phone: what the two widths do differently from the desktop, written mobile first\n";
+
+$tierFile 	= \Nino\Filesystem::getFileContent( $appData, Setup::PATH, [] );
+$tierFills 	= $appData['./nino/html/fills'] ?? null;
+$tierThemes = Themes::own( $appData );
+
+// A sheet compiled from the defaults - the first theme the feature ships, the sets of which answer to every knob - with the tiers a test gives it
+$tierSheet = static function( array $tiers, array $raw = [] ) use ( &$appData, $library ): string {
+
+	$notes = [];
+
+	return Compiler::compile( $appData, Setup::normalize( $appData, $raw + [ 'tiers' => $tiers ], $library, $notes ), $library, $notes );
+};
+
+/*	The rules of the section of the tablet and the phone, by the width they hold from - 0 for what stands outside a query - as
+	selector => property => value; null for a sheet that has none. The queries it is allowed are min-width ones and nothing else,
+	which is what a test below reads this for: any other text left once they are taken out is the first element of the answer's 'rest'	*/
+$tierRules = static function( string $css ): ?array {
+
+	$at = strpos( $css, ' '. Compiler::TIERS. ' ==== */' );
+
+	if( $at === false )
+		return null;
+
+	$body = substr( $css, $at );
+	$end = strpos( $body, "\n/* ==== " );
+	$body = substr( $end === false ? $body : substr( $body, 0, $end ), (int) strpos( $body, "\n" ) + 1 );
+	$rules = [ 0 => [], 768 => [], 1024 => [], 'rest' => '', 'queries' => [] ];
+	$parse = static function( string $text ): array {
+
+		$found = [];
+
+		preg_match_all( '/([^{}]+)\{([^{}]*)\}/', $text, $blocks, PREG_SET_ORDER );
+
+		foreach( $blocks as $block )
+			foreach( array_filter( array_map( 'trim', explode( ';', $block[2] ) ) ) as $declaration ) {
+				[ $property, $value ] = array_map( 'trim', explode( ':', $declaration, 2 ) );
+				$found[ trim( $block[1] ) ][$property] = $value;
+			}
+
+		return $found;
+	};
+
+	$outside = (string) preg_replace_callback( '/@media \(([a-z-]+): (\d+)px\) \{(.*?)\n\}/s', static function( array $query ) use ( &$rules, $parse ): string {
+
+		$rules['queries'][] = $query[1]. ' '. $query[2];
+		$rules[ (int) $query[2] ] = $parse( $query[3] );
+
+		return '';
+	}, $body );
+
+	$rules[0] = $parse( $outside );
+	$rules['rest'] = trim( (string) preg_replace( '/([^{}]+)\{([^{}]*)\}/', '', $outside ) );
+
+	return $rules;
+};
+
+// What a control moves, by the selector and the properties - independent of the compiler: the names of the kernel's and the sets' own tokens
+$tierMoves = [
+	'size' 			=> [ ':root' => [ '--nino-base-size' ] ],
+	'title' 		=> [ ':root' => [ '--section-title', '--section-loud' ] ],
+	'subtitle' 	=> [ ':root' => [ '--section-subtitle' ] ],
+	'areas' 		=> [ ':root' => [ '--section-space' ] ],
+	'margin' 		=> [ ':root' => [ '--grid-gutter' ] ],
+	'inset' 		=> [ ':root' => [ '--card-space', '--tiles-space' ] ],
+	'gap' 			=> [ Setup::TIER_GAP_SELECTOR => [ '--whitespace-gap' ], ':root' => [ '--tiles-gap' ] ],
+	'header' 		=> [ ':root' => [ '--header-height', '--header-logo' ] ],
+	'button' 		=> [ ':root' => [ '--buttons-size' ] ],
+];
+// A step the desktop's own setting of the knob has room for: the gap of the tiles starts at its first rung, so its offset goes up
+$tierLeast = static fn( string $control ): int => $control === 'gap' ? 1 : -2;
+$tierNames = static fn( ?array $rules, int $width ): array => $rules === null ? [] : array_map( static fn( array $properties ): array => array_keys( $properties ), $rules[$width] );
+
+check( 'the model has a key for the tablet and the phone, after the choices for the features, and nothing is set in a fresh setup: one empty list for each of the two tiers',
+	Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ]
+	&& Setup::TIERS === [ 'm', 's' ] && Setup::defaults( $library )['tiers'] === [ 'm' => [], 's' => [] ]
+	&& array_keys( Setup::TIER_CONTROLS ) === [ 'size', 'title', 'subtitle', 'areas', 'margin', 'inset', 'gap', 'header', 'button' ] );
+
+$tierNotes = [];
+$tierRead = Setup::normalize( $appData, [ 'size' => 1 ], $library, $tierNotes );
+
+check( 'a file without the key is a setup that sets nothing for them, with no note and nothing migrated - and so is a theme without it: every theme the feature ships has none',
+	$tierRead['tiers'] === [ 'm' => [], 's' => [] ] && $tierNotes === []
+	&& array_filter( array_keys( Themes::shipped( $library ) ), static fn( string $slug ): bool => array_key_exists( 'tiers', Themes::setup( (array) include Themes::shipped( $library )[$slug] ) ) === true ) === [] );
+
+$tierNotes = [];
+$tierHeld = Setup::normalize( $appData, [ 'tiers' => [
+	's' => [ 'bogus' => 1, 'gap' => 0, 'title' => 9, 'areas' => 'wide', 'inset' => [ 1 ], 'margin' => '-1', 'size' => 1.4, 'header' => true, 'button' => null, 'subtitle' => -2 ],
+	'm' => [ 'subtitle' => 2, 'size' => -2, 'gap' => 2 ],
+	'xl' => [ 'size' => 1 ],
+] ], $library, $tierNotes );
+
+$tierPositionNotes = count( array_filter( $tierNotes, static fn( mixed $note ): bool => is_string( $note ) === true && str_contains( $note, 'has no position' ) === true ) );
+
+check( 'unknown tiers and controls are dropped and named, and so is a position that is none of the control\'s - 9 for a control with offsets, 0 for the gap, a word, a list, true, null - which is read as Automatic; the controls stand in the order of the table and a number written as a string is the number',
+	$tierHeld['tiers'] === [ 'm' => [ 'size' => -2, 'subtitle' => 2, 'gap' => 2 ], 's' => [ 'size' => 1, 'subtitle' => -2, 'margin' => -1 ] ]
+	&& array_keys( $tierHeld['tiers']['s'] ) === [ 'size', 'subtitle', 'margin' ]
+	&& count( array_filter( $tierNotes, static fn( mixed $note ): bool => is_string( $note ) === true && ( str_contains( $note, '"xl"' ) === true || str_contains( $note, '"bogus"' ) === true ) ) ) === 2
+	&& $tierPositionNotes === 6 && count( array_filter( $tierNotes, static fn( mixed $note ): bool => is_string( $note ) === true && str_contains( $note, '"title"' ) === true && str_contains( $note, '9' ) === true ) ) === 1 );
+
+$tierNoList = [];
+
+check( 'a tier that is no list is no choice, and is named: the setup has both tiers, empty - and the positions are the five of a value for the root size and the margin, the four around Automatic for every offset',
+	Setup::normalize( $appData, [ 'tiers' => 'mobile' ], $library )['tiers'] === [ 'm' => [], 's' => [] ]
+	&& Setup::normalize( $appData, [ 'tiers' => [ 'm' => 'big', 's' => [ 1, 2 ] ] ], $library, $tierNoList )['tiers'] === [ 'm' => [], 's' => [] ] && count( $tierNoList ) === 3
+	&& array_map( [ Setup::class, 'tierPositions' ], [ 'size', 'margin', 'title', 'gap', 'header' ] ) === [ [ -2, -1, 0, 1, 2 ], [ -2, -1, 0, 1, 2 ], [ -2, -1, 1, 2 ], [ -2, -1, 1, 2 ], [ -2, -1, 1, 2 ] ] );
+
+// Nothing deviates: the sheet is the one there was - for every theme the feature ships, and with the key written out as it is
+$tierPlain = [];
+
+foreach( Themes::shipped( $library ) as $tierSlug => $tierThemeFile ) {
+
+	$tierRaw = Themes::setup( (array) include $tierThemeFile );
+	// The ends of two ladders, where an offset has no room to go: the theme stands there, and the offset lands where it is
+	$tierEnds = $tierRaw;
+	$tierEnds['knobs']['section']['subtitle'] = 2;
+	$tierEnds['knobs']['buttons']['size'] = -2;
+	$tierBase = Compiler::compile( $appData, Setup::normalize( $appData, $tierRaw, $library ), $library );
+	$tierZero = Compiler::compile( $appData, Setup::normalize( $appData, $tierRaw + [ 'tiers' => [ 'm' => [], 's' => [] ] ], $library ), $library );
+	$tierEndBase = Compiler::compile( $appData, Setup::normalize( $appData, $tierEnds, $library ), $library );
+	$tierSame = Compiler::compile( $appData, Setup::normalize( $appData, $tierEnds + [ 'tiers' => [
+		'm' => [ 'size' => (int) ( $tierRaw['size'] ?? 0 ), 'subtitle' => 2, 'button' => -1 ],
+		's' => [ 'size' => (int) ( $tierRaw['size'] ?? 0 ), 'button' => -2, 'subtitle' => 1 ],
+	] ], $library ), $library );
+
+	if( $tierBase !== $tierZero || $tierEndBase !== $tierSame || str_contains( $tierBase, Compiler::TIERS ) === true || preg_match( '/^ \*   (tablet|mobile) /m', $tierBase ) === 1 )
+		$tierPlain[] = $tierSlug;
+}
+
+check( 'a setup with nothing set for the tablet and the phone compiles the sheet it did, for every theme the feature ships: no section, no line of the header, the bytes of the same setup without the key - and a position that lands where the desktop stands - the root size it has, an offset the end of its ladder holds - writes no rule and no line of the header: the sheet is the same',
+	$tierPlain === [] && count( Themes::shipped( $library ) ) >= 6 );
+
+// Each control, each tier: the rules in the width they hold from
+$tierProblems = [];
+
+foreach( $tierMoves as $control => $moves ) {
+
+	$position = $tierLeast( $control );
+	$phone = $tierRules( $tierSheet( [ 's' => [ $control => $position ] ] ) );
+	$tablet = $tierRules( $tierSheet( [ 'm' => [ $control => $position ] ] ) );
+	$expected = array_map( static fn( array $names ): array => $names, $moves );
+
+	if( $phone === null || $tablet === null ) {
+		$tierProblems[] = $control. ': no section';
+		continue;
+	}
+
+	// Phone: below 768px, and the tablet's value again from 768px, where the rule of the phone would hold otherwise. Nothing is written for the desktop: the value of the tablet is the desktop's
+	if( $tierNames( $phone, 0 ) !== $expected || $tierNames( $phone, 768 ) !== $expected || $phone[1024] !== [] )
+		$tierProblems[] = $control. ': the phone';
+
+	// Tablet: nothing below 768px, the position from 768px, the desktop's value from 1024px
+	if( $tablet[0] !== [] || $tierNames( $tablet, 768 ) !== $expected || $tierNames( $tablet, 1024 ) !== $expected )
+		$tierProblems[] = $control. ': the tablet';
+
+	if( $phone['queries'] !== [ 'min-width 768' ] || $tablet['queries'] !== [ 'min-width 768', 'min-width 1024' ] || $phone['rest'] !== '' || $tablet['rest'] !== '' )
+		$tierProblems[] = $control. ': a query that is none of "from"';
+}
+
+check( 'each of the nine controls writes, for the phone, the rule below 768px and the one that takes it back at 768px, and for the tablet the rule at 768px and the one that takes it back at 1024px - on the selectors and the properties it moves, no more'. ( $tierProblems === [] ? '' : ' - '. implode( ', ', $tierProblems ) ),
+	$tierProblems === [] && count( $tierMoves ) === count( Setup::TIER_CONTROLS ) && array_keys( $tierMoves ) === array_keys( Setup::TIER_CONTROLS ) );
+
+// ...and what each of them writes is the value the position names, and what the desktop has at the width it is taken back to
+$tierCss = $tierSheet( [] );
+$knobBlock = '';
+
+foreach( explode( "\n/* ==== ", $tierCss ) as $tierPart )
+	if( str_contains( $tierPart, ' the knob positions ==== */' ) === true )
+		$knobBlock = $tierPart;
+
+$selected = static function( string $property ) use ( $knobBlock ): string {
+	return preg_match( '/^\t'. preg_quote( $property, '/' ). ': (.+);$/m', $knobBlock, $found ) === 1 ? $found[1] : '';
+};
+
+$valueProblems = [];
+
+foreach( [ 'title' => [ '--section-title', 'section', 'title' ], 'subtitle' => [ '--section-subtitle', 'section', 'subtitle' ], 'areas' => [ '--section-space', 'section', 'space' ], 'inset' => [ '--card-space', 'card', 'space' ],
+		'header' => [ '--header-height', 'header', 'height' ], 'button' => [ '--buttons-size', 'buttons', 'size' ] ] as $control => [ $property, $part, $knob ] ) {
+
+	$desktop = $selected( $property );
+	$set = Setup::defaults( $library )['parts'][$part];
+	$rungs = designLadderValues( (string) file_get_contents( Setup::file( $library, $part, $set ) ), $part );
+
+	foreach( [ -2, -1, 1, 2 ] as $position ) {
+
+		$both = $tierRules( $tierSheet( [ 's' => [ $control => $position ], 'm' => [ $control => -$position ] ] ) );
+		$word = Setup::word( $position );
+		$wordMirror = Setup::word( -$position );
+
+		if( ( $both[0][':root'][$property] ?? '' ) !== 'var(--'. $part. '-'. $knob. '--'. $word. ')' || ( $both[768][':root'][$property] ?? '' ) !== 'var(--'. $part. '-'. $knob. '--'. $wordMirror. ')'
+			|| ( $both[1024][':root'][$property] ?? '' ) !== $desktop || $desktop === '' )
+			$valueProblems[] = $control. ' '. $position;
+
+		// The rung the rule names is one the template declares
+		if( isset( $rungs[ $part. '-'. $knob. '--'. $word ] ) === false && preg_match( '/--'. preg_quote( $part. '-'. $knob. '--'. $word, '/' ). '\s*:/', (string) file_get_contents( Setup::file( $library, $part, $set ) ) ) !== 1 )
+			$valueProblems[] = $control. ' '. $position. ': no such rung';
+	}
+}
+
+$sizeRoot = $selected( '--section-title' );
+
+foreach( [ -2, -1, 1, 2 ] as $position ) {
+
+	$size = $tierRules( $tierSheet( [ 's' => [ 'size' => $position ], 'm' => [ 'size' => -$position ] ] ) );
+	$margin = $tierRules( $tierSheet( [ 's' => [ 'margin' => $position ], 'm' => [ 'margin' => -$position ] ] ) );
+
+	// The value of the phone is the first half of the pair a position names, the value of the tablet the second, and the desktop is what the sections before this one wrote from 768px
+	if( ( $size[0][':root']['--nino-base-size'] ?? '' ) !== Setup::SIZES[$position][0] || ( $size[768][':root']['--nino-base-size'] ?? '' ) !== Setup::SIZES[-$position][1] )
+		$valueProblems[] = 'size '. $position;
+
+	if( ( $margin[0][':root']['--grid-gutter'] ?? '' ) !== Setup::TIER_MARGINS[$position][0] || ( $margin[768][':root']['--grid-gutter'] ?? '' ) !== Setup::TIER_MARGINS[-$position][1] )
+		$valueProblems[] = 'margin '. $position;
+}
+
+foreach( [ -2, -1, 1, 2 ] as $position ) {
+
+	$gap = $tierRules( $tierSheet( [ 's' => [ 'gap' => $position ] ] ) );
+
+	if( ( $gap[0][Setup::TIER_GAP_SELECTOR]['--whitespace-gap'] ?? '' ) !== 'calc( ( 1 + ( var(--whitespace-scale) - 1 ) * .8 ) * '. Setup::TIER_GAPS[$position]. ' )'
+		|| ( $gap[768][Setup::TIER_GAP_SELECTOR]['--whitespace-gap'] ?? '' ) !== 'calc( 1 + ( var(--whitespace-scale) - 1 ) * .8 )' )
+		$valueProblems[] = 'gap '. $position;
+}
+
+check( 'a position writes the rung it names on the ladder of the knob, the root size and the gutter the pair of the table it names - the phone\'s half below 768px, the tablet\'s from it - and the room between pieces its factor on the kernel\'s own working-out; what the width is taken back to is what the sections before this one gave it'
+	. ( $valueProblems === [] ? '' : ' - '. implode( ', ', array_slice( $valueProblems, 0, 6 ) ) ),
+	$valueProblems === [] && $sizeRoot !== '' );
+
+// An offset moves each knob of its control the same number of rungs from where the desktop has it, held to the ends of the ladder of that knob
+$offsetRaw = [ 'knobs' => [ 'section' => [ 'title' => 1, 'loud' => -1 ], 'tiles' => [ 'gap' => 3 ], 'header' => [ 'height' => 2, 'logo' => 0 ] ] ];
+$offsetProblems = [];
+
+foreach( [ 1 => [ 'most', 'default' ], 2 => [ 'most', 'more' ], -1 => [ 'default', 'least' ], -2 => [ 'less', 'least' ] ] as $offset => [ $titleWord, $loudWord ] ) {
+
+	$moved = $tierRules( $tierSheet( [ 's' => [ 'title' => $offset ] ], $offsetRaw ) );
+
+	if( ( $moved[0][':root']['--section-title'] ?? '' ) !== 'var(--section-title--'. $titleWord. ')' || ( $moved[0][':root']['--section-loud'] ?? '' ) !== 'var(--section-loud--'. $loudWord. ')' )
+		$offsetProblems[] = 'title '. $offset;
+}
+
+$taken = $tierRules( $tierSheet( [ 'm' => [ 'title' => -1 ] ], [ 'knobs' => [ 'section' => [ 'title' => 2, 'loud' => 0 ] ] ] ) );
+$headed = $tierRules( $tierSheet( [ 's' => [ 'header' => 2 ] ], $offsetRaw ) );
+$tiled = $tierRules( $tierSheet( [ 's' => [ 'gap' => 2 ] ], $offsetRaw ) );
+
+check( 'an offset is the number of rungs from the desktop\'s own, for each knob of the control: two knobs that stand at different rungs move the same distance and stop at the end of their own ladder - one that has no room is not moved - a tier follows the desktop when its setting changes, and the grade of the tiles gap climbs from its own rung to the end of its five'
+	. ( $offsetProblems === [] ? '' : ' - '. implode( ', ', $offsetProblems ) ),
+	$offsetProblems === []
+	&& ( $taken[768][':root']['--section-title'] ?? '' ) === 'var(--section-title--more)' && ( $taken[768][':root']['--section-loud'] ?? '' ) === 'var(--section-loud--less)'
+	&& ( $taken[1024][':root']['--section-title'] ?? '' ) === 'var(--section-title--most)' && ( $taken[1024][':root']['--section-loud'] ?? '' ) === 'var(--section-loud--default)'
+	&& ( $headed[0][':root']['--header-logo'] ?? '' ) === 'var(--header-logo--most)' && isset( $headed[0][':root']['--header-height'] ) === false
+	&& ( $tiled[0][':root']['--tiles-gap'] ?? '' ) === 'var(--tiles-gap--'. Setup::word( 4, 'grade' ). ')' && ( $tiled[768][':root']['--tiles-gap'] ?? '' ) === 'var(--tiles-gap--'. Setup::word( 3, 'grade' ). ')' );
+
+// The width of the page and the size of the root move what Automatic is: the section takes the value of the page back, not the kernel's
+$wide = $tierRules( $tierSheet( [ 's' => [ 'size' => -2, 'margin' => -2 ] ], [ 'size' => 2, 'width' => 2 ] ) );
+$kept = $tierRules( $tierSheet( [ 'm' => [ 'size' => 1, 'margin' => 1 ] ], [ 'size' => -1, 'width' => 1 ] ) );
+
+check( 'what a tier is taken back to follows the page: the root size of the setup and the gutter its width makes (the widest page has none from 768px)',
+	( $wide[768][':root']['--nino-base-size'] ?? '' ) === Setup::SIZES[2][1] && ( $wide[768][':root']['--grid-gutter'] ?? '' ) === Setup::WIDTHS[2][2] && $wide[1024] === []
+	&& ( $kept[1024][':root']['--nino-base-size'] ?? '' ) === Setup::SIZES[-1][1] && ( $kept[1024][':root']['--grid-gutter'] ?? '' ) === Setup::WIDTHS[1][2] && $kept[0] === [] );
+
+// Where it stands in the sheet: after the knob positions it moves, before the css of the theme, which keeps the last word
+$tierThemed = $tierSheet( [ 'm' => [ 'size' => 1 ] ], [ 'css' => ":root { --nino-base-size: 1%; }\n" ] );
+$tierOrder = [];
+
+if( preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $tierThemed, $tierSections, PREG_SET_ORDER ) > 0 )
+	foreach( $tierSections as $tierSection )
+		$tierOrder[(int) $tierSection[1]] = trim( $tierSection[2] );
+
+check( 'the section stands after the knob positions and before the css of the theme, numbered by the places that are free: no number is skipped, and the theme is the last word of the sheet',
+	array_keys( $tierOrder ) === range( 1, 20 ) && array_slice( $tierOrder, 17, null, true ) === [ 18 => 'the knob positions', 19 => Compiler::TIERS, 20 => 'the theme' ]
+	&& str_ends_with( $tierThemed, ":root { --nino-base-size: 1%; }\n" ) === true );
+
+check( 'what a tier does is named in the header of the sheet, a line for each tier that does something and none for the other - the position as a signed number',
+	preg_match( '/^ \*   tablet     size \+1$/m', $tierThemed ) === 1 && preg_match( '/^ \*   mobile /m', $tierThemed ) === 0
+	&& preg_match( '/^ \*   mobile     size -2, gap -1$/m', $tierSheet( [ 's' => [ 'size' => -2, 'gap' => -1 ] ] ) ) === 1 );
+
+// The ladders a control moves are the template's: where the template chosen declares none of the knobs the control writes nothing
+$tierSetup = Setup::normalize( $appData, [ 'tiers' => [ 'm' => [ 'title' => 1, 'inset' => 1, 'size' => 1 ], 's' => [ 'header' => -1 ] ] ], $library );
+$tierNone = $tierRules( "/* ==== 1. x ==== */\n". "/* ==== 19. ". Compiler::TIERS. " ==== */\n". Compiler::tiers( $tierSetup, [] ) );
+$tierSome = $tierRules( "/* ==== 19. ". Compiler::TIERS. " ==== */\n". Compiler::tiers( $tierSetup, [ 'card' => [ 'space' => [ 'space' ] ] ] ) );
+
+check( 'a control that moves knobs writes nothing for a knob the template chosen does not declare, and the three that move none are always written',
+	array_keys( $tierNone[768] ?? [] ) === [ ':root' ] && array_keys( $tierNone[768][':root'] ) === [ '--nino-base-size' ] && $tierNone[0] === []
+	&& array_keys( $tierSome[768][':root'] ) === [ '--nino-base-size', '--card-space' ] );
+
+// The kernel's own: the properties the section writes are the ones Nino.css has, with the values it says Automatic is
+$tierKernel = (string) file_get_contents( $root. '/_nino/Nino.css' );
+$tierRoot = (string) substr( $tierKernel, (int) strpos( $tierKernel, "\n:root {" ), (int) strpos( $tierKernel, "\n.nino-section, .nino-card," ) - (int) strpos( $tierKernel, "\n:root {" ) );
+
+check( 'the kernel declares what Automatic is taken back to: the gutter of a row at the root and from 768px, the number of whitespace and the way the room between pieces is worked out of it - on the root and on every element that says a number of its own',
+	preg_match( '/^\t--grid-gutter: var\(--space-2\);$/m', $tierRoot ) === 1 && preg_match( '/^\t\t--grid-gutter: var\(--space-3\);$/m', $tierRoot ) === 1
+	&& preg_match( '/^\t--whitespace-gap: calc\( 1 \+ \( var\(--whitespace-scale\) - 1 \) \* \.8 \);$/m', $tierRoot ) === 1
+	&& str_contains( $tierKernel, "\n.nino-section, .nino-card,\n.nino-whitespace--least, .nino-whitespace--less, .nino-whitespace--more, .nino-whitespace--most {\n\t--whitespace-gap: calc( 1 + ( var(--whitespace-scale) - 1 ) * .8 );" ) === true
+	&& Setup::TIER_GAP_SELECTOR === ':root, .nino-section, .nino-card, .nino-whitespace--least, .nino-whitespace--less, .nino-whitespace--more, .nino-whitespace--most'
+	&& str_contains( (string) file_get_contents( $library. '/base.css' ), '--base-size: var(--nino-base-size);' ) === true
+	&& Setup::TIER_MARGINS[0] === [ '1rem', '2rem' ] && Setup::SIZES[0] === [ '100%', '112.5%' ] );
+
+// The panel: the list says what is set and what the screen needs, a preview and a save take it, and an unknown one is dropped
+$tierLocale = $appData['./nino/locales/current'];
+$appData['./nino/locales/current'] = 'en_US';
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+\Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => Setup::FORMAT ] );
+
+[ $status, $tierListed ] = callDesignAction( $appData, 'apiList' );
+
+check( 'design/list says what the tablet and the phone have set - an empty list for each - and what the screen needs: the tiers, the controls with the knobs they move, the positions of each and the tables of the root size, the gutter, the gap and the width of the page',
+	$status === 200 && ( $tierListed['tiers'] ?? null ) === [ 'm' => [], 's' => [] ] && ( $tierListed['tierSpec']['tiers'] ?? null ) === Setup::TIERS
+	&& ( $tierListed['tierSpec']['controls'] ?? null ) === Setup::TIER_CONTROLS && array_keys( $tierListed['tierSpec']['positions'] ?? [] ) === array_keys( Setup::TIER_CONTROLS )
+	&& ( $tierListed['tierSpec']['positions']['gap'] ?? null ) === [ -2, -1, 1, 2 ] && ( $tierListed['tierSpec']['positions']['title'] ?? null ) === [ -2, -1, 1, 2 ] && ( $tierListed['tierSpec']['positions']['size'] ?? null ) === [ -2, -1, 0, 1, 2 ]
+	&& ( $tierListed['tierSpec']['sizes'] ?? null ) === Setup::SIZES && ( $tierListed['tierSpec']['margins'] ?? null ) === Setup::TIER_MARGINS
+	&& ( $tierListed['tierSpec']['gaps'] ?? null ) === Setup::TIER_GAPS && ( $tierListed['tierSpec']['widths'] ?? null ) === Setup::WIDTHS
+	&& array_key_exists( 'tiers', (array) ( $tierListed['defaults'] ?? [] ) ) === false );
+
+[ $status, $tierPreview ] = callDesignAction( $appData, 'apiPreview', [ 'tiers' => [ 's' => [ 'size' => -2, 'bogus' => 1 ], 'm' => [ 'gap' => 2 ], 'xl' => [ 'size' => 1 ] ] ] );
+$tierPreviewed = $tierRules( (string) ( $tierPreview['css'] ?? '' ) );
+
+check( 'design/preview compiles the tiers it is posted, the unknown ones dropped and named',
+	$status === 200 && ( $tierPreviewed[0][':root']['--nino-base-size'] ?? '' ) === Setup::SIZES[-2][0] && ( $tierPreviewed[768][Setup::TIER_GAP_SELECTOR]['--whitespace-gap'] ?? '' ) !== ''
+	&& count( array_filter( (array) ( $tierPreview['notes'] ?? [] ), static fn( mixed $note ): bool => is_string( $note ) === true && ( str_contains( $note, '"xl"' ) === true || str_contains( $note, '"bogus"' ) === true ) ) ) === 2 );
+
+[ $status, $tierSaved ] = callDesignAction( $appData, 'apiSave', [ 'tiers' => [ 's' => [ 'areas' => -1 ], 'm' => [ 'title' => 2, 'header' => 1 ] ] ] );
+$tierStored = \Nino\Filesystem::getFileContent( $appData, Setup::PATH, [] );
+[ , $tierRelisted ] = callDesignAction( $appData, 'apiList' );
+
+check( 'design/save keeps them in the setup - and design/list gives them back as they were kept',
+	$status === 200 && ( $tierStored['tiers'] ?? null ) === [ 'm' => [ 'title' => 2, 'header' => 1 ], 's' => [ 'areas' => -1 ] ] && ( $tierRelisted['tiers'] ?? null ) === $tierStored['tiers'] );
+
+// A template that does not answer to a knob has no say in it: a position kept for it is gone, as a knob's is
+[ , $tierMoved ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [ 'section' => 'open' ], 'tiers' => [ 'm' => [ 'size' => 1 ] ] ] );
+$tierAnswers = Setup::knobs( $library, 'section', 'open' );
+
+// The theme: kept with the setup, exported, imported and duplicated with it
+$tierSlug = 'tiers-theme';
+$tierRecord = Themes::record( 'Tiers theme', 'With tiers', Setup::normalize( $appData, [ 'tiers' => [ 'm' => [ 'size' => 1, 'gap' => -2 ], 's' => [ 'button' => 2 ] ] ], $library ), '' );
+Themes::write( $appData, $tierSlug, $tierRecord );
+
+check( 'a theme keeps the tiers in its setup where something is set, after the choices for the features, and has no key for them where nothing is - the file, the record and the export of a theme that sets none are what they were',
+	( Themes::setup( $tierRecord )['tiers'] ?? null ) === [ 'm' => [ 'size' => 1, 'gap' => -2 ], 's' => [ 'button' => 2 ] ]
+	&& array_key_exists( 'tiers', Themes::snapshot( Setup::defaults( $library ) ) ) === false && array_key_exists( 'tiers', Themes::setup( Themes::record( 'Plain', '', Setup::defaults( $library ), '' ) ) ) === false
+	&& str_contains( Themes::json( Themes::record( 'Plain', '', Setup::defaults( $library ), '' ) ), 'tiers' ) === false
+	&& array_search( 'tiers', array_keys( Themes::snapshot( Setup::normalize( $appData, [ 'tiers' => [ 's' => [ 'size' => 1 ] ] ], $library ) ) ), true ) === array_search( 'features', array_keys( Themes::snapshot( Setup::defaults( $library ) ) ), true ) + 1 );
+
+[ $status, $tierLoaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => $tierSlug ] );
+[ , $tierExported ] = callDesignAction( $appData, 'apiThemeExport', [ 'slug' => $tierSlug ] );
+$tierFileOut = json_decode( (string) ( $tierExported['json'] ?? '' ), true );
+$tierFileOut['name'] = 'Tiers import';
+$tierFileOut['setup']['tiers']['s']['nonsense'] = 3;
+$tierFileOut['setup']['tiers']['m']['title'] = 'wide';
+[ $importStatus ] = callDesignAction( $appData, 'apiThemeImport', [ 'json' => json_encode( $tierFileOut ) ] );
+[ $copyStatus, $tierCopy ] = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => $tierSlug ] );
+
+check( 'loading a theme answers its tiers, exporting writes them, importing reads them the way a setup is read - an unknown control and a position that is none are gone - and a duplicate has the tiers of its original',
+	$status === 200 && ( $tierLoaded['setup']['tiers'] ?? null ) === [ 'm' => [ 'size' => 1, 'gap' => -2 ], 's' => [ 'button' => 2 ] ]
+	&& ( $tierFileOut['setup']['tiers']['m']['size'] ?? null ) === 1 && $importStatus === 200
+	&& ( Themes::setup( (array) Themes::read( $appData, $library, 'tiers-import' ) )['tiers'] ?? null ) === [ 'm' => [ 'size' => 1, 'gap' => -2 ], 's' => [ 'button' => 2 ] ]
+	&& $copyStatus === 200 && ( Themes::setup( (array) Themes::read( $appData, $library, (string) ( $tierCopy['slug'] ?? '' ) ) )['tiers'] ?? null ) === [ 'm' => [ 'size' => 1, 'gap' => -2 ], 's' => [ 'button' => 2 ] ]
+	&& Themes::setup( (array) Themes::fromJson( Themes::json( Themes::read( $appData, $library, $tierSlug ) ) ) )['tiers'] === [ 'm' => [ 'size' => 1, 'gap' => -2 ], 's' => [ 'button' => 2 ] ] );
+
+// The fingerprint: a setup that sets nothing for them hashes as it did, and one that sets something is another
+$tierPrint = Setup::normalize( $appData, [], $library );
+$tierSet = Setup::normalize( $appData, [ 'tiers' => [ 's' => [ 'size' => -1 ] ] ], $library );
+$tierWithout = $tierPrint;
+unset( $tierWithout['tiers'] );
+
+check( 'the fingerprint leaves out tiers that set nothing - a project that set none reads current after the update - and follows the ones that are set, each tier and each control',
+	\Nino\Modules\Design::fingerprint( $appData, $tierPrint, $library ) === \Nino\Modules\Design::fingerprint( $appData, $tierWithout, $library )
+	&& \Nino\Modules\Design::fingerprint( $appData, $tierSet, $library ) !== \Nino\Modules\Design::fingerprint( $appData, $tierPrint, $library )
+	&& \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'tiers' => [ 'm' => [ 'size' => -1 ] ] ], $library ), $library ) !== \Nino\Modules\Design::fingerprint( $appData, $tierSet, $library )
+	&& \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'tiers' => [ 's' => [ 'size' => 1 ] ] ], $library ), $library ) !== \Nino\Modules\Design::fingerprint( $appData, $tierSet, $library ) );
+
+// The words: the two tabs, the line of each, Automatic, what it means, and a name and a note-free label for each control, in both languages
+$tierMissing = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $tierWordLocale ) {
+
+	foreach( Setup::TIERS as $tier )
+		foreach( [ 'label', 'hint' ] as $word )
+			if( $panelWord( 'tier/'. $tier. '/'. $word, $tierWordLocale ) === '' )
+				$tierMissing[] = $tierWordLocale. ' '. $tier. '/'. $word;
+
+	foreach( array_keys( Setup::TIER_CONTROLS ) as $control )
+		if( $panelWord( 'tier/control/'. $control. '/label', $tierWordLocale ) === '' )
+			$tierMissing[] = $tierWordLocale. ' '. $control;
+
+	foreach( [ 'tier/auto', 'tier/auto/size', 'tier/auto/margin', 'tier/auto/gap', 'tier/auto/ladder', 'tier/rung', 'tier/knob/section-title', 'tier/knob/section-loud', 'tier/knob/card-space', 'tier/knob/tiles-space', 'tier/knob/header-height', 'tier/knob/header-logo', 'tier/value/size', 'tier/value/margin', 'tier/value/gap' ] as $word )
+		if( $panelWord( $word, $tierWordLocale ) === '' )
+			$tierMissing[] = $tierWordLocale. ' '. $word;
+}
+
+check( 'both text files have the words of the tablet and the phone: the name and the line of each tier, Automatic and what it is for each kind of control, the value of a position, and the name of each of the nine controls'
+	. ( $tierMissing === [] ? '' : ' - missing: '. implode( ', ', array_slice( $tierMissing, 0, 4 ) ) ),
+	$tierMissing === [] && $panelWord( 'tier/m/label', 'en_US' ) !== '' && $panelWord( 'tier/auto', 'en_US' ) !== $panelWord( 'tier/auto', 'de_DE' ) );
+
+// One word for each of the two widths, wherever the panel says it: the button of the viewport switch and the tab are the same word, in both languages
+$tierWords = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $tierWordLocale )
+	foreach( [ 'width/phone' => 'tier/s/label', 'width/tablet' => 'tier/m/label' ] as $tierSwitch => $tierTab )
+		if( $panelWord( $tierSwitch, $tierWordLocale ) === '' || $panelWord( $tierSwitch, $tierWordLocale ) !== $panelWord( $tierTab, $tierWordLocale ) )
+			$tierWords[] = $tierWordLocale. ' '. $tierSwitch;
+
+check( 'the two widths have one word each in the panel, in both languages: the button of the viewport switch says what the tab says'. ( $tierWords === [] ? '' : ' - '. implode( ', ', $tierWords ) ),
+	$tierWords === [] );
+
+check( 'the manual names the two tabs by the words of the panel in the line of the knobs, in both languages - and has no entry of its own for them: the panel has ten entries at most',
+	array_filter( [ 'en_US', 'de_DE' ], static fn( string $locale ): bool => str_contains( $said( 'Knobs', $locale ), $panelWord( 'tier/m/label', $locale ) ) === false || str_contains( $said( 'Knobs', $locale ), $panelWord( 'tier/s/label', $locale ) ) === false ) === []
+	&& $manualCounts['panel'] <= 10 );
+
+// --- the sandbox as the sections after this one found it
+Themes::remove( $appData, $tierSlug );
+Themes::remove( $appData, 'tiers-import' );
+Themes::remove( $appData, (string) ( $tierCopy['slug'] ?? '' ) );
+
+foreach( Themes::own( $appData ) as $tierOwn => $tierOwnFile )
+	if( isset( $tierThemes[$tierOwn] ) === false )
+		Themes::remove( $appData, $tierOwn );
+
+\Nino\Filesystem::putFileContent( $appData, Setup::PATH, $tierFile );
+unset( $appData['./nino/filesystem/cache'][Setup::PATH] );
+$appData['./nino/locales/current'] = $tierLocale;
 \Nino\Auth::logoutUser( $appData );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 

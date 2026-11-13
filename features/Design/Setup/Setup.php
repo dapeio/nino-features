@@ -18,6 +18,10 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
+	 *										What the tablet and mobile do differently is `tiers`: for each of the two a position for
+	 *										the controls that stand off Automatic (see TIERS), and nothing for the others - a setup
+	 *										that sets none is the setup it was, and a theme without the key is valid and sets none.
+	 *
 	 *										One model for the panel (the loader of the typefaces installs
 	 *										families and keeps nothing here): the eleven
 	 *										templates (header and footer bring markup and a stylesheet,
@@ -92,8 +96,9 @@ namespace Nino\Modules\Design {
 			And `features`: a file without it has chosen nothing for any feature, which
 			is each feature as it is. And `styles`: a file without it has chosen no style
 			of any template, which is each template as it is. And `navs`: a file without it has
-			chosen no navigation for the header and the footer, which is the file the project has	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'fonts', 'colours', 'css', 'compiled' ];
+			chosen no navigation for the header and the footer, which is the file the project has. And `tiers`: a file without it has set
+			nothing for the tablet and mobile, which is every size where the page above has it	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
 			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
@@ -661,6 +666,69 @@ namespace Nino\Modules\Design {
 			the utility classes - Nino.css says as well	*/
 		public const array WHITESPACE = [ -2 => '.75', -1 => '.9', 0 => '1', 1 => '1.5', 2 => '2' ];
 
+		/*	The three widths a page is drawn for, as the kernel and the grid draw them: below 768px the mobile, from 768px to 1023px the
+			tablet, from 1024px the desktop (nino-hide-s, -m and -l, and the widths -m- and -l- of the grid). Every setting above is the
+			desktop's. A tier is what the tablet and mobile do differently, and the setup keeps it under `tiers`: `m` for the tablet
+			and `s` for the mobile, each a control => position for the controls that stand off Automatic and none for the others, so that
+			a setup that sets nothing for them writes nothing and the sheet is the one it was. Automatic is no position but the absence of
+			one: the tier has the value the desktop's setting gives it there - the root size from 768px at the tablet, below it at the phone	*/
+		public const array TIERS = [ 'm', 's' ];
+
+		/*	The controls of a tier, in the order they are written and shown in, and the knobs of the parts each of them moves. A control with
+			knobs is an OFFSET: its position is the number of rungs the tier stands above (+) or below (-) the rung the desktop's own setting
+			of each knob stands at, held to the ends of that knob's ladder - so two knobs that stand at different places on the desktop move
+			the same distance, a tier that is moved back by the desktop's setting goes with it, and Automatic is the offset 0 and no entry.
+			The ones with no knob state a value: the root size (--nino-base-size, SIZES) and the space between the content and the edge
+			(--grid-gutter, TIER_MARGINS) are absolute, a position names the pair whatever the desktop has:
+				size			the root size of the page, which every size in rem follows (absolute)
+				title			the size of the title of a section and of the loud variants, the hero style's among them, which have no number of
+									their own but the one the knob loud gives them (offset of the knobs title and loud of the section)
+				subtitle		the size of the subtitle of a section (offset of the knob subtitle of the section)
+				areas			the air above and below a section (offset of the knob space of the section)
+				margin			the space between the content and the edge of the screen (absolute)
+				inset			the room inside a card and inside a tile (offset of the knobs space of the card and of the tiles)
+				gap			the room between the pieces of a row and of a stack, which is --whitespace-gap times a factor (TIER_GAPS), and the gap
+									between the tiles of a section of tiles (offset of the knob gap of the tiles)
+				header			the minimum height of the bar and the width of the logo (offset of the knobs height and logo of the header)
+				button			the size of a button (offset of the knob size of the buttons)
+			There is no control for the navigation and none for the number of tiles in a row: the menu is a burger or a row of links by the
+			kernel's own rule at 768px, written into the markup the project's navigation file holds - which no template of the library
+			owns - and the number of tiles is the page's, as a class of each of them says, with no setting of the desktop to deviate from	*/
+		public const array TIER_CONTROLS = [
+			'size' 			=> [],
+			'title' 		=> [ [ 'section', 'title' ], [ 'section', 'loud' ] ],
+			'subtitle' 	=> [ [ 'section', 'subtitle' ] ],
+			'areas' 		=> [ [ 'section', 'space' ] ],
+			'margin' 		=> [],
+			'inset' 		=> [ [ 'card', 'space' ], [ 'tiles', 'space' ] ],
+			'gap' 			=> [ [ 'tiles', 'gap' ] ],
+			'header' 		=> [ [ 'header', 'height' ], [ 'header', 'logo' ] ],
+			'button' 		=> [ [ 'buttons', 'size' ] ],
+		];
+
+		/*	The space between the content and the edge of the screen, as the pair --grid-gutter is written with for a tier: mobile's and the
+			tablet's, as --nino-base-size is written with the pair of SIZES. It is the padding of a row. The middle is the kernel's own pair,
+			--space-2 below 768px and --space-3 from it - 1rem and 2rem - and the two steps under it are half and three quarters of it,
+			the two over it one and a half and twice mobile's, which is a rem and two rem more than the tablet's own	*/
+		public const array TIER_MARGINS = [
+			-2 	=> [ '.5rem', '1rem' ],
+			-1 	=> [ '.75rem', '1.5rem' ],
+			0 	=> [ '1rem', '2rem' ],
+			1 	=> [ '1.5rem', '2.5rem' ],
+			2 	=> [ '2rem', '3rem' ],
+		];
+
+		/*	How much of the room between pieces a tier keeps or adds, as the factor --whitespace-gap, which the gaps of the grid classes
+			(nino-grid-gap-1 to -6) and of a stack are drawn with, is multiplied by. 1 is the page's own and is Automatic, so the
+			offset 0 has no place in the table: half, three quarters, one and a half and twice	*/
+		public const array TIER_GAPS = [ -2 => '.5', -1 => '.75', 1 => '1.5', 2 => '2' ];
+
+		// The selectors --whitespace-gap is worked out on in Nino.css: the root, and every element that sets a number of whitespace of its own
+		public const string TIER_GAP_SELECTOR = ':root, .nino-section, .nino-card, .nino-whitespace--least, .nino-whitespace--less, .nino-whitespace--more, .nino-whitespace--most';
+
+		// What a value of a tier that is none of the positions of its control is read as: nothing - Automatic
+		private const int NO_POSITION = 99;
+
 		/*	The radius of a surface, the way Nino.css has it at its :root: two strengths for the whole page, the
 			standard one --radius-surface and the alternative one --radius-surface-alt, and six kinds of surface
 			- the picture of a padded cover, a row, a column, a tile, a card and the frame of a picture -, each with the
@@ -826,6 +894,8 @@ namespace Nino\Modules\Design {
 				'styles' 	=> array_fill_keys( array_keys( self::PARTS ), [] ),
 				// What was chosen for the features that bring variants: an entry for each, key => set and knobs - none is the feature as it is
 				'features' => [],
+				// What the tablet (m) and mobile (s) do differently: control => position, an empty list for a tier that sets nothing - Automatic
+				'tiers' 	=> array_fill_keys( self::TIERS, [] ),
 				'fonts' 	=> Fonts::DEFAULTS,
 				// The palette half, in Colours' own vocabulary - two colours, five
 				// knobs and the mode. Its defaults are the framework's own values, so
@@ -1988,6 +2058,7 @@ namespace Nino\Modules\Design {
 
 			$setup['styles'] = self::picked( $libraryDir, $setup['parts'], is_array( $raw['styles'] ?? null ) === true ? $raw['styles'] : [], $notes );
 			$setup['features'] = self::chosen( $appData, is_array( $raw['features'] ?? null ) === true ? $raw['features'] : [], $notes );
+			$setup['tiers'] = self::tiered( is_array( $raw['tiers'] ?? null ) === true ? $raw['tiers'] : [], $notes );
 
 			/*	The five font roles. A family has to be one the role's select offers -
 				the code is given the monospace ones only, and the families the project
@@ -2033,6 +2104,66 @@ namespace Nino\Modules\Design {
 			$setup['compiled'] = is_array( $raw['compiled'] ?? null ) ? $raw['compiled'] : [];
 
 			return $setup;
+		}
+
+		/**
+		 *	What the tablet and mobile set differently, held to what a tier can be: a tier that is none of TIERS and a control that is none
+		 *	of TIER_CONTROLS are dropped and named, a position that is none of the positions of its control is no choice and the control is
+		 *	Automatic - the way a knob that stands nowhere is the middle. A tier that sets nothing is an empty list, and the controls stand in
+		 *	the order of TIER_CONTROLS
+		 *
+		 *	@param		array 		$given				What the file held, or the screen posted, under `tiers`
+		 *	@param		array 		&$notes				(reference) What had to be dropped
+		 *
+		 *	@return 	array										tier => control => position, a list for each of TIERS
+		 */
+		private static function tiered( array $given, array &$notes ): array {
+
+			foreach( array_keys( $given ) as $tier )
+				if( in_array( $tier, self::TIERS, true ) === false )
+					$notes[] = 'there is no tier "'. self::shown( $tier ). '" - dropped';
+
+			$tiers = [];
+
+			foreach( self::TIERS as $tier ) {
+
+				$chosen = is_array( $given[$tier] ?? null ) === true ? $given[$tier] : [];
+				$tiers[$tier] = [];
+
+				if( array_key_exists( $tier, $given ) === true && is_array( $given[$tier] ) === false )
+					$notes[] = 'the tier "'. $tier. '" is no list of controls - dropped';
+
+				foreach( array_keys( $chosen ) as $control )
+					if( isset( self::TIER_CONTROLS[$control] ) === false )
+						$notes[] = 'the tier "'. $tier. '" has no control "'. self::shown( $control ). '" - dropped';
+
+				foreach( array_keys( self::TIER_CONTROLS ) as $control ) {
+
+					if( array_key_exists( $control, $chosen ) === false )
+						continue;
+
+					$position = self::position( $chosen[$control], 'scale', self::NO_POSITION );
+
+					if( in_array( $position, self::tierPositions( $control ), true ) === true )
+						$tiers[$tier][$control] = $position;
+					else
+						$notes[] = 'the control "'. $control. '" of the tier "'. $tier. '" has no position "'. self::shown( is_scalar( $chosen[$control] ) === true ? var_export( $chosen[$control], true ) : gettype( $chosen[$control] ) ). '" - dropped, it is Automatic';
+				}
+			}
+
+			return $tiers;
+		}
+
+		/**
+		 *	The positions a control of a tier can stand at, from the least to the most: the five of a scale for the two that state a value, and
+		 *	for the offsets the two below and the two above Automatic, which is no position (see TIER_CONTROLS)
+		 *
+		 *	@param		string		$control			A key of TIER_CONTROLS
+		 *
+		 *	@return 	array										Integers
+		 */
+		public static function tierPositions( string $control ): array {
+			return ( self::TIER_CONTROLS[$control] ?? [] ) === [] ? self::positions( 'scale' ) : [ -2, -1, 1, 2 ];
 		}
 
 		/**
@@ -2634,6 +2765,13 @@ namespace Nino\Modules\Design {
 		public static function write( array &$appData, array $setup ): bool {
 
 			$setup['format'] = self::FORMAT;
+
+			// What the tablet and Mobile do differently is written where there is some - in the setup and in the copy of it the record of an apply keeps: a setup that sets none is the file it was
+			if( array_filter( (array) ( $setup['tiers'] ?? [] ) ) === [] )
+				unset( $setup['tiers'] );
+
+			if( is_array( $setup['compiled']['setup'] ?? null ) === true && array_filter( (array) ( $setup['compiled']['setup']['tiers'] ?? [] ) ) === [] )
+				unset( $setup['compiled']['setup']['tiers'] );
 
 			return \Nino\Filesystem::putFileContent( $appData, self::PATH, $setup );
 		}
