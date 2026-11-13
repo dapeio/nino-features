@@ -313,10 +313,11 @@ foreach( glob( $repo. '/applications/*' ) ?: [] as $file )
 	$sources[ basename( $file, '.php' ) ] = str_ends_with( $file, '.php' ) === true && is_file( $file ) === true ? require $file : null;
 ksort( $sources );
 
-check( 'the repository carries the two applications it starts with, website and blog', array_keys( $sources ) === [ 'blog', 'website' ] );
+check( 'the repository carries its applications: blog, vcard and website', array_keys( $sources ) === [ 'blog', 'vcard', 'website' ] );
 check( 'each is an array of exactly the six fields, its key the file name', array_filter( $sources, static fn( mixed $source, string $key ): bool => is_array( $source ) === false || array_keys( $source ) !== [ 'key', 'name', 'description', 'features', 'next', 'start' ] || $source['key'] !== $key, ARRAY_FILTER_USE_BOTH ) === [] );
 check( 'every feature an application names is a feature of this repository', array_filter( $sources, static fn( array $source ): bool => array_diff( $source['features'], array_keys( $manifests ) ) !== [] ) === [] );
 check( 'the website\'s start is "starter", and the blog is the website with features added', $sources['website']['start'] === 'starter' && $sources['blog']['start'] === 'starter' && array_diff( $sources['website']['features'], $sources['blog']['features'] ) === [] && count( $sources['blog']['features'] ) > count( $sources['website']['features'] ) );
+check( 'the vCard brings its own start page: its start is "own", its one feature is the card, and its place to start in is the panel of that feature', $sources['vcard']['start'] === 'own' && $sources['vcard']['features'] === [ 'vcard' ] && $sources['vcard']['next'] === '/_admin/#'. $manifests['vcard']['key'] );
 
 // A copy of the repository the applications are written into, one case at a time
 $apps = $work. '/apps';

@@ -67,7 +67,7 @@ Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die
 
 ## Eine Anwendung schreiben
 
-Eine **Anwendung** ist ein benannter Verbund von Features, die nur zusammen funktionieren, mit einem Einstieg – eine Webseite, ein Blog, später ein CRM. Das ist der Maßstab: sie funktioniert nur im Verbund und hat einen Einstieg. Ein Zusatz wie Medien oder Statistik bleibt ein einzelnes Feature, das man im Features-Panel findet. Der Katalog führt absichtlich wenige Anwendungen: ein Türöffner für eine Art von Projekt, keine Sammlung von Kombinationen. Der Index trägt sie, damit die Einrichtung eines Kernels sie anbieten kann; welche davon eine Installation anbietet, entscheidet der Kernel, wie bei den Features.
+Eine **Anwendung** ist ein benannter Verbund von Features, die nur zusammen funktionieren, mit einem Einstieg – eine Webseite, ein Blog, eine vCard, später ein CRM. Das ist der Maßstab: sie funktioniert nur im Verbund und hat einen Einstieg. Ein Zusatz wie Medien oder Statistik bleibt ein einzelnes Feature, das man im Features-Panel findet. Der Katalog führt absichtlich wenige Anwendungen: ein Türöffner für eine Art von Projekt, keine Sammlung von Kombinationen. Der Index trägt sie, damit die Einrichtung eines Kernels sie anbieten kann; welche davon eine Installation anbietet, entscheidet der Kernel, wie bei den Features.
 
 Eine Anwendung ist eine Datei, `applications/<key>.php`, die ein Array zurückgibt. Jedes Feld steht da:
 

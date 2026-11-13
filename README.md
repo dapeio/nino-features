@@ -67,7 +67,7 @@ Required are `feature.php` and `<Name>.php`. The manifest's `manual` is the docu
 
 ## Write an application
 
-An **application** is a named set of features that work only together, with a place to start in - a website, a blog, later a CRM. The measure is that: it works only as a set and it has an entry point. An addition such as media or statistics stays a single feature, found in the Features panel. The catalogue lists few applications on purpose: a door into a kind of project, not a collection of combinations. The index carries them so that a kernel's setup can offer them; which of them an installation offers is the kernel's decision, as for the features.
+An **application** is a named set of features that work only together, with a place to start in - a website, a blog, a vCard, later a CRM. The measure is that: it works only as a set and it has an entry point. An addition such as media or statistics stays a single feature, found in the Features panel. The catalogue lists few applications on purpose: a door into a kind of project, not a collection of combinations. The index carries them so that a kernel's setup can offer them; which of them an installation offers is the kernel's decision, as for the features.
 
 An application is one file, `applications/<key>.php`, that returns an array. Every field is written:
 
