@@ -492,7 +492,10 @@ check( 'and reads every entry as written', is_array( $parsed ) === true && count
 
 	return $entry;
 }, $parsed['features'] ) === $document['features'] );
-check( 'the kernel of the checkout reads the index with the key in it and hands back the features alone', is_array( $parsed ) === true && array_keys( $parsed ) === [ 'format', 'generated', 'features' ] );
+// A kernel that knows applications hands them back as the index has them; one from before them reads the index with the
+// key in it all the same and hands back the features alone. The CI runs against both
+check( 'the kernel of the checkout reads the index with the applications in it: it hands them back as written, or the features alone where it knows none', is_array( $parsed ) === true
+	&& ( array_keys( $parsed ) === [ 'format', 'generated', 'features' ] || ( array_keys( $parsed ) === [ 'format', 'generated', 'features', 'applications' ] && $parsed['applications'] === $document['applications'] ) ) );
 check( 'the signature covers the applications: the document with one changed has none that holds', openssl_verify( str_replace( '/_admin/#builder', '/_admin/#design', $json ), (string) base64_decode( trim( $signature ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) !== 1 && $json !== str_replace( '/_admin/#builder', '/_admin/#design', $json ) );
 check( 'the kernel verifies the signature with the public key', \Nino\Catalogue::verify( $json, $signature, $publicPem ) === true );
 check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );
