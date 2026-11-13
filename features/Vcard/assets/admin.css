@@ -1,0 +1,134 @@
+@layer nino.system, nino.tool, nino.local;
+
+/*	Nino Design - vCard panel
+ *
+ *	The fields, the fieldsets, the switches and the bar belong to the workbench
+ *	already. What is left is the places where two of them stand side by side - the
+ *	photo and its buttons, a language's code in front of its input, a link with the
+ *	buttons that move it - and the width the fields of a language keep.
+ *
+ *	Only added to nino.tool - the layer a feature's admin css belongs in.
+ */
+@layer nino.tool {
+
+	.nino-admin .vcard-form {
+		padding-bottom: 5rem;
+	}
+
+	.nino-admin .vcard-where {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: .5rem 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.nino-admin .vcard-where .nino-admin-notice,
+	.nino-admin .vcard-where .nino-admin-hint {
+		flex: 1 1 100%;
+		margin: 0;
+	}
+
+	.nino-admin .vcard-open {
+		display: inline-flex;
+		align-items: center;
+		min-height: 2rem;
+	}
+
+	.nino-admin .vcard-photo-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: .75rem 1rem;
+		margin-bottom: .5rem;
+	}
+
+	/* The way to Images in a notice: a link of text, which the notice draws in the line */
+	.nino-admin .vcard-form .nino-admin-notice a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+	}
+
+	.nino-admin .vcard-photo > small {
+		display: block;
+		margin-bottom: .4rem;
+	}
+
+	.nino-admin .vcard-photo-img {
+		width: 96px;
+		height: 96px;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+
+	/* The inputs of one detail in the languages of the site, one below the other */
+	.nino-admin .vcard-languages {
+		display: grid;
+		gap: .4rem;
+		margin: 0 0 .72rem;
+	}
+
+	.nino-admin .vcard-language {
+		display: flex;
+		align-items: flex-start;
+		gap: .5rem;
+	}
+
+	.nino-admin .vcard-language > :is(input, textarea) {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.nino-admin .vcard-language-code {
+		flex: 0 0 6.5rem;
+		padding-top: .45rem;
+		color: var(--editor-text-secondary);
+		font: .72rem/1.4 var(--nino-admin-mono);
+	}
+
+	.nino-admin .vcard-links {
+		display: grid;
+		gap: .75rem;
+		margin: 0 0 .75rem;
+		padding: 0;
+		list-style: none;
+	}
+
+	.nino-admin .vcard-link {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: .5rem;
+		padding: .75rem;
+		border: 1px solid var(--editor-border);
+		border-radius: var(--editor-radius-sm);
+	}
+
+	.nino-admin .vcard-link-fields {
+		flex: 1 1 16rem;
+		min-width: 0;
+	}
+
+	.nino-admin .vcard-link .nino-admin-move {
+		align-self: flex-start;
+	}
+
+	/* A finger needs 44 pixels: the workbench's small buttons and the buttons that move a row are drawn for a pointer */
+	@media (pointer: coarse) {
+
+		.nino-admin .vcard-form :is(.nino-admin-btn--small, .vcard-open, .nino-admin-notice a) {
+			min-width: 44px;
+			min-height: 44px;
+		}
+
+		.nino-admin .vcard-form .nino-admin-move button {
+			width: 44px;
+			height: 44px;
+		}
+
+		.nino-admin .vcard-form :is(input:not([type="checkbox"]), select, textarea) {
+			min-height: 44px;
+		}
+	}
+}

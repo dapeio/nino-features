@@ -1,0 +1,1 @@
+<p class="nino-vcard-text[[modifier]]">[[text]]</p>

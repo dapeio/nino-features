@@ -1,0 +1,1 @@
+<p class="nino-vcard-actions"><a class="nino-btn nino-btn--primary nino-vcard-save" href="[[href]]" download="[[file]]">[[/feature/vcard/action/save]]</a></p>

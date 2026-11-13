@@ -1,0 +1,1 @@
+<span class="nino-vcard-hours">[[text]]</span>

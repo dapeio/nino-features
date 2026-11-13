@@ -1,0 +1,1 @@
+<nav class="nino-vcard-legal" aria-label="[[/feature/vcard/label/legal]]">[[items]]</nav>

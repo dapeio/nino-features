@@ -1,0 +1,1 @@
+<a class="nino-vcard-map" href="[[href]]" rel="noopener noreferrer">[[/feature/vcard/action/map]]</a>

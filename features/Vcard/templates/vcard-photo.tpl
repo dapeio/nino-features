@@ -1,0 +1,1 @@
+<div class="nino-vcard-picture">[[image]]</div>

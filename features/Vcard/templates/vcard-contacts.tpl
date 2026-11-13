@@ -1,0 +1,1 @@
+<ul class="nino-vcard-list">[[items]]</ul>

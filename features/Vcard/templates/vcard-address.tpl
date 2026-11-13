@@ -1,0 +1,1 @@
+<address class="nino-vcard-address">[[text]]</address>[[map]]

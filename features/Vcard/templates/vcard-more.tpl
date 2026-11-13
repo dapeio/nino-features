@@ -1,0 +1,1 @@
+<li><a class="nino-vcard-more" href="[[href]]"[[attributes]]>[[text]]</a></li>

@@ -1,0 +1,1 @@
+<a class="nino-vcard-legal-link" href="[[href]]">[[text]]</a>

@@ -93,11 +93,13 @@ const KEYS_WORKBENCH = '#^/_admin/elements/field/[a-z0-9-]+/[a-z0-9-]+$#';
 // its third route, POST /.newsletter/action, is the second step of a link and has no page of a GET to name -
 // a GET there is the site's 404 - and what it answers with is a page of /.newsletter, whose details the head
 // reads (the response's uri is set to it), so it brings none of its own, and the pattern below would not take them.
+// vCard routes its card at /vcard, the Element-URI its page is named after.
 // By the key of the feature, and an entry that no unit uses fails the suite, so the list cannot outlive
 // what it was for. A unit never brings these for a page of the library, whose Element-URI is the project's
 const KEYS_PAGE_DETAILS = [
 	'posts'			=> '#^/_nino/webpage/blog/(name|title|description)$#',
 	'newsletter'	=> '#^/_nino/webpage/\.newsletter(?:/unsubscribe)?/(name|title|description)$#',
+	'vcard'			=> '#^/_nino/webpage/vcard/(name|title|description)$#',
 ];
 
 /**

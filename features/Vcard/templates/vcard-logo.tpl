@@ -1,0 +1,1 @@
+<div class="nino-vcard-picture nino-vcard-picture--logo">[logo alt=""]</div>

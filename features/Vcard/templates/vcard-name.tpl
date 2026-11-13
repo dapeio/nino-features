@@ -1,0 +1,1 @@
+<h2 class="nino-vcard-name">[[name]]</h2>

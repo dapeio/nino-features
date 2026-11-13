@@ -1,0 +1,1 @@
+<ul class="nino-vcard-links">[[items]]</ul>

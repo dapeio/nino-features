@@ -1,0 +1,1 @@
+<p class="nino-vcard-empty">[[/feature/vcard/label/empty]]</p>

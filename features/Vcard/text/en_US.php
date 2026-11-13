@@ -1,0 +1,120 @@
+<?php
+declare(strict_types=1);
+
+// The panel's own words, one file per interface language (see Admin::text()):
+// merged into the workbench's fills while the feature is active, never into the
+// project's text files. The words of the card itself are the other set, in
+// features/Vcard/install/text/
+return [
+
+	'[[/_admin/nav/vcard]]'								=> 'vCard',
+
+	'[[/_admin/vcard/error/load]]'				=> 'The vCard could not be loaded.',
+	'[[/_admin/vcard/error/save]]'				=> 'The vCard could not be saved.',
+	'[[/_admin/vcard/error/upload]]'			=> 'The photo could not be uploaded.',
+
+	'[[/_admin/vcard/hint/intro]]'				=> 'Everything the card shows is here, from top to bottom. A field you leave empty uses what the project already knows from its setup; the grey text in it says what that is.',
+	'[[/_admin/vcard/status/start]]'			=> 'The vCard is the start page of the website.',
+	'[[/_admin/vcard/status/page]]'				=> 'The vCard is on the page %s.',
+	'[[/_admin/vcard/status/taken]]'			=> 'The start page is another page of the project (%s), so the vCard is on an address of its own.',
+	'[[/_admin/vcard/status/detached]]'		=> 'The route %s is meant for the vCard but draws another template, so the card is not on it. Set the template back in the Routes panel.',
+	'[[/_admin/vcard/status/none]]'				=> 'The vCard has no page yet.',
+	'[[/_admin/vcard/label/start]]'				=> 'Use as start page',
+	'[[/_admin/vcard/label/cancel]]'			=> 'Cancel',
+	'[[/_admin/vcard/confirm/start-moves]]'	=> 'The vCard takes the start page /. The page “%s” moves from / to %s. The menus follow the pages, so they link to the new address.',
+	'[[/_admin/vcard/confirm/start-free]]'	=> 'The vCard takes the address /.',
+	'[[/_admin/vcard/confirm/start-gone]]'	=> 'What stops answering afterwards: %s.',
+	'[[/_admin/vcard/confirm/start-ask]]'	=> 'Go on?',
+	'[[/_admin/vcard/msg/started]]'				=> 'The vCard is the start page.',
+	'[[/_admin/vcard/msg/moved]]'					=> 'The vCard is the start page. The page “%s” moved from / to %s.',
+	'[[/_admin/vcard/hint/start-blocked]]'	=> 'No address is free for the page that holds /, so it cannot be moved from here. Give it an address in the Routes panel.',
+	'[[/_admin/vcard/hint/start-template]]'	=> 'The template page-vcard does not draw the card, so the start page would be empty. Put the card back into the template, then use it as the start page.',
+	'[[/_admin/vcard/hint/off]]'					=> 'Before you switch this feature off, give / to another page in the Routes panel: the start page would show the unfilled shortcode vcard.',
+	'[[/_admin/vcard/label/open]]'				=> 'Open the page',
+
+	'[[/_admin/vcard/heading/picture]]'		=> 'Picture',
+	'[[/_admin/vcard/heading/name]]'			=> 'Name and words',
+	'[[/_admin/vcard/heading/contact]]'		=> 'Ways to reach you',
+	'[[/_admin/vcard/heading/links]]'			=> 'Links',
+	'[[/_admin/vcard/heading/times]]'			=> 'Times',
+	'[[/_admin/vcard/heading/file]]'			=> 'Save as contact',
+	'[[/_admin/vcard/heading/legal]]'			=> 'Imprint and privacy policy',
+
+	'[[/_admin/vcard/label/picture]]'			=> 'Shown at the top',
+	'[[/_admin/vcard/picture/auto]]'			=> 'The photo, else the logo',
+	'[[/_admin/vcard/picture/photo]]'			=> 'The photo only',
+	'[[/_admin/vcard/picture/logo]]'			=> 'The logo only',
+	'[[/_admin/vcard/picture/none]]'			=> 'No picture',
+	'[[/_admin/vcard/label/photo-choose]]'	=> 'Choose a photo',
+	'[[/_admin/vcard/label/photo-replace]]'	=> 'Replace the photo',
+	'[[/_admin/vcard/label/photo-remove]]'	=> 'Remove the photo',
+	'[[/_admin/vcard/confirm/photo-remove]]'	=> 'Remove the photo? The file is deleted.',
+	'[[/_admin/vcard/label/photo-alt]]'		=> 'What the photo shows',
+	'[[/_admin/vcard/hint/photo]]'				=> 'The photo is cut square to %s x %s pixels. The contact file carries no photo.',
+	'[[/_admin/vcard/hint/photo-none]]'		=> 'No photo yet.',
+	'[[/_admin/vcard/hint/photo-alt]]'		=> 'One short line for people who cannot see the photo. Empty marks it as decoration.',
+	'[[/_admin/vcard/hint/logo-none]]'		=> 'The project has no logo yet; it is set under Images.',
+	'[[/_admin/vcard/label/images]]'			=> 'Open Images',
+	'[[/_admin/vcard/msg/uploading]]'			=> 'Uploading the photo ...',
+	'[[/_admin/vcard/msg/uploaded]]'			=> 'The photo is saved.',
+	'[[/_admin/vcard/msg/removed]]'				=> 'The photo is removed.',
+
+	'[[/_admin/vcard/label/name]]'				=> 'Name',
+	'[[/_admin/vcard/hint/name]]'					=> 'Empty uses the name of the company.',
+	'[[/_admin/vcard/label/kind]]'				=> 'The card is for',
+	'[[/_admin/vcard/kind/person]]'				=> 'A person',
+	'[[/_admin/vcard/kind/organization]]'	=> 'An organization',
+	'[[/_admin/vcard/hint/kind]]'					=> 'A person is split into first and last name in the contact file; an organization is not.',
+	'[[/_admin/vcard/label/line]]'				=> 'Line below the name',
+	'[[/_admin/vcard/hint/line]]'					=> 'A job or a claim, such as Photographer in Hamburg.',
+	'[[/_admin/vcard/label/text]]'				=> 'Short text',
+	'[[/_admin/vcard/hint/text]]'					=> 'A few sentences. Empty uses the description of the company.',
+
+	'[[/_admin/vcard/label/phone]]'				=> 'Phone',
+	'[[/_admin/vcard/label/email]]'				=> 'E-mail',
+	'[[/_admin/vcard/label/website]]'			=> 'Website',
+	'[[/_admin/vcard/label/address]]'			=> 'Address',
+	'[[/_admin/vcard/hint/address]]'				=> 'Up to five lines.',
+	'[[/_admin/vcard/label/map]]'					=> 'Link the address to a map',
+	'[[/_admin/vcard/hint/map]]'					=> 'A link to OpenStreetMap; no map is loaded on the page.',
+	'[[/_admin/vcard/hint/contact]]'			=> 'Empty fields use the details of the project, shown in grey.',
+
+	'[[/_admin/vcard/label/link-label]]'	=> 'Name of the link',
+	'[[/_admin/vcard/label/link-url]]'		=> 'Address (https://, mailto: or tel:)',
+	'[[/_admin/vcard/label/link-add]]'		=> 'Add a link',
+	'[[/_admin/vcard/label/link-up]]'			=> 'Move the link up',
+	'[[/_admin/vcard/label/link-down]]'		=> 'Move the link down',
+	'[[/_admin/vcard/label/link-remove]]'	=> 'Remove the link',
+	'[[/_admin/vcard/hint/links]]'				=> 'Profiles, a shop, a booking page - up to %s links, in this order. Without a name the address is shown.',
+	'[[/_admin/vcard/hint/links-none]]'		=> 'No links yet.',
+	'[[/_admin/vcard/msg/link-removed]]'	=> 'The link is removed.',
+
+	'[[/_admin/vcard/label/hours]]'				=> 'Opening hours or when you can be reached',
+	'[[/_admin/vcard/hint/hours]]'				=> 'One line, such as Mon-Fri 9-17.',
+
+	'[[/_admin/vcard/label/save-button]]'	=> 'Show the button Save contact',
+	'[[/_admin/vcard/hint/save-button]]'	=> 'It downloads the details as a file in the vCard 3.0 format, which common address books read.',
+
+	'[[/_admin/vcard/hint/legal]]'				=> 'The imprint and the privacy policy are texts of the Legal module and are written under Elements. The card links to both.',
+	'[[/_admin/vcard/hint/legal-none]]'		=> 'The Legal module is not switched on, so the card shows no links to an imprint and a privacy policy.',
+	'[[/_admin/vcard/label/legal-imprint]]'	=> 'Open the imprint',
+	'[[/_admin/vcard/label/legal-privacy]]'	=> 'Open the privacy policy',
+	'[[/_admin/vcard/label/elements]]'		=> 'Edit the texts under Elements',
+
+	'[[/_admin/vcard/label/save]]'				=> 'Save',
+
+	// The sentences of the codes of Admin::validate(), %s the limit where there is one
+	'[[/_admin/error/vcard_picture]]'			=> 'This is not one of the pictures to choose from.',
+	'[[/_admin/error/vcard_name]]'				=> 'A person needs a name. Choose an organization to use the name of the company.',
+	'[[/_admin/error/vcard_start_taken]]'	=> 'No address is free for the page that holds /: /home, /start and the others are taken. Give that page an address in the Routes panel.',
+	'[[/_admin/error/vcard_start_template]]'	=> 'The template page-vcard does not draw the card, so the start page would be empty. Put the card back into the template first.',
+	'[[/_admin/error/vcard_kind]]'				=> 'Choose a person or an organization.',
+	'[[/_admin/error/vcard_long]]'				=> 'This is too long: at most %s characters.',
+	'[[/_admin/error/vcard_lines]]'				=> 'The address has too many lines: at most %s.',
+	'[[/_admin/error/vcard_phone]]'				=> 'This does not look like a phone number: digits, a leading +, spaces, brackets and hyphens, five to fifteen digits.',
+	'[[/_admin/error/vcard_email]]'				=> 'This is not an e-mail address.',
+	'[[/_admin/error/vcard_website]]'			=> 'This is not a web address; it starts with https:// or http:// and names a host.',
+	'[[/_admin/error/vcard_link]]'				=> 'This address is not allowed: it has to start with https://, http://, mailto: or tel: and have no space.',
+	'[[/_admin/error/vcard_links]]'				=> 'There are too many links: at most %s.',
+	'[[/_admin/error/vcard_locale]]'			=> 'This language is not one of the website.',
+];

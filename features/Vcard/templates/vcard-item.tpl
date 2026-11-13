@@ -1,0 +1,1 @@
+<li class="nino-vcard-item"><span class="nino-vcard-label">[[label]]</span><span class="nino-vcard-value">[[value]]</span></li>

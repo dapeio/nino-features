@@ -1,0 +1,219 @@
+/**
+ *	Nino - vCard
+ *	vcard.css		The card the page [vcard] draws and nothing else. Bundled into the
+ *					project's own /.cache/style.css by the manifest key `assets` of
+ *					feature.php, the way the kernel bundles its own Nino.css - never
+ *					rendered through the fill/shortcode engine, so nothing in here is a
+ *					textfill.
+ *
+ *					The card is a card of the alt ground (nino-card--alt), so the ground,
+ *					the ink and the roles that follow it - title, accent, focus, border -
+ *					come from the kernel and from whatever design layer the project has,
+ *					in light and in dark. Every colour, space and radius reads one of the
+ *					kernel's custom properties without a fallback. What a project moves
+ *					are the two properties declared first, in :where() so that the rule
+ *					of a theme wins whichever stylesheet comes first.
+ */
+
+:where(:root) {
+	/*	The width of the card, and the size the photo is shown at. The photo is stored at 480 pixels, so it is sharp up to three times the size	*/
+	--vcard-width: 32rem;
+	--vcard-photo: 8rem;
+}
+
+.nino-vcard {
+	display: flex;
+	justify-content: center;
+	padding-left: calc(var(--space-2) * var(--whitespace-scale));
+	padding-right: calc(var(--space-2) * var(--whitespace-scale));
+}
+
+.nino-vcard-card {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: var(--vcard-width);
+	margin-left: auto;
+	margin-right: auto;
+	padding: calc(var(--space-3) * var(--whitespace-scale)) calc(var(--space-2) * var(--whitespace-scale));
+	text-align: center;
+	overflow-wrap: anywhere;
+
+	/*	The kernel aligns the text of a card with this property, in a rule that has the weight of the one above	*/
+	--card-align: center;
+}
+
+.nino-vcard-picture {
+	width: var(--vcard-photo);
+	height: var(--vcard-photo);
+	margin: 0 auto var(--space-2);
+	border-radius: 50%;
+	overflow: hidden;
+}
+
+.nino-vcard-picture img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/*	A logo is a wordmark: it keeps its own proportions and is not cut to a circle	*/
+.nino-vcard-picture--logo {
+	width: auto;
+	height: auto;
+	max-width: 14rem;
+	border-radius: 0;
+	overflow: visible;
+}
+
+.nino-vcard-picture--logo img {
+	width: auto;
+	height: auto;
+	max-width: 100%;
+	max-height: 5rem;
+	object-fit: contain;
+}
+
+.nino-vcard-name {
+	margin: 0;
+	color: var(--color-title);
+	font-family: var(--fontfamily-title);
+	font-size: var(--text-4);
+	font-weight: var(--font-title-weight);
+	text-transform: var(--font-title-transform);
+	line-height: 1.2;
+}
+
+.nino-vcard-line {
+	margin: var(--space-1) 0 0;
+	color: var(--color-subtitle);
+	font-family: var(--fontfamily-subtitle);
+	font-size: var(--text-2);
+}
+
+.nino-vcard-text {
+	margin: var(--space-2) 0 0;
+	white-space: pre-line;
+}
+
+.nino-vcard-text--long {
+	text-align: start;
+	hyphens: auto;
+}
+
+.nino-vcard-empty {
+	margin: 0;
+	color: var(--color-subtitle);
+}
+
+.nino-vcard-list,
+.nino-vcard-links {
+	margin: var(--space-3) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.nino-vcard-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: var(--space-1) 0;
+	border-top: 1px solid var(--color-border);
+}
+
+.nino-vcard-item:last-child {
+	border-bottom: 1px solid var(--color-border);
+}
+
+.nino-vcard-label {
+	font-size: var(--fontsize-small);
+	font-weight: bold;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+.nino-vcard-value {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	white-space: pre-line;
+}
+
+.nino-vcard-link,
+.nino-vcard-map,
+.nino-vcard-legal-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 0 var(--space-1);
+	color: var(--color-accent);
+	text-decoration: underline;
+	text-underline-offset: .2em;
+}
+
+.nino-vcard-address {
+	font-style: normal;
+}
+
+.nino-vcard-more {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	box-sizing: border-box;
+	min-height: 44px;
+	padding: var(--space-1) var(--space-2);
+	border: 1px solid var(--color-accent);
+	border-radius: var(--radius);
+	color: var(--color-accent);
+	font-weight: bold;
+	text-decoration: none;
+	transition: background-color .2s ease, color .2s ease;
+}
+
+.nino-vcard-links > li + li {
+	margin-top: var(--space-1);
+}
+
+.nino-vcard-more:hover,
+.nino-vcard-more:focus-visible {
+	background-color: var(--color-accent);
+	color: var(--color-ground);
+}
+
+.nino-vcard-actions {
+	margin: var(--space-3) 0 0;
+}
+
+.nino-vcard-save {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+}
+
+.nino-vcard-legal {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0 var(--space-1);
+	margin-top: var(--space-3);
+	font-size: var(--fontsize-small);
+}
+
+.nino-vcard :where(a):focus-visible {
+	outline: 2px solid var(--color-focus);
+	outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+
+	.nino-vcard-card {
+		padding: calc(var(--space-4) * var(--whitespace-scale)) calc(var(--space-3) * var(--whitespace-scale));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.nino-vcard-more {
+		transition: none;
+	}
+}
