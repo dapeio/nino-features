@@ -8,7 +8,8 @@ declare(strict_types=1);
  *											catalogue that verifies and parses, the second changes no
  *											byte, the third after a version bump of Hello replaces its
  *											archive and leaves every other one as it was; a file
- *											public/ holds that the build does not write stays.
+ *											public/ holds that the build does not write stays. The
+ *											copy carries applications/ too, and the catalogue lists them.
  *
  *	Usage: NINO_ROOT=/path/to/nino php tests/release-smoke.php    (harness only)
  */
@@ -33,7 +34,7 @@ $copy = $work. '/repo';
 // The script writes public/ beside itself, so it runs from a copy and this
 // repository's own public/ stays as it is
 mkdir( $copy );
-foreach( [ 'bin', 'features' ] as $directory )
+foreach( [ 'bin', 'features', 'applications' ] as $directory )
 	shell_exec( 'cp -R '. escapeshellarg( $repo. '/'. $directory ). ' '. escapeshellarg( $copy. '/' ) );
 
 /**
@@ -88,6 +89,7 @@ $json			= (string) @file_get_contents( $target. '/catalogue.json' );
 $parsed		= \Nino\Catalogue::parse( $json );
 check( 'public/ holds one archive per feature directory', count( $archives ) === count( $directories ) );
 check( 'the catalogue verifies with the public key', \Nino\Catalogue::verify( $json, (string) @file_get_contents( $target. '/catalogue.json.sig' ), $publicKey ) === true );
+check( 'it lists the applications of the repository', array_column( json_decode( $json, true )['applications'] ?? [], 'key' ) === array_map( static fn( string $file ): string => basename( $file, '.php' ), glob( $repo. '/applications/*.php' ) ?: [] ) );
 check( 'the kernel parses it, one entry per feature', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $directories ) );
 check( 'and every entry names an archive that is there, with its digest', is_array( $parsed ) === true && array_filter( $parsed['features'], fn( array $entry ): bool => is_file( $target. '/'. basename( $entry['archive'] ) ) === false || hash_file( 'sha256', $target. '/'. basename( $entry['archive'] ) ) !== $entry['sha256'] ) === [] );
 

@@ -12,6 +12,8 @@ A Nino checkout ships no feature. Whatever a project needs beyond the kernel - a
 
 A feature is documented in its manifest: the `manual` in `feature.php` is what the Features panel shows on the Description tab, and the `hint` of a setting is what the form says beside it. There is no other documentation to keep. The history of a feature is the commit history.
 
+Beside the features, the catalogue lists a few **applications** - named sets of features that work together, with a place to start in, see [Write an application](#write-an-application).
+
 ## Install a feature
 
 A feature is not installed; it is dropped in and switched on:
@@ -44,7 +46,7 @@ A single test runs directly too:
 NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
 ```
 
-`bin/catalogue.php` prints what the catalogue would list as JSON, without an archive and without a signature. CI (`.github/workflows/ci.yml`) runs the same tests against Nino's `main` and its latest tag, plus a syntax check, Nino's own contract test, PHPStan and ESLint over `features/`. Nothing waits for it: it is a convenience.
+`bin/catalogue.php` prints what the catalogue would list as JSON - the applications included -, without an archive and without a signature. CI (`.github/workflows/ci.yml`) runs the same tests against Nino's `main` and its latest tag, plus a syntax check, Nino's own contract test, PHPStan and ESLint over `features/`. Nothing waits for it: it is a convenience.
 
 ## Write a feature
 
@@ -62,6 +64,33 @@ features/<Name>/
 Required are `feature.php` and `<Name>.php`. The manifest's `manual` is the documentation: a `section => handle => line` map - shortcodes, markup, routes, panel, callbacks, install - with the handle as somebody types it and a line in German and English beside it. A test is welcome and never required. The rules that stay, because tests check them, are in [AGENTS.md](AGENTS.md): no markup in PHP, English in code, escaping, the text key grammar, and a section of the privacy policy for a feature that processes personal data.
 
 `category` is one of `content`, `ui`, `communication`, `marketing`, `security` or `system`, and no two features carry the same `name` in any locale; `bin/build.php` refuses both.
+
+## Write an application
+
+An **application** is a named set of features that work only together, with a place to start in - a website, a blog, later a CRM. The measure is that: it works only as a set and it has an entry point. An addition such as media or statistics stays a single feature, found in the Features panel. The catalogue lists few applications on purpose: a door into a kind of project, not a collection of combinations. The index carries them so that a kernel's setup can offer them; which of them an installation offers is the kernel's decision, as for the features.
+
+An application is one file, `applications/<key>.php`, that returns an array. Every field is written:
+
+```php
+return [
+	'key'					=> 'website',
+	'name'				=> [ 'en_US' => 'Website', 'de_DE' => 'Webseite' ],
+	'description'	=> [ 'en_US' => '...', 'de_DE' => '...' ],
+	'features'		=> [ 'builder', 'design', 'consent' ],
+	'next'				=> '/_admin/#builder',
+	'start'				=> 'starter',
+];
+```
+
+| Field | What it says |
+| --- | --- |
+| `key` | a slug, the file name without `.php` |
+| `name`, `description` | a text per locale, `de_DE` and `en_US` required; no two applications share a name |
+| `features` | the keys of features of this catalogue, at least one, none twice |
+| `next` | the path in the project the setup leads to, with an optional anchor - `/_admin/#builder`, the workbench panel by its uri - or `null`; no scheme, no `//` |
+| `start` | who provides the start page: `starter` (the kernel's starter pages), `own` (a feature of the application brings it) or `null` (no statement). Applications with a `start` exclude one another |
+
+`bin/build.php` holds every application to this, and one that breaks a rule stops the build with a message naming its file. `bin/catalogue.php` lists them above the features.
 
 ## A release
 
@@ -105,7 +134,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 ## The catalogue, format 1
 
 ```json
-{ "format": 1, "generated": "2026-09-07T12:00:00Z", "features": [ { "key": "newsletter", "...": "..." } ] }
+{ "format": 1, "generated": "2026-09-07T12:00:00Z", "applications": [ { "key": "website", "...": "..." } ], "features": [ { "key": "newsletter", "...": "..." } ] }
 ```
 
 | Field | What it says |
@@ -123,6 +152,14 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `sha256` | the hex digest of the archive - what the kernel checks a download against |
 | `size` | its size in bytes |
 | `released` | the day this archive was first published as it is, `YYYY-MM-DD` |
+
+`applications` is a list sorted by key, one entry per file of `applications/`, each as the file has it:
+
+```json
+{ "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#builder", "start": "starter" }
+```
+
+The key is above `features` and format stays 1: a kernel that does not know it reads the rest as before, and the signature covers it. The fields are the table of [Write an application](#write-an-application).
 
 `catalogue.json.sig` is its detached signature: ECDSA over SHA-256 of the exact bytes, DER, base64 on one line. `generated` is the time of the last change, ISO 8601 UTC. What `\Nino\Catalogue::parse()` refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` runs what it is about to write through `parse()` first.
 

@@ -12,6 +12,8 @@ Ein Nino-Checkout liefert kein Feature aus. Was ein Projekt über den Kernel hin
 
 Ein Feature ist in seinem Manifest dokumentiert: Das `manual` in `feature.php` zeigt das Features-Panel auf dem Tab Beschreibung, und der `hint` einer Einstellung steht neben dem Feld im Formular. Weitere Dokumentation gibt es nicht zu pflegen. Die Geschichte eines Features ist die Commit-Historie.
 
+Neben den Features führt der Katalog wenige **Anwendungen** – benannte Verbünde von Features, die zusammen funktionieren, mit einem Einstieg; siehe [Eine Anwendung schreiben](#eine-anwendung-schreiben).
+
 ## Ein Feature installieren
 
 Ein Feature wird nicht installiert, sondern hingelegt und eingeschaltet:
@@ -44,7 +46,7 @@ Ein einzelner Test läuft auch direkt:
 NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
 ```
 
-`bin/catalogue.php` gibt aus, was der Katalog listen würde, als JSON, ohne Archiv und ohne Signatur. CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` und gegen sein jüngstes Tag aus, dazu eine Syntaxprüfung, Ninos eigenen Vertragstest sowie PHPStan und ESLint über `features/`. Nichts wartet darauf: Es ist eine Bequemlichkeit.
+`bin/catalogue.php` gibt aus, was der Katalog listen würde, als JSON – die Anwendungen eingeschlossen –, ohne Archiv und ohne Signatur. CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` und gegen sein jüngstes Tag aus, dazu eine Syntaxprüfung, Ninos eigenen Vertragstest sowie PHPStan und ESLint über `features/`. Nichts wartet darauf: Es ist eine Bequemlichkeit.
 
 ## Ein Feature schreiben
 
@@ -62,6 +64,33 @@ features/<Name>/
 Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die Dokumentation: eine Map `section => handle => zeile` – Shortcodes, Markup, Routen, Panel, Callbacks, Install – mit dem Handle so, wie man ihn eintippt, und daneben einer Zeile auf Deutsch und Englisch. Ein Test ist willkommen und nie verlangt. Die Regeln, die bleiben, weil Tests sie prüfen, stehen in [AGENTS.md](AGENTS.md): kein Markup in PHP, Englisch im Code, Escaping, die Grammatik der Textschlüssel und ein Abschnitt der Datenschutzerklärung für ein Feature, das personenbezogene Daten verarbeitet.
 
 `category` ist eine von `content`, `ui`, `communication`, `marketing`, `security` oder `system`, und kein Name kommt in irgendeiner Sprache bei zwei Features vor; `bin/build.php` weist beides ab.
+
+## Eine Anwendung schreiben
+
+Eine **Anwendung** ist ein benannter Verbund von Features, die nur zusammen funktionieren, mit einem Einstieg – eine Webseite, ein Blog, später ein CRM. Das ist der Maßstab: sie funktioniert nur im Verbund und hat einen Einstieg. Ein Zusatz wie Medien oder Statistik bleibt ein einzelnes Feature, das man im Features-Panel findet. Der Katalog führt absichtlich wenige Anwendungen: ein Türöffner für eine Art von Projekt, keine Sammlung von Kombinationen. Der Index trägt sie, damit die Einrichtung eines Kernels sie anbieten kann; welche davon eine Installation anbietet, entscheidet der Kernel, wie bei den Features.
+
+Eine Anwendung ist eine Datei, `applications/<key>.php`, die ein Array zurückgibt. Jedes Feld steht da:
+
+```php
+return [
+	'key'					=> 'website',
+	'name'				=> [ 'en_US' => 'Website', 'de_DE' => 'Webseite' ],
+	'description'	=> [ 'en_US' => '...', 'de_DE' => '...' ],
+	'features'		=> [ 'builder', 'design', 'consent' ],
+	'next'				=> '/_admin/#builder',
+	'start'				=> 'starter',
+];
+```
+
+| Feld | Was es sagt |
+| --- | --- |
+| `key` | ein Slug, der Dateiname ohne `.php` |
+| `name`, `description` | ein Text je Sprache, `de_DE` und `en_US` verlangt; kein Name kommt bei zwei Anwendungen vor |
+| `features` | die Keys von Features dieses Katalogs, mindestens eines, keines doppelt |
+| `next` | der Pfad im Projekt, zu dem die Einrichtung führt, mit optionalem Anker – `/_admin/#builder`, das Panel der Verwaltung mit seiner uri – oder `null`; kein Schema, kein `//` |
+| `start` | wer die Startseite stellt: `starter` (die Starter-Seiten des Kernels), `own` (ein Feature der Anwendung bringt sie) oder `null` (keine Aussage). Anwendungen mit einem `start` schließen einander aus |
+
+`bin/build.php` prüft jede Anwendung dagegen, und eine, die eine Regel verletzt, bricht den Build mit einer Meldung ab, die ihre Datei nennt. `bin/catalogue.php` listet sie über den Features.
 
 ## Ein Release
 
@@ -105,7 +134,7 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 ## Der Katalog, Format 1
 
 ```json
-{ "format": 1, "generated": "2026-09-07T12:00:00Z", "features": [ { "key": "newsletter", "...": "..." } ] }
+{ "format": 1, "generated": "2026-09-07T12:00:00Z", "applications": [ { "key": "website", "...": "..." } ], "features": [ { "key": "newsletter", "...": "..." } ] }
 ```
 
 | Feld | Was es sagt |
@@ -123,6 +152,14 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `sha256` | die Hex-Prüfsumme des Archivs – wogegen der Kernel einen Download prüft |
 | `size` | seine Größe in Bytes |
 | `released` | der Tag, an dem dieses Archiv zum ersten Mal so veröffentlicht wurde, `YYYY-MM-DD` |
+
+`applications` ist eine nach Key sortierte Liste, ein Eintrag je Datei von `applications/`, jeder so, wie die Datei ihn hat:
+
+```json
+{ "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#builder", "start": "starter" }
+```
+
+Der Schlüssel steht über `features`, und das Format bleibt 1: ein Kernel, der ihn nicht kennt, liest den Rest wie zuvor, und die Signatur deckt ihn mit ab. Die Felder sind die Tabelle aus [Eine Anwendung schreiben](#eine-anwendung-schreiben).
 
 `catalogue.json.sig` ist seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes, DER, base64 in einer Zeile. `generated` ist die Zeit der letzten Änderung, ISO 8601 UTC. Was `\Nino\Catalogue::parse()` abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum lässt `bin/build.php` das, was es gleich schreibt, zuerst durch `parse()` laufen.
 

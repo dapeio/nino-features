@@ -9,7 +9,10 @@ declare(strict_types=1);
  *								directory it lives in - without building an archive, without a
  *								signature. A manifest that does not validate fails the run:
  *								the catalogue never lists what Nino would skip. bin/check.sh
- *								and CI use it as the manifest check.
+ *								and CI use it as the manifest check. The applications of
+ *								applications/ (bin/applications.php) are listed above the
+ *								features - name, features, entry point - and an invalid one
+ *								fails the run as well.
  *
  *								What getnino.dev publishes - the archives and the signed
  *								catalogue.json in format 1 - is built by bin/build.php.
@@ -72,8 +75,19 @@ if( count( $directories ) !== count( $catalogue ) || $warnings !== [] ) {
 	exit( 1 );
 }
 
+// The applications, every one - which of them a kernel offers is the kernel's
+// to say, as the features it can run are for bin/applicable.php
+require __DIR__. '/applications.php';
+
+[ $applications, $problems ] = readApplications( dirname( __DIR__ ). '/applications', array_column( $catalogue, 'key' ) );
+if( $problems !== [] ) {
+	fwrite( STDERR, "Not every application is valid:\n  ". implode( "\n  ", $problems ). "\n" );
+	exit( 1 );
+}
+
 echo json_encode( [
-	'nino'			=> \Nino\VERSION,
-	'generated'	=> gmdate( 'c' ),
-	'features'	=> $catalogue,
+	'nino'					=> \Nino\VERSION,
+	'generated'			=> gmdate( 'c' ),
+	'applications'	=> $applications,
+	'features'			=> $catalogue,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), "\n";

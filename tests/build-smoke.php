@@ -17,7 +17,12 @@ declare(strict_types=1);
  *									refusals: a manifest that does not validate, a category
  *									outside the kernel's vocabulary, a checkout without one, a
  *									symlink - and the archives installed through the kernel's
- *									side of the catalogue, \Nino\Catalogue.
+ *									side of the catalogue, \Nino\Catalogue. The applications
+ *									of applications/ are part of it: the key "applications"
+ *									above the features, in the form of the source and sorted,
+ *									an application that breaks one of its rules failing the
+ *									build before anything is written - each rule once - and
+ *									the kernel reading the index as it did without the key.
  *
  *									Runs against the checkout beside this repository (../nino)
  *									or the one NINO_ROOT names, over its tests/harness.php.
@@ -237,7 +242,9 @@ check( 'none of that created the output directory', is_dir( $out ) === false );
 $broken = $work. '/broken';
 mkdir( $broken. '/bin', 0755, true );
 copy( $build, $broken. '/bin/build.php' );
+copy( $repo. '/bin/applications.php', $broken. '/bin/applications.php' );
 copyDir( $repo. '/features', $broken. '/features' );
+copyDir( $repo. '/applications', $broken. '/applications' );
 mkdir( $broken. '/features/Broken', 0755, true );
 file_put_contents( $broken. '/features/Broken/feature.php', "<?php\nreturn 'not a manifest';\n" );
 file_put_contents( $broken. '/features/Broken/Broken.php', "<?php\nnamespace Nino\\Modules { class Broken {} }\n" );
@@ -297,6 +304,115 @@ else
 echo "\n";
 
 
+// --- Applications -----------------------------------------------------------------
+
+echo "applications/ - what the build holds an application to\n";
+
+$sources = [];
+foreach( glob( $repo. '/applications/*' ) ?: [] as $file )
+	$sources[ basename( $file, '.php' ) ] = str_ends_with( $file, '.php' ) === true && is_file( $file ) === true ? require $file : null;
+ksort( $sources );
+
+check( 'the repository carries the two applications it starts with, website and blog', array_keys( $sources ) === [ 'blog', 'website' ] );
+check( 'each is an array of exactly the six fields, its key the file name', array_filter( $sources, static fn( mixed $source, string $key ): bool => is_array( $source ) === false || array_keys( $source ) !== [ 'key', 'name', 'description', 'features', 'next', 'start' ] || $source['key'] !== $key, ARRAY_FILTER_USE_BOTH ) === [] );
+check( 'every feature an application names is a feature of this repository', array_filter( $sources, static fn( array $source ): bool => array_diff( $source['features'], array_keys( $manifests ) ) !== [] ) === [] );
+check( 'the website\'s start is "starter", and the blog is the website with features added', $sources['website']['start'] === 'starter' && $sources['blog']['start'] === 'starter' && array_diff( $sources['website']['features'], $sources['blog']['features'] ) === [] && count( $sources['blog']['features'] ) > count( $sources['website']['features'] ) );
+
+// A copy of the repository the applications are written into, one case at a time
+$apps = $work. '/apps';
+mkdir( $apps. '/bin', 0755, true );
+copy( $build, $apps. '/bin/build.php' );
+copy( $repo. '/bin/applications.php', $apps. '/bin/applications.php' );
+copy( $repo. '/bin/catalogue.php', $apps. '/bin/catalogue.php' );
+copyDir( $repo. '/features', $apps. '/features' );
+mkdir( $apps. '/applications', 0755, true );
+
+$appsOut = $work. '/apps-out';
+
+/**
+ *	Put the given applications (file => array, or a string written as it is)
+ *	into the copy and build it: [ status, stdout, stderr ] - the directory
+ *	holds exactly them
+ */
+$buildWith = static function( array $files, ?string $target = null ) use ( $apps, $appsOut, $build, $root ): array {
+
+	foreach( array_diff( scandir( $apps. '/applications' ) ?: [], [ '.', '..' ] ) as $old )
+		unlink( $apps. '/applications/'. $old );
+
+	foreach( $files as $name => $content )
+		file_put_contents( $apps. '/applications/'. $name, is_array( $content ) === true ? "<?php\nreturn ". var_export( $content, true ). ";\n" : $content );
+
+	\Nino\Filesystem::removeDir( $target ?? $appsOut );
+
+	return runScript( $apps. '/bin/build.php', [ $root, $target ?? $appsOut ] );
+};
+
+$good = $sources['website'];
+
+check( 'the valid application builds', ( $buildWith( [ 'website.php' => $good ] )[0] ) === 0 );
+check( 'an application with next and start null - one that names no entry and no start page - builds too, and the index carries the nulls', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'next' => null, 'start' => null ] ) ] )[0] ) === 0
+	&& array_key_exists( 'next', readCatalogue( $appsOut )['applications'][0] ) === true && readCatalogue( $appsOut )['applications'][0]['next'] === null
+	&& array_key_exists( 'start', readCatalogue( $appsOut )['applications'][0] ) === true && readCatalogue( $appsOut )['applications'][0]['start'] === null );
+check( 'a start of "own" builds', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'start' => 'own' ] ) ] )[0] ) === 0 );
+check( 'a text for a locale beside de_DE and en_US builds', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'name' => $good['name'] + [ 'fr_FR' => 'Site' ] ] ) ] )[0] ) === 0 );
+$buildWith( [] );
+rmdir( $apps. '/applications' );
+check( 'no applications/ directory is no application: the index carries an empty list', runScript( $apps. '/bin/build.php', [ $root, $appsOut. '-none' ] )[0] === 0 && ( readCatalogue( $appsOut. '-none' )['applications'] ?? null ) === [] );
+mkdir( $apps. '/applications', 0755, true );
+
+// Each rule once: the file is the one that breaks it, the run fails with
+// status 1, names the file and writes nothing - not the output directory,
+// not an archive
+$cases = [
+	'not an array'								=> [ 'website.php' => "<?php\nreturn 'website';\n" ],
+	'a file that does not parse'	=> [ 'website.php' => "<?php\nreturn [ ;\n" ],
+	'a file that prints'					=> [ 'website.php' => "<?php\necho 'x';\nreturn ". var_export( $good, true ). ";\n" ],
+	'a field of its own'					=> [ 'website.php' => $good + [ 'icon' => 'globe' ] ],
+	'a field left out'						=> [ 'website.php' => array_diff_key( $good, [ 'start' => 1 ] ) ],
+	'a key that is no slug'				=> [ 'Website.php' => array_merge( $good, [ 'key' => 'Website' ] ) ],
+	'a key that is not the file'	=> [ 'website.php' => array_merge( $good, [ 'key' => 'site' ] ) ],
+	'no name in a required locale'	=> [ 'website.php' => array_merge( $good, [ 'name' => [ 'en_US' => 'Website' ] ] ) ],
+	'a name that is no map'				=> [ 'website.php' => array_merge( $good, [ 'name' => 'Website' ] ) ],
+	'an empty description'				=> [ 'website.php' => array_merge( $good, [ 'description' => [ 'en_US' => 'A site', 'de_DE' => ' ' ] ] ) ],
+	'a locale that is none'				=> [ 'website.php' => array_merge( $good, [ 'description' => $good['description'] + [ 'french' => 'Un site' ] ] ) ],
+	'no feature'									=> [ 'website.php' => array_merge( $good, [ 'features' => [] ] ) ],
+	'features that are no list'		=> [ 'website.php' => array_merge( $good, [ 'features' => [ 'a' => 'builder' ] ] ) ],
+	'a feature that is not there'	=> [ 'website.php' => array_merge( $good, [ 'features' => [ 'builder', 'crm' ] ] ) ],
+	'a feature named twice'				=> [ 'website.php' => array_merge( $good, [ 'features' => [ 'builder', 'design', 'builder' ] ] ) ],
+	'a next with a scheme'				=> [ 'website.php' => array_merge( $good, [ 'next' => 'https://example.org/_admin/' ] ) ],
+	'a next with //'							=> [ 'website.php' => array_merge( $good, [ 'next' => '//example.org/_admin/' ] ) ],
+	'a next that is no path'			=> [ 'website.php' => array_merge( $good, [ 'next' => '_admin/#builder' ] ) ],
+	'a next with a dot segment'		=> [ 'website.php' => array_merge( $good, [ 'next' => '/_admin/../#builder' ] ) ],
+	'a next that is no string'		=> [ 'website.php' => array_merge( $good, [ 'next' => 7 ] ) ],
+	'a start that is none'				=> [ 'website.php' => array_merge( $good, [ 'start' => 'blank' ] ) ],
+	'a file that is no application'	=> [ 'website.php' => $good, 'extra.txt' => array_merge( $good, [ 'key' => 'extra', 'name' => [ 'en_US' => 'Extra', 'de_DE' => 'Extra' ] ] ) ],
+	'two applications of one name'	=> [ 'website.php' => $good, 'site.php' => array_merge( $good, [ 'key' => 'site', 'name' => [ 'en_US' => 'WEBSITE', 'de_DE' => 'Seite' ] ] ) ],
+];
+
+foreach( $cases as $label => $files ) {
+
+	[ $status, , $stderr ] = $buildWith( $files );
+	$named = array_keys( $files );
+	$culprit = $label === 'a file that is no application' ? 'extra.txt' : ( $label === 'two applications of one name' ? 'site.php' : $named[0] );
+
+	check( 'refused: '. $label, $status === 1 && str_contains( $stderr, 'applications/'. $culprit ) === true );
+	check( '...and nothing was written', is_dir( $appsOut ) === false );
+}
+
+[ $status, , $stderr ] = $buildWith( [ 'website.php' => array_merge( $good, [ 'next' => 'https://example.org/' ] ), 'blog.php' => array_merge( $good, [ 'key' => 'blog', 'features' => [ 'nothing' ] ] ) ] );
+check( 'every application that breaks a rule is named, not only the first', $status === 1 && str_contains( $stderr, 'applications/website.php' ) === true && str_contains( $stderr, 'applications/blog.php' ) === true );
+
+// The preview holds the same rules and shows the applications
+[ $status, $stdout ] = runScript( $repo. '/bin/catalogue.php', [ $root ] );
+$preview = json_decode( $stdout, true );
+check( 'bin/catalogue.php lists the applications as the sources have them', $status === 0 && is_array( $preview ) === true && ( $preview['applications'] ?? null ) === array_values( $sources ) );
+$buildWith( [ 'website.php' => array_merge( $good, [ 'features' => [ 'nothing' ] ] ) ] );
+[ $status, , $stderr ] = runScript( $apps. '/bin/catalogue.php', [ $root ] );
+check( '...and fails on an application that breaks a rule, naming the file', $status === 1 && str_contains( $stderr, 'applications/website.php' ) === true );
+
+echo "\n";
+
+
 // --- A signed build ---------------------------------------------------------------
 
 echo "bin/build.php - a signed build of every feature\n";
@@ -330,6 +446,9 @@ $document	= readCatalogue( $out );
 check( 'catalogue.json is format 1 with a generated time in ISO 8601 UTC', ( $document['format'] ?? null ) === 1 && preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', (string) ( $document['generated'] ?? '' ) ) === 1 );
 check( 'it is pretty-printed with unescaped slashes and unicode and ends in a newline', str_contains( $json, "\n    \"format\": 1" ) === true && str_contains( $json, '\/' ) === false && str_contains( $json, 'über' ) === true && str_ends_with( $json, "}\n" ) === true );
 check( 'one entry per feature, sorted by key', array_column( $document['features'] ?? [], 'key' ) === array_keys( $manifests ) );
+check( 'the key "applications" stands above the features, after generated, and format stays 1', array_keys( $document ) === [ 'format', 'generated', 'applications', 'features' ] && $document['format'] === 1 );
+check( 'it lists every application of applications/ as the source has it, sorted by key', ( $document['applications'] ?? null ) === array_values( $sources ) && array_column( $document['applications'] ?? [], 'key' ) === array_keys( $sources ) );
+check( 'every feature an application names is an entry of the index', array_filter( $document['applications'] ?? [], static fn( array $application ): bool => array_diff( $application['features'], array_column( $document['features'], 'key' ) ) !== [] ) === [] );
 
 foreach( $manifests as $key => $manifest ) {
 
@@ -372,6 +491,8 @@ check( 'and reads every entry as written', is_array( $parsed ) === true && count
 
 	return $entry;
 }, $parsed['features'] ) === $document['features'] );
+check( 'the kernel of the checkout reads the index with the key in it and hands back the features alone', is_array( $parsed ) === true && array_keys( $parsed ) === [ 'format', 'generated', 'features' ] );
+check( 'the signature covers the applications: the document with one changed has none that holds', openssl_verify( str_replace( '/_admin/#builder', '/_admin/#design', $json ), (string) base64_decode( trim( $signature ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) !== 1 && $json !== str_replace( '/_admin/#builder', '/_admin/#design', $json ) );
 check( 'the kernel verifies the signature with the public key', \Nino\Catalogue::verify( $json, $signature, $publicPem ) === true );
 check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );
 check( 'the signature verifies the way `openssl dgst -sha256 -sign | base64 -w0` is read: whitespace tolerated', \Nino\Catalogue::verify( $json, "  ". trim( $signature ). "\n\n", $publicPem ) === true );
@@ -422,7 +543,9 @@ echo "bin/build.php - a feature that changed: other bytes under the same name, r
 $changed = $work. '/changed';
 mkdir( $changed. '/bin', 0755, true );
 copy( $build, $changed. '/bin/build.php' );
+copy( $repo. '/bin/applications.php', $changed. '/bin/applications.php' );
 copyDir( $repo. '/features', $changed. '/features' );
+copyDir( $repo. '/applications', $changed. '/applications' );
 file_put_contents( $changed. '/features/Search/note.txt', "one more file\n" );
 
 $searchName = 'search-'. $manifests['search']['version']. '.tar.gz';

@@ -10,6 +10,14 @@ declare(strict_types=1);
  *								the kernel of a Nino checkout first: the catalogue never
  *								lists what Nino would skip.
  *
+ *								The applications below applications/ (bin/applications.php)
+ *								are held to their rules the same way, and a single one that
+ *								is not stops the build with a message naming the file. They
+ *								are published as the key "applications" of catalogue.json,
+ *								above the features, sorted by key: a kernel that reads
+ *								format 1 and does not know the key ignores it, and the
+ *								signature covers it with the rest of the document.
+ *
  *								What main carries is the catalogue. Every archive is built
  *								on every run and replaces the one in the output directory;
  *								the archives are deterministic, so a feature that did not
@@ -62,6 +70,8 @@ const BUILD_EXCLUDED						= [ '.git*', '.DS_Store', 'Thumbs.db', '.idea', '.vsco
 // The modification time every archive entry carries - one fixed instant,
 // 2026-01-01T00:00:00Z, never the clock: what makes a rebuild the same bytes
 const BUILD_MTIME								= 1767225600;
+
+require __DIR__. '/applications.php';
 
 
 // --- Output ------------------------------------------------------------------
@@ -530,6 +540,16 @@ foreach( $features as $key => $manifest )
 	}
 
 
+// --- The applications --------------------------------------------------------
+
+[ $applications, $problems ] = readApplications( dirname( __DIR__ ). '/applications', array_keys( $features ) );
+
+if( $problems !== [] )
+	fail( 'Not every application is valid:'. "\n  ". implode( "\n  ", $problems ) );
+
+say( 'checked  '. count( $applications ). ' '. ( count( $applications ) === 1 ? 'application' : 'applications' ). ( $applications === [] ? '' : ' ('. implode( ', ', array_column( $applications, 'key' ) ). ')' ) );
+
+
 // --- The catalogue so far ----------------------------------------------------
 
 if( is_dir( $out ) === false && @mkdir( $out, 0755, true ) === false )
@@ -638,10 +658,10 @@ foreach( glob( $out. '/*.tar.gz' ) ?: [] as $file )
 
 // --- Write and sign ----------------------------------------------------------
 
-$encode = static function( array $features, string $generated ): string {
+$encode = static function( array $features, string $generated ) use ( $applications ): string {
 
 	try {
-		return json_encode( [ 'format' => BUILD_FORMAT, 'generated' => $generated, 'features' => $features ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ). "\n";
+		return json_encode( [ 'format' => BUILD_FORMAT, 'generated' => $generated, 'applications' => $applications, 'features' => $features ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ). "\n";
 	}
 	catch( \JsonException $e ) {
 		fail( 'The catalogue cannot be encoded: '. $e->getMessage() );
