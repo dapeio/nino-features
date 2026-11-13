@@ -4,7 +4,8 @@ declare(strict_types=1);
 /**
  *	Nino features
  *	demo-catalogue-smoke.php	The "Demo: Catalogue" page unit of the kernel
- *														(_admin/install/library/pages/.demo-catalogue) is
+ *														(tests/fixtures/demo-catalogue, or the library of the setup
+ *														in a kernel that delivers it) is
  *														the one page that draws every building block of
  *														Nino.css, and a catalogue of features that bring
  *														classes of their own has to know the page still
@@ -58,7 +59,9 @@ function check( string $label, bool $condition ): void {
 	echo "FAIL  - $label\n";
 }
 
-$unit 		= NINO. '/_admin/install/library/pages/.demo-catalogue';
+// The kernel keeps the unit among its tests' fixtures; a kernel that still delivers it holds it in the library of the
+// setup. The CI runs against Nino's main and against its latest tag, so the test takes the place that checkout has
+$unit 		= is_dir( NINO. '/tests/fixtures/demo-catalogue' ) === true ? NINO. '/tests/fixtures/demo-catalogue' : NINO. '/_admin/install/library/pages/.demo-catalogue';
 $template = $unit. '/templates/.demo-catalogue.tpl';
 
 
