@@ -158,7 +158,7 @@ footer {
 .nino-frame-footer .nino-frame-footer-statement {
 	gap: calc( var(--space-4) * var(--footer-space) ) 0;
 	max-width: none;
-	padding: calc( var(--space-5) * var(--footer-height) ) max(var(--space-3), calc((100vw - var(--grid-max-width)) / 2)) calc( var(--space-1) * var(--footer-space) );
+	padding: calc( var(--space-4) * var(--footer-height) ) calc( var(--space-1) * var(--footer-space) );
 	color: var(--color-primary-text);
 	--color-ink: var(--color-primary-text);
 	--color-ground: var(--color-primary);
@@ -217,6 +217,10 @@ footer {
 	gap: calc( var(--space-1) * var(--footer-space) ) calc( var(--space-3) * var(--footer-space) );
 }
 
+.nino-frame-footer .nino-frame-footer-nav .nino-nav-content li + li {
+	margin-top: calc( var(--space-1) * var(--footer-space) );
+}
+
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content li a,
 .nino-frame-footer .nino-frame-footer-utility .nino-nav-content li a {
 	text-transform: var(--footer-nav-case);
@@ -224,7 +228,8 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-legal {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: calc( var(--space-2) * var(--footer-space) );
 	border-top: var(--footer-divider) solid var(--footer-ground-border);
@@ -240,7 +245,8 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: flex-start;
 	gap: calc( var(--space-2) * var(--footer-space) );
 }
 
@@ -255,7 +261,7 @@ footer {
 }
 
 .nino-frame-footer .nino-footer-localepicker {
-	justify-content: flex-end;
+	justify-content: flex-start;
 }
 
 .nino-frame-footer a:hover,
@@ -264,26 +270,23 @@ footer {
 	text-underline-offset: .25em;
 }
 
-@media (max-width: 767px) {
+/*	From 768px the statement has the room of the page at its sides, the links stand in a row without the space between lines, and the legal line and the utility row stand in a row	*/
+@media (min-width: 768px) {
 	.nino-frame-footer .nino-frame-footer-statement {
-		padding: calc( var(--space-4) * var(--footer-height) ) calc( var(--space-1) * var(--footer-space) );
-	}
-
-	.nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
-		display: block;
+		padding: calc( var(--space-5) * var(--footer-height) ) max(var(--space-3), calc((100vw - var(--grid-max-width)) / 2)) calc( var(--space-1) * var(--footer-space) );
 	}
 
 	.nino-frame-footer .nino-frame-footer-nav .nino-nav-content li + li {
-		margin-top: calc( var(--space-1) * var(--footer-space) );
+		margin-top: 0;
 	}
 
 	.nino-frame-footer .nino-frame-footer-legal,
 	.nino-frame-footer .nino-frame-footer-utility {
-		align-items: flex-start;
-		flex-direction: column;
+		align-items: center;
+		flex-direction: row;
 	}
 
 	.nino-frame-footer .nino-footer-localepicker {
-		justify-content: flex-start;
+		justify-content: flex-end;
 	}
 }

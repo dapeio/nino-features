@@ -106,10 +106,11 @@ jobs:
 
       # The catalogue's own rules over every feature's files: markup belongs in
       # a template, the text is English, the escape keeps what it cannot
-      # encode, a panel reaches the workbench the way it has to, and every manual
-      # keeps the shape of an overview
+      # encode, a panel reaches the workbench the way it has to, every manual
+      # keeps the shape of an overview, and a stylesheet answers to a width at
+      # 640, 768, 1024 or 1280 px as min-width and at no other
       - name: Run the catalogue's rule tests
-        run: for test in markup language escaping panels manual; do php "tests/$test-smoke.php" || exit 1; done
+        run: for test in markup language escaping panels manual breakpoints; do php "tests/$test-smoke.php" || exit 1; done
 
       # bin/release.sh from a copy of the repository, whose public/ stands
       # in for the served directory

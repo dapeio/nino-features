@@ -2184,7 +2184,7 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 	$heroRules += $rules;
 }
 
-check( 'every header that takes main\'s top padding away for a hero that opens the page does so directly below main and inside the Builder\'s wrap alike - the four that have such a rule do'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] && $heroRules === 4 );
+check( 'every header that takes main\'s top padding away for a hero that opens the page does so directly below main and inside the Builder\'s wrap alike - the four that have such a rule do, the side rail with a second rule that gives the room back from 1024 px'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] && $heroRules === 5 );
 
 /*	Below a page that opens with no hero main's top padding is the bar's height, and the bar grows a row with the links that wrap: the kernel writes how far it has grown as
 	--nino-header-grow (Nino.ui.js, 0px where it does not), and every formula of a header that reads --header-height for that padding adds it - the one of the top bar from 768px
@@ -2625,10 +2625,10 @@ foreach( $frameKnobs as $frame => $handles )
 		// A set with no knob for the behaviour that is a bar below a width - the rail - slides its frame away there as the others do
 		if( $frame === 'header' && array_key_exists( 'behaviour', $frameLadders ) === false ) {
 
-			$railFolds = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === $frameFold && preg_match( '/(?<![a-z-])translate\s*:\s*0 -100%\s*;/', $rule['body'] ) === 1 && str_starts_with( $rule['within'], '@media (max-width:' ) === true );
-			$railMoves = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-frame-header' && preg_match( '/(?<![a-z-])transition\s*:\s*translate\s+\.4s\b/', $rule['body'] ) === 1 && str_starts_with( $rule['within'], '@media (max-width:' ) === true );
+			$railFolds = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === $frameFold && preg_match( '/(?<![a-z-])translate\s*:\s*0 -100%\s*;/', $rule['body'] ) === 1 && $rule['within'] === '' );
+			$railMoves = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === '.nino-frame-header' && preg_match( '/(?<![a-z-])transition\s*:\s*translate\s+\.4s\b/', $rule['body'] ) === 1 && $rule['within'] === '' );
 			$railBars = array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-scroll-down' ) === true && str_contains( $rule['selector'], ':focus-visible' ) === true
-				&& preg_match( '/(?<![a-z-])max-height\s*:\s*none\s*;/', $rule['body'] ) === 1 && preg_match( '/(?<![a-z-])min-height\s*:\s*var\(\s*--header-height\s*\)\s*;/', $rule['body'] ) === 1 && str_starts_with( $rule['within'], '@media (max-width:' ) === true );
+				&& preg_match( '/(?<![a-z-])max-height\s*:\s*none\s*;/', $rule['body'] ) === 1 && preg_match( '/(?<![a-z-])min-height\s*:\s*var\(\s*--header-height\s*\)\s*;/', $rule['body'] ) === 1 && $rule['within'] === '' );
 
 			if( count( $railFolds ) !== 1 || count( $railMoves ) !== 1 || count( $railBars ) !== 1 )
 				$frameProblems[] = $frame. '/'. $set. ': the bar below its breakpoint does not slide its frame away on the way down';
@@ -2644,6 +2644,23 @@ foreach( $frameKnobs as $frame => $handles )
 
 			if( $railRoom === '' || count( $railKept ) !== 1 )
 				$frameProblems[] = $frame. '/'. $set. ': the rail does not keep its padding from its breakpoint on when the page is scrolled down';
+
+			// From 1024 px the bar below it is taken back: the frame stays and keeps the rail's shadow, the height of the rail is the window's, the transition is gone, and main leaves its room by --main-clear
+			$railBack = static fn( string $selector, string $pattern ): int => count( array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === $selector && $rule['within'] === '@media (min-width: 1024px)' && preg_match( $pattern, $rule['body'] ) === 1 ) );
+			$railMain = array_filter( $frameRules, static fn( array $rule ): bool => $rule['selector'] === 'body main' && $rule['within'] === '' && preg_match( '/(?<![a-z-])padding-top\s*:\s*var\(\s*--main-clear\s*,/', $rule['body'] ) === 1 );
+
+			if( $railBack( $frameFold, '/(?<![a-z-])translate\s*:\s*none\s*;/' ) !== 1 || $railBack( $frameFold, '/(?<![a-z-])box-shadow\s*:\s*var\(\s*--header-shadow-rail\s*\)\s*;/' ) !== 1 )
+				$frameProblems[] = $frame. '/'. $set. ': from its breakpoint on the frame of the rail is not taken back from sliding away on the way down, with the shadow of the rail';
+
+			if( $railBack( '.nino-frame-header', '/(?<![a-z-])transition\s*:\s*initial\s*;/' ) !== 1 )
+				$frameProblems[] = $frame. '/'. $set. ': from its breakpoint on the frame of the rail keeps the transition of the bar';
+
+			if( count( array_filter( $frameRules, static fn( array $rule ): bool => str_contains( $rule['selector'], '.nino-scroll-down' ) === true && str_contains( $rule['selector'], '.nino-frame-header-rail' ) === true && str_contains( $rule['selector'], ':focus-visible' ) === true
+				&& $rule['within'] === '@media (min-width: 1024px)' && preg_match( '/(?<![a-z-])min-height\s*:\s*0\s*;/', $rule['body'] ) === 1 ) ) !== 1 )
+				$frameProblems[] = $frame. '/'. $set. ': from its breakpoint on the rail keeps the height the bar gives back when the page is scrolled down';
+
+			if( count( $railMain ) !== 1 )
+				$frameProblems[] = $frame. '/'. $set. ': main does not leave its room by --main-clear';
 		}
 	}
 
@@ -2681,8 +2698,11 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 	$body = $coverSet === [] ? '' : $coverSet[0]['body'];
 
-	if( count( $coverSet ) !== 1 || count( $coverRules ) !== 1 )
-		$coverProblems[] = $set. ': not exactly one rule for the cover, with the four selectors';
+	// The side rail gives the room back from 1024 px in a rule of its own, with the same four selectors
+	$coverCount = $set === 'side-rail' ? 2 : 1;
+
+	if( count( $coverSet ) !== $coverCount || count( $coverRules ) !== $coverCount )
+		$coverProblems[] = $set. ': not exactly '. $coverCount. ' rule'. ( $coverCount === 1 ? '' : 's'). ' for the cover, with the four selectors';
 
 	elseif( $set === 'floating' && preg_match( '/^\s*padding-top\s*:\s*0\s*;\s*$/', $body ) !== 1 )
 		$coverProblems[] = $set. ': the cover rule does not take the room of main away';
@@ -2690,7 +2710,8 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 	elseif( $set === 'pill-menu' && preg_match( '/^\s*padding-top\s*:\s*'. $coverHeight. '\s*;\s*$/', $body ) !== 1 )
 		$coverProblems[] = $set. ': the cover rule does not give the cover the height of the bar and nothing of the air of the page';
 
-	elseif( $set === 'side-rail' && ( preg_match( '/^\s*padding-top\s*:\s*calc\(\s*var\(\s*--header-height\s*\)\s*\+\s*var\(\s*--nino-header-grow\s*,\s*0px\s*\)\s*\)\s*;\s*$/', $body ) !== 1 || preg_match( '/max-width\s*:\s*1023px/', $coverSet[0]['within'] ) !== 1 ) )
+	elseif( $set === 'side-rail' && ( preg_match( '/^\s*--main-clear\s*:\s*calc\(\s*var\(\s*--header-height\s*\)\s*\+\s*var\(\s*--nino-header-grow\s*,\s*0px\s*\)\s*\)\s*;\s*$/', $body ) !== 1 || $coverSet[0]['within'] !== ''
+		|| preg_match( '/^\s*--main-clear\s*:\s*initial\s*;\s*$/', $coverSet[1]['body'] ) !== 1 || $coverSet[1]['within'] !== '@media (min-width: 1024px)' ) )
 		$coverProblems[] = $set. ': the cover rule does not give the cover the height of the bar below 1024 px alone';
 
 	elseif( $set === 'overlay-menu' && ( preg_match( '/(?<![a-z-])--main-clear\s*:\s*var\(\s*--header-ground-rest-cover\s*\)\s+0px\s*;/', $body ) !== 1

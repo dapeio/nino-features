@@ -39,13 +39,13 @@
 }
 
 .nino-consent {
-	inset: auto var(--space-2) var(--space-2) auto;
+	inset: auto 0 0 0;
 	flex-flow: column nowrap;
 	align-items: stretch;
 	width: 100%;
-	max-width: 24rem;
-	border-width: 1px;
-	border-radius: var(--consent-corners);
+	max-width: none;
+	border-width: 1px 0 0;
+	border-radius: var(--consent-corners) var(--consent-corners) 0 0;
 }
 
 .nino-consent-content {
@@ -57,12 +57,12 @@
 	flex: 1 1 auto;
 }
 
-@media (max-width: 640px) {
+@media (min-width: 640px) {
 
 	.nino-consent {
-		inset: auto 0 0 0;
-		max-width: none;
-		border-width: 1px 0 0;
-		border-radius: var(--consent-corners) var(--consent-corners) 0 0;
+		inset: auto var(--space-2) var(--space-2) auto;
+		max-width: 24rem;
+		border-width: 1px;
+		border-radius: var(--consent-corners);
 	}
 }

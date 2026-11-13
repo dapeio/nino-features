@@ -723,12 +723,19 @@ foreach( [ 'box', 'dialog' ] as $variant ) {
 	$bannerRule = array_values( array_filter( $looks[$variant]['rules'] ?? [], static fn( array $rule ): bool => $rule['selector'] === '.nino-consent' && $rule['at'] === '' ) );
 	$place	= consentDeclarations( $bannerRule[0]['body'] ?? '' );
 
-	if( isset( $place['inset'] ) === false || isset( $place['max-width'] ) === false || ( $place['border-radius'] ?? '' ) !== 'var(--consent-corners)' )
+	// The box is the bar below 640px and takes its corner from there, so that its four corners are the knob's in the rule of that width
+	$cornerRule = $variant === 'box' ? array_values( array_filter( $looks[$variant]['rules'] ?? [], static fn( array $rule ): bool => $rule['selector'] === '.nino-consent' && $rule['at'] === '@media (min-width: 640px)' ) ) : $bannerRule;
+	$corners	= consentDeclarations( $cornerRule[0]['body'] ?? '' );
+
+	// ...and where it stands and how wide it is at the most, which the box says in the same rule
+	$placed	= $variant === 'box' ? $corners : $place;
+
+	if( isset( $placed['inset'] ) === false || isset( $placed['max-width'] ) === false || ( $placed['max-width'] ?? '' ) === 'none' || ( $corners['border-radius'] ?? '' ) !== 'var(--consent-corners)' )
 		$boxAndDialog[] = $variant;
 }
 
-check( 'Box and Dialog replace the layout on the banner\'s class - where it stands, how wide it is at the most, all four corners the knob\'s - and the box is the bar again on a narrow screen',
-	$boxAndDialog === [] && array_filter( $looks['box']['rules'], static fn( array $rule ): bool => $rule['at'] === '@media (max-width: 640px)' && $rule['selector'] === '.nino-consent' ) !== []
+check( 'Box and Dialog replace the layout on the banner\'s class - where it stands, how wide it is at the most, all four corners the knob\'s - and the box is the bar on a narrow screen and the box from 640px',
+	$boxAndDialog === [] && array_filter( $looks['box']['rules'], static fn( array $rule ): bool => $rule['at'] === '@media (min-width: 640px)' && $rule['selector'] === '.nino-consent' ) !== []
 	&& ( consentDeclarations( array_values( array_filter( $looks['dialog']['rules'], static fn( array $rule ): bool => $rule['selector'] === '.nino-consent' ) )[0]['body'] ?? '' )['box-shadow'] ?? '' ) !== ''
 	&& str_contains( (string) ( consentDeclarations( array_values( array_filter( $looks['dialog']['rules'], static fn( array $rule ): bool => $rule['selector'] === '.nino-consent' ) )[0]['body'] ?? '' )['box-shadow'] ?? '' ), 'var(--color-background-dim)' ) === true );
 

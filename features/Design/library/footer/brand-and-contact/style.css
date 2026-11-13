@@ -261,7 +261,8 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: var(--footer-position-end);
 	justify-content: var(--footer-position-end);
 	gap: calc( var(--space-2) * var(--footer-space) );
 }
@@ -277,13 +278,18 @@ footer {
 	text-underline-offset: .25em;
 }
 
-@media (max-width: 767px) {
+/*	Below 768px what the template puts at the right edge stands at the left, and the utility row is a column	*/
+:root {
+	--footer-position-end--default:	start;
+}
+
+@media (min-width: 768px) {
 	:root {
-		--footer-position-end--default:	start;
+		--footer-position-end--default:	end;
 	}
 
 	.nino-frame-footer .nino-frame-footer-utility {
-		align-items: var(--footer-position-end);
-		flex-direction: column;
+		align-items: center;
+		flex-direction: row;
 	}
 }

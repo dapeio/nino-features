@@ -38,7 +38,7 @@ bin/check.sh
 NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
-`bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; danach führt es jeden eigenen Test dieses Repositories unter `tests/` aus – die Grammatik der Textschlüssel, die Abschnitte der Datenschutzerklärung, die Regeln, die für jedes Feature gelten, die Demoseite des Kernels, die jede Klasse von `Nino.css` zeichnet, das Build-Werkzeug und das Release-Skript. Die Zeilen des Skripts selbst sind die Liste. Ein Feature, das für ein neueres Nino geschrieben ist als der Checkout, steht mit seinem Grund in der Liste und bleibt draußen (`bin/applicable.php` entscheidet das).
+`bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; danach führt es jeden eigenen Test dieses Repositories unter `tests/` aus – die Grammatik der Textschlüssel, die Abschnitte der Datenschutzerklärung, die Regeln, die für jedes Feature gelten – darunter die eine Linie für Breiten –, die Demoseite des Kernels, die jede Klasse von `Nino.css` zeichnet, das Build-Werkzeug und das Release-Skript. Die Zeilen des Skripts selbst sind die Liste. Ein Feature, das für ein neueres Nino geschrieben ist als der Checkout, steht mit seinem Grund in der Liste und bleibt draußen (`bin/applicable.php` entscheidet das).
 
 Ein einzelner Test läuft auch direkt:
 
@@ -61,7 +61,7 @@ features/<Name>/
 └── tests/<key>-smoke.php    ein Test, wenn du einen willst
 ```
 
-Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die Dokumentation: eine Map `section => handle => zeile` – Shortcodes, Markup, Routen, Panel, Callbacks, Install – mit dem Handle so, wie man ihn eintippt, und daneben einer Zeile auf Deutsch und Englisch. Ein Test ist willkommen und nie verlangt. Die Regeln, die bleiben, weil Tests sie prüfen, stehen in [AGENTS.md](AGENTS.md): kein Markup in PHP, Englisch im Code, Escaping, die Grammatik der Textschlüssel und ein Abschnitt der Datenschutzerklärung für ein Feature, das personenbezogene Daten verarbeitet.
+Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die Dokumentation: eine Map `section => handle => zeile` – Shortcodes, Markup, Routen, Panel, Callbacks, Install – mit dem Handle so, wie man ihn eintippt, und daneben einer Zeile auf Deutsch und Englisch. Ein Test ist willkommen und nie verlangt. Die Regeln, die bleiben, weil Tests sie prüfen, stehen in [AGENTS.md](AGENTS.md): kein Markup in PHP, Englisch im Code, Escaping, die Grammatik der Textschlüssel und ein Abschnitt der Datenschutzerklärung für ein Feature, das personenbezogene Daten verarbeitet. Ein Stylesheet antwortet auf die Breite auf eine Weise: drei Stufen – ein Telefon unter 768 px, ein Tablet ab 768 px, ein Desktop ab 1024 px –, vier Schwellen – 640, 768, 1024 und 1280 px – und immer `min-width`, damit eine Regel die des Telefons ist, bis eine breitere Stufe sie anders setzt.
 
 `category` ist eine von `content`, `ui`, `communication`, `marketing`, `security` oder `system`, und kein Name kommt in irgendeiner Sprache bei zwei Features vor; `bin/build.php` weist beides ab.
 

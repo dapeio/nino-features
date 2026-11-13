@@ -72,11 +72,12 @@
 }
 
 /*	The layout of the bar: along the foot of the page, the line on its top edge, the
-	corners above, the shadow upwards. A look replaces it with rules of its own	*/
+	corners above, the shadow upwards. Its parts are stacked and stretched across the
+	width, in a row from 640px (below). A look replaces it with rules of its own	*/
 :where(.nino-consent) {
 	inset: auto 0 0 0;
-	flex-flow: row wrap;
-	align-items: center;
+	flex-flow: column wrap;
+	align-items: stretch;
 	justify-content: space-between;
 	border-width: 1px 0 0;
 	border-radius: var(--consent-corners) var(--consent-corners) 0 0;
@@ -111,7 +112,7 @@
 }
 
 :where(.nino-consent-content) {
-	flex: 1 1 20rem;
+	flex: 1 1 auto;
 }
 
 .nino-consent-content {
@@ -166,6 +167,7 @@
 .nino-consent-actions {
 	display: flex;
 	flex-wrap: wrap;
+	justify-content: stretch;
 	gap: var(--space-1);
 	flex-shrink: 0;
 }
@@ -174,6 +176,10 @@
 	and the one thing the banner asks of them, that a label is not broken	*/
 .nino-consent-btn {
 	white-space: nowrap;
+}
+
+:where(.nino-consent-btn) {
+	flex: 1 1 auto;
 }
 
 /* [consent-settings] - a plain text link/button for the footer, not a
@@ -197,22 +203,23 @@
 	display: none;
 }
 
-@media (max-width: 640px) {
+/*	From 640px the bar is one row, the text beside the buttons, which keep the width of their labels	*/
+@media (min-width: 640px) {
 
 	:where(.nino-consent) {
-		flex-direction: column;
-		align-items: stretch;
+		flex-flow: row wrap;
+		align-items: center;
 	}
 
 	:where(.nino-consent-content) {
-		flex-basis: auto;
+		flex-basis: 20rem;
 	}
 
 	.nino-consent-actions {
-		justify-content: stretch;
+		justify-content: normal;
 	}
 
 	:where(.nino-consent-btn) {
-		flex: 1 1 auto;
+		flex: 0 1 auto;
 	}
 }

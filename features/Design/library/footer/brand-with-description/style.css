@@ -198,7 +198,7 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-primary {
 	display: grid;
-	grid-template-columns: var(--footer-position-columns);
+	grid-template-columns: 1fr;
 	justify-items: var(--footer-position-items);
 	text-align: var(--footer-position);
 	gap: calc( var(--space-3) * var(--footer-space) );
@@ -240,6 +240,7 @@ footer {
 }
 
 .nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
+	flex-wrap: wrap;
 	justify-content: var(--footer-position-end);
 	gap: calc( var(--space-2) * var(--footer-space) );
 }
@@ -251,7 +252,7 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-meta {
 	display: grid;
-	grid-template-columns: var(--footer-position-meta);
+	grid-template-columns: 1fr;
 	justify-items: var(--footer-position-items);
 	text-align: var(--footer-position);
 	gap: calc( var(--space-2) * var(--footer-space) );
@@ -289,19 +290,23 @@ footer {
 	text-underline-offset: .25em;
 }
 
-/*	Stacked in one column below 900px, with what the template puts at the right edge or in the middle at the left	*/
-@media (max-width: 900px) {
+/*	Stacked in one column below 1024px, with what the template puts at the right edge or in the middle at the left	*/
+:root {
+	--footer-position-end--default:	start;
+	--footer-position-middle--default:	start;
+}
+
+@media (min-width: 1024px) {
 	:root {
-		--footer-position-end--default:	start;
-		--footer-position-middle--default:	start;
+		--footer-position-end--default:	end;
+		--footer-position-middle--default:	center;
 	}
 
-	.nino-frame-footer .nino-frame-footer-primary,
+	.nino-frame-footer .nino-frame-footer-primary {
+		grid-template-columns: var(--footer-position-columns);
+	}
+
 	.nino-frame-footer .nino-frame-footer-meta {
-		grid-template-columns: 1fr;
-	}
-
-	.nino-frame-footer .nino-frame-footer-nav .nino-nav-content ul {
-		flex-wrap: wrap;
+		grid-template-columns: var(--footer-position-meta);
 	}
 }

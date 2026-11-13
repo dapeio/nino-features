@@ -190,6 +190,7 @@
 	--logo-dark: var(--header-ground-logo-dark);
 }
 .nino-frame-header .nino-frame-header-utility {
+	display: none;
 	background-color: var(--color-section-black-bg);
 	color: var(--color-section-black-text);
 	font-size: var(--fontsize-small);
@@ -278,11 +279,9 @@ body main {
 	body main {
 		padding-top: calc( ( var(--header-height) + var(--topbar-utility) + var(--nino-header-grow, 0px) ) * var(--header-behaviour-clear) );
 	}
-}
 
-@media (max-width: 767px) {
 	.nino-frame-header .nino-frame-header-utility {
-		display: none;
+		display: block;
 	}
 }
 @media (min-width: 768px) {

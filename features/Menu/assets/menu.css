@@ -185,6 +185,29 @@
 	}
 }
 
+/*	Below 768px, in the burger overlay, the panel is part of the list, under its entry, as wide as the list	*/
+.nino-menu-item--panel {
+	flex-wrap: wrap;
+}
+
+.nino-menu-item--panel > .nino-menu-link {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.nino-menu-panel {
+	flex: 1 0 100%;
+	padding: var(--space-1) 0 var(--space-2) var(--space-2);
+	font-size: 1rem;
+}
+
+.nino-menu-js .nino-menu-panel {
+	display: none;
+}
+.nino-menu-js .nino-menu-toggle[aria-expanded="true"] ~ .nino-menu-panel {
+	display: block;
+}
+
 /*	From 768px: the bar of the navigation, the panel a dropdown under it	*/
 @media (min-width: 768px) {
 
@@ -206,7 +229,17 @@
 	}
 
 	.nino-menu-item--panel {
+		flex-wrap: nowrap;
 		gap: .25rem;
+	}
+
+	.nino-menu-item--panel > .nino-menu-link {
+		flex: 0 1 auto;
+		min-width: auto;
+	}
+
+	.nino-menu-js .nino-menu-panel {
+		display: block;
 	}
 
 	/*	The panel paints a ground as a section does: the roles of the kernel that follow a ground are pointed at it, so that the text, the ring of the focus and the border are right on whichever ground is chosen	*/
@@ -225,7 +258,9 @@
 		right: 0;
 		z-index: 60;
 		visibility: hidden;
+		flex: 0 1 auto;
 		padding: var(--menu-space);
+		font-size: inherit;
 		border-radius: var(--menu-radius);
 		background-color: var(--menu-ground);
 		box-shadow: var(--menu-shadow);
@@ -297,32 +332,6 @@
 		display: none;
 	}
 	:is(.nino-frame-header-rail, .nino-nav-burger:has(> .nino-nav-toggle[aria-expanded="true"])) .nino-menu-js .nino-menu-toggle[aria-expanded="true"] ~ .nino-menu-panel {
-		display: block;
-	}
-}
-
-/*	Below 768px: in the burger overlay the panel is part of the list, under its entry, as wide as the list	*/
-@media (max-width: 767.98px) {
-
-	.nino-menu-item--panel {
-		flex-wrap: wrap;
-	}
-
-	.nino-menu-item--panel > .nino-menu-link {
-		flex: 1 1 0;
-		min-width: 0;
-	}
-
-	.nino-menu-panel {
-		flex: 1 0 100%;
-		padding: var(--space-1) 0 var(--space-2) var(--space-2);
-		font-size: 1rem;
-	}
-
-	.nino-menu-js .nino-menu-panel {
-		display: none;
-	}
-	.nino-menu-js .nino-menu-toggle[aria-expanded="true"] ~ .nino-menu-panel {
 		display: block;
 	}
 }

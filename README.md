@@ -38,7 +38,7 @@ bin/check.sh
 NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
-`bin/check.sh` copies every feature the checkout can run into the checkout's `features/` - the same layout a project has -, validates every manifest through `bin/catalogue.php`, runs those features' own tests and removes the copies again; then it runs every test of this repository under `tests/` - the text key grammar, the privacy sections, the rules every feature shares, the kernel's demo page that draws every class of `Nino.css`, the build tool and the release script. The script's own lines are the list. A feature written for a newer Nino than the checkout is listed with its reason and left out (`bin/applicable.php` decides).
+`bin/check.sh` copies every feature the checkout can run into the checkout's `features/` - the same layout a project has -, validates every manifest through `bin/catalogue.php`, runs those features' own tests and removes the copies again; then it runs every test of this repository under `tests/` - the text key grammar, the privacy sections, the rules every feature shares - among them the one line for widths -, the kernel's demo page that draws every class of `Nino.css`, the build tool and the release script. The script's own lines are the list. A feature written for a newer Nino than the checkout is listed with its reason and left out (`bin/applicable.php` decides).
 
 A single test runs directly too:
 
@@ -61,7 +61,7 @@ features/<Name>/
 └── tests/<key>-smoke.php    a test, when you want one
 ```
 
-Required are `feature.php` and `<Name>.php`. The manifest's `manual` is the documentation: a `section => handle => line` map - shortcodes, markup, routes, panel, callbacks, install - with the handle as somebody types it and a line in German and English beside it. A test is welcome and never required. The rules that stay, because tests check them, are in [AGENTS.md](AGENTS.md): no markup in PHP, English in code, escaping, the text key grammar, and a section of the privacy policy for a feature that processes personal data.
+Required are `feature.php` and `<Name>.php`. The manifest's `manual` is the documentation: a `section => handle => line` map - shortcodes, markup, routes, panel, callbacks, install - with the handle as somebody types it and a line in German and English beside it. A test is welcome and never required. The rules that stay, because tests check them, are in [AGENTS.md](AGENTS.md): no markup in PHP, English in code, escaping, the text key grammar, and a section of the privacy policy for a feature that processes personal data. A stylesheet answers to the width in one way: three steps - a phone under 768 px, a tablet from 768 px, a desktop from 1024 px -, four thresholds - 640, 768, 1024 and 1280 px - and always `min-width`, so that a rule is the phone's until a wider step sets it otherwise.
 
 `category` is one of `content`, `ui`, `communication`, `marketing`, `security` or `system`, and no two features carry the same `name` in any locale; `bin/build.php` refuses both.
 

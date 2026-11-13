@@ -105,11 +105,11 @@ After editing:
 | `tests/keys-smoke.php` | The text key grammar over every feature. Part 1, against any checkout: what an install unit writes follows `/feature/<key>/<part>/<name>` or `/template/<category>/<part>/<name>` (but for the details of a page the feature's own routes make, named in the suite), reads the same in both languages, blacklists what its own code fills; no old key family is left in a shipped file; the key literals in the code name a namespace; no feature's code reads `/nino/locales/textfiles`. Part 2, against a Nino that has `\Nino\Modules\Template::category()` and for the features `bin/applicable.php` names: every key a template reads is a runtime fill, a key of the system or delivered, a template reads template keys of its own category or of `common` only, a template the kernel delivers too is byte for byte the kernel's. The vocabulary of the workbench is looked up where the checkout has one, as a note |
 | `tests/legal-smoke.php` | The sections of the privacy policy the features bring (`install/elements/privacy.php`, section 4c). Part 1, against any checkout: each file is named in the manifest of its unit, brings no type of its own, has the same sections in `*`, `de_DE` and `en_US`, ids that are the feature's key or the key and a name, a position in the feature's range, only `p`, `br`, `ul`, `ol`, `li`, `strong`, `em` and `a` with a `#privacy-<id>` or `https://` link, no `&`, entity or `[`, only placeholders Nino's Legal module replaces. Part 2, against a Nino that has `\Nino\Modules\Legal`: the module's unit applied in a sandbox, then each feature's add-only - the sections are there, a second run changes nothing, no id is the module's, every anchor names a section, the field's own model leaves every text as it is, `Legal::contributions()` names them. Otherwise a line starting `note` |
 | `tests/components-smoke.php` | What each component of a manifest says of itself, against any Nino that has the Components module's vocabulary and for the features `bin/applicable.php` names: the picture the Builder draws it as (`preview`, one of the fixed ones), what it draws (`draws`: a tag and, where a theme addresses it by one, its class, and a template of the feature opens that tag with that class), where it may stand (`in`) and its `icon`. The one thing it lets a manifest leave out is `draws` of a component that draws no element, named in the suite with its reason; a name on that list that is no component's, or whose component declares `draws`, fails it. The shape of each key is the kernel's to refuse, through the manifest |
-| `tests/markup-smoke.php`, `tests/language-smoke.php`, `tests/escaping-smoke.php`, `tests/panels-smoke.php`, `tests/manual-smoke.php` | The rules every feature shares, read over the feature files: markup belongs in a template (section 4a), the text is English, an escape keeps what it cannot encode, a panel reaches the workbench the way it has to, and the description and the manual keep the shape of an overview - the six sections of the kernel, a handle with one sentence of at most 200 characters in each language, a description of two to four sentences |
+| `tests/markup-smoke.php`, `tests/language-smoke.php`, `tests/escaping-smoke.php`, `tests/panels-smoke.php`, `tests/manual-smoke.php`, `tests/breakpoints-smoke.php` | The rules every feature shares, read over the feature files: markup belongs in a template (section 4a), the text is English, an escape keeps what it cannot encode, a panel reaches the workbench the way it has to, the description and the manual keep the shape of an overview - the six sections of the kernel, a handle with one sentence of at most 200 characters in each language, a description of two to four sentences - and a stylesheet answers to a width at 640, 768, 1024 or 1280 px as `min-width` and at no other (section 4d) |
 | `tests/demo-catalogue-smoke.php` | The kernel's page unit `.demo-catalogue` (`_admin/install/library/pages/`), against any checkout: the unit's manifest and the files it declares, every `nino-*` class `Nino.css` defines on the page - or on the short list of what a frame, a module, a feature (the Builder writes `nino-wrap`) or `Nino.ui.js` draws instead, which fails once `Nino.css` drops one - and a page that renders from the fills, images and modules every installation of it has. A class that `Nino.css` gains is drawn on the page in the same change, or named on that list with its reason |
 | `tests/build-smoke.php` | The build tool's own test over Nino's harness: a keypair per run, a signed build into a temporary directory, the archives' contents, the catalogue's fields, the signature, a second run that changes no byte and leaves `catalogue.json` and its signature untouched, a changed feature that gets new bytes under the same name and a new `released`, a stale archive that is removed, one entry per feature whatever the catalogue held before, the refusals - a category outside the kernel's six and a checkout without them among them - and an installation of the archives through `\Nino\Catalogue`. The `applications` key stands above the features and follows the sources; each rule of an application is refused once, with the file named and nothing written; the kernel of the checkout parses the index and hands back the features alone |
 | `tests/release-smoke.php` | `bin/release.sh` end to end from a copy of the repository, with `--quick` and a temporary key: the first run builds every feature into the copy's `public/` and a catalogue that verifies and parses, the second changes no byte, the third after a version bump of Hello replaces its archive and leaves every other one as it was; a file `public/` holds that the build does not write stays; the copy carries `applications/`, and the index lists them |
-| `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. The tests `bin/check.sh` runs are steps of the workflow too: the smoke tests of all the features together in one step, the five rule tests (markup, language, escaping, panels, manual) together in one, every other test of `tests/` in a step of its own - and besides them a syntax check of every PHP and JavaScript file, Nino's `tests/features-smoke.php` with the features in place, PHPStan and ESLint - the workflow's steps are the list; `catalogue.json` kept as an artifact of the `main` run. A test run and nothing more: no release waits for it |
+| `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. The tests `bin/check.sh` runs are steps of the workflow too: the smoke tests of all the features together in one step, the six rule tests (markup, language, escaping, panels, manual, breakpoints) together in one, every other test of `tests/` in a step of its own - and besides them a syntax check of every PHP and JavaScript file, Nino's `tests/features-smoke.php` with the features in place, PHPStan and ESLint - the workflow's steps are the list; `catalogue.json` kept as an artifact of the `main` run. A test run and nothing more: no release waits for it |
 | `README.md`, `README.de.md` | The catalogue for humans, short: what it is, install, develop and test, write a feature, the release, the server, the signing key, a catalogue of your own, format 1. English is the primary version, German the author's; both have the same structure and identical commands and paths |
 | `.gitignore` | Ignores `/nino/` (a checkout placed inside rather than beside), `*.patch`, `*.pem` (a key never enters the repository) and `/public/` (what `bin/release.sh` builds, the served directory) |
 | `LICENSE`, `.editorconfig` | MIT; tabs, LF, UTF-8, the same defaults Nino uses |
@@ -314,6 +314,45 @@ with the section of `features/Hello/` as its example; what this catalogue adds:
   the class and as always true on one with it.
 
 `tests/legal-smoke.php` holds the files to this.
+
+## 4d. The widths a stylesheet answers to
+
+A stylesheet a visitor is sent holds the same line as `Nino.css`: three steps and
+four thresholds, written "from a width" and mobile first.
+
+- **Steps.** A phone under 768 px, a tablet from 768 px, a desktop from 1024 px.
+- **Thresholds.** 640, 768, 1024 and 1280 px, in px. No other number, no `rem` or
+  `em`, no fraction of a pixel (`767.98px`), no 900 px.
+- **Direction.** `min-width`, always. The rule outside a query is the phone's; a
+  wider step sets what differs. A rule that is written "up to a width" is turned
+  round: its values move out of the query, and the query from the next
+  threshold up gives back what the cascade had there before, so that every
+  width computes the same style as before. `max-width`, a range and a negation (`not (min-width: …)`) are not
+  written, and neither is a query on the device's width.
+
+A query on anything but the width - the pointer, the motion, the colour scheme -
+stays as it is. The stylesheets of the workbench (`assets/admin.css` of a
+feature) follow the workbench of the kernel and are not these.
+
+`tests/breakpoints-smoke.php` holds every `.css`, `.php`, `.tpl`, `.html`, `.svg`,
+`.js` and `.mjs` file of a feature - but for the workbench's own
+`assets/admin.css` and `assets/admin.js` at that place, and the tests - to this,
+wherever a browser is asked for the width: `@media`, `@import` with a query,
+`@custom-media`, the `media` and `sizes` attributes of a tag, the `media`
+property of a link, `matchMedia`. A container query (`@container`) asks the width
+of a box and not of the window; it is no breakpoint of the page and is not held to
+the line. A condition that php or a script puts together from parts cannot be
+read and is a breach, but for a place named in the test's `COMPOSED` table: the
+file, a piece of the line, and the constant or table of the code the widths are
+drawn from, which the test reads and which may hold 640, 768, 1024 and 1280 and
+nothing else. The `EXCEPTIONS` list names a file, the one condition in it that
+stays - once, a second breach of the same words fails - and the reason. A rule
+goes on it only when turning it round has a side effect that the rule cannot take
+away itself; an exception or a table entry that stops being needed fails the
+test, as in section 4a. The list holds the footer set `one-legal-row`: it is the
+footer a site starts with, so the compile of the library at its defaults is the
+`theme.css` the kernel delivers, byte for byte (`design-smoke.php`), and the
+kernel's file carries the rule as it is written.
 
 ## 5. How a test is written
 

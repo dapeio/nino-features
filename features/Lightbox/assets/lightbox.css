@@ -52,7 +52,7 @@
 	align-items: center;
 	justify-content: center;
 	min-height: 0;
-	padding: 3.5rem 1rem 1rem;
+	padding: 3.5rem .5rem 4.5rem;
 }
 
 .nino-lightbox-figure {
@@ -67,8 +67,9 @@
 
 .nino-lightbox-image {
 	max-width: 100%;
-	/* Room for the caption under it, which is why this is not 100% */
-	max-height: calc(100vh - 9rem);
+	/* Room for the caption under it, which is why this is not 100%, and for the
+	   buttons at the bottom edge */
+	max-height: calc(100vh - 12rem);
 	object-fit: contain;
 	border-radius: 3px;
 	box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, .45);
@@ -142,21 +143,21 @@
 	right: 1rem;
 }
 
-.nino-lightbox-prev {
-	top: 50%;
-	left: 1rem;
-	transform: translateY(-50%);
+/*	Previous and next stand at the bottom edge, where a thumb is anyway: at the
+	sides of a phone they would sit on top of the picture. Swiping works
+	regardless. From 640px they stand at the sides (below). */
+.nino-lightbox-prev,
+.nino-lightbox-next {
+	top: auto;
+	bottom: 1rem;
 }
 
-.nino-lightbox-next {
-	top: 50%;
-	right: 1rem;
-	transform: translateY(-50%);
-}
+.nino-lightbox-prev { left: 25%; }
+.nino-lightbox-next { right: 25%; }
 
 .nino-lightbox-prev:active,
 .nino-lightbox-next:active {
-	transform: translateY(-50%) scale(.94);
+	transform: scale(.94);
 }
 
 /*	Which of how many. Hidden for a set of one, where it would only ever
@@ -206,25 +207,25 @@
 	overflow: hidden;
 }
 
-/*	A phone: the side buttons would sit on top of the picture, so they move
-	to the bottom edge where a thumb is anyway. Swiping works regardless. */
-@media (max-width: 40rem) {
+/*	A wider window: more room beside the picture and less under it, and the side buttons
+	move out to the sides of the window	*/
+@media (min-width: 640px) {
 	.nino-lightbox-stage {
-		padding: 3.5rem .5rem 4.5rem;
+		padding: 3.5rem 1rem 1rem;
 	}
 	.nino-lightbox-image {
-		max-height: calc(100vh - 12rem);
+		max-height: calc(100vh - 9rem);
 	}
 	.nino-lightbox-prev,
 	.nino-lightbox-next {
-		top: auto;
-		bottom: 1rem;
-		transform: none;
+		top: 50%;
+		bottom: auto;
+		transform: translateY(-50%);
 	}
-	.nino-lightbox-prev { left: 25%; }
-	.nino-lightbox-next { right: 25%; }
+	.nino-lightbox-prev { left: 1rem; }
+	.nino-lightbox-next { right: 1rem; }
 	.nino-lightbox-prev:active,
-	.nino-lightbox-next:active { transform: scale(.94); }
+	.nino-lightbox-next:active { transform: translateY(-50%) scale(.94); }
 }
 
 /*	Asked for less motion: the lightbox still opens, still swaps, still

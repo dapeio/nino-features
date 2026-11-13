@@ -199,37 +199,36 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-rail {
 }
 
 body main {
-	padding-top: calc( clamp(5rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) + var(--nino-header-grow, 0px) );
+	padding-top: var(--main-clear, calc( clamp(5rem, var(--space-6), 8rem) + var(--header-height) - var(--header-height--default) + var(--nino-header-grow, 0px) ));
 }
 
-/*	Below 1024px the rail is a bar across the top, and it goes as the bar of the other sets does: the frame slides up out of the window on the way down and comes back on the way up, with the exception Nino.css has: not while the focus is in it. Nino.css folds the bar itself as well, and the rail gives its height, its room and its shadow back - the frame moves, and the bar is whole all the way. The shadow lies outside the box and would stay at the top of the window, so it goes with the frame	*/
-@media (max-width: 1023px) {
-	.nino-frame-header {
-		transition: translate .4s, box-shadow .4s;
-	}
-
-	/*	A cover that begins the page starts at the lower edge of the bar, with the height of the bar and nothing of the air of the page that main leaves round the other content: the bar is a ground of its own at every rung. From 1024 px the rail stands at the side and main leaves no room at the top	*/
-	body main:has(> .nino-cover:first-child),
-	body main:has(> .nino-wrap > .nino-cover:first-child),
-	body main:has(> .nino-parallex:first-child),
-	body main:has(> .nino-wrap > .nino-parallex:first-child) {
-		padding-top: calc( var(--header-height) + var(--nino-header-grow, 0px) );
-	}
-
-	body.nino-scroll-down .nino-frame-header:where(:not(:has(:focus-visible))) {
-		translate: 0 -100%;
-		box-shadow: none;
-	}
-
-	body.nino-scroll-down .nino-frame-header .nino-frame-header-rail:where(:not(:has(:focus-visible))) {
-		max-height: none;
-		min-height: var(--header-height);
-		padding-top: calc( var(--space-1) * var(--header-space) );
-		padding-bottom: calc( var(--space-1) * var(--header-space) );
-	}
+/*	Below 1024px the rail is a bar across the top, and it goes as the bar of the other sets does: the frame slides up out of the window on the way down and comes back on the way up, with the exception Nino.css has: not while the focus is in it. Nino.css folds the bar itself as well, and the rail gives its height, its room and its shadow back - the frame moves, and the bar is whole all the way. The shadow lies outside the box and would stay at the top of the window, so it goes with the frame. From 1024px the rail stands at the side and none of this applies: the block of that width below takes it all back	*/
+.nino-frame-header {
+	transition: translate .4s, box-shadow .4s;
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+/*	A cover that begins the page starts at the lower edge of the bar, with the height of the bar and nothing of the air of the page that main leaves round the other content: the bar is a ground of its own at every rung. The room is a custom property that main falls back from when it is invalid: from 1024 px the rail stands at the side and main leaves no room at the top	*/
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-wrap > .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child),
+body main:has(> .nino-wrap > .nino-parallex:first-child) {
+	--main-clear: calc( var(--header-height) + var(--nino-header-grow, 0px) );
+}
+
+body.nino-scroll-down .nino-frame-header:where(:not(:has(:focus-visible))) {
+	translate: 0 -100%;
+	box-shadow: none;
+}
+
+body.nino-scroll-down .nino-frame-header .nino-frame-header-rail:where(:not(:has(:focus-visible))) {
+	max-height: none;
+	min-height: var(--header-height);
+	padding-top: calc( var(--space-1) * var(--header-space) );
+	padding-bottom: calc( var(--space-1) * var(--header-space) );
+}
+
+/*	The links of the bar in a tablet's width. From 1024px the rail sets the same two properties again, in the same selectors, below	*/
+@media (min-width: 768px) {
 	.nino-frame-header .nino-nav-content li a {
 		color: var(--header-ground-ink);
 		font-size: calc( .85rem * var(--header-nav) );
@@ -244,6 +243,19 @@ body main {
 	.nino-frame-header {
 		width: var(--nino-frame-rail-width);
 		height: 100vh;
+		box-shadow: var(--header-shadow-rail);
+		transition: initial;
+	}
+
+	body main:has(> .nino-cover:first-child),
+	body main:has(> .nino-wrap > .nino-cover:first-child),
+	body main:has(> .nino-parallex:first-child),
+	body main:has(> .nino-wrap > .nino-parallex:first-child) {
+		--main-clear: initial;
+	}
+
+	body.nino-scroll-down .nino-frame-header:where(:not(:has(:focus-visible))) {
+		translate: none;
 		box-shadow: var(--header-shadow-rail);
 	}
 
@@ -262,6 +274,10 @@ body main {
 		max-height: none;
 		padding-top: calc( var(--space-3) * var(--header-space) );
 		padding-bottom: calc( var(--space-3) * var(--header-space) );
+	}
+
+	body.nino-scroll-down .nino-frame-header .nino-frame-header-rail:where(:not(:has(:focus-visible))) {
+		min-height: 0;
 	}
 
 	.nino-frame-header .nino-logo {

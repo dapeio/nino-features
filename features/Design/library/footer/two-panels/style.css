@@ -178,13 +178,13 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-split {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	grid-template-columns: 1fr;
 }
 
 .nino-frame-footer .nino-frame-footer-panel {
-	min-height: 18rem;
+	min-height: 0;
 	max-height: 80vh;
-	padding: calc( clamp(var(--space-4), 7vw, var(--space-6)) * var(--footer-height) ) clamp(var(--space-4), 7vw, var(--space-6));
+	padding: calc( var(--space-4) * var(--footer-height) ) var(--space-3);
 }
 
 .nino-frame-footer .nino-frame-footer-panel--brand {
@@ -216,7 +216,7 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-panel--info {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: 1fr;
 	align-content: end;
 	gap: calc( var(--space-4) * var(--footer-space) );
 	color: var(--footer-ground-panel-ink);
@@ -248,7 +248,8 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-legal {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: calc( var(--space-2) * var(--footer-space) );
 	border-top: var(--footer-divider) solid var(--footer-ground-border);
@@ -264,12 +265,13 @@ footer {
 
 .nino-frame-footer .nino-frame-footer-utility {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: flex-start;
 	gap: calc( var(--space-2) * var(--footer-space) );
 }
 
 .nino-frame-footer .nino-footer-localepicker {
-	justify-content: flex-end;
+	justify-content: flex-start;
 }
 
 .nino-frame-footer a:hover,
@@ -279,29 +281,31 @@ footer {
 	text-underline-offset: .25em;
 }
 
-@media (max-width: 900px) {
+/*	The two panels stand side by side from 1024px, with the room and the height of a window that wide	*/
+@media (min-width: 1024px) {
 	.nino-frame-footer .nino-frame-footer-split {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	}
 
 	.nino-frame-footer .nino-frame-footer-panel {
-		min-height: 0;
-		padding: calc( var(--space-4) * var(--footer-height) ) var(--space-3);
+		min-height: 18rem;
+		padding: calc( clamp(var(--space-4), 7vw, var(--space-6)) * var(--footer-height) ) clamp(var(--space-4), 7vw, var(--space-6));
 	}
 }
 
-@media (max-width: 639px) {
+/*	From 640px the info panel has two columns, and the legal line and the utility row stand in a row	*/
+@media (min-width: 640px) {
 	.nino-frame-footer .nino-frame-footer-panel--info {
-		grid-template-columns: 1fr;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.nino-frame-footer .nino-frame-footer-legal,
 	.nino-frame-footer .nino-frame-footer-utility {
-		align-items: flex-start;
-		flex-direction: column;
+		align-items: center;
+		flex-direction: row;
 	}
 
 	.nino-frame-footer .nino-footer-localepicker {
-		justify-content: flex-start;
+		justify-content: flex-end;
 	}
 }

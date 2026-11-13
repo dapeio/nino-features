@@ -166,7 +166,7 @@
 .nino-frame-header {
 	position: var(--header-behaviour);
 	transition: translate .4s;
-	padding: calc( var(--space-1) * var(--header-space) ) calc( var(--space-1) * var(--header-space) ) 0;
+	padding: calc( var(--space-1) * var(--header-space) ) 0 0;
 	--color-title: var(--header-ground-title);
 	--color-accent: var(--header-ground-accent);
 	--color-focus: var(--header-ground-focus);
@@ -181,7 +181,7 @@
 }
 
 .nino-frame-header .nino-scroll-header {
-	width: min(calc(100% - (var(--space-1) * 2 * var(--header-space))), 92rem);
+	width: calc(100% - (var(--space-1) * 2 * var(--header-space)));
 	min-height: var(--header-height);
 	padding-top: .45rem;
 	padding-bottom: .45rem;
@@ -277,14 +277,15 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 	}
 }
 
-@media (max-width: 639px) {
+/*	From 640px the frame keeps room at its sides and the bar is at most 92rem wide	*/
+@media (min-width: 640px) {
 	.nino-frame-header {
-		padding-right: 0;
-		padding-left: 0;
+		padding-right: calc( var(--space-1) * var(--header-space) );
+		padding-left: calc( var(--space-1) * var(--header-space) );
 	}
 
 	.nino-frame-header .nino-scroll-header {
-		width: calc(100% - (var(--space-1) * 2 * var(--header-space)));
+		width: min(calc(100% - (var(--space-1) * 2 * var(--header-space))), 92rem);
 	}
 }
 

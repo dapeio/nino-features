@@ -252,6 +252,8 @@ body.nino-scroll-atf:not(.nino-scroll-up, .nino-scroll-down):has(:is(main, main 
 
 .nino-frame-header .nino-scroll-header {
 	min-height: var(--header-height);
+	padding-right: calc( var(--space-2) * var(--header-space) );
+	padding-left: calc( var(--space-2) * var(--header-space) );
 	opacity: 1;
 	color: var(--rest-cover-ink, var(--header-ground-ink));
 	display: flex;
@@ -369,7 +371,7 @@ body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:fo
 	width: 100%;
 	height: 100dvh;
 	max-height: 0;
-	padding: clamp(5rem, 10vh, 8rem) var(--space-3);
+	padding: clamp(5rem, 10vh, 8rem) var(--space-2);
 	overflow-x: hidden;
 	overflow-y: auto;
 	overscroll-behavior: contain;
@@ -408,7 +410,7 @@ body.nino-scroll-down .nino-frame-header .nino-scroll-header:where(:not(:has(:fo
 	padding: .15em .3em;
 	color: var(--color-title);
 	font-family: var(--fontfamily-title);
-	font-size: calc( var(--text-3) * var(--header-nav) );
+	font-size: calc( clamp(2rem, 12vw, 3.6rem) * var(--header-nav) );
 	font-weight: 700;
 	line-height: .95;
 	letter-spacing: -.04em;
@@ -439,19 +441,20 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 	padding-top: var(--main-clear, calc( ( var(--header-height) + var(--nino-header-grow, 0px) ) * var(--header-behaviour-clear) ));
 }
 
-@media (max-width: 639px) {
+/*	From 640px the bar has no padding at its sides, the menu that opens over the page the wider room, and its links the size of the scale	*/
+@media (min-width: 640px) {
 	.nino-frame-header .nino-scroll-header {
-		padding-right: calc( var(--space-2) * var(--header-space) );
-		padding-left: calc( var(--space-2) * var(--header-space) );
+		padding-right: 0;
+		padding-left: 0;
 	}
 
 	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
-		padding-right: var(--space-2);
-		padding-left: var(--space-2);
+		padding-right: var(--space-3);
+		padding-left: var(--space-3);
 	}
 
 	.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
-		font-size: calc( clamp(2rem, 12vw, 3.6rem) * var(--header-nav) );
+		font-size: calc( var(--text-3) * var(--header-nav) );
 	}
 }
 

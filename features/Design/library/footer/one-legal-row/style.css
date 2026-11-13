@@ -15,6 +15,11 @@
  *	variant as. Every library file carries them; a file without a @name
  *	is offered under its own file name instead.
  *
+ *	The links of the footer navigation stand in a column below 768px in a rule written as max-width
+ *	(767.98px): this is the footer a site starts with, so the compile of the library at its defaults is
+ *	the theme.css the kernel delivers, byte for byte, and the rule stays as the kernel's file has it
+ *	until that file is regenerated; tests/breakpoints-smoke.php names it as its one exception.
+ *
  *	The eight knobs are ladders, declared below, the middle of each this set as it
  *	is: scale is a factor on the type size of the footer, height
  *	a factor on the room above and below its content, space a factor on the gaps
