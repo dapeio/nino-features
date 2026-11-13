@@ -323,7 +323,7 @@ namespace Nino\Modules\Design {
 					not there rides along with the flag that says so, since a save has to carry it on	*/
 				'features' => self::_features( $appData, $setup ),
 				/*	What the tablet (m) and mobile (s) do differently - control => position, an empty list where a tier sets nothing, which is
-					Automatic - and what the screen needs to say what Automatic is: the controls of a tier with the knobs they move, the
+					Automatic - and what the screen needs to say what Automatic is: the controls of a tier with the knobs they move, the blocks they stand in, the
 					positions each can stand at, and the tables of the root size, of the gutter of a row, of the gap and of the width of the page	*/
 				'tiers' 	=> $setup['tiers'],
 				'tierSpec' => [
@@ -334,6 +334,7 @@ namespace Nino\Modules\Design {
 					'margins' 	=> Setup::TIER_MARGINS,
 					'gaps' 			=> Setup::TIER_GAPS,
 					'widths' 		=> Setup::WIDTHS,
+					'blocks' 		=> Setup::TIER_BLOCKS,
 				],
 				// Where the panel puts what it sets: the six aspects, the twelve objects - and one more for each feature that
 				// brings variants - and the table that says, for every control of the setup, its aspect, its object and its place

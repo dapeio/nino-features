@@ -50,12 +50,13 @@
  *													palette, a colour as two inputs, a light half and a dark half. The choices are part of
  *													the setup, and of a theme of the project.
  *													After the objects, apart from them, stand two tabs that are no object: Tablet and Mobile, what the two widths
- *													do differently from the desktop, whose settings the objects have (Setup::TIER_CONTROLS). Each opens one card of
- *													strips, one for each control - the root size, the size of the titles and of the subtitles, the air of the
- *													sections, the side margin, the room in cards and tiles, the gap between columns, the header and the size of
- *													a button - with Automatic first, which is the value the desktop's settings give that width and is said under the
- *													name of the control, then the positions; a position is part of the working copy, the preview and the theme, and
- *													opening a tab switches the preview to the width of its tier.
+ *													do differently from the desktop, whose settings the objects have (Setup::TIER_CONTROLS). Each opens the
+ *													accordion of the objects - the sentence of the widths it holds for over it, and under it the blocks of
+ *													Setup::TIER_BLOCKS, Text and Surface, each with the strips of its controls: the root size, the size of the titles,
+ *													of the subtitles and of a button, the air of the sections, the side margin, the room in cards and tiles, the gap
+ *													between columns and the header - with Automatic first, which is the value the desktop's settings give that width
+ *													and is said under the name of the control, then the positions; a position is part of the working copy, the
+ *													preview and the theme, and opening a tab switches the preview to the width of its tier.
  *													Typefaces, the loader, has no preview and no bar and keeps nothing in the setup - the
  *													families the project has installed, and the signed list of those it can install, which
  *													is read when its button is pressed: an install or a removal happens when it is pressed,
@@ -439,8 +440,6 @@
 			'tier/gap' : 'unfold-horizontal',
 			'tier/header' : 'scaling',
 			'tier/button' : 'a-large-small',
-			'tier/m' : 'tablet',
-			'tier/s' : 'smartphone',
 			'colours/primary' : 'palette',
 			'colours/harmony' : 'palette',
 			'colours/temperature' : 'thermometer',
@@ -4024,7 +4023,8 @@
 		 *	ends. An aspect the object has no control on has no row - but for the css, which is no control of the table and is a row
 		 *	of the page, with no controls
 		 *
-		 *	@param		{string}	object		A key of the table's objects
+		 *	@param		{string}	object		A key of the table's objects, or the key of the tab of a tier: its rows are the blocks of
+		 *												Setup::TIER_BLOCKS, each control of the tier one key 'tier/<control>'
 		 *
 		 *	@return		{Array}						{ tab, object, controls : [ [ key, ... ], ... ] } for each row; empty for an object with no control
 		 */
@@ -4033,6 +4033,16 @@
 			const views = Nino.admin.design.views;
 			const layout = ( Nino.admin.design._data || {} ).layout || {};
 			const controls = layout.controls || {};
+
+			// The tablet and mobile are no object of the table: their blocks are the aspects Setup::TIER_BLOCKS names, in the order of the aspects
+			if( views._tierOf( object ) !== '' ) {
+
+				const blocks = ( ( Nino.admin.design._data || {} ).tierSpec || {} ).blocks || {};
+
+				return ( layout.tabs || [] ).filter( function( tab ) { return blocks[tab] !== undefined } ).map( function( tab ) {
+					return { tab : tab, object : object, controls : blocks[tab].map( function( control ) { return [ 'tier/'+ control ] } ) };
+				} );
+			}
 
 			return ( layout.tabs || [] ).map( function( tab ) {
 
@@ -4373,9 +4383,9 @@
 
 			const views = Nino.admin.design.views;
 
-			// The tablet and mobile have no aspects: one card of controls, each a strip with Automatic first
+			// The tablet and mobile stand over the same accordion: the sentence of the widths they hold for comes first
 			if( views._tierOf( object ) !== '' )
-				return views._renderTier( views._tierOf( object ), box );
+				box.appendChild( views._tierHead( views._tierOf( object ) ) );
 
 			const rows = views._rows( object );
 			const open = views._blockOf( object, rows );
@@ -4408,34 +4418,24 @@
 		},
 
 		/**
-		 *	The screen of a tier - what the tablet or mobile do differently from the desktop, whose settings are the ones of the objects:
-		 *	one card with the line that says which widths it is for and what Automatic is, and a strip for each control of the table
-		 *	(design/list's tierSpec) - Automatic first, then the positions - under the name of the control and the line that says what
+		 *	The head of the screen of a tier - what the tablet or mobile do differently from the desktop, whose settings are the ones of
+		 *	the objects: the line that says which widths it holds for and what Automatic is, over the blocks (see _rows()). The strip of
+		 *	each control - Automatic first, then the positions - stands under the name of the control and the line that says what
 		 *	Automatic means at this moment (see _tierRow())
 		 *
 		 *	@param		{string}	tier			'm' or 's'
-		 *	@param		{Element}	box
 		 *
-		 *	@return		void
+		 *	@return		{Element}
 		 */
-		_renderTier : function( tier, box ) {
+		_tierHead : function( tier ) {
 
-			const design = Nino.admin.design;
-			const views = design.views;
-			const spec = design._data.tierSpec || {};
+			const head = Nino.adminUi.hint( Nino.content.getText( '/_admin/design/tier/'+ tier+ '/hint' ) );
 
-			const card = Nino.adminUi.el( 'div', 'nino-admin-card design-form-section design-tier' );
-			card.id = 'design-tier-'+ tier;
-			card.dataset.tier = tier;
+			head.className += ' design-tier-hint';
+			head.id = 'design-tier-'+ tier;
+			head.dataset.tier = tier;
 
-			card.appendChild( design._sectionLabel( Nino.content.getText( '/_admin/design/tier/'+ tier+ '/label' ), design._icon( 'tier/'+ tier ) ) );
-			card.appendChild( Nino.adminUi.hint( Nino.content.getText( '/_admin/design/tier/'+ tier+ '/hint' ) ) );
-
-			Object.keys( spec.controls || {} ).forEach( function( control ) {
-				card.appendChild( views._tierRow( tier, control ) );
-			} );
-
-			box.appendChild( card );
+			return head;
 		},
 
 		/**
@@ -4478,7 +4478,6 @@
 				options, chosen === undefined ? '' : chosen, function( position ) { views._setTier( tier, control, position ) }, answered === false );
 
 			row.dataset.tier = tier;
-			row.dataset.control = control;
 
 			return row;
 		},
@@ -4638,6 +4637,29 @@
 				return views._figure( parseFloat( spec.margins[position][at] ) )+ ' rem';
 
 			return '';
+		},
+
+		/**
+		 *	What a control of a tier says of itself in the head of its closed block: its name and the word its button shows for the
+		 *	position - the value for the two that state one, the number of rungs for the others. Nothing where the tier is at Automatic, which
+		 *	is the absence of a position, and nothing for a control that no template chosen answers to: its strip is greyed out
+		 *
+		 *	@param		{string}	tier			'm' or 's'
+		 *	@param		{string}	control
+		 *
+		 *	@return		{Array}						The line, none where the control is at Automatic
+		 */
+		_tierSaid : function( tier, control ) {
+
+			const views = Nino.admin.design.views;
+			const chosen = ( ( Nino.admin.design._edit.tiers || {} )[tier] || {} )[control];
+
+			if( chosen === undefined || views._tierAnswered( control ) === false )
+				return [];
+
+			const shown = views._tierShown( tier, control, chosen );
+
+			return [ Nino.content.getText( '/_admin/design/tier/control/'+ control+ '/label' )+ ' '+ ( shown !== '' ? shown : views._numbered( [ chosen ], 0 )[0].label ) ];
 		},
 
 		/**
@@ -5067,6 +5089,10 @@
 				return [ views._said( Nino.content.getText('/_admin/design/motion/'+ part+ '/label'), views._motionOptions( part ), value ) ];
 			}
 
+			// A control of the tablet or of mobile stands elsewhere than at the default where it is off Automatic: said by its name and the word its button shows
+			if( path[0] === 'tier' )
+				return views._tierSaid( views._tierOf( object ), path[1] );
+
 			if( views.PAGE_WORDS[ keys[0] ] === undefined )
 				return [];
 
@@ -5186,6 +5212,10 @@
 
 				if( path[0] === 'features' )
 					return put( views._featureKnobRow( path[1], path[3] ) );
+
+				// A control of the tablet or of mobile: a strip with Automatic first, of the tier the object is the tab of
+				if( path[0] === 'tier' )
+					return put( views._tierRow( views._tierOf( row.object ), path[1] ) );
 
 				if( path[0] === 'knobs' )
 					return put( views._knobRow( path[1], path[2], views._answered( path[1] ).indexOf( path[2] ) !== -1 ) );

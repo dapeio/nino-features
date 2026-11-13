@@ -706,6 +706,16 @@ namespace Nino\Modules\Design {
 			'button' 		=> [ [ 'buttons', 'size' ] ],
 		];
 
+		/*	The blocks of the accordion a tier is drawn in: the aspect of the design each stands for, whose word (/_admin/design/tab/<tab>/label)
+			names it as it names the blocks of an object, and the controls of the tier in it, in the order of TIER_CONTROLS. A control stands in
+			the aspect the objects hold the knobs it moves in (LAYOUT) - the sizes of text and of the buttons in the type, the room, the
+			margin, the height and the logo of the header in the surfaces - so that nothing is looked for in another block than the objects
+			have it in. The templates, the colours and the motion move nothing at a width; the blocks follow the order of TABS	*/
+		public const array TIER_BLOCKS = [
+			'type' 			=> [ 'size', 'title', 'subtitle', 'button' ],
+			'surfaces' 	=> [ 'areas', 'margin', 'inset', 'gap', 'header' ],
+		];
+
 		/*	The space between the content and the edge of the screen, as the pair --grid-gutter is written with for a tier: mobile's and the
 			tablet's, as --nino-base-size is written with the pair of SIZES. It is the padding of a row. The middle is the kernel's own pair,
 			--space-2 below 768px and --space-3 from it - 1rem and 2rem - and the two steps under it are half and three quarters of it,

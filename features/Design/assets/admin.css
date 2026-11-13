@@ -243,11 +243,15 @@
 	font-size: .82rem;
 	font-weight: 650;
 }
-.nino-admin .design-accordion-body > .design-section-label:first-child,
-.nino-admin .design-tier > .design-section-label:first-child {
+.nino-admin .design-accordion-body > .design-section-label:first-child {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: 0;
+}
+
+/*	The sentence over the blocks of the tablet and of mobile: the card's measure below it */
+.nino-admin .design-tier-hint {
+	margin: 0 0 .55rem;
 }
 
 /* ---- the accordion ----

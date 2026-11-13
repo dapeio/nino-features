@@ -12936,8 +12936,33 @@ check( 'design/list says what the tablet and the phone have set - an empty list 
 	&& ( $tierListed['tierSpec']['controls'] ?? null ) === Setup::TIER_CONTROLS && array_keys( $tierListed['tierSpec']['positions'] ?? [] ) === array_keys( Setup::TIER_CONTROLS )
 	&& ( $tierListed['tierSpec']['positions']['gap'] ?? null ) === [ -2, -1, 1, 2 ] && ( $tierListed['tierSpec']['positions']['title'] ?? null ) === [ -2, -1, 1, 2 ] && ( $tierListed['tierSpec']['positions']['size'] ?? null ) === [ -2, -1, 0, 1, 2 ]
 	&& ( $tierListed['tierSpec']['sizes'] ?? null ) === Setup::SIZES && ( $tierListed['tierSpec']['margins'] ?? null ) === Setup::TIER_MARGINS
-	&& ( $tierListed['tierSpec']['gaps'] ?? null ) === Setup::TIER_GAPS && ( $tierListed['tierSpec']['widths'] ?? null ) === Setup::WIDTHS
+	&& ( $tierListed['tierSpec']['gaps'] ?? null ) === Setup::TIER_GAPS && ( $tierListed['tierSpec']['widths'] ?? null ) === Setup::WIDTHS && ( $tierListed['tierSpec']['blocks'] ?? null ) === Setup::TIER_BLOCKS
 	&& array_key_exists( 'tiers', (array) ( $tierListed['defaults'] ?? [] ) ) === false );
+
+// The blocks the controls of a tier stand in: the aspects of the objects' accordion, each control once, where the objects hold what it moves
+$tierBlockOf = [];
+
+foreach( Setup::TIER_BLOCKS as $tierAspect => $tierInAspect )
+	foreach( $tierInAspect as $tierControl )
+		$tierBlockOf[$tierControl][] = $tierAspect;
+
+$tierPlaces = Setup::layout( $appData );
+$tierAtObjects = static function( string $control ) use ( $tierPlaces ): array {
+
+	$keys = Setup::TIER_CONTROLS[$control] === [] ? [ $control === 'size' ? 'size' : '' ] : array_map( static fn( array $knob ): string => 'knobs/'. $knob[0]. '/'. $knob[1], Setup::TIER_CONTROLS[$control] );
+
+	return array_values( array_unique( array_map( static fn( string $key ): string => (string) ( $tierPlaces[$key][0] ?? '' ), array_filter( $keys ) ) ) );
+};
+
+check( 'every control of a tier stands in exactly one block, and every block is an aspect of the objects\' accordion that holds at least two controls - the order of the blocks is the order of the aspects',
+	count( Setup::TIER_BLOCKS ) >= 2 && array_keys( $tierBlockOf ) !== [] && array_values( array_filter( $tierBlockOf, static fn( array $in ): bool => count( $in ) !== 1 ) ) === []
+	&& array_values( array_intersect( array_keys( Setup::TIER_CONTROLS ), array_keys( $tierBlockOf ) ) ) === array_keys( Setup::TIER_CONTROLS ) && count( $tierBlockOf ) === count( Setup::TIER_CONTROLS )
+	&& array_values( array_filter( Setup::TIER_BLOCKS, static fn( array $in ): bool => count( $in ) < 2 ) ) === []
+	&& array_keys( Setup::TIER_BLOCKS ) === array_values( array_intersect( Setup::TABS, array_keys( Setup::TIER_BLOCKS ) ) ) && array_diff( array_keys( Setup::TIER_BLOCKS ), Setup::TABS ) === []
+	&& array_diff( array_keys( Setup::TIER_BLOCKS ), [ 'templates', 'css' ] ) === array_keys( Setup::TIER_BLOCKS ) );
+check( '...and the block of a control is the aspect the objects hold what it moves in: the aspect of each of its knobs - the root size its own - and the margin, which moves no knob, with the room of the surfaces',
+	array_values( array_filter( array_keys( Setup::TIER_CONTROLS ), static fn( string $control ): bool => $control !== 'margin' && $tierAtObjects( $control ) !== [ $tierBlockOf[$control][0] ] ) ) === []
+	&& $tierBlockOf['margin'] === [ 'surfaces' ] && $tierBlockOf['areas'] === [ 'surfaces' ] );
 
 [ $status, $tierPreview ] = callDesignAction( $appData, 'apiPreview', [ 'tiers' => [ 's' => [ 'size' => -2, 'bogus' => 1 ], 'm' => [ 'gap' => 2 ], 'xl' => [ 'size' => 1 ] ] ] );
 $tierPreviewed = $tierRules( (string) ( $tierPreview['css'] ?? '' ) );

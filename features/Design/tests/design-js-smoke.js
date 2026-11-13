@@ -589,7 +589,7 @@ const SURFACES = [ 'cover', 'row', 'column', 'tile', 'card', 'image' ];
 const RADIUS_WORDS = [ 'standard', 'alternative' ];
 
 /*	What design/list says of the tablet and the phone besides what they have set (see Setup::TIER_CONTROLS and the tables beside it): the tiers, the controls with the knobs each moves, the
-	positions of each and the tables of the root size, the gutter of a row, the gap and the width of the page. The last half of this file holds it against the answer the server really gave	*/
+	positions of each and the tables of the root size, the gutter of a row, the gap and the width of the page, and the blocks the controls stand in. The last half of this file holds it against the answer the server really gave	*/
 const TIER_SPEC = {
 	tiers : [ 'm', 's' ],
 	controls : { size : [], title : [ [ 'section', 'title' ], [ 'section', 'loud' ] ], subtitle : [ [ 'section', 'subtitle' ] ], areas : [ [ 'section', 'space' ] ], margin : [], inset : [ [ 'card', 'space' ], [ 'tiles', 'space' ] ], gap : [ [ 'tiles', 'gap' ] ], header : [ [ 'header', 'height' ], [ 'header', 'logo' ] ], button : [ [ 'buttons', 'size' ] ] },
@@ -598,6 +598,7 @@ const TIER_SPEC = {
 	margins : { '-2' : [ '.5rem', '1rem' ], '-1' : [ '.75rem', '1.5rem' ], '0' : [ '1rem', '2rem' ], '1' : [ '1.5rem', '2.5rem' ], '2' : [ '2rem', '3rem' ] },
 	gaps : { '-2' : '.5', '-1' : '.75', '1' : '1.5', '2' : '2' },
 	widths : { '-2' : [ '48rem', 'var(--space-2)', 'var(--space-3)' ], '-1' : [ '64rem', 'var(--space-2)', 'var(--space-3)' ], '1' : [ 'none', 'var(--space-2)', 'var(--space-2)' ], '2' : [ 'none', 'var(--space-2)', '0' ] },
+	blocks : { type : [ 'size', 'title', 'subtitle', 'button' ], surfaces : [ 'areas', 'margin', 'inset', 'gap', 'header' ] },
 };
 
 /** A list without some of its items */
@@ -6426,7 +6427,7 @@ const ICON_OF = {
 	'colours/primary' : 'palette', 'colours/harmony' : 'palette', 'colours/temperature' : 'thermometer', 'colours/saturation' : 'droplet',
 	'colours/contrast' : 'contrast', 'colours/depth' : 'square-stack', 'colours/mode' : 'sun-moon',
 	'tier/size' : 'a-large-small', 'tier/title' : 'a-large-small', 'tier/subtitle' : 'a-large-small', 'tier/areas' : 'move-vertical', 'tier/margin' : 'move-horizontal',
-	'tier/inset' : 'align-vertical-space-around', 'tier/gap' : 'unfold-horizontal', 'tier/header' : 'scaling', 'tier/button' : 'a-large-small', 'tier/m' : 'tablet', 'tier/s' : 'smartphone',
+	'tier/inset' : 'align-vertical-space-around', 'tier/gap' : 'unfold-horizontal', 'tier/header' : 'scaling', 'tier/button' : 'a-large-small',
 };
 
 /** The parts of an svg as markup, in the order they were made in and with their attributes in the order they were given in */
@@ -7966,18 +7967,26 @@ console.log('');
 
 // --- The tablet and the phone ------------------------------------------------------------------
 //
-// Two tabs after the objects, apart from them: what the two widths do differently from the desktop, whose settings the objects have. Each draws one card of strips - a control each,
-// Automatic first, then the positions - and opens the preview at the width of its own; a position is part of the working copy, the preview and the theme
+// Two tabs after the objects, apart from them: what the two widths do differently from the desktop, whose settings the objects have. Each draws the accordion of the objects - blocks of Text and Surface, a strip
+// for each control in them, Automatic first, then the positions - and opens the preview at the width of its own; a position is part of the working copy, the preview and the theme
 
 console.log( 'The tablet and the phone' );
 
 const tr = panel( {}, { lens : false } );
 const trSpec = tr.design._data.tierSpec;
-const trPressed = function( screen, tier, control ) {
-	return byTag( byClass( screen.form, 'design-knob-row' ).filter( function( row ) { return row.dataset.tier === tier && row.dataset.control === control } )[0], 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join();
+// The row of a control of a tier: in the block that holds it, which is opened where it is closed - one block is open at a time, and the strips of a closed block are not drawn
+const trFind = function( screen, tier, control ) {
+	return byClass( screen.form, 'design-knob-row' ).filter( function( row ) { return row.dataset.tier === tier && row.dataset.control === 'tier/'+ control } )[0];
 };
 const trRow = function( screen, tier, control ) {
-	return byClass( screen.form, 'design-knob-row' ).filter( function( row ) { return row.dataset.tier === tier && row.dataset.control === control } )[0];
+
+	if( trFind( screen, tier, control ) === undefined )
+		openBlock( blocksOf( screen.form ).filter( function( block ) { return trSpec.blocks[ block.dataset.tab ].indexOf( control ) !== -1 } )[0] );
+
+	return trFind( screen, tier, control );
+};
+const trPressed = function( screen, tier, control ) {
+	return byTag( trRow( screen, tier, control ), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join();
 };
 const trPress = function( screen, tier, control, value ) {
 	byTag( trRow( screen, tier, control ), 'button' ).filter( function( button ) { return button.dataset.value === String( value ) } ).forEach( function( button ) { button.fire('click') } );
@@ -8013,14 +8022,54 @@ tr.design._edit.knobs.section.loud = 0;
 
 tr.go( 'tier:m' );
 
-check( 'opening the tablet draws one card of its own and no block of an aspect: the name of the tier and the line that says which widths it holds for, then a strip for each control of the table in its order - each named by its own word, with the icon of its row',
-	tr.setup._current() === 'tier:m' && tr.byId('design-controls').getAttribute('aria-labelledby') === 'design-tab-tier:m' && blocksOf( tr.form ).length === 0
-	&& byClass( tr.form, 'design-tier' ).length === 1 && byClass( tr.form, 'design-tier' )[0].dataset.tier === 'm' && hasClass( byClass( tr.form, 'design-tier' )[0], 'nino-admin-card' )
-	&& byTag( byClass( tr.form, 'design-section-label' )[0], 'strong' )[0].textContent === TEXT['/_admin/design/tier/m/label'] && byTag( byClass( tr.form, 'design-section-label' )[0], 'svg' )[0].dataset.icon === 'tablet'
-	&& byClass( byClass( tr.form, 'design-tier' )[0], 'nino-admin-hint' )[0].textContent === TEXT['/_admin/design/tier/m/hint']
-	&& byClass( tr.form, 'design-knob-row' ).map( function( row ) { return row.dataset.control } ).join() === Object.keys( trSpec.controls ).join()
-	&& Object.keys( trSpec.controls ).every( function( control ) { return rowName( trRow( tr, 'm', control ) ) === TEXT['/_admin/design/tier/control/'+ control+ '/label'] } )
-	&& Object.keys( trSpec.controls ).every( function( control ) { return byTag( trRow( tr, 'm', control ), 'svg' )[0].dataset.icon === ICON_OF['tier/'+ control] } ) );
+// The blocks of a tier are the blocks of an object: the shape of a card, its head and its body, and of the strip in it, compared with those of an object's - but for the classes of the buttons Automatic and the values a tier alone has
+const trShape = function( el, deep ) {
+	return el.tagName+ '.'+ String( el.className ).split(/\s+/).filter( function( name ) { return name !== '' && name.indexOf('design-tier-') !== 0 } ).sort().join('.')+ '['+ Object.keys( el.attributes ).filter( function( name ) { return [ 'id', 'title', 'class', 'aria-label' ].indexOf( name ) === -1 } ).sort().join()+ ']'
+		+ ( deep === true ? '(' + el.children.map( function( child ) { return trShape( child, true ) } ).join() + ')' : '' );
+};
+const trBlockShape = function( card ) {
+
+	const body = byClass( card, 'design-accordion-body' )[0];
+	const row = body === undefined ? undefined : byClass( body, 'design-knob-row' )[0];
+
+	return [ trShape( card ), trShape( headButton( card ), true ), body === undefined ? '' : trShape( body ), row === undefined ? '' : trShape( row ), row === undefined ? '' : trShape( byClass( row, 'design-knob-steps' )[0] ), row === undefined ? '' : trShape( byTag( row, 'button' )[0] ) ].join(' ');
+};
+
+tr.go( 'tier:m' );
+
+const trCards = blocksOf( tr.form );
+const trAspects = Object.keys( trSpec.blocks );
+
+check( 'opening the tablet draws the accordion of the objects: the sentence of the widths over it and, in the order of the aspects, a block for each aspect the table of the tiers names - the first open, the others closed with no body drawn - each head named by the word the objects\' blocks of that aspect have',
+	tr.setup._current() === 'tier:m' && tr.byId('design-controls').getAttribute('aria-labelledby') === 'design-tab-tier:m'
+	&& trAspects.length === 2 && trCards.map( function( card ) { return card.dataset.tab } ).join() === trAspects.join() && trAspects.join() === tr.design._data.layout.tabs.filter( function( tab ) { return trAspects.indexOf( tab ) !== -1 } ).join()
+	&& trCards.every( function( card ) { return card.dataset.object === 'tier:m' && hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-form-section' ) && byClass( card, 'design-accordion-name' )[0].textContent === tabWord( card.dataset.tab ) } )
+	&& trCards.filter( isOpen ).length === 1 && isOpen( trCards[0] ) === true && byClass( trCards[1], 'design-accordion-body' ).length === 0
+	&& trCards[0].parent.children[0] === tr.byId('design-tier-m') && trCards[0].parent === trCards[1].parent && tr.byId('design-tier-m').textContent === TEXT['/_admin/design/tier/m/hint'] && hasClass( tr.byId('design-tier-m'), 'nino-admin-hint' ) );
+
+check( '...the controls of the table stand in the blocks once each, in the order of the table inside a block, each a strip named by its own word with the icon of its row - and nothing of a tier stands outside a block',
+	Object.keys( trSpec.controls ).slice().sort().join() === trAspects.reduce( function( all, aspect ) { return all.concat( trSpec.blocks[aspect] ) }, [] ).sort().join()
+	&& trAspects.reduce( function( all, aspect ) { return all.concat( trSpec.blocks[aspect] ) }, [] ).length === Object.keys( trSpec.controls ).length
+	&& trAspects.every( function( aspect ) { return trSpec.blocks[aspect].join() === Object.keys( trSpec.controls ).filter( function( control ) { return trSpec.blocks[aspect].indexOf( control ) !== -1 } ).join() } )
+	&& trAspects.every( function( aspect ) {
+		const card = trCards.filter( function( each ) { return each.dataset.tab === aspect } )[0];
+		openBlock( card );
+		return byClass( card, 'design-knob-row' ).map( function( row ) { return row.dataset.control } ).join() === trSpec.blocks[aspect].map( function( control ) { return 'tier/'+ control } ).join()
+			&& trSpec.blocks[aspect].every( function( control ) { return rowName( trFind( tr, 'm', control ) ) === TEXT['/_admin/design/tier/control/'+ control+ '/label'] && byTag( trFind( tr, 'm', control ), 'svg' )[0].dataset.icon === ICON_OF['tier/'+ control] } );
+	} ) );
+
+const trObject = panel( {}, { lens : false } );
+goTo( trObject, 'card' );
+const trObjectCards = blocksOf( trObject.form ).filter( function( card ) { return card.dataset.tab === 'surfaces' || card.dataset.tab === 'type' } );
+openBlock( trObjectCards[0] );
+
+const trSame = function( at ) { return trBlockShape( trCards[at] ) === trBlockShape( trObjectCards[at] ) };
+
+check( 'a block of a tier is made as a block of an object: the same card, the same head with its name, its line and its chevron, the same body and, in it, the same strip of the workbench - compared with the blocks of the card, each open and closed',
+	trObjectCards.length === 2 && ( openBlock( trCards[0] ), openBlock( trObjectCards[0] ), trSame( 0 ) && trSame( 1 ) && trBlockShape( trCards[0] ).indexOf('design-knob-row') !== -1 && trBlockShape( trCards[1] ).indexOf('design-knob-row') === -1 )
+	&& ( openBlock( trCards[1] ), openBlock( trObjectCards[1] ), trSame( 0 ) && trSame( 1 ) && trBlockShape( trCards[1] ).indexOf('design-knob-row') !== -1 ) && byClass( tr.form, 'design-tier' ).length === 0 );
+
+tr.go( 'tier:m' );
 
 check( '...every strip has Automatic, lit - nothing is set: first on the root size and the margin, which state a value and go on with five positions, and in the middle on every offset - between the two steps below and the two above the desktop\'s own - the gap among them, which has no middle value of its own',
 	Object.keys( trSpec.controls ).every( function( control ) {
@@ -8083,6 +8132,45 @@ check( '...and Automatic takes a control back to nothing: the key is gone, not s
 	JSON.stringify( tr.design._edit.tiers ) === JSON.stringify( { m : { title : -2, gap : 2 }, s : {} } ) && trPressed( tr, 'm', 'size' ) === 'true,false,false,false,false,false' && tr.design._isDirty() === true
 	&& ( trPress( tr, 'm', 'title', '' ), trPress( tr, 'm', 'gap', '' ), tr.design._isDirty() === false && JSON.stringify( tr.design._edit.tiers ) === JSON.stringify( { m : {}, s : {} } ) ) );
 
+// The head of a closed block says what in it is off Automatic, as the head of a block of an object says what is off the defaults: the name of the control and the word its button shows
+const trCard = function( screen, aspect ) { return blocksOf( screen.form ).filter( function( card ) { return card.dataset.tab === aspect } )[0] };
+const trLine = function( screen, aspect ) { return byClass( trCard( screen, aspect ), 'design-accordion-summary' )[0].textContent };
+const trWord = function( screen, tier, control, value ) { return byTag( trRow( screen, tier, control ), 'button' ).filter( function( button ) { return button.dataset.value === String( value ) } )[0].textContent };
+
+tr.go( 'tier:m' );
+trPress( tr, 'm', 'size', 1 );
+trPress( tr, 'm', 'button', -1 );
+
+const trSizeWord = trWord( tr, 'm', 'size', 1 );
+
+trPress( tr, 'm', 'gap', 2 );
+
+check( 'the head of a closed block names what in it is off Automatic - the control and the word its button shows: the value for the two that state one, the number of rungs for the others - joined by the middle dot, in the order of the block; the block that is open says nothing',
+	isOpen( trCard( tr, 'surfaces' ) ) === true && trLine( tr, 'surfaces' ) === '' && isOpen( trCard( tr, 'type' ) ) === false
+	&& trLine( tr, 'type' ) === TEXT['/_admin/design/tier/control/size/label']+ ' '+ trSizeWord+ ' \u00b7 '+ TEXT['/_admin/design/tier/control/button/label']+ ' \u22121'
+	&& byClass( trCard( tr, 'type' ), 'design-accordion-summary' )[0].title === trLine( tr, 'type' ) );
+
+toggle( trCard( tr, 'surfaces' ) );
+
+check( '...closed, the other block says its own, and the other tier has its own line and its own open block: what the tablet was given is not said of Mobile',
+	trLine( tr, 'surfaces' ) === TEXT['/_admin/design/tier/control/gap/label']+ ' +2' && trLine( tr, 'type' ) !== ''
+	&& ( tr.go( 'tier:s' ), blocksOf( tr.form ).every( function( card ) { return isOpen( card ) === ( card.dataset.tab === 'type' ) && byClass( card, 'design-accordion-summary' )[0].textContent === '' } ) ) );
+
+tr.go( 'tier:m' );
+trPress( tr, 'm', 'gap', '' );
+toggle( trCard( tr, 'surfaces' ) );
+
+check( '...and a position taken back to Automatic is said no more',
+	isOpen( trCard( tr, 'surfaces' ) ) === false && trLine( tr, 'surfaces' ) === '' && trLine( tr, 'type' ) !== '' );
+
+check( '...the open block is remembered for each tier, as for each object: the one that was left open is open when the tab is opened again, whichever tab was open between, Mobile has its own, and a block closed stays closed',
+	( openBlock( trCard( tr, 'surfaces' ) ), tr.go( 'tier:s' ), isOpen( trCard( tr, 'type' ) ) === true && isOpen( trCard( tr, 'surfaces' ) ) === false )
+	&& ( tr.go( 'card' ), tr.go( 'tier:m' ), isOpen( trCard( tr, 'surfaces' ) ) === true && isOpen( trCard( tr, 'type' ) ) === false )
+	&& ( toggle( trCard( tr, 'surfaces' ) ), tr.go( 'tier:s' ), tr.go( 'tier:m' ), blocksOf( tr.form ).filter( isOpen ).length === 0 ) );
+
+trPress( tr, 'm', 'size', '' );
+trPress( tr, 'm', 'button', '' );
+
 // What Automatic means follows the settings of the objects, which are the desktop's: the root size of the page, the width of it and the position of a knob
 tr.design._edit.size = -2;
 tr.design._edit.width = 2;
@@ -8102,6 +8190,18 @@ check( 'a control whose knobs no template that is chosen declares is greyed out 
 	hasClass( trRow( trAnswers, 's', 'button' ), 'design-knob-row--off' ) && byTag( trRow( trAnswers, 's', 'button' ), 'button' ).every( function( button ) { return button.disabled === true } )
 	&& trPressed( trAnswers, 's', 'button' ) === 'false,false,false,false,false' && rowNote( trRow( trAnswers, 's', 'button' ) ) === say( '/_admin/design/hint/unanswered', TEXT['/_admin/design/tier/control/button/label'] )
 	&& [ 'size', 'title', 'margin', 'gap', 'inset', 'header' ].every( function( control ) { return hasClass( trRow( trAnswers, 's', control ), 'design-knob-row--off' ) === false } ) );
+
+// A control no template that is chosen answers to says nothing: its strip is greyed out, as a knob is that says nothing in the head of an object
+trAnswers.design._edit.tiers = { m : {}, s : { size : 1, button : 1 } };
+goTo( trAnswers, 'tier:s', true );
+
+const trAnswersSize = trWord( trAnswers, 's', 'size', 1 );
+
+if( isOpen( trCard( trAnswers, 'type' ) ) === true )
+	toggle( trCard( trAnswers, 'type' ) );
+
+check( '...and a control that no template chosen answers to is left out of the head of its block, as a knob that is greyed out is left out of the head of an object',
+	trLine( trAnswers, 'type' ) === TEXT['/_admin/design/tier/control/size/label']+ ' '+ trAnswersSize );
 
 // What a setup carries is read as a copy of its own, an empty list on the wire is a tier that sets nothing, and a tier the answer does not know is not made
 check( 'the tiers of an answer are a copy of their own, one list for each tier the answer names - an empty list on the wire is no choice - and what is not a tier is not kept',
@@ -10545,7 +10645,7 @@ else {
 
 	check( 'the tables the script draws the tablet and the phone from are the server\'s: the stand-in of this file says what design/list says of them, and what it says is set - an empty list for each tier, whichever the selection',
 		JSON.stringify( none.tierSpec ) === JSON.stringify( TIER_SPEC ) && JSON.stringify( none.tiers ) === JSON.stringify( { m : [], s : [] } ) && none.defaults.tiers === undefined
-		&& Object.keys( none.tierSpec ).join() === 'tiers,controls,positions,sizes,margins,gaps,widths' );
+		&& Object.keys( none.tierSpec ).join() === 'tiers,controls,positions,sizes,margins,gaps,widths,blocks' );
 
 	// The list with no theme
 	const noneTab = wholeTab( none );
