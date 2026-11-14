@@ -2268,8 +2268,8 @@ check( '...the same choice as a select, drawn from the same model: an option for
 check( 'the bar begins with Back to list: a button of the bar, in the words of the workbench, that is no tab - no role, no data-tab, not in the tablist - and the strip of the objects, the strip of Tablet and Mobile and the select follow it, nothing else',
 	strip !== null && strip.id === 'design-tabs' && hasClass( strip, 'nino-admin-tabs' ) && hasClass( strip, 'nino-admin-tabs--bar' ) && strip.children.length === 4 && strip.children[0] === headed.byId('design-back')
 	&& strip.children[0].tagName === 'BUTTON' && strip.children[0].type === 'button' && strip.children[0].textContent === TEXT['/_admin/common/label/back'] && hasClass( strip.children[0], 'nino-admin-tab' )
-	&& strip.children[0].getAttribute('role') === null && strip.children[0].dataset.tab === undefined && tabs.indexOf( strip.children[0] ) === -1 && byTag( strip, 'button' ).length === tableObjectKeys.length + tierTabKeys.length + 1
-	&& hasClass( wrap, 'design-views-wrap' ) && wrap.children.length === 1
+	&& strip.children[0].getAttribute('role') === null && strip.children[0].dataset.tab === undefined && tabs.indexOf( strip.children[0] ) === -1 && byTag( strip, 'button' ).length === tableObjectKeys.length + tierTabKeys.length + 3
+	&& hasClass( wrap, 'design-views-wrap' ) && wrap.children.length === 3 && wrap.children.slice( 1 ).every( function( arrow ) { return hasClass( arrow, 'design-views-more' ) } )
 	&& tierTabs.map( function( tab ) { return tab.dataset.tab } ).join() === tierTabKeys.join() && hasClass( tierStrip, 'design-tiers' ) && tierStrip.getAttribute('role') === 'tablist' && tierStrip.parent === strip
 	&& tierTabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' && tab.parent === tierStrip && wrap.children[0].children.indexOf( tab ) === -1 } ) );
 
@@ -2379,7 +2379,7 @@ check( 'the select switches the object as a tab does: the column is drawn for it
 	the page, so the next arrow key had nowhere to start from. The arrow keys
 	walk the objects and not the way back, which is no tab	*/
 const keyed = panel( {}, { lens : false } );
-const keyTabs = byTag( byClass( keyed.pane, 'design-tabs' )[0] && byClass( keyed.pane, 'design-tabs' )[0].children[1] || element('div'), 'button' );
+const keyTabs = byTag( byClass( keyed.pane, 'design-tabs' )[0] && byClass( keyed.pane, 'design-tabs' )[0].children[1].children[0] || element('div'), 'button' );
 const keyColumns = [ keyed.byId('design-controls') ];
 
 focused = null;
@@ -2513,6 +2513,64 @@ const obAtEnd = [ hasClass( obWrap, 'is-more-start' ), hasClass( obWrap, 'is-mor
 check( 'the strip of the objects is shadowed at the edge that has more behind it: only at the right while it stands at its start, at both while it is scrolled, only at the left at its end - and the tab that is open is brought into sight',
 	obAtStart.join() === 'false,true' && obInBetween.join() === 'true,true' && obAtEnd.join() === 'true,false'
 	&& JSON.stringify( ob.byId( 'design-tab-'+ obLayout.objects[0] ).scrolledInto ) === JSON.stringify( { block : 'nearest', inline : 'nearest' } ) );
+
+// A strip without a scrollbar is moved by the pointer: the wheel, across the strip, and an arrow at each edge
+const obMoves = [];
+obList.scrollBy = function( options ) { obMoves.push( options ) };
+const obWheel = function( delta ) {
+	const event = Object.assign( { deltaX : 0, deltaY : 0, deltaMode : 0, stopped : false, preventDefault : function() { event.stopped = true } }, delta );
+	( obList.listeners.wheel || [] ).forEach( function( fn ) { fn( event ) } );
+	return event;
+};
+const obAt = function( left ) { obList.scrollLeft = left; obList.scrollWidth = 900; obList.clientWidth = 300 };
+const obMoved = function() { return JSON.stringify( obMoves.splice( 0 ).map( function( move ) { return [ move.left, move.top, move.behavior ] } ) ) };
+
+obAt( 0 );
+const obDown = obWheel( { deltaY : 120 } );
+const obDownMoved = obMoved();
+obAt( 200 );
+const obUp = obWheel( { deltaY : -80 } );
+const obUpMoved = obMoved();
+const obSide = obWheel( { deltaX : 40, deltaY : 5 } );
+const obSideMoved = obMoved();
+obWheel( { deltaY : 3, deltaMode : 1 } );
+obWheel( { deltaY : 1, deltaMode : 2 } );
+const obUnits = obMoved();
+
+check( 'a turn of the wheel over the strip of the objects is turned across it - the vertical wheel as well as the horizontal one, the stronger of the two - and taken, so that the panel does not scroll with it',
+	obDownMoved === JSON.stringify( [ [ 120, 0, 'instant' ] ] ) && obDown.stopped === true && obUpMoved === JSON.stringify( [ [ -80, 0, 'instant' ] ] ) && obUp.stopped === true
+	&& obSideMoved === JSON.stringify( [ [ 40, 0, 'instant' ] ] ) && obSide.stopped === true );
+check( '...by lines of 16 pixels and by pages of the strip, 300 pixels wide here',
+	obUnits === JSON.stringify( [ [ 48, 0, 'instant' ], [ 300, 0, 'instant' ] ] ) );
+
+obAt( 0 );
+const obAtLeft = obWheel( { deltaY : -100 } );
+obAt( 600 );
+const obAtRight = obWheel( { deltaY : 100 } );
+const obNone = obWheel( { deltaY : 0 } );
+
+check( 'at the start of the strip the wheel up is left alone, and at its end the wheel down is - it goes on to the panel - and a wheel that turns nothing is no move',
+	obMoved() === '[]' && obAtLeft.stopped === false && obAtRight.stopped === false && obNone.stopped === false );
+
+const obArrows = byClass( obWrap, 'design-views-more' );
+obAt( 200 );
+obArrows.forEach( function( arrow ) { arrow.fire('click') } );
+
+check( 'the strip has an arrow at each of its edges, the start one first, and a press on it moves the strip by three quarters of its width, back and forth - a button that is no stop of the Tab key, which walks the tabs, and is hidden from assistive technology',
+	obArrows.length === 2 && obArrows.every( function( arrow ) { return arrow.tagName === 'BUTTON' && arrow.type === 'button' && arrow.tabIndex === -1 && arrow.getAttribute('aria-hidden') === 'true' } )
+	&& hasClass( obArrows[0], 'design-views-more--start' ) && hasClass( obArrows[1], 'design-views-more--end' ) && obArrows[0].parent === obWrap && obArrows[1].parent === obWrap
+	&& obMoved() === JSON.stringify( [ [ -225, 0, 'smooth' ], [ 225, 0, 'smooth' ] ] ) );
+
+// The stylesheet shows an arrow only where its edge has more behind it, never on a touch screen, and keeps a tab the focus walks to clear of the shadow
+const obSheet = fs.readFileSync( path.join( __dirname, '../assets/admin.css' ), 'utf8' );
+const obShown = /\.design-views-wrap\.is-more-start\s*>\s*\.design-views-more--start\s*,\s*[^{}]*\.design-views-wrap\.is-more-end\s*>\s*\.design-views-more--end\s*\{\s*display:\s*flex/.test( obSheet );
+const obCoarse = ( obSheet.split('@media (pointer: coarse)')[1] || '' ).split('}')[0];
+
+check( 'the stylesheet draws an arrow only at an edge that has more behind it, hides it for a coarse pointer, and keeps the scroll of the strip clear of the shadow at its edges',
+	obShown && /design-views-more--start[^{}]*,[^{}]*design-views-more--end\s*\{\s*display:\s*none/.test( obCoarse ) && /\.design-views\s*\{\s*scroll-padding-inline:\s*2rem/.test( obSheet )
+	&& /\.design-views-more\s*\{\s*display:\s*none/.test( obSheet ) );
+
+obAt( 0 );
 
 // The select and the strip are one choice, drawn twice: whichever is used, the other says the same
 const obSelect = ob.byId('design-object-select');

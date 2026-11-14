@@ -78,6 +78,53 @@
 .nino-admin .design-tabs .design-views .nino-admin-tab {
 	white-space: nowrap;
 }
+/*	A tab that the focus walks to is brought into sight clear of the shadow at the edge, not under it */
+.nino-admin .design-tabs .design-views {
+	scroll-padding-inline: 2rem;
+}
+/*	An arrow at each edge that has more behind it, over the shadow: a pointer's way along a strip without a scrollbar. The keyboard walks
+	the tabs themselves and a touch screen drags the strip, so neither has use for it */
+.nino-admin .design-tabs > .design-views-wrap > .design-views-more {
+	display: none;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 1.75rem;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--editor-text);
+	cursor: pointer;
+}
+.nino-admin .design-tabs > .design-views-wrap > .design-views-more::before {
+	content: "\2039";
+	font-size: 1.4rem;
+	line-height: 1;
+}
+.nino-admin .design-tabs > .design-views-wrap > .design-views-more--start {
+	left: 0;
+}
+.nino-admin .design-tabs > .design-views-wrap > .design-views-more--end {
+	right: 0;
+}
+.nino-admin .design-tabs > .design-views-wrap > .design-views-more--end::before {
+	content: "\203A";
+}
+.nino-admin .design-tabs > .design-views-wrap.is-more-start > .design-views-more--start,
+.nino-admin .design-tabs > .design-views-wrap.is-more-end > .design-views-more--end {
+	display: flex;
+}
+@media (pointer: coarse) {
+	.nino-admin .design-tabs > .design-views-wrap.is-more-start > .design-views-more--start,
+	.nino-admin .design-tabs > .design-views-wrap.is-more-end > .design-views-more--end {
+		display: none;
+	}
+}
 /*	Tablet and Mobile are no objects but what two widths of the page do differently, and stand apart from the strip of the objects: a strip of their
 	own at the right of it, which does not scroll away with the objects - it keeps its width and a hairline before it, so that it is in sight
 	whatever the width of the pane and the objects scroll in the room that is left */

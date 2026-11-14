@@ -4128,6 +4128,7 @@
 			const wrap = Nino.adminUi.el( 'div', 'design-views-wrap' );
 			wrap.appendChild( list );
 			views._edges( wrap, list );
+			views._reach( wrap, list );
 
 			/*	Tablet and Mobile: a strip of their own beside the objects', which does not scroll with them - they are in sight whatever the
 				width of the pane. The select has them after the objects, and the tab that is open is lit in the one strip and in the select	*/
@@ -4210,6 +4211,62 @@
 			}
 
 			paint();
+		},
+
+		/**
+		 *	The ways a pointer moves a strip that has no scrollbar: the wheel, which turns the strip across while it can still go
+		 *	that way and is left alone at its ends so that the panel goes on scrolling, and an arrow at each edge that has more behind
+		 *	it, which moves the strip by three quarters of its width. The keyboard needs nothing of its own: the arrows of the tab
+		 *	strip move the focus and the browser brings the tab that has it into sight (the stylesheet keeps it clear of the shadows)
+		 *
+		 *	@param		{Element}	wrap			The box the strip stands in
+		 *	@param		{Element}	list			The strip, which is the box that scrolls
+		 *
+		 *	@return		void
+		 */
+		_reach : function( wrap, list ) {
+
+			const views = Nino.admin.design.views;
+
+			list.addEventListener( 'wheel', function( event ) { views._wheel( event, list ) }, { passive : false } );
+
+			[ [ 'start', -1 ], [ 'end', 1 ] ].forEach( function( edge ) {
+
+				const arrow = Nino.adminUi.el( 'button', 'design-views-more design-views-more--'+ edge[0] );
+				arrow.type = 'button';
+				arrow.tabIndex = -1;
+				arrow.setAttribute( 'aria-hidden', 'true' );
+				arrow.addEventListener( 'click', function() {
+
+					const calm = typeof wn.matchMedia === 'function' && wn.matchMedia('(prefers-reduced-motion: reduce)').matches === true;
+
+					list.scrollBy( { left : edge[1] * Math.round( list.clientWidth * .75 ), top : 0, behavior : calm === true ? 'instant' : 'smooth' } );
+				} );
+				wrap.appendChild( arrow );
+			} );
+		},
+
+		/**
+		 *	A turn of the wheel over the strip, turned across it: the vertical wheel as well as the horizontal one, by the unit the wheel
+		 *	counts in - pixels, lines of 16, pages of the strip - and only while the strip can still go that way. At its start or at its
+		 *	end the wheel is left alone and goes on to the panel
+		 *
+		 *	@param		{WheelEvent}	event
+		 *	@param		{Element}			list			The strip
+		 *
+		 *	@return		void
+		 */
+		_wheel : function( event, list ) {
+
+			const unit = event.deltaMode === 1 ? 16 : ( event.deltaMode === 2 ? list.clientWidth : 1 );
+			const turn = Math.abs( event.deltaX ) > Math.abs( event.deltaY ) ? event.deltaX : event.deltaY;
+			const by = turn * unit;
+
+			if( by === 0 || ( by < 0 ? list.scrollLeft <= 0 : list.scrollLeft + list.clientWidth >= list.scrollWidth - 1 ) )
+				return;
+
+			event.preventDefault();
+			list.scrollBy( { left : by, top : 0, behavior : 'instant' } );
 		},
 
 		/**
