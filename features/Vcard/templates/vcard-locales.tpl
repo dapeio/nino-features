@@ -1,0 +1,1 @@
+<div class="nino-vcard-locales">[localepicker]</div>

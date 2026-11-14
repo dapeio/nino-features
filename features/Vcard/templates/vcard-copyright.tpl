@@ -1,0 +1,1 @@
+<p class="nino-vcard-copyright">&copy; [[/nino/date/year]] [[company]]</p>

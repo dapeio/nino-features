@@ -82,8 +82,13 @@ function vcardPosted( array $over = [] ): array {
 	], $over );
 }
 
-/** The page as a visitor gets it: the template of the unit, which holds [vcard] */
+/** The card as a visitor gets it: what [vcard] draws, without the page around it */
 function vcardPage( array &$appData ): string {
+	return \Nino\Html::renderHtml( $appData, '[vcard]' );
+}
+
+/** The page of the unit as a whole: the document the route renders, with the foot of the card */
+function vcardDocument( array &$appData ): string {
 	return \Nino\Html::renderHtml( $appData, '[template /templates/page-vcard]' );
 }
 
@@ -617,6 +622,129 @@ check( 'the question and the message name the page by its name and the address i
 check( 'the files that hold the address: every language for a route of every language, one for a route of one, the global one with the native language', \Nino\Modules\Vcard::addressFiles( '', 'de_DE', [ 'de_DE', 'en_US' ] ) === [ '/text/global.php', '/text/de_DE.php', '/text/en_US.php' ]
 	&& \Nino\Modules\Vcard::addressFiles( 'en_US', 'de_DE', [ 'de_DE', 'en_US' ] ) === [ '/text/en_US.php' ] && \Nino\Modules\Vcard::addressFiles( 'de_DE', 'de_DE', [ 'de_DE', 'en_US' ] ) === [ '/text/global.php', '/text/de_DE.php' ] );
 
+
+echo "\n17. The blocks: a switch each, and what is off is neither shown nor offered\n";
+
+$appData = vcardSandbox();
+vcardFacts( $appData );
+ninoUser( $appData, 'dev@example.com' );
+\Nino\Locales::useLocale( $appData, 'de_DE' );
+$all = [ 'picture' => true, 'name' => true, 'contact' => true, 'links' => true, 'times' => true, 'legal' => true ];
+check( 'a card nobody saved shows every block, and a file without the key reads as on', \Nino\Modules\Vcard::normalize( $appData, [] )['blocks'] === $all && \Nino\Modules\Vcard::normalize( $appData, [ 'blocks' => [ 'links' => false, 'x' => false, 'times' => 'no' ] ] )['blocks'] === array_replace( $all, [ 'links' => false ] ) );
+check( 'the panel hands the blocks to the screen, all on', vcardCall( $appData, 'vcard/list' )[1]['data']['blocks'] === $all );
+
+vcardCall( $appData, 'vcard/save', vcardPosted() );
+$on = vcardPage( $appData );
+$onFile = \Nino\Modules\Vcard::file( $appData );
+check( 'with every block on the page has name, line, text, contact, link, hours and legal links', str_contains( $on, 'nino-vcard-name' ) && str_contains( $on, 'nino-vcard-line' ) && str_contains( $on, 'nino-vcard-text' ) && str_contains( $on, 'nino-vcard-address' ) && str_contains( $on, 'nino-vcard-more' ) && str_contains( $on, 'nino-vcard-hours' ) && str_contains( $on, 'nino-vcard-legal' ) );
+
+$without = static function( string $block ) use ( &$appData ): array {
+	vcardCall( $appData, 'vcard/save', vcardPosted( [ 'blocks' => [ $block => false ] ] ) );
+	return [ vcardPage( $appData ), \Nino\Modules\Vcard::file( $appData ), \Nino\Filesystem::getFileContent( $appData, '/data/vcard.php', [] ) ];
+};
+
+[ $html, $file, $stored ] = $without( 'contact' );
+check( 'contact off: no list entry for phone, e-mail, website or address, no tel: or mailto: link, none of them in the file', str_contains( $html, 'nino-vcard-address' ) === false && str_contains( $html, 'href="tel:' ) === false && str_contains( $html, 'href="mailto:' ) === false && str_contains( $html, 'nino-vcard-hours' ) && preg_grep( '/^(TEL|EMAIL|URL|ADR)/', vcardUnfold( $file ) ) === [] && str_contains( $file, 'FN:Ada Lovelace' ) );
+check( '...and the values are kept: the file holds them, and the block back on shows them again', $stored['phone'] === '+44 20 7946 0000' && $stored['address'] === "1 Analytical Way\nLondon" && $stored['blocks']['contact'] === false );
+[ $html, $file ] = $without( 'name' );
+check( 'name off: no name, line or text on the page, no line or text in the file - the file keeps the name it cannot be without', str_contains( $html, 'nino-vcard-name' ) === false && str_contains( $html, 'nino-vcard-line' ) === false && str_contains( $html, 'nino-vcard-text' ) === false && str_contains( $file, 'FN:Ada Lovelace' ) && str_contains( $file, 'TITLE:' ) === false && str_contains( $file, 'Likes to compute' ) === false && str_contains( $file, 'Rechnet gern' ) === false && str_contains( $html, 'nino-vcard-save' ) );
+[ $html, $file ] = $without( 'links' );
+check( 'links off: no list of links, no item in the file', str_contains( $html, 'nino-vcard-links' ) === false && str_contains( $file, 'item1' ) === false && str_contains( $html, 'nino-vcard-address' ) );
+[ $html, $file ] = $without( 'times' );
+check( 'times off: no hours on the page, not in the note of the file', str_contains( $html, 'nino-vcard-hours' ) === false && str_contains( $file, 'Mo-Fr' ) === false && str_contains( $file, 'NOTE:' ) );
+[ $html ] = $without( 'legal' );
+check( 'legal off: no links to the imprint and the privacy policy, the rest stays', str_contains( $html, 'nino-vcard-legal' ) === false && str_contains( $html, 'nino-vcard-name' ) );
+vcardCall( $appData, 'vcard/save', vcardPosted() );
+check( 'all blocks on again: page and file are what they were', vcardPage( $appData ) === $on && \Nino\Modules\Vcard::file( $appData ) === $onFile );
+
+vcardCall( $appData, 'vcard/save', vcardPosted( [ 'blocks' => array_fill_keys( [ 'picture', 'name', 'contact', 'links', 'times', 'legal' ], false ) ] ) );
+$html = vcardPage( $appData );
+check( 'every block off leaves the one sentence of an empty card and no button to save a contact that is a name alone, and the file with the name', str_contains( $html, 'nino-vcard-empty' ) && str_contains( $html, 'nino-vcard-save' ) === false && str_contains( \Nino\Modules\Vcard::file( $appData ), 'FN:Ada Lovelace' ) );
+vcardCall( $appData, 'vcard/save', vcardPosted( [ 'blocks' => [ 'name' => false ] ] ) );
+check( 'the name block off with something else to offer keeps the button', str_contains( vcardPage( $appData ), 'nino-vcard-save' ) );
+
+echo "\n18. The page: the card alone, with its copyright and its languages\n";
+
+$appData = vcardSandbox();
+vcardFacts( $appData );
+$template = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-vcard.tpl' ) );
+check( 'the page template of the unit draws the card with its foot and names neither the head nor the foot of the theme', str_contains( $template, '[vcard foot]' ) && str_contains( $template, '/templates/html-header' ) === false && str_contains( $template, '/templates/html-footer' ) === false && str_contains( $template, '/templates/frame-' ) === false );
+check( 'the route still draws the card, so the card can be given /', \Nino\Modules\Vcard::shows( $appData, [ 'body' => '[template /templates/page-vcard]' ] ) === true );
+
+\Nino\Locales::useLocale( $appData, 'en_US' );
+$bare = vcardPage( $appData );
+check( 'the shortcode alone has no foot, and its name is a heading of the second level: a page of the theme brings its own foot and its own h1', str_contains( $bare, 'nino-vcard-foot' ) === false && str_contains( $bare, 'nino-vcard-copyright' ) === false && str_contains( $bare, '<h2 class="nino-vcard-name">' ) && str_contains( $bare, '<h1' ) === false );
+$withPicker = vcardSandbox( static function( array &$appData ): void {
+	$appData['/nino/modules'][] = '\\Nino\\Modules\\Localepicker';
+	\Nino\AppData::writeContentData( $appData, [ '/nino/modules' ] );
+} );
+vcardFacts( $withPicker );
+ninoUser( $withPicker, 'dev@example.com' );
+$foot = \Nino\Html::renderHtml( $withPicker, '[vcard foot]' );
+check( 'with the flag the foot stands in the wrap of the card, after the card', preg_match( '#<div class="nino-vcard-wrap">\s*<div class="nino-card[^>]*nino-vcard-card">.*</div><div class="nino-vcard-foot">.*</div>\s*</div>#s', $foot ) === 1 );
+check( 'the name is the h1 of the page that is the card alone', str_contains( $foot, '<h1 class="nino-vcard-name">' ) && str_contains( $foot, '<h2' ) === false );
+check( 'the copyright line has the year the kernel fills and the name of the company', preg_match( '#<p class="nino-vcard-copyright">&copy; (\d{4}|\[\[/nino/date/year\]\]) Acme GmbH</p>#', $foot ) === 1 && str_contains( (string) file_get_contents( dirname( __DIR__ ). '/templates/vcard-copyright.tpl' ), '[[/nino/date/year]]' ) );
+check( 'the languages are the picker of the kernel, in the foot, where the website has several and its module is on', preg_match( '#<div class="nino-vcard-foot"><div class="nino-vcard-locales">.*nino-localepicker-wrap.*</div>.*nino-vcard-copyright#s', $foot ) === 1 && str_contains( $foot, '[localepicker]' ) === false );
+check( 'without the module of the picker the foot has none, and no unfilled shortcode', str_contains( \Nino\Html::renderHtml( $appData, '[vcard foot]' ), 'nino-vcard-locales' ) === false && str_contains( \Nino\Html::renderHtml( $appData, '[vcard foot]' ), '[localepicker]' ) === false );
+check( 'the legal links open in a new tab and tell it nothing', preg_match_all( '#<a class="nino-vcard-legal-link" href="[^"]+" target="_blank" rel="noopener">#', $foot ) === 2 );
+$document = vcardDocument( $appData );
+check( 'the page is one document without the header and the footer of the theme, with the scripts, the preloader and the head every page has', $document !== '' && substr_count( $document, '<main' ) === 1 && str_contains( $document, '<html' ) && str_contains( $document, 'nino-frame-header' ) === false && str_contains( $document, '<footer' ) === false && str_contains( $document, 'nino-vcard-foot' ) );
+check( 'the template of the unit carries what every page has: the head with its meta tags and icons, the style and the script bundle, the texts of the scripts, the preloader', array_filter( [ 'twitter:card', 'favicon-16x16', '[assets /.cache/style.css]', '[assets /.cache/script.js]', '[jstext]', 'nino-preloader', 'application/ld+json' ], static fn( string $needle ): bool => str_contains( $template, $needle ) === false ) === [] );
+check( 'it has the one heading a page needs, and where the block of the name is off it is there for those who cannot see the name', ( static function() use ( &$withPicker ): bool {
+	vcardCall( $withPicker, 'vcard/save', vcardPosted( [ 'blocks' => [ 'name' => false ] ] ) );
+	$off = \Nino\Html::renderHtml( $withPicker, '[vcard foot]' );
+	return str_contains( $off, '<h1 class="nino-sr-only">Ada Lovelace</h1>' ) && str_contains( $off, 'nino-vcard-name' ) === false && str_contains( \Nino\Html::renderHtml( $withPicker, '[vcard]' ), '<h1' ) === false;
+} )() );
+
+$single = vcardSandbox( static function( array &$appData ): void {
+	$appData['/nino/locales/available'] = [ 'de_DE' ];
+	$appData['/nino/modules'][] = '\\Nino\\Modules\\Localepicker';
+	\Nino\AppData::writeContentData( $appData, [ '/nino/locales/available', '/nino/modules' ] );
+} );
+vcardFacts( $single );
+$foot = \Nino\Html::renderHtml( $single, '[vcard foot]' );
+check( 'a website of one language has no language switch, and keeps its copyright line', str_contains( $foot, 'nino-vcard-locales' ) === false && str_contains( $foot, 'nino-vcard-copyright' ) );
+$nameless = vcardSandbox();
+check( 'a project that knows no company has no copyright line', str_contains( \Nino\Html::renderHtml( $nameless, '[vcard foot]' ), 'nino-vcard-copyright' ) === false );
+
+echo "\n19. The logo: the screen offers the two image slots, the kernel's actions change them\n";
+
+$appData = vcardSandbox();
+ninoUser( $appData, 'dev@example.com' );
+check( 'a project without logo slots offers none', vcardCall( $appData, 'vcard/list' )[1]['logo']['slots'] === [] );
+\Nino\Filesystem::mutate( $appData, '/config.php', static function( mixed $content ): array {
+	$content = is_array( $content ) === true ? $content : [];
+	$content['/nino/html/images'] = [ '/logo' => [ 'label' => 'Logo', 'width' => 500, 'height' => 100, 'filename' => null ], '/logo/dark' => [ 'label' => 'Logo, dark', 'width' => 500, 'height' => 100, 'filename' => null ] ];
+	return $content;
+} );
+$appData['/nino/html/images']['/logo'] = [ 'label' => 'Logo', 'width' => 500, 'height' => 100, 'filename' => null ];
+$appData['/nino/html/images']['/logo/dark'] = [ 'label' => 'Logo, dark', 'width' => 500, 'height' => 100, 'filename' => null ];
+[ , $body ] = vcardCall( $appData, 'vcard/list' );
+check( 'with both slots the screen names them, with no picture yet, and says the account may change them', $body['logo'] === [ 'manage' => true, 'slots' => [ [ 'uri' => '/logo', 'url' => null ], [ 'uri' => '/logo/dark', 'url' => null ] ] ] );
+
+$image = imagecreatetruecolor( 1000, 200 );
+ob_start();
+imagepng( $image );
+$logoPng = (string) ob_get_clean();
+$tmp = tempnam( sys_get_temp_dir(), 'nino-vcard' );
+file_put_contents( $tmp, $logoPng );
+$_FILES = [ 'file' => [ 'name' => 'l.png', 'type' => 'image/png', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => strlen( $logoPng ) ] ];
+[ $status ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'uri' => '/logo' ], 'images/upload' );
+$_FILES = [];
+@unlink( $tmp );
+[ , $body ] = vcardCall( $appData, 'vcard/list' );
+check( 'the upload of the kernel puts the picture in the slot, and the screen reads it from there - no second place', $status === 200 && is_string( $body['logo']['slots'][0]['url'] ) === true && $body['logo']['slots'][1]['url'] === null && \Nino\Images::getSlot( $appData, '/logo' )['filename'] !== null );
+check( 'and the card shows it as its logo', str_contains( vcardPage( $appData ), 'nino-vcard-picture--logo' ) );
+vcardCall( $appData, 'vcard/save', vcardPosted( [ 'picture' => 'logo', 'blocks' => [ 'picture' => false ] ] ) );
+check( 'picture off: no picture whatever the choice says, and it is back with the block', str_contains( vcardPage( $appData ), 'nino-vcard-picture' ) === false && vcardCall( $appData, 'vcard/save', vcardPosted( [ 'picture' => 'logo' ] ) )[0] === 200 && str_contains( vcardPage( $appData ), 'nino-vcard-picture--logo' ) );
+[ $status ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'uri' => '/logo' ], 'images/remove' );
+check( 'the removal of the kernel takes it away again', $status === 200 && vcardCall( $appData, 'vcard/list' )[1]['logo']['slots'][0]['url'] === null && str_contains( vcardPage( $appData ), 'nino-vcard-picture' ) === false );
+
+ninoUser( $appData, 'cardonly@example.com', [ \Nino\Modules\Vcard\Admin::MANAGE_PERM ] );
+[ $status, $body ] = vcardCall( $appData, 'vcard/list' );
+check( 'an account that may edit the card but not manage images sees the slots and may change none', $status === 200 && $body['logo']['manage'] === false && count( $body['logo']['slots'] ) === 2 );
+[ $status ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'uri' => '/logo' ], 'images/upload' );
+check( '...and the kernel refuses its upload', $status === 403 );
 
 // The panel's script, where node is on the path: vcard-js-smoke.js beside this file runs it over the kernel's
 // tests/harness.js, so bin/check.sh and CI cover both halves in one go

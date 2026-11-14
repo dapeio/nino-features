@@ -15,6 +15,170 @@
 		padding-bottom: 5rem;
 	}
 
+	.nino-admin .vcard-intro {
+		margin: 0 0 1rem;
+		color: var(--editor-text-secondary);
+		font-size: .85rem;
+		line-height: 1.55;
+	}
+
+	/* The "?" beside a heading or a name: a small round button, and its text under it */
+	.nino-admin .vcard-help {
+		position: relative;
+		display: inline-block;
+		margin-inline-start: .35rem;
+		text-transform: none;
+		letter-spacing: normal;
+		vertical-align: middle;
+	}
+
+	.nino-admin .vcard-help-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		box-sizing: border-box;
+		width: 24px;
+		min-width: 24px;
+		height: 24px;
+		min-height: 24px;
+		padding: 0;
+		border: 1px solid var(--editor-border);
+		border-radius: 50%;
+		background: var(--editor-bg-elevated);
+		color: var(--editor-blue);
+		font-size: .72rem;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.nino-admin .vcard-help-button[aria-expanded="true"] {
+		border-color: var(--editor-blue);
+	}
+
+	.nino-admin .vcard-help-text {
+		position: absolute;
+		z-index: 20;
+		top: calc(100% + .35rem);
+		inset-inline-start: 0;
+		box-sizing: border-box;
+		width: max-content;
+		max-width: min(20rem, calc(100vw - 2rem));
+		padding: .55rem .7rem;
+		border: 1px solid var(--editor-border);
+		border-radius: var(--editor-radius-sm);
+		background: var(--editor-bg-elevated);
+		box-shadow: var(--editor-shadow-sm);
+		color: var(--editor-text);
+		font-size: .78rem;
+		font-weight: 400;
+		line-height: 1.45;
+		text-align: start;
+		white-space: normal;
+	}
+
+	/* The pointer may travel from the button to the text: the gap between them belongs to the text */
+	.nino-admin .vcard-help-text::before {
+		content: "";
+		position: absolute;
+		top: -.5rem;
+		right: 0;
+		left: 0;
+		height: .5rem;
+	}
+
+	.nino-admin .vcard-help-text[hidden] {
+		display: none;
+	}
+
+	/* A group with a switch in its legend: the heading on the left, the switch on the right.
+	   Off, everything below the legend is dimmed (the fieldset itself is disabled, which turns its controls off) */
+	.nino-admin .vcard-group {
+		padding-top: 3.3rem;
+	}
+
+	.nino-admin .vcard-group > legend {
+		top: .6rem;
+		right: 1rem;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: .75rem;
+	}
+
+	/* The words of a switch stand beside the knob, from the left, and the "?" right behind them: the kernel
+	   lays the copy out as a column, which is for a note under the words */
+	.nino-admin .vcard-form .nino-admin-switch-copy {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: flex-start;
+		gap: .1rem .35rem;
+		text-align: start;
+	}
+
+	.nino-admin .vcard-legend-text {
+		display: flex;
+		align-items: center;
+	}
+
+	.nino-admin .vcard-block-switch {
+		min-height: 0;
+		padding: 0;
+		text-transform: none;
+		letter-spacing: normal;
+	}
+
+	.nino-admin .vcard-group.is-off > :not(legend) {
+		opacity: .6;
+	}
+
+	.nino-admin .vcard-empty {
+		color: var(--editor-text-secondary);
+		font-size: .8rem;
+	}
+
+	.nino-admin .vcard-note {
+		margin: 0 0 .75rem;
+		color: var(--editor-text-secondary);
+		font-size: .8rem;
+		line-height: 1.5;
+	}
+
+	.nino-admin .vcard-logo-msg {
+		margin: .25rem 0 .75rem;
+		color: var(--editor-text-secondary);
+		font-size: .8rem;
+	}
+
+	.nino-admin .vcard-logo-msg:empty {
+		display: none;
+	}
+
+	.nino-admin .vcard-logo-msg.is-warning {
+		color: var(--editor-orange-ink);
+		font-weight: 650;
+	}
+
+	.nino-admin .vcard-logo-label {
+		flex: 0 0 9rem;
+		color: var(--editor-text-secondary);
+		font-size: .8rem;
+	}
+
+	.nino-admin .vcard-logo-img {
+		width: 150px;
+		height: 30px;
+		object-fit: contain;
+		border: 1px solid var(--editor-border);
+		border-radius: var(--editor-radius-sm);
+		background: #fff;
+	}
+
+	/* The picture for a dark ground is drawn on a dark ground, as it will be seen */
+	.nino-admin .vcard-logo-img--dark {
+		background: #1b1f24;
+	}
+
 	.nino-admin .vcard-where {
 		display: flex;
 		flex-wrap: wrap;
@@ -41,13 +205,6 @@
 		align-items: center;
 		gap: .75rem 1rem;
 		margin-bottom: .5rem;
-	}
-
-	/* The way to Images in a notice: a link of text, which the notice draws in the line */
-	.nino-admin .vcard-form .nino-admin-notice a {
-		display: inline-flex;
-		align-items: center;
-		min-height: 24px;
 	}
 
 	.nino-admin .vcard-photo > small {
@@ -117,9 +274,17 @@
 	/* A finger needs 44 pixels: the workbench's small buttons and the buttons that move a row are drawn for a pointer */
 	@media (pointer: coarse) {
 
-		.nino-admin .vcard-form :is(.nino-admin-btn--small, .vcard-open, .nino-admin-notice a) {
+		.nino-admin .vcard-form :is(.nino-admin-btn--small, .vcard-open, .vcard-help-button) {
 			min-width: 44px;
 			min-height: 44px;
+		}
+
+		.nino-admin .vcard-group {
+			padding-top: 4.4rem;
+		}
+
+		.nino-admin .vcard-group > legend {
+			top: .55rem;
 		}
 
 		.nino-admin .vcard-form .nino-admin-move button {

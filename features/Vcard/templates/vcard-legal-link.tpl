@@ -1,1 +1,1 @@
-<a class="nino-vcard-legal-link" href="[[href]]">[[text]]</a>
+<a class="nino-vcard-legal-link" href="[[href]]" target="_blank" rel="noopener">[[text]]</a>

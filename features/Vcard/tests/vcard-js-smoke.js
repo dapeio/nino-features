@@ -53,13 +53,18 @@ function world( locale ) {
 	const requests = [];
 	const registered = [];
 	const asked = [];
+	const touched = [];
 	let refreshed = 0;
 
 	const mount = element('div');
 	mount.id = 'vcard-list';
 
 	const page = documentOf( mount );
+	const pageListeners = {};
 	const make = page.createElement;
+
+	// The page itself hears what the "?" listens for beyond its own button: a press elsewhere, Escape
+	page.addEventListener = function( name, fn ) { ( pageListeners[name] = pageListeners[name] || [] ).push( fn ) };
 	page.createElement = function( tag ) {
 		const el = make( tag );
 		Object.defineProperty( el, 'name', { get : function() { return el.attributes.name ?? '' }, set : function( value ) { el.setAttribute( 'name', value ) } } );
@@ -72,7 +77,7 @@ function world( locale ) {
 				missing.push( key );
 			return words[key] ?? '';
 		} },
-		admin : { dirty : { register : function( name, entry ) { registered.push( { name : name, entry : entry } ) }, refresh : function() { refreshed++ } } },
+		admin : { dirty : { register : function( name, entry ) { registered.push( { name : name, entry : entry } ) }, refresh : function() { refreshed++ } }, touch : function( topic ) { touched.push( topic ) } },
 	};
 
 	const context = vm.createContext( { console : console, document : page, Nino : Nino, window : { Nino : Nino } } );
@@ -91,8 +96,10 @@ function world( locale ) {
 
 	return {
 		panel : Nino.admin.vcard,
+		pressed : function( name, event ) { ( pageListeners[name] || [] ).forEach( function( fn ) { fn( event ) } ) },
 		mount : mount,
 		requests : requests,
+		touched : touched,
 		registered : registered,
 		asked : asked,
 		missing : missing,
@@ -117,6 +124,7 @@ function world( locale ) {
 function screen( over ) {
 	return Object.assign( {
 		data : { format : 1, picture : 'auto', kind : 'person', name : 'Ada', phone : '', email : '', website : '', address : '', map : true, save : true,
+			blocks : { picture : true, name : true, contact : true, links : true, times : true, legal : true },
 			texts : { de_DE : { line : 'Zeile', text : '', hours : '' }, en_US : { line : 'Line', text : '', hours : '' } },
 			links : [
 				{ id : 'a1', url : 'https://a.test/1', labels : { de_DE : 'Eins', en_US : 'One' } },
@@ -125,7 +133,7 @@ function screen( over ) {
 			] },
 		locales : [ 'de_DE', 'en_US' ], native : 'de_DE', names : { de_DE : 'Deutsch', en_US : 'English (US)' },
 		inherited : { name : 'Acme', phone : '', email : '', website : '', address : '', text : { de_DE : '', en_US : '' } },
-		photo : { url : null, size : 480, alt : {} }, logo : false,
+		photo : { url : null, size : 480, alt : {} }, logo : { manage : true, slots : [ { uri : '/logo', url : '/public/images/logo.500x100.webp' }, { uri : '/logo/dark', url : null } ] },
 		page : { state : 'page', path : '/vcard', takenUri : '/home', file : '/vcard.vcf', start : { blocked : false, reason : '', from : '/home', name : 'Startseite', to : '/home', moves : true, gone : [ '/vcard' ] } },
 		legal : { active : true, imprint : '/impressum', privacy : '/datenschutz' },
 		limits : { name : 120, line : 120, text : 1000, hours : 160, address : 240, alt : 250, label : 60, url : 500, phone : 30, email : 254, links : 20 },
@@ -138,6 +146,15 @@ function drawn( locale, over ) {
 	w.answer( 200, screen( over ) );
 	return w;
 }
+
+const notices = function( w ) { return findAll( w.mount, function( el ) { return el.classList.contains('nino-admin-notice') } ) };
+const byId = function( w, id ) { return findAll( w.mount, function( el ) { return el.id === id } )[0] ?? null };
+
+/** The "?" that describes a control: its button, and the text it opens */
+const helpOf = function( w, control ) {
+	const text = byId( w, control.attributes['aria-describedby'] );
+	return { text : text, button : text.parentNode.children[0] };
+};
 
 const urls = function( w ) { return w.rows().map( function( row ) { return findAll( row, function( el ) { return el.tagName === 'INPUT' } )[0].value } ) };
 
@@ -280,14 +297,14 @@ console.log( '\nNino.admin.vcard - the button Use as start page\n' );
 	check( 'a yes posts vcard/start with nothing', w.requests.length === 2 && w.requests[1].action === 'vcard/start' && JSON.stringify( w.requests[1].payload ) === '{}' );
 
 	w.answer( 200, Object.assign( screen(), { page : { state : 'start', path : '/', takenUri : '', file : '/vcard.vcf', start : null }, moved : { from : '/home', to : '/home', name : 'Startseite' } } ) );
-	check( 'the answer redraws only what says where the page is: the button is gone, the status says start page, the page that moved is told', w.button('Use as start page') === null && w.text().includes('The vCard is the start page of the website.') && w.line().textContent === 'The vCard is the start page. The page “Startseite” moved from / to /home.' );
+	check( 'the answer redraws only what says where the page is: the button is gone, the status says start page, the page that moved is told', w.button('Use as start page') === null && notices( w ).length === 0 && w.line().textContent === 'The vCard is the start page. The page “Startseite” moved from / to /home.' );
 	check( '...and what was typed is still there, and unsaved', w.field('name').value === 'Grace' && w.entry().isDirty() === true );
-	check( '...the screen warns what to do before the feature is switched off, and says it to a screen reader', w.text().includes('Before you switch this feature off') && w.live().textContent === w.line().textContent );
+	check( '...it says it to a screen reader too', w.live().textContent === w.line().textContent );
 }
 
 {
 	const w = drawn( 'en_US', { page : { state : 'start', path : '/', takenUri : '', file : '/vcard.vcf', start : null } } );
-	check( 'where the card is on / there is no button', w.button('Use as start page') === null && w.text().includes('Before you switch this feature off') );
+	check( 'where the card is on / there is no button', w.button('Use as start page') === null && notices( w ).length === 0 );
 }
 
 {
@@ -348,11 +365,201 @@ console.log( '\nNino.admin.vcard - the photo\n' );
 	check( '...and the photo is gone from the screen, without the form being drawn again', w.field('alt.de_DE') === null && w.button('Choose a photo') !== null && w.text().includes('No photo yet.') );
 }
 
+
+
+console.log( '\nNino.admin.vcard - the "?"\n' );
+
 {
 	const w = drawn( 'en_US' );
-	check( 'a project without a logo is told where it is set, with the way there', w.text().includes('The project has no logo yet') && findAll( w.mount, function( el ) { return el.tagName === 'A' && el.href === '#images' } ).length === 1 );
+	const helps = findAll( w.mount, function( el ) { return el.classList.contains('vcard-help') } );
+
+	check( 'no hint paragraph is left on the screen', findAll( w.mount, function( el ) { return el.classList.contains('nino-admin-hint') } ).length === 0 && helps.length >= 14 );
+	check( 'every "?" is a button that is no submit, is named by what it explains, says it is closed and points at a text that is hidden', helps.every( function( help ) {
+		const button = help.children[0];
+		const body = help.children[1];
+		return button.tagName === 'BUTTON' && button.type === 'button' && /^Help: \S/.test( button.attributes['aria-label'] ) && button.attributes['aria-expanded'] === 'false' && button.attributes['aria-describedby'] === body.id && body.hidden === true && body.textContent !== '';
+	} ) );
+	check( '...and no two of them have the same name', new Set( helps.map( function( help ) { return help.children[0].attributes['aria-label'] } ) ).size === helps.length );
+
+	const name = helpOf( w, w.field('name') );
+	check( 'the control it belongs to is described by the text, and named by its words alone', w.field('name').attributes['aria-describedby'] === name.text.id && byId( w, w.field('name').attributes['aria-labelledby'] ).textContent === 'Name' && name.button.attributes['aria-label'] === 'Help: Name' );
+
+	const wrap = name.text.parentNode;
+	check( 'the pointer is heard on the span that holds the button and its text, so that moving from the one to the other keeps the text open', wrap.listeners.mouseenter.length === 1 && wrap.listeners.mouseleave.length === 1 && ( name.button.listeners.mouseleave || [] ).length === 0 && ( name.text.listeners.mouseleave || [] ).length === 0 );
+
+	fire( wrap, 'mouseenter' );
+	check( 'the pointer over it shows the text, and leaving hides it', name.text.hidden === false && name.button.attributes['aria-expanded'] === 'true' );
+	w.pressed( 'keydown', { key : 'Escape' } );
+	check( 'Escape closes it with the pointer over it and no focus on it', name.text.hidden === true && name.button.attributes['aria-expanded'] === 'false' );
+	fire( wrap, 'mouseenter' );
+	fire( wrap, 'mouseleave' );
+	check( '...', name.text.hidden === true );
+	fire( name.button, 'focus' );
+	check( 'the focus shows it and leaving the control hides it', name.text.hidden === false );
+	fire( wrap, 'mouseenter' );
+	fire( name.button, 'blur' );
+	check( 'it stays while the pointer is over it, though the focus has gone', name.text.hidden === false );
+	fire( wrap, 'mouseleave' );
+	check( '...and goes with the pointer', name.text.hidden === true );
+
+	fire( wrap, 'mouseenter' );
+	fire( name.button, 'click' );
+	fire( wrap, 'mouseleave' );
+	check( 'a click - a tap on a touch screen - keeps it open when the pointer has gone', name.text.hidden === false && name.button.attributes['aria-expanded'] === 'true' );
+	w.pressed( 'keydown', { key : 'Escape' } );
+	check( 'Escape closes it', name.text.hidden === true );
+
+	fire( name.button, 'click' );
+	fire( name.button, 'click' );
+	check( 'a second click closes it', name.text.hidden === true );
+
+	const line = helpOf( w, findAll( w.mount, function( el ) { return el.attributes.role === 'group' && el.attributes['aria-describedby'] !== undefined } )[0] );
+	fire( name.button, 'click' );
+	fire( line.button, 'click' );
+	check( 'opening another one closes the one that was kept open', name.text.hidden === true && line.text.hidden === false );
+	w.pressed( 'pointerdown', { target : element('div') } );
+	check( 'a press elsewhere closes it', line.text.hidden === true );
+	fire( line.button, 'click' );
+	w.pressed( 'pointerdown', { target : line.button } );
+	check( '...but not a press on a "?"', line.text.hidden === false );
+	w.pressed( 'keydown', { key : 'Escape' } );
+	check( 'and Escape anywhere closes it', line.text.hidden === true );
+
+	const switches = findAll( w.mount, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'map' } )[0];
+	check( 'a switch is described by its text as a field is', byId( w, switches.attributes['aria-describedby'] ) !== null && byId( w, switches.attributes['aria-labelledby'] ).textContent !== '' );
 }
 
+{
+	const start = drawn( 'en_US', { page : { state : 'start', path : '/', takenUri : '', file : '/vcard.vcf', start : null } } );
+	const taken = drawn( 'en_US', { page : { state : 'page', path : '/vcard', takenUri : '/home', file : '/vcard.vcf', start : null } } );
+	const where = function( w ) { return findAll( w.mount, function( el ) { return el.classList.contains('vcard-where') } )[0] };
+	const aboutOff = function( w ) { return findAll( where( w ), function( el ) { return el.classList.contains('vcard-help-text') } ) };
+
+	check( 'where the card is the start page a "?" at the link to the page says what to do before the feature is switched off, and nothing else is said there', aboutOff( start ).length === 1 && aboutOff( start )[0].textContent.indexOf('Routes') !== -1 && notices( start ).length === 0 && findAll( where( start ), function( el ) { return el.tagName === 'A' } )[0].parentNode === where( start ) );
+	check( 'where it is not, there is none, but a notice with the "?" that says why the card has an address of its own', aboutOff( taken ).length === 1 && aboutOff( taken )[0].textContent.indexOf('/home') !== -1 && notices( taken ).length === 1 );
+}
+
+console.log( '\nNino.admin.vcard - the blocks\n' );
+
+{
+	const w = drawn( 'en_US' );
+	const sets = findAll( w.mount, function( el ) { return el.tagName === 'FIELDSET' } );
+	const switchOf = function( set ) { return findAll( set, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' && ( el.dataset.key || '' ).indexOf('block.') === 0 } )[0] };
+	const block = function( name ) { return sets.filter( function( set ) { return set.dataset.block === name } )[0] };
+	const turned = function( set ) { return findAll( set, function( el ) { return [ 'INPUT', 'SELECT', 'TEXTAREA', 'BUTTON' ].indexOf( el.tagName ) !== -1 && el.parentNode.tagName !== 'LEGEND' && el.classList.contains('vcard-help-button') === false && el.dataset.key !== undefined && el.dataset.key.indexOf('block.') === 0 ? false : [ 'INPUT', 'SELECT', 'TEXTAREA', 'BUTTON' ].indexOf( el.tagName ) !== -1 && el.classList.contains('vcard-help-button') === false && findAll( set.children[0], function( inner ) { return inner === el } ).length === 0 } ) };
+
+	check( 'six groups have a switch in their legend, one for each block of the card, on', [ 'picture', 'name', 'contact', 'links', 'times', 'legal' ].every( function( name ) { const input = switchOf( block( name ) ); return input !== undefined && input.checked === true && block( name ).classList.contains('is-off') === false && input.attributes['aria-label'] !== undefined } ) );
+	const plain = sets.filter( function( set ) { return set.dataset.block === undefined } );
+	check( 'the logo and the rest have none: the logo is the website\'s and not a block of the card, and what the rest holds is a switch itself', sets.length === 8 && plain.length === 2 && plain.every( function( set ) { return switchOf( set ) === undefined } ) );
+	check( 'the legend of a block that has something to explain carries a "?" - the name, the ways to reach, the links, the imprint - and a plain one has none', [ 'name', 'contact', 'links', 'legal' ].every( function( name ) { return findAll( block( name ).children[0], function( el ) { return el.classList.contains('vcard-help') } ).length === 1 } ) && [ 'times' ].every( function( name ) { return findAll( block( name ).children[0], function( el ) { return el.classList.contains('vcard-help') } ).length === 0 } ) );
+	check( 'the switch is in the legend', block('contact').children[0].tagName === 'LEGEND' && block('contact').children[0].querySelectorAll('input').length === 1 );
+
+	const input = switchOf( block('contact') );
+	input.checked = false;
+	fire( input, 'change' );
+	const inside = turned( block('contact') );
+	check( 'off: every control of the block is disabled and the block is marked for the dimming', inside.length >= 5 && inside.every( function( control ) { return control.disabled === true } ) && block('contact').classList.contains('is-off') === true );
+	const helpsIn = findAll( block('contact'), function( el ) { return el.classList.contains('vcard-help-button') } );
+	check( '...but not the "?" that explains it, nor the switch: what is off can still be read about', helpsIn.length >= 2 && helpsIn.every( function( button ) { return button.disabled !== true } ) && input.disabled !== true );
+	check( '...and that is something unsaved', w.entry().isDirty() === true );
+	w.entry().save( function() {} );
+	const sent = w.requests[w.requests.length - 1].payload;
+	check( 'what a block holds is sent whatever the block says, and the switches with it', sent.blocks.contact === false && sent.blocks.name === true && sent.blocks.legal === true && sent.phone === '' && Object.keys( sent.blocks ).length === 6 );
+	input.checked = true;
+	fire( input, 'change' );
+	check( 'on again: enabled, not dimmed, nothing unsaved', inside.every( function( control ) { return control.disabled === false } ) && block('contact').classList.contains('is-off') === false && w.entry().isDirty() === false );
+
+	const links = switchOf( block('links') );
+	const upFirst = w.buttons('Move the link up')[0];
+	links.checked = false;
+	fire( links, 'change' );
+	check( 'a control that was disabled by itself - the first link cannot move up - is disabled when the block is back on, as it was', upFirst.disabled === true && ( links.checked = true ) && ( fire( links, 'change' ), upFirst.disabled === true ) && w.buttons('Move the link down')[0].disabled === false );
+}
+
+{
+	const off = drawn( 'en_US', { data : Object.assign( screen().data, { blocks : { picture : true, name : false, contact : true, links : true, times : true, legal : true } } ) } );
+	const set = findAll( off.mount, function( el ) { return el.tagName === 'FIELDSET' && el.dataset.block === 'name' } )[0];
+	check( 'a block that is stored off is drawn off, and the entry holds nothing unsaved for it', set.classList.contains('is-off') === true && off.field('name').disabled === true && off.entry().isDirty() === false );
+	off.entry().save( function() {} );
+	check( '...and is sent as off', off.requests[off.requests.length - 1].payload.blocks.name === false );
+
+	const none = drawn( 'en_US', { legal : { active : false, imprint : '', privacy : '' }, data : Object.assign( screen().data, { blocks : { picture : true, name : true, contact : true, links : true, times : true, legal : false } } ) } );
+	none.entry().save( function() {} );
+	check( 'without the Legal module there is no switch for it, and what the block holds is sent as it is', findAll( none.mount, function( el ) { return el.tagName === 'FIELDSET' && el.dataset.block === 'legal' } ).length === 0 && none.requests[none.requests.length - 1].payload.blocks.legal === false );
+}
+
+{
+	const w = drawn( 'en_US' );
+	const photo = findAll( w.mount, function( el ) { return el.classList.contains('vcard-photo') } )[0];
+
+	check( 'the photo and what is said of it show where the choice can show a photo', photo.hidden === false );
+	w.field('picture').value = 'logo';
+	fire( w.field('picture'), 'change' );
+	check( '...and go where it cannot: with only the logo, or with none', photo.hidden === true );
+	w.field('picture').value = 'none';
+	fire( w.field('picture'), 'change' );
+	check( '...', photo.hidden === true );
+	w.field('picture').value = 'photo';
+	fire( w.field('picture'), 'change' );
+	check( '...and are back with only the photo', photo.hidden === false );
+	check( 'a card that is stored as showing the logo draws no photo part', drawn( 'en_US', { data : Object.assign( screen().data, { picture : 'logo' } ) } ).mount !== null && findAll( drawn( 'en_US', { data : Object.assign( screen().data, { picture : 'logo' } ) } ).mount, function( el ) { return el.classList.contains('vcard-photo') } )[0].hidden === true );
+}
+
+console.log( '\nNino.admin.vcard - the logo\n' );
+
+{
+	const w = drawn( 'en_US', { page : screen().page } );
+	const sets = findAll( w.mount, function( el ) { return el.tagName === 'FIELDSET' } );
+	const group = sets.filter( function( set ) { return findAll( set, function( el ) { return el.dataset.slot !== undefined } ).length > 0 } )[0];
+	const rows = findAll( w.mount, function( el ) { return el.dataset.slot !== undefined } );
+	const imgOf = function( row ) { return findAll( row, function( el ) { return el.tagName === 'IMG' } )[0] };
+
+	check( 'the logo is a group of its own, not part of the block of the picture, with a sentence that is not a "?" and no switch', group !== undefined && group.dataset.block === undefined && findAll( group, function( el ) { return el.classList.contains('vcard-note') } ).length === 1 && findAll( group.children[0], function( el ) { return el.classList.contains('vcard-help') } ).length === 0 );
+	check( 'both pictures of the logo are drawn, the one there as a picture and the one missing as nothing', rows.length === 2 && imgOf( rows[0] ).src === '/public/images/logo.500x100.webp' && imgOf( rows[1] ) === undefined );
+
+	const picture = sets.filter( function( set ) { return set.dataset.block === 'picture' } )[0];
+	const switchOf = findAll( picture, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'block.picture' } )[0];
+	switchOf.checked = false;
+	fire( switchOf, 'change' );
+	check( 'with the block of the picture off the logo can still be changed: its buttons are not disabled', findAll( group, function( el ) { return el.tagName === 'BUTTON' } ).every( function( button ) { return button.disabled !== true } ) );
+
+	const file = findAll( rows[1], function( el ) { return el.tagName === 'INPUT' && el.type === 'file' } )[0];
+	file.files = [ { name : 'l.png' } ];
+	fire( file, 'change' );
+	const sent = w.requests[w.requests.length - 1];
+	check( 'a chosen file goes to the kernel\'s own action of the Images panel, with the slot and the file', sent.action === 'images/upload' && sent.payload.uri === '/logo/dark' && sent.extra.file.name === 'l.png' );
+	w.answer( 200, { filename : 'logo/dark.500x100.webp', url : '/public/images/logo/dark.500x100.webp' } );
+	const after = findAll( w.mount, function( el ) { return el.dataset.slot === '/logo/dark' } )[0];
+	check( 'the answer draws the new picture, and nothing of the card was saved with it', imgOf( after ).src.indexOf( '/public/images/logo/dark.500x100.webp' ) === 0 && w.requests.filter( function( request ) { return request.action === 'vcard/save' } ).length === 0 );
+	check( 'the picture carries a stamp, the address the panel keeps does not: a replacement has the name of what it replaced, which the browser has in its cache', /[?&]t=\d+$/.test( imgOf( after ).src ) && w.touched.join() === 'slots' );
+	check( '...and the Images panel is told, as it tells itself', w.touched.length === 1 );
+	check( 'a picture that is large enough is said saved, with no warning', findAll( w.mount, function( el ) { return el.classList.contains('vcard-logo-msg') } )[0].classList.contains('is-warning') === false );
+
+	const small = findAll( rows[0], function( el ) { return el.type === 'file' } )[0];
+	small.files = [ { name : 's.png' } ];
+	fire( small, 'change' );
+	w.answer( 200, { filename : 'logo.500x100.webp', url : '/public/images/logo.500x100.webp', belowTarget : true, source : { width : 120, height : 30 } } );
+	const message = findAll( w.mount, function( el ) { return el.classList.contains('vcard-logo-msg') } )[0];
+	check( 'a picture below the size of the slot is saved and says so, with its size, in words and as a warning', message.classList.contains('is-warning') === true && message.textContent.indexOf('120 × 30 px') !== -1 && message.attributes.role === 'status' );
+
+	fire( w.button('Remove the logo (For a light ground)'), 'click' );
+	check( 'removing asks first, as a thing that cannot be taken back', w.asked.length === 1 && w.asked[0].level === 'destructive' );
+	w.asked[0].options.onChoose( false );
+	check( '...a no asks the server nothing', w.requests[w.requests.length - 1].action === 'images/upload' );
+	w.asked[0].options.onChoose( true );
+	check( '...a yes posts the kernel\'s images/remove for that slot', w.requests[w.requests.length - 1].action === 'images/remove' && w.requests[w.requests.length - 1].payload.uri === '/logo' );
+	w.answer( 200, { filename : null } );
+	check( '...and the picture is gone from the screen, and the Images panel is told', imgOf( findAll( w.mount, function( el ) { return el.dataset.slot === '/logo' } )[0] ) === undefined && w.touched.length === 3 );
+}
+
+{
+	const w = drawn( 'en_US', { logo : { manage : false, slots : [ { uri : '/logo', url : '/public/images/logo.500x100.webp' }, { uri : '/logo/dark', url : null } ] } } );
+	const rows = findAll( w.mount, function( el ) { return el.dataset.slot !== undefined } );
+	check( 'an account that may not manage images sees the logo and no control to change it', rows.length === 2 && findAll( rows[0], function( el ) { return el.tagName === 'IMG' } ).length === 1 && rows.every( function( row ) { return findAll( row, function( el ) { return el.tagName === 'BUTTON' || el.type === 'file' } ).length === 0 } ) );
+
+	const none = drawn( 'en_US', { logo : { manage : true, slots : [] } } );
+	check( 'a project without logo slots has no logo group', findAll( none.mount, function( el ) { return el.dataset.slot !== undefined || el.classList.contains('vcard-logo') } ).length === 0 );
+}
 
 console.log( '\nNino.admin.vcard - the words, in both languages\n' );
 

@@ -60,6 +60,11 @@ namespace Nino\Modules {
 		public const array PICTURES		= [ 'auto', 'photo', 'logo', 'none' ];
 		public const array KINDS			= [ 'person', 'organization' ];
 
+		// The blocks of the card the panel switches one by one: a block that is off is not on the page, in the data
+		// or in the contact file, and keeps what it holds. The name itself stays in the file and the data, which have
+		// no card without one; the line and the text go with the block
+		public const array BLOCKS			= [ 'picture', 'name', 'contact', 'links', 'times', 'legal' ];
+
 		// The longest a line of the file is, in octets, the line break not counted (RFC 2426, 2.6)
 		private const int FOLD				= 75;
 
@@ -169,9 +174,13 @@ namespace Nino\Modules {
 				'address'	=> self::lines( $string( $stored['address'] ?? null ), self::LIMIT_ADDRESS, self::MAX_LINES ),
 				'map'			=> ( $stored['map'] ?? true ) !== false,
 				'save'		=> ( $stored['save'] ?? true ) !== false,
+				'blocks'	=> [],
 				'texts'		=> [],
 				'links'		=> [],
 			];
+
+			foreach( self::BLOCKS as $block )
+				$data['blocks'][$block] = ( $stored['blocks'][$block] ?? true ) !== false;
 
 			foreach( $locales as $locale ) {
 
@@ -405,6 +414,7 @@ namespace Nino\Modules {
 			$email		= self::email( $data['email'] !== '' ? $data['email'] : self::fact( $appData, '/project/company/contact/email' ) );
 			$phone		= $data['phone'] !== '' ? $data['phone'] : self::fact( $appData, '/project/company/contact/phone' );
 			$links		= [];
+			$on				= $data['blocks'];
 
 			foreach( $data['links'] as $link ) {
 
@@ -423,19 +433,20 @@ namespace Nino\Modules {
 				'kind'		=> $own === true && $data['kind'] === 'person' ? 'person' : 'organization',
 				'name'		=> $own === true ? $data['name'] : $company,
 				'company'	=> $company,
-				'line'		=> $pick( 'line' ),
+				'line'		=> $on['name'] === true ? $pick( 'line' ) : '',
 				// The description of the company is the text of the company; a person has the words they wrote, or none
-				'text'		=> $pick( 'text' ) !== '' || $own === true ? $pick( 'text' ) : self::fact( $appData, '/project/company/general/description', true ),
-				'hours'		=> $pick( 'hours' ),
-				'phone'		=> self::phone( $phone ) === true ? $phone : '',
-				'email'		=> $email ?? '',
-				'website'	=> $website ?? '',
-				'address'	=> $address,
-				'country'	=> $data['address'] === '' && $address !== '' ? self::fact( $appData, '/project/company/contact/country' ) : '',
+				'text'		=> $on['name'] === false ? '' : ( $pick( 'text' ) !== '' || $own === true ? $pick( 'text' ) : self::fact( $appData, '/project/company/general/description', true ) ),
+				'hours'		=> $on['times'] === true ? $pick( 'hours' ) : '',
+				'phone'		=> $on['contact'] === true && self::phone( $phone ) === true ? $phone : '',
+				'email'		=> $on['contact'] === true ? $email ?? '' : '',
+				'website'	=> $on['contact'] === true ? $website ?? '' : '',
+				'address'	=> $on['contact'] === true ? $address : '',
+				'country'	=> $on['contact'] === true && $data['address'] === '' && $address !== '' ? self::fact( $appData, '/project/company/contact/country' ) : '',
 				'map'			=> $data['map'],
 				'save'		=> $data['save'],
-				'links'		=> $links,
-				'picture'	=> self::picture( $appData, $data['picture'] ),
+				'links'		=> $on['links'] === true ? $links : [],
+				'picture'	=> $on['picture'] === true ? self::picture( $appData, $data['picture'] ) : '',
+				'blocks'	=> $on,
 			];
 		}
 
@@ -496,10 +507,11 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	[vcard] - the card. Every part that has nothing to show is left out whole
+		 *	[vcard] - the card. Every part that has nothing to show is left out whole. With the flag foot
+		 *	the card is the page itself and carries its copyright line and the language picker
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					Shortcode arguments (none)
+		 *	@param		array			$args					Shortcode arguments (the flag foot)
 		 *
 		 *	@return 	string										'' where the card holds nothing at all
 		 */
@@ -509,6 +521,8 @@ namespace Nino\Modules {
 			$escape	= static fn( string $value ): string => \Nino\Modules\Components::escape( $value );
 			$part		= static fn( string $name, array $tokens ): string => str_replace( array_keys( $tokens ), array_values( $tokens ), \Nino\Feature::template( $appData, self::TEMPLATES, $name ) );
 
+			// With the flag foot the card is the page: its name is the heading of the page
+			$whole = \Nino\Feature::flag( $args, 'foot' );
 			$items = '';
 
 			// A fixed order, the one a person is asked for it in the panel
@@ -538,7 +552,7 @@ namespace Nino\Modules {
 			$legal = '';
 			foreach( self::LEGAL as $page => $label ) {
 
-				$url = class_exists( '\\Nino\\Modules\\Legal' ) === true ? \Nino\Modules\Legal::url( $appData, $page ) : '';
+				$url = $card['blocks']['legal'] === true && class_exists( '\\Nino\\Modules\\Legal' ) === true ? \Nino\Modules\Legal::url( $appData, $page ) : '';
 
 				if( $url !== '' )
 					$legal .= $part( 'vcard-legal-link', [ '[[href]]' => $escape( $url ), '[[text]]' => $label ] );
@@ -546,22 +560,49 @@ namespace Nino\Modules {
 
 			$parts = [
 				'[[picture]]'	=> $card['picture'] === 'photo' ? $part( 'vcard-photo', [ '[[image]]' => self::$image ] ) : ( $card['picture'] === 'logo' ? $part( 'vcard-logo', [] ) : '' ),
-				'[[name]]'		=> $card['name'] !== '' ? $part( 'vcard-name', [ '[[name]]' => $escape( $card['name'] ) ] ) : '',
+				'[[name]]'		=> $card['name'] !== '' && $card['blocks']['name'] === true ? $part( 'vcard-name', [ '[[tag]]' => $whole === true ? 'h1' : 'h2', '[[name]]' => $escape( $card['name'] ) ] ) : '',
 				'[[line]]'		=> $card['line'] !== '' ? $part( 'vcard-line', [ '[[line]]' => $escape( $card['line'] ) ] ) : '',
 				'[[text]]'		=> $card['text'] !== '' ? $part( 'vcard-text', [ '[[modifier]]' => mb_strlen( $card['text'] ) > self::LONG_TEXT ? ' nino-vcard-text--long' : '', '[[text]]' => $escape( $card['text'] ) ] ) : '',
 				'[[contacts]]'	=> $items !== '' ? $part( 'vcard-contacts', [ '[[items]]' => $items ] ) : '',
 				'[[links]]'		=> $links !== '' ? $part( 'vcard-links', [ '[[items]]' => $links ] ) : '',
 				'[[save]]'		=> $card['save'] === true && self::file( $appData ) !== '' ? $part( 'vcard-save', [ '[[href]]' => $escape( rtrim( \Nino\Filesystem::getDir( $appData ), '/' ). self::FILE ), '[[file]]' => $escape( self::filename( $card ) ) ] ) : '',
 				'[[legal]]'		=> $legal !== '' ? $part( 'vcard-legal', [ '[[items]]' => $legal ] ) : '',
+				'[[foot]]'		=> $whole === true ? self::foot( $appData, $card, $part, $escape ) : '',
 				'[[data]]'		=> $card['name'] !== '' ? $part( 'vcard-data', [ '[[json]]' => self::structured( $appData, $card ) ] ) : '',
 			];
 
 			// Nothing to show: no name, no way to reach anybody, no picture. The card says so in one sentence of the project's words
 			// - and keeps the links to the legal pages, the one thing a page of this website owes a visitor
-			if( $parts['[[name]]'] === '' && $items === '' && $links === '' && $parts['[[picture]]'] === '' && $parts['[[text]]'] === '' )
+			// - and offers nothing to save, since the file would hold a name that is shown nowhere
+			if( $parts['[[name]]'] === '' && $items === '' && $links === '' && $parts['[[picture]]'] === '' && $parts['[[text]]'] === '' ) {
 				$parts['[[name]]'] = $part( 'vcard-empty', [] );
+				$parts['[[save]]'] = '';
+			}
+			// The name of a card whose block is off is still the heading of a page that is the card alone, for those who do not see it
+			else if( $whole === true && $parts['[[name]]'] === '' && $card['name'] !== '' )
+				$parts['[[name]]'] = $part( 'vcard-title', [ '[[name]]' => $escape( $card['name'] ) ] );
 
 			return str_replace( array_keys( $parts ), array_values( $parts ), \Nino\Feature::template( $appData, self::TEMPLATES, 'vcard' ) );
+		}
+
+		/**
+		 *	The foot of a page that is the card alone: the language picker of the kernel where the
+		 *	website has several languages and its module is on, and the copyright line with the year
+		 *	and the name of the company
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$card
+		 *	@param		callable	$part					Fills a template of the feature
+		 *	@param		callable	$escape
+		 *
+		 *	@return 	string
+		 */
+		private static function foot( array &$appData, array $card, callable $part, callable $escape ): string {
+
+			$copyright = $card['company'] !== '' ? $part( 'vcard-copyright', [ '[[company]]' => $escape( $card['company'] ) ] ) : '';
+			$locales = count( \Nino\Locales::getAvailableLocales( $appData ) ) > 1 && in_array( '\\Nino\\Modules\\Localepicker', (array) ( $appData['/nino/modules'] ?? [] ), true ) === true ? $part( 'vcard-locales', [] ) : '';
+
+			return $copyright === '' && $locales === '' ? '' : $part( 'vcard-foot', [ '[[locales]]' => $locales, '[[copyright]]' => $copyright ] );
 		}
 
 		/**

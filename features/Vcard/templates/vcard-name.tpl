@@ -1,1 +1,1 @@
-<h2 class="nino-vcard-name">[[name]]</h2>
+<[[tag]] class="nino-vcard-name">[[name]]</[[tag]]>

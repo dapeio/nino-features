@@ -424,6 +424,7 @@ namespace Nino\Modules\Vcard {
 				'address'	=> $address,
 				'map'			=> ( $posted['map'] ?? true ) !== false,
 				'save'		=> ( $posted['save'] ?? true ) !== false,
+				'blocks'	=> is_array( $posted['blocks'] ?? null ) === true ? $posted['blocks'] : [],
 				'texts'		=> $texts,
 				'links'		=> $links,
 			] ) ];
@@ -492,9 +493,18 @@ namespace Nino\Modules\Vcard {
 			$data			= Vcard::data( $appData );
 			$locales	= \Nino\Locales::getAvailableLocales( $appData );
 			$slot			= \Nino\Images::getSlot( $appData, Vcard::PHOTO );
-			$logo			= Vcard::picture( $appData, 'logo' ) === 'logo';
+			$logo			= [ 'manage' => \Nino\Auth::checkPermission( $appData, \Nino\Modules\Images\Admin::MANAGE_PERM ), 'slots' => [] ];
 			$routes		= (array) ( $appData['/nino/http/routes'] ?? [] );
 			$dir			= rtrim( \Nino\Filesystem::getDir( $appData ), '/' );
+
+			// The two pictures of the logo, the image slots of the kernel the card's logo template draws
+			foreach( [ '/logo', '/logo/dark' ] as $uri ) {
+
+				$own = \Nino\Images::getSlot( $appData, $uri );
+
+				if( is_array( $own ) === true )
+					$logo['slots'][] = [ 'uri' => $uri, 'url' => is_string( $own['filename'] ?? null ) === true && $own['filename'] !== '' ? \Nino\Images::getUrl( $appData, $own['filename'] ) : null ];
+			}
 
 			// What a detail left empty falls back to: the project's own, as the page reads it
 			$descriptions = [];

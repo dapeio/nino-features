@@ -11,14 +11,22 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[vcard]' => [
-				'en_US' => 'Draws the contact card from the panel; the page /vcard has it, and so has the start page where the feature is allowed to take it.',
-				'de_DE' => 'Zeichnet die Kontaktkarte aus dem Panel; die Seite /vcard hat sie, und die Startseite auch, wo das Feature sie übernehmen darf.',
+				'en_US' => 'Draws the contact card from the panel; with the flag foot it is the whole page and carries the copyright line and the language picker.',
+				'de_DE' => 'Zeichnet die Kontaktkarte aus dem Panel; mit dem Flag foot ist sie die ganze Seite und trägt Copyright-Zeile und Sprachauswahl.',
 			],
 		],
 		'markup' => [
 			'.nino-vcard' => [
-				'en_US' => 'The card and its parts: picture, name, line, text, list of contact ways, list of links, button and the links to the legal pages.',
-				'de_DE' => 'Die Karte und ihre Teile: Bild, Name, Zeile, Text, Liste der Kontaktwege, Liste der Links, Knopf und die Links zu den Rechtstexten.',
+				'en_US' => 'The card and its parts: picture, name, line, text, list of contact ways, list of links, button and the links to the legal pages, which open in a new tab.',
+				'de_DE' => 'Die Karte und ihre Teile: Bild, Name, Zeile, Text, Liste der Kontaktwege, Liste der Links, Knopf und die Links zu den Rechtstexten, die in einem neuen Tab öffnen.',
+			],
+			'.nino-vcard-wrap' => [
+				'en_US' => 'The box around the card and, on a page that is the card alone, its foot.',
+				'de_DE' => 'Die Box um die Karte und, auf einer Seite, die nur die Karte ist, ihren Fuß.',
+			],
+			'.nino-vcard-foot' => [
+				'en_US' => 'The foot of a page that is the card alone: the language picker of the website where there are several languages, and the copyright line.',
+				'de_DE' => 'Der Fuß einer Seite, die nur die Karte ist: die Sprachauswahl der Website, wo es mehrere Sprachen gibt, und die Copyright-Zeile.',
 			],
 			'href="tel:" and "mailto:"' => [
 				'en_US' => 'The phone number and the e-mail address are links that open the phone or the mail program; a link of your own may be http, https, mailto or tel and nothing else.',
@@ -49,8 +57,8 @@ return [
 		],
 		'panel' => [
 			'vCard' => [
-				'en_US' => 'All details of the card from top to bottom, the button Use as start page, a link to the page and the way to the imprint and the privacy policy.',
-				'de_DE' => 'Alle Angaben der Karte von oben nach unten, der Knopf Als Startseite verwenden, ein Link zur Seite und der Weg zu Impressum und Datenschutz.',
+				'en_US' => 'All details of the card from top to bottom, a switch for each block, the logo of the website, the button Use as start page and the way to the imprint and the privacy policy.',
+				'de_DE' => 'Alle Angaben der Karte von oben nach unten, ein Schalter je Baustein, das Logo der Website, der Knopf Als Startseite verwenden und der Weg zu Impressum und Datenschutz.',
 			],
 		],
 		'callbacks' => [
@@ -61,8 +69,8 @@ return [
 		],
 		'install' => [
 			'templates/page-vcard.tpl' => [
-				'en_US' => 'The page /vcard renders: the head and the foot of the project around [vcard].',
-				'de_DE' => 'Das Template der Seite /vcard: Kopf und Fuß des Projekts um [vcard].',
+				'en_US' => 'The page /vcard renders: a document of its own with the head, the scripts and the styles of every page, but without the header and the footer of the theme, around [vcard foot].',
+				'de_DE' => 'Das Template der Seite /vcard: ein eigenes Dokument mit Kopf, Skripten und Stilen jeder Seite, aber ohne Header und Footer des Themes, um [vcard foot].',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'The words of the card, such as Phone and Save contact, and the title of the page, only added, never replaced.',

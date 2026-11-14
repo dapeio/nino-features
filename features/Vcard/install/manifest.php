@@ -11,6 +11,6 @@ return [
 		'GET://' => [ 'uri' => '/vcard', 'body' => '[template /templates/page-vcard]' ],
 	],
 
-	// The page: the project's head and foot around [vcard]
+	// The page: a document of its own around [vcard foot], without the head and the foot of the theme
 	'templates'	=> [ 'page-vcard.tpl' ],
 ];

@@ -28,6 +28,11 @@
 	padding-right: calc(var(--space-2) * var(--whitespace-scale));
 }
 
+.nino-vcard-wrap {
+	width: 100%;
+	max-width: var(--vcard-width);
+}
+
 .nino-vcard-card {
 	box-sizing: border-box;
 	width: 100%;
@@ -197,6 +202,27 @@
 	gap: 0 var(--space-1);
 	margin-top: var(--space-3);
 	font-size: var(--fontsize-small);
+}
+
+/*	The foot of a page that is the card alone: the language picker of the kernel, then the copyright line	*/
+.nino-vcard-foot {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-1);
+	margin-top: var(--space-2);
+	color: var(--color-subtitle);
+	font-size: var(--fontsize-small);
+	text-align: center;
+}
+
+.nino-vcard-locales {
+	display: flex;
+	justify-content: center;
+}
+
+.nino-vcard-copyright {
+	margin: 0;
 }
 
 .nino-vcard :where(a):focus-visible {
