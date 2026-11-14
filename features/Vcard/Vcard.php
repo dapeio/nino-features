@@ -58,6 +58,17 @@ namespace Nino\Modules {
 		public const int LONG_TEXT			= 160;
 
 		public const array PICTURES		= [ 'auto', 'photo', 'logo', 'none' ];
+
+		// The designs the card can wear over the one it has - '' is the card as the theme of the project draws it - and the
+		// way the colour scheme is chosen; the accent is '' (the colour of the project) or a colour of six hex digits
+		public const array DESIGNS		= [ 'klar', 'karte', 'foto' ];
+		public const array SCHEMES		= [ 'auto', 'light', 'dark' ];
+		public const string ACCENT		= '/^#[0-9a-f]{6}$/D';
+		public const string ASSETS		= '/features/Vcard/assets';
+
+		// The words the switch of the visitor says, as the keys the template reads
+		public const array SCHEME_WORDS = [ '[[/feature/vcard/label/scheme]]', '[[/feature/vcard/scheme/light]]', '[[/feature/vcard/scheme/auto]]', '[[/feature/vcard/scheme/dark]]' ];
+
 		public const array KINDS			= [ 'person', 'organization' ];
 
 		// The blocks of the card the panel switches one by one: a block that is off is not on the page, in the data
@@ -115,6 +126,17 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			\Nino\Feature::shortcode( $appData, 'vcard', [ self::class, 'doShortcode' ] );
+
+			// The design is a stylesheet of its own, in the bundle only while the card wears it; the script of the switch
+			// for the visitor likewise
+			$data = self::data( $appData );
+
+			if( $data['design'] !== '' ) {
+				\Nino\Html::addAsset( $appData, '/.cache/style.css', self::ASSETS. '/design-'. $data['design']. '.css' );
+
+				if( $data['switch'] === true )
+					\Nino\Html::addAsset( $appData, '/.cache/script.js', self::ASSETS. '/vcard.js' );
+			}
 
 			/*	The install unit puts the page at / where the project has no start page.
 				Everywhere else the page has to be reachable all the same, at /vcard - but
@@ -174,6 +196,10 @@ namespace Nino\Modules {
 				'address'	=> self::lines( $string( $stored['address'] ?? null ), self::LIMIT_ADDRESS, self::MAX_LINES ),
 				'map'			=> ( $stored['map'] ?? true ) !== false,
 				'save'		=> ( $stored['save'] ?? true ) !== false,
+				'design'	=> in_array( $stored['design'] ?? null, self::DESIGNS, true ) === true ? $stored['design'] : '',
+				'scheme'	=> in_array( $stored['scheme'] ?? null, self::SCHEMES, true ) === true ? $stored['scheme'] : 'auto',
+				'switch'	=> ( $stored['switch'] ?? false ) === true,
+				'accent'	=> preg_match( self::ACCENT, $string( $stored['accent'] ?? null ) ) === 1 ? $stored['accent'] : '',
 				'blocks'	=> [],
 				'texts'		=> [],
 				'links'		=> [],
@@ -395,7 +421,7 @@ namespace Nino\Modules {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											kind, name, company, line, text, hours, phone, email, website, address, country, map, save, links, picture
+		 *	@return 	array											kind, name, company, line, text, hours, phone, email, website, address, country, map, save, design, scheme, switch, accent, links, picture
 		 */
 		public static function card( array &$appData ): array {
 
@@ -425,7 +451,7 @@ namespace Nino\Modules {
 						break;
 					}
 
-				$links[] = [ 'url' => $link['url'], 'label' => $label !== '' ? $label : self::shown( $link['url'] ) ];
+				$links[] = [ 'url' => $link['url'], 'label' => $label !== '' ? $label : self::shown( $link['url'] ), 'named' => $label !== '' ];
 			}
 
 			return [
@@ -444,6 +470,10 @@ namespace Nino\Modules {
 				'country'	=> $on['contact'] === true && $data['address'] === '' && $address !== '' ? self::fact( $appData, '/project/company/contact/country' ) : '',
 				'map'			=> $data['map'],
 				'save'		=> $data['save'],
+				'design'	=> $data['design'],
+				'scheme'	=> $data['scheme'],
+				'switch'	=> $data['switch'],
+				'accent'	=> $data['accent'],
 				'links'		=> $on['links'] === true ? $links : [],
 				'picture'	=> $on['picture'] === true ? self::picture( $appData, $data['picture'] ) : '',
 				'blocks'	=> $on,
@@ -524,16 +554,23 @@ namespace Nino\Modules {
 			// With the flag foot the card is the page: its name is the heading of the page
 			$whole = \Nino\Feature::flag( $args, 'foot' );
 			$items = '';
+			$design = $card['design'];
+
+			// Under a design an address that is shown as text may break at its own marks - a template holds the break - and not in the
+			// middle of a word: the raw text is cut after a mark, every piece is escaped and the pieces are joined with the break. The
+			// text itself holds no character that is not the address; a card without a design shows it as it always did
+			$break = $design === '' ? '' : $part( 'vcard-break', [] );
+			$breakable = static fn( string $raw ): string => $design === '' ? $escape( $raw ) : implode( $break, array_map( $escape, (array) preg_split( '#(?<=[/.\\-_?&=@])(?=[^/.\\-_?&=@])#u', $raw ) ) );
 
 			// A fixed order, the one a person is asked for it in the panel
 			if( $card['phone'] !== '' )
 				$items .= $part( 'vcard-item', [ '[[label]]' => self::LABELS['phone'], '[[value]]' => $part( 'vcard-link', [ '[[href]]' => $escape( self::telHref( $card['phone'] ) ), '[[attributes]]' => '', '[[text]]' => $escape( $card['phone'] ) ] ) ] );
 
 			if( $card['email'] !== '' )
-				$items .= $part( 'vcard-item', [ '[[label]]' => self::LABELS['email'], '[[value]]' => $part( 'vcard-link', [ '[[href]]' => $escape( 'mailto:'. $card['email'] ), '[[attributes]]' => '', '[[text]]' => $escape( $card['email'] ) ] ) ] );
+				$items .= $part( 'vcard-item', [ '[[label]]' => self::LABELS['email'], '[[value]]' => $part( 'vcard-link', [ '[[href]]' => $escape( 'mailto:'. $card['email'] ), '[[attributes]]' => '', '[[text]]' => $breakable( $card['email'] ) ] ) ] );
 
 			if( $card['website'] !== '' )
-				$items .= $part( 'vcard-item', [ '[[label]]' => self::LABELS['website'], '[[value]]' => $part( 'vcard-link', [ '[[href]]' => $escape( $card['website'] ), '[[attributes]]' => self::rel( $card['website'] ), '[[text]]' => $escape( self::shown( $card['website'] ) ) ] ) ] );
+				$items .= $part( 'vcard-item', [ '[[label]]' => self::LABELS['website'], '[[value]]' => $part( 'vcard-link', [ '[[href]]' => $escape( $card['website'] ), '[[attributes]]' => self::rel( $card['website'] ), '[[text]]' => $breakable( self::shown( $card['website'] ) ) ] ) ] );
 
 			if( $card['address'] !== '' ) {
 
@@ -547,7 +584,7 @@ namespace Nino\Modules {
 
 			$links = '';
 			foreach( $card['links'] as $link )
-				$links .= $part( 'vcard-more', [ '[[href]]' => $escape( $link['url'] ), '[[attributes]]' => self::rel( $link['url'] ), '[[text]]' => $escape( $link['label'] ) ] );
+				$links .= $part( 'vcard-more', [ '[[href]]' => $escape( $link['url'] ), '[[attributes]]' => self::rel( $link['url'] ). ( $design !== '' && $link['named'] === false ? ' data-vcard-address' : '' ), '[[text]]' => $link['named'] === true ? $escape( $link['label'] ) : $breakable( $link['label'] ) ] );
 
 			$legal = '';
 			foreach( self::LEGAL as $page => $label ) {
@@ -558,7 +595,11 @@ namespace Nino\Modules {
 					$legal .= $part( 'vcard-legal-link', [ '[[href]]' => $escape( $url ), '[[text]]' => $label ] );
 			}
 
+			// The design is a class and attributes of the card, and nothing else of the markup: the page that is the card
+			// alone says so, the scheme is written only where the owner fixed it, the accent only where the owner chose one
 			$parts = [
+				'[[modifier]]'	=> $design !== '' && $whole === true ? ' nino-vcard--page' : '',
+				'[[attributes]]'	=> $design === '' ? '' : ' data-vcard-design="'. $design. '"'. ( $card['scheme'] !== 'auto' ? ' data-vcard-mode="'. $card['scheme']. '"' : '' ). ( $card['accent'] !== '' ? ' style="--vcard-brand: '. $card['accent']. '"' : '' ),
 				'[[picture]]'	=> $card['picture'] === 'photo' ? $part( 'vcard-photo', [ '[[image]]' => self::$image ] ) : ( $card['picture'] === 'logo' ? $part( 'vcard-logo', [] ) : '' ),
 				'[[name]]'		=> $card['name'] !== '' && $card['blocks']['name'] === true ? $part( 'vcard-name', [ '[[tag]]' => $whole === true ? 'h1' : 'h2', '[[name]]' => $escape( $card['name'] ) ] ) : '',
 				'[[line]]'		=> $card['line'] !== '' ? $part( 'vcard-line', [ '[[line]]' => $escape( $card['line'] ) ] ) : '',
@@ -587,8 +628,8 @@ namespace Nino\Modules {
 
 		/**
 		 *	The foot of a page that is the card alone: the language picker of the kernel where the
-		 *	website has several languages and its module is on, and the copyright line with the year
-		 *	and the name of the company
+		 *	website has several languages and its module is on, the copyright line with the year
+		 *	and the name of the company, and the switch of the colour scheme where the owner offers it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$card
@@ -601,8 +642,29 @@ namespace Nino\Modules {
 
 			$copyright = $card['company'] !== '' ? $part( 'vcard-copyright', [ '[[company]]' => $escape( $card['company'] ) ] ) : '';
 			$locales = count( \Nino\Locales::getAvailableLocales( $appData ) ) > 1 && in_array( '\\Nino\\Modules\\Localepicker', (array) ( $appData['/nino/modules'] ?? [] ), true ) === true ? $part( 'vcard-locales', [] ) : '';
+			$scheme = $card['design'] !== '' && $card['switch'] === true && self::words( $appData ) === true ? $part( 'vcard-scheme', [] ) : '';
 
-			return $copyright === '' && $locales === '' ? '' : $part( 'vcard-foot', [ '[[locales]]' => $locales, '[[copyright]]' => $copyright ] );
+			return $copyright === '' && $locales === '' && $scheme === '' ? '' : $part( 'vcard-foot', [ '[[locales]]' => $locales, '[[copyright]]' => $copyright, '[[scheme]]' => $scheme ] );
+		}
+
+		/**
+		 *	Whether the project has every word of the switch in the language of the request: a project that was
+		 *	activated before the switch existed has them once the panel has saved, and until then the switch
+		 *	is not drawn - a visitor never reads a key
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool
+		 */
+		public static function words( array &$appData ): bool {
+
+			$fills = \Nino\Html::getFills( $appData );
+
+			foreach( self::SCHEME_WORDS as $key )
+				if( is_string( $fills[$key] ?? null ) === false || trim( $fills[$key] ) === '' )
+					return false;
+
+			return true;
 		}
 
 		/**

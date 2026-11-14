@@ -1,0 +1,301 @@
+/**
+ *	Nino - vCard, design Karte
+ *	design-karte.css	A printed visiting card: a sheet of paper with a soft shadow and a fine inner frame on a
+ *										toned ground, serif type from the system, small capitals for the words, rules instead
+ *										of boxes. Over vcard.css, for a card that has data-vcard-design="karte": the scheme and
+ *										the accent are vcard.css's, and a page that is the card alone (nino-vcard--page) paints
+ *										its ground as well.
+ */
+
+/* ==== 1. The palette: light first, light-dark() where the browser has it ==== */
+.nino-vcard[data-vcard-design="karte"] {
+	--vc-bg: #e6dfd2;
+	--vc-paper: #fffdf8;
+	--vc-ink: #26211b;
+	--vc-soft: #4a4238;
+	--vc-muted: #5a5045;
+	--vc-rule: #d9d0c0;
+	--vc-frame: #c8bda8;
+	--vc-shade-near: rgb(60 40 20 / 10%);
+	--vc-shade-far: rgb(60 40 20 / 28%);
+	--vc-serif: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+	--vc-photo: calc(7.5 * var(--vc-rem));
+}
+
+:root:has(.nino-vcard--page[data-vcard-design="karte"]) {
+	--vc-bg: #e6dfd2;
+	--vc-ink: #26211b;
+}
+
+@supports (color: light-dark(#000000, #ffffff)) {
+
+	.nino-vcard[data-vcard-design="karte"] {
+		--vc-bg: light-dark(#e6dfd2, #14110e);
+		--vc-paper: light-dark(#fffdf8, #231f1a);
+		--vc-ink: light-dark(#26211b, #f1ebe0);
+		--vc-soft: light-dark(#4a4238, #cfc6b8);
+		--vc-muted: light-dark(#5a5045, #a89e8f);
+		--vc-rule: light-dark(#d9d0c0, #3a342b);
+		--vc-frame: light-dark(#c8bda8, #4a4237);
+		--vc-shade-near: light-dark(rgb(60 40 20 / 10%), rgb(0 0 0 / 40%));
+		--vc-shade-far: light-dark(rgb(60 40 20 / 28%), rgb(0 0 0 / 70%));
+	}
+
+	:root:has(.nino-vcard--page[data-vcard-design="karte"]) {
+		--vc-bg: light-dark(#e6dfd2, #14110e);
+		--vc-ink: light-dark(#26211b, #f1ebe0);
+	}
+}
+
+/* ==== 2. The ground: the table ==== */
+:root:has(.nino-vcard--page[data-vcard-design="karte"]) body,
+:root:has(.nino-vcard--page[data-vcard-design="karte"]) .nino-preloader { background: var(--vc-bg); color: var(--vc-ink); }
+:root:has(.nino-vcard--page[data-vcard-design="karte"]) main { padding-top: 0; }
+
+.nino-vcard[data-vcard-design="karte"] {
+	box-sizing: border-box;
+	padding: calc(1 * var(--vc-rem)) calc(.75 * var(--vc-rem)) calc(1.5 * var(--vc-rem));
+	background: transparent;
+	color: var(--vc-ink);
+	font-family: var(--vc-serif);
+	font-size: calc(1.0625 * var(--vc-rem));
+	line-height: 1.55;
+}
+.nino-vcard--page[data-vcard-design="karte"] {
+	min-height: 100vh;
+	min-height: 100dvh;
+	background: var(--vc-bg);
+}
+
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-wrap { margin: auto; max-width: calc(27 * var(--vc-rem)); }
+
+/* ==== 3. The sheet ==== */
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-card {
+	position: relative;
+	padding: calc(2.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem)) calc(1.25 * var(--vc-rem));
+	border: 0;
+	border-radius: 3px;
+	background: var(--vc-paper);
+	box-shadow: 0 1px 2px var(--vc-shade-near), 0 18px 40px -12px var(--vc-shade-far);
+	overflow: visible;
+	color: var(--vc-ink);
+	text-align: center;
+	--card-align: center;
+}
+/* A fine inner frame, as on an embossed print */
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-card::before {
+	content: "";
+	position: absolute;
+	inset: calc(.5 * var(--vc-rem));
+	border: 1px solid var(--vc-frame);
+	border-radius: 1px;
+	pointer-events: none;
+}
+
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-picture {
+	width: var(--vc-photo);
+	height: var(--vc-photo);
+	margin: 0 auto calc(1.5 * var(--vc-rem));
+	padding: 4px;
+	box-sizing: content-box;
+	border-radius: 50%;
+	background: var(--vc-paper);
+	box-shadow: 0 0 0 1px var(--vc-accent);
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-picture img { border-radius: 50%; }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-picture--logo {
+	width: auto;
+	height: auto;
+	max-width: calc(14 * var(--vc-rem));
+	padding: 0;
+	border-radius: 0;
+	box-shadow: none;
+	background: transparent;
+	margin-bottom: calc(1.5 * var(--vc-rem));
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-picture--logo img { border-radius: 0; max-height: calc(3.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-logo-set .nino-logo-light { display: var(--vc-logo-light); }
+.nino-vcard[data-vcard-design="karte"] .nino-logo-set .nino-logo-dark { display: var(--vc-logo-dark); }
+
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-name {
+	color: var(--vc-ink);
+	font-family: var(--vc-serif);
+	font-size: clamp(calc(1.75 * var(--vc-rem)), 7.4vw, calc(2.125 * var(--vc-rem)));
+	font-weight: 700;
+	letter-spacing: .005em;
+	line-height: 1.15;
+	text-transform: none;
+	text-wrap: balance;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-line {
+	margin-top: calc(.625 * var(--vc-rem));
+	color: var(--vc-accent);
+	font-family: var(--vc-serif);
+	font-size: calc(.8125 * var(--vc-rem));
+	font-weight: 700;
+	font-variant-caps: all-small-caps;
+	letter-spacing: .14em;
+	text-transform: lowercase;
+	line-height: 1.45;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-text {
+	position: relative;
+	margin-top: calc(1.75 * var(--vc-rem));
+	padding-top: calc(1.75 * var(--vc-rem));
+	color: var(--vc-soft);
+	font-style: italic;
+	text-align: center;
+	text-wrap: pretty;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-text::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 50%;
+	width: calc(4 * var(--vc-rem));
+	height: 1px;
+	margin-left: calc(-2 * var(--vc-rem));
+	background: var(--vc-accent);
+	opacity: .6;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-text--long { text-align: left; }
+
+/* ==== 4. The details: small capitals above each, fine rules between ==== */
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-list { margin-top: calc(1.75 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-item {
+	padding: calc(.875 * var(--vc-rem)) 0;
+	border-top: 1px solid var(--vc-rule);
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-item:last-child { border-bottom: 1px solid var(--vc-rule); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-label {
+	color: var(--vc-muted);
+	font-size: calc(.75 * var(--vc-rem));
+	font-weight: 700;
+	letter-spacing: .16em;
+	text-transform: uppercase;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-value { margin-top: calc(.125 * var(--vc-rem)); color: var(--vc-ink); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-link {
+	min-height: 44px;
+	padding: 0 calc(.25 * var(--vc-rem));
+	color: var(--vc-ink);
+	text-decoration-line: underline;
+	text-decoration-thickness: 1px;
+	text-decoration-color: var(--vc-accent);
+	text-underline-offset: .28em;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-link:hover { color: var(--vc-accent); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-item:has(.nino-vcard-link) { padding-block: calc(.625 * var(--vc-rem)) calc(.125 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-item:has(.nino-vcard-link) .nino-vcard-value { margin-top: calc(-.25 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-map {
+	min-height: 40px;
+	padding: 0 calc(.25 * var(--vc-rem));
+	color: var(--vc-accent);
+	font-size: calc(.9375 * var(--vc-rem));
+	font-style: italic;
+	text-decoration-thickness: 1px;
+}
+
+/* ==== 5. Links: slim lines with a hairline frame ==== */
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-links { margin-top: calc(1.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-links > li + li { margin-top: calc(.625 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-more {
+	min-height: calc(2.875 * var(--vc-rem));
+	border: 1px solid var(--vc-frame);
+	border-radius: 2px;
+	background: transparent;
+	color: var(--vc-accent);
+	font-family: var(--vc-serif);
+	font-size: calc(.9375 * var(--vc-rem));
+	font-weight: 700;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-more:hover,
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-more:focus-visible { border-color: var(--vc-accent); background: var(--vc-accent); color: var(--vc-paper); }
+
+/* ==== 6. The button: a seal in the accent ==== */
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-actions { margin-top: calc(1.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-save {
+	display: flex;
+	width: 100%;
+	box-sizing: border-box;
+	min-height: calc(3.25 * var(--vc-rem));
+	padding: 0 calc(1.5 * var(--vc-rem));
+	border: 1px solid var(--vc-accent);
+	border-radius: 2px;
+	background: var(--vc-accent);
+	color: var(--vc-on-accent);
+	font-family: var(--vc-serif);
+	font-size: calc(1 * var(--vc-rem));
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: none;
+	text-decoration: none;
+	box-shadow: inset 0 0 0 3px var(--vc-accent), inset 0 0 0 4px color-mix(in srgb, var(--vc-on-accent) 45%, transparent);
+	transition: filter .2s ease;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-save:hover:where(:not(:focus-visible)) { background: var(--vc-accent); opacity: 1; filter: brightness(1.1); }
+
+/* ==== 7. The legal links and the foot: on the table ==== */
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-legal { gap: 0 calc(1 * var(--vc-rem)); margin-top: calc(1 * var(--vc-rem)); font-size: calc(.8125 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-legal-link {
+	min-height: 44px;
+	padding: 0 calc(.25 * var(--vc-rem));
+	color: var(--vc-muted);
+	font-style: italic;
+	text-decoration-thickness: 1px;
+}
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-legal-link:hover { color: var(--vc-accent); }
+
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-foot { margin-top: calc(1.25 * var(--vc-rem)); color: var(--vc-muted); font-size: calc(.8125 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-locales .nino-localepicker-wrap > label { display: inline-flex; align-items: center; min-height: 44px; }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-locales .nino-localepicker-wrap svg { width: 20px; height: 20px; top: 0; }
+.nino-vcard[data-vcard-design="karte"] .nino-vcard-copyright { color: var(--vc-muted); letter-spacing: .04em; }
+
+/* ==== 8. Focus ==== */
+.nino-vcard[data-vcard-design="karte"] :where(a, button):focus-visible {
+	outline: 2px solid var(--vc-accent);
+	outline-offset: 3px;
+}
+
+.nino-vcard[data-vcard-design="karte"] .nino-localepicker-wrap:has(input:focus-visible) {
+	outline: 2px solid var(--vc-accent);
+	outline-offset: 3px;
+}
+
+/* ==== 9. Wider screens: the sheet lies in the middle of the table ==== */
+@media (min-width: 640px) {
+	.nino-vcard[data-vcard-design="karte"] { padding: calc(3 * var(--vc-rem)) calc(1.5 * var(--vc-rem)); }
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-card { padding: calc(3.25 * var(--vc-rem)) calc(2.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem)); }
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-card::before { inset: calc(.75 * var(--vc-rem)); }
+}
+
+/* ==== 10. Motion ==== */
+@media (prefers-reduced-motion: reduce) {
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-more,
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-save { transition: none; }
+}
+
+@media print {
+
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-save {
+		border: 1px solid var(--vc-ink);
+		background: none;
+		color: var(--vc-ink);
+		box-shadow: none;
+	}
+
+	.nino-vcard--page[data-vcard-design="karte"] {
+		min-height: 0;
+	}
+
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-card {
+		box-shadow: none;
+	}
+
+	/*	A frame that is drawn as one piece on a card that runs over two pages shows on the first alone, at the top and the left: on paper there is none	*/
+	.nino-vcard[data-vcard-design="karte"] .nino-vcard-card::before {
+		content: none;
+	}
+}

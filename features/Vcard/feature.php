@@ -28,6 +28,18 @@ return [
 				'en_US' => 'The foot of a page that is the card alone: the language picker of the website where there are several languages, and the copyright line.',
 				'de_DE' => 'Der Fuß einer Seite, die nur die Karte ist: die Sprachauswahl der Website, wo es mehrere Sprachen gibt, und die Copyright-Zeile.',
 			],
+			'data-vcard-design' => [
+				'en_US' => 'The design the card wears, klar, karte or foto, with data-vcard-mode where the owner fixed light or dark, and the class nino-vcard--page on a card that is the page alone.',
+				'de_DE' => 'Das Design der Karte, klar, karte oder foto, mit data-vcard-mode, wo der Besitzer hell oder dunkel festgelegt hat, und der Klasse nino-vcard--page an einer Karte, die die ganze Seite ist.',
+			],
+			'data-vcard-address' => [
+				'en_US' => 'Under a design, a link with no name of its own shows its address as text, which is set without capitals and may break at its marks.',
+				'de_DE' => 'Unter einem Design zeigt ein Link ohne eigenen Namen seine Adresse als Text, der ohne Versalien gesetzt ist und an seinen Zeichen umbrechen darf.',
+			],
+			'.nino-vcard-scheme' => [
+				'en_US' => 'The switch in the foot, where the owner offers it: three buttons for light, auto and dark whose choice stays in the browser of the visitor, under the key of the Modeswitch.',
+				'de_DE' => 'Der Schalter im Fuß, wo der Besitzer ihn anbietet: drei Knöpfe für hell, auto und dunkel, deren Wahl im Browser des Besuchers bleibt, unter dem Schlüssel des Hell/Dunkel-Schalters.',
+			],
 			'href="tel:" and "mailto:"' => [
 				'en_US' => 'The phone number and the e-mail address are links that open the phone or the mail program; a link of your own may be http, https, mailto or tel and nothing else.',
 				'de_DE' => 'Telefonnummer und E-Mail-Adresse sind Links, die Telefon oder Mailprogramm öffnen; ein eigener Link darf http, https, mailto oder tel sein und nichts sonst.',
@@ -57,8 +69,8 @@ return [
 		],
 		'panel' => [
 			'vCard' => [
-				'en_US' => 'All details of the card from top to bottom, a switch for each block, the logo of the website, the button Use as start page and the way to the imprint and the privacy policy.',
-				'de_DE' => 'Alle Angaben der Karte von oben nach unten, ein Schalter je Baustein, das Logo der Website, der Knopf Als Startseite verwenden und der Weg zu Impressum und Datenschutz.',
+				'en_US' => 'All details of the card from top to bottom, a switch for each block, the design with its colours, the logo of the website, the button Use as start page and the way to the imprint and privacy policy.',
+				'de_DE' => 'Alle Angaben der Karte von oben nach unten, ein Schalter je Baustein, das Design mit seinen Farben, das Logo der Website, der Knopf Als Startseite verwenden und der Weg zu Impressum und Datenschutz.',
 			],
 		],
 		'callbacks' => [
@@ -73,8 +85,8 @@ return [
 				'de_DE' => 'Das Template der Seite /vcard: ein eigenes Dokument mit Kopf, Skripten und Stilen jeder Seite, aber ohne Header und Footer des Themes, um [vcard foot].',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'The words of the card, such as Phone and Save contact, and the title of the page, only added, never replaced.',
-				'de_DE' => 'Die Worte der Karte, etwa Telefon und Kontakt speichern, und der Titel der Seite, nur hinzugefügt, nie ersetzt.',
+				'en_US' => 'The words of the card, such as Phone and Save contact, and the title of the page, only added, never replaced; a save in the panel adds those a project lacks.',
+				'de_DE' => 'Die Worte der Karte, etwa Telefon und Kontakt speichern, und der Titel der Seite, nur hinzugefügt, nie ersetzt; ein Speichern im Panel ergänzt, was einem Projekt fehlt.',
 			],
 			'routes: GET://' => [
 				'en_US' => 'The start page points at the card, added only where the project has no route for / yet.',
@@ -88,7 +100,8 @@ return [
 	'requires'		=> [],
 	// The details of the card: one file, which a backup carries
 	'data'				=> [ '/data/vcard.php' ],
-	// Into the site's style bundle, behind the kernel's own files
+	// Into the site's style bundle, behind the kernel's own files; the sheet of the design the card wears and the script of the
+	// switch for the visitor are added by init() while the card needs them
 	'assets'			=> [ '/features/Vcard/assets/vcard.css' ],
 	// Nothing to set in the Features panel: every detail has its place in the panel vCard
 	'settings'		=> [],

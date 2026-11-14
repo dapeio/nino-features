@@ -11,9 +11,13 @@ return [
 	'[[/feature/vcard/label/website]]'		=> 'Website',
 	'[[/feature/vcard/label/address]]'		=> 'Adresse',
 	'[[/feature/vcard/label/hours]]'			=> 'Zeiten',
+	'[[/feature/vcard/label/scheme]]'			=> 'Farbschema',
 	'[[/feature/vcard/label/legal]]'			=> 'Rechtliches',
 	'[[/feature/vcard/action/save]]'			=> 'Kontakt speichern',
 	'[[/feature/vcard/action/map]]'				=> 'Auf der Karte zeigen',
+	'[[/feature/vcard/scheme/light]]'			=> 'Hell',
+	'[[/feature/vcard/scheme/auto]]'			=> 'Auto',
+	'[[/feature/vcard/scheme/dark]]'			=> 'Dunkel',
 	'[[/feature/vcard/legal/imprint]]'		=> 'Impressum',
 	'[[/feature/vcard/legal/privacy]]'		=> 'Datenschutz',
 

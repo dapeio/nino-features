@@ -123,7 +123,7 @@ function world( locale ) {
 
 function screen( over ) {
 	return Object.assign( {
-		data : { format : 1, picture : 'auto', kind : 'person', name : 'Ada', phone : '', email : '', website : '', address : '', map : true, save : true,
+		data : { format : 1, picture : 'auto', kind : 'person', name : 'Ada', phone : '', email : '', website : '', address : '', map : true, save : true, design : '', scheme : 'auto', switch : false, accent : '',
 			blocks : { picture : true, name : true, contact : true, links : true, times : true, legal : true },
 			texts : { de_DE : { line : 'Zeile', text : '', hours : '' }, en_US : { line : 'Line', text : '', hours : '' } },
 			links : [
@@ -133,6 +133,7 @@ function screen( over ) {
 			] },
 		locales : [ 'de_DE', 'en_US' ], native : 'de_DE', names : { de_DE : 'Deutsch', en_US : 'English (US)' },
 		inherited : { name : 'Acme', phone : '', email : '', website : '', address : '', text : { de_DE : '', en_US : '' } },
+		designs : { klar : 'data:image/webp;base64,a', karte : 'data:image/webp;base64,b', foto : 'data:image/webp;base64,c' },
 		photo : { url : null, size : 480, alt : {} }, logo : { manage : true, slots : [ { uri : '/logo', url : '/public/images/logo.500x100.webp' }, { uri : '/logo/dark', url : null } ] },
 		page : { state : 'page', path : '/vcard', takenUri : '/home', file : '/vcard.vcf', start : { blocked : false, reason : '', from : '/home', name : 'Startseite', to : '/home', moves : true, gone : [ '/vcard' ] } },
 		legal : { active : true, imprint : '/impressum', privacy : '/datenschutz' },
@@ -450,7 +451,7 @@ console.log( '\nNino.admin.vcard - the blocks\n' );
 
 	check( 'six groups have a switch in their legend, one for each block of the card, on', [ 'picture', 'name', 'contact', 'links', 'times', 'legal' ].every( function( name ) { const input = switchOf( block( name ) ); return input !== undefined && input.checked === true && block( name ).classList.contains('is-off') === false && input.attributes['aria-label'] !== undefined } ) );
 	const plain = sets.filter( function( set ) { return set.dataset.block === undefined } );
-	check( 'the logo and the rest have none: the logo is the website\'s and not a block of the card, and what the rest holds is a switch itself', sets.length === 8 && plain.length === 2 && plain.every( function( set ) { return switchOf( set ) === undefined } ) );
+	check( 'the logo, the design and the rest have none: the logo is the website\'s and not a block of the card, the design is the look of the whole card, and what the rest holds is a switch itself', sets.length === 9 && plain.length === 3 && plain.every( function( set ) { return switchOf( set ) === undefined } ) );
 	check( 'the legend of a block that has something to explain carries a "?" - the name, the ways to reach, the links, the imprint - and a plain one has none', [ 'name', 'contact', 'links', 'legal' ].every( function( name ) { return findAll( block( name ).children[0], function( el ) { return el.classList.contains('vcard-help') } ).length === 1 } ) && [ 'times' ].every( function( name ) { return findAll( block( name ).children[0], function( el ) { return el.classList.contains('vcard-help') } ).length === 0 } ) );
 	check( 'the switch is in the legend', block('contact').children[0].tagName === 'LEGEND' && block('contact').children[0].querySelectorAll('input').length === 1 );
 
@@ -559,6 +560,84 @@ console.log( '\nNino.admin.vcard - the logo\n' );
 
 	const none = drawn( 'en_US', { logo : { manage : true, slots : [] } } );
 	check( 'a project without logo slots has no logo group', findAll( none.mount, function( el ) { return el.dataset.slot !== undefined || el.classList.contains('vcard-logo') } ).length === 0 );
+}
+
+console.log( '\nNino.admin.vcard - the design\n' );
+
+{
+	const choices = function( w, name ) { return findAll( w.mount, function( el ) { return el.tagName === 'INPUT' && el.type === 'radio' && el.attributes.name === 'vcard-'+ name } ) };
+	const on = function( w, name ) { return choices( w, name ).filter( function( input ) { return input.checked === true } ).map( function( input ) { return input.value } ) };
+	const choose = function( w, name, value ) {
+		choices( w, name ).forEach( function( input ) { input.checked = input.value === value } );
+		fire( choices( w, name ).filter( function( input ) { return input.value === value } )[0], 'change' );
+	};
+	const colour = function( w ) { return findAll( w.mount, function( el ) { return el.tagName === 'INPUT' && el.type === 'color' } )[0] };
+	const holder = function( w ) { return findAll( w.mount, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'switch' } )[0] };
+	const sent = function( w ) {
+		w.entry().save( function() {} );
+		return w.requests[w.requests.length - 1].payload;
+	};
+	const dependent = function( w ) { return choices( w, 'scheme' ).concat( choices( w, 'accent' ), [ holder( w ), colour( w ) ] ) };
+
+	{
+		const w = drawn( 'en_US' );
+		const group = findAll( w.mount, function( el ) { return el.tagName === 'FIELDSET' && el.dataset.block === undefined && findAll( el, function( inner ) { return inner === choices( w, 'design' )[0] } ).length > 0 } )[0];
+
+		check( 'the design offers the card as the theme draws it and three designs, in this order, and none of them has been chosen', JSON.stringify( choices( w, 'design' ).map( function( input ) { return input.value } ) ) === JSON.stringify( [ '', 'klar', 'karte', 'foto' ] ) && JSON.stringify( on( w, 'design' ) ) === '[""]' );
+		check( 'each of the three has the picture the server sent, the card as the theme draws it has none', findAll( group, function( el ) { return el.tagName === 'IMG' } ).map( function( img ) { return img.src } ).join() === 'data:image/webp;base64,a,data:image/webp;base64,b,data:image/webp;base64,c' );
+		check( 'the section has the one "?" and no note, hint or notice of its own', findAll( group, function( el ) { return el.classList.contains('vcard-help-button') } ).length === 1 && findAll( group, function( el ) { return el.classList.contains('vcard-note') || el.classList.contains('nino-admin-hint') || el.classList.contains('nino-admin-notice') } ).length === 0 );
+		check( 'the order is the designs, then light, dark or auto, then the switch for the visitor, then the accent', ( function() {
+			const at = function( node ) { return findAll( group, function() { return true } ).indexOf( node ) };
+			return at( choices( w, 'design' )[0] ) < at( choices( w, 'scheme' )[0] ) && at( choices( w, 'scheme' )[0] ) < at( holder( w ) ) && at( holder( w ) ) < at( choices( w, 'accent' )[0] ) && JSON.stringify( choices( w, 'scheme' ).map( function( input ) { return input.value } ) ) === JSON.stringify( [ 'light', 'dark', 'auto' ] );
+		}() ) );
+		check( 'without a design the scheme, the switch and the accent are turned off', dependent( w ).every( function( control ) { return control.disabled === true } ) );
+		check( 'a save without any change sends the defaults: no design, auto, no switch, the colour of the project', ( function() { const payload = sent( w ); return payload.design === '' && payload.scheme === 'auto' && payload.switch === false && payload.accent === '' } )() );
+
+		choose( w, 'design', 'karte' );
+		check( 'a design turns them on', dependent( w ).every( function( control ) { return control.disabled === false } ) );
+		choose( w, 'scheme', 'dark' );
+		holder( w ).checked = true;
+		colour( w ).value = '#b0401c';
+		fire( colour( w ), 'input' );
+		check( 'a colour typed into the field makes the own colour the choice', JSON.stringify( on( w, 'accent' ) ) === '["own"]' );
+		check( 'the save sends what was chosen', ( function() { const payload = sent( w ); return payload.design === 'karte' && payload.scheme === 'dark' && payload.switch === true && payload.accent === '#b0401c' } )() );
+		check( 'the entry follows the choices', w.entry().isDirty() === true );
+		choose( w, 'accent', 'project' );
+		check( 'the colour of the project sends no colour', sent( w ).accent === '' );
+		choose( w, 'design', '' );
+		check( 'no design again: the three are off and keep what they held', dependent( w ).every( function( control ) { return control.disabled === true } ) && sent( w ).scheme === 'dark' );
+		check( 'every word the section asked for is in the text files', w.missing.length === 0 );
+	}
+
+	{
+		const w = drawn( 'en_US' );
+		const answer = screen();
+		delete answer.designs;
+		w.entry().save( function() {} );
+		w.answer( 200, answer );
+		check( 'the answer of a save has no pictures of the designs and the screen keeps those it had', findAll( w.mount, function( el ) { return el.tagName === 'IMG' && el.classList.contains('vcard-design-picture') } ).length === 3 );
+	}
+
+	{
+		const w = drawn( 'de_DE' );
+		const answer = screen();
+		answer.warning = 'vcard_words';
+		w.entry().save( function() {} );
+		w.answer( 200, answer );
+		check( 'a save that could not add the words says so in the line, in the language of the panel, with the card saved', w.line().textContent.indexOf( 'gespeichert' ) !== -1 && w.line().textContent.indexOf( 'Textdateien' ) !== -1 && w.missing.length === 0 && w.entry().isDirty() === false );
+	}
+
+	{
+		const stored = screen();
+		stored.data.design = 'foto';
+		stored.data.scheme = 'light';
+		stored.data.switch = true;
+		stored.data.accent = '#112233';
+		const w = drawn( 'de_DE', stored );
+
+		check( 'stored values are what is drawn: the design, the scheme, the switch, the own colour in its field', JSON.stringify( on( w, 'design' ) ) === '["foto"]' && JSON.stringify( on( w, 'scheme' ) ) === '["light"]' && holder( w ).checked === true && JSON.stringify( on( w, 'accent' ) ) === '["own"]' && colour( w ).value === '#112233' && dependent( w ).every( function( control ) { return control.disabled === false } ) );
+		check( 'and an untouched form sends them back as they are', ( function() { const payload = sent( w ); return payload.design === 'foto' && payload.scheme === 'light' && payload.switch === true && payload.accent === '#112233' } )() && w.entry().isDirty() === false );
+	}
 }
 
 console.log( '\nNino.admin.vcard - the words, in both languages\n' );

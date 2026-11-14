@@ -1,1 +1,1 @@
-<div class="nino-vcard-foot">[[locales]][[copyright]]</div>
+<div class="nino-vcard-foot">[[locales]][[copyright]][[scheme]]</div>

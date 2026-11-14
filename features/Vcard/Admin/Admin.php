@@ -87,7 +87,7 @@ namespace Nino\Modules\Vcard {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			\Nino\Http::ok( $request, self::_screen( $appData ) );
+			\Nino\Http::ok( $request, self::_screen( $appData ) + [ 'designs' => self::_previews() ] );
 		}
 
 		/**
@@ -133,7 +133,34 @@ namespace Nino\Modules\Vcard {
 				}
 			}
 
-			\Nino\Http::ok( $request, self::_screen( $appData ) );
+			// The words the feature brought with its install unit, for a project that was activated before they existed: added
+			// where the project lacks one, never replaced, only on this command of the owner and not when none is missing. The
+			// card is saved either way; a project whose text files cannot be written is told so, and the switch stays hidden
+			$warning = self::_missingWords( $appData ) === true && is_int( \Nino\Features::applyUnitTexts( $appData, \Nino\Features::dir(). '/Vcard/install', \Nino\Locales::getAvailableLocales( $appData ), false ) ) === false ? [ 'warning' => 'vcard_words' ] : [];
+
+			\Nino\Http::ok( $request, self::_screen( $appData ) + $warning );
+		}
+
+		/**
+		 *	Whether a word of the install unit is not in the text files of the project, in a language of the website
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool
+		 */
+		private static function _missingWords( array &$appData ): bool {
+
+			$unit = include \Nino\Features::dir(). '/Vcard/install/text/en_US.php';
+
+			foreach( \Nino\Locales::getAvailableLocales( $appData ) as $locale ) {
+
+				$have = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+
+				if( array_diff_key( (array) $unit, is_array( $have ) === true ? $have : [] ) !== [] )
+					return true;
+			}
+
+			return false;
 		}
 
 		/**
@@ -407,6 +434,20 @@ namespace Nino\Modules\Vcard {
 				$links[] = [ 'id' => $string( $link['id'] ?? null ), 'url' => $url, 'labels' => $labels ];
 			}
 
+			// A client that does not send these (a panel that was loaded before they existed) leaves them as they are stored
+			$own = Vcard::data( $appData );
+			$posted += [ 'design' => $own['design'], 'scheme' => $own['scheme'], 'switch' => $own['switch'], 'accent' => $own['accent'] ];
+
+			if( in_array( $posted['design'] ?? null, array_merge( [ '' ], Vcard::DESIGNS ), true ) === false )
+				return $fail( 'the design is none of the designs', 'vcard_design', [], 'design' );
+
+			if( in_array( $posted['scheme'] ?? null, Vcard::SCHEMES, true ) === false )
+				return $fail( 'the scheme is none of auto, light and dark', 'vcard_scheme', [], 'scheme' );
+
+			$accent = is_string( $posted['accent'] ?? null ) === true ? strtolower( $posted['accent'] ) : null;
+			if( $accent === null || ( $accent !== '' && preg_match( Vcard::ACCENT, $accent ) !== 1 ) )
+				return $fail( 'the accent is a colour of six hex digits', 'vcard_accent', [], 'accent' );
+
 			if( is_array( $posted['alt'] ?? null ) === true )
 				foreach( $posted['alt'] as $locale => $alt )
 					if( is_string( $locale ) === false || in_array( $locale, $locales, true ) === false || is_string( $alt ) === false )
@@ -424,6 +465,10 @@ namespace Nino\Modules\Vcard {
 				'address'	=> $address,
 				'map'			=> ( $posted['map'] ?? true ) !== false,
 				'save'		=> ( $posted['save'] ?? true ) !== false,
+				'design'	=> $posted['design'],
+				'scheme'	=> $posted['scheme'],
+				'switch'	=> ( $posted['switch'] ?? false ) === true,
+				'accent'	=> $accent,
 				'blocks'	=> is_array( $posted['blocks'] ?? null ) === true ? $posted['blocks'] : [],
 				'texts'		=> $texts,
 				'links'		=> $links,
@@ -481,6 +526,24 @@ namespace Nino\Modules\Vcard {
 			$name = $uri === '' ? '' : \Nino\Html::renderTextfill( $appData, '/_nino/webpage'. $uri. '/name' );
 
 			return $name !== '' ? $name : $uri;
+		}
+
+		/**
+		 *	The pictures the panel shows the designs by, one each, rendered once and kept in assets/: the card of a
+		 *	made-up person in the design, the light scheme on the left half and the dark one on the right
+		 *
+		 *	@return 	array											design => the picture as a data address
+		 */
+		private static function _previews(): array {
+
+			$previews = [];
+
+			foreach( Vcard::DESIGNS as $design ) {
+				$file = \Nino\Features::dir(). '/Vcard/assets/preview-'. $design. '.webp';
+				$previews[$design] = is_file( $file ) === true ? 'data:image/webp;base64,'. base64_encode( (string) file_get_contents( $file ) ) : '';
+			}
+
+			return $previews;
 		}
 
 		/**

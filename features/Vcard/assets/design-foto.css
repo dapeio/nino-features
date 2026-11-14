@@ -1,0 +1,316 @@
+/**
+ *	Nino - vCard, design Foto
+ *	design-foto.css		The picture carries the page: the portrait runs over the whole width and fades into
+ *										the ground, the name stands on the fade; below it rounded tiles, pills for the links
+ *										and a round button in the accent. Without a photo a soft glow of the accent takes its
+ *										place. Over vcard.css, for a card that has data-vcard-design="foto": the scheme and
+ *										the accent are vcard.css's, and a page that is the card alone (nino-vcard--page)
+ *										paints its ground as well.
+ */
+
+/* ==== 1. The palette: light first, light-dark() where the browser has it ==== */
+.nino-vcard[data-vcard-design="foto"] {
+	--vc-ground: #e8e2d8;
+	--vc-bg: #f8f5f0;
+	--vc-tile: #ffffff;
+	--vc-ink: #1c1916;
+	--vc-soft: #44403b;
+	--vc-muted: #54504a;
+	--vc-line: #e3ddd2;
+	--vc-edge: rgb(0 0 0 / 5%);
+	--vc-font: "Nino vCard Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	--vc-radius: calc(1.125 * var(--vc-rem));
+	--vc-photo-ratio: 1 / 1;
+}
+
+:root:has(.nino-vcard--page[data-vcard-design="foto"]) {
+	--vc-ground: #e8e2d8;
+	--vc-bg: #f8f5f0;
+	--vc-ink: #1c1916;
+}
+
+@supports (color: light-dark(#000000, #ffffff)) {
+
+	.nino-vcard[data-vcard-design="foto"] {
+		--vc-ground: light-dark(#e8e2d8, #070606);
+		--vc-bg: light-dark(#f8f5f0, #121110);
+		--vc-tile: light-dark(#ffffff, #1d1b19);
+		--vc-ink: light-dark(#1c1916, #f5f0ea);
+		--vc-soft: light-dark(#44403b, #cdc6bd);
+		--vc-muted: light-dark(#54504a, #a59e94);
+		--vc-line: light-dark(#e3ddd2, #2e2b28);
+		--vc-edge: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 8%));
+	}
+
+	:root:has(.nino-vcard--page[data-vcard-design="foto"]) {
+		--vc-ground: light-dark(#e8e2d8, #070606);
+		--vc-bg: light-dark(#f8f5f0, #121110);
+		--vc-ink: light-dark(#1c1916, #f5f0ea);
+	}
+}
+
+/* ==== 2. The ground ==== */
+:root:has(.nino-vcard--page[data-vcard-design="foto"]) body,
+:root:has(.nino-vcard--page[data-vcard-design="foto"]) .nino-preloader { background: var(--vc-bg); color: var(--vc-ink); }
+:root:has(.nino-vcard--page[data-vcard-design="foto"]) main { padding-top: 0; }
+
+.nino-vcard[data-vcard-design="foto"] {
+	box-sizing: border-box;
+	padding: 0;
+	background: transparent;
+	color: var(--vc-ink);
+	font-family: var(--vc-font);
+	font-size: calc(1.0625 * var(--vc-rem));
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+}
+.nino-vcard--page[data-vcard-design="foto"] {
+	min-height: 100vh;
+	min-height: 100dvh;
+	background: var(--vc-bg);
+}
+
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-wrap { margin: 0 auto; max-width: calc(28 * var(--vc-rem)); }
+
+/* ==== 3. The card and the picture ==== */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-card {
+	display: flex;
+	flex-direction: column;
+	padding: 0 0 calc(.5 * var(--vc-rem));
+	border: 0;
+	border-radius: 0;
+	/* Without a photo: a soft glow of the accent at the top */
+	background: radial-gradient(120% calc(22 * var(--vc-rem)) at 50% 0, color-mix(in srgb, var(--vc-accent) 20%, var(--vc-bg)), var(--vc-bg) 75%) var(--vc-bg);
+	box-shadow: none;
+	overflow: clip;
+	text-align: left;
+	--card-align: left;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-card > * { align-self: stretch; }
+
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	height: auto;
+	aspect-ratio: var(--vc-photo-ratio);
+	margin: 0;
+	border-radius: 0;
+	overflow: hidden;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-card > .nino-vcard-picture:not(.nino-vcard-picture--logo) {
+	align-self: center;
+	max-width: 480px;
+}
+
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+/* The fade: a breath of dark at the top for the status bar, the ground in full at the bottom */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		linear-gradient(to bottom, rgb(0 0 0 / 18%), transparent 22%),
+		linear-gradient(to bottom, transparent 48%, color-mix(in srgb, var(--vc-bg) 70%, transparent) 76%, var(--vc-bg) 100%);
+	pointer-events: none;
+}
+/* A logo instead of a photo: no picture, the wordmark alone */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture--logo {
+	aspect-ratio: auto;
+	max-width: none;
+	padding: calc(2.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem)) 0;
+	overflow: visible;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture--logo::after { content: none; }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture--logo img { width: auto; height: auto; max-width: calc(14 * var(--vc-rem)); max-height: calc(3.5 * var(--vc-rem)); object-fit: contain; }
+.nino-vcard[data-vcard-design="foto"] .nino-logo-set .nino-logo-light { display: var(--vc-logo-light); }
+.nino-vcard[data-vcard-design="foto"] .nino-logo-set .nino-logo-dark { display: var(--vc-logo-dark); }
+
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-name {
+	position: relative;
+	margin: calc(-3.5 * var(--vc-rem)) 0 0;
+	padding: 0 calc(1.5 * var(--vc-rem));
+	color: var(--vc-ink);
+	font-family: var(--vc-font);
+	font-size: clamp(calc(2 * var(--vc-rem)), 9.5vw, calc(2.5 * var(--vc-rem)));
+	font-weight: 700;
+	letter-spacing: -.03em;
+	line-height: 1.08;
+	text-transform: none;
+	text-wrap: balance;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-card > .nino-vcard-name:first-child { margin-top: 0; padding-top: calc(4.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture--logo + .nino-vcard-name { margin-top: calc(1.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-line {
+	position: relative;
+	margin: calc(.5 * var(--vc-rem)) 0 0;
+	padding: 0 calc(1.5 * var(--vc-rem));
+	color: var(--vc-accent);
+	font-family: var(--vc-font);
+	font-size: calc(1 * var(--vc-rem));
+	font-weight: 700;
+	line-height: 1.35;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-text {
+	margin: calc(1 * var(--vc-rem)) 0 0;
+	padding: 0 calc(1.5 * var(--vc-rem));
+	color: var(--vc-soft);
+	text-align: left;
+	text-wrap: pretty;
+}
+
+/* ==== 4. Tiles ==== */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-list { margin: calc(1.5 * var(--vc-rem)) 0 0; padding: 0 calc(1 * var(--vc-rem)); display: grid; gap: calc(.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-item {
+	align-items: flex-start;
+	padding: calc(.75 * var(--vc-rem)) calc(1.125 * var(--vc-rem)) calc(.875 * var(--vc-rem));
+	border: 0;
+	border-radius: var(--vc-radius);
+	background: var(--vc-tile);
+	box-shadow: 0 0 0 1px var(--vc-line);
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-item:last-child { border: 0; }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-label {
+	color: var(--vc-muted);
+	font-size: calc(.6875 * var(--vc-rem));
+	font-weight: 700;
+	letter-spacing: .1em;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-value {
+	align-items: flex-start;
+	margin-top: calc(.125 * var(--vc-rem));
+	color: var(--vc-ink);
+	font-size: calc(1.0625 * var(--vc-rem));
+	font-weight: 700;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-address { color: var(--vc-ink); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-link {
+	min-height: 44px;
+	padding: 0;
+	margin-block: calc(-.25 * var(--vc-rem)) calc(-.375 * var(--vc-rem));
+	color: var(--vc-ink);
+	text-decoration: none;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-link:hover { color: var(--vc-accent); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-map {
+	min-height: 44px;
+	padding: 0;
+	margin-bottom: calc(-.5 * var(--vc-rem));
+	color: var(--vc-accent);
+	font-size: calc(.9375 * var(--vc-rem));
+	font-weight: 700;
+	text-decoration: none;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-map::after { content: " \203A"; content: " \203A" / ""; }
+
+/* ==== 5. Links: pills ==== */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-links { margin: calc(1.25 * var(--vc-rem)) 0 0; padding: 0 calc(1 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-links > li + li { margin-top: calc(.5 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-more {
+	min-height: calc(3.25 * var(--vc-rem));
+	border: 1.5px solid var(--vc-line);
+	border-radius: 999px;
+	background: var(--vc-tile);
+	color: var(--vc-ink);
+	font-size: calc(1 * var(--vc-rem));
+	font-weight: 700;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-more:hover,
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-more:focus-visible { border-color: var(--vc-accent); background: var(--vc-tile); color: var(--vc-accent); }
+
+/* ==== 6. The button ==== */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-actions {
+	margin: calc(1.5 * var(--vc-rem)) calc(1 * var(--vc-rem)) 0;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-save {
+	display: flex;
+	width: 100%;
+	box-sizing: border-box;
+	min-height: calc(3.5 * var(--vc-rem));
+	padding: 0 calc(1.5 * var(--vc-rem));
+	border: 0;
+	border-radius: 999px;
+	background: var(--vc-accent);
+	color: var(--vc-on-accent);
+	font-family: var(--vc-font);
+	font-size: calc(1.0625 * var(--vc-rem));
+	font-weight: 700;
+	text-transform: none;
+	text-decoration: none;
+	box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--vc-accent) 70%, #000), 0 2px 6px rgb(0 0 0 / 18%);
+	transition: transform .15s ease, box-shadow .15s ease;
+}
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-save:hover:where(:not(:focus-visible)) { background: var(--vc-accent); opacity: 1; transform: translateY(-2px); }
+
+/* ==== 7. The legal links and the foot ==== */
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-legal { margin: calc(.75 * var(--vc-rem)) calc(1.5 * var(--vc-rem)) 0; gap: 0 calc(1.25 * var(--vc-rem)); font-size: calc(.875 * var(--vc-rem)); justify-content: center; }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-legal-link { min-height: 44px; padding: 0; color: var(--vc-muted); text-decoration-thickness: 1px; }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-legal-link:hover { color: var(--vc-ink); }
+
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-foot { margin: 0; padding: calc(.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem)); color: var(--vc-muted); font-size: calc(.875 * var(--vc-rem)); }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-locales .nino-localepicker-wrap > label { display: inline-flex; align-items: center; min-height: 44px; }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-locales .nino-localepicker-wrap svg { width: 20px; height: 20px; top: 0; }
+.nino-vcard[data-vcard-design="foto"] .nino-vcard-copyright { color: var(--vc-muted); }
+
+/* ==== 8. Focus ==== */
+.nino-vcard[data-vcard-design="foto"] :where(a, button):focus-visible {
+	outline: 2px solid var(--vc-accent);
+	outline-offset: 3px;
+}
+
+.nino-vcard[data-vcard-design="foto"] .nino-localepicker-wrap:has(input:focus-visible) {
+	outline: 2px solid var(--vc-accent);
+	outline-offset: 3px;
+}
+
+/* ==== 9. Wider screens: a rounded card, the photo stays edge to edge in it ==== */
+@media (min-width: 640px) {
+	:root:has(.nino-vcard--page[data-vcard-design="foto"]) body,
+	:root:has(.nino-vcard--page[data-vcard-design="foto"]) .nino-preloader { background: var(--vc-ground); }
+	.nino-vcard--page[data-vcard-design="foto"] { background: var(--vc-ground); }
+	.nino-vcard[data-vcard-design="foto"] { padding: calc(3 * var(--vc-rem)) calc(1.5 * var(--vc-rem)); }
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-wrap { margin: auto; }
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-card {
+		border-radius: calc(1.75 * var(--vc-rem));
+		box-shadow: 0 30px 60px -24px rgb(0 0 0 / 45%), 0 0 0 1px var(--vc-edge);
+	}
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-foot { padding-inline: calc(.25 * var(--vc-rem)); }
+}
+
+/* ==== 10. Motion ==== */
+@media (prefers-reduced-motion: reduce) {
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-save { transition: none; }
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-save:hover:where(:not(:focus-visible)) { transform: none; }
+}
+
+@media print {
+
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-save {
+		border: 1px solid var(--vc-ink);
+		background: none;
+		color: var(--vc-ink);
+		box-shadow: none;
+	}
+
+	.nino-vcard--page[data-vcard-design="foto"] {
+		min-height: 0;
+	}
+
+	/*	The photo is a picture to print: it keeps its colours, and the fade into a ground that is not printed is left out	*/
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-picture::after {
+		content: none;
+	}
+
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-name {
+		margin-top: calc(1 * var(--vc-rem));
+	}
+
+	.nino-vcard[data-vcard-design="foto"] .nino-vcard-card {
+		box-shadow: none;
+	}
+}

@@ -631,6 +631,127 @@
 	};
 
 	/**
+	 *	A choice of one among a few, as native radio buttons in a group of their own: the keys of the
+	 *	keyboard and the reading of a screen reader are the browser's
+	 *
+	 *	@param		{string}		name				The name of the choice, which is how read() finds it
+	 *	@param		{string}		legend			The words that name the group
+	 *	@param		{string}		value				The one that is on
+	 *	@param		{Array}			options			[ { value, label, picture } ], the picture an element to show above the words
+	 *	@param		{string}		[className]
+	 *
+	 *	@return		{Element}
+	 */
+	const choice = function( name, legend, value, options, className ) {
+
+		const box = el( 'div', 'vcard-choice '+ ( className || '' ) );
+
+		box.setAttribute( 'role', 'radiogroup' );
+		box.setAttribute( 'aria-label', legend );
+		ui.choices[name] = [];
+
+		options.forEach( function( option ) {
+
+			const label = el( 'label', 'vcard-choice-item' );
+			const input = el( 'input' );
+
+			input.type = 'radio';
+			input.name = 'vcard-'+ name;
+			input.value = option.value;
+			input.checked = option.value === value;
+			input.addEventListener( 'change', sync );
+			ui.choices[name].push( input );
+			label.appendChild( input );
+
+			if( option.picture )
+				label.appendChild( option.picture );
+
+			label.appendChild( el( 'span', 'vcard-choice-text', option.label ) );
+			box.appendChild( label );
+		} );
+
+		return box;
+	};
+
+	/**
+	 *	What a choice holds now
+	 *
+	 *	@param		{string}		name
+	 *
+	 *	@return		{string}
+	 */
+	const picked = function( name ) {
+		return ui.choices[name].find( function( input ) { return input.checked } ).value;
+	};
+
+	/**
+	 *	The scheme, the switch and the accent mean something once a design is chosen: without one they are
+	 *	dimmed and turned off
+	 *
+	 *	@return		void
+	 */
+	const sync = function() {
+
+		const on = picked('design') !== '';
+
+		ui.looks.classList.toggle( 'is-off', on === false );
+
+		ui.choices.scheme.concat( ui.choices.accent, [ ui.controls.switch, ui.colour ] ).forEach( function( control ) { control.disabled = on === false } );
+	};
+
+	/**
+	 *	The design: the card as the theme draws it or one of three designs over it, then what a design lets the
+	 *	owner choose - light, dark or auto, a switch for the visitor, the accent colour
+	 *
+	 *	@return		{Element}
+	 */
+	const design = function() {
+
+		const stored = ui.data.data;
+		const set = group( '/_admin/vcard/heading/design', undefined, '/_admin/vcard/hint/design' );
+		const looks = el( 'div', 'vcard-looks' );
+
+		ui.looks = looks;
+
+		const designs = [ '', 'klar', 'karte', 'foto' ].map( function( key ) {
+
+			let picture;
+
+			if( key === '' )
+				picture = el( 'span', 'vcard-design-picture vcard-design-none' );
+			else {
+				picture = el( 'img', 'vcard-design-picture' );
+				picture.src = ui.data.designs[key];
+				picture.alt = '';
+			}
+
+			return { value : key, label : text( '/_admin/vcard/design/'+ ( key === '' ? 'none' : key ) ), picture : picture };
+		} );
+
+		set.appendChild( choice( 'design', text('/_admin/vcard/heading/design'), stored.design, designs, 'vcard-designs' ) );
+
+		looks.appendChild( choice( 'scheme', text('/_admin/vcard/label/scheme'), stored.scheme, [ 'light', 'dark', 'auto' ].map( function( key ) { return { value : key, label : text( '/_admin/vcard/scheme/'+ key ) } } ), 'vcard-schemes' ) );
+		looks.appendChild( toggle( 'switch', '/_admin/vcard/label/switch', '', stored.switch ) );
+
+		const accent = el( 'div', 'vcard-accent' );
+		const own = stored.accent !== '';
+
+		ui.colour = el( 'input', 'vcard-colour' );
+		ui.colour.type = 'color';
+		ui.colour.value = own === true ? stored.accent : '#2563a8';
+		ui.colour.setAttribute( 'aria-label', text('/_admin/vcard/label/accent-color') );
+		ui.colour.addEventListener( 'input', function() { ui.choices.accent.forEach( function( input ) { input.checked = input.value === 'own' } ); sync() } );
+
+		accent.appendChild( choice( 'accent', text('/_admin/vcard/label/accent'), own === true ? 'own' : 'project', [ 'project', 'own' ].map( function( key ) { return { value : key, label : text( '/_admin/vcard/accent/'+ key ) } } ), 'vcard-accents' ) );
+		accent.appendChild( ui.colour );
+		looks.appendChild( accent );
+		set.appendChild( looks );
+		sync();
+
+		return set;
+	};
+
+	/**
 	 *	The logo of the website, which the card shows where the picture is the logo: a group of its own,
 	 *	with no switch, since the logo is not a block of the card but the one of the whole website. Its
 	 *	two pictures - for a light ground and for a dark one - can be chosen, replaced and removed here.
@@ -1028,6 +1149,10 @@
 			address		: value('address'),
 			map			: ui.controls.map.checked,
 			save		: ui.controls.save.checked,
+			design	: picked('design'),
+			scheme	: picked('scheme'),
+			switch	: ui.controls.switch.checked,
+			accent	: picked('accent') === 'own' ? ui.colour.value : '',
 			blocks	: {},
 			texts		: {},
 			links		: [],
@@ -1094,9 +1219,14 @@
 			}
 
 			const panel = ui.panel;
+			// The pictures of the designs come with the list alone
+			response.designs = ui.data.designs;
 			panel.data = response;
 			draw( response, panel );
 			ui.line.saved();
+			// The card is saved; what could not be done after it is said in the line
+			if( typeof response.warning === 'string' )
+				ui.line.idle( text( '/_admin/error/'+ response.warning ) );
 			ui.save.focus();
 			refresh();
 			done( true );
@@ -1107,7 +1237,7 @@
 
 		const mount = panel.mount();
 
-		ui = { data : data, panel : panel, controls : {}, blocks : {}, off : [], logo : null, logoMsg : null, rows : [], alt : {}, photo : null, where : null, form : null, list : null, empty : null, add : null, line : null, save : null, live : null };
+		ui = { data : data, panel : panel, controls : {}, choices : {}, looks : null, colour : null, blocks : {}, off : [], logo : null, logoMsg : null, rows : [], alt : {}, photo : null, where : null, form : null, list : null, empty : null, add : null, line : null, save : null, live : null };
 		mount.innerHTML = '';
 
 		const form = el( 'form', 'vcard-form' );
@@ -1129,6 +1259,8 @@
 		const logo = logoGroup();
 		if( logo !== null )
 			form.appendChild( logo );
+
+		form.appendChild( design() );
 
 		const words = group( '/_admin/vcard/heading/name', 'name', '/_admin/vcard/hint/block-name' );
 		words.appendChild( line( 'name', '/_admin/vcard/label/name', stored.name, { help : '/_admin/vcard/hint/name', placeholder : inherited.name, maxLength : data.limits.name, autocomplete : 'name' } ) );

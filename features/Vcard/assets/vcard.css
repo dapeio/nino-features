@@ -243,3 +243,212 @@
 		transition: none;
 	}
 }
+
+/*	The designs. A card that wears one has data-vcard-design, and a page that is the card alone has the class
+	nino-vcard--page besides. What every design shares is here - the typeface the installation delivers, the colour
+	scheme and the accent - and what makes a design is its own sheet, which is in the bundle only while the card
+	wears it. The scheme is the card's: data-vcard-mode (light or dark) is what the owner fixed and wins over the
+	data-nino-mode of the root, which the Modeswitch of the catalogue writes, and no attribute follows the device.
+	On a page that is the card alone the root takes the scheme as well, so that the rest of the page is painted in it	*/
+
+/*	Open Sans, from the files the base unit of the installation puts into public/fonts: a family of its own name, so
+	that it is there whichever family the Design feature has given the roles of the project	*/
+@font-face {
+	font-family: "Nino vCard Sans";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("[[/nino/public]]/fonts/open-sans-regular.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Nino vCard Sans";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("[[/nino/public]]/fonts/open-sans-bold.woff2") format("woff2");
+}
+
+.nino-vcard[data-vcard-design] {
+	color-scheme: light dark;
+	--vc-logo-light: block;
+	--vc-logo-dark: none;
+
+	/*	The card sets its own size: a rem of the theme of the project is the size of its text, and the card does not follow it	*/
+	--vc-rem: 16px;
+	--vcard-width: calc(32 * var(--vc-rem));
+	width: auto;
+	margin-left: 0;
+	margin-right: 0;
+	max-width: none;
+	font-weight: 400;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+/*	What a theme gives a card, a section, a button and a picker is the theme's: a design is the same card under every theme,
+	so it says for itself what a theme could say. The spaces are the card's own, in its own unit	*/
+.nino-vcard[data-vcard-design] .nino-vcard-card {
+	display: block;
+	flex-direction: row;
+	justify-content: normal;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+.nino-vcard[data-vcard-design] .nino-vcard-more {
+	padding: calc(.5 * var(--vc-rem)) var(--vc-rem);
+	letter-spacing: normal;
+	text-shadow: none;
+	box-shadow: none;
+}
+
+.nino-vcard[data-vcard-design] .nino-vcard-save {
+	letter-spacing: normal;
+	text-transform: none;
+	text-shadow: none;
+	box-shadow: none;
+}
+
+.nino-vcard[data-vcard-design] .nino-vcard-foot {
+	gap: calc(.5 * var(--vc-rem));
+}
+
+.nino-vcard[data-vcard-design] .nino-vcard-locales p {
+	font-weight: 400;
+}
+
+.nino-vcard[data-vcard-design] .nino-vcard-locales svg {
+	margin-right: calc(.5 * var(--vc-rem));
+}
+
+:root:has(.nino-vcard--page[data-vcard-design]) {
+	color-scheme: light dark;
+}
+
+/*	A page that is the card alone has the whole width: a theme that gives main a margin for a column of its own (a sidebar the page
+	does not have) does not give it to the card	*/
+:root:has(.nino-vcard--page[data-vcard-design]) main {
+	width: 100%;
+	max-width: none;
+	margin-left: 0;
+	margin-right: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+
+	.nino-vcard[data-vcard-design]:not([data-vcard-mode="light"]) {
+		--vc-logo-light: none;
+		--vc-logo-dark: block;
+	}
+
+	:root[data-nino-mode="light"] .nino-vcard[data-vcard-design]:not([data-vcard-mode]) {
+		--vc-logo-light: block;
+		--vc-logo-dark: none;
+	}
+}
+
+:root[data-nino-mode="light"] .nino-vcard[data-vcard-design]:not([data-vcard-mode]),
+.nino-vcard[data-vcard-design][data-vcard-mode="light"] {
+	color-scheme: light;
+	--vc-logo-light: block;
+	--vc-logo-dark: none;
+}
+
+:root[data-nino-mode="dark"] .nino-vcard[data-vcard-design]:not([data-vcard-mode]),
+.nino-vcard[data-vcard-design][data-vcard-mode="dark"] {
+	color-scheme: dark;
+	--vc-logo-light: none;
+	--vc-logo-dark: block;
+}
+
+:root[data-nino-mode="light"]:has(.nino-vcard--page[data-vcard-design]:not([data-vcard-mode])),
+:root:has(.nino-vcard--page[data-vcard-design][data-vcard-mode="light"]) {
+	color-scheme: light;
+}
+
+:root[data-nino-mode="dark"]:has(.nino-vcard--page[data-vcard-design]:not([data-vcard-mode])),
+:root:has(.nino-vcard--page[data-vcard-design][data-vcard-mode="dark"]) {
+	color-scheme: dark;
+}
+
+/*	The accent: the colour of the project, or the one the owner chose (--vcard-brand on the card), held to a lightness
+	that reads on the grounds of the designs - a text colour of the light scheme at 4.5:1 or more, one of the dark
+	scheme likewise - with the hue kept. A filled button writes white on the light accent and dark on the dark one.
+	A browser that has no light-dark() or no relative colours has neither: the accent is the ink of the design and the
+	filled button writes in the ground, which reads in every scheme	*/
+.nino-vcard[data-vcard-design] {
+	--vc-brand: var(--vcard-brand, var(--color-secondary));
+	--vc-accent: var(--vc-ink);
+	--vc-on-accent: var(--vc-bg);
+}
+
+@supports (color: light-dark(#000000, #ffffff)) and (color: oklch(from #000000 l c h)) {
+
+	.nino-vcard[data-vcard-design] {
+		--vc-accent: light-dark(oklch(from var(--vc-brand) min(l, .45) min(c, .12) h), oklch(from var(--vc-brand) max(l, .82) min(c, .12) h));
+		--vc-on-accent: light-dark(#ffffff, #0b0e10);
+	}
+}
+
+/*	An address that is the text of a link is no heading and no word: no capitals, no spacing	*/
+.nino-vcard[data-vcard-design] .nino-vcard-more[data-vcard-address] {
+	text-transform: none;
+	letter-spacing: normal;
+}
+
+/*	The switch of the visitor, three buttons of the card's foot. It is there with its script and not before	*/
+.nino-vcard-scheme {
+	display: inline-flex;
+	gap: 2px;
+	padding: 2px;
+	border: 1px solid currentColor;
+	border-radius: calc(.75 * var(--vc-rem));
+}
+
+.nino-vcard-scheme[hidden] {
+	display: none;
+}
+
+.nino-vcard-scheme-btn {
+	min-width: 44px;
+	min-height: 44px;
+	margin: 0;
+	padding: 0 calc(.5 * var(--vc-rem));
+	border: 0;
+	border-radius: calc(.75 * var(--vc-rem) - 2px);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+
+.nino-vcard-scheme-btn.is-active {
+	background: var(--vc-accent);
+	color: var(--vc-on-accent);
+}
+
+/*	On paper a design is its light scheme whatever the owner or the visitor chose, without the controls of a screen: the
+	scheme switch and the language picker do nothing there, and the designs write a button as a frame with dark writing,
+	since a printer leaves out backgrounds	*/
+@media print {
+
+	.nino-vcard[data-vcard-design],
+	.nino-vcard[data-vcard-design][data-vcard-mode],
+	:root[data-nino-mode] .nino-vcard[data-vcard-design]:not([data-vcard-mode]) {
+		color-scheme: light;
+		--vc-logo-light: block;
+		--vc-logo-dark: none;
+	}
+
+	:root:has(.nino-vcard--page[data-vcard-design]),
+	:root:has(.nino-vcard--page[data-vcard-design][data-vcard-mode]),
+	:root[data-nino-mode]:has(.nino-vcard--page[data-vcard-design]:not([data-vcard-mode])) {
+		color-scheme: light;
+	}
+
+	.nino-vcard[data-vcard-design] .nino-vcard-scheme,
+	.nino-vcard[data-vcard-design] .nino-vcard-locales {
+		display: none;
+	}
+}

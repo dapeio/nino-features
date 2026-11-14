@@ -1,0 +1,416 @@
+/**
+ *	Nino - vCard, design Klar
+ *	design-klar.css		Quiet, with a lot of white: the picture and the name in the middle, hairlines
+ *										between the details, one strong button. Over vcard.css, for a card that has
+ *										data-vcard-design="klar": the scheme and the accent are vcard.css's, the
+ *										palette, the typeface and the shapes are here, and a page that is the card
+ *										alone (nino-vcard--page) paints its ground as well.
+ */
+
+/* ==== 1. The palette: light first, light-dark() where the browser has it ==== */
+.nino-vcard[data-vcard-design="klar"] {
+	--vc-bg: #ffffff;
+	--vc-ink: #12151a;
+	--vc-soft: #3b424c;
+	--vc-muted: #5b6470;
+	--vc-line: #e1e4e8;
+	--vc-font: "Nino vCard Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	--vc-radius: calc(.75 * var(--vc-rem));
+	--vc-photo: calc(6.5 * var(--vc-rem));
+}
+
+:root:has(.nino-vcard--page[data-vcard-design="klar"]) {
+	--vc-bg: #ffffff;
+	--vc-ink: #12151a;
+}
+
+@supports (color: light-dark(#000000, #ffffff)) {
+
+	.nino-vcard[data-vcard-design="klar"] {
+		--vc-bg: light-dark(#ffffff, #0e1013);
+		--vc-ink: light-dark(#12151a, #f2f4f7);
+		--vc-soft: light-dark(#3b424c, #c3c9d1);
+		--vc-muted: light-dark(#5b6470, #9aa3ae);
+		--vc-line: light-dark(#e1e4e8, #262a30);
+	}
+
+	:root:has(.nino-vcard--page[data-vcard-design="klar"]) {
+		--vc-bg: light-dark(#ffffff, #0e1013);
+		--vc-ink: light-dark(#12151a, #f2f4f7);
+	}
+}
+
+/* ==== 2. The ground ==== */
+:root:has(.nino-vcard--page[data-vcard-design="klar"]) body,
+:root:has(.nino-vcard--page[data-vcard-design="klar"]) .nino-preloader {
+	background: var(--vc-bg);
+	color: var(--vc-ink);
+}
+
+:root:has(.nino-vcard--page[data-vcard-design="klar"]) main {
+	padding-top: 0;
+}
+
+.nino-vcard[data-vcard-design="klar"] {
+	box-sizing: border-box;
+	padding: calc(2.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem)) calc(1.5 * var(--vc-rem));
+	background: var(--vc-bg);
+	color: var(--vc-ink);
+	font-family: var(--vc-font);
+	font-size: calc(1 * var(--vc-rem));
+	line-height: 1.55;
+	-webkit-font-smoothing: antialiased;
+}
+
+.nino-vcard--page[data-vcard-design="klar"] {
+	min-height: 100vh;
+	min-height: 100dvh;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-wrap {
+	margin: 0 auto;
+	max-width: calc(28 * var(--vc-rem));
+}
+
+/* ==== 3. The card: no frame, no shadow, a short stroke of the accent above everything ==== */
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-card {
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	overflow: visible;
+	text-align: center;
+	--card-align: center;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-card::before {
+	content: "";
+	display: block;
+	width: calc(2 * var(--vc-rem));
+	height: 3px;
+	margin: 0 auto calc(1.75 * var(--vc-rem));
+	background: var(--vc-accent);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-picture {
+	width: var(--vc-photo);
+	height: var(--vc-photo);
+	margin: 0 auto calc(1.25 * var(--vc-rem));
+	box-shadow: 0 0 0 1px var(--vc-line);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-picture--logo {
+	width: auto;
+	height: auto;
+	max-width: calc(14 * var(--vc-rem));
+	margin-bottom: calc(1.5 * var(--vc-rem));
+	box-shadow: none;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-picture--logo img {
+	max-height: calc(3 * var(--vc-rem));
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-logo-set .nino-logo-light {
+	display: var(--vc-logo-light);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-logo-set .nino-logo-dark {
+	display: var(--vc-logo-dark);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-name {
+	color: var(--vc-ink);
+	font-family: var(--vc-font);
+	font-size: clamp(calc(1.75 * var(--vc-rem)), 7.5vw, calc(2.125 * var(--vc-rem)));
+	font-weight: 700;
+	letter-spacing: -.02em;
+	line-height: 1.12;
+	text-transform: none;
+	text-wrap: balance;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-line {
+	margin-top: calc(.5 * var(--vc-rem));
+	color: var(--vc-muted);
+	font-family: var(--vc-font);
+	font-size: calc(1.0625 * var(--vc-rem));
+	line-height: 1.4;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-text {
+	margin-top: calc(1.25 * var(--vc-rem));
+	color: var(--vc-soft);
+	text-wrap: pretty;
+}
+
+/* ==== 4. The details: hairlines, the word at the left and the detail at the right ==== */
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-list,
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-links {
+	margin-top: calc(2 * var(--vc-rem));
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-item {
+	display: grid;
+	grid-template-columns: calc(6 * var(--vc-rem)) minmax(0, 1fr);
+	gap: calc(.25 * var(--vc-rem)) calc(1 * var(--vc-rem));
+	align-items: baseline;
+	padding: calc(.625 * var(--vc-rem)) 0;
+	border-top: 1px solid var(--vc-line);
+	text-align: left;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-item:last-child {
+	border-bottom: 1px solid var(--vc-line);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-label {
+	color: var(--vc-muted);
+	font-size: calc(.75 * var(--vc-rem));
+	font-weight: 700;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-value {
+	align-items: flex-start;
+	min-width: 0;
+	color: var(--vc-ink);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-link,
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-map {
+	min-height: 44px;
+	padding: 0;
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: .25em;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-link {
+	color: var(--vc-ink);
+	text-decoration-color: var(--vc-accent);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-map {
+	min-height: 36px;
+	color: var(--vc-accent);
+	font-size: calc(.9375 * var(--vc-rem));
+	text-decoration: none;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-map::after {
+	content: "\2192";
+	content: "\2192" / "";
+	margin-left: calc(.4 * var(--vc-rem));
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-item:has(.nino-vcard-link) {
+	padding-block: 0;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-item:has(.nino-vcard-link) .nino-vcard-label {
+	align-self: center;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-item:has(.nino-vcard-link) .nino-vcard-value {
+	justify-content: center;
+}
+
+/* ==== 5. Links as lines with an arrow ==== */
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-links > li + li {
+	margin-top: 0;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-more {
+	justify-content: space-between;
+	min-height: calc(3.5 * var(--vc-rem));
+	padding: 0;
+	border: 0;
+	border-top: 1px solid var(--vc-line);
+	border-radius: 0;
+	background: transparent;
+	color: var(--vc-ink);
+	font-weight: 700;
+	text-align: left;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-links > li:last-child .nino-vcard-more {
+	border-bottom: 1px solid var(--vc-line);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-more::after {
+	content: "\2192";
+	content: "\2192" / "";
+	flex: none;
+	margin-left: calc(1 * var(--vc-rem));
+	color: var(--vc-accent);
+	transition: transform .2s ease;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-more:hover,
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-more:focus-visible {
+	background: transparent;
+	color: var(--vc-accent);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-more:hover::after,
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-more:focus-visible::after {
+	transform: translateX(calc(.25 * var(--vc-rem)));
+}
+
+/* ==== 6. The one button: ink on the ground ==== */
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-actions {
+	margin-top: calc(2 * var(--vc-rem));
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-save {
+	display: flex;
+	width: 100%;
+	box-sizing: border-box;
+	min-height: calc(3.25 * var(--vc-rem));
+	padding: 0 calc(1.5 * var(--vc-rem));
+	border: 1px solid var(--vc-ink);
+	border-radius: var(--vc-radius);
+	background: var(--vc-ink);
+	color: var(--vc-bg);
+	font-family: var(--vc-font);
+	font-size: calc(1 * var(--vc-rem));
+	font-weight: 700;
+	text-transform: none;
+	text-decoration: none;
+	transition: opacity .2s ease;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-save:hover:where(:not(:focus-visible)) {
+	background: var(--vc-ink);
+	opacity: .86;
+}
+
+/* ==== 7. The legal links and the foot ==== */
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-legal {
+	gap: 0 calc(1.25 * var(--vc-rem));
+	margin-top: calc(1.5 * var(--vc-rem));
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-legal-link {
+	min-height: 44px;
+	padding: 0;
+	color: var(--vc-muted);
+	text-decoration-thickness: 1px;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-legal-link:hover {
+	color: var(--vc-ink);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-foot {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	margin-top: calc(1 * var(--vc-rem));
+	padding-top: calc(1 * var(--vc-rem));
+	border-top: 1px solid var(--vc-line);
+	color: var(--vc-muted);
+}
+
+/*	The language at the left, the line of the copyright at the right; the switch has a row of its own, in the middle	*/
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-locales {
+	justify-content: flex-start;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-locales .nino-localepicker-wrap {
+	text-align: left;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-copyright {
+	justify-self: end;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-copyright:first-child {
+	grid-column: 1 / -1;
+	justify-self: center;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-scheme {
+	grid-column: 1 / -1;
+	justify-self: center;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-locales .nino-localepicker-wrap > label {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-locales .nino-localepicker-wrap svg {
+	width: 20px;
+	height: 20px;
+	top: 0;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-copyright {
+	color: var(--vc-muted);
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-vcard-scheme {
+	border-color: var(--vc-line);
+}
+
+/* ==== 8. Focus ==== */
+.nino-vcard[data-vcard-design="klar"] :where(a, button):focus-visible {
+	outline: 2px solid var(--vc-accent);
+	outline-offset: 3px;
+	border-radius: 4px;
+}
+
+.nino-vcard[data-vcard-design="klar"] .nino-localepicker-wrap:has(input:focus-visible) {
+	outline: 2px solid var(--vc-accent);
+	outline-offset: 3px;
+	border-radius: 4px;
+}
+
+/* ==== 9. Wider screens: the same column with more air ==== */
+@media (min-width: 768px) {
+
+	.nino-vcard[data-vcard-design="klar"] {
+		padding-top: calc(6 * var(--vc-rem));
+		padding-bottom: calc(3 * var(--vc-rem));
+	}
+
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-wrap {
+		max-width: calc(30 * var(--vc-rem));
+	}
+
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-card::before {
+		margin-bottom: calc(2.25 * var(--vc-rem));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-more::after,
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-save {
+		transition: none;
+	}
+
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-more:hover::after,
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-more:focus-visible::after {
+		transform: none;
+	}
+}
+
+@media print {
+
+	.nino-vcard[data-vcard-design="klar"] .nino-vcard-save {
+		border: 1px solid var(--vc-ink);
+		background: none;
+		color: var(--vc-ink);
+		box-shadow: none;
+	}
+
+	.nino-vcard--page[data-vcard-design="klar"] {
+		min-height: 0;
+	}
+}

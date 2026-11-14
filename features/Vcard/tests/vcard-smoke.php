@@ -76,7 +76,7 @@ function vcardCall( array &$appData, string $action, array $data = [] ): array {
 function vcardPosted( array $over = [] ): array {
 	return array_replace( [
 		'picture' => 'auto', 'kind' => 'person', 'name' => 'Ada Lovelace', 'phone' => '+44 20 7946 0000', 'email' => 'ada@example.com', 'website' => 'ada.example.com',
-		'address' => "1 Analytical Way\nLondon", 'map' => true, 'save' => true,
+		'address' => "1 Analytical Way\nLondon", 'map' => true, 'save' => true, 'design' => '', 'scheme' => 'auto', 'switch' => false, 'accent' => '',
 		'texts' => [ 'de_DE' => [ 'line' => 'Mathematikerin', 'text' => 'Rechnet gern.', 'hours' => 'Mo-Fr 9-17' ], 'en_US' => [ 'line' => 'Mathematician', 'text' => 'Likes to compute.', 'hours' => 'Mon-Fri 9-17' ] ],
 		'links' => [ [ 'id' => 'a1', 'url' => 'https://example.com/ada', 'labels' => [ 'de_DE' => 'Profil', 'en_US' => 'Profile' ] ] ],
 	], $over );
@@ -746,17 +746,339 @@ check( 'an account that may edit the card but not manage images sees the slots a
 [ $status ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'uri' => '/logo' ], 'images/upload' );
 check( '...and the kernel refuses its upload', $status === 403 );
 
+echo "\n20. The design: what is stored, what the panel refuses, what the card says of it\n";
+
+/** A sandbox whose card has these stored details besides the name - the design is read at the boot of the request */
+function vcardDesigned( array $stored, bool $picker = false ): array {
+	$appData = vcardSandbox( static function( array &$appData ) use ( $stored, $picker ): void {
+		if( $picker === true ) {
+			$appData['/nino/modules'][] = '\\Nino\\Modules\\Localepicker';
+			\Nino\AppData::writeContentData( $appData, [ '/nino/modules' ] );
+		}
+		\Nino\Filesystem::putFileContent( $appData, '/data/vcard.php', \Nino\Modules\Vcard::normalize( $appData, array_replace( [ 'kind' => 'person', 'name' => 'Ada Lovelace', 'email' => 'ada@example.com' ], $stored ) ) );
+	} );
+	vcardFacts( $appData );
+	return $appData;
+}
+
+/** The opening tag of the card */
+function vcardOpening( string $html ): string {
+	return preg_match( '#<section class="nino-section nino-vcard[^"]*"[^>]*>#', $html, $hit ) === 1 ? $hit[0] : '';
+}
+
+$appData = vcardSandbox();
+$defaults = \Nino\Modules\Vcard::data( $appData );
+check( 'a card that stores none of the new details has no design, the scheme auto, no switch and the colour of the project', $defaults['design'] === '' && $defaults['scheme'] === 'auto' && $defaults['switch'] === false && $defaults['accent'] === '' );
+$odd = \Nino\Modules\Vcard::normalize( $appData, [ 'design' => 'kontrast', 'scheme' => 'sepia', 'switch' => 'yes', 'accent' => 'red' ] );
+check( 'a design, a scheme, a switch and a colour that are none of the allowed come back as the defaults', $odd['design'] === '' && $odd['scheme'] === 'auto' && $odd['switch'] === false && $odd['accent'] === '' );
+$kept = \Nino\Modules\Vcard::normalize( $appData, [ 'design' => 'foto', 'scheme' => 'dark', 'switch' => true, 'accent' => '#b0401c' ] );
+check( 'and the allowed ones are kept', $kept['design'] === 'foto' && $kept['scheme'] === 'dark' && $kept['switch'] === true && $kept['accent'] === '#b0401c' );
+check( 'the designs are three, and each has a sheet of its own and a picture for the panel', \Nino\Modules\Vcard::DESIGNS === [ 'klar', 'karte', 'foto' ] && array_filter( \Nino\Modules\Vcard::DESIGNS, static fn( string $design ): bool => is_file( dirname( __DIR__ ). '/assets/design-'. $design. '.css' ) === false || is_file( dirname( __DIR__ ). '/assets/preview-'. $design. '.webp' ) === false ) === [] && count( glob( dirname( __DIR__ ). '/assets/design-*.css' ) ?: [] ) === 3 );
+
+ninoUser( $appData, 'dev@example.com' );
+$before = vcardSnapshot( $appData );
+foreach( [ '#123456;color:red', '#123456"', "#123456\n", ' #123456', '#12345678', '#12345', '#GGGGGG', '123456', '#12 456', "\n#123456" ] as $odd ) {
+	check( 'the colour '. json_encode( $odd ). ' is no accent: not stored, not accepted from the panel', \Nino\Modules\Vcard::normalize( $appData, [ 'accent' => $odd ] )['accent'] === '' && \Nino\Modules\Vcard::normalize( $appData, [ 'accent' => strtolower( $odd ) ] )['accent'] === '' );
+}
+foreach( [ 1, '1', 'true', 'on', [ true ], 'yes' ] as $odd )
+	check( 'a switch stored as '. json_encode( $odd ). ' is off: only the boolean true is on', \Nino\Modules\Vcard::normalize( $appData, [ 'switch' => $odd ] )['switch'] === false );
+foreach( [ [ 'design', 'kontrast', 'vcard_design' ], [ 'design', null, 'vcard_design' ], [ 'scheme', 'sepia', 'vcard_scheme' ], [ 'scheme', '', 'vcard_scheme' ], [ 'accent', 'red', 'vcard_accent' ], [ 'accent', '#fff', 'vcard_accent' ], [ 'accent', '#12345g', 'vcard_accent' ], [ 'accent', '#123456;', 'vcard_accent' ], [ 'accent', "#123456\n", 'vcard_accent' ], [ 'accent', '#123456"', 'vcard_accent' ], [ 'accent', [ '#123456' ], 'vcard_accent' ] ] as [ $field, $value, $code ] ) {
+	[ $status, $body ] = vcardCall( $appData, 'vcard/save', vcardPosted( [ $field => $value ] ) );
+	check( 'the panel refuses '. $field. ' '. json_encode( $value ). ' with its code and field, and writes nothing', $status === 400 && $body['code'] === $code && $body['field'] === $field && \Nino\Filesystem::getFileContent( $appData, '/data/vcard.php', [] ) === [] );
+}
+check( 'a refusal leaves the routes and the slots as they are', vcardSnapshot( $appData ) === $before );
+[ $status, $body ] = vcardCall( $appData, 'vcard/save', vcardPosted( [ 'design' => 'karte', 'scheme' => 'light', 'switch' => true, 'accent' => '#B0401C' ] ) );
+check( 'a design, a scheme, the switch and a colour in capitals are saved, the colour in small letters', $status === 200 && $body['data']['design'] === 'karte' && $body['data']['scheme'] === 'light' && $body['data']['switch'] === true && $body['data']['accent'] === '#b0401c' && \Nino\Filesystem::getFileContent( $appData, '/data/vcard.php', [] )['accent'] === '#b0401c' );
+$list = vcardCall( $appData, 'vcard/list' )[1];
+check( 'the list carries the picture of each design as a data address of a webp', array_keys( $list['designs'] ) === \Nino\Modules\Vcard::DESIGNS && array_filter( $list['designs'], static fn( string $uri ): bool => str_starts_with( $uri, 'data:image/webp;base64,' ) === false || strlen( $uri ) < 100 ) === [] );
+[ $status ] = vcardCall( $appData, 'vcard/save', vcardPosted( [ 'design' => '' ] ) );
+check( 'the card without a design is a choice the panel can make again', $status === 200 && \Nino\Filesystem::getFileContent( $appData, '/data/vcard.php', [] )['design'] === '' );
+
+$sizes = array_map( static fn( string $design ): int => (int) filesize( dirname( __DIR__ ). '/assets/preview-'. $design. '.webp' ), \Nino\Modules\Vcard::DESIGNS );
+check( 'the pictures are small, real webp files', max( $sizes ) < 20000 && min( $sizes ) > 1000 && array_filter( \Nino\Modules\Vcard::DESIGNS, static fn( string $design ): bool => preg_match( '/^RIFF.{4}WEBP/s', (string) file_get_contents( dirname( __DIR__ ). '/assets/preview-'. $design. '.webp', false, null, 0, 12 ) ) !== 1 ) === [] );
+
+echo "\n21. The design on the page\n";
+
+$none = vcardDesigned( [] );
+$opening = vcardOpening( vcardPage( $none ) );
+check( 'a card without a design opens as it always did: the class of the section and its label and nothing else', preg_match( '#^<section class="nino-section nino-vcard" aria-label="[^"]*">$#', $opening ) === 1 && preg_match( '#^<section class="nino-section nino-vcard" aria-label="[^"]*">$#', vcardOpening( \Nino\Html::renderHtml( $none, '[vcard foot]' ) ) ) === 1 );
+check( 'and brings no sheet of a design, no script, and the foot has no switch', array_filter( (array) $none['/nino/html/assets']['/.cache/style.css'], static fn( string $file ): bool => str_contains( $file, '/Vcard/assets/design-' ) ) === [] && array_filter( (array) ( $none['/nino/html/assets']['/.cache/script.js'] ?? [] ), static fn( string $file ): bool => str_contains( $file, '/Vcard/' ) ) === [] && str_contains( \Nino\Html::renderHtml( $none, '[vcard foot]' ), 'nino-vcard-scheme' ) === false );
+$file = \Nino\Modules\Vcard::file( $none );
+
+foreach( \Nino\Modules\Vcard::DESIGNS as $design ) {
+
+	$worn = vcardDesigned( [ 'design' => $design ] );
+	$styles = (array) $worn['/nino/html/assets']['/.cache/style.css'];
+	$sheets = array_values( array_filter( $styles, static fn( string $entry ): bool => str_contains( $entry, '/Vcard/assets/design-' ) ) );
+	check( $design. ': only the sheet of this design is in the style bundle, once, and after the sheet of the card', $sheets === [ '/features/Vcard/assets/design-'. $design. '.css' ] && array_search( '/features/Vcard/assets/vcard.css', $styles, true ) < array_search( $sheets[0], $styles, true ) );
+	$page = \Nino\Html::renderHtml( $worn, '[vcard foot]' );
+	check( $design. ': a card that is the page alone says its design and that it is the page, and says nothing of a scheme or a colour', preg_match( '#^<section class="nino-section nino-vcard nino-vcard--page" aria-label="[^"]*" data-vcard-design="'. $design. '">$#', vcardOpening( $page ) ) === 1 );
+	check( $design. ': a card of the shortcode alone says its design and is no page', preg_match( '#^<section class="nino-section nino-vcard" aria-label="[^"]*" data-vcard-design="'. $design. '">$#', vcardOpening( vcardPage( $worn ) ) ) === 1 );
+	$plain = static fn( string $html ): string => str_replace( '<wbr>', '', $html );
+	check( $design. ': the markup inside the card is what a card without a design has, but for the opening tag and the marks an address may break at', $plain( str_replace( vcardOpening( vcardPage( $worn ) ), vcardOpening( vcardPage( $none ) ), vcardPage( $worn ) ) ) === vcardPage( $none ) && $plain( str_replace( vcardOpening( $page ), vcardOpening( \Nino\Html::renderHtml( $none, '[vcard foot]' ) ), $page ) ) === \Nino\Html::renderHtml( $none, '[vcard foot]' ) );
+	check( $design. ': the contact file is the same bytes', \Nino\Modules\Vcard::file( $worn ) === $file );
+}
+
+$fixed = vcardDesigned( [ 'design' => 'klar', 'scheme' => 'dark', 'accent' => '#b0401c' ] );
+check( 'a scheme the owner fixed and an accent the owner chose stand on the card: data-vcard-mode and the colour as a property of the card', preg_match( '#data-vcard-design="klar" data-vcard-mode="dark" style="--vcard-brand: \#b0401c">$#', vcardOpening( vcardPage( $fixed ) ) ) === 1 );
+$light = vcardDesigned( [ 'design' => 'foto', 'scheme' => 'light' ] );
+check( 'light is written as it is, and without an accent there is no style attribute', str_contains( vcardOpening( vcardPage( $light ) ), 'data-vcard-mode="light"' ) && str_contains( vcardOpening( vcardPage( $light ) ), 'style=' ) === false );
+
+$long = [ 'website' => 'https://very-long-domain-of-a-firm.example/contact/about-us', 'email' => 'ada.lovelace@analytical-engine.example.com', 'links' => [
+	[ 'id' => 'u1', 'url' => 'https://example.com/long/path/without/label', 'labels' => [ 'de_DE' => '', 'en_US' => '' ] ],
+	[ 'id' => 'u2', 'url' => 'https://example.com/search?q=steuer&seite=2&filter[]=a', 'labels' => [ 'de_DE' => '', 'en_US' => '' ] ],
+	[ 'id' => 'u3', 'url' => 'https://example.com/b', 'labels' => [ 'de_DE' => 'Termin', 'en_US' => 'Appointment' ] ] ] ];
+$addresses = vcardDesigned( [ 'design' => 'karte' ] + $long );
+$page = vcardPage( $addresses );
+/** The text a visitor selects and copies out of every link and detail that shows an address: the markup taken away, the entities read */
+$copied = static fn( string $html, string $class ): array => array_map( static fn( string $text ): string => html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), preg_match_all( '#<a class="'. $class. '"[^>]*>(.*?)</a>#s', $html, $hits ) > 0 ? $hits[1] : [] );
+$shown = array_merge( $copied( $page, 'nino-vcard-link' ), $copied( $page, 'nino-vcard-more' ) );
+check( 'under a design the text of an address is the address character for character: what is copied out of the e-mail, the website and the links without a name is the address, with no control, format or zero width character in it', in_array( 'ada.lovelace@analytical-engine.example.com', $shown, true ) && in_array( 'very-long-domain-of-a-firm.example/contact/about-us', $shown, true ) && in_array( 'example.com/long/path/without/label', $shown, true ) && in_array( 'example.com/search?q=steuer&seite=2&filter[]=a', $shown, true ) && array_filter( $shown, static fn( string $text ): bool => preg_match( '/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u', $text ) === 1 ) === [] );
+check( 'it may break at its marks, and the break is a wbr of a template: after / . - _ ? & = @ and nowhere else', str_contains( $page, 'ada.<wbr>lovelace@<wbr>analytical-<wbr>engine.<wbr>example.<wbr>com' ) && str_contains( $page, 'very-<wbr>long-<wbr>domain-<wbr>of-<wbr>a-<wbr>firm.<wbr>example/<wbr>contact/<wbr>about-<wbr>us' ) && str_contains( $page, '<wbr>' ) && trim( (string) file_get_contents( dirname( __DIR__ ). '/templates/vcard-break.tpl' ) ) === '<wbr>' );
+check( 'every piece is escaped on its own: an & of an address is one &amp; and no break stands inside an entity, a [ is neutralised, the markup is the same as without the breaks', str_contains( $page, 'steuer&amp;<wbr>seite=' ) && str_contains( $page, '&amp;<wbr>filter' ) === true && preg_match( '/&[a-z#0-9]*<wbr>[a-z0-9]*;/', $page ) !== 1 && str_contains( $page, 'filter[' ) === false && str_contains( $page, '&#91;' ) === true );
+check( 'a link without a name says so in the markup, a link with one does not, and the address of the link itself and the file are the plain ones', substr_count( $page, 'data-vcard-address' ) === 2 && preg_match( '#<a class="nino-vcard-more" href="https://example.com/long/path/without/label" rel="noopener noreferrer" data-vcard-address>#', $page ) === 1 && str_contains( $page, 'href="https://very-long-domain-of-a-firm.example/contact/about-us"' ) && preg_match( '/[\p{Cf}]|<wbr>/u', \Nino\Modules\Vcard::file( $addresses ) ) !== 1 );
+$bare = vcardDesigned( $long );
+check( 'a card without a design has neither the breaks nor the attribute', str_contains( vcardPage( $bare ), '<wbr>' ) === false && str_contains( vcardPage( $bare ), 'data-vcard-address' ) === false && str_contains( vcardPage( $bare ), '>very-long-domain-of-a-firm.example/contact/about-us<' ) );
+
+echo "\n22. The switch for the visitor\n";
+
+$switchless = vcardDesigned( [ 'design' => 'klar', 'switch' => false ], true );
+check( 'a design without the switch has none in the foot, and no script', str_contains( \Nino\Html::renderHtml( $switchless, '[vcard foot]' ), 'nino-vcard-scheme' ) === false && array_filter( (array) ( $switchless['/nino/html/assets']['/.cache/script.js'] ?? [] ), static fn( string $entry ): bool => str_contains( $entry, '/Vcard/' ) ) === [] );
+$switched = vcardDesigned( [ 'design' => 'klar', 'switch' => true ], true );
+$foot = \Nino\Html::renderHtml( $switched, '[vcard foot]' );
+check( 'with the switch the foot has a group of three buttons, light, auto and dark, hidden until the script shows it and none of them pressed', preg_match( '#<div class="nino-vcard-foot">.*<div class="nino-vcard-scheme" role="group" aria-label="[^"]+" hidden>(<button type="button" class="nino-vcard-scheme-btn" data-vcard-scheme="(light|auto|dark)" aria-pressed="false">[^<]+</button>){3}</div></div>#s', $foot ) === 1 && implode( ',', array_map( static fn( array $hit ): string => $hit[1], preg_match_all( '#data-vcard-scheme="([a-z]+)"#', $foot, $all, PREG_SET_ORDER ) > 0 ? $all : [] ) ) === 'light,auto,dark' );
+check( 'the script is in the script bundle, once, and the switch comes after the language picker and the copyright line', array_values( array_filter( (array) $switched['/nino/html/assets']['/.cache/script.js'], static fn( string $entry ): bool => str_contains( $entry, '/Vcard/' ) ) ) === [ '/features/Vcard/assets/vcard.js' ] && preg_match( '#nino-vcard-locales.*nino-vcard-copyright.*nino-vcard-scheme#s', $foot ) === 1 );
+check( 'every word the switch reads is a fill the unit delivers, in both languages', ( static function() use ( &$switched ): bool {
+	foreach( [ 'de_DE', 'en_US' ] as $locale ) {
+		$words = include dirname( __DIR__ ). '/install/text/'. $locale. '.php';
+		foreach( [ 'label/scheme', 'scheme/light', 'scheme/auto', 'scheme/dark' ] as $key )
+			if( ( $words['[[/feature/vcard/'. $key. ']]'] ?? '' ) === '' )
+				return false;
+	}
+	return str_contains( (string) file_get_contents( dirname( __DIR__ ). '/templates/vcard-scheme.tpl' ), '[[/feature/vcard/scheme/dark]]' );
+} )() );
+check( 'a card of the shortcode alone has no foot and so no switch', str_contains( vcardPage( $switched ), 'nino-vcard-scheme' ) === false );
+$nothing = vcardDesigned( [ 'design' => '', 'switch' => true ], true );
+check( 'a switch without a design is not drawn and loads no script', str_contains( \Nino\Html::renderHtml( $nothing, '[vcard foot]' ), 'nino-vcard-scheme' ) === false && array_filter( (array) ( $nothing['/nino/html/assets']['/.cache/script.js'] ?? [] ), static fn( string $entry ): bool => str_contains( $entry, '/Vcard/' ) ) === [] );
+$lonely = vcardSandbox( static function( array &$appData ): void {
+	\Nino\Filesystem::putFileContent( $appData, '/data/vcard.php', \Nino\Modules\Vcard::normalize( $appData, [ 'kind' => 'person', 'name' => 'Ada', 'design' => 'karte', 'switch' => true ] ) );
+} );
+check( 'a card of a project that knows no company and has one language still has the foot for its switch', str_contains( \Nino\Html::renderHtml( $lonely, '[vcard foot]' ), 'nino-vcard-scheme' ) === true );
+
+echo "\n23. The sheets: a design changes the card, and the page only where the card is the page\n";
+
+$css = static fn( string $name ): string => (string) file_get_contents( dirname( __DIR__ ). '/assets/'. $name. '.css' );
+$all = $css( 'vcard' );
+foreach( \Nino\Modules\Vcard::DESIGNS as $design )
+	$all .= "\n". $css( 'design-'. $design );
+
+foreach( \Nino\Modules\Vcard::DESIGNS as $design ) {
+
+	$sheet = $css( 'design-'. $design );
+	$bare = (string) preg_replace( '#/\*.*?\*/#s', '', $sheet );
+	preg_match_all( '/^([^\s@\/}][^{]*)\{/m', $bare, $selectors );
+	$groups = [];
+	foreach( $selectors[1] as $list )
+		foreach( (array) preg_split( '/,(?![^(]*\))/', $list ) as $selector )
+			$groups[] = trim( $selector );
+
+	$loose = array_filter( $groups, static fn( string $selector ): bool => str_starts_with( $selector, '.nino-vcard[data-vcard-design="'. $design. '"]' ) === false && str_starts_with( $selector, '.nino-vcard--page[data-vcard-design="'. $design. '"]' ) === false && str_starts_with( $selector, ':root:has(.nino-vcard--page[data-vcard-design="'. $design. '"])' ) === false && $selector !== '' );
+	check( $design. ': every rule of the sheet starts at the card of this design, or at the root of a page that is the card alone', $groups !== [] && $loose === [] );
+	check( $design. ': it answers to widths from 640, 768, 1024 or 1280 as min-width and to nothing else', preg_match_all( '/@media[^{]*width[^{]*/', $sheet, $queries ) >= 0 && array_filter( $queries[0], static fn( string $query ): bool => preg_match( '/^@media \(min-width: (640|768|1024|1280)px\)\s*$/', trim( $query ) ) !== 1 ) === [] );
+	check( $design. ': the palette is given in plain colours first and in light-dark() only where the browser has it', str_contains( $sheet, '@supports (color: light-dark(' ) && substr_count( $sheet, 'light-dark(' ) > 5 && strpos( $sheet, '--vc-bg: #' ) < strpos( $sheet, '@supports (color: light-dark(' ) && preg_match( '/^(?!\s*@supports)[^\n]*light-dark\(/m', preg_replace( '/@supports \(color: light-dark\([^{]*\{.*?\n\}\n/s', '', $bare ) ?? '' ) === 0 );
+}
+
+check( 'the sheet of the card holds the scheme and the accent every design shares, and a page that is the card alone gives its root the scheme', str_contains( $css( 'vcard' ), ':root:has(.nino-vcard--page[data-vcard-design])' ) && str_contains( $css( 'vcard' ), 'data-vcard-mode="dark"' ) && str_contains( $css( 'vcard' ), ':root[data-nino-mode="dark"]' ) && str_contains( $css( 'vcard' ), '--vcard-brand' ) && str_contains( $css( 'vcard' ), '--color-secondary' ) );
+check( 'a scheme the owner fixed wins over data-nino-mode: the rules that answer to the root name no card that has data-vcard-mode', array_filter( explode( "\n", $css( 'vcard' ) ), static fn( string $line ): bool => str_starts_with( $line, ':root[data-nino-mode=' ) && str_contains( $line, '.nino-vcard' ) && str_contains( $line, ':not([data-vcard-mode])' ) === false && str_contains( $line, ':has(' ) === false ) === [] );
+check( 'the typeface is Open Sans from the files of the installation, under a name of its own, and the feature brings no font file', str_contains( $css( 'vcard' ), 'font-family: "Nino vCard Sans"' ) && substr_count( $css( 'vcard' ), '[[/nino/public]]/fonts/open-sans-' ) === 2 && glob( dirname( __DIR__ ). '/{,*/,*/*/}*.{woff,woff2,ttf,otf}', GLOB_BRACE ) === [] );
+check( 'Klar and Foto set their type in it and Karte in the serif stack of the system', str_contains( $css( 'design-klar' ), '--vc-font: "Nino vCard Sans"' ) && str_contains( $css( 'design-foto' ), '--vc-font: "Nino vCard Sans"' ) && str_contains( $css( 'design-karte' ), '--vc-serif: ' ) && str_contains( $css( 'design-karte' ), 'Nino vCard Sans' ) === false );
+check( 'the accent is derived only where the browser has light-dark() and relative colours; elsewhere it is the ink of the design and the filled button writes in the ground', ( static function() use ( $css ): bool {
+	$all = $css( 'vcard' );
+	$rule = strpos( $all, '--vc-accent: var(--vc-ink);' );
+	$support = strpos( $all, '@supports (color: light-dark(#000000, #ffffff)) and (color: oklch(from #000000 l c h))' );
+	return $rule !== false && $support !== false && $rule < $support && str_contains( $all, '--vc-on-accent: var(--vc-bg);' ) && substr_count( $all, 'oklch(from' ) === 3;
+} )() );
+check( 'the lightness the accent is held to keeps its contrast: the light scheme is darker than 0.46, the dark one lighter than 0.80, the chroma stays under 0.15, and over every hue the colours that gives are dark and light enough', ( static function() use ( $css ): bool {
+	$all = $css( 'vcard' );
+	if( preg_match( '/min\(l, \.(\d+)\) min\(c, \.(\d+)\) h\), oklch\(from var\(--vc-brand\) max\(l, \.(\d+)\) min\(c, \.(\d+)\) h/', $all, $hit ) !== 1 )
+		return false;
+	[ $lightL, $lightC, $darkL, $darkC ] = [ (float) ( '0.'. $hit[1] ), (float) ( '0.'. $hit[2] ), (float) ( '0.'. $hit[3] ), (float) ( '0.'. $hit[4] ) ];
+	// The relative luminance of an oklch colour, a channel out of gamut held at its edge
+	$luminance = static function( float $l, float $c, float $h ): float {
+		$a = $c * cos( deg2rad( $h ) ); $b = $c * sin( deg2rad( $h ) );
+		$lms = [ ( $l + 0.3963377774 * $a + 0.2158037573 * $b ) ** 3, ( $l - 0.1055613458 * $a - 0.0638541728 * $b ) ** 3, ( $l - 0.0894841775 * $a - 1.2914855480 * $b ) ** 3 ];
+		$rgb = [ 4.0767416621 * $lms[0] - 3.3077115913 * $lms[1] + 0.2309699292 * $lms[2], -1.2684380046 * $lms[0] + 2.6097574011 * $lms[1] - 0.3413193965 * $lms[2], -0.0041960863 * $lms[0] - 0.7034186147 * $lms[1] + 1.7076147010 * $lms[2] ];
+		$rgb = array_map( static fn( float $v ): float => max( 0.0, min( 1.0, $v ) ), $rgb );
+		return 0.2126 * $rgb[0] + 0.7152 * $rgb[1] + 0.0722 * $rgb[2];
+	};
+	$worstLight = 0.0; $worstDark = 1.0;
+	for( $hue = 0; $hue < 360; $hue += 3 )
+		for( $chroma = 0.0; $chroma <= $lightC; $chroma += 0.02 ) {
+			$worstLight = max( $worstLight, $luminance( $lightL, $chroma, (float) $hue ) );
+			$worstDark = min( $worstDark, $luminance( $darkL, min( $chroma, $darkC ), (float) $hue ) );
+		}
+	// 4.5:1 against the lightest ground (0.91) wants a luminance of 0.163 at most; against the darkest light-on-dark ground (0.0125) one of 0.231 at least
+	return $lightL <= 0.46 && $darkL >= 0.80 && $lightC < 0.15 && $darkC < 0.15 && $worstLight <= 0.16 && $worstDark >= 0.30;
+} )() );
+check( 'a button of the switch is a target of 44 pixels in both directions, and a scheme the owner fixed is set as the colour scheme of the card and of the root of its page', ( static function() use ( $css ): bool {
+	$all = $css( 'vcard' );
+	$block = static function( string $selector ) use ( $all ): string {
+		foreach( explode( '}', $all ) as $chunk )
+			if( str_contains( $chunk, $selector ) === true )
+				return $chunk;
+		return '';
+	};
+	$button = $block( '.nino-vcard-scheme-btn {' );
+	$cardDark = $block( '.nino-vcard[data-vcard-design][data-vcard-mode="dark"]' );
+	$cardLight = $block( '.nino-vcard[data-vcard-design][data-vcard-mode="light"]' );
+	$rootDark = $block( ':root:has(.nino-vcard--page[data-vcard-design][data-vcard-mode="dark"])' );
+	$rootLight = $block( ':root:has(.nino-vcard--page[data-vcard-design][data-vcard-mode="light"])' );
+	return str_contains( $button, 'min-height: 44px' ) && str_contains( $button, 'min-width: 44px' ) && str_contains( $cardDark, 'color-scheme: dark' ) && str_contains( $cardLight, 'color-scheme: light' ) && str_contains( $rootDark, 'color-scheme: dark' ) && str_contains( $rootLight, 'color-scheme: light' );
+} )() );
+check( 'a list of selectors that holds :has() holds nothing else, so that a browser without :has() loses the rules of the page and keeps those of the card', ( static function() use ( $css ): bool {
+	foreach( [ 'vcard', 'design-klar', 'design-karte', 'design-foto' ] as $name ) {
+		$bare = (string) preg_replace( '#/\*.*?\*/#s', '', $css( $name ) );
+		preg_match_all( '/^([^\s@\/}][^{]*)\{/m', $bare, $lists );
+		preg_match_all( '/^\t+([^\s@\/}][^{;]*)\{/m', $bare, $nested );
+		foreach( array_merge( $lists[1], $nested[1] ) as $list ) {
+			$members = (array) preg_split( '/,(?![^(]*\))/', $list );
+			$has = array_filter( $members, static fn( string $selector ): bool => str_contains( $selector, ':has(' ) === true );
+			if( $has !== [] && count( $has ) !== count( $members ) )
+				return false;
+		}
+	}
+	return true;
+} )() );
+check( 'a design sets everything of the card itself: no sheet of a design reads a custom property of a theme or a rem, and the card carries its own size', ( static function() use ( $css ): bool {
+	foreach( \Nino\Modules\Vcard::DESIGNS as $design ) {
+		$sheet = (string) preg_replace( '#/\*.*?\*/#s', '', $css( 'design-'. $design ) );
+		if( preg_match( '/var\(--(space|text|fontsize|font|fontfamily|radius|color|whitespace|card|section|buttons|nino)\b/', $sheet ) === 1 || preg_match( '/\d\s*rem\b/', $sheet ) === 1 )
+			return false;
+	}
+	$all = $css( 'vcard' );
+	$tail = substr( $all, (int) strpos( $all, 'The designs. A card that wears one' ) );
+	return str_contains( $tail, '--vc-rem: 16px' ) && preg_match( '/var\(--(space|text|fontsize|fontfamily|radius|whitespace)\b/', preg_replace( '/--vcard-brand[^;]*;/', '', $tail ) ?? '' ) !== 1 && preg_match( '/\d\s*rem\b/', $tail ) !== 1;
+} )() );
+check( 'an address that is shown as a link text is no capitals and no spacing, whatever the design, and breaks at its own marks', str_contains( $css( 'vcard' ), '.nino-vcard-more[data-vcard-address]' ) && preg_match( '/\.nino-vcard-more\[data-vcard-address\] \{[^}]*text-transform: none;[^}]*letter-spacing: normal;/', $css( 'vcard' ) ) === 1 );
+check( 'on paper the card is its light scheme, its button a frame with dark writing in every design, and its switch and language picker are not printed', ( static function() use ( $css ): bool {
+	$all = $css( 'vcard' );
+	$print = substr( $all, (int) strrpos( $all, '@media print' ) );
+	if( str_contains( $print, 'color-scheme: light' ) === false || str_contains( $print, '.nino-vcard-scheme' ) === false || str_contains( $print, 'display: none' ) === false )
+		return false;
+	foreach( \Nino\Modules\Vcard::DESIGNS as $design ) {
+		$sheet = $css( 'design-'. $design );
+		$block = substr( $sheet, (int) strrpos( $sheet, '@media print' ) );
+		if( preg_match( '/\.nino-vcard-save \{[^}]*border: 1px solid var\(--vc-ink\);[^}]*background: none;[^}]*color: var\(--vc-ink\);/', $block ) !== 1 )
+			return false;
+	}
+	return str_contains( $css( 'design-foto' ), 'print-color-adjust: exact' ) && str_contains( $css( 'design-foto' ), 'content: none' );
+} )() );
+check( 'a page that is the card alone has the whole width: the margin a theme gives main for a column of its own is taken back, under a design only', preg_match( '/:root:has\(\.nino-vcard--page\[data-vcard-design\]\) main \{[^}]*width: 100%;[^}]*max-width: none;[^}]*margin-left: 0;[^}]*margin-right: 0;/', $css( 'vcard' ) ) === 1 );
+check( 'a card of Karte that runs over two pages has no frame on paper: a frame drawn as one piece would show at the top and the left of the first alone', preg_match( '/@media print \{.*\.nino-vcard-card::before \{\s*content: none;/s', $css( 'design-karte' ) ) === 1 );
+check( 'the photo is never shown above its own size, and the card of Foto is not wider than the photo it holds', str_contains( $css( 'design-foto' ), 'max-width: 480px' ) );
+check( 'no sheet reaches the network: no url() that is no kernel font, no @import', preg_match( '#@import|url\((?!"\[\[/nino/public\]\]/fonts/open-sans-)#', $all ) !== 1 );
+
+echo "\n24. A project that was activated before the switch: its words come with the panel's save, and the switch waits for them\n";
+
+/** Takes the words of the switch out of the text files, as a project activated before they existed has them */
+function vcardOldWords( array &$appData ): void {
+	foreach( [ 'de_DE', 'en_US' ] as $locale ) {
+		$words = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+		\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', array_diff_key( is_array( $words ) === true ? $words : [], array_flip( \Nino\Modules\Vcard::SCHEME_WORDS ) ) );
+	}
+}
+
+$old = vcardDesigned( [ 'design' => 'klar', 'switch' => true ], true );
+vcardOldWords( $old );
+\Nino\Filesystem::putFileContent( $old, '/text/de_DE.php', array_merge( \Nino\Filesystem::getFileContent( $old, '/text/de_DE.php', [] ), [ '[[/feature/vcard/label/phone]]' => 'Fon' ] ) );
+$foot = \Nino\Html::renderHtml( $old, '[vcard foot]' );
+check( 'without the words the switch is not drawn, and no key of the feature reaches the page', str_contains( $foot, 'nino-vcard-scheme' ) === false && str_contains( $foot, '[[/feature/' ) === false && str_contains( $foot, 'nino-vcard-foot' ) === true && \Nino\Modules\Vcard::words( $old ) === false );
+$texts = [ 'de_DE' => \Nino\Filesystem::getFileContent( $old, '/text/de_DE.php', [] ), 'en_US' => \Nino\Filesystem::getFileContent( $old, '/text/en_US.php', [] ) ];
+$texts['de_DE']['[[/feature/vcard/label/scheme]]'] = '';
+\Nino\Filesystem::putFileContent( $old, '/text/de_DE.php', $texts['de_DE'] );
+check( 'a word that is there and empty is no word', \Nino\Modules\Vcard::words( $old ) === false );
+$texts['de_DE'] = array_diff_key( $texts['de_DE'], [ '[[/feature/vcard/label/scheme]]' => 1 ] );
+\Nino\Filesystem::putFileContent( $old, '/text/de_DE.php', $texts['de_DE'] );
+ninoUser( $old, 'dev@example.com' );
+[ $status ] = vcardCall( $old, 'vcard/save', vcardPosted( [ 'design' => 'klar', 'switch' => true ] ) );
+check( 'the panel saves', $status === 200 );
+$after = [ 'de_DE' => \Nino\Filesystem::getFileContent( $old, '/text/de_DE.php', [] ), 'en_US' => \Nino\Filesystem::getFileContent( $old, '/text/en_US.php', [] ) ];
+check( 'the save added the words of the switch to the text files of both languages', array_filter( \Nino\Modules\Vcard::SCHEME_WORDS, static fn( string $key ): bool => ( $after['de_DE'][$key] ?? '' ) === '' || ( $after['en_US'][$key] ?? '' ) === '' ) === [] );
+check( 'and replaced nothing: a word the project changed stays, and every key it had is as it was', $after['de_DE']['[[/feature/vcard/label/phone]]'] === 'Fon' && array_intersect_key( $after['de_DE'], $texts['de_DE'] ) === $texts['de_DE'] && array_intersect_key( $after['en_US'], $texts['en_US'] ) === $texts['en_US'] );
+\Nino\Locales::useLocale( $old, 'de_DE' );
+$foot = \Nino\Html::renderHtml( $old, '[vcard foot]' );
+check( 'with the words the switch is drawn, in the language of the page, with no key', str_contains( $foot, 'nino-vcard-scheme' ) === true && str_contains( $foot, '[[/feature/' ) === false && str_contains( $foot, '>Hell<' ) === true );
+\Nino\Locales::useLocale( $old, 'en_US' );
+check( '...and in the other language', str_contains( \Nino\Html::renderHtml( $old, '[vcard foot]' ), '>Light<' ) === true );
+
+vcardOldWords( $old );
+\Nino\Filesystem::putFileContent( $old, '/text/de_DE.php', array_merge( \Nino\Filesystem::getFileContent( $old, '/text/de_DE.php', [] ), [ '[[/feature/vcard/scheme/dark]]' => 'Nacht' ] ) );
+$visit = \Nino\Html::renderHtml( $old, '[vcard foot]' );
+check( 'a request of a visitor adds nothing to the project: the text files are as they were', array_diff_key( \Nino\Filesystem::getFileContent( $old, '/text/en_US.php', [] ), array_flip( \Nino\Modules\Vcard::SCHEME_WORDS ) ) === \Nino\Filesystem::getFileContent( $old, '/text/en_US.php', [] ) && str_contains( $visit, 'nino-vcard-scheme' ) === false );
+[ $status ] = vcardCall( $old, 'vcard/save', vcardPosted( [ 'design' => '' ] ) );
+check( 'a save adds the words whatever the design: a project that saves once has them', $status === 200 && \Nino\Modules\Vcard::words( $old ) === true && \Nino\Filesystem::getFileContent( $old, '/text/de_DE.php', [] )['[[/feature/vcard/scheme/dark]]'] === 'Nacht' );
+
+$blank = vcardDesigned( [ 'design' => 'klar', 'switch' => true ], true );
+foreach( [ 'de_DE', 'en_US' ] as $locale )
+	\Nino\Filesystem::putFileContent( $blank, '/text/'. $locale. '.php', array_merge( \Nino\Filesystem::getFileContent( $blank, '/text/'. $locale. '.php', [] ), [ '[[/feature/vcard/scheme/auto]]' => "  \t " ] ) );
+check( 'a word of spaces in every language is no word', \Nino\Modules\Vcard::words( $blank ) === false && str_contains( \Nino\Html::renderHtml( $blank, '[vcard foot]' ), 'nino-vcard-scheme' ) === false );
+
+$quiet = vcardSandbox();
+ninoUser( $quiet, 'dev@example.com' );
+vcardCall( $quiet, 'vcard/save', vcardPosted() );
+$files = [ \Nino\Filesystem::path( $quiet, '/text/de_DE.php' ), \Nino\Filesystem::path( $quiet, '/text/en_US.php' ) ];
+foreach( $files as $file )
+	touch( $file, time() - 1000 );
+clearstatcache();
+$stamps = array_map( 'filemtime', $files );
+[ $status, $body ] = vcardCall( $quiet, 'vcard/save', vcardPosted( [ 'name' => 'Ada Byron' ] ) );
+clearstatcache();
+check( 'a save when no word is missing writes no text file', $status === 200 && array_map( 'filemtime', $files ) === $stamps && array_key_exists( 'warning', $body ) === false );
+
+$locked = vcardDesigned( [ 'design' => 'klar', 'switch' => true ], true );
+vcardOldWords( $locked );
+ninoUser( $locked, 'dev@example.com' );
+$path = \Nino\Filesystem::path( $locked, '/text/de_DE.php' );
+unlink( $path );
+mkdir( $path );
+ninoWarnings();
+[ $status, $body ] = vcardCall( $locked, 'vcard/save', vcardPosted( [ 'name' => 'Ada Locked', 'design' => 'klar', 'switch' => true ] ) );
+ninoWarnings();
+\Nino\Locales::useLocale( $locked, 'en_US' );
+check( 'where the text files cannot be written the card is saved all the same, and the answer says so with a code of its own', $status === 200 && ( $body['warning'] ?? '' ) === 'vcard_words' && $body['data']['name'] === 'Ada Locked' && \Nino\Filesystem::getFileContent( $locked, '/data/vcard.php', [] )['name'] === 'Ada Locked' );
+check( '...and the switch stays hidden, with no key on the page', str_contains( \Nino\Html::renderHtml( $locked, '[vcard foot]' ), 'nino-vcard-scheme' ) === false && str_contains( \Nino\Html::renderHtml( $locked, '[vcard foot]' ), '[[/feature/' ) === false );
+check( 'the sentence of that code is in both languages of the panel', array_filter( [ 'de_DE', 'en_US' ], static fn( string $locale ): bool => strlen( (string) ( ( include dirname( __DIR__ ). '/text/'. $locale. '.php' )['[[/_admin/error/vcard_words]]'] ?? '' ) ) < 20 ) === [] );
+rmdir( $path );
+
+echo "\n25. A panel that was loaded before the new fields existed, and the values that are never taken\n";
+
+$client = vcardSandbox();
+ninoUser( $client, 'dev@example.com' );
+vcardCall( $client, 'vcard/save', vcardPosted( [ 'design' => 'foto', 'scheme' => 'dark', 'switch' => true, 'accent' => '#336699' ] ) );
+$posted = vcardPosted( [ 'name' => 'Ada Byron' ] );
+unset( $posted['design'], $posted['scheme'], $posted['switch'], $posted['accent'] );
+[ $status, $body ] = vcardCall( $client, 'vcard/save', $posted );
+check( 'a save without the four fields is taken and leaves them as they are stored', $status === 200 && $body['data']['name'] === 'Ada Byron' && $body['data']['design'] === 'foto' && $body['data']['scheme'] === 'dark' && $body['data']['switch'] === true && $body['data']['accent'] === '#336699' );
+check( 'the answer of a save carries no pictures: they come with the list', array_key_exists( 'designs', $body ) === false && array_key_exists( 'designs', vcardCall( $client, 'vcard/list' )[1] ) === true );
+foreach( [ 1, '1', 'true', 'on', [ true ] ] as $odd ) {
+	[ , $body ] = vcardCall( $client, 'vcard/save', vcardPosted( [ 'switch' => $odd ] ) );
+	check( 'a switch sent as '. json_encode( $odd ). ' is off: only the boolean true is on', $body['data']['switch'] === false );
+}
+[ $status ] = vcardCall( $client, 'vcard/save', vcardPosted( [ 'design' => null ] ) );
+check( 'a field that is sent and wrong is refused all the same', $status === 400 );
+
 // The panel's script, where node is on the path: vcard-js-smoke.js beside this file runs it over the kernel's
 // tests/harness.js, so bin/check.sh and CI cover both halves in one go
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
 if( $node === '' || function_exists( 'exec' ) === false )
-	echo "  --  - node is not available here: vcard-js-smoke.js was NOT run\n";
-else {
-	$output = [];
-	$exit = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/vcard-js-smoke.js' ). ' 2>&1', $output, $exit );
-	check( 'vcard-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
-}
+	echo "  --  - node is not available here: vcard-js-smoke.js and vcard-switch-js-smoke.js were NOT run\n";
+else
+	foreach( [ 'vcard-js-smoke.js', 'vcard-switch-js-smoke.js' ] as $script ) {
+		$output = [];
+		$exit = 1;
+		exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/'. $script ). ' 2>&1', $output, $exit );
+		check( $script. ' passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
+	}
 
 ninoDone( $appData );

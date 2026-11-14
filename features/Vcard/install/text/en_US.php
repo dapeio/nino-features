@@ -15,9 +15,13 @@ return [
 	'[[/feature/vcard/label/website]]'		=> 'Website',
 	'[[/feature/vcard/label/address]]'		=> 'Address',
 	'[[/feature/vcard/label/hours]]'			=> 'Hours',
+	'[[/feature/vcard/label/scheme]]'			=> 'Colour scheme',
 	'[[/feature/vcard/label/legal]]'			=> 'Legal',
 	'[[/feature/vcard/action/save]]'			=> 'Save contact',
 	'[[/feature/vcard/action/map]]'				=> 'Show on map',
+	'[[/feature/vcard/scheme/light]]'			=> 'Light',
+	'[[/feature/vcard/scheme/auto]]'			=> 'Auto',
+	'[[/feature/vcard/scheme/dark]]'			=> 'Dark',
 	'[[/feature/vcard/legal/imprint]]'		=> 'Imprint',
 	'[[/feature/vcard/legal/privacy]]'		=> 'Privacy policy',
 
