@@ -10,4 +10,5 @@ return [
 	'features'		=> [ 'vcard' ],
 	'next'				=> '/_admin/#vcard',
 	'start'				=> 'own',
+	'menu'				=> 'folded',
 ];

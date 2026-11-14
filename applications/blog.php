@@ -10,4 +10,5 @@ return [
 	'features'		=> [ 'builder', 'design', 'consent', 'forms', 'modeswitch', 'seo', 'posts', 'search', 'toc', 'progress' ],
 	'next'				=> '/_admin/#builder',
 	'start'				=> 'starter',
+	'menu'				=> null,
 ];

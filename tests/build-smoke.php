@@ -313,11 +313,36 @@ foreach( glob( $repo. '/applications/*' ) ?: [] as $file )
 	$sources[ basename( $file, '.php' ) ] = str_ends_with( $file, '.php' ) === true && is_file( $file ) === true ? require $file : null;
 ksort( $sources );
 
-check( 'the repository carries its applications: blog, vcard and website', array_keys( $sources ) === [ 'blog', 'vcard', 'website' ] );
-check( 'each is an array of exactly the six fields, its key the file name', array_filter( $sources, static fn( mixed $source, string $key ): bool => is_array( $source ) === false || array_keys( $source ) !== [ 'key', 'name', 'description', 'features', 'next', 'start' ] || $source['key'] !== $key, ARRAY_FILTER_USE_BOTH ) === [] );
+check( 'the repository carries its applications: blog, full, vcard and website', array_keys( $sources ) === [ 'blog', 'full', 'vcard', 'website' ] );
+check( 'each is an array of exactly the seven fields, its key the file name', array_filter( $sources, static fn( mixed $source, string $key ): bool => is_array( $source ) === false || array_keys( $source ) !== [ 'key', 'name', 'description', 'features', 'next', 'start', 'menu' ] || $source['key'] !== $key, ARRAY_FILTER_USE_BOTH ) === [] );
 check( 'every feature an application names is a feature of this repository', array_filter( $sources, static fn( array $source ): bool => array_diff( $source['features'], array_keys( $manifests ) ) !== [] ) === [] );
 check( 'the website\'s start is "starter", and the blog is the website with features added', $sources['website']['start'] === 'starter' && $sources['blog']['start'] === 'starter' && array_diff( $sources['website']['features'], $sources['blog']['features'] ) === [] && count( $sources['blog']['features'] ) > count( $sources['website']['features'] ) );
 check( 'the vCard brings its own start page: its start is "own", its one feature is the card, and its place to start in is the panel of that feature', $sources['vcard']['start'] === 'own' && $sources['vcard']['features'] === [ 'vcard' ] && $sources['vcard']['next'] === '/_admin/#'. $manifests['vcard']['key'] );
+
+// What the index holds of a source: the menu only where it is "folded"
+$indexed = static fn( array $source ): array => $source['menu'] === 'folded' ? $source : array_diff_key( $source, [ 'menu' => 1 ] );
+
+// The index lists them by key, the one with the most features last
+$listed = $sources;
+uasort( $listed, static fn( array $a, array $b ): int => count( $a['features'] ) <=> count( $b['features'] ) );
+$most = array_key_last( $listed );
+$listed = array_diff_key( $sources, [ $most => 1 ] ) + [ $most => $sources[$most] ];
+
+// What the full installation leaves out, and why: the examples, which the manifest says by its maturity, and the vCard, which puts its card at
+// the start page where the project has none - the website's place in this application, whose starter pages are then not made, since a page route is there
+$notInFull = [ 'vcard' => 'the card takes the start page that the website of this application provides' ];
+
+foreach( glob( $repo. '/features/*/feature.php' ) ?: [] as $manifestFile )
+	if( ( ( require $manifestFile )['maturity'] ?? '' ) === 'Example' )
+		$notInFull[ ( require $manifestFile )['key'] ] = 'it is an example, not a feature for a site';
+
+$missing	= array_diff( array_keys( $manifests ), array_keys( $notInFull ), $sources['full']['features'] );
+$surplus	= array_merge( array_diff( $sources['full']['features'], array_keys( $manifests ) ), array_intersect( $sources['full']['features'], array_keys( $notInFull ) ) );
+$problem	= array_merge( array_map( static fn( string $key ): string => $key. ' is missing', $missing ), array_map( static fn( string $key ): string => $key. ' is too many'. ( isset( $notInFull[$key] ) === true ? ' - '. $notInFull[$key] : '' ), $surplus ) );
+
+check( 'the full installation names every feature of the catalogue once but the examples and the vCard'. ( $problem !== [] ? ' ('. implode( '; ', $problem ). ')' : '' ), $problem === [] && count( $sources['full']['features'] ) === count( array_unique( $sources['full']['features'] ) ) );
+check( 'the website starts on the dashboard, and the full installation starts where the website does, with the same start page and the menu as it is', $sources['website']['next'] === '/_admin/#dashboard' && $sources['full']['next'] === $sources['website']['next'] && $sources['full']['start'] === $sources['website']['start'] && $sources['full']['menu'] === null && $sources['website']['menu'] === null );
+check( 'the vCard\'s menu is "folded"; the website and the blog leave it null', $sources['vcard']['menu'] === 'folded' && $sources['website']['menu'] === null && $sources['blog']['menu'] === null );
 
 // A copy of the repository the applications are written into, one case at a time
 $apps = $work. '/apps';
@@ -354,6 +379,12 @@ check( 'the valid application builds', ( $buildWith( [ 'website.php' => $good ] 
 check( 'an application with next and start null - one that names no entry and no start page - builds too, and the index carries the nulls', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'next' => null, 'start' => null ] ) ] )[0] ) === 0
 	&& array_key_exists( 'next', readCatalogue( $appsOut )['applications'][0] ) === true && readCatalogue( $appsOut )['applications'][0]['next'] === null
 	&& array_key_exists( 'start', readCatalogue( $appsOut )['applications'][0] ) === true && readCatalogue( $appsOut )['applications'][0]['start'] === null );
+check( 'a menu of "folded" builds, and the index carries it as the last field of the entry', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'menu' => 'folded' ] ) ] )[0] ) === 0
+	&& array_keys( readCatalogue( $appsOut )['applications'][0] ) === [ 'key', 'name', 'description', 'features', 'next', 'start', 'menu' ] && readCatalogue( $appsOut )['applications'][0]['menu'] === 'folded' );
+check( 'a menu of null builds, and the index has no key for it', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'menu' => null ] ) ] )[0] ) === 0
+	&& array_keys( readCatalogue( $appsOut )['applications'][0] ) === [ 'key', 'name', 'description', 'features', 'next', 'start' ] );
+check( 'the application with the most features comes last in the index, whatever its key', ( $buildWith( [ 'a.php' => array_merge( $good, [ 'key' => 'a', 'name' => [ 'en_US' => 'A', 'de_DE' => 'A' ], 'features' => array_keys( $manifests ) ] ), 'z.php' => array_merge( $good, [ 'key' => 'z', 'name' => [ 'en_US' => 'Z', 'de_DE' => 'Z' ] ] ) ] )[0] ) === 0
+	&& array_column( readCatalogue( $appsOut )['applications'], 'key' ) === [ 'z', 'a' ] );
 check( 'a start of "own" builds', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'start' => 'own' ] ) ] )[0] ) === 0 );
 check( 'a text for a locale beside de_DE and en_US builds', ( $buildWith( [ 'website.php' => array_merge( $good, [ 'name' => $good['name'] + [ 'fr_FR' => 'Site' ] ] ) ] )[0] ) === 0 );
 $buildWith( [] );
@@ -386,6 +417,9 @@ $cases = [
 	'a next with a dot segment'		=> [ 'website.php' => array_merge( $good, [ 'next' => '/_admin/../#builder' ] ) ],
 	'a next that is no string'		=> [ 'website.php' => array_merge( $good, [ 'next' => 7 ] ) ],
 	'a start that is none'				=> [ 'website.php' => array_merge( $good, [ 'start' => 'blank' ] ) ],
+	'a menu left out'							=> [ 'website.php' => array_diff_key( $good, [ 'menu' => 1 ] ) ],
+	'a menu that is none'					=> [ 'website.php' => array_merge( $good, [ 'menu' => 'open' ] ) ],
+	'a menu that is no string'		=> [ 'website.php' => array_merge( $good, [ 'menu' => true ] ) ],
 	'a file that is no application'	=> [ 'website.php' => $good, 'extra.txt' => array_merge( $good, [ 'key' => 'extra', 'name' => [ 'en_US' => 'Extra', 'de_DE' => 'Extra' ] ] ) ],
 	'two applications of one name'	=> [ 'website.php' => $good, 'site.php' => array_merge( $good, [ 'key' => 'site', 'name' => [ 'en_US' => 'WEBSITE', 'de_DE' => 'Seite' ] ] ) ],
 ];
@@ -406,7 +440,7 @@ check( 'every application that breaks a rule is named, not only the first', $sta
 // The preview holds the same rules and shows the applications
 [ $status, $stdout ] = runScript( $repo. '/bin/catalogue.php', [ $root ] );
 $preview = json_decode( $stdout, true );
-check( 'bin/catalogue.php lists the applications as the sources have them', $status === 0 && is_array( $preview ) === true && ( $preview['applications'] ?? null ) === array_values( $sources ) );
+check( 'bin/catalogue.php lists the applications as the sources have them', $status === 0 && is_array( $preview ) === true && ( $preview['applications'] ?? null ) === array_values( array_map( $indexed, $listed ) ) );
 $buildWith( [ 'website.php' => array_merge( $good, [ 'features' => [ 'nothing' ] ] ) ] );
 [ $status, , $stderr ] = runScript( $apps. '/bin/catalogue.php', [ $root ] );
 check( '...and fails on an application that breaks a rule, naming the file', $status === 1 && str_contains( $stderr, 'applications/website.php' ) === true );
@@ -448,7 +482,7 @@ check( 'catalogue.json is format 1 with a generated time in ISO 8601 UTC', ( $do
 check( 'it is pretty-printed with unescaped slashes and unicode and ends in a newline', str_contains( $json, "\n    \"format\": 1" ) === true && str_contains( $json, '\/' ) === false && str_contains( $json, 'über' ) === true && str_ends_with( $json, "}\n" ) === true );
 check( 'one entry per feature, sorted by key', array_column( $document['features'] ?? [], 'key' ) === array_keys( $manifests ) );
 check( 'the key "applications" stands above the features, after generated, and format stays 1', array_keys( $document ) === [ 'format', 'generated', 'applications', 'features' ] && $document['format'] === 1 );
-check( 'it lists every application of applications/ as the source has it, sorted by key', ( $document['applications'] ?? null ) === array_values( $sources ) && array_column( $document['applications'] ?? [], 'key' ) === array_keys( $sources ) );
+check( 'it lists every application of applications/ as the source has it - the menu only where it is "folded" -, sorted by key', ( $document['applications'] ?? null ) === array_values( array_map( $indexed, $listed ) ) && array_column( $document['applications'] ?? [], 'key' ) === array_keys( $listed ) );
 check( 'every feature an application names is an entry of the index', array_filter( $document['applications'] ?? [], static fn( array $application ): bool => array_diff( $application['features'], array_column( $document['features'], 'key' ) ) !== [] ) === [] );
 
 foreach( $manifests as $key => $manifest ) {
@@ -493,9 +527,11 @@ check( 'and reads every entry as written', is_array( $parsed ) === true && count
 	return $entry;
 }, $parsed['features'] ) === $document['features'] );
 // A kernel that knows applications hands them back as the index has them; one from before them reads the index with the
-// key in it all the same and hands back the features alone. The CI runs against both
-check( 'the kernel of the checkout reads the index with the applications in it: it hands them back as written, or the features alone where it knows none', is_array( $parsed ) === true
-	&& ( array_keys( $parsed ) === [ 'format', 'generated', 'features' ] || ( array_keys( $parsed ) === [ 'format', 'generated', 'features', 'applications' ] && $parsed['applications'] === $document['applications'] ) ) );
+// key in it all the same and hands back the features alone; one that knows them but not the menu hands them back without
+// that field. The CI runs against all of them
+$withoutMenu = array_map( static fn( array $application ): array => array_diff_key( $application, [ 'menu' => 1 ] ), $document['applications'] );
+check( 'the kernel of the checkout reads the index with the applications in it: it hands them back as written, without the menu where it knows none, or the features alone where it knows no applications', is_array( $parsed ) === true
+	&& ( array_keys( $parsed ) === [ 'format', 'generated', 'features' ] || ( array_keys( $parsed ) === [ 'format', 'generated', 'features', 'applications' ] && ( $parsed['applications'] === $document['applications'] || $parsed['applications'] === $withoutMenu ) ) ) );
 check( 'the signature covers the applications: the document with one changed has none that holds', openssl_verify( str_replace( '/_admin/#builder', '/_admin/#design', $json ), (string) base64_decode( trim( $signature ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) !== 1 && $json !== str_replace( '/_admin/#builder', '/_admin/#design', $json ) );
 check( 'the kernel verifies the signature with the public key', \Nino\Catalogue::verify( $json, $signature, $publicPem ) === true );
 check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );

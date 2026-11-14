@@ -77,8 +77,9 @@ return [
 	'name'				=> [ 'en_US' => 'Website', 'de_DE' => 'Webseite' ],
 	'description'	=> [ 'en_US' => '...', 'de_DE' => '...' ],
 	'features'		=> [ 'builder', 'design', 'consent' ],
-	'next'				=> '/_admin/#builder',
+	'next'				=> '/_admin/#dashboard',
 	'start'				=> 'starter',
+	'menu'				=> null,
 ];
 ```
 
@@ -89,8 +90,9 @@ return [
 | `features` | die Keys von Features dieses Katalogs, mindestens eines, keines doppelt |
 | `next` | der Pfad im Projekt, zu dem die Einrichtung führt, mit optionalem Anker – `/_admin/#builder`, das Panel der Verwaltung mit seiner uri – oder `null`; kein Schema, kein `//` |
 | `start` | wer die Startseite stellt: `starter` (die Starter-Seiten des Kernels), `own` (ein Feature der Anwendung bringt sie) oder `null` (keine Aussage). Anwendungen mit einem `start` schließen einander aus |
+| `menu` | `"folded"`, wo die Verwaltung auf dem Panel von `next` mit eingeklapptem Menü öffnet, oder `null` für das Menü, wie es ist. Der Index trägt das Feld nur bei `"folded"`; ein Kernel, der es nicht kennt, übergeht es |
 
-`bin/build.php` prüft jede Anwendung dagegen, und eine, die eine Regel verletzt, bricht den Build mit einer Meldung ab, die ihre Datei nennt. `bin/catalogue.php` listet sie über den Features.
+`bin/build.php` prüft jede Anwendung dagegen, und eine, die eine Regel verletzt, bricht den Build mit einer Meldung ab, die ihre Datei nennt. `bin/catalogue.php` listet sie über den Features. Der Index führt die Anwendungen nach Key, nur die mit den meisten Features – `full`, die Installation mit den eingeschalteten Features des Katalogs – steht zuletzt; ein Test hält ihre Liste gleich der Menge aller Features, die Ausnahmen mit Grund benannt.
 
 ## Ein Release
 
@@ -153,13 +155,13 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `size` | seine Größe in Bytes |
 | `released` | der Tag, an dem dieses Archiv zum ersten Mal so veröffentlicht wurde, `YYYY-MM-DD` |
 
-`applications` ist eine nach Key sortierte Liste, ein Eintrag je Datei von `applications/`, jeder so, wie die Datei ihn hat:
+`applications` ist eine Liste nach Key, die Anwendung mit den meisten Features zuletzt, ein Eintrag je Datei von `applications/`, jeder so, wie die Datei ihn hat:
 
 ```json
-{ "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#builder", "start": "starter" }
+{ "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#dashboard", "start": "starter" }
 ```
 
-Der Schlüssel steht über `features`, und das Format bleibt 1: ein Kernel, der ihn nicht kennt, liest den Rest wie zuvor, und die Signatur deckt ihn mit ab. Die Felder sind die Tabelle aus [Eine Anwendung schreiben](#eine-anwendung-schreiben).
+Der Schlüssel steht über `features`, und das Format bleibt 1: ein Kernel, der ihn nicht kennt, liest den Rest wie zuvor, und die Signatur deckt ihn mit ab. Ein Eintrag trägt `menu` nur bei `"folded"`; eine Anwendung ohne hat keinen Schlüssel dafür. Die Felder sind die Tabelle aus [Eine Anwendung schreiben](#eine-anwendung-schreiben).
 
 `catalogue.json.sig` ist seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes, DER, base64 in einer Zeile. `generated` ist die Zeit der letzten Änderung, ISO 8601 UTC. Was `\Nino\Catalogue::parse()` abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum lässt `bin/build.php` das, was es gleich schreibt, zuerst durch `parse()` laufen.
 

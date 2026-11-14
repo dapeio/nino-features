@@ -89,7 +89,11 @@ $json			= (string) @file_get_contents( $target. '/catalogue.json' );
 $parsed		= \Nino\Catalogue::parse( $json );
 check( 'public/ holds one archive per feature directory', count( $archives ) === count( $directories ) );
 check( 'the catalogue verifies with the public key', \Nino\Catalogue::verify( $json, (string) @file_get_contents( $target. '/catalogue.json.sig' ), $publicKey ) === true );
-check( 'it lists the applications of the repository', array_column( json_decode( $json, true )['applications'] ?? [], 'key' ) === array_map( static fn( string $file ): string => basename( $file, '.php' ), glob( $repo. '/applications/*.php' ) ?: [] ) );
+$listed	= array_column( json_decode( $json, true )['applications'] ?? [], 'key' );
+$written	= array_map( static fn( string $file ): string => basename( $file, '.php' ), glob( $repo. '/applications/*.php' ) ?: [] );
+sort( $listed );
+sort( $written );
+check( 'it lists the applications of the repository', $listed === $written && $listed !== [] );
 check( 'the kernel parses it, one entry per feature', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $directories ) );
 check( 'and every entry names an archive that is there, with its digest', is_array( $parsed ) === true && array_filter( $parsed['features'], fn( array $entry ): bool => is_file( $target. '/'. basename( $entry['archive'] ) ) === false || hash_file( 'sha256', $target. '/'. basename( $entry['archive'] ) ) !== $entry['sha256'] ) === [] );
 

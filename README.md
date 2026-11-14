@@ -77,8 +77,9 @@ return [
 	'name'				=> [ 'en_US' => 'Website', 'de_DE' => 'Webseite' ],
 	'description'	=> [ 'en_US' => '...', 'de_DE' => '...' ],
 	'features'		=> [ 'builder', 'design', 'consent' ],
-	'next'				=> '/_admin/#builder',
+	'next'				=> '/_admin/#dashboard',
 	'start'				=> 'starter',
+	'menu'				=> null,
 ];
 ```
 
@@ -89,8 +90,9 @@ return [
 | `features` | the keys of features of this catalogue, at least one, none twice |
 | `next` | the path in the project the setup leads to, with an optional anchor - `/_admin/#builder`, the workbench panel by its uri - or `null`; no scheme, no `//` |
 | `start` | who provides the start page: `starter` (the kernel's starter pages), `own` (a feature of the application brings it) or `null` (no statement). Applications with a `start` exclude one another |
+| `menu` | `"folded"` where the workbench opens on the `next` panel with its menu folded, or `null` for the menu as it is. The index carries the field only where it is `"folded"`; a kernel that does not know it ignores it |
 
-`bin/build.php` holds every application to this, and one that breaks a rule stops the build with a message naming its file. `bin/catalogue.php` lists them above the features.
+`bin/build.php` holds every application to this, and one that breaks a rule stops the build with a message naming its file. `bin/catalogue.php` lists them above the features. The index lists the applications by key, except that the one with the most features - `full`, the installation with the features of the catalogue switched on - comes last; a test holds its list to the set of all features, the exceptions named with their reason.
 
 ## A release
 
@@ -153,13 +155,13 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `size` | its size in bytes |
 | `released` | the day this archive was first published as it is, `YYYY-MM-DD` |
 
-`applications` is a list sorted by key, one entry per file of `applications/`, each as the file has it:
+`applications` is a list by key, the application with the most features last, one entry per file of `applications/`, each as the file has it:
 
 ```json
-{ "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#builder", "start": "starter" }
+{ "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#dashboard", "start": "starter" }
 ```
 
-The key is above `features` and format stays 1: a kernel that does not know it reads the rest as before, and the signature covers it. The fields are the table of [Write an application](#write-an-application).
+The key is above `features` and format stays 1: a kernel that does not know it reads the rest as before, and the signature covers it. An entry carries `menu` only where it is `"folded"`; an application without it has no key for it. The fields are the table of [Write an application](#write-an-application).
 
 `catalogue.json.sig` is its detached signature: ECDSA over SHA-256 of the exact bytes, DER, base64 on one line. `generated` is the time of the last change, ISO 8601 UTC. What `\Nino\Catalogue::parse()` refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` runs what it is about to write through `parse()` first.
 

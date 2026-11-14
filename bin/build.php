@@ -14,7 +14,8 @@ declare(strict_types=1);
  *								are held to their rules the same way, and a single one that
  *								is not stops the build with a message naming the file. They
  *								are published as the key "applications" of catalogue.json,
- *								above the features, sorted by key: a kernel that reads
+ *								above the features, by key with the one that has the most features
+ *								last: a kernel that reads
  *								format 1 and does not know the key ignores it, and the
  *								signature covers it with the rest of the document.
  *

@@ -8,6 +8,7 @@ return [
 		'de_DE' => 'Eine Webseite, die Sie selbst aufbauen und gestalten, mit Einwilligungsbanner, Formularen, Dunkelmodus und Suchmaschineneinstellungen.',
 	],
 	'features'		=> [ 'builder', 'design', 'consent', 'forms', 'modeswitch', 'seo' ],
-	'next'				=> '/_admin/#builder',
+	'next'				=> '/_admin/#dashboard',
 	'start'				=> 'starter',
+	'menu'				=> null,
 ];

@@ -23,6 +23,13 @@ declare(strict_types=1);
  *										start					who provides the start page: "starter" (the
  *																	starter pages of the kernel), "own" (a feature of
  *																	the application) or null (no statement)
+ *										menu					null, or "folded": the workbench opens on the
+ *																	application's place to start in with its menu folded.
+ *																	The index carries the field only where it is
+ *																	"folded"; an entry without it has no key for it
+ *
+ *										The index lists them by key, the one with the most features
+ *										last.
  *
  *										Not run by itself: required by bin/build.php and
  *										bin/catalogue.php.
@@ -30,7 +37,8 @@ declare(strict_types=1);
 
 const APPLICATIONS_LOCALES		= [ 'de_DE', 'en_US' ];
 const APPLICATIONS_STARTS			= [ 'starter', 'own' ];
-const APPLICATIONS_FIELDS			= [ 'key', 'name', 'description', 'features', 'next', 'start' ];
+const APPLICATIONS_MENU				= 'folded';
+const APPLICATIONS_FIELDS			= [ 'key', 'name', 'description', 'features', 'next', 'start', 'menu' ];
 
 /**
  *	The reason a text per locale is not one, '' where it is
@@ -81,7 +89,7 @@ function applicationNextIsPath( string $next ): bool {
  *	@param		string		$directory		The applications/ directory; one that is not there holds none
  *	@param		array			$featureKeys	The keys of the features of this catalogue
  *
- *	@return 	array										[ applications sorted by key, problems ] - the problems are lines naming the file
+ *	@return 	array										[ applications sorted by key, the one with the most features last, problems ] - the problems are lines naming the file
  */
 function readApplications( string $directory, array $featureKeys ): array {
 
@@ -171,7 +179,11 @@ function readApplications( string $directory, array $featureKeys ): array {
 		if( $entry['start'] !== null && in_array( $entry['start'], APPLICATIONS_STARTS, true ) === false )
 			$problems[] = $label. ': start must be "'. implode( '" or "', APPLICATIONS_STARTS ). '" or null';
 
-		if( count( $problems ) === $before )
+		if( $entry['menu'] !== null && $entry['menu'] !== APPLICATIONS_MENU )
+			$problems[] = $label. ': menu must be "'. APPLICATIONS_MENU. '" or null';
+
+		if( count( $problems ) === $before ) {
+
 			$applications[$key] = [
 				'key'					=> $entry['key'],
 				'name'				=> $entry['name'],
@@ -180,6 +192,11 @@ function readApplications( string $directory, array $featureKeys ): array {
 				'next'				=> $entry['next'],
 				'start'				=> $entry['start'],
 			];
+
+			// Only where it says something: an entry without a menu has no key for it
+			if( $entry['menu'] === APPLICATIONS_MENU )
+				$applications[$key]['menu'] = APPLICATIONS_MENU;
+		}
 	}
 
 	// No two applications under one name in a locale, case ignored: the
@@ -199,7 +216,21 @@ function readApplications( string $directory, array $featureKeys ): array {
 			$problems[] = 'applications/'. $names[$locale][$name]. '.php and applications/'. $key. '.php are both named "'. trim( $entry['name'][$locale] ). '" in '. $locale. ' - an application is shown by its name, so no two may carry one';
 		}
 
+	// By key, the application with the most features last (the later key where
+	// two have as many): the assistant shows the set that holds the others at the end
 	ksort( $applications, SORT_STRING );
+
+	$last = null;
+
+	foreach( $applications as $key => $entry )
+		if( $last === null || count( $entry['features'] ) >= count( $applications[$last]['features'] ) )
+			$last = $key;
+
+	if( $last !== null ) {
+		$entry = $applications[$last];
+		unset( $applications[$last] );
+		$applications[$last] = $entry;
+	}
 
 	return [ array_values( $applications ), $problems ];
 }
