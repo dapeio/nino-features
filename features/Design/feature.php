@@ -22,16 +22,16 @@ return [
 				'de_DE' => 'Ermöglicht, jedes Objekt einzustellen: Seite, Kopf, Fuß, Inhalt, Kacheln, Karte (Abstand auch der Spalten mit Grund), Buttons, Listen, Tabellen, Formular, Tabs, Accordion, dazu Features mit Varianten.',
 			],
 			'Knobs' => [
-				'en_US' => 'Every template offers its own knobs, as strips from less to more or as switches; the tabs Tablet and Mobile set in steps what those widths do differently.',
-				'de_DE' => 'Jede Vorlage bietet eigene Regler, als Leisten von weniger bis mehr oder als Schalter; die Tabs Tablet und Mobile stellen in Stufen ein, was diese Breiten anders machen.',
+				'en_US' => 'Every template offers its own knobs, as strips or switches, the type of the menu and the main button among them; the tabs Tablet and Mobile set in steps what those widths do differently.',
+				'de_DE' => 'Jede Vorlage bietet eigene Regler, als Leisten oder Schalter, darunter Schrift des Menüs und Hauptbutton; die Tabs Tablet und Mobile stellen in Stufen ein, was diese Breiten anders machen.',
 			],
 			'Preview' => [
 				'en_US' => 'Lets you see every change at once on a specimen page of your project, at Mobile, Tablet or desktop width.',
 				'de_DE' => 'Ermöglicht, jede Änderung sofort auf einer Musterseite Deines Projekts zu sehen, in Mobile-, Tablet- oder Desktopbreite.',
 			],
 			'Themes' => [
-				'en_US' => 'Lets you keep a look as a named theme and Load, Duplicate, Export, Delete, Edit and Import themes; six ship with the Design, and a theme can carry css of its own.',
-				'de_DE' => 'Ermöglicht, ein Aussehen als Theme festzuhalten und Themes zu Laden, Duplizieren, Exportieren, Löschen, Bearbeiten und zu importieren; sechs liegen bei, und ein Theme kann eigenes CSS tragen.',
+				'en_US' => 'Lets you keep a look as a named theme and Load, Duplicate, Export, Delete, Edit and Import themes; seven ship with the Design, and a theme can carry css of its own.',
+				'de_DE' => 'Ermöglicht, ein Aussehen als Theme festzuhalten und Themes zu Laden, Duplizieren, Exportieren, Löschen, Bearbeiten und zu importieren; sieben liegen bei, und ein Theme kann eigenes CSS tragen.',
 			],
 			'Typefaces' => [
 				'en_US' => 'Lets you install typefaces from a list and use them for the font roles of the setup; they are served by the site itself.',

@@ -1,0 +1,19 @@
+/*	@knob	menu-weight	Weight of the links of the menu that opens over the page
+ *
+ *	The weight of the links of the overlay: light, bold as the set draws them, or the heaviest cut a face has - a face with no cut above bold shows bold.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ *
+ *	A word that is longer than the line breaks inside itself and never runs over the edge of the window.
+ */
+:root {
+	--header-menu-weight--less:	300;
+	--header-menu-weight--default:	700;
+	--header-menu-weight--more:	900;
+}
+
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
+	font-weight: var(--header-menu-weight);
+	overflow-wrap: anywhere;
+	hyphens: auto;
+	max-width: 100%;
+}

@@ -1,0 +1,24 @@
+/*	@knob	nav-case	Capitals in the links of the navigation, the menu that opens over the page among them
+ *
+ *	The case of the links of the navigation: as they are written, or in capitals, in the bar and in the menu.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ *
+ *	A word that is longer than the line breaks inside itself and never runs over the edge of the window.
+ */
+:root {
+	--header-nav-case--default: none;
+	--header-nav-case--more: uppercase;
+}
+
+.nino-frame-header .nino-nav-content li a {
+	text-transform: var(--header-nav-case);
+	overflow-wrap: anywhere;
+	hyphens: auto;
+}
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content li a {
+		overflow-wrap: normal;
+		hyphens: manual;
+	}
+}

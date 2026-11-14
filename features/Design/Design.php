@@ -106,6 +106,9 @@ namespace Nino\Modules {
 		 *	What the tablet and the phone do differently is part of the setup like any other, and a setup where both stand at Automatic
 		 *	leaves it out of the input: a project that set nothing for them hashes as it did.
 		 *
+		 *	The file of each knob a set brings in a file of its own joins them, for the knobs that stand off the middle, by the bytes it has now: a
+		 *	project that moved none of them hashes as it did.
+		 *
 		 *	The styles chosen for the templates are part of the setup like any other, and an empty choice is left out of the
 		 *	input as that of the features is: a project that chose no style hashes as it did. The file of each option chosen
 		 *	joins the files of the parts, by the bytes it has now, or by none where it is gone.
@@ -131,6 +134,13 @@ namespace Nino\Modules {
 					$file = Design\Setup::styleFile( $library, $part, (string) ( $setup['parts'][$part] ?? '' ), $style, $option );
 					$files['style '. $part. ' '. $style] = [ $option, $file === '' ? '' : (string) hash_file( 'sha256', $file ) ];
 				}
+
+			/*	The files of the knobs a set brings (see Design\Setup::lazy()), for each that stands off the middle: the step and the bytes the file has
+				now. A knob at the middle writes nothing of its file, so a project that moved none hashes as it did	*/
+			foreach( array_keys( Design\Setup::PARTS ) as $part )
+				foreach( Design\Setup::lazy( $library, $part, (string) ( $setup['parts'][$part] ?? '' ) ) as $knob => $path )
+					if( Design\Setup::step( $setup, $part, $knob ) !== 'default' )
+						$files['knob '. $part. ' '. $knob] = [ Design\Setup::step( $setup, $part, $knob ), (string) hash_file( 'sha256', $path ) ];
 
 			/*	The navigation chosen for a frame is what the option writes now: its key and the bytes of its call. A setup that chose none
 				hashes as it did	*/

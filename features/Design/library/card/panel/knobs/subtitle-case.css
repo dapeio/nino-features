@@ -1,0 +1,13 @@
+/*	@knob	subtitle-case	Capitals in the subtitle of a card
+ *
+ *	The case of the subtitle of a card: as it is written, or in capitals.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ */
+:root {
+	--card-subtitle-case--default: none;
+	--card-subtitle-case--more: uppercase;
+}
+
+.nino-card-subtitle {
+	text-transform: var(--card-subtitle-case);
+}

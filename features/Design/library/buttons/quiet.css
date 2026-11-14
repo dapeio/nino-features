@@ -9,6 +9,8 @@
  *	@knob	corners		Corner radius
  *	@knob	outline		Weight of the line of the outline button
  *	@knob	hover		What a button does under the pointer
+ *	@style	primary	Main button
+ *	@style-de	primary	Hauptbutton
  *
  *	The button as punctuation, for pages where a button is an option and not
  *	the point: a filter row, a table with an action in every line, a form with
@@ -32,6 +34,8 @@
  *	focus, the weight of the ladder times the size and 1px more, so that it keeps its
  *	sign at the least. At the middle that is 2px, as the other text variants have it,
  *	who keep that.
+ *
+ *	The style primary is the main button: with none chosen it is filled with the brand colour, as the framework draws it, and the option dark puts it on the dark ground of the palette with its label in the brand colour.
  */
 
 /*	The ladders are Nino's, value for value - buttons regular says what each of them is	*/

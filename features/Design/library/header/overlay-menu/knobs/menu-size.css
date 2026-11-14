@@ -1,0 +1,27 @@
+/*	@knob	menu-size	Size of the links of the menu that opens over the page
+ *
+ *	The size of the links of the overlay: from 640px a factor on the size the scale gives them, below it a quarter of the step on the size that follows the width of the window - the links fill the window already, and a whole factor would break the longest of them in two.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ *
+ *	A word that is longer than the line breaks inside itself and never runs over the edge of the window. The size is held to the width of the window, so that the longest of the links fits at the widest letter-spacing and in capitals.
+ */
+:root {
+	--header-menu-size--least:	.7;
+	--header-menu-size--less:	.85;
+	--header-menu-size--default:	1;
+	--header-menu-size--more:	1.6;
+	--header-menu-size--most:	2.5;
+}
+
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
+	font-size: min( calc( clamp(2rem, 12vw, 3.6rem) * var(--header-nav) * ( 1 + ( var(--header-menu-size) - 1 ) / 4 ) ), 14vw );
+	overflow-wrap: anywhere;
+	hyphens: auto;
+	max-width: 100%;
+}
+
+@media (min-width: 640px) {
+	.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
+		font-size: calc( var(--text-3) * var(--header-nav) * var(--header-menu-size) );
+	}
+}

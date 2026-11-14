@@ -1,0 +1,13 @@
+/*	@knob	title-case	Capitals in the title of a card
+ *
+ *	The case of the title of a card: as it is written, or in capitals.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ */
+:root {
+	--card-title-case--default: none;
+	--card-title-case--more: uppercase;
+}
+
+.nino-card-title {
+	text-transform: var(--card-title-case);
+}

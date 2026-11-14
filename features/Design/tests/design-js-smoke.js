@@ -405,7 +405,7 @@ const NARROW_QUERY = '(max-width: 63.999rem)';
 
 /** The kind of every knob, by part, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1, a toggle two, 0 and 1, an ink a tone of the page or none */
 const KINDS = {
-	header 		: { nav : 'scale', height : 'scale', space : 'scale', logo : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', shadow : 'scale', position : 'choice', cta : 'choice', behaviour : 'choice', 'nav-case' : 'toggle' },
+	header 		: { nav : 'scale', height : 'scale', space : 'scale', logo : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', shadow : 'scale', position : 'choice', cta : 'choice', behaviour : 'choice', 'nav-case' : 'toggle', 'menu-size' : 'scale', 'menu-weight' : 'choice', 'menu-tracking' : 'scale' },
 	footer 		: { scale : 'scale', height : 'scale', space : 'scale', logo : 'scale', ground : 'choice', 'border-size' : 'scale', 'border-color' : 'choice', divider : 'scale', position : 'choice', 'nav-case' : 'toggle' },
 	section 	: { quiet : 'scale', loud : 'scale', title : 'scale', subtitle : 'scale', 'title-tracking' : 'scale', space : 'scale', rule : 'grade', 'rule-length' : 'choice', 'title-shadow' : 'grade', dim : 'scale', 'title-ground' : 'choice', 'rule-color' : 'choice', align : 'choice', measure : 'choice', 'title-case' : 'toggle', 'subtitle-case' : 'toggle', 'title-ink' : 'ink', 'subtitle-ink' : 'ink' },
 	tiles 		: { title : 'scale', subtitle : 'scale', text : 'scale', 'title-tracking' : 'scale', space : 'scale', gap : 'grade', place : 'choice', dim : 'scale', hover : 'choice', 'title-ink' : 'ink', 'subtitle-ink' : 'ink' },
@@ -457,6 +457,9 @@ const LAYOUT = {
 	'fonts/code'                      : [ 'type', 'page', 6 ],
 	'knobs/header/nav'                : [ 'type', 'header', 1 ],
 	'knobs/header/nav-case'           : [ 'type', 'header', 2 ],
+	'knobs/header/menu-size'          : [ 'type', 'header', 3 ],
+	'knobs/header/menu-weight'        : [ 'type', 'header', 4 ],
+	'knobs/header/menu-tracking'      : [ 'type', 'header', 5 ],
 	'knobs/footer/scale'              : [ 'type', 'footer', 1 ],
 	'knobs/footer/nav-case'           : [ 'type', 'footer', 2 ],
 	'knobs/section/title'             : [ 'type', 'section', 1 ],
@@ -3817,9 +3820,9 @@ knobKeys.forEach( function( key ) {
 check( 'a scale is five numbers, a grade five that only grow, a choice the three words of the knob, each capitalised, a toggle a switch and an ink a select of the tones with none first - a row for every knob the table has, each on the tab and under the object it names, with the title of each button its label, the values on them -2 to +2, 0 to +4 and -1 to +1, and a note beside the name'
 	+ ( wordProblems.length === 0 ? '' : ' - not so for '+ wordProblems.join(' | ') ),
 	wordRows === knobKeys.length && wordRows === Object.keys( KNOBS ).reduce( function( sum, part ) { return sum + KNOBS[part].length }, 0 )
-	&& scaleRows === kindCount('scale') && gradeRows === kindCount('grade') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 9 && scaleRows === 52 && gradeRows === 4 && inkRows === 10 && wordProblems.length === 0 );
-check( '...the twenty-four choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
-	Object.keys( CHOICE_WORDS ).length === 24 && Object.keys( CHOICE_WORDS ).every( function( at ) {
+	&& scaleRows === kindCount('scale') && gradeRows === kindCount('grade') && choiceRows === kindCount('choice') && toggleRows === kindCount('toggle') && inkRows === kindCount('ink') && choiceRows > 0 && toggleRows === 9 && scaleRows === 54 && gradeRows === 4 && inkRows === 10 && wordProblems.length === 0 );
+check( '...the twenty-five choices stand at the word the defaults put them at to begin with, which is the middle but for the navigation and the button of the header - the lit button of the three is the one of that position - on the tab the table puts each on',
+	Object.keys( CHOICE_WORDS ).length === 25 && Object.keys( CHOICE_WORDS ).every( function( at ) {
 		const key = 'knobs/'+ at;
 		const stands = worded.design._data.defaults.knobs[ at.split('/')[0] ][ at.split('/')[1] ];
 		worded.show( worded.design._data.layout.controls[key][0] );
@@ -3914,7 +3917,7 @@ const knStands = function( key ) {
 
 check( '...in numbers: −2 for the title of a section, +2 for its subtitle, −1 for the corners of the buttons, +1 for the shadow of a card and, for the knobs nobody moved, the word of the position the defaults put them at - 0 for a scale, the middle word for a choice but for the navigation and the button of the header',
 	knWord('knobs/section/title') === '−2' && knWord('knobs/section/subtitle') === '+2' && knWord('knobs/buttons/corners') === '−1' && knWord('knobs/card/shadow') === '+1'
-	&& knAllLit().every( function( word, at ) { return [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) !== -1 || word[1] === knStands( knKeys[at] ) } ) && knMiddles.length === 24 );
+	&& knAllLit().every( function( word, at ) { return [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/buttons/corners', 'knobs/card/shadow' ].indexOf( knKeys[at] ) !== -1 || word[1] === knStands( knKeys[at] ) } ) && knMiddles.length === 25 );
 
 /*	Another template brings its own knobs, and the ones the last one had are
 	not this one's: a position the new template does not answer to goes back to
@@ -4595,7 +4598,7 @@ const swOrder = {};
 drawnRows( sw ).forEach( function( row ) { swOrder[row.object] = row.controls } );
 
 check( 'the nine switches stand on the Type view, each under the sizes of its object and after them: the navigation of the header and of the footer, the title and the subtitle of a section and of a card, the buttons, the labels of a form, the weight of the titles of an accordion',
-	JSON.stringify( swOrder.header ) === JSON.stringify( [ 'knobs/header/nav', 'knobs/header/nav-case' ] ) && JSON.stringify( swOrder.footer ) === JSON.stringify( [ 'knobs/footer/scale', 'knobs/footer/nav-case' ] )
+	JSON.stringify( swOrder.header ) === JSON.stringify( [ 'knobs/header/nav', 'knobs/header/nav-case', 'knobs/header/menu-size', 'knobs/header/menu-weight', 'knobs/header/menu-tracking' ] ) && JSON.stringify( swOrder.footer ) === JSON.stringify( [ 'knobs/footer/scale', 'knobs/footer/nav-case' ] )
 	&& JSON.stringify( swOrder.section ) === JSON.stringify( [ 'knobs/section/title', 'knobs/section/subtitle', 'knobs/section/quiet', 'knobs/section/loud', 'knobs/section/title-tracking', 'knobs/section/title-case', 'knobs/section/subtitle-case' ] )
 	&& JSON.stringify( swOrder.card ) === JSON.stringify( [ 'knobs/card/title', 'knobs/card/subtitle', 'knobs/card/title-tracking', 'knobs/card/title-case', 'knobs/card/subtitle-case' ] )
 	&& JSON.stringify( swOrder.buttons ) === JSON.stringify( [ 'knobs/buttons/size', 'knobs/buttons/spread', 'knobs/buttons/tracking', 'knobs/buttons/case' ] ) && JSON.stringify( swOrder.forms ) === JSON.stringify( [ 'knobs/forms/scale', 'knobs/forms/label-case' ] )
@@ -6466,7 +6469,7 @@ const ICON_OF = {
 	'page/radius' : 'square-round-corner', 'page/radius-alt' : 'square-round-corner',
 	'page/radii-section' : 'square-round-corner', 'page/radii-tile' : 'square-round-corner', 'page/radii-card' : 'square-round-corner', 'page/radii-image' : 'square-round-corner',
 	'typefaces/family' : 'a-large-small',
-	'header/nav' : 'a-large-small', 'header/height' : 'move-vertical', 'header/space' : 'align-vertical-space-around', 'header/logo' : 'scaling', 'header/ground' : 'contrast', 'header/border-size' : 'minus', 'header/border-color' : 'palette', 'header/shadow' : 'square-stack', 'header/position' : 'move-horizontal', 'header/cta' : 'square-round-corner', 'header/behaviour' : 'arrow-down-to-line',
+	'header/nav' : 'a-large-small', 'header/menu-size' : 'a-large-small', 'header/menu-weight' : 'minus', 'header/menu-tracking' : 'tracking', 'header/height' : 'move-vertical', 'header/space' : 'align-vertical-space-around', 'header/logo' : 'scaling', 'header/ground' : 'contrast', 'header/border-size' : 'minus', 'header/border-color' : 'palette', 'header/shadow' : 'square-stack', 'header/position' : 'move-horizontal', 'header/cta' : 'square-round-corner', 'header/behaviour' : 'arrow-down-to-line',
 	'footer/scale' : 'a-large-small', 'footer/height' : 'move-vertical', 'footer/space' : 'align-vertical-space-around', 'footer/logo' : 'scaling', 'footer/ground' : 'contrast', 'footer/border-size' : 'minus', 'footer/border-color' : 'palette', 'footer/divider' : 'minus', 'footer/position' : 'move-horizontal',
 	'section/quiet' : 'a-large-small', 'section/loud' : 'a-large-small',
 	'section/title' : 'a-large-small', 'section/subtitle' : 'a-large-small', 'section/title-tracking' : 'chevrons-left-right', 'section/space' : 'scaling', 'section/rule' : 'minus', 'section/rule-length' : 'move-horizontal', 'section/title-shadow' : 'square-stack', 'section/dim' : 'contrast',

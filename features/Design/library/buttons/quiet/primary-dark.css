@@ -1,0 +1,28 @@
+/*	@name				Dark
+ *	@name-de			Dunkel
+ *	@description	The main button stands on the dark ground of the palette with its label in the brand colour, as the brand is solved for a dark ground, and a line of that colour round it.
+ *	@description-de	Der Hauptbutton steht auf dem dunklen Grund der Palette, seine Beschriftung in der Markenfarbe, wie sie für einen dunklen Grund gelöst ist, und eine Linie in dieser Farbe ringsum.
+ *
+ *	The main button of the style primary (see quiet.css). Where Quiet fills the primary button with the brand colour, this
+ *	puts it on the dark ground of the palette (--color-section-dark-bg) and writes the label in the accent that is solved
+ *	for a dark ground (--color-accent-dark), which is the brand colour made legible there; the line round the button is the
+ *	same colour, so that the button has an edge on a dark page too, where its ground is the page's. No colour is named here:
+ *	every one is a token of the palette, so a project that changes its brand colour changes the label with it, and the
+ *	tokens are the ones the palette solves in the light mode and in the dark one.
+ *
+ *	Under the pointer the ground goes to the black of the palette and the label to the accent solved for that, and the
+ *	framework's dimming of the main button is taken back, since a dark ground that is dimmed turns grey. The focus ring is the
+ *	framework's, and a disabled button is the framework's disabled button: neither is touched here.
+ */
+
+.nino-btn--primary {
+	background-color: var(--color-section-dark-bg);
+	color: var(--color-accent-dark);
+	border-color: var(--color-accent-dark);
+}
+.nino-btn--primary:hover:where(:not(:focus-visible)) {
+	background-color: var(--color-section-black-bg);
+	color: var(--color-accent-black);
+	border-color: var(--color-accent-black);
+	opacity: 1;
+}

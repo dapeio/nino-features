@@ -1,0 +1,21 @@
+/*	@knob	menu-tracking	Letter-spacing of the links of the menu that opens over the page
+ *
+ *	The letter-spacing of the links of the overlay, in em: pulled in as the set draws it at the middle, none above it and wide at the end.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ *
+ *	A word that is longer than the line breaks inside itself and never runs over the edge of the window.
+ */
+:root {
+	--header-menu-tracking--least:	-.06em;
+	--header-menu-tracking--less:	-.05em;
+	--header-menu-tracking--default:	-.04em;
+	--header-menu-tracking--more:	0em;
+	--header-menu-tracking--most:	.1em;
+}
+
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
+	letter-spacing: var(--header-menu-tracking);
+	overflow-wrap: anywhere;
+	hyphens: auto;
+	max-width: 100%;
+}

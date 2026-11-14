@@ -88,6 +88,9 @@ namespace Nino\Modules\Design {
 			other marks of the sheet have (a comment on a line of its own)	*/
 		public const string STYLE = '/* -- style %s: %s -- */';
 
+		// The line over the file of a knob that a set brings and that stands off the middle (see Setup::lazy()): the knob and its step
+		public const string KNOB = '/* -- knob %s: %s -- */';
+
 		/*	The line the rules the styles of a feature share stand under, before the css of the options chosen: the body of design/styles.css	*/
 		public const string SHARED = '/* -- styles -- */';
 
@@ -245,6 +248,25 @@ namespace Nino\Modules\Design {
 
 				$css 		= self::_read( $file );
 				$ladders = Setup::ladders( $libraryDir, $part, $set );
+				$brought = '';
+
+				/*	A knob the set brings in a file of its own is written where it stands off the middle: the file behind the css of the
+					set, under a line that names it, and its selection line with the others. At the middle neither is written - the sheet
+					is the one of a set without the knob	*/
+				foreach( Setup::lazy( $libraryDir, $part, $set ) as $knob => $path ) {
+
+					if( isset( $ladders[$knob] ) === false )
+						continue;
+
+					if( Setup::step( $setup, $part, $knob ) === 'default' ) {
+						unset( $ladders[$knob] );
+						continue;
+					}
+
+					$brought .= "\n". sprintf( self::KNOB, $knob, Setup::step( $setup, $part, $knob ) ). "\n". self::_read( $path );
+				}
+
+				$css .= $brought;
 				$knobs 	= array_keys( $ladders );
 				$where 	= [];
 

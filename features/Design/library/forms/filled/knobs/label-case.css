@@ -1,0 +1,9 @@
+/*	@knob	label-case	Capitals in the labels
+ *
+ *	The case of the labels of a form: as they are written, or in capitals. The kernel draws it from --forms-label-case.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ */
+:root {
+	--forms-label-case--default: none;
+	--forms-label-case--more: uppercase;
+}

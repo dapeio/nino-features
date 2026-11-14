@@ -193,6 +193,9 @@ namespace Nino\Modules\Design {
 			nothing - and the four after it climb from there, so that the positions are 0 to 4 and not -2 to +2	*/
 		public const array GRADES = [ 'default', 'light', 'medium', 'strong', 'full' ];
 
+		// The directory of a set that holds the files of the knobs it brings (see lazy())
+		public const string KNOB_DIR = 'knobs';
+
 		/*	The knobs, per part, and the kind of each - and nothing else. A knob belongs
 			to the part whose templates answer to it and has a name: what it is called and
 			what the terse note beside it says live in the panel's text files, one key each
@@ -227,7 +230,10 @@ namespace Nino\Modules\Design {
 							position			where the navigation stands: left, centre or right (a choice)
 							cta					the button of the header: hidden, small or large (a choice)
 							behaviour			what the bar does when the page is scrolled: goes with it, hides on the way down or stays (a choice)
-							nav-case			the links of the navigation in capitals (a toggle)
+							nav-case			the links of the navigation in capitals, the menu that opens over the page among them (a toggle)
+							menu-size			the size of the links of the menu that opens over the page
+							menu-weight			the weight of those links: light, the template's own or bold (a choice)
+							menu-tracking		the letter-spacing of those links
 				footer		scale				the type size of the footer
 							height				the space above and below its content
 							space				the space between its columns, its lines and its links
@@ -309,7 +315,7 @@ namespace Nino\Modules\Design {
 							marker-ink			the colour of that sign (an ink)
 							weight				the titles in the weight of the text instead of bold (a toggle)	*/
 		public const array KNOBS = [
-			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle' ],
+			'header' 		=> [ 'nav' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'shadow' => 'scale', 'position' => 'choice', 'cta' => 'choice', 'behaviour' => 'choice', 'nav-case' => 'toggle', 'menu-size' => 'scale', 'menu-weight' => 'choice', 'menu-tracking' => 'scale' ],
 			'footer' 		=> [ 'scale' => 'scale', 'height' => 'scale', 'space' => 'scale', 'logo' => 'scale', 'ground' => 'choice', 'border-size' => 'scale', 'border-color' => 'choice', 'divider' => 'scale', 'position' => 'choice', 'nav-case' => 'toggle' ],
 			'section' 		=> [ 'quiet' => 'scale', 'loud' => 'scale', 'title' => 'scale', 'subtitle' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'rule' => 'grade', 'rule-length' => 'choice', 'title-shadow' => 'grade', 'dim' => 'scale', 'title-ground' => 'choice', 'rule-color' => 'choice', 'align' => 'choice', 'measure' => 'choice', 'title-case' => 'toggle', 'subtitle-case' => 'toggle', 'title-ink' => 'ink', 'subtitle-ink' => 'ink' ],
 			'tiles' 		=> [ 'title' => 'scale', 'subtitle' => 'scale', 'text' => 'scale', 'title-tracking' => 'scale', 'space' => 'scale', 'gap' => 'grade', 'place' => 'choice', 'dim' => 'scale', 'hover' => 'choice', 'title-ink' => 'ink', 'subtitle-ink' => 'ink' ],
@@ -400,6 +406,9 @@ namespace Nino\Modules\Design {
 			'fonts/code' 							=> [ 'type', 'page', 6 ],
 			'knobs/header/nav' 						=> [ 'type', 'header', 1 ],
 			'knobs/header/nav-case' 				=> [ 'type', 'header', 2 ],
+			'knobs/header/menu-size' 				=> [ 'type', 'header', 3 ],
+			'knobs/header/menu-weight' 			=> [ 'type', 'header', 4 ],
+			'knobs/header/menu-tracking' 			=> [ 'type', 'header', 5 ],
 			'knobs/footer/scale' 					=> [ 'type', 'footer', 1 ],
 			'knobs/footer/nav-case' 				=> [ 'type', 'footer', 2 ],
 			'knobs/section/title' 					=> [ 'type', 'section', 1 ],
@@ -2639,7 +2648,53 @@ namespace Nino\Modules\Design {
 			if( $file === '' || isset( self::KNOBS[$part] ) === false )
 				return [];
 
-			return self::declarations( self::uncomment( (string) @file_get_contents( $file ) ), $part, self::KNOBS[$part] );
+			$found = self::declarations( self::uncomment( (string) @file_get_contents( $file ) ), $part, self::KNOBS[$part] );
+
+			// The knobs a set brings in files of their own answer as the others do: their ladder is declared in the file
+			foreach( self::lazy( $libraryDir, $part, $set ) as $knob => $path ) {
+
+				$own = self::declarations( self::uncomment( (string) @file_get_contents( $path ) ), $part, [ $knob => self::KNOBS[$part][$knob] ] );
+
+				if( isset( $own[$knob] ) === true )
+					$found[$knob] = $own[$knob];
+			}
+
+			$ordered = [];
+
+			foreach( array_keys( self::KNOBS[$part] ) as $knob )
+				if( isset( $found[$knob] ) === true )
+					$ordered[$knob] = $found[$knob];
+
+			return $ordered;
+		}
+
+		/**
+		 *	The knobs a set brings in files of their own: library/<part>/<set>/knobs/<knob>.css, beside the files of its styles. Such a
+		 *	file declares the ladder of the knob and the rules that read it, and says nothing a set that never had the knob draws: the
+		 *	compiler writes it - behind the css of the set, under a line that names the knob - where the knob stands off the middle,
+		 *	and writes nothing of it where it stands at the middle, so that a setup that never moved it compiles to the sheet it had
+		 *	before the file was there. The knob is answered by the set all the same: the panel offers it and the setup keeps it
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$set					A set name
+		 *
+		 *	@return 	array										knob => path, in KNOBS order, for each file named for a knob of the part
+		 */
+		public static function lazy( string $libraryDir, string $part, string $set ): array {
+
+			$dir = self::styleDir( $libraryDir, $part, $set );
+
+			if( $dir === '' || isset( self::KNOBS[$part] ) === false )
+				return [];
+
+			$found = [];
+
+			foreach( array_keys( self::KNOBS[$part] ) as $knob )
+				if( is_file( $dir. '/'. self::KNOB_DIR. '/'. $knob. '.css' ) === true )
+					$found[$knob] = $dir. '/'. self::KNOB_DIR. '/'. $knob. '.css';
+
+			return $found;
 		}
 
 		/**

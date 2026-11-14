@@ -1,0 +1,13 @@
+/*	@knob	title-case	Capitals in the title of a section
+ *
+ *	The case of the title of a section, the hero style's among them: as it is written, or in capitals.
+ *	The file of a knob this set brings (see Setup::lazy()): the compiler writes it only where the knob stands off the middle, so that a setup that never moved the knob compiles to the sheet it had before.
+ */
+:root {
+	--section-title-case--default: none;
+	--section-title-case--more: uppercase;
+}
+
+.nino-section-title {
+	text-transform: var(--section-title-case);
+}
