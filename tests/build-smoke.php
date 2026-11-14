@@ -328,9 +328,8 @@ uasort( $listed, static fn( array $a, array $b ): int => count( $a['features'] )
 $most = array_key_last( $listed );
 $listed = array_diff_key( $sources, [ $most => 1 ] ) + [ $most => $sources[$most] ];
 
-// What the full installation leaves out, and why: the examples, which the manifest says by its maturity, and the vCard, which puts its card at
-// the start page where the project has none - the website's place in this application, whose starter pages are then not made, since a page route is there
-$notInFull = [ 'vcard' => 'the card takes the start page that the website of this application provides' ];
+// What the full installation leaves out: the examples, which the manifest says by its maturity
+$notInFull = [];
 
 foreach( glob( $repo. '/features/*/feature.php' ) ?: [] as $manifestFile )
 	if( ( ( require $manifestFile )['maturity'] ?? '' ) === 'Example' )
@@ -340,7 +339,7 @@ $missing	= array_diff( array_keys( $manifests ), array_keys( $notInFull ), $sour
 $surplus	= array_merge( array_diff( $sources['full']['features'], array_keys( $manifests ) ), array_intersect( $sources['full']['features'], array_keys( $notInFull ) ) );
 $problem	= array_merge( array_map( static fn( string $key ): string => $key. ' is missing', $missing ), array_map( static fn( string $key ): string => $key. ' is too many'. ( isset( $notInFull[$key] ) === true ? ' - '. $notInFull[$key] : '' ), $surplus ) );
 
-check( 'the full installation names every feature of the catalogue once but the examples and the vCard'. ( $problem !== [] ? ' ('. implode( '; ', $problem ). ')' : '' ), $problem === [] && count( $sources['full']['features'] ) === count( array_unique( $sources['full']['features'] ) ) );
+check( 'the full installation names every feature of the catalogue once but the examples'. ( $problem !== [] ? ' ('. implode( '; ', $problem ). ')' : '' ), $problem === [] && count( $sources['full']['features'] ) === count( array_unique( $sources['full']['features'] ) ) );
 check( 'the website starts on the dashboard, and the full installation starts where the website does, with the same start page and the menu as it is', $sources['website']['next'] === '/_admin/#dashboard' && $sources['full']['next'] === $sources['website']['next'] && $sources['full']['start'] === $sources['website']['start'] && $sources['full']['menu'] === null && $sources['website']['menu'] === null );
 check( 'the vCard\'s menu is "folded"; the website and the blog leave it null', $sources['vcard']['menu'] === 'folded' && $sources['website']['menu'] === null && $sources['blog']['menu'] === null );
 

@@ -92,7 +92,7 @@ return [
 | `start` | who provides the start page: `starter` (the kernel's starter pages), `own` (a feature of the application brings it) or `null` (no statement). Applications with a `start` exclude one another |
 | `menu` | `"folded"` where the workbench opens on the `next` panel with its menu folded, or `null` for the menu as it is. The index carries the field only where it is `"folded"`; a kernel that does not know it ignores it |
 
-`bin/build.php` holds every application to this, and one that breaks a rule stops the build with a message naming its file. `bin/catalogue.php` lists them above the features. The index lists the applications by key, except that the one with the most features - `full`, the installation with the features of the catalogue switched on - comes last; a test holds its list to the set of all features, the exceptions named with their reason.
+`bin/build.php` holds every application to this, and one that breaks a rule stops the build with a message naming its file. `bin/catalogue.php` lists them above the features. The index lists the applications by key, except that the one with the most features - `full`, the installation with the features of the catalogue switched on - comes last; a test holds its list to the set of all features but the examples. In `full` the website keeps the start page and the vCard answers at `/vcard`; a kernel that does not yet leave the start page to an application with `start: starter` gives the start page to the card there, so for the start page of the website `full` needs a kernel that does.
 
 ## A release
 

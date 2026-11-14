@@ -92,7 +92,7 @@ return [
 | `start` | wer die Startseite stellt: `starter` (die Starter-Seiten des Kernels), `own` (ein Feature der Anwendung bringt sie) oder `null` (keine Aussage). Anwendungen mit einem `start` schließen einander aus |
 | `menu` | `"folded"`, wo die Verwaltung auf dem Panel von `next` mit eingeklapptem Menü öffnet, oder `null` für das Menü, wie es ist. Der Index trägt das Feld nur bei `"folded"`; ein Kernel, der es nicht kennt, übergeht es |
 
-`bin/build.php` prüft jede Anwendung dagegen, und eine, die eine Regel verletzt, bricht den Build mit einer Meldung ab, die ihre Datei nennt. `bin/catalogue.php` listet sie über den Features. Der Index führt die Anwendungen nach Key, nur die mit den meisten Features – `full`, die Installation mit den eingeschalteten Features des Katalogs – steht zuletzt; ein Test hält ihre Liste gleich der Menge aller Features, die Ausnahmen mit Grund benannt.
+`bin/build.php` prüft jede Anwendung dagegen, und eine, die eine Regel verletzt, bricht den Build mit einer Meldung ab, die ihre Datei nennt. `bin/catalogue.php` listet sie über den Features. Der Index führt die Anwendungen nach Key, nur die mit den meisten Features – `full`, die Installation mit den eingeschalteten Features des Katalogs – steht zuletzt; ein Test hält ihre Liste gleich der Menge aller Features außer den Beispielen. In `full` behält die Website die Startseite und die vCard antwortet unter `/vcard`; ein Kernel, der die Startseite einer Anwendung mit `start: starter` noch nicht freihält, gibt sie dort der Karte, für die Startseite der Website braucht `full` also einen Kernel, der das tut.
 
 ## Ein Release
 
