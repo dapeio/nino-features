@@ -12,7 +12,7 @@ return [
 		'builder', 'design', 'consent', 'forms', 'modeswitch', 'seo',
 		'posts', 'search', 'toc', 'progress',
 		'lightbox', 'gallery', 'menu', 'social', 'embed', 'compare', 'copy', 'typewriter', 'ticker', 'countdown', 'hours', 'logos',
-		'mailer', 'newsletter', 'stats', 'redirects', 'protected', 'vcard',
+		'mailer', 'newsletter', 'stats', 'greeting', 'redirects', 'protected', 'vcard',
 	],
 	'next'				=> '/_admin/#dashboard',
 	'start'				=> 'starter',
