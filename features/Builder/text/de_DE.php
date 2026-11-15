@@ -622,4 +622,19 @@ return [
 	'[[/_admin/builder/focus/bottom-left]]'					=> 'Unten links',
 	'[[/_admin/builder/focus/bottom]]'						=> 'Unten Mitte',
 	'[[/_admin/builder/focus/bottom-right]]'				=> 'Unten rechts',
+
+	// Die Bausteine: der Dialog, der die fertigen Sections anbietet, die das Feature mitbringt
+	'[[/_admin/builder/tree/building-block]]'				=> 'Baustein',
+	'[[/_admin/builder/library/title]]'						=> 'Baustein einfügen',
+	'[[/_admin/builder/library/search]]'						=> 'Bausteine suchen',
+	'[[/_admin/builder/library/categories]]'				=> 'Kategorien',
+	'[[/_admin/builder/library/category-all]]'			=> 'Alle',
+	'[[/_admin/builder/library/category-intro]]'		=> 'Einstieg',
+	'[[/_admin/builder/library/category-content]]'	=> 'Inhalt',
+	'[[/_admin/builder/library/category-offer]]'		=> 'Angebot',
+	'[[/_admin/builder/library/category-action]]'		=> 'Handlung',
+	'[[/_admin/builder/library/needs]]'						=> 'Braucht %s',
+	'[[/_admin/builder/library/loading]]'					=> 'Die Bausteine werden geladen.',
+	'[[/_admin/builder/library/empty]]'						=> 'Kein Baustein passt.',
+	'[[/_admin/builder/library/error]]'						=> 'Die Bausteine konnten nicht geladen werden.',
 ];

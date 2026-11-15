@@ -9809,7 +9809,7 @@ check( '...a tool that is off pastes nothing, and nothing is changed by a press 
 } ) );
 
 const addBar = function() { return screen.getElementById('builder-add-bar') };
-check( 'the add bar of the page has a button to paste after its four: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
+check( 'the add bar of the page has a button to paste after its five: made by the script, with the word of the tool and no plus, off with the reason as its title where nothing was copied', attempt( function() {
 
 	doc = open();
 	builder._clip = null;
@@ -9818,7 +9818,7 @@ check( 'the add bar of the page has a button to paste after its four: made by th
 	const buttons = addBar().querySelectorAll('button');
 	const paste = addBar().querySelector('.builder-add-paste');
 
-	return buttons.length === 5 && buttons[4] === paste && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Content' && buttons[1].textContent === '+ Tiles' && buttons[2].textContent === '+ Loop' && buttons[3].textContent === '+ HTML+ block'
+	return buttons.length === 6 && buttons[5] === paste && buttons[4].textContent === '+ '+ word('tree/building-block') && paste.textContent === word('menu/paste') && paste.disabled === true && paste.title === word('reason/paste-empty') && buttons[0].textContent === '+ Content' && buttons[1].textContent === '+ Tiles' && buttons[2].textContent === '+ Loop' && buttons[3].textContent === '+ HTML+ block'
 		&& addBar().className === 'builder-add-bar';
 } ) );
 check( '...a section or a block of html clip makes it ready: its title is Paste and the kind word, a press puts the clip at the end of the page, selected, and the button is not made twice', attempt( function() {
@@ -9836,7 +9836,7 @@ check( '...a section or a block of html clip makes it ready: its title is Paste 
 	const ids = builder._doc.model.blocks.map( function( block ) { return block.kind === 'section' ? block.id : 'html' } ).join();
 
 	return ready && ids === 'hero,services,html,contact,hero-2' && builder._same( builder._sel, [ 4 ] ) && builder._fresh['hero-2'] === true && changes === 1 && screen.activeElement === toolOf( '4', 'paste' )
-		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 5;
+		&& addBar().querySelectorAll('.builder-add-paste').length === 1 && addBar().querySelectorAll('button').length === 6;
 } ) );
 check( '...a column or a component clip cannot go to the end of the page: the button is off and says why, and a press changes nothing', attempt( function() {
 
@@ -10000,7 +10000,7 @@ check( '...a section from the choices stands where the place is and is selected,
 
 	return between && first && idsOf() === 'section-2,hero,services,section,html,contact,section-3' && builder._same( builder._sel, [ 6 ] );
 } ) );
-check( '...the choices are those of the add bar, in its order - Content, Tiles, Loop, HTML+ block, Paste - and Tiles and Loop put a section of tiles and a loop of sections at the place of the "+"', attempt( function() {
+check( '...the choices are those of the add bar, in its order - Content, Tiles, Loop, HTML+ block, Building block, Paste - and Tiles and Loop put a section of tiles and a loop of sections at the place of the "+"', attempt( function() {
 
 	doc = open();
 	builder._clip = null;
@@ -10008,7 +10008,7 @@ check( '...the choices are those of the add bar, in its order - Content, Tiles, 
 	plusOf( places()[1] ).click();
 
 	const texts_ = gapRow( places()[1] ).querySelectorAll('button').map( function( button ) { return button.textContent } ).join();
-	const same = texts_ === addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() && gapRow( places()[1] ).querySelectorAll('button').length === 5;
+	const same = texts_ === addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() && gapRow( places()[1] ).querySelectorAll('button').length === 6;
 
 	gapRow( places()[1] ).children[1].click();
 
@@ -12072,7 +12072,7 @@ check( 'the page has the button "+ Loop" after the one for the tiles: it adds a 
 
 	const section = builder._doc.model.blocks.slice( -1 )[0];
 
-	return addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() === '+ Content,+ Tiles,+ Loop,+ HTML+ block,'+ word('menu/paste') && section.kind === 'section' && section.stack !== null && section.stack.name === 'sections' && section.stack.source === registry().types[0].uri
+	return addBar().querySelectorAll('button').map( function( button ) { return button.textContent } ).join() === '+ Content,+ Tiles,+ Loop,+ HTML+ block,+ '+ word('tree/building-block')+ ','+ word('menu/paste') && section.kind === 'section' && section.stack !== null && section.stack.name === 'sections' && section.stack.source === registry().types[0].uri
 		&& section.rowLoop === null && builder._same( builder._sel, [ builder._doc.model.blocks.length - 1 ] ) && builder._fresh[section.id] === true && builder._doc.model.blocks.filter( function( block ) { return block.id === section.id } ).length === 1
 		&& frames().slice( -1 )[0].classList.contains('is-sections') && builder._loopNames( builder._doc.model ).indexOf( section.id ) !== -1;
 } )() );
@@ -12398,6 +12398,407 @@ check( 'the list and the editor are drawn without a page to complain', ( functio
 	return true;
 } )() );
 check( 'the address of a template is checked before a request is made of it', builder.FILE.test( 'page-home' ) === true && builder.FILE.test( 'page-' ) === false && builder.FILE.test( '../x' ) === false && builder.FILE.test( 'page-Home' ) === false );
+
+// ------------------------------------------------------------ The building blocks
+
+console.log( '\nThe building blocks' );
+
+// What the Library answers (fixtures/blocks.json, which blocks-smoke.php writes), and a block that needs a feature that is off
+const blocksAnswer = function() {
+
+	const entries = JSON.parse( fs.readFileSync( path.join( __dirname, 'fixtures/blocks.json' ), 'utf8' ) );
+
+	entries.push( { slug : 'wants', name : 'Wants Forms', description : 'Needs a feature.', category : 'content', family : 'wants', rank : 99, needs : [ 'Forms' ], clip : null } );
+
+	return { blocks : entries };
+};
+const libraryWord = function( key ) { return words['/_admin/builder/library/'+ key] };
+const tilesOf = function() { return dialogContent().querySelectorAll('.builder-blocks-tile') };
+const shownTiles = function() { return tilesOf().filter( function( tile ) { return tile.hidden !== true } ).map( function( tile ) { return tile.dataset.block } ) };
+// The dialog opened from the bar, and the answer of the server given to it
+const openBlocks = function( answer, index ) {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+	builder._pickBlock( index );
+
+	const asked = requests.slice( -1 )[0];
+
+	if( answer !== undefined )
+		asked.callback( 200, answer );
+
+	return asked;
+};
+
+check( 'the add bar and the places between the blocks have a button "+ Building block" after the one of HTML+ and before Paste, and the button of the bar opens the dialog and asks the server for the blocks - nothing else', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+	requests = [];
+
+	const bar = addBar().querySelectorAll('button').map( function( button ) { return button.textContent } );
+
+	addBar().querySelector('#builder-add-block').click();
+
+	return bar.join() === '+ Content,+ Tiles,+ Loop,+ HTML+ block,+ '+ word('tree/building-block')+ ','+ word('menu/paste') && requests.length === 1 && requests[0].action === 'builder/blocks' && JSON.stringify( requests[0].payload ) === '{}'
+		&& dialogBox().open === true && dialogText('builder-dialog-kind') === libraryWord('title');
+} ) );
+
+check( '...the dialog says that it is loading until the blocks are there, and a failed answer says so in its words', attempt( function() {
+
+	const asked = openBlocks();
+	const loading = dialogContent().querySelector('.builder-blocks-status');
+	const before = loading.textContent === libraryWord('loading') && loading.getAttribute('role') === 'status';
+
+	asked.callback( 500, null );
+
+	return before && loading.textContent === libraryWord('error') && tilesOf().length === 0;
+} ) );
+
+check( '...an answer that comes after the dialog was closed, or another opened, is let go', attempt( function() {
+
+	const asked = openBlocks();
+
+	builder._closeDialog();
+	asked.callback( 200, blocksAnswer() );
+
+	return tilesOf().length === 0 && dialogBox().open === false;
+} ) );
+
+check( '...a tile for each block in the order the server gave, with the name, the sentence and a sketch; the categories as buttons in the order the blocks come in, the first with them all and pressed', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const answer = blocksAnswer().blocks;
+	const categories = dialogContent().querySelectorAll('.builder-blocks-category');
+	const tile = tilesOf()[0];
+
+	return tilesOf().map( function( each ) { return each.dataset.block } ).join() === answer.map( function( entry ) { return entry.slug } ).join()
+		&& tile.querySelector('.builder-blocks-name').textContent === answer[0].name && tile.querySelector('.builder-blocks-sentence').textContent === answer[0].description && tile.querySelector('.builder-sketch') !== null
+		&& categories.map( function( button ) { return button.dataset.category } ).join() === ',intro,content,offer,action' && categories[0].getAttribute('aria-pressed') === 'true' && categories[1].getAttribute('aria-pressed') === 'false'
+		&& categories.map( function( button ) { return button.textContent } ).join() === [ 'category-all', 'category-intro', 'category-content', 'category-offer', 'category-action' ].map( libraryWord ).join()
+		&& tilesOf().every( function( each ) { return each.hidden !== true } );
+} ) );
+
+check( '...the sketch is drawn from the model: the ground of the section, the width of its row, a column for each of its columns at the width it has on a wide screen, and in each a part for each component by what the registry says it draws - a card holds its children', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const answer = blocksAnswer().blocks;
+	const sketchOf = function( slug ) { return tilesOf().find( function( tile ) { return tile.dataset.block === slug } ).querySelector('.builder-sketch') };
+	const hero = sketchOf('hero-centered');
+	const cards = sketchOf('services-cards');
+	const cols = function( sketch ) { return sketch.querySelectorAll('.builder-sketch-col') };
+	const model_ = answer.find( function( entry ) { return entry.slug === 'services-cards' } ).clip.node;
+
+	return hero.dataset.color === 'primary' && hero.dataset.align === 'center' && hero.querySelector('.builder-sketch-row').dataset.row === 'narrow' && hero.getAttribute('aria-hidden') === 'true'
+		&& cols( hero ).length === 1 && cols( hero )[0].querySelectorAll('.builder-sketch-part').map( function( part ) { return part.dataset.part } ).join() === 'title,title,button'
+		&& cols( cards ).length === model_.cols.length && cols( cards ).map( function( col ) { return col.style.getPropertyValue('--builder-sketch-w') } ).join() === model_.cols.map( function( col ) { return String( col.width.l ) } ).join()
+		&& cols( cards )[1].querySelectorAll('.builder-sketch-part').some( function( part ) { return part.dataset.part === 'card' && part.querySelectorAll('.builder-sketch-part').length === 2 } )
+		&& tilesOf().find( function( tile ) { return tile.dataset.block === 'wants' } ).querySelector('.builder-sketch').classList.contains('is-none');
+} ) );
+
+check( '...the search finds a block by its name or its description, in any case, and says so where none matches; a category shows its blocks only, and the two together', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const all = shownTiles().length;
+	const find = dialogContent().querySelector('.builder-blocks-find');
+	const status = dialogContent().querySelector('.builder-blocks-status');
+	const search = function( text ) { find.value = text; find.dispatch( 'input' ); return shownTiles() };
+	const answer = blocksAnswer().blocks;
+	const byName = search( answer[0].name.toUpperCase() );
+	const byDescription = search( answer[2].description.slice( 2, 12 ).toLowerCase() );
+	const none = search( 'zzzz-nothing' );
+	const empty = status.hidden === false && status.textContent === libraryWord('empty');
+	const back = search( '' );
+	const backHidden = status.hidden === true;
+
+	dialogContent().querySelectorAll('.builder-blocks-category').find( function( button ) { return button.dataset.category === 'offer' } ).click();
+
+	const offer = shownTiles();
+
+	search( answer[0].name );
+
+	return all === answer.length && byName.indexOf( answer[0].slug ) !== -1 && byDescription.indexOf( answer[2].slug ) !== -1 && none.length === 0 && empty && back.length === all && backHidden
+		&& offer.join() === answer.filter( function( entry ) { return entry.category === 'offer' } ).map( function( entry ) { return entry.slug } ).join() && shownTiles().length === 0
+		&& dialogContent().querySelectorAll('.builder-blocks-category').filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).length === 1;
+} ) );
+
+check( '...a block that needs a feature that is off - or that the page cannot take, a component the project has not - is a tile that is off: it says so with aria-disabled and stays a button of the tab order, its reason is a line of its own and part of what the tile reads as, and a press changes nothing', attempt( function() {
+
+	const answer = blocksAnswer();
+	const unknown = JSON.parse( JSON.stringify( answer.blocks[0] ) );
+
+	unknown.slug = 'unknown';
+	unknown.clip.node.cols[0].components[0].name = 'not-a-component';
+	answer.blocks.push( unknown );
+	openBlocks( answer );
+
+	const wants = tilesOf().find( function( tile ) { return tile.dataset.block === 'wants' } );
+	const missing = tilesOf().find( function( tile ) { return tile.dataset.block === 'unknown' } );
+	const before = JSON.stringify( builder._doc.model );
+
+	wants.click();
+	missing.click();
+
+	const reason = sandbox.Nino.adminUi.format( libraryWord('needs'), 'Forms' );
+	const off = function( tile ) { return tile.getAttribute('aria-disabled') === 'true' && tile.disabled !== true && tile.tabIndex >= 0 };
+
+	return off( wants ) && off( missing ) && wants.querySelector('.builder-blocks-reason').textContent === reason && wants.title === reason && wants.textContent.indexOf( reason ) !== -1
+		&& missing.querySelector('.builder-blocks-reason').textContent === sandbox.Nino.adminUi.format( words['/_admin/builder/reason/paste-unknown'], 'not-a-component' )
+		&& JSON.stringify( builder._doc.model ) === before && dialogBox().open === true && tilesOf()[0].getAttribute('aria-disabled') === null && tilesOf()[0].querySelector('.builder-blocks-reason') === null;
+} ) );
+
+check( '...and the cascade of the stylesheet lets that ground win: for a card of the sketch of each ground - alt, tint, dark, black, primary, brand-alt - the background that applies is the ground\'s own and not the card\'s, in the ink the ground has, and a card that says counter keeps the card\'s', ( function() {
+
+	// The rules of the sketch, flat: a selector of one class and attribute tests is matched against an element and counts its tests - the last of the strongest wins
+	const rules = [];
+
+	stylesheet.replace( /\n([^\n{}@][^{}]*?) \{\n([^}]*)\}/g, function( all, selectors, body ) {
+		selectors.split( ',' ).forEach( function( selector ) { rules.push( { selector : selector.trim(), body : body, order : rules.length } ) } );
+		return all;
+	} );
+
+	const applied = function( property, attrs ) {
+
+		let winner = null;
+
+		rules.forEach( function( rule ) {
+
+			const tests = rule.selector.match( /^\.builder-sketch-part((?:\[[a-z-]+="[a-z-]+"\])*)$/ );
+
+			if( tests === null )
+				return;
+
+			const found = ( tests[1].match( /\[[a-z-]+="[a-z-]+"\]/g ) || [] ).map( function( test ) { return /\[([a-z-]+)="([a-z-]+)"\]/.exec( test ) } );
+			const value = new RegExp( '(?:^|[\\n;\\t ])'+ property+ ':\\s*([^;\\n]+);' ).exec( rule.body );
+
+			if( value === null || found.every( function( test ) { return attrs[test[1]] === test[2] } ) === false )
+				return;
+
+			const strength = found.length;
+
+			if( winner === null || strength > winner.strength || ( strength === winner.strength && rule.order > winner.order ) )
+				winner = { strength : strength, order : rule.order, value : value[1].trim() };
+		} );
+
+		return winner === null ? null : winner.value;
+	};
+	const card = function( color ) { return { 'data-part' : 'card', 'data-color' : color } };
+	const plain = applied( 'background', card( 'counter' ) );
+
+	return plain !== null && plain.indexOf( 'color-mix' ) !== -1 && [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ].every( function( ground ) {
+		return applied( 'background', card( ground ) ) === 'var(--builder-ground-'+ ground+ ')' && ( [ 'alt', 'tint' ].indexOf( ground ) !== -1 || applied( 'color', card( ground ) ) !== null );
+	} );
+} )() );
+
+check( '...a card or a column with a ground of its own is drawn in it in the sketch: the middle card of the prices is the primary ground, the others have none', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const sketch = tilesOf().find( function( tile ) { return tile.dataset.block === 'pricing-three' } ).querySelector('.builder-sketch');
+	const cards = sketch.querySelectorAll('.builder-sketch-part').filter( function( part ) { return part.dataset.part === 'card' } );
+
+	return cards.length === 3 && cards.map( function( card ) { return card.dataset.color } ).join() === 'counter,primary,counter';
+} ) );
+
+check( '...and a block the page cannot take is not put in by any other way either: the insert asks what a paste asks, and a component the project has not leaves the page and the dialog as they are', attempt( function() {
+
+	const answer = blocksAnswer();
+	const entry = JSON.parse( JSON.stringify( answer.blocks[0] ) );
+
+	entry.clip.node.cols[0].components[0].name = 'not-a-component';
+	openBlocks( answer );
+
+	const before = JSON.stringify( builder._doc.model );
+
+	changes = 0;
+	builder._insertBlock( entry );
+
+	return JSON.stringify( builder._doc.model ) === before && changes === 0 && dialogBox().open === true;
+} ) );
+
+check( 'a press on a tile puts the block in at the end of the page the way a paste does - a section of an id of its own, selected, the keys of the page and not of the block, the texts typed for the languages of the site, nothing made but in the model - and closes the dialog with the focus on the settings tool of the new section', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const entry = blocksAnswer().blocks.find( function( each ) { return each.slug === 'hero-centered' } );
+
+	changes = 0;
+	requests = [];
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'hero-centered' } ).click();
+
+	const blocks = builder._doc.model.blocks;
+	const section = blocks[blocks.length - 1];
+	const sources = [];
+	const walk = function( components ) { components.forEach( function( component ) { if( typeof component.source === 'string' ) sources.push( component ); walk( component.components || [] ) } ) };
+
+	section.cols.forEach( function( col ) { walk( col.components ) } );
+
+	return section.kind === 'section' && section.id === entry.clip.section+ '-2' && builder._same( builder._sel, [ blocks.length - 1 ] ) && builder._fresh[section.id] === true && changes === 1 && requests.length === 0
+		&& builder._unsaved( builder._doc ) === true && dialogBox().open === false && screen.activeElement === toolOf( String( blocks.length - 1 ), 'settings' )
+		&& sources.length === 3 && sources.every( function( component ) { return component.source.indexOf( '/template/page-home/'+ section.id+ '/' ) === 0 && JSON.stringify( component.create ) === '{}'
+			&& JSON.stringify( component.values ) === JSON.stringify( entry.clip.values['/template/block-hero-centered/hero/'+ component.source.split('/').pop()] ) } )
+		&& JSON.stringify( builder._doc.model ).indexOf( 'block-hero-centered' ) === -1;
+} ) );
+
+check( '...the same block twice makes two sections of two ids and two sets of keys, and the id is the block\'s own only where the page has none of it', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'cta-band' } ).click();
+	builder._pickBlock();
+	requests.slice( -1 )[0].callback( 200, blocksAnswer() );
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'cta-band' } ).click();
+
+	const blocks = builder._doc.model.blocks;
+	const uris = function( section ) { return section.cols.map( function( col ) { return col.components.map( function( component ) { return component.source } ).join() } ).join() };
+
+	return blocks.slice( -2 ).map( function( block ) { return block.id } ).join() === 'cta,cta-2' && uris( blocks[blocks.length - 1] ).indexOf( '/template/page-home/cta-2/' ) === 0 && uris( blocks[blocks.length - 2] ).indexOf( '/template/page-home/cta/' ) === 0
+		&& uris( blocks[blocks.length - 1] ) !== uris( blocks[blocks.length - 2] );
+} ) );
+
+check( '...an id that a deleted section left its text keys or its image slots behind under is not used: a new one would be given the old text - the next free one is', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+	builder._keys = builder._keys.concat( [ { key : '/template/page-home/cta/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Old text' } } ] );
+	builder._registry.slots = ( builder._registry.slots || [] ).concat( [ { uri : '/template/page-home/cta-2/background', label : 'x', width : 10, height : 10 } ] );
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'cta-band' } ).click();
+
+	const blocks = builder._doc.model.blocks;
+
+	return blocks[blocks.length - 1].id === 'cta-3' && JSON.stringify( blocks[blocks.length - 1] ).indexOf( 'Old text' ) === -1;
+} ) );
+
+check( '...and where the page has the section of that id and the project holds keys under the next one, it is the one after: the two reasons are weighed together', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'cta-band' } ).click();
+	builder._keys = builder._keys.concat( [ { key : '/template/page-home/cta-2/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Old text' } } ] );
+	builder._pickBlock();
+	requests.slice( -1 )[0].callback( 200, blocksAnswer() );
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'cta-band' } ).click();
+
+	return builder._doc.model.blocks.slice( -2 ).map( function( block ) { return block.id } ).join() === 'cta,cta-3';
+} ) );
+
+check( '...the clip of a block is a copy: what is made of it for the page - the id it goes in under - leaves the block as the server gave it', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const entry = blocksAnswer().blocks.find( function( each ) { return each.slug === 'hero-centered' } );
+	const before = JSON.stringify( entry );
+	const clip = builder._blockClip( entry );
+
+	return clip.node.id === 'hero-2' && JSON.stringify( entry ) === before && clip.node !== entry.clip.node;
+} ) );
+
+check( '...at a place between two blocks it goes in there, and the choice at the place opens the same dialog', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+	plusOf( places()[1] ).click();
+
+	const choice = gapRow( places()[1] ).querySelectorAll('button').find( function( button ) { return button.textContent === '+ '+ word('tree/building-block') } );
+
+	choice.click();
+	requests.slice( -1 )[0].callback( 200, blocksAnswer() );
+	tilesOf().find( function( tile ) { return tile.dataset.block === 'page-head' } ).click();
+
+	return idsOf() === 'hero,page-head,services,html,contact' && builder._same( builder._sel, [ 1 ] ) && dialogBox().open === false;
+} ) );
+
+check( '...where the editor is for reading - a narrow screen - nothing is put in', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const tile = tilesOf()[0];
+	const before = JSON.stringify( builder._doc.model );
+	const media = sandbox.matchMedia;
+
+	sandbox.matchMedia = function() { return { matches : true } };
+	tile.click();
+	sandbox.matchMedia = media;
+
+	return JSON.stringify( builder._doc.model ) === before;
+} ) );
+
+check( '...Escape closes the dialog and the focus goes back to the button that opened it; nothing was put in', attempt( function() {
+
+	doc = open();
+	builder._clip = null;
+	builder._renderEditor();
+
+	const button = addBar().querySelector('#builder-add-block');
+	const before = JSON.stringify( builder._doc.model );
+
+	button.focus();
+	button.click();
+	requests.slice( -1 )[0].callback( 200, blocksAnswer() );
+	dialogBox().close();
+	dialogBox().dispatch( 'close' );
+
+	return dialogBox().open === false && screen.activeElement === button && JSON.stringify( builder._doc.model ) === before && builder._unsaved( builder._doc ) === false;
+} ) );
+
+check( '...the dialog can be worked with the keyboard: the search, the categories and the tiles are controls that take the focus - buttons and an input, none with a negative tab index - and have a name', attempt( function() {
+
+	openBlocks( blocksAnswer() );
+
+	const controls = dialogContent().querySelectorAll('input, button');
+
+	return controls.length === 1 + 5 + blocksAnswer().blocks.length && controls.every( function( control ) { return control.tabIndex >= 0 && ( control.textContent !== '' || control.getAttribute('aria-label') !== null ) } )
+		&& dialogContent().querySelector('.builder-blocks-categories').getAttribute('role') === 'group';
+} ) );
+
+check( 'every block of the fixture goes into an empty page, one of them twice, as the dialog puts it in; the page as the panel would save it is written to fixtures/block-pasted.json, which the server test saves', attempt( function() {
+
+	const empty = { file : 'page-blocks', name : 'Blocks', animate : false, vpa : '', vpaSpeed : '', wrapClass : '', header : 'html-header', footer : 'html-footer', blocks : [] };
+
+	open( empty );
+	builder._doc.file = 'page-blocks';
+	builder._keys = [];
+
+	const entries = blocksAnswer().blocks.filter( function( entry ) { return entry.clip !== null } );
+
+	entries.concat( [ entries[0] ] ).forEach( function( entry ) {
+		builder._normalise( { blocks : [ entry.clip.node ] } );
+		builder._paste( builder._doc.model, builder._registry, 'page-blocks', [], builder._blockClip( entry ) );
+	} );
+
+	const ids = builder._doc.model.blocks.map( function( block ) { return block.id } );
+
+	fs.writeFileSync( path.join( __dirname, 'fixtures/block-pasted.json' ), JSON.stringify( builder._saveRequest( builder._doc, false ).model, null, 2 )+ '\n' );
+
+	return ids.length === entries.length + 1 && new Set( ids ).size === ids.length && ids[ids.length - 1] === entries[0].clip.section+ '-2';
+} ) );
+
+check( 'the stylesheet draws the dialog: the grid of the tiles wraps, a tile that is hidden is gone, the sketch, the name and the sentence of a tile that is off are dimmed and the tile and its reason are not, and the add bar that holds the button is one of the things a narrow screen takes away', ( function() {
+
+	const rule = function( selector ) { return ruleOf( selector ) };
+
+	return rule('.builder-blocks-grid').indexOf('auto-fill') !== -1 && rule('.builder-blocks-tile[hidden]').indexOf('display: none') !== -1 && rule('.builder-blocks-tile[aria-disabled="true"] > :not(.builder-blocks-reason)').indexOf('opacity') !== -1 && rule('.builder-blocks-tile[aria-disabled="true"]').indexOf('opacity') === -1
+		&& /@media \(max-width: 38rem\) \{[^@]*\.builder-add-bar,/.test( stylesheet ) === true;
+} )() );
+
+check( 'the words of the dialog are in both languages, and the English and the German differ', ( function() {
+
+	const german = {};
+
+	fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( '\n' ).forEach( function( line ) {
+		const found = /^\s*'\[\[(\/[^\]]+)\]\]'\s*=>\s*'(.*)',\s*$/.exec( line );
+		if( found !== null )
+			german[found[1]] = found[2];
+	} );
+
+	const keys = [ 'tree/building-block', 'library/title', 'library/search', 'library/categories', 'library/category-all', 'library/category-intro', 'library/category-content', 'library/category-offer', 'library/category-action', 'library/needs', 'library/loading', 'library/empty', 'library/error' ];
+
+	return keys.every( function( key ) { return typeof words['/_admin/builder/'+ key] === 'string' && words['/_admin/builder/'+ key] !== '' && typeof german['/_admin/builder/'+ key] === 'string' && german['/_admin/builder/'+ key] !== '' && german['/_admin/builder/'+ key] !== words['/_admin/builder/'+ key] } )
+		&& ( words['/_admin/builder/library/needs'].match( /%s/g ) || [] ).length === 1 && ( german['/_admin/builder/library/needs'].match( /%s/g ) || [] ).length === 1;
+} )() );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

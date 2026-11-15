@@ -52,6 +52,7 @@
 				<button type="button" id="builder-add-tiles" class="builder-add-button">+ [[/_admin/builder/tree/tiles]]</button>
 				<button type="button" id="builder-add-loop" class="builder-add-button">+ [[/_admin/builder/tree/loop]]</button>
 				<button type="button" id="builder-add-html" class="builder-add-button">+ [[/_admin/builder/tree/html-block]]</button>
+				<button type="button" id="builder-add-block" class="builder-add-button">+ [[/_admin/builder/tree/building-block]]</button>
 			</div>
 		</section>
 

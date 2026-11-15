@@ -4171,6 +4171,7 @@
 			dc.getElementById('builder-add-tiles').addEventListener( 'click', function() { builder._addSection( 'tiles' ) } );
 			dc.getElementById('builder-add-loop').addEventListener( 'click', function() { builder._addSection( 'loop' ) } );
 			dc.getElementById('builder-add-html').addEventListener( 'click', function() { builder._editBlock( null ) } );
+			dc.getElementById('builder-add-block').addEventListener( 'click', function() { builder._pickBlock() } );
 			// The choices between two blocks close when the person goes on elsewhere: a click anywhere in the page (see _openInsert()) or the focus moving out of them
 			dc.getElementById('builder-editor').addEventListener( 'focusin', function( ev ) { builder._leaveInsert( ev.target, false ) } );
 			dc.getElementById('builder-template-settings').addEventListener( 'click', function() { builder._select( [] ); builder._openSettings( [] ) } );
@@ -4794,6 +4795,7 @@
 				} ) );
 			} );
 			row.appendChild( builder._addButton( 'html-block', function() { builder._closeInsert( true ); builder._editBlock( null, index ) } ) );
+			row.appendChild( builder._addButton( 'building-block', function() { builder._closeInsert( true ); builder._pickBlock( index ) } ) );
 			row.appendChild( builder._pasteButton( function() { builder._pasteAt( [], index ) }, 'builder-insert-paste' ) );
 			row.hidden = false;
 			place.classList.add('is-open');
@@ -6228,6 +6230,310 @@
 			builder._sel = path.concat( [ list.length - 1 ] );
 			builder._changed();
 			builder._paintSelection( true );
+		},
+
+		// ------------------------------------------------------- Building blocks
+
+		/**
+		 *	The dialog of the building blocks, the ones the feature brings (builder/blocks): a search over their names and descriptions, the
+		 *	categories they are listed in, and a tile for each with a sketch drawn from its model, its name and one sentence. A block that
+		 *	needs a feature that is off stands there greyed, with what it needs; so does one the page cannot take. A click puts the block in as
+		 *	a paste puts in a copy (see _insertBlock()). Nothing is asked of the project until the page is saved
+		 *
+		 *	@param		{number}		[index]						The place among the blocks of the page; the end without one
+		 *
+		 *	@return		void
+		 */
+		_pickBlock : function( index ) {
+
+			const builder = Nino.admin.builder;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/library/'+ key ) };
+			const state = { category : '', find : '' };
+			const parts = {};
+			const options = {
+				title	: word('title'),
+				wide	: true,
+				build	: function( body ) {
+
+					parts.find = builder._el( 'input', 'builder-blocks-find' );
+					parts.find.type = 'search';
+					parts.find.setAttribute( 'aria-label', word('search') );
+					parts.find.placeholder = word('search');
+					parts.find.addEventListener( 'input', function() {
+						state.find = parts.find.value;
+						builder._showBlocks( parts, state );
+					} );
+					parts.categories = builder._el( 'div', 'builder-blocks-categories' );
+					parts.categories.setAttribute( 'role', 'group' );
+					parts.categories.setAttribute( 'aria-label', word('categories') );
+					parts.status = builder._el( 'p', 'builder-blocks-status', word('loading') );
+					parts.status.setAttribute( 'role', 'status' );
+					parts.grid = builder._el( 'div', 'builder-blocks-grid' );
+					parts.tiles = [];
+
+					const head = builder._el( 'div', 'builder-blocks-head' );
+
+					head.appendChild( parts.find );
+					head.appendChild( parts.categories );
+					body.appendChild( head );
+					body.appendChild( parts.status );
+					body.appendChild( parts.grid );
+				},
+			};
+
+			builder._dialog( options );
+
+			builder._apiCall( 'blocks', {}, function( status, response ) {
+
+				// The dialog was closed, or another opened, while the blocks were on their way
+				if( builder._dialogOptions !== options )
+					return;
+
+				if( status !== 200 || response === null || Array.isArray( response.blocks ) === false ) {
+					parts.status.textContent = word('error');
+					return;
+				}
+
+				builder._drawBlocks( parts, state, response.blocks, index );
+
+				// The first focus of a dialog is its close button: the search is where a person who wants a block starts, unless the focus has been moved on
+				if( dc.activeElement === dc.getElementById('builder-dialog-close') )
+					parts.find.focus();
+			} );
+		},
+
+		/**
+		 *	The tiles and the categories of the dialog of the building blocks, once the blocks have arrived
+		 *
+		 *	@param		{Object}		parts							The elements of the dialog
+		 *	@param		{Object}		state							The category and the search that are chosen
+		 *	@param		{Array}			entries						The blocks, as builder/blocks answers them
+		 *	@param		{number}		[index]
+		 *
+		 *	@return		void
+		 */
+		_drawBlocks : function( parts, state, entries, index ) {
+
+			const builder = Nino.admin.builder;
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/library/'+ key ) };
+			const doc = builder._doc;
+			const slugs = [];
+
+			entries.forEach( function( entry ) {
+
+				// What the model of a section is made of that php sends as it is: empty maps as lists
+				builder._normalise( { blocks : [ entry.clip === null ? {} : entry.clip.node ] } );
+
+				const tile = builder._blockTile( entry, entry.needs.length > 0 ? Nino.adminUi.format( word('needs'), entry.needs.join(', ') ) : builder._pasteable( doc.model, builder._registry, [], entry.clip ), index );
+
+				parts.tiles.push( { entry : entry, tile : tile } );
+				parts.grid.appendChild( tile );
+
+				if( slugs.indexOf( entry.category ) === -1 )
+					slugs.push( entry.category );
+			} );
+
+			// The categories in the order the blocks come in, and the one that has them all in front
+			[ '' ].concat( slugs ).forEach( function( slug ) {
+
+				const button = builder._el( 'button', 'builder-blocks-category', word( slug === '' ? 'category-all' : 'category-'+ slug ) );
+
+				button.type = 'button';
+				button.dataset.category = slug;
+				button.addEventListener( 'click', function() {
+					state.category = slug;
+					builder._showBlocks( parts, state );
+				} );
+				parts.categories.appendChild( button );
+			} );
+
+			builder._showBlocks( parts, state );
+		},
+
+		/**
+		 *	Show the tiles of the chosen category that the search finds in their name or their description, and the categories as pressed or not
+		 *
+		 *	@param		{Object}		parts
+		 *	@param		{Object}		state
+		 *
+		 *	@return		void
+		 */
+		_showBlocks : function( parts, state ) {
+
+			const word = function( key ) { return Nino.content.getText( '/_admin/builder/library/'+ key ) };
+			const find = state.find.trim().toLowerCase();
+			let shown = 0;
+
+			parts.tiles.forEach( function( item ) {
+
+				const on = ( state.category === '' || item.entry.category === state.category )
+					&& ( find === '' || ( item.entry.name+ ' '+ item.entry.description ).toLowerCase().indexOf( find ) !== -1 );
+
+				item.tile.hidden = on === false;
+				shown += on === true ? 1 : 0;
+			} );
+
+			Array.from( parts.categories.children ).forEach( function( button ) { button.setAttribute( 'aria-pressed', button.dataset.category === state.category ? 'true' : 'false' ) } );
+
+			parts.status.hidden = shown > 0;
+			parts.status.textContent = shown > 0 ? '' : word('empty');
+		},
+
+		/**
+		 *	The tile of one building block: its sketch, its name and its sentence, in a button that puts it in. A block that cannot go in is
+		 *	greyed - the sketch, the name and the sentence, not the reason - and stays in the tab order: the reason is in its name
+		 *
+		 *	@param		{Object}		entry							As builder/blocks answers it
+		 *	@param		{string}		reason						Why it cannot go in; '' where it can
+		 *	@param		{number}		[index]
+		 *
+		 *	@return		{Element}
+		 */
+		_blockTile : function( entry, reason, index ) {
+
+			const builder = Nino.admin.builder;
+			const tile = builder._el( 'button', 'builder-blocks-tile' );
+
+			tile.type = 'button';
+			tile.dataset.block = entry.slug;
+			tile.appendChild( entry.clip === null ? builder._el( 'span', 'builder-sketch is-none' ) : builder._sketch( entry.clip.node ) );
+			tile.appendChild( builder._el( 'span', 'builder-blocks-name', entry.name ) );
+			tile.appendChild( builder._el( 'span', 'builder-blocks-sentence', entry.description ) );
+
+			// Not disabled: a disabled button is out of the tab order, and the reason is what the tile has to say - it is part of the name a screen reader reads
+			if( reason !== '' ) {
+				tile.setAttribute( 'aria-disabled', 'true' );
+				tile.title = reason;
+				tile.appendChild( builder._el( 'span', 'builder-blocks-reason', reason ) );
+			}
+
+			// A tile that is off does nothing: _insertBlock() asks what a paste asks, and a block that needs a feature has no section to put in
+			tile.addEventListener( 'click', function() { builder._insertBlock( entry, index ) } );
+
+			return tile;
+		},
+
+		/**
+		 *	What a section looks like as a sketch: its ground, the width of its row, its columns at the width they have on a wide screen and in them a bar for
+		 *	a title, lines for a text, a pill for a button, a box for a picture and a box with the same inside for a component that holds components. It is
+		 *	drawn from the model alone - no stylesheet of a site, so it looks the same in every theme - and says nothing to a screen reader: the tile has the words
+		 *
+		 *	@param		{Object}		section						A section of the model
+		 *
+		 *	@return		{Element}
+		 */
+		_sketch : function( section ) {
+
+			const builder = Nino.admin.builder;
+			const registry = builder._registry || {};
+			const sketch = builder._el( 'span', 'builder-sketch' );
+			const row = builder._el( 'span', 'builder-sketch-row' );
+			const part = function( node ) {
+
+				const schema = ( registry.components || {} )[node.name] || {};
+				const kind = builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview;
+				const piece = builder._el( 'span', 'builder-sketch-part' );
+
+				piece.dataset.part = kind;
+				piece.dataset.color = ( node.attributes || {} ).ground ?? '';
+
+				if( Array.isArray( node.components ) === true && builder._holds( registry, node.name ) !== '' ) {
+					piece.dataset.part = 'card';
+					node.components.forEach( function( child ) { piece.appendChild( part( child ) ) } );
+				}
+
+				return piece;
+			};
+
+			sketch.setAttribute( 'aria-hidden', 'true' );
+			sketch.dataset.color = ( section.settings || {} ).color ?? '';
+			sketch.dataset.align = ( section.settings || {} ).text ?? '';
+			row.dataset.row = ( section.settings || {} ).row ?? '';
+
+			( section.cols || [] ).forEach( function( col ) {
+
+				const cell = builder._el( 'span', 'builder-sketch-col' );
+
+				cell.style.setProperty( '--builder-sketch-w', String( ( col.width || {} ).l ?? 100 ) );
+				cell.dataset.color = col.color ?? '';
+				( col.components || [] ).forEach( function( node ) { cell.appendChild( part( node ) ) } );
+				row.appendChild( cell );
+			} );
+
+			sketch.appendChild( row );
+
+			return sketch;
+		},
+
+		/**
+		 *	The copy of a building block that goes in: the clip the server made of it, with the id its section goes in under. That is the id the block has
+		 *	where the page has no section of it and the keys under it are not in the project - a section that was deleted and saved leaves its text keys
+		 *	and image slots behind, and a new one of the same id would be given that old text - and else the next that is free of both
+		 *
+		 *	@param		{Object}		entry							As builder/blocks answers it
+		 *
+		 *	@return		{Object}									The clip, as _copyAt() makes it
+		 */
+		_blockClip : function( entry ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+			const clip = builder._clone( entry.clip );
+			const known = builder._knownKeys( builder._registry );
+
+			builder._normalise( { blocks : [ clip.node ] } );
+
+			// The loop of sections that has an id makes <id>-<n>: a block named like one is a copy of it, as a paste has it
+			const base = builder._loopNames( doc.model ).indexOf( clip.node.id ) === -1 ? clip.node.id : clip.node.id+ '-copy';
+
+			clip.node.id = builder._free( base, function( name ) {
+
+				const prefix = builder._keyUri( doc.file, name, '' );
+
+				return builder._sectionTaken( doc.model, name ) || known.some( function( other ) { return other.key.indexOf( prefix ) === 0 } );
+			} );
+
+			return clip;
+		},
+
+		/**
+		 *	Put a building block into the page as a paste puts in a copy - an id of its own, its keys and slots made new on this page, its words in the
+		 *	languages of the site - select it and close the dialog. The project is as it was until the page is saved
+		 *
+		 *	@param		{Object}		entry							As builder/blocks answers it
+		 *	@param		{number}		[index]						The place among the blocks of the page; the end without one
+		 *
+		 *	@return		void
+		 */
+		_insertBlock : function( entry, index ) {
+
+			const builder = Nino.admin.builder;
+			const doc = builder._doc;
+
+			if( builder._mutable() === false || doc === null || entry.clip === null )
+				return;
+
+			const clip = builder._blockClip( entry );
+
+			if( builder._pasteable( doc.model, builder._registry, [], clip ) !== '' )
+				return;
+
+			builder._closeDialog();
+
+			const to = builder._paste( doc.model, builder._registry, doc.file, [], clip, index );
+
+			if( to === null )
+				return;
+
+			builder._fresh[doc.model.blocks[to[0]].id] = true;
+			builder._sel = to;
+			builder._changed();
+			builder._paintSelection( true );
+
+			const tool = builder._toolAt( to, 'settings' );
+
+			if( tool !== null )
+				tool.focus();
 		},
 
 		// -------------------------------------------------------------- Dialogs

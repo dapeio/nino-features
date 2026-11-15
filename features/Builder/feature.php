@@ -28,8 +28,8 @@ return [
 				'de_DE' => 'Ermöglicht, Section, Spalte und Komponente in einem Dialog aus Blöcken einzustellen, etwa Inhalt samt Formatierung, Link, Fläche, Abstände, Breite und Ausrichtung, Reihenfolge und Loop.',
 			],
 			'Copy and Paste' => [
-				'en_US' => 'Lets you copy a section, a column or a component with its texts and pictures and paste it on this page or another, also with Ctrl+C and Ctrl+V.',
-				'de_DE' => 'Ermöglicht, eine Section, Spalte oder Komponente samt Texten und Bildern zu kopieren und auf dieser oder einer anderen Seite einzufügen, auch mit Strg+C und Strg+V.',
+				'en_US' => 'Lets you copy a section, a column or a component with its texts and pictures and paste it on this page or another, also with Ctrl+C and Ctrl+V, and insert a ready-made building block.',
+				'de_DE' => 'Ermöglicht, eine Section, Spalte oder Komponente samt Texten und Bildern zu kopieren, auf dieser oder einer anderen Seite einzufügen (auch Strg+C, Strg+V) und einen fertigen Baustein einzusetzen.',
 			],
 			'Keys and slots' => [
 				'en_US' => 'Lets you write the texts and choose the pictures of a page where they stand; they are kept as text keys and image slots of the project and go along with a copy.',

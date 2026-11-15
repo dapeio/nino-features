@@ -51,6 +51,7 @@ namespace Nino\Modules\Builder {
 				'builder/delete'		=> [ self::class, 'apiDelete' ],
 				'builder/source'		=> [ self::class, 'apiSource' ],
 				'builder/registry'	=> [ self::class, 'apiRegistry' ],
+				'builder/blocks'		=> [ self::class, 'apiBlocks' ],
 			];
 		}
 
@@ -261,6 +262,24 @@ namespace Nino\Modules\Builder {
 				return;
 
 			self::_answer( $request, Document::registry( $appData ) );
+		}
+
+		/**
+		 *	The blocks the feature brings, each with what the dialog shows of it and the section as a copy of it
+		 *	- what a paste takes - or, for one that needs a feature that is off, the names of what it needs.
+		 *	Nothing is written
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiBlocks( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			self::_answer( $request, [ 'status' => 200, 'blocks' => Library::blocks( $appData, dirname( __DIR__ ). '/blocks' ) ] );
 		}
 
 		/**

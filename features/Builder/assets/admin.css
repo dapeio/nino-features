@@ -359,6 +359,242 @@
 	}
 }
 
+/* The dialog that offers the building blocks: a search, the categories as buttons that are pressed or not, and a tile for each block - its sketch, its name and its
+   sentence - in a grid of cells of one width that wraps. A tile that cannot go in is greyed but for the reason, which is the one thing it has to say. The sketch is
+   drawn from the model in the grey levels of the editor, so that it looks the same in every theme of a site: the bars are the ink of the ground they stand on */
+.builder-blocks-head {
+	display: grid;
+	gap: .6rem;
+	margin-bottom: .9rem;
+}
+.builder-blocks-find {
+	width: 100%;
+	box-sizing: border-box;
+}
+.builder-blocks-categories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .35rem;
+}
+.builder-blocks-category {
+	min-height: 1.9rem;
+	padding: .25rem .8rem;
+	border: 1px solid var(--editor-border);
+	border-radius: 2rem;
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font-size: .78rem;
+	cursor: pointer;
+}
+.builder-blocks-category[aria-pressed="true"] {
+	border-color: var(--editor-blue);
+	background: var(--editor-blue-soft);
+}
+.builder-blocks-status {
+	margin: 0;
+	color: var(--editor-text-secondary);
+	font-size: .85rem;
+}
+.builder-blocks-status[hidden] {
+	display: none;
+}
+.builder-blocks-grid {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 13.5rem, 1fr ) );
+	gap: .75rem;
+}
+.builder-blocks-tile {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: .3rem;
+	min-width: 0;
+	height: auto;
+	min-height: 2.75rem;
+	padding: .5rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.builder-blocks-tile[hidden] {
+	display: none;
+}
+.builder-blocks-tile:hover:not([aria-disabled="true"]),
+.builder-blocks-tile:focus-visible {
+	border-color: var(--editor-blue);
+	background: var(--editor-blue-soft);
+}
+.builder-blocks-tile[aria-disabled="true"] {
+	cursor: default;
+}
+.builder-blocks-tile[aria-disabled="true"]:hover,
+.builder-blocks-tile[aria-disabled="true"]:focus-visible {
+	border-color: var(--editor-border);
+	background: transparent;
+}
+.builder-blocks-tile[aria-disabled="true"] > :not(.builder-blocks-reason) {
+	opacity: .45;
+}
+.builder-blocks-name {
+	font-size: .84rem;
+	font-weight: 700;
+}
+.builder-blocks-sentence {
+	color: var(--editor-text-secondary);
+	font-size: .76rem;
+	line-height: 1.35;
+}
+.builder-blocks-reason {
+	color: var(--editor-text);
+	font-size: .76rem;
+	font-weight: 600;
+}
+.builder-sketch {
+	display: flex;
+	align-items: center;
+	box-sizing: border-box;
+	aspect-ratio: 16 / 10;
+	padding: 6% 5%;
+	overflow: hidden;
+	border: 1px solid var(--editor-separator);
+	border-radius: var(--editor-radius-sm);
+	background: var(--builder-ground-plain);
+	color: var(--editor-text);
+}
+.builder-sketch.is-none {
+	background: repeating-linear-gradient( 135deg, transparent 0 .5rem, var(--editor-separator) .5rem 1rem );
+}
+.builder-sketch[data-color="alt"] {
+	background: var(--builder-ground-alt);
+}
+.builder-sketch[data-color="tint"] {
+	background: var(--builder-ground-tint);
+}
+.builder-sketch[data-color="dark"] {
+	background: var(--builder-ground-dark);
+	color: #eee;
+}
+.builder-sketch[data-color="black"] {
+	background: var(--builder-ground-black);
+	color: #eee;
+}
+.builder-sketch[data-color="primary"] {
+	background: var(--builder-ground-primary);
+	color: #fff;
+}
+.builder-sketch[data-color="brand-alt"] {
+	background: var(--builder-ground-brand-alt);
+	color: #111;
+}
+.builder-sketch-col[data-color="alt"],
+.builder-sketch-part[data-part="card"][data-color="alt"] {
+	background: var(--builder-ground-alt);
+}
+.builder-sketch-col[data-color="tint"],
+.builder-sketch-part[data-part="card"][data-color="tint"] {
+	background: var(--builder-ground-tint);
+}
+.builder-sketch-col[data-color="dark"],
+.builder-sketch-part[data-part="card"][data-color="dark"] {
+	background: var(--builder-ground-dark);
+	color: #eee;
+}
+.builder-sketch-col[data-color="black"],
+.builder-sketch-part[data-part="card"][data-color="black"] {
+	background: var(--builder-ground-black);
+	color: #eee;
+}
+.builder-sketch-col[data-color="primary"],
+.builder-sketch-part[data-part="card"][data-color="primary"] {
+	background: var(--builder-ground-primary);
+	color: #fff;
+}
+.builder-sketch-col[data-color="brand-alt"],
+.builder-sketch-part[data-part="card"][data-color="brand-alt"] {
+	background: var(--builder-ground-brand-alt);
+	color: #111;
+}
+.builder-sketch-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	width: 100%;
+}
+.builder-sketch-row[data-row="narrow"] {
+	width: 62%;
+	margin-inline: auto;
+}
+.builder-sketch-row[data-row="wide"] {
+	width: 92%;
+	margin-inline: auto;
+}
+.builder-sketch-col {
+	display: flex;
+	flex: 0 0 calc( var(--builder-sketch-w, 100) * 1% - 3px );
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+.builder-sketch[data-align="center"] .builder-sketch-col {
+	align-items: center;
+}
+.builder-sketch[data-align="right"] .builder-sketch-col {
+	align-items: flex-end;
+}
+.builder-sketch-part {
+	display: block;
+	flex: none;
+	border-radius: 2px;
+	background: color-mix( in srgb, currentColor 60%, transparent );
+}
+.builder-sketch-part[data-part="title"] {
+	width: 70%;
+	height: 5px;
+}
+.builder-sketch-part[data-part="title"] + .builder-sketch-part[data-part="title"] {
+	width: 50%;
+	height: 3px;
+}
+.builder-sketch-part[data-part="text"] {
+	width: 100%;
+	height: 8px;
+	background: repeating-linear-gradient( to bottom, color-mix( in srgb, currentColor 60%, transparent ) 0 2px, transparent 2px 4px );
+}
+.builder-sketch-part[data-part="button"] {
+	width: 32%;
+	height: 6px;
+	border-radius: 6px;
+	background: color-mix( in srgb, currentColor 85%, transparent );
+}
+.builder-sketch-part[data-part="image"] {
+	width: 100%;
+	height: 16px;
+	background: color-mix( in srgb, currentColor 25%, transparent );
+}
+.builder-sketch-part[data-part="block"] {
+	width: 60%;
+	height: 6px;
+	border: 1px dashed currentColor;
+	background: transparent;
+}
+.builder-sketch-part[data-part="card"] {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 4px;
+	border: 1px solid color-mix( in srgb, currentColor 40%, transparent );
+	border-radius: 3px;
+	background: color-mix( in srgb, currentColor 10%, transparent );
+}
+
 /* ------------------------------------------------------------- The preview */
 
 /* The language the editor works in, and the viewports: the tools of the bar over the preview */

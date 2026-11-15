@@ -167,7 +167,7 @@ check( 'the feature brings its panel along, and registers nothing on the site', 
 	return $before === $appData;
 } )() );
 
-check( 'the panel names every action it answers', array_keys( \Nino\Modules\Builder\Admin::actions() ) === [ 'builder/list', 'builder/create', 'builder/duplicate', 'builder/load', 'builder/save', 'builder/delete', 'builder/source', 'builder/registry' ] );
+check( 'the panel names every action it answers', array_keys( \Nino\Modules\Builder\Admin::actions() ) === [ 'builder/list', 'builder/create', 'builder/duplicate', 'builder/load', 'builder/save', 'builder/delete', 'builder/source', 'builder/registry', 'builder/blocks' ] );
 check( '...asks for its own permission, names no group in its nav() - three entries, since a feature\'s panel sits in the Features group whatever it would name - and is a workspace', \Nino\Modules\Builder\Admin::perm() === '/_admin/builder/manage'
 	&& count( \Nino\Modules\Builder\Admin::nav() ) === 3 && \Nino\Modules\Builder\Admin::layout() === 'workspace' );
 check( '...and brings the HTML editor of the workbench, its own script and its stylesheet, which are there', count( \Nino\Modules\Builder\Admin::assets() ) === 3 && in_array( '/_admin/assets/html-editor.js', \Nino\Modules\Builder\Admin::assets(), true ) === true
@@ -6410,7 +6410,7 @@ function callBuilderAction( array &$appData, string $method, array $data = [] ):
 	];
 }
 
-$actions = [ 'apiList', 'apiCreate', 'apiDuplicate', 'apiLoad', 'apiSave', 'apiDelete', 'apiSource', 'apiRegistry' ];
+$actions = [ 'apiList', 'apiCreate', 'apiDuplicate', 'apiLoad', 'apiSave', 'apiDelete', 'apiSource', 'apiRegistry', 'apiBlocks' ];
 
 \Nino\Auth::logoutUser( $appData );
 check( 'every action refuses a request with no session: 401', array_filter( $actions, static fn( string $action ): bool => callBuilderAction( $appData, $action )[0] !== 401 ) === [] );
@@ -6565,6 +6565,105 @@ check( 'delete refuses a template a route renders with 409, the key of the route
 check( '...and deletes one that none does', callBuilderAction( $appData, 'apiDelete', [ 'file' => 'page-team' ] )[0] === 200 && callBuilderAction( $appData, 'apiDelete', [ 'file' => 'page-team' ] )[0] === 404 );
 
 echo "\n";
+
+// --- 12. The building blocks --------------------------------------------------
+
+echo "Building blocks - the action and the save of what was put in\n";
+
+/**
+ *	What the project's own files are, as one string: every file below private/ but the log, which a refusal is written to, with the hash of its content - to say that nothing was written
+ *
+ *	@param		array 		&$appData			(reference) The sandbox's app data
+ *
+ *	@return 	string
+ */
+function blocksTree( array &$appData ): string {
+
+	$lines = [];
+	$base = ninoSandboxDir( $appData ). '/private';
+
+	foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base, FilesystemIterator::SKIP_DOTS ) ) as $file )
+		if( $file->isFile() === true && str_contains( $file->getPathname(), '/.logs/' ) === false )
+			$lines[] = substr( $file->getPathname(), strlen( $base ) ). ' '. hash_file( 'sha256', $file->getPathname() );
+
+	sort( $lines );
+
+	return implode( "\n", $lines );
+}
+
+$treeBefore = blocksTree( $appData );
+[ $status, $blocksBody ] = callBuilderAction( $appData, 'apiBlocks' );
+check( 'blocks answers the eight blocks of the feature with the section of each as a copy - and no status of the server\'s in the body', $status === 200 && count( $blocksBody['blocks'] ) === 8 && isset( $blocksBody['status'] ) === false
+	&& array_filter( $blocksBody['blocks'], static fn( array $entry ): bool => $entry['clip']['kind'] !== 'section' || $entry['needs'] !== [] ) === [] );
+check( '...and asking writes nothing: not a file of the project is another after it', blocksTree( $appData ) === $treeBefore );
+check( '...a read is not written to the activity log', \Nino\Modules\Builder\Admin::log( 'builder/blocks', [] ) === '' );
+
+// What the panel makes of the blocks it puts in, written out by its script test: every block once, the first twice
+$pasted = json_decode( (string) file_get_contents( __DIR__. '/fixtures/block-pasted.json' ), true );
+$created = \Nino\Modules\Builder\Document::create( $appData, 'Blocks' );
+$sourcesOf = static function( array $model ): array {
+
+	$found = [];
+	$walk = static function( array $components ) use ( &$walk, &$found ): void {
+		foreach( $components as $component ) {
+			if( is_string( $component['source'] ?? null ) === true && $component['source'] !== '' )
+				$found[] = $component['source'];
+			$walk( (array) ( $component['components'] ?? [] ) );
+		}
+	};
+
+	foreach( $model['blocks'] as $block )
+		foreach( $block['cols'] as $col )
+			$walk( $col['components'] );
+
+	return $found;
+};
+$sources = $sourcesOf( $pasted );
+$before = blocksTree( $appData );
+
+check( 'the page the panel makes of nine blocks has nine sections of nine ids and a key of its own for each of the '. count( $sources ). ' texts: none of them is a key of a block, none is there twice, none is in the project yet',
+	$created['status'] === 200 && count( $pasted['blocks'] ) === 9 && count( array_unique( array_column( $pasted['blocks'], 'id' ) ) ) === 9 && count( array_unique( $sources ) ) === count( $sources )
+	&& array_filter( $sources, static fn( string $uri ): bool => str_starts_with( $uri, '/template/page-blocks/' ) === false || \Nino\Text::entry( $appData, $uri ) !== null ) === [] );
+
+$loadedBlocks = \Nino\Modules\Builder\Document::load( $appData, 'page-blocks' );
+[ $status, $savedBlocks ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-blocks', 'model' => $pasted, 'hash' => $loadedBlocks['hash'] ] );
+
+check( 'a save writes the nine sections and makes exactly the keys they name - each with the words of the block in the languages of the site',
+	$status === 200 && array_column( $savedBlocks['model']['blocks'], 'id' ) === array_column( $pasted['blocks'], 'id' ) && array_filter( $sources, static fn( string $uri ): bool => \Nino\Text::entry( $appData, $uri ) === null ) === []
+	&& ( \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' )['values']['en_US'] ?? '' ) !== '' && ( \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' )['values']['de_DE'] ?? '' ) !== ''
+	&& \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' )['values']['en_US'] !== \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' )['values']['de_DE'] );
+check( '...the same block twice has two keys of two ids, the words the same in both and the one not the other\'s', ( \Nino\Text::entry( $appData, '/template/page-blocks/hero-2/title' )['values']['en_US'] ?? null ) === ( \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' )['values']['en_US'] ?? '' )
+	&& \Nino\Text::entry( $appData, '/template/page-blocks/hero-2/title' ) !== \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' ) );
+
+$keysAfter = array_column( \Nino\Text::entries( $appData ), 'key' );
+$ownKeys = array_values( array_filter( $keysAfter, static fn( string $key ): bool => str_starts_with( $key, '/template/page-blocks/' ) ) );
+sort( $ownKeys );
+$expected = $sources;
+sort( $expected );
+check( '...and no key besides: the project has the keys of the page and not one of a block\'s own - nothing under /template/block-', $ownKeys === $expected && array_filter( $keysAfter, static fn( string $key ): bool => str_starts_with( $key, '/template/block-' ) === true ) === [] );
+
+// Taking a section out and saving leaves its keys behind: the reason the panel does not give its id to a new one
+$afterSave = \Nino\Modules\Builder\Document::load( $appData, 'page-blocks' );
+$without = $afterSave['model'];
+array_shift( $without['blocks'] );
+$deleted = \Nino\Modules\Builder\Document::save( $appData, 'page-blocks', $without, $afterSave['hash'] );
+check( 'a section taken out and saved leaves its text keys in the project, with their words: an id that is free of sections is not yet free of keys',
+	$deleted['status'] === 200 && array_column( $deleted['model']['blocks'], 'id' )[0] !== 'hero' && ( \Nino\Text::entry( $appData, '/template/page-blocks/hero/title' )['values']['en_US'] ?? '' ) !== '' );
+
+// A save that is refused changes nothing: an account that may not make keys
+$limited = \Nino\Modules\Builder\Document::create( $appData, 'Blocks again' );
+$limitedLoad = \Nino\Modules\Builder\Document::load( $appData, 'page-blocks-again' );
+$again = json_decode( str_replace( '/template/page-blocks/', '/template/page-blocks-again/', json_encode( $pasted ) ), true );
+$again['file'] = 'page-blocks-again';
+\Nino\Auth::loginUser( $appData, 'elements@example.com', 'correct horse battery staple' );
+$tree = blocksTree( $appData );
+[ $status ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-blocks-again', 'model' => $again, 'hash' => $limitedLoad['hash'] ] );
+$unchanged = blocksTree( $appData ) === $tree;
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+check( 'a save of a page of blocks that is refused - an account without the permission - is refused whole: not a file of the project is another, no key is made', $limited['status'] === 200 && $status === 403 && $unchanged === true
+	&& array_filter( array_column( \Nino\Text::entries( $appData ), 'key' ), static fn( string $key ): bool => str_starts_with( $key, '/template/page-blocks-again/' ) ) === [] );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-blocks-again' );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-blocks' );
 
 // --- The browser half --------------------------------------------------------
 

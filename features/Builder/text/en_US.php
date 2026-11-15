@@ -28,6 +28,7 @@ declare(strict_types=1);
 //   /_admin/builder/picture/...   the picture of a slot and its alt text, and what is said of the upload
 //   /_admin/builder/focus/...     the nine places of the focus of a picture
 //   /_admin/builder/html/...      the HTML+ editor
+//   /_admin/builder/library/...   the dialog of the building blocks
 //   /_admin/builder/option/...    the words of a value of a setting, as <setting>-<value> - of an attribute of a
 //                                 component as attribute-<name>-<value>; a value with no words of its own is
 //                                 shown as it is, and an empty one as "default" or "none"
@@ -660,4 +661,19 @@ return [
 	'[[/_admin/builder/focus/bottom-left]]'					=> 'Bottom left',
 	'[[/_admin/builder/focus/bottom]]'						=> 'Bottom centre',
 	'[[/_admin/builder/focus/bottom-right]]'				=> 'Bottom right',
+
+	// The building blocks: the dialog that offers the ready-made sections the feature brings
+	'[[/_admin/builder/tree/building-block]]'				=> 'Building block',
+	'[[/_admin/builder/library/title]]'						=> 'Insert a building block',
+	'[[/_admin/builder/library/search]]'						=> 'Search building blocks',
+	'[[/_admin/builder/library/categories]]'				=> 'Categories',
+	'[[/_admin/builder/library/category-all]]'			=> 'All',
+	'[[/_admin/builder/library/category-intro]]'		=> 'Intro',
+	'[[/_admin/builder/library/category-content]]'	=> 'Content',
+	'[[/_admin/builder/library/category-offer]]'		=> 'Offer',
+	'[[/_admin/builder/library/category-action]]'		=> 'Call to action',
+	'[[/_admin/builder/library/needs]]'						=> 'Needs %s',
+	'[[/_admin/builder/library/loading]]'					=> 'Loading the building blocks.',
+	'[[/_admin/builder/library/empty]]'						=> 'No building block matches.',
+	'[[/_admin/builder/library/error]]'						=> 'The building blocks could not be loaded.',
 ];

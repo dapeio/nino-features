@@ -1,0 +1,16 @@
+<?php return [
+	'/template/block-pricing-three/pricing/title' => 'Pakete und Preise',
+	'/template/block-pricing-three/pricing/subtitle' => 'Klare Preise ohne Überraschungen.',
+	'/template/block-pricing-three/pricing/first-name' => 'Basis',
+	'/template/block-pricing-three/pricing/first-price' => '19 € / Monat',
+	'/template/block-pricing-three/pricing/first-features' => "Merkmal eins\nMerkmal zwei\nMerkmal drei",
+	'/template/block-pricing-three/pricing/first-button' => 'Auswählen',
+	'/template/block-pricing-three/pricing/second-name' => 'Standard',
+	'/template/block-pricing-three/pricing/second-price' => '49 € / Monat',
+	'/template/block-pricing-three/pricing/second-features' => "Alles aus Basis\nMerkmal vier\nMerkmal fünf",
+	'/template/block-pricing-three/pricing/second-button' => 'Auswählen',
+	'/template/block-pricing-three/pricing/third-name' => 'Premium',
+	'/template/block-pricing-three/pricing/third-price' => '99 € / Monat',
+	'/template/block-pricing-three/pricing/third-features' => "Alles aus Standard\nMerkmal sechs\nMerkmal sieben",
+	'/template/block-pricing-three/pricing/third-button' => 'Auswählen',
+];
