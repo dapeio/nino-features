@@ -597,7 +597,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, navs, knobs, styles, features, tiers, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, navs, knobs, styles, features, tiers, size, width, whitespace, radius, radius-alt, radii, motion, fonts, colours, theme, origin, css }
 		 */
 		_selection : function( data ) {
 
@@ -631,6 +631,7 @@
 				fonts 	: fonts,
 				colours	: Object.assign( {}, data.colours || {} ),
 				theme 	: String( data.theme || '' ),
+				origin 	: data.origin !== undefined && data.origin !== null && Array.isArray( data.origin ) === false ? JSON.parse( JSON.stringify( data.origin ) ) : {},
 				css 		: String( data.css || '' ),
 			};
 		},
@@ -1428,6 +1429,9 @@
 			card.innerHTML = '';
 			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/theme/list/title') ) );
 
+			if( design._themeRenewed() === true )
+				card.appendChild( design._renewedNotice() );
+
 			const list = ui.el( 'ul', 'design-theme-list' );
 			list.id = 'design-theme-list';
 
@@ -1449,6 +1453,33 @@
 
 			file.appendChild( input );
 			card.appendChild( file );
+		},
+
+		/**
+		 *	The line over the list where the library has renewed the theme the screen was taken from: it says so in words - the chip
+		 *	on the tab is a colour and a word, this is the sentence - and offers the new version, which is Load for that theme: the
+		 *	screen becomes the file as it is now, a draft until it is saved. Where the screen was changed as well, the sentence says
+		 *	that these changes are not kept, before the button is pressed
+		 *
+		 *	@return		{Element}
+		 */
+		_renewedNotice : function() {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+			const slug = design._edit.theme;
+			const name = design._themeEntry( slug ).name;
+			const notice = ui.el( 'div', 'design-theme-renewed' );
+			const words = design._text( '/_admin/design/theme/renewed/text', name )+ ( design._themeChanged() === true ? ' '+ Nino.content.getText('/_admin/design/theme/renewed/lost') : '' );
+
+			notice.appendChild( ui.el( 'p', 'nino-admin-hint design-theme-renewed-text', words ) );
+			notice.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/renewed/take'), function() { design._loadTheme( slug ) }, {
+				id 				: 'design-theme-renewed-take',
+				name 			: Nino.content.getText('/_admin/design/theme/renewed/take')+ ' - '+ name,
+				disabled 	: design._themeBusy,
+			} ) );
+
+			return notice;
 		},
 
 		/**
@@ -1654,13 +1685,60 @@
 			if( edit === null || edit.theme === '' || active === null || active.slug !== edit.theme )
 				return false;
 
+			/*	A shipped theme the project took over has a record of what it was then: the screen is compared with that, and the library's renewal of the file
+				is for _themeRenewed() to say. Without a record (a project of an older save, a theme of the project) the screen is compared with the file as it is	*/
+			if( design._recorded( edit ) === true )
+				return design._originForm( { setup : design._snapshotOf( edit, edit.origin.setup ), css : edit.css } ) !== design._originForm( edit.origin );
+
 			return design._canonical( { setup : design._snapshotOf( edit, active.setup ), css : edit.css } ) !== design._canonical( { setup : active.setup, css : active.css } );
 		},
 
 		/**
-		 *	Draw the chip "changed" on the button of the panel's own screen in the strip on top of the pane, which says
-		 *	Themes, or take it away: it is there while the screen differs from the loaded theme (see _themeChanged()),
-		 *	whichever tab and mode are open. The button is the shell's (see Panels::panesHtml(), id admin-tabbutton-<uri>):
+		 *	Whether the working copy carries the record of what a shipped theme was when it was taken over
+		 *
+		 *	@param		{Object}	edit
+		 *
+		 *	@return		{boolean}
+		 */
+		_recorded : function( edit ) {
+			return edit.origin !== undefined && edit.origin !== null && typeof edit.origin.setup === 'object' && edit.origin.setup !== null && typeof edit.origin.css === 'string';
+		},
+
+		/**
+		 *	A setup and a css as two of them are compared: the keys sorted, as _canonical() spells it, and no space at the end of the css - the
+		 *	server holds both sides through one normaliser, so what is left is a difference in the theme
+		 *
+		 *	@param		{Object}	record		setup, css
+		 *
+		 *	@return		{string}
+		 */
+		_originForm : function( record ) {
+			return Nino.admin.design._canonical( { setup : record.setup, css : record.css.replace( /\s+$/, '' ) } );
+		},
+
+		/**
+		 *	Whether the library has renewed the theme the screen was taken from since it was taken over: the theme as it is now is another
+		 *	one than the record of the working copy. Only a shipped theme with a record has an answer - for every other the answer is no, and
+		 *	nothing is guessed
+		 *
+		 *	@return		{boolean}
+		 */
+		_themeRenewed : function() {
+
+			const design = Nino.admin.design;
+			const edit = design._edit;
+			const active = design._active;
+
+			if( edit === null || edit.theme === '' || active === null || active.slug !== edit.theme || active.shipped !== true || design._recorded( edit ) === false )
+				return false;
+
+			return design._originForm( edit.origin ) !== design._originForm( active );
+		},
+
+		/**
+		 *	Draw the chips "changed" and "renewed" on the button of the panel's own screen in the strip on top of the pane, which says
+		 *	Themes, or take them away: "changed" is there while the screen differs from the loaded theme (see _themeChanged()),
+		 *	"renewed" while the library has renewed that theme since it was taken over (see _themeRenewed()), whichever tab and mode are open. The button is the shell's (see Panels::panesHtml(), id admin-tabbutton-<uri>):
 		 *	the kernel has no place in a tab's label for a word of the panel's, so the script appends the chip to the
 		 *	button - and has to do it again whenever the strip may have been drawn anew, which is each time one of the tabs
 		 *	is shown (see _show() and Nino.admin['design-typefaces'].showCurrent()). Asked for after every change of a
@@ -1671,19 +1749,23 @@
 		_refreshThemeChip : function() {
 
 			const design = Nino.admin.design;
-			const changed = design._themeChanged();
 			const tab = dc.getElementById('admin-tabbutton-design');
 
 			if( tab === null )
 				return;
 
-			const chip = tab.querySelector('.design-tab-changed');
+			// Two chips, told apart by who made the difference: the screen was changed, and the library renewed the theme
+			[ [ 'changed', design._themeChanged(), Nino.content.getText('/_admin/design/theme/current/changed') ],
+				[ 'renewed', design._themeRenewed(), Nino.content.getText('/_admin/design/theme/current/renewed') ] ].forEach( function( chip ) {
 
-			if( changed === true && chip === null )
-				tab.appendChild( design._chip( 'design-tab-changed', Nino.content.getText('/_admin/design/theme/current/changed'), 'warn' ) );
+				const present = tab.querySelector('.design-tab-'+ chip[0] );
 
-			if( changed === false && chip !== null )
-				chip.remove();
+				if( chip[1] === true && present === null )
+					tab.appendChild( design._chip( 'design-tab-'+ chip[0], chip[2], 'warn' ) );
+
+				if( chip[1] === false && present !== null )
+					present.remove();
+			} );
 		},
 
 		/**
@@ -1929,9 +2011,16 @@
 			design._edit = { parts : setup.parts, navs : Object.assign( { header : '', footer : '' }, setup.navs || {} ), knobs : setup.knobs, styles : design._stylesOf( setup.styles, Object.keys( setup.parts ) ), size : setup.size, width : setup.width, whitespace : setup.whitespace,
 				radius : setup.radius, 'radius-alt' : setup['radius-alt'], radii : setup.radii, motion : setup.motion, fonts : setup.fonts,
 				colours : setup.colours === undefined ? design._edit.colours : setup.colours,
-				features : design._entriesOf( setup.features ), tiers : design._tiersOf( setup.tiers ), theme : response.slug, css : response.css };
+				features : design._entriesOf( setup.features ), tiers : design._tiersOf( setup.tiers ), theme : response.slug, origin : {}, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
+
+			/*	What a shipped theme is as it is taken over - its setup and css as the screen holds them - is written on the working copy and goes with a save: the
+				theme the library renews later is told from it, and so is what the person changed. A theme of the project has none, and the copy carries none of an older
+				theme's	*/
+			if( response.shipped === true )
+				design._edit.origin = JSON.parse( JSON.stringify( { setup : design._snapshotOf( design._edit, setup ), css : response.css } ) );
+
 			design._notes = Array.isArray( response.notes ) === true ? response.notes : [];
 
 			if( edit === true ) {

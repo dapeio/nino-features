@@ -771,6 +771,28 @@
    the third of the screen that holds the column beside the preview, for every row alike - they
    stand under the words. Five buttons wrap as three did. From 768px down a row is a column in any
    case */
+/*	The line over the list where the library has renewed the theme the screen was taken from: the sentence and the button that takes
+	the new version over, side by side where the card has room and one under the other where it has not (see _renewedNotice()) */
+.nino-admin .design-theme-renewed {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: .45rem .9rem;
+	margin: 0 0 .35rem;
+	padding: .55rem .7rem;
+	border: 1px solid var(--editor-separator);
+	border-left: 3px solid var(--editor-orange);
+	border-radius: var(--editor-radius-sm);
+}
+.nino-admin .design-theme-renewed-text {
+	flex: 1 1 16rem;
+	min-width: 0;
+	margin: 0;
+}
+.nino-admin .design-theme-renewed > button {
+	flex: none;
+}
 .nino-admin .design-theme-list {
 	margin: 0 0 .35rem;
 	padding: 0;

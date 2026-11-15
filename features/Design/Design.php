@@ -75,7 +75,8 @@ namespace Nino\Modules {
 		 *	every apply, which therefore compiled twice.
 		 *
 		 *	'compiled' is the record of a previous apply rather than a choice,
-		 *	so it decides nothing here and is left out.
+		 *	so it decides nothing here and is left out - and 'origin', the record
+		 *	of what a theme was when the choices were taken from it, is left out too.
 		 *
 		 *	The colour tables are not hashed - they are code - but what they
 		 *	produce can change under a setup that did not. Colours::REVISION
@@ -176,6 +177,9 @@ namespace Nino\Modules {
 			}
 
 			unset( $setup['compiled'] );
+
+			// What a theme was when the choices were taken from it decides nothing the sheet says: the choices are above
+			unset( $setup['origin'] );
 
 			if( ( $setup['features'] ?? [] ) === [] )
 				unset( $setup['features'] );

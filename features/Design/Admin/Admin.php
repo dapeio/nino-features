@@ -359,6 +359,8 @@ namespace Nino\Modules\Design {
 					and cut to the keys that choose something - no colours where the
 					file names none - which the screen compares the draft with. null where there is none	*/
 				'theme' 	=> (string) ( $setup['theme'] ?? '' ),
+				// What a shipped theme was when the setup was taken from it - its setup and css as `active` has them, [] for none: the screen compares the draft with it, and it with the theme as it is now
+				'origin' 	=> self::_origin( $appData, $library, $setup['origin'], (string) ( $setup['theme'] ?? '' ) ),
 				'css' 		=> (string) ( $setup['css'] ?? '' ),
 				// The theme the website runs: the one the setup was taken from when it was last applied, which is not
 				// the one of the draft that was loaded since - the screen tells the two apart
@@ -1320,6 +1322,10 @@ namespace Nino\Modules\Design {
 			$setup = Setup::normalize( $appData, $taken, $library, $notes );
 			$normal = Setup::defaults( $library );
 
+			// What the theme was when it was taken over: the posted record, read through the same normaliser as the theme's file, and only for a shipped theme
+			if( is_array( $posted['origin'] ?? null ) === true && Themes::refusal( is_string( $posted['origin']['css'] ?? null ) === true ? $posted['origin']['css'] : '' ) === '' )
+				$setup['origin'] = self::_origin( $appData, $library, $posted['origin'], $setup['theme'] );
+
 			foreach( Setup::KNOBS as $part => $kinds ) {
 
 				$answered = Setup::knobs( $library, $part, (string) ( $setup['parts'][$part] ?? '' ) );
@@ -1566,6 +1572,47 @@ namespace Nino\Modules\Design {
 				'setup' 	=> Themes::snapshot( $setup ),
 				'css' 		=> Themes::css( $raw ),
 			];
+		}
+
+		/**
+		 *	The origin of a setup - what its shipped theme was when the setup was taken from it - as the screen compares with it: the setup of the
+		 *	record normalised the way the theme's file is (see _active(): the same keys, a family not installed here as ''), and its css with the
+		 *	line breaks of one kind. A knob the code gained since is at its default in both, so it is no difference. Exactly these two fields leave
+		 *	here, whatever the record held: it is [] for a theme that is not shipped, a record that is no pair of a setup and a css, and a css that
+		 *	is refused. The families that were '' stay ''
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$library			The feature's library
+		 *	@param		mixed			$record				What was posted or stored: setup, css
+		 *	@param		string		$slug					The slug of the theme of the setup
+		 *
+		 *	@return 	array											setup, css - [] for none
+		 */
+		private static function _origin( array &$appData, string $library, mixed $record, string $slug ): array {
+
+			if( is_array( $record ) === false || Themes::isShipped( $library, $slug ) === false || is_array( $record['setup'] ?? null ) === false || $record['setup'] === []
+				|| is_string( $record['css'] ?? null ) === false || Themes::refusal( $record['css'] ) !== '' )
+				return [];
+
+			$given 		= $record['setup'];
+			$notes 		= [];
+			$missing 	= [];
+
+			$setup = self::_fromFile( $appData, $given, $library, $notes, $missing );
+
+			// A shipped theme names no colours: a brand colour is the project's
+			unset( $setup['colours'] );
+
+			foreach( Fonts::ROLES as $role ) {
+
+				$family = (string) ( $setup['fonts'][$role]['family'] ?? '' );
+				$asked = is_array( $given['fonts'][$role] ?? null ) === true ? ( $given['fonts'][$role]['family'] ?? null ) : null;
+
+				if( isset( $missing[$family] ) === true || $asked === '' )
+					$setup['fonts'][$role]['family'] = '';
+			}
+
+			return [ 'setup' => Themes::snapshot( $setup ), 'css' => Themes::css( [ 'css' => $record['css'] ] ) ];
 		}
 
 		/**

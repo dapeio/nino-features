@@ -63,6 +63,14 @@ namespace Nino\Modules\Design {
 	 *										a slug that is shipped is read from the library, and a theme
 	 *										cannot be made under it.
 	 *
+	 *										What a project took over is told by its origin: the setup and
+	 *										the css of a shipped theme as they were when the project took
+	 *										it over, kept beside the slug in data/design.php. The panel
+	 *										reads the origin and the theme's file through one normaliser,
+	 *										so a knob the code gained, a number written as a string or a
+	 *										space at the end of the css is no difference. A theme of the
+	 *										project has no origin: only the project writes it.
+	 *
 	 *										A slug names a file, so every method that takes one holds it
 	 *										to SLUG first: what is none is no theme and never reaches a
 	 *										path. What a css may carry is judged here too (see
@@ -83,6 +91,7 @@ namespace Nino\Modules\Design {
 
 		// The shape's own version. A file of another one is no theme
 		public const int FORMAT = 1;
+
 
 		/*	The theme the feature ships: the framework as it is, and the one Setup::defaults()
 			takes its sets from. It is listed first - any other file of library/themes/ is
@@ -372,8 +381,8 @@ namespace Nino\Modules\Design {
 		 *	palette - in the order of Setup::KEYS, and only those the setup has: a theme that
 		 *	names no colours (see the class) has none, and the choices for the features are
 		 *	the setup's like the rest, which a normalised setup always has. The
-		 *	format, the theme, the css and the record of what was compiled are not a theme's
-		 *	setup: the css stands beside it in the file, and the other three are the
+		 *	format, the theme, its origin, the css and the record of what was compiled are not a theme's
+		 *	setup: the css stands beside it in the file, and the other four are the
 		 *	project's. What a saved or duplicated theme keeps, and what the chip
 		 *	"changed" compares
 		 *
@@ -386,7 +395,7 @@ namespace Nino\Modules\Design {
 			$cut = [];
 
 			foreach( Setup::KEYS as $key )
-				if( in_array( $key, [ 'format', 'theme', 'css', 'compiled' ], true ) === false && array_key_exists( $key, $setup ) === true )
+				if( in_array( $key, [ 'format', 'theme', 'origin', 'css', 'compiled' ], true ) === false && array_key_exists( $key, $setup ) === true )
 					$cut[$key] = $setup[$key];
 
 			// What the tablet and Mobile do differently is in a theme where it is set: a theme that sets none is the file it was, and an export of it is too

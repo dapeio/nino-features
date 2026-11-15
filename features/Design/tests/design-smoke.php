@@ -3717,7 +3717,7 @@ $chosen = [];
 foreach( Setup::defaults( $library ) as $key => $value ) {
 
 	// ...and the styles of the templates: a template declares its own, so they stand by the select of the template and have no place in the table - nor have the tablet and the phone, whose controls are the two tabs of their own (Setup::TIER_CONTROLS)
-	if( in_array( $key, [ 'format', 'theme', 'css', 'compiled', 'styles', 'tiers' ], true ) === true )
+	if( in_array( $key, [ 'format', 'theme', 'origin', 'css', 'compiled', 'styles', 'tiers' ], true ) === true )
 		continue;
 
 	if( is_array( $value ) === false )
@@ -5137,7 +5137,7 @@ $beforeFamilies = static function( array $setup ) use ( $library ): string {
 	}
 
 	// ...and before the features and the styles of the templates had a key of their own in it
-	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'], $setup['tiers'] );
+	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'], $setup['tiers'], $setup['origin'] );
 
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
@@ -5807,7 +5807,7 @@ $beforeRevision = static function( array $setup, string $lib ): string {
 		$files[$printPart] 	= [ $printSet, ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
 	}
 	// ...as it was written before the features, the styles of the templates and the navigations had a key of their own in it
-	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'], $setup['tiers'] );
+	unset( $setup['compiled'], $setup['features'], $setup['styles'], $setup['navs'], $setup['tiers'], $setup['origin'] );
 	return hash( 'sha256', serialize( [ $setup, $files ] ) );
 };
 $moved = $sandboxSetup;
@@ -6464,10 +6464,10 @@ check( '...recording what was compiled, so the panel can tell the file from the 
 	set has to be told by is 'compiled'['input'], which hashes those same files
 	itself	*/
 check( '...and it holds what was chosen and nothing derived from it: the keys of the model, a template by its name, a knob by its position',
-	array_keys( $stored ) === array_values( array_diff( Setup::KEYS, [ 'tiers' ] ) ) && $stored['parts'] === $defaultSets
+	array_keys( $stored ) === array_values( array_diff( Setup::KEYS, [ 'tiers', 'origin' ] ) ) && $stored['parts'] === $defaultSets
 	&& $stored['knobs'] === Setup::defaults( $library )['knobs'] );
 check( '...and so does the copy of it the record keeps, and the file on disk: a project that set nothing for the tablet and Mobile has no key of theirs anywhere in data/design.php, the one it had',
-	array_keys( (array) ( $stored['compiled']['setup'] ?? [] ) ) === array_values( array_diff( Setup::KEYS, [ 'tiers', 'compiled' ] ) )
+	array_keys( (array) ( $stored['compiled']['setup'] ?? [] ) ) === array_values( array_diff( Setup::KEYS, [ 'tiers', 'origin', 'compiled' ] ) )
 	&& str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, Setup::PATH ) ), 'tiers' ) === false );
 
 /*	upgrade() reads the setup through normalize() and writes it back, and that
@@ -6481,7 +6481,7 @@ $legacy['knobs']['spacing'] = 'more';
 
 check( 'upgrading drops what an older version stored and leaves the choices alone', \Nino\Modules\Design::upgrade( $appData, '0.1.0' ) === true );
 $upgraded = \Nino\Filesystem::getFileContent( $appData, Setup::PATH, [] );
-check( '...so the file holds the same choices, without it', array_keys( $upgraded ) === array_values( array_diff( Setup::KEYS, [ 'tiers' ] ) ) && isset( $upgraded['knobs']['spacing'] ) === false
+check( '...so the file holds the same choices, without it', array_keys( $upgraded ) === array_values( array_diff( Setup::KEYS, [ 'tiers', 'origin' ] ) ) && isset( $upgraded['knobs']['spacing'] ) === false
 	&& $upgraded['parts'] === $stored['parts'] && $upgraded['knobs'] === $stored['knobs']
 	&& ( $upgraded['compiled']['input'] ?? '' ) === ( $stored['compiled']['input'] ?? '' ) );
 
@@ -6727,7 +6727,7 @@ check( 'the answer carries the setup a fresh install starts from, beside the one
 	( $forScreen['defaults'] ?? null ) === Themes::snapshot( Setup::defaults( $library ) ) && ( $forScreen['defaults'] ?? null ) === ( $listed['defaults'] ?? 'x' )
 	&& ( $forScreen['knobs'] ?? null ) !== ( $forScreen['defaults']['knobs'] ?? null ) && ( $forScreen['size'] ?? null ) !== ( $forScreen['defaults']['size'] ?? null )
 	&& array_diff( array_keys( (array) ( $forScreen['defaults'] ?? [] ) ), Setup::KEYS ) === []
-	&& array_intersect( [ 'format', 'theme', 'css', 'compiled' ], array_keys( (array) ( $forScreen['defaults'] ?? [] ) ) ) === [] );
+	&& array_intersect( [ 'format', 'theme', 'origin', 'css', 'compiled' ], array_keys( (array) ( $forScreen['defaults'] ?? [] ) ) ) === [] );
 
 [ $status, $applied ] = callDesignAction( $appData, 'apiApply' );
 $appliedSheet = (string) \Nino\Filesystem::getFileContent( $appData, Compiler::TARGET, '' );
@@ -6996,6 +6996,10 @@ $sans = static function( array $setup ): array {
 	// What the tablet and Mobile do differently is in a file where something is set (see Setup::write())
 	if( array_filter( (array) ( $setup['tiers'] ?? [] ) ) === [] )
 		unset( $setup['tiers'] );
+
+	// ...and what a shipped theme was when the choices were taken from it, where there is a record
+	if( ( $setup['origin'] ?? [] ) === [] )
+		unset( $setup['origin'] );
 
 	return $setup;
 };
@@ -9059,7 +9063,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	// The keys of a setup that choose something, as a theme file keeps them: the keys of a setup but the four that are the project's
 	// ...and what the tablet and Mobile do differently is in a file where something is set, and in no other (see Themes::snapshot())
-	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) );
+	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'origin', 'css', 'compiled', 'tiers' ] ) );
 	// ...and the ones a theme the feature ships chooses: all of them but the palette. A brand colour is the project's - the choices for the features are the theme's, an empty list where it names none
 	$choosesShipped = array_values( array_diff( $chooses, [ 'colours' ] ) );
 	/*	The theme the feature ships was written before the hover of the pictures was a part of the motion, and it stays as it was until the themes are looked at as a whole: it names the
@@ -9097,7 +9101,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	};
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
-		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ]
+		Setup::KEYS === [ 'format', 'theme', 'origin', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ]
 		&& array_keys( Setup::defaults( $library ) ) === Setup::KEYS && Setup::defaults( $library )['theme'] === '' && Setup::defaults( $library )['css'] === '' );
 	check( '...and the format of the file stays 2: a file without the two keys reads as none and no css, which is what every project had, with no note and nothing migrated',
 		Setup::FORMAT === 2 && \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'size' => 1, 'width' => -1 ] ) === true
@@ -9130,7 +9134,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	Setup::write( $appData, $themed );
 	$written = (array) include $themeSetupFile;
 
-	check( 'write() writes the two keys in the order of KEYS - the tiers only where something is set - and read() reads them back', array_keys( $written ) === array_values( array_diff( Setup::KEYS, [ 'tiers' ] ) ) && $written['theme'] === $shippedFirst && $written['css'] === "a {}\nb {}\nc {}"
+	check( 'write() writes the two keys in the order of KEYS - the tiers only where something is set - and read() reads them back', array_keys( $written ) === array_values( array_diff( Setup::KEYS, [ 'tiers', 'origin' ] ) ) && $written['theme'] === $shippedFirst && $written['css'] === "a {}\nb {}\nc {}"
 		&& Setup::read( $appData, $library )['theme'] === $shippedFirst && Setup::read( $appData, $library )['css'] === "a {}\nb {}\nc {}" );
 
 	// Name, slug, refusal - the pure functions of the class
@@ -9266,7 +9270,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	check( 'a snapshot is the eleven keys of a setup that choose something and nothing else - no format, no theme, no css, no record of what was compiled - in the order of KEYS',
 		array_keys( Themes::snapshot( $normalised ) ) === $chooses
-		&& Themes::snapshot( $normalised ) === array_diff_key( $normalised, array_flip( [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) ) && Themes::snapshot( [] ) === [] );
+		&& Themes::snapshot( $normalised ) === array_diff_key( $normalised, array_flip( [ 'format', 'theme', 'origin', 'css', 'compiled', 'tiers' ] ) ) && Themes::snapshot( [] ) === [] );
 
 	check( 'an export is the file as json - in the order of the shape, the characters of any language and the slashes as they are, a line break at the end - and an import reads it back as the array it was, byte for byte',
 		( $exportText = Themes::json( $bilingual ) ) !== '' && str_ends_with( $exportText, "}\n" ) && str_contains( $exportText, '"name-de": "Zeitschrift"' ) === true && str_contains( $exportText, '\\/' ) === false && str_contains( $exportText, '\\u' ) === false
@@ -9562,7 +9566,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && $listedNone['theme'] === '' && $listedNone['css'] === '' && $listedNone['active'] === null
 		&& array_column( $listedNone['themes'], 'slug' ) === array_keys( $shippedFiles ) && array_column( $listedNone['themes'], 'name' ) === array_column( $shippedWords['de_DE'], 0 )
 		&& array_column( $listedNone['themes'], 'shipped' ) === array_fill( 0, count( $shippedFiles ), true ) && array_keys( $listedNone['themes'][0] ) === [ 'slug', 'name', 'description', 'shipped' ]
-		&& array_slice( array_keys( $listedNone ), array_search( 'width', array_keys( $listedNone ), true ), 11 ) === [ 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'radiusWords', 'theme', 'css', 'running', 'themes', 'active' ] && $listedNone['running'] === '' );
+		&& array_slice( array_keys( $listedNone ), array_search( 'width', array_keys( $listedNone ), true ), 12 ) === [ 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'radiusWords', 'theme', 'origin', 'css', 'running', 'themes', 'active' ] && $listedNone['running'] === '' );
 
 	$setupBytes = static fn(): string => is_file( $themeSetupFile ) === true ? (string) file_get_contents( $themeSetupFile ) : '';
 
@@ -9635,6 +9639,168 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$setupBytes() === $before && Admin::log( 'design/theme/load', [ 'slug' => $shippedFirst ] ) === ''
 		&& array_unique( array_map( static fn( array $post ): array => $codesOf( callDesignAction( $appData, 'apiThemeLoad', $post )[1] ), [ [ 'slug' => 'nowhere' ], [], [ 'slug' => [ $shippedFirst ] ], [ 'slug' => '../'. $shippedFirst ], [ 'slug' => ucfirst( $shippedFirst ) ] ] ), SORT_REGULAR ) === [ $noThemeError ]
 		&& callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'nowhere' ] )[0] === 404 );
+
+	/*	The origin: what a shipped theme was when the setup was taken from it - its setup and its css. The panel reads it and the theme's file through one
+		normaliser, so that what is left of a difference is a difference in the theme: a knob the code gained, a number written as a string, a list
+		left out, a space at the end of the css and the order of the keys are none	*/
+	$sorted = static function( mixed $value ) use ( &$sorted ): mixed {
+
+		if( is_array( $value ) === false )
+			return $value;
+
+		$value = array_map( $sorted, $value );
+
+		if( array_is_list( $value ) === false )
+			ksort( $value );
+
+		return $value;
+	};
+	$sameTheme = static fn( array $a, array $b ): bool => json_encode( $sorted( [ $a['setup'] ?? null, rtrim( (string) ( $a['css'] ?? '' ) ) ] ) ) === json_encode( $sorted( [ $b['setup'] ?? null, rtrim( (string) ( $b['css'] ?? '' ) ) ] ) );
+	$taken = [ 'setup' => $loaded['setup'], 'css' => $loaded['css'] ];
+	$originOf = static function( mixed $origin, string $theme = '' ) use ( &$appData, $shippedFirst, $selection, $themeSetupFile, $library ): array {
+
+		callDesignAction( $appData, 'apiSave', [ 'theme' => $theme === '' ? $shippedFirst : $theme, 'origin' => $origin ] + $selection );
+
+		return [ callDesignAction( $appData, 'apiList' )[1], (array) include $themeSetupFile ];
+	};
+	$beforeOrigin = Setup::read( $appData, $library );
+	ninoWarnings();
+
+	[ $listedTaken, $fileTaken ] = $originOf( $taken );
+	$active = [ 'setup' => $listedTaken['active']['setup'], 'css' => $listedTaken['active']['css'] ];
+
+	check( 'design/save keeps the origin of a shipped theme - its setup and its css, exactly these two fields - and design/list gives it back next to the theme as it is: the project is the theme of the library, and the two are the same',
+		array_keys( $fileTaken['origin'] ?? [] ) === [ 'setup', 'css' ] && array_keys( $listedTaken['origin'] ) === [ 'setup', 'css' ] && $sameTheme( $listedTaken['origin'], $active ) && $sameTheme( $listedTaken['origin'], $taken )
+		&& array_keys( $listedTaken['origin']['setup'] ) === array_keys( $loaded['setup'] ) && ninoWarnings() === [] );
+
+	// The code gained a knob since the origin was written: the origin has none of it, the theme's file has it at its default
+	$gained = null;
+
+	foreach( $loaded['setup']['knobs'] as $part => $knobs )
+		foreach( $knobs as $knob => $value ) {
+
+			$cut = $loaded['setup'];
+			unset( $cut['knobs'][$part][$knob] );
+
+			if( $gained === null && Setup::normalize( $appData, [ 'knobs' => $cut['knobs'] ], $library )['knobs'][$part][$knob] === $value )
+				$gained = [ $part, $knob, $cut ];
+		}
+
+	[ $listedGained ] = $originOf( [ 'setup' => $gained[2] ?? [], 'css' => $loaded['css'] ] );
+
+	check( 'a knob the code gained is no difference: an origin that lacks a knob its theme has at the default of it reads as the same theme, the origin holding the knob as the file does',
+		$gained !== null && $sameTheme( $listedGained['origin'], [ 'setup' => $listedGained['active']['setup'], 'css' => $listedGained['active']['css'] ] )
+		&& array_key_exists( $gained[1], $listedGained['origin']['setup']['knobs'][$gained[0]] ) === true );
+
+	// Spelling and space: a number as a string, the lists left out, a space and the other line breaks at the end of the css
+	$spelled = $loaded['setup'];
+	$spelled['size'] = (string) $spelled['size'];
+	$spelled['width'] = (string) $spelled['width'];
+	unset( $spelled['features'], $spelled['tiers'], $spelled['styles'] );
+	[ $listedSpelled ] = $originOf( [ 'setup' => $spelled, 'css' => str_replace( "\n", "\r\n", $loaded['css'] ). "  \r\n\r\n" ] );
+
+	check( 'what is spelled another way is the same theme: a number as a string, a list that is left out, the line breaks of another machine and a space at the end of the css',
+		$sameTheme( $listedSpelled['origin'], $active ) && str_contains( $listedSpelled['origin']['css'], "\r" ) === false && json_encode( $listedSpelled['origin']['setup'] ) === json_encode( $listedTaken['origin']['setup'] ) );
+
+	// The order of the keys is no difference, and the origin is held in the order of the normaliser whichever way it came
+	$reversed = static function( array $value ) use ( &$reversed ): array {
+		return array_map( static fn( mixed $item ): mixed => is_array( $item ) === true ? $reversed( $item ) : $item, array_is_list( $value ) === true ? $value : array_reverse( $value, true ) );
+	};
+	[ $listedReversed ] = $originOf( [ 'css' => $loaded['css'], 'setup' => $reversed( $loaded['setup'] ) ] );
+
+	check( 'the order of the keys is no difference, and what comes back is in one order: the origin of a request with every object reversed is the bytes of the origin of the plain one',
+		json_encode( $listedReversed['origin'] ) === json_encode( $listedTaken['origin'] ) );
+
+	// What is a difference: a value of the theme, a line of its css - the library renewed it
+	$moved = $loaded['setup'];
+	$moved['size'] = $moved['size'] === 2 ? 1 : 2;
+	[ $listedMoved ] = $originOf( [ 'setup' => $moved, 'css' => $loaded['css'] ] );
+	[ $listedStyled ] = $originOf( [ 'setup' => $loaded['setup'], 'css' => $loaded['css']. ".origin-probe { margin: 0 }\n" ] );
+	$knobbed = $loaded['setup'];
+	$knobbed['knobs'][$gained[0] ?? 'header'][$gained[1] ?? 'height'] = 2;
+
+	check( 'a value of the theme that differs, a line of its css and a knob at another position are another theme: an origin like that is not the theme as it is - the library renewed it',
+		$sameTheme( $listedMoved['origin'], $active ) === false && $sameTheme( $listedStyled['origin'], $active ) === false && $sameTheme( $originOf( [ 'setup' => $knobbed, 'css' => $loaded['css'] ] )[0]['origin'], $active ) === false );
+
+	// What is no origin is none, in exactly two fields where there is one
+	$project = 'origin-probe';
+	Themes::write( $appData, $project, Themes::record( 'Origin probe', '', Setup::normalize( $appData, $selection, $library ), '' ) );
+	$extra = $taken + [ 'extra' => 1 ];
+	$extra['setup']['bogus'] = 1;
+	$extra['setup']['origin'] = $taken;
+	$extra['setup']['colours'] = [ 'primary' => '#112233' ];
+	[ $listedExtra, $fileExtra ] = $originOf( $extra );
+	$refused = [
+		'not an array' 			=> 'x',
+		'no setup' 					=> [ 'css' => '' ],
+		'an empty setup' 		=> [ 'setup' => [], 'css' => '' ],
+		'a setup that is text' => [ 'setup' => 'size', 'css' => '' ],
+		'no css' 						=> [ 'setup' => $loaded['setup'] ],
+		'a css that is a list' => [ 'setup' => $loaded['setup'], 'css' => [ 'a' ] ],
+		'a css with an import' => [ 'setup' => $loaded['setup'], 'css' => '@import url(x.css);' ],
+		'a css of 64 KB and more' => [ 'setup' => $loaded['setup'], 'css' => str_repeat( 'a', 65537 ) ],
+	];
+	$noOrigin = [];
+
+	foreach( $refused as $what => $origin )
+		if( ( $listed = $originOf( $origin )[0] )['origin'] !== [] || array_key_exists( 'origin', $originOf( $origin )[1] ) === true )
+			$noOrigin[] = $what;
+
+	foreach( [ 'a theme of the project' => $project, 'a theme that is none' => 'nowhere', 'no theme' => '-' ] as $what => $theme ) {
+
+		callDesignAction( $appData, 'apiSave', [ 'theme' => $theme === '-' ? '' : $theme, 'origin' => $taken ] + $selection );
+
+		if( callDesignAction( $appData, 'apiList' )[1]['origin'] !== [] || array_key_exists( 'origin', (array) include $themeSetupFile ) === true )
+			$noOrigin[] = $what;
+	}
+
+	check( 'the origin is exactly a setup and a css of a shipped theme: an extra key, a key the setup has none of, a record inside it and colours are left out, and a request that is no such pair, a css that is refused or too long, a theme of the project, a theme that is none and no theme leave none - with no warning'
+		. ( $noOrigin === [] ? '' : ' - '. implode( ', ', $noOrigin ) ), $noOrigin === [] && array_keys( $fileExtra['origin'] ) === [ 'setup', 'css' ] && array_keys( $listedExtra['origin'] ) === [ 'setup', 'css' ]
+		&& array_keys( $listedExtra['origin']['setup'] ) === array_keys( $loaded['setup'] ) && $sameTheme( $listedExtra['origin'], $taken ) && ninoWarnings() === [] );
+
+	Themes::remove( $appData, $project );
+
+	// A file the panel did not write: what the list hands on is what the normaliser makes of it
+	\Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'theme' => $shippedFirst, 'origin' => [ 'setup' => [ 'size' => '1', 'bogus' => 1, 'colours' => [ 'primary' => '#fff' ], 'knobs' => 'x' ], 'css' => "a {}\r\n", 'extra' => [ 1 ] ] ] );
+	$handNotes = [];
+	$handRead = Setup::read( $appData, $library, $handNotes );
+	[ , $listedHand ] = callDesignAction( $appData, 'apiList' );
+	\Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'theme' => $shippedFirst, 'origin' => [ 'setup' => [ 'size' => 1 ], 'css' => 5 ] ] );
+	[ , $listedBad ] = callDesignAction( $appData, 'apiList' );
+
+	check( 'a file somebody wrote by hand is read as the normaliser reads it: the record in exactly its two fields, the setup with the keys of a snapshot and none of its own - no colours - and the css in one kind of line break; a record that is no pair is none',
+		array_keys( $handRead['origin'] ) === [ 'setup', 'css' ] && array_keys( $listedHand['origin'] ) === [ 'setup', 'css' ] && array_keys( $listedHand['origin']['setup'] ) === array_keys( $loaded['setup'] )
+		&& $listedHand['origin']['setup']['size'] === 1 && $listedHand['origin']['css'] === "a {}\n" && $listedBad['origin'] === [] && ninoWarnings() === [] );
+
+	/*	A project without a record - saved before there was one - has the theme and no origin: it reads as none, with no note, and the list says [] - there is no guess, no migration and nothing made up	*/
+	\Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'theme' => $shippedFirst, 'size' => 1 ] );
+	$oldNotes = [];
+	$oldRead = Setup::read( $appData, $library, $oldNotes );
+	$oldBytes = $setupBytes();
+	[ , $listedOld ] = callDesignAction( $appData, 'apiList' );
+
+	check( 'a setup without a record reads as the theme and no origin, with no note: design/list says [] and writes nothing - the project is as it was',
+		$oldRead['theme'] === $shippedFirst && $oldRead['origin'] === [] && $oldNotes === [] && $listedOld['origin'] === [] && $setupBytes() === $oldBytes );
+
+	// The record is no choice: in no snapshot of a theme and in no fingerprint of the stylesheet, so that taking a theme over again asks for no apply
+	$recorded = Setup::normalize( $appData, [ 'theme' => $shippedFirst, 'origin' => $taken ], $library );
+	$plain = Setup::normalize( $appData, [ 'theme' => $shippedFirst ], $library );
+
+	check( 'normalising keeps the origin of a shipped theme with its slug and nowhere else; it is in no snapshot, and the fingerprint of the stylesheet is the one of the same setup without it',
+		$recorded['origin'] === $taken && $plain['origin'] === [] && Setup::normalize( $appData, [ 'origin' => $taken ], $library )['origin'] === [] && array_key_exists( 'origin', Themes::snapshot( $recorded ) ) === false
+		&& \Nino\Modules\Design::fingerprint( $appData, $recorded, $library ) === \Nino\Modules\Design::fingerprint( $appData, $plain, $library ) );
+
+	Setup::write( $appData, [ 'compiled' => [ 'setup' => $recorded ] ] + $recorded );
+	$writtenRecord = (array) include $themeSetupFile;
+	Setup::write( $appData, [ 'compiled' => [ 'setup' => $plain ] ] + $plain );
+	$writtenNone = (array) include $themeSetupFile;
+
+	check( 'write() writes the origin where there is one, in the setup and in the copy the record of an apply keeps, and none where there is none',
+		( $writtenRecord['origin'] ?? null ) === $taken && ( $writtenRecord['compiled']['setup']['origin'] ?? null ) === $taken
+		&& array_key_exists( 'origin', $writtenNone ) === false && array_key_exists( 'origin', $writtenNone['compiled']['setup'] ) === false );
+
+	Setup::write( $appData, $beforeOrigin );
+	ninoWarnings();
 
 	$inkySetup = Setup::normalize( $appData, [], $library );
 	$inkySetup['fonts']['title']['family'] = 'inter';
@@ -11683,7 +11849,7 @@ $madeFile = Themes::read( $appData, $library, 'mit-features' ) ?? [];
 [ , $reloaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'mit-features' ] );
 
 check( 'a snapshot of a setup keeps the choices for the features as a key that chooses something, between the styles and the fonts, where Setup::KEYS puts it - and a theme of the project the screen was saved into holds them in its file and gives them back on a load',
-	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'styles', array_keys( $snapshot ), true ) + 1
+	array_keys( $snapshot ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'origin', 'css', 'compiled', 'tiers' ] ) ) && array_search( 'features', array_keys( $snapshot ), true ) === array_search( 'styles', array_keys( $snapshot ), true ) + 1
 	&& $snapshot['features'] === $withEntry['features'] && $status === 200 && ( $madeFile['setup']['features'] ?? null ) === $withEntry['features'] && ( $reloaded['setup']['features'] ?? null ) === $withEntry['features'] );
 
 Themes::remove( $appData, (string) ( $made['slug'] ?? '' ) );
@@ -12414,7 +12580,7 @@ $noted = [];
 
 check( 'a setup without navs reads as none for both frames, and a fresh one has the key, after the parts and before the knobs',
 	$norm( [] )['navs'] === [ 'header' => '', 'footer' => '' ] && Setup::defaults( $library )['navs'] === [ 'header' => '', 'footer' => '' ]
-	&& array_slice( array_keys( Setup::defaults( $library ) ), 9, 3 ) === [ 'parts', 'navs', 'knobs' ] && in_array( 'navs', Setup::KEYS, true ) === true );
+	&& array_slice( array_keys( Setup::defaults( $library ) ), 10, 3 ) === [ 'parts', 'navs', 'knobs' ] && in_array( 'navs', Setup::KEYS, true ) === true );
 check( 'normalize() keeps an option that is offered for the part and empties one that is not, naming it - an option of the kernel, of a feature, one that is gone, one that is none',
 	$norm( [ 'navs' => [ 'header' => 'nav-main', 'footer' => 'menu-main' ] ] )['navs'] === [ 'header' => 'nav-main', 'footer' => 'menu-main' ]
 	&& $norm( [ 'navs' => [ 'header' => 'nav-nothing', 'footer' => 'gone' ] ], $noted )['navs'] === [ 'header' => '', 'footer' => '' ] && count( $noted ) === 2
@@ -12470,7 +12636,7 @@ $printB = $print( $navOther );
 check( '...and it follows what the option writes: the same key with another call is another fingerprint',
 	$printA !== $printB );
 check( 'a theme keeps the choice with the others: the snapshot of a setup has navs after the parts, and a theme file with none reads as none',
-	array_keys( Themes::snapshot( $navChosen ) ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled', 'tiers' ] ) ) && Themes::snapshot( $navChosen )['navs']['header'] === 'nav-main'
+	array_keys( Themes::snapshot( $navChosen ) ) === array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'origin', 'css', 'compiled', 'tiers' ] ) ) && Themes::snapshot( $navChosen )['navs']['header'] === 'nav-main'
 	&& Themes::snapshot( Setup::defaults( $library ) )['navs'] === [ 'header' => '', 'footer' => '' ] );
 
 // --- the files
@@ -12795,7 +12961,7 @@ $tierLeast = static fn( string $control ): int => $control === 'gap' ? 1 : -2;
 $tierNames = static fn( ?array $rules, int $width ): array => $rules === null ? [] : array_map( static fn( array $properties ): array => array_keys( $properties ), $rules[$width] );
 
 check( 'the model has a key for the tablet and the phone, after the choices for the features, and nothing is set in a fresh setup: one empty list for each of the two tiers',
-	Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ]
+	Setup::KEYS === [ 'format', 'theme', 'origin', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ]
 	&& Setup::TIERS === [ 'm', 's' ] && Setup::defaults( $library )['tiers'] === [ 'm' => [], 's' => [] ]
 	&& array_keys( Setup::TIER_CONTROLS ) === [ 'size', 'title', 'subtitle', 'areas', 'margin', 'inset', 'gap', 'header', 'button' ] );
 

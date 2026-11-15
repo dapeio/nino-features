@@ -97,8 +97,9 @@ namespace Nino\Modules\Design {
 			is each feature as it is. And `styles`: a file without it has chosen no style
 			of any template, which is each template as it is. And `navs`: a file without it has
 			chosen no navigation for the header and the footer, which is the file the project has. And `tiers`: a file without it has set
-			nothing for the tablet and mobile, which is every size where the page above has it	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ];
+			nothing for the tablet and mobile, which is every size where the page above has it. And `origin`: a file without it
+			has no record of what a shipped theme was when it was taken over, and the panel says nothing of a renewed theme	*/
+		public const array KEYS = [ 'format', 'theme', 'origin', 'size', 'width', 'whitespace', 'radius', 'radius-alt', 'radii', 'motion', 'parts', 'navs', 'knobs', 'styles', 'features', 'tiers', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
 			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
@@ -896,6 +897,8 @@ namespace Nino\Modules\Design {
 				'format' 	=> self::FORMAT,
 				// The slug of the theme the choices were taken from, '' for none
 				'theme' 	=> '',
+				// What a shipped theme was when the choices were taken from it - its setup and its css, [] for none (see Themes)
+				'origin' 	=> [],
 				'size' 		=> 0,
 				'width' 	=> 0,
 				'whitespace' => 0,
@@ -1988,6 +1991,15 @@ namespace Nino\Modules\Design {
 					$notes[] = self::note( 'design_theme_missing', self::shown( $theme ) );
 			}
 
+			/*	What a shipped theme was when it was taken over: its setup and its css, kept with the slug - and only for a theme that is shipped, in exactly
+				these two fields; anything else is none, which is also what a project without a record has. The setup is read through the normaliser of the
+				panel where it is used (see Admin::_origin()), the shape is held here	*/
+			$origin = is_array( $raw['origin'] ?? null ) === true ? $raw['origin'] : [];
+
+			if( $setup['theme'] !== '' && Themes::isShipped( $libraryDir, $setup['theme'] ) === true && is_array( $origin['setup'] ?? null ) === true && $origin['setup'] !== []
+				&& is_string( $origin['css'] ?? null ) === true && strlen( $origin['css'] ) <= Themes::MAX_CSS )
+				$setup['origin'] = [ 'setup' => $origin['setup'], 'css' => $origin['css'] ];
+
 			$setup['size'] = self::position( $raw['size'] ?? 0 );
 			$setup['width'] = self::position( $raw['width'] ?? 0 );
 			$setup['whitespace'] = self::position( $raw['whitespace'] ?? 0 );
@@ -2837,6 +2849,13 @@ namespace Nino\Modules\Design {
 
 			if( is_array( $setup['compiled']['setup'] ?? null ) === true && array_filter( (array) ( $setup['compiled']['setup']['tiers'] ?? [] ) ) === [] )
 				unset( $setup['compiled']['setup']['tiers'] );
+
+			// What a shipped theme was when it was taken over is written where there is a record - a setup that took none is the file it was
+			if( ( $setup['origin'] ?? [] ) === [] )
+				unset( $setup['origin'] );
+
+			if( is_array( $setup['compiled']['setup'] ?? null ) === true && ( $setup['compiled']['setup']['origin'] ?? [] ) === [] )
+				unset( $setup['compiled']['setup']['origin'] );
 
 			return \Nino\Filesystem::putFileContent( $appData, self::PATH, $setup );
 		}

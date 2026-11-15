@@ -4485,7 +4485,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,origin,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -8278,7 +8278,7 @@ asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
 check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the styles of the templates, the choices for the features, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width'
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,origin,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width'
 	&& first.payload.parts.header === 'first' && first.payload.parts.tables === 'first' && first.payload.knobs.section.title === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
@@ -9467,6 +9467,164 @@ unflagged.move( sizeStrip, 1 );
 check( 'a screen that names no theme has no theme to differ from: no chip at the label, whatever is moved',
 	unflagged.design._themeChanged() === false && tabChips( unflagged ).length === 0 );
 
+// A theme the library renewed ---------------------------------------------------------------------
+
+/** The chip "renewed" the script appends to the button of the panel's own screen, beside "changed" */
+function renewedChips( screen ) { return byClass( screen.kernelButton('design'), 'design-tab-renewed' ) }
+
+/** The notice over the list of the themes where the library has renewed the theme the screen was taken from */
+function renewedNotice( screen ) { return byClass( screen.form, 'design-theme-renewed' ) }
+
+/** What the theme Magazine is as the library has it: the setup of the screen, or another one where the library has renewed it */
+function libraryFile( renewed ) {
+
+	const setup = JSON.parse( JSON.stringify( snapshotOf( listing() ) ) );
+
+	// A theme the feature ships names no colours: the brand colour is the project's
+	delete setup.colours;
+
+	if( renewed === true ) {
+		setup.size = 2;
+		setup.knobs.card.space = -1;
+	}
+
+	return Object.assign( activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, renewed === true ? ".renewed { margin: 0 }\n" : '', setup ) );
+}
+
+/** The record of what Magazine was when it was taken over - what the server gives back for it, in the shape of the library's file as it was then */
+function recordOf( file ) { return { setup : JSON.parse( JSON.stringify( file.setup ) ), css : file.css } }
+
+/**
+ *	The panel with the shipped theme Magazine stored and run. `taken` is the file the project took it over from, or null for a project that has no record; `now` is the file the
+ *	library has now
+ */
+function standing( taken, now ) {
+	return panel( { theme : 'magazine', running : 'magazine', css : '', active : now, origin : taken === null ? [] : recordOf( taken ) }, { screen : 'themes' } );
+}
+
+const FILE_OLD = libraryFile( false );
+const FILE_NEW = libraryFile( true );
+
+// 1: the project is the theme of the library
+const standHash = standing( FILE_OLD, FILE_OLD );
+
+check( 'a project that is the theme of the library has no sign of it: the record is the file as it is and the screen is as it was taken - no chip, no notice',
+	standHash.design._themeRenewed() === false && standHash.design._themeChanged() === false && renewedChips( standHash ).length === 0 && tabChips( standHash ).length === 0
+	&& renewedNotice( standHash ).length === 0 && themeRow( standHash, 'magazine' ) !== null && standHash.design._edit.origin.css === '' );
+
+// 2: the screen was changed
+const standChanged = standing( FILE_OLD, FILE_OLD );
+standChanged.design._edit.size = 1;
+standChanged.design._paintTheme();
+
+check( 'a screen that differs from the theme it took over says "changed" and nothing of a renewal: the chip of the strip, in the colour of a thing to look at, and no notice - and a position put back is no change',
+	standChanged.design._themeChanged() === true && standChanged.design._themeRenewed() === false && tabChips( standChanged ).length === 1 && renewedChips( standChanged ).length === 0
+	&& tabChips( standChanged )[0].textContent === TEXT['/_admin/design/theme/current/changed'] && renewedNotice( standChanged ).length === 0
+	&& ( standChanged.design._edit.size = 0, standChanged.design._refreshThemeChip(), standChanged.design._themeChanged() === false && tabChips( standChanged ).length === 0 ) );
+
+// 3: the library renewed the theme
+const standRenewed = standing( FILE_OLD, FILE_NEW );
+
+check( 'a theme the library renewed since it was taken over says "renewed" - a chip of its own on the button of the strip, which is text and not only a colour - and "changed" says nothing: the screen is what it was taken as, whatever the file is now',
+	standRenewed.design._themeRenewed() === true && standRenewed.design._themeChanged() === false && renewedChips( standRenewed ).length === 1 && tabChips( standRenewed ).length === 0
+	&& renewedChips( standRenewed )[0].textContent === TEXT['/_admin/design/theme/current/renewed'] && TEXT['/_admin/design/theme/current/renewed'] !== TEXT['/_admin/design/theme/current/changed']
+	&& renewedChips( standRenewed )[0].dataset.state === 'warn' && hasClass( renewedChips( standRenewed )[0], 'nino-admin-badge' ) && renewedChips( standRenewed )[0].parent === standRenewed.kernelButton('design') );
+check( '...and the list says it in a sentence over the rows - the name of the theme in it - with a button that takes the new version over, which is a button of the page that the keyboard reaches: it stands before the rows, and it is not off',
+	renewedNotice( standRenewed ).length === 1 && renewedNotice( standRenewed )[0].parent === standRenewed.byId('design-themes') && standRenewed.byId('design-themes').children.indexOf( renewedNotice( standRenewed )[0] ) < standRenewed.byId('design-themes').children.indexOf( standRenewed.byId('design-theme-list') )
+	&& byClass( renewedNotice( standRenewed )[0], 'design-theme-renewed-text' )[0].textContent === say( '/_admin/design/theme/renewed/text', 'Magazine' )
+	&& standRenewed.byId('design-theme-renewed-take').tagName === 'BUTTON' && standRenewed.byId('design-theme-renewed-take').disabled === false && standRenewed.byId('design-theme-renewed-take').textContent === TEXT['/_admin/design/theme/renewed/take']
+	&& standRenewed.byId('design-theme-renewed-take').parent === renewedNotice( standRenewed )[0] && standRenewed.byId('design-theme-renewed-take').getAttribute('tabindex') === null );
+check( '...it says nothing of changes where there are none - the sentence that they are not kept comes with the change, and with nothing else',
+	byClass( renewedNotice( standRenewed )[0], 'design-theme-renewed-text' )[0].textContent.indexOf( TEXT['/_admin/design/theme/renewed/lost'] ) === -1 );
+
+// What is no difference in the theme: a space at the end of the css, and what the server has already made the same
+const standSpaced = standing( FILE_OLD, Object.assign( {}, FILE_OLD, { css : "\n  \n" } ) );
+standSpaced.design._edit.css = '';
+
+check( 'a space at the end of the css is no renewal and no change: the record and the file are compared without it',
+	standSpaced.design._themeRenewed() === false && standSpaced.design._themeChanged() === false && ( standSpaced.design._edit.css = "\n\n", standSpaced.design._themeChanged() === false ) && ( standSpaced.design._edit.css = '.a {}', standSpaced.design._themeChanged() === true ) );
+
+// The order of the keys is no difference either
+const reverseKeys = function( value ) {
+	if( value === null || typeof value !== 'object' || Array.isArray( value ) === true )
+		return Array.isArray( value ) === true ? value.map( reverseKeys ) : value;
+	const out = {};
+	Object.keys( value ).reverse().forEach( function( key ) { out[key] = reverseKeys( value[key] ) } );
+	return out;
+};
+const standReversed = panel( { theme : 'magazine', running : 'magazine', css : '', active : FILE_OLD, origin : { setup : reverseKeys( FILE_OLD.setup ), css : '' } }, { screen : 'themes' } );
+
+check( 'the order of the keys is no difference: a record whose keys come the other way round is the theme as it is - neither chip',
+	standReversed.design._themeRenewed() === false && standReversed.design._themeChanged() === false && renewedChips( standReversed ).length === 0 && tabChips( standReversed ).length === 0 );
+
+// 2 and 3 at once
+const standBoth = standing( FILE_OLD, FILE_NEW );
+standBoth.design._edit.size = 1;
+standBoth.design._paintTheme();
+
+check( 'a theme the library renewed that the screen was changed from says both, each by its own chip - "changed" for the screen, "renewed" for the file - and the notice says before the button that the changes are not kept',
+	standBoth.design._themeRenewed() === true && standBoth.design._themeChanged() === true && tabChips( standBoth ).length === 1 && renewedChips( standBoth ).length === 1
+	&& byClass( renewedNotice( standBoth )[0], 'design-theme-renewed-text' )[0].textContent === say( '/_admin/design/theme/renewed/text', 'Magazine' )+ ' '+ TEXT['/_admin/design/theme/renewed/lost']
+	&& ( standBoth.design._edit.size = 0, standBoth.design._paintTheme(), standBoth.design._themeChanged() === false && tabChips( standBoth ).length === 0 && renewedChips( standBoth ).length === 1
+		&& byClass( renewedNotice( standBoth )[0], 'design-theme-renewed-text' )[0].textContent.indexOf( TEXT['/_admin/design/theme/renewed/lost'] ) === -1 ) );
+
+// Taking the new version over is Load, and nothing is stored by it
+const standTake = standing( FILE_OLD, FILE_NEW );
+standTake.design._edit.size = 1;
+standTake.design._paintTheme();
+standTake.byId('design-theme-renewed-take').focus();
+const standRequests = standTake.requests.length;
+standTake.byId('design-theme-renewed-take').fire('click');
+
+check( 'the button asks for the theme as a load does - design/theme/load with the slug of the theme, and nothing else is posted: the project is not written',
+	standTake.requests.length === standRequests + 1 && standTake.requests[standRequests].endpoint === 'theme/load' && JSON.stringify( standTake.requests[standRequests].payload ) === JSON.stringify( { slug : 'magazine' } ) );
+
+standTake.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
+
+check( 'the new version is the screen as a theme that is loaded is: the file as it is now, a draft - the changes are gone with it - and neither chip stays, nor the notice; the record on the working copy is the theme as it was taken over',
+	standTake.design._themeRenewed() === false && standTake.design._themeChanged() === false && renewedChips( standTake ).length === 0 && tabChips( standTake ).length === 0 && renewedNotice( standTake ).length === 0
+	&& standTake.design._edit.size === -1 && JSON.stringify( standTake.design._edit.origin.setup ) === JSON.stringify( standTake.design._active.setup ) && standTake.design._edit.origin.css === standTake.design._active.css
+	&& standTake.design._isDirty() === true && standTake.byId('design-reset').hidden === false );
+
+standTake.byId('design-save').fire('click');
+const standSave = standTake.requests[standTake.requests.length - 1];
+
+check( 'saving the draft writes the record down with it: the setup and the css of the theme as it was taken over, posted as the working copy holds them - and nothing more of it',
+	standSave.endpoint === 'save' && standSave.payload.theme === 'magazine' && Object.keys( standSave.payload.origin ).join() === 'setup,css' && JSON.stringify( standSave.payload.origin ) === JSON.stringify( standTake.design._edit.origin ) );
+
+// What is read back: the record of the stored setup, and the theme as the library has it now
+check( 'a screen stored with its record is read back with it: the working copy has the record of the stored setup, and the file as the library has it now is the active theme\'s',
+	standRenewed.design._edit.origin.setup.size === FILE_OLD.setup.size && standRenewed.design._active.setup.size === 2 && standRenewed.design._isDirty() === false );
+
+// A theme of the project loaded after a shipped one carries nothing of the older one's record
+const standOver = standing( FILE_OLD, FILE_OLD );
+standOver.design._loadTheme('mein-theme');
+standOver.answer( 200, Object.assign( themeLoad( 'magazine', themeSetup(), [] ), { slug : 'mein-theme', name : 'My theme', shipped : false } ) );
+standOver.byId('design-save').fire('click');
+
+check( 'a theme without a record - one of the project - takes none over, and not the one the working copy had before it: the copy carries an empty record and posts an empty one',
+	standOver.design._edit.theme === 'mein-theme' && JSON.stringify( standOver.design._edit.origin ) === '{}' && standOver.design._themeRenewed() === false
+	&& JSON.stringify( standOver.requests[standOver.requests.length - 1].payload.origin ) === '{}' );
+
+// A project that has no record
+const standOld = standing( null, FILE_NEW );
+
+check( 'a project that has no record of what the theme was when it was taken over has nothing to say of a renewal - none is made up - and what it sees is what it saw: the screen against the file as it is, "changed" for any difference',
+	JSON.stringify( standOld.design._edit.origin ) === '{}' && standOld.design._themeRenewed() === false && renewedChips( standOld ).length === 0 && renewedNotice( standOld ).length === 0
+	&& standOld.design._themeChanged() === true && tabChips( standOld ).length === 1 && renewedChips( standOld ).length === 0
+	&& ( standOld.design._edit.size = 2, standOld.design._edit.knobs.card.space = -1, standOld.design._edit.css = standOld.design._active.css, standOld.design._paintTheme(),
+		standOld.design._themeChanged() === false && tabChips( standOld ).length === 0 && renewedChips( standOld ).length === 0 && renewedNotice( standOld ).length === 0 ) );
+
+// The theme of the project and the draft that is no theme
+const standOwn = themed();
+
+check( 'a theme of the project has no record: the screen never says it was renewed and the chip "changed" is what it was - a record that sits on the working copy of a theme that is none of the feature\'s is not read',
+	standOwn.design._themeRenewed() === false && renewedChips( standOwn ).length === 0 && renewedNotice( standOwn ).length === 0
+	&& ( standOwn.design._edit.origin = recordOf( FILE_NEW ), standOwn.design._themeRenewed() === false ) );
+check( 'no theme, no renewal: a screen with none loaded and a theme that is not in the list say nothing',
+	panel().design._themeRenewed() === false && ( function() { const screen = standing( FILE_OLD, FILE_NEW ); screen.design._active = null; return screen.design._themeRenewed() === false && screen.design._themeChanged() === false } )()
+	&& ( function() { const screen = standing( FILE_OLD, FILE_NEW ); screen.design._edit.theme = ''; return screen.design._themeRenewed() === false } )() );
+
 console.log('');
 
 // --- Load ------------------------------------------------------------------------------------------
@@ -9847,7 +10005,7 @@ focused = null;
 check( 'Save theme posts design/theme/save with the slug and the working copy and no name and no description - the theme keeps its own - and switches the buttons off, its own among them, until it is answered',
 	saving.requests.length === 1 && saving.requests[0].endpoint === 'theme/save' && saving.requests[0].payload.slug === 'mein-theme' && saving.requests[0].payload.theme === 'mein-theme'
 	&& saving.requests[0].payload.knobs.section !== undefined && saving.requests[0].payload.size === 1
-	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,navs,parts,radii,radius,radius-alt,size,slug,styles,theme,tiers,whitespace,width'
+	&& Object.keys( saving.requests[0].payload ).sort().join() === 'colours,css,features,fonts,knobs,motion,navs,origin,parts,radii,radius,radius-alt,size,slug,styles,theme,tiers,whitespace,width'
 	&& saving.byId('design-theme-save').disabled === true && saving.design._themeBusy === true );
 
 saving.byId('design-theme-save').fire('click');
@@ -10622,7 +10780,7 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,features,fonts,full,knobs,motion,navs,origin,parts,radii,radius,radius-alt,size,styles,theme,tiers,whitespace,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width && sent.payload.whitespace === real.whitespace
@@ -10695,7 +10853,7 @@ else {
 	check( 'the answers are in the shape the tab reads: the list gives the theme the setup names, its css, the themes and the active one beside everything else; a load the theme with its setup, its css, the typefaces missing and the notes; a rename, a save, a duplicate, a delete, an export and an import what the tab takes over',
 		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length > 0 && none.themes[0].shipped === true
 		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
-		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
+		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css' && Array.isArray( activeList.origin ) && none.active === null && Array.isArray( none.origin ) && none.origin.length === 0
 		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,navs,knobs,styles,features,fonts,colours'
 		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,radius,radius-alt,radii,motion,parts,navs,knobs,styles,features,fonts'
 		&& answered.load.notes.every( function( note ) { return typeof note === 'string' || ( typeof note.error === 'string' && typeof note.code === 'string' && Array.isArray( note.params ) ) } )
