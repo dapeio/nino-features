@@ -186,9 +186,10 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Count one use of a rule. Never fatal and never checked: a counter
-		 *	that could not be written is not a reason to fail a redirect that
-		 *	has already been decided
+		 *	Count one use of a rule - when the rule may take a note (see
+		 *	Rules::hitDue()): a use inside that time is not counted, as a miss inside
+		 *	its own is not. Never fatal and never checked: a counter that could not be
+		 *	written is not a reason to fail a redirect that has already been decided
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$from					The rule's own path
@@ -197,7 +198,7 @@ namespace Nino\Modules {
 		 */
 		private static function _count( array &$appData, string $from ): void {
 
-			if( self::records( $appData ) === false )
+			if( self::records( $appData ) === false || Redirects\Rules::hitDue( Redirects\Rules::read( $appData ), $from ) === false )
 				return;
 
 			unset( $appData['./redirects/rules'] );
@@ -212,6 +213,8 @@ namespace Nino\Modules {
 					$file['rules'][$index]['hits'] = max( 0, (int) ( $rule['hits'] ?? 0 ) ) + 1;
 					$file['rules'][$index]['last'] = date( 'Y-m-d H:i:s' );
 				}
+
+				$file['noted'] = Redirects\Rules::timesAfterHit( $file['noted'] ?? [], $from, time() );
 
 				return $file;
 			} );

@@ -55,6 +55,28 @@ namespace Nino\Modules\Redirects {
 		// is that the ones worth a rule are near the top, not that it is complete
 		public const int MISS_LIMIT = 50;
 
+		// The longest path the list keeps, in bytes: the bound the Stats feature
+		// keeps a uri under, and what no page of a site is longer than. A longer
+		// one was typed by nobody who linked to it - and is the one entry that
+		// would fill the file through its length where MISS_LIMIT stops its number
+		public const int MISS_PATH_LENGTH = 253;
+
+		// The seconds between two notes of the same kind that a request causes: of an
+		// unanswered address, and of the uses of one rule. What the list and the
+		// counters say is how often something happens next to the rest, which one
+		// note a second keeps as well as one a request, and a file replaced on every
+		// request is what a stream of requests would make of the site. The kinds do
+		// not take turns from one another: a stream of unanswered addresses leaves
+		// every rule its note, and a rule in use leaves the list its own
+		public const int NOTE_INTERVAL = 1;
+
+		// How many notes of rules the file takes in one second, whichever rules
+		// they are for. Each rule has its note a second, and a site with a hundred
+		// rules would have a hundred writes a second asked of it by anybody who
+		// knows them; with this the file is written at most this often plus once
+		// for the list, however many rules there are
+		public const int HIT_LIMIT = 3;
+
 		// How many rules answer one another before a chain is called too long.
 		// A browser gives up after about twenty redirects; a chain of this
 		// length is not one anybody wrote on purpose. That it comes back to an
@@ -67,7 +89,7 @@ namespace Nino\Modules\Redirects {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$notes				(reference) What had to be dropped or corrected
 		 *
-		 *	@return 	array										[ 'format', 'rules', 'misses' ]
+		 *	@return 	array										[ 'format', 'rules', 'misses', 'noted' ]
 		 */
 		public static function read( array &$appData, array &$notes = [] ): array {
 
@@ -150,7 +172,7 @@ namespace Nino\Modules\Redirects {
 				prefix, and a prefix list nobody ordered answers by accident */
 			usort( $rules, static fn( array $a, array $b ): int => strlen( $b['from'] ) <=> strlen( $a['from'] ) );
 
-			return [ 'format' => self::FORMAT, 'rules' => $rules, 'misses' => self::trimMisses( $misses ) ];
+			return [ 'format' => self::FORMAT, 'rules' => $rules, 'misses' => self::trimMisses( $misses ), 'noted' => self::times( $raw['noted'] ?? [], array_column( $rules, 'from' ) ) ];
 		}
 
 		/**
@@ -505,6 +527,12 @@ namespace Nino\Modules\Redirects {
 		 *	list of addresses to fix is not a visitor log, and this file is
 		 *	carried by every backup
 		 *
+		 *	And not every request that asks. A path longer than MISS_PATH_LENGTH
+		 *	is not written down, and a note is made only when the list has had no
+		 *	note of an address for NOTE_INTERVAL seconds (see missDue()): a request
+		 *	that comes inside that time is not counted, whatever path it is for, and
+		 *	touches nothing
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$path
 		 *
@@ -514,7 +542,10 @@ namespace Nino\Modules\Redirects {
 
 			$path = self::path( $path );
 
-			if( $path === '' || self::pageShaped( $path ) === false )
+			if( $path === '' || strlen( $path ) > self::MISS_PATH_LENGTH || self::pageShaped( $path ) === false )
+				return false;
+
+			if( self::missDue( self::read( $appData ) ) === false )
 				return false;
 
 			unset( $appData['./redirects/rules'] );
@@ -535,9 +566,108 @@ namespace Nino\Modules\Redirects {
 				// The address just asked for keeps its place through the cut,
 				// or a list that is already full could never learn about it
 				$file['misses']	= self::trimMisses( $misses, $path );
+				$file['noted']	= [ 'miss' => time() ] + self::times( $file['noted'] ?? [] );
 
 				return $file;
 			} );
+		}
+
+		/**
+		 *	Whether the list may take a note of an address: the last one was made
+		 *	NOTE_INTERVAL seconds ago or more. Asked of a Unix time the file holds
+		 *	under 'noted', so that no zone, no change of the hour and no clock put back
+		 *	disturbs it: a time in the future holds nothing back, and the note that
+		 *	follows puts it right. The file is the one the request has read for the
+		 *	rules, so nothing is read for this and no lock is taken
+		 *
+		 *	@param		array 		$file					The file as read() answers it
+		 *
+		 *	@return 	bool
+		 */
+		public static function missDue( array $file ): bool {
+
+			return self::_passed( (int) ( $file['noted']['miss'] ?? 0 ) );
+		}
+
+		/**
+		 *	Whether the uses of a rule may take a note: its own last one was made
+		 *	NOTE_INTERVAL seconds ago or more - whatever the other rules and the list
+		 *	have had - and the file has taken fewer than HIT_LIMIT notes of rules in
+		 *	this second. Asked of the file the request has read, like missDue()
+		 *
+		 *	@param		array 		$file					The file as read() answers it
+		 *	@param		string		$from					The rule's own path
+		 *
+		 *	@return 	bool
+		 */
+		public static function hitDue( array $file, string $from ): bool {
+
+			$window = (int) ( $file['noted']['hit']['at'] ?? 0 );
+
+			if( $window === time() && (int) ( $file['noted']['hit']['n'] ?? 0 ) >= self::HIT_LIMIT )
+				return false;
+
+			return self::_passed( (int) ( $file['noted']['rules'][$from] ?? 0 ) );
+		}
+
+		/**
+		 *	Whether a time is NOTE_INTERVAL seconds past, or ahead of the clock
+		 *
+		 *	@param		int 			$then
+		 *
+		 *	@return 	bool
+		 */
+		private static function _passed( int $then ): bool {
+
+			$age = time() - $then;
+
+			return $age < 0 || $age >= self::NOTE_INTERVAL;
+		}
+
+		/**
+		 *	The times of the last notes, held to what they are: Unix times, one for
+		 *	the list, one for each rule that exists, and the second the file last took
+		 *	a note of a rule in with how many it took in it. Whatever else stands there
+		 *	goes, so the part that grows with the rules never grows beyond them
+		 *
+		 *	@param		mixed 		$raw					Whatever stood under 'noted'
+		 *	@param		array|null	$from					The paths of the rules there are, null to keep every rule named
+		 *
+		 *	@return 	array										[ 'miss', 'hit' => [ 'at', 'n' ], 'rules' => from => time ]
+		 */
+		public static function times( mixed $raw, ?array $from = null ): array {
+
+			$raw		= is_array( $raw ) === true ? $raw : [];
+			$rules	= [];
+
+			foreach( is_array( $raw['rules'] ?? null ) === true ? $raw['rules'] : [] as $path => $time )
+				if( is_string( $path ) === true && ( $from === null || in_array( $path, $from, true ) === true ) && is_int( $time ) === true && $time > 0 )
+					$rules[$path] = $time;
+
+			return [
+				'miss'	=> max( 0, (int) ( $raw['miss'] ?? 0 ) ),
+				'hit'		=> [ 'at' => max( 0, (int) ( $raw['hit']['at'] ?? 0 ) ), 'n' => max( 0, (int) ( $raw['hit']['n'] ?? 0 ) ) ],
+				'rules'	=> $rules,
+			];
+		}
+
+		/**
+		 *	The times after a note of a rule's use at $now
+		 *
+		 *	@param		mixed 		$raw					The times as they stand
+		 *	@param		string		$from					The rule's own path
+		 *	@param		int 			$now
+		 *
+		 *	@return 	array										See times()
+		 */
+		public static function timesAfterHit( mixed $raw, string $from, int $now ): array {
+
+			$times = self::times( $raw );
+
+			$times['hit']		= [ 'at' => $now, 'n' => ( $times['hit']['at'] === $now ? $times['hit']['n'] : 0 ) + 1 ];
+			$times['rules'][$from] = $now;
+
+			return $times;
 		}
 
 		/**
