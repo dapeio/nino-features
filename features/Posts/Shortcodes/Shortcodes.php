@@ -320,7 +320,7 @@ namespace Nino\Modules\Posts {
 			$search = [ '[[.id]]', '[[.url]]', '[[.image]]', '[[.body]]', '[[.lang]]' ];
 			$replace= [
 				(string) $id,
-				htmlspecialchars( \Nino\Modules\Posts\Sections::url( $appData, $section, (string) ( $element['.uri'] ?? '' ) ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
+				\Nino\Modules\Components::escape( \Nino\Modules\Posts\Sections::url( $appData, $section, (string) ( $element['.uri'] ?? '' ) ) ),
 				self::_image( $appData, $section, $model, $element ),
 				self::_body( $appData, (string) ( $element[ $section['body'] ] ?? '' ) ),
 				$lang,
@@ -431,7 +431,7 @@ namespace Nino\Modules\Posts {
 			return str_replace(
 				[ '[[src]]', '[[size]]', '[[alt]]' ],
 				[
-					htmlspecialchars( \Nino\Images::getUrl( $appData, $filename ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
+					\Nino\Modules\Components::escape( \Nino\Images::getUrl( $appData, $filename ) ),
 					$size,
 					// The alt is an element field like any other, and takes the same rule
 					\Nino\Html::fieldValue( $alt, [] ),
@@ -474,12 +474,12 @@ namespace Nino\Modules\Posts {
 			// fill never arrives here - an attribute ends at the first ']' - but
 			// what is left of one is no word anybody meant to show
 			if( $given !== '' && str_contains( $given, '[[' ) === false )
-				return htmlspecialchars( $given, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+				return \Nino\Modules\Components::escape( $given );
 
 			$fill = \Nino\Html::renderTextfill( $appData, '/feature/posts/pager/'. $which );
 
 			if( $fill !== '' )
-				return htmlspecialchars( $fill, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+				return \Nino\Modules\Components::escape( $fill );
 
 			return str_starts_with( \Nino\Locales::getCurrentLocale( $appData ), 'de' ) === true ? $german : $english;
 		}

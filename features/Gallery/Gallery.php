@@ -814,7 +814,7 @@ namespace Nino\Modules {
 			$columns	= filter_var( $args['columns'] ?? '', FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1, 'max_range' => 8 ] ] );
 			$columns	= is_int( $columns ) === true ? $columns : $settings['columns'];
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+			$safe = static fn( string $value ): string => \Nino\Modules\Components::escape( $value );
 
 			// The subdirectory read from the configuration rather than through
 			// the '[[/nino/dir]]' fill a template would use: that fill is
@@ -839,11 +839,10 @@ namespace Nino\Modules {
 
 			foreach( $album['images'] as $index => $image ) {
 
-				// Rendered, then escaped: an alt text and a caption are editor
-				// text that may be a textfill, and what comes out of the fill
-				// engine is still text
-				$alt			= $safe( \Nino\Html::renderHtml( $appData, self::localized( $image['alt'], $locale, $native ) ) );
-				$caption	= $safe( \Nino\Html::renderHtml( $appData, self::localized( $image['caption'], $locale, $native ) ) );
+				// An alt text and a caption are editor text that may be a textfill: the
+				// fills are put in and the rest is text, so no shortcode of it is run
+				$alt			= self::_words( $appData, self::localized( $image['alt'], $locale, $native ) );
+				$caption	= self::_words( $appData, self::localized( $image['caption'], $locale, $native ) );
 
 				// A thumbnail without an alt text of its own is named by its
 				// caption, so the link is never a link without a name. The
@@ -858,7 +857,9 @@ namespace Nino\Modules {
 
 				if( $name === '' ) {
 					$unnamed ??= \Nino\Html::renderHtml( $appData, '[[/feature/gallery/image/unnamed]]' );
-					$name = $safe( self::_named( $unnamed, $album['name'], $index + 1 ) );
+
+					// The words are the project's own, a key of the Text panel; the name of the album is what an editor wrote
+					$name = self::_named( htmlspecialchars( $unnamed, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), $safe( $album['name'] ), $index + 1 );
 				}
 
 				$items .= str_replace(
@@ -883,6 +884,28 @@ namespace Nino\Modules {
 				[ \Nino\Feature::classes( $args ), (string) $columns, $width, $height, $items ],
 				\Nino\Feature::template( $appData, self::TEMPLATES, 'gallery' )
 			);
+		}
+
+		/**
+		 *	An editor's text as the page shows it: the fills in it put in as the fill
+		 *	pass puts them - a fill is a word of the project's - and nothing else
+		 *	read, so a shortcode in the text is characters and calls nothing. Then
+		 *	escaped for text and for an attribute, with every '[' written as a
+		 *	character reference, because what this feature returns is rendered once
+		 *	more
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$text					What the editor wrote
+		 *
+		 *	@return 	string									Ready for markup
+		 */
+		private static function _words( array &$appData, string $text ): string {
+
+			$put = static function( array $match ) use ( &$appData ): string {
+				return \Nino\Html::resolveTextfill( $appData, $match[1] ) ?? $match[0];
+			};
+
+			return \Nino\Modules\Components::escape( (string) preg_replace_callback( '#\[\[(/[a-zA-Z0-9/_.-]*)\]\]#', $put, $text ) );
 		}
 
 		/**

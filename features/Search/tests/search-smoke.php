@@ -369,6 +369,18 @@ check( 'an element carries its uri, its last segment and its place in the list',
 	&& str_contains( $dotKeys, 'data-n="1"' ) === true
 	&& str_contains( $dotKeys, 'data-type="/articles"' ) === true );
 
+// The uri of an element is what a writer of the element's file made of it, and the row is rendered once more
+$called = new \ArrayObject();
+\Nino\Html::addShortcode( $appData, 'searchprobe', static function() use ( $called ): string {
+	$called[] = 'run';
+	return 'RAN';
+} );
+\Nino\Elements::insertElement( $appData, '/articles/odd[searchprobe]', [ 'title' => 'Orbit odd', 'summary' => 'orbit', 'keywords' => [], 'author' => '' ], 'de_DE' );
+$oddKeys = \Nino\Html::renderHtml( $appData, '[search-results type="articles"]<i data-uri="[[.uri]]" data-slug="[[.slug]]"></i>[/search-results]' );
+check( 'a shortcode in the uri of an element is not run in a row', count( $called ) === 0 && str_contains( $oddKeys, 'RAN' ) === false
+	&& str_contains( $oddKeys, 'data-uri="/articles/odd&#91;searchprobe]"' ) === true && str_contains( $oddKeys, 'data-slug="odd&#91;searchprobe]"' ) === true );
+\Nino\Elements::deleteElement( $appData, '/articles/odd[searchprobe]', '*' );
+
 \Nino\Elements::insertElement( $appData, '/articles/markup', [
 	'title' => 'Orbit & <b>bold</b>', 'summary' => 'Ein Text mit "Zitat"', 'keywords' => [ 'a', 'b' ], 'author' => '',
 ], 'de_DE' );

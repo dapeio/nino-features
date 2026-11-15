@@ -202,10 +202,10 @@ namespace Nino\Modules\Search {
 			$model 	= $type === '' ? [] : \Nino\Elements::getElementModel( $appData, $type );
 
 			$fills = [
-				'[[.uri]]' 		=> $uri,
+				'[[.uri]]' 		=> \Nino\Modules\Components::escape( $uri ),
 				// The last segment of the uri - what a project's own route builds
 				// its link out of, since an element uri is not a public path
-				'[[.slug]]' 	=> $uri === '' ? '' : substr( $uri, (int) strrpos( $uri, '/' ) + 1 ),
+				'[[.slug]]' 	=> $uri === '' ? '' : \Nino\Modules\Components::escape( substr( $uri, (int) strrpos( $uri, '/' ) + 1 ) ),
 				'[[.type]]' 	=> $type,
 				'[[.locale]]' => (string) ( $element['.locale'] ?? '' ),
 				'[[.score]]' 	=> (string) round( (float) ( $element['.score'] ?? 0 ), 3 ),

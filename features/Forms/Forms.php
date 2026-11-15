@@ -275,16 +275,14 @@ namespace Nino\Modules {
 				$required	= $field['required'] === true ? ' required' : '';
 				$star			= $field['required'] === true ? ' *' : '';
 
-				/*	Rendered and then escaped, the same two steps the option
-					below takes. A label is a fill key or a word an operator
-					typed, so rendering it is what makes a localised form
-					possible - and what comes out of that is text, which is why
-					the option escapes it. The label did not, so the two halves
-					of one form treated one kind of value two ways, and
-					whichever of them is wrong, it is this one: a label is
-					drawn inside a <label> the template owns, and markup in it
-					is markup the template did not put there	*/
-				$label = $safe( \Nino\Html::renderHtml( $appData, $field['label'] ) );
+				/*	The fills of a label put in and the label escaped, the same two
+					steps the option below takes. A label is a fill key or a word an
+					operator typed, so putting its fills in is what makes a localised
+					form possible - and what comes out of that is text, which is why
+					no shortcode of it is run: a label is drawn inside a <label> the
+					template owns, and markup in it is markup the template did not
+					put there	*/
+				$label = self::_words( $appData, $field['label'] );
 
 				if( $field['type'] === 'checkbox' ) {
 					$fields .= str_replace(
@@ -302,7 +300,7 @@ namespace Nino\Modules {
 					foreach( $field['options'] as $number => $option )
 						$options .= str_replace(
 							[ '[[id]]', '[[name]]', '[[required]]', '[[value]]', '[[label]]' ],
-							[ $safe( $fieldId. '-'. ( $number + 1 ) ), $safe( $field['name'] ), $required, $value( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
+							[ $safe( $fieldId. '-'. ( $number + 1 ) ), $safe( $field['name'] ), $required, $value( $option ), self::_words( $appData, $option ) ],
 							\Nino\Feature::template( $appData, self::TEMPLATES, 'form-radio-option' )
 						);
 
@@ -335,7 +333,7 @@ namespace Nino\Modules {
 					foreach( $field['options'] as $option )
 						$options .= str_replace(
 							[ '[[value]]', '[[label]]' ],
-							[ $value( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
+							[ $value( $option ), self::_words( $appData, $option ) ],
 							\Nino\Feature::template( $appData, self::TEMPLATES, 'form-option' )
 						);
 
@@ -379,6 +377,28 @@ namespace Nino\Modules {
 				],
 				\Nino\Feature::template( $appData, self::TEMPLATES, 'form' )
 			);
+		}
+
+		/**
+		 *	An editor's text as the page shows it: the fills in it put in as the fill
+		 *	pass puts them - a fill is a word of the project's - and nothing else
+		 *	read, so a shortcode in the text is characters and calls nothing. Then
+		 *	escaped for text and for an attribute, with every '[' written as a
+		 *	character reference, because what this feature returns is rendered once
+		 *	more
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$text					What the editor wrote
+		 *
+		 *	@return 	string									Ready for markup
+		 */
+		private static function _words( array &$appData, string $text ): string {
+
+			$put = static function( array $match ) use ( &$appData ): string {
+				return \Nino\Html::resolveTextfill( $appData, $match[1] ) ?? $match[0];
+			};
+
+			return \Nino\Modules\Components::escape( (string) preg_replace_callback( '#\[\[(/[a-zA-Z0-9/_.-]*)\]\]#', $put, $text ) );
 		}
 
 		/**

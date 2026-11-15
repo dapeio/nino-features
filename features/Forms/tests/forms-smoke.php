@@ -206,6 +206,27 @@ check( 'a label carrying markup is drawn as text, not as markup', str_contains( 
 	&& str_contains( $markupLabelHtml, '&lt;b onclick=&quot;alert(1)&quot;&gt;Name&lt;/b&gt;' ) === true );
 check( '...the same way a select option already was', str_contains( $markupLabelHtml, '<i>one</i>' ) === false
 	&& str_contains( $markupLabelHtml, '&lt;i&gt;one&lt;/i&gt;' ) === true );
+
+/*	A label and an option are words, with the fills of the project put in: a shortcode written in one is no
+	call - whoever may edit a form is no author of the page the form stands on - and a bracket of it is a
+	character reference, since the form is rendered once more	*/
+$called = new \ArrayObject();
+\Nino\Html::addShortcode( $appData, 'formprobe', static function() use ( $called ): string {
+	$called[] = 'run';
+	return 'RAN';
+} );
+$callLabel = $appData;
+$callLabel[ \Nino\Form::FORMS ] = [ [
+	'key' 		=> 'call',
+	'fields'	=> [
+		[ 'name' => 'pick', 'label' => 'Pick [formprobe] [[/template/common/form/name]]', 'type' => 'select', 'required' => false, 'options' => [ 'One [formprobe]' ] ],
+		[ 'name' => 'plan', 'label' => 'Plan', 'type' => 'radio', 'required' => false, 'options' => [ 'Small [formprobe]' ] ],
+	],
+] ];
+$callLabelHtml = \Nino\Html::renderHtml( $callLabel, '[form key="call"]' );
+check( 'a shortcode in a label or an option is not run', count( $called ) === 0 && str_contains( $callLabelHtml, 'RAN' ) === false && str_contains( $callLabelHtml, '[formprobe]' ) === false );
+check( '...its brackets are references, and the fill beside it is a word', str_contains( $callLabelHtml, 'Pick &#91;formprobe] Name' ) === true
+	&& str_contains( $callLabelHtml, 'One &#91;formprobe]' ) === true && str_contains( $callLabelHtml, 'Small &#91;formprobe]' ) === true );
 check( 'the classes the shared .nino-form script drives are all there', str_contains( $html, 'class="nino-form"' ) === true
 	&& str_contains( $html, 'class="nino-form-message"' ) === true && str_contains( $html, 'class="nino-form-trap"' ) === true
 	&& str_contains( $html, 'nino-form-submit' ) === true );

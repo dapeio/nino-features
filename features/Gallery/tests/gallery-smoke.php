@@ -1062,6 +1062,31 @@ $filled = galleryPage( $appData, '[gallery album="trip"]' );
 check( 'a caption written as a fill is resolved, and what comes out is escaped', str_contains( $filled, 'data-caption="Am Pass &quot;oben&quot;"' ) === true
 	&& str_contains( $filled, '[[/project/gallery/' ) === false );
 
+// ...and nothing else of it is read: a shortcode in a caption, an alt text or the name of an album is
+// characters of the page, whoever wrote it and however it got into the file - the markup is rendered once more
+$called = new \ArrayObject();
+\Nino\Html::addShortcode( $appData, 'galleryprobe', static function() use ( $called ): string {
+	$called[] = 'run';
+	return 'RAN';
+} );
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => 'Pass [galleryprobe] [[/project/gallery/one/caption]]', 'alt' => 'Alt [galleryprobe] [[/nothing/defined]]' ], 'gallery/image-save' );
+$probed = galleryPage( $appData, '[gallery album="trip"]' );
+check( 'a shortcode in a caption or an alt text is not run', count( $called ) === 0 && str_contains( $probed, 'RAN' ) === false );
+check( '...its brackets are references, and a fill beside it is still a word', str_contains( $probed, 'data-caption="Pass &#91;galleryprobe] Am Pass &quot;oben&quot;"' ) === true
+	&& str_contains( $probed, 'alt="Alt &#91;galleryprobe] &#91;&#91;/nothing/defined]]"' ) === true && str_contains( $probed, '[galleryprobe]' ) === false );
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '[[/project/gallery/one/caption]]', 'alt' => '' ], 'gallery/image-save' );
+
+$albumsBefore = [];
+\Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( &$albumsBefore ): array {
+	$albumsBefore = $albums;
+	$albums[] = [ 'key' => 'probe', 'name' => 'Pr [galleryprobe] ob', 'images' => [ [ 'id' => str_repeat( 'a', 16 ), 'thumb' => 'gallery/probe/a[galleryprobe].jpg', 'large' => 'gallery/probe/b[galleryprobe].jpg', 'alt' => '', 'caption' => '' ] ] ];
+	return $albums;
+} );
+$probedAlbum = galleryPage( $appData, '[gallery album="probe"]' );
+check( 'the name of an album, which names a picture that has no words, is text as well', count( $called ) === 0 && str_contains( $probedAlbum, 'Pr &#91;galleryprobe] ob' ) === true && str_contains( $probedAlbum, '[galleryprobe]' ) === false );
+check( '...and so are the names of the files in the src and the href', str_contains( $probedAlbum, 'src="/public/images/gallery/probe/a&#91;galleryprobe].jpg"' ) === true && str_contains( $probedAlbum, 'href="/public/images/gallery/probe/b&#91;galleryprobe].jpg"' ) === true );
+\Nino\Modules\Gallery::change( $appData, static fn( array $albums ): array => $albumsBefore );
+
 // The alt text is a text of its own, and so is each language's. What the
 // thumbnail says is the alt text; what the Lightbox shows under the picture is
 // the caption - and where there is an alt text and no caption, an empty

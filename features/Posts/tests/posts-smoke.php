@@ -396,6 +396,16 @@ $textFile = \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] );
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( $textFile, [ '[[/feature/posts/pager/next]]' => 'Further on' ] ) );
 check( 'the pager says what the project has set for its next link, a composed key', str_contains( postsRender( $appData, '[posts-pager]' ), 'Further on' ) === true );
 check( '...and a word given as an attribute wins over it', str_contains( postsRender( $appData, '[posts-pager next="More"]' ), '>More<' ) === true && str_contains( postsRender( $appData, '[posts-pager next="More"]' ), 'Further on' ) === false );
+// A word of the project is text in the link, a shortcode in it is no call - the pager is rendered once more
+$called = new \ArrayObject();
+\Nino\Html::addShortcode( $appData, 'postsprobe', static function() use ( $called ): string {
+	$called[] = 'run';
+	return 'RAN';
+} );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( $textFile, [ '[[/feature/posts/pager/next]]' => 'Further [postsprobe] on' ] ) );
+$probedPager = postsRender( $appData, '[posts-pager]' );
+check( 'a shortcode in a word of the pager is not run, and its brackets are references', count( $called ) === 0 && str_contains( $probedPager, 'RAN' ) === false && str_contains( $probedPager, 'Further &#91;postsprobe] on' ) === true );
+check( '...and so is a bracket in the word a call gives', str_contains( postsRender( $appData, '[posts-pager next="More [x"]' ), '>More &#91;x<' ) === true );
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', $textFile );
 $appData['./nino/locales/current'] = 'de_DE';
 
@@ -531,6 +541,25 @@ check( 'a post with one gets the whole tag, sized out of the model',
 	&& str_contains( $image, 'loading="lazy"' ) === true );
 check( '...and the alt is the field the section names, quoted for an attribute',
 	str_contains( $image, 'alt="A &quot;wide&quot; view &#91;posts]"' ) === true );
+
+// The name of the file is written into the src - and the markup is rendered once more, so a name that is
+// in the element by other means than an upload is drawn as text, not run ($called counts the runs of the probe)
+\Nino\Elements::updateElement( $appData, '/posts/second-wind', [ 'image' => 'a [postsprobe] b [[/nothing/defined]].jpg' ], '*' );
+unset( $appData['./nino/elements/cache'] );
+postsResolve( $appData, '/blog/second-wind' );
+$probed = postsRender( $appData, '[post][[.image]][/post]' );
+check( 'a shortcode in the name of the picture is not run', count( $called ) === 0 && str_contains( $probed, 'RAN' ) === false );
+check( '...it is in the src as characters, brackets as references', str_contains( $probed, '&#91;postsprobe] b &#91;&#91;/nothing/defined]]' ) === true && str_contains( $probed, '[postsprobe]' ) === false );
+\Nino\Elements::updateElement( $appData, '/posts/second-wind', [ 'image' => 'post-2.jpg' ], '*' );
+unset( $appData['./nino/elements/cache'] );
+postsResolve( $appData, '/blog/second-wind' );
+
+// The address of a post is made of its uri, which a writer of the file chose
+\Nino\Elements::insertElement( $appData, '/posts/odd[postsprobe]', [ 'title' => 'Odd', 'summary' => '', 'date' => '2026-02-10' ], 'de_DE' );
+$oddList = postsRender( $appData, '[posts section="blog" limit="9"]<a href="[[.url]]">[[title]]</a>[/posts]' );
+check( 'a shortcode in the uri of a post is not run in its address', count( $called ) === 0 && str_contains( $oddList, 'RAN' ) === false && str_contains( $oddList, '/blog/odd&#91;postsprobe]' ) === true );
+\Nino\Elements::deleteElement( $appData, '/posts/odd[postsprobe]', '*' );
+unset( $appData['./nino/elements/cache'] );
 
 
 echo "\nThe body, in paragraphs\n";
