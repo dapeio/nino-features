@@ -5,8 +5,10 @@
 # copied into the checkout's features/ for the run, the same layout a project
 # has, and removed again afterwards; the others are listed with their reason.
 # Then every test of this repository's own under tests/, against the same
-# checkout - the lines at the end of this script are the list, and each test's
-# header says what it holds.
+# checkout - each test's header says what it holds.
+#
+# features-1x/, applications-1x/ and tests-1x/ are not read: they hold what was
+# written for Nino 1 and waits for its move to Nino 2 (see README.md).
 #
 # Usage: bin/check.sh            (../nino)
 #        NINO_ROOT=/path/to/nino bin/check.sh
@@ -51,15 +53,7 @@ for test in "$root"/features/*/tests/*-smoke.php; do
 	php "$test"
 done
 
-NINO_ROOT="$root" php "$here/tests/keys-smoke.php"
-NINO_ROOT="$root" php "$here/tests/legal-smoke.php"
-NINO_ROOT="$root" php "$here/tests/components-smoke.php"
-php "$here/tests/markup-smoke.php"
-php "$here/tests/language-smoke.php"
-php "$here/tests/escaping-smoke.php"
-php "$here/tests/panels-smoke.php"
-php "$here/tests/manual-smoke.php"
-php "$here/tests/breakpoints-smoke.php"
-NINO_ROOT="$root" php "$here/tests/demo-catalogue-smoke.php"
-NINO_ROOT="$root" php "$here/tests/build-smoke.php"
-NINO_ROOT="$root" php "$here/tests/release-smoke.php"
+for test in "$here"/tests/*-smoke.php; do
+	[ -e "$test" ] || continue
+	NINO_ROOT="$root" php "$test"
+done

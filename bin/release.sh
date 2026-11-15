@@ -32,6 +32,14 @@ for arg in "$@"; do
 	esac
 done
 
+# 0. main is Nino 2 in the making: while a feature written for Nino 1 waits in
+# features-1x/, what main carries is not the catalogue, and a build of it would
+# take every waiting feature away from the projects that read the served one
+if [ -d "$here/features-1x" ]; then
+	echo "features-1x/ still holds features that wait for Nino 2 - main is not released until it is gone" >&2
+	exit 1
+fi
+
 # 1. the gate: every manifest, every test
 [ "$quick" = 1 ] || NINO_ROOT="$root" "$here/bin/check.sh"
 

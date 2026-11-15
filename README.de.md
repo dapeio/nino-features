@@ -4,6 +4,10 @@
 
 Der Feature-Katalog von [Nino](https://github.com/dapeio/nino): die Features, die ein Nino-Projekt installieren kann, je eines pro Verzeichnis unter `features/`, mit eigener Version. Der Katalog selbst ist die Liste – [catalogue.getnino.dev](https://catalogue.getnino.dev) liefert ihn aus, und das Features-Panel eines Projekts liest ihn.
 
+## Nino 2 entsteht
+
+`main` wird für Nino 2 neu gebaut, das Komponenten, Blocks und Themes auf neue Weise liest. Jedes Feature und jede Anwendung, die für Nino 1 geschrieben sind, wartet in `features-1x/` und `applications-1x/`, die Tests, die sie lesen, in `tests-1x/`, bis sie umgezogen sind; `features/`, `applications/` und `tests/` enthalten, was schon Nino 2 ist. Kein Skript und kein Test liest die Warteordner, und `bin/release.sh` verweigert den Lauf, solange es `features-1x/` gibt: [catalogue.getnino.dev](https://catalogue.getnino.dev) liefert weiter den letzten Katalog für Nino 1, das ist der Tag `v1-final`. Der Rest dieses Dokuments beschreibt den Katalog, wie er nach dem Umzug arbeitet.
+
 ## Was dieser Katalog ist
 
 Ein Nino-Checkout liefert kein Feature aus. Was ein Projekt über den Kernel hinaus braucht – einen Newsletter, eine Suche –, kommt als **Feature**: ein Verzeichnis mit einer Laufzeitklasse, bei Bedarf einem Panel der Workbench, einer Install-Einheit mit Templates und Texten und einem Manifest `feature.php`, das sagt, was es ist, für welche Nino-Version es geschrieben wurde und welche Einstellungen es anbietet. Was ein Feature liefern muss, steht im Vertrag [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) in Nino; jedes Feature hier folgt ihm.
@@ -38,7 +42,7 @@ bin/check.sh
 NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
-`bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; danach führt es jeden eigenen Test dieses Repositories unter `tests/` aus – die Grammatik der Textschlüssel, die Abschnitte der Datenschutzerklärung, die Regeln, die für jedes Feature gelten – darunter die eine Linie für Breiten –, die Demoseite des Kernels, die jede Klasse von `Nino.css` zeichnet, das Build-Werkzeug und das Release-Skript. Die Zeilen des Skripts selbst sind die Liste. Ein Feature, das für ein neueres Nino geschrieben ist als der Checkout, steht mit seinem Grund in der Liste und bleibt draußen (`bin/applicable.php` entscheidet das).
+`bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; danach führt es jeden eigenen Test dieses Repositories unter `tests/` aus. Ein Feature, das für ein neueres Nino geschrieben ist als der Checkout, steht mit seinem Grund in der Liste und bleibt draußen (`bin/applicable.php` entscheidet das).
 
 Ein einzelner Test läuft auch direkt:
 

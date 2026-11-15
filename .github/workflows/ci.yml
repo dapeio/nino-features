@@ -11,6 +11,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# features-1x/, applications-1x/ and tests-1x/ are read by no step: they hold
+# what was written for Nino 1 and waits for its move to Nino 2 (README.md)
 jobs:
   # Every feature against a Nino checkout: its manifest has to validate, its
   # own tests have to pass, and static analysis has to stay clean. main is
@@ -75,47 +77,10 @@ jobs:
       - name: Run every feature's own smoke tests
         run: for test in nino/features/*/tests/*-smoke.php; do [ -e "$test" ] || continue; php "$test" || exit 1; done
 
-      # Every feature's text keys follow the grammar of the kernel's: what
-      # needs no kernel always, the rest where the checkout has what it is
-      # checked against (\Nino\Modules\Template::category())
-      - name: Run the text key grammar's smoke test
-        run: NINO_ROOT=nino php tests/keys-smoke.php
-
-      # The sections of the privacy policy the features bring: their form
-      # always, and - where the checkout has Nino's Legal module - added to its
-      # type the way an activation does it
-      - name: Run the privacy policy sections' smoke test
-        run: NINO_ROOT=nino php tests/legal-smoke.php
-
-      # What every component of a manifest says of itself - the picture it is
-      # drawn as, what it draws, where it may stand, its icon - which the
-      # Builder reads and knows no component by name
-      - name: Run the components' smoke test
-        run: NINO_ROOT=nino php tests/components-smoke.php
-
-      # The kernel's demo page draws every class of Nino.css: a class that
-      # Nino.css gains and the page does not show fails here
-      - name: Run the demo page's smoke test
-        run: NINO_ROOT=nino php tests/demo-catalogue-smoke.php
-
-      # The publishing tool builds a signed catalogue of this repository's
-      # features into a directory of its own, and the kernel has to accept
-      # what came out
-      - name: Run the publishing tool's smoke test
-        run: NINO_ROOT=nino php tests/build-smoke.php
-
-      # The catalogue's own rules over every feature's files: markup belongs in
-      # a template, the text is English, the escape keeps what it cannot
-      # encode, a panel reaches the workbench the way it has to, every manual
-      # keeps the shape of an overview, and a stylesheet answers to a width at
-      # 640, 768, 1024 or 1280 px as min-width and at no other
-      - name: Run the catalogue's rule tests
-        run: for test in markup language escaping panels manual breakpoints; do php "tests/$test-smoke.php" || exit 1; done
-
-      # bin/release.sh from a copy of the repository, whose public/ stands
-      # in for the served directory
-      - name: Run the release script's smoke test
-        run: NINO_ROOT=nino php tests/release-smoke.php
+      # Every test of this repository's own, against the same checkout: each
+      # test's header says what it holds
+      - name: Run the catalogue's own tests
+        run: for test in tests/*-smoke.php; do [ -e "$test" ] || continue; NINO_ROOT=nino php "$test" || exit 1; done
 
       # Nino's own suite still passes with the features in place - a feature
       # that breaks the kernel's tests is not compatible either
@@ -126,7 +91,8 @@ jobs:
         run: cd nino && phpstan analyse --no-progress --memory-limit=1G
 
       - name: Analyse the panel scripts with ESLint
-        run: cd nino && npx --yes eslint@9.39.0 features
+        # features/ may hold no script at all: no file to lint is no failure
+        run: cd nino && npx --yes eslint@9.39.0 --no-error-on-unmatched-pattern features
 
       - name: Keep the catalogue as an artifact
         if: matrix.nino == 'main'
