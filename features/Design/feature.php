@@ -30,8 +30,8 @@ return [
 				'de_DE' => 'Ermöglicht, jede Änderung sofort auf einer Musterseite Deines Projekts zu sehen, in Mobile-, Tablet- oder Desktopbreite.',
 			],
 			'Themes' => [
-				'en_US' => 'Lets you keep a look as a named theme and Load, Duplicate, Export, Delete, Edit and Import themes; seven ship with the Design, and a theme can carry css of its own.',
-				'de_DE' => 'Ermöglicht, ein Aussehen als Theme festzuhalten und Themes zu Laden, Duplizieren, Exportieren, Löschen, Bearbeiten und zu importieren; sieben liegen bei, und ein Theme kann eigenes CSS tragen.',
+				'en_US' => 'Lets you keep a look as a named theme and Load, Duplicate, Export, Delete, Edit and Import themes; ten ship with the Design, and a theme can carry css of its own.',
+				'de_DE' => 'Ermöglicht, ein Aussehen als Theme festzuhalten und Themes zu Laden, Duplizieren, Exportieren, Löschen, Bearbeiten und zu importieren; zehn liegen bei, und ein Theme kann eigenes CSS tragen.',
 			],
 			'Typefaces' => [
 				'en_US' => 'Lets you install typefaces from a list and use them for the font roles of the setup; they are served by the site itself.',

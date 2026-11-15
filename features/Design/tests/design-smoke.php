@@ -7440,15 +7440,15 @@ foreach( (array) glob( $library. '/themes/*.php' ) as $tilesTheme ) {
 	$tilesMiddle = array_map( static fn( string $kind ) => $kind === 'ink' ? '' : 0, Setup::KNOBS['tiles'] );
 	$tilesSlug = basename( (string) $tilesTheme, '.php' );
 
-	// A theme writes the tiles out whole: a set of the library, the standard corners, every knob of the object and no style. The six themes that were there before the Poster set had a theme are held to Regular and every knob in the middle; a theme that sets its tiles as posters may move the knobs of its tiles
+	// A theme writes the tiles out whole: a set of the library, the standard corners, every knob of the object and no style. The first theme, the framework as it is, is held to Regular and every knob in the middle; a construction chooses its set and moves the knobs of its tiles
 	$tilesProblem = in_array( $tilesFile['setup']['parts']['tiles'] ?? '', $tilesSets, true ) === false || ( $tilesFile['setup']['radii']['tile'] ?? '' ) !== 'standard'
 		|| is_array( $tilesKnobs ) === false || array_keys( $tilesKnobs ) !== array_keys( $tilesMiddle ) || ( $tilesFile['setup']['styles']['tiles'] ?? null ) !== [];
 
-	if( in_array( $tilesSlug, [ 'bold', 'corporate', 'docs', 'editorial', 'nino', 'studio' ], true ) === true )
+	if( $tilesSlug === Themes::SHIPPED[0] )
 		$tilesProblem = $tilesProblem || ( $tilesFile['setup']['parts']['tiles'] ?? '' ) !== 'regular' || $tilesKnobs !== $tilesMiddle;
 
 	if( $tilesProblem === true )
-		$tilesProblems[] = $tilesSlug. ' does not write the tiles out whole: a set of the library, the standard corners, every knob, no style - and for the six of the first round Regular and every knob in the middle';
+		$tilesProblems[] = $tilesSlug. ' does not write the tiles out whole: a set of the library, the standard corners, every knob, no style - and for the first theme Regular and every knob in the middle';
 }
 
 check( 'the tiles are a part of two sets, Regular and Poster, that declare the eleven knobs of the object as complete ladders, say them in the head, point the numbers Nino.css reads at them - and leave the gap and the place to the compiler - at the kernel\'s own middle, the room stepping up at 768px, with every rule on .nino-tiles; and every shipped theme writes the tiles out whole, on one of the two sets'
@@ -9032,7 +9032,7 @@ check( 'and the sandbox is as it was: no family, no directory for them, no cache
 
 echo "\nThe themes: the whole setup under a name, and the css that goes with it\n";
 
-$themesSection = static function( array &$appData, string $library, array $entryInter ) use ( $richParts, $defaultSets, $panelText ): string {
+$themesSection = static function( array &$appData, string $library, array $entryInter ) use ( $richParts, $defaultSets, $panelText, $plantedHeaders, $plantedFooters ): string {
 
 	$themesFile = ninoSandboxDir( $appData ). '/design-themes.json';
 
@@ -9309,9 +9309,16 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$problems[] = 'colours: a theme the feature ships names no palette, the brand colour is the project\'s';
 		if( is_array( $given['features'] ?? null ) === false )
 			$problems[] = 'features: a theme has the choices for the features, an empty list where it names none';
-		// The styles of the templates came after the file was written: it may name none, and then has none chosen (see $completed)
-		if( in_array( array_keys( $given ), [ $choosesShipped, array_values( array_diff( $choosesShipped, [ 'styles' ] ) ) ], true ) === false )
-			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order';
+		// The styles of the templates came after the file was written: it may name none, and then has none chosen (see $completed). What the tablet and the phone do differently is in a file that sets something for them, behind the choices for the features, and in no other
+		$givenKeys = array_keys( $given );
+		$tiered = array_key_exists( 'tiers', $given ) === true;
+
+		if( $tiered === true )
+			array_splice( $givenKeys, (int) array_search( 'tiers', $givenKeys, true ), 1 );
+
+		if( in_array( $givenKeys, [ $choosesShipped, array_values( array_diff( $choosesShipped, [ 'styles' ] ) ) ], true ) === false
+			|| ( $tiered === true && ( array_search( 'tiers', array_keys( $given ), true ) !== array_search( 'features', array_keys( $given ), true ) + 1 || array_filter( (array) $given['tiers'] ) === [] ) ) )
+			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order, with the tiers behind the features where it sets one';
 		if( $notes !== [] )
 			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
 		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $completed( $given ) )
@@ -9375,25 +9382,34 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
 	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
 		$completed( Themes::setup( $shippedRaw[$shippedFirst] ) ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
-	/*	The tabs and the accordion are in every theme as the other parts are: a set named, every knob of both written out at the middle - 0, and none for an ink - and a styles entry for each. The first theme is the kernel's own look, the first set of both; of the others some take the other set of the tabs and some the other of the accordion, so that the sets are used by what the library ships	*/
+	/*	The tabs and the accordion are in every theme as the other parts are: a set named, every knob of both written out and a styles entry for each. The first theme is the kernel's own look, the first set of both with every knob at the middle - 0, and none for an ink; of the others some take the other set of the tabs and some the other of the accordion, so that the sets are used by what the library ships, and a construction moves the knobs of both as it moves any other	*/
 	$middles = static fn( string $part ): array => array_map( static fn( string $kind ): int|string => $kind === 'ink' ? '' : 0, Setup::KNOBS[$part] );
 	$setsTaken = static fn( string $part ): array => array_values( array_unique( array_map( static fn( array $file ): string => (string) ( $file['setup']['parts'][$part] ?? '' ), $shippedRaw ) ) );
 
-	check( '...every theme the feature ships names a set of the tabs and of the accordion, with every knob of both at the middle and a styles entry for each - the first the default set of both, and the sets of the library that are not the default taken by themes of the others'
+	check( '...every theme the feature ships names a set of the tabs and of the accordion, with every knob of both written out and a styles entry for each - the first the default set of both with every knob at the middle, and the sets of the library that are not the default taken by themes of the others'
 		. ' - '. implode( ', ', array_map( static fn( string $part ): string => $part. ' '. implode( '/', $setsTaken( $part ) ), [ 'tabs', 'accordion' ] ) ),
-		array_filter( $shippedRaw, static fn( array $file ): bool => ( $file['setup']['knobs']['tabs'] ?? null ) !== $middles('tabs') || ( $file['setup']['knobs']['accordion'] ?? null ) !== $middles('accordion')
+		array_filter( $shippedRaw, static fn( array $file ): bool => array_keys( (array) ( $file['setup']['knobs']['tabs'] ?? null ) ) !== array_keys( $middles('tabs') ) || array_keys( (array) ( $file['setup']['knobs']['accordion'] ?? null ) ) !== array_keys( $middles('accordion') )
 			|| ( $file['setup']['styles']['tabs'] ?? null ) !== [] || ( $file['setup']['styles']['accordion'] ?? null ) !== [] ) === []
+		&& ( $shippedRaw[$shippedFirst]['setup']['knobs']['tabs'] ?? null ) === $middles('tabs') && ( $shippedRaw[$shippedFirst]['setup']['knobs']['accordion'] ?? null ) === $middles('accordion')
 		&& ( $shippedRaw[$shippedFirst]['setup']['parts']['tabs'] ?? '' ) === $defaultSets['tabs'] && ( $shippedRaw[$shippedFirst]['setup']['parts']['accordion'] ?? '' ) === $defaultSets['accordion']
 		&& count( $setsTaken( 'tabs' ) ) === count( Setup::available( $library, 'tabs' ) ) && count( $setsTaken( 'accordion' ) ) === count( Setup::available( $library, 'accordion' ) )
 		&& array_diff( array_merge( $setsTaken( 'tabs' ), $setsTaken( 'accordion' ) ), Setup::available( $library, 'tabs' ), Setup::available( $library, 'accordion' ) ) === [] );
 
 	/*	The themes the feature ships are one that is the framework as it is and a few that are constructions of the library: they follow it in the order of the
 		names, and each is a construction of its own - no two choose the same templates - that names no colours, no css and no feature, and says what it is in
-		both languages with two lines that are not the one line twice	*/
+		both languages with two lines that are not the one line twice. A theme is told from another by its face - the header, the footer, the section, the card
+		and the buttons: no two themes, the first among them, share the five, and every header and every footer the library has is the choice of one of them	*/
 	$constructions = array_slice( $shippedRaw, 1, null, true );
 	$constructed = array_map( static fn( array $file ): array => Themes::setup( $file )['parts'] ?? [], $constructions );
 	$sortedRest = array_keys( $constructions );
 	sort( $sortedRest );
+	$faces = array_map( static fn( array $file ): string => implode( '/', array_map( static fn( string $part ): string => (string) ( Themes::setup( $file )['parts'][$part] ?? '' ), [ 'header', 'footer', 'section', 'card', 'buttons' ] ) ), $shippedRaw );
+	$untaken = [];
+
+	// The two frames this suite plants for the length of another check (see $plantedHeaders) are no sets of the library
+	foreach( [ 'header', 'footer' ] as $framePart )
+		foreach( array_diff( Setup::available( $library, $framePart ), array_map( 'basename', array_merge( $plantedHeaders, $plantedFooters ) ), array_map( static fn( array $file ): string => (string) ( Themes::setup( $file )['parts'][$framePart] ?? '' ), $shippedRaw ) ) as $unusedSet )
+			$untaken[] = $framePart. '/'. $unusedSet;
 
 	/*	A construction moves only what its templates read: a knob that stands off the middle - a position other than 0, an ink other than none - is one the template chosen for its part declares a ladder for, since a position
 		nothing reads is one nobody can find again	*/
@@ -9405,11 +9421,14 @@ $themesSection = static function( array &$appData, string $library, array $entry
 				if( $position !== 0 && $position !== '' && in_array( $knob, Setup::knobs( $library, $part, (string) ( Themes::setup( $file )['parts'][$part] ?? '' ) ), true ) === false )
 					$unread[] = $slug. ': '. $part. '/'. $knob;
 
-	check( 'the library ships seven themes: the framework as it is and six constructions after it, in the order of their names - each with a line for both languages that is its own, no colours, no css and no choice for a feature, no two on the same templates, and no knob off the middle that its template does not read'. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ),
-		count( $shippedFiles ) === 7 && array_key_first( $shippedFiles ) === $shippedFirst && array_keys( $constructions ) === $sortedRest && count( $constructions ) === 6
+	check( 'the library ships ten themes: the framework as it is and nine constructions after it, in the order of their names - each with a line for both languages that is its own, no colours, no css and no choice for a feature, no two on the same templates, and no knob off the middle that its template does not read'. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ),
+		count( $shippedFiles ) === 10 && array_key_first( $shippedFiles ) === $shippedFirst && array_keys( $constructions ) === $sortedRest && count( $constructions ) === 9
 		&& array_filter( $constructions, static fn( array $file ): bool => trim( (string) ( $file['description'] ?? '' ) ) === '' || trim( (string) ( $file['description-de'] ?? '' ) ) === '' || $file['description'] === $file['description-de'] ) === []
 		&& array_filter( $constructions, static fn( array $file ): bool => array_key_exists( 'colours', Themes::setup( $file ) ) === true || Themes::css( $file ) !== '' || ( Themes::setup( $file )['features'] ?? null ) !== [] || ( $file['presets'] ?? null ) !== [] ) === []
 		&& $unread === [] && count( array_unique( array_map( 'json_encode', $constructed ) ) ) === count( $constructed ) && array_filter( $constructed, static fn( array $parts ): bool => $parts === Themes::setup( $shippedRaw[$shippedFirst] )['parts'] ) === [] );
+
+	check( '...no two of them share a face - the header, the footer, the section, the card and the buttons - and every header and every footer of the library is the choice of a theme'. ( $untaken === [] ? '' : ' - not taken: '. implode( ', ', $untaken ) ),
+		count( $faces ) === count( $shippedRaw ) && count( array_unique( $faces ) ) === count( $faces ) && $untaken === [] && count( Setup::available( $library, 'header' ) ) > 1 && count( Setup::available( $library, 'footer' ) ) > 1 );
 
 	/*	...and the sheet of each is the sheet of its choice: the stylesheet of the template chosen for every part and the file of every style chosen, and for every ladder those
 		templates publish a line pointing at the step the file names - the inks apart, which stand in a block of their own. Two themes are never the same sheet	*/
@@ -10647,14 +10666,22 @@ check( 'the compiled defaults carry the six inks on every element, each at the r
 	&& $inkBlockAt( $inkChosen ) === [ '--section-title-ink' => 'var(--color-accent)', '--section-subtitle-ink' => 'var(--color-primary)', '--tiles-title-ink' => 'var(--color-border)', '--tiles-subtitle-ink' => 'var(--tiles-subtitle-ink--default)', '--card-title-ink' => 'var(--card-title-ink--default)', '--card-subtitle-ink' => 'var(--color-focus)' ]
 	&& array_filter( [ 'section', 'tiles', 'card' ], static fn( string $part ): bool => Setup::normalize( $appData, [], $library )['knobs'][$part]['title-ink'] !== '' || Setup::normalize( $appData, [], $library )['knobs'][$part]['subtitle-ink'] !== '' ) === [] );
 
+// A theme names no colour, and a tone is none: an ink it chooses is one of the roles of INKS, which the palette of the project solves. The first theme chooses none
 $inkThemes = [];
+$inkChoices = 0;
 
 foreach( (array) glob( $library. '/themes/*.php' ) as $inkTheme )
-	foreach( [ 'section', 'tiles', 'card' ] as $inkPart )
-		if( array_intersect_key( ( include $inkTheme )['setup']['knobs'][$inkPart] ?? [], [ 'title-ink' => 1, 'subtitle-ink' => 1 ] ) !== [ 'title-ink' => '', 'subtitle-ink' => '' ] )
-			$inkThemes[] = basename( (string) $inkTheme ). ' '. $inkPart;
+	foreach( [ 'section', 'tiles', 'card' ] as $inkPart ) {
 
-check( 'every shipped theme writes the six inks out whole, as the kernel\'s tone: none of them chooses one'. ( $inkThemes === [] ? '' : ' - not so for '. implode( ', ', $inkThemes ) ), $inkThemes === [] && count( (array) glob( $library. '/themes/*.php' ) ) === 7 );
+		$inkWritten = array_intersect_key( ( include $inkTheme )['setup']['knobs'][$inkPart] ?? [], [ 'title-ink' => 1, 'subtitle-ink' => 1 ] );
+		$inkChoices += count( array_filter( $inkWritten, static fn( mixed $tone ): bool => $tone !== '' ) );
+
+		if( array_keys( $inkWritten ) !== [ 'title-ink', 'subtitle-ink' ] || array_filter( $inkWritten, static fn( mixed $tone ): bool => $tone !== '' && ( is_string( $tone ) === false || isset( Setup::INKS[$tone] ) === false ) ) !== []
+			|| ( basename( (string) $inkTheme, '.php' ) === Themes::SHIPPED[0] && $inkWritten !== [ 'title-ink' => '', 'subtitle-ink' => '' ] ) )
+			$inkThemes[] = basename( (string) $inkTheme ). ' '. $inkPart;
+	}
+
+check( 'every shipped theme writes the six inks out whole, each the kernel\'s tone or one of the tones of the page: the first theme chooses none, and a construction that chooses one names a tone and no colour'. ( $inkThemes === [] ? '' : ' - not so for '. implode( ', ', $inkThemes ) ), $inkThemes === [] && $inkChoices > 0 && count( (array) glob( $library. '/themes/*.php' ) ) === 10 );
 
 /*	The Colours tab: the six inks stand under their objects, after the controls the objects have there	*/
 $inkRows = [];
@@ -10740,8 +10767,8 @@ foreach( $gradeKnobs as $gradeAt ) {
 check( 'a grade is five different rungs, declared under default, light, medium, strong and full, in every set that answers to it: '. implode( ', ', $gradeKnobs )
 	. ( $shapeProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $shapeProblems, 0, 4 ) ) ), $shapeProblems === [] && $gradeKnobs === [ 'section/rule', 'section/title-shadow', 'tiles/gap', 'card/shadow' ] );
 
-/*	The shipped themes held the shadows of a section title and of a card as a position of a scale - 1 the lighter, 2 the stronger. The grade keeps those two as its rungs 1 and 2 (light, medium) and adds
-	two stronger ones, so a stored position keeps its look: 1 for 1 and 2 for 2, as the rule (1px, 2px) and the gap do. Corporate's card stands at 1, the lighter shadow of before	*/
+/*	A grade keeps the two shadows a scale had as its rungs 1 and 2 (light, medium) and adds two stronger ones, so a stored position keeps its look: 1 for 1 and 2 for 2, as the rule (1px, 2px)
+	and the gap do. The shipped themes write the four grades as positions of that ladder: none in the first theme, and in a construction the rung its look is drawn with	*/
 $themeGrades = [];
 foreach( (array) glob( $library. '/themes/*.php' ) as $gradeTheme ) {
 
@@ -10749,8 +10776,8 @@ foreach( (array) glob( $library. '/themes/*.php' ) as $gradeTheme ) {
 	$themeGrades[ basename( (string) $gradeTheme, '.php' ) ] = [ $themeKnobs['section']['rule'], $themeKnobs['section']['title-shadow'], $themeKnobs['tiles']['gap'], $themeKnobs['card']['shadow'] ];
 }
 
-check( 'the shipped themes write the four grades at the position their look had: the rule 1 for 1px, the shadows of a title and a card at the rung of the shadow they had - Corporate\'s card at 1, the lighter shadow of before -, the gap none but for Gallery\'s light one between its tiles',
-	$themeGrades === [ 'bold' => [ 0, 0, 0, 0 ], 'corporate' => [ 1, 0, 0, 1 ], 'docs' => [ 1, 0, 0, 0 ], 'editorial' => [ 0, 0, 0, 0 ], 'gallery' => [ 0, 0, 1, 0 ], 'nino' => [ 0, 0, 0, 0 ], 'studio' => [ 0, 0, 0, 0 ] ] );
+check( 'the shipped themes write the four grades - the rule, the shadow of a title, the gap of the tiles and the shadow of a card - at the rung of their look: a rule of 2px under the titles of Corporate and Craft and of 1px under those of Docs, a gap between the tiles of Bold, Craft and Gallery, a shadow under the cards of Corporate, Craft and Pop, and none of the four in the first theme',
+	$themeGrades === [ 'bold' => [ 0, 0, 2, 0 ], 'civic' => [ 0, 0, 0, 0 ], 'corporate' => [ 2, 0, 0, 1 ], 'craft' => [ 2, 0, 2, 1 ], 'docs' => [ 1, 0, 0, 0 ], 'editorial' => [ 0, 0, 0, 0 ], 'gallery' => [ 0, 0, 1, 0 ], 'nino' => [ 0, 0, 0, 0 ], 'pop' => [ 0, 0, 0, 2 ], 'studio' => [ 0, 0, 0, 0 ] ] );
 
 /*	The air under a thick rule: the section sets zero the kernel's border and write the padding under the title themselves - the line and twice it, which stops at .375rem so that the rule of the
 	last rungs stays with its title and not with the subtitle. The title ground of the sets reaches no title of a section of tiles: the tiles have knobs of their own, and a ground painted on a tile title
@@ -12775,9 +12802,27 @@ check( 'the model has a key for the tablet and the phone, after the choices for 
 $tierNotes = [];
 $tierRead = Setup::normalize( $appData, [ 'size' => 1 ], $library, $tierNotes );
 
-check( 'a file without the key is a setup that sets nothing for them, with no note and nothing migrated - and so is a theme without it: every theme the feature ships has none',
-	$tierRead['tiers'] === [ 'm' => [], 's' => [] ] && $tierNotes === []
-	&& array_filter( array_keys( Themes::shipped( $library ) ), static fn( string $slug ): bool => array_key_exists( 'tiers', Themes::setup( (array) include Themes::shipped( $library )[$slug] ) ) === true ) === [] );
+// A theme the feature ships that sets something for the tablet or the phone writes both tiers, each control one of TIER_CONTROLS at a position of its own off Automatic; the first theme, the framework as it is, has no key
+$tierThemes = [];
+
+foreach( Themes::shipped( $library ) as $tierThemeSlug => $tierThemePath ) {
+
+	$tierThemeSetup = Themes::setup( (array) include $tierThemePath );
+
+	if( array_key_exists( 'tiers', $tierThemeSetup ) === false )
+		continue;
+
+	$tierWritten = (array) $tierThemeSetup['tiers'];
+
+	if( $tierThemeSlug === Themes::SHIPPED[0] || array_keys( $tierWritten ) !== Setup::TIERS || array_filter( $tierWritten ) === []
+		|| Setup::normalize( $appData, [ 'tiers' => $tierWritten ], $library )['tiers'] !== $tierWritten
+		|| array_filter( $tierWritten, static fn( mixed $controls ): bool => is_array( $controls ) === false || array_diff( array_keys( $controls ), array_keys( Setup::TIER_CONTROLS ) ) !== [] ) !== [] )
+		$tierThemes[] = $tierThemeSlug;
+}
+
+check( 'a file without the key is a setup that sets nothing for them, with no note and nothing migrated - and so is a theme without it: the first theme the feature ships has none, and a construction that sets a tier writes both, each control one of the model at a position that reads back as written'. ( $tierThemes === [] ? '' : ' - not so for '. implode( ', ', $tierThemes ) ),
+	$tierRead['tiers'] === [ 'm' => [], 's' => [] ] && $tierNotes === [] && $tierThemes === []
+	&& array_key_exists( 'tiers', Themes::setup( (array) include Themes::shipped( $library )[ Themes::SHIPPED[0] ] ) ) === false );
 
 $tierNotes = [];
 $tierHeld = Setup::normalize( $appData, [ 'tiers' => [
@@ -12801,12 +12846,13 @@ check( 'a tier that is no list is no choice, and is named: the setup has both ti
 	&& Setup::normalize( $appData, [ 'tiers' => [ 'm' => 'big', 's' => [ 1, 2 ] ] ], $library, $tierNoList )['tiers'] === [ 'm' => [], 's' => [] ] && count( $tierNoList ) === 3
 	&& array_map( [ Setup::class, 'tierPositions' ], [ 'size', 'margin', 'title', 'gap', 'header' ] ) === [ [ -2, -1, 0, 1, 2 ], [ -2, -1, 0, 1, 2 ], [ -2, -1, 1, 2 ], [ -2, -1, 1, 2 ], [ -2, -1, 1, 2 ] ] );
 
-// Nothing deviates: the sheet is the one there was - for every theme the feature ships, and with the key written out as it is
+// Nothing deviates: the sheet is the one there was - for every theme the feature ships, taken without the tiers a construction sets of its own, and with the key written out as it is
 $tierPlain = [];
 
 foreach( Themes::shipped( $library ) as $tierSlug => $tierThemeFile ) {
 
 	$tierRaw = Themes::setup( (array) include $tierThemeFile );
+	unset( $tierRaw['tiers'] );
 	// The ends of two ladders, where an offset has no room to go: the theme stands there, and the offset lands where it is
 	$tierEnds = $tierRaw;
 	$tierEnds['knobs']['section']['subtitle'] = 2;
@@ -13273,8 +13319,8 @@ $menuStray = Setup::normalize( $appData, [ 'knobs' => [ 'header' => [ 'menu-weig
 check( '...and left out, or outside the range, a position is 0',
 	array_filter( array_keys( $menuKnobs ), static fn( string $knob ): bool => $menuOff['knobs']['header'][$knob] !== 0 || $menuStray['knobs']['header'][$knob] !== 0 ) === [] );
 
-// The knobs of the six themes of the first round stand where those themes always had them: the menu at 0, and the case of every title, label and button at 0 but for the navigation of Corporate
-$menuFirst = [ 'bold', 'corporate', 'docs', 'editorial', 'nino', 'studio' ];
+// The first theme is the framework as it is: the menu at 0 and the case of every title, label and button at 0, so that the sheet a fresh install gets carries no file of a knob. A construction moves them as it moves any other knob
+$menuFirst = [ Themes::SHIPPED[0] ];
 $menuThemes = [];
 
 foreach( $menuFirst as $menuTheme ) {
@@ -13288,8 +13334,7 @@ foreach( $menuFirst as $menuTheme ) {
 
 	foreach( Setup::KNOBS as $menuPart => $menuKinds )
 		foreach( $menuKinds as $menuName => $menuKind )
-			if( $menuKind === 'toggle' && ( $menuSetup['knobs'][$menuPart][$menuName] ?? null ) !== ( $menuTheme === 'corporate' && ( $menuPart. '/'. $menuName === 'header/nav-case' || $menuPart. '/'. $menuName === 'section/title-case' ) ? 1 : 0 )
-				&& ( $menuPart === 'accordion' ) === false )
+			if( $menuKind === 'toggle' && ( $menuSetup['knobs'][$menuPart][$menuName] ?? null ) !== 0 )
 				$menuThemes[] = $menuTheme. ' '. $menuPart. '/'. $menuName;
 
 	// ...and each compiles to a sheet that mentions no knob a file brings
@@ -13299,7 +13344,7 @@ foreach( $menuFirst as $menuTheme ) {
 		$menuThemes[] = $menuTheme. ' compiles a knob file';
 }
 
-check( '...and the six themes of the first round hold the three at 0 and every case at 0 - but for the navigation and the titles of Corporate - and compile to no file of a knob'. ( $menuThemes === [] ? '' : ' - not so for '. implode( ', ', array_slice( $menuThemes, 0, 4 ) ) ), $menuThemes === [] );
+check( '...and the first theme holds the three at 0 and every toggle at 0, and compiles to no file of a knob'. ( $menuThemes === [] ? '' : ' - not so for '. implode( ', ', array_slice( $menuThemes, 0, 4 ) ) ), $menuThemes === [] );
 
 // The file of a knob stands behind the css of the set, under its line: the set's own rules come first, and the knob's file - which the overlay's rule is written to win by - after them
 $orderProblems = [];
