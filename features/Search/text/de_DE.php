@@ -19,6 +19,8 @@ return [
 	'[[/_admin/search/label/rebuild-all]]'	=> 'Alle neu aufbauen',
 	'[[/_admin/search/label/probe]]'				=> 'Ausprobieren',
 	'[[/_admin/search/label/back]]'					=> 'Zurück zur Übersicht',
+	'[[/_admin/search/label/search]]'				=> 'Typen durchsuchen',
+	'[[/_admin/search/empty/nomatch]]'			=> 'Nichts passt.',
 
 	'[[/_admin/search/state/current]]'			=> 'aktuell',
 	'[[/_admin/search/state/stale]]'				=> 'veraltet',

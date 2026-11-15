@@ -421,22 +421,39 @@
 
 			const wasProtected = state.pages.some( function( page ) { return page.selected === true } );
 
-			if( paths.length === 0 && wasProtected === true && wn.confirm( Nino.content.getText('/_admin/protected/confirm/none') ) === false )
-				return;
+			const write = function() {
 
-			save.disabled = true;
-			line.saving();
+				save.disabled = true;
+				line.saving();
 
-			Nino.admin.protected.call( 'pages', { paths : paths }, function( status, response ) {
+				Nino.admin.protected.call( 'pages', { paths : paths }, function( status, response ) {
 
-				save.disabled = false;
+					save.disabled = false;
 
-				if( status !== 200 || response === null )
-					return line.error( status, response, '/_admin/common/error/save' );
+					if( status !== 200 || response === null )
+						return line.error( status, response, '/_admin/common/error/save' );
 
-				Nino.admin.protected._take( response );
-				Nino.admin.protected._render();
-				Nino.admin.protected._lines.pages.saved();
+					Nino.admin.protected._take( response );
+					Nino.admin.protected._render();
+					Nino.admin.protected._lines.pages.saved();
+				} );
+			};
+
+			if( paths.length > 0 || wasProtected === false )
+				return write();
+
+			// Visitors reach every page of the list freely from this save on - asked in every mode of the workbench, as a question of 'big' is not asked while a site is built
+			Nino.adminUi.confirm( 'destructive', {
+				message	: Nino.content.getText('/_admin/protected/confirm/none'),
+				yes			: Nino.content.getText('/_admin/protected/label/savepages'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				kind		: 'danger',
+				opener	: save,
+				onChoose : function( ok ) {
+
+					if( ok === true )
+						write();
+				},
 			} );
 		},
 
@@ -455,19 +472,29 @@
 
 			const out = Nino.adminUi.button( Nino.content.getText('/_admin/protected/label/signoutall'), function() {
 
-				if( wn.confirm( Nino.content.getText('/_admin/protected/confirm/signout') ) === false )
-					return;
+				Nino.adminUi.confirm( 'destructive', {
+					message	: Nino.content.getText('/_admin/protected/confirm/signout'),
+					yes			: Nino.content.getText('/_admin/protected/label/signoutall'),
+					no			: Nino.content.getText('/_admin/common/label/cancel'),
+					kind		: 'danger',
+					opener	: out,
+					onChoose : function( ok ) {
 
-				out.disabled = true;
+						if( ok !== true )
+							return;
 
-				Nino.admin.protected.call( 'signout', {}, function( status, response ) {
+						out.disabled = true;
 
-					out.disabled = false;
+						Nino.admin.protected.call( 'signout', {}, function( status, response ) {
 
-					if( status !== 200 || response === null )
-						return line.error( status, response, '/_admin/common/error/save' );
+							out.disabled = false;
 
-					line.saved();
+							if( status !== 200 || response === null )
+								return line.error( status, response, '/_admin/common/error/save' );
+
+							line.saved();
+						} );
+					},
 				} );
 			}, { id : 'protected-signout', className : 'nino-admin-btn nino-admin-btn-danger' } );
 

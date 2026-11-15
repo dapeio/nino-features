@@ -249,6 +249,9 @@ function panel( options ) {
 	body.scrollTop = 0;
 
 	const calls = [];
+	// The questions put to the workbench's own dialog: { level, options }, and what the next one is answered. The sandbox has no window.confirm() - a question asked of the browser throws
+	const questions = [];
+	let answerYes = true;
 	const lists = [];
 	const numbers = [];
 	const timers = [];
@@ -287,7 +290,6 @@ function panel( options ) {
 		addEventListener	: function() {},
 		requestAnimationFrame : function() { return 0 },
 		matchMedia				: function() { return { matches : false, addEventListener : function() {} } },
-		confirm					: function() { return true },
 	};
 	sandbox.window = sandbox;
 	sandbox.self = sandbox;
@@ -317,6 +319,7 @@ function panel( options ) {
 	// every list screen ends in, with the class string it really carries,
 	// and the shared fields hand their key back as data-key
 	Nino.adminUi = {
+		confirm				: function( level, config ) { questions.push( { level : level, options : config } ); config.onChoose( answerYes ); return true },
 		// Nino.adminUi.api.call() calls back with the status and the body of the
 		// answer, and errorText() says a failure by the workbench's rule: the
 		// sentence of its code, else "(status) message"
@@ -621,6 +624,8 @@ function panel( options ) {
 		list			: list,
 		form			: form,
 		calls				: calls,
+		questions		: questions,
+		answer			: function( yes ) { answerYes = yes },
 		lists				: lists,
 		numbers			: numbers,
 		registry		: registry,
@@ -718,6 +723,17 @@ const phrased = panel( { forms : two, text : function( key ) { return { '/_admin
 check( 'a card names the shortcode that draws the form, with its key, and what the form collects and how much has come in through it',
 	phrased.list.querySelectorAll('[data-form]')[0].querySelectorAll('.nino-admin-hint').map( function( hint ) { return hint.textContent } ).join('|') === 'Write [form key="contact"]|email · 4 submissions' );
 
+
+const deleting = panel( { forms : two } );
+deleting.panel._delete( two[0] );
+check( 'deleting a form is asked in the workbench\'s own dialog, as a destructive question with the deletion as the answer that goes on, and then posts the key',
+	deleting.questions.length === 1 && deleting.questions[0].level === 'destructive' && deleting.questions[0].options.message === '/_admin/forms/confirm/delete'
+	&& deleting.questions[0].options.yes === '/_admin/forms/label/delete' && deleting.questions[0].options.no === '/_admin/common/label/cancel'
+	&& deleting.calls.filter( function( call ) { return call.action === 'forms/delete' && call.data === JSON.stringify( { key : two[0].key } ) } ).length === 1 );
+const declined = panel( { forms : two } );
+declined.answer( false );
+declined.panel._delete( two[0] );
+check( '...and a no to the question sends nothing', declined.questions.length === 1 && declined.calls.filter( function( call ) { return call.action === 'forms/delete' } ).length === 0 );
 
 // --- Saving the settings -------------------------------------------------------
 

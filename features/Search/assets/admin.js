@@ -193,15 +193,10 @@
 				Nino.admin.search._renderProbe();
 			}, { id : 'search-openprobe' } );
 
-			const actions = Nino.adminUi.el('div');
-			actions.appendChild( rebuild );
-			actions.appendChild( probe );
-			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
-
 			const msg = Nino.adminUi.el('p');
 			msg.id = 'search-list-msg';
 			Nino.admin.search._listLine = Nino.adminUi.status( msg );
-			wrap.appendChild( msg );
+			wrap.appendChild( Nino.adminUi.listActions( [ rebuild, probe, msg ] ) );
 
 			Nino.admin.search._listNotes = Nino.adminUi.el('div');
 			Nino.admin.search._listNotes.id = 'search-list-notes';
@@ -209,72 +204,127 @@
 		},
 
 		/**
-		 *	The list itself
+		 *	The list itself, in the workbench's table: searchable, sortable, and
+		 *	kept inside a box of its own that scrolls where the pane is narrower
+		 *	than the columns - the page never does
 		 *
 		 *	@return		{Element}
 		 */
 		_renderTable : function() {
 
-			const table = Nino.adminUi.el( 'table', 'nino-admin-table' );
-			table.id = 'search-types';
+			const mount = Nino.adminUi.el('div');
 
-			const head = Nino.adminUi.el('tr');
-			[ 'type', 'fields', 'elements', 'state' ].forEach( function( name ) {
-				head.appendChild( Nino.adminUi.el( 'th', '', Nino.content.getText('/_admin/search/label/'+ name ) ) );
+			/*	The table searches and sorts on a plain value per column, so the
+				rows it is given carry one: the title, the field names in
+				priority order, the number of elements and the word of the state.
+				What a cell draws is the row it came from (see render)	*/
+			const rows = Nino.admin.search._types.map( function( row ) {
+				return {
+					type		: row.type,
+					title		: ( row.title || row.type )+ ' '+ row.type,
+					fields	: Object.keys( row.fields || {} ).sort().map( function( priority ) { return row.fields[priority] } ).concat( row.issues || [] ).join(' '),
+					elements: row.elements,
+					state		: Nino.admin.search._state( row ).label,
+					actions	: row.type,
+					row			: row,
+				};
 			} );
-			head.appendChild( Nino.adminUi.el('th') );
-			table.appendChild( head );
 
-			Nino.admin.search._types.forEach( function( row ) {
-				table.appendChild( Nino.admin.search._renderRow( row ) );
+			Nino.adminUi.table( {
+				mount		: mount,
+				rowKey	: 'type',
+				rows		: rows,
+				labels	: {
+					search	: Nino.content.getText('/_admin/search/label/search'),
+					empty		: Nino.content.getText('/_admin/search/hint/empty'),
+					noMatch	: Nino.content.getText('/_admin/search/empty/nomatch'),
+				},
+				columns	: [
+					{ key : 'title', label : Nino.content.getText('/_admin/search/label/type'), type : 'string', render : function( value, entry ) { return Nino.admin.search._nameCell( entry.row ) } },
+					{ key : 'fields', label : Nino.content.getText('/_admin/search/label/fields'), type : 'string', render : function( value, entry ) { return Nino.admin.search._fieldsCell( entry.row ) } },
+					{ key : 'elements', label : Nino.content.getText('/_admin/search/label/elements'), type : 'integer', render : function( value, entry ) { return Nino.admin.search._countText( entry.row ) } },
+					{ key : 'state', label : Nino.content.getText('/_admin/search/label/state'), type : 'string', render : function( value, entry ) { return Nino.admin.search._stateCell( entry.row ) } },
+					// Not the row's key: a cell of the key is drawn in the monospace of an address, and its buttons with it
+					{ key : 'actions', label : '', type : 'string', render : function( value, entry ) { return Nino.admin.search._rowActions( entry.row ) } },
+				],
 			} );
 
-			return table;
+			return mount;
 		},
 
 		/**
-		 *	One type
+		 *	The name of a type and what it is called in the model
 		 *
 		 *	@param		{Object}	row				One indexState() row
 		 *
 		 *	@return		{Element}
 		 */
-		_renderRow : function( row ) {
+		_nameCell : function( row ) {
 
-			const tr = Nino.adminUi.el('tr');
-			tr.setAttribute( 'data-type', row.type );
-
-			const name = Nino.adminUi.el('td');
+			const name = Nino.adminUi.el('span');
 			name.appendChild( Nino.adminUi.el( 'strong', '', row.title || row.type ) );
 			name.appendChild( Nino.adminUi.el( 'small', '', ' '+ row.type ) );
-			tr.appendChild( name );
 
-			// The fields as chips in priority order, so the weighting is
-			// readable without opening the editor
-			const fields = Nino.adminUi.el('td');
+			return name;
+		},
+
+		/**
+		 *	The fields as chips in priority order, so the weighting is
+		 *	readable without opening the editor
+		 *
+		 *	@param		{Object}	row
+		 *
+		 *	@return		{Element|string}
+		 */
+		_fieldsCell : function( row ) {
+
 			const keys = Object.keys( row.fields || {} ).sort();
 
-			if( keys.length === 0 )
-				fields.textContent = '—';
-			else
-				keys.forEach( function( priority ) {
-					const chip = Nino.adminUi.el( 'code', 'search-chip', row.fields[priority] );
-					chip.title = Nino.adminUi.format( Nino.content.getText('/_admin/search/label/slot'), priority );
-					fields.appendChild( chip );
-					fields.appendChild( dc.createTextNode(' ') );
-				} );
+			// Nothing to show is the table's own mark for an empty cell
+			if( keys.length === 0 && ( row.issues || [] ).length === 0 )
+				return '';
+
+			const fields = Nino.adminUi.el('div');
+
+			keys.forEach( function( priority ) {
+				const chip = Nino.adminUi.el( 'code', 'search-chip', row.fields[priority] );
+				chip.title = Nino.adminUi.format( Nino.content.getText('/_admin/search/label/slot'), priority );
+				fields.appendChild( chip );
+				fields.appendChild( dc.createTextNode(' ') );
+			} );
 
 			( row.issues || [] ).forEach( function( issue ) {
 				fields.appendChild( Nino.adminUi.hint( issue, 'error' ) );
 			} );
-			tr.appendChild( fields );
 
-			tr.appendChild( Nino.adminUi.el( 'td', '', row.indexed === true && row.indexedElements !== row.elements
+			return fields;
+		},
+
+		/**
+		 *	How many elements a type has, and how many of them are in its index
+		 *	where that is fewer
+		 *
+		 *	@param		{Object}	row
+		 *
+		 *	@return		{string}
+		 */
+		_countText : function( row ) {
+			return row.indexed === true && row.indexedElements !== row.elements
 				? row.indexedElements+ ' / '+ row.elements
-				: String( row.elements ) ) );
+				: String( row.elements );
+		},
+
+		/**
+		 *	The state badge, and the day an index was built
+		 *
+		 *	@param		{Object}	row
+		 *
+		 *	@return		{Element}
+		 */
+		_stateCell : function( row ) {
 
 			const state = Nino.admin.search._state( row );
-			const cell = Nino.adminUi.el('td');
+			const cell = Nino.adminUi.el('span');
 			const badge = Nino.adminUi.el( 'span', 'nino-admin-badge', state.label );
 			badge.dataset.state = state.level;
 			cell.appendChild( badge );
@@ -282,8 +332,19 @@
 			if( row.built )
 				cell.appendChild( dc.createTextNode( ' '+ Nino.adminUi.format( Nino.content.getText('/_admin/search/state/built'), row.built.substring( 0, 10 ) ) ) );
 
-			tr.appendChild( cell );
+			return cell;
+		},
 
+		/**
+		 *	Edit one type, and rebuild its index where it is missing or stale
+		 *
+		 *	@param		{Object}	row				One indexState() row
+		 *
+		 *	@return		{Element}
+		 */
+		_rowActions : function( row ) {
+
+			const state = Nino.admin.search._state( row );
 			const actions = Nino.adminUi.el( 'div', 'nino-admin-actions' );
 			actions.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/search/label/edit'), function() {
 				Nino.admin.search._editType( row );
@@ -296,11 +357,7 @@
 				actions.appendChild( rebuild );
 			}
 
-			const last = Nino.adminUi.el('td');
-			last.appendChild( actions );
-			tr.appendChild( last );
-
-			return tr;
+			return actions;
 		},
 
 		/**
@@ -739,7 +796,10 @@
 				table.appendChild( tr );
 			} );
 
-			out.appendChild( table );
+			// Inside the workbench's scrolling box: five columns are wider than a phone
+			const scroller = Nino.adminUi.el( 'div', 'nino-admin-table-scroll' );
+			scroller.appendChild( table );
+			out.appendChild( scroller );
 
 			if( hits.length >= Nino.admin.search._probe.limit )
 				out.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/search/hint/probe-limit'), Nino.admin.search._probe.limit ) ) );

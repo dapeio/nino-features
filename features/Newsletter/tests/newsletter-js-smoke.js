@@ -107,6 +107,8 @@ const requests = [];
 const timers = [];
 const selected = [];
 const confirms = [];
+// The questions put to the workbench's own dialog: { level, options }. The sandbox has no window.confirm() - a question asked of the browser throws
+const questions = [];
 const answers = {};
 let confirmed = true;
 let copyApi = null;
@@ -167,7 +169,6 @@ const sandbox = {
 	addEventListener : function() {},
 	requestAnimationFrame : function() { return 0 },
 	matchMedia : function() { return { matches : false, addEventListener : function() {} } },
-	confirm : function( text ) { confirms.push( text ); return confirmed },
 };
 sandbox.window = sandbox;
 sandbox.self = sandbox;
@@ -185,6 +186,7 @@ const nino = sandbox.Nino;
 
 nino.admin = { exportCsv : function( name, rows ) { exported.push( { name : name, rows : rows } ) } };
 nino.adminUi = {
+	confirm			: function( level, options ) { confirms.push( options.message ); questions.push( { level : level, options : options } ); options.onChoose( confirmed ); return true },
 	emptyState	: function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p },
 	table				: function( options ) {
 		const table = { options : options, rows : options.rows, setRows : function( next ) { this.rows = next } };
@@ -338,6 +340,8 @@ answers['newsletter/delete'] = function() { return [ 200, { ok : true } ] };
 answers['newsletter/list'] = function() { return reply( remaining ) };
 deleteColumn.render( 'bert@example.com' ).click();
 check( 'a delete asks first, naming the address in the question', confirms.length === 1 && confirms[0] === 'bert@example.com — really remove this address?' );
+check( '...in the workbench\'s own dialog, as a destructive question whose answer that goes on is named for the deletion', questions.length === 1 && questions[0].level === 'destructive'
+	&& questions[0].options.yes === '/_admin/newsletter/label/delete' && questions[0].options.no === '/_admin/common/label/cancel' );
 check( '...then posts the address, and asks for the list again', requests.map( function( r ) { return r.action } ).join() === 'newsletter/delete,newsletter/list' && requests[0].payload.email === 'bert@example.com' );
 check( '...and the list that comes back is on the filter that was on screen, with the address gone',
 	fields[0].options.value === 'pending' && emails( tables[0].options.rows ) === 'newest@example.com' && byId('newsletter-summary').textContent === '2 subscribers · 1 pending' );

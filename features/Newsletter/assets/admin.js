@@ -172,7 +172,7 @@
 		},
 
 		/**
-		 *	Delete one subscriber, after a confirm prompt, then ask for the list
+		 *	Delete one subscriber, after the workbench's question, then ask for the list
 		 *	again - simplest way to keep the BCC field/summary count in sync,
 		 *	same "always re-fetch" shape the rest of this panel uses - and it is
 		 *	drawn on the status filter that was chosen, which reload() leaves
@@ -184,15 +184,23 @@
 		 */
 		_delete : function( email ) {
 
-			if( wn.confirm( Nino.adminUi.format( Nino.content.getText('/_admin/newsletter/confirm/delete'), email ) ) === false )
-				return;
+			Nino.adminUi.confirm( 'destructive', {
+				message	: Nino.adminUi.format( Nino.content.getText('/_admin/newsletter/confirm/delete'), email ),
+				yes			: Nino.content.getText('/_admin/newsletter/label/delete'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				onChoose : function( ok ) {
 
-			Nino.admin.newsletter.call( 'delete', { email : email }, function( status, response ) {
+					if( ok !== true )
+						return;
 
-				if( status !== 200 )
-					return Nino.admin.newsletter.fail( Nino.admin.newsletter.mount(), status, response );
+					Nino.admin.newsletter.call( 'delete', { email : email }, function( status, response ) {
 
-				Nino.admin.newsletter.reload();
+						if( status !== 200 )
+							return Nino.admin.newsletter.fail( Nino.admin.newsletter.mount(), status, response );
+
+						Nino.admin.newsletter.reload();
+					} );
+				},
 			} );
 		},
 

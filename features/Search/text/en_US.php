@@ -18,6 +18,8 @@ return [
 	'[[/_admin/search/label/rebuild-all]]'	=> 'Rebuild all',
 	'[[/_admin/search/label/probe]]'				=> 'Try it',
 	'[[/_admin/search/label/back]]'					=> 'Back to the list',
+	'[[/_admin/search/label/search]]'				=> 'Search the types',
+	'[[/_admin/search/empty/nomatch]]'			=> 'Nothing matches.',
 
 	'[[/_admin/search/state/current]]'			=> 'current',
 	'[[/_admin/search/state/stale]]'				=> 'stale',

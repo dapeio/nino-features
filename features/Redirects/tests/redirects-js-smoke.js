@@ -195,6 +195,14 @@ function panel( options ) {
 	Nino.admin = options.dirty === false ? {} : { dirty : options.dirty || { register : function() {}, isDirty : function() { return false }, guard : function( names, proceed ) { proceed() } } };
 
 	load( '_admin/assets/Nino.admin.js', context );
+
+	/*	The questions put to the workbench's own dialog: { level, options }. The
+		stand-in page has no <dialog>, so the dialog asks the browser's window.confirm()
+		with the same words - which is what "asked" keeps	*/
+	const questions = [];
+	const dialog = Nino.adminUi.confirm;
+	Nino.adminUi.confirm = function( level, config ) { questions.push( { level : level, options : config } ); return dialog( level, config ) };
+
 	vm.runInContext( source, context, { filename : 'admin.js' } );
 
 	/*	The page is ready: the document fires DOMContentLoaded, and the timers
@@ -217,6 +225,7 @@ function panel( options ) {
 		head		: head,
 		calls		: calls,
 		asked		: asked,
+		questions	: questions,
 		panel		: Nino.admin.redirects,
 		release	: function() { held.splice( 0 ).forEach( function( give ) { give() } ) },
 		byId		: function( id ) { return findAll( body, function( el ) { return el.id === id } )[0] || null },
@@ -259,6 +268,18 @@ check( 'the strip goes into the pane\'s head, after the panel\'s name, and the r
 	&& open.tabs( open.rules ) === 0 && open.tabs( open.misses ) === 0
 	&& open.rules.querySelectorAll('.nino-admin-table').length === 1
 	&& open.rules.querySelectorAll('.redirects-probe').length === 1 );
+
+/*	Two fixed bars on the same place covered the one's button with the other's:
+	the rules screen has one bar - the button for a new rule and the line of
+	its messages - and the probe, which is no bar, runs from a row in the page	*/
+const probeRun = open.rules.querySelectorAll('.redirects-probe')[0].querySelectorAll('button')[0];
+check( 'a screen has one bar: the rules screen has the bar of its button and its line, and the probe\'s button is in a row of the page',
+	open.rules.querySelectorAll('.nino-admin-actionbar').length === 1 && open.rules.querySelectorAll('.nino-admin-list-actions')[0].children.length === 2
+	&& open.rules.querySelectorAll('.nino-admin-list-actions')[0].children[1] === open.byId('redirects-msg')
+	&& probeRun.parentNode.classList.contains('nino-admin-actions') === true && probeRun.parentNode.classList.contains('nino-admin-actionbar') === false );
+
+check( 'the cell of the buttons of a rule holds a value of its own, so that the table draws no dash of an empty cell beside them',
+	open.rules.querySelectorAll('.redirects-row-actions')[0].parentNode.classList.contains('is-empty') === false );
 
 /*	The strip is a tablist over two mounts the shell hands the panel as two
 	divs in the same panel, so which of them is on is the script's to say. Both
@@ -409,10 +430,12 @@ check( 'after a save that came with a warning the editor is closed and the table
 	&& picking.rules.querySelectorAll('.nino-admin-contextbar').length === 0 );
 check( '...the line says it was saved, in the workbench\'s own words and state',
 	line !== null && /^Saved at \d\d:\d\d\.$/.test( line.textContent ) && line.dataset.state === 'saved' && line.classList.contains('nino-admin-status') );
-check( '...and the warning stands beside it, as an error and as text, put into the page as an alert so that a reader is told',
-	warning.length === 1 && warning[0].textContent === 'Saved - but nothing answers "/blog" yet.' && warning[0].classList.contains('nino-admin-error') === true
+check( '...the line stands in the one bar of the screen, with the button for a new rule, and the warning right after that bar, as an error and as text, put into the page as an alert so that a reader is told',
+	line.parentNode.classList.contains('nino-admin-list-actions') === true && picking.rules.querySelectorAll('.nino-admin-actionbar').length === 1
+	&& warning.length === 1 && warning[0].textContent === 'Saved - but nothing answers "/blog" yet.' && warning[0].classList.contains('nino-admin-error') === true
 	&& warning[0].classList.contains('nino-admin-hint') === true && warning[0].tagName === 'P'
-	&& line.parentNode.children.indexOf( warning[0] ) === line.parentNode.children.indexOf( line ) + 1 );
+	&& line.parentNode.parentNode === warning[0].parentNode
+	&& warning[0].parentNode.children.indexOf( warning[0] ) === warning[0].parentNode.children.indexOf( line.parentNode ) + 1 );
 
 const plain = panel( { rules : [ fine ], save : { saved : '/new', rules : [ fine ], warnings : [], notes : [] } } );
 fire( plain.add(), 'click' );
@@ -473,6 +496,9 @@ const deleting = panel( { rules : [ rowRule, fine ] } );
 fire( deleting.rules.querySelectorAll('.redirects-row-actions')[0].children[1], 'click' );
 check( 'deleting asks first, naming the rule as it was typed - a "$&" in it is a "$&" and not a pattern', deleting.asked.length === 1
 	&& deleting.asked[0] === 'Delete the redirect for "/a$&b"?' );
+check( '...in the workbench\'s dialog, as a destructive question that is answered with the deletion, from the button that asked',
+	deleting.questions.length === 1 && deleting.questions[0].level === 'destructive' && deleting.questions[0].options.yes === WORDS['/_admin/redirects/label/delete']
+	&& deleting.questions[0].options.no === WORDS['/_admin/common/label/cancel'] && deleting.questions[0].options.opener.textContent === WORDS['/_admin/redirects/label/delete'] );
 check( '...and sends the address, and says "Deleted." on the line of the screen, in the state of a line that is idle',
 	deleting.calls[1].action === 'redirects/delete' && deleting.calls[1].data === '{"from":"/a$&b"}'
 	&& deleting.byId('redirects-msg').textContent === WORDS['/_admin/redirects/msg/deleted'] && deleting.byId('redirects-msg').dataset.state === 'idle' );
@@ -489,7 +515,13 @@ check( 'a rule that is gone already is said as the code says it, on the line, an
 
 const forgetting = panel( { misses : [ { path : '/old/press', count : 7, last : '' } ], fail : { 'redirects/forget' : { status : 500, body : { error : 'the list could not be written' } } } } );
 fire( forgetting.tab('missing'), 'click' );
+check( 'the addresses screen has one bar as well: the button that forgets them all, and the line of its messages',
+	forgetting.misses.querySelectorAll('.nino-admin-actionbar').length === 1 && forgetting.misses.querySelectorAll('.nino-admin-list-actions')[0].children[1] === forgetting.byId('redirects-msg') );
+check( '...and so does the cell of the buttons of an address',
+	forgetting.misses.querySelectorAll('.redirects-row-actions')[0].parentNode.classList.contains('is-empty') === false );
 fire( forgetting.misses.querySelectorAll('.nino-admin-list-actions')[0].children[0], 'click' );
+check( 'forgetting all is a destructive question of the workbench\'s dialog, answered with the word of the button',
+	forgetting.questions.length === 1 && forgetting.questions[0].level === 'destructive' && forgetting.questions[0].options.yes === WORDS['/_admin/redirects/label/forget'] );
 check( 'forgetting all asks first, and a list that could not be written is said on the line of the addresses screen',
 	forgetting.asked.length === 1 && forgetting.byId('redirects-msg').textContent === '(500) the list could not be written'
 	&& forgetting.misses.querySelectorAll('tbody')[0].children.length === 1 );

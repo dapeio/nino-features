@@ -203,7 +203,7 @@ function panel( options ) {
 		byId		: function( id ) { return found( body, function( el ) { return el.id === id } ) },
 		hidden	: function( pane ) { return pane.classList.contains('admin-hidden') },
 		// The row of one type on the list
-		row			: function( uri ) { return found( list, function( el ) { return el.tagName === 'TR' && el.getAttribute('data-type') === uri } ) },
+		row			: function( uri ) { return found( list, function( el ) { return el.tagName === 'TR' && el.dataset.row === uri } ) },
 		// The button of a row or a bar, by its words
 		button	: function( root, words ) { return found( root, function( el ) { return el.tagName === 'BUTTON' && el.textContent === words } ) },
 		// The editor's pieces
@@ -275,8 +275,8 @@ check( 'a row names the type and its uri, then its fields as chips in the order 
 check( 'the state is the workbench\'s badge, in the state of its word, with the day it was built beside it',
 	withClass( cells[3], 'nino-admin-badge' ).length === 1 && withClass( cells[3], 'nino-admin-badge' )[0].dataset.state === 'ok'
 	&& withClass( cells[3], 'nino-admin-badge' )[0].textContent === WORDS['/_admin/search/state/current'] && textOf( cells[3] ).indexOf( 'built 2026-09-12' ) !== -1 );
-check( 'a type nobody configured says so, quietly, and has no fields to show',
-	withClass( open.row('/notes').children[3], 'nino-admin-badge' )[0].dataset.state === 'muted' && open.row('/notes').children[1].textContent === '—' );
+check( 'a type nobody configured says so, quietly, and has no fields to show - the cell is left to the table\'s own mark of an empty one',
+	withClass( open.row('/notes').children[3], 'nino-admin-badge' )[0].dataset.state === 'muted' && open.row('/notes').children[1].classList.contains('is-empty') === true && open.row('/notes').children[1].children.length === 0 && open.row('/notes').children[1].textContent === '' );
 
 const states = panel( { types: [
 	typeRow( { type : '/broken', fields : {}, issues : [ 'there is no element type "/broken"' ], indexed : false } ),
@@ -300,7 +300,15 @@ check( 'the buttons of a row are the workbench\'s small ones, in the workbench\'
 const bar = withClass( open.list, 'nino-admin-actionbar' )[0];
 check( 'under the list there is a bar with Rebuild all, the primary action, and the way into the probe, and a line for what they did',
 	open.byId('search-createindex').classList.contains('nino-admin-btn-primary') === true && open.byId('search-createindex').parentNode === bar && open.byId('search-openprobe').parentNode === bar
-	&& open.byId('search-list-msg').classList.contains('nino-admin-status') === true && open.byId('search-list-msg').getAttribute('role') === 'status' );
+	&& open.byId('search-list-msg').classList.contains('nino-admin-status') === true && open.byId('search-list-msg').getAttribute('role') === 'status'
+	&& open.byId('search-list-msg').parentNode === bar && withClass( open.list, 'nino-admin-actionbar' ).length === 1 );
+check( 'the buttons of a row are in a column of their own, whose cells are not those of the key: a key is drawn as an address, in monospace, and the buttons with it',
+	withClass( products, 'nino-admin-table-uri' ).every( function( cell ) { return withTag( cell, 'BUTTON' ).length === 0 } ) && withTag( products.children[4], 'BUTTON' ).length >= 1 );
+check( '...and the cell of the buttons holds a value of its own, so that the table draws no dash of an empty cell beside them',
+	products.children[4].classList.contains('is-empty') === false );
+check( 'the types are the workbench\'s own table, searchable, inside the box that scrolls where the pane is narrow - the page does not',
+	withClass( open.list, 'nino-admin-table-wrap' ).length === 1 && withClass( open.list, 'nino-admin-table-search' ).length === 1
+	&& withClass( open.list, 'nino-admin-table-scroll' ).length === 1 && withClass( open.list, 'nino-admin-table-scroll' )[0].children[0].tagName === 'TABLE' );
 
 const none = panel( { types : [] } );
 check( 'a project with no element types says so, and draws no table and no bar',
@@ -551,6 +559,8 @@ const hits = withTag( asking.byId('search-probe-hits'), 'TR' );
 check( 'the hits come as a table in the order they were answered, numbered, labelled, with the score, the share of the query they cover and where they matched',
 	hits.length === 3 && hits[1].children.map( function( td ) { return td.textContent } ).join('|') === '1|Remote station|1.75|100%|summary'
 	&& hits[2].children.map( function( td ) { return td.textContent } ).join('|') === '2|Orbit|1.2|50%|title, author' && hits[1].getAttribute('data-uri') === '/articles/orbit-summary' );
+check( '...inside the workbench\'s box that scrolls, so five columns do not widen the page of a phone',
+	withClass( asking.byId('search-probe-results'), 'nino-admin-table-scroll' ).length === 1 && asking.byId('search-probe-hits').parentNode.classList.contains('nino-admin-table-scroll') === true );
 check( '...and when the answer holds as many hits as the limit, a hint says that these are the best of them',
 	withClass( asking.byId('search-probe-results'), 'nino-admin-hint' )[0].textContent === 'The best 2 hits.' );
 

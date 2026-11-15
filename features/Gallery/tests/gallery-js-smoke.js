@@ -257,6 +257,14 @@ function panel( options ) {
 	};
 
 	load( '_admin/assets/Nino.admin.js', context );
+
+	/*	The questions put to the workbench's own dialog: { level, options }. The
+		stand-in page has no <dialog>, so the dialog asks the browser's window.confirm()
+		with the same words - which is what "asked" keeps	*/
+	const questions = [];
+	const dialog = Nino.adminUi.confirm;
+	Nino.adminUi.confirm = function( level, config ) { questions.push( { level : level, options : config } ); return dialog( level, config ) };
+
 	vm.runInContext( source, context, { filename : 'admin.js' } );
 
 	/*	The page is ready: the document fires DOMContentLoaded, and the timers
@@ -284,6 +292,7 @@ function panel( options ) {
 		calls			: calls,
 		requests	: requests,
 		asked			: asked,
+		questions	: questions,
 		/** The page becomes ready */
 		ready			: ready,
 		/** What the panel wrote into the address, and what it asked the history to keep as a step */
@@ -805,6 +814,9 @@ check( 'an order the server refuses is said on the tile in the words of its code
 fire( three.buttons( 0 )[1], 'click' );
 
 check( 'deleting an image asks first', three.asked.length === 1 && three.asked[0] === WORDS['/_admin/gallery/confirm/image'] );
+check( '...in the workbench\'s dialog, as a destructive question that is answered with the deletion, from the button that asked',
+	three.questions.length === 1 && three.questions[0].level === 'destructive' && three.questions[0].options.yes === WORDS['/_admin/gallery/label/delete']
+	&& three.questions[0].options.no === WORDS['/_admin/common/label/cancel'] && three.questions[0].options.opener === three.buttons( 0 )[1] );
 check( '...then posts the album and the image, and holds the button until it is answered',
 	three.requests.length === 1 && three.requests[0].endpoint === 'image-delete' && same( three.requests[0].payload, { album : 'haus', id : 'a2' } )
 	&& three.buttons( 0 )[1].disabled === true && three.line( 0 ).textContent === 'Deleting …' );
@@ -840,6 +852,8 @@ check( '...in the words of the number: the plural phrase for two, the singular f
 	fire( withTag( withClass( single.pane, 'gallery-album-actions' )[0], 'BUTTON' )[0], 'click' );
 	return single.asked.length === 1 && single.asked[0] === fill( '/_admin/gallery/confirm/album', 'Haus am See', fill( '/_admin/gallery/label/count-one', 1 ) );
 } )() );
+check( '...in the workbench\'s dialog as well, as a destructive question that is answered with the deletion, from the button that asked',
+	doomed.questions.length === 1 && doomed.questions[0].level === 'destructive' && doomed.questions[0].options.yes === WORDS['/_admin/gallery/label/delete'] && doomed.questions[0].options.opener === remove );
 check( '...then posts the album, and holds the button until it is answered',
 	doomed.requests.length === 1 && doomed.requests[0].endpoint === 'album-delete' && same( doomed.requests[0].payload, { album : 'haus' } )
 	&& remove.disabled === true && withClass( bar, 'nino-admin-status' )[0].textContent === 'Deleting …' );

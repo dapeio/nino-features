@@ -289,8 +289,8 @@
 		},
 
 		/**
-		 *	Delete one form, after a confirm prompt - its submissions stay,
-		 *	which is what the prompt says
+		 *	Delete one form, after the workbench's question - its submissions stay,
+		 *	which is what the question says
 		 *
 		 *	@param		{Object}	form
 		 *
@@ -298,14 +298,22 @@
 		 */
 		_delete : function( form ) {
 
-			if( wn.confirm( Nino.content.getText('/_admin/forms/confirm/delete') ) === false )
-				return;
+			Nino.adminUi.confirm( 'destructive', {
+				message	: Nino.content.getText('/_admin/forms/confirm/delete'),
+				yes			: Nino.content.getText('/_admin/forms/label/delete'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				onChoose : function( ok ) {
 
-			Nino.admin.forms.call( 'delete', { key : form.key }, function( status, response ) {
-				if( status !== 200 )
-					return Nino.admin.forms.fail( dc.getElementById('forms-list'), status, response );
+					if( ok !== true )
+						return;
 
-				Nino.admin.forms.reload();
+					Nino.admin.forms.call( 'delete', { key : form.key }, function( status, response ) {
+						if( status !== 200 )
+							return Nino.admin.forms.fail( dc.getElementById('forms-list'), status, response );
+
+						Nino.admin.forms.reload();
+					} );
+				},
 			} );
 		},
 

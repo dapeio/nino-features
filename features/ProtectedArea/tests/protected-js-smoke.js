@@ -94,6 +94,8 @@ const asked = [];
 let answer = function() { return [ 200, {} ] };
 let confirmed = [];
 let confirmAnswer = true;
+// The questions put to the workbench's own dialog: { level, options }. The sandbox has no window.confirm() - a question asked of the browser throws
+const questions = [];
 
 /*	The namespace the panel script extends - a local stand-in, not the global.
 	The workbench is a stand-in too, kept to what the manual says of the members
@@ -106,6 +108,7 @@ let confirmAnswer = true;
 const nino = {
 	admin		: {},
 	adminUi	: {
+		confirm			: function( level, options ) { confirmed.push( options.message ); questions.push( { level : level, options : options } ); options.onChoose( confirmAnswer ); return true },
 		emptyState	: function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p },
 		actionBar		: function( bar ) { bar.className = ( bar.className+ ' nino-admin-actionbar' ).trim(); return bar },
 		hint				: function( text ) { const p = element('p'); p.className = 'nino-admin-hint'; p.textContent = text; return p },
@@ -212,7 +215,6 @@ function find( id ) {
 
 const sandbox = {
 	console		: console,
-	confirm		: function( text ) { confirmed.push( text ); return confirmAnswer },
 	document	: { createElement : function( tag ) { return element( tag ) }, getElementById : function( id ) { return id === 'protected-form' ? mount : find( id ) } },
 	Nino			: nino,
 };
@@ -348,6 +350,9 @@ asked.length = 0;
 confirmAnswer = false;
 fire( find('protected-savepages'), 'click' );
 check( 'an empty choice, where something was protected, is asked about first', confirmed.length === 1 && confirmed[0].indexOf('/_admin/protected/confirm/none') === 0 );
+check( '...in the workbench\'s own dialog, as a destructive question whose answer that goes on is the red one and is named by the button that asked',
+	questions.length === 1 && questions[0].level === 'destructive' && questions[0].options.kind === 'danger' && questions[0].options.yes === '/_admin/protected/label/savepages %s'
+	&& questions[0].options.no === '/_admin/common/label/cancel %s' && questions[0].options.opener === find('protected-savepages') );
 check( '...and nothing is sent when that is declined', asked.length === 0 );
 
 confirmAnswer = true;
@@ -424,6 +429,8 @@ confirmed = [];
 confirmAnswer = false;
 fire( find('protected-signout'), 'click' );
 check( 'signing everybody out is asked about first, and declined means nothing is sent', confirmed.length === 1 && confirmed[0].indexOf('/_admin/protected/confirm/signout') === 0 && asked.length === 0 );
+check( '...in the workbench\'s own dialog, a destructive question with the red answer, named by the button that asked',
+	questions[questions.length - 1].level === 'destructive' && questions[questions.length - 1].options.kind === 'danger' && questions[questions.length - 1].options.yes === '/_admin/protected/label/signoutall %s' && questions[questions.length - 1].options.opener === find('protected-signout') );
 
 confirmAnswer = true;
 answer = function() { return [ 200, { signedOut : true } ] };

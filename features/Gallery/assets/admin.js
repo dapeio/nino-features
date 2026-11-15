@@ -580,21 +580,30 @@
 		 */
 		_deleteAlbum : function( album, btn, line ) {
 
-			if( wn.confirm( Nino.adminUi.format( Nino.content.getText('/_admin/gallery/confirm/album'), album.name, Nino.admin.gallery._count( album.images.length ) ) ) === false )
-				return;
+			Nino.adminUi.confirm( 'destructive', {
+				message	: Nino.adminUi.format( Nino.content.getText('/_admin/gallery/confirm/album'), album.name, Nino.admin.gallery._count( album.images.length ) ),
+				yes			: Nino.content.getText('/_admin/gallery/label/delete'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				opener	: btn,
+				onChoose : function( ok ) {
 
-			btn.disabled = true;
-			line.idle( Nino.content.getText('/_admin/common/msg/deleting') );
+					if( ok !== true )
+						return;
 
-			Nino.admin.gallery.call( 'album-delete', { album : album.key }, function( status, response ) {
+					btn.disabled = true;
+					line.idle( Nino.content.getText('/_admin/common/msg/deleting') );
 
-				if( status !== 200 || response === null ) {
-					btn.disabled = false;
-					line.error( status, response, '/_admin/common/error/delete' );
-					return;
-				}
+					Nino.admin.gallery.call( 'album-delete', { album : album.key }, function( status, response ) {
 
-				Nino.admin.gallery._take( response );
+						if( status !== 200 || response === null ) {
+							btn.disabled = false;
+							line.error( status, response, '/_admin/common/error/delete' );
+							return;
+						}
+
+						Nino.admin.gallery._take( response );
+					} );
+				},
 			} );
 		},
 
@@ -1160,19 +1169,28 @@
 
 		_deleteImage : function( album, image, btn, line ) {
 
-			if( wn.confirm( Nino.content.getText('/_admin/gallery/confirm/image') ) === false )
-				return;
+			Nino.adminUi.confirm( 'destructive', {
+				message	: Nino.content.getText('/_admin/gallery/confirm/image'),
+				yes			: Nino.content.getText('/_admin/gallery/label/delete'),
+				no			: Nino.content.getText('/_admin/common/label/cancel'),
+				opener	: btn,
+				onChoose : function( ok ) {
 
-			btn.disabled = true;
-			line.idle( Nino.content.getText('/_admin/common/msg/deleting') );
+					if( ok !== true )
+						return;
 
-			Nino.admin.gallery.call( 'image-delete', { album : album.key, id : image.id }, function( status, response ) {
-				if( status !== 200 || response === null ) {
-					btn.disabled = false;
-					line.error( status, response, '/_admin/common/error/delete' );
-					return;
-				}
-				Nino.admin.gallery._take( response );
+					btn.disabled = true;
+					line.idle( Nino.content.getText('/_admin/common/msg/deleting') );
+
+					Nino.admin.gallery.call( 'image-delete', { album : album.key, id : image.id }, function( status, response ) {
+						if( status !== 200 || response === null ) {
+							btn.disabled = false;
+							line.error( status, response, '/_admin/common/error/delete' );
+							return;
+						}
+						Nino.admin.gallery._take( response );
+					} );
+				},
 			} );
 		},
 	} );
