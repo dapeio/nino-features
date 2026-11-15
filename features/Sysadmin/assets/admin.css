@@ -1,0 +1,41 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	admin.css		What the panel of Sysadmin needs beyond the design system in _admin/assets/style.css:
+ *							the facts of the two clocks as names and values, side by side where there is room
+ *							and one under the other on a phone. Bundled while the feature is on (see the
+ *							panel's assets()); it only ever adds to nino.tool, scoped to the panel's own mount.
+ */
+
+@layer nino.tool {
+
+#sysadmin-list .sysadmin-facts {
+	display: grid;
+	grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+	gap: .35rem 1rem;
+	margin: 1rem 0;
+}
+#sysadmin-list .sysadmin-facts dt {
+	color: var(--editor-text-secondary);
+	margin: 0;
+}
+#sysadmin-list .sysadmin-facts dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+#sysadmin-list .sysadmin-findings {
+	margin: 1.25rem 0;
+}
+
+@media (max-width: 600px) {
+	#sysadmin-list .sysadmin-facts {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0;
+	}
+	#sysadmin-list .sysadmin-facts dd {
+		margin-bottom: .6rem;
+	}
+}
+
+}

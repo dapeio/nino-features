@@ -1,0 +1,61 @@
+<?php
+// The same keys in German
+return [
+	'[[/feature/sysadmin/mail/kind-problem]]'		=> 'Problem',
+	'[[/feature/sysadmin/mail/kind-beat]]'			=> 'Lebenszeichen',
+	'[[/feature/sysadmin/mail/kind-test]]'			=> 'Testmail',
+	'[[/feature/sysadmin/mail/subject-problem]]'	=> '%s - Problem (neue Befunde: %s)',
+	'[[/feature/sysadmin/mail/subject-beat]]'		=> '%s - Lebenszeichen',
+	'[[/feature/sysadmin/mail/subject-test]]'		=> '%s - Testmail',
+	'[[/feature/sysadmin/mail/findings]]'			=> 'Befunde (%s)',
+	'[[/feature/sysadmin/mail/new]]'					=> 'neu',
+	'[[/feature/sysadmin/mail/none]]'					=> 'Nichts zu melden.',
+	'[[/feature/sysadmin/mail/backup]]'				=> 'Backup',
+	'[[/feature/sysadmin/mail/log]]'					=> 'Fehlerprotokoll seit %s',
+	'[[/feature/sysadmin/mail/operation]]'			=> 'Betrieb',
+	'[[/feature/sysadmin/mail/server]]'				=> 'Server',
+	'[[/feature/sysadmin/mail/workbench]]'			=> 'Workbench:',
+
+	'[[/feature/sysadmin/rank/notice]]'						=> 'Hinweis',
+	'[[/feature/sysadmin/rank/warning]]'						=> 'Warnung',
+	'[[/feature/sysadmin/rank/error]]'						=> 'Fehler',
+
+	'[[/feature/sysadmin/finding/backup-failed]]'		=> 'Das Backup ist gescheitert: %s',
+	'[[/feature/sysadmin/finding/manifest-active]]'	=> 'Das Feature „%s“ ist eingeschaltet und sein Manifest wird abgelehnt: %s',
+	'[[/feature/sysadmin/finding/manifest-off]]'		=> 'Das Feature in „%s“ wird abgelehnt: %s',
+	'[[/feature/sysadmin/finding/form-cap-hour]]'		=> 'Der Formular-Deckel der Stunde ist erreicht: Einsendungen werden abgewiesen.',
+	'[[/feature/sysadmin/finding/form-cap-month]]'	=> 'Der Formular-Deckel des Monats ist erreicht: Einsendungen werden nicht mehr gespeichert.',
+	'[[/feature/sysadmin/finding/disk]]'				=> 'Die Platte wird knapp: %s frei von %s (%s).',
+	'[[/feature/sysadmin/finding/log-errors]]'		=> '%s Fehler im Protokoll seit %s.',
+
+	'[[/feature/sysadmin/finding/run-aborted]]'		=> 'Ein Lauf dieses Features ist ohne ein Wort zu Ende gegangen (Anzahl: %s), etwa durch ein Zeit- oder Speicherlimit.',
+	'[[/feature/sysadmin/finding/backup-stopped]]'	=> 'Ein Backup-Lauf, der um %s begann, wurde vor seinem Ende abgebrochen (%s).',
+	'[[/feature/sysadmin/backup/stopped]]'			=> 'Ein Lauf, der um %s begann, ist nicht zu Ende gegangen (%s).',
+	'[[/feature/sysadmin/operation/aborted]]'		=> 'Läufe dieses Features ohne Ende: %s',
+	'[[/feature/sysadmin/cause/time]]'				=> 'Zeitlimit',
+	'[[/feature/sysadmin/cause/memory]]'				=> 'Speicherlimit',
+	'[[/feature/sysadmin/cause/error]]'				=> 'Fehler',
+	'[[/feature/sysadmin/cause/none]]'				=> 'Ursache unbekannt',
+	'[[/feature/sysadmin/word/silent]]'				=> 'ohne Angabe eines Grundes',
+
+	'[[/feature/sysadmin/backup/off]]'				=> 'Das tägliche Backup ist abgeschaltet.',
+	'[[/feature/sysadmin/backup/never]]'			=> 'Es wurde noch kein Backup gemacht.',
+	'[[/feature/sysadmin/backup/last]]'				=> 'Letztes Backup: %s, Alter in Tagen: %s, Größe: %s',
+	'[[/feature/sysadmin/backup/failed]]'			=> 'Der letzte Versuch ist gescheitert: %s',
+
+	'[[/feature/sysadmin/log/counts]]'				=> 'Fehler: %s, Warnungen: %s',
+
+	'[[/feature/sysadmin/operation/mail-ok]]'			=> 'Mailversand: kein gescheiterter Versand.',
+	'[[/feature/sysadmin/operation/mail-failing]]'	=> 'Der Mailversand scheitert seit %s (Fehlversuche: %s).',
+	'[[/feature/sysadmin/operation/cap-ok]]'			=> 'Formular-Deckel: nicht erreicht.',
+	'[[/feature/sysadmin/operation/cap-hour]]'		=> 'Formular-Deckel: der Deckel der Stunde ist erreicht.',
+	'[[/feature/sysadmin/operation/cap-month]]'		=> 'Formular-Deckel: der Deckel des Monats ist erreicht.',
+	'[[/feature/sysadmin/operation/locked]]'			=> 'Gesperrte Konten: %s',
+	'[[/feature/sysadmin/operation/refused-none]]'	=> 'Abgelehnte Feature-Manifeste: keine.',
+	'[[/feature/sysadmin/operation/refused]]'		=> 'Abgelehnte Feature-Manifeste: %s',
+	'[[/feature/sysadmin/operation/send-failed]]'	=> 'Dieser Bericht ließ sich um %s nicht senden (Fehlversuche: %s).',
+
+	'[[/feature/sysadmin/server/disk]]'				=> 'Platte: %s frei von %s (%s)',
+	'[[/feature/sysadmin/server/data]]'				=> 'Größe von private/data: %s',
+	'[[/feature/sysadmin/server/versions]]'		=> 'PHP %s, Nino %s',
+];

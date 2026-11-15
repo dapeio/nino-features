@@ -335,6 +335,12 @@ foreach( glob( $repo. '/features/*/feature.php' ) ?: [] as $manifestFile )
 	if( ( ( require $manifestFile )['maturity'] ?? '' ) === 'Example' )
 		$notInFull[ ( require $manifestFile )['key'] ] = 'it is an example, not a feature for a site';
 
+// ...and what asks for a Nino newer than the one that is checked, by the constraint, as bin/applicable.php reads it: the full
+// installation of an older kernel would lose its name to a feature that kernel refuses
+foreach( $manifests as $key => $manifest )
+	if( \Nino\Features::satisfies( (string) $manifest['nino'] ) === false )
+		$notInFull[$key] = 'it asks for a Nino newer than this one ('. $manifest['nino']. ')';
+
 $missing	= array_diff( array_keys( $manifests ), array_keys( $notInFull ), $sources['full']['features'] );
 $surplus	= array_merge( array_diff( $sources['full']['features'], array_keys( $manifests ) ), array_intersect( $sources['full']['features'], array_keys( $notInFull ) ) );
 $problem	= array_merge( array_map( static fn( string $key ): string => $key. ' is missing', $missing ), array_map( static fn( string $key ): string => $key. ' is too many'. ( isset( $notInFull[$key] ) === true ? ' - '. $notInFull[$key] : '' ), $surplus ) );

@@ -1,0 +1,43 @@
+<?php
+declare(strict_types=1);
+
+// The same keys in German
+return [
+	'[[/_admin/sysadmin/nav]]'								=> 'Sysadmin',
+	'[[/_admin/sysadmin/hint/intro]]'					=> 'Sagt Dir per Mail Bescheid, wenn mit der Website etwas nicht stimmt, und in festem Rhythmus, dass alles in Ordnung ist. Ein Seitenaufruf löst es aus, einen Cronjob braucht es nicht. Die Empfänger, der Abstand zweier Problem-Mails und der Rhythmus stehen im Reiter Einstellungen.',
+	'[[/_admin/sysadmin/hint/none]]'					=> 'Es ist noch keine Adresse eingetragen, deshalb wird nichts gesendet.',
+	'[[/_admin/sysadmin/hint/findings-empty]]'	=> 'Der Bericht findet nichts.',
+	'[[/_admin/sysadmin/label/settings]]'			=> 'Einstellungen öffnen',
+	'[[/_admin/sysadmin/label/recipients]]'		=> 'Empfänger',
+	'[[/_admin/sysadmin/label/nobody]]'				=> 'niemand',
+	'[[/_admin/sysadmin/label/gap]]'					=> 'Problem-Mail höchstens alle',
+	'[[/_admin/sysadmin/label/hour]]'				=> '1 Stunde',
+	'[[/_admin/sysadmin/label/aborted]]'			=> 'Läufe ohne Ende',
+	'[[/_admin/sysadmin/label/hours]]'				=> '%s Stunden',
+	'[[/_admin/sysadmin/label/last-problem]]'	=> 'Letzte Problem-Mail',
+	'[[/_admin/sysadmin/label/beat]]'					=> 'Lebenszeichen',
+	'[[/_admin/sysadmin/label/last-beat]]'		=> 'Letzte Mail jeder Art',
+	'[[/_admin/sysadmin/label/next-beat]]'		=> 'Lebenszeichen fällig',
+	'[[/_admin/sysadmin/label/failed]]'				=> 'Letzter gescheiterter Versand',
+	'[[/_admin/sysadmin/label/failed-value]]'	=> '%s (Fehlversuche in Folge: %s)',
+	'[[/_admin/sysadmin/label/never]]'				=> 'nie',
+	'[[/_admin/sysadmin/label/findings]]'			=> 'Was der Bericht jetzt findet',
+	'[[/_admin/sysadmin/label/send]]'					=> 'Testmail senden',
+	'[[/_admin/sysadmin/beat/off]]'						=> 'aus',
+	'[[/_admin/sysadmin/beat/daily]]'					=> 'täglich',
+	'[[/_admin/sysadmin/beat/weekly]]'				=> 'wöchentlich',
+	'[[/_admin/sysadmin/beat/monthly]]'				=> 'monatlich',
+	'[[/_admin/sysadmin/rank/notice]]'							=> 'Hinweis',
+	'[[/_admin/sysadmin/rank/warning]]'							=> 'Warnung',
+	'[[/_admin/sysadmin/rank/error]]'							=> 'Fehler',
+	'[[/_admin/sysadmin/msg/sending]]'				=> 'Sendet …',
+	'[[/_admin/sysadmin/msg/sent]]'						=> 'Testmail gesendet (Empfänger: %s).',
+	'[[/_admin/sysadmin/confirm/test]]'				=> 'Eine Testmail mit dem Bericht an %s senden?',
+	'[[/_admin/sysadmin/error/load]]'					=> 'Der Bericht konnte nicht geladen werden.',
+	'[[/_admin/sysadmin/error/send]]'					=> 'Die Testmail konnte nicht gesendet werden.',
+
+	'[[/_admin/error/sysadmin_none]]'					=> 'Es gibt keine Adresse, an die gesendet werden kann. Trag eine im Reiter Einstellungen ein.',
+	'[[/_admin/error/sysadmin_wait]]'					=> 'Vor einem Moment ging schon eine Testmail raus. Versuch es in %s Sekunden noch einmal.',
+	'[[/_admin/error/sysadmin_ratelimit]]'		=> 'Die Website hat in dieser Stunde so viele Testmails gesendet, wie das System darf. Versuch es später noch einmal.',
+	'[[/_admin/error/sysadmin_failed]]'				=> 'Der Mailserver hat die Mail nicht angenommen. Das Dashboard sagt, seit wann der Versand scheitert.',
+];
