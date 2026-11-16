@@ -2370,6 +2370,8 @@ file_put_contents( $sheet, ".mine { }\n" );
 exec( 'chmod -R a+rwX '. escapeshellarg( ninoSandboxDir( $site ). '/private' ) );
 chmod( $sheet, 0 );
 $switched = function_exists( 'posix_geteuid' ) === true && posix_geteuid() === 0 && function_exists( 'posix_seteuid' ) === true && posix_seteuid( 65534 ) === true;
+// Who runs this cannot read the file: the user it switched to, or the owner of the file who is not root - the rights of a file hold for its owner too, and only root reads past them
+$server = $switched === true || ( function_exists( 'posix_geteuid' ) === true && posix_geteuid() !== 0 && is_readable( $sheet ) === false );
 ninoWarnings();
 [ $status, $body ] = themesCall( $site, 'themes/list' );
 [ $applied, $appliedBody ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
@@ -2391,22 +2393,24 @@ chmod( dirname( $sheet ), 0555 );
 $locked = false;
 $lockedBody = [];
 
-if( $switched === true ) {
-	posix_seteuid( 65534 );
+if( $server === true ) {
+	if( $switched === true )
+		posix_seteuid( 65534 );
 	themesCall( $site, 'themes/restore', [ 'force' => true ] );
 	[ $locked, $lockedBody ] = themesCall( $site, 'themes/apply', [ 'theme' => 'band-probe', 'force' => true ] );
-	posix_seteuid( 0 );
+	if( $switched === true )
+		posix_seteuid( 0 );
 }
 
 chmod( dirname( $sheet ), 0755 );
 chmod( $sheet, 0644 );
-$suffix = $switched === true ? '' : ' (run as the owner of the file: it can read it, so only the answer is looked at)';
+$suffix = $server === true ? '' : ' (run as root with no user to switch to: it reads the file, so only the answer is looked at)';
 check( 'L. a stylesheet of the project that the web server may not read is a stylesheet that is not the feature\'s and cannot be read: the list answers, says foreign and unreadable, and a change that would replace it is asked about with a code of its own - no warning, which the kernel makes a 500 of'. $suffix,
-	$status === 200 && ( $switched === false || ( $body['foreign'] === true && $body['unreadable'] === true && $applied === 409 && $appliedBody['code'] === 'themes_unreadable' && $warned === [] ) ) && ( $switched === true || $body['unreadable'] === false ) );
+	$status === 200 && ( $server === false || ( $body['foreign'] === true && $body['unreadable'] === true && $applied === 409 && $appliedBody['code'] === 'themes_unreadable' && $warned === [] ) ) && ( $server === true || $body['unreadable'] === false ) );
 check( 'L. told to replace it, the web server does: the file that is put in place keeps the rights of the one it replaces, so it is opened for reading - the website has its stylesheet, and the file that cannot be read was not in the bundle of the request that would have read it'. $suffix,
-	$switched === false || ( $replaced === 200 && $readable === true && $listed === false && $bundled !== '' ) );
+	$server === false || ( $replaced === 200 && $readable === true && $listed === false && $bundled !== '' ) );
 check( 'L. where the file cannot be replaced - the directory is not the web server\'s - the API does not say that it is done: 409 themes_locked'. $suffix,
-	$switched === false || ( $locked === 409 && $lockedBody['code'] === 'themes_locked' ) );
+	$server === false || ( $locked === 409 && $lockedBody['code'] === 'themes_locked' ) );
 unlink( $sheet );
 
 // -- a font that is gone is a font that is not there, and the brand stays what it was
@@ -2828,6 +2832,8 @@ themesCall( $lock, 'themes/apply', [ 'theme' => 'own:locked' ] );
 // What the web server is to have of a project: the files it keeps are its own, and the directory of the stylesheet is the one thing that is not
 exec( 'chmod -R a+rwX '. escapeshellarg( ninoSandboxDir( $lock ). '/private' ) );
 $switched = function_exists( 'posix_geteuid' ) === true && posix_geteuid() === 0 && function_exists( 'posix_seteuid' ) === true && posix_seteuid( 65534 ) === true;
+// Who runs this cannot read the file: the user it switched to, or the owner of the file who is not root - the rights of a file hold for its owner too, and only root reads past them
+$server = $switched === true || ( function_exists( 'posix_geteuid' ) === true && posix_geteuid() !== 0 && is_readable( $sheet ) === false );
 $suffix = $switched === true ? '' : ' (run as the owner of the directory: it can write in it, so only the answer is looked at)';
 
 if( $switched === true )
