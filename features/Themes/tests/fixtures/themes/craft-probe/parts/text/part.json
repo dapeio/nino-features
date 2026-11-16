@@ -1,0 +1,12 @@
+{
+ "contract": "basis@^1.0",
+ "ladders": {
+  "text.size": [
+   "var(--page-text-2)",
+   "calc( ( var(--page-text-2) + var(--page-text-3) ) / 2 )",
+   "var(--page-text-3)",
+   "calc( ( var(--page-text-3) + var(--page-text-4) ) / 2 )",
+   "var(--page-text-4)"
+  ]
+ }
+}

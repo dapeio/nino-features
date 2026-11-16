@@ -1,0 +1,19 @@
+{
+ "key": "craft-probe",
+ "version": "1.0.0",
+ "name": {
+  "de_DE": "Craft (Probe)",
+  "en_US": "Craft (probe)"
+ },
+ "description": {
+  "de_DE": "Ein warmes, rundes Theme für die Tests des Features.",
+  "en_US": "A warm and round theme for the tests of the feature."
+ },
+ "brand": {
+  "font-title": "open-sans",
+  "font-text": "system-sans",
+  "font-button": "open-sans",
+  "tone": "warm",
+  "mode": "auto"
+ }
+}

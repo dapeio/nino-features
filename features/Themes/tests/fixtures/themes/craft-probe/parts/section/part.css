@@ -1,0 +1,4 @@
+/*	Craft probe: section - rounded, set-off surfaces with the title centred; the card takes the shadow of the surface	*/
+.section-wrap--variant-soft { margin: var(--page-space-3) auto; width: min( 100% - 2 * var(--page-space-3), calc( var(--page-width) + 2 * var(--page-space-5) ) ); border-radius: calc( var(--page-radius) * 2 ); overflow: hidden; }
+.section-wrap--variant-soft .section-title { text-align: center; align-self: center; }
+.section-col--variant-card { box-shadow: var(--section-col-x-shadow); border-color: transparent; }

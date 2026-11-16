@@ -1,0 +1,12 @@
+{
+ "contract": "basis@^1.0",
+ "ladders": {
+  "button.radius": [
+   "var(--page-radius)",
+   "calc( var(--page-radius) * 1.5 )",
+   "999px",
+   "999px",
+   "999px"
+  ]
+ }
+}

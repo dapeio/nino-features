@@ -1,0 +1,14 @@
+{
+ "contract": "basis@^1.0",
+ "variants": {
+  "header-wrap": {
+   "stacked": {
+    "de_DE": "Gestapelt",
+    "en_US": "Stacked"
+   }
+  }
+ },
+ "standard": {
+  "header-wrap": "stacked"
+ }
+}

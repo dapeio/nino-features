@@ -1,0 +1,3 @@
+/*	Band probe: section - a band (a line above and below in the accent) and a rule under the title	*/
+.section-wrap--variant-band { border-block: 4px solid var(--brand-accent); }
+.section-title { padding-bottom: var(--section-title-x-rule); border-bottom: var(--section-title-x-rule) solid var(--brand-accent); }

@@ -1,0 +1,38 @@
+{
+ "contract": "basis@^1.0",
+ "ladders": {
+  "section-wrap.space": [
+   "0.9rem",
+   "1.5rem",
+   "2.25rem",
+   "3.25rem",
+   "4.5rem"
+  ]
+ },
+ "knobs": {
+  "section-title.x-rule": {
+   "label": {
+    "de_DE": "Linie unter dem Titel",
+    "en_US": "Rule below the title"
+   },
+   "ladder": [
+    "0px",
+    "1px",
+    "2px",
+    "3px",
+    "4px"
+   ]
+  }
+ },
+ "variants": {
+  "section-wrap": {
+   "band": {
+    "de_DE": "Band",
+    "en_US": "Band"
+   }
+  }
+ },
+ "standard": {
+  "section-wrap": "regular"
+ }
+}

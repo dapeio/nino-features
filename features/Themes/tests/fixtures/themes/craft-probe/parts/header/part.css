@@ -1,0 +1,6 @@
+/*	Craft probe: header - the name above the menu	*/
+@media (min-width: 768px) {
+	.header-wrap--variant-stacked .header-wrap-inner { flex-direction: column; justify-content: center; }
+	.header-wrap--variant-stacked .header-logo { margin-inline: auto; font-size: var(--page-text-4); }
+	.header-wrap--variant-stacked .header-nav { margin-inline: auto; }
+}

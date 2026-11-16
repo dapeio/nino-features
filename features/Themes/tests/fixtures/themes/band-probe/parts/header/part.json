@@ -1,0 +1,14 @@
+{
+ "contract": "basis@^1.0",
+ "variants": {
+  "header-wrap": {
+   "bar": {
+    "de_DE": "Balken in Markenfarbe",
+    "en_US": "Bar in the brand colour"
+   }
+  }
+ },
+ "standard": {
+  "header-wrap": "regular"
+ }
+}

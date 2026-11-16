@@ -1,0 +1,3 @@
+/*	Band probe: header - one row like the standard; the variant bar stands on the first colour of the brand	*/
+.header-wrap--variant-bar { background-color: var(--brand-color-1); color: var(--brand-on-color-1); border-bottom-color: transparent; }
+.header-wrap--variant-bar .header-logo, .header-wrap--variant-bar .header-nav-toggle { color: inherit; border-color: currentColor; }

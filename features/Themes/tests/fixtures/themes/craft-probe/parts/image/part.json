@@ -1,0 +1,12 @@
+{
+ "contract": "basis@^1.0",
+ "ladders": {
+  "image.radius": [
+   "var(--page-radius)",
+   "calc( var(--page-radius) * 1.5 )",
+   "calc( var(--page-radius) * 2 )",
+   "calc( var(--page-radius) * 3 )",
+   "calc( var(--page-radius) * 4 )"
+  ]
+ }
+}

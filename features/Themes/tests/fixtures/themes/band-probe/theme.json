@@ -1,0 +1,19 @@
+{
+ "key": "band-probe",
+ "version": "1.0.0",
+ "name": {
+  "de_DE": "Band (Probe)",
+  "en_US": "Band (probe)"
+ },
+ "description": {
+  "de_DE": "Ein neutrales Theme mit Band und Linie unter dem Titel, für die Tests des Features.",
+  "en_US": "A neutral theme with a band and a rule under the title, for the tests of the feature."
+ },
+ "brand": {
+  "font-title": "system-sans",
+  "font-text": "system-sans",
+  "font-button": "system-sans",
+  "tone": "neutral",
+  "mode": "auto"
+ }
+}
