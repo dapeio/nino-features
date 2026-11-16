@@ -17,6 +17,7 @@ declare(strict_types=1);
  *											G. the preview: a token for the session that asked, for a time, the public bundle left as it is
  *											H. rights and names: no right, no answer; what a name, a path, a step, a colour and a css may be
  *											I. sizes, the feature off and on, and the time it takes
+ *											J. the theme Nino: what is in its folder, that its middle is the reset, the order of its steps, its variants and its sizes
  *
  *									Runs against an isolated sandbox directory with the kernel's own Basis; the themes are the two fixtures of
  *									tests/fixtures/themes, copied into the sandbox - Craft (probe), which stands the section on a soft surface,
@@ -289,7 +290,7 @@ $appData = themesSite();
 ninoUser( $appData, 'designer@example.com' );
 $read = \Nino\Modules\Themes\Reader::read( $appData );
 
-check( 'the two themes of the fixtures are read, by key, with their versions, and no folder is refused', array_keys( $read['themes'] ) === [ 'band-probe', 'craft-probe' ] && $read['rejected'] === []
+check( 'the two themes of the fixtures and the one the feature ships are read, by key, with their versions, and no folder is refused', array_keys( $read['themes'] ) === [ 'band-probe', 'craft-probe', 'nino' ] && $read['rejected'] === []
 	&& $read['themes']['craft-probe']['version'] === '1.0.0' && $read['themes']['craft-probe']['name']['en_US'] === 'Craft (probe)' );
 check( 'every part of both is there for its group - the page and the six of Basis - and every one holds', array_keys( $read['themes']['craft-probe']['parts'] ) === [ 'button', 'footer', 'header', 'image', 'page', 'section', 'text' ]
 	&& array_keys( $read['themes']['band-probe']['parts'] ) === [ 'button', 'footer', 'header', 'image', 'page', 'section', 'text' ]
@@ -405,7 +406,7 @@ $refused = array_map( 'basename', array_keys( $read['rejected'] ) );
 sort( $refused );
 check( 'a theme that is not what it should be is refused as a whole, each with its reason: no JSON, a key beside the five, a brand that suggests a key of the seven that is none or a value that does not fit, a key that is not the folder\'s, a version, a name, a link as the folder',
 	$refused === [ 'Upper', 'bad-colour', 'bad-font', 'bad-tone', 'bad-version', 'broken-json', 'huge', 'linked', 'logo-suggested', 'no-name', 'unknown-brand-key', 'with-logo', 'wrong-key' ]
-	&& array_filter( $read['rejected'], static fn( string $reason ): bool => trim( $reason ) === '' ) === [] && array_diff( array_keys( $read['themes'] ), [ 'band-probe', 'craft-probe', 'duplicate', 'evil-php', 'leaky', 'nul', 'binary', 'oversize' ] ) === [] );
+	&& array_filter( $read['rejected'], static fn( string $reason ): bool => trim( $reason ) === '' ) === [] && array_diff( array_keys( $read['themes'] ), [ 'band-probe', 'craft-probe', 'nino', 'duplicate', 'evil-php', 'leaky', 'nul', 'binary', 'oversize' ] ) === [] );
 check( 'M4: a theme that brings a logo - as a key of its own or as a suggestion - is refused', in_array( 'with-logo', $refused, true ) === true && in_array( 'logo-suggested', $refused, true ) === true
 	&& str_contains( (string) ( array_values( array_filter( $read['rejected'], static fn( string $reason, string $folder ): bool => basename( $folder ) === 'with-logo', ARRAY_FILTER_USE_BOTH ) )[0] ?? '' ), 'logo' ) === true );
 check( 'the reasons say no local path', array_filter( $read['rejected'], static fn( string $reason ): bool => str_contains( $reason, $appData['./nino/test/sandbox'] ) === true ) === [] );
@@ -832,7 +833,7 @@ $theirs = static fn(): string => $digest( ninoSandboxDir( $site ). '/private/tem
 $ownedBefore = $theirs();
 
 [ $status, $body ] = themesCall( $site, 'themes/list' );
-check( 'the list: both themes with their parts, none active, nothing to restore, no stylesheet of somebody else\'s, the groups of the register and the fonts - and no path of this machine', $status === 200 && array_column( $body['themes'], 'key' ) === [ 'band-probe', 'craft-probe' ] && $body['active'] === null && $body['canRestore'] === false && $body['foreign'] === false
+check( 'the list: the two themes of the fixtures and the one the feature ships with their parts, none active, nothing to restore, no stylesheet of somebody else\'s, the groups of the register and the fonts - and no path of this machine', $status === 200 && array_column( $body['themes'], 'key' ) === [ 'band-probe', 'craft-probe', 'nino' ] && $body['active'] === null && $body['canRestore'] === false && $body['foreign'] === false
 	&& array_column( $body['groups'], 'key' ) === [ 'button', 'footer', 'header', 'text', 'image', 'section' ] && in_array( 'open-sans', array_column( $body['fonts'], 'key' ), true ) === true && $body['rejected'] === [] && str_contains( json_encode( $body ), ninoSandboxDir( $site ) ) === false );
 
 [ $status, $body ] = themesCall( $site, 'themes/open', [ 'theme' => 'craft-probe' ] );
@@ -840,7 +841,7 @@ $section = $body['groups']['section'] ?? [];
 check( 'open: the mix of the theme, the part of each group with where it is from, its knobs on their steps - the additional one marked - and the variants with their standard, the brand as stored, as it comes out and as the theme suggests it, and the contrast of every pair',
 	$status === 200 && $body['mix'] === Mix::of( $site, 'craft-probe' ) && $section['from'] === 'craft-probe@1.0.0' && $section['origin'] === 'installed' && $section['problem'] === '' && array_column( $section['knobs'], 'step' ) === [ 0, 0, 0, 0, 0, 0 ]
 	&& array_column( array_filter( $section['knobs'], static fn( array $knob ): bool => $knob['extra'] === true ), 'key' ) === [ 'section-col.x-shadow' ] && array_values( array_filter( $section['components'], static fn( array $component ): bool => $component['name'] === 'section-wrap' ) )[0]['standard'] === 'soft'
-	&& array_column( $section['offers'], 'theme' ) === [ 'band-probe', 'craft-probe' ] && $body['brand']['suggested']['tone'] === 'warm' && $body['brand']['effective']['font-title'] === 'open-sans' && count( $body['palette']['contrast'] ) === 24 && min( $body['palette']['contrast'] ) >= 4.5
+	&& array_column( $section['offers'], 'theme' ) === [ 'band-probe', 'craft-probe', 'nino' ] && $body['brand']['suggested']['tone'] === 'warm' && $body['brand']['effective']['font-title'] === 'open-sans' && count( $body['palette']['contrast'] ) === 24 && min( $body['palette']['contrast'] ) >= 4.5
 	&& array_column( $body['groups']['page']['knobs'], 'key' ) === [ 'size', 'width', 'space', 'radius', 'line', 'motion', 'density' ] && str_contains( json_encode( $body ), ninoSandboxDir( $site ) ) === false && $body['notes'] === [] );
 
 mkdir( ninoSandboxDir( $site ). '/themes/broken-one' );
@@ -858,7 +859,7 @@ $components = array_column( $groupsOf['section']['components'], null, 'name' );
 check( 'R2 open: each knob with its five values, its middle one as the default and its step, each component with every variant there is - the schema\'s with no label of the theme, the part\'s with it and the standard - and the groups with the themes that offer a part',
 	count( $knob['ladder'] ) === 5 && $knob['default'] === $knob['ladder'][2] && $knob['default'] === '1.75rem' && $knob['step'] === 0 && array_column( $components['section-col']['variants'], 'name' ) === [ 'regular', 'card' ] && $components['section-col']['variants'][1]['source'] === 'schema'
 	&& $components['section-wrap']['variants'][1] === [ 'name' => 'soft', 'label' => [ 'de_DE' => 'Weiche Fläche', 'en_US' => 'Soft surface' ], 'source' => 'part' ] && $components['section-wrap']['standard'] === 'soft' && $groupsOf['section']['package'] === 'installed' && $groupsOf['page']['knobs'][0]['ladder'][0] === [ '--page-size' => '93.75%' ]
-	&& $groupsOf['page']['knobs'][6]['small'] === true && array_column( $groupsOf['section']['offers'], 'theme' ) === [ 'band-probe', 'craft-probe' ] && isset( $components['section-col']['variants'][0]['label'] ) === false );
+	&& $groupsOf['page']['knobs'][6]['small'] === true && array_column( $groupsOf['section']['offers'], 'theme' ) === [ 'band-probe', 'craft-probe', 'nino' ] && isset( $components['section-col']['variants'][0]['label'] ) === false );
 check( 'R2 open: the palette says where it comes from - craft names a tone, so it is worked out of the brand; band names no colour and no tone but the neutral, so the colours of the reset stand, as Nino.css has them and with the contrast of each pair',
 	$body['palette']['source'] === 'brand' && count( $body['palette']['contrast'] ) === 24 && ( $reset = themesCall( $site, 'themes/open', [ 'theme' => 'band-probe' ] )[1]['palette'] )['source'] === 'reset' && $reset['colors']['dark']['alt'] === '#1e2127' && $reset['colors']['dark']['accent'] === '#86b6f6'
 	&& $reset['colors']['light']['ink'] === '#1b1d21' && $reset['colors']['light']['accent'] === '#1c5db8' && $reset['colors']['dark']['on'] === '#0f1b2e' && count( $reset['contrast'] ) === 24 && min( $reset['contrast'] ) > 4.0 );
@@ -1731,6 +1732,243 @@ foreach( $numbers as $name => $value )
 
 check( 'Nr. 12: building takes up to 50 ms (the compiler, and a save that builds, writes and rotates the state), the first request after a save up to 30 ms, a request with a theme not more than 0.15 ms over one without, and the request of a preview up to 10 ms, the API that makes one up to 20 ms (the shortest of nine runs for each, and the four rounds of the request told as they were)',
 	$numbers['compile'] <= 50 && $numbers['save and build'] <= 50 && $numbers['first request after a save'] <= 30 && $numbers['request, over a site without'] <= 0.15 && $numbers['preview request'] <= 10 && $numbers['preview, the API'] <= 20 );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nJ. The theme Nino\n";
+
+use Nino\Modules\Themes\Reader;
+
+$ignored = ninoWarnings();
+
+// The theme the feature ships, as the files lie and as the reader and the compiler take it. The middle of every knob is read from the
+// files the site is drawn without a theme from - Nino.css and the standard parts of Basis - and written down nowhere here
+$ninoDir = $featureDir. '/themes/nino';
+$site = themesSite();
+ninoUser( $site, 'designer@example.com' );
+$ninoRead = Reader::read( $site );
+$nino = $ninoRead['themes']['nino'] ?? [ 'parts' => [], 'brand' => [], 'name' => [], 'description' => [] ];
+$ninoParts = [];
+
+foreach( glob( $ninoDir. '/parts/*', GLOB_ONLYDIR ) ?: [] as $dir )
+	$ninoParts[basename( $dir )] = [ 'json' => json_decode( (string) file_get_contents( $dir. '/part.json' ), true ), 'css' => is_file( $dir. '/part.css' ) === true ? (string) file_get_contents( $dir. '/part.css' ) : null ];
+
+$ninoFiles = [];
+
+foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $ninoDir, FilesystemIterator::SKIP_DOTS ) ) as $file )
+	$ninoFiles[] = substr( $file->getPathname(), strlen( $ninoDir ) + 1 );
+
+sort( $ninoFiles );
+check( 'Nino is a folder of data in the form of a theme: theme.json, the part of the page with no css, and a part with css for the header, the footer and the section - none for the buttons, the image and the text, which stay the standard parts',
+	$ninoFiles === [ 'parts/footer/part.css', 'parts/footer/part.json', 'parts/header/part.css', 'parts/header/part.json', 'parts/page/part.json', 'parts/section/part.css', 'parts/section/part.json', 'theme.json' ] );
+check( 'the reader takes it as it is: no folder refused, the key and the folder agree, and every part holds - none rests - for the page and the three groups it has a part for',
+	$ninoRead['rejected'] === [] && ( $nino['key'] ?? '' ) === 'nino' && array_keys( $nino['parts'] ) === [ 'footer', 'header', 'page', 'section' ]
+	&& array_filter( $nino['parts'], static fn( array $part ): bool => $part['ok'] !== true || $part['problem'] !== '' ) === [] );
+
+[ $status, $body ] = themesCall( $site, 'themes/list' );
+$listed = array_values( array_filter( (array) ( $body['themes'] ?? [] ), static fn( array $theme ): bool => $theme['key'] === 'nino' ) );
+check( 'the list of the API names it with its words in both languages, and not one of its parts rests', $status === 200 && count( $listed ) === 1 && $listed[0]['name']['de_DE'] === 'Nino' && is_string( $listed[0]['description']['de_DE'] ?? null ) === true
+	&& array_filter( $listed[0]['parts'], static fn( array $part ): bool => $part['ok'] !== true ) === [] && array_keys( $listed[0]['parts'] ) === [ 'footer', 'header', 'page', 'section' ] );
+
+// words: every one in both languages, and the two differ where a name is not the same in both
+$words = [ [ 'name', $nino['name'] ?? null ], [ 'description', $nino['description'] ?? null ] ];
+
+foreach( $ninoParts as $group => $part ) {
+
+	foreach( $part['json']['knobs'] ?? [] as $key => $knob )
+		$words[] = [ $group. ' knob '. $key, $knob['label'] ?? null ];
+
+	foreach( $part['json']['variants'] ?? [] as $component => $variants )
+		foreach( $variants as $variant => $label )
+			$words[] = [ $component. ' variant '. $variant, $label ];
+}
+
+$bothLanguages = static fn( mixed $label ): bool => is_array( $label ) === true && array_keys( $label ) === [ 'de_DE', 'en_US' ] && is_string( $label['de_DE'] ) === true && is_string( $label['en_US'] ) === true && trim( $label['de_DE'] ) !== '' && trim( $label['en_US'] ) !== '';
+$silent = array_filter( $words, static fn( array $word ): bool => $bothLanguages( $word[1] ) === false || ( $word[1]['de_DE'] === $word[1]['en_US'] && $word[0] !== 'name' && $word[0] !== 'section-wrap variant band' ) );
+check( 'every word of the theme - its name, its description, the label of each of '. ( count( $words ) - 2 ). ' knobs and variants - is a text in de_DE and en_US and no other language, and the two differ but where the word is the same in both', count( $words ) === 15 && $silent === [] );
+check( 'it suggests a system font for the title, the text and the buttons, the neutral tone and the mode of the visitor - and no colour and no logo, which are the project\'s', array_keys( $nino['brand'] ?? [] ) === [ 'font-title', 'font-text', 'font-button', 'tone', 'mode' ]
+	&& ( $nino['brand'] ?? [] ) == array_intersect_key( Brand::DEFAULTS, array_flip( [ 'font-title', 'font-text', 'font-button', 'tone', 'mode' ] ) ) );
+
+// the page: the knobs, five steps each, the same tokens in every step but where a knob for small screens leaves one as it is
+$pageKnobs = $nino['parts']['page']['part']['knobs'] ?? [];
+check( 'the page has the knobs of its part in the order a person meets them - size, width, spacing, type, weight, radius, line, motion and the density of small screens - five steps each, with the same tokens in every step but the density\'s, whose middle and upper steps leave the page as it is',
+	array_keys( $pageKnobs ) === [ 'size', 'width', 'space', 'text', 'weight', 'radius', 'line', 'motion', 'density' ] && array_keys( array_filter( $pageKnobs, static fn( array $knob ): bool => $knob['small'] === true ) ) === [ 'density' ]
+	&& array_filter( $pageKnobs, static fn( array $knob ): bool => count( $knob['ladder'] ) !== 5 ) === []
+	&& array_filter( $pageKnobs, static fn( array $knob ): bool => $knob['small'] === false && count( array_unique( array_map( static fn( array $set ): string => implode( ',', array_keys( $set ) ), $knob['ladder'] ) ) ) !== 1 ) === []
+	&& array_map( 'count', $pageKnobs['density']['ladder'] ) === [ 2, 2, 0, 0, 0 ] );
+
+// the middle is the reset: each token of a step in the middle is the value Nino.css gives it, as the file says it
+$reset = (string) file_get_contents( $root. '/_nino/Nino.css' );
+preg_match( '/@layer nino\.reset \{\s*:root \{(.*?)\n\t\}/s', $reset, $block );
+preg_match_all( '/(--[a-z0-9-]+):\s*([^;]+);/', $block[1] ?? '', $found );
+$resetTokens = array_combine( $found[1], array_map( static fn( string $value ): string => (string) preg_replace( '/\s+/', '', $value ), $found[2] ) );
+$flat = static fn( string $value ): string => (string) preg_replace( '/\s+/', '', $value );
+$middle = [];
+
+foreach( $pageKnobs as $name => $knob )
+	foreach( $knob['ladder'][2] as $token => $value )
+		$middle[$name. ' '. $token] = [ $flat( $value ), $resetTokens[$token] ?? null ];
+
+check( 'the middle step of every knob of the page is the value of Nino.css for the token, so that a page with no knob turned is the page of the reset: '. count( $middle ). ' tokens, read from the file',
+	count( $middle ) === 18 && array_filter( $middle, static fn( array $pair ): bool => $pair[0] !== $pair[1] ) === [] && array_filter( $middle, static fn( array $pair ): bool => $pair[1] === null ) === [] );
+
+// and the tokens of the page that every step of a knob names are tokens of the page: the contract's list, and nothing else
+$named = array_unique( array_merge( [], ...array_values( array_map( static fn( array $knob ): array => array_merge( [], ...array_map( 'array_keys', $knob['ladder'] ) ), $pageKnobs ) ) ) );
+check( 'the tokens the steps set are tokens of the contract\'s list, and each of them has a middle - the reset\'s - in Nino.css', array_diff( $named, Reader::PAGE_TOKENS ) === [] && array_diff( $named, array_keys( $resetTokens ) ) === [] );
+
+// the order of the steps: what a knob turns up is turned up in every step, for the knobs whose steps are plain numbers
+$number = static fn( string $value ): ?float => preg_match( '/^(\d*\.?\d+)(rem|px|%|s)?$/', $value, $part ) === 1 ? (float) $part[1] : null;
+$unordered = [];
+$factors = [];
+$measured = 0;
+
+foreach( [ 'size', 'width', 'space', 'weight', 'radius', 'line', 'motion' ] as $name )
+	foreach( array_keys( $pageKnobs[$name]['ladder'][0] ?? [] ) as $token ) {
+
+		$line = array_map( static fn( array $set ): ?float => $number( $flat( $set[$token] ) ), $pageKnobs[$name]['ladder'] );
+		$measured++;
+
+		if( in_array( null, $line, true ) === true || $line !== ( static function( array $line ): array { sort( $line ); return $line; } )( $line ) )
+			$unordered[] = $name. ' '. $token;
+	}
+
+// the steps of the type are the middle times a factor, which grows
+foreach( $pageKnobs['text']['ladder'] as $step => $set )
+	foreach( $set as $token => $value ) {
+
+		$factor = $step === 2 ? 1.0 : ( preg_match( '/^calc\(\s*(.+?)\s*\*\s*(\d*\.?\d+)\s*\)$/', $value, $part ) === 1 && $flat( $part[1] ) === $resetTokens[$token] ? (float) $part[2] : null );
+		$factors[$token][$step] = $factor;
+	}
+
+foreach( $factors as $token => $line ) {
+
+	$measured++;
+
+	if( in_array( null, $line, true ) === true || $line !== ( static function( array $line ): array { sort( $line ); return $line; } )( $line ) || count( array_unique( $line ) ) !== 5 )
+		$unordered[] = 'text '. $token;
+}
+
+check( 'every knob of the page turns one way: its steps grow from the first to the last (a line may stay at 1px, a step of the type is the reset\'s value times a factor that grows) - '. $measured. ' tokens read', $measured === 18 && $unordered === [] );
+
+// the groups: the knobs it sets the steps of keep their middle, the one of its own is off in the middle
+$planned = Compiler::plan( $site, Mix::of( $site, 'nino' ), [] )['groups'];
+$standards = [];
+
+foreach( glob( $root. '/_nino/Nino/Modules/Basis/groups/*/part/part.css' ) ?: [] as $file ) {
+
+	preg_match( '/:root \{(.*?)\n\}/s', (string) file_get_contents( $file ), $standard );
+	preg_match_all( '/(--[a-z0-9-]+):\s*([^;]+);/', $standard[1] ?? '', $values );
+	$standards += array_combine( $values[1], array_map( $flat, $values[2] ) );
+}
+
+$groupMiddle = [];
+
+foreach( [ 'footer', 'header', 'section', 'button', 'image', 'text' ] as $group )
+	foreach( $planned[$group]['knobs'] as $key => $knob )
+		if( $knob['extra'] === false )
+			$groupMiddle[$key] = [ $flat( $knob['ladder'][2] ), $standards[$knob['token']] ?? null ];
+
+check( 'the middle step of each of the '. count( $groupMiddle ). ' knobs of the six groups, those the part turns among them, is what the standard part sets in :root, read from its file - the ladder is the part\'s, the middle is the standard\'s', count( $groupMiddle ) === 16
+	&& array_filter( $groupMiddle, static fn( array $pair ): bool => $pair[0] !== $pair[1] ) === [] && $planned['section']['knobs']['section-wrap.space']['ladder'] !== \Nino\Components::groups( $site )['section']['knobs']['section-wrap.space']['ladder']
+	&& $planned['section']['knobs']['section-col.pad']['ladder'] !== \Nino\Components::groups( $site )['section']['knobs']['section-col.pad']['ladder'] );
+$rule = $planned['section']['knobs']['section-title.x-rule'];
+check( 'the rule below the title is a knob of the section title of its own, with a token of the component, off in the middle and below - there is none to take away - and thicker above it, as a multiple of the line of the page',
+	$rule['extra'] === true && $rule['token'] === '--section-title-x-rule' && array_slice( $rule['ladder'], 0, 3 ) === [ '0px', '0px', '0px' ] && array_filter( array_slice( $rule['ladder'], 3 ), static fn( string $step ): bool => str_contains( $step, 'var(--page-line)' ) === false ) === [] && array_keys( $planned['section']['knobs'] ) === [ 'section-wrap.space', 'section-row.gap', 'section-col.pad', 'section-col.radius', 'section-title.space', 'section-title.x-rule' ]
+	&& str_contains( $ninoParts['section']['css'] ?? '', 'var(--section-title-x-rule)' ) === true );
+
+// the variants: three, one each, and none of them the standard - the page that names none is drawn as it is without the theme
+$mixed = Compiler::compile( $site, Mix::of( $site, 'nino' ), Brand::clean( $site, [] ) );
+$sheet = $mixed['css'];
+check( 'the variants: the bar for the header, the dark surface for the footer and the band for the section, each added to its component, regular the standard of all three - and no other component gets a variant or a standard',
+	$mixed['variants'] === [ 'footer-wrap' => [ [ 'dark' ], 'regular' ], 'header-wrap' => [ [ 'bar' ], 'regular' ], 'section-wrap' => [ [ 'band' ], 'regular' ] ] );
+$classes = [ 'header-wrap' => 'bar', 'footer-wrap' => 'dark', 'section-wrap' => 'band' ];
+check( 'each variant is drawn by a rule of the part of its group on the class the register gives it', array_filter( $classes, static fn( string $variant, string $component ): bool => preg_match( '/\.'. preg_quote( $component. '--variant-'. $variant, '/' ). '(?![\w-])/', $ninoParts[explode( '-', $component )[0]]['css'] ?? '' ) !== 1, ARRAY_FILTER_USE_BOTH ) === [] );
+
+// what a part may write: calculate with the tokens, and write out no length - the two of 24px, the least a target is, apart
+$written = [];
+
+foreach( $ninoParts as $group => $part )
+	if( $part['css'] !== null )
+		preg_match_all( '/(?<![\w-])\d*\.?\d+(?:px|rem|em|vw|vh|ch|pt)\b/', (string) preg_replace( '!/\*.*?\*/!s', '', $part['css'] ), $lengths ) && $written = array_merge( $written, $lengths[0] );
+
+check( 'the css of the parts writes out no length but the 24px that the logo of the header and the link of a title are at the least, so that a theme that turns a knob turns every fixed step with it', $written === [ '24px', '24px' ] );
+
+// sizes
+$partBytes = array_sum( array_map( static fn( array $part ): int => strlen( (string) $part['css'] ), $ninoParts ) );
+$allSheet = strlen( $sheet );
+$numbers['nino: css of the parts'] = $partBytes;
+$numbers['nino: theme.css'] = $allSheet;
+check( 'Nr. 11: the css of the parts of Nino comes to under 4 KB, the stylesheet that is written - the brand, the page, the knobs and the parts - to under 8 KB', $partBytes < 4096 && $allSheet < 8192 );
+
+// each knob at -2 and at +2 builds, and the stylesheet stays below 8 KB
+$ends = [];
+
+foreach( [ -2, 2 ] as $step ) {
+
+	$mix = Mix::of( $site, 'nino' );
+
+	foreach( $mix['parts'] as $group => $entry )
+		foreach( array_keys( $planned[$group]['knobs'] ?? $pageKnobs ) as $key )
+			$mix['parts'][$group]['values'][$key] = $step;
+
+	foreach( array_keys( $pageKnobs ) as $key )
+		$mix['parts']['page']['values'][$key] = $step;
+
+	$clean = Mix::clean( $site, $mix, false );
+	$built = is_array( $clean ) === true ? Compiler::compile( $site, $clean, Brand::clean( $site, [] ) ) : null;
+	$ends[$step] = $built !== null ? strlen( $built['css'] ) : -1;
+}
+
+check( 'with every knob at -2 and at +2 the mix is clean and builds, to a stylesheet of under 8 KB', $ends[-2] > 0 && $ends[2] > 0 && max( $ends ) < 8192 );
+
+// the probe page: every attribute with a fixed step in every value, the three variants of the theme drawn on it
+$probe = (string) file_get_contents( __DIR__. '/fixtures/pages/nino-probe.tpl' );
+$schemas = \Nino\Components::components( $site );
+$missing = [];
+$attributes = [ 'gap', 'pad', 'size', 'ground', 'width', 'height', 'align', 'reverse', 'hide', 'ratio', 'focus', 'tone', 'wide' ];
+$kinds = 0;
+
+foreach( $schemas as $component => $schema )
+	foreach( $schema['attributes'] ?? [] as $attribute => $definition ) {
+
+		if( in_array( $attribute, $attributes, true ) === false || in_array( $schema['group'], [ 'section', 'text', 'button', 'image', 'footer' ], true ) === false )
+			continue;
+
+		$options = $definition['type'] === 'bool' ? [ 'bool' ] : array_diff( array_map( 'strval', (array) ( $definition['options'] ?? [] ) ), [ (string) $definition['default'] ] );
+		$kinds++;
+
+		foreach( $options as $option ) {
+
+			$pattern = $option === 'bool' ? '/\['. preg_quote( $component, '/' ). '\b[^\]]*\s'. preg_quote( $attribute, '/' ). '(?=[\s\]])(?!=)/' : '/\['. preg_quote( $component, '/' ). '\b[^\]]*\s'. preg_quote( $attribute, '/' ). '="(?:[^"]* )?(?:[a-z]:)?'. preg_quote( $option, '/' ). '(?: [^"]*)?"/';
+
+			if( preg_match( $pattern, $probe ) !== 1 )
+				$missing[] = $component. ' '. $attribute. ' '. $option;
+		}
+	}
+
+check( 'the probe page of the suite names every value but the default of each of the thirteen attributes that have a fixed step - '. $kinds. ' attributes of the components they belong to - so that the browser can measure each of them in each variant', $kinds === 20 && $missing === [], $missing );
+check( 'and names each variant of the theme, one of each for the header and the footer, the band for every section that is one', substr_count( $probe, 'variant="bar"' ) === 1 && substr_count( $probe, 'variant="dark"' ) === 1 && preg_match_all( '/\[section-wrap [^\]]*variant="band"/', $probe ) === substr_count( $probe, '[section-wrap' ) );
+
+// drawn: with the feature off the page has no variant, with Nino on it has all three, and a page that names none is drawn the same either way
+$frame = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis' ];
+$plain = '[header-wrap][header-nav menu="main"][/header-wrap][section-wrap][section-row gap="3"][section-col variant="card" pad="2"][section-title text="A title" tag="h2" size="l"][text text="Words" size="s"][button text="Go" href="/go" size="l"][/section-col][/section-row][/section-wrap][footer-wrap][footer-col size="50"][text text="Footer"][/footer-col][/footer-wrap]';
+$probeBody = (string) preg_replace( '/\[template [^\]]*\]\n?/', '', preg_replace( '/<!--.*?-->\n?/s', '', $probe ) );
+themesCall( $site, 'themes/apply', [ 'theme' => 'nino' ] );
+$drawn = themesReboot( $site, $modules );
+$withoutTheme = themesReboot( $site, $frame );
+$themed = \Nino\Html::renderHtml( $drawn, $probeBody );
+$unthemed = \Nino\Html::renderHtml( $withoutTheme, $probeBody );
+check( 'Nino on: the probe page is drawn with the bar, the dark surface and a band on each of its sections, and without the feature it is drawn with none of the three',
+	substr_count( $themed, 'header-wrap--variant-bar' ) === 1 && substr_count( $themed, 'footer-wrap--variant-dark' ) === 1 && substr_count( $themed, 'section-wrap--variant-band' ) === substr_count( $probe, '[section-wrap' )
+	&& preg_match( '/--variant-(?:bar|dark|band)/', $unthemed ) === 0 );
+check( 'Nino on: a page that names no variant is drawn the same as it is without the feature, byte for byte - nothing in the markup says there is a theme', \Nino\Html::renderHtml( $drawn, $plain ) === \Nino\Html::renderHtml( $withoutTheme, $plain ) && ninoWarnings() === [] );
+
+$starter = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Elements', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Jstext', '\\Nino\\Modules\\Csrf', '\\Nino\\Modules\\Cache', '\\Nino\\Modules\\Form', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Localepicker', '\\Nino\\Modules\\Legal', '\\Nino\\Modules\\Maintenance', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ];
+// the bundle of the starter: Nino.css, the standard parts, the stylesheets of the modules the starter has, and the theme
+$starting = themesReboot( $site, $starter );
+$bundle = \Nino\Modules\Assets::stylesheet( $starting, THEMES_BUNDLE );
+$base = \Nino\Modules\Assets::stylesheet( themesReboot( $site, array_diff( $starter, [ '\\Nino\\Modules\\Themes' ] ) ), THEMES_BUNDLE );
+$numbers['nino: bundle'] = strlen( $bundle );
+check( 'Nr. 11: the bundle of the style of a site with Nino is the one without it and the stylesheet of the theme, and is under 45 KB', strlen( $bundle ) - strlen( $base ) > $allSheet - 200 && strlen( $bundle ) - strlen( $base ) < $allSheet + 400 && strlen( $bundle ) < 45 * 1024 );
 
 foreach( $sandboxes as $sandbox )
 	if( is_dir( $sandbox ) === true )

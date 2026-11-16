@@ -1,0 +1,56 @@
+{ "contract": "kernel@^2.0",
+  "knobs": {
+    "size": { "label": {"de_DE": "Grundgröße", "en_US": "Base size"}, "ladder": [
+      {"--page-size": "93.75%"},
+      {"--page-size": "96.875%"},
+      {"--page-size": "100%"},
+      {"--page-size": "106.25%"},
+      {"--page-size": "112.5%"} ] },
+    "width": { "label": {"de_DE": "Breite des Inhalts", "en_US": "Width of the content"}, "ladder": [
+      {"--page-width": "60rem"},
+      {"--page-width": "66rem"},
+      {"--page-width": "72rem"},
+      {"--page-width": "80rem"},
+      {"--page-width": "90rem"} ] },
+    "space": { "label": {"de_DE": "Abstände", "en_US": "Spacing"}, "ladder": [
+      {"--page-space-1": ".1875rem", "--page-space-2": ".375rem", "--page-space-3": ".75rem", "--page-space-4": "1.125rem", "--page-space-5": "1.875rem", "--page-space-6": "3rem"},
+      {"--page-space-1": ".21875rem", "--page-space-2": ".4375rem", "--page-space-3": ".875rem", "--page-space-4": "1.3125rem", "--page-space-5": "2.1875rem", "--page-space-6": "3.5rem"},
+      {"--page-space-1": ".25rem", "--page-space-2": ".5rem", "--page-space-3": "1rem", "--page-space-4": "1.5rem", "--page-space-5": "2.5rem", "--page-space-6": "4rem"},
+      {"--page-space-1": ".3125rem", "--page-space-2": ".625rem", "--page-space-3": "1.25rem", "--page-space-4": "1.875rem", "--page-space-5": "3.125rem", "--page-space-6": "5rem"},
+      {"--page-space-1": ".375rem", "--page-space-2": ".75rem", "--page-space-3": "1.5rem", "--page-space-4": "2.25rem", "--page-space-5": "3.75rem", "--page-space-6": "6rem"} ] },
+    "text": { "label": {"de_DE": "Schriftgrößen", "en_US": "Type sizes"}, "ladder": [
+      {"--page-text-1": "calc( .875rem * 0.9 )", "--page-text-2": "calc( 1rem * 0.9 )", "--page-text-3": "calc( 1.125rem * 0.9 )", "--page-text-4": "calc( 1.375rem * 0.9 )", "--page-text-5": "calc( clamp( 1.6rem, 1.25rem + 1.6vw, 2.25rem ) * 0.9 )", "--page-text-6": "calc( clamp( 2rem, 1.3rem + 3.2vw, 3.5rem ) * 0.9 )"},
+      {"--page-text-1": "calc( .875rem * 0.95 )", "--page-text-2": "calc( 1rem * 0.95 )", "--page-text-3": "calc( 1.125rem * 0.95 )", "--page-text-4": "calc( 1.375rem * 0.95 )", "--page-text-5": "calc( clamp( 1.6rem, 1.25rem + 1.6vw, 2.25rem ) * 0.95 )", "--page-text-6": "calc( clamp( 2rem, 1.3rem + 3.2vw, 3.5rem ) * 0.95 )"},
+      {"--page-text-1": ".875rem", "--page-text-2": "1rem", "--page-text-3": "1.125rem", "--page-text-4": "1.375rem", "--page-text-5": "clamp( 1.6rem, 1.25rem + 1.6vw, 2.25rem )", "--page-text-6": "clamp( 2rem, 1.3rem + 3.2vw, 3.5rem )"},
+      {"--page-text-1": "calc( .875rem * 1.05 )", "--page-text-2": "calc( 1rem * 1.05 )", "--page-text-3": "calc( 1.125rem * 1.05 )", "--page-text-4": "calc( 1.375rem * 1.05 )", "--page-text-5": "calc( clamp( 1.6rem, 1.25rem + 1.6vw, 2.25rem ) * 1.05 )", "--page-text-6": "calc( clamp( 2rem, 1.3rem + 3.2vw, 3.5rem ) * 1.05 )"},
+      {"--page-text-1": "calc( .875rem * 1.1 )", "--page-text-2": "calc( 1rem * 1.1 )", "--page-text-3": "calc( 1.125rem * 1.1 )", "--page-text-4": "calc( 1.375rem * 1.1 )", "--page-text-5": "calc( clamp( 1.6rem, 1.25rem + 1.6vw, 2.25rem ) * 1.1 )", "--page-text-6": "calc( clamp( 2rem, 1.3rem + 3.2vw, 3.5rem ) * 1.1 )"} ] },
+    "weight": { "label": {"de_DE": "Gewicht der Titel", "en_US": "Weight of the titles"}, "ladder": [
+      {"--page-weight-title": "500"},
+      {"--page-weight-title": "600"},
+      {"--page-weight-title": "700"},
+      {"--page-weight-title": "750"},
+      {"--page-weight-title": "800"} ] },
+    "radius": { "label": {"de_DE": "Rundung", "en_US": "Radius"}, "ladder": [
+      {"--page-radius": "0px"},
+      {"--page-radius": ".1875rem"},
+      {"--page-radius": ".375rem"},
+      {"--page-radius": ".75rem"},
+      {"--page-radius": "1.25rem"} ] },
+    "line": { "label": {"de_DE": "Linienstärke", "en_US": "Line width"}, "ladder": [
+      {"--page-line": "1px"},
+      {"--page-line": "1px"},
+      {"--page-line": "1px"},
+      {"--page-line": "2px"},
+      {"--page-line": "3px"} ] },
+    "motion": { "label": {"de_DE": "Bewegung", "en_US": "Motion"}, "ladder": [
+      {"--page-motion": "0s"},
+      {"--page-motion": ".1s"},
+      {"--page-motion": ".15s"},
+      {"--page-motion": ".25s"},
+      {"--page-motion": ".4s"} ] },
+    "density": { "label": {"de_DE": "Dichte auf kleinen Bildschirmen", "en_US": "Density on small screens"}, "small": true, "ladder": [
+      {"--page-space-5": "calc( var(--page-space-4) * 1.1 )", "--page-space-6": "calc( var(--page-space-5) * 1.1 )"},
+      {"--page-space-5": "calc( var(--page-space-4) * 1.3 )", "--page-space-6": "calc( var(--page-space-5) * 1.3 )"},
+      {},
+      {},
+      {} ] } } }

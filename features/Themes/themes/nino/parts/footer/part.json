@@ -1,0 +1,2 @@
+{ "contract": "basis@^1.0",
+  "variants": { "footer-wrap": { "dark": { "de_DE": "Dunkle Fläche", "en_US": "Dark surface" } } } }

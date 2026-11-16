@@ -1,0 +1,6 @@
+{ "contract": "basis@^1.0",
+  "ladders": {
+    "section-col.pad": [ "var(--page-space-2)", "var(--page-space-3)", "var(--page-space-4)", "min( var(--page-space-5), 9vw )", "min( var(--page-space-6), 12vw )" ],
+    "section-wrap.space": [ "calc( var(--page-space-6) * .5 )", "calc( var(--page-space-6) * .75 )", "var(--page-space-6)", "calc( var(--page-space-6) * 1.25 )", "calc( var(--page-space-6) * 1.75 )" ] },
+  "knobs": { "section-title.x-rule": { "label": { "de_DE": "Linie unter dem Titel", "en_US": "Rule below the title" }, "ladder": [ "0px", "0px", "0px", "calc( var(--page-line) * 2 )", "calc( var(--page-line) * 4 )" ] } },
+  "variants": { "section-wrap": { "band": { "de_DE": "Band", "en_US": "Band" } } } }

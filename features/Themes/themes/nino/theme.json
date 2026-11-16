@@ -1,0 +1,4 @@
+{ "key": "nino", "version": "1.0.0",
+  "name": { "de_DE": "Nino", "en_US": "Nino" },
+  "description": { "de_DE": "Neutral und ruhig: jeder Regler steht in der Mitte, und die Seite sieht aus wie ohne Theme. Dazu ein Balken im Header, ein dunkler Footer, ein Band für Abschnitte und eine Linie unter dem Titel.", "en_US": "Neutral and calm: every knob stands in the middle, and the page looks as it does without a theme. Besides, a bar for the header, a dark footer, a band for sections and a rule below the title." },
+  "brand": { "font-title": "system-sans", "font-text": "system-sans", "font-button": "system-sans", "tone": "neutral", "mode": "auto" } }

@@ -1,0 +1,5 @@
+/*	Nino - header: the logo as a name is a target of 24px at the least where the type is small (the one length that is written out); the bar stands on the first colour of the brand, and what is written, drawn and focused on it takes the colour written on it	*/
+.header-logo { min-height: 24px; }
+.header-wrap--variant-bar { background-color: var(--brand-color-1); color: var(--brand-on-color-1); border-bottom-color: transparent; }
+.header-wrap--variant-bar .header-nav-toggle { border-color: currentColor; }
+.header-wrap--variant-bar :focus-visible { outline-color: currentColor; }

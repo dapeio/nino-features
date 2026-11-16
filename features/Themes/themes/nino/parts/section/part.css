@@ -1,0 +1,4 @@
+/*	Nino - section: the band is a line above and below in the accent; the rule below a large title is the knob of the same name, and there is none where it is 0; the link of a title is a target of 24px at the least where the type is small (the one length that is written out) */
+.section-wrap--variant-band { border-block: calc( var(--page-line) * 2 ) solid var(--brand-accent); }
+.section-title--size-l, .section-title--size-xl { padding-bottom: calc( var(--section-title-x-rule) * 3 ); border-bottom: var(--section-title-x-rule) solid var(--brand-accent); }
+.section-title a { display: inline-block; min-height: 24px; }
