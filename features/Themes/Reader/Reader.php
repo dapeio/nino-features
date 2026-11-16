@@ -518,8 +518,10 @@ namespace Nino\Modules\Themes {
 				foreach( (array) glob( $root. '/*/theme.json' ) as $file )
 					$files[] = $file;
 
-				foreach( (array) glob( $root. '/*/parts/*/part.{json,css}', GLOB_BRACE ) as $file )
-					$files[] = $file;
+				// One pattern for each name: a pattern with braces needs a flag of glob() that not every system has (musl has none)
+				foreach( [ 'part.json', 'part.css' ] as $name )
+					foreach( (array) glob( $root. '/*/parts/*/'. $name ) as $file )
+						$files[] = $file;
 			}
 
 			$state = [];

@@ -266,6 +266,15 @@ check( 'the manifest validates without a warning', is_array( $manifest ) === tru
 check( 'it is the key themes, written for the kernel 2.0, with a data directory and nothing to require', is_array( $manifest ) === true && $manifest['key'] === 'themes' && $manifest['nino'] === '^2.0' && $manifest['data'] === [ '/data/theme' ] && $manifest['requires'] === [] );
 check( 'activation lists the class and records the version', \Nino\Features::activate( $appData, 'themes' ) === true && in_array( '\\Nino\\Modules\\Themes', $appData['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'themes' )['installed'] === $manifest['version'] );
+// A constant not every system defines: the flag for braces in a glob is missing where the C library is musl (the php of an Alpine image), and a glob that names it is an error there
+$needle = 'GLOB_'. 'BRACE';
+$named = [];
+
+foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( dirname( __DIR__ ), \FilesystemIterator::SKIP_DOTS ) ) as $file )
+	if( $file->getExtension() === 'php' && str_contains( (string) file_get_contents( $file->getPathname() ), $needle ) === true )
+		$named[] = substr( $file->getPathname(), strlen( dirname( __DIR__ ) ) + 1 );
+
+check( 'no file of the feature names a glob flag that only some systems define'. ( $named === [] ? '' : ' - '. implode( ', ', $named ) ), $named === [] );
 
 $panels = \Nino\Admin\Admin::panels( $appData );
 check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its eight actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
@@ -1270,11 +1279,11 @@ foreach( [ 'commit', 'restore' ] as $action )
 		$kept = $missing === false || ( is_dir( $private. '/data/theme/previous' ) === true && in_array( $digest( $private. '/data/theme/previous' ), $before, true ) === true );
 		// The list mends what is left over though a state is there, and the last state is there to restore: a restore after the break
 		$listed = themesCall( $broken, 'themes/list' )[1];
-		$wasPrevious = is_dir( $private. '/data/theme/previous' ) === true && glob( $private. '/data/theme/{gone,swap}', GLOB_BRACE ) === [];
+		$wasPrevious = is_dir( $private. '/data/theme/previous' ) === true && array_filter( [ 'gone', 'swap' ], static fn( string $left ): bool => file_exists( $private. '/data/theme/'. $left ) ) === [];
 		$restored = themesCall( $broken, 'themes/restore' );
 		$restorable = $listed['canRestore'] === true && $wasPrevious === true && $restored[0] === 200 && is_file( $state. '/own/lindner.json' ) === true;
 		$next = themesCall( $broken, 'themes/apply', [ 'theme' => 'craft-probe' ] );
-		$later = $next[0] === 200 && is_file( $state. '/own/lindner.json' ) === true && is_dir( $private. '/data/theme/previous' ) === true && glob( $private. '/data/theme/{next,gone,swap,building}', GLOB_BRACE ) === [];
+		$later = $next[0] === 200 && is_file( $state. '/own/lindner.json' ) === true && is_dir( $private. '/data/theme/previous' ) === true && array_filter( [ 'next', 'gone', 'swap', 'building' ], static fn( string $left ): bool => file_exists( $private. '/data/theme/'. $left ) ) === [];
 		$wholeAfter[] = $whole === true && $later === true && $kept === true && $restorable === true;
 		$mending[] = $action. ' '. $point. ': '. ( $whole === true ? 'whole' : 'BROKEN' ). ( $later === true ? ', next change made' : ', NEXT CHANGE FAILED' );
 	}
