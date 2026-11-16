@@ -35,8 +35,8 @@ return [
 				'de_DE' => 'Das Bildfeld des Elements wird als Bild gezeichnet, mit dem Alt-Text, den sein Modell nennt.',
 			],
 			'[collection-filter by=".category"]' => [
-				'en_US' => 'Holds a collection, a list or a table and shows a button for each value of the field, which hides the rows of the others in the browser.',
-				'de_DE' => 'Umschließt eine Sammlung, eine Liste oder eine Tabelle und zeigt für jeden Wert des Felds einen Knopf, der die Zeilen der anderen im Browser ausblendet.',
+				'en_US' => 'Holds a collection, a list or a table and shows a button for each value of the field, which hides the rows of the others in the browser; all="…" labels the first one.',
+				'de_DE' => 'Umschließt eine Sammlung, eine Liste oder eine Tabelle und zeigt für jeden Wert des Felds einen Knopf, der die Zeilen der anderen im Browser ausblendet; all="…" beschriftet den ersten.',
 			],
 		],
 		'markup' => [
@@ -47,6 +47,10 @@ return [
 			'data-order' => [
 				'en_US' => 'The attribute of the filter that lists the values in the order of the kernel\'s sort in the language of the page; the script puts the buttons in it.',
 				'de_DE' => 'Das Attribut des Filters, das die Werte in der Ordnung der Sortierung des Kernels in der Sprache der Seite aufführt; das Skript stellt die Knöpfe danach.',
+			],
+			'lang' => [
+				'en_US' => 'The row of a list for an element whose text is all from another language than the page\'s carries that language as its lang.',
+				'de_DE' => 'Die Zeile einer Liste für ein Element, dessen Text ganz aus einer anderen Sprache als der der Seite stammt, trägt diese Sprache als lang.',
 			],
 			'sort, query' => [
 				'en_US' => 'Read as [elements] reads them, but a field name or a character the kernel never uses ends the list: a query that cannot be read selects nothing.',

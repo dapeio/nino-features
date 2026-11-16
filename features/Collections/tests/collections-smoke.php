@@ -130,7 +130,7 @@ function collectionsSite( string $locale = 'de_DE', array $extra = [] ): array {
 	// What the site says: the words of the feature, as an activation puts them into the Text panel, and two of the page
 	foreach( [ 'de_DE', 'en_US' ] as $language ) {
 
-		$fills = [ '/template/page-x/hero/price' => $language === 'de_DE' ? 'Preis' : 'Price', '/template/page-x/hero/name' => $language === 'de_DE' ? 'Name' : 'Name' ];
+		$fills = [ '/template/page-x/hero/price' => $language === 'de_DE' ? 'Preis' : 'Price', '/template/page-x/hero/name' => $language === 'de_DE' ? 'Name' : 'Name', '/template/page-x/hero/all' => $language === 'de_DE' ? 'Alles zeigen' : 'Show everything' ];
 
 		foreach( (array) include $featureDir. '/install/text/'. $language. '.php' as $key => $text )
 			$fills[trim( (string) $key, '[]' )] = $text;
@@ -515,6 +515,11 @@ check( 'a filter holds what it filters in a box with its words - the name of the
 check( 'the box has an attribute the script finds it by and the words it needs, in the language of the page', collectionsAttribute( $filtered, 'data-all' ) === 'Alle' && collectionsAttribute( $filtered, 'data-label' ) === 'Filter'
 	&& str_contains( collectionsDraw( collectionsSite( 'en_US' ), '[collection-filter by="category"][collection-list /services][text .slug][/collection-list][/collection-filter]' ), 'data-all="All" data-shown="Showing {shown} of {total}" data-label="Filter"' ) === true );
 check( 'the label of the first button is the call\'s own where it says one', str_contains( collectionsDraw( $appData, '[collection-filter by=".category" all="Alles"][collection-list /services][text .slug][/collection-list][/collection-filter]' ), 'data-all="Alles"' ) === true );
+check( 'the label of the first button is a text: a ~name of the section reads its key in the language of the page, and a key written out too',
+	collectionsAttribute( collectionsDraw( $appData, '[collection-filter by=".category" all="~all"][collection-list /services][text .slug][/collection-list][/collection-filter]', [ 'scope' => 'hero' ] ), 'data-all' ) === 'Alles zeigen'
+	&& collectionsAttribute( collectionsDraw( collectionsSite( 'en_US' ), '[collection-filter by=".category" all="~all"][collection-list /services][text .slug][/collection-list][/collection-filter]', [ 'scope' => 'hero' ] ), 'data-all' ) === 'Show everything'
+	&& collectionsAttribute( collectionsDraw( $appData, '[collection-filter by=".category" all="/template/page-x/hero/all"][collection-list /services][text .slug][/collection-list][/collection-filter]' ), 'data-all' ) === 'Alles zeigen' );
+check( 'a ~name that no section has is no label: the box is drawn bare, as for a filter with no label at all', str_contains( collectionsDraw( $appData, '[collection-filter by=".category" all="~none"][collection-list /services][text .slug][/collection-list][/collection-filter]', [ 'scope' => 'hero' ] ), 'data-all="~none"' ) === false );
 
 $cardsFiltered = collectionsDraw( $appData, '[section-wrap][section-row][collection-filter by=".category"][collection /services sort="title" limit="2"][section-col variant="card"][section-title .title][/section-col][/collection][/collection-filter][/section-row][/section-wrap]' );
 check( 'cards in a row are filtered too: each card is in a box that carries its value, and the box of the filter is the only other thing in the row',
@@ -803,6 +808,22 @@ check( 'an English title and a German summary on the page in English: the title 
 	&& substr_count( $mixed, 'lang=' ) === 1 );
 $only = collectionsDraw( $lang, '[collection-table /services query="category=Bau" sort="title"][collection-col .title][collection-col .summary][/collection-table]' );
 check( 'an element that exists in German only has the lang on both of its cells, and the elements beside it on none', str_contains( $only, '<td class="collection-col" lang="de-DE">Nur deutsch</td><td class="collection-col" lang="de-DE">Kein englischer Text</td>' ) === true && substr_count( $only, 'lang=' ) === 2 );
+// lang of a row: the element as a whole - what is not the page's language in every text it has
+$rows = collectionsDraw( $lang, '[collection-list /services query="category=Bau" sort="title"][text .title][/collection-list]' );
+check( 'a row of a list has the lang of the element where all its text is from another language: the element in German only has it, the elements in the language of the page have none',
+	str_contains( $rows, '<li class="collection-list-row" lang="de-DE"><div class="text">Nur deutsch</div></li>' ) === true && substr_count( $rows, 'lang=' ) === 1 && substr_count( $rows, '<li class="collection-list-row"><div class="text">' ) === 3 );
+check( 'an element with one field of its own language and another from the other has no lang on its row - the cells name the language of each field -, and the page in German and a loop that draws no row have none',
+	str_contains( collectionsDraw( $lang, '[collection-list /services query="category=Mix"][text .title][/collection-list]' ), 'lang=' ) === false
+	&& str_contains( collectionsDraw( $appData, '[collection-list /services][text .title][/collection-list]' ), 'lang=' ) === false
+	&& str_contains( collectionsDraw( $lang, '[collection /services query="category=Bau"][text .title][/collection]' ), 'lang=' ) === false
+	&& str_contains( collectionsDraw( $lang, '[collection-filter by=".category"][collection /services query="category=Bau"][text .title][/collection][/collection-filter]' ), 'lang=' ) === false
+	&& str_contains( collectionsDraw( $lang, '[collection-filter by=".category"][collection-list /services query="category=Bau" sort="title"][text .title][/collection-list][/collection-filter]' ), '<li class="collection-list-row" lang="de-DE" data-collection-value="Bau">' ) === true );
+$langOf = new ReflectionMethod( \Nino\Modules\Collections::class, '_lang' );
+$model = [ 'title' => [ 'locale' => true ], 'summary' => [ 'locale' => true ], 'price' => [] ];
+check( 'a row has a lang only where one language gave all the text: two languages, a field with no text of its own and no field taken give none',
+	$langOf->invoke( null, [ 'title' => 'a', 'summary' => 'b', '.langs' => [ 'title' => 'de-DE', 'summary' => 'fr-FR' ] ], $model ) === ''
+	&& $langOf->invoke( null, [ 'title' => 'a', 'summary' => '', '.langs' => [ 'title' => 'de-DE' ] ], $model ) === ' lang="de-DE"'
+	&& $langOf->invoke( null, [ 'title' => 'a', 'summary' => 'b', '.langs' => [] ], $model ) === '' );
 check( 'on the page in German the same elements have no lang at all', str_contains( collectionsDraw( $appData, '[collection-table /services query="category=Mix"][collection-col .title][collection-col .summary][/collection-table]' ), 'lang=' ) === false
 	&& str_contains( collectionsDraw( $appData, '[collection-table /services][collection-col .title][collection-col .summary][/collection-table]' ), 'lang=' ) === false );
 

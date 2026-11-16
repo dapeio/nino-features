@@ -41,7 +41,7 @@ namespace Nino\Modules {
 		 */
 		public static array $html = [
 			'item'		=> '<div class="collection-item"[[value]]>[[content]]</div>',
-			'row'			=> '<li class="collection-list-row"[[value]]>[[content]]</li>',
+			'row'			=> '<li class="collection-list-row"[[lang]][[value]]>[[content]]</li>',
 			'line'		=> '<tr class="collection-table-row"[[value]]>[[content]]</tr>',
 			'value'		=> ' data-collection-value="[[value]]"',
 			'empty'		=> '<p class="collection-empty">[[text]]</p>',
@@ -50,6 +50,7 @@ namespace Nino\Modules {
 			'label'		=> ' aria-label="[[label]]"',
 			'head'		=> '<thead><tr>[[cells]]</tr></thead>',
 			'scope'		=> ' scope="[[scope]]"',
+			'lang'		=> ' lang="[[lang]]"',
 		];
 
 		// The token of the context that tells a loop below a filter which field the filter asks for
@@ -145,6 +146,32 @@ namespace Nino\Modules {
 				return '';
 
 			return str_replace( '[', '&#91;', \Nino\Components::escape( trim( mb_substr( (string) $raw, 0, self::VALUE_LENGTH ) ) ) );
+		}
+
+		/**
+		 *	The lang attribute of a row: the tag of the one language all the text of the element is from where that is not the
+		 *	language of the page. An element that took a field from another language and keeps the rest in its own has no one
+		 *	language, and says nothing - a cell of the table names the language of its field
+		 *
+		 *	@param		array			$element			As \Nino\Modules\Elements::queryLoop() answers it, with '.langs'
+		 *	@param		array			$model				The model of the type
+		 *
+		 *	@return 	string										' lang="de-DE"', or ''
+		 */
+		private static function _lang( array $element, array $model ): string {
+
+			$langs = is_array( $element['.langs'] ?? null ) === true ? $element['.langs'] : [];
+			$tags = array_unique( array_values( $langs ) );
+
+			if( count( $tags ) !== 1 || is_string( $tags[0] ) === false || $tags[0] === '' )
+				return '';
+
+			// Every per-language field the element has a text for is one of those that were taken
+			foreach( $model as $field => $declared )
+				if( is_array( $declared ) === true && ( $declared['locale'] ?? false ) === true && is_scalar( $element[$field] ?? null ) === true && trim( (string) $element[$field] ) !== '' && isset( $langs[$field] ) === false )
+					return '';
+
+			return str_replace( '[[lang]]', \Nino\Components::escape( $tags[0] ), self::$html['lang'] );
 		}
 
 		/**
@@ -306,7 +333,7 @@ namespace Nino\Modules {
 		 *	@param		array			$nodes				The nodes to draw for each element
 		 *	@param		array			$context			What the renderer was handed
 		 *
-		 *	@return 	array											[ [ the html of the round, the value of the filtered field or null ], ... ]; [] where nothing is asked or nothing is found
+		 *	@return 	array											[ [ the html of the round, the value of the filtered field or null, the lang attribute of the element ], ... ]; [] where nothing is asked or nothing is found
 		 */
 		private static function _drawn( array &$appData, array $args, array $nodes, array $context ): array {
 
@@ -371,7 +398,7 @@ namespace Nino\Modules {
 
 				$appData['./nino/collections/depth'] = $depth + 1;
 				$value = $field === '' ? null : self::_value( $element, $field );
-				$drawn[] = [ \Nino\Components::render( $appData, $nodes, $round ), $value ];
+				$drawn[] = [ \Nino\Components::render( $appData, $nodes, $round ), $value, self::_lang( $element, $model ) ];
 				$appData['./nino/collections/depth'] = $depth;
 
 				// A filter above wants the values its loops mark, to put its buttons in order
@@ -424,8 +451,8 @@ namespace Nino\Modules {
 
 			$rows = '';
 
-			foreach( self::_drawn( $appData, $args, (array) $context['children'], $context ) as [ $round, $value ] )
-				$rows .= strtr( self::$html['row'], [ '[[value]]' => self::_marked( $value ), '[[content]]' => $round ] );
+			foreach( self::_drawn( $appData, $args, (array) $context['children'], $context ) as [ $round, $value, $lang ] )
+				$rows .= strtr( self::$html['row'], [ '[[lang]]' => $lang, '[[value]]' => self::_marked( $value ), '[[content]]' => $round ] );
 
 			if( $rows === '' )
 				return self::_empty( $args );
