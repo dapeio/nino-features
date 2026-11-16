@@ -71,14 +71,15 @@ namespace Nino\Modules {
 		private const int VALUE_LENGTH = 120;
 
 		/**
-		 *	The type of elements a call names: '/services' and nothing that climbs, holds a fill or is longer
+		 *	The type of elements a call names: '/services' and nothing that climbs, holds a fill or is longer - and the type of
+		 *	example elements the kernel brings (\Nino\Elements::PLACEHOLDERS), whose name no type of a project has
 		 *
 		 *	@param		string		$source				The first word of the call as it is written
 		 *
 		 *	@return 	string										'' where it is none
 		 */
 		private static function _type( string $source ): string {
-			return preg_match( self::TYPE, $source ) === 1 ? $source : '';
+			return preg_match( self::TYPE, $source ) === 1 || isset( \Nino\Elements::PLACEHOLDERS[$source] ) === true ? $source : '';
 		}
 
 		/**

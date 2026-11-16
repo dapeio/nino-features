@@ -20,6 +20,7 @@ declare(strict_types=1);
  *													   fields of an element in the attributes of a button and the picture of an image field
  *													F. the script of the filter, run over the kernel's stand-in of a page, in collections-js-smoke.js
  *													G. words, activation, sizes, and the cost of a loop of a thousand elements - what the register costs it
+												H. the demo of the group: read without a note, and drawn over the type of example elements the kernel brings
  *
  *												Runs against an isolated sandbox directory. The kernel is the checkout's own; the feature is the one this
  *												file sits in, which the kernel reads from the directory it is told (NINO_FEATURES_DIR) and registers as it
@@ -1050,6 +1051,55 @@ $reads = $median( static function() use ( &$busy ): void {
 }, 3 );
 echo sprintf( "  ..  - a table of 5000 fills: %.1f ms for a thousand rounds that read no key, %.1f ms where each reads one (%.0f us a round), %.1f ms for a thousand reads of the table\n", $plainRound, $keyedRound, ( $keyedRound - $plainRound ) / $thousand * 1000, $reads );
 // A measurement and no assertion: the table of the fills is the register's to read, and the day it keeps it between two drawings this line says so
+
+// --- H. The demo ------------------------------------------------------------------------------------------
+
+echo "\nH. The demo of the group\n";
+
+$demoSite = collectionsSite( 'en_US' );
+$demoGroups = \Nino\Components::groups( $demoSite );
+$demoType = array_key_first( \Nino\Elements::PLACEHOLDERS );
+$demoElements = count( \Nino\Elements::PLACEHOLDERS[$demoType]['*'] ) - 1;
+$demoSource = (string) ( $demoGroups['collection']['demo'] ?? '' );
+$demoNotes = [];
+$demoNodes = \Nino\Markup::parse( $demoSource, \Nino\Components::containers( $demoSite ), $demoNotes );
+check( 'the group has a demo, it is read as html+ without a note and keeps the rule of its file: components of the feature and of basis, the type of example elements and the fields of its model',
+	$demoSource !== '' && $demoNotes === [] && \Nino\Components::demoProblem( $demoSource, array_keys( \Nino\Components::components( $demoSite ) ), \Nino\Components::containers( $demoSite ) ) === null
+	&& strlen( $demoSource ) < \Nino\Components::TEMPLATE_LENGTH / 4 && \Nino\Features::componentProblems( $demoSite, 'collections' ) === [] );
+
+$demoCalls = [];
+$demoWalk = static function( array $nodes ) use ( &$demoWalk, &$demoCalls ): void {
+
+	foreach( $nodes as $node )
+		if( isset( $node['n'] ) === true ) {
+
+			$demoCalls[] = $node;
+			$demoWalk( is_array( $node['c'] ?? null ) === true ? $node['c'] : [] );
+		}
+};
+$demoWalk( $demoNodes );
+$demoLoops = array_values( array_filter( $demoCalls, static fn( array $call ): bool => $call['s'] === $demoType ) );
+check( '...it calls a list and a table of the type, the table with at least three columns and at most four, and nothing of the project\'s',
+	array_column( $demoLoops, 'n' ) === [ 'collection-list', 'collection-table' ] && count( array_filter( $demoCalls, static fn( array $call ): bool => $call['n'] === 'collection-col' ) ) >= 3
+	&& count( array_filter( $demoCalls, static fn( array $call ): bool => $call['n'] === 'collection-col' ) ) <= 4 && array_filter( $demoCalls, static fn( array $call ): bool => $call['s'] !== '' && $call['s'] !== $demoType && $call['s'][0] !== '.' ) === [] );
+
+$demoHtml = \Nino\Html::renderSource( $demoSite, $demoSource );
+check( 'drawn, it has one row of the list and one row of the table for each element of the type, a heading for each column and no bracket left in the page',
+	substr_count( $demoHtml, '<li class="collection-list-row"' ) === $demoElements && substr_count( $demoHtml, '<tr class="collection-table-row"' ) === $demoElements && $demoElements === 6
+	&& substr_count( $demoHtml, '<th' ) >= count( array_filter( $demoCalls, static fn( array $call ): bool => $call['n'] === 'collection-col' ) ) && str_contains( $demoHtml, '[' ) === false && str_contains( $demoHtml, '[[' ) === false && ninoWarnings() === [] );
+check( '...whatever types the project has: with none of its own the demo is drawn the same',
+	( static function() use ( $demoSite, $demoSource, $demoHtml ): bool {
+
+		foreach( glob( \Nino\Filesystem::path( $demoSite, '/elements' ). '/*.php' ) ?: [] as $file )
+			unlink( $file );
+
+		$demoSite['./nino/elements/cache'] = [];
+
+		// The id of a caption counts the tables of the request
+		$plain = static fn( string $html ): string => (string) preg_replace( '/collection-table-\d+/', 'collection-table-N', $html );
+
+		return $plain( \Nino\Html::renderSource( $demoSite, $demoSource ) ) === $plain( $demoHtml );
+	} )() );
 
 foreach( $sandboxes as $sandbox )
 	if( is_dir( $sandbox ) === true )
