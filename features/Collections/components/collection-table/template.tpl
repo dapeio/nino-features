@@ -1,0 +1,1 @@
+<div class="collection-table-wrap" role="region"[[name]] tabindex="0"><table class="[[class]]">[[caption]][[head]]<tbody>[[content]]</tbody></table></div>

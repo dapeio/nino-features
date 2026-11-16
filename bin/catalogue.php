@@ -51,7 +51,12 @@ if( class_exists( '\Nino\Features' ) === false || defined( '\Nino\Features::CATE
 $appData	= [];
 $catalogue	= [];
 
-foreach( \Nino\Features::all( $appData ) as $feature )
+// A feature that comes with the kernel (\Nino\Features::all() lists it with 'shipped' => true) is the kernel's and no entry of this catalogue
+foreach( \Nino\Features::all( $appData ) as $feature ) {
+
+	if( ( $feature['shipped'] ?? false ) === true )
+		continue;
+
 	$catalogue[] = [
 		'key'					=> $feature['key'],
 		'name'				=> $feature['name'],
@@ -66,6 +71,7 @@ foreach( \Nino\Features::all( $appData ) as $feature )
 		'requires'		=> $feature['requires'],
 		'directory'		=> basename( $feature['dir'] ),
 	];
+}
 
 // Every directory has to be in the catalogue: one Nino skipped is a manifest
 // to fix, not a feature to leave out silently

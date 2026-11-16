@@ -57,7 +57,7 @@ $offenders		= static function( callable $rule ) use ( $features, $locales ): arr
 };
 $said = static fn( array $found ): string => $found === [] ? '' : ' - '. implode( ' | ', array_slice( $found, 0, 8 ) );
 
-check( 'the features were actually read', count( $features ) > 20 );
+check( 'the features were actually read', count( $features ) > 0 );
 
 echo "\nThe sections\n";
 

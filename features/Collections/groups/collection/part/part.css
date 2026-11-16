@@ -1,0 +1,63 @@
+/*	collection - the standard part: the rows of a list, the cells of a table, the buttons of a filter and the text of a list with
+	nothing in it. A collection draws no element of its own - the cards in it are the cards of the feature that draws them -, and the
+	box it puts round a row for a filter takes itself out of the layout	*/
+:root {
+	--collection-list-gap: var(--page-space-2);
+	--collection-table-pad: var(--page-space-2);
+	--collection-filter-gap: var(--page-space-2);
+	--collection-filter-radius: var(--page-radius);
+}
+
+/*	The box round a row that a filter asks for stands in no layout: what is in it is a part of the row or column the collection stands in.
+	A row the filter hides is out of the layout whatever box it has	*/
+.collection-item { display: contents; }
+.collection-item[hidden] { display: none; }
+.collection-empty { flex: 0 0 auto; width: 100%; margin: 0; color: var(--brand-ink-quiet); }
+
+/*	The list: a bullet, as a list has it, or a check, a number or nothing	*/
+.collection-list { flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--collection-list-gap); margin: 0; padding: 0 0 0 1.25em; list-style: disc; max-width: 100%; }
+.collection-list-row { min-width: 0; list-style: inherit; }
+.collection-list-row::marker { color: var(--brand-accent); }
+.collection-list--variant-numbered { padding-inline-start: 1.75em; list-style: decimal; }
+.collection-list--variant-plain, .collection-list--variant-check { padding-inline-start: 0; list-style: none; }
+.collection-list--variant-check > .collection-list-row { position: relative; padding-inline-start: 1.75em; }
+.collection-list--variant-check > .collection-list-row::before {
+	content: ""; position: absolute; inset-inline-start: .3em; top: .3em; width: .4em; height: .75em;
+	border: solid var(--brand-accent); border-width: 0 .18em .18em 0; transform: rotate( 45deg );
+}
+
+/*	The table: in a box that scrolls on its own where the page is narrower than the columns, and that a keyboard reaches. A column is as
+	wide as its words and no narrower than six rem, so that four of them on a phone are a table to scroll and not a pile of lines	*/
+.collection-table-wrap { flex: 0 0 auto; width: 100%; max-width: 100%; overflow-x: auto; }
+.collection-table-wrap:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.collection-table { width: 100%; border-collapse: collapse; }
+.collection-table > caption { padding: var(--collection-table-pad); text-align: start; font-weight: 600; color: var(--brand-ink-quiet); }
+.collection-col { min-width: 6rem; padding: var(--collection-table-pad); border-bottom: var(--page-line) solid var(--brand-line); text-align: start; vertical-align: top; }
+.collection-col[scope="col"] { border-bottom-width: calc( var(--page-line) * 2 ); font-weight: 600; white-space: nowrap; }
+.collection-col[scope="row"] { font-weight: 600; }
+.collection-col--align-center { text-align: center; }
+.collection-col--align-end { text-align: end; }
+
+/*	The filter: a row of buttons above what it filters, the one that is on filled with the accent. It has no buttons where the script
+	has not run, and what it holds is all there then	*/
+.collection-filter { display: contents; }
+.collection-filter-nav { flex: 0 0 auto; width: 100%; display: flex; flex-wrap: wrap; gap: var(--collection-filter-gap); }
+.collection-filter-button {
+	min-height: 2.25rem; padding: var(--page-space-1) var(--page-space-3); border: var(--page-line) solid var(--brand-line); border-radius: var(--collection-filter-radius);
+	max-width: 100%; overflow-wrap: anywhere; text-align: start;
+	background-color: transparent; color: var(--brand-ink); font-family: var(--brand-font-button); font-size: var(--page-text-2); line-height: 1.2; cursor: pointer;
+	transition: background-color var(--page-motion);
+}
+.collection-filter-button:hover { border-color: var(--brand-accent); }
+.collection-filter-button[aria-pressed="true"] { border-color: var(--brand-accent); background-color: var(--brand-accent); color: var(--brand-on-accent); }
+.collection-filter-button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.collection-filter-status { flex: 0 0 auto; width: 100%; margin: 0; font-size: var(--page-text-1); color: var(--brand-ink-quiet); }
+
+/*	On paper there is nothing to press: the buttons and what they say are left out, every row is printed, the ones a filter hides too, and the table does not scroll	*/
+@media print {
+	.collection-item[hidden] { display: contents; }
+	.collection-list-row[hidden] { display: list-item; }
+	.collection-table-row[hidden] { display: table-row; }
+	.collection-filter-nav, .collection-filter-status { display: none; }
+	.collection-table-wrap { overflow: visible; }
+}
