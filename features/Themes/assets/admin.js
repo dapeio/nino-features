@@ -8,10 +8,15 @@
  *										once the hand has rested, and the page in the frame is loaded once more with the token the answer
  *										gives. Nothing is written before Save.
  *
- *										The address is #themes (the list), #themes/<theme> (the groups; settings and css after the theme are the other
- *										two sections of that level), #themes/<theme>/<group>/<component> (the settings of a group, one component open),
- *										for the page <group> is page and the section a set of its knobs, and #themes/<theme>/brand/<section> (the
- *										brand of the project: colours, type, mode, logo).
+ *										The address is #themes (the list: the first view of the panel, which has a strip of tabs where there is a second one -
+ *										#themes/<view>), #themes/<theme>/<section> (the first level of a theme: groups, settings or css, the one that is open),
+ *										#themes/<theme>/<group>/<component> (the settings of a group, one component open), for the page <group> is page and the
+ *										section a set of its knobs, and #themes/<theme>/brand/<section> (the brand of the project: colours, type, mode, logo).
+ *										The accordions close: a level whose address names no section is a level with every section closed, and the way in -
+ *										a row, a link, the address a page is loaded on - opens the first one. The key of an own theme is own.<key> in the address.
+ *
+ *										The preview shows the page that is chosen for the theme - "Automatically" first: the demo of the group that is open, where
+ *										the register has one, else the start page - and a thumbnail on each card of the list shows the start page of that theme.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -36,13 +41,26 @@
 	// Below this width of the preview - in pixels - a person who has chosen no width is shown the page as a phone shows it
 	const NARROW	= 520;
 
+	// The page a thumbnail of a theme draws, in pixels, and the box it is drawn into is as high as these two say
+	const THUMB		= { width : 1280, height : 800 };
+
+	// The query that asks the website for the demo of a group in place of a page (see Modules\Themes)
+	const DEMO		= 'nino-theme-demo';
+
+	// The views of the panel, each a tab above the list and the screens of a theme: the themes, which are the panel's own, and whatever is hung in
+	// here besides - { key, word, show( box ) } with the key as the address after #themes (the themes themselves are #themes) and the word of the tab
+	// under /_admin/themes/tab/. The strip is drawn where there is more than one view, and a view but the first has a screen once one is hung in. The
+	// names of the views are reserved: no theme and no group is called by one of them (see RESERVED and \Nino\Modules\Themes\Reader)
+	const VIEWS		= [ { key : 'themes', word : 'tab/themes', show : null } ];
+
 	// The page has no components: its knobs stand in these sections, in this order, and a knob that is in none stands in 'more'
 	const PAGE_SECTIONS	= [ [ 'type', [ 'size', 'text', 'weight' ] ], [ 'measures', [ 'width', 'space', 'radius', 'line', 'density' ] ], [ 'motion', [ 'motion' ] ] ];
 	const MORE					= 'more';
 
-	// The names of the sections on the first level of a theme - the groups, the settings, the own css - and of the brand, which has a level of
-	// its own. No group of the register takes one of them, and a group that is called one is not shown
-	const RESERVED	= [ 'groups', 'brand', 'settings', 'css' ];
+	// The names of the sections on the first level of a theme - the groups, the settings, the own css - of the brand, which has a level of its
+	// own, and of the views of the panel that are no themes - fonts. No group of the register takes one of them, and a group that is called one is
+	// not shown
+	const RESERVED	= [ 'groups', 'brand', 'settings', 'css', 'fonts' ];
 	const LEVEL_ONE	= [ 'groups', 'settings', 'css' ];
 
 	// The values of the brand, and the sections they stand in on its level
@@ -80,7 +98,15 @@
 		token			: '',
 		until			: 0,
 		query			: '',
-		page			: '/',
+		picked		: {},
+		demo			: '',
+		tab				: 'themes',
+		selectTab	: null,
+		cssFaults	: [],
+		listing		: true,
+		markedLabel	: '',
+		thumbs		: {},
+		looking		: null,
 		width			: 'desktop',
 		mark			: '',
 		timer			: null,
@@ -629,18 +655,49 @@
 	};
 
 	/**
-	 *	The address of the page of the preview: the page, the token of the draft and the component to outline
+	 *	The page the preview shows: the one the person chose for this theme, or '' where "Automatically" is chosen - the demo of the group that is
+	 *	open, or the start page where there is none
+	 *
+	 *	@return		{string}
+	 */
+	const pageOf = function() {
+
+		const picked = S.picked[S.key] ?? '';
+
+		return pagePaths().indexOf( picked ) === -1 ? '' : picked;
+	};
+
+	// The start page: the home of the site where the list has it, else the first page it names
+	const homeOf = function() {
+		return pagePaths().indexOf('/') !== -1 ? '/' : ( pagePaths()[0] ?? '/' );
+	};
+
+	// The group whose demo the screen shows: the one that is named, where the register has a demo for it and the screen has the group; else ''
+	const demoOf = function( group ) {
+
+		const known = S.list.groups.find( function( candidate ) { return candidate.key === group } );
+
+		return known !== undefined && known.demo === true && isGroup( group ) === true ? group : '';
+	};
+
+	/**
+	 *	The address of the page of the preview: the page, the token of the draft, the component to outline and - where "Automatically" is chosen and
+	 *	the group that is open has a demo - the group whose demo is drawn in place of the page
 	 *
 	 *	@return		{string}
 	 */
 	const previewUri = function() {
 
 		const dir = typeof Nino.dir === 'string' ? Nino.dir : '';
+		const chosen = pageOf();
+
+		// The demo is the answer of the start address of the site and of no other
+		const shown = chosen === '' ? ( S.demo !== '' ? '/' : homeOf() ) : chosen;
 
 		// A page of this site and nothing else: a path that starts with one slash, as the list of the API gives them
-		const page = /^\/(?![\/\\])/.test( S.page ) === true ? S.page : '/';
+		const page = /^\/(?![\/\\])/.test( shown ) === true ? shown : '/';
 
-		return dir+ page+ '?'+ S.query+ ( S.mark === '' ? '' : '&mark='+ encodeURIComponent( S.mark ) );
+		return dir+ page+ '?'+ S.query+ ( S.mark === '' || chosen === '' ? '' : '&mark='+ encodeURIComponent( S.mark ) )+ ( chosen === '' && S.demo !== '' ? '&'+ DEMO+ '='+ encodeURIComponent( S.demo ) : '' );
 	};
 
 	const reloadFrame = function() {
@@ -656,17 +713,9 @@
 			return;
 		}
 
-		// The page replaces what the frame shows: a frame that is given another address adds a step to the history of the window, and the
-		// Back key would have to walk back over every reload of the preview before it came to the address of the panel
-		const frame = S.view.frame;
-
-		frame.setAttribute( 'aria-busy', 'true' );
-
-		try {
-			frame.contentWindow.location.replace( previewUri() );
-		} catch( e ) {
-			frame.setAttribute( 'src', previewUri() );
-		}
+		// The split view puts the page in the place of what the frame shows: a frame that is given another address adds a step to the history of
+		// the window, and the Back key would have to walk back over every reload of the preview before it came to the address of the panel
+		S.view.split.reload( previewUri() );
 	};
 
 	/**
@@ -721,7 +770,7 @@
 		S.healed = href;
 
 		if( pagePaths().indexOf( path ) !== -1 ) {
-			S.page = path;
+			S.picked[S.key] = path;
 			S.view.tools.pages.value = path;
 		}
 		else
@@ -734,7 +783,7 @@
 	const fitFrame = function() {
 
 		if( S.view !== null )
-			Nino.adminUi.scaleFrame( S.view.frame, S.view.port, LAYOUT[S.width] );
+			S.view.split.width( LAYOUT[S.width] );
 	};
 
 	/**
@@ -776,9 +825,26 @@
 				return;
 			}
 
+			// An answer that is no draft - no token, nothing but a "false" - is no page to load: the last picture stays, and the bar says that none is
+			// drawn for now. The frame is loaded only on an answer that holds
+			if( response === null || typeof response !== 'object' || typeof response.token !== 'string' || typeof response.query !== 'string' ) {
+				S.again = false;
+				S.structural = null;
+
+				if( S.view !== null ) {
+					S.view.line.idle( word('msg/preview-unavailable') );
+					S.said = true;
+				}
+
+				finish( false );
+				return;
+			}
+
 			S.token		= response.token;
 			S.query		= response.query;
 			S.until		= Date.now() + response.ttl * 1000 - GRACE;
+			S.cssFaults	= Array.isArray( response.cssFaults ) === true ? response.cssFaults : [];
+			paintCssFaults();
 
 			if( S.again === true ) {
 				flush();
@@ -1015,7 +1081,7 @@
 	 *	The settings of a group - level two: the way back, the part it comes from, and a section for each component
 	 *
 	 *	@param		{string}		group
-	 *	@param		{string}		[open]					The key of the section that is open; the first when none is named or there is none of that name
+	 *	@param		{string|null}	[open]				The key of the section that is open; the first when none is named or there is none of that name; null for none
 	 *
 	 *	@return		{Element}
 	 */
@@ -1041,8 +1107,9 @@
 			const accordion = Nino.adminUi.accordion( {
 				id			: 'themes-acc',
 				level		: 4,
+				collapsible	: true,
 				address		: { panel : 'themes', parts : addressOf( [ S.key, group ] ) },
-				open		: keys.indexOf( open ) === -1 ? keys[0] : open,
+				open		: open === null ? [] : ( keys.indexOf( open ) === -1 ? keys[0] : open ),
 				sections	: sections.map( function( section ) {
 					return { key : section.key, label : section.label, summary : summaryOf( group, section ), badge : changedIn( group, section ) === true ? word('state/changed-mark') : '', content : function() { return bodyOf( group, section ) } };
 				} ),
@@ -1068,18 +1135,35 @@
 
 		S.mark = section === undefined || section.component === null ? '' : section.component;
 
-		if( S.view !== null )
-			S.view.marked.textContent = S.mark === '' ? word('msg/whole-page') : word( 'msg/marked', section.label );
+		S.markedLabel = section === undefined ? '' : section.label;
+		paintMarked();
 
 		if( quiet !== true )
 			reloadFrame();
 	};
 
 	/**
+	 *	What the line over the preview says: the component that is outlined, where a page is chosen - the demo of a group is all the component, and the
+	 *	start page that stands for a group without a demo does not show it, so neither is marked - and what "Automatically" shows
+	 *
+	 *	@return		{void}
+	 */
+	const paintMarked = function() {
+
+		if( S.view === null )
+			return;
+
+		const chosen = pageOf() !== '';
+
+		S.view.marked.textContent = chosen === false ? '' : ( S.mark === '' ? word('msg/whole-page') : word( 'msg/marked', S.markedLabel ) );
+		S.view.tools.auto.textContent = S.demo !== '' ? word('label/page-auto') : word('label/page-auto-home');
+	};
+
+	/**
 	 *	The first level of a theme: three sections - the groups, each with the part it comes from and where it rests that and why, the settings
 	 *	of the theme and its own css. The brand stands in the groups, before the page
 	 *
-	 *	@param		{string}		[open]					The section that is open, groups where none is named
+	 *	@param		{string|null}	[open]				The section that is open, groups where none is named; null for none
 	 *
 	 *	@return		{Element}
 	 */
@@ -1135,10 +1219,11 @@
 		const accordion = Nino.adminUi.accordion( {
 			id			: 'themes-groups',
 			level		: 4,
+			collapsible	: true,
 			address		: { panel : 'themes', parts : addressOf( [ S.key ] ) },
-			open		: LEVEL_ONE.indexOf( open ) === -1 ? 'groups' : open,
+			open		: open === null ? [] : ( LEVEL_ONE.indexOf( open ) === -1 ? 'groups' : open ),
 			sections	: [
-				{ key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( list ); box.appendChild( Nino.adminUi.hint( word('hint/groups') ) ); return box } },
+				{ key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( list ); box.appendChild( Nino.adminUi.hint( word('hint/groups') ) ); reservedNotes( box ); return box } },
 				{ key : 'settings', label : word('label/settings'), summary : S.mix.name ?? S.theme.name, badge : S.theme.kind === 'own' && ( S.mix.name ?? '' ) !== ( S.saved.mix.name ?? '' ) ? word('state/changed-mark') : '', content : settingsOne },
 				{ key : 'css', label : word('label/css'), summary : cssSummary(), badge : cssOf( S.mix ) !== cssOf( S.saved.mix ) ? word('state/changed-mark') : '', content : cssOne },
 			],
@@ -1148,6 +1233,16 @@
 		root.appendChild( accordion.el );
 
 		return root;
+	};
+
+	// A group of the register that is called as a section of the panel is not shown as a group, and not left out unsaid: it is named, with why
+	const reservedNotes = function( box ) {
+
+		S.list.groups.filter( function( group ) { return RESERVED.indexOf( group.key ) !== -1 } ).forEach( function( group ) {
+			const note = Nino.adminUi.hint( word( 'msg/group-reserved', localized( group.label ), group.key ) );
+			note.classList.add('themes-reserved');
+			box.appendChild( note );
+		} );
 	};
 
 	// --- the own css -------------------------------------------------------------------------------------------
@@ -1252,11 +1347,45 @@
 				schedule( TYPING );
 		} );
 
+		const faults = el( 'p', 'nino-admin-hint' );
+
+		faults.id = 'themes-css-faults';
+		faults.setAttribute( 'role', 'status' );
+		text.setAttribute( 'aria-describedby', 'themes-css-hint' );
 		body.appendChild( field );
+		body.appendChild( faults );
 		body.appendChild( hint );
 		say();
+		paintCssFaults( faults );
 
 		return body;
+	};
+
+	/**
+	 *	What the own css leaves open, said quietly under the field: a hint and no refusal - the css is saved as it is written, and the stylesheet closes
+	 *	what is open at its end. Nothing where it closes, which is where a person has not typed yet as well as where all is well
+	 *
+	 *	@param		{Element}		[node]			The line, where it is not in the page yet
+	 *
+	 *	@return		{void}
+	 */
+	const paintCssFaults = function( node ) {
+
+		const line = node ?? dc.getElementById('themes-css-faults');
+
+		if( line === null )
+			return;
+
+		const said = {
+			'open-block'	: function() { return word('msg/css-open-block') },
+			'stray-close'	: function() { return word('msg/css-stray-close') },
+			'open-comment'	: function() { return word('msg/css-open-comment') },
+			'open-string'	: function() { return word('msg/css-open-string') },
+			'open-url'		: function() { return word('msg/css-open-url') },
+		};
+
+		line.textContent = S.cssFaults.filter( function( code ) { return said[code] !== undefined } ).map( function( code ) { return said[code]() } ).join(' ');
+		line.hidden = line.textContent === '';
 	};
 
 	// --- the settings of the theme -------------------------------------------------------------------------------
@@ -1321,6 +1450,8 @@
 		const hint = Nino.adminUi.hint( own === true ? word('hint/name-own') : word( 'hint/name-package', version ) );
 		const actions = el( 'div', 'nino-admin-actions themes-actions' );
 		const saveNew = Nino.adminUi.button( word('label/save-as'), function() { saveAsNew( saveNew ) }, { className : 'nino-admin-btn--small', id : 'themes-save-as' } );
+		const copyButton = Nino.adminUi.button( word('label/duplicate'), function() { duplicateOpen( copyButton ) }, { className : 'nino-admin-btn--small', id : 'themes-duplicate' } );
+		const copyHint = Nino.adminUi.hint('');
 		const restoreButton = Nino.adminUi.button( word('label/restore'), function() { restore( restoreButton ) }, { className : 'nino-admin-btn--small', id : 'themes-restore' } );
 		const restoreHint = Nino.adminUi.hint('');
 		const removeButton = own === true ? Nino.adminUi.button( word('label/delete'), function() { remove( removeButton ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', id : 'themes-delete' } ) : null;
@@ -1332,7 +1463,9 @@
 		hint.id = 'themes-name-hint';
 		restoreHint.id = 'themes-restore-hint';
 		removeHint.id = 'themes-delete-hint';
+		copyHint.id = 'themes-duplicate-hint';
 		restoreButton.setAttribute( 'aria-describedby', 'themes-restore-hint' );
+		copyButton.setAttribute( 'aria-describedby', 'themes-duplicate-hint' );
 
 		if( removeButton !== null )
 			removeButton.setAttribute( 'aria-describedby', 'themes-delete-hint' );
@@ -1342,16 +1475,18 @@
 		body.appendChild( el( 'div', 'nino-admin-field-label themes-fieldname', word('label/mix') ) );
 		body.appendChild( Nino.adminUi.hint( mixSummary()+ '.' ) );
 		actions.appendChild( saveNew );
+		actions.appendChild( copyButton );
 		actions.appendChild( restoreButton );
 
 		if( removeButton !== null )
 			actions.appendChild( removeButton );
 
 		body.appendChild( actions );
+		body.appendChild( copyHint );
 		body.appendChild( restoreHint );
 		body.appendChild( removeHint );
 
-		S.view.one = { saveNew : saveNew, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
+		S.view.one = { saveNew : saveNew, copy : copyButton, copyHint : copyHint, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
 		paintSettings();
 
 		return body;
@@ -1368,6 +1503,8 @@
 		const dirty = isDirty();
 
 		one.saveNew.disabled = blockReason() !== '';
+		one.copy.disabled = dirty === true;
+		one.copyHint.textContent = dirty === true ? word('hint/restore-dirty') : word('hint/duplicate');
 		one.restore.disabled = S.canRestore !== true || dirty === true;
 		one.restoreHint.textContent = S.canRestore !== true ? word('hint/restore-none') : ( dirty === true ? word('hint/restore-dirty') : word( 'hint/restore', lastSaid() ) );
 
@@ -1604,6 +1741,9 @@
 		// stack of the system for it until the folder is back
 		const gone = ( S.described.brand.unavailable ?? [] ).indexOf( key ) !== -1;
 
+		// A font that was gone when the stylesheet was built and is there again is not in it before the next build
+		const back = S.active !== null && ( S.active.back ?? {} )[key] === shown;
+
 		if( options.some( function( option ) { return option.value === shown } ) === false )
 			options.push( { value : shown, label : word( 'msg/font-gone', shown ) } );
 
@@ -1614,10 +1754,10 @@
 		select.id = 'themes-brand-'+ key;
 		control.appendChild( field );
 
-		if( gone === true ) {
-			const note = Nino.adminUi.hint( word( 'msg/font-gone-note', shown ) );
+		if( gone === true || back === true ) {
+			const note = Nino.adminUi.hint( gone === true ? word( 'msg/font-gone-note', shown ) : word( 'msg/font-back', shown ) );
 
-			note.id = 'themes-brand-'+ key+ '-gone';
+			note.id = 'themes-brand-'+ key+ ( gone === true ? '-gone' : '-back' );
 			select.setAttribute( 'aria-describedby', note.id );
 			control.appendChild( note );
 		}
@@ -1745,7 +1885,10 @@
 		const model = Nino.adminUi.colorModel;
 		const first = palette.colors['color-1'];
 
-		return [ 'light', 'dark' ].filter( function( mode ) { return palette.colors[mode].accent !== first } ).map( function( mode ) {
+		// Only the modes the brand shows: a mode that is fixed is the one the sentence is about
+		const shown = S.described.brand.effective.mode === 'auto' ? [ 'light', 'dark' ] : [ S.described.brand.effective.mode ];
+
+		return shown.filter( function( mode ) { return palette.colors[mode].accent !== first } ).map( function( mode ) {
 			return word( model.luminance( palette.colors[mode].accent ) < model.luminance( first ) ? 'msg/adjust-darker' : 'msg/adjust-lighter', word( 'word/mode-'+ mode ), palette.colors[mode].accent );
 		} );
 	};
@@ -1814,13 +1957,14 @@
 		return body;
 	};
 
-	// The way back to the groups, from the screen of a group or of the brand. Not the class of the back link of a form: the shell asks Save, Discard or Cancel before that one is followed, and this move keeps the draft
+	// The way back to the groups, from the screen of a group or of the brand. It keeps the draft: the shell asks nothing of a back link that says so
 	const backLink = function( group ) {
 
-		const back = el( 'a', 'themes-back', word('label/back-groups') );
+		const back = el( 'a', 'nino-admin-back-link', word('label/back-groups') );
 
 		back.href = Nino.admin.router.href( 'themes', addressOf( [ S.key ] ) );
 		back.id = 'themes-back-groups';
+		back.setAttribute( 'data-keep-draft', '' );
 		back.addEventListener( 'click', function( event ) {
 			event.preventDefault();
 			Nino.admin.themes.go( [ S.key ], { from : group } );
@@ -1832,7 +1976,7 @@
 	/**
 	 *	The brand - level two: the way back, and a section for the colours, the type, the mode and the logo
 	 *
-	 *	@param		{string}		[open]		The key of the section that is open
+	 *	@param		{string|null}	[open]		The key of the section that is open; null for none
 	 *
 	 *	@return		{Element}
 	 */
@@ -1854,8 +1998,9 @@
 		const accordion = Nino.adminUi.accordion( {
 			id			: 'themes-acc',
 			level		: 4,
+			collapsible	: true,
 			address		: { panel : 'themes', parts : addressOf( [ S.key, 'brand' ] ) },
-			open		: keys.indexOf( open ) === -1 ? keys[0] : open,
+			open		: open === null ? [] : ( keys.indexOf( open ) === -1 ? keys[0] : open ),
 			sections	: keys.map( function( key ) {
 				return { key : key, label : word( 'word/'+ key ), summary : brandSummary( key ), badge : brandChangedIn( key ) === true ? word('state/changed-mark') : '', content : function() { return brandSection( key ) } };
 			} ),
@@ -1975,7 +2120,9 @@
 
 		const go = function( force ) {
 
-			S.view.line.saving();
+			// A change that is made from the list has no screen of a theme to say that it is under way
+			if( S.view !== null )
+				S.view.line.saving();
 
 			Nino.admin.themes.call( action, build( force ), function( status, response ) {
 
@@ -2022,6 +2169,166 @@
 	};
 
 	/**
+	 *	The name a copy is suggested under: the name and "(copy)", cut to the length a name may have
+	 *
+	 *	@param		{string}		name
+	 *
+	 *	@return		{string}
+	 */
+	const copyName = function( name ) {
+
+		const keyOf = function( text ) {
+			return text.normalize('NFKD').replace( /[\u0300-\u036f]/g, '' ).toLowerCase().replace( /[^a-z0-9]+/g, '-' ).replace( /^-+|-+$/g, '' );
+		};
+
+		// The names the own themes have, as the server tells two names apart: by the key they make, which is cut at the length of a key
+		const taken = S.list.themes.filter( function( theme ) { return theme.kind === 'own' } ).map( function( theme ) { return keyOf( localized( theme.name ) ).slice( 0, S.list.limits.key ) } );
+
+		for( let number = 1; ; number++ ) {
+
+			const made = function( base ) { return number === 1 ? word( 'msg/copy-name', base ) : word( 'msg/copy-name-n', base, number ) };
+
+			// The name is cut until the whole of the suggestion is in the key and in the length a name may have - a name that is cut at the end of its
+			// key is the name it was made from
+			const letters = Array.from( name );
+
+			while( letters.length > 0 && ( Array.from( made( letters.join('') ) ).length > S.list.limits.name || keyOf( made( letters.join('') ) ).length > S.list.limits.key ) )
+				letters.pop();
+
+			const suggestion = made( letters.join('') );
+
+			if( taken.indexOf( keyOf( suggestion ).slice( 0, S.list.limits.key ) ) === -1 )
+				return suggestion;
+		}
+	};
+
+	/**
+	 *	A theme is copied as a new own theme, under a name: its mix and its own css as they are saved - not the draft, which "Save as own theme" takes -
+	 *	and not the brand, which is the project's. Asked as every other change is, by change(); the stamp is that of the theme as the one who asks saw it
+	 *
+	 *	@param		{Object}			source			{ key, name, stamp } - stamp is a function that answers the stamp the person has now, '' for a theme of a package
+	 *	@param		{Element}			opener
+	 *	@param		{Function}		finished		Called with the answer when the copy is written
+	 *
+	 *	@return		{void}
+	 */
+	const duplicate = function( source, opener, finished ) {
+
+		// The card the button was on is drawn again where the list was: the button of the same theme in the list as it is now takes the focus
+		const cancelled = function() {
+			land( S.view === null ? dc.getElementById('themes-list').querySelector( '[data-duplicate="'+ source.key+ '"]' ) ?? opener : opener, S.view === null ? null : S.view.title );
+		};
+
+		const about = { title : word('label/duplicate-title'), message : word( 'msg/duplicate', source.name, shownNow() ) };
+
+		const send = function( name ) {
+
+			change( 'duplicate', function( force ) {
+
+				const posted = { theme : source.key, name : name, force : force };
+
+				if( source.stamp() !== '' )
+					posted.base = source.stamp();
+
+				return posted;
+			}, finished, cancelled, function( status, response ) {
+
+				if( response === null || typeof response !== 'object' )
+					return false;
+
+				// A name that is taken, or says nothing, is asked again in the dialog, with the sentence at the field
+				if( ( status === 400 || status === 409 ) && response.field === 'name' ) {
+
+					if( S.view !== null )
+						S.view.line.idle();
+
+					askName( name, Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ), function( again ) {
+						if( again === null )
+							cancelled();
+						else
+							send( again );
+					}, about );
+
+					return true;
+				}
+
+				// A theme that is not open and was changed since the list was drawn: the list is drawn again and says so
+				if( response.code === 'themes_changed' && ( S.ready !== true || S.key !== source.key ) ) {
+					refreshList( function() {
+						Nino.admin.themes.say( word( 'msg/changed-list', source.name ) );
+						cancelled();
+					} );
+
+					return true;
+				}
+
+				// A theme that is open was saved otherwise meanwhile: nothing is overwritten by a copy, but what would be copied is not what the person saw
+				if( response.code === 'themes_changed' ) {
+
+					Nino.adminUi.choiceDialog( {
+						title		: word('confirm/duplicate-changed-title'),
+						message		: word( 'msg/duplicate-changed', source.name ),
+						choices		: [
+							{ value : 'copy', label : word('label/copy-as-saved'), kind : 'primary' },
+							{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
+							{ value : 'reload', label : word('label/reload'), kind : 'secondary' },
+						],
+						onChoose	: function( value ) {
+
+							if( value === 'cancel' ) {
+								cancelled();
+								return;
+							}
+
+							Nino.admin.themes.call( 'open', { theme : S.key }, function( openStatus, fresh ) {
+
+								if( openStatus !== 200 ) {
+									S.view.line.error( openStatus, fresh, '/_admin/themes/error/save' );
+									cancelled();
+									return;
+								}
+
+								if( value === 'copy' ) {
+									adopt( fresh );
+									send( name );
+									return;
+								}
+
+								open( S.key, function() {
+									show( S.at, { focus : false } );
+									land( null, S.view === null ? null : S.view.title );
+								} );
+							} );
+						},
+					} );
+
+					return true;
+				}
+
+				return false;
+			} );
+		};
+
+		askName( copyName( source.name ), '', function( name ) {
+			if( name === null )
+				cancelled();
+			else
+				send( name );
+		}, about );
+	};
+
+	// The theme that is open is copied, as it is saved: the screen goes on to the copy, where the person finds it
+	const duplicateOpen = function( opener ) {
+
+		duplicate( { key : S.key, name : S.theme.name, stamp : function() { return S.theme.kind === 'own' ? S.stamp : '' } }, opener, function( response ) {
+			afterSave( response.theme, response, function() {
+				if( S.view !== null )
+					S.view.line.idle( word( 'msg/duplicated', themeName( response.theme ) ) );
+			} );
+		} );
+	};
+
+	/**
 	 *	Where a theme is left for the list: the screen of it is gone, and what was done is said in the list
 	 *
 	 *	@param		{string}		message
@@ -2050,7 +2357,7 @@
 		const lang = String( ( dc.documentElement && dc.documentElement.lang ) || '' ).replace( '_', '-' );
 		const when = new Date( S.last.at * 1000 ).toLocaleString( lang === '' ? undefined : lang, { dateStyle : 'medium', timeStyle : 'short' } );
 
-		return word( 'msg/last-state', when, S.last.theme === '' ? word('word/standard-parts') : localized( S.last.name ) );
+		return word( 'msg/last-state', when, S.last.theme === '' ? word('word/standard-parts') : word( 'msg/shown-theme', localized( S.last.name ) ) );
 	};
 
 	// The state of before the last save, in place of this one - which becomes the last, so that a second restore is the state as it is now
@@ -2136,14 +2443,20 @@
 
 		const dirty	= isDirty();
 
-		view.state.dataset.state = dirty === true ? 'warn' : ( isActive() === true ? 'ok' : 'muted' );
-		view.state.textContent = dirty === true ? '\u25CF '+ word('state/changed') : '\u2713 '+ word( isActive() === true ? 'state/applied' : 'state/saved' );
-		view.reset.disabled = dirty === false;
+		// A colour that is no colour yet is not in the draft - the draft keeps the last one that was - and is not saved either: the state is not "saved"
+		const unsaved = dirty === true || Object.keys( S.invalid ).length > 0;
+
+		view.state.dataset.state = unsaved === true ? 'warn' : ( isActive() === true ? 'ok' : 'muted' );
+		view.state.textContent = unsaved === true ? '\u25CF '+ word('state/changed') : '\u2713 '+ word( isActive() === true ? 'state/applied' : 'state/saved' );
+		view.reset.disabled = unsaved === false;
 		view.save.disabled = dirty === false || blockReason() !== '';
 		view.save.textContent = S.theme.kind === 'theme' && mixDirty() === true ? word('label/save-as') : word('label/save');
 		view.apply.hidden = isActive();
 		view.apply.disabled = dirty === true;
 		view.apply.title = dirty === true ? word('hint/apply-saved') : '';
+		view.rebuild.hidden = isActive() === false || S.active.stale !== true;
+		view.rebuild.disabled = dirty === true;
+		view.rebuild.title = dirty === true ? word('hint/apply-saved') : '';
 		fill( view.head, view.title, chipsOf() );
 		paintSettings();
 
@@ -2265,20 +2578,24 @@
 
 	/**
 	 *	The name of an own theme, asked in a dialog with a field: Enter in the field saves. What was wrong with the last name is said at the field
-	 *	and the dialog is drawn once more, so that it stays where it was
+	 *	and the dialog is drawn once more, so that it stays where it was. The dialog says what is done and - where there is a last state that is kept -
+	 *	that it is replaced, as every question of the panel that writes does
 	 *
 	 *	@param		{string}		suggestion
 	 *	@param		{string}		problem				What was wrong with the last name, said at the field; '' for none
 	 *	@param		{Function}	then					Called with the name, or null where the dialog was left
+	 *	@param		{Object}		[about]				{ title, message } - what the dialog is for; the draft of the theme that is open saved under a name where none is given
 	 *
 	 *	@return		{void}
 	 */
-	const askName = function( suggestion, problem, then ) {
+	const askName = function( suggestion, problem, then, about ) {
 
-		const content = el( 'div', 'themes-dialog' );
+		about = about ?? { title : word('label/save-as'), message : word( 'msg/save-as', S.theme.name, mixSummary(), shownNow() ) };
+
+		const content = el('div');
 		const field = Nino.adminUi.textField( { label : word('label/name'), id : 'themes-name', value : suggestion, required : true, maxLength : 60 } );
 		const input = field.querySelector('input');
-		const message = word( 'msg/save-as', S.theme.name, mixSummary(), shownNow() );
+		const message = about.message+ ( replacesLast() === '' ? '' : ' '+ replacesLast() );
 
 		input.name = 'name';
 		content.appendChild( Nino.adminUi.hint( message ) );
@@ -2288,7 +2605,7 @@
 			Nino.adminUi.fieldError( field, input, 'themes-name-error', problem );
 
 		Nino.adminUi.choiceDialog( {
-			title		: word('label/save-as'),
+			title		: about.title,
 			message		: message,
 			content		: content,
 			choices		: [ { value : 'save', label : word('label/save'), kind : 'primary' }, { value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' } ],
@@ -2301,7 +2618,7 @@
 
 				// A name that says nothing is no answer: the same dialog, with the sentence at the field
 				if( input.value.trim() === '' )
-					askName( '', word('error/name-empty'), then );
+					askName( '', word('error/name-empty'), then, about );
 				else
 					then( input.value.trim() );
 			},
@@ -2588,15 +2905,14 @@
 	const afterSave = function( key, response, done ) {
 
 		const moved = key !== S.key;
-		const group = here().parts[1] ?? '';
-		const section = here().parts[2] ?? '';
+		const at = [ key, here().parts[1] ?? '', here().parts[2] ?? '' ].filter( function( part ) { return part !== '' } );
 
 		refreshList( function() {
 
 			if( moved === true ) {
-				Nino.admin.router.go( 'themes', addressOf( group === '' ? [ key ] : [ key, group, section ] ) );
+				Nino.admin.router.go( 'themes', addressOf( at ) );
 				open( key, function() {
-					show( group === '' ? [ key ] : [ key, group, section ], { focus : false } );
+					show( at, { focus : false } );
 					S.view.line.saved();
 					land( null, S.view.title );
 					done( true );
@@ -2648,6 +2964,39 @@
 	};
 
 	/**
+	 *	The stylesheet of the website is built again from the theme as it is saved - what a save with nothing changed does: it writes the state
+	 *	again, and the state is built when it is written. Offered where the stylesheet is not what the register and the fonts make now
+	 *
+	 *	@param		{Element}		opener
+	 *
+	 *	@return		{void}
+	 */
+	const rebuild = function( opener ) {
+
+		const cancelled = function() { land( opener, S.view.title ) };
+
+		const finished = function() {
+			if( S.view !== null ) {
+				paintBar();
+				S.view.line.idle( word('msg/rebuilt') );
+				land( opener, S.view.title );
+			}
+		};
+
+		// A theme of a package is the one the website was given: it is applied once more
+		if( S.theme.kind !== 'own' ) {
+			applyKey( S.key, S.theme.name, opener, function( ok ) { if( ok === true ) finished(); else cancelled() } );
+			return;
+		}
+
+		reaching( function() {
+			change( 'save', function( force ) {
+				return { theme : S.key, mix : sendable(), base : S.stamp, force : force };
+			}, function( response ) { afterSave( S.key, response, finished ) }, cancelled );
+		}, cancelled );
+	};
+
+	/**
 	 *  The website shows a theme: asked first, because visitors see it at once
 	 *
 	 *  @param    {string}    key
@@ -2679,7 +3028,7 @@
 					// From the list the theme is not open: what another tab saved is said in the list, which is drawn again to show it
 					if( response !== null && typeof response === 'object' && response.code === 'themes_changed' && ( S.ready !== true || S.key !== key ) ) {
 						refreshList( function() {
-							Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ) );
+							Nino.admin.themes.say( word( 'msg/changed-list', name ) );
 							done( false );
 						} );
 						return;
@@ -2728,10 +3077,11 @@
 		const resetButton = Nino.adminUi.button( word('label/reset'), function() { reset() } );
 		const saveButton = Nino.adminUi.button( word('label/save'), function() { save( function() {} ) }, { className : 'nino-admin-btn-primary' } );
 		const applyButton = Nino.adminUi.button( word('label/apply'), function() { apply( applyButton ) } );
+		const rebuildButton = Nino.adminUi.button( word('label/rebuild'), function() { rebuild( rebuildButton ) } );
 
-		[ state, line.element, resetButton, saveButton, applyButton ].forEach( function( piece ) { bar.appendChild( piece ) } );
+		[ state, line.element, resetButton, saveButton, rebuildButton, applyButton ].forEach( function( piece ) { bar.appendChild( piece ) } );
 
-		return { el : bar, state : state, line : line, reset : resetButton, save : saveButton, apply : applyButton };
+		return { el : bar, state : state, line : line, reset : resetButton, save : saveButton, rebuild : rebuildButton, apply : applyButton };
 	};
 
 	// --- the tools over the preview ----------------------------------------------------------------------------
@@ -2744,10 +3094,16 @@
 	const toolsOf = function() {
 
 		const tools = el( 'div', 'themes-tools' );
-		const marked = el( 'span', 'nino-admin-hint themes-marked', word('msg/whole-page') );
+		const marked = el( 'span', 'nino-admin-hint themes-marked', '' );
 		const pages = el( 'select', 'nino-admin-input themes-page' );
 
 		pages.setAttribute( 'aria-label', word('label/page') );
+
+		// "Automatically" first: the demo of the group that is open, or the start page where there is none
+		const auto = el( 'option', '', word('label/page-auto') );
+
+		auto.value = '';
+		pages.appendChild( auto );
 
 		// The title of a page with its path behind it, where the page has a title; the path alone where it has none
 		S.list.pages.forEach( function( page ) {
@@ -2756,9 +3112,10 @@
 			pages.appendChild( option );
 		} );
 
-		pages.value = pagePaths().indexOf( S.page ) === -1 ? ( pagePaths()[0] ?? '/' ) : S.page;
+		pages.value = pageOf();
 		pages.addEventListener( 'change', function() {
-			S.page = pages.value;
+			S.picked[S.key] = pages.value;
+			paintMarked();
 			reloadFrame();
 		} );
 
@@ -2785,12 +3142,12 @@
 		box.appendChild( widths.el );
 		tools.appendChild( marked );
 
-		if( S.list.pages.length > 1 )
+		if( S.list.pages.length > 0 )
 			tools.appendChild( pages );
 
 		tools.appendChild( box );
 
-		return { el : tools, marked : marked, pages : pages, widths : widths, paint : widths.set };
+		return { el : tools, marked : marked, auto : auto, pages : pages, widths : widths, paint : widths.set };
 	};
 
 	// --- one theme: opened, drawn, shown --------------------------------------------------------------------
@@ -2840,6 +3197,7 @@
 				S.token		= preview.token;
 				S.query		= preview.query;
 				S.until		= Date.now() + preview.ttl * 1000 - GRACE;
+				S.cssFaults	= Array.isArray( preview.cssFaults ) === true ? preview.cssFaults : [];
 				S.ready		= true;
 				take( preview );
 				build( level );
@@ -2911,42 +3269,36 @@
 		const head = el( 'div', 'themes-head' );
 		const title = el( 'h3', 'themes-name', S.theme.name );
 
-		S.page = pagePaths().indexOf( S.page ) === -1 ? ( pagePaths()[0] ?? '/' ) : S.page;
+		// The first address of the frame is the one the screen will have: the demo of the group the address names, and nothing outlined
+		S.mark = '';
+		S.demo = demoOf( here().parts[1] ?? '' );
 
 		const tools = toolsOf();
 		const bar = barOf();
 		const settings = el( 'div', 'themes-column' );
 
-		// The preview is a frame of its own in a port of its own: it is laid out at the width of the choice and scaled to the room there is
-		const port = el( 'div', 'themes-port' );
-		const frame = el( 'iframe', 'themes-frame' );
-
-		frame.title = word('label/preview-title');
-		frame.setAttribute( 'aria-busy', 'true' );
-		frame.addEventListener( 'load', function() {
-			frame.removeAttribute('aria-busy');
-			heal();
-			refreshHints();
-		} );
-		frame.setAttribute( 'src', previewUri() );
-		port.appendChild( frame );
-
 		S.announced = false;
 		S.blocked = '';
-		S.view = { level : level, kind : 'groups', rows : {}, one : null, repaint : null, head : head, title : title, tools : tools, settings : settings, accordion : null, marked : tools.marked, state : bar.state, line : bar.line, reset : bar.reset, save : bar.save, apply : bar.apply, split : null, port : port, frame : frame };
+		S.view = { level : level, kind : 'groups', rows : {}, one : null, repaint : null, head : head, title : title, tools : tools, settings : settings, accordion : null, group : '', marked : tools.marked, state : bar.state, line : bar.line, reset : bar.reset, save : bar.save, rebuild : bar.rebuild, apply : bar.apply, split : null, frame : null };
 
-		const split = Nino.adminUi.split( { id : 'themes-split', settings : settings, tools : tools.el, preview : port, onReload : reloadFrame, onView : function( view ) {
+		// The preview is the page laid out at the width of the choice and scaled to the room there is, which the split view does
+		const split = Nino.adminUi.split( { id : 'themes-split', settings : settings, tools : tools.el, preview : { src : previewUri(), title : word('label/preview-title'), width : LAYOUT[S.width] },
+			onLoad : function() {
+				heal();
+				refreshHints();
+			},
+			onView : function( view ) {
 
-			// The first look at a preview that is as narrow as a phone's: the page as a phone shows it, unless a width was chosen
-			if( view === 'preview' && S.chosen === false && port.getBoundingClientRect().width < NARROW ) {
-				S.width = 'mobile';
-				tools.paint( 'mobile' );
-				fitFrame();
-			}
-		} } );
+				// The first look at a preview that is as narrow as a phone's: the page as a phone shows it, unless a width was chosen
+				if( view === 'preview' && S.chosen === false && split.frame.parentNode.getBoundingClientRect().width < NARROW ) {
+					S.width = 'mobile';
+					tools.paint( 'mobile' );
+					fitFrame();
+				}
+			} } );
 
 		S.view.split = split;
-		fitFrame();
+		S.view.frame = split.frame;
 
 		head.appendChild( title );
 		head.appendChild( chipsOf() );
@@ -2963,7 +3315,8 @@
 	 *	group
 	 *
 	 *	@param		{string}		group				'' for the groups
-	 *	@param		{string}		[open]			The section that is open
+	 *	@param		{string|null}	[open]			The section that is open, null for none; where it is not given, what is open on the screen where it is this level that is drawn
+	 *														again, else what the address names
 	 *
 	 *	@return		{void}
 	 */
@@ -2978,21 +3331,30 @@
 		S.hints = [];
 		const inside = within( view.settings, held ) === true ? held.id : '';
 		const kind = group === 'brand' ? 'brand' : ( isGroup( group ) === true ? 'group' : 'groups' );
+		const level = kind === 'groups' ? '' : group;
+		let wanted = open;
+
+		if( wanted === undefined )
+			wanted = view.accordion !== null && view.kind === kind && view.group === level ? ( view.accordion.get()[0] ?? null ) : ( ( kind === 'groups' ? here().parts[1] : here().parts[2] ) ?? '' );
 
 		view.kind = kind;
+		view.group = level;
 		view.rows = {};
 		view.one = null;
 		view.repaint = null;
+		S.demo = demoOf( level );
 
-		const drawn = kind === 'groups' ? groupsOf( open ?? here().parts[1] ) : ( kind === 'brand' ? brandOf( open ?? ( here().parts[2] ?? '' ) ) : settingsOf( group, open ?? ( here().parts[2] ?? '' ) ) );
+		const drawn = kind === 'groups' ? groupsOf( wanted ) : ( kind === 'brand' ? brandOf( wanted ) : settingsOf( group, wanted ) );
 
 		fill( view.settings, drawn );
 		view.split.words( { settings : kind === 'groups' ? word('label/groups') : word('label/settings') } );
 
 		if( kind !== 'group' ) {
 			S.mark = '';
-			view.marked.textContent = word('msg/whole-page');
+			S.markedLabel = '';
 		}
+
+		paintMarked();
 
 		if( inside !== '' ) {
 			const again = dc.getElementById( inside );
@@ -3039,24 +3401,23 @@
 		const group = parts[1] ?? '';
 		const known = isGroup( group ) === true || group === 'brand';
 
-		const before = S.mark;
+		const before = previewUri();
 
-		draw( known === true ? group : '', known === true ? parts[2] : group );
+		// A level whose address names no section is one with every section closed - unless it is a way in: the address a person opens a theme, a group or
+		// the brand by names none, and the first section is what they come to see
+		const section = known === true ? ( parts[2] ?? '' ) : group;
 
-		if( S.mark !== before )
+		draw( known === true ? group : '', options.entry !== true && section === '' ? null : section );
+
+		if( previewUri() !== before )
 			reloadFrame();
 
-		if( known === true )
-			Nino.admin.router.set( 'themes', addressOf( [ S.key, group ].concat( S.view.accordion !== null ? S.view.accordion.get() : [] ) ) );
-		else {
-
-			// The groups are the theme's own address; the other sections of the first level have one each
-			const first = S.view.accordion !== null ? S.view.accordion.get()[0] : 'groups';
-
-			Nino.admin.router.set( 'themes', addressOf( first === 'groups' || first === undefined ? [ S.key ] : [ S.key, first ] ) );
-		}
+		// The address says what is open: the section, or the level itself where there is none
+		S.at = [ S.key ].concat( known === true ? [ group ] : [], S.view.accordion !== null ? S.view.accordion.get() : [] );
+		Nino.admin.router.set( 'themes', addressOf( S.at ) );
 
 		Nino.adminUi.showLevel( 'themes-theme', { focus : false } );
+		thumbsAway();
 
 		if( options.focus === false )
 			return;
@@ -3111,6 +3472,97 @@
 		return group === 'page' ? word('word/page') : ( known === undefined ? group : localized( known.label ) );
 	};
 
+	/**
+	 *	The picture of a theme on its card: the start page as the theme draws it, small. Nothing is asked for until the card is on screen; then the API
+	 *	makes the page a draft of its own, which is no preview of the person's own, and the frame is given its address. A picture is not a control: it
+	 *	takes no focus, says nothing to a screen reader and takes no click (see the stylesheet)
+	 *
+	 *	@param		{Object}		theme				A theme of the list
+	 *
+	 *	@return		{Element}
+	 */
+	const thumbOf = function( theme ) {
+
+		const box = el( 'div', 'themes-thumb' );
+
+		box.setAttribute( 'aria-hidden', 'true' );
+		box.dataset.thumb = theme.key;
+		box.dataset.seen = theme.kind === 'own' ? theme.stamp : theme.version;
+
+		if( S.looking !== null && S.listing === true )
+			S.looking.observe( box );
+
+		return box;
+	};
+
+	// The frame of a thumbnail, once there is an address for it
+	const thumbFrame = function( box, query ) {
+
+		const frame = el( 'iframe', 'themes-thumb-frame' );
+		const dir = typeof Nino.dir === 'string' ? Nino.dir : '';
+
+		frame.setAttribute( 'loading', 'lazy' );
+		frame.setAttribute( 'tabindex', '-1' );
+		frame.setAttribute( 'aria-hidden', 'true' );
+		frame.setAttribute( 'src', dir+ homeOf()+ '?'+ query );
+		box.appendChild( frame );
+		Nino.adminUi.scaleFrame( frame, box, THUMB.width, THUMB.height );
+	};
+
+	// The pictures of the list are the list's: where the screen of a theme or of another view is shown they are taken away - thirty pages are not kept
+	// loaded for a list that is not on screen - and no box is watched, so that a theme that is opened by its address asks for none; where the list
+	// comes back its boxes are watched, and it draws what is on screen
+	const thumbsAway = function() {
+
+		const mount = dc.getElementById('themes-list');
+
+		S.listing = false;
+
+		if( mount === null )
+			return;
+
+		Array.from( mount.querySelectorAll('.themes-thumb-frame') ).forEach( function( frame ) { frame.remove() } );
+
+		if( S.looking !== null )
+			Array.from( mount.querySelectorAll('.themes-thumb') ).forEach( function( box ) { S.looking.unobserve( box ) } );
+	};
+
+	const thumbsBack = function() {
+
+		const mount = dc.getElementById('themes-list');
+
+		S.listing = true;
+
+		if( mount !== null && S.looking !== null )
+			Array.from( mount.querySelectorAll('.themes-thumb') ).forEach( function( box ) { S.looking.observe( box ) } );
+	};
+
+	// A card is on screen: its picture is asked for - once for as long as the answer holds, whatever is drawn in between
+	const thumbAsk = function( box ) {
+
+		const key = box.dataset.thumb+ '|'+ box.dataset.seen;
+		const held = S.thumbs[key];
+
+		if( box.querySelector('iframe') !== null )
+			return;
+
+		if( held !== undefined && Date.now() < held.until ) {
+			thumbFrame( box, held.query );
+			return;
+		}
+
+		Nino.admin.themes.call( 'thumb', { theme : box.dataset.thumb, token : held === undefined ? '' : held.token }, function( status, response ) {
+
+			if( status !== 200 )
+				return;
+
+			S.thumbs[key] = { token : response.token, query : response.query, until : Date.now() + response.ttl * 1000 - GRACE };
+
+			if( box.isConnected !== false && box.querySelector('iframe') === null )
+				thumbFrame( box, response.query );
+		} );
+	};
+
 	const cardOf = function( theme ) {
 
 		const card = el( 'article', 'nino-admin-card themes-card' );
@@ -3118,7 +3570,12 @@
 		const resting = theme.kind === 'theme' ? Object.keys( theme.parts ).filter( function( group ) { return theme.parts[group].ok === false } ) : [];
 
 		card.dataset.theme = theme.key;
-		head.appendChild( el( 'h3', '', localized( theme.name ) ) );
+		card.appendChild( thumbOf( theme ) );
+		const title = el( 'h3', '', localized( theme.name ) );
+
+		// A name that is longer than the card is cut; the whole of it is the title of the heading, and the text of it is whole for a screen reader
+		title.title = localized( theme.name );
+		head.appendChild( title );
 
 		const chip = function( text, state ) {
 			const badge = el( 'span', 'nino-admin-badge', text );
@@ -3136,20 +3593,41 @@
 
 		card.appendChild( head );
 
-		if( theme.kind === 'theme' )
-			card.appendChild( el( 'p', 'nino-admin-hint', localized( theme.description ) ) );
-		else
-			card.appendChild( el( 'p', 'nino-admin-hint', madeOf( theme ) ) );
+		// What the card says is laid on a fixed number of lines, so that the cards of a list are as high as one another: the text that is cut is whole in
+		// the title of its line and for a screen reader
+		const about = el( 'p', 'nino-admin-hint themes-clamp', theme.kind === 'theme' ? localized( theme.description ) : madeOf( theme ) );
 
-		resting.forEach( function( group ) {
-			card.appendChild( el( 'p', 'nino-admin-hint themes-rests', word( 'msg/card-rests', groupLabelOf( group ), theme.parts[group].problem ) ) );
-		} );
+		about.title = about.textContent;
+		card.appendChild( about );
+
+		// A part that rests is told once, the first, and the chip counts the others: all of them are in the title
+		if( resting.length > 0 ) {
+
+			const note = el( 'p', 'nino-admin-hint themes-rests themes-clamp', word( 'msg/card-rests', groupLabelOf( resting[0] ), theme.parts[resting[0]].problem ) );
+
+			note.title = resting.map( function( group ) { return word( 'msg/card-rests', groupLabelOf( group ), theme.parts[group].problem ) } ).join('\n');
+			card.appendChild( note );
+		}
 
 		const actions = el( 'div', 'nino-admin-actions' );
 		const edit = Nino.adminUi.button( word('label/edit'), function() { Nino.admin.themes.go( [ theme.key ], {} ) }, { className : 'nino-admin-btn-primary nino-admin-btn--small' } );
 
 		edit.dataset.edit = theme.key;
 		actions.appendChild( edit );
+
+		const copy = Nino.adminUi.button( word('label/duplicate'), function() {
+			duplicate( { key : theme.key, name : localized( theme.name ), stamp : function() { return theme.stamp ?? '' } }, copy, function( response ) {
+				refreshList( function() {
+					Nino.admin.themes.say( word( 'msg/duplicated', themeName( response.theme ) ) );
+
+					// The list was drawn again: the card of the copy is a new one, and its Edit is where the focus goes
+					land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ response.theme+ '"]' ), null );
+				} );
+			} );
+		}, { className : 'nino-admin-btn--small' } );
+
+		copy.dataset.duplicate = theme.key;
+		actions.appendChild( copy );
 
 		if( theme.active !== true ) {
 			const use = Nino.adminUi.button( word('label/apply'), function() {
@@ -3172,6 +3650,90 @@
 		return card;
 	};
 
+	// --- the views --------------------------------------------------------------------------------------------
+
+	/**
+	 *	The strip of the views, where there is more than one: in the head of the pane beside the name of the panel, the workbench's own place for it
+	 *	(Nino.adminUi.panelHead()) - above the list and above the screens of a theme, so that a tab picked while a theme is open leaves it, and asks
+	 *	first where a draft would be lost. A tab is an address: #themes, and the key of the view after it. With one view there is no strip
+	 *
+	 *	@return		{void}
+	 */
+	const paintTabs = function() {
+
+		const mount = dc.getElementById('themes-app');
+		const old = dc.getElementById('themes-tabs');
+
+		if( old !== null )
+			old.remove();
+
+		S.selectTab = null;
+
+		if( mount === null || VIEWS.length < 2 )
+			return;
+
+		const strip = el( 'div', 'nino-admin-tabs nino-admin-tabs--bar nino-admin-tabs--panel admin-panel-tabs' );
+		const buttons = {};
+		const head = Nino.adminUi.panelHead( mount );
+
+		strip.id = 'themes-tabs';
+		strip.setAttribute( 'role', 'tablist' );
+
+		VIEWS.forEach( function( view ) {
+
+			const button = el( 'button', 'nino-admin-tab', word( view.word ) );
+
+			button.type = 'button';
+			button.id = 'themes-tab-'+ view.key;
+			button.setAttribute( 'role', 'tab' );
+			button.setAttribute( 'aria-controls', 'themes-app' );
+			strip.appendChild( button );
+			buttons[view.key] = button;
+		} );
+
+		S.selectTab = Nino.adminUi.buttonRow( buttons, S.tab, function( key ) {
+			Nino.admin.themes.go( key === VIEWS[0].key ? [] : [ key ], { focus : false } );
+		}, 'aria-selected' );
+
+		// Where the script is not in a pane there is no head: the strip stands over the mount, outside of the levels it shows and hides
+		if( head === null )
+			mount.parentNode.insertBefore( strip, mount );
+		else
+			head.tabs( strip );
+	};
+
+	/**
+	 *	A view that is not the themes: the screen it draws into a level of its own
+	 *
+	 *	@param		{Object}		view				One of VIEWS
+	 *	@param		{Object}		[options]		What follow() takes
+	 *
+	 *	@return		{void}
+	 */
+	const showView = function( view, options ) {
+
+		let box = dc.getElementById('themes-view');
+
+		S.ready = false;
+		S.view = null;
+		S.tab = view.key;
+		dc.getElementById('themes-theme').innerHTML = '';
+
+		if( box === null ) {
+			box = el( 'div', 'themes-level admin-hidden' );
+			box.id = 'themes-view';
+			dc.getElementById('themes-app').appendChild( box );
+		}
+
+		view.show( box );
+		thumbsAway();
+		Nino.admin.router.set( 'themes', [ view.key ] );
+		Nino.adminUi.showLevel( box, { focus : options !== undefined && options.focus === false ? false : true } );
+
+		if( typeof S.selectTab === 'function' )
+			S.selectTab( S.tab );
+	};
+
 	// The list: the themes that come with a package, then the own ones, and what the website shows
 	const render = function( data ) {
 
@@ -3190,6 +3752,20 @@
 		};
 
 		mount.innerHTML = '';
+
+		// The cards that are on screen ask for their picture; the ones of the list that was drawn before are no cards any more
+		if( S.looking !== null )
+			S.looking.disconnect();
+
+		S.listing = here().panel !== 'themes' || here().parts.length === 0;
+		S.looking = new wn.IntersectionObserver( function( entries ) {
+			entries.forEach( function( entry ) {
+				if( entry.isIntersecting === true ) {
+					S.looking.unobserve( entry.target );
+					thumbAsk( entry.target );
+				}
+			} );
+		}, { rootMargin : '120px' } );
 
 		const say = el( 'p', 'nino-admin-hint themes-say' );
 
@@ -3215,6 +3791,7 @@
 		} );
 
 		mount.appendChild( Nino.adminUi.hint( ( data.active === null ? word('hint/list-none') : word('hint/list') ) ) );
+		paintTabs();
 	};
 
 	// --- the panel --------------------------------------------------------------------------------------------
@@ -3241,6 +3818,9 @@
 
 	Object.assign( Nino.admin.themes, {
 
+		// The views: what is hung in here is a tab and an address (see VIEWS)
+		views : VIEWS,
+
 		// A line in the list: what was done
 		say : function( text ) {
 			const line = dc.getElementById('themes-say');
@@ -3257,6 +3837,8 @@
 		 *	@return		{void}
 		 */
 		go : function( parts, options ) {
+
+			options = Object.assign( {}, options, { entry : true } );
 
 			const leaves = S.ready === true && ( parts.length === 0 || parts[0] !== S.key );
 
@@ -3276,6 +3858,17 @@
 		follow : function( options ) {
 
 			const parts = here().panel === 'themes' ? here().parts : [];
+			const view = VIEWS.find( function( candidate ) { return candidate.show !== null && candidate.key === parts[0] } );
+
+			if( view !== undefined ) {
+				showView( view, options );
+				return;
+			}
+
+			S.tab = VIEWS[0].key;
+
+			if( typeof S.selectTab === 'function' )
+				S.selectTab( S.tab );
 
 			if( parts.length === 0 ) {
 				S.ready = false;
@@ -3283,6 +3876,7 @@
 				dc.getElementById('themes-theme').innerHTML = '';
 				Nino.admin.router.set( 'themes', [] );
 				Nino.adminUi.showLevel( 'themes-list', { focus : options !== undefined && options.focus === false ? false : true } );
+				thumbsBack();
 				return;
 			}
 
@@ -3309,7 +3903,7 @@
 
 			// The first address of a page is no step of the history: nothing is given the focus when a page is loaded
 			const first = Nino.admin.themes.ready === false;
-			const proceed = function() { Nino.admin.themes.follow( { focus : false, history : first === false } ) };
+			const proceed = function() { Nino.admin.themes.follow( { focus : false, history : first === false, entry : first === true } ) };
 
 			if( Nino.admin.themes.ready === false ) {
 				Nino.admin.themes.init( proceed );

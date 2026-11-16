@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 return [
-	'label' => [ 'de_DE' => 'Sammlungen', 'en_US' => 'Collections' ],
+	'label' => [ 'de_DE' => 'Listen & Tabellen', 'en_US' => 'Lists & tables' ],
 	'knobs' => [
 		'collection-list.gap' => [ 'token' => '--collection-list-gap', 'label' => [ 'de_DE' => 'Abstand der Zeilen einer Liste', 'en_US' => 'Space between the rows of a list' ],
 			'ladder' => [ 'var(--page-space-1)', 'calc( var(--page-space-1) * 1.5 )', 'var(--page-space-2)', 'var(--page-space-3)', 'var(--page-space-4)' ] ],

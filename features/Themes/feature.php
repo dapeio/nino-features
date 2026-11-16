@@ -49,11 +49,15 @@ return [
 				'en_US' => 'A preview that names a component draws an outline round its elements; a request without a preview of its own has no outline.',
 				'de_DE' => 'Eine Vorschau, die eine Komponente nennt, zeichnet einen Umriss um deren Elemente; eine Anfrage ohne eigene Vorschau hat keinen Umriss.',
 			],
+			'&nino-theme-demo=<group>' => [
+				'en_US' => 'A preview that names a group of the register answers a page of its own: the demo of that group in the stylesheet of the draft, not kept.',
+				'de_DE' => 'Eine Vorschau, die eine Gruppe des Registers nennt, antwortet mit einer eigenen Seite: der Demo der Gruppe im Stylesheet des Entwurfs, nicht gespeichert.',
+			],
 		],
 		'panel' => [
 			'Themes' => [
-				'en_US' => 'The screen of the workbench for the themes: the list, and for a theme its groups, brand, settings and own css beside a preview of the draft, for the right /_admin/themes/manage.',
-				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, und je Theme Gruppen, Marke, Einstellungen und eigenes CSS neben einer Vorschau des Entwurfs, für das Recht /_admin/themes/manage.',
+				'en_US' => 'The screen of the workbench for the themes: the list, and for a theme its groups, brand, settings and own css beside a preview of the draft or a demo; the right is /_admin/themes/manage.',
+				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, und je Theme Gruppen, Marke, Einstellungen und eigenes CSS neben einer Vorschau des Entwurfs oder einer Demo; das Recht: /_admin/themes/manage.',
 			],
 		],
 		'callbacks' => [

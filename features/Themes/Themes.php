@@ -30,7 +30,11 @@ namespace Nino\Modules {
 	 *										?nino-theme-preview=<token> by the account that holds the token, while it lasts, draws the
 	 *										draft in place of the stylesheet and its variants in place of the active ones - in the
 	 *										bundle of that request only, built in memory by \Nino\Modules\Assets::stylesheet(), so that
-	 *										the public bundle stays as it is.
+	 *										the public bundle stays as it is. With ?nino-theme-demo=<group> as well, the page it answers is
+	 *										not the page of the route but the demo of that group - the piece of a page the group brings
+	 *										(groups/<group>/demo.tpl) - in a page of its own that has the bundle of the draft and nothing
+	 *										else: the demo of the header stands where a header stands, that of the footer where a footer
+	 *										does, and any other in the main part.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -49,9 +53,11 @@ namespace Nino\Modules {
 		// The right to work in the panel and through its API; the Editor role does not get it by itself
 		public const string PERM = '/_admin/themes/manage';
 
-		// The query of a request that wants the preview, the one that asks for a component to be outlined in it, and how long a token holds, in seconds
+		// The query of a request that wants the preview, the one that asks for a component to be outlined in it, the one that asks for the demo of a
+		// group in place of the page, and how long a token holds, in seconds
 		public const string QUERY = 'nino-theme-preview';
 		public const string MARK = 'mark';
+		public const string DEMO = 'nino-theme-demo';
 		public const int TTL = 900;
 		public const string TOKEN = '/^[0-9a-f]{32}$/D';
 
@@ -61,9 +67,16 @@ namespace Nino\Modules {
 		// The token a request previews with, '' for none, and the key of the session that holds the tokens of an account
 		private static string $_preview = '';
 		private static ?string $_link = null;
-		// The component a preview request asks to have outlined, '' for none
+		// The component a preview request asks to have outlined, '' for none, and the group whose demo it asks for in place of the page
 		private static string $_mark = '';
+		private static string $_demo = '';
+		private static bool $_picture = false;
 		public const string SESSION = './themes/preview';
+
+		// The tokens of the thumbnails of the list are a set of their own: five previews are what a person works with, and a list of themes is as many
+		// pictures as there are themes
+		public const string THUMBS = './themes/thumbs';
+		public const int THUMBS_MAX = 120;
 
 		public static function init( array &$appData ): void {
 
@@ -131,15 +144,18 @@ namespace Nino\Modules {
 
 			self::$_preview = '';
 			self::$_mark = '';
+			self::$_demo = '';
+			self::$_picture = false;
 			$token = $request['/nino/http/request']['query'][self::QUERY] ?? null;
 
 			if( is_string( $token ) === false || preg_match( self::TOKEN, $token ) !== 1 )
 				return;
 
 			$held = \Nino\Runtime::getSessionValue( $appData, self::SESSION, [] );
+			$thumbs = \Nino\Runtime::getSessionValue( $appData, self::THUMBS, [] );
 			$user = \Nino\Auth::getCurrentUser( $appData );
 
-			if( is_array( $held ) === false || ( $held[$token] ?? 0 ) <= time() || $user === false || \Nino\Auth::checkPermission( $appData, self::PERM ) === false )
+			if( is_array( $held ) === false || is_array( $thumbs ) === false || max( (int) ( $held[$token] ?? 0 ), (int) ( $thumbs[$token] ?? 0 ) ) <= time() || $user === false || \Nino\Auth::checkPermission( $appData, self::PERM ) === false )
 				return;
 
 			$meta = \Nino\Filesystem::getFileContent( $appData, self::DRAFTS. '/'. $token. '/meta.json', [] );
@@ -147,6 +163,16 @@ namespace Nino\Modules {
 			if( is_array( $meta ) === true && ( $meta['user'] ?? null ) === $user['mail'] && ( $meta['expires'] ?? 0 ) > time() ) {
 
 				self::$_preview = $token;
+
+				// A page that is asked for with the token of a thumbnail is a picture: the scripts of the site do not run in a frame that the workbench draws
+				// thirty times, and a page that is drawn small has no use for them
+				if( ( $thumbs[$token] ?? 0 ) > time() && ( $held[$token] ?? 0 ) <= time() ) {
+
+					self::$_picture = true;
+
+					if( in_array( [ self::class, 'noScript' ], \Nino\Callbacks::registered( $appData, '/nino/shortcodes/assets/output/js' ), true ) === false )
+						\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/js', [ self::class, 'noScript' ] );
+				}
 
 				// A component to outline: only a request that holds a preview may ask for it, and only a slug is a name
 				$mark = $request['/nino/http/request']['query'][self::MARK] ?? null;
@@ -156,7 +182,62 @@ namespace Nino\Modules {
 				// Only a request that asks for a preview has the link of its bundle looked at
 				if( in_array( [ self::class, 'previewCss' ], \Nino\Callbacks::registered( $appData, '/nino/shortcodes/assets/output/css' ), true ) === false )
 					\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/css', [ self::class, 'previewCss' ] );
+
+				// The demo of a group: only the name of a group the register has, and only one that has a demo, is looked at - the text of the demo is the
+				// register's and nothing of the request ever is
+				$demo = $request['/nino/http/request']['query'][self::DEMO] ?? null;
+
+				if( is_string( $demo ) === true && strlen( $demo ) <= \Nino\Components::NAME_LENGTH && preg_match( \Nino\Components::NAME, $demo ) === 1
+					&& ( \Nino\Components::groups( $appData )[$demo]['demo'] ?? '' ) !== '' ) {
+
+					self::$_demo = $demo;
+
+					if( in_array( [ self::class, 'demo' ], \Nino\Callbacks::registered( $appData, '/nino/http/response' ), true ) === false )
+						\Nino\Callbacks::registerCallback( $appData, '/nino/http/response', [ self::class, 'demo' ] );
+				}
 			}
+		}
+
+		/**
+		 *	The link to the script bundle of a page that is a picture: none
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template			The link, as the bundle's shortcode has it
+		 *
+		 *	@return 	string
+		 */
+		public static function noScript( array &$appData, string $template ): string {
+			return self::$_picture === true ? '' : $template;
+		}
+
+		/**
+		 *	The answer of a request that asks for the demo of a group: a page of its own in place of the one the route names. The header and the footer
+		 *	are drawn where a page has them, the other groups in its main part, and what is not there is left empty. Drawn by the response like any
+		 *	page, so that the bundle is the one of the draft (see previewCss()); not kept, and none for a search engine
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	void
+		 */
+		public static function demo( array &$appData, array &$request ): void {
+
+			// The start address of the site and no other: a page of the preview is any page, the demo is the answer of one
+			if( ( $request['/nino/http/request']['uri'] ?? '' ) !== '/' || ( $request['/nino/http/request']['method'] ?? '' ) !== 'GET' )
+				return;
+
+			$source = self::$_demo === '' ? '' : (string) ( \Nino\Components::groups( $appData )[self::$_demo]['demo'] ?? '' );
+			$page = $source === '' ? '' : \Nino\Feature::template( $appData, '/features/Themes/templates', 'demo' );
+
+			if( $page === '' )
+				return;
+
+			$at = [ 'header' => '[[before]]', 'footer' => '[[after]]' ][self::$_demo] ?? '[[main]]';
+
+			// One pass: what the demo holds is no template of this page
+			$request['/nino/http/response']['body'] = strtr( $page, [ '[[before]]' => $at === '[[before]]' ? $source : '', '[[main]]' => $at === '[[main]]' ? $source : '', '[[after]]' => $at === '[[after]]' ? $source : '', '[[hidden]]' => $at === '[[main]]' ? '' : ' hidden' ] );
+			$request['/nino/http/response']['statusCode'] = 200;
+			$request['/nino/http/response']['header'] = [ 'Cache-Control' => 'no-store', 'X-Robots-Tag' => 'noindex' ] + (array) $request['/nino/http/response']['header'];
 		}
 
 		/**

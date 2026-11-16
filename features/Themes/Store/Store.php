@@ -51,7 +51,7 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											'brand' => as Brand::read() answers it, 'active' => [ 'theme', 'built', 'feature', 'register' ] or null,
+		 *	@return 	array											'brand' => as Brand::read() answers it, 'active' => [ 'theme', 'built', 'feature', 'register', 'gone' ] or null,
 		 *																'own' => key => the own theme, 'previous' => whether there is a last state
 		 */
 		public static function read( array &$appData ): array {
@@ -302,6 +302,9 @@ namespace Nino\Modules\Themes {
 				if( is_array( $foreign ) === true )
 					return $foreign;
 
+				if( self::_replaceable( $appData, $previous, $foreign ) === false )
+					return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
+
 				if( is_dir( $state ) === false )
 					@mkdir( $state, 0755, true );
 
@@ -462,6 +465,13 @@ namespace Nino\Modules\Themes {
 				return $foreign;
 			}
 
+			// A stylesheet that cannot be put in place is found out before anything is moved: a state that is written and said not to be saved is a
+			// state the person does not know they have
+			if( self::_replaceable( $appData, $building, $foreign ) === false ) {
+				\Nino\Filesystem::removeDir( $building );
+				return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
+			}
+
 			// When it was saved and what the website showed, for the one who reads what the last state is; it is no part of what the state says, so it
 			// is written after the states were compared
 			\Nino\Filesystem::putFileContent( $appData, $dir. '/building/saved.json', [ 'at' => time(), 'theme' => (string) ( self::_load( $appData, $dir. '/building/active.json' )['theme'] ?? '' ) ] );
@@ -535,6 +545,7 @@ namespace Nino\Modules\Themes {
 			self::keep( $appData, $built['plan'] );
 
 			$active['built'] = Compiler::stamp( $built['css'] );
+			$active['gone'] = $built['gone'];
 			$active['feature'] = (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' );
 			$active['register'] = \Nino\Components::version( $appData );
 
@@ -644,7 +655,7 @@ namespace Nino\Modules\Themes {
 					return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
 
 				if( self::sheet( $file ) !== $text ) {
-					@chmod( $file, 0644 );
+					@chmod( $file, 0666 & ~umask() );
 
 					if( self::sheet( $file ) !== $text )
 						return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
@@ -654,6 +665,44 @@ namespace Nino\Modules\Themes {
 				unlink( $file );
 
 			return null;
+		}
+
+		/**
+		 *	Whether _sync() can do what the state asks of the stylesheet of the project: a file is put in place by a temporary file written next to it
+		 *	and renamed over it, so what decides is the directory - and the same is asked where the file is to go. Nothing is changed by asking
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$state				The real path of the state that is to be the state
+		 *	@param		array|string|null	$foreign		What _foreign() answered
+		 *
+		 *	@return 	bool
+		 */
+		private static function _replaceable( array &$appData, string $state, array|string|null $foreign ): bool {
+
+			$file = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::SHEET );
+
+			// Nothing is written and nothing removed: the file is left as it is
+			if( is_file( $state. '/theme.css' ) === false && ( is_file( $file ) === false || ( $foreign === null && Compiler::isOwn( (string) self::sheet( $file ) ) === false ) ) )
+				return true;
+
+			$dir = dirname( $file );
+
+			// A folder that is not there yet is made by the one who writes: the nearest one that is there is what has to be written in
+			while( is_dir( $dir ) === false && dirname( $dir ) !== $dir )
+				$dir = dirname( $dir );
+
+			// By writing a file there and taking it away, which is what the replacement does: is_writable() asks the real user and not the one the process
+			// runs as, and the one place that says it for certain is the open
+			$probe = $dir. '/.themes-'. bin2hex( random_bytes( 6 ) ). '.tmp';
+			$handle = @fopen( $probe, 'xb' );
+
+			if( $handle === false )
+				return false;
+
+			fclose( $handle );
+			@unlink( $probe );
+
+			return true;
 		}
 
 		/**

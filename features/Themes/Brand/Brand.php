@@ -56,10 +56,22 @@ namespace Nino\Modules\Themes {
 
 		// A folder of public/fonts/ is a slug; the name of a family is written in quotes into a stylesheet, so it holds no quote
 		private const string SLUG = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D';
+		private const int SLUG_LENGTH = 60;
 		private const string FAMILY = '/^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$/D';
 		private const string FILE = '/^[a-z0-9][a-z0-9._-]{0,80}\.woff2$/D';
 		private const int FACES = 12;
 		private const int MAX_FONTS = 50;
+
+		/**
+		 *	Whether a text is the name of a folder of public/fonts/ as a file that is written by hand may spell it: a slug, and not longer than a name of a family
+		 *
+		 *	@param		string		$value
+		 *
+		 *	@return 	bool
+		 */
+		private static function _slug( string $value ): bool {
+			return strlen( $value ) <= self::SLUG_LENGTH && preg_match( self::SLUG, $value ) === 1;
+		}
 
 		/**
 		 *	The fonts there are: the system stacks and every folder of public/fonts/ whose font.json is what it should be
@@ -82,7 +94,7 @@ namespace Nino\Modules\Themes {
 
 				$slug = basename( $folder );
 
-				if( preg_match( self::SLUG, $slug ) === 1 && isset( $fonts[$slug] ) === false && is_link( $folder ) === false && is_array( $font = self::_font( $appData, $slug ) ) === true )
+				if( self::_slug( $slug ) === true && isset( $fonts[$slug] ) === false && is_link( $folder ) === false && is_array( $font = self::_font( $appData, $slug ) ) === true )
 					$fonts[$slug] = $font;
 			}
 
@@ -161,7 +173,7 @@ namespace Nino\Modules\Themes {
 
 				if( str_starts_with( $key, 'font-' ) === true ) {
 					$fonts ??= self::fonts( $appData );
-					$ok = is_string( $value ) === true && ( isset( $fonts[$value] ) === true || ( ( $keep[$key]['own'] ?? false ) === true && ( $keep[$key]['value'] ?? null ) === $value && preg_match( self::SLUG, $value ) === 1 ) );
+					$ok = is_string( $value ) === true && ( isset( $fonts[$value] ) === true || ( ( $keep[$key]['own'] ?? false ) === true && ( $keep[$key]['value'] ?? null ) === $value && self::_slug( $value ) === true ) );
 				}
 				else if( $key === 'tone' )
 					$ok = is_string( $value ) === true && isset( Palette::TONES[$value] ) === true;
@@ -225,7 +237,7 @@ namespace Nino\Modules\Themes {
 					return (string) $key;
 
 				if( str_starts_with( $key, 'font-' ) === true )
-					$ok = is_string( $value ) === true && preg_match( self::SLUG, $value ) === 1;
+					$ok = is_string( $value ) === true && self::_slug( $value ) === true;
 				else if( $key === 'tone' )
 					$ok = is_string( $value ) === true && isset( Palette::TONES[$value] ) === true;
 				else if( $key === 'mode' )

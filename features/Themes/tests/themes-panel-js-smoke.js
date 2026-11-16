@@ -52,6 +52,9 @@ const W = function( key ) { return words.en['/_admin/themes/'+ key] };
 const E = function( code ) { return words.en['/_admin/error/'+ code] };
 const Wp = function( key, ...params ) { return String( key.indexOf('api/') === 0 ? E( key.slice( 4 ) ) : W( key ) ).replace( /%[sdn]/g, function() { return String( params.shift() ) } ) };
 const CANCEL = workbench['/_admin/common/label/cancel'];
+const SAVED = '\u2713 '+ W('state/saved');
+const APPLIED = '\u2713 '+ W('state/applied');
+const CHANGED = '\u25CF '+ W('state/changed');
 
 // --- A. the words ---------------------------------------------------------------------------------------------
 
@@ -68,7 +71,7 @@ const CANCEL = workbench['/_admin/common/label/cancel'];
 		asked.add( match[1] );
 
 	// The keys put together from a name or read by the panel of the shell: the sections of the page, the three widths, the two states, the plurals of a summary, the failure of a load
-	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button' ]
+	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button', 'tab/themes' ]
 		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
 
@@ -95,7 +98,7 @@ const CANCEL = workbench['/_admin/common/label/cancel'];
 
 // --- the page -----------------------------------------------------------------------------------------------------
 
-const GROUP_LABEL = { section : { de_DE : 'Abschnitt', en_US : 'Section' }, header : { de_DE : 'Header', en_US : 'Header' }, footer : { de_DE : 'Footer', en_US : 'Footer' }, brand : { de_DE : 'Marke', en_US : 'Brand' }, settings : { de_DE : 'Einstellungen', en_US : 'Settings' }, css : { de_DE : 'CSS', en_US : 'Css' }, groups : { de_DE : 'Gruppen', en_US : 'Groups' } };
+const GROUP_LABEL = { fonts : { de_DE : 'Schriften', en_US : 'Fonts' }, section : { de_DE : 'Abschnitt', en_US : 'Section' }, header : { de_DE : 'Header', en_US : 'Header' }, footer : { de_DE : 'Footer', en_US : 'Footer' }, brand : { de_DE : 'Marke', en_US : 'Brand' }, settings : { de_DE : 'Einstellungen', en_US : 'Settings' }, css : { de_DE : 'CSS', en_US : 'Css' }, groups : { de_DE : 'Gruppen', en_US : 'Groups' } };
 const COMPONENT_LABEL = { 'section-wrap' : { de_DE : 'Wrap', en_US : 'Wrap' }, 'section-title' : { de_DE : 'Titel', en_US : 'Title' }, 'section-col' : { de_DE : 'Abschnitt', en_US : 'Section' }, 'header-wrap' : { de_DE : 'Kopf', en_US : 'Head' }, 'footer-wrap' : { de_DE : 'Fuß', en_US : 'Foot' } };
 
 const ladder = function( ...values ) { return values };
@@ -195,6 +198,7 @@ function describe( mix, rest, brand ) {
 			settings : plain( 'settings', 'settings-wrap', [] ),
 			css : plain( 'css', 'css-wrap', [] ),
 			groups : plain( 'groups', 'groups-wrap', [] ),
+			fonts : plain( 'fonts', 'fonts-wrap', [] ),
 		},
 		brand : {
 			stored : brand,
@@ -215,7 +219,7 @@ function plain( name, component, offers ) {
 	return { label : GROUP_LABEL[name], from : 'standard', theme : '', version : '', origin : 'standard', package : '', problem : '', missing : false, offers : offers, knobs : [], components : [ { name : component, label : COMPONENT_LABEL[component] ?? { de_DE : component, en_US : component }, variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' } ] };
 }
 
-function listAnswer( active, extra, pages ) {
+function listAnswer( active, extra, pages, demos, copies ) {
 
 	return Object.assign( {
 		themes : [
@@ -223,10 +227,10 @@ function listAnswer( active, extra, pages ) {
 			{ key : 'craft', kind : 'theme', version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '' } }, active : active === 'craft' },
 			{ key : 'rest', kind : 'theme', version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'uses !important' }, section : { ok : true, problem : '' } }, active : false },
 			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : 'craft@1.0.0', header : 'standard' }, active : active === 'own:lindner' },
-		],
+		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
-		groups : [ { key : 'brand', label : GROUP_LABEL.brand, feature : 'basis', components : [] }, { key : 'footer', label : GROUP_LABEL.footer, feature : 'basis', components : [] }, { key : 'section', label : GROUP_LABEL.section, feature : 'basis', components : [] }, { key : 'settings', label : GROUP_LABEL.settings, feature : 'basis', components : [] }, { key : 'css', label : GROUP_LABEL.css, feature : 'basis', components : [] }, { key : 'groups', label : GROUP_LABEL.groups, feature : 'basis', components : [] }, { key : 'header', label : GROUP_LABEL.header, feature : 'basis', components : [] } ],
-		fonts : FONTS, limits : { css : 65536, name : 60 }, state : 'state-1', pages : ( pages ?? [ { path : '/', title : 'Start' }, { path : '/contact', title : '' } ] ).map( function( page ) { return typeof page === 'string' ? { path : page, title : '' } : page } ),
+		groups : [ 'brand', 'footer', 'section', 'settings', 'css', 'groups', 'header', 'fonts' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : ( demos ?? [] ).indexOf( key ) !== -1 } } ),
+		fonts : FONTS, limits : { css : 65536, name : 60, key : 40 }, state : 'state-1', pages : ( pages ?? [ { path : '/', title : 'Start' }, { path : '/contact', title : '' } ] ).map( function( page ) { return typeof page === 'string' ? { path : page, title : '' } : page } ),
 		active : active === '' ? null : { theme : active, built : '', stale : false }, foreign : false, canRestore : false,
 	}, extra ?? {} );
 }
@@ -249,7 +253,7 @@ function mixOf( key ) {
  */
 function world( options ) {
 
-	options = Object.assign( { lang : 'en-US', active : '', modal : true, room : 600, pages : undefined }, options ?? {} );
+	options = Object.assign( { lang : 'en-US', active : '', modal : true, room : 600, pages : undefined, demos : [], chosen : '/' }, options ?? {} );
 
 	const page = element('div');
 	const app = element('div');
@@ -355,11 +359,22 @@ function world( options ) {
 		return own ?? workbench[key] ?? '';
 	};
 
+	// What the browser would tell of the boxes that come on screen: the boxes that are watched, and a test says which one came
+	const watched = [];
+
+	function Watcher( callback ) {
+		this.callback = callback;
+		this.observe = function( node ) { if( watched.some( function( one ) { return one.node === node } ) === false ) watched.push( { node : node, watcher : this } ) };
+		this.unobserve = function( node ) { const at = watched.findIndex( function( one ) { return one.node === node } ); if( at !== -1 ) watched.splice( at, 1 ) };
+		this.disconnect = function() { const mine = watched.filter( function( one ) { return one.watcher === this }, this ); mine.forEach( function( one ) { watched.splice( watched.indexOf( one ), 1 ) } ) };
+	}
+
 	const sandbox = { console : console, document : doc, Nino : Nino, URL : URL, encodeURIComponent : encodeURIComponent, TextEncoder : TextEncoder };
 
 	sandbox.window = {
 		Nino : Nino,
-		location : { hash : '' },
+		IntersectionObserver : Watcher,
+		location : { hash : '', href : 'http://workbench.test/_admin/' },
 		confirm : function( question ) { asked.push( question ); return state.confirm },
 		setTimeout : function( fn, ms ) { timers.push( { fn : fn, ms : ms } ); return timers.length },
 		clearTimeout : function( id ) { if( id > 0 && timers[id - 1] !== undefined ) timers[id - 1].fn = null },
@@ -406,7 +421,7 @@ function world( options ) {
 				}
 
 				if( request.action === 'themes/list' ) {
-					const listed = listAnswer( w.active, serving.listExtra, options.pages );
+					const listed = listAnswer( w.active, serving.listExtra, options.pages, options.demos, w.copies );
 
 					listed.themes = listed.themes.filter( function( theme ) { return w.deleted.indexOf( theme.key ) === -1 } );
 					listed.themes.forEach( function( theme ) { if( theme.kind === 'own' ) theme.stamp = w.stamp } );
@@ -416,9 +431,19 @@ function world( options ) {
 					w.answer( 200, listed );
 				}
 				else if( request.action === 'themes/open' )
-					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? 'Lindner' : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
+					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
 				else if( request.action === 'themes/preview' )
 					w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900 }, describe( payload.mix, w.rest, payload.brand ) ) );
+				else if( request.action === 'themes/duplicate' && payload.theme.indexOf('own:') === 0 && payload.base !== w.stamp )
+					w.answer( 409, { error : 'the theme was changed since it was opened', code : 'themes_changed', params : [ 'Lindner' ], field : 'theme' } );
+				else if( request.action === 'themes/duplicate' && payload.name === 'Taken' )
+					w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Taken Before' ], field : 'name' } );
+				else if( request.action === 'themes/duplicate' ) {
+					const made = { key : 'own:'+ payload.name.toLowerCase().replace( /[^a-z0-9]+/g, '-' ).replace( /^-|-$/g, '' ), name : payload.name };
+					w.copies.push( made );
+					w.bump();
+					w.answer( 200, { saved : true, theme : made.key, applied : false, stamp : w.stamp, brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, active : w.activeState() } );
+				}
 				else if( request.action === 'themes/apply' && payload.theme.indexOf('own:') === 0 && payload.base !== w.stamp )
 					w.answer( 409, { error : 'the theme was changed since it was opened', code : 'themes_changed', params : [ 'Lindner' ], field : 'theme' } );
 				else if( request.action === 'themes/save' && payload.base === w.stamp && payload.mix.name === 'Taken' )
@@ -473,11 +498,20 @@ function world( options ) {
 		last : null,
 		brandStored : brandNone(),
 		deleted : [],
+		copies : [],
 		restored : 0,
 		bump : function() { w.stateStamp = 'state-'+ ( Number( w.stateStamp.slice( 6 ) ) + 1 ); w.canRestore = true },
 		rest : false,
 		sent : [],
 		activeState : function() { return w.active === '' ? null : { theme : w.active, built : '', stale : false } },
+
+		/** The boxes that wait to come on screen, and the way a test brings one of them */
+		watched : watched,
+		onScreen : function( node ) {
+			const one = watched.find( function( entry ) { return entry.node === node } );
+			if( one !== undefined )
+				one.watcher.callback( [ { target : node, isIntersecting : true } ] );
+		},
 
 		/** The timers that wait: run them all */
 		tick : function() {
@@ -490,6 +524,14 @@ function world( options ) {
 			state.hash = hash;
 			w.panel.showCurrent();
 			w.serve( serving );
+
+			// The page a test looks at is chosen, as a person who wants the component outlined chooses it: "Automatic" is the demo, or the start page
+			const select = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
+
+			if( options.chosen !== '' && select !== undefined && select.value === '' ) {
+				select.value = options.chosen;
+				fire( select, 'change' );
+			}
 		},
 
 		byClass : function( root, cls ) { return findAll( root, function( node ) { return String( node.className ).split(/\s+/).indexOf( cls ) !== -1 } ) },
@@ -590,7 +632,7 @@ function world( options ) {
 	check( 'C. each row is a link with the address of its group, and says where its part comes from - the brand, that it is the project\'s', rows.map( function( row ) { return row.href } ).join() === '#themes/nino/brand,#themes/nino/page,#themes/nino/header,#themes/nino/section,#themes/nino/footer' && w.byClass( rows[0], 'themes-source' )[0].textContent === W('word/project') && w.byClass( rows[1], 'themes-source' )[0].textContent === 'Nino' && w.byClass( rows[2], 'themes-source' )[0].textContent === 'Standard' );
 	check( 'C. the first level has three sections - the groups, the settings, the own css - and one of them is open: the groups', w.theme.querySelectorAll('[aria-expanded]').length === 3 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 1 && w.theme.querySelectorAll('[aria-expanded]')[0].attributes['aria-expanded'] === 'true' );
 	check( 'C. the switch of the split view says Groups on this level', w.byClass( w.theme, 'nino-admin-split-switch' )[0].children[0].textContent === 'Groups' );
-	check( 'C. the state is Saved, the website shows another theme: nothing to reset or save, the theme can be applied', w.state_() === '✓ Saved' && w.bar().querySelectorAll('button').every( function( b ) { return b.textContent === 'Apply to the website' ? b.disabled === false && b.hidden === false : b.disabled === true } ) );
+	check( 'C. the state is Saved, the website shows another theme: nothing to reset or save, the theme can be applied', w.state_() === SAVED && w.bar().querySelectorAll('button').every( function( b ) { return b.textContent === W('label/apply') ? b.disabled === false && b.hidden === false : ( b.disabled === true || b.hidden === true ) } ) );
 }
 
 // --- D. the settings of a group -------------------------------------------------------------------------------------
@@ -630,7 +672,7 @@ function world( options ) {
 	w.serve();
 
 	// the page: no components, its knobs in sections of their own
-	w.state.hash = '#themes/nino/page';
+	w.state.hash = '#themes/nino/page/type';
 	w.panel.showCurrent();
 	const pageHeads = w.byClass( w.theme, 'nino-admin-accordion-button' ).map( function( head ) { return w.text( w.byClass( head, 'nino-admin-accordion-label' )[0] ) } );
 
@@ -640,14 +682,16 @@ function world( options ) {
 	// back to the groups, and the focus goes to the row that was left
 	w.state.hash = '#themes/nino/section';
 	w.panel.showCurrent();
-	check( 'D. the way from a group to the groups is no back link of a form - the shell asks Save, Discard or Cancel before one of those is followed, and this move keeps the draft - while the way to the list is one', w.byClass( w.theme, 'nino-admin-back-link' ).length === 1 && w.byClass( w.theme, 'nino-admin-back-link' )[0].id === 'themes-back-list' && w.byClass( w.theme, 'themes-back' ).length === 1 );
+	const backs = w.byClass( w.theme, 'nino-admin-back-link' );
 
-	fire( w.byClass( w.theme, 'themes-back' )[0], 'click' );
+	check( 'D. the way from a group to the groups is the workbench\'s back link that says it keeps the draft - the shell asks Save, Discard or Cancel before the other one, the way to the list, is followed', backs.length === 2 && backs[0].id === 'themes-back-list' && backs[0].attributes['data-keep-draft'] === undefined && backs[1].id === 'themes-back-groups' && backs[1].attributes['data-keep-draft'] === '' && w.byClass( w.theme, 'themes-back' ).length === 0 );
+
+	fire( backs[1], 'click' );
 
 
-	check( 'D. the way back leads to the groups, writes the address of the theme and puts the focus on the row of the group that was left', w.state.hash === '#themes/nino' && w.byClass( w.theme, 'themes-groups' ).length === 1 && w.byClass( w.theme, 'themes-groups' )[0].children[3].children[0].focused === true, w.state.hash );
+	check( 'D. the way back leads to the groups, writes the address of the theme and puts the focus on the row of the group that was left', w.state.hash === '#themes/nino/groups' && w.byClass( w.theme, 'themes-groups' ).length === 1 && w.byClass( w.theme, 'themes-groups' )[0].children[3].children[0].focused === true, w.state.hash );
 	fire( w.byClass( w.theme, 'themes-groups' )[0].children[3].children[0], 'click' );
-	check( 'D. a group opened by hand puts the focus on the way back of its settings', w.state.hash === '#themes/nino/section/section-wrap' && w.byClass( w.theme, 'themes-back' )[0].focused === true, w.state.hash );
+	check( 'D. a group opened by hand puts the focus on the way back of its settings', w.state.hash === '#themes/nino/section/section-wrap' && w.byClass( w.theme, 'nino-admin-back-link' )[1].focused === true, w.state.hash );
 }
 
 // --- E. a change --------------------------------------------------------------------------------------------------------
@@ -662,8 +706,8 @@ function world( options ) {
 
 	fire( spaceStep, 'click' );
 
-	check( 'E. a step chosen is a change of the working mix, said at once: the state, the head of the section, the buttons of the bar', w.state_() === '● Changed' && w.byClass( w.theme, 'nino-admin-accordion-summary' )[0].textContent !== wrapBefore
-		&& w.byClass( w.theme, 'nino-admin-accordion-badge' )[0].textContent === words.en['/_admin/themes/state/changed-mark'] && w.button( w.bar(), 'Reset' ).disabled === false && w.button( w.bar(), 'Save as own theme' ).disabled === false );
+	check( 'E. a step chosen is a change of the working mix, said at once: the state, the head of the section, the buttons of the bar', w.state_() === CHANGED && w.byClass( w.theme, 'nino-admin-accordion-summary' )[0].textContent !== wrapBefore
+		&& w.byClass( w.theme, 'nino-admin-accordion-badge' )[0].textContent === words.en['/_admin/themes/state/changed-mark'] && w.button( w.bar(), W('label/reset') ).disabled === false && w.button( w.bar(), W('label/save-as') ).disabled === false );
 	check( 'E. the draft is not asked for while the hand moves: a timer is waiting, and no request', w.requests.length === 0 && w.timers.filter( function( timer ) { return timer.fn !== null && timer.ms === 150 } ).length === 1 );
 
 	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
@@ -692,7 +736,7 @@ function world( options ) {
 	// the way back to the middle is no change
 	fire( w.step( 'themes-section-section-wrap-space', 2 ), 'click' );
 
-	check( 'E. a step back to where the saved state has it makes no change: the state is Saved, the head says nothing, the draft is dropped from the bar', w.state_() === '✓ Saved and active' && w.byClass( w.theme, 'nino-admin-accordion-badge' )[0].hidden === true && w.button( w.bar(), 'Reset' ).disabled === true );
+	check( 'E. a step back to where the saved state has it makes no change: the state is Saved, the head says nothing, the draft is dropped from the bar', w.state_() === APPLIED && w.byClass( w.theme, 'nino-admin-accordion-badge' )[0].hidden === true && w.button( w.bar(), W('label/reset') ).disabled === true );
 	w.tick();
 	w.serve();
 
@@ -702,7 +746,7 @@ function world( options ) {
 	check( 'E. the standard variant chosen is in the mix for the component and in the draft', w.requests[0].payload.mix.parts.section.standard['section-wrap'] === 'band' && w.byClass( w.theme, 'nino-admin-accordion-summary' )[0].textContent === 'Band · 1 knob changed' || w.requests[0].payload.mix.parts.section.standard['section-wrap'] === 'band', JSON.stringify( w.requests[0].payload.mix.parts.section ) );
 	w.serve();
 	fire( w.step( 'themes-section-section-wrap-variant', 0 ), 'click' );
-	check( 'E. ...and the saved variant chosen again leaves nothing of it in the mix', w.state_() === '✓ Saved and active' );
+	check( 'E. ...and the saved variant chosen again leaves nothing of it in the mix', w.state_() === APPLIED );
 	w.tick();
 	w.serve();
 
@@ -712,7 +756,7 @@ function world( options ) {
 	w.answer( 500, { error : 'the preview could not be written' } );
 	const line = w.byClass( w.theme, 'nino-admin-status' )[0];
 
-	check( 'E. a draft that cannot be made is said in the bar, with what the server said, and the change stays: the step is chosen, the state is Changed', line.dataset.state === 'error' && line.textContent.indexOf('the preview could not be written') !== -1 && w.state_() === '● Changed'
+	check( 'E. a draft that cannot be made is said in the bar, with what the server said, and the change stays: the step is chosen, the state is Changed', line.dataset.state === 'error' && line.textContent.indexOf('the preview could not be written') !== -1 && w.state_() === CHANGED
 		&& w.step( 'themes-section-section-wrap-space', 3 ).attributes['aria-checked'] === 'true' );
 
 	fire( w.step( 'themes-section-section-wrap-space', 4 ), 'click' );
@@ -737,18 +781,18 @@ function world( options ) {
 	w.tick();
 	w.serve();
 
-	check( 'E. a page that is loaded again replaces what the frame shows and does not set its address: no step is added to the history, which Back would have to walk over before it came to the address of the panel', replaced.length === 1 && replaced[0] === '/site/?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && w.frame().attributes.src === source, replaced.join() );
+	check( 'E. a page that is loaded again replaces what the frame shows and does not set its address: no step is added to the history, which Back would have to walk over before it came to the address of the panel', replaced.length === 1 && replaced[0] === 'http://workbench.test/site/?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && w.frame().attributes.src === source, replaced.join() );
 }
 
 // the tools over the preview
 {
-	const w = world( { active : 'nino' } );
+	const w = world( { active : 'nino', chosen : '' } );
 
 	w.at( '#themes/nino/section/section-wrap' );
 
 	const pages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
 
-	check( 'E. the pages of the site the preview may show are a choice, the first one is shown', pages !== undefined && pages.children.map( function( option ) { return option.value } ).join() === '/,/contact' && pages.value === '/' );
+	check( 'E. the pages of the site the preview may show are a choice - "Automatic" first, and chosen - and the pages the list names', pages !== undefined && pages.children.map( function( option ) { return option.value } ).join() === ',/,/contact' && pages.value === '' && w.text( pages.children[0] ) === W('label/page-auto-home') );
 
 	pages.value = '/contact';
 	fire( pages, 'change' );
@@ -848,7 +892,7 @@ function world( options ) {
 	const heads = w.byClass( w.theme, 'nino-admin-accordion-button' ).map( function( head ) { return w.text( w.byClass( head, 'nino-admin-accordion-label' )[0] ) } );
 
 	check( 'F. the knob of the other part is there and the knob of this one is not: Shadow for the column, no Rule for the title', heads.indexOf('Column') === 0 + heads.indexOf('Column') && w.byClass( w.theme, 'nino-admin-accordion-summary' ).map( function( s ) { return s.textContent } ).join('|').indexOf('1 knob') !== -1 && labels.indexOf('Rule') === -1 );
-	check( 'F. the part of the group is changed, the bar says Changed, and the head of the open section says that this section is not to be compared with the saved one', w.state_() === '● Changed' );
+	check( 'F. the part of the group is changed, the bar says Changed, and the head of the open section says that this section is not to be compared with the saved one', w.state_() === CHANGED );
 	check( 'F. the focus is where it was: on the select, which is drawn again', ( function() {
 		const drawn = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.id === 'themes-part-section' } )[0];
 		return drawn !== select && drawn.focused === true;
@@ -909,7 +953,7 @@ function world( options ) {
 
 	check( 'F. a group whose part rests says why, in the words of the rule, and that the standard part stands', w.byClass( w.theme, 'nino-admin-notice' ).length === 1 && w.text( w.byClass( w.theme, 'nino-admin-notice' )[0] ).indexOf( 'the part is for basis ^9.0' ) !== -1 );
 
-	w.state.hash = '#themes/nino';
+	w.state.hash = '#themes/nino/groups';
 	w.panel.showCurrent();
 
 	check( 'F. ...and so does its row in the list of the groups', w.text( w.byClass( w.theme, 'themes-groups' )[0].children[3] ).indexOf('basis ^9.0') !== -1 );
@@ -923,15 +967,15 @@ function world( options ) {
 
 	w.at( '#themes/craft/section/section-wrap' );
 
-	check( 'G. a theme of a package that is not the active one: the bar offers to apply it', w.button( w.bar(), 'Apply to the website' ).hidden === false && w.state_() === '✓ Saved' );
+	check( 'G. a theme of a package that is not the active one: the bar offers to apply it', w.button( w.bar(), W('label/apply') ).hidden === false && w.state_() === SAVED );
 
 	fire( w.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	w.tick();
 	w.serve();
 
-	check( 'G. changed, it cannot be applied until it is saved, and the button to save says it makes an own theme', w.button( w.bar(), 'Apply to the website' ).disabled === true && w.button( w.bar(), 'Save as own theme' ) !== undefined );
+	check( 'G. changed, it cannot be applied until it is saved, and the button to save says it makes an own theme', w.button( w.bar(), W('label/apply') ).disabled === true && w.button( w.bar(), W('label/save-as') ) !== undefined );
 
-	fire( w.button( w.bar(), 'Save as own theme' ), 'click' );
+	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
 
 	const dialog = w.dialogs[w.dialogs.length - 1] ?? element('dialog');
 	const input = findAll( dialog, function( node ) { return node.tagName === 'INPUT' } )[0] ?? element('input');
@@ -939,13 +983,13 @@ function world( options ) {
 	check( 'G. the name is asked in a dialog with a field, and nothing is sent yet', dialog.open === true && input.value === 'Craft 2' && w.requests.length === 0, input.value );
 
 	input.value = 'Lindner';
-	fire( findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 
 	check( 'G. the name goes with the mix to save-as - the name in the mix, the steps, the part - and the theme of the package is not touched', w.requests.length === 1 && w.requests[0].action === 'themes/save-as' && w.requests[0].payload.mix.name === 'Lindner' && w.requests[0].payload.mix.parts.section.values['section-wrap.space'] === 2 && w.requests[0].payload.force === false );
 
 	w.serve();
 
-	check( 'G. what is saved is opened again: the address is the own theme, the state is Saved and the website still shows the theme it showed', w.state.hash === '#themes/own.lindner/section/section-wrap' && w.state_() === '✓ Saved' && w.active === 'nino' );
+	check( 'G. what is saved is opened again: the address is the own theme, the state is Saved and the website still shows the theme it showed', w.state.hash === '#themes/own.lindner/section/section-wrap' && w.state_() === SAVED && w.active === 'nino' );
 	check( 'G. ...and the list was asked again before the theme was opened, to know the new theme', w.actions.slice( w.actions.indexOf('themes/save-as') ).join() === 'themes/save-as,themes/list,themes/open,themes/preview', w.actions.join() );
 }
 
@@ -957,9 +1001,9 @@ function world( options ) {
 	fire( w.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save as own theme' ), 'click' );
+	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
 	findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Lindner' ], field : 'name' } );
 
 	const second = w.dialogs[w.dialogs.length - 1];
@@ -968,7 +1012,7 @@ function world( options ) {
 
 	fire( findAll( second, function( node ) { return node.tagName === 'BUTTON' && node.textContent === CANCEL } )[0], 'click' );
 
-	check( 'G. a name that is not given saves nothing, and the draft stays', w.requests.length === 0 && w.state_() === '● Changed' );
+	check( 'G. a name that is not given saves nothing, and the draft stays', w.requests.length === 0 && w.state_() === CHANGED );
 }
 
 {
@@ -977,21 +1021,21 @@ function world( options ) {
 
 	w.at( '#themes/own.lindner/section/section-wrap' );
 
-	check( 'G. an own theme that is the website\'s: the state is Saved and active, there is nothing to apply, the button says Save', w.state_() === '✓ Saved and active' && w.button( w.bar(), 'Apply to the website' ).hidden === true && w.button( w.bar(), 'Save' ) !== undefined );
+	check( 'G. an own theme that is the website\'s: the state is Saved and active, there is nothing to apply, the button says Save', w.state_() === APPLIED && w.button( w.bar(), W('label/apply') ).hidden === true && w.button( w.bar(), W('label/save') ) !== undefined );
 
 	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'G. saving what the website shows asks first, because visitors see it at once - and No saves nothing', w.dialogs.length === 1 && w.dialogs[0].open === true && w.requests.length === 0 );
 
 	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === CANCEL } )[0], 'click' );
 
-	check( 'G. ...the draft stays', w.requests.length === 0 && w.state_() === '● Changed' );
+	check( 'G. ...the draft stays', w.requests.length === 0 && w.state_() === CHANGED );
 
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	fire( findAll( w.dialogs[1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	fire( findAll( w.dialogs[1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 
 	check( 'G. Yes writes it: save with the key of the theme, its name in the mix and no force', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.mix.name === 'Lindner' && w.requests[0].payload.force === false );
 
@@ -1006,7 +1050,7 @@ function world( options ) {
 
 	w.serve();
 
-	check( 'G. what was saved is what the screen is: the state is Saved and active and the line says it was saved', w.state_() === '✓ Saved and active' && w.byClass( w.theme, 'nino-admin-status' )[0].dataset.state === 'saved' );
+	check( 'G. what was saved is what the screen is: the state is Saved and active and the line says it was saved', w.state_() === APPLIED && w.byClass( w.theme, 'nino-admin-status' )[0].dataset.state === 'saved' );
 }
 
 {
@@ -1014,17 +1058,17 @@ function world( options ) {
 	const w = world( { active : 'nino' } );
 
 	w.at( '#themes/craft/section/section-wrap' );
-	fire( w.button( w.bar(), 'Apply to the website' ), 'click' );
+	fire( w.button( w.bar(), W('label/apply') ), 'click' );
 
 	check( 'G. Apply asks before the website shows the theme', w.dialogs.length === 1 && w.requests.length === 0 );
 
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Apply to the website' } )[0], 'click' );
+	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/apply') } )[0], 'click' );
 
 	check( 'G. ...Yes sends apply with the key of the theme and no force', w.requests.length === 1 && w.requests[0].action === 'themes/apply' && w.requests[0].payload.theme === 'craft' && w.requests[0].payload.force === false );
 
 	w.serve();
 
-	check( 'G. ...and the state is Saved and active, the button is gone, the line says what the website shows', w.state_() === '✓ Saved and active' && w.button( w.bar(), 'Apply to the website' ).hidden === true && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ).indexOf('The website shows the theme "Craft"') !== -1, w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) );
+	check( 'G. ...and the state is Saved and active, the button is gone, the line says what the website shows', w.state_() === APPLIED && w.button( w.bar(), W('label/apply') ).hidden === true && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ).indexOf('The website shows the theme "Craft"') !== -1, w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) );
 
 	fire( w.step( 'themes-section-section-wrap-space', 1 ), 'click' );
 	w.tick();
@@ -1034,15 +1078,15 @@ function world( options ) {
 	const y = world( { active : 'nino' } );
 
 	y.at( '#themes/craft/section/section-wrap' );
-	fire( y.button( y.bar(), 'Apply to the website' ), 'click' );
-	fire( findAll( y.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Apply to the website' } )[0], 'click' );
+	fire( y.button( y.bar(), W('label/apply') ), 'click' );
+	fire( findAll( y.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/apply') } )[0], 'click' );
 	y.serve( { fail : function( request ) { return request.action === 'themes/list' ? { status : 500, body : {} } : null } } );
 
 	check( 'G. a list that cannot be had after the website was given a theme does not hold the screen up: the state is Saved and active, and the line says what the website shows', y.state_() === '\u2713 Saved and active' && y.text( y.byClass( y.theme, 'nino-admin-status' )[0] ).indexOf('The website shows the theme "Craft"') !== -1 );
 
-	fire( w.button( w.bar(), 'Reset' ), 'click' );
+	fire( w.button( w.bar(), W('label/reset') ), 'click' );
 
-	check( 'G. Reset drops the draft: the working mix is the saved one, the state is Saved and active, and the preview is asked for again at once', w.state_() === '✓ Saved and active' && w.requests.length === 1 && w.requests[0].action === 'themes/preview' && w.requests[0].payload.mix.parts.section.values === undefined && w.step( 'themes-section-section-wrap-space', 2 ).attributes['aria-checked'] === 'true' );
+	check( 'G. Reset drops the draft: the working mix is the saved one, the state is Saved and active, and the preview is asked for again at once', w.state_() === APPLIED && w.requests.length === 1 && w.requests[0].action === 'themes/preview' && w.requests[0].payload.mix.parts.section.values === undefined && w.step( 'themes-section-section-wrap-space', 2 ).attributes['aria-checked'] === 'true' );
 	w.serve();
 }
 
@@ -1068,9 +1112,9 @@ function world( options ) {
 	check( 'H. the way back to the list asks first; Cancel leaves the screen and the address as they are', w.dirty.asked === 1 && w.state.hash === '#themes/nino/section/section-wrap' && w.theme.className.indexOf('admin-hidden') === -1 );
 
 	// a move between the levels of the theme does not ask: the draft goes with it
-	fire( w.byClass( w.theme, 'themes-back' )[0], 'click' );
+	fire( w.byClass( w.theme, 'nino-admin-back-link' )[1], 'click' );
 
-	check( 'H. a move from the settings of a group to the groups is no leaving: nothing is asked and the draft stays', w.dirty.asked === 1 && w.state.hash === '#themes/nino' && w.dirty.entries.themes.isDirty() === true );
+	check( 'H. a move from the settings of a group to the groups is no leaving: nothing is asked and the draft stays', w.dirty.asked === 1 && w.state.hash === '#themes/nino/groups' && w.dirty.entries.themes.isDirty() === true );
 	w.serve();
 
 	// the address changed by hand: the shell calls showCurrent
@@ -1078,7 +1122,7 @@ function world( options ) {
 	w.state.hash = '#themes';
 	w.panel.showCurrent();
 
-	check( 'H. an address that leaves asks too; Cancel puts the address of the level that is shown back', w.dirty.asked === 2 && w.state.hash === '#themes/nino' && w.theme.className.indexOf('admin-hidden') === -1, w.state.hash );
+	check( 'H. an address that leaves asks too; Cancel puts the address of the level that is shown back', w.dirty.asked === 2 && w.state.hash === '#themes/nino/groups' && w.theme.className.indexOf('admin-hidden') === -1, w.state.hash );
 
 	w.dirtyAnswers.push( 'discard' );
 	w.state.hash = '#themes';
@@ -1099,7 +1143,7 @@ function world( options ) {
 	// a theme that cannot be opened
 	const x = world();
 
-	x.state.hash = '#themes/nino';
+	x.state.hash = '#themes/nino/groups';
 	x.panel.showCurrent();
 	x.serve();
 	x.state.hash = '#themes/craft';
@@ -1122,9 +1166,9 @@ function world( options ) {
 	fire( a.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	a.tick();
 	a.serve();
-	fire( a.button( a.bar(), 'Save as own theme' ), 'click' );
+	fire( a.button( a.bar(), W('label/save-as') ), 'click' );
 	findAll( a.dialogs[a.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Fresh';
-	fire( findAll( a.dialogs[a.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( findAll( a.dialogs[a.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	a.serve();
 
 	check( 'I. after a save as an own theme the focus is on the name of the theme - the button that was pressed is gone with the screen it stood in', hasFocus( a, name( a ) ) && name( a ).attributes.tabindex === '-1' );
@@ -1133,8 +1177,8 @@ function world( options ) {
 	const b = world( { active : 'nino' } );
 
 	b.at( '#themes/craft/section/section-wrap' );
-	fire( b.button( b.bar(), 'Apply to the website' ), 'click' );
-	fire( findAll( b.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Apply to the website' } )[0], 'click' );
+	fire( b.button( b.bar(), W('label/apply') ), 'click' );
+	fire( findAll( b.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/apply') } )[0], 'click' );
 	b.serve();
 
 	check( 'I. after Apply in the bar the focus is on the name of the theme: the button is hidden now, and a focus does not stay on what is not there', hasFocus( b, name( b ) ) );
@@ -1146,7 +1190,7 @@ function world( options ) {
 	fire( c.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	c.tick();
 	c.serve();
-	fire( c.button( c.bar(), 'Reset' ), 'click' );
+	fire( c.button( c.bar(), W('label/reset') ), 'click' );
 
 	check( 'I. after Reset the focus is on the name of the theme: the button is without a use until the next change', hasFocus( c, name( c ) ) );
 	c.serve();
@@ -1156,7 +1200,7 @@ function world( options ) {
 
 	d.at( '#themes' );
 	fire( findAll( d.list, function( node ) { return node.dataset.apply === 'craft' } )[0], 'click' );
-	fire( findAll( d.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Apply to the website' } )[0], 'click' );
+	fire( findAll( d.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/apply') } )[0], 'click' );
 	d.serve();
 
 	const edit = findAll( d.list, function( node ) { return node.dataset.edit === 'craft' } )[0];
@@ -1173,10 +1217,10 @@ function world( options ) {
 	fire( chosen, 'click' );
 	e.tick();
 	e.serve();
-	fire( e.button( e.bar(), 'Reset' ), 'click' );
+	fire( e.button( e.bar(), W('label/reset') ), 'click' );
 	e.serve();
 	check( 'I. ...and after a failed Apply the focus is where it was pressed: the button is there and can be pressed again', ( function() {
-		const apply = e.button( e.bar(), 'Apply to the website' );
+		const apply = e.button( e.bar(), W('label/apply') );
 		apply.focus();
 		fire( apply, 'click' );
 		fire( findAll( e.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === CANCEL } )[0], 'click' );
@@ -1191,13 +1235,13 @@ function world( options ) {
 
 	w.at( '#themes/own.lindner/section/section-wrap' );
 
-	check( 'J. an own theme is opened by its address, own.<key>, and the API is asked for own:<key>', w.sent.filter( function( request ) { return request.action === 'themes/open' } )[0].payload.theme === 'own:lindner' && w.state.hash === '#themes/own.lindner/section/section-wrap' && w.byClass( w.theme, 'themes-back' )[0].href === '#themes/own.lindner' );
+	check( 'J. an own theme is opened by its address, own.<key>, and the API is asked for own:<key>', w.sent.filter( function( request ) { return request.action === 'themes/open' } )[0].payload.theme === 'own:lindner' && w.state.hash === '#themes/own.lindner/section/section-wrap' && w.byClass( w.theme, 'nino-admin-back-link' )[1].href === '#themes/own.lindner' );
 
 	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 
 	check( 'J. save says which state of the theme it was made on: the stamp open gave', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.base === 'stamp-1' );
 
@@ -1213,8 +1257,8 @@ function world( options ) {
 	w.tick();
 	w.serve();
 	w.stamp = 'stamp-5';
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
 
 	const question = w.dialogs[w.dialogs.length - 1];
@@ -1224,13 +1268,13 @@ function world( options ) {
 
 	fire( findAll( question, function( node ) { return node.textContent === CANCEL } )[0], 'click' );
 
-	check( 'J. Cancel sends nothing and leaves the draft: the state is Changed, the step is chosen', w.requests.length === 0 && w.state_() === '● Changed' && w.step( 'themes-section-section-wrap-space', 3 ).attributes['aria-checked'] === 'true' );
+	check( 'J. Cancel sends nothing and leaves the draft: the state is Changed, the step is chosen', w.requests.length === 0 && w.state_() === CHANGED && w.step( 'themes-section-section-wrap-space', 3 ).attributes['aria-checked'] === 'true' );
 
 	// Overwrite: the stamp of what is there now, then the same save with it
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === 'Overwrite' } )[0], 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === W('label/overwrite') } )[0], 'click' );
 
 	check( 'J. Overwrite asks for the theme as it is now, only to have its stamp, and draws nothing of it', w.requests.length === 1 && w.requests[0].action === 'themes/open' && w.requests[0].payload.theme === 'own:lindner' );
 
@@ -1240,7 +1284,7 @@ function world( options ) {
 
 	w.serve();
 
-	check( 'J. what was written over is the state: Saved and active, and the stamp of the next save is the one the server gave', w.state_() === '✓ Saved and active' && w.dirty.entries.themes.isDirty() === false );
+	check( 'J. what was written over is the state: Saved and active, and the stamp of the next save is the one the server gave', w.state_() === APPLIED && w.dirty.entries.themes.isDirty() === false );
 }
 
 {
@@ -1252,8 +1296,8 @@ function world( options ) {
 	w.tick();
 	w.serve();
 	w.stamp = 'stamp-5';
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
 	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === 'Reload' } )[0], 'click' );
 
@@ -1264,7 +1308,7 @@ function world( options ) {
 	fire( findAll( sure, function( node ) { return node.textContent === 'Reload' } )[0], 'click' );
 	w.serve();
 
-	check( 'J. ...and then the theme is opened as it is saved: the draft is gone, the state is Saved and active, and the focus is on the name', w.dirty.entries.themes.isDirty() === false && w.state_() === '✓ Saved and active' && w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.byClass( w.theme, 'themes-name' )[0].focused === true );
+	check( 'J. ...and then the theme is opened as it is saved: the draft is gone, the state is Saved and active, and the focus is on the name', w.dirty.entries.themes.isDirty() === false && w.state_() === APPLIED && w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.byClass( w.theme, 'themes-name' )[0].focused === true );
 }
 
 // --- K. what is round the preview -----------------------------------------------------------------------------------------
@@ -1283,8 +1327,8 @@ function world( options ) {
 
 	const pages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
 
-	check( 'K. a link that is followed in the preview does not drop the draft: the page it came to is the page that is chosen, where the list has it, and the frame is loaded with the token again', replaced.length === 1 && replaced[0] === '/site/contact?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && pages.value === '/contact', replaced.join() );
-	check( 'K. the pages the list has are named by their title with the path behind it, and by the path where they have no title', pages.children.map( function( option ) { return option.textContent } ).join('|') === 'Start (/)|/contact' );
+	check( 'K. a link that is followed in the preview does not drop the draft: the page it came to is the page that is chosen, where the list has it, and the frame is loaded with the token again', replaced.length === 1 && replaced[0] === 'http://workbench.test/site/contact?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && pages.value === '/contact', replaced.join() );
+	check( 'K. the pages the list has are named by their title with the path behind it, and by the path where they have no title', pages.children.map( function( option ) { return option.textContent } ).join('|') === W('label/page-auto-home')+ '|Start (/)|/contact' );
 
 	// the page loaded was the draft's: nothing is done
 	location.search = '?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap';
@@ -1299,7 +1343,7 @@ function world( options ) {
 	location.href = 'http://site/site/elsewhere';
 	fire( w.frame(), 'load' );
 
-	check( 'K. a page the list does not have is not taken for the chosen one: the page that was chosen is loaded again with the token, and the bar says that the preview cannot show it', replaced.length === 2 && replaced[1] === '/site/contact?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && pages.value === '/contact', replaced.join() );
+	check( 'K. a page the list does not have is not taken for the chosen one: the page that was chosen is loaded again with the token, and the bar says that the preview cannot show it', replaced.length === 2 && replaced[1] === 'http://workbench.test/site/contact?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && pages.value === '/contact', replaced.join() );
 
 	// a page that sends the frame away again and again is loaded once
 	fire( w.frame(), 'load' );
@@ -1409,7 +1453,7 @@ function world( options ) {
 	const status = w.byClass( w.theme, 'nino-admin-status' )[0];
 	const announce = function() { return w.timers.filter( function( timer ) { return timer.fn !== null && timer.ms === 4000 } ).length };
 
-	check( 'L. a change is said once, by the line of the status, at the moment it begins: the chip says the state and the line says that something changed', w.state_() === '● Changed' && status.attributes.role === 'status' && w.text( status ) === 'Changes not saved yet.' && announce() === 1, w.text( status ) );
+	check( 'L. a change is said once, by the line of the status, at the moment it begins: the chip says the state and the line says that something changed', w.state_() === CHANGED && status.attributes.role === 'status' && w.text( status ) === 'Changes not saved yet.' && announce() === 1, w.text( status ) );
 
 	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
 
@@ -1452,7 +1496,7 @@ function world( options ) {
 	select.value = 'craft@1.0.0';
 	fire( select, 'change' );
 	w.serve();
-	fire( w.button( w.bar(), 'Save as own theme' ), 'click' );
+	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
 
 	const first = w.dialogs[w.dialogs.length - 1];
 	const typed = function( dialog, value ) {
@@ -1461,11 +1505,10 @@ function world( options ) {
 		return input;
 	};
 
-	check( 'L. the dialog says what is saved - the theme it comes from and what it is made of - in one sentence', w.text( first ).indexOf('The draft of "Nino" is saved as an own theme under a name: Page from Nino, Section from Craft, otherwise Standard.') !== -1, w.text( first ).slice( 0, 260 ) );
-	check( 'L. the dialog has its own class, so that the stylesheet that holds its text to 12 pixels reaches it', w.byClass( first, 'themes-dialog' ).length === 1 );
+	check( 'L. the dialog says what is saved - the theme it comes from and what it is made of - in one sentence', w.text( first ).indexOf('The draft of "Nino" is saved as an own theme under a name: Whole page from Nino, Section from Craft, otherwise Standard.') !== -1, w.text( first ).slice( 0, 260 ) );
 
 	typed( first, '   ' );
-	fire( findAll( first, function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( findAll( first, function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 
 	const second = w.dialogs[w.dialogs.length - 1];
 	const field = findAll( second, function( node ) { return node.tagName === 'INPUT' } )[0];
@@ -1516,7 +1559,7 @@ function world( options ) {
 		thrown = e;
 	}
 
-	check( 'K. a link to a page of another site, which the frame cannot read, throws nothing: the page that was chosen is loaded with the token, the bar says that the preview cannot show it, and the frame is busy until it has loaded', thrown === null && replaced.length === 1 && replaced[0].indexOf('/site/?nino-theme-preview=') === 0 && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) === 'The preview cannot show this page.', String( thrown ) );
+	check( 'K. a link to a page of another site, which the frame cannot read, throws nothing: the page that was chosen is loaded with the token, the bar says that the preview cannot show it, and the frame is busy until it has loaded', thrown === null && replaced.length === 1 && replaced[0].indexOf('http://workbench.test/site/?nino-theme-preview=') === 0 && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) === 'The preview cannot show this page.', String( thrown ) );
 
 	fire( w.frame(), 'load' );
 
@@ -1536,7 +1579,7 @@ function world( options ) {
 
 	check( 'K. once it has loaded the value of a fixed length is the measured one, in pixels', w.hint( 'themes-section-section-title-size' ) === '19.2px', w.hint( 'themes-section-section-title-size' ) );
 
-	w.state.hash = '#themes/nino/page';
+	w.state.hash = '#themes/nino/page/type';
 	w.panel.showCurrent();
 	fire( w.frame(), 'load' );
 
@@ -1552,10 +1595,10 @@ function world( options ) {
 	w.tick();
 	w.serve();
 	w.stamp = 'stamp-5';
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Save' } )[0], 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === 'Overwrite' } )[0], 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === W('label/overwrite') } )[0], 'click' );
 	w.answer( 200, Object.assign( { theme : { key : 'own:lindner', kind : 'own', name : 'Lindner' }, mix : mixOf( 'own:lindner' ), stamp : 'stamp-5', active : null }, describe( mixOf( 'own:lindner' ) ) ) );
 
 	check( 'J. Overwrite writes with the stamp that stands now and without force: it answers the stamp and says nothing about a stylesheet that somebody else wrote', w.requests.length === 1 && w.requests[0].payload.base === 'stamp-5' && w.requests[0].payload.force === false );
@@ -1579,20 +1622,20 @@ function world( options ) {
 	w.state.hash = '#themes/nino/section';
 	w.panel.showCurrent();
 
-	check( 'K. a step of the history into the settings of a group puts the focus on the way back, as the click on the row does', w.byClass( w.theme, 'themes-back' )[0].focused === true );
+	check( 'K. a step of the history into the settings of a group puts the focus on the way back, as the click on the row does', w.byClass( w.theme, 'nino-admin-back-link' )[1].focused === true );
 
-	w.state.hash = '#themes/nino';
+	w.state.hash = '#themes/nino/groups';
 	w.panel.showCurrent();
 
 	check( 'K. ...and a step out of them puts it on the row of the group that was left', w.byClass( w.theme, 'themes-groups' )[0].children[3].children[0].focused === true );
 
 	w.state.hash = '#themes/nino/section/section-title';
 	w.panel.showCurrent();
-	w.byClass( w.theme, 'themes-back' )[0].focused = false;
+	w.byClass( w.theme, 'nino-admin-back-link' )[1].focused = false;
 	w.state.hash = '#themes/nino/section/section-wrap';
 	w.panel.showCurrent();
 
-	check( 'K. a step between two sections of one group moves the focus nowhere', w.byClass( w.theme, 'themes-back' )[0].focused === false );
+	check( 'K. a step between two sections of one group moves the focus nowhere', w.byClass( w.theme, 'nino-admin-back-link' )[1].focused === false );
 }
 
 {
@@ -1601,7 +1644,7 @@ function world( options ) {
 
 	w.at( '#themes/nino/section' );
 
-	check( 'K. the address a page is loaded on puts the focus nowhere - only a step between two levels does', w.byClass( w.theme, 'themes-back' )[0].focused !== true );
+	check( 'K. the address a page is loaded on puts the focus nowhere - only a step between two levels does', w.byClass( w.theme, 'nino-admin-back-link' )[1].focused !== true );
 }
 
 {
@@ -1612,7 +1655,7 @@ function world( options ) {
 	fire( none.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	none.tick();
 	none.serve();
-	fire( none.button( none.bar(), 'Save as own theme' ), 'click' );
+	fire( none.button( none.bar(), W('label/save-as') ), 'click' );
 
 	const on = world( { active : 'own:lindner' } );
 
@@ -1620,7 +1663,7 @@ function world( options ) {
 	fire( on.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	on.tick();
 	on.serve();
-	fire( on.button( on.bar(), 'Save as own theme' ), 'click' );
+	fire( on.button( on.bar(), W('label/save-as') ), 'click' );
 
 	check( 'L. the dialog says which theme the website goes on showing - by its name, an own one without the form the API gives it - or that it shows the standard parts', none.text( none.dialogs[0] ).indexOf('The website goes on showing the standard parts.') !== -1 && on.text( on.dialogs[0] ).indexOf('The website goes on showing the theme "Lindner".') !== -1 && on.text( on.dialogs[0] ).indexOf('own:') === -1 );
 
@@ -1642,7 +1685,7 @@ function world( options ) {
 
 	w.ui.accordion = function( options ) { seen.push( options ); return real.call( w.ui, options ) };
 
-	[ [ 'settings', '#themes/nino/settings' ], [ 'css', '#themes/nino/css' ], [ 'groups', '#themes/nino' ] ].forEach( function( named ) {
+	[ [ 'settings', '#themes/nino/settings' ], [ 'css', '#themes/nino/css' ], [ 'groups', '#themes/nino/groups' ] ].forEach( function( named ) {
 		w.state.hash = '#themes/nino/'+ named[0];
 		w.panel.showCurrent();
 		w.serve();
@@ -1652,13 +1695,20 @@ function world( options ) {
 		check( 'M. '+ named[0]+ ' is no group: the address shows the first level of the theme with that section open, and the address is the one that section has', open.length === 1 && open[0].id === 'themes-groups-'+ [ 'groups', 'settings', 'css' ].indexOf( named[0] )+ '-head' && w.state.hash === named[1], w.state.hash );
 	} );
 
+	w.state.hash = '#themes/nino/brand/colours';
+	w.panel.showCurrent();
+	w.serve();
+
+	check( 'M. brand has a level of its own: the brand of the project, no group of the list - four sections, the one the address names open', w.byClass( w.theme, 'themes-groups' ).length === 0 && w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 1 && w.state.hash === '#themes/nino/brand/colours', w.state.hash );
+
+	// a step of the history to an address that names no section: every section is closed, and the address stays what it is
 	w.state.hash = '#themes/nino/brand';
 	w.panel.showCurrent();
 	w.serve();
 
-	check( 'M. brand has a level of its own: the brand of the project, no group of the list - four sections, the first open, and the address names it', w.byClass( w.theme, 'themes-groups' ).length === 0 && w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.state.hash === '#themes/nino/brand/colours', w.state.hash );
+	check( 'M. an address that names no section is a level with every section closed - what a click on the open head leaves behind - and stays the address', w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 0 && w.state.hash === '#themes/nino/brand', w.state.hash );
 
-	w.state.hash = '#themes/nino';
+	w.state.hash = '#themes/nino/groups';
 	w.panel.showCurrent();
 	w.serve();
 
@@ -1692,7 +1742,7 @@ function type( node, value ) {
 
 	fire( row, 'click' );
 
-	check( 'O. a click on the row goes to the level of the brand: the address names the first section, the way back is there, the name of the level says that it belongs to the project, and the focus is on the way back', w.state.hash === '#themes/nino/brand/colours' && w.byClass( w.theme, 'themes-back' ).length === 1 && w.text( w.byClass( w.theme, 'themes-title' )[0] ).indexOf('Project') !== -1 && w.byClass( w.theme, 'themes-back' )[0].focused === true, w.state.hash );
+	check( 'O. a click on the row goes to the level of the brand: the address names the first section, the way back is there, the name of the level says that it belongs to the project, and the focus is on the way back', w.state.hash === '#themes/nino/brand/colours' && w.byClass( w.theme, 'nino-admin-back-link' ).length === 2 && w.text( w.byClass( w.theme, 'themes-title' )[0] ).indexOf('Project') !== -1 && w.byClass( w.theme, 'nino-admin-back-link' )[1].focused === true, w.state.hash );
 	check( 'O. the level has four sections - colours, type, mode, logo - one is open, each head says what is in it: from the theme, where the project has set nothing', w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 1 && w.byClass( w.theme, 'nino-admin-accordion-summary' ).map( function( node ) { return node.textContent } ).join() === 'from the theme,from the theme,from the theme,/logo · /logo/dark' );
 	check( 'O. the switch of the split view says Settings: it is a level of settings', w.byClass( w.theme, 'nino-admin-split-switch' )[0].children[0].textContent === W('label/settings') );
 
@@ -1706,7 +1756,7 @@ function type( node, value ) {
 	type( color1, '#9a4b1d' );
 
 	check( 'O. M4: a colour is an own value from the first time it is set - the chip says so, the way back is offered with the value it goes back to, the section is marked changed and says how many own values it holds, and the draft is changed', w.text( w.byClass( w.theme, 'themes-origin' )[0] ).indexOf( W('chip/own-value') ) !== -1 && byId( w.theme, 'themes-brand-back-color-1' ).hidden === false && byId( w.theme, 'themes-brand-back-color-1' ).textContent === Wp( 'label/take-back-standard', '#1c5db8' )
-		&& w.text( byId( w.theme, 'themes-acc-0-head' ) ).indexOf( W('msg/own-one') ) !== -1 && w.text( byId( w.theme, 'themes-acc-0-head' ) ).indexOf('changed') !== -1 && w.state_() === '● Changed' && w.dirty.entries.themes.isDirty() === true );
+		&& w.text( byId( w.theme, 'themes-acc-0-head' ) ).indexOf( W('msg/own-one') ) !== -1 && w.text( byId( w.theme, 'themes-acc-0-head' ) ).indexOf('changed') !== -1 && w.state_() === CHANGED && w.dirty.entries.themes.isDirty() === true );
 
 	// a code that is no colour is none: nothing is changed by it
 	type( color2, 'red' );
@@ -1735,9 +1785,9 @@ function type( node, value ) {
 	type( color2, '#17233b' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Reset' ), 'click' );
+	fire( w.button( w.bar(), W('label/reset') ), 'click' );
 
-	check( 'O. Reset drops a brand that was changed with the rest of the draft: the field shows the saved value, nothing is the project\'s own, the state says so', byId( w.theme, 'themes-brand-color-2' ).value === '#17233a' && byId( w.theme, 'themes-brand-back-color-2' ).hidden === true && w.state_() === '✓ Saved and active' && w.dirty.entries.themes.isDirty() === false );
+	check( 'O. Reset drops a brand that was changed with the rest of the draft: the field shows the saved value, nothing is the project\'s own, the state says so', byId( w.theme, 'themes-brand-color-2' ).value === '#17233a' && byId( w.theme, 'themes-brand-back-color-2' ).hidden === true && w.state_() === APPLIED && w.dirty.entries.themes.isDirty() === false );
 	w.serve();
 
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
@@ -1867,18 +1917,18 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 
-	check( 'P. a brand that is changed in a theme of a package is saved as the brand and not as a theme: the button says Save, and not that an own theme is made', w.text( w.button( w.bar(), 'Save' ) ) === 'Save' && w.button( w.bar(), 'Save as own theme' ) === undefined && w.button( w.bar(), 'Save' ).disabled === false );
+	check( 'P. a brand that is changed in a theme of a package is saved as the brand and not as a theme: the button says Save, and not that an own theme is made', w.text( w.button( w.bar(), W('label/save') ) ) === W('label/save') && w.button( w.bar(), W('label/save-as') ) === undefined && w.button( w.bar(), W('label/save') ).disabled === false );
 
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'P. it is asked first, whichever theme is open and whether or not it is the website\'s - the brand holds for the whole website - as a big thing, and the question says that it is the brand', seen.join() === 'big' && w.requests.length === 0 && w.text( w.dialogs[0] ).indexOf( W('confirm/brand') ) !== -1 );
 
-	pressed( w, 'Cancel' );
+	pressed( w, CANCEL );
 
-	check( 'P. No saves nothing and the draft stays', w.requests.length === 0 && w.state_() === '● Changed' );
+	check( 'P. No saves nothing and the draft stays', w.requests.length === 0 && w.state_() === CHANGED );
 
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 
 	const sent = w.requests[0];
 
@@ -1886,13 +1936,13 @@ function pressed( w, label ) {
 
 	w.serve();
 
-	check( 'P. what was saved is what the screen is: the state is Saved, the stamp of the brand is the new one, and the draft is the brand that is stored', w.state_() === '✓ Saved' && w.dirty.entries.themes.isDirty() === false && w.brandStamp === 'brand-2' && w.actions.slice( w.actions.indexOf('themes/brand') ).join() === 'themes/brand,themes/list,themes/open,themes/preview' );
+	check( 'P. what was saved is what the screen is: the state is Saved, the stamp of the brand is the new one, and the draft is the brand that is stored', w.state_() === SAVED && w.dirty.entries.themes.isDirty() === false && w.brandStamp === 'brand-2' && w.actions.slice( w.actions.indexOf('themes/brand') ).join() === 'themes/brand,themes/list,themes/open,themes/preview' );
 
 	type( byId( w.theme, 'themes-brand-color-1' ), '#1f6f5b' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 
 	check( 'P. the next save is made on the stamp the last gave', w.requests[0]?.payload?.brandBase === 'brand-2' );
 	w.serve();
@@ -1914,17 +1964,17 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 
-	check( 'P. the mix and the brand changed in a theme of a package: the button makes an own theme, and the row of the brand in the groups says that it is changed', w.text( w.button( w.bar(), 'Save as own theme' ) ) !== '' );
+	check( 'P. the mix and the brand changed in a theme of a package: the button makes an own theme, and the row of the brand in the groups says that it is changed', w.text( w.button( w.bar(), W('label/save-as') ) ) !== '' );
 
-	fire( w.button( w.bar(), 'Save as own theme' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
+	pressed( w, W('label/save') );
 
 	check( 'P. the brand is asked about first, since it reaches the website - and then the name', seen.join() === 'big' && w.dialogs.length === 2 && w.dialogs[1].open === true );
 
 	const dialog = w.dialogs[w.dialogs.length - 1];
 
 	findAll( dialog, function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
-	pressed( w, 'Save' );
+	pressed( w, W('label/save') );
 
 	check( 'P. M5: save as sends the mix and the brand side by side - the brand is no part of the mix - and the stamp of the brand', w.requests[0]?.action === 'themes/save-as' && w.requests[0]?.payload?.brand?.['color-1']?.value === '#9a4b1d' && w.requests[0]?.payload?.brandBase === 'brand-1' && w.requests[0]?.payload?.mix?.brand === undefined && JSON.stringify( w.requests[0]?.payload?.mix ).indexOf('color-1') === -1 );
 	w.serve();
@@ -1939,7 +1989,7 @@ function pressed( w, label ) {
 	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'P. the mix of an own theme that is not the website\'s is saved at once, and the brand is not sent where it is not changed', seen.length === 0 && w.requests.length === 1 && w.requests[0]?.action === 'themes/save' && w.requests[0]?.payload?.brand === undefined && w.requests[0]?.payload?.brandBase === undefined );
 	w.serve();
@@ -1950,8 +2000,8 @@ function pressed( w, label ) {
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 
 	check( 'P. an own theme with a changed brand: save, with the mix, the brand and the two stamps - the one of the theme and the one of the brand - and the asking comes first', w.requests[0]?.action === 'themes/save' && w.requests[0]?.payload?.brand?.['color-1']?.value === '#9a4b1d' && w.requests[0]?.payload?.brandBase === 'brand-1' && w.requests[0]?.payload?.base === w.stamp && w.requests[0]?.payload?.mix?.name === 'Lindner' );
 	w.serve();
@@ -1966,24 +2016,24 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 	w.brandStamp = 'brand-5';
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 	w.serve();
 
 	const question = w.dialogs[w.dialogs.length - 1];
 
-	check( 'P. a brand that another tab saved since it was opened is said in the question of the conflict, with the sentence of the server, and Cancel keeps the draft', question.open === true && w.text( question ).indexOf( E('themes_brand_changed') ) !== -1 && ( fire( findAll( question, function( node ) { return node.textContent === CANCEL } )[0], 'click' ), w.state_() === '● Changed' && w.requests.length === 0 ) );
+	check( 'P. a brand that another tab saved since it was opened is said in the question of the conflict, with the sentence of the server, and Cancel keeps the draft', question.open === true && w.text( question ).indexOf( E('themes_brand_changed') ) !== -1 && ( fire( findAll( question, function( node ) { return node.textContent === CANCEL } )[0], 'click' ), w.state_() === CHANGED && w.requests.length === 0 ) );
 
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 	w.serve();
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 
 	check( 'P. Overwrite sends the save once more at once, with the stamp the other tab left - the theme was asked for before the question, for what the other tab set - and no force', w.requests.length === 1 && w.requests[0]?.action === 'themes/brand' && w.requests[0]?.payload?.brandBase === 'brand-5' && w.requests[0]?.payload?.force === false );
 
 	w.serve();
 
-	check( 'P. ...and the save is made once more with that stamp, and only that one: the stamp of the theme is the one the person has - what the refusal was not about is not taken over', w.sent.filter( function( request ) { return request.action === 'themes/brand' } ).slice( -1 )[0]?.payload?.brandBase === 'brand-5' && w.sent.filter( function( request ) { return request.action === 'themes/brand' } ).slice( -1 )[0]?.payload?.force === false && w.brandStored['color-1'].value === '#9a4b1d' && w.state_() === '✓ Saved' );
+	check( 'P. ...and the save is made once more with that stamp, and only that one: the stamp of the theme is the one the person has - what the refusal was not about is not taken over', w.sent.filter( function( request ) { return request.action === 'themes/brand' } ).slice( -1 )[0]?.payload?.brandBase === 'brand-5' && w.sent.filter( function( request ) { return request.action === 'themes/brand' } ).slice( -1 )[0]?.payload?.force === false && w.brandStored['color-1'].value === '#9a4b1d' && w.state_() === SAVED );
 }
 
 {
@@ -1996,17 +2046,17 @@ function pressed( w, label ) {
 	w.serve();
 	w.stamp = 'stamp-9';
 	w.brandStamp = 'brand-5';
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 	w.serve();
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 	w.serve();
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 	w.serve();
 
 	const saves = w.sent.filter( function( request ) { return request.action === 'themes/save' } );
 
-	check( 'P. a theme and a brand that both were saved by another tab are two questions, one after the other: the first save was made on the stamps it had, the second with the stamp of the theme only, the third with both - each of them the one the refusal was about', saves.length === 3 && saves[0]?.payload?.base === 'stamp-1' && saves[0]?.payload?.brandBase === 'brand-1' && saves[1]?.payload?.base === 'stamp-9' && saves[1]?.payload?.brandBase === 'brand-1' && saves[2]?.payload?.base === 'stamp-9' && saves[2]?.payload?.brandBase === 'brand-5' && w.state_() === '✓ Saved' );
+	check( 'P. a theme and a brand that both were saved by another tab are two questions, one after the other: the first save was made on the stamps it had, the second with the stamp of the theme only, the third with both - each of them the one the refusal was about', saves.length === 3 && saves[0]?.payload?.base === 'stamp-1' && saves[0]?.payload?.brandBase === 'brand-1' && saves[1]?.payload?.base === 'stamp-9' && saves[1]?.payload?.brandBase === 'brand-1' && saves[2]?.payload?.base === 'stamp-9' && saves[2]?.payload?.brandBase === 'brand-5' && w.state_() === SAVED );
 }
 
 {
@@ -2022,17 +2072,17 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 	w.brandStamp = 'brand-5';
-	fire( w.button( w.bar(), 'Save as own theme' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
+	pressed( w, W('label/save') );
 	findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
-	pressed( w, 'Save' );
+	pressed( w, W('label/save') );
 	w.serve();
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 	w.serve();
 
 	const asks = w.sent.filter( function( request ) { return request.action === 'themes/save-as' } );
 
-	check( 'P. a save as that the brand of another tab refuses is asked once more with the stamp that stands and with no force: Overwrite is the answer to a stamp', asks.length === 2 && asks[0]?.payload?.brandBase === 'brand-1' && asks[1]?.payload?.brandBase === 'brand-5' && asks[1]?.payload?.force === false && w.state_() === '✓ Saved' );
+	check( 'P. a save as that the brand of another tab refuses is asked once more with the stamp that stands and with no force: Overwrite is the answer to a stamp', asks.length === 2 && asks[0]?.payload?.brandBase === 'brand-1' && asks[1]?.payload?.brandBase === 'brand-5' && asks[1]?.payload?.force === false && w.state_() === SAVED );
 }
 
 {
@@ -2043,8 +2093,8 @@ function pressed( w, label ) {
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 	w.answer( 409, { error : 'the stylesheet of the project is not the one this feature wrote', code : 'themes_foreign', params : [], field : '' } );
 
 	check( 'P. a stylesheet that is not the feature\'s is explained and Replace is offered, for the brand as it is for the theme', w.dialogs.length === 2 && w.text( w.dialogs[1] ).indexOf( E('themes_foreign') ) !== -1 && w.requests.length === 0 );
@@ -2065,7 +2115,7 @@ function pressed( w, label ) {
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'P. a mode that does not ask before a big thing is not asked: the brand is saved at once, and the level that was asked of the policy is big', asked.join() === 'big' && w.dialogs.length === 0 && w.requests.length === 1 && w.requests[0]?.action === 'themes/brand' );
 	w.serve();
@@ -2086,7 +2136,7 @@ function pressed( w, label ) {
 
 	type( text, 'a { color: red }\nb { color: blue }' );
 
-	check( 'Q. what is typed is the css of the draft: the head says how many lines and that it is changed, the bar says changed, and the field is the one that was typed in', w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('2 lines') !== -1 && w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('changed') !== -1 && w.state_() === '● Changed' && w.dirty.entries.themes.isDirty() === true );
+	check( 'Q. what is typed is the css of the draft: the head says how many lines and that it is changed, the bar says changed, and the field is the one that was typed in', w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('2 lines') !== -1 && w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('changed') !== -1 && w.state_() === CHANGED && w.dirty.entries.themes.isDirty() === true );
 	check( 'Q. the draft follows when the hand has rested - for longer than it does for a knob, which is how a text is typed - as one request, with the css as it was typed', w.timers.filter( function( timer ) { return timer.ms === 400 } ).length === 1 && w.timers.filter( function( timer ) { return timer.ms === 150 } ).length === 0 && ( w.tick(), w.requests.length === 1 && w.requests[0]?.action === 'themes/preview' && w.requests[0]?.payload?.mix?.css === 'a { color: red }\nb { color: blue }' ) );
 	w.serve();
 
@@ -2104,7 +2154,7 @@ function pressed( w, label ) {
 	check( 'Q. the line ending that a person\'s system writes is the one of the server\'s: a carriage return is no line', w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('1 line') !== -1 && w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('lines') === -1 );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'Q. saved, the css goes with the mix as it was typed - it is the theme\'s, so it is saved with the theme and with no other request - and the server trims it', w.requests.length === 1 && w.requests[0]?.action === 'themes/save' && w.requests[0]?.payload?.mix?.css === 'a { }\r\n\r\n' );
 	w.serve();
@@ -2127,16 +2177,16 @@ function pressed( w, label ) {
 	type( text, '/* '+ 'x'.repeat( 65536 ) );
 
 	check( 'Q. a text of more than 65536 bytes is said at the field, in its own sentence, which the field points at, and the field is marked', w.text( byId( w.theme, 'themes-css-problem' ) ) === Wp( 'error/css-long', 64 ) && text.attributes['aria-invalid'] === 'true' && text.attributes['aria-describedby'] === 'themes-css-problem' );
-	check( 'Q. ...Save cannot be pressed, and the draft is not asked for with it - nothing is sent with the hand at rest - and the one that was made before stays on the screen', w.button( w.bar(), 'Save' ).disabled === true && w.timers.filter( function( timer ) { return timer.fn !== null } ).length === 0 );
+	check( 'Q. ...Save cannot be pressed, and the draft is not asked for with it - nothing is sent with the hand at rest - and the one that was made before stays on the screen', w.button( w.bar(), W('label/save') ).disabled === true && w.timers.filter( function( timer ) { return timer.fn !== null } ).length === 0 );
 
 	type( text, 'a { }' );
 
-	check( 'Q. the sentence goes with the text that is too long', byId( w.theme, 'themes-css-problem' ) === undefined && text.attributes['aria-invalid'] === undefined && text.attributes['aria-describedby'] === 'themes-css-hint' && w.button( w.bar(), 'Save' ).disabled === false );
+	check( 'Q. the sentence goes with the text that is too long', byId( w.theme, 'themes-css-problem' ) === undefined && text.attributes['aria-invalid'] === undefined && text.attributes['aria-describedby'] === 'themes-css-hint' && w.button( w.bar(), W('label/save') ).disabled === false );
 	w.timers.length = 0;
 
 	type( text, 'a { }\0' );
 
-	check( 'Q. a null byte is said as well, and is not sent', w.text( byId( w.theme, 'themes-css-problem' ) ).indexOf( W('error/css-null') ) !== -1 && w.button( w.bar(), 'Save' ).disabled === true );
+	check( 'Q. a null byte is said as well, and is not sent', w.text( byId( w.theme, 'themes-css-problem' ) ).indexOf( W('error/css-null') ) !== -1 && w.button( w.bar(), W('label/save') ).disabled === true );
 
 	// two bytes for a character: the limit is bytes
 	type( text, 'ä'.repeat( 32768 ) );
@@ -2175,7 +2225,7 @@ function pressed( w, label ) {
 
 	type( name, 'Lindner Two' );
 
-	check( 'R. a new name is a change of the draft - the head of the section says it, so does the bar - and the title over the split view is the saved name until it is saved', w.state_() === '● Changed' && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf('Lindner Two') !== -1 && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf('changed') !== -1 && w.text( w.byClass( w.theme, 'themes-name' )[0] ) === 'Lindner' );
+	check( 'R. a new name is a change of the draft - the head of the section says it, so does the bar - and the title over the split view is the saved name until it is saved', w.state_() === CHANGED && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf('Lindner Two') !== -1 && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf('changed') !== -1 && w.text( w.byClass( w.theme, 'themes-name' )[0] ) === 'Lindner' );
 
 	type( name, '   ' );
 
@@ -2185,12 +2235,12 @@ function pressed( w, label ) {
 
 	check( 'R. ...and the sentence goes with the next letter', byId( w.theme, 'themes-name-error' ) === undefined && name.attributes['aria-invalid'] === undefined && name.attributes['aria-describedby'] === 'themes-name-hint' );
 
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'R. a rename is a save: save, the key of the theme, the new name in the mix and the stamp it was seen in - the key does not change', w.requests.length === 1 && w.requests[0]?.action === 'themes/save' && w.requests[0]?.payload?.theme === 'own:lindner' && w.requests[0]?.payload?.mix?.name === 'Lindner Three' && w.requests[0]?.payload?.base === 'stamp-1' );
 	w.serve();
 
-	check( 'R. ...and what is saved is read again: the title and the card of the theme are the new name only if the server says so - the stand-in does not, so the name that comes back is the one the server keeps', w.state_() === '✓ Saved' && w.dirty.entries.themes.isDirty() === false );
+	check( 'R. ...and what is saved is read again: the title and the card of the theme are the new name only if the server says so - the stand-in does not, so the name that comes back is the one the server keeps', w.state_() === SAVED && w.dirty.entries.themes.isDirty() === false );
 }
 
 {
@@ -2213,12 +2263,12 @@ function pressed( w, label ) {
 
 	check( 'R. "Save as own theme" in the settings asks the name in the dialog of the bar, with a suggestion made of the name of the theme - it needs no change of the draft, and the website is not asked about, because it does not show what is saved', dialog.open === true && findAll( dialog, function( node ) { return node.tagName === 'INPUT' } )[0].value === 'Craft 2' && seen.length === 0 && w.requests.length === 0 );
 
-	pressed( w, 'Cancel' );
+	pressed( w, CANCEL );
 
 	check( 'R. Cancel sends nothing and the focus is back on the button', w.requests.length === 0 && byId( w.theme, 'themes-save-as' ).focused === true );
 
 	fire( byId( w.theme, 'themes-save-as' ), 'click' );
-	pressed( w, 'Save' );
+	pressed( w, W('label/save') );
 
 	check( 'R. the name is sent with the mix of the draft - which is the theme as it stands - to save-as, and no brand, since none is changed', w.requests[0]?.action === 'themes/save-as' && w.requests[0]?.payload?.mix?.name === 'Craft 2' && w.requests[0]?.payload?.brand === undefined );
 	w.serve();
@@ -2248,7 +2298,7 @@ function pressed( w, label ) {
 
 	check( 'R. Nr. 7: not with a change that is not saved - the button cannot be pressed and the sentence says to save or reset first', byId( w.theme, 'themes-restore' ).disabled === true && w.text( byId( w.theme, 'themes-restore-hint' ) ).indexOf( W('hint/restore-dirty') ) !== -1 );
 
-	fire( w.button( w.bar(), 'Reset' ), 'click' );
+	fire( w.button( w.bar(), W('label/reset') ), 'click' );
 	w.serve();
 
 	check( 'R. ...and it can be as soon as the change is gone', byId( w.theme, 'themes-restore' ).disabled === false && w.text( byId( w.theme, 'themes-restore-hint' ) ) === Wp( 'hint/restore', W('msg/last-unknown') ) );
@@ -2257,7 +2307,7 @@ function pressed( w, label ) {
 
 	check( 'R. it is asked first, as a big thing, in a question that says what it covers and that the state as it is now becomes the last state', seen.join() === 'big' && w.dialogs.length === 1 && w.text( w.dialogs[0] ).indexOf( Wp( 'confirm/restore', W('msg/last-unknown') ) ) !== -1 );
 
-	pressed( w, 'Cancel' );
+	pressed( w, CANCEL );
 
 	check( 'R. No does nothing and the focus is on the button', w.requests.length === 0 && byId( w.theme, 'themes-restore' ).focused === true );
 
@@ -2267,7 +2317,7 @@ function pressed( w, label ) {
 	check( 'R. Yes asks the API with the state the panel saw it in, and no force', w.requests.length === 1 && w.requests[0]?.action === 'themes/restore' && w.requests[0]?.payload?.base === 'state-1' && w.requests[0]?.payload?.force === false );
 	w.serve();
 
-	check( 'R. what was restored is asked for again and shown: the list, the theme, its draft - and the line says that the last state is back; the focus is on the button that was pressed', w.actions.slice( w.actions.indexOf('themes/restore') ).join() === 'themes/restore,themes/list,themes/open,themes/preview' && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ).indexOf( W('msg/restored') ) !== -1 && byId( w.theme, 'themes-restore' ).focused === true && w.state_() === '✓ Saved' );
+	check( 'R. what was restored is asked for again and shown: the list, the theme, its draft - and the line says that the last state is back; the focus is on the button that was pressed', w.actions.slice( w.actions.indexOf('themes/restore') ).join() === 'themes/restore,themes/list,themes/open,themes/preview' && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ).indexOf( W('msg/restored') ) !== -1 && byId( w.theme, 'themes-restore' ).focused === true && w.state_() === SAVED );
 
 	fire( byId( w.theme, 'themes-restore' ), 'click' );
 	pressed( w, 'Restore the last state' );
@@ -2291,14 +2341,14 @@ function pressed( w, label ) {
 
 	check( 'R. a restore on a state that another tab changed is said in the question of the conflict - three answers, the sentence of the server - and nothing is swapped', question.open === true && w.text( question ).indexOf( E('themes_state') ) !== -1 && w.restored === 0 );
 
-	pressed( w, 'Cancel' );
+	pressed( w, CANCEL );
 
 	check( 'R. Cancel leaves it, and the focus is on the button', w.requests.length === 0 && byId( w.theme, 'themes-restore' ).focused === true );
 
 	fire( byId( w.theme, 'themes-restore' ), 'click' );
 	pressed( w, 'Restore the last state' );
 	w.serve();
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 	w.serve();
 
 	check( 'R. Overwrite asks the theme as it is now, to have the stamp of the state, and the restore is asked again with that stamp and with nothing else taken over', w.restored === 1 && w.sent.filter( function( request ) { return request.action === 'themes/restore' } ).slice( -1 )[0]?.payload?.base === 'state-7' && w.sent.filter( function( request ) { return request.action === 'themes/restore' } ).slice( -1 )[0]?.payload?.force === false );
@@ -2333,7 +2383,7 @@ function pressed( w, label ) {
 
 	check( 'R. it is asked first as a thing that cannot be taken back - destructive, with the name - and the question has the red answer', seen.join() === 'destructive' && w.text( w.dialogs[0] ).indexOf( Wp( 'confirm/delete-title', 'Lindner' ) ) !== -1 && findAll( w.dialogs[0], function( node ) { return node.className.indexOf('nino-admin-btn-danger') !== -1 } ).length === 1 );
 
-	pressed( w, 'Cancel' );
+	pressed( w, CANCEL );
 
 	check( 'R. No does nothing and the focus is on the button', w.requests.length === 0 && byId( w.theme, 'themes-delete' ).focused === true );
 
@@ -2369,7 +2419,7 @@ function pressed( w, label ) {
 
 	check( 'R. a theme that another tab changed since it was opened is said in the question of the conflict before it is deleted, and the theme is there', w.text( question ).indexOf( Wp( 'api/themes_changed', 'Lindner' ) ) !== -1 && w.deleted.length === 0 );
 
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 	w.serve();
 
 	check( 'R. Overwrite takes the stamp that stands now and deletes it with that', w.deleted.join() === 'own:lindner' && w.sent.filter( function( request ) { return request.action === 'themes/delete' } ).slice( -1 )[0]?.payload?.base === 'stamp-9' && w.sent.filter( function( request ) { return request.action === 'themes/delete' } ).slice( -1 )[0]?.payload?.force === false );
@@ -2420,7 +2470,7 @@ function said( w, node ) {
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 
 	check( 'S. ...and it is saved with no question that is untrue: nothing reaches a visitor, so the save is asked of the API at once', seen.length === 0 && w.dialogs.length === 0 && w.requests.length === 1 && w.requests[0]?.action === 'themes/brand' );
 	w.serve();
@@ -2434,7 +2484,7 @@ function said( w, node ) {
 	type( byId( on.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	on.tick();
 	on.serve();
-	fire( on.button( on.bar(), 'Save' ), 'click' );
+	fire( on.button( on.bar(), W('label/save') ), 'click' );
 
 	check( 'S. ...and the question is asked, with the sentence of the brand, in which no word says that visitors see it: that is the workbench\'s to say, by the mode', said( on, on.dialogs[0] ).indexOf( W('confirm/brand') ) !== -1 && W('confirm/brand').indexOf( W('confirm/save-title') ) === -1 );
 }
@@ -2457,23 +2507,23 @@ function said( w, node ) {
 	type( colour, '#1234' );
 
 	check( 'S. a code that is no colour at the end puts the draft back to the last colour that was left in the field - the theme\'s - and the colour is no own value', byId( w.theme, 'themes-brand-back-color-1' ).hidden === true && ( w.tick(), w.requests.slice( -1 )[0]?.payload?.brand?.['color-1']?.own === false ) );
-	check( 'S. ...and the bar says why it cannot be saved, whichever section is open; Save cannot be pressed, and a save by the keyboard is told no and sends nothing', said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === Wp( 'error/colour-invalid', W('label/color-1') ) && w.byClass( w.theme, 'nino-admin-status' )[0].dataset.state === 'error' && w.button( w.bar(), 'Save' ).disabled === true && ( w.sent.length = 0, w.dirty.entries.themes.save( function( ok ) { w.kept = ok } ), w.kept === false && w.requests.filter( function( request ) { return request.action !== 'themes/preview' } ).length === 0 ) );
+	check( 'S. ...and the bar says why it cannot be saved, whichever section is open; Save cannot be pressed, and a save by the keyboard is told no and sends nothing', said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === Wp( 'error/colour-invalid', W('label/color-1') ) && w.byClass( w.theme, 'nino-admin-status' )[0].dataset.state === 'error' && w.button( w.bar(), W('label/save') ).disabled === true && ( w.sent.length = 0, w.dirty.entries.themes.save( function( ok ) { w.kept = ok } ), w.kept === false && w.requests.filter( function( request ) { return request.action !== 'themes/preview' } ).length === 0 ) );
 
 	type( colour, '#abc' );
 	fire( colour, 'change' );
 	type( colour, '#abcd' );
 
-	check( 'S. a colour that was left in the field is the one the draft goes back to: #abc was left, so #abcd is #aabbcc again and not the colour of the theme', ( w.tick(), w.serve(), w.sent.filter( function( request ) { return request.action === 'themes/preview' } ).slice( -1 )[0]?.payload?.brand?.['color-1']?.value === '#aabbcc' ) && w.dirty.entries.themes.isDirty() === true && w.button( w.bar(), 'Save' ).disabled === true );
+	check( 'S. a colour that was left in the field is the one the draft goes back to: #abc was left, so #abcd is #aabbcc again and not the colour of the theme', ( w.tick(), w.serve(), w.sent.filter( function( request ) { return request.action === 'themes/preview' } ).slice( -1 )[0]?.payload?.brand?.['color-1']?.value === '#aabbcc' ) && w.dirty.entries.themes.isDirty() === true && w.button( w.bar(), W('label/save') ).disabled === true );
 
 	type( colour, '#abcdef' );
 
-	check( 'S. a colour at last: the reason goes from the bar, and the draft can be saved', said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === '' && w.button( w.bar(), 'Save' ).disabled === false );
+	check( 'S. a colour at last: the reason goes from the bar, and the draft can be saved', said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === '' && w.button( w.bar(), W('label/save') ).disabled === false );
 
 	// the way back clears what is wrong with the field
 	type( colour, '#12' );
 	fire( byId( w.theme, 'themes-brand-back-color-1' ) ?? element('button'), 'click' );
 	type( colour, '#12' );
-	fire( w.button( w.bar(), 'Reset' ), 'click' );
+	fire( w.button( w.bar(), W('label/reset') ), 'click' );
 
 	check( 'S. a reset leaves no colour that is wrong behind: the field shows the saved colour, and nothing keeps the draft from being saved', byId( w.theme, 'themes-brand-color-1' ).value === '#1c5db8' && said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ).indexOf( Wp( 'error/colour-invalid', W('label/color-1') ) ) === -1 );
 }
@@ -2548,7 +2598,7 @@ function said( w, node ) {
 	check( 'S. a delete says in its question that it replaces the last state that is kept, and so does an apply, and a save of the theme of the website', said( w, w.dialogs[1] ).indexOf( W('msg/replaces-last').split('%s')[0] ) !== -1 );
 
 	pressed( w, CANCEL );
-	fire( w.button( w.bar(), 'Apply to the website' ), 'click' );
+	fire( w.button( w.bar(), W('label/apply') ), 'click' );
 
 	check( 'S. ...an apply too', said( w, w.dialogs[2] ).indexOf( W('msg/replaces-last').split('%s')[0] ) !== -1 );
 
@@ -2582,7 +2632,7 @@ function said( w, node ) {
 	check( 'S. the same name typed again is no change: the draft is the saved state, the bar does not say changed and the head of the section has no mark', w.dirty.entries.themes.isDirty() === false && w.byClass( w.theme, 'themes-state' )[0].dataset.state !== 'warn' && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf( W('state/changed-mark') ) === -1 );
 
 	type( name, 'Taken' );
-	fire( w.button( w.bar(), 'Save' ), 'click' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	w.serve();
 
 	check( 'S. a name that another card has is said at the name field, with the name of that card, and not only in the bar', said( w, byId( w.theme, 'themes-name-error' ) ) === Wp( 'api/themes_name_taken', 'Taken Before' ) && name.attributes['aria-describedby'] === 'themes-name-error' );
@@ -2604,15 +2654,15 @@ function said( w, node ) {
 	// the other tab saved the second colour, and a first one of its own
 	w.brandStored = Object.assign( brandNone(), { 'color-1' : { own : true, value : '#000001' }, 'color-2' : { own : true, value : '#000002' } } );
 	w.brandStamp = 'brand-5';
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 	w.serve();
 
 	const question = said( w, w.dialogs[w.dialogs.length - 1] );
 
 	check( 'S. the question says which values the two tabs changed - the first colour, and not the second, which only the other tab changed - and what Overwrite does', question.indexOf( Wp( 'msg/brand-both', W('label/color-1') ) ) !== -1 && question.indexOf( W('label/color-2') ) === -1 && question.indexOf( W('msg/brand-merge') ) !== -1 );
 
-	pressed( w, 'Overwrite' );
+	pressed( w, W('label/overwrite') );
 
 	const sent = w.requests[0]?.payload?.brand;
 
@@ -2627,8 +2677,8 @@ function said( w, node ) {
 	quiet.serve();
 	quiet.brandStored = Object.assign( brandNone(), { 'color-2' : { own : true, value : '#000002' } } );
 	quiet.brandStamp = 'brand-5';
-	fire( quiet.button( quiet.bar(), 'Save' ), 'click' );
-	pressed( quiet, 'Save' );
+	fire( quiet.button( quiet.bar(), W('label/save') ), 'click' );
+	pressed( quiet, W('label/save') );
 	quiet.serve();
 
 	check( 'S. where the other tab touched other values only, the question names none as changed by both', said( quiet, quiet.dialogs[quiet.dialogs.length - 1] ).indexOf( W('msg/brand-both').split('%s')[0] ) === -1 );
@@ -2642,8 +2692,8 @@ function said( w, node ) {
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	w.tick();
 	w.serve();
-	fire( w.button( w.bar(), 'Save' ), 'click' );
-	pressed( w, 'Save' );
+	fire( w.button( w.bar(), W('label/save') ), 'click' );
+	pressed( w, W('label/save') );
 	w.answer( 409, { error : 'the stylesheet cannot be read', code : 'themes_unreadable', params : [], field : '' } );
 
 	check( 'S. a stylesheet that cannot be read is asked about as one that is somebody else\'s, in the sentence that says that what it holds is not kept as the last state', said( w, w.dialogs[1] ).indexOf( E('themes_unreadable') ) !== -1 && w.requests.length === 0 );
@@ -2654,7 +2704,7 @@ function said( w, node ) {
 
 	w.answer( 409, { error : 'the stylesheet cannot be replaced', code : 'themes_locked', params : [], field : '' } );
 
-	check( 'S. a stylesheet that cannot be replaced is said in the bar, and is no success: the state stays changed and there is no question', w.dialogs.length === 2 && w.state_() === '● Changed' && said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === E('themes_locked') );
+	check( 'S. a stylesheet that cannot be replaced is said in the bar, and is no success: the state stays changed and there is no question', w.dialogs.length === 2 && w.state_() === CHANGED && said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === E('themes_locked') );
 }
 
 {
@@ -2684,8 +2734,8 @@ function said( w, node ) {
 	const seen = levels( apply );
 
 	apply.at( '#themes/own.lindner/section/section-wrap' );
-	fire( apply.button( apply.bar(), 'Apply to the website' ), 'click' );
-	pressed( apply, 'Apply to the website' );
+	fire( apply.button( apply.bar(), W('label/apply') ), 'click' );
+	pressed( apply, W('label/apply') );
 
 	check( 'S. an own theme is applied as the stamp the panel has of it says: the apply goes with the stamp, as a save does', apply.requests[0]?.action === 'themes/apply' && apply.requests[0]?.payload?.base === 'stamp-1' && seen.join() === 'big' );
 
@@ -2696,14 +2746,14 @@ function said( w, node ) {
 
 	card.at( '#themes' );
 	fire( findAll( card.list, function( b ) { return b.dataset.apply === 'own:lindner' } )[0], 'click' );
-	pressed( card, 'Apply to the website' );
+	pressed( card, W('label/apply') );
 
 	check( 'S. a card of the list applies the stamp of the theme as the list has it', card.requests[0]?.payload?.base === 'stamp-1' );
 
 	card.stamp = 'stamp-9';
 	card.serve();
 
-	check( 'S. ...and where another tab saved the theme meanwhile the list says so and shows the theme as it is now, and the website keeps what it shows', said( card, byId( card.list, 'themes-say' ) ) === Wp( 'api/themes_changed', 'Lindner' ) && card.active === 'nino' && card.dialogs.length === 1 );
+	check( 'S. ...and where another tab saved the theme meanwhile the list says so - in words that do not say the theme was opened, which the person who applies from a card has not done - and shows the theme as it is now, and the website keeps what it shows', said( card, byId( card.list, 'themes-say' ) ) === Wp( 'msg/changed-list', 'Lindner' ) && said( card, byId( card.list, 'themes-say' ) ).indexOf( Wp( 'api/themes_changed', 'Lindner' ) ) === -1 && card.active === 'nino' && card.dialogs.length === 1 );
 }
 
 // --- N. what is saved is as it is saved --------------------------------------------------------------------------------
@@ -2720,7 +2770,886 @@ function said( w, node ) {
 	check( 'N. ...a step is a change', w.dirty.entries.themes.isDirty() === true );
 
 	fire( w.step( 'themes-section-section-title-size', 2 ), 'click' );
-	check( 'N. ...and the middle again is none, which the saved mix says with a 0 and the draft by leaving the knob out', w.dirty.entries.themes.isDirty() === false && w.state_() === '✓ Saved and active'.replace( 'and active', '' ).trim() || w.dirty.entries.themes.isDirty() === false );
+	check( 'N. ...and the middle again is none, which the saved mix says with a 0 and the draft by leaving the knob out', w.dirty.entries.themes.isDirty() === false && w.state_() === APPLIED.replace( 'and active', '' ).trim() || w.dirty.entries.themes.isDirty() === false );
+}
+
+// --- T. the tabs: the views of the panel -----------------------------------------------------------------------------------------
+
+{
+	// one view is no strip: no empty shell and no tab that leads nowhere
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	check( 'T. with one view - the themes - there is no strip of tabs: nothing is drawn, in the head of the pane or beside it', w.doc.getElementById('themes-tabs') === null && w.panel.views.length === 1 && w.panel.views[0].key === 'themes' );
+	check( 'T. a group that is called as a view - the fixture has fonts - is no group of the list, as the sections of the first level are none: the names of the views are reserved', ( function() {
+		w.state.hash = '#themes/nino/groups';
+		w.panel.showCurrent();
+		w.serve();
+		return w.byClass( w.theme, 'themes-groups' )[0].children.map( function( item ) { return item.children[0].dataset.group } ).join() === 'brand,page,header,section,footer';
+	} )() );
+}
+
+{
+	// a second view is hung in: the strip is drawn, and the address of the view is #themes/<key>
+	const w = world( { active : 'nino' } );
+	const shown = [];
+
+	w.panel.views.push( { key : 'fonts', word : 'tab/themes', show : function( box ) { shown.push( box.id ); box.textContent = 'the fonts' } } );
+	w.at( '#themes' );
+
+	const strip = w.doc.getElementById('themes-tabs');
+	const tabs = strip === null ? [] : findAll( strip, function( node ) { return node.tagName === 'BUTTON' } );
+
+	check( 'T. with a second view the strip is drawn - a tablist of the workbench\'s own tabs, one for each view, the first selected and the only one in the tab order - over the mount of the panel where the script is in no pane', strip !== null && strip.attributes.role === 'tablist' && strip.className.indexOf('nino-admin-tabs--bar') !== -1 && tabs.length === 2
+		&& tabs.map( function( tab ) { return tab.attributes.role+ ':'+ tab.attributes['aria-selected']+ ':'+ tab.tabIndex } ).join() === 'tab:true:0,tab:false:-1' && w.app.parentNode.children.indexOf( strip ) === w.app.parentNode.children.indexOf( w.app ) - 1 );
+
+	fire( tabs[1], 'click' );
+
+	check( 'T. a tab is an address: the view is shown in a level of its own, the list and the theme are hidden, the address is #themes/<key> and a step for Back is written', shown.join() === 'themes-view' && w.state.hash === '#themes/fonts' && w.state.pushed.indexOf('#themes/fonts') !== -1
+		&& w.doc.getElementById('themes-view').className.indexOf('admin-hidden') === -1 && w.list.className.indexOf('admin-hidden') !== -1 && w.theme.className.indexOf('admin-hidden') !== -1 && tabs[1].attributes['aria-selected'] === 'true' && tabs[0].attributes['aria-selected'] === 'false' );
+
+	fire( tabs[0], 'click' );
+
+	check( 'T. the first tab is the address #themes again, the list is shown and the tab is selected', w.state.hash === '#themes' && w.list.className.indexOf('admin-hidden') === -1 && w.doc.getElementById('themes-view').className.indexOf('admin-hidden') !== -1 && tabs[0].attributes['aria-selected'] === 'true' );
+
+	// an address that names the view is followed by the panel, and a step of the history to it
+	w.state.hash = '#themes/fonts';
+	w.panel.showCurrent();
+
+	check( 'T. a step of the history to the address of a view shows the view, and selects its tab', shown.length === 2 && tabs[1].attributes['aria-selected'] === 'true' && w.list.className.indexOf('admin-hidden') !== -1 );
+
+	// the strip stands over the screens of a theme too: a tab picked there leaves the theme, and asks first where a draft would be lost
+	w.state.hash = '#themes/nino/section/section-wrap';
+	w.panel.showCurrent();
+	w.serve();
+	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
+	w.dirtyAnswers.push( 'cancel' );
+	fire( tabs[1], 'click' );
+
+	check( 'T. a tab picked while the theme holds a draft asks first, like every way out of it; Cancel leaves the screen of the theme as it is', w.dirty.asked === 1 && w.theme.className.indexOf('admin-hidden') === -1 && w.state.hash === '#themes/nino/section/section-wrap' && shown.length === 2, w.state.hash );
+}
+
+{
+	// the keyboard walks the strip as it walks the strip of any panel
+	const w = world( { active : 'nino' } );
+
+	w.panel.views.push( { key : 'fonts', word : 'tab/themes', show : function( box ) { box.textContent = 'the fonts' } } );
+	w.at( '#themes' );
+
+	const tabs = findAll( w.doc.getElementById('themes-tabs'), function( node ) { return node.tagName === 'BUTTON' } );
+
+	fire( tabs[0], 'keydown', { key : 'ArrowRight' } );
+
+	check( 'T. the arrow keys move along the strip and Home and End to its ends, as in every panel', tabs[1].focused === true && tabs[1].tabIndex === 0 && tabs[0].tabIndex === -1 );
+}
+
+// --- U. a theme is copied -------------------------------------------------------------------------------------------------------
+
+/** The dialog that is open: the field of the name in it */
+function nameField( w ) {
+	return findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0];
+}
+
+{
+	// from the card of a theme of a package: the name is asked, the copy is made, and the list says so
+	const w = world( { active : 'nino' } );
+
+	w.canRestore = true;
+	w.at( '#themes' );
+
+	const craft = w.byTag( w.list, 'article' ).find( function( card ) { return card.dataset.theme === 'craft' } );
+	const button = findAll( craft, function( node ) { return node.dataset.duplicate === 'craft' } )[0];
+
+	check( 'U. every card has a button to duplicate the theme, the one of a package and the own one, and the website\'s own theme too', w.byTag( w.list, 'article' ).every( function( card ) { return findAll( card, function( node ) { return node.dataset.duplicate === card.dataset.theme } ).length === 1 } ) );
+
+	fire( button, 'click' );
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+
+	check( 'U. the button asks for a name in the dialog of the name, with the name of the theme and "(copy)" as the suggestion; nothing is sent yet', dialog.open === true && nameField( w ).value === Wp( 'msg/copy-name', 'Craft' ) && w.requests.length === 0 );
+	check( 'U. ...the dialog says what is copied and that the brand is not, what the website goes on showing, and - where there is a last state - that it is replaced like every change does', w.text( dialog ).indexOf( Wp( 'msg/duplicate', 'Craft', Wp( 'msg/shown-theme', 'Nino' ) ) ) !== -1 && w.text( dialog ).indexOf( W('msg/replaces-last-plain') ) !== -1 );
+
+	pressed( w, CANCEL );
+
+	check( 'U. Cancel sends nothing, and the focus goes back to the button that was pressed', w.requests.length === 0 && button.focused === true );
+
+	fire( button, 'click' );
+	pressed( w, W('label/save') );
+
+	check( 'U. Save sends the copy: the theme, the name, no stamp for a theme of a package and no force - and nothing of a mix: the server copies what it holds', w.requests.length === 1 && w.requests[0].action === 'themes/duplicate' && JSON.stringify( w.requests[0].payload ) === JSON.stringify( { theme : 'craft', name : Wp( 'msg/copy-name', 'Craft' ), force : false } ), JSON.stringify( w.requests[0]?.payload ) );
+	w.serve();
+
+	check( 'U. the list is asked for again and shows the copy as a card of its own, the line says that it is made, and the focus is on the Edit button of the copy - the first place of what was made', w.actions.slice( -2 ).join() === 'themes/duplicate,themes/list' && w.byTag( w.list, 'article' ).some( function( card ) { return card.dataset.theme === 'own:craft-copy' } )
+		&& w.text( byId( w.list, 'themes-say' ) ) === Wp( 'msg/duplicated', Wp( 'msg/copy-name', 'Craft' ) ) && findAll( w.list, function( node ) { return node.dataset.edit === 'own:craft-copy' } )[0].focused === true );
+	check( 'U. a copy does not touch what the website shows: no apply, no theme opened', w.active === 'nino' && w.actions.indexOf('themes/apply') === -1 && w.actions.indexOf('themes/open') === -1 );
+}
+
+{
+	// a name that is taken is asked again with the sentence at the field; a name that says nothing as well
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const craft = w.byTag( w.list, 'article' ).find( function( card ) { return card.dataset.theme === 'craft' } );
+
+	fire( findAll( craft, function( node ) { return node.dataset.duplicate === 'craft' } )[0], 'click' );
+	nameField( w ).value = 'Taken';
+	pressed( w, W('label/save') );
+	w.serve();
+
+	const again = w.dialogs[w.dialogs.length - 1];
+
+	check( 'U. a name that is taken is asked again in the dialog, with the sentence of the server at the field, which is marked, and the name that was typed', again.open === true && again !== w.dialogs[0] && nameField( w ).value === 'Taken' && w.text( byId( again, 'themes-name-error' ) ) === Wp( 'api/themes_name_taken', 'Taken Before' ) && nameField( w ).attributes['aria-invalid'] === 'true' );
+
+	nameField( w ).value = '   ';
+	pressed( w, W('label/save') );
+
+	check( 'U. a name that says nothing sends nothing: the dialog is there again with the sentence at the field', w.requests.length === 0 && w.text( byId( w.dialogs[w.dialogs.length - 1], 'themes-name-error' ) ) === W('error/name-empty') );
+
+	pressed( w, CANCEL );
+
+	check( 'U. Cancel at the second asking sends nothing either, and the list is as it was', w.requests.length === 0 && w.byTag( w.list, 'article' ).length === 4 );
+}
+
+{
+	// an own theme is copied as the one who asks saw it: with the stamp the card has; another tab that wrote it since is not copied unseen
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const own = function() { return w.byTag( w.list, 'article' ).find( function( card ) { return card.dataset.theme === 'own:lindner' } ) };
+
+	fire( findAll( own(), function( node ) { return node.dataset.duplicate === 'own:lindner' } )[0], 'click' );
+
+	check( 'U. the suggestion for an own theme is made of its name as the other one is', nameField( w ).value === Wp( 'msg/copy-name', 'Lindner' ) );
+
+	pressed( w, W('label/save') );
+
+	check( 'U. an own theme is copied with the stamp of the card', w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.base === 'stamp-1', JSON.stringify( w.requests[0]?.payload ) );
+
+	w.stamp = 'stamp-9';
+	w.serve();
+
+	check( 'U. where the theme was changed meanwhile nothing is made: the list says so in words of its own, shows the theme as it is now, and asks nothing - no dialog of a conflict, which is about a theme that is open', w.text( byId( w.list, 'themes-say' ) ) === Wp( 'msg/changed-list', 'Lindner' ) && w.dialogs.length === 1 && w.copies.length === 0 );
+}
+
+{
+	// the name that is suggested is cut to the length a name may have
+	const long = 'x'.repeat( 60 );
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve( { listExtra : { themes : [ { key : 'own:long', kind : 'own', name : long, from : {}, stamp : 'stamp-1', active : false } ] } } );
+
+	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:long' } )[0], 'click' );
+
+	check( 'U. the suggestion is no longer than a name may be, and still says that it is a copy', Array.from( nameField( w ).value ).length <= 60 && nameField( w ).value.indexOf( 'x' ) === 0 && nameField( w ).value !== long && nameField( w ).value.indexOf( Wp( 'msg/copy-name', '' ).trim().slice( -3 ) ) !== -1 );
+}
+
+{
+	// from the settings of a theme: the saved theme is copied, and the screen goes on to the copy
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/own.lindner/settings' );
+
+	const copy = byId( w.theme, 'themes-duplicate' );
+
+	check( 'U. the settings have a button to duplicate the theme, with a sentence that says what is copied - the saved theme, its mix and its own css, not the brand - and nothing in the way of it where the draft is as it is saved', copy !== undefined && copy.disabled === false && w.text( byId( w.theme, 'themes-duplicate-hint' ) ) === W('hint/duplicate') && copy.attributes['aria-describedby'] === 'themes-duplicate-hint' );
+}
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/own.lindner/settings' );
+	type( byId( w.theme, 'themes-theme-name' ), 'Lindner Two' );
+
+	const copy = byId( w.theme, 'themes-duplicate' );
+
+	check( 'U. where the draft is not what is saved the button waits - it copies the saved theme, and the draft is what "Save as own theme" takes - and the sentence says what is to be done first', copy.disabled === true && w.text( byId( w.theme, 'themes-duplicate-hint' ) ) === W('hint/restore-dirty') );
+}
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
+
+	check( 'U. the dialog of the settings is the one of the card: the suggestion, and what is copied and what the website goes on showing', nameField( w ).value === Wp( 'msg/copy-name', 'Lindner' ) && w.text( w.dialogs[w.dialogs.length - 1] ).indexOf( Wp( 'msg/duplicate', 'Lindner', Wp( 'msg/shown-theme', 'Nino' ) ) ) !== -1 );
+
+	pressed( w, W('label/save') );
+
+	check( 'U. ...and it is sent with the stamp of the theme that is open', w.requests[0].action === 'themes/duplicate' && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.base === 'stamp-1' && w.requests[0].payload.force === false );
+	w.serve();
+
+	check( 'U. the screen is the copy now - its address, in the same section - with the line that says that it is made, and the focus on its name; the theme that was copied is as it was', w.state.hash === '#themes/own.lindner-copy/settings' && w.text( w.byClass( w.theme, 'themes-name' )[0] ) === Wp( 'msg/copy-name', 'Lindner' ) && w.byClass( w.theme, 'themes-name' )[0].focused === true
+		&& w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) === Wp( 'msg/duplicated', Wp( 'msg/copy-name', 'Lindner' ) ) && w.deleted.length === 0, w.state.hash );
+}
+
+{
+	// the other tab wrote the theme while the dialog was open: the conflict is asked as any other
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
+	pressed( w, W('label/save') );
+	w.stamp = 'stamp-9';
+	w.serve();
+
+	check( 'U. a theme that is open and was saved otherwise meanwhile is not asked about as an overwrite - a copy overwrites nothing - but as what it is: the copy would be of a theme the person has not seen; the choices are to copy it as it is saved now, to reload and to cancel', w.dialogs.length === 2 && w.text( w.dialogs[1] ).indexOf( W('label/copy-as-saved') ) !== -1 && w.text( w.dialogs[1] ).indexOf( W('label/overwrite') ) === -1 && w.text( w.dialogs[1] ).indexOf( W('label/reload') ) !== -1 );
+
+	pressed( w, W('label/copy-as-saved') );
+	w.serve();
+
+	check( 'U. ...copying it as it is saved sends the copy again with the stamp that stands now, and it is made', w.sent.filter( function( request ) { return request.action === 'themes/duplicate' } ).slice( -1 )[0].payload.base === 'stamp-9' && w.copies.length === 1 );
+}
+
+{
+	// the suggestion is always free: the second copy is the second, and a long name is cut so that its key is its own
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve( { listExtra : { themes : [
+		{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : {}, stamp : 'stamp-1', active : false },
+		{ key : 'own:lindner-kopie', kind : 'own', name : Wp( 'msg/copy-name', 'Lindner' ), from : {}, stamp : 'stamp-1', active : false },
+		{ key : 'own:long', kind : 'own', name : 'The very long name of a theme that is cut at forty', from : {}, stamp : 'stamp-1', active : false },
+	] } } );
+
+	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:lindner' } )[0], 'click' );
+
+	check( 'U. a suggestion that a theme has as its name is not made: the copy of a copy is the second', nameField( w ).value === Wp( 'msg/copy-name-n', 'Lindner', 2 ) );
+	pressed( w, CANCEL );
+	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:long' } )[0], 'click' );
+
+	const cut = nameField( w ).value;
+
+	check( 'U. a name that is cut at the length of a key is cut shorter, so that the whole of the suggestion is in its key and the copy has a key of its own: the suggestion is not the original in the key, and says that it is a copy', cut !== 'The very long name of a theme that is cut at forty' && cut.indexOf( Wp( 'msg/copy-name', '' ).trim().slice( -5 ) ) !== -1 && cut.replace( /[^A-Za-z0-9]+/g, '-' ).length <= 40 && Array.from( cut ).length <= 60, cut );
+}
+
+{
+	// a theme that was changed meanwhile, from the list: the focus is on the button of the same theme in the list that is drawn again
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:lindner' } )[0], 'click' );
+	pressed( w, W('label/save') );
+	w.stamp = 'stamp-9';
+	w.serve();
+
+	const again = findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:lindner' } )[0];
+
+	check( 'U. where a theme was changed since the list was drawn the focus is on the Duplicate button of the same theme in the list as it is drawn now - the old button is gone, and the focus does not fall to the page', again !== undefined && again.focused === true );
+}
+
+// --- V. the page of the preview: "Automatic" -----------------------------------------------------------------------------------
+
+{
+	const w = world( { active : 'nino', demos : [ 'section', 'header' ], chosen : '' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	const pages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
+	const token = 'nino-theme-preview='+ 'a'.repeat( 32 );
+
+	check( 'V. the choice of the page has "Automatic" first and chosen, and the preview of a group that has a demo asks the website for it: the group in the address, with no mark - in the demo all is the component', pages.children[0].value === '' && pages.value === '' && w.frame().attributes.src === '/site/?'+ token+ '&nino-theme-demo=section', w.frame().attributes.src );
+
+	// another group with a demo, one without, the groups
+	fire( w.byClass( w.theme, 'nino-admin-back-link' )[1], 'click' );
+
+	check( 'V. the level of the groups has no demo to show: the start page, with no component outlined', w.frame().attributes.src === '/site/?'+ token, w.frame().attributes.src );
+
+	fire( w.byClass( w.theme, 'themes-groups' )[0].children[2].children[0], 'click' );
+
+	check( 'V. another group that has a demo - the header - is shown by its own', w.state.hash.indexOf('#themes/nino/header') === 0 && w.frame().attributes.src.indexOf('&nino-theme-demo=header') !== -1 && w.frame().attributes.src.indexOf('nino-theme-demo=section') === -1, w.frame().attributes.src );
+
+	w.state.hash = '#themes/nino/footer';
+	w.panel.showCurrent();
+
+	check( 'V. a group that has none - the footer - is shown by the start page, as the page of the whole is: the preview is not left empty', w.frame().attributes.src.indexOf('nino-theme-demo') === -1 && w.frame().attributes.src.indexOf('/site/?') === 0, w.frame().attributes.src );
+
+	w.state.hash = '#themes/nino/page/type';
+	w.panel.showCurrent();
+
+	check( 'V. the whole page has no group of the register to take a demo from: the start page', w.frame().attributes.src.indexOf('nino-theme-demo') === -1 );
+
+	// a page that is chosen is shown in place of the demo
+	w.state.hash = '#themes/nino/section/section-wrap';
+	w.panel.showCurrent();
+	pages.value = '/contact';
+	fire( pages, 'change' );
+
+	check( 'V. a page that is chosen is shown in place of the demo, wherever the person goes in the theme', w.frame().attributes.src === '/site/contact?'+ token+ '&mark=section-wrap', w.frame().attributes.src );
+
+	// it is remembered for the theme as long as the panel is open, and for no other theme
+	w.state.hash = '#themes';
+	w.panel.showCurrent();
+	w.state.hash = '#themes/craft/section/section-wrap';
+	w.panel.showCurrent();
+	w.serve();
+
+	const craftPages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
+
+	check( 'V. another theme is shown by "Automatic" again - the choice is the theme\'s, not the panel\'s', craftPages.value === '' && w.frame().attributes.src.indexOf('nino-theme-demo=section') !== -1, w.frame().attributes.src );
+
+	w.state.hash = '#themes';
+	w.panel.showCurrent();
+	w.state.hash = '#themes/nino/section/section-wrap';
+	w.panel.showCurrent();
+	w.serve();
+
+	const ninoPages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
+
+	check( 'V. ...and the page that was chosen for a theme is the one it is shown by when it is opened again', ninoPages.value === '/contact' && w.frame().attributes.src.indexOf('/site/contact?') === 0 && w.frame().attributes.src.indexOf('nino-theme-demo') === -1, w.frame().attributes.src );
+
+	// back to "Automatic"
+	ninoPages.value = '';
+	fire( ninoPages, 'change' );
+
+	check( 'V. "Automatic" chosen again is the demo again', w.frame().attributes.src === '/site/?'+ token+ '&nino-theme-demo=section', w.frame().attributes.src );
+}
+
+{
+	// a demo is asked for by the name of a group of the register and by nothing else: what the address says is encoded
+	const w = world( { active : 'nino', demos : [ 'section' ], chosen : '' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	check( 'V. the name of the group is the one thing the demo is asked by, and it is a name of the register: the query holds the group and no other value of the page', ( w.frame().attributes.src.match( /nino-theme-demo=([^&]*)/ ) ?? [] )[1] === 'section' );
+}
+
+{
+	// where the site has no page at all the preview has no choice to make, and "Automatic" is the start page
+	const w = world( { active : 'nino', pages : [] } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	check( 'V. a site whose list names no page has no choice of the page, and the preview is the root of the site', w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } ).length === 0 && w.frame().attributes.src.indexOf('/site/?') === 0 );
+}
+
+// --- W. the accordions close ------------------------------------------------------------------------------------------------------
+
+{
+	const w = world( { active : 'nino' } );
+	const seen = [];
+	const real = w.ui.accordion;
+
+	w.ui.accordion = function( options ) { seen.push( options ); return real.call( w.ui, options ) };
+	w.at( '#themes/nino/groups' );
+
+	const heads = function() { return w.byClass( w.theme, 'nino-admin-accordion-button' ) };
+	const open = function() { return heads().filter( function( head ) { return head.attributes['aria-expanded'] === 'true' } ).length };
+
+	check( 'W. the first level is a collapsible accordion, and the groups are open where a person comes in', seen.length === 1 && seen[0].collapsible === true && open() === 1 && w.state.hash === '#themes/nino/groups' );
+
+	fire( heads()[0], 'click' );
+
+	check( 'W. a click on the open head closes it, and nothing is open: the heads below it can be reached - and the address is the level itself', open() === 0 && w.state.hash === '#themes/nino' && w.state.pushed.indexOf('#themes/nino') !== -1, w.state.hash );
+
+	// Back and Forward: the level that has no section in its address is shown closed
+	w.state.hash = '#themes/nino/groups';
+	w.panel.showCurrent();
+	check( 'W. a step of the history to the address with the section opens it', open() === 1 && w.byClass( w.theme, 'themes-groups' ).length === 1 );
+	w.state.hash = '#themes/nino';
+	w.panel.showCurrent();
+	check( 'W. ...and a step to the address of the level shows it closed, and the address stays the level\'s', open() === 0 && w.state.hash === '#themes/nino' );
+
+	// a group: the same
+	w.state.hash = '#themes/nino/groups';
+	w.panel.showCurrent();
+	fire( w.byClass( w.theme, 'themes-groups' )[0].children[3].children[0], 'click' );
+
+	check( 'W. the settings of a group are a collapsible accordion, which a person who comes in by the row of the group finds with the first section open - the address names it, and so does the outline in the preview', seen[seen.length - 1].collapsible === true && open() === 1 && w.state.hash === '#themes/nino/section/section-wrap' && w.frame().attributes.src.indexOf('&mark=section-wrap') !== -1, w.state.hash );
+
+	fire( heads()[0], 'click' );
+
+	check( 'W. the open head closes: the address is the group\'s, nothing is outlined in the preview - the frame is loaded without a mark - and the line over it says that the whole page is shown', open() === 0 && w.state.hash === '#themes/nino/section' && w.frame().attributes.src.indexOf('mark=') === -1 && w.text( w.byClass( w.theme, 'themes-marked' )[0] ) === W('msg/whole-page'), w.state.hash+ ' '+ w.frame().attributes.src );
+
+	fire( heads()[1], 'click' );
+
+	check( 'W. another head opens the section, which is outlined', open() === 1 && w.state.hash === '#themes/nino/section/section-title' && w.frame().attributes.src.indexOf('&mark=section-title') !== -1 );
+
+	// a step back to the closed group
+	w.state.hash = '#themes/nino/section';
+	w.panel.showCurrent();
+
+	check( 'W. a step of the history to the closed group shows it closed and takes the outline from the preview', open() === 0 && w.frame().attributes.src.indexOf('mark=') === -1 );
+
+	w.state.hash = '#themes/nino/section/section-title';
+	w.panel.showCurrent();
+
+	check( 'W. ...and a step to the section opens it and outlines it', open() === 1 && w.frame().attributes.src.indexOf('&mark=section-title') !== -1 );
+
+	// the brand
+	w.state.hash = '#themes/nino/brand/colours';
+	w.panel.showCurrent();
+	fire( heads()[0], 'click' );
+
+	check( 'W. the brand is a collapsible accordion too: the open head closes, and the address is the brand\'s', seen[seen.length - 1].collapsible === true && open() === 0 && w.state.hash === '#themes/nino/brand' );
+
+}
+
+{
+	// a level that is drawn again keeps what is open on it, and what is closed stays closed
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
+	fire( w.byClass( w.theme, 'nino-admin-accordion-button' )[0], 'click' );
+
+	const open = function() { return w.byClass( w.theme, 'nino-admin-accordion-button' ).filter( function( head ) { return head.attributes['aria-expanded'] === 'true' } ).length };
+
+	check( 'W. a change made in a section that is closed afterwards leaves the head that says so, and nothing open', open() === 0 && w.byClass( w.theme, 'nino-admin-accordion-badge' )[0].hidden === false );
+
+	fire( w.button( w.bar(), W('label/reset') ), 'click' );
+	w.serve();
+
+	check( 'W. a level that is drawn again - Reset takes the draft back - is as it was: the section that was closed stays closed, and the badge of the change is gone', open() === 0 && w.byClass( w.theme, 'nino-admin-accordion-badge' ).every( function( badge ) { return badge.hidden === true } ) && w.state.hash === '#themes/nino/section' );
+
+	// the way in opens the first section: a link, the address typed at the first load
+	fire( w.byClass( w.theme, 'nino-admin-back-link' )[1], 'click' );
+	fire( w.byClass( w.theme, 'themes-groups' )[0].children[3].children[0], 'click' );
+
+	check( 'W. the way into a group is the way to its first section, whatever was closed there before', open() === 1 && w.state.hash === '#themes/nino/section/section-wrap' );
+}
+
+{
+	// the address a page is loaded on is a way in: the group of the address is opened on the first section
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/section' );
+
+	check( 'W. an address that names no section, where the page is loaded on it, is a way in: the first section is open and the address says which', w.byClass( w.theme, 'nino-admin-accordion-button' ).filter( function( head ) { return head.attributes['aria-expanded'] === 'true' } ).length === 1 && w.state.hash === '#themes/nino/section/section-wrap', w.state.hash );
+}
+
+// --- X. what the second round left: the chip, the mode, a font that is back, what a dialog says ------------------------------------------
+
+{
+	// R3: a colour that is no colour is no change of the draft, and the state is not "saved" while it stands in a field
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/brand/colours' );
+
+	check( 'X. the state of a theme as it is saved says so', w.state_() === APPLIED && w.button( w.bar(), W('label/reset') ).disabled === true );
+
+	type( byId( w.theme, 'themes-brand-color-1' ), '#1234' );
+
+	check( 'X. a colour that is no colour changes nothing of the draft - and the state is Changed all the same, and not "Saved and active": there is something in the field that is not saved, and a reset takes it away', w.dirty.entries.themes.isDirty() === false && w.state_() === CHANGED && w.byClass( w.theme, 'themes-state' )[0].dataset.state === 'warn' && w.button( w.bar(), W('label/reset') ).disabled === false );
+
+	fire( w.button( w.bar(), W('label/reset') ), 'click' );
+	w.serve();
+
+	check( 'X. ...and the reset puts the saved colour in the field and the state back to saved', byId( w.theme, 'themes-brand-color-1' ).value === '#1c5db8' && w.state_() === APPLIED );
+
+	type( byId( w.theme, 'themes-brand-color-1' ), '#1234' );
+	type( byId( w.theme, 'themes-brand-color-1' ), '#abc' );
+
+	check( 'X. a colour that is one is a change, as it was', w.state_() === CHANGED && w.dirty.entries.themes.isDirty() === true );
+}
+
+{
+	// R4: the sentence about a colour that is made darker names the modes the brand shows
+	const fixed = function( mode ) {
+
+		const w = world( { active : 'nino' } );
+
+		w.rest = 'adjust';
+		w.brandStored = Object.assign( brandNone(), { mode : { own : true, value : mode } } );
+		w.at( '#themes/nino/brand/colours' );
+
+		return w.byClass( w.theme, 'themes-adjusted' )[0];
+	};
+
+	const dark = fixed( 'dark' );
+	const light = fixed( 'light' );
+	const auto = fixed( 'auto' );
+
+	check( 'X. a mode the brand never shows has no sentence: a brand that is dark only says nothing of what happens in the light mode', dark.hidden === true && dark.textContent === '' );
+	check( 'X. ...the mode it shows is named, and where it shows both - the mode is automatic - each of them where the colour is made another', light.textContent === Wp( 'msg/adjust-darker', W('word/mode-light'), '#7f6904' ) && auto.textContent === Wp( 'msg/adjust-darker', W('word/mode-light'), '#7f6904' ) );
+}
+
+{
+	// R5: a font that is back is not in the stylesheet before it is built again: the field says so, and the bar builds it
+	const w = world( { active : 'nino' } );
+
+	w.activeState = function() { return { theme : 'nino', built : '', stale : true, back : { 'font-title' : 'open-sans' } } };
+	w.brandStored = Object.assign( brandNone(), { 'font-title' : { own : true, value : 'open-sans' } } );
+	w.at( '#themes/nino/brand/type' );
+
+	const select = byId( w.theme, 'themes-brand-font-title' );
+
+	check( 'X. a font that was gone when the stylesheet was built and is there again has a sentence at its field, which the select points at - what is saved does not have it yet - and the fields of the other fonts have none', said( w, byId( w.theme, 'themes-brand-font-title-back' ) ) === Wp( 'msg/font-back', 'open-sans' ) && select.attributes['aria-describedby'] === 'themes-brand-font-title-back' && byId( w.theme, 'themes-brand-font-text-back' ) === undefined );
+
+	const rebuild = w.button( w.bar(), W('label/rebuild') );
+
+	check( 'X. the bar offers to build the stylesheet again where the theme is the one of the website and the stylesheet is not what the register and the fonts make now - the API says that it is stale', rebuild !== undefined && rebuild.hidden === false && rebuild.disabled === false );
+
+	fire( rebuild, 'click' );
+	pressed( w, W('label/apply') );
+
+	check( 'X. for a theme of a package that is applying it once more - asked first, as every thing that reaches the website is - and nothing else is sent', w.requests.length === 1 && w.requests[0].action === 'themes/apply' && w.requests[0].payload.theme === 'nino' );
+
+	w.activeState = function() { return { theme : 'nino', built : '', stale : false, back : {} } };
+	w.serve();
+
+	check( 'X. ...once it is built the button is gone, the line says so, and the field says nothing of the font', w.button( w.bar(), W('label/rebuild') ).hidden === true && w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) === W('msg/rebuilt') );
+}
+
+{
+	// R5 for an own theme: a save with nothing changed
+	const w = world( { active : 'own:lindner' } );
+
+	w.activeState = function() { return { theme : 'own:lindner', built : '', stale : true, back : {} } };
+	w.at( '#themes/own.lindner/section/section-wrap' );
+
+	check( 'X. a stylesheet that is stale for another reason - the feature or the register was changed - is offered the same: the bar has Rebuild, with nothing changed in the draft', w.dirty.entries.themes.isDirty() === false && w.button( w.bar(), W('label/rebuild') ).hidden === false );
+
+	fire( w.button( w.bar(), W('label/rebuild') ), 'click' );
+	pressed( w, W('label/save') );
+
+	check( 'X. for an own theme it is a save that changes nothing: the theme, its mix as it is saved - the name in it - and the stamp it was seen in, and no brand', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.base === 'stamp-1' && w.requests[0].payload.mix.name === 'Lindner' && w.requests[0].payload.brand === undefined && w.requests[0].payload.force === false, JSON.stringify( w.requests[0]?.payload ) );
+
+	w.activeState = function() { return { theme : 'own:lindner', built : '', stale : false, back : {} } };
+	w.serve();
+
+	check( 'X. ...and the screen is the theme as it is saved, with the line that says that the stylesheet is built', w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) === W('msg/rebuilt') && w.button( w.bar(), W('label/rebuild') ).hidden === true );
+}
+
+{
+	// a theme that is not the website's has no Rebuild, and neither has a stylesheet that is as it should be
+	const other = world( { active : 'craft' } );
+
+	other.activeState = function() { return { theme : 'craft', built : '', stale : true, back : {} } };
+	other.at( '#themes/nino/section/section-wrap' );
+
+	const current = world( { active : 'nino' } );
+
+	current.at( '#themes/nino/section/section-wrap' );
+
+	check( 'X. the button is for the theme of the website only, and only where the stylesheet is stale', other.button( other.bar(), W('label/rebuild') ).hidden === true && current.button( current.bar(), W('label/rebuild') ).hidden === true );
+
+	// the draft waits for a save: nothing is built from what is not saved
+	current.activeState = function() { return { theme : 'nino', built : '', stale : true, back : {} } };
+	current.panel.reload();
+	current.serve();
+	fire( current.step( 'themes-section-section-wrap-space', 3 ), 'click' );
+
+	check( 'X. where the draft holds a change the button waits, as Apply does: it builds what is saved', current.button( current.bar(), W('label/rebuild') ).disabled === true );
+}
+
+{
+	// R6: the dialog that saves a draft under a name says that it replaces the last state, as every question that writes does
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/craft/settings' );
+	fire( byId( w.theme, 'themes-save-as' ), 'click' );
+
+	check( 'X. where there is no last state the dialog of "Save as own theme" has nothing to say of one', w.text( w.dialogs[w.dialogs.length - 1] ).indexOf( W('msg/replaces-last-plain') ) === -1 );
+
+	const kept = world( { active : 'nino' } );
+
+	kept.canRestore = true;
+	kept.at( '#themes/craft/settings' );
+	fire( byId( kept.theme, 'themes-save-as' ), 'click' );
+
+	check( 'X. where there is one the dialog says that the state as it is now replaces it - the same sentence as the questions of Save, Apply and Delete', kept.text( kept.dialogs[kept.dialogs.length - 1] ).indexOf( W('msg/replaces-last-plain') ) !== -1 );
+}
+
+{
+	// R6: the name of the theme in the sentence about the last state is put in quotes as it is in the other sentences
+	const w = world( { active : 'nino' } );
+
+	w.canRestore = true;
+	w.last = { at : 1700000000, theme : 'craft', name : { de_DE : 'Craft', en_US : 'Craft' } };
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-restore' ), 'click' );
+
+	check( 'X. the sentence about the last state names the theme as the others do: "the theme "Craft"" - the name stands in the quotes of the language', w.text( w.dialogs[w.dialogs.length - 1] ).indexOf( Wp( 'msg/shown-theme', 'Craft' ) ) !== -1 );
+
+	const none = world( { active : 'nino' } );
+
+	none.canRestore = true;
+	none.last = { at : 1700000000, theme : '', name : '' };
+	none.at( '#themes/own.lindner/settings' );
+	fire( byId( none.theme, 'themes-restore' ), 'click' );
+
+	check( 'X. ...and the standard parts, which are no theme, have none', none.text( none.dialogs[none.dialogs.length - 1] ).indexOf( W('word/standard-parts') ) !== -1 );
+}
+
+// --- Y. the thumbnails of the list ------------------------------------------------------------------------------------------------
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const boxes = w.byTag( w.list, 'div' ).filter( function( node ) { return node.className.split(/\s+/).indexOf('themes-thumb') !== -1 } );
+	const box = function( key ) { return boxes.find( function( one ) { return one.dataset.thumb === key } ) };
+
+	check( 'Y. every card has a picture of its theme, and the picture is no control: hidden from a screen reader, with no frame in it and nothing asked of the server - no card is on screen yet', boxes.length === 4 && boxes.every( function( one ) { return one.attributes['aria-hidden'] === 'true' && w.byTag( one, 'iframe' ).length === 0 } ) && w.requests.length === 0 && w.watched.length === 4 );
+	check( 'Y. the boxes are watched, and nothing else is: the card as a whole is not', w.watched.every( function( one ) { return boxes.indexOf( one.node ) !== -1 } ) );
+
+	w.onScreen( box('craft') );
+
+	check( 'Y. a card that comes on screen asks for its picture - one request for the theme, with no token, since none is held - and the others do not', w.requests.length === 1 && w.requests[0].action === 'themes/thumb' && JSON.stringify( w.requests[0].payload ) === JSON.stringify( { theme : 'craft', token : '' } ) && w.watched.length === 3 );
+
+	w.answer( 200, { token : 'b'.repeat( 32 ), query : 'nino-theme-preview='+ 'b'.repeat( 32 ), expires : 4102444800, ttl : 900 } );
+
+	const frame = w.byTag( box('craft'), 'iframe' )[0];
+
+	check( 'Y. the answer gives the box a frame of the site\'s start page with the token of the thumbnail - not the one of the preview of a theme that is open - which takes no focus, is hidden from a screen reader and loads when it is seen', frame !== undefined && frame.attributes.src === '/site/?nino-theme-preview='+ 'b'.repeat( 32 ) && frame.attributes.tabindex === '-1' && frame.attributes['aria-hidden'] === 'true' && frame.attributes.loading === 'lazy' );
+	check( 'Y. ...and the page is laid out as a desktop lays it out and scaled into the box, as the preview of a theme is, with the whole page in view', frame.style.width === '1280px' && frame.style.height === '800px' && frame.style.transform.indexOf('scale(') === 0 );
+
+	// a refusal says nothing and draws nothing: the card is a card without a picture
+	w.onScreen( box('nino') );
+	w.answer( 500, { error : 'the preview could not be written' } );
+
+	check( 'Y. a thumbnail that cannot be made leaves the card as it is: no frame, no sentence, no mark of an error in the list', w.byTag( box('nino'), 'iframe' ).length === 0 && w.text( byId( w.list, 'themes-say' ) ) === '' && w.byClass( w.list, 'nino-admin-notice' ).length === 0 );
+
+	// the list is drawn again: what was asked is not asked again while the answer holds
+	w.panel.reload();
+	w.serve();
+
+	const again = w.byTag( w.list, 'div' ).filter( function( node ) { return node.className.split(/\s+/).indexOf('themes-thumb') !== -1 && node.dataset.thumb === 'craft' } )[0];
+
+	w.onScreen( again );
+
+	check( 'Y. a list that is drawn again does not ask for a picture it has a token for - the token holds a quarter of an hour - and shows it at once, in the new card', w.requests.length === 0 && w.byTag( again, 'iframe' ).length === 1 && w.byTag( again, 'iframe' )[0].attributes.src === '/site/?nino-theme-preview='+ 'b'.repeat( 32 ) );
+}
+
+{
+	// a token that has run out is asked for with the token it had, which the server takes over; an own theme that was saved since is another picture
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const box = function( key ) { return w.byTag( w.list, 'div' ).filter( function( node ) { return node.dataset.thumb === key } )[0] };
+
+	w.onScreen( box('own:lindner') );
+	w.answer( 200, { token : 'c'.repeat( 32 ), query : 'nino-theme-preview='+ 'c'.repeat( 32 ), expires : 4102444800, ttl : 1 } );
+	w.panel.reload();
+	w.serve();
+	w.onScreen( box('own:lindner') );
+
+	check( 'Y. a token that has run out is asked for again with the token it had - a thumbnail is a draft that is written again, and not one more folder - and the picture is the new answer', w.requests.length === 1 && w.requests[0].payload.token === 'c'.repeat( 32 ) );
+
+	w.answer( 200, { token : 'c'.repeat( 32 ), query : 'nino-theme-preview='+ 'c'.repeat( 32 ), expires : 4102444800, ttl : 900 } );
+	w.stamp = 'stamp-9';
+	w.panel.reload();
+	w.serve();
+	w.onScreen( box('own:lindner') );
+
+	check( 'Y. an own theme that was saved since the picture was made is another picture: it is asked for, and no token of the old one is offered', w.requests.length === 1 && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.token === '' );
+}
+
+{
+	// the page is the start page of the site: the first of the list where the list has no home
+	const w = world( { active : 'nino', pages : [ '/contact', '/imprint' ] } );
+
+	w.at( '#themes' );
+	w.onScreen( w.byTag( w.list, 'div' ).filter( function( node ) { return node.dataset.thumb === 'nino' } )[0] );
+	w.answer( 200, { token : 'd'.repeat( 32 ), query : 'nino-theme-preview='+ 'd'.repeat( 32 ), expires : 4102444800, ttl : 900 } );
+
+	check( 'Y. the picture is the start page - the home of the site, or the first page the list names where there is none - and never a page that was chosen for a preview', w.byTag( w.list, 'iframe' )[0].attributes.src === '/site/contact?nino-theme-preview='+ 'd'.repeat( 32 ) );
+
+	// a list that is left leaves nothing to watch
+	w.state.hash = '#themes/nino/groups';
+	w.panel.showCurrent();
+	w.serve();
+
+	check( 'Y. the pictures are the list\'s: the screen of a theme has none, and the preview of the theme asks for its own draft - one request, the preview - and no thumbnail', w.byTag( w.theme, 'iframe' ).length === 1 && w.sent.filter( function( request ) { return request.action === 'themes/thumb' } ).length === 1 );
+}
+
+// --- Z. the third round: cards of one height, unfinished css, a preview that is no page ----------------------------------------------
+
+{
+	// cards: what is said is on a fixed number of lines, the whole of it is in the title and in the text, and the buttons are at the foot
+	const long = 'L'.repeat( 200 );
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve( { listExtra : { themes : [
+		{ key : 'long', kind : 'theme', version : '1.0.0', name : { de_DE : long, en_US : long }, description : { de_DE : long+ ' '+ long, en_US : long+ ' '+ long }, brand : {}, parts : { a : { ok : false, problem : 'one' }, b : { ok : false, problem : 'two' } }, active : false },
+		{ key : 'own:short', kind : 'own', name : 'S', from : {}, stamp : 'x', active : false },
+	] } } );
+
+	const card = w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === 'long' } );
+	const title = w.byTag( card, 'h3' )[0];
+	const clamped = w.byClass( card, 'themes-clamp' );
+
+	check( 'Z. the name of a card is a heading whose title is the whole name, and the text of it is whole too - the cut is the stylesheet\'s, so that a screen reader has all of it', title.title === long && title.textContent === long );
+	check( 'Z. the description and what rests are laid on lines of a fixed number - a class of the stylesheet - with the whole text in the title; a theme with two parts that rest says the first and puts both in the title, and the chip counts them', clamped.length === 2 && clamped.every( function( node ) { return node.title !== '' && node.title.indexOf( node.textContent ) !== -1 } ) && w.byClass( card, 'themes-rests' ).length === 1 && w.byClass( card, 'themes-rests' )[0].title.split('\n').length === 2 );
+	check( 'Z. the buttons are the last thing in a card, in a block of their own, whatever the card says', card.children[card.children.length - 1].className.indexOf('nino-admin-actions') !== -1 );
+}
+
+{
+	// css: a hint under the field for what is open, no refusal; the draft is sent and the hint follows the answer
+	const w = world( { active : 'own:lindner' } );
+
+	w.at( '#themes/own.lindner/css' );
+
+	const text = byId( w.theme, 'themes-css' );
+	const hint = byId( w.theme, 'themes-css-faults' );
+
+	check( 'Z. the field of the own css has a line for what is open, empty and hidden while all is closed, which is read out when it comes - a status', hint !== undefined && hint.hidden === true && hint.attributes.role === 'status' );
+
+	type( text, '.a { color: red' );
+	w.tick();
+	w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900, cssFaults : [ 'open-block', 'open-string' ] }, describe( w.requests[0].payload.mix ) ) );
+
+	check( 'Z. an unfinished css is said quietly - every thing that is open, in words - and nothing stops: the css is sent, the field is not marked, and Save can be pressed', hint.hidden === false && hint.textContent === W('msg/css-open-block')+ ' '+ W('msg/css-open-string') && text.attributes['aria-invalid'] === undefined && w.button( w.bar(), W('label/save') ).disabled === false && w.requests.length === 0 );
+
+	type( text, '.a { color: red }' );
+	w.tick();
+	w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900, cssFaults : [] }, describe( w.requests[0].payload.mix ) ) );
+
+	check( 'Z. ...and the line goes when the css closes', hint.hidden === true && hint.textContent === '' );
+}
+
+{
+	// an answer that is no draft leaves the picture as it is
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	const before = w.frame().attributes.src;
+
+	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
+	w.tick();
+	w.requests[0].callback( { status : 200, responseJSON : false } );
+
+	const line = w.byClass( w.theme, 'nino-admin-status' )[0];
+
+	check( 'Z. a preview that answers with no draft - "false", no token - does not load the frame: the last picture stays, and the bar says in one sentence that the preview cannot be drawn for now', w.frame().attributes.src === before && line.textContent === W('msg/preview-unavailable') && line.dataset.state !== 'error' );
+
+	fire( w.step( 'themes-section-section-wrap-space', 4 ), 'click' );
+	w.tick();
+	w.serve();
+
+	check( 'Z. ...and the next change, answered as it should be, loads it and takes the sentence away', w.frame().attributes.src.indexOf('&mark=section-wrap') !== -1 && line.textContent !== W('msg/preview-unavailable') );
+
+	fire( w.step( 'themes-section-section-wrap-space', 1 ), 'click' );
+	w.tick();
+	w.requests[0].callback( { status : 200, responseJSON : { token : 5 } } );
+
+	check( 'Z. a token that is no text is no draft either', line.textContent === W('msg/preview-unavailable') );
+}
+
+// --- the review of the third round: what "Automatic" says, what is marked, the groups that are not shown, the pictures that go --------------------
+
+{
+	const w = world( { active : 'nino', demos : [ 'section' ], chosen : '' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	const pages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
+	const marked = w.byClass( w.theme, 'themes-marked' )[0];
+
+	check( 'V. where "Automatic" shows the demo of the group it says so as it is, and nothing is outlined: in the demo everything is the component - the line over the preview says nothing of an outline and the address has no mark', w.text( pages.children[0] ) === W('label/page-auto') && w.text( marked ) === '' && w.frame().attributes.src.indexOf('mark=') === -1 && w.frame().attributes.src.indexOf('nino-theme-demo=section') !== -1 );
+
+	w.state.hash = '#themes/nino/footer';
+	w.panel.showCurrent();
+
+	check( 'V. where it shows the start page because the group has no demo it says that: "Automatic - start page", and no component is outlined on a page that does not show it', w.text( pages.children[0] ) === W('label/page-auto-home') && w.text( marked ) === '' && w.frame().attributes.src.indexOf('mark=') === -1 );
+
+	w.state.hash = '#themes/nino/section/section-wrap';
+	w.panel.showCurrent();
+	pages.value = '/contact';
+	fire( pages, 'change' );
+
+	check( 'V. a page that is chosen is the one place a component is outlined, and the line says which', w.frame().attributes.src.indexOf('&mark=section-wrap') !== -1 && w.text( marked ) === Wp( 'msg/marked', 'Wrap' ) );
+
+	// the demo is asked of the start address, whatever the first page of the list is
+	pages.value = '';
+	fire( pages, 'change' );
+
+	check( 'V. the demo is asked of the start address of the site and of no other page', w.frame().attributes.src.indexOf('/site/?nino-theme-preview=') === 0 );
+}
+
+{
+	const w = world( { active : 'nino', pages : [ '/contact', '/imprint' ], demos : [ 'section' ], chosen : '' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	check( 'V. ...also where the list has no home: the address of the demo is the root, and the start page of "Automatic" is the first page', w.frame().attributes.src.indexOf('/site/?nino-theme-preview=') === 0 );
+}
+
+{
+	// a group of the register that is called as a section of the panel is named, and not left out
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/groups' );
+
+	const notes = w.byClass( w.theme, 'themes-reserved' ).map( function( node ) { return node.textContent } );
+
+	check( 'T. a group of the register whose name the panel keeps - the fixture has brand, settings, css, groups and fonts - is named in the groups with the reason, once each, and is no row of the list', notes.length === 5 && notes.indexOf( Wp( 'msg/group-reserved', 'Fonts', 'fonts' ) ) !== -1 && w.byClass( w.theme, 'themes-groups' )[0].children.length === 5 );
+}
+
+{
+	// the pictures are the list's
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const boxes = w.byTag( w.list, 'div' ).filter( function( node ) { return node.className.split(/\s+/).indexOf('themes-thumb') !== -1 } );
+
+	w.onScreen( boxes[0] );
+	w.answer( 200, { token : 'e'.repeat( 32 ), query : 'nino-theme-preview='+ 'e'.repeat( 32 ), expires : 4102444800, ttl : 900 } );
+
+	check( 'Y. a picture is drawn once in a box: a box that comes on screen again has no second frame', ( function() { w.onScreen( boxes[0] ); return w.byTag( boxes[0], 'iframe' ).length === 1 } )() );
+
+	w.state.hash = '#themes/nino/groups';
+	w.panel.showCurrent();
+	w.serve();
+
+	check( 'Y. where the list is left for a theme its pictures are taken away - no page stays loaded for a list that is not on screen - and the boxes are watched again', w.byTag( w.list, 'iframe' ).length === 0 && w.watched.length === 0 );
+
+	const before = w.sent.filter( function( request ) { return request.action === 'themes/thumb' } ).length;
+
+	w.state.hash = '#themes';
+	w.panel.showCurrent();
+
+	check( 'Y. ...the list that comes back watches its boxes again', w.watched.length === 4 );
+	w.onScreen( boxes[0] );
+
+	check( 'Y. ...and draws what is on screen again draws what is on screen again from the token it has, with no request', w.byTag( boxes[0], 'iframe' ).length === 1 && w.requests.length === 0 && w.sent.filter( function( request ) { return request.action === 'themes/thumb' } ).length === before );
+}
+
+{
+	// a theme opened by its address asks for no picture
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/groups' );
+
+	check( 'Y. a theme that is opened by its address draws no picture of the list: nothing is asked for before the list is on screen, and no box is watched', w.sent.filter( function( request ) { return request.action === 'themes/thumb' } ).length === 0 && w.byTag( w.list, 'iframe' ).length === 0 && w.watched.length === 0 );
+}
+
+{
+	// two answers for one box - the list was left and came back while the first was out - are one frame
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const box = w.byTag( w.list, 'div' ).filter( function( node ) { return node.dataset.thumb === 'craft' } )[0];
+
+	w.onScreen( box );
+	w.state.hash = '#themes/nino/groups';
+	w.panel.showCurrent();
+	w.state.hash = '#themes';
+	w.panel.showCurrent();
+	w.onScreen( box );
+
+	const asked = w.requests.filter( function( request ) { return request.action === 'themes/thumb' } );
+
+	asked.forEach( function() {
+		const at = w.requests.findIndex( function( request ) { return request.action === 'themes/thumb' } );
+		const request = w.requests.splice( at, 1 )[0];
+		request.callback( { status : 200, responseJSON : { token : 'f'.repeat( 32 ), query : 'nino-theme-preview='+ 'f'.repeat( 32 ), expires : 4102444800, ttl : 900 } } );
+	} );
+
+	check( 'Y. a box has one frame, however many answers come for it', asked.length === 2 && w.byTag( box, 'iframe' ).length === 1 );
 }
 
 done();

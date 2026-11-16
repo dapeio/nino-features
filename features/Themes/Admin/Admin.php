@@ -8,10 +8,12 @@ namespace Nino\Modules\Themes {
 	//
 	//	themes/list			the themes there are, the active one, whether there is a last state
 	//	themes/open			one theme, its mix, the brand and what they come to: the part of each group, the knobs and their steps, the variants
+	//	themes/thumb		a small picture of a theme: its start page in a draft of its own, one that does not count among the five of the previews
 	//	themes/preview	a draft - a mix, a brand - built for one request in the session that asks, answered as a token, the query that names it, when it runs out and for how many seconds it holds
 	//	themes/save			the mix of an own theme, and the brand where it is posted
 	//	themes/brand		the brand alone: the project's, whichever theme is open
 	//	themes/save-as	a new own theme from a draft
+	//	themes/duplicate	a new own theme from a theme as it is saved, its mix and its own css; the brand is the project's and is not copied
 	//	themes/apply		the website shows a theme
 	//	themes/restore	the last state in place of this one, and this one in place of the last - asked with the state it was seen in
 	//	themes/delete		an own theme
@@ -30,8 +32,10 @@ namespace Nino\Modules\Themes {
 				'themes/list'			=> [ self::class, 'apiList' ],
 				'themes/open'			=> [ self::class, 'apiOpen' ],
 				'themes/preview'	=> [ self::class, 'apiPreview' ],
+				'themes/thumb'		=> [ self::class, 'apiThumb' ],
 				'themes/save'			=> [ self::class, 'apiSave' ],
 				'themes/save-as'	=> [ self::class, 'apiSaveAs' ],
+				'themes/duplicate'	=> [ self::class, 'apiDuplicate' ],
 				'themes/brand'		=> [ self::class, 'apiBrand' ],
 				'themes/apply'		=> [ self::class, 'apiApply' ],
 				'themes/restore'	=> [ self::class, 'apiRestore' ],
@@ -66,6 +70,7 @@ namespace Nino\Modules\Themes {
 				'themes/save'			=> 'Save Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/brand'		=> 'Save Brand',
 				'themes/save-as'	=> 'Save Theme As '. self::_shown( (string) ( is_array( $data['mix'] ?? null ) === true ? \Nino\Admin\Admin::postString( $data['mix'], 'name' ) : '' ) ),
+				'themes/duplicate'	=> 'Duplicate Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ). ' As '. self::_shown( \Nino\Admin\Admin::postString( $data, 'name' ) ),
 				'themes/apply'		=> 'Apply Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/restore'	=> 'Restore Last Theme State',
 				'themes/delete'		=> 'Delete Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
@@ -99,7 +104,7 @@ namespace Nino\Modules\Themes {
 			$groups = [];
 
 			foreach( \Nino\Components::groups( $appData ) as $group => $declared )
-				$groups[] = [ 'key' => $group, 'label' => $declared['label'], 'feature' => $declared['feature'], 'components' => $declared['components'] ];
+				$groups[] = [ 'key' => $group, 'label' => $declared['label'], 'feature' => $declared['feature'], 'components' => $declared['components'], 'demo' => $declared['demo'] !== '' ];
 
 			$rejected = [];
 
@@ -120,7 +125,7 @@ namespace Nino\Modules\Themes {
 
 			self::_tidy( $appData );
 
-			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH ], 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -164,33 +169,46 @@ namespace Nino\Modules\Themes {
 			}
 
 			$built = Compiler::compile( $appData, $mix, $brand );
-			$held = (array) \Nino\Runtime::getSessionValue( $appData, \Nino\Modules\Themes::SESSION, [] );
-			$token = is_string( $data['token'] ?? null ) === true && isset( $held[$data['token']] ) === true && $held[$data['token']] > time() ? $data['token'] : bin2hex( random_bytes( 16 ) );
-			$user = \Nino\Auth::getCurrentUser( $appData );
-			$expires = time() + \Nino\Modules\Themes::TTL;
-			$dir = \Nino\Modules\Themes::DRAFTS. '/'. $token;
+			$made = self::_draft( $appData, $built, \Nino\Admin\Admin::postString( $data, 'token' ), \Nino\Modules\Themes::SESSION, 5 );
 
-			if( \Nino\Filesystem::putFileContent( $appData, $dir. '/theme.css', $built['css'] ) === false || \Nino\Filesystem::putFileContent( $appData, $dir. '/variants.php', $built['variants'] ) === false
-				|| \Nino\Filesystem::putFileContent( $appData, $dir. '/meta.json', [ 'user' => $user === false ? '' : $user['mail'], 'expires' => $expires ] ) === false ) {
+			if( $made === null ) {
 				\Nino\Http::fail( $request, 500, 'the preview could not be written' );
 				return;
 			}
 
-			// The tokens this session holds: those that have not run out, the newest five
-			$held = array_filter( $held, static fn( mixed $until ): bool => is_int( $until ) === true && $until > time() );
-			unset( $held[$token] );
-			$held[$token] = $expires;
-			$kept = array_slice( $held, -5, null, true );
+			\Nino\Http::ok( $request, [ 'token' => $made['token'], 'query' => \Nino\Modules\Themes::QUERY. '='. $made['token'], 'expires' => $made['expires'], 'ttl' => \Nino\Modules\Themes::TTL, 'cssFaults' => $built['faults'] ] + self::_describe( $appData, $built['plan'], $brand ) );
+		}
 
-			// The draft that falls out of the five is not kept for nobody to ask for
-			foreach( array_diff_key( $held, $kept ) as $dropped => $until )
-				if( preg_match( \Nino\Modules\Themes::TOKEN, (string) $dropped ) === 1 )
-					\Nino\Filesystem::removeDir( \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DRAFTS. '/'. $dropped ) );
+		public static function apiThumb( array &$appData, array &$request ): void {
 
-			\Nino\Runtime::setSessionValue( $appData, \Nino\Modules\Themes::SESSION, $kept );
-			self::_prune( $appData, array_keys( $kept ) );
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return;
 
-			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Modules\Themes::QUERY. '='. $token, 'expires' => $expires, 'ttl' => \Nino\Modules\Themes::TTL ] + self::_describe( $appData, $built['plan'], $brand ) );
+			$data = \Nino\Admin\Admin::postData();
+			$state = Store::read( $appData );
+			$theme = self::_theme( $appData, $state, \Nino\Admin\Admin::postString( $data, 'theme' ) );
+
+			if( isset( $theme['failure'] ) === true ) {
+				self::_fail( $request, $theme['failure'] );
+				return;
+			}
+
+			// What is saved of the theme and the brand of the project: a thumbnail shows what the website would show, and nothing of a draft
+			$mix = Mix::clean( $appData, $theme['mix'], $theme['kind'] === 'own' );
+
+			if( is_string( $mix ) === true ) {
+				\Nino\Http::fail( $request, 409, 'the mix is refused: '. $mix, 'themes_mix', [ $mix ], 'mix' );
+				return;
+			}
+
+			$made = self::_draft( $appData, Compiler::compile( $appData, $mix, $state['brand'] ), \Nino\Admin\Admin::postString( $data, 'token' ), \Nino\Modules\Themes::THUMBS, \Nino\Modules\Themes::THUMBS_MAX );
+
+			if( $made === null ) {
+				\Nino\Http::fail( $request, 500, 'the preview could not be written' );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'token' => $made['token'], 'query' => \Nino\Modules\Themes::QUERY. '='. $made['token'], 'expires' => $made['expires'], 'ttl' => \Nino\Modules\Themes::TTL ] );
 		}
 
 		public static function apiSave( array &$appData, array &$request ): void {
@@ -260,11 +278,6 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			if( \Nino\Feature::slug( (string) $prepared['mix']['name'], \Nino\Components::NAME_LENGTH ) === '' ) {
-				self::_fail( $request, [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ] );
-				return;
-			}
-
 			// The name, the key and the number of the themes are looked at with the lock held, on the state that is being copied: two requests that save
 			// a theme of one name are not two cards of it. A key that is taken by a theme that has another name is not the name's: the new theme has the next free one
 			$made = '';
@@ -273,22 +286,52 @@ namespace Nino\Modules\Themes {
 				if( isset( $prepared['brand'] ) === true && ( $failure = self::_brandFailure( $appData, $next, $data ) ) !== null )
 					return $failure;
 
-				$names = self::_ownNames( $appData, $next );
+				return self::_create( $appData, $next, $prepared, $made );
+			}, ( $data['force'] ?? false ) === true );
 
-				foreach( $names as $name )
-					if( self::_sameName( (string) $prepared['mix']['name'], $name ) === true )
-						return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $name ], 'name' ];
+			self::_finish( $appData, $request, 'own:'. $made, $failure );
+		}
 
-				if( count( $names ) >= Store::MAX_OWN )
-					return [ 409, 'there are as many own themes as there may be', 'themes_limit', [ Store::MAX_OWN ], '' ];
+		public static function apiDuplicate( array &$appData, array &$request ): void {
 
-				$base = \Nino\Feature::slug( (string) $prepared['mix']['name'], \Nino\Components::NAME_LENGTH );
-				$made = $base;
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return;
 
-				for( $count = 2; isset( $names[$made] ) === true; $count++ )
-					$made = substr( $base, 0, \Nino\Components::NAME_LENGTH - strlen( '-'. $count ) ). '-'. $count;
+			$data = \Nino\Admin\Admin::postData();
+			$state = Store::read( $appData );
+			$theme = self::_theme( $appData, $state, \Nino\Admin\Admin::postString( $data, 'theme' ) );
 
-				return self::_write( $appData, $next, $made, $prepared );
+			if( isset( $theme['failure'] ) === true ) {
+				self::_fail( $request, $theme['failure'] );
+				return;
+			}
+
+			// The mix to copy is the one the state has with the lock held: for an own theme the stamp says it is the one the person saw, a theme of a
+			// package is the mix it is at that time. The name is the new one; the brand is the project's, so it is not part of it
+			$made = '';
+			$key = $theme['key'];
+			$name = \Nino\Admin\Admin::postString( $data, 'name' );
+			$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( &$made, $key, $theme, $name, $data ): ?array {
+
+				$mix = $theme['mix'];
+
+				if( $theme['kind'] === 'own' ) {
+
+					$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. substr( $key, 4 ). '.json', [] );
+
+					if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
+						return self::_changedFailure( is_array( $current ) === true ? $current : [], substr( $key, 4 ) );
+
+					$mix = $current;
+				}
+
+				$mix['name'] = $name;
+				$prepared = self::_prepare( $appData, [ 'mix' => $mix ], [] );
+
+				if( isset( $prepared['failure'] ) === true )
+					return $prepared['failure'];
+
+				return self::_create( $appData, $next, $prepared, $made );
 			}, ( $data['force'] ?? false ) === true );
 
 			self::_finish( $appData, $request, 'own:'. $made, $failure );
@@ -543,6 +586,40 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	Make a new own theme in a state being made: its name must be new, there must be room for it, and its key is the name's - or the next free one
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$next					The virtual path of the state
+		 *	@param		array			$prepared			As _prepare() answers it
+		 *	@param		string		&$made				(reference) The key it was made under
+		 *
+		 *	@return 	array|null								The failure, or null
+		 */
+		private static function _create( array &$appData, string $next, array $prepared, string &$made ): ?array {
+
+			$names = self::_ownNames( $appData, $next );
+
+			foreach( $names as $name )
+				if( self::_sameName( (string) $prepared['mix']['name'], $name ) === true )
+					return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $name ], 'name' ];
+
+			if( count( $names ) >= Store::MAX_OWN )
+				return [ 409, 'there are as many own themes as there may be', 'themes_limit', [ Store::MAX_OWN ], '' ];
+
+			$base = \Nino\Feature::slug( (string) $prepared['mix']['name'], \Nino\Components::NAME_LENGTH );
+
+			if( $base === '' )
+				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
+
+			$made = $base;
+
+			for( $count = 2; isset( $names[$made] ) === true; $count++ )
+				$made = substr( $base, 0, \Nino\Components::NAME_LENGTH - strlen( '-'. $count ) ). '-'. $count;
+
+			return self::_write( $appData, $next, $made, $prepared );
+		}
+
+		/**
 		 *	Answer what a change came to
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -711,7 +788,7 @@ namespace Nino\Modules\Themes {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$state				As Store::read() answers it
 		 *
-		 *	@return 	array											'active' => [ 'theme', 'built', 'stale' ] or null, 'last' => when the last state was saved and which theme the website showed in it, or null, 'foreign' => bool, 'unreadable' => bool (the file is there and cannot be read: it is somebody else's), 'canRestore' => bool, 'state' => the stamp of the
+		 *	@return 	array											'active' => [ 'theme', 'built', 'stale', 'back' (the fonts that are there again, by the key of the brand: the stylesheet has the stack of the system for them until it is built again) ] or null, 'last' => when the last state was saved and which theme the website showed in it, or null, 'foreign' => bool, 'unreadable' => bool (the file is there and cannot be read: it is somebody else's), 'canRestore' => bool, 'state' => the stamp of the
 		 *																state, which a restore is asked against, 'brandStamp' => the stamp of the brand
 		 */
 		private static function _state( array &$appData, array $state ): array {
@@ -719,12 +796,25 @@ namespace Nino\Modules\Themes {
 			$active = $state['active'];
 			$file = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::SHEET );
 			$text = Store::sheet( $file );
+			$back = [];
+
+			// A font that had no folder when the stylesheet was built has the stack of the system in it; the folder that is there again is not in the
+			// stylesheet before the next build
+			if( $active !== null && is_array( $active['gone'] ?? null ) === true && $active['gone'] !== [] ) {
+
+				$fonts = Brand::fonts( $appData );
+
+				foreach( $active['gone'] as $key => $slug )
+					if( in_array( $key, [ 'font-title', 'font-text', 'font-button' ], true ) === true && is_string( $slug ) === true && isset( $fonts[$slug] ) === true )
+						$back[$key] = $slug;
+			}
 
 			return [
 				'active'		=> $active === null ? null : [
 					'theme'		=> $active['theme'],
 					'built'		=> (string) ( $active['built'] ?? '' ),
-					'stale'		=> ( $active['feature'] ?? '' ) !== (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' ) || ( $active['register'] ?? '' ) !== \Nino\Components::version( $appData ),
+					'stale'		=> ( $active['feature'] ?? '' ) !== (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' ) || ( $active['register'] ?? '' ) !== \Nino\Components::version( $appData ) || $back !== [],
+					'back'		=> $back,
 				],
 				'foreign'		=> $text === false || ( $text !== null && $text !== '' && Compiler::isOwn( $text ) === false ),
 				'unreadable'	=> $text === false,
@@ -748,6 +838,47 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	Write a draft - the stylesheet and the variants of a mix as they were compiled, and whose it is - and hold its token for the session: the token
+		 *	the session had for it where it still holds, else a new one. The session keeps the newest of its tokens and the folders of the others go
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$built				As Compiler::compile() answers it
+		 *	@param		string		$asked				The token the one who asks holds, '' for none
+		 *	@param		string		$session			The key of the session that holds the tokens
+		 *	@param		int				$most					How many tokens the session keeps
+		 *
+		 *	@return 	array|null								'token', 'expires'; null where the draft could not be written
+		 */
+		private static function _draft( array &$appData, array $built, string $asked, string $session, int $most ): ?array {
+
+			$held = (array) \Nino\Runtime::getSessionValue( $appData, $session, [] );
+			$token = isset( $held[$asked] ) === true && $held[$asked] > time() && preg_match( \Nino\Modules\Themes::TOKEN, $asked ) === 1 ? $asked : bin2hex( random_bytes( 16 ) );
+			$user = \Nino\Auth::getCurrentUser( $appData );
+			$expires = time() + \Nino\Modules\Themes::TTL;
+			$dir = \Nino\Modules\Themes::DRAFTS. '/'. $token;
+
+			if( \Nino\Filesystem::putFileContent( $appData, $dir. '/theme.css', $built['css'] ) === false || \Nino\Filesystem::putFileContent( $appData, $dir. '/variants.php', $built['variants'] ) === false
+				|| \Nino\Filesystem::putFileContent( $appData, $dir. '/meta.json', [ 'user' => $user === false ? '' : $user['mail'], 'expires' => $expires ] ) === false )
+				return null;
+
+			// The tokens this session holds: those that have not run out, the newest ones
+			$held = array_filter( $held, static fn( mixed $until ): bool => is_int( $until ) === true && $until > time() );
+			unset( $held[$token] );
+			$held[$token] = $expires;
+			$kept = array_slice( $held, -$most, null, true );
+
+			// The draft that falls out is not kept for nobody to ask for
+			foreach( array_diff_key( $held, $kept ) as $dropped => $until )
+				if( preg_match( \Nino\Modules\Themes::TOKEN, (string) $dropped ) === 1 )
+					\Nino\Filesystem::removeDir( \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DRAFTS. '/'. $dropped ) );
+
+			\Nino\Runtime::setSessionValue( $appData, $session, $kept );
+			self::_tidy( $appData );
+
+			return [ 'token' => $token, 'expires' => $expires ];
+		}
+
+		/**
 		 *	Remove the drafts whose time is out - at every action that writes, and at the list: the drafts of this session that are in time stay
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -757,8 +888,9 @@ namespace Nino\Modules\Themes {
 		private static function _tidy( array &$appData ): void {
 
 			$held = \Nino\Runtime::getSessionValue( $appData, \Nino\Modules\Themes::SESSION, [] );
+			$thumbs = \Nino\Runtime::getSessionValue( $appData, \Nino\Modules\Themes::THUMBS, [] );
 
-			self::_prune( $appData, is_array( $held ) === true ? array_keys( $held ) : [] );
+			self::_prune( $appData, array_merge( is_array( $held ) === true ? array_keys( $held ) : [], is_array( $thumbs ) === true ? array_keys( $thumbs ) : [] ) );
 		}
 
 		/**

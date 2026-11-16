@@ -14,37 +14,81 @@
 
 @layer nino.tool {
 
-/* The sizes of some parts of the design system are below the 12px a text of the workbench holds to (measured in the browser: the badge
-   10.8px, the small button 11.4px, the summary of an accordion head 11.7px, the label of a field 11.1px, the title of the split bar
-   11.7px, the contrast line of a colour field 11.7px); the panel's own text is raised to it, the rule of the panel is the floor */
-#themes-app :is(.nino-admin-badge, .nino-admin-btn--small, .nino-admin-accordion-summary, .nino-admin-split-title, .nino-admin-field > span, .nino-admin-color-contrast, .themes-source, .themes-value) {
-	font-size: max(.75rem, 12px);
-}
-
-/* The word of a theme that is on the website is green on the grey of the pane: 4.39 : 1 in the design system's green, measured in the browser; the green is
-   darkened - or, in the dark scheme, lightened - towards the colour of the text, which both schemes read at more than 4.5 : 1 */
-#themes-app .nino-admin-badge[data-state="ok"] {
-	color: color-mix(in srgb, var(--editor-green) 70%, var(--editor-text));
-}
-
-/* The dialog that asks for a name stands outside of the panel, in the root of the workbench: its field and its sentences get the same floor */
-.themes-dialog :is(.nino-admin-field > span, .nino-admin-hint, .nino-admin-field-error) {
-	font-size: max(.75rem, 12px);
-}
-
 /* The list: a card for each theme, as many in a row as the pane has room for */
 #themes-app .themes-cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
 	gap: .75rem;
-	align-items: start;
+	grid-auto-rows: 1fr;
+	align-items: stretch;
 }
 
+/* Every card of the list is as high as the highest: the rows of the grid are one height, the card fills its row, and what the card says is laid on a
+   fixed number of lines (below), with the buttons at the foot */
 #themes-app .themes-card {
 	display: flex;
 	flex-direction: column;
 	gap: .5rem;
 	margin: 0;
+}
+
+#themes-app .themes-clamp {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+
+#themes-app .themes-rests.themes-clamp {
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+}
+
+/* The buttons stand at the foot of the card: the margin above them takes what the text leaves */
+#themes-app .themes-card .nino-admin-actions {
+	margin: auto 0 0;
+}
+
+/* The picture of a theme: its start page, laid out as a desktop lays it out and scaled into the box (Nino.adminUi.scaleFrame()); the box has the
+   proportion of the page it is drawn from, and a picture is no control */
+#themes-app .themes-thumb {
+	position: relative;
+	overflow: hidden;
+	aspect-ratio: 16 / 10;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg);
+	pointer-events: none;
+}
+
+/* The foot of the picture is not cut through a line: it fades into the ground of the box */
+#themes-app .themes-thumb::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0;
+	height: 30%;
+	background: linear-gradient(to bottom, transparent, var(--editor-bg));
+}
+
+/* Where the list is narrow - a phone, a tablet - a card with a picture is three times as high as one without, and there is no picture */
+#themes-app #themes-list {
+	container: themes-list / inline-size;
+}
+
+@container themes-list (max-width: 37.5rem) {
+
+	#themes-app .themes-thumb {
+		display: none;
+	}
+}
+
+#themes-app .themes-thumb-frame {
+	position: absolute;
+	border: 0;
+	background: #fff;
+	transform-origin: 0 0;
 }
 
 #themes-app .themes-card-head,
@@ -56,12 +100,15 @@
 }
 
 #themes-app .themes-card-head h3 {
+	flex: 1 1 100%;
+	min-width: 0;
 	margin: 0;
-	overflow-wrap: anywhere;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-#themes-app .themes-card .nino-admin-hint,
-#themes-app .themes-card .nino-admin-actions {
+#themes-app .themes-card .nino-admin-hint {
 	margin: 0;
 }
 
@@ -85,26 +132,6 @@
 
 #themes-app .themes-column {
 	min-width: 0;
-}
-
-#themes-app .themes-back {
-	display: inline-flex;
-	align-items: center;
-	min-height: max(1.5rem, 24px);
-	color: var(--editor-blue);
-	font-size: .85rem;
-	text-decoration: none;
-}
-
-#themes-app .themes-back::before {
-	content: "\2039";
-	margin-right: .4rem;
-	font-size: 1.2rem;
-	line-height: 1;
-}
-
-#themes-app .themes-back:hover {
-	text-decoration: underline;
 }
 
 #themes-app .themes-title {
@@ -140,7 +167,7 @@
 	overflow: hidden;
 	border: 1px solid var(--editor-border);
 	border-radius: 999px;
-	font-size: .78rem;
+	font-size: max(.75rem, 12px);
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -230,6 +257,14 @@
 	font-size: max(.75rem, 12px);
 }
 
+/* The head of the list of all pairs is a control: the floor of a target is 24px, and the workbench draws the summary of a details 22px high */
+#themes-app .themes-allpairs > summary {
+	display: flex;
+	align-items: center;
+	min-height: max(1.5rem, 24px);
+	cursor: pointer;
+}
+
 #themes-app .themes-palette-mode {
 	margin: 1rem 0 .4rem;
 }
@@ -288,7 +323,7 @@
 
 #themes-app .themes-pair[data-state="ok"] .themes-pair-verdict,
 #themes-app .themes-pair[data-state="ok"] .themes-pair-ratio {
-	color: color-mix(in srgb, var(--editor-green) 70%, var(--editor-text));
+	color: var(--editor-green);
 }
 
 #themes-app .themes-pair[data-state="error"] .themes-pair-verdict,
@@ -319,20 +354,6 @@
 
 #themes-app .themes-marked {
 	margin: 0;
-}
-
-#themes-app .themes-port {
-	position: relative;
-	height: clamp(20rem, 70vh, 48rem);
-	overflow: hidden;
-	background: var(--editor-bg);
-}
-
-#themes-app .themes-frame {
-	position: absolute;
-	border: 0;
-	background: #fff;
-	transform-origin: 0 0;
 }
 
 /* The bar: the state first, then what was said, then the things to do */

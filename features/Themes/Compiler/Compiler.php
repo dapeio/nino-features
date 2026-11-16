@@ -89,7 +89,9 @@ namespace Nino\Modules\Themes {
 		 *	@param		array			$mix					As Mix::clean() answers it
 		 *	@param		array			$brand				As Brand::clean() answers it
 		 *
-		 *	@return 	array											'css' => the stylesheet, 'variants' => component => [ the variants a part adds, the standard ], 'plan' => see plan()
+		 *	@return 	array											'css' => the stylesheet, 'variants' => component => [ the variants a part adds, the standard ], 'plan' => see plan(), 'gone' => the fonts the brand names that have no
+		 *																folder, by the key of the brand - the stylesheet has the stack of the system for them, 'faults' => what the own css leaves open, as
+		 *																balance() names it
 		 */
 		public static function compile( array &$appData, array $mix, array $brand ): array {
 
@@ -103,6 +105,7 @@ namespace Nino\Modules\Themes {
 			$named = $plan['named'];
 			$lines = [];
 			$faces = [];
+			$gone = [];
 
 			foreach( [ 'title', 'text', 'button' ] as $role ) {
 
@@ -113,6 +116,7 @@ namespace Nino\Modules\Themes {
 
 				if( isset( $fonts[$slug] ) === false ) {
 					$plan['notes'][] = 'the font "'. $slug. '" is no font of this project - the stack of the system stands for the '. $role;
+					$gone['font-'. $role] = $slug;
 					$slug = 'system-sans';
 				}
 
@@ -188,12 +192,118 @@ namespace Nino\Modules\Themes {
 
 			$blocks = array_merge( $blocks, $css );
 
-			if( trim( (string) ( $mix['css'] ?? '' ) ) !== '' )
-				$blocks[] = '/* The own css of the theme */'. "\n". trim( (string) $mix['css'] );
+			// The own css goes in as it was written. Where it does not close - a comment, a string, a url(, a block - it is closed here, at its end and
+			// as the bundle would close it: the bundle says so in the log at every build, and unfinished css is what a person who types has for a while
+			$faults = [];
+
+			if( trim( (string) ( $mix['css'] ?? '' ) ) !== '' ) {
+				[ $own, $faults ] = self::balance( trim( (string) $mix['css'] ) );
+				$blocks[] = '/* The own css of the theme */'. "\n". $own;
+			}
 
 			$body = implode( "\n\n", $blocks ). "\n";
 
-			return [ 'css' => sprintf( self::HEAD, hash( 'sha256', $body ) ). "\n". $body, 'variants' => $variants, 'plan' => $plan ];
+			return [ 'css' => sprintf( self::HEAD, hash( 'sha256', $body ) ). "\n". $body, 'variants' => $variants, 'plan' => $plan, 'gone' => $gone, 'faults' => $faults ];
+		}
+
+		/**
+		 *	A css closed where it was left open, the way the bundle of the kernel closes it - what is open at the end of the text ends there, and so does
+		 *	every block - and a } that closes nothing taken out. Text that is closed is returned as it is
+		 *
+		 *	@param		string		$css
+		 *
+		 *	@return 	array											[ the css, what was wrong: open-comment, open-string, open-url, open-block, stray-close - each once ]
+		 */
+		public static function balance( string $css ): array {
+
+			$length = strlen( $css );
+			$body = '';
+			$faults = [];
+			$copied = 0;
+			$depth = 0;
+			$open = '';
+			$i = 0;
+
+			while( $open === '' && ( $i += strcspn( $css, '/"\'(\\{}', $i ) ) < $length ) {
+
+				$char = $css[$i];
+
+				if( $char === '/' ) {
+
+					if( ( $css[$i + 1] ?? '' ) !== '*' )
+						$i++;
+					else if( ( $end = strpos( $css, '*/', $i + 2 ) ) === false ) {
+						$faults[] = 'open-comment';
+						$open = '*/';
+					}
+					else
+						$i = $end + 2;
+				}
+				else if( $char === '"' || $char === "'" ) {
+
+					$i++;
+
+					while( true ) {
+
+						$i += strcspn( $css, $char. "\\\r\n\f", $i );
+
+						if( $i >= $length ) {
+							$faults[] = 'open-string';
+							$open = $char;
+							break;
+						}
+
+						if( $css[$i] === '\\' )
+							$i += substr( $css, $i + 1, 2 ) === "\r\n" ? 3 : 2;
+						else if( $css[$i] === $char ) {
+							$i++;
+							break;
+						}
+						else
+							break;
+					}
+				}
+				else if( $char === '(' ) {
+
+					$i++;
+
+					if( $i >= 4 && strcasecmp( substr( $css, $i - 4, 3 ), 'url' ) === 0 && in_array( $css[$i + strspn( $css, " \t\r\n\f", $i )] ?? '', [ '"', "'" ], true ) === false ) {
+
+						if( preg_match( '/\G(?:[^)\\\\]++|\\\\.)*+\)/s', $css, $match, 0, $i ) !== 1 ) {
+							$faults[] = 'open-url';
+							$open = ')';
+						}
+						else
+							$i += strlen( $match[0] );
+					}
+				}
+				else if( $char === '\\' )
+					$i += 2;
+				else if( $char === '{' ) {
+					$depth++;
+					$i++;
+				}
+				else if( $depth === 0 ) {
+					$faults[] = 'stray-close';
+					$body .= substr( $css, $copied, $i - $copied );
+					$copied = ++$i;
+				}
+				else {
+					$depth--;
+					$i++;
+				}
+			}
+
+			// What closes the text must not be taken for the end of an escape: a text that ends in a backslash has the closing one escaped
+			$tail = substr( $css, $copied );
+			$body .= $tail. ( $open !== '' && ( strlen( $tail ) - strlen( rtrim( $tail, '\\' ) ) ) % 2 === 1 ? ' ' : '' ). $open;
+
+			if( $depth !== 0 ) {
+				$faults[] = 'open-block';
+				$body .= "\n". str_repeat( '}', $depth );
+			}
+
+			return [ $body, array_values( array_unique( $faults ) ) ];
 		}
 
 		/**
