@@ -3,19 +3,21 @@ declare(strict_types=1);
 
 namespace Nino\Modules\Themes {
 
-	// The API of the workbench for the themes: what a panel asks and does. Every action guards itself with the right
-	// /_admin/themes/manage; the panel itself - the screen that draws these answers - is not part of this feature yet, and the
-	// entry it has in the rail leads to the same API
+	// The API of the workbench for the themes, and the panel that draws its answers (assets/admin.js). Every action guards
+	// itself with the right /_admin/themes/manage, and so does the entry in the rail: an account without it has no panel
 	//
 	//	themes/list			the themes there are, the active one, whether there is a last state
 	//	themes/open			one theme, its mix, the brand and what they come to: the part of each group, the knobs and their steps, the variants
-	//	themes/preview	a draft - a mix, a brand - built for one request in the session that asks, answered as a token
+	//	themes/preview	a draft - a mix, a brand - built for one request in the session that asks, answered as a token, the query that names it, when it runs out and for how many seconds it holds
 	//	themes/save			the mix of an own theme, and the brand where it is posted
 	//	themes/save-as	a new own theme from a draft
 	//	themes/apply		the website shows a theme
 	//	themes/restore	the last state in place of this one, and this one in place of the last
 	//	themes/delete		an own theme
 	class Admin {
+
+		// How many pages of the site a list names for the preview
+		private const int PAGES = 100;
 
 		public static function perm(): string {
 			return \Nino\Modules\Themes::PERM;
@@ -39,9 +41,13 @@ namespace Nino\Modules\Themes {
 			return [ 'themes', '/_admin/themes/nav', 60 ];
 		}
 
-		// The page of the panel: a paragraph or two that say which theme the website shows and what the settings are - the screen for them is not there
+		// The mounts of the panel: its list of themes and the screen of one theme, which assets/admin.js draws
 		public static function template(): string {
 			return \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/templates/panel' );
+		}
+
+		public static function assets(): array {
+			return [ \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.js' ), \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.css' ) ];
 		}
 
 		public static function icon(): string {
@@ -83,8 +89,9 @@ namespace Nino\Modules\Themes {
 				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
 			}
 
+			// An own theme says where each of its parts comes from, so that a card can say what it is made of
 			foreach( $state['own'] as $key => $mix )
-				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key ];
+				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => array_map( static fn( array $entry ): string => (string) ( $entry['from'] ?? 'standard' ), (array) ( $mix['parts'] ?? [] ) ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key ];
 
 			$groups = [];
 
@@ -101,9 +108,16 @@ namespace Nino\Modules\Themes {
 			foreach( Brand::fonts( $appData ) as $slug => $font )
 				$fonts[] = [ 'key' => $slug, 'name' => $font['name'], 'system' => $font['system'] ];
 
+			// The pages of the site a preview may show: the paths of the routes that answer html, as the kernel lists them
+			$pages = [];
+
+			foreach( \Nino\Http::pages( (array) ( $appData['/nino/http/routes'] ?? [] ) ) as $page )
+				if( $page['html'] === true && $page['wildcard'] === false && $page['status'] < 400 && isset( $pages[$page['path']] ) === false )
+					$pages[$page['path']] = [ 'path' => $page['path'], 'title' => trim( \Nino\Html::renderTextfill( $appData, '/_nino/webpage'. $page['uri']. '/title' ) ) ];
+
 			self::_tidy( $appData );
 
-			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -122,7 +136,7 @@ namespace Nino\Modules\Themes {
 
 			$plan = Compiler::plan( $appData, $theme['mix'], $state['brand'] );
 
-			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => $theme['mix'] ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => $theme['mix'], 'stamp' => $theme['kind'] === 'own' ? self::_stamp( $theme['mix'] ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -173,7 +187,7 @@ namespace Nino\Modules\Themes {
 			\Nino\Runtime::setSessionValue( $appData, \Nino\Modules\Themes::SESSION, $kept );
 			self::_prune( $appData, array_keys( $kept ) );
 
-			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Modules\Themes::QUERY. '='. $token, 'expires' => $expires ] + self::_describe( $appData, $built['plan'], $brand ) );
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Modules\Themes::QUERY. '='. $token, 'expires' => $expires, 'ttl' => \Nino\Modules\Themes::TTL ] + self::_describe( $appData, $built['plan'], $brand ) );
 		}
 
 		public static function apiSave( array &$appData, array &$request ): void {
@@ -189,14 +203,14 @@ namespace Nino\Modules\Themes {
 
 				self::_fail( $request, isset( Reader::read( $appData )['themes'][$theme] ) === true
 					? [ 409, 'a theme that comes with a package is not changed - save it as an own theme', 'themes_not_own', [], 'theme' ]
-					: [ 404, 'there is no such theme', 'themes_unknown', [ self::_shown( $theme ) ], 'theme' ] );
+					: [ 404, 'there is no such theme', 'themes_unknown', [ self::_named( $theme ) ], 'theme' ] );
 				return;
 			}
 
 			$key = substr( $theme, 4 );
 
 			if( isset( $state['own'][$key] ) === false ) {
-				self::_fail( $request, [ 404, 'there is no such theme', 'themes_unknown', [ self::_shown( $theme ) ], 'theme' ] );
+				self::_fail( $request, [ 404, 'there is no such theme', 'themes_unknown', [ self::_named( $theme ) ], 'theme' ] );
 				return;
 			}
 
@@ -207,7 +221,15 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			self::_finish( $appData, $request, $theme, Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $prepared ): ?array {
+			// The stamp is looked at with the lock held, on the state that is being copied: a request that read the state before another one wrote it
+			// is told so as well. The stamp and the stylesheet that is not the feature's are two answers, and force is only for the second
+			self::_finish( $appData, $request, $theme, Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $prepared, $data ): ?array {
+
+				$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. $key. '.json', [] );
+
+				if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
+					return self::_changedFailure( is_array( $current ) === true ? $current : [], $key );
+
 				return self::_write( $appData, $next, $key, $prepared );
 			}, ( $data['force'] ?? false ) === true ) );
 		}
@@ -294,12 +316,17 @@ namespace Nino\Modules\Themes {
 			if( isset( $state['own'][$key] ) === false )
 				self::_fail( $request, str_starts_with( $theme, 'own:' ) === false && isset( Reader::read( $appData )['themes'][$theme] ) === true
 					? [ 409, 'only an own theme is deleted', 'themes_not_own', [], 'theme' ]
-					: [ 404, 'there is no such theme', 'themes_unknown', [ self::_shown( $theme ) ], 'theme' ] );
+					: [ 404, 'there is no such theme', 'themes_unknown', [ self::_named( $theme ) ], 'theme' ] );
 			else if( ( $state['active']['theme'] ?? '' ) === $theme )
 				self::_fail( $request, [ 409, 'the theme of the website is not deleted', 'themes_active', [ $state['own'][$key]['name'] ?? $key ], 'theme' ] );
 			else {
 
-				$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( $key ): ?array {
+				$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $data ): ?array {
+
+					$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. $key. '.json', [] );
+
+					if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
+						return self::_changedFailure( is_array( $current ) === true ? $current : [], $key );
 
 					@unlink( \Nino\Filesystem::path( $appData, $next. '/own/'. $key. '.json' ) );
 
@@ -323,7 +350,7 @@ namespace Nino\Modules\Themes {
 		 *	          problem (why the part rests, '' where it stands), missing (the theme brings no part for the group), knobs, components, offers
 		 *	knobs     key, label, extra (a knob of the part), small (for small screens, the page's), step -2 to 2, default (the middle step of
 		 *	          the ladder) and ladder (its five values; for a knob of the page five maps of tokens)
-		 *	components  name, variants (every one there is: the schema's and the part's, each with its label - null where the schema has no
+		 *	components  name, label (a text or a locale => text map), variants (every one there is: the schema's and the part's, each with its label - null where the schema has no
 		 *	          word for it - and where it comes from) and standard
 		 *	offers    the themes that have a part for the group, with whether it holds and why not
 		 *	brand     effective (every key as it comes out), named (what the brand in force says: the project's own or the theme's suggestion),
@@ -373,7 +400,7 @@ namespace Nino\Modules\Themes {
 					foreach( $added as $name )
 						$variants[] = [ 'name' => $name, 'label' => $entry['part']['variants'][$component][$name] ?? null, 'source' => 'part' ];
 
-					$groups[$group]['components'][] = [ 'name' => $component, 'variants' => $variants, 'standard' => $standard ];
+					$groups[$group]['components'][] = [ 'name' => $component, 'label' => $schemas[$component]['label'] ?? $component, 'variants' => $variants, 'standard' => $standard ];
 				}
 
 				foreach( $read['themes'] as $key => $offered )
@@ -467,7 +494,55 @@ namespace Nino\Modules\Themes {
 			$state = Store::read( $appData );
 			self::_tidy( $appData );
 
-			\Nino\Http::ok( $request, [ 'saved' => true, 'theme' => $theme, 'applied' => ( $state['active']['theme'] ?? '' ) === $theme ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'saved' => true, 'theme' => $theme, 'applied' => ( $state['active']['theme'] ?? '' ) === $theme, 'stamp' => str_starts_with( $theme, 'own:' ) === true && isset( $state['own'][substr( $theme, 4 )] ) === true ? self::_stamp( $state['own'][substr( $theme, 4 )] ) : '' ] + self::_state( $appData, $state ) );
+		}
+
+		/**
+		 *	The stamp of a saved mix: what a change of it - by this tab or by another - is told from. The name and the own css are part of it
+		 *	and the order of the keys is not
+		 *
+		 *	@param		array			$mix					An own theme as the state holds it
+		 *
+		 *	@return 	string										A sha256
+		 */
+		private static function _stamp( array $mix ): string {
+
+			$sort = static function( mixed $value ) use ( &$sort ): mixed {
+
+				if( is_array( $value ) === false )
+					return $value;
+
+				ksort( $value );
+
+				return array_map( $sort, $value );
+			};
+
+			return hash( 'sha256', (string) json_encode( $sort( $mix ) ) );
+		}
+
+		/**
+		 *	What is answered where the stamp is not the one of the theme
+		 *
+		 *	@param		array			$mix					The own theme as the state holds it, [] where it is gone
+		 *	@param		string		$key
+		 *
+		 *	@return 	array											As Store::commit() answers a failure
+		 */
+		private static function _changedFailure( array $mix, string $key ): array {
+			return [ 409, 'the theme was changed since it was opened', 'themes_changed', [ (string) ( $mix['name'] ?? $key ) ], 'theme' ];
+		}
+
+		/**
+		 *	Whether the theme a request is about was changed since the one who asks opened it: the stamp it posts as base is not the one
+		 *	the mix has now. A request that posts none has not seen the theme. The one who asks takes the new stamp from open to write over it
+		 *
+		 *	@param		array			$mix					The own theme as the state holds it
+		 *	@param		array			$data					The posted data
+		 *
+		 *	@return 	bool
+		 */
+		private static function _changed( array $mix, array $data ): bool {
+			return is_string( $data['base'] ?? null ) === false || hash_equals( self::_stamp( $mix ), $data['base'] ) === false;
 		}
 
 		/**
@@ -491,7 +566,7 @@ namespace Nino\Modules\Themes {
 			else if( ( $mix = Mix::of( $appData, $theme ) ) !== null )
 				return [ 'key' => $theme, 'kind' => 'theme', 'name' => Reader::read( $appData )['themes'][$theme]['name'], 'mix' => $mix ];
 
-			return [ 'failure' => [ 404, 'there is no such theme', 'themes_unknown', [ self::_shown( $theme ) ], 'theme' ] ];
+			return [ 'failure' => [ 404, 'there is no such theme', 'themes_unknown', [ self::_named( $theme ) ], 'theme' ] ];
 		}
 
 		/**
@@ -571,6 +646,17 @@ namespace Nino\Modules\Themes {
 				if( is_array( $meta ) === false || ( $meta['expires'] ?? 0 ) <= time() )
 					\Nino\Filesystem::removeDir( (string) $folder );
 			}
+		}
+
+		/**
+		 *	A theme as a sentence names it: its key, without the prefix the API puts before an own one, in the form of a word of a request
+		 *
+		 *	@param		string		$theme
+		 *
+		 *	@return 	string
+		 */
+		private static function _named( string $theme ): string {
+			return self::_shown( str_starts_with( $theme, 'own:' ) === true ? substr( $theme, 4 ) : $theme );
 		}
 
 		/**

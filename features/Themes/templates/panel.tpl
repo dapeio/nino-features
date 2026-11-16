@@ -1,4 +1,4 @@
-<section class="themes-panel">
-	<p>[[/_admin/themes/panel/active]] <strong>[themes-active]</strong></p>
-	<p>[[/_admin/themes/panel/settings]]</p>
-</section>
+<div id="themes-app" class="themes-panel">
+	<div id="themes-list" class="themes-level"></div>
+	<div id="themes-theme" class="themes-level admin-hidden"></div>
+</div>

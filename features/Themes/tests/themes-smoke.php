@@ -18,6 +18,8 @@ declare(strict_types=1);
  *											H. rights and names: no right, no answer; what a name, a path, a step, a colour and a css may be
  *											I. sizes, the feature off and on, and the time it takes
  *											J. the theme Nino: what is in its folder, that its middle is the reset, the order of its steps, its variants and its sizes
+ *											K. the panel: its files, its words, what the API gives a screen - the pages, what an own theme is made of, the label of a
+ *											   component, the time a token holds - the outline of a component in the preview, and the script over a stand-in of the page
  *
  *									Runs against an isolated sandbox directory with the kernel's own Basis; the themes are the two fixtures of
  *									tests/fixtures/themes, copied into the sandbox - Craft (probe), which stands the section on a soft surface,
@@ -139,6 +141,10 @@ function themesReboot( array $old, array $modules ): array {
  *	@return 	array											[ status, body ]
  */
 function themesCall( array &$appData, string $action, array $data = [] ): array {
+
+	// A change of an own theme says which state of it it was made on: the stamp open gives, unless the call names its own (null: none)
+	if( in_array( $action, [ 'themes/save', 'themes/delete' ], true ) === true && array_key_exists( 'base', $data ) === false && str_starts_with( (string) ( $data['theme'] ?? '' ), 'own:' ) === true )
+		$data['base'] = (string) ( ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'theme' => $data['theme'] ], 'themes/open' )[1]['stamp'] ?? '' );
 
 	[ $status, $body ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], $data, $action );
 
@@ -1186,13 +1192,6 @@ symlink( $outside. '/secret.json', $themesDir. '/linked-parts/theme.json' );
 unset( $linked['./nino/themes/read'] );
 check( 'and a theme.json that is a link makes no theme, so no copy of it', isset( \Nino\Modules\Themes\Reader::read( $linked )['themes']['linked-parts'] ) === false );
 
-// the name of an own theme is a value: the page of the panel shows it as text
-$named = themesCall( $linked, 'themes/save-as', [ 'mix' => themesMix( 'A [[/nino/dir]] [csrf]', [] ) ] );
-themesCall( $linked, 'themes/apply', [ 'theme' => 'own:a-nino-dir-csrf' ] );
-\Nino\Html::addShortcode( $linked, 'themes-active', [ \Nino\Modules\Themes::class, 'doActive' ], false );
-$shown = \Nino\Html::renderHtml( $linked, '<p>[themes-active]</p>' );
-check( 'the name of the theme on the page of the panel is text, whatever it spells: a fill and a call in it are shown as they were written and are not read', $named[0] === 200 && $shown === '<p>A &#91;&#91;/nino/dir]] &#91;csrf]</p>' );
-
 // Each rename a change makes, one after the other the last one the process does: it is killed there. What is on the disk afterwards is
 // a whole state - the old one or the new one - with its stylesheet, no own theme is lost, and the next change is made
 $killer = ninoSandboxDir( $linked ). '/kill.php';
@@ -1969,6 +1968,218 @@ $bundle = \Nino\Modules\Assets::stylesheet( $starting, THEMES_BUNDLE );
 $base = \Nino\Modules\Assets::stylesheet( themesReboot( $site, array_diff( $starter, [ '\\Nino\\Modules\\Themes' ] ) ), THEMES_BUNDLE );
 $numbers['nino: bundle'] = strlen( $bundle );
 check( 'Nr. 11: the bundle of the style of a site with Nino is the one without it and the stylesheet of the theme, and is under 45 KB', strlen( $bundle ) - strlen( $base ) > $allSheet - 200 && strlen( $bundle ) - strlen( $base ) < $allSheet + 400 && strlen( $bundle ) < 45 * 1024 );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nK. The panel\n";
+
+$site = themesSite();
+ninoUser( $site, 'designer@example.com' );
+
+// what the screen is made of: the files the workbench is told about, the mounts the script draws into, and nothing that runs from a markup
+$assets = \Nino\Modules\Themes\Admin::assets();
+$template = (string) file_get_contents( $featureDir. '/templates/panel.tpl' );
+$script = (string) file_get_contents( $featureDir. '/assets/admin.js' );
+$sheet = (string) file_get_contents( $featureDir. '/assets/admin.css' );
+$panelWords = [ 'en_US' => \Nino\Admin\Admin::textFills( $site, '/features/Themes/text', 'en_US' ), 'de_DE' => \Nino\Admin\Admin::textFills( $site, '/features/Themes/text', 'de_DE' ) ];
+check( 'K. the panel names its script and its stylesheet, both of them files of the feature, and its template holds the two mounts the script draws into - the list and the theme - and no script, no style and no handler of an event',
+	count( $assets ) === 2 && str_ends_with( $assets[0], '/assets/admin.js' ) === true && str_ends_with( $assets[1], '/assets/admin.css' ) === true && is_file( $featureDir. '/assets/admin.js' ) === true && is_file( $featureDir. '/assets/admin.css' ) === true
+	&& str_contains( $template, 'id="themes-list"' ) === true && str_contains( $template, 'id="themes-theme"' ) === true && preg_match( '/<script|<style|\sstyle=|\son[a-z]+=|javascript:/i', $template ) === 0 );
+check( 'K. the script keeps to the CSP of the workbench - nothing is built from a string, nothing is written as markup, and the only place a style is set is the box that measures a calculation - and the stylesheet is scoped to the panel: every rule begins with its id, but those for the dialog of the name, which stands in the root of the workbench',
+	preg_match( '/\beval\s*\(|new\s+Function|setTimeout\s*\(\s*[\'"]|insertAdjacentHTML|document\.write|\.outerHTML\s*=/', $script ) === 0 && preg_match( '/innerHTML\s*=\s*[^\'\s]/', $script ) === 0 && preg_match( '/(?<!probe)\.style\b/', $script ) === 0
+	&& str_starts_with( ltrim( $sheet ), '@layer nino.system, nino.tool, nino.local;' ) === true && preg_match_all( '/^(?:#themes-app|\t#themes-app)[^{]*\{/m', $sheet ) > 20 && preg_match( '/^(?!\.themes-dialog)[.a-z][^{@\n]*\{/m', preg_replace( '~/\*.*?\*/~s', '', $sheet ) ) === 0 );
+check( 'K. every word of the panel is a fill of both interface languages, with the same places for a param in each, and the placeholder page of the first part is gone: no shortcode of the workbench for it and no fill for its sentences',
+	$panelWords['en_US'] !== [] && array_keys( array_filter( $panelWords['en_US'], static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/themes/' ) === true, ARRAY_FILTER_USE_KEY ) ) === array_keys( array_filter( $panelWords['de_DE'], static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/themes/' ) === true, ARRAY_FILTER_USE_KEY ) )
+	&& array_filter( array_keys( $panelWords['en_US'] ), static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/themes/panel/' ) === true ) === [] && isset( $site['/nino/html/shortcodes']['themes-active'] ) === false
+	&& method_exists( \Nino\Modules\Themes::class, 'doActive' ) === false && str_contains( $template, 'themes-active' ) === false );
+
+// the list: what a card needs of the API
+$site['/nino/http/routes'] = [
+	'GET://'						=> [ 'uri' => '/', 'body' => '[template /templates/page-home]' ],
+	'GET://contact'			=> [ 'uri' => '/contact', 'body' => '[template /templates/page-contact]' ],
+	'GET://contact'. "\n"	=> [ 'uri' => '/never', 'body' => 'x' ],
+	'GET://robots.txt'	=> [ 'uri' => '/robots.txt', 'header' => [ 'Content-Type' => 'text/plain; charset=utf-8' ], 'body' => 'x' ],
+	'GET://404'					=> [ 'uri' => '/404', 'statusCode' => 404, 'body' => 'x' ],
+	'GET://blog/*'			=> [ 'uri' => '/blog/*', 'body' => 'x' ],
+	'GET://_admin'			=> [ 'uri' => '/_admin', 'body' => 'x' ],
+	'POST://contact'		=> [ 'uri' => '/contact', 'body' => 'x' ],
+];
+\Nino\Html::addFills( $site, [ '[[/_nino/webpage/contact/title]]' => 'Contact us' ], '*' );
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'page' => [ 'from' => 'band-probe' ], 'section' => [ 'from' => 'craft-probe' ] ] ) ] );
+[ $status, $list ] = themesCall( $site, 'themes/list' );
+$lindner = array_values( array_filter( $list['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:lindner' ) )[0] ?? [];
+check( 'K. the list names the pages of the site a preview may show: the paths of the routes that answer html with a status below 400, no wildcard, no address of the workbench, no other method, each once - with the title of the page where it has one', $status === 200 && $list['pages'] === [ [ 'path' => '/', 'title' => '' ], [ 'path' => '/contact', 'title' => 'Contact us' ] ], json_encode( $list['pages'] ?? null ) );
+check( 'K. ...and says of an own theme where each of its parts comes from, so that a card can say what it is made of', ( $lindner['from'] ?? null ) === [ 'page' => 'band-probe@1.0.0', 'section' => 'craft-probe@1.0.0' ] && isset( $lindner['name'] ) === true );
+
+// what a screen of a group needs of a draft: the label of each component, the time a token holds
+$schemas = \Nino\Components::components( $site );
+[ $status, $open ] = themesCall( $site, 'themes/open', [ 'theme' => 'craft-probe' ] );
+[ $status2, $draftBody ] = themesCall( $site, 'themes/preview', [ 'mix' => $open['mix'] ] );
+$labelled = true;
+$named = 0;
+
+foreach( [ $open, $draftBody ] as $answer )
+	foreach( $answer['groups'] as $group )
+		foreach( $group['components'] as $component ) {
+			$labelled = $labelled === true && $component['label'] === $schemas[$component['name']]['label'] && ( is_string( $component['label'] ) === true || is_array( $component['label'] ) === true );
+			$named++;
+		}
+
+check( 'K. every component of a group comes with its label, a text or a map of locales, as the register has it - in what open says of the saved state and in what preview says of the draft', $status === 200 && $status2 === 200 && $labelled === true && $named >= 20 );
+check( 'K. a draft says how long its token holds, in seconds, so that a screen counts the time on its own clock', $draftBody['ttl'] === \Nino\Modules\Themes::TTL && $draftBody['ttl'] === 900 );
+
+// the outline of a component in the preview
+$cache = ninoSandboxDir( $site ). '/private/data/theme/.preview';
+$token = $draftBody['token'];
+$visit = static function( string $query ) use ( &$site ): string {
+
+	ninoVisit( $site, '/?'. $query );
+
+	return \Nino\Html::renderHtml( $site, '[assets '. THEMES_BUNDLE. ']' );
+};
+$visit( 'x=1' );
+$publicBefore = (string) file_get_contents( ninoSandboxDir( $site ). '/public/.cache/style.css' );
+$plainPreview = $visit( 'nino-theme-preview='. $token );
+$marked = $visit( 'nino-theme-preview='. $token. '&mark=section-col' );
+$outline = '.section-col { outline: 2px solid #e8590c !important; outline-offset: -2px !important; }';
+check( 'K. a preview that names a component outlines it - one rule after the whole bundle, which no layer can beat - and one that names none does not', substr_count( $marked, $outline ) === 1 && str_contains( $plainPreview, '#e8590c' ) === false && str_ends_with( substr( $marked, 0, (int) strpos( $marked, '</style>' ) ), $outline ) === true
+	&& substr_count( $marked, '</style>' ) === 1 );
+check( 'K. what stands after mark is a name and nothing else: a selector, a list, a path, a quote, an upper-case letter, an array and nothing are no mark, and no byte of them is in the page',
+	array_filter( [ 'section-col, body', 'a{}', '../x', 'a"b', 'Section-col', 'section_col', "x\0y", 'x y', str_repeat( 'a', 200 ), '' ], static fn( string $value ): bool => str_contains( $visit( 'nino-theme-preview='. $token. '&mark='. rawurlencode( $value ) ), '#e8590c' ) === true ) === []
+	&& str_contains( $visit( 'nino-theme-preview='. $token. '&mark[]=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-theme-preview='. $token. '&mark[a]=x' ), '#e8590c' ) === false );
+check( 'K. the outline is for a request that holds a preview: with no token, a token that is not the session\'s or a token that ran out the page is the page as it is, and carries no outline', str_contains( $visit( 'mark=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-theme-preview='. str_repeat( '0', 32 ). '&mark=section-col' ), '#e8590c' ) === false
+	&& str_contains( $visit( 'nino-theme-preview='. strtoupper( $token ). '&mark=section-col' ), '#e8590c' ) === false );
+$_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
+check( '...nor with a token whose time is out', str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === false );
+check( 'K. and the request after one that asked for an outline begins with none: the public bundle is the file it was and a page with no query has no style element of the preview', ( function() use ( &$site, $modules, $visit, $publicBefore ): bool {
+	$later = themesReboot( $site, $modules );
+	$unmarked = \Nino\Modules\Assets::stylesheet( $later, THEMES_BUNDLE );
+
+	return str_contains( $unmarked, '#e8590c' ) === false && (string) file_get_contents( ninoSandboxDir( $later ). '/public/.cache/style.css' ) === $publicBefore && str_contains( $visit( 'x=1' ), 'data-nino-theme-preview' ) === false;
+} )() );
+
+// one request after another in a process: the outline asked for in the first is not in the second, which asks for none
+$visit( 'nino-theme-preview='. $token. '&mark=section-col' );
+$_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() + 600 ];
+check( 'K. a request that holds a preview and names no component has no outline, though the request before it in the same process named one', str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === true && str_contains( $visit( 'nino-theme-preview='. $token ), '#e8590c' ) === false );
+
+// two tabs: a change of an own theme says which state it was made on
+$open = static fn( string $theme ): array => themesCall( $site, 'themes/open', [ 'theme' => $theme ] )[1];
+$first = $open( 'own:lindner' );
+$again = $open( 'own:lindner' );
+check( 'K. open gives the stamp of an own theme: 64 hexadecimal digits, the same for the same state, none for a theme of a package', preg_match( '/^[0-9a-f]{64}$/D', $first['stamp'] ) === 1 && $first['stamp'] === $again['stamp'] && $open( 'craft-probe' )['stamp'] === '' );
+
+$changed = $first['mix'];
+$changed['css'] = '.k { color: red; }';
+[ $status, $saved ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $changed, 'base' => $first['stamp'] ] );
+$next = $open( 'own:lindner' );
+check( 'K. save with the stamp it was opened with writes, and says the stamp of what it wrote, which is what open says next - and the stamp is not the one of before: the css is part of it', $status === 200 && $saved['stamp'] === $next['stamp'] && $next['stamp'] !== $first['stamp'] );
+
+$other = $changed;
+$other['css'] = '.k { color: blue; }';
+$before = $open( 'own:lindner' )['mix'];
+[ $stale, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $other, 'base' => $first['stamp'] ] );
+[ $none ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $other, 'base' => null ] );
+[ $empty ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $other, 'base' => '' ] );
+[ $list ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $other, 'base' => [ $next['stamp'] ] ] );
+check( 'K. the second tab - which opened the theme before the first wrote it - is told 409 themes_changed, with the name, and so is a request that posts no stamp, an empty one or a list: nothing is written', $stale === 409 && $body['code'] === 'themes_changed' && $body['params'] === [ 'Lindner' ] && $body['field'] === 'theme' && $none === 409 && $empty === 409 && $list === 409 && $open( 'own:lindner' )['mix'] === $before );
+[ $over ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $other, 'base' => $open( 'own:lindner' )['stamp'] ] );
+check( 'K. the one who is told takes the stamp that stands now and writes over it, which is how Overwrite goes', $over === 200 && $open( 'own:lindner' )['mix']['css'] === '.k { color: blue; }' );
+
+// the order of the keys is no change: the same theme with its keys in the other order has the same stamp
+$stored = ninoSandboxDir( $site ). '/private/data/theme/state/own/lindner.json';
+$original = (string) file_get_contents( $stored );
+$reverse = static function( mixed $value ) use ( &$reverse ): mixed {
+
+	if( is_array( $value ) === false )
+		return $value;
+
+	krsort( $value );
+
+	return array_map( $reverse, $value );
+};
+file_put_contents( $stored, json_encode( $reverse( json_decode( $original, true ) ) ) );
+$reversed = $open( 'own:lindner' )['stamp'];
+file_put_contents( $stored, $original );
+check( 'K. the stamp is the content and not the order of its keys: the same theme written with its keys the other way round has the same stamp', $reversed === $open( 'own:lindner' )['stamp'] && $original !== json_encode( $reverse( json_decode( $original, true ) ) ) );
+
+// two answers: the stamp is looked at whatever force says, and force is looked at whatever the stamp says
+themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
+$current = $open( 'own:lindner' );
+$stylesheet = ninoSandboxDir( $site ). '/private/assets/theme.css';
+$ours = (string) file_get_contents( $stylesheet );
+file_put_contents( $stylesheet, "/* written by hand */\nbody { color: red; }\n" );
+[ $foreign, $foreignBody ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $current['mix'], 'base' => $current['stamp'] ] );
+[ $staleForced, $staleBody ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $current['mix'], 'base' => 'stale', 'force' => true ] );
+check( 'K. a stylesheet that somebody wrote is asked about even with the right stamp (409 themes_foreign), and a stamp that is not the theme\'s is refused even with force (409 themes_changed): neither answer lets the other pass', $foreign === 409 && $foreignBody['code'] === 'themes_foreign' && $staleForced === 409 && $staleBody['code'] === 'themes_changed' && str_contains( (string) file_get_contents( $stylesheet ), 'written by hand' ) === true );
+[ $both ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $current['mix'], 'base' => $current['stamp'], 'force' => true ] );
+check( 'K. ...and with both answers given - the stamp of what is saved and force - the theme is written and the stylesheet is the feature\'s', $both === 200 && Compiler::isOwn( (string) file_get_contents( $stylesheet ) ) === true );
+unset( $ours );
+
+// a theme that is named in a sentence is not named by the form the API gives it
+$named = [];
+
+foreach( [ 'themes/open', 'themes/apply', 'themes/delete' ] as $action )
+	$named[$action] = themesCall( $site, $action, [ 'theme' => 'own:ghost', 'base' => 'x' ] )[1]['params'] ?? null;
+
+$named['themes/save'] = themesCall( $site, 'themes/save', [ 'theme' => 'own:ghost', 'mix' => themesMix( 'G', [] ), 'base' => 'x' ] )[1]['params'] ?? null;
+check( 'K. a failure that names a theme that is not there names it by its key and not as own:<key>, which is the form of the API', array_filter( $named, static fn( mixed $params ): bool => $params !== [ 'ghost' ] ) === [] && count( $named ) === 4, json_encode( $named ) );
+
+// a request that read the theme before another one wrote it is told so, not only one that comes after: the stamp is looked at with the lock held
+$racing = $open( 'own:lindner' );
+$raced = false;
+$rival = $racing['mix'];
+$rival['css'] = '.rival { color: red; }';
+\Nino\Callbacks::registerCallback( $site, \Nino\Modules\Themes\Reader::ROOTS, static function( array &$appData, array $roots ) use ( &$raced, $rival, $racing ): array {
+
+	// This runs while the request below is made ready, after it has read the state and before it takes the lock: the other one writes now
+	if( $raced === false ) {
+		$raced = true;
+		themesCall( $appData, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $rival, 'base' => $racing['stamp'] ] );
+	}
+
+	return $roots;
+} );
+unset( $site['./nino/themes/read'] );
+// A part of a theme that the project has no copy of yet: the request reads the themes, which is where the other one gets in
+$late = $changed;
+$late['parts']['text'] = [ 'from' => 'band-probe@1.0.0' ];
+[ $second, $secondBody ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $late, 'base' => $racing['stamp'] ] );
+check( 'K. two requests with the same stamp, the second of which read the theme before the first wrote it: exactly one writes - the other is told 409 themes_changed, and what stands is the first one\'s', $raced === true && $second === 409 && $secondBody['code'] === 'themes_changed' && $open( 'own:lindner' )['mix']['css'] === '.rival { color: red; }' );
+
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Doomed', [] ) ] );
+$doomed = $open( 'own:doomed' );
+[ $wrong ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:doomed', 'base' => $first['stamp'] ] );
+[ $missing ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:doomed', 'base' => null ] );
+check( 'K. a theme is deleted only as the one who deletes it saw it: another stamp or none is 409 and the theme is there', $wrong === 409 && $missing === 409 && $open( 'own:doomed' )['stamp'] === $doomed['stamp'] );
+[ $gone ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:doomed', 'base' => $doomed['stamp'] ] );
+check( 'K. ...and with its stamp it is deleted', $gone === 200 && themesCall( $site, 'themes/open', [ 'theme' => 'own:doomed' ] )[0] === 404 );
+
+// the widths are a strip of steps that is not there where the view is too narrow for the preview beside the settings, and the dialog that asks a name has the floor of the text too
+$narrow = preg_match( '/@container nino-split \(max-width: 40rem\) \{(.*)\}\s*\}\s*$/s', preg_replace( '~/\*.*?\*/~s', '', $sheet ), $found ) === 1 ? $found[1] : '';
+check( 'K. the choice of the width is hidden by the width of the split view - a container query of the workbench - and the one media query the sheet has is the phone rule of the bar', preg_match( '/#themes-app \.themes-widthbox\s*\{\s*display: none;/', $narrow ) === 1 && substr_count( $sheet, '@media' ) === 1 && str_contains( $sheet, '@media (max-width: 38rem)' ) === true );
+check( 'K. the dialog of the name holds its field and its sentences to 12 pixels like the screen, outside of the id of the panel', preg_match( '/\.themes-dialog :is\([^)]*nino-admin-field > span[^)]*\)\s*\{\s*font-size: max\(\.75rem, 12px\);/', $sheet ) === 1 && str_contains( $script, "'themes-dialog'" ) === true );
+
+// an own theme is in the address as own.<key>: no theme of a package can have a dot in its key
+$folder = ninoSandboxDir( $site ). '/themes/own.x';
+mkdir( $folder );
+file_put_contents( $folder. '/theme.json', json_encode( [ 'key' => 'own.x', 'version' => '1.0.0', 'name' => [ 'en_US' => 'Own X', 'de_DE' => 'Own X' ], 'description' => [ 'en_US' => 'x', 'de_DE' => 'x' ], 'brand' => [] ] ) );
+unset( $site['./nino/themes/read'] );
+$read = \Nino\Modules\Themes\Reader::read( $site );
+check( 'K. a theme of a package that is called as an own theme is in the address - the key own.x - is not read: its key is no slug, so that the address of an own theme is never the key of another', isset( $read['themes']['own.x'] ) === false && isset( $read['themes']['own'] ) === false && str_contains( json_encode( $read['rejected'] ), 'own.x' ) === true );
+
+// the script, run over the stand-in of a page, where node is on the path
+$node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false )
+	echo "  --  - node is not available here: themes-panel-js-smoke.js was NOT run\n";
+else {
+
+	$output = [];
+	$exit = 1;
+
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/themes-panel-js-smoke.js' ). ' 2>&1', $output, $exit );
+	check( 'K. themes-panel-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
+}
 
 foreach( $sandboxes as $sandbox )
 	if( is_dir( $sandbox ) === true )

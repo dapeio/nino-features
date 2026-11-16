@@ -45,11 +45,15 @@ return [
 				'en_US' => 'Any page of the site, asked with the token of a preview by the session that holds it, shows the draft while the token lasts; the public stylesheet is not touched.',
 				'de_DE' => 'Jede Seite der Website, mit dem Token einer Vorschau von der Sitzung aufgerufen, die es hält, zeigt den Entwurf, solange das Token gilt; das öffentliche Stylesheet bleibt unberührt.',
 			],
+			'&mark=<component>' => [
+				'en_US' => 'A preview that names a component draws an outline round its elements; a request without a preview of its own has no outline.',
+				'de_DE' => 'Eine Vorschau, die eine Komponente nennt, zeichnet einen Umriss um deren Elemente; eine Anfrage ohne eigene Vorschau hat keinen Umriss.',
+			],
 		],
 		'panel' => [
 			'Themes' => [
-				'en_US' => 'The API of the workbench for the themes - list, open, preview, save, save-as, apply, restore and delete - for the right /_admin/themes/manage.',
-				'de_DE' => 'Die API der Werkbank für die Themes - list, open, preview, save, save-as, apply, restore und delete - für das Recht /_admin/themes/manage.',
+				'en_US' => 'The screen of the workbench for the themes: the list, the groups of a theme and the settings of a group beside a preview of the draft, for the right /_admin/themes/manage.',
+				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, die Gruppen eines Themes und die Einstellungen einer Gruppe neben einer Vorschau des Entwurfs, für das Recht /_admin/themes/manage.',
 			],
 		],
 		'callbacks' => [

@@ -49,8 +49,9 @@ namespace Nino\Modules {
 		// The right to work in the panel and through its API; the Editor role does not get it by itself
 		public const string PERM = '/_admin/themes/manage';
 
-		// The query of a request that wants the preview, and how long a token holds, in seconds
+		// The query of a request that wants the preview, the one that asks for a component to be outlined in it, and how long a token holds, in seconds
 		public const string QUERY = 'nino-theme-preview';
+		public const string MARK = 'mark';
 		public const int TTL = 900;
 		public const string TOKEN = '/^[0-9a-f]{32}$/D';
 
@@ -60,6 +61,8 @@ namespace Nino\Modules {
 		// The token a request previews with, '' for none, and the key of the session that holds the tokens of an account
 		private static string $_preview = '';
 		private static ?string $_link = null;
+		// The component a preview request asks to have outlined, '' for none
+		private static string $_mark = '';
 		public const string SESSION = './themes/preview';
 
 		public static function init( array &$appData ): void {
@@ -76,34 +79,7 @@ namespace Nino\Modules {
 		}
 
 		public static function adminPanels( array &$appData ): array {
-
-			// What the page of the panel says of the theme of the website: a shortcode of the workbench's requests only
-			\Nino\Html::addShortcode( $appData, 'themes-active', [ self::class, 'doActive' ], false );
-
 			return [ \Nino\Modules\Themes\Admin::class ];
-		}
-
-		/**
-		 *	The name of the theme the website shows, as the page of the panel says it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The arguments of the call
-		 *
-		 *	@return 	string										Escaped; the word for none where there is none
-		 */
-		public static function doActive( array &$appData, mixed $args = [] ): string {
-
-			$active = \Nino\Modules\Themes\Store::read( $appData )['active']['theme'] ?? '';
-			$locale = \Nino\Locales::getCurrentLocale( $appData );
-			$name = '';
-
-			if( str_starts_with( $active, 'own:' ) === true )
-				$name = (string) ( \Nino\Modules\Themes\Store::read( $appData )['own'][substr( $active, 4 )]['name'] ?? '' );
-			else if( $active !== '' )
-				$name = \Nino\Features::localized( \Nino\Modules\Themes\Reader::read( $appData )['themes'][$active]['name'] ?? $active, $locale );
-
-			// A name is a value: a [ in it is written as the character it is, so that nothing that reads the page takes it for a fill or a call
-			return str_replace( '[', '&#91;', \Nino\Components::escape( $name !== '' ? $name : \Nino\Html::renderTextfill( $appData, '/_admin/themes/panel/none' ) ) );
 		}
 
 		/**
@@ -154,6 +130,7 @@ namespace Nino\Modules {
 		public static function request( array &$appData, array &$request ): void {
 
 			self::$_preview = '';
+			self::$_mark = '';
 			$token = $request['/nino/http/request']['query'][self::QUERY] ?? null;
 
 			if( is_string( $token ) === false || preg_match( self::TOKEN, $token ) !== 1 )
@@ -171,6 +148,11 @@ namespace Nino\Modules {
 
 				self::$_preview = $token;
 
+				// A component to outline: only a request that holds a preview may ask for it, and only a slug is a name
+				$mark = $request['/nino/http/request']['query'][self::MARK] ?? null;
+				if( is_string( $mark ) === true && strlen( $mark ) <= \Nino\Components::NAME_LENGTH && preg_match( \Nino\Components::NAME, $mark ) === 1 )
+					self::$_mark = $mark;
+
 				// Only a request that asks for a preview has the link of its bundle looked at
 				if( in_array( [ self::class, 'previewCss' ], \Nino\Callbacks::registered( $appData, '/nino/shortcodes/assets/output/css' ), true ) === false )
 					\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/css', [ self::class, 'previewCss' ] );
@@ -179,8 +161,9 @@ namespace Nino\Modules {
 
 		/**
 		 *	The link to the stylesheet of the site, where the request asks for a preview: a style element with the bundle built in
-		 *	memory, the draft in the place of the stylesheet of the theme. The public bundle is not touched, and the draft stands in
-		 *	the layer of the theme whether or not a stylesheet is written yet
+		 *	memory, the draft in the place of the stylesheet of the theme, and after it the outline of the component the request
+		 *	names. The public bundle is not touched, and the draft stands in the layer of the theme whether or not a stylesheet is
+		 *	written yet
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$template			The link, as the bundle's shortcode has it
@@ -218,8 +201,11 @@ namespace Nino\Modules {
 			$bundle = \Nino\Modules\Assets::stylesheet( $appData, $target, [ $named => $draft ] );
 			$appData['/nino/html/assets'][$target] = $list;
 
+			// The outline is no layer: it stands over every rule of the bundle, which is what a mark is for
+			$outline = self::$_mark === '' ? '' : "\n.". self::$_mark. " { outline: 2px solid #e8590c !important; outline-offset: -2px !important; }";
+
 			// A style element ends at the first closing tag in it, so none may stand in the text
-			return $bundle === '' ? ( self::$_link ?? $template ) : '<style data-nino-theme-preview>'. str_replace( '</', '<\\/', $bundle ). '</style>';
+			return $bundle === '' ? ( self::$_link ?? $template ) : '<style data-nino-theme-preview>'. str_replace( '</', '<\\/', $bundle. $outline ). '</style>';
 		}
 	}
 }
