@@ -28,6 +28,26 @@
 				values.push( value );
 		} );
 
+		// The order of the buttons is the page's own, as the server wrote it (the sort of the kernel in the language of the page);
+		// a value it does not name follows, in the order the rows stand
+		let order = [];
+
+		try {
+			order = JSON.parse( box.getAttribute( 'data-order' ) );
+		} catch( error ) {
+			order = [];
+		}
+
+		order = Array.isArray( order ) === true ? order : [];
+
+		values.sort( function( a, b ) {
+
+			const at = order.indexOf( a );
+			const to = order.indexOf( b );
+
+			return ( at === -1 ? order.length : at ) - ( to === -1 ? order.length : to );
+		} );
+
 		// One value is no choice
 		if( values.length < 2 )
 			return;

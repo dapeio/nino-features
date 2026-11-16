@@ -26,6 +26,14 @@ return [
 				'en_US' => 'A column of the table: the field of the cell, the heading from a key or a text, the alignment and rowhead for cells that name the row.',
 				'de_DE' => 'Eine Spalte der Tabelle: das Feld der Zelle, der Kopf aus einem Schlüssel oder einem Text, die Ausrichtung und rowhead für Zellen, die die Zeile benennen.',
 			],
+			'[collection /services][button href="/leistungen/[[.slug]]" text="Mehr zu [[title]]"][/collection]' => [
+				'en_US' => 'The fields of the element are read in the attributes of what a collection holds too: the slug in a link, the title in a text.',
+				'de_DE' => 'Die Felder des Elements werden auch in den Attributen dessen gelesen, was eine Sammlung umschließt: der Slug in einem Link, der Titel in einem Text.',
+			],
+			'[collection /team][image .photo][/collection]' => [
+				'en_US' => 'The image field of the element is drawn as a picture, with the alt text its model names.',
+				'de_DE' => 'Das Bildfeld des Elements wird als Bild gezeichnet, mit dem Alt-Text, den sein Modell nennt.',
+			],
 			'[collection-filter by=".category"]' => [
 				'en_US' => 'Holds a collection, a list or a table and shows a button for each value of the field, which hides the rows of the others in the browser.',
 				'de_DE' => 'Umschließt eine Sammlung, eine Liste oder eine Tabelle und zeigt für jeden Wert des Felds einen Knopf, der die Zeilen der anderen im Browser ausblendet.',
@@ -35,6 +43,10 @@ return [
 			'data-collection-value' => [
 				'en_US' => 'The attribute that marks a row of a filtered collection with the value of its field; the script reads it.',
 				'de_DE' => 'Das Attribut, das eine Zeile einer gefilterten Sammlung mit dem Wert ihres Felds kennzeichnet; das Skript liest es.',
+			],
+			'data-order' => [
+				'en_US' => 'The attribute of the filter that lists the values in the order of the kernel\'s sort in the language of the page; the script puts the buttons in it.',
+				'de_DE' => 'Das Attribut des Filters, das die Werte in der Ordnung der Sortierung des Kernels in der Sprache der Seite aufführt; das Skript stellt die Knöpfe danach.',
 			],
 			'sort, query' => [
 				'en_US' => 'Read as [elements] reads them, but a field name or a character the kernel never uses ends the list: a query that cannot be read selects nothing.',

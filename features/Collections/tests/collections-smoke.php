@@ -7,15 +7,17 @@ declare(strict_types=1);
  *												components of the register that draw over the elements of a type:
  *
  *													A. the folders: five schemas read and accepted, each as clean as validate() makes it, the places they offer,
- *													   the group, its standard part, the renderers, the manifest
+ *													   the group, its standard part, the renderers, the manifest; where a loop stands decides what it holds
  *													B. the loop: three elements as cards in a row, as a list and as a table; the loop in a page, a flow and a
  *													   row; sort, limit, offset and query against [elements] - the same elements in the same order -; loops in
  *													   loops, where the inner element wins; a list with nothing in it and the text for it
  *													C. what every component draws: the classes of each variant and option, computed from the schema; the
- *													   table - heading, scope, alignment, caption, the box that scrolls -; the filter and what it marks
+ *													   table - heading, scope, alignment, caption, the box that scrolls -; the filter, what it marks and the
+ *													   order of its buttons
  *													D. the contract of group, part, ladder and token, and the rule of mixing (T3) for the part
  *													E. what must never be read: a field, a text, a title and a value that spell a call, a fill, a quote, a null
- *													   byte, a megabyte; a query, a sort and a type of elements that are none
+ *													   byte, a megabyte; a query, a sort and a type of elements that are none; the lang of each field; the
+ *													   fields of an element in the attributes of a button and the picture of an image field
  *													F. the script of the filter, run over the kernel's stand-in of a page, in collections-js-smoke.js
  *													G. words, activation, sizes, and the cost of a loop of a thousand elements - what the register costs it
  *
@@ -238,6 +240,17 @@ function collectionsAttribute( string $html, string $name ): string {
 
 
 /**
+ *	The order of the buttons a drawing says, as the script reads it: the list in data-order of the first box
+ *
+ *	@param		string		$html
+ *
+ *	@return 	array											The values; [] where the box says none
+ */
+function collectionsOrder( string $html ): array {
+	return preg_match( '/data-order="([^"]*)"/', $html, $found ) === 1 ? (array) json_decode( html_entity_decode( $found[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' ), true ) : [];
+}
+
+/**
  *	What a browser makes of a drawing: the names of the elements and of the attributes it would find in it, so that a quote that
  *	stays in an attribute value is no attribute and a tag that is escaped is no element
  *
@@ -306,8 +319,26 @@ check( 'collection stands in the page, a flow, a row and a filter; the list and 
 	$schemas['collection']['in'] === [ 'page', 'flow', 'section-row', 'collection-filter' ] && $schemas['collection-list']['in'] === [ 'flow', 'collection-filter' ]
 	&& $schemas['collection-table']['in'] === [ 'flow', 'collection-filter' ] && $schemas['collection-filter']['in'] === [ 'page', 'flow', 'section-row' ]
 	&& $schemas['collection-col']['in'] === [ 'collection-table' ] );
-check( 'a collection in a row may hold columns, one in a flow the components of a flow, one in the page sections', in_array( 'section-col', \Nino\Components::allowed( $appData, 'collection' ), true ) === true
+check( 'asked with no place to stand in, a collection offers what its places say: columns, the components of a flow and sections', in_array( 'section-col', \Nino\Components::allowed( $appData, 'collection' ), true ) === true
 	&& in_array( 'text', \Nino\Components::allowed( $appData, 'collection' ), true ) === true && in_array( 'section-wrap', \Nino\Components::allowed( $appData, 'collection' ), true ) === true );
+
+// Where a loop stands decides what it may hold: it draws no element of its own, so what is in it is what the place holds
+$through = static function( string $parent, string $container ) use ( &$appData ): array {
+
+	$list = \Nino\Components::allowed( $appData, $parent, $container );
+	sort( $list );
+
+	return $list;
+};
+check( 'only the loop that draws no element round what it holds is through: collection says so, and the list, the table, the column and the filter - each draws a box, a ul, a table, a cell - do not',
+	( $schemas['collection']['through'] ?? false ) === true && array_filter( [ 'collection-list', 'collection-table', 'collection-col', 'collection-filter' ], static fn( string $name ): bool => ( $schemas[$name]['through'] ?? false ) !== false ) === [] );
+check( 'a collection in a row holds what a row holds, in a flow what a flow holds and in the page what the page holds - and not what its places say together',
+	$through( 'collection', 'section-row' ) === $allowed( 'section-row' ) && $through( 'collection', 'flow' ) === $allowed( 'flow' ) && $through( 'collection', 'page' ) === $allowed( 'page' ) && $through( 'collection', '' ) === $allowed( 'collection' )
+	&& in_array( 'section-col', $through( 'collection', 'section-row' ), true ) === true && in_array( 'text', $through( 'collection', 'section-row' ), true ) === false && in_array( 'section-wrap', $through( 'collection', 'section-row' ), true ) === false
+	&& in_array( 'text', $through( 'collection', 'flow' ), true ) === true && in_array( 'section-col', $through( 'collection', 'flow' ), true ) === false
+	&& in_array( 'section-wrap', $through( 'collection', 'page' ), true ) === true && in_array( 'text', $through( 'collection', 'page' ), true ) === false );
+check( 'the list, the table and the filter take no notice of where they stand: what they hold is their own', $through( 'collection-list', 'section-row' ) === $allowed( 'collection-list' ) && $through( 'collection-table', 'flow' ) === [ 'collection-col' ]
+	&& $through( 'collection-filter', 'section-row' ) === $allowed( 'collection-filter' ) && $through( 'collection-col', 'flow' ) === [] );
 
 $containers = array_values( array_intersect( array_keys( array_filter( \Nino\Components::containers( $appData ) ) ), COLLECTIONS_COMPONENTS ) );
 sort( $containers );
@@ -478,7 +509,7 @@ check( 'the tokens of the element - [[title]], [[category]], [[.id]] - are read 
 $filtered = collectionsDraw( $appData, '[collection-filter by=".category"][collection-list /services sort="title"][text .title][/collection-list][/collection-filter]' );
 preg_match_all( '/data-collection-value="([^"]*)"><div class="text">([^<]*)</', $filtered, $found );
 check( 'a filter holds what it filters in a box with its words - the name of the buttons, what the status says, the name of the row of buttons - and marks each row with the value of the field, beside its title',
-	str_starts_with( $filtered, '<div class="collection-filter" data-collection-filter data-all="Alle" data-shown="{shown} von {total} angezeigt" data-label="Filter"><ul class="collection-list">' ) === true && str_ends_with( $filtered, '</ul></div>' ) === true
+	str_starts_with( $filtered, '<div class="collection-filter" data-collection-filter data-all="Alle" data-shown="{shown} von {total} angezeigt" data-label="Filter" data-order="&#91;&quot;Bau&quot;,&quot;Fenster&quot;,&quot;Maler&quot;,&quot;Metall&quot;]"><ul class="collection-list">' ) === true && str_ends_with( $filtered, '</ul></div>' ) === true
 	&& substr_count( $filtered, '<li class="collection-list-row" data-collection-value=' ) === 8
 	&& array_combine( $found[2], $found[1] ) === [ 'Farbe' => 'Maler', 'Glas' => 'Fenster', 'Holz' => 'Bau', 'Nur deutsch' => 'Bau', 'Stahl' => 'Metall', 'Stein' => 'Bau', 'Ziegel' => 'Bau', 'Zink' => 'Metall' ] );
 check( 'the box has an attribute the script finds it by and the words it needs, in the language of the page', collectionsAttribute( $filtered, 'data-all' ) === 'Alle' && collectionsAttribute( $filtered, 'data-label' ) === 'Filter'
@@ -496,6 +527,33 @@ $nested = collectionsDraw( $appData, '[collection-filter by=".category"][collect
 check( 'only the loops a filter holds directly are marked: a loop in one of their rows is the rows of its own type, and has no category', substr_count( $nested, 'data-collection-value=' ) === 1 );
 $inner = collectionsDraw( $appData, '[collection-filter by=".category"][collection-filter by=".title"][collection-list /tags][text .slug][/collection-list][/collection-filter][/collection-filter]' );
 check( 'filters in filters: the nearest one asks, the one above it asks nothing of the loop below the other', preg_match_all( '/data-collection-value="([^"]*)"/', $inner, $found ) === 2 && $found[1] === [ 'Neu', 'Beliebt' ] && substr_count( $inner, 'data-collection-filter' ) === 2 );
+
+// the order of the buttons: the sort of the kernel in the language of the page, whatever order the rows stand in
+$ordered = collectionsSite( 'de_DE', [
+	'z1' => [ 'global' => [ 'category' => 'Zebra', 'price' => 12, 'date' => '2026-10-01', 'featured' => false ], 'de_DE' => [ 'title' => 'Aaa' ] ],
+	'z2' => [ 'global' => [ 'category' => 'Ärzte', 'price' => 9, 'date' => '2026-10-02', 'featured' => false ], 'de_DE' => [ 'title' => 'Bbb' ] ],
+] );
+$drawn = collectionsDraw( $ordered, '[collection-filter by=".category"][collection-list /services sort="-title"][text .title][/collection-list][/collection-filter]' );
+preg_match_all( '/data-collection-value="([^"]*)"/', $drawn, $found );
+$standing = array_values( array_unique( array_map( static fn( string $value ): string => html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' ), $found[1] ) ) );
+$rows = array_map( static fn( string $value ): array => [ 'value' => $value ], $standing );
+$kernel = array_column( \Nino\Elements::sortElements( $rows, 'value', 'de_DE' ), 'value' );
+check( 'the buttons of a filter stand in the order the kernel sorts the values in, whatever order the rows stand in: what sortElements() answers for the language of the page', collectionsOrder( $drawn ) === $kernel && $standing !== $kernel && count( $kernel ) === 6 );
+
+if( extension_loaded( 'intl' ) === true )
+	check( 'with intl a letter with an umlaut stands with its letter, Ärzte before Bau and Zebra last', collectionsOrder( $drawn ) === [ 'Ärzte', 'Bau', 'Fenster', 'Maler', 'Metall', 'Zebra' ] );
+else {
+
+	echo "  --  - intl is not available here: the order of Ärzte before Zebra was NOT checked\n";
+	check( 'without intl the values are sorted by their bytes, Ärzte after Zebra', collectionsOrder( $drawn ) === [ 'Bau', 'Fenster', 'Maler', 'Metall', 'Zebra', 'Ärzte' ] );
+}
+
+check( 'two numbers are compared as numbers: 9 before 10, whatever the rows say', collectionsOrder( collectionsDraw( $ordered, '[collection-filter by=".price"][collection-list /services sort="-title"][text .title][/collection-list][/collection-filter]' ) ) === [ '5', '9', '10', '12', '15', '20', '30', '50' ] );
+check( 'a filter that holds a table and a collection of cards says one order for both', collectionsOrder( collectionsDraw( $ordered, '[section-wrap][section-row][collection-filter by=".category"][collection /services sort="-title" limit="3"][section-col][text .title][/section-col][/collection][collection-table /services sort="title"][collection-col .title][/collection-table][/collection-filter][/section-row][/section-wrap]' ) ) === $kernel );
+$inner = collectionsDraw( $ordered, '[collection-filter by=".category"][collection-list /services sort="title"][text .slug][/collection-list][collection-filter by=".price"][collection-list /services sort="-title"][text .slug][/collection-list][/collection-filter][collection-list /tags][text .slug][/collection-list][/collection-filter]' );
+preg_match_all( '/data-order="([^"]*)"/', $inner, $found );
+$orders = array_map( static fn( string $order ): array => (array) json_decode( html_entity_decode( $order, ENT_QUOTES | ENT_HTML5, 'UTF-8' ), true ), $found[1] );
+check( 'filters in filters each say their own order: the outer one the values of its own loops, the inner one those of its own - whichever of them is drawn first', count( $orders ) === 2 && $orders[0] === $kernel && $orders[1] === [ '5', '9', '10', '12', '15', '20', '30', '50' ] );
 
 $ignored = ninoWarnings();
 $noWords = collectionsSite();
@@ -652,6 +710,9 @@ foreach( [
 $drawn = collectionsDraw( $hostile, '[collection-filter by=".category"][collection-list /services '. $one. '][text .title][/collection-list][/collection-filter]' );
 check( 'the value that marks a row is an attribute that nothing leaves: the quote, the angle brackets and the brackets of a call are entities, and the null byte is gone', preg_match( '/data-collection-value="([^"]*)"/', $drawn, $found ) === 1
 	&& str_contains( $found[1], '&quot;&gt;&lt;script&gt;' ) === true && str_contains( $found[1], '[' ) === false && str_contains( $found[1], ']' ) === true && str_contains( $drawn, '"><script' ) === false && str_contains( $drawn, "\0" ) === false );
+preg_match( '/data-collection-value="([^"]*)"/', $drawn, $first );
+check( 'the order of the buttons is as safe as the values: the same text in a list that the script reads, no quote and no bracket of it left in the attribute, the null byte gone', collectionsOrder( $drawn ) === [ html_entity_decode( $first[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ]
+	&& preg_match( '/data-order="([^"]*)"/', $drawn, $order ) === 1 && str_contains( $order[1], '[' ) === false && str_contains( $order[1], "\0" ) === false && in_array( 'onload', collectionsDom( $drawn )[1], true ) === false );
 $longValue = collectionsSite( 'de_DE', [ 'h2' => [ 'global' => [ 'category' => str_repeat( 'ä', 500 ). '<b>x</b>', 'price' => 1, 'date' => '2026-12-02', 'featured' => true ], 'de_DE' => [ 'title' => 'Lang' ] ] ] );
 preg_match( '/data-collection-value="([^"]*)"/', collectionsDraw( $longValue, '[collection-filter by=".category"][collection-list /services query="date=2026-12-02"][text .title][/collection-list][/collection-filter]' ), $found );
 check( 'a value of the field that is long is cut at 120 characters', mb_strlen( html_entity_decode( $found[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) === 120 && str_contains( $found[1], '<' ) === false );
@@ -735,6 +796,37 @@ $lang = collectionsSite( 'en_US', [ 'm1' => [ 'global' => [ 'category' => 'Mix',
 $cells = collectionsDraw( $lang, '[collection-table /services query="category=Mix"][collection-col .category][collection-col .price][collection-col .summary][/collection-table]' );
 check( 'a cell has a lang where its field is per language and the element took text from another one - and the number and the category of the element have none', str_contains( $cells, '<td class="collection-col">Mix</td><td class="collection-col">5</td><td class="collection-col" lang="de-DE">Zusammenfassung</td>' ) === true );
 check( 'an element with all its text in the language of the page has no lang on any cell', str_contains( collectionsDraw( $lang, '[collection-table /services query="category=Metall"][collection-col .title][collection-col .price][/collection-table]' ), 'lang=' ) === false );
+
+// lang for each field: the title is English and the summary German on the page in English - the title has no lang, the summary has
+$mixed = collectionsDraw( $lang, '[collection-table /services query="category=Mix"][collection-col .title][collection-col .summary][collection-col .category][/collection-table]' );
+check( 'an English title and a German summary on the page in English: the title has no lang, the summary lang="de-DE", the category none', str_contains( $mixed, '<td class="collection-col">Mix en</td><td class="collection-col" lang="de-DE">Zusammenfassung</td><td class="collection-col">Mix</td>' ) === true
+	&& substr_count( $mixed, 'lang=' ) === 1 );
+$only = collectionsDraw( $lang, '[collection-table /services query="category=Bau" sort="title"][collection-col .title][collection-col .summary][/collection-table]' );
+check( 'an element that exists in German only has the lang on both of its cells, and the elements beside it on none', str_contains( $only, '<td class="collection-col" lang="de-DE">Nur deutsch</td><td class="collection-col" lang="de-DE">Kein englischer Text</td>' ) === true && substr_count( $only, 'lang=' ) === 2 );
+check( 'on the page in German the same elements have no lang at all', str_contains( collectionsDraw( $appData, '[collection-table /services query="category=Mix"][collection-col .title][collection-col .summary][/collection-table]' ), 'lang=' ) === false
+	&& str_contains( collectionsDraw( $appData, '[collection-table /services][collection-col .title][collection-col .summary][/collection-table]' ), 'lang=' ) === false );
+
+// what a user of the feature writes: the fields of the element in the attributes of what it holds, and the picture of an image field
+$buttons = collectionsDraw( $appData, '[collection /services sort="title" limit="2"][button href="/leistungen/[[.slug]]" text="Mehr zu [[title]]"][/collection]' );
+check( 'a button in a collection has the slug of its element in its link and the title in its text, one for each element', $buttons === '<a class="button" href="/leistungen/s5">Mehr zu Farbe</a><a class="button" href="/leistungen/s3">Mehr zu Glas</a>' );
+$spelled = collectionsDraw( $hostile, '[collection /services '. $one. '][button href="/x/[[title]]" text="Mehr zu [[title]]"][button href="[[category]]" text="[[category]]"][/collection]' );
+[ $spelledElements, $spelledAttributes ] = collectionsDom( $spelled );
+$spelledText = str_replace( [ '&#91;', '&lt;', '&gt;', '&quot;', '&#039;' ], [ '[', '<', '>', '"', "'" ], $spelled );
+check( 'a field that spells a call, a fill, a tag, a quote and a null byte is text in the link and the text of a button: nothing is read, no element and no attribute comes of it',
+	array_diff( $spelledElements, [ 'html', 'body', 'a', 'span' ] ) === [] && array_diff( $spelledAttributes, [ 'class', 'href' ] ) === [] && str_contains( $spelled, 'TEMPLATE-WAS-READ' ) === false && str_contains( $spelled, 'COMPANYNAME' ) === false
+	&& str_contains( $spelled, "\0" ) === false && substr_count( $spelledText, '[template /templates/evil]' ) >= 2 && substr_count( $spelledText, 'alert(1)' ) >= 3 );
+$scheme = collectionsSite( 'de_DE', [ 'j1' => [ 'global' => [ 'category' => 'javascript:alert(1)', 'price' => 1, 'date' => '2026-12-03', 'featured' => true ], 'de_DE' => [ 'title' => 'J' ] ] ] );
+check( 'a field that is a script address is no link: the button is drawn without one', collectionsDraw( $scheme, '[collection /services query="date=2026-12-03"][button href="[[category]]" text="Go"][/collection]' ) === '<span class="button">Go</span>' );
+
+$pictures = collectionsSite();
+collectionsType( $pictures, 'team', [ 'title' => [ 'type' => 'string', 'locale' => true ], 'photo' => [ 'type' => 'image', 'alt' => 'photoAlt' ], 'photoAlt' => [ 'type' => 'string', 'locale' => true ] ],
+	[ 't1' => [ 'photo' => 'elements/team/anna.jpg' ], 't2' => [ 'photo' => '' ], 't3' => [ 'photo' => '../private/key.jpg' ], 't4' => [ 'photo' => '/etc/passwd' ] ],
+	[ 'de_DE' => [ 't1' => [ 'title' => 'Anna', 'photoAlt' => 'Anna "A" <b>' ], 't2' => [ 'title' => 'Ben' ], 't3' => [ 'title' => 'Cem' ], 't4' => [ 'title' => 'Dora' ] ] ] );
+$team = collectionsDraw( $pictures, '[collection /team sort="title"][image .photo][/collection]' );
+check( 'an image of the field of each element in a collection: the file the field holds, the alt text of the field the model names - escaped - and nothing for an element with no file, one that climbs and one that is absolute',
+	$team === '<figure class="image"><img src="/public/images/elements/team/anna.jpg" alt="Anna &quot;A&quot; &lt;b&gt;" loading="lazy" decoding="async"></figure>' );
+check( 'the same in a list, and with the title of the element as the alt text of the call', collectionsDraw( $pictures, '[collection-list /team sort="title" limit="1"][image .photo alt="[[title]]"][/collection-list]' )
+	=== '<ul class="collection-list"><li class="collection-list-row"><figure class="image"><img src="/public/images/elements/team/anna.jpg" alt="Anna" loading="lazy" decoding="async"></figure></li></ul>' );
 
 // a column writes a value as the formatters of the kernel do, in the language of the page
 $schemaAs = $schemas['collection-col']['attributes']['as'];

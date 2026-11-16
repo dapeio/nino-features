@@ -6,6 +6,7 @@ return [
 	'label'      => [ 'de_DE' => 'Sammlung', 'en_US' => 'Collection' ],
 	'in'         => [ 'page', 'flow', 'section-row', 'collection-filter' ],
 	'offers'     => [ 'page', 'flow', 'section-row' ],
+	'through'    => true,
 	'children'   => 'nodes',
 	'preview'    => 'cells',
 	'attributes' => [

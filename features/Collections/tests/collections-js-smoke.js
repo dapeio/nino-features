@@ -2,7 +2,8 @@
  *	Nino
  *	collections-js-smoke.js	What the script of the filter does over the kernel's stand-in of a page: a box that holds
  *													rows marked with a value gets a row of buttons - one for all and one for each value, in the
- *													order the values first stand - and a status; a button hides the rows of the other values with
+ *													order the box says in data-order, the values it does not name after them in the order they
+ *													first stand - and a status; a button hides the rows of the other values with
  *													the attribute hidden, says which button is on with aria-pressed and what is shown in the
  *													status; the first drawing says nothing; a box with one value or none is left as it is; two
  *													boxes do not touch each other's rows; a value is the name of a button as text and never as
@@ -117,6 +118,24 @@ fire( buttonsOf( one )[3], 'click' );
 check( 'another value shows the rows of that one and nothing else', hiddenOf( one ).join( '|' ) === 'true|true|true|false|true|true' && pressedOf( one ).join( '|' ) === 'false|false|false|true' && statusOf( one ).textContent === '1 von 6' );
 fire( buttonsOf( one )[0], 'click' );
 check( 'all shows every row again, and says so', hiddenOf( one ).every( function( hidden ) { return hidden === false } ) && pressedOf( one ).join( '|' ) === 'true|false|false|false' && statusOf( one ).textContent === '6 von 6' );
+
+// the order of the buttons is the one the box says in data-order - the sort of the kernel in the language of the page; a value it does not name follows, in the order the rows stand
+const ordered = box( [ 'Zebra', 'Bau', 'Ärzte', 'Neu', 'Alt', 'Bau' ], { 'data-order' : '["Ärzte","Bau","Zebra"]' } );
+run( [ ordered ] );
+check( 'the buttons stand in the order the box says, and the values it does not name come after them in the order the rows stand', buttonsOf( ordered ).map( function( button ) { return button.textContent } ).join( '|' ) === 'Alle|Ärzte|Bau|Zebra|Neu|Alt' );
+fire( buttonsOf( ordered )[1], 'click' );
+check( 'a button of the new order still shows the rows of its own value', hiddenOf( ordered ).join( '|' ) === 'true|true|false|true|true|true' && statusOf( ordered ).textContent === '1 von 6' );
+const broken = [ '{', '"Zebra"', '{"a":1}', 'null', '' ].map( function( order ) {
+
+	const one = box( [ 'Zebra', 'Bau', 'Ärzte' ], { 'data-order' : order } );
+
+	run( [ one ] );
+
+	return buttonsOf( one ).map( function( button ) { return button.textContent } ).join( '|' );
+} );
+const unsaid = box( [ 'Zebra', 'Bau', 'Ärzte' ] );
+run( [ unsaid ] );
+check( 'an order that is no list - broken, a text, an object, null, nothing - and a box with none leave the buttons in the order the rows stand', broken.every( function( names ) { return names === 'Alle|Zebra|Bau|Ärzte' } ) && buttonsOf( unsaid ).map( function( button ) { return button.textContent } ).join( '|' ) === 'Alle|Zebra|Bau|Ärzte' );
 
 // a box with one value, or none, is left as it is
 const single = box( [ 'Bau', 'Bau', '' ] );

@@ -1,1 +1,1 @@
-<div class="[[class]]" data-collection-filter data-all="[[all]]" data-shown="[[shown]]" data-label="[[label]]">[[content]]</div>
+<div class="[[class]]" data-collection-filter data-all="[[all]]" data-shown="[[shown]]" data-label="[[label]]" data-order="[[order]]">[[content]]</div>

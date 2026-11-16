@@ -173,6 +173,32 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The values of the filtered field in the order of the buttons: the order the kernel sorts a field in, in the language
+		 *	of the page - with intl an umlaut stands with its letter, a number is a number -, once for each value. The script
+		 *	reads it, since the browser knows no order of the kernel's
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$seen					The values as _value() wrote them, one for each row
+		 *
+		 *	@return 	string										A list in json, written for an attribute
+		 */
+		private static function _order( array &$appData, array $seen ): string {
+
+			$rows = [];
+
+			foreach( $seen as $value ) {
+
+				$text = html_entity_decode( (string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+				$rows[$text] = [ 'value' => $text ];
+			}
+
+			$sorted = \Nino\Elements::sortElements( array_values( $rows ), 'value', \Nino\Elements::sortLocale( $appData, '' ) );
+			$order = json_encode( array_column( $sorted, 'value' ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+
+			return str_replace( '[', '&#91;', \Nino\Components::escape( $order === false ? '[]' : $order ) );
+		}
+
+		/**
 		 *	One word of the feature, written for an attribute: the text of its key in the language of the page
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -344,8 +370,13 @@ namespace Nino\Modules {
 				$round['fills'] = array_map( 'strval', \Nino\Modules\Elements::fills( $element, $model, $index ) ) + $fills;
 
 				$appData['./nino/collections/depth'] = $depth + 1;
-				$drawn[] = [ \Nino\Components::render( $appData, $nodes, $round ), $field === '' ? null : self::_value( $element, $field ) ];
+				$value = $field === '' ? null : self::_value( $element, $field );
+				$drawn[] = [ \Nino\Components::render( $appData, $nodes, $round ), $value ];
 				$appData['./nino/collections/depth'] = $depth;
+
+				// A filter above wants the values its loops mark, to put its buttons in order
+				if( $value !== null && $value !== '' && isset( $appData['./nino/collections/seen'] ) === true )
+					$appData['./nino/collections/seen'][] = $value;
 			}
 
 			return $drawn;
@@ -485,8 +516,9 @@ namespace Nino\Modules {
 					$value = str_replace( '[', '&#91;', \Nino\Components::escape( $formatted ) );
 			}
 
-			// The element says it has a text of another language; only a field that is per language can be that text
-			$lang = $known === true && $token[2] !== '.' && ( $element['model'][$name]['locale'] ?? false ) === true ? (string) ( $context['fills']['[[.lang]]'] ?? '' ) : '';
+			// The element says for each field which language its text is from: only that field is written with a lang
+			$tag = $known === true && $token[2] !== '.' && is_array( $element['element']['.langs'] ?? null ) === true ? $element['element']['.langs'][$name] ?? '' : '';
+			$lang = is_string( $tag ) === true && $tag !== '' ? ' lang="'. \Nino\Components::escape( $tag ). '"' : '';
 
 			return \Nino\Components::fill( $appData, 'collection-col', $args, '', [
 				'[[tag]]'		=> $head === true ? 'th' : 'td',
@@ -520,7 +552,17 @@ namespace Nino\Modules {
 			$round = $context;
 			$round['fills'] = ( $field === '' ? [] : [ self::FILTER => $field ] ) + $fills;
 
+			// The values of the field that the loops below mark, for the order of the buttons; a filter inside one keeps its own
+			$outer = $appData['./nino/collections/seen'] ?? null;
+			$appData['./nino/collections/seen'] = [];
+
 			$drawn = \Nino\Components::render( $appData, (array) $context['children'], $round );
+			$seen = (array) $appData['./nino/collections/seen'];
+
+			if( $outer === null )
+				unset( $appData['./nino/collections/seen'] );
+			else
+				$appData['./nino/collections/seen'] = $outer;
 
 			// Nothing to filter
 			if( $drawn === '' )
@@ -533,7 +575,7 @@ namespace Nino\Modules {
 			if( $field === '' || $args['all'] === '' || $shown === '' || $label === '' )
 				return $drawn;
 
-			return \Nino\Components::fill( $appData, 'collection-filter', $args, $drawn, [ '[[shown]]' => $shown, '[[label]]' => $label ] );
+			return \Nino\Components::fill( $appData, 'collection-filter', $args, $drawn, [ '[[shown]]' => $shown, '[[label]]' => $label, '[[order]]' => self::_order( $appData, $seen ) ] );
 		}
 	}
 
