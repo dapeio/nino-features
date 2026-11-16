@@ -52,8 +52,8 @@ return [
 		],
 		'panel' => [
 			'Themes' => [
-				'en_US' => 'The screen of the workbench for the themes: the list, the groups of a theme and the settings of a group beside a preview of the draft, for the right /_admin/themes/manage.',
-				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, die Gruppen eines Themes und die Einstellungen einer Gruppe neben einer Vorschau des Entwurfs, für das Recht /_admin/themes/manage.',
+				'en_US' => 'The screen of the workbench for the themes: the list, and for a theme its groups, brand, settings and own css beside a preview of the draft, for the right /_admin/themes/manage.',
+				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, und je Theme Gruppen, Marke, Einstellungen und eigenes CSS neben einer Vorschau des Entwurfs, für das Recht /_admin/themes/manage.',
 			],
 		],
 		'callbacks' => [

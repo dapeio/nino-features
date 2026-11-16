@@ -16,8 +16,8 @@
 
 /* The sizes of some parts of the design system are below the 12px a text of the workbench holds to (measured in the browser: the badge
    10.8px, the small button 11.4px, the summary of an accordion head 11.7px, the label of a field 11.1px, the title of the split bar
-   11.7px); the panel's own text is raised to it, the rule of the panel is the floor */
-#themes-app :is(.nino-admin-badge, .nino-admin-btn--small, .nino-admin-accordion-summary, .nino-admin-split-title, .nino-admin-field > span, .themes-source, .themes-value) {
+   11.7px, the contrast line of a colour field 11.7px); the panel's own text is raised to it, the rule of the panel is the floor */
+#themes-app :is(.nino-admin-badge, .nino-admin-btn--small, .nino-admin-accordion-summary, .nino-admin-split-title, .nino-admin-field > span, .nino-admin-color-contrast, .themes-source, .themes-value) {
 	font-size: max(.75rem, 12px);
 }
 
@@ -173,6 +173,127 @@
 
 #themes-app .themes-caption {
 	margin: 0;
+}
+
+/* The name of a field that has no label round it - the tone, the mode, what a theme is made of - is set as the names of the fields that have: a small word in the quiet ink */
+#themes-app .nino-admin-accordion-body .themes-fieldname {
+	font-size: max(.75rem, 12px);
+	font-weight: 600;
+	color: var(--editor-text-secondary);
+}
+
+/* The own css: one field of code, as wide as the column, which scrolls sideways where a line is longer */
+#themes-app .themes-code {
+	min-height: 14rem;
+	font-family: var(--nino-admin-mono);
+	font-size: max(.8rem, 12px);
+	line-height: 1.45;
+	tab-size: 2;
+	white-space: pre;
+	overflow: auto;
+}
+
+/* The brand: a value, and under it whether it is the project's own or the theme's, with the way back to the theme's */
+#themes-app .themes-brand-field {
+	margin: 0 0 1rem;
+}
+
+#themes-app .themes-origin {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .35rem .5rem;
+	margin: .4rem 0 0;
+}
+
+#themes-app .themes-project {
+	margin-left: .5rem;
+	vertical-align: middle;
+}
+
+/* The link to the images of the logo is a small button, which the workbench draws 23px high: the floor of a target is 24px */
+#themes-app #themes-logo-open {
+	display: inline-flex;
+	align-items: center;
+	min-height: max(1.5rem, 24px);
+}
+
+#themes-app .themes-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .4rem;
+	margin: .75rem 0 .25rem;
+}
+
+#themes-app .themes-palette .themes-least {
+	margin: .5rem 0;
+	font-size: max(.75rem, 12px);
+}
+
+#themes-app .themes-palette-mode {
+	margin: 1rem 0 .4rem;
+}
+
+/* The eight colours of a mode as a strip, and the pairs a part reads with the number and the word that says whether it reaches */
+#themes-app .themes-roles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .3rem;
+	margin: 0 0 .6rem;
+	padding: 0;
+	list-style: none;
+}
+
+#themes-app .themes-role-swatch {
+	display: block;
+	inline-size: 1.75rem;
+	block-size: 1.75rem;
+	border: 1px solid var(--editor-border);
+	border-radius: 4px;
+}
+
+#themes-app .themes-pairs {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+	gap: .3rem .75rem;
+	margin: 0 0 .75rem;
+	padding: 0;
+	list-style: none;
+}
+
+#themes-app .themes-pair {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .15rem .5rem;
+	font-size: max(.75rem, 12px);
+}
+
+#themes-app .themes-pair-swatch {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-inline-size: 2.25rem;
+	min-block-size: 1.5rem;
+	border: 1px solid var(--editor-border);
+	border-radius: 4px;
+	font-weight: 600;
+}
+
+#themes-app .themes-pair-name {
+	flex: 1 1 8rem;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+#themes-app .themes-pair[data-state="ok"] .themes-pair-verdict,
+#themes-app .themes-pair[data-state="ok"] .themes-pair-ratio {
+	color: color-mix(in srgb, var(--editor-green) 70%, var(--editor-text));
+}
+
+#themes-app .themes-pair[data-state="error"] .themes-pair-verdict,
+#themes-app .themes-pair[data-state="error"] .themes-pair-ratio {
+	color: var(--editor-red-ink);
 }
 
 /* The preview: the page laid out at the width of the choice and scaled to the room there is (Nino.adminUi.scaleFrame()) */

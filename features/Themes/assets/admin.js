@@ -8,9 +8,10 @@
  *										once the hand has rested, and the page in the frame is loaded once more with the token the answer
  *										gives. Nothing is written before Save.
  *
- *										The address is #themes (the list), #themes/<theme> (the groups) and
- *										#themes/<theme>/<group>/<component> (the settings of a group, one component open), for the
- *										page <group> is page and the section a set of its knobs.
+ *										The address is #themes (the list), #themes/<theme> (the groups; settings and css after the theme are the other
+ *										two sections of that level), #themes/<theme>/<group>/<component> (the settings of a group, one component open),
+ *										for the page <group> is page and the section a set of its knobs, and #themes/<theme>/brand/<section> (the
+ *										brand of the project: colours, type, mode, logo).
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -39,9 +40,24 @@
 	const PAGE_SECTIONS	= [ [ 'type', [ 'size', 'text', 'weight' ] ], [ 'measures', [ 'width', 'space', 'radius', 'line', 'density' ] ], [ 'motion', [ 'motion' ] ] ];
 	const MORE					= 'more';
 
-	// The names of the sections on the first level of a theme: the groups, and the two of the second part of the panel. No group of the register
-	// takes one of them, and a group that is called one is not shown
-	const RESERVED	= [ 'groups', 'brand', 'settings' ];
+	// The names of the sections on the first level of a theme - the groups, the settings, the own css - and of the brand, which has a level of
+	// its own. No group of the register takes one of them, and a group that is called one is not shown
+	const RESERVED	= [ 'groups', 'brand', 'settings', 'css' ];
+	const LEVEL_ONE	= [ 'groups', 'settings', 'css' ];
+
+	// The values of the brand, and the sections they stand in on its level
+	const BRAND_KEYS		= [ 'color-1', 'color-2', 'tone', 'mode', 'font-title', 'font-text', 'font-button' ];
+	const BRAND_SECTIONS	= [ [ 'colours', [ 'color-1', 'color-2', 'tone' ] ], [ 'type', [ 'font-title', 'font-text', 'font-button' ] ], [ 'mode', [ 'mode' ] ], [ 'logo', [] ] ];
+	const TONES				= [ 'warm', 'neutral', 'cool' ];
+	const MODES				= [ 'light', 'dark', 'auto' ];
+
+	// The pairs of the palette that are told, by the text and the ground they are made of; the dark mode has the picture under the veil as well
+	const PAIR_ROLES		= [ 'ink', 'quiet', 'accent' ];
+	const PAIR_GROUNDS		= { light : [ 'base', 'alt', 'tint' ], dark : [ 'base', 'alt', 'tint', 'picture' ] };
+	const ROLES				= [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on' ];
+
+	// How long the hand rests while a text is typed before the draft is asked for
+	const TYPING	= 400;
 
 	// A value of a ladder that is written beside the name of its knob as it stands: a length, a number, a share. A calculation is measured
 	const PLAIN_VALUE		= /^-?\d*\.?\d+[a-z%]{0,3}$/;
@@ -80,6 +96,14 @@
 		said			: false,
 		announced	: false,
 		stamp			: '',
+		brand			: null,
+		brandStamp	: '',
+		state			: '',
+		canRestore	: false,
+		last			: null,
+		invalid		: {},
+		blocked		: '',
+		leftFor		: '',
 	};
 
 	/**
@@ -207,11 +231,45 @@
 			parts[group] = { from : entry.from ?? 'standard', values : values, standard : standard };
 		} );
 
-		return JSON.stringify( { css : mix.css ?? '', parts : parts } );
+		return JSON.stringify( { name : mix.name ?? '', css : cssOf( mix ), parts : parts } );
+	};
+
+	// The own css as the server keeps it: one line ending, no space round it
+	const cssOf = function( mix ) {
+		return String( mix.css ?? '' ).replace( /\r\n?/g, '\n' ).trim();
+	};
+
+	// The brand as a string that says the same for the same brand: each value, and where it is the project's own, what it is
+	const canonBrand = function( brand ) {
+		return JSON.stringify( BRAND_KEYS.map( function( key ) { return brand[key].own === true ? [ key, brand[key].value ] : [ key ] } ) );
+	};
+
+	const mixDirty = function() {
+		return S.ready === true && canon( S.mix ) !== canon( S.saved.mix );
+	};
+
+	const brandDirty = function() {
+		return S.ready === true && canonBrand( S.brand ) !== canonBrand( S.saved.brand.stored );
+	};
+
+	// The draft is the state the server holds: the mix and the brand of an answer
+	const draftFrom = function( saved ) {
+
+		S.mix = clone( saved.mix );
+		S.mix.parts = S.mix.parts ?? {};
+		S.brand = clone( saved.brand.stored );
+		S.invalid = {};
+	};
+
+	// The draft is dropped: what the part has of knobs and variants is what the saved state says
+	const dropDraft = function() {
+
+		draftFrom( S.saved );
+		take( S.saved );
 	};
 
 	const isDirty = function() {
-		return S.ready === true && canon( S.mix ) !== canon( S.saved.mix );
+		return mixDirty() === true || brandDirty() === true;
 	};
 
 	// The entry of the working mix for a group; one is made for a group the mix does not name
@@ -505,11 +563,12 @@
 
 		const mix = { parts : clone( S.mix.parts ?? {} ) };
 
-		if( typeof S.mix.css === 'string' )
+		// A css that the server would refuse is not sent: the draft is made without it, and the field says why
+		if( typeof S.mix.css === 'string' && cssProblem() === '' )
 			mix.css = S.mix.css;
 
 		if( S.theme.kind === 'own' )
-			mix.name = S.theme.name;
+			mix.name = S.mix.name ?? S.theme.name;
 
 		return mix;
 	};
@@ -699,7 +758,7 @@
 		S.inFlight = true;
 		S.again = false;
 
-		Nino.admin.themes.call( 'preview', { mix : sendable(), token : S.token }, function( status, response ) {
+		Nino.admin.themes.call( 'preview', { mix : sendable(), brand : S.brand, token : S.token }, function( status, response ) {
 
 			S.inFlight = false;
 
@@ -737,12 +796,15 @@
 
 			reloadFrame();
 
+			if( S.view !== null && typeof S.view.repaint === 'function' )
+				S.view.repaint();
+
 			// A refusal is told until the state is right again, which it is with a draft that was made; and what the part does not have is said
 			if( S.view !== null && dropped.length > 0 ) {
 				S.view.line.idle( word( 'msg/dropped', dropped.join(', ') ) );
 				S.said = true;
 			}
-			else if( S.view !== null && ( S.view.line.state === 'error' || S.said === true ) ) {
+			else if( S.view !== null && S.blocked === '' && ( S.view.line.state === 'error' || S.said === true ) ) {
 				S.view.line.idle();
 				S.said = false;
 			}
@@ -751,11 +813,11 @@
 		} );
 	};
 
-	// The hand has moved: the draft is asked for when it rests
-	const schedule = function() {
+	// The hand has moved: the draft is asked for when it rests - longer where the hand types a text
+	const schedule = function( quiet ) {
 
 		wn.clearTimeout( S.timer );
-		S.timer = wn.setTimeout( function() { flush() }, QUIET );
+		S.timer = wn.setTimeout( function() { flush() }, quiet ?? QUIET );
 	};
 
 	// Say what failed in the bar, and keep what is on screen: the mix is the person's, a failed draft takes nothing of it
@@ -770,6 +832,7 @@
 	const changed = function() {
 
 		paintBar();
+		paintHeads();
 
 		if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty !== null && typeof Nino.admin.dirty.refresh === 'function' )
 			Nino.admin.dirty.refresh();
@@ -959,18 +1022,9 @@
 	const settingsOf = function( group, open ) {
 
 		const root		= el( 'div', 'themes-settings' );
-		// Not the class of the back link of a form: the shell asks Save, Discard or Cancel before that one is followed, and this move keeps the draft
-		const back		= el( 'a', 'themes-back', word('label/back-groups') );
 		const sections = sectionsOf( group );
 
-		back.href = Nino.admin.router.href( 'themes', addressOf( [ S.key ] ) );
-		back.id = 'themes-back-groups';
-		back.addEventListener( 'click', function( event ) {
-			event.preventDefault();
-			Nino.admin.themes.go( [ S.key ], { from : group } );
-		} );
-
-		root.appendChild( back );
+		root.appendChild( backLink( group ) );
 		root.appendChild( el( 'h3', 'themes-title', groupLabel( group ) ) );
 		root.appendChild( partChoice( group ) );
 
@@ -1022,14 +1076,19 @@
 	};
 
 	/**
-	 *	The groups of a theme - level one: for each the part it comes from, and where it rests that and why
+	 *	The first level of a theme: three sections - the groups, each with the part it comes from and where it rests that and why, the settings
+	 *	of the theme and its own css. The brand stands in the groups, before the page
+	 *
+	 *	@param		{string}		[open]					The section that is open, groups where none is named
 	 *
 	 *	@return		{Element}
 	 */
-	const groupsOf = function() {
+	const groupsOf = function( open ) {
 
 		const root = el( 'div', 'themes-settings' );
 		const list = el( 'ul', 'nino-admin-list themes-groups' );
+
+		list.appendChild( brandRowOf() );
 
 		groupKeys().forEach( function( group ) {
 
@@ -1073,13 +1132,993 @@
 			list.appendChild( item );
 		} );
 
-		const accordion = Nino.adminUi.accordion( { id : 'themes-groups', level : 4, address : { panel : 'themes', parts : addressOf( [ S.key ] ) }, open : 'groups', sections : [ { key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length ), content : list } ] } );
+		const accordion = Nino.adminUi.accordion( {
+			id			: 'themes-groups',
+			level		: 4,
+			address		: { panel : 'themes', parts : addressOf( [ S.key ] ) },
+			open		: LEVEL_ONE.indexOf( open ) === -1 ? 'groups' : open,
+			sections	: [
+				{ key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( list ); box.appendChild( Nino.adminUi.hint( word('hint/groups') ) ); return box } },
+				{ key : 'settings', label : word('label/settings'), summary : S.mix.name ?? S.theme.name, badge : S.theme.kind === 'own' && ( S.mix.name ?? '' ) !== ( S.saved.mix.name ?? '' ) ? word('state/changed-mark') : '', content : settingsOne },
+				{ key : 'css', label : word('label/css'), summary : cssSummary(), badge : cssOf( S.mix ) !== cssOf( S.saved.mix ) ? word('state/changed-mark') : '', content : cssOne },
+			],
+		} );
 
-		S.view.accordion = null;
+		S.view.accordion = accordion;
 		root.appendChild( accordion.el );
-		root.appendChild( Nino.adminUi.hint( word('hint/groups') ) );
 
 		return root;
+	};
+
+	// --- the own css -------------------------------------------------------------------------------------------
+
+	// How many bytes a text comes to as the server counts them: UTF-8, a line ending as it was typed
+	const bytesOf = function( text ) {
+		return new TextEncoder().encode( text ).length;
+	};
+
+	/**
+	 *	What is wrong with the own css of the draft, as a sentence; '' where the server takes it. The text is not read: it is too long, or it has a null byte,
+	 *	and nothing else is a fault of it
+	 *
+	 *	@return		{string}
+	 */
+	const cssProblem = function() {
+
+		const css = String( S.mix.css ?? '' );
+
+		if( css === '' )
+			return '';
+
+		if( css.indexOf('\0') !== -1 )
+			return word('error/css-null');
+
+		return bytesOf( css ) > S.list.limits.css ? word( 'error/css-long', Math.round( S.list.limits.css / 1024 ) ) : '';
+	};
+
+	/**
+	 *  What keeps the draft from being saved, as a sentence; '' where nothing does: a colour that is no colour, or the css that the server would refuse. The
+	 *  bar says it whichever section is open
+	 *
+	 *  @return   {string}
+	 */
+	const blockReason = function() {
+
+		const colour = BRAND_KEYS.find( function( key ) { return S.invalid[key] === true } );
+
+		return colour !== undefined ? word( 'error/colour-invalid', word( 'label/'+ colour ) ) : cssProblem();
+	};
+
+	// What the closed head of the own css says: that there is none, or how many lines
+	const cssSummary = function() {
+
+		const css = cssOf( S.mix );
+
+		if( css === '' )
+			return word('msg/css-none');
+
+		const lines = css.split('\n').length;
+
+		return lines === 1 ? word('msg/css-line') : word( 'msg/css-lines', lines );
+	};
+
+	/**
+	 *	The own css - a section of the first level: one field of code, which goes into the website as it is
+	 *
+	 *	@return		{Element}
+	 */
+	const cssOne = function() {
+
+		const body = el('div');
+		const field = el( 'label', 'nino-admin-field' );
+		const text = el( 'textarea', 'nino-admin-input themes-code' );
+		const hint = Nino.adminUi.hint( word( 'hint/css', Math.round( S.list.limits.css / 1024 ) ) );
+
+		hint.id = 'themes-css-hint';
+		text.id = 'themes-css';
+		text.name = 'css';
+		text.rows = 14;
+		text.value = S.mix.css ?? '';
+		text.spellcheck = false;
+		text.setAttribute( 'wrap', 'off' );
+		text.setAttribute( 'autocomplete', 'off' );
+		text.setAttribute( 'autocapitalize', 'off' );
+		text.setAttribute( 'aria-describedby', 'themes-css-hint' );
+		field.appendChild( el( 'span', '', word('label/css') ) );
+		field.appendChild( text );
+
+		// The sentence at the field where the css cannot be taken, and none where it can
+		const say = function() {
+
+			const old = dc.getElementById('themes-css-problem');
+
+			if( old !== null )
+				old.remove();
+
+			text.removeAttribute('aria-invalid');
+			text.setAttribute( 'aria-describedby', 'themes-css-hint' );
+
+			if( cssProblem() !== '' )
+				Nino.adminUi.fieldError( field, text, 'themes-css-problem', cssProblem() );
+		};
+
+		text.addEventListener( 'input', function() {
+
+			S.mix.css = text.value;
+			say();
+			changed();
+
+			if( cssProblem() === '' )
+				schedule( TYPING );
+		} );
+
+		body.appendChild( field );
+		body.appendChild( hint );
+		say();
+
+		return body;
+	};
+
+	// --- the settings of the theme -------------------------------------------------------------------------------
+
+	/**
+	 *	The name is changed in the draft: an own theme is renamed by saving it. A name that says nothing is said at the field and not taken
+	 *
+	 *	@param		{string}		value
+	 *
+	 *	@return		{void}
+	 */
+	const renamed = function( value ) {
+
+		nameProblem( '' );
+
+		if( value.trim() === '' ) {
+			nameProblem( word('error/name-empty') );
+			return;
+		}
+
+		S.mix.name = value.trim();
+		changed();
+	};
+
+	/**
+	 *  What is wrong with the name of the theme, said at its field: the sentence, or nothing, which takes the last one away
+	 *
+	 *  @param    {string}    text
+	 *
+	 *  @return    {void}
+	 */
+	const nameProblem = function( text ) {
+
+		const input = dc.getElementById('themes-theme-name');
+		const old = dc.getElementById('themes-name-error');
+
+		if( input === null )
+			return;
+
+		if( old !== null )
+			old.remove();
+
+		input.removeAttribute('aria-invalid');
+		input.setAttribute( 'aria-describedby', 'themes-name-hint' );
+
+		if( text !== '' )
+			Nino.adminUi.fieldError( input.closest('label') ?? input.parentNode, input, 'themes-name-error', text );
+	};
+
+	/**
+	 *	The settings of the theme - a section of the first level: its name, what it is made of, and what can be done with it as a whole
+	 *
+	 *	@return		{Element}
+	 */
+	const settingsOne = function() {
+
+		const body = el('div');
+		const own = S.theme.kind === 'own';
+		const field = Nino.adminUi.textField( { label : word('label/name'), id : 'themes-theme-name', value : own === true ? ( S.mix.name ?? S.theme.name ) : S.theme.name, required : own, maxLength : S.list.limits.name, onInput : function( value ) { if( own === true ) renamed( value ) } } );
+		const input = field.querySelector('input');
+		const version = S.list.themes.find( function( theme ) { return theme.key === S.key } )?.version ?? '';
+		const hint = Nino.adminUi.hint( own === true ? word('hint/name-own') : word( 'hint/name-package', version ) );
+		const actions = el( 'div', 'nino-admin-actions themes-actions' );
+		const saveNew = Nino.adminUi.button( word('label/save-as'), function() { saveAsNew( saveNew ) }, { className : 'nino-admin-btn--small', id : 'themes-save-as' } );
+		const restoreButton = Nino.adminUi.button( word('label/restore'), function() { restore( restoreButton ) }, { className : 'nino-admin-btn--small', id : 'themes-restore' } );
+		const restoreHint = Nino.adminUi.hint('');
+		const removeButton = own === true ? Nino.adminUi.button( word('label/delete'), function() { remove( removeButton ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', id : 'themes-delete' } ) : null;
+		const removeHint = Nino.adminUi.hint('');
+
+		input.name = 'name';
+		input.readOnly = own === false;
+		input.setAttribute( 'aria-describedby', 'themes-name-hint' );
+		hint.id = 'themes-name-hint';
+		restoreHint.id = 'themes-restore-hint';
+		removeHint.id = 'themes-delete-hint';
+		restoreButton.setAttribute( 'aria-describedby', 'themes-restore-hint' );
+
+		if( removeButton !== null )
+			removeButton.setAttribute( 'aria-describedby', 'themes-delete-hint' );
+
+		body.appendChild( field );
+		body.appendChild( hint );
+		body.appendChild( el( 'div', 'nino-admin-field-label themes-fieldname', word('label/mix') ) );
+		body.appendChild( Nino.adminUi.hint( mixSummary()+ '.' ) );
+		actions.appendChild( saveNew );
+		actions.appendChild( restoreButton );
+
+		if( removeButton !== null )
+			actions.appendChild( removeButton );
+
+		body.appendChild( actions );
+		body.appendChild( restoreHint );
+		body.appendChild( removeHint );
+
+		S.view.one = { saveNew : saveNew, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
+		paintSettings();
+
+		return body;
+	};
+
+	// The buttons of the settings, as the state is: a restore waits for a state to go back to and for a saved draft, a theme that the website shows is not deleted
+	const paintSettings = function() {
+
+		const one = S.view === null ? null : S.view.one;
+
+		if( one === null || one === undefined )
+			return;
+
+		const dirty = isDirty();
+
+		one.saveNew.disabled = blockReason() !== '';
+		one.restore.disabled = S.canRestore !== true || dirty === true;
+		one.restoreHint.textContent = S.canRestore !== true ? word('hint/restore-none') : ( dirty === true ? word('hint/restore-dirty') : word( 'hint/restore', lastSaid() ) );
+
+		if( one.remove !== null ) {
+			one.remove.disabled = isActive() === true;
+			one.removeHint.textContent = isActive() === true ? word('hint/delete-active') : word('hint/delete');
+		}
+		else
+			one.removeHint.textContent = word('hint/delete-package');
+	};
+
+	// The heads of the sections that say what the draft holds: the name and the css on the first level, the values on the level of the brand
+	const paintHeads = function() {
+
+		const view = S.view;
+
+		if( view === null || view.accordion === null || view.kind === 'group' )
+			return;
+
+		if( view.kind === 'brand' )
+			BRAND_SECTIONS.forEach( function( set ) {
+				view.accordion.update( set[0], { summary : brandSummary( set[0] ), badge : brandChangedIn( set[0] ) === true ? word('state/changed-mark') : '' } );
+			} );
+		else {
+			view.accordion.update( 'settings', { summary : S.mix.name ?? S.theme.name, badge : S.theme.kind === 'own' && ( S.mix.name ?? '' ) !== ( S.saved.mix.name ?? '' ) ? word('state/changed-mark') : '' } );
+			view.accordion.update( 'css', { summary : cssSummary(), badge : cssOf( S.mix ) !== cssOf( S.saved.mix ) ? word('state/changed-mark') : '' } );
+		}
+
+		paintSettings();
+	};
+
+	// --- the brand -----------------------------------------------------------------------------------------------
+
+	// The name of the theme the page comes from: the one whose suggestion stands for the values the project has not set
+	const pageTheme = function() {
+
+		const theme = S.described.groups.page.theme;
+
+		return theme === '' ? word('word/standard') : themeName( theme );
+	};
+
+	// What a value of the brand is where the project has not set it: what the theme the page comes from suggests, else what Nino.css says
+	const themeValue = function( key ) {
+		return ( S.described.brand.suggested ?? {} )[key] ?? S.described.brand.defaults[key];
+	};
+
+	const brandValue = function( key ) {
+		return S.brand[key].own === true ? S.brand[key].value : themeValue( key );
+	};
+
+	const fontName = function( slug ) {
+
+		const font = S.list.fonts.find( function( candidate ) { return candidate.key === slug } );
+
+		if( font === undefined )
+			return slug;
+
+		const known = font.system === true ? word( 'word/font-'+ slug ) : '';
+
+		return known !== '' ? known : font.name;
+	};
+
+	// A value of the brand as a word of the panel; a colour is its code
+	const valueName = function( key, value ) {
+
+		if( key === 'tone' )
+			return word( 'word/tone-'+ value );
+
+		if( key === 'mode' )
+			return word( 'word/mode-'+ value );
+
+		return key.indexOf('font-') === 0 ? fontName( value ) : String( value );
+	};
+
+	const brandOne = function( brand, key ) {
+		return brand[key].own === true ? brand[key].value : null;
+	};
+
+	// Whether a value of two brands is the same: both follow the theme, or both are the project's own and the same
+	const brandSame = function( one, other, key ) {
+		return one[key].own === other[key].own && brandOne( one, key ) === brandOne( other, key );
+	};
+
+	// Whether a section of the brand differs from the saved one
+	const brandChangedIn = function( section ) {
+
+		const keys = BRAND_SECTIONS.find( function( set ) { return set[0] === section } )[1];
+
+		return keys.some( function( key ) { return brandSame( S.brand, S.saved.brand.stored, key ) === false } );
+	};
+
+	// What the closed head of a section of the brand says: how many values are the project's own
+	const brandSummary = function( section ) {
+
+		if( section === 'logo' )
+			return '/logo · /logo/dark';
+
+		const keys = BRAND_SECTIONS.find( function( set ) { return set[0] === section } )[1];
+		const own = keys.filter( function( key ) { return S.brand[key].own === true } ).length;
+
+		return own === 0 ? word('msg/from-theme') : ( own === 1 ? word('msg/own-one') : word( 'msg/own-values', own ) );
+	};
+
+	// A value of the brand is set: from now on it is the project's own
+	const setBrand = function( key, value ) {
+
+		S.brand[key] = { own : true, value : value };
+
+		if( S.view.rows[key] !== undefined )
+			S.view.rows[key]();
+
+		changed();
+		schedule();
+	};
+
+	/**
+	 *	One value of the brand: the control, and under it whether the value is the project's own or the theme's and the way back to the theme's
+	 *
+	 *	@param		{string}		key
+	 *	@param		{Object}		made		{ head, control, set( value ), focus() } - the control of the value
+	 *
+	 *	@return		{Element}
+	 */
+	const brandRow = function( key, made ) {
+
+		const row = el( 'div', 'themes-brand-field' );
+		const origin = el( 'div', 'themes-origin' );
+		const chip = el( 'span', 'nino-admin-badge' );
+
+		const paint = function() {
+
+			const own = S.brand[key].own === true;
+			const suggested = ( S.described.brand.suggested ?? {} )[key] !== undefined;
+
+			chip.textContent = own === true ? word('chip/own-value') : ( suggested === true ? word( 'chip/from-theme', pageTheme() ) : word('chip/from-standard') );
+			chip.dataset.state = own === true ? 'ok' : 'muted';
+			back.hidden = own === false;
+			back.textContent = word( suggested === true ? 'label/take-back' : 'label/take-back-standard', valueName( key, themeValue( key ) ) );
+		};
+
+		// The value of the theme is the value again: nothing is the project's own
+		const back = Nino.adminUi.button( '', function() {
+
+			S.brand[key] = { own : false };
+			made.set( themeValue( key ) );
+
+			if( typeof made.confirm === 'function' )
+				made.confirm();
+
+			paint();
+			changed();
+			schedule();
+			land( made.focus(), S.view.title );
+		}, { className : 'nino-admin-btn--small', id : 'themes-brand-back-'+ key } );
+
+		if( made.head !== null )
+			row.appendChild( made.head );
+
+		row.appendChild( made.control );
+		origin.appendChild( chip );
+		origin.appendChild( back );
+		row.appendChild( origin );
+		S.view.rows[key] = paint;
+		paint();
+
+		return row;
+	};
+
+	// A colour: the field of the workbench with its code, its picker and the contrast of the text that is written on it. A code that is typed on the way
+	// to a colour is a colour for a moment - #123 on the way to #12345 - and the preview may follow it, but the draft keeps the last colour that was left in
+	// the field: a field that is no colour at the end puts the draft back to it, and cannot be saved
+	const colourField = function( key ) {
+
+		const on = function() { return ( S.described.palette.colors ?? {} )['on-'+ key] ?? undefined };
+		let confirmed = clone( S.brand[key] );
+
+		const field = Nino.adminUi.color( {
+			label    : word( 'label/'+ key ),
+			id      : 'themes-brand-'+ key,
+			value    : brandValue( key ),
+			required  : true,
+			against    : on(),
+			onChange  : function( value ) {
+				delete S.invalid[key];
+				setBrand( key, value );
+			},
+			onInvalid  : function() {
+				S.invalid[key] = true;
+				S.brand[key] = clone( confirmed );
+
+				if( S.view.rows[key] !== undefined )
+					S.view.rows[key]();
+
+				changed();
+				schedule();
+			},
+		} );
+
+		// The field is left with a colour in it: that is the colour of the draft
+		field.input.addEventListener( 'change', function() {
+			if( S.invalid[key] !== true )
+				confirmed = clone( S.brand[key] );
+		} );
+
+		return {
+			head      : null,
+			control    : field.el,
+			set      : function( value ) { field.set( value ) },
+			focus    : function() { return field.input },
+			against    : function() { field.against( on() ) },
+			confirm    : function() { confirmed = clone( S.brand[key] ); delete S.invalid[key]; },
+		};
+	};
+
+	// A choice among a few values - the tone of the grounds, the mode of the page
+	const choiceField = function( key, values ) {
+
+		const id = 'themes-brand-'+ key;
+		const head = el( 'div', 'nino-admin-field-label themes-fieldname', word( 'label/'+ key ) );
+		const strip = Nino.adminUi.steps( { labelledby : id, wide : true, steps : values.map( function( value ) { return { value : value, label : valueName( key, value ) } } ), value : brandValue( key ), onChange : function( value ) { setBrand( key, value ) } } );
+
+		head.id = id;
+
+		return { head : head, control : strip.el, set : function( value ) { strip.set( value ) }, focus : function() { return strip.el.querySelector('[aria-checked="true"]') } };
+	};
+
+	// A font: the system's stacks and the folders of public/fonts/ the list names
+	const fontField = function( key ) {
+
+		const options = S.list.fonts.map( function( font ) { return { value : font.key, label : fontName( font.key ) } } );
+		const shown = brandValue( key );
+
+		// A font that is named and is no folder any more is still the value: it is shown as it is, with a word that it is not there, and the site draws the
+		// stack of the system for it until the folder is back
+		const gone = ( S.described.brand.unavailable ?? [] ).indexOf( key ) !== -1;
+
+		if( options.some( function( option ) { return option.value === shown } ) === false )
+			options.push( { value : shown, label : word( 'msg/font-gone', shown ) } );
+
+		const field = Nino.adminUi.selectField( { key : key, label : word( 'label/'+ key ), options : options, value : shown, onChange : function( value ) { setBrand( key, value ) } } );
+		const select = field.querySelector('select');
+		const control = el('div');
+
+		select.id = 'themes-brand-'+ key;
+		control.appendChild( field );
+
+		if( gone === true ) {
+			const note = Nino.adminUi.hint( word( 'msg/font-gone-note', shown ) );
+
+			note.id = 'themes-brand-'+ key+ '-gone';
+			select.setAttribute( 'aria-describedby', note.id );
+			control.appendChild( note );
+		}
+
+		return { head : null, control : control, set : function( value ) { select.value = value }, focus : function() { return select } };
+	};
+
+	// A contrast as it is said everywhere: cut, not rounded, as the field of the colour cuts it, and written the way the language of the interface writes a number
+	const ratioSaid = function( ratio ) {
+		return word( 'msg/ratio', Nino.adminUi.colorModel.truncate( ratio ) );
+	};
+
+	// One pair of the palette: the text on its ground, the number, and whether it reaches what a text needs - a word and a mark, never the colour alone
+	const pairItem = function( label, ratio, ink, ground ) {
+
+		const item = el( 'li', 'themes-pair' );
+		const enough = ratio >= Nino.adminUi.colorModel.ENOUGH;
+		const swatch = el( 'span', 'themes-pair-swatch', 'Aa' );
+		const mark = el( 'span', '', enough === true ? '✓' : '✕' );
+
+		swatch.setAttribute( 'aria-hidden', 'true' );
+		swatch.style.color = ink;
+		swatch.style.backgroundColor = ground;
+		mark.setAttribute( 'aria-hidden', 'true' );
+		item.dataset.state = enough === true ? 'ok' : 'error';
+		item.appendChild( swatch );
+		item.appendChild( el( 'span', 'themes-pair-name', label ) );
+		item.appendChild( el( 'span', 'themes-pair-ratio', ratioSaid( ratio ) ) );
+		item.appendChild( mark );
+		item.appendChild( el( 'span', 'themes-pair-verdict', word( enough === true ? 'word/reaches' : 'word/falls-short' ) ) );
+
+		return item;
+	};
+
+	/**
+	 *	The palette of the draft: the eight colours of each mode and the contrast of every pair a part reads. Where the brand names no colour and no
+	 *	tone, the colours are those of the reset and the section says so
+	 *
+	 *	@param		{Element}		box
+	 *
+	 *	@return		{void}
+	 */
+	const paintPalette = function( box ) {
+
+		const palette = S.described.palette;
+		const colors = palette.colors ?? {};
+
+		box.innerHTML = '';
+
+		if( colors.light === undefined || colors.dark === undefined )
+			return;
+
+		const ratios = Object.keys( palette.contrast ).map( function( pair ) { return palette.contrast[pair] } );
+		const least = Math.min( ...ratios );
+		const short = ratios.filter( function( ratio ) { return ratio < Nino.adminUi.colorModel.ENOUGH } ).length;
+		const list = el( 'details', 'themes-allpairs' );
+
+		if( palette.source === 'reset' )
+			box.appendChild( Nino.adminUi.notice( word('msg/palette-reset') ) );
+
+		box.appendChild( Nino.adminUi.hint( word('hint/palette') ) );
+
+		[ 'light', 'dark' ].forEach( function( mode ) {
+
+			const roles = el( 'ul', 'themes-roles' );
+			const pairs = el( 'ul', 'themes-pairs' );
+
+			box.appendChild( el( 'h5', 'themes-palette-mode', word( 'word/mode-'+ mode ) ) );
+
+			ROLES.forEach( function( role ) {
+
+				const color = el( 'li', 'themes-role' );
+				const swatch = el( 'span', 'themes-role-swatch' );
+
+				swatch.setAttribute( 'aria-hidden', 'true' );
+				swatch.style.backgroundColor = colors[mode][role];
+				color.title = word( 'role/'+ role )+ ' '+ colors[mode][role];
+				color.appendChild( swatch );
+				color.appendChild( el( 'span', 'nino-admin-sr-only', word( 'role/'+ role )+ ' '+ colors[mode][role] ) );
+				roles.appendChild( color );
+			} );
+
+			PAIR_GROUNDS[mode].forEach( function( ground ) {
+				PAIR_ROLES.forEach( function( role ) {
+
+					const ratio = palette.contrast[mode+ ' '+ role+ '/'+ ground];
+
+					if( ratio !== undefined )
+						pairs.appendChild( pairItem( word( 'msg/pair', word( 'role/'+ role ), word( 'role/'+ ground ) ), ratio, colors[mode][role], ground === 'picture' ? palette.veil : colors[mode][ground] ) );
+				} );
+			} );
+
+			if( palette.contrast[mode+ ' button'] !== undefined )
+				pairs.appendChild( pairItem( word('role/on'), palette.contrast[mode+ ' button'], colors[mode].on, colors[mode].accent ) );
+
+			box.appendChild( roles );
+			list.appendChild( el( 'h5', 'themes-palette-mode', word( 'word/mode-'+ mode ) ) );
+			list.appendChild( pairs );
+		} );
+
+		if( palette.contrast.primary !== undefined ) {
+
+			const primary = el( 'ul', 'themes-pairs' );
+
+			primary.appendChild( pairItem( word('role/on-primary'), palette.contrast.primary, colors['on-color-1'], colors['color-1'] ) );
+			list.appendChild( primary );
+		}
+
+		// The eight colours and one sentence are what is seen; the pairs are there to be opened, and open of themselves where one of them falls short
+		box.appendChild( el( 'p', 'themes-least', short === 0 ? word( 'msg/palette-ok', Nino.adminUi.colorModel.truncate( least ) ) : word( 'msg/palette-bad', short, Nino.adminUi.colorModel.truncate( least ) ) ) );
+		list.open = short > 0;
+		list.insertBefore( el( 'summary', '', word( 'label/all-pairs', ratios.length ) ), list.firstChild );
+		box.appendChild( list );
+	};
+
+	// What was done to colour 1 for the text and the buttons that are drawn with it, where something was: the colour that is read on a ground is not always the
+	// colour the project chose, and a person who chose a bright one is told why a button is not that colour
+	const adjusted = function() {
+
+		const palette = S.described.palette;
+
+		if( palette.source !== 'brand' || palette.colors.light === undefined )
+			return [];
+
+		const model = Nino.adminUi.colorModel;
+		const first = palette.colors['color-1'];
+
+		return [ 'light', 'dark' ].filter( function( mode ) { return palette.colors[mode].accent !== first } ).map( function( mode ) {
+			return word( model.luminance( palette.colors[mode].accent ) < model.luminance( first ) ? 'msg/adjust-darker' : 'msg/adjust-lighter', word( 'word/mode-'+ mode ), palette.colors[mode].accent );
+		} );
+	};
+
+	// The logo is no value of the brand: it is two image places of the project, and the panel of the images has them
+	const logoOne = function() {
+
+		const body = el('div');
+		const open = el( 'a', 'nino-admin-btn nino-admin-btn--small', word('label/logo-open') );
+
+		open.href = Nino.admin.router.href( 'images', [ 'logo' ] );
+		open.id = 'themes-logo-open';
+
+		// The way back from the images ends here, on the link that was followed
+		open.addEventListener( 'click', function() { S.leftFor = 'logo' } );
+		body.appendChild( Nino.adminUi.hint( word('hint/logo') ) );
+		body.appendChild( open );
+
+		return body;
+	};
+
+	// The content of a section of the brand
+	const brandSection = function( section ) {
+
+		const body = el('div');
+
+		if( section === 'logo' )
+			return logoOne();
+
+		if( section === 'colours' ) {
+
+			const one = colourField('color-1');
+			const two = colourField('color-2');
+			const box = el( 'div', 'themes-palette' );
+
+			const said = el( 'p', 'nino-admin-hint themes-adjusted' );
+
+			body.appendChild( brandRow( 'color-1', one ) );
+			body.appendChild( said );
+			body.appendChild( brandRow( 'color-2', two ) );
+			body.appendChild( Nino.adminUi.hint( word('hint/colour') ) );
+			body.appendChild( brandRow( 'tone', choiceField( 'tone', TONES ) ) );
+			body.appendChild( box );
+			const paintAdjusted = function() {
+				said.textContent = adjusted().join(' ');
+				said.hidden = said.textContent === '';
+			};
+
+			paintPalette( box );
+			paintAdjusted();
+			S.view.repaint = function() {
+				paintPalette( box );
+				paintAdjusted();
+				one.against();
+				two.against();
+			};
+
+			return body;
+		}
+
+		if( section === 'type' )
+			[ 'font-title', 'font-text', 'font-button' ].forEach( function( key ) { body.appendChild( brandRow( key, fontField( key ) ) ) } );
+		else
+			body.appendChild( brandRow( 'mode', choiceField( 'mode', MODES ) ) );
+
+		return body;
+	};
+
+	// The way back to the groups, from the screen of a group or of the brand. Not the class of the back link of a form: the shell asks Save, Discard or Cancel before that one is followed, and this move keeps the draft
+	const backLink = function( group ) {
+
+		const back = el( 'a', 'themes-back', word('label/back-groups') );
+
+		back.href = Nino.admin.router.href( 'themes', addressOf( [ S.key ] ) );
+		back.id = 'themes-back-groups';
+		back.addEventListener( 'click', function( event ) {
+			event.preventDefault();
+			Nino.admin.themes.go( [ S.key ], { from : group } );
+		} );
+
+		return back;
+	};
+
+	/**
+	 *	The brand - level two: the way back, and a section for the colours, the type, the mode and the logo
+	 *
+	 *	@param		{string}		[open]		The key of the section that is open
+	 *
+	 *	@return		{Element}
+	 */
+	const brandOf = function( open ) {
+
+		const root = el( 'div', 'themes-settings' );
+		const title = el( 'h3', 'themes-title', word('word/brand') );
+		const keys = BRAND_SECTIONS.map( function( set ) { return set[0] } );
+
+		title.appendChild( el( 'span', 'nino-admin-badge themes-project', word('word/project') ) );
+		root.appendChild( backLink( 'brand' ) );
+		root.appendChild( title );
+		root.appendChild( Nino.adminUi.hint( word('hint/brand') ) );
+
+		// Where no theme is on the website the brand has nothing to hold in: it is saved, and says so, and what to do
+		if( nothingShown() === true )
+			root.appendChild( Nino.adminUi.notice( word('msg/brand-later') ) );
+
+		const accordion = Nino.adminUi.accordion( {
+			id			: 'themes-acc',
+			level		: 4,
+			address		: { panel : 'themes', parts : addressOf( [ S.key, 'brand' ] ) },
+			open		: keys.indexOf( open ) === -1 ? keys[0] : open,
+			sections	: keys.map( function( key ) {
+				return { key : key, label : word( 'word/'+ key ), summary : brandSummary( key ), badge : brandChangedIn( key ) === true ? word('state/changed-mark') : '', content : function() { return brandSection( key ) } };
+			} ),
+		} );
+
+		S.view.accordion = accordion;
+		root.appendChild( accordion.el );
+
+		return root;
+	};
+
+	// The row of the brand in the list of the groups: it is the project's and no theme's, and stands before the page
+	const brandRowOf = function() {
+
+		const item = el('li');
+		const link = el('a');
+		const copy = el( 'span', 'nino-admin-list-copy' );
+		const source = el( 'span', 'themes-source', word('word/project') );
+
+		link.href = Nino.admin.router.href( 'themes', addressOf( [ S.key, 'brand' ] ) );
+		link.dataset.group = 'brand';
+		link.addEventListener( 'click', function( event ) {
+			event.preventDefault();
+			Nino.admin.themes.go( [ S.key, 'brand' ], { focus : 'back' } );
+		} );
+
+		copy.appendChild( el( 'strong', '', word('word/brand') ) );
+		link.appendChild( copy );
+
+		if( brandDirty() === true ) {
+			const mark = el( 'span', 'nino-admin-badge', word('state/changed-mark') );
+			mark.dataset.state = 'warn';
+			link.appendChild( mark );
+		}
+
+		source.title = word('hint/brand-row');
+		link.appendChild( source );
+		item.appendChild( link );
+
+		return item;
+	};
+
+	// --- what is done with the theme as a whole ------------------------------------------------------------------
+
+	// What a request that asks again with the answer of an open takes of it: the stamp of what the refusal was about
+	const adopt = function( fresh ) {
+
+		if( fresh === undefined || fresh === null )
+			return;
+
+		if( typeof fresh.stamp === 'string' )
+			S.stamp = fresh.stamp;
+
+		if( typeof fresh.brandStamp === 'string' )
+			S.brandStamp = fresh.brandStamp;
+
+		if( typeof fresh.state === 'string' )
+			S.state = fresh.state;
+	};
+
+	/**
+	 *  The sentence that says what happens to the last state: the one that is kept is replaced by the state as it is now. Nothing where there is none
+	 *
+	 *  @return   {string}
+	 */
+	const replacesLast = function() {
+		return S.canRestore !== true ? '' : ( S.last === null || S.last === undefined ? word('msg/replaces-last-plain') : word( 'msg/replaces-last', lastSaid() ) );
+	};
+
+	// Where nothing is on the website, what is saved reaches no visitor: the question that says "at once" would be untrue
+	const nothingShown = function() {
+		return S.active === null;
+	};
+
+	/**
+	 *  Ask before what is saved reaches the website: the theme that it shows, or the brand, which holds for every theme. Where nothing reaches it, go on -
+	 *  and where no theme is on the website the brand reaches nobody yet: it is saved, and the level of the brand says that it holds once a theme is applied
+	 *
+	 *  @param    {Function}    go
+	 *  @param    {Function}    done            Called with false where the answer is no
+	 *  @param    {boolean}    [newTheme]      The draft is saved as a theme of its own, which the website does not show: only the brand reaches it
+	 *
+	 *  @return    {void}
+	 */
+	const reaching = function( go, done, newTheme ) {
+
+		const brand = brandDirty() === true && nothingShown() === false;
+
+		if( brand === false && ( isActive() === false || newTheme === true ) ) {
+			go();
+			return;
+		}
+
+		Nino.adminUi.confirm( 'big', {
+			title    : word( brand === true ? 'confirm/brand-title' : 'confirm/save-title' ),
+			message    : ( brand === true ? word('confirm/brand') : word( 'confirm/save', S.theme.name ) )+ ' '+ replacesLast(),
+			yes      : word('label/save'),
+			no      : Nino.content.getText('/_admin/common/label/cancel'),
+			onChoose  : function( ok ) { if( ok === true ) go(); else done( false ) },
+		} );
+	};
+
+	/**
+	 *  One change of the state, asked of the API, the way every change is: the payload is made for each try - with the stamps the person has now - and
+	 *  a refusal is answered by the one way for them all. Overwrite is the answer to a stamp and sends no force; Replace is the answer to a stylesheet that
+	 *  is not the feature's and sends the force and takes no stamp
+	 *
+	 *  @param    {string}    action
+	 *  @param    {Function}    build        ( force ) - the payload
+	 *  @param    {Function}    after        Called with the answer when it was written
+	 *  @param    {Function}    done        Called with false where the change is not made
+	 *  @param    {Function}    [early]      ( status, response, force ) - answers a refusal of its own and says so by true
+	 *
+	 *  @return    {void}
+	 */
+	const change = function( action, build, after, done, early ) {
+
+		const go = function( force ) {
+
+			S.view.line.saving();
+
+			Nino.admin.themes.call( action, build( force ), function( status, response ) {
+
+				if( status !== 200 ) {
+
+					if( typeof early === 'function' && early( status, response, force ) === true )
+						return;
+
+					refused( status, response, function( fresh ) { adopt( fresh ); go( fresh === undefined ) }, done );
+					return;
+				}
+
+				settle( response );
+				after( response );
+			} );
+		};
+
+		go( false );
+	};
+
+	// The brand alone: the draft changed nothing of the theme. It is the project's, so it is written whichever theme is open
+	const saveBrand = function( done ) {
+
+		reaching( function() {
+			change( 'brand', function( force ) {
+				return { theme : S.key, brand : S.brand, brandBase : S.brandStamp, force : force };
+			}, function( response ) { afterSave( S.key, response, done ) }, done );
+		}, done );
+	};
+
+	// "Save as own theme": the draft is a theme of its own under a name, whatever theme is open
+	const saveAsNew = function( opener ) {
+
+		const cancelled = function() { land( opener, S.view.title ) };
+
+		reaching( function() {
+			askName( S.theme.name+ ' 2', '', function( name ) {
+				if( name === null )
+					cancelled();
+				else
+					saveAs( name, function() {} );
+			} );
+		}, cancelled, true );
+	};
+
+	/**
+	 *	Where a theme is left for the list: the screen of it is gone, and what was done is said in the list
+	 *
+	 *	@param		{string}		message
+	 *
+	 *	@return		{void}
+	 */
+	const leaveTheme = function( message ) {
+
+		S.ready = false;
+		Nino.admin.router.go( 'themes', [] );
+		Nino.admin.themes.follow( {} );
+		Nino.admin.themes.say( message );
+	};
+
+	/**
+	 *  When the last state was saved, and with which theme, as a person says it: "16 Nov 2026, 10:52, with the theme Nino" - or a word that says it is
+	 *  not known
+	 *
+	 *  @return    {string}
+	 */
+	const lastSaid = function() {
+
+		if( S.last === null || S.last === undefined )
+			return word('msg/last-unknown');
+
+		const lang = String( ( dc.documentElement && dc.documentElement.lang ) || '' ).replace( '_', '-' );
+		const when = new Date( S.last.at * 1000 ).toLocaleString( lang === '' ? undefined : lang, { dateStyle : 'medium', timeStyle : 'short' } );
+
+		return word( 'msg/last-state', when, S.last.theme === '' ? word('word/standard-parts') : localized( S.last.name ) );
+	};
+
+	// The state of before the last save, in place of this one - which becomes the last, so that a second restore is the state as it is now
+	const restore = function( opener ) {
+
+		const cancelled = function() { land( opener, S.view.title ) };
+
+		const go = function() {
+			change( 'restore', function( force ) {
+				return { base : S.state, force : force };
+			}, function() {
+
+				refreshList( function() {
+
+					if( S.list.themes.some( function( theme ) { return theme.key === S.key } ) === false ) {
+						leaveTheme( word( 'msg/restored-gone', S.theme.name ) );
+						return;
+					}
+
+					open( S.key, function( ok ) {
+
+						if( ok !== true )
+							return;
+
+						show( here().parts, { focus : false } );
+						S.view.line.idle( word('msg/restored') );
+						land( dc.getElementById('themes-restore'), S.view.title );
+					} );
+				} );
+			}, cancelled );
+		};
+
+		Nino.adminUi.confirm( 'big', {
+			title    : word('confirm/restore-title'),
+			message    : word( 'confirm/restore', lastSaid() ),
+			yes      : word('label/restore'),
+			no      : Nino.content.getText('/_admin/common/label/cancel'),
+			opener    : opener,
+			onChoose  : function( ok ) { if( ok === true ) go(); else cancelled() },
+		} );
+	};
+
+	// An own theme is deleted: asked as a thing that cannot be taken back, and it changes nothing the website shows
+	const remove = function( opener ) {
+
+		const name = S.theme.name;
+		const cancelled = function() { land( opener, S.view.title ) };
+
+		Nino.adminUi.confirm( 'destructive', {
+			title    : word( 'confirm/delete-title', name ),
+			message    : word('confirm/delete')+ ' '+ replacesLast(),
+			yes      : word('label/delete'),
+			no      : Nino.content.getText('/_admin/common/label/cancel'),
+			kind    : 'danger',
+			visitors  : false,
+			opener    : opener,
+			onChoose  : function( ok ) {
+
+				if( ok !== true ) {
+					cancelled();
+					return;
+				}
+
+				change( 'delete', function( force ) {
+					return { theme : S.key, base : S.stamp, force : force };
+				}, function() { refreshList( function() { leaveTheme( word( 'msg/deleted', name ) ) } ) }, cancelled );
+			},
+		} );
 	};
 
 	// --- the bar -----------------------------------------------------------------------------------------------
@@ -1100,12 +2139,32 @@
 		view.state.dataset.state = dirty === true ? 'warn' : ( isActive() === true ? 'ok' : 'muted' );
 		view.state.textContent = dirty === true ? '\u25CF '+ word('state/changed') : '\u2713 '+ word( isActive() === true ? 'state/applied' : 'state/saved' );
 		view.reset.disabled = dirty === false;
-		view.save.disabled = dirty === false;
-		view.save.textContent = S.theme.kind === 'theme' ? word('label/save-as') : word('label/save');
+		view.save.disabled = dirty === false || blockReason() !== '';
+		view.save.textContent = S.theme.kind === 'theme' && mixDirty() === true ? word('label/save-as') : word('label/save');
 		view.apply.hidden = isActive();
 		view.apply.disabled = dirty === true;
 		view.apply.title = dirty === true ? word('hint/apply-saved') : '';
 		fill( view.head, view.title, chipsOf() );
+		paintSettings();
+
+		// What keeps the draft from being saved is said in the bar, where the person is looking, whichever section is open; it goes when the cause does
+		const why = blockReason();
+
+		if( why !== '' ) {
+
+			if( S.blocked !== why || view.line.state !== 'error' )
+				view.line.fail( why );
+
+			S.blocked = why;
+			return;
+		}
+
+		if( S.blocked !== '' ) {
+			S.blocked = '';
+
+			if( view.line.state === 'error' )
+				view.line.idle();
+		}
 
 		// The line announces the change once, where the draft begins, and is silent while it goes on: a screen reader hears the chip as a word of
 		// the page and not as a change. The sentence goes after a while, so that the chip is not said twice to the eye; a refusal goes when the state is right
@@ -1142,6 +2201,13 @@
 
 		if( response !== null && typeof response === 'object' && 'active' in response )
 			S.active = response.active;
+
+		// The state the answer leaves: what a restore is asked against, and whether there is one to go back to
+		if( response !== null && typeof response === 'object' && typeof response.state === 'string' ) {
+			S.state = response.state;
+			S.canRestore = response.canRestore === true;
+			S.last = response.last ?? null;
+		}
 	};
 
 	/**
@@ -1273,76 +2339,76 @@
 			return;
 		}
 
-		if( S.theme.kind === 'theme' ) {
-			askName( S.theme.name+ ' 2', '', function( name ) {
-				if( name === null ) {
-					done( false );
-					return;
-				}
-				saveAs( name, false, done );
-			} );
+		// What keeps it from being saved is in the bar already, and so a save by the keyboard is told no
+		if( blockReason() !== '' ) {
+			done( false );
 			return;
 		}
 
-		const go = function( force ) {
+		// A theme of a package is never written: where its mix changed the draft is saved under a name, and where only the brand did, the brand is written
+		if( S.theme.kind === 'theme' && mixDirty() === false ) {
+			saveBrand( done );
+			return;
+		}
 
-			S.view.line.saving();
+		if( S.theme.kind === 'theme' ) {
+			reaching( function() {
+				askName( S.theme.name+ ' 2', '', function( name ) {
+					if( name === null ) {
+						done( false );
+						return;
+					}
+					saveAs( name, done );
+				} );
+			}, done, true );
+			return;
+		}
 
-			Nino.admin.themes.call( 'save', { theme : S.key, mix : sendable(), base : S.stamp, force : force }, function( status, response ) {
+		reaching( function() {
+			change( 'save', function( force ) {
 
-				if( status !== 200 ) {
-					refused( status, response, function( stamp ) {
-						// Two answers: Overwrite is the answer to the stamp, and the stylesheet that is not the feature's is asked about after it, as it is at any save
-						if( stamp !== undefined ) {
-							S.stamp = stamp;
-							go( false );
-						}
-						else
-							go( true );
-					}, done );
-					return;
+				const posted = { theme : S.key, mix : sendable(), base : S.stamp, force : force };
+
+				if( brandDirty() === true ) {
+					posted.brand = S.brand;
+					posted.brandBase = S.brandStamp;
 				}
 
-				settle( response );
-				afterSave( S.key, response, done );
-			} );
-		};
-
-		if( isActive() === true )
-			Nino.adminUi.confirm( 'big', { title : word( 'confirm/save-title' ), message : word( 'confirm/save', S.theme.name ), yes : word('label/save'), no : Nino.content.getText('/_admin/common/label/cancel'), onChoose : function( ok ) { if( ok === true ) go( false ); else done( false ) } } );
-		else
-			go( false );
+				return posted;
+			}, function( response ) { afterSave( S.key, response, done ) }, done );
+		}, done );
 	};
 
-	const saveAs = function( name, force, done ) {
+	const saveAs = function( name, done ) {
 
-		const mix = sendable();
+		change( 'save-as', function( force ) {
 
-		mix.name = name;
-		S.view.line.saving();
+			const mix = sendable();
+			const posted = { mix : mix, force : force };
 
-		Nino.admin.themes.call( 'save-as', { mix : mix, force : force }, function( status, response ) {
+			mix.name = name;
 
-			if( status === 400 || status === 409 ) {
-				if( response !== null && typeof response === 'object' && response.field === 'name' ) {
-					S.view.line.idle();
-					askName( name, Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ), function( again ) {
-						if( again === null )
-							done( false );
-						else
-							saveAs( again, force, done );
-					} );
-					return;
-				}
+			if( brandDirty() === true ) {
+				posted.brand = S.brand;
+				posted.brandBase = S.brandStamp;
 			}
 
-			if( status !== 200 ) {
-				refused( status, response, function() { saveAs( name, true, done ) }, done );
-				return;
-			}
+			return posted;
+		}, function( response ) { afterSave( response.theme, response, done ) }, done, function( status, response ) {
 
-			settle( response );
-			afterSave( response.theme, response, done );
+			// A name that is taken, or says nothing, is asked again in the dialog, with the sentence at the field
+			if( ( status !== 400 && status !== 409 ) || response === null || typeof response !== 'object' || response.field !== 'name' )
+				return false;
+
+			S.view.line.idle();
+			askName( name, Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ), function( again ) {
+				if( again === null )
+					done( false );
+				else
+					saveAs( again, done );
+			} );
+
+			return true;
 		} );
 	};
 
@@ -1353,7 +2419,7 @@
 	 *
 	 *	@param		{number}			status
 	 *	@param		{Object}			response
-	 *	@param		{Function}		force					Does it once more, with the stamp it is given
+	 *	@param		{Function}		force					Does it once more, with the stamp the refusal was about as the open gave it
 	 *	@param		{Function}		[done]
 	 *
 	 *	@return		{void}
@@ -1365,58 +2431,101 @@
 				done( ok );
 		};
 
-		Nino.adminUi.choiceDialog( {
-			title		: word('confirm/changed-title'),
-			message		: Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ),
-			choices		: [
-				{ value : 'over', label : word('label/overwrite'), kind : 'danger' },
-				{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
-				{ value : 'reload', label : word('label/reload'), kind : 'secondary' },
-			],
-			onChoose	: function( value ) {
+		// What of the brand this tab set and the other one set as well: the values of both, which Overwrite settles for this tab
+		const both = function( now ) {
+			return BRAND_KEYS.filter( function( key ) {
+				return brandSame( S.brand, S.saved.brand.stored, key ) === false && brandSame( now.brand.stored, S.saved.brand.stored, key ) === false && brandSame( S.brand, now.brand.stored, key ) === false;
+			} );
+		};
 
-				if( value === 'over' ) {
+		const ask = function( now ) {
 
-					Nino.admin.themes.call( 'open', { theme : S.key }, function( openStatus, now ) {
+			const clash = now === null ? [] : both( now );
 
-						if( openStatus !== 200 ) {
-							S.view.line.error( openStatus, now, '/_admin/themes/error/save' );
-							leave( false );
+			Nino.adminUi.choiceDialog( {
+				title    : word('confirm/changed-title'),
+				message    : Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' )+ ( now === null ? '' : ' '+ word('msg/brand-merge')+ ( clash.length === 0 ? '' : ' '+ word( 'msg/brand-both', clash.map( function( key ) { return word( 'label/'+ key ) } ).join(', ') ) ) ),
+				choices    : [
+					{ value : 'over', label : word('label/overwrite'), kind : 'danger' },
+					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
+					{ value : 'reload', label : word('label/reload'), kind : 'secondary' },
+				],
+				onChoose  : function( value ) {
+
+					if( value === 'over' ) {
+
+						// The brand of the other tab is the saved one now; what this tab set stays, what it did not touch is as the other tab saved it
+						if( now !== null ) {
+
+							BRAND_KEYS.forEach( function( key ) {
+								if( brandSame( S.brand, S.saved.brand.stored, key ) === true )
+									S.brand[key] = clone( now.brand.stored[key] );
+							} );
+
+							S.saved.brand = Object.assign( {}, S.saved.brand, { stored : clone( now.brand.stored ) } );
+							force( { brandStamp : now.brandStamp } );
 							return;
 						}
 
-						force( now.stamp );
-					} );
+						Nino.admin.themes.call( 'open', { theme : S.key }, function( openStatus, fresh ) {
 
-					return;
-				}
+							if( openStatus !== 200 ) {
+								S.view.line.error( openStatus, fresh, '/_admin/themes/error/save' );
+								leave( false );
+								return;
+							}
 
-				if( value !== 'reload' ) {
-					leave( false );
-					return;
-				}
-
-				Nino.adminUi.confirm( 'destructive', {
-					title		: word('confirm/reload-title'),
-					message		: word('confirm/reload'),
-					yes			: word('label/reload'),
-					no			: Nino.content.getText('/_admin/common/label/cancel'),
-					kind		: 'danger',
-					onChoose	: function( ok ) {
-
-						if( ok === false ) {
-							leave( false );
-							return;
-						}
-
-						open( S.key, function() {
-							show( S.at, { focus : false } );
-							land( null, S.view === null ? null : S.view.title );
-							leave( true );
+							// Only what the refusal was about is taken over: a stamp the person has not been told is stale stays the one it was
+							force( response.code === 'themes_state' ? { state : fresh.state } : { stamp : fresh.stamp } );
 						} );
-					},
-				} );
-			},
+
+						return;
+					}
+
+					if( value !== 'reload' ) {
+						leave( false );
+						return;
+					}
+
+					Nino.adminUi.confirm( 'destructive', {
+						title    : word('confirm/reload-title'),
+						message    : word('confirm/reload'),
+						yes      : word('label/reload'),
+						no      : Nino.content.getText('/_admin/common/label/cancel'),
+						kind    : 'danger',
+						onChoose  : function( ok ) {
+
+							if( ok === false ) {
+								leave( false );
+								return;
+							}
+
+							open( S.key, function() {
+								show( S.at, { focus : false } );
+								land( null, S.view === null ? null : S.view.title );
+								leave( true );
+							} );
+						},
+					} );
+				},
+			} );
+		};
+
+		if( response.code !== 'themes_brand_changed' ) {
+			ask( null );
+			return;
+		}
+
+		// The brand of the other tab is looked at first: what the two tabs set is told in the question
+		Nino.admin.themes.call( 'open', { theme : S.key }, function( openStatus, now ) {
+
+			if( openStatus !== 200 ) {
+				S.view.line.error( openStatus, now, '/_admin/themes/error/save' );
+				leave( false );
+				return;
+			}
+
+			ask( now );
 		} );
 	};
 
@@ -1435,14 +2544,23 @@
 
 		const code = response !== null && typeof response === 'object' ? response.code : '';
 
-		S.view.line.error( status, response, '/_admin/themes/error/save' );
+		// Where no theme is open - an apply from the list - the list says it
+		if( S.view !== null && S.ready === true )
+			S.view.line.error( status, response, '/_admin/themes/error/save' );
+		else
+			Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ) );
 
-		if( code === 'themes_changed' ) {
+		// A name that is refused is said at the field of the name too, with the name of the card it collides with, where the field is on the screen
+		if( code === 'themes_name_taken' && dc.getElementById('themes-theme-name') !== null )
+			nameProblem( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ) );
+
+		if( code === 'themes_changed' || code === 'themes_brand_changed' || code === 'themes_state' ) {
 			conflict( status, response, force, done );
 			return;
 		}
 
-		if( code === 'themes_foreign' ) {
+		// A stylesheet that cannot be read is the same question, with the sentence that what it holds is not kept as the last state
+		if( code === 'themes_foreign' || code === 'themes_unreadable' ) {
 			Nino.adminUi.confirm( 'destructive', {
 				title	: word('confirm/foreign-title'),
 				message	: Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ),
@@ -1526,26 +2644,48 @@
 				S.view.line.idle( word( 'msg/applied', name ) );
 				land( opener, S.view.title );
 			}
-		} );
+		}, S.theme !== null && S.theme.kind === 'own' ? S.stamp : undefined );
 	};
 
 	/**
-	 *	The website shows a theme: asked first, because visitors see it at once
+	 *  The website shows a theme: asked first, because visitors see it at once
 	 *
-	 *	@param		{string}			key
-	 *	@param		{string}			name
-	 *	@param		{Element}			opener
-	 *	@param		{Function}		done				Called with true when it is applied
+	 *  @param    {string}    key
+	 *  @param    {string}    name
+	 *  @param    {Element}    opener
+	 *  @param    {Function}    done        Called with true when it is applied
+	 *  @param    {string}    [stamp]      The stamp of the own theme as the one who asks saw it: another tab that saved it since is not applied over unseen
 	 *
-	 *	@return		{void}
+	 *  @return    {void}
 	 */
-	const applyKey = function( key, name, opener, done ) {
+	const applyKey = function( key, name, opener, done, stamp ) {
+
+		// The theme that is open has the stamp this tab holds now, after an Overwrite
+		const stampOf = function() {
+			return S.ready === true && S.key === key ? S.stamp : stamp;
+		};
 
 		const go = function( force ) {
-			Nino.admin.themes.call( 'apply', { theme : key, force : force }, function( status, response ) {
+
+			const posted = { theme : key, force : force };
+
+			if( stampOf() !== undefined )
+				posted.base = stampOf();
+
+			Nino.admin.themes.call( 'apply', posted, function( status, response ) {
 
 				if( status !== 200 ) {
-					refused( status, response, function() { go( true ) }, done );
+
+					// From the list the theme is not open: what another tab saved is said in the list, which is drawn again to show it
+					if( response !== null && typeof response === 'object' && response.code === 'themes_changed' && ( S.ready !== true || S.key !== key ) ) {
+						refreshList( function() {
+							Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ) );
+							done( false );
+						} );
+						return;
+					}
+
+					refused( status, response, function( fresh ) { adopt( fresh ); go( fresh === undefined ) }, done );
 					return;
 				}
 
@@ -1555,21 +2695,19 @@
 		};
 
 		Nino.adminUi.confirm( 'big', {
-			title		: word( 'confirm/apply-title', name ),
-			message		: word('confirm/apply'),
-			yes			: word('label/apply'),
-			no			: Nino.content.getText('/_admin/common/label/cancel'),
-			opener		: opener,
-			onChoose	: function( ok ) { if( ok === true ) go( false ); else done( false ) },
+			title    : word( 'confirm/apply-title', name ),
+			message    : word('confirm/apply')+ ' '+ replacesLast(),
+			yes      : word('label/apply'),
+			no      : Nino.content.getText('/_admin/common/label/cancel'),
+			opener    : opener,
+			onChoose  : function( ok ) { if( ok === true ) go( false ); else done( false ) },
 		} );
 	};
 
 	// The draft is dropped: the working mix is the saved one, and the preview shows it
 	const reset = function() {
 
-		S.mix = clone( S.saved.mix );
-		S.mix.parts = S.mix.parts ?? {};
-		take( S.saved );
+		dropDraft();
 		changed();
 		S.view.line.idle( word('msg/reset') );
 		draw( here().parts[1] ?? '' );
@@ -1681,12 +2819,17 @@
 			S.theme		= { key : response.theme.key, kind : response.theme.kind, name : localized( response.theme.name ) };
 			S.saved		= response;
 			S.stamp		= typeof response.stamp === 'string' ? response.stamp : '';
-			S.mix		= clone( response.mix );
-			S.mix.parts	= S.mix.parts ?? {};
+			S.brandStamp	= typeof response.brandStamp === 'string' ? response.brandStamp : '';
+
+			// The name of an own theme is part of what is changed and saved: the mix holds it, as the draft does
+			if( S.theme.kind === 'own' )
+				response.mix.name = S.theme.name;
+
+			draftFrom( response );
 			S.described	= response;
 			settle( response );
 
-			Nino.admin.themes.call( 'preview', { mix : sendable(), token : S.token }, function( previewStatus, preview ) {
+			Nino.admin.themes.call( 'preview', { mix : sendable(), brand : S.brand, token : S.token }, function( previewStatus, preview ) {
 
 				if( previewStatus !== 200 ) {
 					fail( level, previewStatus, preview );
@@ -1789,7 +2932,8 @@
 		port.appendChild( frame );
 
 		S.announced = false;
-		S.view = { level : level, head : head, title : title, tools : tools, settings : settings, accordion : null, marked : tools.marked, state : bar.state, line : bar.line, reset : bar.reset, save : bar.save, apply : bar.apply, split : null, port : port, frame : frame };
+		S.blocked = '';
+		S.view = { level : level, kind : 'groups', rows : {}, one : null, repaint : null, head : head, title : title, tools : tools, settings : settings, accordion : null, marked : tools.marked, state : bar.state, line : bar.line, reset : bar.reset, save : bar.save, apply : bar.apply, split : null, port : port, frame : frame };
 
 		const split = Nino.adminUi.split( { id : 'themes-split', settings : settings, tools : tools.el, preview : port, onReload : reloadFrame, onView : function( view ) {
 
@@ -1833,12 +2977,19 @@
 
 		S.hints = [];
 		const inside = within( view.settings, held ) === true ? held.id : '';
-		const drawn = isGroup( group ) === false ? groupsOf() : settingsOf( group, open ?? ( here().parts[2] ?? '' ) );
+		const kind = group === 'brand' ? 'brand' : ( isGroup( group ) === true ? 'group' : 'groups' );
+
+		view.kind = kind;
+		view.rows = {};
+		view.one = null;
+		view.repaint = null;
+
+		const drawn = kind === 'groups' ? groupsOf( open ?? here().parts[1] ) : ( kind === 'brand' ? brandOf( open ?? ( here().parts[2] ?? '' ) ) : settingsOf( group, open ?? ( here().parts[2] ?? '' ) ) );
 
 		fill( view.settings, drawn );
-		view.split.words( { settings : isGroup( group ) === false ? word('label/groups') : word('label/settings') } );
+		view.split.words( { settings : kind === 'groups' ? word('label/groups') : word('label/settings') } );
 
-		if( isGroup( group ) === false ) {
+		if( kind !== 'group' ) {
 			S.mark = '';
 			view.marked.textContent = word('msg/whole-page');
 		}
@@ -1863,34 +3014,47 @@
 
 		options = options ?? {};
 
+		// The images of the logo were opened from the brand, and the way back from them ends on the link that went there
+		if( S.leftFor === 'logo' ) {
+			S.leftFor = '';
+
+			if( ( parts[1] ?? '' ) === 'brand' && ( parts[2] ?? '' ) === 'logo' && options.focus === false )
+				options = { focus : 'logo' };
+		}
+
 		// A step of the browser's history between the levels puts the focus where the person's own step does
 		if( options.history === true ) {
 
 			const was = S.at[1] ?? '';
 			const group = parts[1] ?? '';
 
-			if( isGroup( group ) === true && group !== was )
+			if( ( isGroup( group ) === true || group === 'brand' ) && group !== was )
 				options = { focus : 'back' };
-			else if( isGroup( group ) === false && isGroup( was ) === true )
+			else if( isGroup( group ) === false && group !== 'brand' && ( isGroup( was ) === true || was === 'brand' ) )
 				options = { from : was };
 		}
 
 		S.at = parts.slice();
 
 		const group = parts[1] ?? '';
-		const known = isGroup( group );
+		const known = isGroup( group ) === true || group === 'brand';
 
 		const before = S.mark;
 
-		draw( known === true ? group : '', parts[2] );
+		draw( known === true ? group : '', known === true ? parts[2] : group );
 
 		if( S.mark !== before )
 			reloadFrame();
 
 		if( known === true )
 			Nino.admin.router.set( 'themes', addressOf( [ S.key, group ].concat( S.view.accordion !== null ? S.view.accordion.get() : [] ) ) );
-		else
-			Nino.admin.router.set( 'themes', addressOf( [ S.key ] ) );
+		else {
+
+			// The groups are the theme's own address; the other sections of the first level have one each
+			const first = S.view.accordion !== null ? S.view.accordion.get()[0] : 'groups';
+
+			Nino.admin.router.set( 'themes', addressOf( first === 'groups' || first === undefined ? [ S.key ] : [ S.key, first ] ) );
+		}
 
 		Nino.adminUi.showLevel( 'themes-theme', { focus : false } );
 
@@ -1901,6 +3065,8 @@
 
 		if( options.focus === 'back' )
 			target = dc.getElementById('themes-back-groups');
+		else if( options.focus === 'logo' )
+			target = dc.getElementById('themes-logo-open');
 		else if( options.from !== undefined )
 			target = S.view.settings.querySelector( '[data-group="'+ options.from+ '"]' );
 		else
@@ -1995,7 +3161,7 @@
 
 					// The list was drawn again: the card of the theme that was applied is a new one, and its Edit is where the focus goes
 					land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ theme.key+ '"]' ), null );
-				} );
+				}, theme.stamp );
 			}, { className : 'nino-admin-btn--small' } );
 			use.dataset.apply = theme.key;
 			actions.appendChild( use );
@@ -2011,6 +3177,9 @@
 
 		S.list = data;
 		S.active = data.active;
+		S.canRestore = data.canRestore === true;
+		S.last = data.last ?? null;
+		S.state = typeof data.state === 'string' ? data.state : S.state;
 
 		const mount = dc.getElementById('themes-list');
 		const wrap = el( 'div', 'themes-cards' );
@@ -2029,7 +3198,7 @@
 		mount.appendChild( say );
 
 		if( data.foreign === true )
-			mount.appendChild( Nino.adminUi.notice( word('msg/foreign') ) );
+			mount.appendChild( Nino.adminUi.notice( word( data.unreadable === true ? 'msg/unreadable' : 'msg/foreign' ) ) );
 
 		if( data.active !== null && data.active.stale === true )
 			mount.appendChild( Nino.adminUi.notice( word('msg/stale') ) );
@@ -2062,9 +3231,7 @@
 			discard	: function() {
 				if( S.ready === false )
 					return;
-				S.mix = clone( S.saved.mix );
-				S.mix.parts = S.mix.parts ?? {};
-				take( S.saved );
+				dropDraft();
 				paintBar();
 				draw( here().parts[1] ?? '' );
 				flushWait();

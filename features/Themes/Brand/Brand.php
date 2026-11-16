@@ -128,10 +128,12 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		mixed			$input				{ key: { own: bool, value: ... } }
+		 *	@param		array			$keep					The brand as it is stored: a font that is its own value there is taken as it stands, folder or no folder - a font that
+		 *																is not there is the stored value of the project until it is changed, and a request that leaves it alone is no request to change it
 		 *
 		 *	@return 	array|string							The clean brand, or the key that is wrong ('' for an input that is no map)
 		 */
-		public static function clean( array &$appData, mixed $input ): array|string {
+		public static function clean( array &$appData, mixed $input, array $keep = [] ): array|string {
 
 			if( is_array( $input ) === false )
 				return '';
@@ -159,7 +161,7 @@ namespace Nino\Modules\Themes {
 
 				if( str_starts_with( $key, 'font-' ) === true ) {
 					$fonts ??= self::fonts( $appData );
-					$ok = is_string( $value ) === true && isset( $fonts[$value] ) === true;
+					$ok = is_string( $value ) === true && ( isset( $fonts[$value] ) === true || ( ( $keep[$key]['own'] ?? false ) === true && ( $keep[$key]['value'] ?? null ) === $value && preg_match( self::SLUG, $value ) === 1 ) );
 				}
 				else if( $key === 'tone' )
 					$ok = is_string( $value ) === true && isset( Palette::TONES[$value] ) === true;
@@ -175,6 +177,31 @@ namespace Nino\Modules\Themes {
 			}
 
 			return $clean;
+		}
+
+		/**
+		 *	The brand as it is stored, read for what it says and not held to what a request may say: every value is looked at for itself, and one that is
+		 *	wrong - or none - is not the project's own, where the others stay. A font whose folder is gone stays the project's own value (the stylesheet
+		 *	draws the stack of the system for it until the folder is back)
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		mixed			$input				The content of brand.json
+		 *
+		 *	@return 	array											As clean() answers it, always whole
+		 */
+		public static function read( array &$appData, mixed $input ): array {
+
+			$input = is_array( $input ) === true ? $input : [];
+			$brand = [];
+
+			foreach( self::KEYS as $key ) {
+
+				$entry = [ $key => $input[$key] ?? [ 'own' => false ] ];
+				$one = self::clean( $appData, $entry, $entry );
+				$brand[$key] = is_array( $one ) === true ? $one[$key] : [ 'own' => false ];
+			}
+
+			return $brand;
 		}
 
 		/**

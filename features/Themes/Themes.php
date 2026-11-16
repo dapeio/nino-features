@@ -71,7 +71,7 @@ namespace Nino\Modules {
 			self::$_preview = '';
 
 			// A stylesheet that is not there is no file of the bundle: with none written the bundle is what it is without a theme
-			if( is_file( \Nino\Filesystem::path( $appData, self::SHEET ) ) === true )
+			if( \Nino\Modules\Themes\Store::readable( \Nino\Filesystem::path( $appData, self::SHEET ) ) === true )
 				\Nino\Html::addAsset( $appData, '/.cache/style.css', self::SHEET );
 
 			\Nino\Callbacks::registerCallback( $appData, \Nino\Components::VARIANTS, [ self::class, 'variants' ] );

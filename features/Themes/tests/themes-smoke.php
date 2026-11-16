@@ -18,7 +18,9 @@ declare(strict_types=1);
  *											H. rights and names: no right, no answer; what a name, a path, a step, a colour and a css may be
  *											I. sizes, the feature off and on, and the time it takes
  *											J. the theme Nino: what is in its folder, that its middle is the reset, the order of its steps, its variants and its sizes
- *											K. the panel: its files, its words, what the API gives a screen - the pages, what an own theme is made of, the label of a
+ *											L. the second part of the panel: the brand through its own action and its stamp, the own css, the name of an own theme, the
+											   state a restore is asked on, a delete that would replace a stylesheet that is somebody else's
+											K. the panel: its files, its words, what the API gives a screen - the pages, what an own theme is made of, the label of a
  *											   component, the time a token holds - the outline of a component in the preview, and the script over a stand-in of the page
  *
  *									Runs against an isolated sandbox directory with the kernel's own Basis; the themes are the two fixtures of
@@ -143,8 +145,16 @@ function themesReboot( array $old, array $modules ): array {
 function themesCall( array &$appData, string $action, array $data = [] ): array {
 
 	// A change of an own theme says which state of it it was made on: the stamp open gives, unless the call names its own (null: none)
-	if( in_array( $action, [ 'themes/save', 'themes/delete' ], true ) === true && array_key_exists( 'base', $data ) === false && str_starts_with( (string) ( $data['theme'] ?? '' ), 'own:' ) === true )
+	if( in_array( $action, [ 'themes/save', 'themes/delete', 'themes/apply' ], true ) === true && array_key_exists( 'base', $data ) === false && str_starts_with( (string) ( $data['theme'] ?? '' ), 'own:' ) === true )
 		$data['base'] = (string) ( ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'theme' => $data['theme'] ], 'themes/open' )[1]['stamp'] ?? '' );
+
+	// A change that posts the brand says which state of it it was made on: the stamp the list gives, unless the call names its own
+	if( in_array( $action, [ 'themes/save', 'themes/save-as', 'themes/brand' ], true ) === true && array_key_exists( 'brand', $data ) === true && array_key_exists( 'brandBase', $data ) === false )
+		$data['brandBase'] = (string) ( ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [], 'themes/list' )[1]['brandStamp'] ?? '' );
+
+	// A restore says which state it was asked on: the stamp the store gives, unless the call names its own
+	if( $action === 'themes/restore' && array_key_exists( 'base', $data ) === false )
+		$data['base'] = \Nino\Modules\Themes\Store::stamp( $appData );
 
 	[ $status, $body ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], $data, $action );
 
@@ -277,8 +287,8 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( dirnam
 check( 'no file of the feature names a glob flag that only some systems define'. ( $named === [] ? '' : ' - '. implode( ', ', $named ) ), $named === [] );
 
 $panels = \Nino\Admin\Admin::panels( $appData );
-check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its eight actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
-	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/save', 'themes/save-as', 'themes/apply', 'themes/restore', 'themes/delete' ]
+check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its nine actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
+	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/save', 'themes/save-as', 'themes/brand', 'themes/apply', 'themes/restore', 'themes/delete' ]
 	&& array_diff( array_keys( \Nino\Modules\Themes\Admin::actions() ), array_keys( \Nino\Admin\Admin::actions( $appData ) ) ) === [] );
 
 $source = (string) file_get_contents( $featureDir. '/Admin/Admin.php' ). (string) file_get_contents( $featureDir. '/Store/Store.php' );
@@ -1113,8 +1123,8 @@ check( 'a theme of a package is not deleted by it', $status === 409 && $body['co
 [ $status, $body ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:nothing' ] );
 check( 'one that is not there is 404', $status === 404 && $body['code'] === 'themes_unknown' );
 
-[ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'FREE', [] ) ] );
-check( 'a name that makes the key of one that is there is taken, whatever its case: 409 and the name', $status === 409 && $body['code'] === 'themes_name_taken' && $body['params'] === [ 'FREE' ] && $body['field'] === 'name' );
+[ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'FREE and EASY', [] ) ] );
+check( 'a name that a card has is taken, whatever its case: 409 and the name of that card', $status === 409 && $body['code'] === 'themes_name_taken' && $body['params'] === [ 'Free and easy' ] && $body['field'] === 'name' );
 foreach( [ '', '   ', '!!!', str_repeat( 'x', 61 ), "two\nlines", "nul\0byte" ] as $name ) {
 
 	[ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( $name, [] ) ] );
@@ -1472,6 +1482,7 @@ $every = [
 	'themes/preview'	=> [ 'mix' => [ 'parts' => [ 'section' => [ 'from' => 'craft-probe' ] ] ] ],
 	'themes/save'			=> [ 'theme' => 'own:x', 'mix' => themesMix( 'X', [] ) ],
 	'themes/save-as'	=> [ 'mix' => themesMix( 'X', [] ) ],
+	'themes/brand'		=> [ 'brand' => [], 'brandBase' => 'x' ],
 	'themes/apply'		=> [ 'theme' => 'craft-probe' ],
 	'themes/restore'	=> [],
 	'themes/delete'		=> [ 'theme' => 'own:x' ],
@@ -1483,8 +1494,8 @@ foreach( $every as $action => $data ) {
 	$answers[$action] = [ $status, $body ];
 }
 
-check( 'Nr. 9: an account that has not the right - the Editor of the starter site has not - gets 403 on every one of the eight actions, and nothing is read or written: no state, no stylesheet, no draft, no cache of the themes, nothing held by the session',
-	count( $answers ) === 8 && array_filter( $answers, static fn( array $answer ): bool => $answer[0] !== 403 ) === [] && is_dir( $state ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false
+check( 'Nr. 9: an account that has not the right - the Editor of the starter site has not - gets 403 on every one of the nine actions, and nothing is read or written: no state, no stylesheet, no draft, no cache of the themes, nothing held by the session',
+	count( $answers ) === 9 && array_filter( $answers, static fn( array $answer ): bool => $answer[0] !== 403 ) === [] && is_dir( $state ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false
 	&& is_dir( ninoSandboxDir( $site ). '/private/data/theme/.cache' ) === false && isset( $_SESSION[$site['./nino/uid']]['./themes/preview'] ) === false );
 
 \Nino\Auth::logoutUser( $site );
@@ -1993,8 +2004,8 @@ $panelWords = [ 'en_US' => \Nino\Admin\Admin::textFills( $site, '/features/Theme
 check( 'K. the panel names its script and its stylesheet, both of them files of the feature, and its template holds the two mounts the script draws into - the list and the theme - and no script, no style and no handler of an event',
 	count( $assets ) === 2 && str_ends_with( $assets[0], '/assets/admin.js' ) === true && str_ends_with( $assets[1], '/assets/admin.css' ) === true && is_file( $featureDir. '/assets/admin.js' ) === true && is_file( $featureDir. '/assets/admin.css' ) === true
 	&& str_contains( $template, 'id="themes-list"' ) === true && str_contains( $template, 'id="themes-theme"' ) === true && preg_match( '/<script|<style|\sstyle=|\son[a-z]+=|javascript:/i', $template ) === 0 );
-check( 'K. the script keeps to the CSP of the workbench - nothing is built from a string, nothing is written as markup, and the only place a style is set is the box that measures a calculation - and the stylesheet is scoped to the panel: every rule begins with its id, but those for the dialog of the name, which stands in the root of the workbench',
-	preg_match( '/\beval\s*\(|new\s+Function|setTimeout\s*\(\s*[\'"]|insertAdjacentHTML|document\.write|\.outerHTML\s*=/', $script ) === 0 && preg_match( '/innerHTML\s*=\s*[^\'\s]/', $script ) === 0 && preg_match( '/(?<!probe)\.style\b/', $script ) === 0
+check( 'K. the script keeps to the CSP of the workbench - nothing is built from a string, nothing is written as markup, and the only places a style is set are the box that measures a calculation and the swatches of the palette, which show a colour that no stylesheet has - and the stylesheet is scoped to the panel: every rule begins with its id, but those for the dialog of the name, which stands in the root of the workbench',
+	preg_match( '/\beval\s*\(|new\s+Function|setTimeout\s*\(\s*[\'"]|insertAdjacentHTML|document\.write|\.outerHTML\s*=/', $script ) === 0 && preg_match( '/innerHTML\s*=\s*[^\'\s]/', $script ) === 0 && preg_match( '/(?<!probe|swatch)\.style\b/', $script ) === 0 && preg_match( '/setAttribute\(\s*[\'"]style/', $script ) === 0
 	&& str_starts_with( ltrim( $sheet ), '@layer nino.system, nino.tool, nino.local;' ) === true && preg_match_all( '/^(?:#themes-app|\t#themes-app)[^{]*\{/m', $sheet ) > 20 && preg_match( '/^(?!\.themes-dialog)[.a-z][^{@\n]*\{/m', preg_replace( '~/\*.*?\*/~s', '', $sheet ) ) === 0 );
 check( 'K. every word of the panel is a fill of both interface languages, with the same places for a param in each, and the placeholder page of the first part is gone: no shortcode of the workbench for it and no fill for its sentences',
 	$panelWords['en_US'] !== [] && array_keys( array_filter( $panelWords['en_US'], static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/themes/' ) === true, ARRAY_FILTER_USE_KEY ) ) === array_keys( array_filter( $panelWords['de_DE'], static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/themes/' ) === true, ARRAY_FILTER_USE_KEY ) )
@@ -2162,6 +2173,302 @@ $doomed = $open( 'own:doomed' );
 check( 'K. a theme is deleted only as the one who deletes it saw it: another stamp or none is 409 and the theme is there', $wrong === 409 && $missing === 409 && $open( 'own:doomed' )['stamp'] === $doomed['stamp'] );
 [ $gone ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:doomed', 'base' => $doomed['stamp'] ] );
 check( 'K. ...and with its stamp it is deleted', $gone === 200 && themesCall( $site, 'themes/open', [ 'theme' => 'own:doomed' ] )[0] === 404 );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nL. The second part of the panel: the brand, the own css, the settings of a theme, the last state\n";
+( static function(): void {
+
+$site = themesSite();
+ninoUser( $site, 'designer@example.com' );
+$state = ninoSandboxDir( $site ). '/private/data/theme';
+$sheet = ninoSandboxDir( $site ). '/private/assets/theme.css';
+$open = static fn( string $theme ): array => themesCall( $site, 'themes/open', [ 'theme' => $theme ] )[1];
+$listOf = static fn(): array => themesCall( $site, 'themes/list' )[1];
+$digestOf = static function( string $dir ): string {
+
+	$files = [];
+
+	foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ) ) as $file )
+		$files[] = substr( (string) $file, strlen( $dir ) ). ':'. sha1_file( (string) $file );
+
+	sort( $files );
+
+	return sha1( implode( "\n", $files ) );
+};
+$none = [];
+
+foreach( \Nino\Modules\Themes\Brand::KEYS as $key )
+	$none[$key] = [ 'own' => false ];
+
+$own = static fn( array $set ): array => array_merge( $none, array_map( static fn( string $value ): array => [ 'own' => true, 'value' => $value ], $set ) );
+
+$list = $listOf();
+check( 'L. the list tells the panel what the API takes: the longest css and name, the stamp of the state and the one of the brand - so that it holds nothing of its own - and the fonts there are',
+	$list['limits'] === [ 'css' => \Nino\Modules\Themes\Mix::CSS_LENGTH, 'name' => \Nino\Modules\Themes\Mix::NAME_LENGTH ] && $list['limits']['css'] === 65536 && $list['limits']['name'] === 60
+	&& $list['state'] === '' && is_string( $list['brandStamp'] ) === true && strlen( $list['brandStamp'] ) === 64 && array_column( $list['fonts'], 'key' ) === [ 'system-sans', 'system-serif', 'system-mono', 'open-sans' ] );
+
+// -- what a draft says of the brand: where the values come from, and the colours
+$described = $open( 'craft-probe' );
+$neutral = $open( 'nino' );
+check( 'L. open and preview say what the brand is: every value as it comes out, what the theme suggests, and what Nino.css says where nothing else does - the panel shows the value it goes back to from these',
+	$described['brand']['defaults'] === \Nino\Modules\Themes\Brand::DEFAULTS && $described['brand']['suggested']['tone'] === 'warm' && $described['brand']['suggested']['font-title'] === 'open-sans' && $described['brand']['stored'] === $none
+	&& $described['brand']['effective']['font-title'] === 'open-sans' && $described['brand']['effective']['color-1'] === '#1c5db8' );
+check( 'L. a brand that names no colour and no tone but the neutral one has the colours of the reset, and says so - the theme that suggests a warm tone has colours of its own; the pairs are those of the reset and the veil is the ground of a picture under a section',
+	$neutral['palette']['source'] === 'reset' && $described['palette']['source'] === 'brand' && $neutral['palette']['veil'] === \Nino\Modules\Themes\Palette::VEIL && isset( $neutral['palette']['colors']['light']['ink'] ) === true && count( $neutral['palette']['contrast'] ) === 24 && min( $neutral['palette']['contrast'] ) >= 4.5 );
+[ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [] ], 'brand' => $own( [ 'color-1' => '#9a4b1d' ] ) ] );
+$truncated = [];
+
+foreach( \Nino\Modules\Themes\Palette::pairs( $body['palette']['colors'], $body['palette']['colors']['color-1'] ) as $name => $ratio )
+	$truncated[$name] = floor( $ratio * 100 + 1e-9 ) / 100;
+
+check( 'L. a contrast is told cut to two decimals and not rounded, as the field of the colour of the workbench cuts it - so that the number of a pair and the number under its colour are one', $body['palette']['contrast'] === $truncated && $body['palette']['contrast'] !== array_map( static fn( float $ratio ): float => round( $ratio, 2 ), \Nino\Modules\Themes\Palette::pairs( $body['palette']['colors'], $body['palette']['colors']['color-1'] ) ) );
+check( 'L. a draft with a colour of its own has a palette of its own: the source is the brand, the first colour is the one set, the colour written on it is white or black, and no pair is under 4.5 : 1',
+	$status === 200 && $body['palette']['source'] === 'brand' && $body['palette']['colors']['color-1'] === '#9a4b1d' && in_array( $body['palette']['colors']['on-color-1'], [ '#ffffff', '#000000' ], true ) === true && min( $body['palette']['contrast'] ) >= 4.5 && $body['brand']['stored']['color-1']['value'] === '#9a4b1d' );
+[ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [] ], 'brand' => $own( [ 'tone' => 'warm' ] ) ] );
+check( 'L. the tone alone is a palette too - the grounds take it - and so the source is the brand; a mode or a font alone is not', $body['palette']['source'] === 'brand'
+	&& themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [] ], 'brand' => $own( [ 'mode' => 'dark', 'font-title' => 'system-serif' ] ) ] )[1]['palette']['source'] === 'reset' );
+
+// -- the brand alone: one action, whichever theme is open
+$before = $listOf();
+[ $status, $body ] = themesCall( $site, 'themes/brand', [ 'theme' => 'craft-probe', 'brand' => $own( [ 'color-1' => '#1f6f5b' ] ) ] );
+check( 'L. the brand is saved alone through its own action, with the theme that is open named: 200, written in the state, the website unchanged where no theme is on it - and the answer has the new stamps',
+	$status === 200 && $body['saved'] === true && $body['applied'] === false && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1'] === [ 'own' => true, 'value' => '#1f6f5b' ] && is_file( $sheet ) === false
+	&& $body['brandStamp'] !== $before['brandStamp'] && $body['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && $body['canRestore'] === true && glob( $state. '/state/own/*.json' ) === [] );
+$stamp = $body['brandStamp'];
+[ $status, $body ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => $before['brandStamp'] ] );
+[ $none1 ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => null ] );
+[ $list1 ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => [ $stamp ] ] );
+check( 'L. a brand that was saved by another tab since the one who asks opened it is 409 themes_brand_changed - so is a request with no stamp and one with a list - and the colour that stands is the one of the other tab',
+	$status === 409 && $body['code'] === 'themes_brand_changed' && $body['field'] === 'brand' && $none1 === 409 && $list1 === 409 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#1f6f5b' );
+[ $status ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => $stamp ] );
+check( 'L. ...and with the stamp that stands now it is written, which is how Overwrite goes', $status === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#8b1e3f' );
+$refused = [];
+
+foreach( [ 'text', $own( [ 'color-1' => 'red' ] ), $own( [ 'color-1' => '#ff0000; } body { x' ] ), $own( [ 'font-title' => '../../etc' ] ), $own( [ 'tone' => 'hot' ] ), $own( [ 'mode' => 'night' ] ), $own( [ 'color-1' => "#9a4b1d\0" ] ), array_merge( $none, [ 'logo' => [ 'own' => true, 'value' => '/x.png' ] ] ), array_merge( $none, [ 'tone' => [ 'own' => true ] ] ) ] as $bad ) {
+	$brandStamp = (string) $listOf()['brandStamp'];
+	[ $status, $body ] = themesCall( $site, 'themes/brand', [ 'brand' => $bad, 'brandBase' => $brandStamp ] );
+	$refused[] = $status === 400 && $body['code'] === 'themes_brand' && $body['field'] === 'brand' && str_contains( json_encode( $body ), "\0" ) === false;
+}
+
+[ $nothing ] = themesCall( $site, 'themes/brand', [ 'brandBase' => (string) $listOf()['brandStamp'] ] );
+check( 'L. a brand that is not a brand - a text, a colour that is no #rrggbb or has a rule in it, a font that is a path, an unknown tone or mode, a value the brand has not (a logo: M4), an own value with no value - is 400, and none posted is 400 too',
+	$refused === array_fill( 0, 9, true ) && $nothing === 400 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#8b1e3f' );
+
+// the brand of the website is built again for the theme that is on it
+themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
+themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#2459d8' ] ) ] );
+check( 'L. the brand alone is on the website at once where a theme is on it: the stylesheet is built again with the colour', str_contains( (string) file_get_contents( $sheet ), '--brand-color-1: #2459d8;' ) === true && is_dir( $state. '/next' ) === false );
+$changed = $listOf();
+check( 'L. ...and it is a change of the state like any other: the state before is the last state, and restore gives the colour it was',
+	themesCall( $site, 'themes/restore' )[0] === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#8b1e3f' && str_contains( (string) file_get_contents( $sheet ), '--brand-color-1: #8b1e3f;' ) === true );
+themesCall( $site, 'themes/restore' );
+
+// -- an own theme with the brand: the stamp of the brand is asked for where the brand is posted, and not where it is not
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe' ] ] ) ] );
+$stamps = $open( 'own:lindner' );
+check( 'L. open gives the stamp of the brand with the theme, and the state the list and every answer give is the one the store says', $stamps['brandStamp'] === $listOf()['brandStamp'] && $stamps['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && strlen( $stamps['state'] ) === 40 );
+[ $without ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], '.a { }' ) ] );
+check( 'L. a save that posts no brand does not ask for the stamp of one and does not touch the brand', $without === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#2459d8' );
+[ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], '.b { }' ), 'brand' => $own( [ 'color-1' => '#000000' ] ), 'brandBase' => 'stale' ] );
+[ $saveAs, $bodyAs ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Second', [] ), 'brand' => $own( [ 'color-1' => '#000000' ] ), 'brandBase' => 'stale' ] );
+check( 'L. a save and a save as that post the brand of a state that is not the one that stands are 409 themes_brand_changed: nothing of the mix and nothing of the brand is written, and no own theme is made',
+	$status === 409 && $body['code'] === 'themes_brand_changed' && $saveAs === 409 && $bodyAs['code'] === 'themes_brand_changed' && json_decode( (string) file_get_contents( $state. '/state/own/lindner.json' ), true )['css'] === '.a { }'
+	&& isset( json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] ) === true && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#2459d8' && is_file( $state. '/state/own/second.json' ) === false );
+[ $status ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], '.b { }' ), 'brand' => $own( [ 'color-1' => '#000000' ] ) ] );
+check( 'L. M5: with the brand posted and its stamp, both are written - the brand in its file and the own theme in its own, in which the brand is not', $status === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#000000'
+	&& strpos( (string) file_get_contents( $state. '/state/own/lindner.json' ), 'color-1' ) === false && strpos( (string) file_get_contents( $state. '/state/own/lindner.json' ), '#000000' ) === false );
+
+// -- a rename is a save: the key stays, the name is the new one - and no two own themes carry one name
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Second theme', [] ) ] );
+[ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner Renamed', [] ) ] );
+check( 'L. an own theme is renamed with a save: the key is the one it had, the name is the new one, and what is in the list is the name', $status === 200 && $body['theme'] === 'own:lindner' && json_decode( (string) file_get_contents( $state. '/state/own/lindner.json' ), true )['name'] === 'Lindner Renamed'
+	&& in_array( 'Lindner Renamed', array_column( $listOf()['themes'], 'name' ), true ) === true && is_file( $state. '/state/own/lindner-renamed.json' ) === false );
+$names = [];
+
+foreach( [ 'second theme', 'SECOND THEME', 'Second  Theme!', 'second-theme' ] as $taken ) {
+	[ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( $taken, [] ) ] );
+	$names[] = $status === 409 && $body['code'] === 'themes_name_taken' && $body['field'] === 'name' && $body['params'] === [ 'Second theme' ];
+}
+
+[ $caseOnly ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'LINDNER RENAMED', [] ) ] );
+[ $key ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:second-theme', 'mix' => themesMix( 'Second Theme', [] ) ] );
+check( 'L. a name that another own theme has - whatever its case, its marks and its spaces, which is what its key is - is 409 themes_name_taken, at the field of the name, and the name that stands is the one it was; the theme\'s own name in another case is no collision, and a theme may keep its name',
+	$names === [ true, true, true, true ] && json_decode( (string) file_get_contents( $state. '/state/own/lindner.json' ), true )['name'] === 'LINDNER RENAMED' && $caseOnly === 200 && $key === 200 );
+
+// a save as takes the name as a rename does, and a key that is taken by a card of another name is no collision: the new theme has the next free one
+[ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'SECOND THEME', [] ) ] );
+[ $keyTaken, $keyBody ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [] ) ] );
+[ $keyTakenAgain, $keyBodyAgain ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'LINDNER!', [] ) ] );
+check( 'L. a save as with the name of a card is 409 themes_name_taken with the name of that card, as a rename; "Lindner" is no name that a card has any more - the theme that has the key is called something else - and so it is saved, with the next free key, and so is the one after it',
+	$status === 409 && $body['code'] === 'themes_name_taken' && $body['params'] === [ 'Second Theme' ] && $keyTaken === 200 && $keyBody['theme'] === 'own:lindner-2' && is_file( $state. '/state/own/lindner-2.json' ) === true
+	&& $keyTakenAgain === 409 && $keyBodyAgain['params'] === [ 'Lindner' ] && json_decode( (string) file_get_contents( $state. '/state/own/lindner.json' ), true )['name'] === 'LINDNER RENAMED' );
+themesCall( $site, 'themes/delete', [ 'theme' => 'own:lindner-2' ] );
+
+// -- the own css: what the field of the panel may send, and what the API takes
+$css = '</style><script>alert(1)</script><style>a { color: red';
+[ $status ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], $css ) ] );
+check( 'L. the own css is text: a closing tag of a style, a script and a brace that is never closed are kept as they were written, in the theme and at the end of the stylesheet that is built for it, and nothing of it is read or checked',
+	$status === 200 && $open( 'own:lindner' )['mix']['css'] === $css );
+themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
+$built = (string) file_get_contents( $sheet );
+$bundle = \Nino\Modules\Assets::stylesheet( themesReboot( $site, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] ), THEMES_BUNDLE );
+check( 'L. ...and the bundle of the website holds it in the layer of the theme, closed: the layers after it are still the layers after it, and the one of the project is the last of them',
+	str_ends_with( $built, "/* The own css of the theme */\n". $css. "\n" ) === true && str_contains( $bundle, '@layer nino.theme {' ) === true && substr_count( $bundle, '{' ) === substr_count( $bundle, '}' ) );
+$state1 = $digestOf( $state );
+$sizes = [];
+
+foreach( [ [ 'css', str_repeat( 'x', 65537 ) ], [ 'css', str_repeat( 'a{b:c}', 40000 ) ], [ 'css', "a { }\0" ], [ 'css', [ 'a' ] ] ] as [ $field, $bad ] ) {
+	[ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => [ 'name' => 'Lindner', 'parts' => [], $field => $bad ] ] );
+	$sizes[] = $status === 400 && $body['code'] === 'themes_mix' && $body['field'] === 'css';
+}
+
+check( 'L. a css of more than 65536 bytes - 64 KB, 240 KB -, one with a null byte and one that is no text is 400 themes_mix at the field of the css, and the state is what it was, byte for byte', $sizes === array_fill( 0, 4, true ) && $digestOf( $state ) === $state1 );
+[ $status ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], str_repeat( 'x', 65536 ) ) ] );
+[ $preview, $answered ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [], 'css' => str_repeat( 'x', 65537 ) ] ] );
+check( 'L. the longest css is 65536 bytes, and 65536 are taken; the preview takes what the save takes and refuses what it refuses', $status === 200 && $preview === 400 && $answered['code'] === 'themes_mix' );
+
+// -- the last state: it asks which state it was asked on
+$base = \Nino\Modules\Themes\Store::stamp( $site );
+[ $missing, $bodyMissing ] = themesCall( $site, 'themes/restore', [ 'base' => null ] );
+[ $stale, $bodyStale ] = themesCall( $site, 'themes/restore', [ 'base' => str_repeat( '0', 40 ) ] );
+check( 'L. a restore that names no state, or one that is not the one that stands, is 409 themes_state and swaps nothing: the other tab\'s save is not put aside unseen', $missing === 409 && $bodyMissing['code'] === 'themes_state' && $stale === 409 && $bodyStale['code'] === 'themes_state'
+	&& \Nino\Modules\Themes\Store::stamp( $site ) === $base && is_dir( $state. '/swap' ) === false );
+$previous = $digestOf( $state. '/previous' );
+[ $status, $body ] = themesCall( $site, 'themes/restore', [ 'base' => $base ] );
+check( 'L. ...and with the stamp that stands it is restored, and the answer has the stamp of the state that stands now and says that there is a last state to go back to - the one it was', $status === 200 && $body['restored'] === true && $body['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && $body['state'] !== $base && $body['canRestore'] === true && $digestOf( $state. '/previous' ) !== $previous && $digestOf( $state. '/state' ) === $previous );
+[ $again ] = themesCall( $site, 'themes/restore', [ 'base' => $base ] );
+check( 'L. the stamp of the state before the restore is not the stamp after it: asking twice with the old one is 409', $again === 409 );
+themesCall( $site, 'themes/restore' );
+
+// -- delete: a stylesheet that is somebody else's is asked about, as it is for every change that would replace it
+themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'To delete', [] ) ] );
+file_put_contents( $sheet, ".mine { }\n" );
+[ $status, $body ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:to-delete' ] );
+check( 'L. a delete that would build the stylesheet over one that is somebody else\'s is 409 themes_foreign, and the theme is there', $status === 409 && $body['code'] === 'themes_foreign' && is_file( $state. '/state/own/to-delete.json' ) === true );
+[ $status ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:to-delete', 'force' => true ] );
+check( 'L. ...and told that it may, it is deleted - the stylesheet is the compiler\'s again, and the one it replaced is the last state\'s', $status === 200 && is_file( $state. '/state/own/to-delete.json' ) === false && \Nino\Modules\Themes\Compiler::isOwn( (string) file_get_contents( $sheet ) ) === true && (string) file_get_contents( $state. '/previous/theme.css' ) === ".mine { }\n" );
+
+// -- force is for the stylesheet that is somebody else's and nothing else: a stamp that is stale is refused whatever the call says of force
+$lForce = [];
+$lBrand = (string) $listOf()['brandStamp'];
+$lOpen = $open( 'own:lindner' );
+[ $lForce[] ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#111111' ] ), 'brandBase' => 'stale', 'force' => true ] );
+[ $lForce[] ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [] ), 'base' => 'stale', 'force' => true ] );
+[ $lForce[] ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [] ), 'base' => $lOpen['stamp'], 'brand' => $own( [ 'color-1' => '#111111' ] ), 'brandBase' => 'stale', 'force' => true ] );
+[ $lForce[] ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Forced', [] ), 'brand' => $own( [ 'color-1' => '#111111' ] ), 'brandBase' => 'stale', 'force' => true ] );
+[ $lForce[] ] = themesCall( $site, 'themes/restore', [ 'base' => 'stale', 'force' => true ] );
+[ $lForce[] ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:lindner', 'base' => 'stale', 'force' => true ] );
+check( 'L. force is the answer to a stylesheet that is somebody else\'s and is no answer to a stamp: a brand, a save, a save as with a brand, a restore and a delete that name a stamp that is not the one that stands are 409 although they say force, and nothing is written',
+	$lForce === array_fill( 0, 6, 409 ) && (string) $listOf()['brandStamp'] === $lBrand && is_file( $state. '/state/own/forced.json' ) === false && is_file( $state. '/state/own/lindner.json' ) === true );
+
+// -- a stylesheet that the web server may not read is somebody else's, and the list answers
+file_put_contents( $sheet, ".mine { }\n" );
+// What the web server is to have of a project that somebody else's file is in: the files it keeps are its own - the lock, the state, the log - and the directory is its to write in
+exec( 'chmod -R a+rwX '. escapeshellarg( ninoSandboxDir( $site ). '/private' ) );
+chmod( $sheet, 0 );
+$switched = function_exists( 'posix_geteuid' ) === true && posix_geteuid() === 0 && function_exists( 'posix_seteuid' ) === true && posix_seteuid( 65534 ) === true;
+ninoWarnings();
+[ $status, $body ] = themesCall( $site, 'themes/list' );
+[ $applied, $appliedBody ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
+$booted = themesReboot( $site, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] );
+$listed = in_array( \Nino\Modules\Themes::SHEET, \Nino\Html::getAssets( $booted, THEMES_BUNDLE ), true );
+$bundled = \Nino\Modules\Assets::stylesheet( $booted, THEMES_BUNDLE );
+[ $replaced, $replacedBody ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe', 'force' => true ] );
+$readable = \Nino\Modules\Themes\Store::readable( $sheet ) === true && \Nino\Modules\Themes\Compiler::isOwn( (string) file_get_contents( $sheet ) ) === true;
+$warned = ninoWarnings();
+
+// and where the directory is not the web server's to write in, the file that cannot be read cannot be replaced either
+if( $switched === true )
+	posix_seteuid( 0 );
+
+unlink( $sheet );
+file_put_contents( $sheet, ".mine { }\n" );
+chmod( $sheet, 0 );
+chmod( dirname( $sheet ), 0555 );
+$locked = false;
+$lockedBody = [];
+
+if( $switched === true ) {
+	posix_seteuid( 65534 );
+	themesCall( $site, 'themes/restore', [ 'force' => true ] );
+	[ $locked, $lockedBody ] = themesCall( $site, 'themes/apply', [ 'theme' => 'band-probe', 'force' => true ] );
+	posix_seteuid( 0 );
+}
+
+chmod( dirname( $sheet ), 0755 );
+chmod( $sheet, 0644 );
+$suffix = $switched === true ? '' : ' (run as the owner of the file: it can read it, so only the answer is looked at)';
+check( 'L. a stylesheet of the project that the web server may not read is a stylesheet that is not the feature\'s and cannot be read: the list answers, says foreign and unreadable, and a change that would replace it is asked about with a code of its own - no warning, which the kernel makes a 500 of'. $suffix,
+	$status === 200 && ( $switched === false || ( $body['foreign'] === true && $body['unreadable'] === true && $applied === 409 && $appliedBody['code'] === 'themes_unreadable' && $warned === [] ) ) && ( $switched === true || $body['unreadable'] === false ) );
+check( 'L. told to replace it, the web server does: the file that is put in place keeps the rights of the one it replaces, so it is opened for reading - the website has its stylesheet, and the file that cannot be read was not in the bundle of the request that would have read it'. $suffix,
+	$switched === false || ( $replaced === 200 && $readable === true && $listed === false && $bundled !== '' ) );
+check( 'L. where the file cannot be replaced - the directory is not the web server\'s - the API does not say that it is done: 409 themes_locked'. $suffix,
+	$switched === false || ( $locked === 409 && $lockedBody['code'] === 'themes_locked' ) );
+unlink( $sheet );
+
+// -- a font that is gone is a font that is not there, and the brand stays what it was
+themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
+[ $status ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#9a4b1d', 'mode' => 'dark', 'font-title' => 'open-sans' ] ) ] );
+$fontDir = \Nino\Filesystem::path( $site, '/fonts/open-sans' );
+rename( $fontDir, $fontDir. '.gone' );
+unset( $site['./nino/themes/read'] );
+$stored = json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true );
+$opened = $open( 'craft-probe' );
+check( 'L. a font whose folder is gone stays what the project chose: the brand that is read has every value it had, the answer says which fonts are not there - the one the project chose and the one the theme suggests - and the panel is told where to say it',
+	$status === 200 && $opened['brand']['stored']['font-title'] === [ 'own' => true, 'value' => 'open-sans' ] && $opened['brand']['stored']['color-1']['value'] === '#9a4b1d' && $opened['brand']['stored']['mode']['value'] === 'dark'
+	&& $opened['brand']['unavailable'] === [ 'font-title', 'font-button' ] && $stored['font-title']['value'] === 'open-sans' );
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Other', [] ) ] );
+$sheetNow = (string) file_get_contents( $sheet );
+check( 'L. the next save of anything builds the stylesheet with the colour and the mode of the brand and the stack of the system for the font that is not there, and the brand is as it was',
+	str_contains( $sheetNow, '--brand-color-1: #9a4b1d;' ) === true && str_contains( $sheetNow, '--brand-scheme: dark;' ) === true && str_contains( $sheetNow, '@font-face' ) === false && str_contains( $sheetNow, '--brand-font-title: system-ui' ) === true
+	&& json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true ) === $stored );
+$posted = $own( [ 'color-1' => '#9a4b1d', 'mode' => 'dark', 'font-title' => 'open-sans' ] );
+[ $same ] = themesCall( $site, 'themes/brand', [ 'brand' => $posted ] );
+[ $other, $otherBody ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'font-text' => 'open-sans' ] ) ] );
+check( 'L. a request that leaves the font alone is no request to change it: the brand with the stored value is taken; one that chooses a font that is not there is not, which stays strict - 400 at the key',
+	$same === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['font-title']['value'] === 'open-sans' && $other === 400 && $otherBody['code'] === 'themes_brand' );
+rename( $fontDir. '.gone', $fontDir );
+unset( $site['./nino/themes/read'] );
+themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Another', [] ) ] );
+check( 'L. a font that comes back is the project\'s again: the next build has its @font-face and the stack with its name, and nothing was asked of anybody', str_contains( (string) file_get_contents( $sheet ), '@font-face { font-family: "Open Sans"' ) === true && $open( 'craft-probe' )['brand']['unavailable'] === [] );
+$broken = $stored;
+$broken['color-1'] = [ 'own' => true, 'value' => 'not a colour' ];
+\Nino\Filesystem::putFileContent( $site, '/data/theme/state/brand.json', $broken );
+check( 'L. a value that is wrong for itself is not own and the others stay: a stored brand is read value by value', \Nino\Modules\Themes\Store::read( $site )['brand']['color-1'] === [ 'own' => false ] && \Nino\Modules\Themes\Store::read( $site )['brand']['mode']['value'] === 'dark' );
+\Nino\Filesystem::putFileContent( $site, '/data/theme/state/brand.json', $stored );
+
+// -- the stamp of an own theme is asked for when it is applied, under the lock, and force is no answer to it
+$lApply = $open( 'own:lindner' );
+themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'LINDNER RENAMED', [], '.again { }' ) ] );
+[ $stale, $staleBody ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner', 'base' => $lApply['stamp'], 'force' => true ] );
+[ $none ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner', 'base' => null ] );
+[ $fresh ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner', 'base' => $open( 'own:lindner' )['stamp'] ] );
+check( 'L. an own theme is applied as the one who asks saw it: a stamp that is not the stamp of the theme - or none - is 409 themes_changed, though it says force, and the website keeps what it shows; with the stamp it is applied',
+	$stale === 409 && $staleBody['code'] === 'themes_changed' && $none === 409 && $fresh === 200 && \Nino\Modules\Themes\Store::read( $site )['active']['theme'] === 'own:lindner' );
+check( 'L. a card of the list says the stamp of its own theme, the one open gives, so that a card can apply what it shows; a theme of a package has none', array_values( array_filter( $listOf()['themes'], static fn( array $card ): bool => $card['key'] === 'own:lindner' ) )[0]['stamp'] === $open( 'own:lindner' )['stamp'] && isset( array_values( array_filter( $listOf()['themes'], static fn( array $card ): bool => $card['key'] === 'craft-probe' ) )[0]['stamp'] ) === false );
+
+// -- the last state says what comes back
+themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
+$last = $listOf()['last'];
+check( 'L. the last state says when it was saved and which theme the website showed in it - the theme that was the website\'s before the last change - by key and by name, and none where it was not kept', $last !== null && is_int( $last['at'] ) === true && abs( $last['at'] - time() ) < 3600 && $last['theme'] === 'own:lindner' && $last['name'] === 'LINDNER RENAMED'
+	&& themesCall( $site, 'themes/restore' )[1]['last']['theme'] === 'craft-probe' );
+\Nino\Filesystem::removeDir( ninoSandboxDir( $site ). '/private/data/theme/previous' );
+check( 'L. a last state that is not there has no time to tell', $listOf()['last'] === null && $listOf()['canRestore'] === false );
+
+// -- what a change that was broken off left is gone with the next one that writes
+themesCall( $site, 'themes/apply', [ 'theme' => 'nino' ] );
+mkdir( $state. '/building' );
+file_put_contents( $state. '/building/stray', 'x' );
+themesCall( $site, 'themes/apply', [ 'theme' => 'band-probe' ] );
+check( 'L. a copy of a state that a change left when it was broken off is removed by the next change that writes, and what was in it is no part of the state that is made', is_dir( $state. '/building' ) === false && file_exists( $state. '/state/stray' ) === false );
+mkdir( $state. '/building' );
+themesCall( $site, 'themes/restore' );
+check( 'L. ...and by a restore', is_dir( $state. '/building' ) === false );
+
+// -- the log names the new action, and the manual the panel
+check( 'L. the log of the workbench names what was done to the brand', \Nino\Modules\Themes\Admin::log( 'themes/brand', [] ) !== '' && \Nino\Modules\Themes\Admin::log( 'themes/brand', [] ) !== \Nino\Modules\Themes\Admin::log( 'themes/apply', [ 'theme' => 'x' ] ) );
+} )();
 
 // the widths are a strip of steps that is not there where the view is too narrow for the preview beside the settings, and the dialog that asks a name has the floor of the text too
 $narrow = preg_match( '/@container nino-split \(max-width: 40rem\) \{(.*)\}\s*\}\s*$/s', preg_replace( '~/\*.*?\*/~s', '', $sheet ), $found ) === 1 ? $found[1] : '';

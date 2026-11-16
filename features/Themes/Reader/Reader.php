@@ -583,7 +583,7 @@ namespace Nino\Modules\Themes {
 
 			$real = realpath( $file );
 
-			if( $real === false || is_file( $real ) === false || is_link( $file ) === true || str_starts_with( $real, $base. '/' ) === false )
+			if( $real === false || is_file( $real ) === false || Store::readable( $real ) === false || is_link( $file ) === true || str_starts_with( $real, $base. '/' ) === false )
 				return null;
 
 			$size = filesize( $real );
@@ -591,7 +591,8 @@ namespace Nino\Modules\Themes {
 			if( $size === false || $size > $limit )
 				return null;
 
-			$text = file_get_contents( $real );
+			// A file that cannot be read is a file that is not there: the kernel would make a 500 of the warning
+			$text = Store::quietRead( $real );
 
 			return $text !== false && str_contains( $text, "\0" ) === false && mb_check_encoding( $text, 'UTF-8' ) === true ? $text : null;
 		}

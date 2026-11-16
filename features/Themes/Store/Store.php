@@ -51,7 +51,7 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											'brand' => as Brand::clean() answers it, 'active' => [ 'theme', 'built', 'feature', 'register' ] or null,
+		 *	@return 	array											'brand' => as Brand::read() answers it, 'active' => [ 'theme', 'built', 'feature', 'register' ] or null,
 		 *																'own' => key => the own theme, 'previous' => whether there is a last state
 		 */
 		public static function read( array &$appData ): array {
@@ -60,7 +60,7 @@ namespace Nino\Modules\Themes {
 
 			self::heal( $appData );
 
-			$brand = Brand::clean( $appData, self::_load( $appData, $dir. '/state/brand.json' ) ?? [] );
+			$brand = Brand::read( $appData, self::_load( $appData, $dir. '/state/brand.json' ) );
 			$active = self::_load( $appData, $dir. '/state/active.json' );
 			$own = [];
 
@@ -73,11 +73,117 @@ namespace Nino\Modules\Themes {
 			}
 
 			return [
-				'brand'		=> is_array( $brand ) === true ? $brand : Brand::clean( $appData, [] ),
+				'brand'		=> $brand,
 				'active'	=> is_array( $active ) === true && is_string( $active['theme'] ?? null ) === true ? $active : null,
 				'own'			=> $own,
 				'previous'	=> is_dir( \Nino\Filesystem::path( $appData, $dir. '/previous' ) ),
 			];
+		}
+
+		/**
+		 *	What the state is, as one stamp: a request that is about the state as a whole - a restore - says which one it was made on, so that a
+		 *	save that came between is not put aside unseen
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	string										'' where there is no state
+		 */
+		public static function stamp( array &$appData ): string {
+
+			$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state' );
+
+			return is_dir( $state ) === true ? self::_digest( $state ) : '';
+		}
+
+		/**
+		 *	What the last state is, for a person to read: when it was saved and which theme the website showed in it. A state that was saved before
+		 *	the time was kept says nothing of it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array|null								[ 'at' => unix time, 'theme' => key or '', 'name' => the name of the theme, a string or a locale => string map, '' for none ], null where there is none to tell of
+		 */
+		public static function last( array &$appData ): ?array {
+
+			$dir = \Nino\Modules\Themes::DIR. '/previous';
+			$saved = self::_load( $appData, $dir. '/saved.json' );
+
+			if( $saved === null || is_int( $saved['at'] ?? null ) === false || is_string( $saved['theme'] ?? null ) === false )
+				return null;
+
+			$key = $saved['theme'];
+			$name = '';
+
+			if( str_starts_with( $key, 'own:' ) === true && preg_match( \Nino\Components::NAME, substr( $key, 4 ) ) === 1 )
+				$name = (string) ( self::_load( $appData, $dir. '/own/'. substr( $key, 4 ). '.json' )['name'] ?? substr( $key, 4 ) );
+			else if( $key !== '' )
+				$name = Reader::read( $appData )['themes'][$key]['name'] ?? $key;
+
+			return [ 'at' => $saved['at'], 'theme' => $key, 'name' => $name ];
+		}
+
+		/**
+		 *	The stylesheet of the project as a file of the disk: the web server may not be allowed to read what somebody else put there, and the
+		 *	kernel makes a warning of a read that fails
+		 *
+		 *	@param		string		$file					The real path
+		 *
+		 *	@return 	string|false|null					The text, null where there is no file, false where it cannot be read
+		 */
+		public static function sheet( string $file ): string|false|null {
+
+			if( is_file( $file ) === false )
+				return null;
+
+			// Whether the file may be read is the answer of the system to the read: a failed read is caught here, where the kernel would make a 500
+			// of its warning
+			return self::quietRead( $file );
+		}
+
+		/**
+		 *	Whether a file can be opened for reading by the one who runs this request: the answer of the system to the open, which is_readable() does not
+		 *	always give where the real and the effective user are two
+		 *
+		 *	@param		string		$file					The real path
+		 *
+		 *	@return 	bool
+		 */
+		public static function readable( string $file ): bool {
+
+			set_error_handler( static fn(): bool => true );
+
+			try {
+				$handle = is_file( $file ) === true ? fopen( $file, 'rb' ) : false;
+			}
+			finally {
+				restore_error_handler();
+			}
+
+			if( $handle === false )
+				return false;
+
+			fclose( $handle );
+
+			return true;
+		}
+
+		/**
+		 *	A file read with no warning: false where the read fails
+		 *
+		 *	@param		string		$file					The real path
+		 *
+		 *	@return 	string|false
+		 */
+		public static function quietRead( string $file ): string|false {
+
+			set_error_handler( static fn(): bool => true );
+
+			try {
+				return file_get_contents( $file );
+			}
+			finally {
+				restore_error_handler();
+			}
 		}
 
 		/**
@@ -92,7 +198,7 @@ namespace Nino\Modules\Themes {
 		private static function _load( array &$appData, string $virtual ): ?array {
 
 			$file = \Nino\Filesystem::path( $appData, $virtual );
-			$text = is_file( $file ) === true && filesize( $file ) <= self::MAX_FILE ? file_get_contents( $file ) : false;
+			$text = is_file( $file ) === true && filesize( $file ) <= self::MAX_FILE ? self::quietRead( $file ) : false;
 			$json = $text === false ? null : json_decode( $text, true, 32 );
 
 			return is_array( $json ) === true ? $json : null;
@@ -171,7 +277,7 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@return 	array|null								null where it is done, else [ status, message, code, params, field ]
 		 */
-		public static function restore( array &$appData, bool $force = false ): ?array {
+		public static function restore( array &$appData, bool $force = false, ?string $base = null ): ?array {
 
 			if( \Nino\Filesystem::lockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock', false ) === false )
 				return [ 409, 'the themes are being changed by another request', 'themes_busy', [], '' ];
@@ -179,6 +285,10 @@ namespace Nino\Modules\Themes {
 			try {
 
 				self::_heal( $appData );
+
+				// The state the one who asks has seen, looked at with the lock held: a save that came between is not put aside unseen
+				if( $base !== null && hash_equals( self::stamp( $appData ), $base ) === false )
+					return [ 409, 'the themes were changed since they were opened', 'themes_state', [], '' ];
 
 				$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state' );
 				$previous = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/previous' );
@@ -352,6 +462,10 @@ namespace Nino\Modules\Themes {
 				return $foreign;
 			}
 
+			// When it was saved and what the website showed, for the one who reads what the last state is; it is no part of what the state says, so it
+			// is written after the states were compared
+			\Nino\Filesystem::putFileContent( $appData, $dir. '/building/saved.json', [ 'at' => time(), 'theme' => (string) ( self::_load( $appData, $dir. '/building/active.json' )['theme'] ?? '' ) ] );
+
 			// The new state is whole from the day it is called next: that name is what _heal() takes it by
 			if( rename( $building, $next ) === false )
 				return [ 500, 'the state could not be saved', '', [], '' ];
@@ -415,8 +529,8 @@ namespace Nino\Modules\Themes {
 			if( is_string( $mix ) === true )
 				return [ 409, 'the mix of the active theme is refused: '. $mix, 'themes_mix', [ $mix ], '' ];
 
-			$brand = Brand::clean( $appData, self::_load( $appData, $next. '/brand.json' ) ?? [] );
-			$built = Compiler::compile( $appData, $mix, is_array( $brand ) === true ? $brand : Brand::clean( $appData, [] ) );
+			$brand = Brand::read( $appData, self::_load( $appData, $next. '/brand.json' ) );
+			$built = Compiler::compile( $appData, $mix, $brand );
 
 			self::keep( $appData, $built['plan'] );
 
@@ -487,12 +601,16 @@ namespace Nino\Modules\Themes {
 		private static function _foreign( array &$appData, string $next, bool $force ): array|string|null {
 
 			$file = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::SHEET );
-			$text = is_file( $file ) === true ? file_get_contents( $file ) : false;
+			$text = self::sheet( $file );
 
-			if( $text === false || Compiler::isOwn( $text ) === true || ( is_file( $next ) === true && file_get_contents( $next ) === $text ) )
+			if( $text === null || ( $text !== false && ( Compiler::isOwn( $text ) === true || ( self::sheet( $next ) === $text ) ) ) )
 				return null;
 
-			return $force === true ? $text : [ 409, 'the stylesheet of the project is not the one this feature wrote', 'themes_foreign', [], '' ];
+			// A file that cannot be read is somebody else's, and what is in it cannot be kept as the last state's: the text of it is none
+			if( $force === true )
+				return $text === false ? '' : $text;
+
+			return $text === false ? [ 409, 'the stylesheet of the project cannot be read, and what it holds cannot be kept as the last state', 'themes_unreadable', [], '' ] : [ 409, 'the stylesheet of the project is not the one this feature wrote', 'themes_foreign', [], '' ];
 		}
 
 		/**
@@ -513,15 +631,26 @@ namespace Nino\Modules\Themes {
 
 			$file = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::SHEET );
 
-			if( is_string( $foreign ) === true && is_dir( $previous ) === true )
+			if( is_string( $foreign ) === true && $foreign !== '' && is_dir( $previous ) === true )
 				file_put_contents( $previous. '/theme.css', $foreign );
 
 			if( is_file( $state. '/theme.css' ) === true ) {
 
-				if( \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Themes::SHEET, (string) file_get_contents( $state. '/theme.css' ) ) === false )
-					return [ 500, 'the stylesheet could not be written', '', [], '' ];
+				$text = (string) file_get_contents( $state. '/theme.css' );
+
+				// A file that is put in place keeps the rights of the one it replaces - a file that could not be read stays one - so it is opened for reading, and
+				// one that is not the text, or still cannot be read, is not what the website is to have: said, and not taken for done
+				if( \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Themes::SHEET, $text ) === false )
+					return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
+
+				if( self::sheet( $file ) !== $text ) {
+					@chmod( $file, 0644 );
+
+					if( self::sheet( $file ) !== $text )
+						return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
+				}
 			}
-			else if( is_file( $file ) === true && ( $foreign !== null || Compiler::isOwn( (string) file_get_contents( $file ) ) === true ) )
+			else if( is_file( $file ) === true && ( $foreign !== null || Compiler::isOwn( (string) self::sheet( $file ) ) === true ) )
 				unlink( $file );
 
 			return null;
@@ -547,7 +676,7 @@ namespace Nino\Modules\Themes {
 					if( is_dir( $path. '/'. $entry ) === true )
 						$walk( $path. '/'. $entry, $below. $entry. '/' );
 					else
-						$hashes[] = $below. $entry. ':'. sha1_file( $path. '/'. $entry );
+						$hashes[] = $below. $entry. ':'. ( self::readable( $path. '/'. $entry ) === true ? sha1_file( $path. '/'. $entry ) : '-' );
 				}
 			};
 
