@@ -352,7 +352,7 @@ check( 'a loop has its children as nodes: the register draws nothing of them', a
 $manifestWarnings = ninoWarnings();
 $manifest = \Nino\Features::manifest( $featureDir );
 check( 'the manifest validates with no warning: key collections, no requirement, the kernel with the register, the script of the filter as its one asset',
-	is_array( $manifest ) === true && ninoWarnings() === [] && $manifestWarnings === [] && $manifest['key'] === 'collections' && $manifest['requires'] === [] && $manifest['nino'] === '>=1.13'
+	is_array( $manifest ) === true && ninoWarnings() === [] && $manifestWarnings === [] && $manifest['key'] === 'collections' && $manifest['requires'] === [] && $manifest['nino'] === '^2.0'
 	&& $manifest['assets'] === [ '/features/Collections/assets/collection-filter.js' ] && $manifest['settings'] === [] && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'the manifest names no component and no stack: those are the folders\'', is_array( $manifest ) === true && ( $manifest['components'] ?? [] ) === [] && ( $manifest['stacks'] ?? [] ) === [] );
 $all = \Nino\Features::all( $appData );

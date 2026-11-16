@@ -150,7 +150,7 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `category` | wofür das Feature da ist, ein Slug – das des Manifests |
 | `maturity` | das Abzeichen, das das Features-Panel neben den Namen zeichnet – das des Manifests; fehlt, wo es keines nennt |
 | `version` | `major.minor.patch`, die des Manifests |
-| `nino` | die Nino-Versionsbedingung, `^1.9` |
+| `nino` | die Nino-Versionsbedingung, `^2.0` |
 | `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
 | `requires` | die Keys der Features, die es benötigt |
 | `directory` | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |

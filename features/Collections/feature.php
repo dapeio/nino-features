@@ -69,7 +69,7 @@ return [
 	],
 	'category'		=> 'content',
 	'version'			=> '1.0.0',
-	'nino'				=> '>=1.13',				// the kernel with the register of components
+	'nino'				=> '^2.0',					// the kernel with the register of components
 	'php'					=> [],
 	'requires'		=> [],
 	'data'				=> [],
