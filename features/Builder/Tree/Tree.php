@@ -18,6 +18,12 @@ namespace Nino\Modules\Builder {
 		public const int MAX_BLANKS = 2000;
 		public const string ID = '/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/D';
 
+		// What a source is written like: ~name, .field, and the type of elements a loop names as its first word
+		private const string NAMED = '/^~[a-z0-9]+(?:-[a-z0-9]+)*$/D';
+		private const string FIELD = '/^\.[A-Za-z][A-Za-z0-9_-]*$/D';
+		private const string TYPE = '/^\/[a-z][a-z0-9_-]{0,63}$/D';
+		private const string SHAPE = '/^[^\s\[\]\x00-\x1F\x7F]+$/D';
+
 		// What a block that is not a block says it is: free markup, or a call that has no schema
 		public const string FREE = 'free';
 		public const string CALL = 'call';
@@ -364,7 +370,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$registry
 		 *	@param		string		$name
 		 *
-		 *	@return 	array											'label', 'group', 'container', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
+		 *	@return 	array											'label', 'group', 'container', 'loop', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
 		 */
 		public static function schema( array &$appData, array $registry, string $name ): array {
 
@@ -390,6 +396,7 @@ namespace Nino\Modules\Builder {
 				'label'				=> $schema['label'],
 				'group'				=> (string) ( $schema['group'] ?? '' ),
 				'container'		=> isset( $schema['offers'] ) === true && $name !== 'html',
+				'loop'				=> ( $schema['children'] ?? '' ) === 'nodes',
 				'source'			=> (string) ( $schema['source'] ?? 'none' ),
 				'format'			=> (string) ( $schema['format'] ?? '' ),
 				'id'					=> self::idAttribute( $schema ),
@@ -795,6 +802,9 @@ namespace Nino\Modules\Builder {
 				if( $count > ( $stood[$mark] ?? 0 ) )
 					return 'check';
 
+			if( self::_sourced( $appData, $old, $new, $registry ) === false )
+				return 'source';
+
 			$known = [];
 			$given = [];
 			self::_values( $old, $registry, $known );
@@ -811,7 +821,7 @@ namespace Nino\Modules\Builder {
 				if( str_contains( $value, '[[' ) === true )
 					return 'value';
 
-				if( $link === true && preg_match( '#^(?:(?:javascript|data|vbscript):|[/\\\\]{2})#', strtolower( (string) preg_replace( '/[\x00-\x20]+/', '', $value ) ) ) === 1 )
+				if( $link === true && self::linkTarget( $appData, $value ) === false )
 					return 'link';
 			}
 
@@ -910,6 +920,243 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The places where a call names its value by a source - the first word of the call and each attribute of the type text, image or link that is written like
+		 *	one - with what the place needs to say whether the source is one: the id above it, whose scope a ~name is read in, and the type of elements of the loop it
+		 *	stands in, whose fields a .field is one of
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *	@param		string		$scope				The id of the nearest call above that has one
+		 *	@param		string|null	$loop					The type of elements of the loop the nodes stand in
+		 *	@param		array			&$out					(reference) [ [ call, attribute or '' for the first word, what is written, kind, scope, loop ], ... ]
+		 *
+		 *	@return 	void
+		 */
+		private static function _references( array $nodes, array $registry, string $scope, ?string $loop, array &$out ): void {
+
+			foreach( $nodes as $node ) {
+
+				if( isset( $node['n'] ) === false || isset( $registry[$node['n']] ) === false )
+					continue;
+
+				$schema = $registry[$node['n']];
+				$given = is_array( $node['a'] ?? null ) === true ? $node['a'] : [];
+				$idName = self::idAttribute( $schema );
+				$inner = $idName !== '' && self::isId( $given[$idName] ?? null ) === true ? (string) $given[$idName] : $scope;
+				$source = (string) ( $schema['source'] ?? 'none' );
+
+				// What a loop shows is a type of elements, and a type the project has
+				if( ( $schema['children'] ?? '' ) === 'nodes' && is_string( $node['s'] ?? null ) === true && $node['s'] !== '' )
+					$out[] = [ $node['n'], '', $node['s'], 'type', $inner, $loop ];
+
+				// The text="..." of a call is its first word and no source: what it was before is not read
+				if( $source !== 'none' && ( $source !== 'text' || is_string( $given['text'] ?? null ) === false ) && is_string( $node['s'] ?? null ) === true && $node['s'] !== '' )
+					$out[] = [ $node['n'], '', $node['s'], $source, $inner, $loop ];
+
+				foreach( (array) ( $schema['attributes'] ?? [] ) as $attribute => $declared )
+					if( in_array( $declared['type'] ?? '', [ 'text', 'image', 'link' ], true ) === true && is_string( $given[$attribute] ?? null ) === true && $given[$attribute] !== '' && ( strpos( '~./', $given[$attribute][0] ) !== false || str_starts_with( $given[$attribute], 'page:' ) === true ) )
+						$out[] = [ $node['n'], (string) $attribute, $given[$attribute], (string) $declared['type'], $inner, $loop ];
+
+				// A loop is a call that holds calls and names a type of elements as its first word
+				$type = ( $schema['children'] ?? '' ) === 'nodes' && is_string( $node['s'] ?? null ) === true && ( preg_match( self::TYPE, $node['s'] ) === 1 || isset( \Nino\Elements::PLACEHOLDERS[$node['s']] ) === true ) ? $node['s'] : $loop;
+
+				if( is_array( $node['c'] ?? null ) === true )
+					self::_references( $node['c'], $registry, $inner, $type, $out );
+			}
+		}
+
+		/**
+		 *	The fields of the elements of a type, with their types, as a source may name them: the three of every element and the ones its model has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$type					'/services'
+		 *
+		 *	@return 	array											field => type of the field - 'string' for the number, the uri and the slug of an element
+		 */
+		public static function fields( array &$appData, string $type ): array {
+
+			$fields = [ 'id' => 'string', 'uri' => 'string', 'slug' => 'string' ];
+
+			foreach( \Nino\Elements::getElementModel( $appData, $type ) as $name => $field )
+				if( is_string( $name ) === true && preg_match( '/^[A-Za-z][A-Za-z0-9_-]*$/D', $name ) === 1 )
+					$fields[$name] = (string) ( $field['type'] ?? 'string' );
+
+			return $fields;
+		}
+
+		/**
+		 *	Whether a source is one: a name of the form ~word in a place that has an id above it, a key of four words, the address of a picture, or a field of the
+		 *	loop the place stands in - a field of the type of that loop, and of a type that suits what is read there. A link takes an address as well, and a page of the
+		 *	site written page:/path. What is written for a text or a picture and is none of these is no source
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$written
+		 *	@param		string		$kind					text, image or link
+		 *	@param		bool			$first				The first word of the call, and not an attribute
+		 *	@param		string		$scope
+		 *	@param		string|null	$loop
+		 *
+		 *	@return 	bool
+		 */
+		public static function sourced( array &$appData, string $written, string $kind, bool $first, string $scope, ?string $loop ): bool {
+
+			if( $written === '' )
+				return true;
+
+			if( $kind === 'type' )
+				return preg_match( self::TYPE, $written ) === 1 && ( isset( \Nino\Elements::PLACEHOLDERS[$written] ) === true || \Nino\Elements::getElementModel( $appData, $written ) !== [] );
+
+			// An attribute that is written like no reference - a space in it, a dot and no field - is the text it is
+			if( $first === false && $written[0] !== '.' && preg_match( self::SHAPE, $written ) !== 1 )
+				return true;
+
+			if( $written[0] === '~' )
+				return $scope !== '' && strlen( $written ) <= 1 + 2 * \Nino\Components::NAME_LENGTH && preg_match( self::NAMED, $written ) === 1;
+
+			if( $written[0] === '.' ) {
+
+				if( preg_match( self::FIELD, $written ) !== 1 )
+					return $first === false;
+
+				$fields = $loop === null ? [] : self::fields( $appData, $loop );
+				$type = $fields[substr( $written, 1 )] ?? null;
+
+				return $type !== null && ( $kind === 'image' ? $type === 'image' : in_array( $type, [ 'string', 'integer', 'double', 'boolean', 'date', 'datetime' ], true ) === true );
+			}
+
+			if( $written[0] === '/' )
+				return $kind === 'link' || ( $kind === 'image' ? \Nino\Images::isSlotUri( $written ) === true : \Nino\Text::isGrammarKey( $written ) === true );
+
+			return $first === false && $kind !== 'image';
+		}
+
+		/**
+		 *	Whether a value may be where a link goes - the one rule for it, asked wherever a target can come from: the value of an attribute that is a link, the text of a
+		 *	key such an attribute reads, the links of a block that is saved and of the block a page begins with. What is written is read as a browser reads it first - the
+		 *	entities decoded, the blanks and control characters gone - and no target that runs a script (javascript:, data:, vbscript:) or goes to another host without
+		 *	saying so (//host, \host) is one. A page of the site written page:/path is a page the site has, and no path climbs. A source (~name, .field) is no target and
+		 *	has its own rule
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$value
+		 *
+		 *	@return 	bool
+		 */
+		public static function linkTarget( array &$appData, string $value, bool $there = true ): bool {
+
+			if( $value === '' || $value[0] === '~' || preg_match( self::FIELD, $value ) === 1 )
+				return true;
+
+			$plain = $value;
+
+			for( $round = 0; $round < 3; $round++ ) {
+
+				$next = html_entity_decode( $plain, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+				if( $next === $plain )
+					break;
+
+				$plain = $next;
+			}
+
+			$plain = strtolower( (string) preg_replace( '/[\x00-\x20\x7F]+/u', '', $plain ) );
+
+			if( preg_match( '#^(?:(?:javascript|data|vbscript):|[/\\\\]{2})#', $plain ) === 1 )
+				return false;
+
+			if( str_starts_with( $plain, 'page:' ) === false )
+				return true;
+
+			// A page is written as the register draws it - lower case, no slash at the end, then what the address may carry behind it, a query or a place on the page - or it is
+			// not taken: a target that would be drawn as no link is none
+			if( preg_match( '#^page:((?:/[a-z0-9._~-]+)+)(?:[?\#]\S*)?$#D', $value, $found ) !== 1 || str_contains( $found[1], '..' ) === true )
+				return false;
+
+			$path = $found[1];
+
+			// What a block brings names a page the site may not have - the contact page of the blocks of Basis: the register draws no link for it
+			// until the page is there, and that is no reason to keep the block from the site. A target a person sets is one that exists
+			if( $there === false )
+				return true;
+
+			foreach( \Nino\Pages::all( $appData ) as $page )
+				if( strtolower( rtrim( (string) $page['uri'], '/' ) ) === $path )
+					return true;
+
+			return false;
+		}
+
+		/**
+		 *	Whether every link a tree holds goes to a target the rule takes - the value of each attribute that is a link and the first word of a call that reads an address
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *
+		 *	@return 	bool
+		 */
+		public static function linksOk( array &$appData, array $nodes, array $registry, bool $there = true ): bool {
+
+			foreach( $nodes as $node ) {
+
+				if( isset( $node['n'] ) === false || isset( $registry[$node['n']] ) === false )
+					continue;
+
+				$schema = $registry[$node['n']];
+
+				if( ( $schema['source'] ?? 'none' ) === 'link' && is_string( $node['s'] ?? null ) === true && self::linkTarget( $appData, $node['s'], $there ) === false )
+					return false;
+
+
+				foreach( (array) ( $node['a'] ?? [] ) as $name => $value )
+					if( is_string( $value ) === true && ( $schema['attributes'][$name]['type'] ?? '' ) === 'link' && self::linkTarget( $appData, $value, $there ) === false )
+						return false;
+
+
+				if( is_array( $node['c'] ?? null ) === true && self::linksOk( $appData, $node['c'], $registry, $there ) === false )
+					return false;
+			}
+
+			return true;
+		}
+
+		/**
+		 *	Whether every source a tree names that the old tree did not name - by the call, the place and what is written - is a source (see sourced()). What stood
+		 *	there is left as it is: the register draws it as it does. Neither a key of the wrong form nor a field outside a loop nor a field the type has no such field
+		 *	of is written
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$old
+		 *	@param		array			$new
+		 *	@param		array			$registry
+		 *
+		 *	@return 	bool
+		 */
+		private static function _sourced( array &$appData, array $old, array $new, array $registry ): bool {
+
+			$was = [];
+			$now = [];
+			self::_references( $old, $registry, '', null, $was );
+			self::_references( $new, $registry, '', null, $now );
+			$had = array_count_values( array_map( static fn( array $reference ): string => $reference[0]. "\0". $reference[1]. "\0". $reference[2], $was ) );
+
+			foreach( $now as [ $name, $attribute, $written, $kind, $scope, $loop ] ) {
+
+				$mark = $name. "\0". $attribute. "\0". $written;
+
+				if( ( $had[$mark] ?? 0 ) > 0 ) {
+					$had[$mark]--;
+					continue;
+				}
+
+				if( self::sourced( $appData, $written, $kind, $attribute === '', $scope, $loop ) === false )
+					return false;
+			}
+
+			return true;
+		}
+
+		/**
 		 *	The values of the attributes of the calls of a tree that have a schema, each with the name of the call and of the attribute - which is what makes it
 		 *	known - and whether the attribute is a link
 		 *
@@ -925,6 +1172,10 @@ namespace Nino\Modules\Builder {
 
 				if( isset( $node['n'] ) === false || isset( $registry[$node['n']] ) === false )
 					continue;
+
+				// The first word of a call that reads an address is held to the same rule as the value of an attribute that does
+				if( is_string( $node['s'] ?? null ) === true && $node['s'] !== '' && ( $registry[$node['n']]['source'] ?? 'none' ) === 'link' )
+					$out[] = [ $node['n']. "\0\0". $node['s'], $node['s'], true ];
 
 				foreach( (array) ( $node['a'] ?? [] ) as $name => $value )
 					if( is_string( $value ) === true )

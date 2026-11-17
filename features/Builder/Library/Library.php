@@ -19,7 +19,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
+		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
 		 */
 		public static function all( array &$appData ): array {
 
@@ -28,7 +28,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $block ) {
 
-				if( $block['wrap'] !== self::PAGE )
+				if( $block['wrap'] !== self::PAGE || ( ( $block['missing'] ?? [] ) === [] && self::block( $appData, (string) $key ) === null ) )
 					continue;
 
 				// A block that lacks the components of a feature that is off says which features: the entry is grey and is not put in
@@ -43,6 +43,7 @@ namespace Nino\Modules\Builder {
 					'description'	=> $block['description'],
 					'category'		=> $block['category'],
 					'origin'			=> self::_origin( $features, (string) $block['origin'] ),
+					'own'					=> (string) $block['origin'] === 'project',
 					'hint'				=> $missing === [] ? self::hint( $appData, $block, ( $features['themes']['active'] ?? false ) === true ) : null,
 					'off'					=> $missing === [] ? null : $missing,
 				];
@@ -78,6 +79,18 @@ namespace Nino\Modules\Builder {
 
 			$tree = Tree::strip( \Nino\Markup::layout( [ $root ], 0 ) );
 			$slots = [];
+
+			// A block is offered by one rule for where a link goes, whoever made it: a target in its tree or in a text a link of it reads that the rule does not take is no block to offer
+			$registry = \Nino\Components::components( $appData );
+
+			if( Tree::linksOk( $appData, $tree, $registry, false ) === false )
+				return null;
+
+			foreach( $block['slots'] as $slot )
+				if( $slot['kind'] === 'link' )
+					foreach( $block['texts'] as $words )
+						if( is_string( $words[$slot['name']] ?? null ) === true && Tree::linkTarget( $appData, $words[$slot['name']], false ) === false )
+							return null;
 
 			foreach( $block['slots'] as $slot )
 				$slots[] = [ 'name' => $slot['name'], 'scope' => $slot['scope'], 'word' => substr( (string) $slot['source'], 1 ), 'kind' => $slot['kind'] === 'image' ? 'image' : 'text' ];

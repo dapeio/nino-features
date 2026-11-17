@@ -91,10 +91,12 @@ namespace Nino\Modules\Builder {
 		 *	@param		mixed			$texts				key => language => text
 		 *	@param		mixed			$copies				slot of a copy => the slot of the original it is made from
 		 *	@param		mixed			$inserted			id of the root of a block that was put in => the key of the block, which \Nino\Blocks is asked for
+		 *	@param		int				$level				The step the account holds
+		 *	@param		mixed			$chosen				uri of a slot of the page => [ label, width, height, file ]: the pictures a person made and has not saved
 		 *
 		 *	@return 	array											'source', 'draft' (the source as a draft draws it), 'tree', 'sources', 'formats', 'texts' (key => language => text as it is kept), 'slots' (the slots of the copies and of the blocks put in, uri => slot), 'files', 'findings' (what the register has against the tree, for the screen of a person who designs) - or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function prepare( array &$appData, string $template, array $state, mixed $tree, mixed $texts, mixed $copies = [], mixed $inserted = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT ): array {
+		public static function prepare( array &$appData, string $template, array $state, mixed $tree, mixed $texts, mixed $copies = [], mixed $inserted = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT, mixed $chosen = [] ): array {
 
 			$registry = \Nino\Components::components( $appData );
 			$canonical = \Nino\Modules\Builder\Tree::canonical( $appData, $tree );
@@ -147,6 +149,33 @@ namespace Nino\Modules\Builder {
 				return [ 'failure' => [ 400, 'the texts are none', 'builder_texts', [], 'texts' ] ];
 
 			$sources = \Nino\Modules\Builder\Tree::sources( $nodes, $registry, $template );
+
+			// Where a link goes may be written in a text: the text of every key of the page that a link reads - the words in the request, and the words that stand in the file where
+			// the link is new - is held to the one rule for a target, whoever writes it, in whatever step, and whatever else the key is read as
+			$before = [];
+
+			foreach( \Nino\Modules\Builder\Tree::sources( $old, $registry, $template ) as $entry )
+				if( $entry['kind'] === 'link' && $entry['key'] !== '' )
+					$before[$entry['key']] = true;
+
+			foreach( $sources as $entry ) {
+
+				if( $entry['kind'] !== 'link' || $entry['key'] === '' || \Nino\Modules\Builder\Tree::own( $entry['key'], $template ) === false )
+					continue;
+
+				$words = is_array( $texts[$entry['key']] ?? null ) === true ? $texts[$entry['key']] : [];
+
+				// What a link reads is the target of the link: the step that changes the content writes the alt of a picture and no word a link reads
+				if( $level < \Nino\Modules\Builder::LEVEL_DESIGN && isset( $state['texts'][$entry['key']] ) === true && array_diff_assoc( $words, (array) ( $state['texts'][$entry['key']] ?? [] ) ) !== [] )
+					return [ 'failure' => [ 403, 'the key is not one of a text', 'builder_key', [], 'texts' ] ];
+
+				if( isset( $before[$entry['key']] ) === false )
+					$words += (array) ( $state['texts'][$entry['key']] ?? [] );
+
+				foreach( $words as $word )
+					if( is_string( $word ) === true && \Nino\Modules\Builder\Tree::linkTarget( $appData, $word, false ) === false )
+						return [ 'failure' => [ 403, 'a text that a link reads is no target', 'builder_refused_link', [], 'texts' ] ];
+			}
 			$formats = [];
 
 			// The blocks that were put in and are on the top level with an id the page did not have: the words they read in an attribute - the text of a link, an alt - are
@@ -181,10 +210,21 @@ namespace Nino\Modules\Builder {
 
 			$reads = array_flip( \Nino\Modules\Builder\Tree::readKeys( $nodes, $registry, $template, $source ) );
 			$images = [];
+			$attributes = [];
+			$named = [];
 
-			foreach( $sources as $entry )
+			foreach( $sources as $entry ) {
+
 				if( $entry['kind'] === 'image' && $entry['key'] !== '' )
 					$images[$entry['key']] = true;
+
+				// The words a call reads in an attribute - an alt, the text of a link - and which of them an address is
+				if( $entry['attribute'] !== '' && $entry['key'] !== '' && in_array( $entry['kind'], [ 'text', 'link' ], true ) === true && \Nino\Modules\Builder\Tree::own( $entry['key'], $template ) === true ) {
+
+					$attributes[$entry['key']] = ( $attributes[$entry['key']] ?? '' ) === 'link' ? 'link' : $entry['kind'];
+					$named[$entry['key']][$entry['attribute']] = true;
+				}
+			}
 			$locales = \Nino\Locales::getTextLocales( $appData );
 			$meta = \Nino\Text::meta( $appData );
 			$kept = [];
@@ -213,6 +253,11 @@ namespace Nino\Modules\Builder {
 					foreach( $values as $locale => $text )
 						$may = $may && is_string( $text ) === true && preg_match( '#^\s*(?:(?:javascript|data|vbscript):|//)#i', $text ) !== 1
 							&& ( $text === ( $brought[$key][$locale] ?? null ) || $text === ( $brought[$key][\Nino\Blocks::FALLBACK] ?? null ) || $text === ( $state['texts'][$origin][$locale] ?? null ) );
+
+					// A person who designs writes the word of an attribute of a call of the page as a text of its own - the alt of a picture, the text of a link - and a person who may
+					// change the content writes the alt of a picture: it is a plain text; what a link reads was held to the rule for a target before
+					if( $may === false && isset( $attributes[$key] ) === true && ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN || ( $attributes[$key] === 'text' && array_keys( $named[$key] ) === [ 'alt' ] ) ) )
+						$may = array_filter( $values, static fn( mixed $text ): bool => is_string( $text ) === false ) === [];
 
 					if( $may === false )
 						return [ 'failure' => [ 403, 'the key is not one of a text', 'builder_key', [], 'texts' ] ];
@@ -287,6 +332,12 @@ namespace Nino\Modules\Builder {
 					$pictures[$place['key']] = $spec['placeholder'];
 				}
 			}
+
+			// The pictures a person chose and has not saved: a slot of the page that is made, a file that was uploaded for it - the draft shows them
+			$wrong = \Nino\Modules\Builder\Pictures::accept( $appData, $template, $state, $chosen, $images, $slots, $shown );
+
+			if( $wrong !== null )
+				return [ 'failure' => [ $wrong === 'picture' ? 403 : 409, $wrong === 'picture' ? 'the picture is not one of the page' : 'the picture that was made is not there any more', 'builder_'. $wrong, [], 'pictures' ] ];
 
 			$draft = $pictures === [] ? $source : \Nino\Markup::write( \Nino\Modules\Builder\Tree::shown( $nodes, $sources, $pictures ), \Nino\Components::containers( $appData ) );
 
@@ -573,7 +624,7 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	The picture files that stay below /images/ only as long as a slot of the current or of the last state has them: the file of a slot of the page that was kept
-		 *	for one save and is in neither state now is taken away - when it is a file of the slot's own name and no slot reads it
+		 *	for one save and is in neither state now - the slot is gone, or it has another picture - is taken away, when it is a file of the slot's own name and no slot reads it
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		array|null								$older				The last state before this save
@@ -594,7 +645,7 @@ namespace Nino\Modules\Builder {
 
 				$file = $slot['filename'] ?? null;
 
-				if( is_string( $file ) === true && isset( $target['slots'][$uri] ) === false && isset( $state['slots'][$uri] ) === false && str_starts_with( $file, ltrim( (string) $uri, '/' ). '.' ) === true && isset( $read[$file] ) === false )
+				if( is_string( $file ) === true && ( $target['slots'][$uri]['filename'] ?? null ) !== $file && ( $state['slots'][$uri]['filename'] ?? null ) !== $file && str_starts_with( $file, ltrim( (string) $uri, '/' ). '.' ) === true && isset( $read[$file] ) === false )
 					\Nino\Images::delete( $appData, $file );
 			}
 		}
@@ -640,8 +691,21 @@ namespace Nino\Modules\Builder {
 			}
 
 			self::_sweep( $appData, $older, $target, $state );
+			\Nino\Modules\Builder\Pictures::sweep( $appData, $template );
 
 			return null;
+		}
+
+		/**
+		 *	The line a place of a text is on, counted from 1
+		 *
+		 *	@param		string		$text
+		 *	@param		int				$offset				In bytes
+		 *
+		 *	@return 	int
+		 */
+		public static function line( string $text, int $offset ): int {
+			return 1 + substr_count( substr( $text, 0, max( 0, $offset ) ), "\n" );
 		}
 
 		/**

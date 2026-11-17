@@ -46,6 +46,12 @@ const words = {
 	while( ( match = named.exec( script ) ) !== null )
 		asked.add( match[1] );
 
+	// A word chosen between two - word( picture ? 'source/a' : 'source/b' ) - is read as the literal it is
+	const either = /'((?:own|page|picture|source|insert|confirm|hint|msg)\/[a-z0-9-]+)'/g;
+
+	while( ( match = either.exec( script ) ) !== null )
+		asked.add( match[1] );
+
 	// The keys the script puts together: the four things done to a block, the three widths, the two frames
 	[ 'up', 'down', 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key ) } );
 	[ 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
@@ -61,7 +67,12 @@ const words = {
 	[ 'once', 'depth', 'self' ].forEach( function( key ) { asked.add( 'offer/why-'+ key ) } );
 	[ 'all', 'tablet', 'desktop' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
 	asked.add('variant/regular');
-	[ 'id', 'image' ].forEach( function( key ) { asked.add( 'field/read-'+ key ) } );
+	asked.add('field/read-id');
+	[ 'pick', 'new', 'fixed', 'page', 'address' ].forEach( function( key ) { asked.add( 'source/tab-'+ key ) } );
+	// Where a text is from, the technical fields of an element and the menus of the starter site
+	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'other' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );
+	[ 'id', 'uri', 'slug' ].forEach( function( key ) { asked.add( 'source/field-'+ key ) } );
+	[ 'main', 'footer', 'legal' ].forEach( function( key ) { asked.add( 'page/menu-'+ key ) } );
 	[ 'content', 'design', 'develop', 'content-edit', 'design-edit', 'develop-edit' ].forEach( function( key ) { asked.add( 'scope/'+ key ) } );
 	// The failure of a load is the one the shell's panel() asks for by the name of the panel
 	asked.add('error/load');
@@ -110,7 +121,8 @@ const fresh = function() {
 	S.frame = false;
 	S.locale = 'de_DE';
 	S.ready = true;
-	S.saved = JSON.stringify( [ S.top, S.texts ] );
+	S.pictures = {};
+	S.saved = JSON.stringify( [ S.top, S.texts, S.pictures ] );
 };
 
 fresh();
@@ -332,7 +344,8 @@ const extended = function() {
 	S.locale = 'de_DE';
 	S.top = [ { t : '<!-- note -->\n' }, { n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
 		{ n : 'section-wrap', s : '', a : { id : 'hero' }, c : [ { t : '\n\t' }, { n : 'section-col', s : '', a : { id : 'hero-1', size : '100' }, c : [ { t : '\n\t\t' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n\t\t' }, { n : 'text', s : '~text', a : {}, c : null }, { t : '\n\t\t<p>free</p>\n\t' } ] }, { t : '\n' } ] }, { t : '\n' } ];
-	S.saved = JSON.stringify( [ S.top, S.texts ] );
+	S.pictures = {};
+	S.saved = JSON.stringify( [ S.top, S.texts, S.pictures ] );
 };
 
 check( 'C. an address names the page, the block and the place in it - the path, or the settings of the block - and the section; a frame is named by the page it is shown on; what is none is the page', ( function() {
@@ -436,6 +449,91 @@ check( 'C. what the register has against a place is a sentence at the entry, and
 	S.top.splice( 3, 1 );
 
 	return hint !== undefined && hint.state === 'warn' && builder.hintOf( '3.1.9' ) === undefined && builder.rootAt() === -1 && builder.itemsNow().length === 0;
+} )() );
+
+// --- D. the source of a content ---------------------------------------------------------------------------------
+
+check( 'D. a name in a template is words of lower case letters and digits joined by hyphens: the umlauts as German writes them, no mark, no hyphen at an end, and no longer than it is told', builder.slugOf( 'Über uns & Söhne!' ) === 'ueber-uns-soehne' && builder.slugOf( '  --Café  ' ) === 'cafe' && builder.slugOf( '' ) === '' && builder.slugOf( 'abcdefghij', 5 ) === 'abcde' && builder.slugOf( 'ab cdefghij', 3 ) === 'ab' );
+
+check( 'D. a source is put into a call, each a step of the undo: a new text is a key of the scope with the words of the view - and no fixed text is left -, a fixed text takes the place of the first word, a key of another place is written as it is, a link is a page or an address, a new picture is a slot', ( function() {
+	extended();
+	const begin = JSON.stringify( [ S.top, S.texts, S.pictures ] );
+	const title = function() { return S.top[3].c[1].c[1] };
+	builder.applySource( '1.1', { kind : 'text', attr : '' }, { form : 'new', name : 'claim', text : 'Hi' } );
+	const made = title().s === '~claim' && S.texts['/template/page-home/hero-1/claim'].de_DE === 'Hi' && title().a.text === undefined;
+	builder.applySource( '1.1', { kind : 'text', attr : '' }, { form : 'fixed', text : 'Fest' } );
+	const fixed = title().s === '' && title().a.text === 'Fest' && builder.sourceOf( '1.1' ).kind === 'fixed';
+	builder.applySource( '1.1', { kind : 'text', attr : '' }, { form : 'key', written : '/project/company/general/name' } );
+	const other = title().s === '/project/company/general/name' && title().a.text === undefined && builder.sourceOf( '1.1' ).editable === false;
+	builder.applySource( '1', { kind : 'link', attr : 'href' }, { form : 'page', written : 'page:/contact' } );
+	const page = S.top[3].c[1].a.href === 'page:/contact';
+	builder.applySource( '1', { kind : 'link', attr : 'href' }, { form : 'key', written : '' } );
+	const none = S.top[3].c[1].a.href === undefined;
+	builder.applySource( '1.1', { kind : 'image', attr : '' }, { form : 'new', name : 'photo', label : 'Photo', width : 800, height : 600 } );
+	const picture = S.pictures['/template/page-home/hero-1/photo'].width === 800 && builder.isDirty() === true && Object.keys( builder.picturesNow() ).join() === '/template/page-home/hero-1/photo';
+	const steps = S.undo.length;
+
+	for( let count = 0; count < steps; count++ )
+		builder.undo();
+
+	return made === true && fixed === true && other === true && page === true && none === true && picture === true && steps === 6 && JSON.stringify( [ S.top, S.texts, S.pictures ] ) === begin && builder.isDirty() === false;
+} )() );
+
+check( 'D. a field of the element is a source in a loop only: the loop is the nearest call above that holds calls and names a type of elements as its first word, and a call that is not inside one has none', ( function() {
+	extended();
+	S.schemas = Object.assign( {}, schemas, { collection : Object.assign( {}, schemas['section-col'], { loop : true } ) } );
+	S.top[3].c[1].c = [ { t : '\n' }, { n : 'collection', s : '/services', a : {}, c : [ { t : '\n' }, { n : 'section-title', s : '.title', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' } ];
+
+	const inside = builder.loopOf( '1.1.1' ) === '/services' && builder.loopOf( '1.1' ) === null && builder.loopOf( 'root' ) === null && builder.loopOf( '1' ) === null;
+
+	// A loop that names no type yet is a loop - the dialog says to choose first - and no field is offered
+	S.top[3].c[1].c[1].s = '';
+	const typeless = builder.loopOf( '1.1.1' ) === '';
+	S.top[3].c[1].c[1].s = '/services';
+
+	// A call that names a type of elements and holds no loop is no loop: it is one only where the register says it holds calls the way a loop does
+	S.top[3].c[1].c[1].n = 'section-col';
+	S.top[3].c[1].c[1].a = { id : 'hero-2' };
+
+	return inside === true && typeless === true && builder.loopOf( '1.1.1' ) === null;
+} )() );
+
+check( 'D. the key of a written source is the key of the scope for ~name and the key as it is for one with a slash - and none for a field of the element', ( function() {
+	extended();
+	return builder.keyOf( '1.1', '~claim' ) === '/template/page-home/hero-1/claim' && builder.keyOf( '1.1', '/project/company/general/name' ) === '/project/company/general/name' && builder.keyOf( '1.1', '.title' ) === '' && builder.keyOf( 'root', '~x' ) === '/template/page-home/hero/x';
+} )() );
+
+check( 'D. a text the language of the view has none of is shown as the page shows it - the text of the native language first, then of the next that has one - and a text nobody has is none', ( function() {
+	extended();
+	S.native = 'de_DE';
+	S.locales = [ { locale : 'de_DE', active : true }, { locale : 'en_US', active : true }, { locale : 'fr_FR', active : true } ];
+	S.locale = 'fr_FR';
+	S.texts['/template/page-home/hero/x'] = { de_DE : '', en_US : '<p>English</p>' };
+	S.texts['/template/page-home/hero/y'] = { de_DE : 'Hallo', en_US : 'Hello' };
+
+	return builder.fallbackText( '/template/page-home/hero/x' ) === 'English' && builder.fallbackText( '/template/page-home/hero/y' ) === 'Hallo' && builder.fallbackText( '/template/page-home/hero/none' ) === '';
+} )() );
+
+check( 'D. a picture of the page that may be exchanged where it stands is a call that is a picture or a call that reads one as an attribute, and a slot of the page - not a slot of another place, not a picture of a frame - and its alt is the key of the page it reads', ( function() {
+	extended();
+	S.template = 'page-home';
+	S.sources = [ { path : '3.1', kind : 'image', attribute : '', key : '/template/page-home/hero/picture' }, { path : '3.2', kind : 'image', attribute : '', key : '/logo' }, { path : '3.3', kind : 'image', attribute : 'image', key : '/template/page-home/hero/background' }, { path : '3.4', kind : 'text', attribute : '', key : '/template/page-home/hero/title' } ];
+	S.top[3].c[1] = { n : 'image', s : '~picture', a : { alt : '~alt' }, c : null };
+	S.images = {};
+	const found = builder.pictureTargets();
+	S.frame = true;
+	const frame = builder.pictureTargets().length;
+	S.frame = false;
+
+	return found.length === 2 && found[0].path === '3.1' && found[0].attribute === false && found[0].alt === '/template/page-home/hero/alt' && found[1].path === '3.3' && found[1].attribute === true && found[1].key === '/template/page-home/hero/background' && frame === 0;
+} )() );
+
+check( 'D. the pictures the server is told of are the slots with their size and the file that was made for them, and never the address of the picture', ( function() {
+	extended();
+	S.pictures = { '/template/page-home/hero/photo' : { label : 'Photo', width : 800, height : 600, file : 'template/page-home/hero/photo.s0123456789ab.800x600.webp', url : '/public/images/x.webp' }, '/template/page-home/hero/other' : { label : 'Other', width : 10, height : 10 } };
+	const told = builder.picturesNow();
+
+	return told['/template/page-home/hero/photo'].url === undefined && told['/template/page-home/hero/photo'].file.indexOf('.s0123456789ab.') !== -1 && Object.keys( told['/template/page-home/hero/other'] ).join() === 'label,width,height';
 } )() );
 
 done();

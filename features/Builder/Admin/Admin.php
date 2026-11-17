@@ -14,7 +14,16 @@ namespace Nino\Modules\Builder {
 	//	builder/blocks		the blocks of the dialog "Insert block": what \Nino\Blocks offers for a page, and what it left out for a feature that is off
 	//	builder/block			one block as it is put in: its tree laid out, its texts in every language and where its sources are
 	//	builder/tile			a draft of a page with one block in it, for the small picture of the block in the dialog
+	//	builder/keys			the texts of the project - or the picture slots - to choose a source from, found by name or by text
+	//	builder/upload		a picture for a slot of the page, made at once under a name no slot has; the save gives it to the slot
+	//	builder/unstage		the pictures of a draft that is thrown away: the files nobody has been given
+	//	builder/blocksave	a block of the page as a block of the project: private/blocks/<key>/, only if the kernel takes it as one
+	//	builder/blockdrop	a block of the project taken away again
+	//	builder/create		a page: its template, its routes, its menu entries and the words of its first block, in one step
 	class Admin {
+
+		// How many texts a search of the dialog Source answers with
+		private const int KEYS = 60;
 
 		public static function perm(): string {
 			return \Nino\Modules\Builder::PERM;
@@ -33,6 +42,12 @@ namespace Nino\Modules\Builder {
 				'builder/tile'		=> [ self::class, 'apiTile' ],
 				'builder/offer'		=> [ self::class, 'apiOffer' ],
 				'builder/notation'	=> [ self::class, 'apiNotation' ],
+				'builder/keys'		=> [ self::class, 'apiKeys' ],
+				'builder/upload'	=> [ self::class, 'apiUpload' ],
+				'builder/unstage'	=> [ self::class, 'apiUnstage' ],
+				'builder/blocksave'	=> [ self::class, 'apiBlockSave' ],
+				'builder/blockdrop'	=> [ self::class, 'apiBlockDrop' ],
+				'builder/create'	=> [ self::class, 'apiCreate' ],
 			];
 		}
 
@@ -102,6 +117,10 @@ namespace Nino\Modules\Builder {
 			return match( $action ) {
 				'builder/save'		=> 'Save Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/restore'	=> 'Restore Last Page State '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
+				'builder/upload'	=> 'Upload Page Picture '. Store::shown( \Nino\Admin\Admin::postString( $data, 'uri' ) ),
+				'builder/blocksave'	=> 'Save Own Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
+				'builder/blockdrop'	=> 'Delete Own Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
+				'builder/create'	=> 'Create Page '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
 				default						=> '',
 			};
 		}
@@ -121,7 +140,14 @@ namespace Nino\Modules\Builder {
 				if( $level >= \Nino\Modules\Builder::LEVEL_DESIGN && is_file( \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' ) ) === true )
 					$frames[] = [ 'key' => $key, 'template' => $template ];
 
-			\Nino\Http::ok( $request, [ 'pages' => Pages::all( $appData, $locale ), 'frames' => $frames ] + self::_view( $appData, $locale, $level ) );
+			// What was uploaded for a draft of a page that nobody opens any more is taken away with the next look at the list
+			foreach( Pages::all( $appData, $locale ) as $page )
+				Pictures::sweep( $appData, $page['template'] );
+
+			// A page is made by the one who may design and may write routes: the list says so, and the action asks again
+			$create = $level >= \Nino\Modules\Builder::LEVEL_DESIGN && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Builder::ROUTES ) === true;
+
+			\Nino\Http::ok( $request, [ 'pages' => Pages::all( $appData, $locale ), 'frames' => $frames, 'create' => $create, 'navs' => $create === true ? \Nino\Pages::navKeys( $appData ) : [] ] + self::_view( $appData, $locale, $level ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -141,6 +167,9 @@ namespace Nino\Modules\Builder {
 			$registry = \Nino\Components::components( $appData );
 			$page = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'page' );
 
+			// The pictures that were uploaded for a draft nobody saved and are older than a day are taken away when a page is opened
+			Pictures::sweep( $appData, $template );
+
 			\Nino\Http::ok( $request, [
 				'template'	=> $template,
 				'frame'			=> Store::named( $template )['frame'],
@@ -149,6 +178,7 @@ namespace Nino\Modules\Builder {
 				'texts'			=> $state['texts'],
 				'known'			=> Tree::known( $nodes, $registry ),
 				'slots'			=> array_keys( $state['slots'] ),
+				'images'		=> Pictures::shown( $appData, $state['slots'] ),
 				'stamp'			=> Store::stamp( $state ),
 				'address'		=> self::_address( $appData, $template, $locale, $page ),
 				'last'			=> self::_last( $appData, $template ),
@@ -169,7 +199,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, $state ] = $opened;
-			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [], $level );
+			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [], $level, $data['pictures'] ?? [] );
 
 			if( isset( $prepared['failure'] ) === true ) {
 				self::_fail( $request, $prepared['failure'] );
@@ -230,7 +260,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, $state ] = $opened;
-			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [], $level );
+			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [], $level, $data['pictures'] ?? [] );
 
 			if( isset( $prepared['failure'] ) === true ) {
 				self::_fail( $request, $prepared['failure'] );
@@ -244,7 +274,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			$changes = Store::changes( $state, $prepared, $template );
-			$target = [ 'source' => $prepared['source'], 'texts' => $state['texts'], 'slots' => array_diff_key( $state['slots'], array_flip( $changes['dropSlots'] ) ) + $prepared['slots'] ];
+			$target = [ 'source' => $prepared['source'], 'texts' => $state['texts'], 'slots' => array_replace( array_diff_key( $state['slots'], array_flip( $changes['dropSlots'] ) ), $prepared['slots'] ) ];
 
 			// The words as they will stand: the old ones, the changed ones laid over them, the ones nothing reads taken away
 			foreach( $changes['set'] as $key => $values )
@@ -323,6 +353,19 @@ namespace Nino\Modules\Builder {
 
 				$code = $level < \Nino\Modules\Builder::LEVEL_DEVELOP && in_array( $why, [ 'html', 'free', 'unit' ], true ) === true ? 'builder_restore_develop' : 'builder_refused_'. $why;
 				self::_fail( $request, [ 403, 'the last state may not be put back: '. $why, $code, [], 'tree' ] );
+				return;
+			}
+
+			// What the last state brings back is held to the rule for where a link goes, as a save of this step is
+			$links = Tree::linksOk( $appData, $back, $registry );
+
+			foreach( Tree::sources( $back, $registry, $template ) as $entry )
+				if( $entry['kind'] === 'link' && Tree::own( $entry['key'], $template ) === true )
+					foreach( (array) ( $previous['texts'][$entry['key']] ?? [] ) as $word )
+						$links = $links === true && Tree::linkTarget( $appData, (string) $word ) === true;
+
+			if( $links === false ) {
+				self::_fail( $request, [ 403, 'the last state may not be put back: link', 'builder_refused_link', [], 'tree' ] );
 				return;
 			}
 
@@ -484,6 +527,252 @@ namespace Nino\Modules\Builder {
 			\Nino\Http::ok( $request, [ 'offers' => $entries, 'blank' => (string) ( $laid[1]['t'] ?? "\n" ), 'schemas' => Tree::schemas( $appData, [], $registry, $names ), 'container' => $route[count( $route ) - 1] ] );
 		}
 
+		public static function apiKeys( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$query = mb_strtolower( trim( mb_substr( \Nino\Admin\Admin::postString( $data, 'query' ), 0, 80 ) ) );
+			$locale = \Nino\Admin\Admin::contentLocale( $appData );
+			$template = \Nino\Admin\Admin::postString( $data, 'template' );
+			$prefix = Store::named( $template ) === null ? '/' : '/template/'. $template. '/';
+			$found = [];
+
+			if( $template !== '' && Store::named( $template ) === null ) {
+				self::_fail( $request, [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] );
+				return;
+			}
+
+			// The fields of the elements of a type, for the source that is a field of the element of a loop
+			if( \Nino\Admin\Admin::postString( $data, 'kind' ) === 'fields' ) {
+
+				$type = \Nino\Admin\Admin::postString( $data, 'type' );
+				$known = preg_match( '/^\/[a-z][a-z0-9_-]{0,63}$/D', $type ) === 1 || isset( \Nino\Elements::PLACEHOLDERS[$type] ) === true;
+				$labels = [];
+
+				// The words a field has in the model of its type, where it has some: a text, or the words of each language
+				foreach( $known === true ? \Nino\Elements::getElementModel( $appData, $type ) : [] as $name => $field ) {
+
+					$label = $field['label'] ?? null;
+					$label = is_array( $label ) === true ? ( $label[$locale] ?? reset( $label ) ) : $label;
+
+					if( is_string( $label ) === true && $label !== '' && str_contains( $label, '/' ) === false )
+						$labels[(string) $name] = mb_substr( $label, 0, 60 );
+				}
+
+				\Nino\Http::ok( $request, [ 'fields' => $known === true ? Tree::fields( $appData, $type ) : [], 'labels' => $labels ] );
+				return;
+			}
+
+			// What a loop may show: the types of elements the project has, with their titles - the example type of the kernel is none of them
+			if( \Nino\Admin\Admin::postString( $data, 'kind' ) === 'types' ) {
+
+				\Nino\Http::ok( $request, [ 'types' => array_map( static fn( array $type ): array => [ 'type' => '/'. $type['uri'], 'title' => (string) $type['title'] ], \Nino\Modules\Elements\Types::summaries( $appData ) ) ] );
+				return;
+			}
+
+			$places = [];
+
+			foreach( \Nino\Pages::all( $appData ) as $page ) {
+
+				$places[(string) $page['template']] = (string) ( $page['names'][$locale] ?? '' ) !== '' ? (string) $page['names'][$locale] : (string) $page['template'];
+				$places[(string) $page['uri']] = $places[(string) $page['template']];
+			}
+
+			if( \Nino\Admin\Admin::postString( $data, 'kind' ) === 'image' ) {
+
+				foreach( \Nino\Images::getSlots( $appData ) as $uri => $slot ) {
+
+					$label = is_array( $slot ) === true ? (string) ( $slot['label'] ?? $uri ) : '';
+
+					if( is_string( $uri ) === false || $label === '' || ( $query !== '' && str_contains( mb_strtolower( $label. ' '. $uri ), $query ) === false ) )
+						continue;
+
+					$found[] = [ 'key' => $uri, 'name' => $label, 'text' => '', 'own' => str_starts_with( $uri, $prefix ), 'url' => is_string( $slot['filename'] ?? null ) === true && $slot['filename'] !== '' ? \Nino\Images::getUrl( $appData, $slot['filename'] ) : '' ];
+				}
+			}
+			else {
+
+				foreach( \Nino\Text::entries( $appData, false ) as $entry ) {
+
+					$all = array_filter( array_map( static fn( string $text ): string => trim( (string) preg_replace( '/\s+/', ' ', html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) ), $entry['values'] ), static fn( string $text ): bool => $text !== '' );
+
+					if( $all === [] || ( $query !== '' && str_contains( mb_strtolower( $entry['key']. ' '. implode( ' ', $all ) ), $query ) === false ) )
+						continue;
+
+					$found[] = [ 'key' => $entry['key'], 'name' => substr( $entry['key'], (int) strrpos( $entry['key'], '/' ) + 1 ), 'text' => mb_substr( $all[$locale] ?? $all['*'] ?? reset( $all ), 0, 120 ), 'own' => str_starts_with( $entry['key'], $prefix ) ] + self::_area( $entry['key'], $places );
+				}
+			}
+
+			// What belongs to the page stands first
+			usort( $found, static fn( array $a, array $b ): int => [ $b['own'], $a['key'] ] <=> [ $a['own'], $b['key'] ] );
+
+			\Nino\Http::ok( $request, [ 'entries' => array_slice( $found, 0, self::KEYS ), 'more' => count( $found ) > self::KEYS ] );
+		}
+
+		/**
+		 *	Where a text of the project belongs, for a person: the part of the project it is of, or the page - with its name - it is the words of
+		 *
+		 *	@param		string		$key
+		 *	@param		array			$places				template or Element-URI of a page => its name
+		 *
+		 *	@return 	array											[ 'area' => company, website, mail, project, common, page, feature or other, 'of' => the name of the page or the key of the feature, '' for none ]
+		 */
+		private static function _area( string $key, array $places ): array {
+
+			$parts = explode( '/', $key );
+
+			if( ( $parts[1] ?? '' ) === 'project' )
+				return [ 'area' => in_array( $parts[2] ?? '', [ 'company', 'website', 'mail' ], true ) === true ? $parts[2] : 'project', 'of' => '' ];
+
+			if( ( $parts[1] ?? '' ) === 'template' )
+				return ( $parts[2] ?? '' ) === 'common' ? [ 'area' => 'common', 'of' => '' ] : [ 'area' => 'page', 'of' => $places[$parts[2] ?? ''] ?? (string) ( $parts[2] ?? '' ) ];
+
+			if( ( $parts[1] ?? '' ) === '_nino' && ( $parts[2] ?? '' ) === 'webpage' )
+				return [ 'area' => 'page', 'of' => $places['/'. ( $parts[3] ?? '' )] ?? (string) ( $parts[3] ?? '' ) ];
+
+			return ( $parts[1] ?? '' ) === 'feature' ? [ 'area' => 'feature', 'of' => (string) ( $parts[2] ?? '' ) ] : [ 'area' => 'other', 'of' => '' ];
+		}
+
+		public static function apiUpload( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT );
+
+			if( $level === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			[ $template, $state ] = $opened;
+			$uri = \Nino\Admin\Admin::postString( $data, 'uri' );
+			$slot = $state['slots'][$uri] ?? [];
+			$width = (int) ( $slot['width'] ?? $data['width'] ?? 0 );
+			$height = (int) ( $slot['height'] ?? $data['height'] ?? 0 );
+
+			if( Tree::own( $uri, $template ) === false || \Nino\Images::isSlotUri( $uri ) === false || $width < 1 || $height < 1 || $width > Pictures::MAX_SIDE || $height > Pictures::MAX_SIDE ) {
+				self::_fail( $request, [ 403, 'the picture is not one of the page', 'builder_picture', [], 'uri' ] );
+				return;
+			}
+
+			$failure = \Nino\Admin\Admin::uploadError( $_FILES['file'] ?? null );
+
+			if( $failure !== null ) {
+				\Nino\Http::fail( $request, $failure['status'], $failure['error'], $failure['code'], $failure['params'] );
+				return;
+			}
+
+			$bytes = is_string( $_FILES['file']['tmp_name'] ?? null ) === true ? file_get_contents( $_FILES['file']['tmp_name'] ) : false;
+
+			if( $bytes === false ) {
+				\Nino\Http::fail( $request, 500, 'could not read upload', 'upload_server' );
+				return;
+			}
+
+			$rejection = \Nino\Images::reject( $bytes );
+
+			if( $rejection !== null ) {
+				\Nino\Http::fail( $request, 400, 'the image was refused: '. $rejection['code'], $rejection['code'], $rejection['params'] );
+				return;
+			}
+
+			// Whatever was uploaded for a draft that nobody saved, and is older than a day, goes before another is made
+			Pictures::sweep( $appData, $template );
+
+			$file = Pictures::stage( $appData, $uri, $bytes, $width, $height );
+
+			if( $file === false ) {
+				\Nino\Http::fail( $request, 400, 'the image could not be processed', 'image_unreadable' );
+				return;
+			}
+
+			$shown = \Nino\Images::size( $bytes );
+
+			\Nino\Http::ok( $request, [ 'file' => $file, 'url' => \Nino\Images::getUrl( $appData, $file ), 'belowTarget' => $shown !== false && ( $shown['width'] < $width || $shown['height'] < $height ) ] );
+		}
+
+		public static function apiUnstage( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT );
+
+			if( $level === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			$files = is_array( $data['files'] ?? null ) === true ? array_slice( array_values( array_filter( $data['files'], 'is_string' ) ), 0, 40 ) : [];
+
+			\Nino\Http::ok( $request, [ 'removed' => Pictures::sweep( $appData, $opened[0], $files ) ] );
+		}
+
+		public static function apiBlockSave( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
+
+			if( $level === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
+
+			if( $canonical === null || Store::named( $opened[0] )['frame'] === true ) {
+				self::_fail( $request, [ 400, 'the tree is none the Builder takes', 'builder_tree', [], 'tree' ] );
+				return;
+			}
+
+			$made = Custom::save( $appData, $opened[0], $opened[1], $canonical[1], $data );
+
+			if( isset( $made['failure'] ) === true ) {
+				self::_fail( $request, $made['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $made );
+		}
+
+		public static function apiBlockDrop( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null )
+				return;
+
+			$gone = Custom::drop( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ) );
+
+			if( $gone !== null ) {
+				self::_fail( $request, $gone['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request );
+		}
+
+		public static function apiCreate( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null || \Nino\Admin\Admin::guardPerm( $appData, $request, \Nino\Modules\Builder::ROUTES ) === false )
+				return;
+
+			$made = Pages::create( $appData, \Nino\Admin\Admin::postData() );
+
+			if( isset( $made['failure'] ) === true ) {
+				self::_fail( $request, $made['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $made );
+		}
+
 		/**
 		 *	The template a request is about, read: its name checked, the file there, its markup one that is read as it stands and written as it was
 		 *
@@ -518,9 +807,15 @@ namespace Nino\Modules\Builder {
 			$notes = [];
 			$nodes = Tree::read( $appData, $state['source'], $notes );
 
-			// A template that is not written as it was read would be changed by being saved: it is left to the one who wrote it
-			if( $notes !== [] || \Nino\Markup::write( $nodes, \Nino\Components::containers( $appData ) ) !== $state['source'] ) {
-				self::_fail( $request, [ 409, 'the template cannot be read as it stands', 'builder_unreadable', [ $template ], 'template' ] );
+			// A template that is not written as it was read would be changed by being saved: it is left to the one who wrote it, and the line where the reading
+			// stops is told - a start without an end, an end without a start
+			$written = \Nino\Markup::write( $nodes, \Nino\Components::containers( $appData ) );
+
+			if( $notes !== [] || $written !== $state['source'] ) {
+
+				$offset = $notes !== [] ? (int) ( $notes[0]['offset'] ?? 0 ) : strspn( $state['source'] ^ $written, "\0" );
+
+				self::_fail( $request, [ 409, 'the template cannot be read as it stands', 'builder_unreadable', [ $template, Store::line( $state['source'], $offset ) ], 'template' ] );
 				return null;
 			}
 
@@ -592,7 +887,7 @@ namespace Nino\Modules\Builder {
 			$nodes = $state === null ? [] : Tree::read( $appData, $state['source'] );
 			$registry = \Nino\Components::components( $appData );
 
-			return [ 'last' => self::_last( $appData, $template ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ) ]
+			return [ 'last' => self::_last( $appData, $template ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ), 'images' => Pictures::shown( $appData, $state['slots'] ?? [] ) ]
 				+ ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'findings' => Tree::findings( $appData, $nodes ), 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ] : [] );
 		}
 

@@ -4,8 +4,8 @@ return [
 	'key'					=> 'builder',
 	'name'				=> [ 'en_US' => 'Builder', 'de_DE' => 'Builder' ],
 	'description'	=> [
-		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands; whoever may design opens a block as a tree of components with their settings. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
-		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht; wer gestalten darf, öffnet einen Block als Baum aus Komponenten mit ihren Einstellungen. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
+		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands; whoever may design opens a block as a tree of components with their settings, chooses where each content comes from, keeps a block as a block of the project and makes new pages. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
+		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht; wer gestalten darf, öffnet einen Block als Baum aus Komponenten mit ihren Einstellungen, wählt, woher jeder Inhalt kommt, legt einen Block als Block des Projekts ab und macht neue Seiten. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -43,6 +43,18 @@ return [
 				'en_US' => 'The door /_admin/builder/manage lets an account design, and a role needs it as well; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or everything.',
 				'de_DE' => 'Die Tür /_admin/builder/manage lässt ein Konto gestalten und gehört zu jeder Rolle; content/*, design/* und develop/* darunter machen daraus Blocks und Texte, Komponenten und Rahmen oder alles.',
 			],
+			'Source' => [
+				'en_US' => 'Where the text, the address or the picture of a component comes from: a text that is there or a new one, a fixed text, a page, an address, a picture slot or a field of the element of a loop.',
+				'de_DE' => 'Woher Text, Adresse oder Bild einer Komponente kommen: ein Text, der da ist, oder ein neuer, ein fester Text, eine Seite, eine Adresse, ein Bildplatz oder ein Feld des Elements einer Schleife.',
+			],
+			'Save as own block …' => [
+				'en_US' => 'In the settings of a block, for whoever designs: the block of the page is kept as a block of the project, which then stands in the dialog Insert block and can be deleted there.',
+				'de_DE' => 'In den Einstellungen eines Blocks, für alle, die gestalten: der Block der Seite wird als Block des Projekts abgelegt, steht danach im Dialog Block einfügen und lässt sich dort wieder löschen.',
+			],
+			'New page …' => [
+				'en_US' => 'In the list of the pages, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',
+				'de_DE' => 'In der Seitenliste, für alle, die gestalten und Routen schreiben dürfen: Namen, Adressen, Menüs und ein erster Block machen Vorlage, Routen, Menüeintrag und Texte in einem Schritt.',
+			],
 			'+ Insert block' => [
 				'en_US' => 'Between the blocks, at the end of the page and in the outline: a dialog of the available blocks by category, each drawn in the active theme, put in as a draft until Save.',
 				'de_DE' => 'Zwischen den Blocks, am Ende der Seite und in der Gliederung: ein Dialog der verfügbaren Blocks nach Kategorie, jeder im aktiven Theme gezeichnet, bis zum Speichern nur ein Entwurf.',
@@ -50,6 +62,10 @@ return [
 		],
 		'callbacks' => [],
 		'install' => [
+			'blocks/<key>/' => [
+				'en_US' => 'The blocks of the project, one folder each with block.json, block.tpl and text/<language>.json, made by Save as own block and read by the kernel like every block.',
+				'de_DE' => 'Die Blocks des Projekts, je ein Ordner mit block.json, block.tpl und text/<Sprache>.json, angelegt von „Als eigenen Block speichern“ und vom Kernel wie jeder Block gelesen.',
+			],
 			'data/builder/' => [
 				'en_US' => 'The last state of each page that was saved, one step back, which the backup carries and an update does not change.',
 				'de_DE' => 'Der letzte Stand jeder gespeicherten Seite, einen Schritt zurück, den das Backup mitnimmt und ein Update nicht ändert.',

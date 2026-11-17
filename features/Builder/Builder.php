@@ -49,6 +49,9 @@ namespace Nino\Modules {
 		// What the drafts of the previews are called in \Nino\Preview
 		public const string KIND = 'builder';
 
+		// The right of the panel Routes: a page is made with its routes, so whoever makes one holds it as well as the step of the design
+		public const string ROUTES = '/_admin/routes/manage';
+
 		public static function init( array &$appData ): void {
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/request', [ self::class, 'request' ] );
 		}
