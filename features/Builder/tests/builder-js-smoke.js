@@ -149,10 +149,14 @@ const words = {
 
 const context = {
 	window : null,
-	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' } },
+	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function() { return { innerHTML : '', appendChild : function() {} } } },
 };
 
-context.window = { Nino : { admin : {}, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className ) { const attributes = {}; return { tag : tag, className : className, attributes : attributes, dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} } } }, content : { getText : function() { return '' } } }, document : context.document };
+// What the stand-in keeps of the list and of the way between the views: the elements made, where the router went and the calls to the server
+const made = [];
+const went = { parts : [], calls : [] };
+
+context.window = { Nino : { admin : { router : { href : function( panel, parts ) { return '#'+ panel+ '/'+ parts.join('/') }, go : function( panel, parts ) { went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } }, dirty : { guard : function( keys, run ) { run() } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
 context.Nino = context.window.Nino;
 vm.createContext( context );
 vm.runInContext( script, context );
@@ -394,21 +398,51 @@ check( 'B. what the call of html holds is the account\'s that may develop: for t
 	S.locale = 'en_US';
 	return closed === false && open === true && builder.freshText() === 'New text';
 } )() );
-check( 'B. back from the extended view of a page keeps the draft and goes to the page, back from that of a frame goes to the page it was opened from and asks, back from the page goes to the list', ( function() {
+context.window.Nino.admin.builder.call = function( name, data ) { went.calls.push( [ name, data ] ) };
+
+const listed = { pages : [ { template : 'page-home', name : 'Home', path : '/', locales : [] }, { template : 'page-contact', name : 'Contact', path : '/contact', locales : [] } ], frames : [ { template : 'frame-header', key : 'header' } ], level : 2 };
+
+// The address the panel is taken to, and what it keeps of where the person came from
+const opened = function( parts, options ) {
+	S.originNext = null;
+	context.window.Nino.admin.builder.go( parts, options );
+	S.frame = parts.some( function( part ) { return /^@(?:header|footer)$/.test( part ) } );
+	S.adv = { slug : parts[0] };
+};
+
+check( 'B. back from the extended view of a page keeps the draft and goes to the page, from a frame it goes to the page the frame was opened from and asks', ( function() {
 	fresh();
-	S.adv = { slug : 'home' };
+	S.list = listed;
+	S.adv = { slug : 'contact' };
+	S.template = 'page-contact';
 	const page = builder.backOf( true );
-	S.frame = true;
-	S.template = 'frame-header';
-	S.page = 'contact';
+	opened( [ 'contact', '@header' ] );
 	const frame = builder.backOf( true );
-	S.page = '';
-	const alone = builder.backOf( true );
-	S.frame = false;
-	S.page = '';
-	S.template = 'page-home';
-	S.adv = null;
-	return JSON.stringify( page ) === '{"parts":["home"],"keep":true}' && JSON.stringify( frame ) === '{"parts":["contact"],"keep":false}' && alone.parts[0] === '@header' && JSON.stringify( builder.backOf( false ) ) === '{"parts":[],"keep":false}';
+	return page.parts.join() === 'contact' && page.keep === true && page.block === true && frame.parts.join() === 'contact' && frame.keep === false && builder.backOf( false ).parts.length === 0;
+} )() );
+check( 'B. a frame opened from the list goes back to the list - not to the first page it is shown on - and says so by the name of the list', ( function() {
+	fresh();
+	context.window.Nino.admin.builder.render( listed );
+	const link = made.filter( function( element ) { return element.className === 'builder-page-link' } )[2];
+	link.listeners.click( { preventDefault : function() {} } );
+	S.frame = true;
+	const way = builder.backOf( true );
+	return S.page === 'home' && way.parts.length === 0 && way.block === false;
+} )() );
+check( 'B. a frame opened from a page goes back to that page - not to the first one - and says its name', ( function() {
+	fresh();
+	S.list = listed;
+	opened( [ 'contact', '@footer' ] );
+	const way = builder.backOf( true );
+	return S.page === 'contact' && S.origin === null && way.parts.join() === 'contact' && way.name === 'Contact' && way.block === false;
+} )() );
+check( 'B. the extended view of a frame that was opened from the view of the frame goes back to that view, on the same block', ( function() {
+	fresh();
+	S.list = listed;
+	opened( [ 'home', '@header' ], { origin : [ '@header' ] } );
+	S.template = 'frame-header';
+	const way = builder.backOf( true );
+	return way.parts.join() === '@header' && way.block === true;
 } )() );
 check( 'B. a variant that a hint names is told by the label the register gives it, and a variant that has none has no word - never its key', ( function() {
 	const labelled = builder.hintWord( { variant : 'band', standard : 'soft', labels : { variant : null, standard : { en_US : 'Soft surface' } } }, 'standard' );

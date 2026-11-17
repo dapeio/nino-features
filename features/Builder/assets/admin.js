@@ -86,6 +86,8 @@
 		redo			: [],
 		last			: 0,
 		unback		: '',
+		origin		: null,
+		originNext	: null,
 		view			: null,
 		width			: 'desktop',
 		chosen		: false,
@@ -968,7 +970,7 @@
 			if( item.kind === 'block' && advancedParts( item.node ) !== null ) {
 
 				const parts = advancedParts( item.node );
-				const open = Nino.adminUi.button( word('label/advanced'), function() { Nino.admin.builder.go( parts, { focus : 'back' } ) }, { className : 'nino-admin-btn--small builder-act', name : word('label/advanced')+ ': '+ titleOf( item.node ) } );
+				const open = Nino.adminUi.button( word('label/advanced'), function() { Nino.admin.builder.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } ) }, { className : 'nino-admin-btn--small builder-act', name : word('label/advanced')+ ': '+ titleOf( item.node ) } );
 
 				open.dataset.action = 'advanced';
 				row.appendChild( open );
@@ -1375,7 +1377,7 @@
 				more.setAttribute( 'aria-label', name );
 				more.dataset.action = 'advanced';
 				more.dataset.at = String( block.at );
-				more.addEventListener( 'click', function() { Nino.admin.builder.go( parts, { focus : 'back' } ) } );
+				more.addEventListener( 'click', function() { Nino.admin.builder.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } ) } );
 				bar.appendChild( more );
 			}
 
@@ -2221,7 +2223,7 @@
 						S.force = true;
 						S.view.bar.press();
 					},
-					onReload		: function() { openPage( S.target, function() {} ) },
+					onReload		: function() { openPage( S.target, S.origin, function() {} ) },
 					onCancel		: function() { S.view.bar.line.dirty() },
 				} );
 				return;
@@ -2277,7 +2279,7 @@
 						S.force = true;
 						restore( opener );
 					},
-					onReload		: function() { openPage( S.target, function() {} ) },
+					onReload		: function() { openPage( S.target, S.origin, function() {} ) },
 					onCancel		: function() {},
 				} );
 				return;
@@ -2402,13 +2404,20 @@
 		return advanced === true ? Object.assign( {}, LAYOUT, { desktop : DESKTOP } ) : LAYOUT;
 	};
 
-	// Where "back" goes from the view, and whether it keeps the draft: the extended view of a page is one draft with the page; that of a frame goes to the page it was opened from
+	// Where "back" goes from the view, the name it says and whether it keeps the draft: the extended view of a page is one draft with the page; that of a frame
+	// goes to where it was opened from - the list, a page or the view of the frame itself, the address of which is S.origin - and, where it is not known (an
+	// address that was typed or reloaded), to the page the address shows the frame on. The page that is left is asked about first (go() guards it)
 	const backOf = function( advanced ) {
 
 		if( advanced === false )
-			return { parts : [], keep : false };
+			return { parts : [], name : word('label/pages'), keep : false, block : false };
 
-		return S.frame === true ? { parts : [ S.page !== '' ? S.page : addressOf( S.template ) ], keep : false } : { parts : [ S.adv.slug ], keep : true };
+		if( S.frame === false )
+			return { parts : [ S.adv.slug ], name : nameOfPage( S.template ), keep : true, block : true };
+
+		const parts = S.origin ?? [ S.page !== '' ? S.page : addressOf( S.template ) ];
+
+		return { parts : parts, name : parts.length === 0 ? word('label/pages') : nameOfPage( templateOf( parts[0] ) ), keep : false, block : parts[0] === addressOf( S.template ) };
 	};
 
 	const build = function( level ) {
@@ -2418,25 +2427,30 @@
 		// The extended view goes back to the page it is of - or the frame -, the page to the list
 		const advanced = S.mode === 'advanced';
 		const layouts = layoutsOf( advanced );
-		const home = backOf( advanced ).parts;
-		const back = el( 'a', 'nino-admin-back-link', advanced === true ? word('label/back-page') : word('label/back-list') );
+		const way = backOf( advanced );
+		const home = way.parts;
 
-		back.href = Nino.admin.router.href( 'builder', home );
+		const context = Nino.adminUi.contextBar( {
+			back : {
+				to			: way.name,
+				href		: Nino.admin.router.href( 'builder', home ),
+				onClick	: function() {
+
+					// The focus goes back to where the person came from: the block that was opened, or the title of the page a frame was opened from
+					if( advanced === true && way.block === true )
+						S.refocus = { at : rootAt(), action : 'advanced', from : 'frame' };
+
+					Nino.admin.builder.go( home, advanced === true && way.block === false ? { focus : 'page' } : undefined );
+				},
+			},
+		} );
+
+		const back = context.querySelector('.nino-admin-back-link');
+
 		back.id = 'builder-back-list';
 
-		if( backOf( advanced ).keep === true )
+		if( way.keep === true )
 			back.setAttribute( 'data-keep-draft', '' );
-
-		back.addEventListener( 'click', function( event ) {
-
-			event.preventDefault();
-
-			// The focus goes back to where the person came from: the block that was opened, or the title of the page a frame was opened from
-			if( advanced === true && S.frame === false )
-				S.refocus = { at : rootAt(), action : 'advanced', from : 'frame' };
-
-			Nino.admin.builder.go( home, advanced === true && S.frame === true ? { focus : 'page' } : undefined );
-		} );
 
 		const head = el( 'div', 'builder-head' );
 		const title = el( 'h3', 'builder-name', advanced === true ? blockTitle() : S.name );
@@ -2518,7 +2532,7 @@
 		// The frames are written for every page: from the design on
 		const rows = S.frame === false && advanced === false && S.level >= 2;
 
-		level.appendChild( Nino.adminUi.contextBar( back ) );
+		level.appendChild( context );
 		level.appendChild( head );
 
 		if( rows === true )
@@ -2601,9 +2615,10 @@
 	/**
 	 *	Open a template: the page as the server has it, drawn on the screen, its draft asked for
 	 *
+	 *	@param		{Array|null}	origin				The address the extended view of a frame goes back to; null where that is the page the address shows it on
 	 *	@param		{Function}	done					Called with whether it was opened
 	 */
-	const openPage = function( target, done ) {
+	const openPage = function( target, origin, done ) {
 
 		const template = target.template;
 
@@ -2614,6 +2629,7 @@
 		S.built = false;
 		S.template = template;
 		S.page = target.page;
+		S.origin = origin;
 		S.named = {};
 
 		Nino.admin.builder.call( 'open', { template : template, page : target.page }, function( status, response ) {
@@ -5048,7 +5064,7 @@
 		link.href = Nino.admin.router.href( 'builder', at );
 		link.addEventListener( 'click', function( event ) {
 			event.preventDefault();
-			Nino.admin.builder.go( at );
+			Nino.admin.builder.go( at, { origin : [] } );
 		} );
 		link.appendChild( el( 'strong', 'builder-page-name', name ) );
 		link.appendChild( el( 'span', 'nino-admin-hint', hint ) );
@@ -5132,6 +5148,7 @@
 			S.focusFrom = ( options ?? {} ).from ?? '';
 
 			Nino.admin.dirty.guard( leaves === true ? [ 'builder' ] : [], function() {
+				S.originNext = ( options ?? {} ).origin ?? null;
 				Nino.admin.router.go( 'builder', parts );
 				Nino.admin.builder.follow();
 			} );
@@ -5154,6 +5171,9 @@
 			}
 
 			const target = targetOf( parts );
+			const origin = S.originNext;
+
+			S.originNext = null;
 
 			if( target === null ) {
 				Nino.admin.builder.go( [] );
@@ -5166,7 +5186,7 @@
 				return;
 			}
 
-			openPage( target, function() {} );
+			openPage( target, origin, function() {} );
 		},
 
 		showCurrent : function() {

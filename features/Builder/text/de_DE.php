@@ -6,7 +6,6 @@ declare(strict_types=1);
 return [
 
 	'[[/_admin/builder/nav]]'	=> 'Builder',
-	'[[/_admin/builder/label/back-list]]'	=> 'Alle Seiten',
 	'[[/_admin/builder/label/pages]]'	=> 'Seiten',
 	'[[/_admin/builder/label/frames]]'	=> 'Rahmen',
 	'[[/_admin/builder/label/blocks]]'	=> 'Gliederung',
@@ -78,7 +77,6 @@ return [
 	'[[/_admin/builder/label/down-comp]]'	=> '„%s“ nach unten',
 	'[[/_admin/builder/label/remove-comp]]'	=> '„%s“ löschen',
 	'[[/_admin/builder/label/back-tree]]'	=> 'Zurück zum Baum',
-	'[[/_admin/builder/label/back-page]]'	=> 'Zurück zur Seite',
 	'[[/_admin/builder/label/advanced]]'	=> 'Erweitert',
 	'[[/_admin/builder/adv/tree]]'	=> 'Baum',
 	'[[/_admin/builder/adv/tree-label]]'	=> 'Die Komponenten des Blocks',
